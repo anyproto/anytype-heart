@@ -112,7 +112,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 	templateName := "template"
 
-	t.Run("empty page name", func(t *testing.T) {
+	t.Run("empty page name should remain empty after template apply", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTest(templateName, "")
 		s := service{picker: &testPicker{sb: tmpl}}
@@ -122,8 +122,8 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		assert.Equal(t, st.Details().GetString(bundle.RelationKeyName), templateName)
-		assert.Equal(t, st.Get(template.TitleBlockId).Model().GetText().Text, templateName)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
+		assert.Empty(t, st.Get(template.TitleBlockId).Model().GetText().Text)
 	})
 
 	for _, nameToAdd := range []string{"custom", ""} {
@@ -262,7 +262,7 @@ func TestCreateTemplateStateFromSmartBlock(t *testing.T) {
 		st := s.CreateTemplateStateFromSmartBlock(tmpl, templateSvc.CreateTemplateRequest{})
 
 		// then
-		assert.Equal(t, "template", st.Details().GetString(bundle.RelationKeyName))
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName))
 		assert.Equal(t, "template", st.Details().GetString(bundle.RelationKeyDescription))
 	})
 }
@@ -414,7 +414,8 @@ func TestService_collectOriginalDetails(t *testing.T) {
 	const (
 		spaceId          = "space1"
 		sourceTemplateId = "template1"
-		templateName     = "My Template"
+		templateEmoji    = "🚂"
+		customEmoji      = "🎉"
 		customObjectName = "Custom Name"
 		coverIdValue     = "Sunset"
 	)
@@ -444,62 +445,75 @@ func TestService_collectOriginalDetails(t *testing.T) {
 		assert.False(t, result.Has(bundle.RelationKeyLayout), "Layout should be removed")
 	})
 
-	t.Run("removes name when it matches previous template name", func(t *testing.T) {
+	t.Run("removes emoji when it matches previous template emoji", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:   domain.String(sourceTemplateId),
-				bundle.RelationKeyName: domain.String(templateName),
+				bundle.RelationKeyId:        domain.String(sourceTemplateId),
+				bundle.RelationKeyIconEmoji: domain.String(templateEmoji),
 			},
 		})
 		s := service{store: store}
 
 		st := state.NewDoc("test", nil).NewState()
-		st.SetDetail(bundle.RelationKeyName, domain.String(templateName))
+		st.SetDetail(bundle.RelationKeyIconEmoji, domain.String(templateEmoji))
 		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
 
 		// when
 		result := s.collectOriginalDetails(spaceId, st)
 
 		// then
-		assert.False(t, result.Has(bundle.RelationKeyName), "Name should be removed when it matches template name")
+		assert.False(t, result.Has(bundle.RelationKeyIconEmoji), "Name should be removed when it matches template name")
 		assert.False(t, result.Has(bundle.RelationKeySourceObject), "SourceObject should always be removed")
 	})
 
-	t.Run("keeps name when it differs from previous template name", func(t *testing.T) {
+	t.Run("keeps emoji when it differs from previous template emoji", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:   domain.String(sourceTemplateId),
-				bundle.RelationKeyName: domain.String(templateName),
+				bundle.RelationKeyId:        domain.String(sourceTemplateId),
+				bundle.RelationKeyIconEmoji: domain.String(templateEmoji),
 			},
 		})
 		s := service{store: store}
 
 		st := state.NewDoc("test", nil).NewState()
-		st.SetDetail(bundle.RelationKeyName, domain.String(customObjectName))
+		st.SetDetail(bundle.RelationKeyIconEmoji, domain.String(customEmoji))
 
 		// when
 		result := s.collectOriginalDetails(spaceId, st)
 
 		// then
-		assert.Equal(t, customObjectName, result.GetString(bundle.RelationKeyName))
+		assert.Equal(t, customEmoji, result.GetString(bundle.RelationKeyIconEmoji))
 	})
 
-	t.Run("keeps name when sourceObject is empty", func(t *testing.T) {
+	t.Run("keeps emoji when sourceObject is empty", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		s := service{store: store}
 
 		st := state.NewDoc("test", nil).NewState()
-		st.SetDetail(bundle.RelationKeyName, domain.String(customObjectName))
+		st.SetDetail(bundle.RelationKeyIconEmoji, domain.String(customEmoji))
 
 		// when
 		result := s.collectOriginalDetails(spaceId, st)
 
 		// then
-		assert.Equal(t, customObjectName, result.GetString(bundle.RelationKeyName))
+		assert.Equal(t, customEmoji, result.GetString(bundle.RelationKeyIconEmoji))
+	})
+
+	t.Run("keeps empty name", func(t *testing.T) {
+		// given
+		s := service{}
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(""))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.True(t, result.Has(bundle.RelationKeyName))
 	})
 }

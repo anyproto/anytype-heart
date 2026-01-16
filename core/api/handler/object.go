@@ -9,16 +9,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListObjectsHandler retrieves a list of objects in a space
 //
 //	@Summary		List objects
 //	@Description	Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
+//	@Description	Supports dynamic filtering via query parameters (e.g., ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.
 //	@Id				list_objects
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string											true	"The ID of the space in which to list objects; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
@@ -30,10 +32,13 @@ import (
 func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
-		objects, total, hasMore, err := s.ListObjects(c.Request.Context(), spaceId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		objects, total, hasMore, err := s.ListObjects(c.Request.Context(), spaceId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRetrieveObjects, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrObjectNotFound, http.StatusInternalServerError),
@@ -41,7 +46,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -57,7 +62,7 @@ func ListObjectsHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				get_object
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
 //	@Param			object_id		path		string					true	"The ID of the object to retrieve; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Param			format			query		apimodel.BodyFormat		false	"The format to return the object body in" default("md")
@@ -83,12 +88,12 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -100,7 +105,7 @@ func GetObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string							true	"The ID of the space in which to create the object; must be retrieved from ListSpaces endpoint"
 //	@Param			object			body		apimodel.CreateObjectRequest	true	"The object to create"
 //	@Success		201				{object}	apimodel.ObjectResponse			"The created object"
@@ -116,7 +121,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.CreateObjectRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -134,12 +139,12 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusCreated, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -151,7 +156,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Objects
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string							true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
 //	@Param			object_id		path		string							true	"The ID of the object to update; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Param			object			body		apimodel.UpdateObjectRequest	true	"The details of the object to update"
@@ -171,7 +176,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.UpdateObjectRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -182,16 +187,17 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 			util.ErrToCode(service.ErrObjectNotFound, http.StatusNotFound),
 			util.ErrToCode(service.ErrObjectDeleted, http.StatusGone),
 			util.ErrToCode(service.ErrFailedUpdateObject, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedReplaceBlocks, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedRetrieveObject, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }
 
@@ -202,7 +208,7 @@ func UpdateObjectHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				delete_object
 //	@Tags			Objects
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space in which the object exists; must be retrieved from ListSpaces endpoint"
 //	@Param			object_id		path		string					true	"The ID of the object to delete; must be retrieved from ListObjects, SearchSpace or GlobalSearch endpoints or obtained from response context"
 //	@Success		200				{object}	apimodel.ObjectResponse	"The deleted object"
@@ -228,11 +234,11 @@ func DeleteObjectHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: object})
+		c.JSON(http.StatusOK, apimodel.ObjectResponse{Object: *object})
 	}
 }

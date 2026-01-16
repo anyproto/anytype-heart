@@ -20,7 +20,7 @@ var (
 )
 
 // ListTemplates returns a paginated list of templates in a specific space.
-func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId string, offset int, limit int) (templates []apimodel.Object, total int, hasMore bool, err error) {
+func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (templates []apimodel.Object, total int, hasMore bool, err error) {
 	// First, determine the type ID of "ot-template" in the space
 	templateTypeIdResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
@@ -44,20 +44,22 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 
 	// Then, search all objects of the template type and filter by the target type
 	templateTypeId := templateTypeIdResp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue()
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyType.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(templateTypeId),
+		},
+		{
+			RelationKey: bundle.RelationKeyTargetObjectType.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(typeId),
+		},
+	}, additionalFilters...)
+
 	templateObjectsResp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(templateTypeId),
-			},
-			{
-				RelationKey: bundle.RelationKeyTargetObjectType.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(typeId),
-			},
-		},
+		Filters: filters,
 	})
 
 	if templateObjectsResp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
@@ -68,28 +70,15 @@ func (s *Service) ListTemplates(ctx context.Context, spaceId string, typeId stri
 	paginatedTemplates, hasMore := pagination.Paginate(templateObjectsResp.Records, offset, limit)
 	templates = make([]apimodel.Object, 0, len(paginatedTemplates))
 
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return nil, 0, false, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return nil, 0, false, err
-	}
-
 	for _, record := range paginatedTemplates {
-		templates = append(templates, s.getObjectFromStruct(record, propertyMap, typeMap, tagMap))
+		templates = append(templates, s.getObjectFromStruct(record))
 	}
 
 	return templates, total, hasMore, nil
 }
 
 // GetTemplate returns a single template by its ID in a specific space.
-func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (apimodel.ObjectWithBody, error) {
+func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, templateId string) (*apimodel.ObjectWithBody, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: templateId,
@@ -97,35 +86,22 @@ func (s *Service) GetTemplate(ctx context.Context, spaceId string, _ string, tem
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return apimodel.ObjectWithBody{}, ErrTemplateNotFound
+			return nil, ErrTemplateNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return apimodel.ObjectWithBody{}, ErrTemplateDeleted
+			return nil, ErrTemplateDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return apimodel.ObjectWithBody{}, ErrFailedRetrieveTemplate
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return nil, ErrFailedRetrieveTemplate
 		}
-	}
-
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, true)
-	if err != nil {
-		return apimodel.ObjectWithBody{}, err
-	}
-	typeMap, err := s.getTypeMapFromStore(ctx, spaceId, propertyMap, false)
-	if err != nil {
-		return apimodel.ObjectWithBody{}, err
-	}
-	tagMap, err := s.getTagMapFromStore(ctx, spaceId)
-	if err != nil {
-		return apimodel.ObjectWithBody{}, err
 	}
 
 	markdown, err := s.getMarkdownExport(ctx, spaceId, templateId, model.ObjectTypeLayout(resp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue()))
 	if err != nil {
-		return apimodel.ObjectWithBody{}, err
+		return nil, err
 	}
 
-	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown, propertyMap, typeMap, tagMap), nil
+	return s.getObjectWithBlocksFromStruct(resp.ObjectView.Details[0].Details, markdown), nil
 }

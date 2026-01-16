@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -707,6 +708,8 @@ func (t *editor) cleanupTables(_ smartblock.ApplyInfo) error {
 	if err != nil {
 		log.Errorf("cleanup iterate: %s", err)
 	}
+
+	s.SetChangeType(domain.ChangeTypeCleanupTables)
 
 	if err = t.sb.Apply(s, smartblock.KeepInternalFlags); err != nil {
 		if errors.Is(err, source.ErrReadOnly) {

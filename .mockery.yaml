@@ -60,6 +60,10 @@ packages:
   github.com/anyproto/anytype-heart/core/files/filesync:
     interfaces:
       FileSync:
+  github.com/anyproto/anytype-heart/core/files/fileuploader:
+    interfaces:
+      Service:
+      Uploader:
   github.com/anyproto/anytype-heart/core/acl:
     interfaces:
       participantRemover:
@@ -253,7 +257,11 @@ packages:
     interfaces:
       AccountService:
       EventService:
+      CrossSpaceSubscriptionService:
       ClientCommands:
+  github.com/anyproto/anytype-heart/core/api/filter:
+    interfaces:
+      ApiService:
   github.com/anyproto/anytype-heart/core/block/template:
     interfaces:
       Service:

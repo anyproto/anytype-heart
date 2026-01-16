@@ -127,7 +127,7 @@ func TestInstaller_reinstallObject(t *testing.T) {
 		spc.EXPECT().IsReadOnly().Return(true)
 
 		archiver := mock_detailservice.NewMockService(t)
-		archiver.EXPECT().SetIsArchived(mock.Anything, mock.Anything).RunAndReturn(func(id string, isArchived bool) error {
+		archiver.EXPECT().SetIsArchived(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, id string, isArchived bool) error {
 			assert.Equal(t, id, bundle.TypeKeyProject.URL())
 			assert.False(t, isArchived)
 			return nil

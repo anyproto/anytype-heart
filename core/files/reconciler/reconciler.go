@@ -73,7 +73,7 @@ func (r *reconciler) Init(a *app.App) error {
 	r.fileSync = app.MustComponent[filesync.FileSync](a)
 	r.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 
-	r.fileSync.OnUploaded(r.markAsReconciled)
+	r.fileSync.OnStatusUpdated(r.markAsReconciled)
 
 	provider := app.MustComponent[anystoreprovider.Provider](a)
 	db := provider.GetCommonDb()
@@ -159,21 +159,14 @@ func (r *reconciler) needToRebind(details *domain.Details) (bool, error) {
 }
 
 func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persistentqueue.Action, error) {
-	err := r.fileSync.CancelDeletion(item.ObjectId, item.FileId)
-	if err != nil {
-		return persistentqueue.ActionRetry, fmt.Errorf("cancel deletion: %w", err)
-	}
-
 	log.Warn("add to queue", zap.String("objectId", item.ObjectId), zap.String("fileId", item.FileId.FileId.String()))
 	req := filesync.AddFileRequest{
-		FileObjectId:        item.ObjectId,
-		FileId:              item.FileId,
-		UploadedByUser:      false,
-		Imported:            false,
-		PrioritizeVariantId: "",
-		Score:               0,
+		FileObjectId:   item.ObjectId,
+		FileId:         item.FileId,
+		UploadedByUser: false,
+		Imported:       false,
 	}
-	err = r.fileSync.AddFile(req)
+	err := r.fileSync.AddFile(req)
 	if err != nil {
 		return persistentqueue.ActionRetry, fmt.Errorf("upload file: %w", err)
 	}
@@ -181,11 +174,14 @@ func (r *reconciler) rebindHandler(ctx context.Context, item *queueItem) (persis
 	return persistentqueue.ActionDone, nil
 }
 
-func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFileId) error {
+func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFileId, status filesyncstatus.Status) error {
 	if !r.isRunning() {
 		return nil
 	}
-	return r.deletedFiles.Delete(context.Background(), fileId.FileId.String())
+	if status == filesyncstatus.Synced {
+		return r.deletedFiles.Delete(context.Background(), fileId.FileId.String())
+	}
+	return nil
 }
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {

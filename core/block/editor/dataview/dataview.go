@@ -276,6 +276,7 @@ func (d *sdataview) SetActiveView(ctx session.Context, id string, activeViewId s
 	}
 
 	d.SmartBlock.CheckSubscriptions()
+	s.SetChangeType(domain.ChangeTypeActiveViewSet)
 	return d.Apply(s, smartblock.NoHooks)
 }
 

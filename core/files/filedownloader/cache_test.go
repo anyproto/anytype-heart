@@ -1,99 +1,133 @@
 package filedownloader
 
 import (
+	"context"
+	"fmt"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-func TestQueue(t *testing.T) {
-	t.Run("simple", func(t *testing.T) {
-		q, err := newQueue[int](3)
-		require.NoError(t, err)
+func TestCacheWarmer(t *testing.T) {
+	type testMessage struct {
+		spaceId string
+		cid     domain.FileId
+	}
 
-		q.push(0)
+	t.Run("add a task and process it", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-		got := q.getNext()
-		require.NotNil(t, got)
-		assert.Equal(t, 0, *got)
+		gotCh := make(chan testMessage)
+		w := newCacheWarmer(ctx, 10, 10, time.Minute, func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error {
+			gotCh <- testMessage{spaceId: spaceId, cid: cid}
+			return nil
+		})
+		go w.run()
+		go w.runWorker()
+
+		w.enqueue("space1", "file1")
+
+		got := <-gotCh
+		assert.Equal(t, testMessage{spaceId: "space1", cid: domain.FileId("file1")}, got)
 	})
 
-	t.Run("close queue", func(t *testing.T) {
-		q, err := newQueue[int](3)
-		require.NoError(t, err)
+	t.Run("multiple tasks, multiple workers", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-		const n = 10
-		waiters := make(chan struct{}, n)
-		for range n {
-			go func() {
-				q.getNext()
-				waiters <- struct{}{}
-			}()
+		gotCh := make(chan testMessage)
+		w := newCacheWarmer(ctx, 10, 10, time.Minute, func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error {
+			gotCh <- testMessage{spaceId: spaceId, cid: cid}
+			return nil
+		})
+		go w.run()
+		for range 5 {
+			go w.runWorker()
 		}
 
-		q.close()
+		n := 10
 
-		timeout := time.After(50 * time.Millisecond)
-		for range n {
+		for i := range n {
+			w.enqueue("space1", domain.FileId(fmt.Sprintf("file%d", i)))
+		}
+
+		timeout := time.After(time.Second)
+		want := make([]testMessage, n)
+		var got []testMessage
+		for i := range n {
+			want[i] = testMessage{spaceId: "space1", cid: domain.FileId(fmt.Sprintf("file%d", i))}
+
 			select {
-			case <-waiters:
+			case g := <-gotCh:
+				got = append(got, g)
 			case <-timeout:
 				t.Fatal("timeout")
 			}
 		}
+
+		assert.ElementsMatch(t, want, got)
 	})
 
-	t.Run("drop old", func(t *testing.T) {
-		q, err := newQueue[int](3)
-		require.NoError(t, err)
+	t.Run("cancel a task", func(t *testing.T) {
+		synctest.Run(func() {
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-		for i := range 10 {
-			q.push(i)
-		}
+			doneCh := make(chan struct{})
+			w := newCacheWarmer(ctx, 10, 10, time.Minute, func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error {
+				<-ctx.Done()
+				close(doneCh)
+				return nil
+			})
+			go w.run()
+			go w.runWorker()
 
-		var gotTasks []int
-		for range 3 {
-			got := q.getNext()
-			require.NotNil(t, got)
-			gotTasks = append(gotTasks, *got)
-		}
+			w.enqueue("space1", "file1")
 
-		got := q.pop()
-		assert.Nil(t, got)
-	})
+			w.cancelTask("file1")
 
-	t.Run("multiple consumers", func(t *testing.T) {
-		const n = 10
-
-		q, err := newQueue[int](n)
-		require.NoError(t, err)
-
-		for i := range n {
-			q.push(i)
-		}
-
-		resultsCh := make(chan int, n)
-		for range n {
-			go func() {
-				got := q.getNext()
-				require.NotNil(t, got)
-				resultsCh <- *got
-			}()
-		}
-
-		want := make([]int, n)
-		for i := range want {
-			want[i] = i
-		}
-
-		var got []int
-		timeout := time.After(50 * time.Millisecond)
-		for range n {
+			// It's either canceled in a downloder func, or cancelled before returning to a worker
 			select {
-			case res := <-resultsCh:
-				got = append(got, res)
+			case <-doneCh:
+			case <-time.After(time.Hour):
+			}
+		})
+	})
+
+	t.Run("multiple tasks, limit exceeded", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		n := 10
+		gotCh := make(chan testMessage)
+		w := newCacheWarmer(ctx, 10, n, time.Minute, func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error {
+			gotCh <- testMessage{spaceId: spaceId, cid: cid}
+			return nil
+		})
+		go w.run()
+
+		for i := range 100 {
+			w.enqueue("space1", domain.FileId(fmt.Sprintf("file%d", i)))
+		}
+
+		for range 5 {
+			go w.runWorker()
+		}
+
+		timeout := time.After(time.Second)
+		want := make([]testMessage, 10)
+		var got []testMessage
+		for i := range n {
+			want[i] = testMessage{spaceId: "space1", cid: domain.FileId(fmt.Sprintf("file%d", 90+i))}
+
+			select {
+			case g := <-gotCh:
+				got = append(got, g)
 			case <-timeout:
 				t.Fatal("timeout")
 			}

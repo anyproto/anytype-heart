@@ -175,6 +175,7 @@ func (s *syncer) SyncLayoutWithType(oldLayout, newLayout LayoutState, forceUpdat
 				if changes.isFeaturedRelationsChanged {
 					st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(changes.newFeaturedRelations))
 				}
+				st.SetChangeType(domain.ChangeTypeLayoutSync)
 				return b.Apply(st)
 			})
 			if err != nil {
@@ -266,8 +267,10 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, needAppl
 				return d.NewState(), nil, nil
 			})
 		}
+		st := b.NewState()
+		st.SetChangeType(domain.ChangeTypeLayoutSync)
 		// we need to call Apply to generate and push changes on Title and Name addition
-		return b.Apply(b.NewState(), smartblock.KeepInternalFlags)
+		return b.Apply(st, smartblock.KeepInternalFlags)
 	})
 }
 

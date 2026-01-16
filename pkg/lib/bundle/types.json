@@ -109,8 +109,8 @@
   },
   {
     "id": "relation",
-    "name": "Relation",
-    "pluralName": "Relation",
+    "name": "Property",
+    "pluralName": "Properties",
     "types": [
       "SubObject",
       "BundledRelation"

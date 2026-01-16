@@ -73,7 +73,7 @@ func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	return nil
 }
 
-func (s *service) SetIsArchived(objectId string, isArchived bool) error {
+func (s *service) SetIsArchived(ctx context.Context, objectId string, isArchived bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -85,7 +85,7 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 	if objectId == spc.DerivedIDs().Archive {
 		return fmt.Errorf("can't archive archive itself")
 	}
-	if err := s.checkArchivedRestriction(isArchived, objectId); err != nil {
+	if err := s.checkArchivedRestriction(ctx, isArchived, objectId); err != nil {
 		return err
 	}
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
@@ -128,7 +128,7 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 	return resultError
 }
 
-func (s *service) SetListIsArchived(objectIds []string, isArchived bool) error {
+func (s *service) SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error {
 	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
 		return fmt.Errorf("partition object ids by spaces: %w", err)
@@ -139,7 +139,7 @@ func (s *service) SetListIsArchived(objectIds []string, isArchived bool) error {
 		anySucceed bool
 	)
 	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
-		err = s.setIsArchivedForObjects(spaceId, objectIdsOfThisSpace, isArchived)
+		err = s.setIsArchivedForObjects(ctx, spaceId, objectIdsOfThisSpace, isArchived)
 		if err != nil {
 			log.Error("failed to set isArchived to objects", zap.String("spaceId", spaceId),
 				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
@@ -154,11 +154,18 @@ func (s *service) SetListIsArchived(objectIds []string, isArchived bool) error {
 	return resultErr
 }
 
-func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
+func (s *service) checkArchivedRestriction(ctx context.Context, isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil
 	}
 	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
+		if sb.Type() == coresb.SmartBlockTypeFileObject {
+			err := s.fileService.CanDeleteFile(ctx, objectId)
+			if err != nil {
+				return err
+			}
+		}
+
 		return restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }
@@ -192,7 +199,7 @@ func (s *service) partitionObjectIdsBySpaceId(objectIds []string) (map[string][]
 	return res, nil
 }
 
-func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, isArchived bool) error {
+func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
 	spc, err := s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
@@ -217,7 +224,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 			}
 			return true
 		})
-		anySucceed, err := s.modifyArchiveLinks(archive, isArchived, ids...)
+		anySucceed, err := s.modifyArchiveLinks(ctx, archive, isArchived, ids...)
 
 		if err != nil {
 			log.Warn("failed to archive", zap.Error(err))
@@ -229,11 +236,9 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 	})
 }
 
-func (s *service) modifyArchiveLinks(
-	coll blockcollection.Collection, value bool, ids ...string,
-) (anySucceed bool, resultErr error) {
+func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.Collection, value bool, ids ...string) (anySucceed bool, resultErr error) {
 	for _, id := range ids {
-		err := s.checkArchivedRestriction(value, id)
+		err := s.checkArchivedRestriction(ctx, value, id)
 		if err == nil {
 			if value {
 				err = coll.AddObject(id)

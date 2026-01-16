@@ -700,6 +700,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	var (
 		migrationVersionUpdated = true
 		parent                  = s.ParentState()
+		changeType              = s.GetChangeType()
 	)
 
 	if parent != nil {
@@ -733,10 +734,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		if notPushChanges {
 			return nil
 		}
-		if !sb.source.ReadOnly() {
+		if !sb.source.ReadOnly() && changeType == domain.ChangeTypeUserChange {
 			// We can set details directly in object's state, they'll be indexed correctly
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedBy, domain.String(sb.currentParticipantId))
-			st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, domain.Int64(lastModified.Unix()))
+			st.SetLastModified(lastModified.Unix(), sb.currentParticipantId)
 		}
 		fileDetailsKeys := st.FileRelationKeys(sb.formatFetcher)
 		var fileDetailsKeysFiltered []domain.RelationKey
@@ -753,6 +753,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			Changes:           changes,
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
 			DoSnapshot:        doSnapshot,
+			ChangeType:        changeType,
 		}
 		changeId, err = sb.source.PushChange(pushChangeParams)
 		// For read-only mode

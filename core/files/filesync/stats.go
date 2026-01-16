@@ -287,9 +287,5 @@ func makeLimitUpdatedEvent(limit uint64) *pb.Event {
 
 func (s *fileSync) DebugQueue(_ *http.Request) (*QueueInfo, error) {
 	var info QueueInfo
-	info.UploadingQueue = s.uploadingQueue.ListKeys()
-	info.RetryUploadingQueue = s.retryUploadingQueue.ListKeys()
-	info.DeletionQueue = s.deletionQueue.ListKeys()
-	info.RetryDeletionQueue = s.retryDeletionQueue.ListKeys()
 	return &info, nil
 }

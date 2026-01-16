@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "f967081a1918819244cfb366b2c9dbcd1473c591972fd9576b97c6237c703b3f"
+const TypeChecksum = "0c111399adb4bd83c03846bf38a73c8460681e0404cdef75ba5e9bfd86eb0429"
 const (
 	TypePrefix = "_ot"
 )
@@ -338,8 +338,8 @@ var (
 			IconColor:     7,
 			IconName:      "share-social",
 			Layout:        model.ObjectType_relation,
-			Name:          "Relation",
-			PluralName:    "Relation",
+			Name:          "Property",
+			PluralName:    "Properties",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationFormat), MustGetRelationLink(RelationKeyRelationMaxCount), MustGetRelationLink(RelationKeyRelationDefaultValue), MustGetRelationLink(RelationKeyRelationFormatObjectTypes)},
 			Revision:      3,

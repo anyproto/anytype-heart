@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
+
+	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -20,11 +21,6 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		return nil, fmt.Errorf("create onetoone: details, OneToOneIdentity is missing")
 	}
 
-	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
-	if description.OneToOneIdentity == myIdentity {
-		return nil, fmt.Errorf("create onetoone: second participant identity equals my identity")
-	}
-
 	bobProfile, err := s.identityService.WaitProfileWithKey(ctx, description.OneToOneIdentity)
 	if err != nil {
 		return
@@ -32,25 +28,27 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 
 	description.Name = bobProfile.IdentityProfile.Name
 	description.IconImage = bobProfile.IdentityProfile.IconCid
+	description.OneToOneInboxSentStatus = spaceinfo.OneToOneInboxSentStatusToSend
 	sp, err = s.CreateOneToOne(ctx, description, bobProfile)
 	if err != nil {
+		err = fmt.Errorf("create onetoone: %w", err)
 		return
 	}
 
-	myProfile, err := s.identityService.WaitProfileWithKey(ctx, myIdentity)
+	err = s.onetoone.ResendFailedOneToOneInvites(ctx)
 	if err != nil {
-		return
+		log.Error("failed to reschedule onetoone inbox resend", zap.Error(err))
 	}
 
-	err = s.onetoone.SendOneToOneInvite(ctx, bobProfile.IdentityProfile.Identity, myProfile)
-	if err != nil {
-		log.Error("sendOneToOneInvite: ", zap.Error(err))
-	}
 	return sp, nil
 }
 
-// for acceptor (e.g. inbox message)
 func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.SpaceDescription, bobProfile *model.IdentityProfileWithKey) (sp clientspace.Space, err error) {
+	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
+	if description.OneToOneIdentity == myIdentity {
+		return nil, fmt.Errorf("can't create OneToOne chat with self")
+	}
+
 	bPk, err := crypto.DecodeAccountAddress(bobProfile.IdentityProfile.Identity)
 	if err != nil {
 		return
@@ -58,6 +56,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 
 	coreSpace, err := s.spaceCore.CreateOneToOneSpace(ctx, bPk)
 	if err != nil {
+		err = fmt.Errorf("spacecore: create onetoone: %w", err)
 		return
 	}
 	s.mu.Lock()
@@ -80,6 +79,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 			err:  err,
 		}
 		s.mu.Unlock()
+		err = fmt.Errorf("factory: create onetoone: %w", err)
 		return nil, err
 	}
 
@@ -92,6 +92,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 			err:  err,
 		}
 		s.mu.Unlock()
+		err = fmt.Errorf("loader: create onetoone: %w", err)
 		return nil, err
 	}
 	s.spaceControllers[ctrl.SpaceId()] = ctrl

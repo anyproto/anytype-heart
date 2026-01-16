@@ -33,8 +33,8 @@ func (s *Service) CreateChallenge(ctx context.Context, appName string) (string, 
 	return resp.ChallengeId, nil
 }
 
-// SolveChallenge calls AccountLocalLinkSolveChallenge and returns the session token + app key
-func (s *Service) SolveChallenge(ctx context.Context, challengeId string, code string) (appKey string, err error) {
+// CreateApiKey calls AccountLocalLinkSolveChallenge and returns the session token + app key
+func (s *Service) CreateApiKey(ctx context.Context, challengeId string, code string) (appKey string, err error) {
 	if challengeId == "" || code == "" {
 		return "", util.ErrBadInput("challenge_id or code is empty")
 	}

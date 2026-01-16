@@ -52,6 +52,7 @@ type Service interface {
 	app.ComponentRunnable
 
 	InitEmptyFileState(st *state.State)
+	CanDeleteFile(ctx context.Context, objectId string) error
 	DeleteFileData(spaceId string, objectId string) error
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
 	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
@@ -179,7 +180,7 @@ func (s *service) Run(_ context.Context) error {
 }
 
 type objectArchiver interface {
-	SetListIsArchived(objectIds []string, isArchived bool) error
+	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
@@ -210,7 +211,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 		for _, record := range records {
 			ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 		}
-		if err = s.objectArchiver.SetListIsArchived(ids, true); err != nil {
+		if err = s.objectArchiver.SetListIsArchived(ctx, ids, true); err != nil {
 			return err
 		}
 	}
@@ -325,9 +326,12 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 		return "", nil, fmt.Errorf("create in space: %w", err)
 	}
 
-	err = s.addImageVariantsToQueue(req, id, space.Id())
+	added, err := s.addImageToSyncQueue(req, id, space.Id())
 	if err != nil {
 		return "", nil, fmt.Errorf("add image variants to sync queue: %w", err)
+	}
+	if added {
+		return id, object, nil
 	}
 
 	syncReq := filesync.AddFileRequest{
@@ -344,7 +348,7 @@ func (s *service) Create(ctx context.Context, spaceId string, req filemodels.Cre
 	return id, object, nil
 }
 
-func (s *service) addImageVariantsToQueue(req filemodels.CreateRequest, id string, spaceId string) error {
+func (s *service) addImageToSyncQueue(req filemodels.CreateRequest, id string, spaceId string) (bool, error) {
 	var imageVariants []imageVariant
 	for _, variant := range req.FileVariants {
 		if variant.Mill == mill.ImageResizeId {
@@ -354,25 +358,27 @@ func (s *service) addImageVariantsToQueue(req filemodels.CreateRequest, id strin
 			})
 		}
 	}
+	if len(imageVariants) == 0 {
+		return false, nil
+	}
 	sort.Slice(imageVariants, func(i, j int) bool {
 		return imageVariants[i].size < imageVariants[j].size
 	})
-	for idx, variant := range imageVariants {
-		score := len(imageVariants) - idx
-		syncReq := filesync.AddFileRequest{
-			FileObjectId:        id,
-			FileId:              domain.FullFileId{SpaceId: spaceId, FileId: req.FileId},
-			UploadedByUser:      true,
-			Imported:            req.ObjectOrigin.IsImported(),
-			PrioritizeVariantId: variant.variantId,
-			Score:               score,
-		}
-		err := s.addToSyncQueue(syncReq)
-		if err != nil {
-			return fmt.Errorf("add image variant to sync queue: %w", err)
-		}
+	variants := make([]domain.FileId, 0, len(imageVariants))
+	for _, variant := range imageVariants {
+		variants = append(variants, variant.variantId)
 	}
-	return nil
+	err := s.addToSyncQueue(filesync.AddFileRequest{
+		FileObjectId:   id,
+		FileId:         domain.FullFileId{SpaceId: spaceId, FileId: req.FileId},
+		UploadedByUser: true,
+		Imported:       req.ObjectOrigin.IsImported(),
+		Variants:       variants,
+	})
+	if err != nil {
+		return false, fmt.Errorf("add image variant to sync queue: %w", err)
+	}
+	return true, nil
 }
 
 func (s *service) createInSpace(ctx context.Context, space clientspace.Space, req filemodels.CreateRequest) (id string, object *domain.Details, err error) {
@@ -523,21 +529,30 @@ func (s *service) GetObjectDetailsByFileId(fileId domain.FullFileId) (string, *d
 	return details.GetString(bundle.RelationKeyId), details, nil
 }
 
-func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
+func (s *service) getFileDetails(objectId string) (*domain.Details, error) {
 	spaceId, err := s.spaceIdResolver.ResolveSpaceID(objectId)
 	if err != nil {
-		return domain.FullFileId{}, fmt.Errorf("resolve space id: %w", err)
+		return nil, fmt.Errorf("resolve space id: %w", err)
 	}
 	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(objectId)
 	if err != nil {
+		return nil, fmt.Errorf("get object details: %w", err)
+	}
+	return details, nil
+}
+
+func (s *service) GetFileIdFromObject(objectId string) (domain.FullFileId, error) {
+	details, err := s.getFileDetails(objectId)
+	if err != nil {
 		return domain.FullFileId{}, fmt.Errorf("get object details: %w", err)
 	}
+
 	fileId := details.GetString(bundle.RelationKeyFileId)
 	if fileId == "" {
 		return domain.FullFileId{}, filemodels.ErrEmptyFileId
 	}
 	return domain.FullFileId{
-		SpaceId: spaceId,
+		SpaceId: details.GetString(bundle.RelationKeySpaceId),
 		FileId:  domain.FileId(fileId),
 	}, nil
 }
@@ -614,6 +629,34 @@ func (s *service) resolveSpaceIdWithRetry(ctx context.Context, objectId string) 
 	return s.spaceIdResolver.ResolveSpaceIdWithRetry(ctx, objectId)
 }
 
+func (s *service) CanDeleteFile(ctx context.Context, objectId string) error {
+	details, err := s.getFileDetails(objectId)
+	if err != nil {
+		return fmt.Errorf("get file details: %w", err)
+	}
+
+	spaceId := details.GetString(bundle.RelationKeySpaceId)
+
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+
+	workspaceDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(spc.DerivedIDs().Workspace)
+	if err != nil {
+		return fmt.Errorf("get workspace details: %w", err)
+	}
+
+	if workspaceDetails.GetInt64(bundle.RelationKeySpaceUxType) == int64(model.SpaceUxType_OneToOne) {
+		myParticipantId := s.accountService.MyParticipantId(spaceId)
+
+		if details.GetString(bundle.RelationKeyCreator) != myParticipantId {
+			return fmt.Errorf("can't delete other's file")
+		}
+	}
+	return nil
+}
+
 func (s *service) DeleteFileData(spaceId string, objectId string) error {
 	fullId, err := s.GetFileIdFromObject(objectId)
 	if err != nil {
@@ -637,6 +680,11 @@ func (s *service) DeleteFileData(spaceId string, objectId string) error {
 		return fmt.Errorf("list objects that use file id: %w", err)
 	}
 	if len(records) == 0 {
+		err := s.CanDeleteFile(s.componentCtx, objectId)
+		if err != nil {
+			return fmt.Errorf("can delete a file: %w", err)
+		}
+
 		if err := s.fileSync.DeleteFile(objectId, fullId); err != nil {
 			return fmt.Errorf("failed to remove file from sync: %w", err)
 		}

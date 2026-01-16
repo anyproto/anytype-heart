@@ -50,6 +50,10 @@ func (s *spaceViewStub) SetPushNotificationForceModeIds(ctx session.Context, cha
 	return
 }
 
+func (s *spaceViewStub) SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error) {
+	return
+}
+
 func (s *spaceViewStub) ResetPushNotificationIds(ctx session.Context, allIds []string) error {
 	return nil
 }

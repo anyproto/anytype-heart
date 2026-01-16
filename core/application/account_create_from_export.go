@@ -78,12 +78,11 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 		return RecoverFromLegacyResponse{}, err
 	}
 
-	res, err := core.WalletAccountAt(s.mnemonic, 0)
-	if err != nil {
-		return RecoverFromLegacyResponse{}, err
+	if s.derivedKeys == nil {
+		return RecoverFromLegacyResponse{}, ErrWalletNotInitialized
 	}
-	address := res.Identity.GetPublic().Account()
-	if profile.Address != res.OldAccountKey.GetPublic().Account() && profile.Address != address {
+	address := s.derivedKeys.Identity.GetPublic().Account()
+	if profile.Address != s.derivedKeys.OldAccountKey.GetPublic().Account() && profile.Address != address {
 		return RecoverFromLegacyResponse{}, ErrAccountMismatch
 	}
 	s.rootPath = req.RootPath
@@ -93,7 +92,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 		return RecoverFromLegacyResponse{}, anyerror.CleanupError(err)
 	}
 	if _, statErr := os.Stat(filepath.Join(s.rootPath, address)); os.IsNotExist(statErr) {
-		if walletErr := core.WalletInitRepo(s.rootPath, res.Identity); walletErr != nil {
+		if walletErr := core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); walletErr != nil {
 			return RecoverFromLegacyResponse{}, walletErr
 		}
 	}
@@ -105,13 +104,13 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 	if profile.AnalyticsId != "" {
 		cfg.AnalyticsId = profile.AnalyticsId
 	} else {
-		cfg.AnalyticsId, err = metricsid.DeriveMetricsId(res.Identity)
+		cfg.AnalyticsId, err = metricsid.DeriveMetricsId(s.derivedKeys.Identity)
 		if err != nil {
 			return RecoverFromLegacyResponse{}, err
 		}
 	}
 
-	err = s.startApp(cfg, res)
+	err = s.startApp(cfg, *s.derivedKeys)
 	if err != nil {
 		return RecoverFromLegacyResponse{}, err
 	}

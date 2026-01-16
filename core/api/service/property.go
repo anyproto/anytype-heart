@@ -30,6 +30,7 @@ var (
 	ErrPropertyCannotBeUpdated  = errors.New("property cannot be updated")
 	ErrFailedUpdateProperty     = errors.New("failed to update property")
 	ErrFailedDeleteProperty     = errors.New("failed to delete property")
+	ErrFailedCreatePropertyTags = errors.New("property created but tag creation failed")
 )
 
 var excludedSystemProperties = map[string]bool{
@@ -105,21 +106,23 @@ var RelationFormatToPropertyFormat = map[model.RelationFormat]apimodel.PropertyF
 }
 
 // ListProperties returns a list of properties for a specific space.
-func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int, limit int) (properties []apimodel.Property, total int, hasMore bool, err error) {
+func (s *Service) ListProperties(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (properties []*apimodel.Property, total int, hasMore bool, err error) {
+	filters := append([]*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.Bool(true),
+		},
+	}, additionalFilters...)
+
 	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
 		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
+		Filters: filters,
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
@@ -150,7 +153,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 
 	total = len(filteredRecords)
 	paginatedProperties, hasMore := pagination.Paginate(filteredRecords, offset, limit)
-	properties = make([]apimodel.Property, 0, len(paginatedProperties))
+	properties = make([]*apimodel.Property, 0, len(paginatedProperties))
 
 	for _, record := range paginatedProperties {
 		_, _, property := s.getPropertyFromStruct(record)
@@ -161,7 +164,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, offset int
 }
 
 // GetProperty retrieves a single property by its ID in a specific space.
-func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
+func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId string) (*apimodel.Property, error) {
 	resp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: propertyId,
@@ -169,27 +172,27 @@ func (s *Service) GetProperty(ctx context.Context, spaceId string, propertyId st
 
 	if resp.Error != nil {
 		if resp.Error.Code == pb.RpcObjectShowResponseError_NOT_FOUND {
-			return apimodel.Property{}, ErrPropertyNotFound
+			return nil, ErrPropertyNotFound
 		}
 
 		if resp.Error.Code == pb.RpcObjectShowResponseError_OBJECT_DELETED {
-			return apimodel.Property{}, ErrPropertyDeleted
+			return nil, ErrPropertyDeleted
 		}
 
-		if resp.Error != nil && resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
-			return apimodel.Property{}, ErrFailedRetrieveProperty
+		if resp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+			return nil, ErrFailedRetrieveProperty
 		}
 	}
 
 	rk, _, property := s.getPropertyFromStruct(resp.ObjectView.Details[0].Details)
 	if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
-		return apimodel.Property{}, ErrPropertyNotFound
+		return nil, ErrPropertyNotFound
 	}
 	return property, nil
 }
 
 // CreateProperty creates a new property in a specific space.
-func (s *Service) CreateProperty(ctx context.Context, spaceId string, request apimodel.CreatePropertyRequest) (apimodel.Property, error) {
+func (s *Service) CreateProperty(ctx context.Context, spaceId string, request apimodel.CreatePropertyRequest) (*apimodel.Property, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String():           pbtypes.String(s.sanitizedString(request.Name)),
@@ -200,12 +203,8 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 
 	if request.Key != "" {
 		apiKey := strcase.ToSnake(s.sanitizedString(request.Key))
-		propMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
-		if err != nil {
-			return apimodel.Property{}, err
-		}
-		if _, exists := propMap[apiKey]; exists {
-			return apimodel.Property{}, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
+		if s.cache.getProperties(spaceId)[apiKey] != nil {
+			return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
 		}
 		details.Fields[bundle.RelationKeyApiObjectKey.String()] = pbtypes.String(apiKey)
 	}
@@ -216,22 +215,29 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateRelationResponseError_NULL {
-		return apimodel.Property{}, ErrFailedCreateProperty
+		return nil, ErrFailedCreateProperty
+	}
+
+	if len(request.Tags) > 0 && (request.Format == apimodel.PropertyFormatSelect || request.Format == apimodel.PropertyFormatMultiSelect) {
+		err := s.createTagsForProperty(ctx, spaceId, resp.ObjectId, request.Tags)
+		if err != nil {
+			return nil, ErrFailedCreatePropertyTags
+		}
 	}
 
 	return s.GetProperty(ctx, spaceId, resp.ObjectId)
 }
 
 // UpdateProperty updates an existing property in a specific space.
-func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request apimodel.UpdatePropertyRequest) (apimodel.Property, error) {
+func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId string, request apimodel.UpdatePropertyRequest) (*apimodel.Property, error) {
 	prop, err := s.GetProperty(ctx, spaceId, propertyId)
 	if err != nil {
-		return apimodel.Property{}, err
+		return nil, err
 	}
 
 	rel, err := bundle.PickRelation(domain.RelationKey(prop.RelationKey))
 	if err == nil && rel.ReadOnly {
-		return apimodel.Property{}, ErrPropertyCannotBeUpdated
+		return nil, ErrPropertyCannotBeUpdated
 	}
 
 	var detailsToUpdate []*model.Detail
@@ -242,21 +248,19 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 		})
 	}
 	if request.Key != nil {
-		newKey := strcase.ToSnake(s.sanitizedString(*request.Key))
-		propMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
-		if err != nil {
-			return apimodel.Property{}, err
+		apiKey := strcase.ToSnake(s.sanitizedString(*request.Key))
+		if apiKey != prop.Key {
+			if existing, exists := s.cache.getProperties(spaceId)[apiKey]; exists && existing.Id != propertyId {
+				return nil, util.ErrBadInput(fmt.Sprintf("property key %q already exists", apiKey))
+			}
+			if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
+				return nil, util.ErrBadInput("property key of bundled properties cannot be changed")
+			}
+			detailsToUpdate = append(detailsToUpdate, &model.Detail{
+				Key:   bundle.RelationKeyApiObjectKey.String(),
+				Value: pbtypes.String(apiKey),
+			})
 		}
-		if existing, exists := propMap[newKey]; exists && existing.Id != propertyId {
-			return apimodel.Property{}, util.ErrBadInput(fmt.Sprintf("property key %q already exists", newKey))
-		}
-		if bundle.HasRelation(domain.RelationKey(prop.RelationKey)) {
-			return apimodel.Property{}, util.ErrBadInput("property key of bundled properties cannot be changed")
-		}
-		detailsToUpdate = append(detailsToUpdate, &model.Detail{
-			Key:   bundle.RelationKeyApiObjectKey.String(),
-			Value: pbtypes.String(newKey),
-		})
 	}
 
 	if len(detailsToUpdate) > 0 {
@@ -265,22 +269,18 @@ func (s *Service) UpdateProperty(ctx context.Context, spaceId string, propertyId
 			Details:   detailsToUpdate,
 		})
 		if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetDetailsResponseError_NULL {
-			return apimodel.Property{}, ErrFailedUpdateProperty
+			return nil, ErrFailedUpdateProperty
 		}
 	}
 
 	return s.GetProperty(ctx, spaceId, propertyId)
 }
 
-func (s *Service) sanitizedString(str string) string {
-	return strings.TrimSpace(str)
-}
-
 // DeleteProperty deletes a property in a specific space.
-func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (apimodel.Property, error) {
+func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId string) (*apimodel.Property, error) {
 	property, err := s.GetProperty(ctx, spaceId, propertyId)
 	if err != nil {
-		return apimodel.Property{}, err
+		return nil, err
 	}
 
 	resp := s.mw.ObjectSetIsArchived(ctx, &pb.RpcObjectSetIsArchivedRequest{
@@ -289,10 +289,26 @@ func (s *Service) DeleteProperty(ctx context.Context, spaceId string, propertyId
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSetIsArchivedResponseError_NULL {
-		return apimodel.Property{}, ErrFailedDeleteProperty
+		return nil, ErrFailedDeleteProperty
 	}
 
 	return property, nil
+}
+
+func (s *Service) sanitizedString(str string) string {
+	return strings.TrimSpace(str)
+}
+
+// createTagsForProperty creates tags for a newly created property
+func (s *Service) createTagsForProperty(ctx context.Context, spaceId string, propertyId string, tagsToCreate []apimodel.CreateTagRequest) error {
+	for _, tagRequest := range tagsToCreate {
+		_, err := s.CreateTag(ctx, spaceId, propertyId, tagRequest)
+		if err != nil {
+			return fmt.Errorf("failed to create tag %q: %w", tagRequest.Name, err)
+		}
+	}
+
+	return nil
 }
 
 // processProperties builds detail fields for the given property entries, applying sanitization and validation for each.
@@ -301,204 +317,162 @@ func (s *Service) processProperties(ctx context.Context, spaceId string, entries
 	if len(entries) == 0 {
 		return fields, nil
 	}
-	propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, false)
-	if err != nil {
-		return nil, err
-	}
 
+	propertyMap := s.cache.getProperties(spaceId)
 	for _, entry := range entries {
-		var key string
-		var raw interface{}
-		switch e := entry.WrappedPropertyLinkWithValue.(type) {
-		case apimodel.TextPropertyLinkValue:
-			key = e.Key
-			raw = e.Text
-		case apimodel.NumberPropertyLinkValue:
-			key = e.Key
-			if e.Number == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Number
-		case apimodel.SelectPropertyLinkValue:
-			key = e.Key
-			if e.Select == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Select
-		case apimodel.MultiSelectPropertyLinkValue:
-			key = e.Key
-			ids := make([]interface{}, len(e.MultiSelect))
-			for i, id := range e.MultiSelect {
-				ids[i] = id
-			}
-			raw = ids
-		case apimodel.DatePropertyLinkValue:
-			key = e.Key
-			if e.Date == nil {
-				fields[s.ResolvePropertyApiKey(propertyMap, key)] = pbtypes.ToValue(nil)
-				continue
-			}
-			raw = *e.Date
-		case apimodel.CheckboxPropertyLinkValue:
-			key = e.Key
-			raw = e.Checkbox
-		case apimodel.URLPropertyLinkValue:
-			key = e.Key
-			raw = e.Url
-		case apimodel.EmailPropertyLinkValue:
-			key = e.Key
-			raw = e.Email
-		case apimodel.PhonePropertyLinkValue:
-			key = e.Key
-			raw = e.Phone
-		case apimodel.FilesPropertyLinkValue:
-			key = e.Key
-			ids := make([]interface{}, len(e.Files))
-			for i, id := range e.Files {
-				ids[i] = id
-			}
-			raw = ids
-		case apimodel.ObjectsPropertyLinkValue:
-			key = e.Key
-			ids := make([]interface{}, len(e.Objects))
-			for i, id := range e.Objects {
-				ids[i] = id
-			}
-			raw = ids
-		default:
-			return nil, util.ErrBadInput("unsupported property link value type " + fmt.Sprintf("%T", e))
+		key := entry.GetKey()
+		value := entry.GetValue()
+
+		rk, found := s.ResolvePropertyApiKey(propertyMap, key)
+		if !found {
+			return nil, util.ErrBadInput(fmt.Sprintf("unknown property key: %q", key))
 		}
 
-		rk := s.ResolvePropertyApiKey(propertyMap, key)
 		if _, excluded := excludedSystemProperties[rk]; excluded {
 			continue
 		}
-		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
-			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly")
-		}
-		prop, ok := propertyMap[rk]
-		if !ok {
-			return nil, util.ErrBadInput(fmt.Sprintf("unknown property key: %q", rk))
+
+		if value == nil {
+			fields[rk] = pbtypes.ToValue(nil)
+			continue
 		}
 
-		sanitized, err := s.sanitizeAndValidatePropertyValue(spaceId, key, prop.Format, raw, prop, propertyMap)
+		if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(rk)) {
+			return nil, util.ErrBadInput("property '" + key + "' cannot be set directly as it is a reserved system property")
+		}
+
+		sanitized, err := s.SanitizeAndValidatePropertyValue(spaceId, key, value, propertyMap[rk], propertyMap)
 		if err != nil {
 			return nil, err
 		}
 		fields[rk] = pbtypes.ToValue(sanitized)
 	}
+
 	return fields, nil
 }
 
-// sanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
-func (s *Service) sanitizeAndValidatePropertyValue(spaceId string, key string, format apimodel.PropertyFormat, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
-	switch format {
+// SanitizeAndValidatePropertyValue checks the value for a property according to its format and ensures referenced IDs exist and are valid.
+func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, value interface{}, prop *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
+	switch prop.Format {
 	case apimodel.PropertyFormatText, apimodel.PropertyFormatUrl, apimodel.PropertyFormatEmail, apimodel.PropertyFormatPhone:
 		str, ok := value.(string)
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be a string")
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be a string", key))
 		}
 		return s.sanitizedString(str), nil
 	case apimodel.PropertyFormatNumber:
 		num, ok := value.(float64)
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be a number")
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be a number", key))
 		}
 		return num, nil
 	case apimodel.PropertyFormatSelect:
-		id, ok := value.(string)
-		id = s.sanitizedString(id)
+		keyOrId, ok := value.(string)
+		keyOrId = s.sanitizedString(keyOrId)
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be a string (tag id)")
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be a string (tag id or key)", key))
 		}
-		if !s.isValidSelectOption(spaceId, property, id, propertyMap) {
-			return nil, util.ErrBadInput("invalid select option for '" + key + "': " + id)
+		if !s.isValidSelectOption(spaceId, prop, keyOrId, propertyMap) {
+			return nil, util.ErrBadInput(fmt.Sprintf("invalid select option for %q: %s", key, keyOrId))
 		}
-		return id, nil
+		tag, exists := s.cache.getTags(spaceId)[keyOrId]
+		if !exists {
+			return nil, util.ErrBadInput(fmt.Sprintf("failed to resolve tag for %q: %s", key, keyOrId))
+		}
+		return tag.Id, nil
 	case apimodel.PropertyFormatMultiSelect:
-		ids, ok := value.([]interface{})
+		keysOrIds, ok := value.([]interface{})
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be an array of tag ids")
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of tag ids or keys", key))
 		}
 		var validIds []string
-		for _, v := range ids {
-			id, ok := v.(string)
+		for _, v := range keysOrIds {
+			keyOrId, ok := v.(string)
 			if !ok {
-				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (tag ids)")
+				return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (tag ids or keys)", key))
 			}
-			id = s.sanitizedString(id)
-			if !s.isValidSelectOption(spaceId, property, id, propertyMap) {
-				return nil, util.ErrBadInput("invalid multi_select option for '" + key + "': " + id)
+			keyOrId = s.sanitizedString(keyOrId)
+			if !s.isValidSelectOption(spaceId, prop, keyOrId, propertyMap) {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid multi_select option for %q: %s", key, keyOrId))
 			}
-			validIds = append(validIds, id)
+			tag, exists := s.cache.getTags(spaceId)[keyOrId]
+			if !exists {
+				return nil, util.ErrBadInput(fmt.Sprintf("failed to resolve tag for %q: %s", key, keyOrId))
+			}
+			validIds = append(validIds, tag.Id)
 		}
 		return validIds, nil
 	case apimodel.PropertyFormatDate:
 		dateStr, ok := value.(string)
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be a string (date in RFC3339 format)")
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be a string containing a date in one of these formats: RFC3339 (2006-01-02T15:04:05Z) or date-only (2006-01-02)", key))
 		}
 		dateStr = s.sanitizedString(dateStr)
-		t, err := time.Parse(time.RFC3339, dateStr)
-		if err != nil {
-			return nil, util.ErrBadInput("invalid date format for '" + key + "': " + dateStr)
+		layouts := []string{time.RFC3339, time.DateOnly}
+		for _, layout := range layouts {
+			if t, err := time.Parse(layout, dateStr); err == nil {
+				return t.Unix(), nil
+			}
 		}
-		return t.Unix(), nil
+		return nil, util.ErrBadInput(fmt.Sprintf("invalid date format for %q: %s", key, dateStr))
 	case apimodel.PropertyFormatCheckbox:
 		b, ok := value.(bool)
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be a boolean")
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be a boolean", key))
 		}
 		return b, nil
 	case apimodel.PropertyFormatObjects, apimodel.PropertyFormatFiles:
 		ids, ok := value.([]interface{})
 		if !ok {
-			return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
+			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (object/file ids)", key))
 		}
 		var validIds []string
 		for _, v := range ids {
 			id, ok := v.(string)
 			if !ok {
-				return nil, util.ErrBadInput("property '" + key + "' must be an array of strings (object/file ids)")
+				return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (object/file ids)", key))
 			}
 			id = s.sanitizedString(id)
-			if format == apimodel.PropertyFormatFiles && !s.isValidFileReference(spaceId, id) {
-				return nil, util.ErrBadInput("invalid file reference for '" + key + "': " + id)
-			} else if format == apimodel.PropertyFormatObjects && !s.isValidObjectReference(spaceId, id) {
-				return nil, util.ErrBadInput("invalid object reference for '" + key + "': " + id)
+			if prop.Format == apimodel.PropertyFormatFiles && !s.isValidFileReference(spaceId, id) {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid file reference for %q: %s", key, id))
+			} else if prop.Format == apimodel.PropertyFormatObjects && !s.isValidObjectOrMemberReference(spaceId, id) {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid object reference for %q: %s", key, id))
 			}
 			validIds = append(validIds, id)
 		}
 		return validIds, nil
 	default:
-		return nil, util.ErrBadInput("unsupported property format: " + string(format))
+		return nil, util.ErrBadInput(fmt.Sprintf("unsupported property format: %s", prop.Format))
 	}
 }
 
-// isValidSelectOption checks if the option id is valid for the given property.
-func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagId string, propertyMap map[string]*apimodel.Property) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, tagId, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
+// isValidSelectOption checks if the option id or key is valid for the given property.
+func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Property, tagKeyOrId string, propertyMap map[string]*apimodel.Property) bool {
+	tag, exists := s.cache.getTags(spaceId)[tagKeyOrId]
+	if !exists {
+		return false
+	}
+
+	fields, err := util.GetFieldsById(s.mw, spaceId, tag.Id, []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()})
 	if err != nil {
 		return false
 	}
 	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
-	rk := fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
-	return util.IsTagLayout(layout) && rk == s.ResolvePropertyApiKey(propertyMap, property.Key)
+	expectedRk, _ := s.ResolvePropertyApiKey(propertyMap, property.Key)
+	return util.IsTagLayout(layout) && expectedRk == fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
 }
 
-func (s *Service) isValidObjectReference(spaceId string, objectId string) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
+func (s *Service) isValidObjectOrMemberReference(spaceId string, objectId string) bool {
+	fields, err := util.GetFieldsById(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
 	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
-	return util.IsObjectLayout(layout)
+	return util.IsObjectOrMemberLayout(layout)
 }
 
 func (s *Service) isValidFileReference(spaceId string, fileId string) bool {
-	fields, err := util.GetFieldsByID(s.mw, spaceId, fileId, []string{bundle.RelationKeyResolvedLayout.String()})
+	fields, err := util.GetFieldsById(s.mw, spaceId, fileId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
@@ -532,83 +506,23 @@ func (s *Service) getRecommendedPropertiesFromLists(featured, regular *types.Lis
 	return props
 }
 
-// getPropertyMapsFromStore retrieves all properties for all spaces.
-// Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) getPropertyMapsFromStore(ctx context.Context, spaceIds []string, keyByPropertyId bool) (map[string]map[string]*apimodel.Property, error) {
-	spacesToProperties := make(map[string]map[string]*apimodel.Property, len(spaceIds))
-
-	for _, spaceId := range spaceIds {
-		propertyMap, err := s.getPropertyMapFromStore(ctx, spaceId, keyByPropertyId)
-		if err != nil {
-			return nil, err
-		}
-		spacesToProperties[spaceId] = propertyMap
-	}
-
-	return spacesToProperties, nil
-}
-
-// getPropertyMapFromStore retrieves all properties for a specific space
-// Property entries can also be keyed by property id. Required for filling types with properties, as recommended properties are referenced by id and not key.
-func (s *Service) getPropertyMapFromStore(ctx context.Context, spaceId string, keyByPropertyId bool) (map[string]*apimodel.Property, error) {
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_relation)),
-			},
-			{
-				RelationKey: bundle.RelationKeyIsHidden.String(),
-				Condition:   model.BlockContentDataviewFilter_NotEqual,
-				Value:       pbtypes.Bool(true),
-			},
-		},
-		Keys: []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyRelationKey.String(),
-			bundle.RelationKeyApiObjectKey.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyRelationFormat.String(),
-		},
-	})
-
-	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
-		return nil, ErrFailedRetrievePropertyMap
-	}
-
-	propertyMap := make(map[string]*apimodel.Property, len(resp.Records))
-	for _, record := range resp.Records {
-		rk, key, p := s.getPropertyFromStruct(record)
-		prop := p
-		propertyMap[rk] = &prop
-		propertyMap[key] = &prop // TODO: add under api key as well, double check
-		if keyByPropertyId {
-			propertyMap[p.Id] = &prop // add property under id as key to map as well
-		}
-	}
-
-	return propertyMap, nil
-}
-
 // getPropertyFromStruct maps a property's details into an apimodel.Property.
 // `rk` is what we use internally, `key` is the key being referenced in the API.
-func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, apimodel.Property) {
+func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, *apimodel.Property) {
 	rk := details.Fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
-	key := util.ToPropertyApiKey(rk)
+	apiKey := util.ToPropertyApiKey(rk)
 
-	// apiId as key takes precedence over relation key
-	if apiIDField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
-		if apiId := apiIDField.GetStringValue(); apiId != "" {
-			key = apiId
+	// apiObjectKey as key takes precedence over relation key
+	if apiObjectKeyField, exists := details.Fields[bundle.RelationKeyApiObjectKey.String()]; exists {
+		if apiObjectKey := apiObjectKeyField.GetStringValue(); apiObjectKey != "" {
+			apiKey = apiObjectKey
 		}
 	}
 
-	return rk, key, apimodel.Property{
+	return rk, apiKey, &apimodel.Property{
 		Object:      "property",
 		Id:          details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
-		Key:         key,
+		Key:         apiKey,
 		Name:        details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		Format:      RelationFormatToPropertyFormat[model.RelationFormat(details.Fields[bundle.RelationKeyRelationFormat.String()].GetNumberValue())],
 		RelationKey: rk, // internal-only for simplified lookup
@@ -616,7 +530,12 @@ func (s *Service) getPropertyFromStruct(details *types.Struct) (string, string, 
 }
 
 // getPropertiesFromStruct retrieves the properties from the details.
-func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map[string]*apimodel.Property, tagMap map[string]apimodel.Tag) []apimodel.PropertyWithValue {
+func (s *Service) getPropertiesFromStruct(details *types.Struct) []apimodel.PropertyWithValue {
+	spaceId := details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue()
+
+	propertyMap := s.cache.getProperties(spaceId)
+	tagMap := s.cache.getTags(spaceId)
+
 	properties := make([]apimodel.PropertyWithValue, 0)
 	for rk, value := range details.GetFields() {
 		if _, isExcluded := excludedSystemProperties[rk]; isExcluded {
@@ -625,7 +544,7 @@ func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 
 		prop, ok := propertyMap[rk]
 		if !ok {
-			// Relation key present in details but missing from propertyMap; skip it
+			// relation key present in details but missing from propertyMap; skip it
 			continue
 		}
 
@@ -644,7 +563,7 @@ func (s *Service) getPropertiesFromStruct(details *types.Struct, propertyMap map
 }
 
 // convertPropertyValue converts a protobuf types.Value into a native Go value.
-func (s *Service) convertPropertyValue(key string, value *types.Value, format apimodel.PropertyFormat, details *types.Struct, tagMap map[string]apimodel.Tag) interface{} {
+func (s *Service) convertPropertyValue(key string, value *types.Value, format apimodel.PropertyFormat, details *types.Struct, tagMap map[string]*apimodel.Tag) interface{} {
 	switch kind := value.Kind.(type) {
 	case *types.Value_NullValue:
 		return nil
@@ -731,14 +650,14 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 			}}
 		}
 	case apimodel.PropertyFormatSelect:
-		if sel, ok := val.(apimodel.Tag); ok {
+		if sel, ok := val.(*apimodel.Tag); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.SelectPropertyValue{
 				PropertyBase: base, Key: key, Name: name, Format: format,
-				Select: &sel,
+				Select: sel,
 			}}
 		}
 	case apimodel.PropertyFormatMultiSelect:
-		if ms, ok := val.([]apimodel.Tag); ok {
+		if ms, ok := val.([]*apimodel.Tag); ok {
 			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.MultiSelectPropertyValue{
 				PropertyBase: base, Key: key, Name: name, Format: format,
 				MultiSelect: ms,
@@ -773,7 +692,7 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 		}
 	case apimodel.PropertyFormatUrl:
 		if urlStr, ok := val.(string); ok {
-			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.URLPropertyValue{
+			return &apimodel.PropertyWithValue{WrappedPropertyWithValue: apimodel.UrlPropertyValue{
 				PropertyBase: base, Key: key, Name: name, Format: format,
 				Url: urlStr,
 			}}
@@ -816,13 +735,17 @@ func (s *Service) buildPropertyWithValue(id string, key string, name string, for
 	return nil
 }
 
-// ResolvePropertyApiKey returns the internal relationKey for a clientKey by looking it up in the propertyMap
-// TODO: If not found, this detail shouldn't be set by clients, and strict validation errors
-func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Property, clientKey string) string {
-	if p, ok := propertyMap[clientKey]; ok {
-		return p.RelationKey
+// ResolvePropertyApiKey resolves an API property key to its internal relation key
+// by looking it up in the property cache. This is necessary because users can
+// define custom API keys via the apiObjectKey field.
+func (s *Service) ResolvePropertyApiKey(propertyMap map[string]*apimodel.Property, apiKey string) (rk string, found bool) {
+	if property, exists := propertyMap[apiKey]; exists {
+		return property.RelationKey, true
 	}
-	return ""
-	// TODO: enable later for strict validation
-	// return "", false
+	return "", false
+}
+
+// GetCachedProperties returns the cached properties for a space
+func (s *Service) GetCachedProperties(spaceId string) map[string]*apimodel.Property {
+	return s.cache.getProperties(spaceId)
 }

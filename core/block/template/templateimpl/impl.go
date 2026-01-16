@@ -217,6 +217,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
 		bundle.RelationKeyFeaturedRelations,
+		bundle.RelationKeyName,
 	)
 	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(sb.Id()))
 	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
@@ -261,23 +262,21 @@ func (s *service) collectOriginalDetails(spaceId string, st *state.State) *domai
 	sourceObject := details.GetString(bundle.RelationKeySourceObject)
 
 	for key, value := range st.Details().Iterate() {
+		if key == bundle.RelationKeyName {
+			continue
+		}
 		if value.IsEmpty() || key == bundle.RelationKeySourceObject || key == bundle.RelationKeyLayout {
 			details.Delete(key)
 		}
 	}
 
-	name := details.GetString(bundle.RelationKeyName)
 	emoji := details.GetString(bundle.RelationKeyIconEmoji)
-
-	if sourceObject == "" || name == "" && emoji == "" {
+	if sourceObject == "" || emoji == "" {
 		return details
 	}
 
 	previousTemplateDetails, _ := s.store.SpaceIndex(spaceId).GetDetails(sourceObject) // nolint:errcheck
 	if previousTemplateDetails != nil {
-		if name == previousTemplateDetails.GetString(bundle.RelationKeyName) {
-			details.Delete(bundle.RelationKeyName)
-		}
 		if emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
 			details.Delete(bundle.RelationKeyIconEmoji)
 		}

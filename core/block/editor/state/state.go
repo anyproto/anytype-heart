@@ -116,6 +116,7 @@ type State struct {
 	newIds            []string
 	changeId          string
 	changes           []*pb.ChangeContent
+	changeType        domain.ChangeType // business-level type of the latest change that is applied to state
 	fileInfo          FileInfo
 	fileKeys          []pb.ChangeFileKeys // Deprecated
 	details           *domain.Details
@@ -131,13 +132,13 @@ type State struct {
 	storeLastChangeIdByPath map[string]string // accumulated during the state build, always passing by reference to the new state
 
 	objectTypeKeys []domain.TypeKey // here we store object type keys, not IDs
+	noObjectType   bool
 
 	changesStructureIgnoreIds []string
 
 	stringBuf []string
 
 	groupId                  string
-	noObjectType             bool
 	originalCreatedTimestamp int64 // pass here from snapshots when importing objects or used for derived objects such as relations, types and etc
 }
 
@@ -1853,6 +1854,14 @@ func (s *State) OriginalCreatedTimestamp() int64 {
 // SetOriginalCreatedTimestamp should not be used in the normal flow, because there is no crdt changes for it
 func (s *State) SetOriginalCreatedTimestamp(ts int64) {
 	s.originalCreatedTimestamp = ts
+}
+
+func (s *State) SetChangeType(changeType domain.ChangeType) {
+	s.changeType = changeType
+}
+
+func (s *State) GetChangeType() (changeType domain.ChangeType) {
+	return s.changeType
 }
 
 func IsRequiredBlockId(targetId string) bool {

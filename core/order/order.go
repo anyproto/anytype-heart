@@ -186,9 +186,9 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 	}
 
 	nextExisting := o.precalcNext(originalOrderIds, objectIds)
-	prev := ""
 	out := map[string]string{}
 
+	var prev string
 	var ops []reorderOp
 	var err error
 
@@ -196,27 +196,17 @@ func (o *orderSetter) reorder(objectIds []string, originalOrderIds map[string]st
 		curr := originalOrderIds[id]
 		next := nextExisting[i]
 
-		if curr != "" && curr > prev {
-			// Current lexid is valid - keep it
-			out[id] = curr
-		} else if i == 0 {
-			curr, err = o.getNewOrderId("", next, true)
-			if err != nil {
-				return o.rebuildAllLexIds(objectIds, inputObjectIds)
-			}
-			ops = append(ops, reorderOp{id: id, newOrderId: curr})
-		} else {
-			// When inserting, check if next is valid relative to prev
-			// If prev >= next, ignore next (treat as unbounded)
-			if next != "" && prev >= next {
+		if curr == "" || prev >= curr || (next != "" && curr >= next && prev < next) {
+			if prev >= next {
 				next = ""
 			}
-			curr, err = o.getNewOrderId(prev, next, false)
+			curr, err = o.getNewOrderId(prev, next, i == 0)
 			if err != nil {
 				return o.rebuildAllLexIds(objectIds, inputObjectIds)
 			}
 			ops = append(ops, reorderOp{id: id, newOrderId: curr})
 		}
+
 		out[id] = curr
 		prev = curr
 	}

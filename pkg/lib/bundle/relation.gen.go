@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9c019a3ff5f6e32ac5fb3d4733a5d691b1f36f33df580adfe81b8340cea95926"
+const RelationChecksum = "fc4e288e670900b4c987ec16963687b7591fd700788b567702ebc1f7a7bf48e7"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -163,6 +163,7 @@ const (
 	RelationKeySpaceOrder                           domain.RelationKey = "spaceOrder"
 	RelationKeyOrderId                              domain.RelationKey = "orderId"
 	RelationKeyOneToOneIdentity                     domain.RelationKey = "oneToOneIdentity"
+	RelationKeyOneToOneInboxSentStatus              domain.RelationKey = "oneToOneInboxSentStatus"
 	RelationKeyOneToOneRequestMetadataKey           domain.RelationKey = "oneToOneRequestMetadataKey"
 	RelationKeyIconName                             domain.RelationKey = "iconName"
 	RelationKeyRecommendedFeaturedRelations         domain.RelationKey = "recommendedFeaturedRelations"
@@ -187,6 +188,9 @@ const (
 	RelationKeyIsMainChat                           domain.RelationKey = "isMainChat"
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
+	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
+	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
+	RelationKey_score                               domain.RelationKey = "_score"
 )
 
 var (
@@ -204,6 +208,34 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAnalyticsChatId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Anonymous chat analytics id",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_branalyticsChatId",
+			Key:              "analyticsChatId",
+			MaxCount:         1,
+			Name:             "Analytics chat id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAnalyticsSpaceId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Anonymous space analytics id",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_branalyticsSpaceId",
+			Key:              "analyticsSpaceId",
+			MaxCount:         1,
+			Name:             "Analytics space id",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyAperture: {
@@ -1495,6 +1527,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyOneToOneInboxSentStatus: {
+
+			DataSource:       model.Relation_details,
+			Description:      "OneToOne Inbox invite sent status",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_broneToOneInboxSentStatus",
+			Key:              "oneToOneInboxSentStatus",
+			MaxCount:         1,
+			Name:             "OneToOne Inbox sent status",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyOneToOneRequestMetadataKey: {
 
 			DataSource:       model.Relation_details,
@@ -2611,6 +2657,20 @@ var (
 			Key:              "writersLimit",
 			MaxCount:         1,
 			Name:             "Writers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKey_score: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Fulltext search score",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_br_score",
+			Key:              "_score",
+			MaxCount:         1,
+			Name:             "Score",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

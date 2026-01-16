@@ -1,6 +1,4 @@
 setup: setup-go
-	@echo 'Setting up npm...'
-	@npm install
 
 setup-network-config:
 ifdef ANYENV
@@ -20,7 +18,7 @@ fi
 setup-go: setup-network-config check-tantivy-version
 	@echo 'Setting up go modules...'
 	@go mod download
-	@go install github.com/ahmetb/govvv@v0.2.0
+	@go build -o deps github.com/ahmetb/govvv
 	@go build -o deps github.com/awalterschulze/goderive
 
 setup-gomobile:
@@ -32,5 +30,9 @@ setup-protoc-go:
 	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofaster
 	go build -o deps github.com/gogo/protobuf/protoc-gen-gogofast
 	go build -o deps github.com/pseudomuto/protoc-gen-doc/cmd/protoc-gen-doc
+
+setup-protoc-js:
+	@echo 'Setting up js protobuf plugins...'
+	@npm -D install
 
 setup-protoc: setup-protoc-go

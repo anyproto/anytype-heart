@@ -140,10 +140,12 @@ func (s *storageService) CreateSpaceStorage(ctx context.Context, payload spacest
 	}
 	db, err := s.createDb(ctx, payload.SpaceHeaderWithId.Id)
 	if err != nil {
+		err = fmt.Errorf("failed to create db: %w", err)
 		return nil, err
 	}
 	st, err := spacestorage.Create(ctx, db, payload)
 	if err != nil {
+		err = fmt.Errorf("failed to create spacestorage: %w", err)
 		return nil, err
 	}
 	return NewClientStorage(ctx, st)

@@ -66,7 +66,8 @@ func makeDetailsSet(id string) *pb.EventMessage {
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
 			Id: id,
 			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				"key1": domain.String("value1"),
+				bundle.RelationKeyId: domain.String(id),
+				"key1":               domain.String("value1"),
 			}).ToProto(),
 		},
 	})
@@ -177,7 +178,7 @@ func TestSubscriptionFromQueue(t *testing.T) {
 		err := events.Add(context.Background(), msg)
 		require.NoError(t, err)
 	}
-	sub := NewIdSubscriptionFromQueue(events)
+	sub := NewIdSubscriptionFromQueue(events, nil)
 	err := sub.Run()
 	require.NoError(t, err)
 	time.Sleep(100 * time.Millisecond)

@@ -171,6 +171,14 @@ func GetRelation(rk domain.RelationKey) (*model.Relation, error) {
 	return nil, ErrNotFound
 }
 
+func GetRelationFormat(rk domain.RelationKey) (model.RelationFormat, error) {
+	if v, exists := relations[rk]; exists {
+		return v.Format, nil
+	}
+
+	return model.RelationFormat(-1), ErrNotFound
+}
+
 // PickRelation returns relation without copy by key, or nil if not found
 // you must NEVER modify it without copying
 func PickRelation(rk domain.RelationKey) (*model.Relation, error) {

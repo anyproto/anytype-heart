@@ -2,22 +2,27 @@ package filesync
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
+	"go.uber.org/zap"
+
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
-	"github.com/anyproto/anytype-heart/util/futures"
 )
 
-const spaceUsageTTL = 60 * time.Second
+const spaceUsageTTL = 30 * time.Second
 
 // spaceUsage helps to track limits usage for parallel uploading. To do that we track sizes of currently uploading files
 // and estimate free space using that information.
 type spaceUsage struct {
+	ctx     context.Context
 	spaceId string
 	lock    sync.Mutex
 
+	updateCh chan<- updateMessage
 	rpcStore rpcstore.RpcStore
 
 	limit          int
@@ -27,13 +32,37 @@ type spaceUsage struct {
 	updatedAt      time.Time
 }
 
-func newSpaceUsage(ctx context.Context, spaceId string, rpcStore rpcstore.RpcStore) (*spaceUsage, error) {
+func newSpaceUsage(ctx context.Context, spaceId string, rpcStore rpcstore.RpcStore, updateCh chan<- updateMessage) *spaceUsage {
 	s := &spaceUsage{
+		ctx:      ctx,
 		spaceId:  spaceId,
 		rpcStore: rpcStore,
+		updateCh: updateCh,
 		files:    make(map[string]allocatedFile),
 	}
-	return s, s.update(ctx)
+
+	go func() {
+		update := func() {
+			err := s.Update(ctx)
+			if err != nil && !errors.Is(err, fileprotoerr.ErrForbidden) {
+				log.Error("update space usage in background", zap.Error(err), zap.String("spaceId", s.spaceId))
+			}
+		}
+
+		update()
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				update()
+			}
+		}
+	}()
+
+	return s
 }
 
 func (s *spaceUsage) getLimit() int {
@@ -51,12 +80,9 @@ func (s *spaceUsage) getTotalUsage() int {
 }
 
 func (s *spaceUsage) getFreeSpace(ctx context.Context) (int, error) {
-	if time.Since(s.updatedAt) > spaceUsageTTL {
-		err := s.update(ctx)
-		if err != nil {
-			return 0, err
-		}
-		s.updatedAt = time.Now()
+	err := s.update(ctx)
+	if err != nil {
+		return 0, err
 	}
 	return s.limit - s.usageFromNode - s.allocatedUsage, nil
 }
@@ -91,8 +117,8 @@ func (s *spaceUsage) allocateFile(ctx context.Context, key string, size int) err
 	return nil
 }
 
-// removeFile removes size of given file from total usage
-func (s *spaceUsage) removeFile(key string) {
+// deallocateFile removes size of given file from total usage
+func (s *spaceUsage) deallocateFile(key string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -120,56 +146,48 @@ func (s *spaceUsage) markFileUploaded(key string) {
 	}
 }
 
+func (s *spaceUsage) Update(ctx context.Context) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	return s.update(ctx)
+}
+
 func (s *spaceUsage) update(ctx context.Context) error {
+	if time.Since(s.updatedAt) < spaceUsageTTL {
+		return nil
+	}
+
 	info, err := s.rpcStore.SpaceInfo(ctx, s.spaceId)
 	if err != nil {
 		return fmt.Errorf("get space info: %w", err)
 	}
 
-	s.limit = int(info.LimitBytes)
-	s.usageFromNode = int(info.SpaceUsageBytes)
+	newLimit := int(info.LimitBytes)
+	newUsageFromNode := int(info.SpaceUsageBytes)
+
+	s.limit = newLimit
+	s.usageFromNode = newUsageFromNode
+	s.updatedAt = time.Now()
+
+	s.sendUpdate()
 
 	return nil
 }
 
+func (s *spaceUsage) sendUpdate() {
+	msg := updateMessage{
+		spaceId: s.spaceId,
+		limit:   s.limit,
+		usage:   s.usageFromNode,
+	}
+
+	select {
+	case s.updateCh <- msg:
+	default:
+	}
+}
+
 type allocatedFile struct {
 	size int
-}
-
-type uploadLimitManager struct {
-	rpcStore rpcstore.RpcStore
-
-	lock   sync.Mutex
-	spaces map[string]*futures.Future[*spaceUsage]
-}
-
-func newLimitManager(rpcStore rpcstore.RpcStore) *uploadLimitManager {
-	return &uploadLimitManager{
-		rpcStore: rpcStore,
-		spaces:   make(map[string]*futures.Future[*spaceUsage]),
-	}
-}
-
-func (m *uploadLimitManager) getSpace(ctx context.Context, spaceId string) (*spaceUsage, error) {
-	space, err := m.getSpaceFuture(ctx, spaceId).Wait()
-	if err != nil {
-		return nil, err
-	}
-	return space, nil
-}
-
-func (m *uploadLimitManager) getSpaceFuture(ctx context.Context, spaceId string) *futures.Future[*spaceUsage] {
-	m.lock.Lock()
-	space, ok := m.spaces[spaceId]
-	if ok {
-		m.lock.Unlock()
-		return space
-	} else {
-		space = futures.New[*spaceUsage]()
-		m.spaces[spaceId] = space
-		m.lock.Unlock()
-
-		space.Resolve(newSpaceUsage(ctx, spaceId, m.rpcStore))
-		return space
-	}
 }

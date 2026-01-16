@@ -167,7 +167,7 @@ func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 }
 
 func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey) (metadata []byte, err error) {
-	metadataModel, _, err := space.DeriveAccountMetadata(privKey)
+	metadataModel, _, err := domain.DeriveAccountMetadata(privKey)
 	if err != nil {
 		return nil, fmt.Errorf("derive account metadata: %w", err)
 	}

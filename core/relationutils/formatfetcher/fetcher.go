@@ -96,11 +96,10 @@ func (f *formatFetcher) getSpaceSubFuture(spaceId string) *futures.Future[*objec
 
 func (f *formatFetcher) buildSubscriptionParams() objectsubscription.SubscriptionParams[model.RelationLink] {
 	return objectsubscription.SubscriptionParams[model.RelationLink]{
-		SetDetails: func(details *domain.Details) (id string, entry model.RelationLink) {
-			id = details.GetString(bundle.RelationKeyId)
+		SetDetails: func(details *domain.Details) (string, model.RelationLink) {
 			key := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
 			format := model.RelationFormat(details.GetInt64(bundle.RelationKeyRelationFormat)) // nolint:gosec
-			return id, model.RelationLink{
+			return key.String(), model.RelationLink{
 				Key:    key.String(),
 				Format: format,
 			}
@@ -137,9 +136,9 @@ func (f *formatFetcher) Close(_ context.Context) error {
 }
 
 func (f *formatFetcher) GetRelationFormatByKey(spaceId string, key domain.RelationKey) (model.RelationFormat, error) {
-	rel, err := bundle.GetRelation(key)
+	format, err := bundle.GetRelationFormat(key)
 	if err == nil {
-		return rel.Format, nil
+		return format, nil
 	}
 
 	sub, err := f.getSpaceSub(spaceId)

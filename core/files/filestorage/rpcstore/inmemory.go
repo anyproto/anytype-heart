@@ -165,6 +165,28 @@ func (t *InMemoryStore) bindCid(spaceId string, fileId domain.FileId, cId cid.Ci
 	return nil
 }
 
+func (t *InMemoryStore) AddToFileMany(ctx context.Context, req *fileproto.BlockPushManyRequest) (err error) {
+	for _, fb := range req.FileBlocks {
+		bs := make([]blocks.Block, 0, len(fb.Blocks))
+		for _, b := range fb.Blocks {
+			c, err := cid.Cast(b.Cid)
+			if err != nil {
+				return fmt.Errorf("cast cid: %w", err)
+			}
+			newBl, err := blocks.NewBlockWithCid(b.Data, c)
+			if err != nil {
+				return fmt.Errorf("new block: %w", err)
+			}
+			bs = append(bs, *newBl)
+		}
+		err = t.AddToFile(ctx, fb.SpaceId, domain.FileId(fb.FileId), bs)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (t *InMemoryStore) AddToFile(ctx context.Context, spaceId string, fileId domain.FileId, bs []blocks.Block) (err error) {
 	t.mu.Lock()
 	defer t.mu.Unlock()

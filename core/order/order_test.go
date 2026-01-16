@@ -226,6 +226,78 @@ func TestReorder(t *testing.T) {
 			},
 			objectIds: []string{"b", "d", "a", "e", "c"},
 		},
+		{
+			name: "drag to top",
+			originalOrderIds: map[string]string{
+				"a": "A001",
+				"b": "B002",
+				"c": "C003",
+				"d": "D004",
+				"e": "E005",
+			},
+			objectIds: []string{"a", "d", "b", "c", "e"},
+		},
+		{
+			name: "drag to bottom",
+			originalOrderIds: map[string]string{
+				"a": "A001",
+				"b": "B002",
+				"c": "C003",
+				"d": "D004",
+				"e": "E005",
+			},
+			objectIds: []string{"a", "c", "d", "e", "b"},
+		},
+		{
+			name: "real world data - drag tag 57 to first position",
+			originalOrderIds: map[string]string{
+				"tag14": "XeOt",
+				"tag60": "XfOO",
+				"tag55": "XgNs",
+				"tag56": "XhNN",
+				"tag57": "XiMr",
+				"tag58": "XjMM",
+				"tag59": "XkLq",
+				"tag6":  "XlLL",
+				"tag61": "XmKp",
+				"tag62": "XnKK",
+				"tag63": "XoJo",
+				"tag64": "XpJJ",
+				"tag9":  "XqIn",
+				"tag65": "XrII",
+			},
+			objectIds: []string{"tag57", "tag14", "tag60", "tag55", "tag56", "tag58", "tag59", "tag6", "tag61", "tag62", "tag63", "tag64", "tag9", "tag65"},
+		},
+		{
+			name: "real world data - drag tag 14 to other position",
+			originalOrderIds: map[string]string{
+				"tag14": "XeOt",
+				"tag60": "XfOO",
+				"tag55": "XgNs",
+				"tag56": "XhNN",
+				"tag57": "XiMr",
+				"tag58": "XjMM",
+				"tag59": "XkLq",
+				"tag6":  "XlLL",
+				"tag61": "XmKp",
+				"tag62": "XnKK",
+				"tag63": "XoJo",
+				"tag64": "XpJJ",
+				"tag9":  "XqIn",
+				"tag65": "XrII",
+			},
+			objectIds: []string{"tag60", "tag55", "tag56", "tag57", "tag58", "tag59", "tag6", "tag61", "tag14", "tag62", "tag63", "tag64", "tag9", "tag65"},
+		},
+		{
+			name: "reverse",
+			originalOrderIds: map[string]string{
+				"a": "A001",
+				"b": "B002",
+				"c": "C003",
+				"d": "D004",
+			},
+			objectIds: []string{"d", "c", "b", "a"},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			testReorder(t, tc.objectIds, tc.originalOrderIds)
@@ -449,22 +521,14 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 	t.Run("reorder to first position", func(t *testing.T) {
 		// given
 		objGetter := mock_cache.NewMockObjectGetter(t)
-		sb1 := smarttest.New("view1")
-		mockView1 := &editor.SpaceView{SmartBlock: sb1, OrderSettable: order.NewOrderSettable(sb1, bundle.RelationKeySpaceOrder)}
-		sb2 := smarttest.New("view2")
-		mockView2 := &editor.SpaceView{SmartBlock: sb2, OrderSettable: order.NewOrderSettable(sb2, bundle.RelationKeySpaceOrder)}
+		sb3 := smarttest.New("view3")
+		mockView3 := &editor.SpaceView{SmartBlock: sb3, OrderSettable: order.NewOrderSettable(sb3, bundle.RelationKeySpaceOrder)}
 
 		// STRICT expectations: only view3 needs fetching
-		// view3: "MMMM0003" > "" (prev) → keeps its lexid (no fetch needed)
-		// view1: "MMMM0001" > "MMMM0003" (prev) → NO, needs new lexid
-		// view2: "MMMM0002" > view1's new lexid → depends on what view1 gets
-
-		// Actually, let's trace through:
-		// Position 0 (view3): curr="MMMM0003" > prev="" → keeps lexid
-		// Position 1 (view1): curr="MMMM0001" > prev="MMMM0003" → NO, needs new lexid
-		// Position 2 (view2): curr="MMMM0002" > prev=(view1's new lexid) → depends
-		objGetter.EXPECT().GetObject(context.Background(), "view1").Return(mockView1, nil).Once()
-		objGetter.EXPECT().GetObject(context.Background(), "view2").Return(mockView2, nil).Once()
+		// Position 0 (view3): curr="MMMM0003" > next="MMMM0001" → receives new lexid
+		// Position 1 (view1): curr="MMMM0001" > prev="<new lexid less than MMMM0001>" → keeps old lexid
+		// Position 2 (view2): curr="MMMM0002" > prev="MMMM0001" → keeps old lexid
+		objGetter.EXPECT().GetObject(context.Background(), "view3").Return(mockView3, nil).Once()
 
 		o := &orderSetter{objectGetter: objGetter}
 
@@ -485,9 +549,6 @@ func TestOrderSetter_rebuildIfNeeded(t *testing.T) {
 		// The final order should be correct (view3 < view1 < view2)
 		assert.True(t, lexids[0] < lexids[1], "view3 should be before view1")
 		assert.True(t, lexids[1] < lexids[2], "view1 should be before view2")
-
-		// With the simpler fix, view3 may keep its original lexid if it's valid
-		// The important thing is that the final ordering is correct
 	})
 }
 

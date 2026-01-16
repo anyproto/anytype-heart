@@ -426,6 +426,8 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 	return s.subscribeForQuery(req, f, qryEntries, filterDepIds)
 }
 
+// subscribeForQuery creates a new sorted subscription for the given query.
+// Caller must hold s.m locked; this method temporarily unlocks it during the query and re-locks before returning.
 func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, queryEntries func() ([]*entry, error), filterDepIds []string) (*SubscribeResponse, error) {
 	sub := s.newSortedSub(req.SubId, slice.StringsInto[domain.RelationKey](req.Keys), f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
@@ -472,6 +474,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 	// For full consistency we've already started to observe objects for this subscription, see entriesBeforeStarted
 	entries, err := queryEntries()
 	if err != nil {
+		s.m.Lock()
 		return nil, fmt.Errorf("query entries: %w", err)
 	}
 
