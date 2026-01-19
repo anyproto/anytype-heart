@@ -21,7 +21,8 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		a.PageLimit == b.PageLimit &&
 		a.DefaultTemplateId == b.DefaultTemplateId &&
 		a.DefaultObjectTypeId == b.DefaultObjectTypeId &&
-		a.WrapContent == b.WrapContent
+		a.WrapContent == b.WrapContent &&
+		a.ShowFilters == b.ShowFilters
 
 	if isEqual {
 		return nil
@@ -40,6 +41,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		DefaultObjectTypeId:   b.DefaultObjectTypeId,
 		EndRelationKey:        b.EndRelationKey,
 		WrapContent:           b.WrapContent,
+		ShowFilters:           b.ShowFilters,
 	}
 }
 

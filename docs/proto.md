@@ -28877,6 +28877,7 @@ sent when the view have been changed or added
 | wrapContent | [bool](#bool) |  | within the view
 
 Wrap content in view |
+| showFilters | [bool](#bool) |  | Show filters menu of view |
 
 
 
@@ -32648,6 +32649,7 @@ deprecated |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
 | endRelationKey | [string](#string) |  | Group view by this relationKey |
 | wrapContent | [bool](#bool) |  | Wrap content in view |
+| showFilters | [bool](#bool) |  | States if menu of filters is opened |
 
 
 

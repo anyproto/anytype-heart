@@ -365,6 +365,7 @@ message Block {
                 string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
                 string endRelationKey = 16; // Group view by this relationKey
                 bool wrapContent = 17; // Wrap content in view
+                bool showFilters = 18; // States if menu of filters is opened
 
                 enum Type {
                     Table = 0;
