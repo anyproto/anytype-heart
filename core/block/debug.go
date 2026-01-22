@@ -16,7 +16,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/util/debug"
 )
@@ -24,9 +27,11 @@ import (
 func (s *Service) DebugRouter(r chi.Router) {
 	r.Get("/objects", debug.JSONHandler(s.debugListObjects))
 	r.Get("/tree/{id}", debug.JSONHandler(s.debugTree))
+	r.Get("/treechanges/{id}", debug.JSONHandler(s.debugTreeChanges))
 	r.Get("/tree_in_space/{spaceId}/{id}", debug.JSONHandler(s.debugTreeInSpace))
 	r.Get("/objects_per_space/{spaceId}", debug.JSONHandler(s.debugListObjectsPerSpace))
 	r.Get("/objects/{id}", debug.JSONHandler(s.debugGetObject))
+	r.Get("/identities/{id}", debug.JSONHandler(s.debugGetIdentity))
 }
 
 type debugTree struct {
@@ -40,6 +45,15 @@ type debugChange struct {
 	Timestamp string
 }
 
+type debugChangeShort struct {
+	Change json.RawMessage
+}
+
+type debugTreeChanges struct {
+	Id      string
+	Changes []debugChangeShort
+}
+
 type debugObject struct {
 	ID      string
 	Details json.RawMessage
@@ -47,6 +61,42 @@ type debugObject struct {
 	Blocks  *blockbuilder.Block
 
 	Error string `json:"Error,omitempty"`
+}
+
+type debugIdentity struct {
+	Details json.RawMessage
+}
+
+func (s *Service) debugGetIdentity(req *http.Request) (debugIdentity, error) {
+	id := chi.URLParam(req, "id")
+
+	recs, err := s.objectStore.QueryCrossSpace(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyIdentity,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(id),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(model.ObjectType_participant),
+			},
+		},
+	})
+	if err != nil {
+		return debugIdentity{}, err
+	}
+
+	if len(recs) == 0 {
+		return debugIdentity{}, fmt.Errorf("not found")
+	}
+
+	details, err := (&jsonpb.Marshaler{}).MarshalToString(recs[0].Details.ToProto())
+
+	return debugIdentity{
+		Details: json.RawMessage(details),
+	}, nil
 }
 
 func (s *Service) debugListObjectsPerSpace(req *http.Request) ([]debugObject, error) {
@@ -128,6 +178,42 @@ func (s *Service) debugTree(req *http.Request) (debugTree, error) {
 			}
 			if change.Identity != nil {
 				ch.Identity = change.Identity.Account()
+			}
+			result.Changes = append(result.Changes, ch)
+			return true
+		})
+	})
+	return result, err
+}
+
+func (s *Service) debugTreeChanges(req *http.Request) (debugTreeChanges, error) {
+	id := chi.URLParam(req, "id")
+	isStoreChange := req.URL.Query().Has("store")
+
+	result := debugTreeChanges{
+		Id: id,
+	}
+	err := cache.Do(s, id, func(sb smartblock.SmartBlock) error {
+		ot, err := sb.Space().TreeBuilder().BuildHistoryTree(req.Context(), sb.Id(), objecttreebuilder.HistoryTreeOpts{})
+		if err != nil {
+			return err
+		}
+		return ot.IterateRoot(func(treeChange *objecttree.Change, data []byte) (result any, err error) {
+			if isStoreChange {
+				return sourceimpl.UnmarshalStoreChange(treeChange, data)
+			} else {
+				return sourceimpl.UnmarshalChange(treeChange, data)
+			}
+		}, func(change *objecttree.Change) bool {
+			change.Next = nil
+			change.Previous = nil
+			raw, err := json.Marshal(change.Model)
+			if err != nil {
+				log.Error("debug tree: marshal change", zap.Error(err))
+				return false
+			}
+			ch := debugChangeShort{
+				Change: raw,
 			}
 			result.Changes = append(result.Changes, ch)
 			return true
