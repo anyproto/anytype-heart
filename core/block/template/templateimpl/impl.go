@@ -93,9 +93,9 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 	}
 	switch req.TemplateId {
 	case "", blankTemplateId:
-		targetState = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
+		targetState = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout, req.Details)
 	default:
-		targetState, err = s.createCustomTemplateState(req.TemplateId)
+		targetState, err = s.createCustomTemplateState(req.TemplateId, req.Details)
 		if err != nil {
 			return
 		}
@@ -169,13 +169,13 @@ func (s *service) queryTemplatesByType(spaceId, typeId string) ([]database.Recor
 func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, req templateSvc.CreateTemplateRequest) *state.State {
 	st, err := s.buildState(sb)
 	if err != nil {
-		st = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
+		st = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout, req.Details)
 	}
 	addDetailsToTemplateState(st, req.Details)
 	return st
 }
 
-func (s *service) createCustomTemplateState(templateId string) (targetState *state.State, err error) {
+func (s *service) createCustomTemplateState(templateId string, details *domain.Details) (targetState *state.State, err error) {
 	err = cache.Do(s.picker, templateId, func(sb smartblock.SmartBlock) (innerErr error) {
 		targetState, innerErr = s.buildState(sb)
 		if innerErr != nil {
@@ -188,7 +188,7 @@ func (s *service) createCustomTemplateState(templateId string) (targetState *sta
 		return nil
 	})
 	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return s.createBlankTemplateState(domain.FullID{}, model.ObjectType_basic), nil
+		return s.createBlankTemplateState(domain.FullID{}, model.ObjectType_basic, details), nil
 	}
 	return
 }
@@ -403,7 +403,7 @@ func (s *service) TemplateExportAll(ctx context.Context, path string) (string, e
 	return path, err
 }
 
-func (s *service) createBlankTemplateState(typeId domain.FullID, layout model.ObjectTypeLayout) (st *state.State) {
+func (s *service) createBlankTemplateState(typeId domain.FullID, layout model.ObjectTypeLayout, origDetails *domain.Details) (st *state.State) {
 	st = state.NewDoc(blankTemplateId, nil).NewState()
 	template.InitTemplate(st, template.WithEmpty,
 		template.WithFeaturedRelationsBlock,
@@ -419,6 +419,7 @@ func (s *service) createBlankTemplateState(typeId domain.FullID, layout model.Ob
 	if err := s.converter.Convert(st, model.ObjectType_basic, layout, true); err != nil {
 		log.Errorf("failed to set '%s' layout to blank template: %v", layout.String(), err)
 	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String(origDetails.GetString(bundle.RelationKeyName)))
 	return
 }
 
@@ -483,6 +484,7 @@ func addDetailsToTemplateState(st *state.State, details *domain.Details) {
 			}
 		}
 	}
+
 	st.AddDetails(details.CopyWithoutKeys(keysToExclude...))
 	st.BlocksInit(st)
 }
