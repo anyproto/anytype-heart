@@ -67,7 +67,9 @@ func (s *fileGCDummy) Name() string { return "fileGCDummy" }
 func (s *fileGCDummy) Init(a *app.App) error { return nil }
 func (s *fileGCDummy) Run(ctx context.Context) error { return nil }
 func (s *fileGCDummy) Close(ctx context.Context) error { return nil }
-func (s *fileGCDummy) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds ...string) error { return nil }
+func (s *fileGCDummy) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+	return nil
+}
 
 type actionType int
 

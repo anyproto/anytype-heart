@@ -625,7 +625,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 			// Run file GC asynchronously with skipBin=true to permanently delete orphaned files
 			// Pass messageId to only delete files created specifically for this message
 			go func() {
-				if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, chatObjectId, fileIds, true, messageId); err != nil {
+				if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, chatObjectId, fileIds, true, []string{messageId}); err != nil {
 					log.Error("file GC failed for deleted message",
 						zap.String("messageId", messageId),
 						zap.String("chatObjectId", chatObjectId),

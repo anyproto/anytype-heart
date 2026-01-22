@@ -290,7 +290,7 @@ func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string) {
 			continue
 		}
 		go func(objId string, objLinks []string) {
-			if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, objId, objLinks, false); err != nil {
+			if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, objId, objLinks, false, nil); err != nil {
 				log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
 			}
 		}(objectId, links)

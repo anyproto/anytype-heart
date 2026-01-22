@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
@@ -23,6 +22,21 @@ import (
 const CName = "files.contextmigration"
 
 var log = logging.Logger(CName)
+
+// systemRelationsToSkip contains system relations that should be skipped when building
+// the incoming links map, as they are not meaningful for determining file creation context
+var systemRelationsToSkip = []domain.RelationKey{
+	bundle.RelationKeyCreator,
+	bundle.RelationKeyLastModifiedBy,
+	bundle.RelationKeyType,
+	bundle.RelationKeyBacklinks,
+	bundle.RelationKeyResolvedLayout,
+	bundle.RelationKeyRecommendedFeaturedRelations,
+	bundle.RelationKeyRecommendedRelations,
+	bundle.RelationKeyRecommendedHiddenRelations,
+	bundle.RelationKeySpaceId,
+	bundle.RelationKeyIdentityProfileLink,
+}
 
 /*
 Context Migration Logic:
@@ -57,8 +71,6 @@ type ContextMigrationService interface {
 type contextMigrationService struct {
 	objectStore    objectstore.ObjectStore
 	detailsService detailservice.Service
-
-	mu sync.Mutex
 }
 
 func NewContextMigrationService() ContextMigrationService {
@@ -77,9 +89,6 @@ func (s *contextMigrationService) Init(a *app.App) error {
 }
 
 func (s *contextMigrationService) MigrateSpace(ctx context.Context, spaceIndex spaceindex.Store) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	spaceId := spaceIndex.SpaceId()
 	log.Info("starting file context migration", zap.String("spaceId", spaceId))
 
@@ -210,21 +219,9 @@ func (s *contextMigrationService) buildIncomingLinksMap(spaceId string, spaceInd
 				if link.TargetID == sourceId {
 					continue
 				}
-				if slices.Contains([]domain.RelationKey{
-					bundle.RelationKeyCreator,
-					bundle.RelationKeyLastModifiedBy,
-					bundle.RelationKeyType,
-					bundle.RelationKeyBacklinks,
-					bundle.RelationKeyResolvedLayout,
-					bundle.RelationKeyRecommendedFeaturedRelations,
-					bundle.RelationKeyRecommendedRelations,
-					bundle.RelationKeyRecommendedHiddenRelations,
-					bundle.RelationKeySpaceId,
-					bundle.RelationKeyIdentityProfileLink,
-				}, domain.RelationKey(link.RelationKey)) {
+				if slices.Contains(systemRelationsToSkip, domain.RelationKey(link.RelationKey)) {
 					continue
 				}
-				fmt.Printf("Processing detailed link: %s -> %s (block: %s, relation: %s)\n", sourceId, link.TargetID, link.BlockID, link.RelationKey)
 				info := incomingLinkInfo{
 					objectId:    sourceId,
 					blockId:     link.BlockID,

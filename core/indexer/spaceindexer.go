@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -16,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/migration"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
@@ -69,9 +67,6 @@ func (i *spaceIndexer) indexBatchLoop() {
 }
 
 func (i *spaceIndexer) indexFileCreationContext() {
-	if os.Getenv("ANYTYPE_CONTEXT_MIGRATION") != "1" {
-		return
-	}
 	for {
 		select {
 		case <-time.After(time.Second * 10):
@@ -205,10 +200,6 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 					TargetID:    link.TargetID,
 					BlockID:     link.SourceBlockID,
 					RelationKey: link.RelationKey,
-				}
-				fmt.Printf("Processing link: %s -> %s (block: %s, relation: %s)\n", info.Id, link.TargetID, link.SourceBlockID, link.RelationKey)
-				if link.RelationKey == bundle.RelationKeyBacklinks.String() {
-					fmt.Println()
 				}
 			}
 			if err = i.spaceIndex.UpdateObjectLinksDetailed(ctx, info.Id, spaceIndexLinks); err != nil {

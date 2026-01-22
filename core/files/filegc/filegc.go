@@ -17,11 +17,11 @@ import (
 
 var log = logging.Logger("filegc")
 
-const CName = "filegc"
+const CName = "core.files.filegc"
 
 type FileGC interface {
 	app.ComponentRunnable
-	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds ...string) error
+	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -39,6 +39,8 @@ type fileGC struct {
 	objectStore      objectstore.ObjectStore
 	objectArchiver   ObjectArchiver
 	backlinksWatcher BacklinksFlusher
+
+	componentCtx context.Context
 }
 
 func New() FileGC {
@@ -62,6 +64,7 @@ func (gc *fileGC) Name() string {
 }
 
 func (gc *fileGC) Run(ctx context.Context) error {
+	gc.componentCtx = ctx
 	return nil
 }
 
@@ -71,20 +74,17 @@ func (gc *fileGC) Close(ctx context.Context) error {
 
 // CheckFilesOnLinksRemoval checks if any of the removed links are file objects that should be garbage collected
 // If onlyBlockIds is provided, it will only process files created in those specific block IDs
-func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds ...string) error {
+func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
 	if len(removedLinks) == 0 {
 		return nil
 	}
 
-	log.Warnf("checking %d removed links from context %s", len(removedLinks), contextId)
+	log.Debugf("checking %d removed links from context %s", len(removedLinks), contextId)
 
 	// make sure we have all backlinks updates flushed to the store
 	gc.backlinksWatcher.FlushUpdates()
 	// Get space index
 	spaceIndex := gc.objectStore.SpaceIndex(spaceId)
-	if spaceIndex == nil {
-		return fmt.Errorf("space index not found for space %s", spaceId)
-	}
 
 	fileLayouts := make([]int64, 0, len(domain.FileLayouts))
 	for _, layout := range domain.FileLayouts {
@@ -134,6 +134,7 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		backlinks := record.Details.GetStringList(bundle.RelationKeyBacklinks)
 
 		// Filter out the current context from backlinks
+		// Also filter out self-references (link != fileId) to prevent files from keeping themselves alive
 		activeBacklinks := lo.Filter(backlinks, func(link string, _ int) bool {
 			return link != contextId && link != fileId
 		})
@@ -154,7 +155,7 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		} else {
 			log.Debugf("archiving orphaned file %s created in context %s", fileId, contextId)
 			// Archive the file object
-			if err := gc.objectArchiver.SetIsArchived(context.Background(), fileId, true); err != nil {
+			if err := gc.objectArchiver.SetIsArchived(gc.componentCtx, fileId, true); err != nil {
 				log.Errorf("failed to archive file object %s: %v", fileId, err)
 				// Continue with other files even if one fails
 			}

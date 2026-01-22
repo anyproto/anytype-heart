@@ -1425,8 +1425,7 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 	})
 
 	// Collect links from object relations
-	details := st.CombinedDetails()
-	if details != nil {
+	if st.Details() != nil {
 		for key, val := range st.Details().Iterate() {
 			switch key {
 			case bundle.RelationKeyId,
@@ -1499,7 +1498,10 @@ func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []st
 		return
 	}
 
-	// Create a map of initial links for efficient lookup
+	// Create a map of initial links for efficient lookup.
+	// initialLinks captures the state at smartblock init time, so any links added during
+	// the current session are considered "session-created" and can be permanently deleted
+	// (skipBin=true) when removed, while pre-existing links are archived instead.
 	initialLinksMap := make(map[string]bool, len(sb.initialLinks))
 	for _, link := range sb.initialLinks {
 		initialLinksMap[link] = true
@@ -1521,14 +1523,14 @@ func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []st
 
 	// Process existing files - archive them (skipBin=false)
 	if len(existingLinks) > 0 {
-		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, existingLinks, false); err != nil {
+		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, existingLinks, false, nil); err != nil {
 			log.Errorf("file GC failed for existing files in context %s: %v", contextId, err)
 		}
 	}
 
 	// Process session-created files - delete them permanently (skipBin=true)
 	if len(sessionCreatedLinks) > 0 {
-		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, sessionCreatedLinks, true); err != nil {
+		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, sessionCreatedLinks, true, nil); err != nil {
 			log.Errorf("file GC failed for session-created files in context %s: %v", contextId, err)
 		}
 	}
