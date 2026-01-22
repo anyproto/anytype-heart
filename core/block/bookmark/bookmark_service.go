@@ -135,7 +135,7 @@ func (s *service) CreateBookmarkObject(
 		Sorts: []database.SortRequest{
 			{
 				RelationKey: bundle.RelationKeyLastModifiedDate,
-				Type:        model.BlockContentDataviewSort_Desc,
+				Type:        model.SearchOrder_Desc,
 			},
 		},
 		Filters: []database.FilterRequest{

@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/globalsign/mgo/bson"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
@@ -159,7 +160,10 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	defer d.subscription.Unlock()
 	d.subscription.Delete(messageId)
 
-	// TODO: add msg on deletion to fulltext queue, so it would be deleted from tantivy
+	if err = d.indexerStore.AddChatMessageDeleteToIndexQueue(ctx, d.chatFullId, messageId); err != nil {
+		log.With(zap.String("chatId", d.chatFullId.ObjectID), zap.String("messageId", messageId), zap.Error(err)).
+			Error("failed to add message to fulltext delete queue")
+	}
 
 	return storestate.DeleteModeDelete, nil
 }

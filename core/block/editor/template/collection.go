@@ -212,7 +212,7 @@ func DefaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
 		{
 			Id:          bson.NewObjectId().Hex(),
 			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-			Type:        model.BlockContentDataviewSort_Desc,
+			Type:        model.SearchOrder_Desc,
 		},
 	}
 }
@@ -222,7 +222,7 @@ func defaultNameSort() []*model.BlockContentDataviewSort {
 		{
 			Id:          bson.NewObjectId().Hex(),
 			RelationKey: bundle.RelationKeyName.String(),
-			Type:        model.BlockContentDataviewSort_Asc,
+			Type:        model.SearchOrder_Asc,
 		},
 	}
 }
@@ -231,7 +231,7 @@ func defaultChatSort() []*model.BlockContentDataviewSort {
 	return []*model.BlockContentDataviewSort{
 		{
 			RelationKey: bundle.RelationKeyLastMessageDate.String(),
-			Type:        model.BlockContentDataviewSort_Desc,
+			Type:        model.SearchOrder_Desc,
 			Format:      model.RelationFormat_date,
 			IncludeTime: true,
 			Id:          bson.NewObjectId().Hex(),

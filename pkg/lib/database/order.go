@@ -62,7 +62,7 @@ func (so setOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) {
 
 type keyOrder struct {
 	key            domain.RelationKey
-	sortType       model.BlockContentDataviewSortType
+	sortType       model.SearchOrderType
 	emptyPlacement model.BlockContentDataviewSortEmptyType
 	relationFormat model.RelationFormat
 	includeTime    bool
@@ -162,14 +162,14 @@ func (ko *keyOrder) UpdateOrderMap(depDetails []*domain.Details) (updated bool) 
 }
 
 func (ko *keyOrder) basicSort(valType anyenc.Type) query.Sort {
-	if ko.emptyPlacement == model.BlockContentDataviewSort_Start && ko.sortType == model.BlockContentDataviewSort_Desc {
+	if ko.emptyPlacement == model.BlockContentDataviewSort_Start && ko.sortType == model.SearchOrder_Desc {
 		return ko.emptyPlacementSort(valType)
-	} else if ko.emptyPlacement == model.BlockContentDataviewSort_End && ko.sortType == model.BlockContentDataviewSort_Asc {
+	} else if ko.emptyPlacement == model.BlockContentDataviewSort_End && ko.sortType == model.SearchOrder_Asc {
 		return ko.emptyPlacementSort(valType)
 	} else {
 		return &query.SortField{
 			Path:    []string{string(ko.key)},
-			Reverse: ko.sortType == model.BlockContentDataviewSort_Desc,
+			Reverse: ko.sortType == model.SearchOrder_Desc,
 			Field:   string(ko.key),
 		}
 	}
@@ -179,7 +179,7 @@ func (ko *keyOrder) objectSort() query.Sort {
 	return objectSort{
 		arena:       ko.arena,
 		relationKey: string(ko.key),
-		reverse:     ko.sortType == model.BlockContentDataviewSort_Desc,
+		reverse:     ko.sortType == model.SearchOrder_Desc,
 		nulls:       ko.emptyPlacement,
 		orders:      ko.orderMap,
 		keyBuffer:   make([]byte, 0),
@@ -190,7 +190,7 @@ func (ko *keyOrder) emptyPlacementSort(valType anyenc.Type) query.Sort {
 	return emptyPlacementSort{
 		arena:       ko.arena,
 		relationKey: string(ko.key),
-		reverse:     ko.sortType == model.BlockContentDataviewSort_Desc,
+		reverse:     ko.sortType == model.SearchOrder_Desc,
 		nulls:       ko.emptyPlacement,
 		valType:     valType,
 	}
@@ -200,7 +200,7 @@ func (ko *keyOrder) dateOnlySort() query.Sort {
 	return dateOnlySort{
 		arena:       ko.arena,
 		relationKey: string(ko.key),
-		reverse:     ko.sortType == model.BlockContentDataviewSort_Desc,
+		reverse:     ko.sortType == model.SearchOrder_Desc,
 		nulls:       ko.emptyPlacement,
 	}
 }
@@ -212,7 +212,7 @@ func (ko *keyOrder) textSort() query.Sort {
 		collator:       ko.collator,
 		collatorBuffer: ko.collatorBuffer,
 		relationKey:    string(ko.key),
-		reverse:        ko.sortType == model.BlockContentDataviewSort_Desc,
+		reverse:        ko.sortType == model.SearchOrder_Desc,
 		nulls:          ko.emptyPlacement,
 	}
 }
@@ -221,7 +221,7 @@ func (ko *keyOrder) boolSort() query.Sort {
 	return boolSort{
 		arena:       ko.arena,
 		relationKey: ko.key.String(),
-		reverse:     ko.sortType == model.BlockContentDataviewSort_Desc,
+		reverse:     ko.sortType == model.SearchOrder_Desc,
 	}
 }
 
@@ -244,7 +244,7 @@ func (ko *keyOrder) compareStrings(av domain.Value, bv domain.Value) int {
 		comp = ko.collator.CompareString(aStr, bStr)
 	}
 
-	if ko.sortType == model.BlockContentDataviewSort_Desc {
+	if ko.sortType == model.SearchOrder_Desc {
 		comp = -comp
 	}
 	return comp
@@ -258,7 +258,7 @@ func (ko *keyOrder) compareBool(av domain.Value, bv domain.Value) int {
 		bv = domain.Bool(false)
 	}
 	comp := av.Compare(bv)
-	if ko.sortType == model.BlockContentDataviewSort_Desc {
+	if ko.sortType == model.SearchOrder_Desc {
 		comp = -comp
 	}
 	return comp
@@ -289,7 +289,7 @@ func (ko *keyOrder) compareObjectValues(av domain.Value, bv domain.Value) int {
 		}
 	}
 
-	if ko.sortType == model.BlockContentDataviewSort_Desc {
+	if ko.sortType == model.SearchOrder_Desc {
 		comp = -comp
 	}
 	return comp
@@ -317,7 +317,7 @@ func (ko *keyOrder) compareNumbers(av domain.Value, bv domain.Value) int {
 	}
 
 	comp = av.Compare(bv)
-	if ko.sortType == model.BlockContentDataviewSort_Desc {
+	if ko.sortType == model.SearchOrder_Desc {
 		comp = -comp
 	}
 	return comp

@@ -602,6 +602,10 @@
     - [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request)
     - [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response)
     - [Rpc.Chat.ReadMessages.Response.Error](#anytype-Rpc-Chat-ReadMessages-Response-Error)
+    - [Rpc.Chat.Search](#anytype-Rpc-Chat-Search)
+    - [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request)
+    - [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response)
+    - [Rpc.Chat.Search.Response.Error](#anytype-Rpc-Chat-Search-Response-Error)
     - [Rpc.Chat.SubscribeLastMessages](#anytype-Rpc-Chat-SubscribeLastMessages)
     - [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request)
     - [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response)
@@ -1585,6 +1589,7 @@
     - [Rpc.Chat.ReadAll.Response.Error.Code](#anytype-Rpc-Chat-ReadAll-Response-Error-Code)
     - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
     - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
+    - [Rpc.Chat.Search.Response.Error.Code](#anytype-Rpc-Chat-Search-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
@@ -2150,7 +2155,11 @@
     - [Restrictions](#anytype-model-Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype-model-Restrictions-DataviewRestrictions)
     - [Search](#anytype-model-Search)
+    - [Search.Message](#anytype-model-Search-Message)
+    - [Search.Message.Result](#anytype-model-Search-Message-Result)
+    - [Search.Message.Sort](#anytype-model-Search-Message-Sort)
     - [Search.Meta](#anytype-model-Search-Meta)
+    - [Search.Order](#anytype-model-Search-Order)
     - [Search.Result](#anytype-model-Search-Result)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
@@ -2166,7 +2175,6 @@
     - [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
-    - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
     - [Block.Content.Dataview.View.Type](#anytype-model-Block-Content-Dataview-View-Type)
     - [Block.Content.Div.Style](#anytype-model-Block-Content-Div-Style)
@@ -2214,6 +2222,8 @@
     - [RelationFormat](#anytype-model-RelationFormat)
     - [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction)
     - [Restrictions.ObjectRestriction](#anytype-model-Restrictions-ObjectRestriction)
+    - [Search.Message.Sort.Key](#anytype-model-Search-Message-Sort-Key)
+    - [Search.Order.Type](#anytype-model-Search-Order-Type)
     - [SmartBlockType](#anytype-model-SmartBlockType)
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
@@ -2555,6 +2565,7 @@
 | ChatUnsubscribeFromMessagePreviews | [Rpc.Chat.UnsubscribeFromMessagePreviews.Request](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request) | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ChatReadAll | [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request) | [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response) |  |
+| ChatSearch | [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request) | [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response) |  |
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | mock AI RPCs for compatibility between branches. Not implemented in main |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
@@ -9736,7 +9747,7 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context object |
 | columnId | [string](#string) |  |  |
-| type | [model.Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
+| type | [model.Search.Order.Type](#anytype-model-Search-Order-Type) |  |  |
 
 
 
@@ -11293,6 +11304,68 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Search"></a>
+
+### Rpc.Chat.Search
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Search-Request"></a>
+
+### Rpc.Chat.Search.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| chatId | [string](#string) |  |  |
+| sorts | [model.Search.Message.Sort](#anytype-model-Search-Message-Sort) | repeated |  |
+| fullText | [string](#string) |  |  |
+| offset | [int32](#int32) |  |  |
+| limit | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Search-Response"></a>
+
+### Rpc.Chat.Search.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.Search.Response.Error](#anytype-Rpc-Chat-Search-Response-Error) |  |  |
+| results | [model.Search.Message.Result](#anytype-model-Search-Message-Result) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-Search-Response-Error"></a>
+
+### Rpc.Chat.Search.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.Search.Response.Error.Code](#anytype-Rpc-Chat-Search-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -25420,6 +25493,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-Search-Response-Error-Code"></a>
+
+### Rpc.Chat.Search.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code"></a>
 
 ### Rpc.Chat.SubscribeLastMessages.Response.Error.Code
@@ -32204,6 +32290,7 @@ scenario: Precondition: user A and user B opened the same block
 | reindexDeletedObjects | [int32](#int32) |  |  |
 | reindexParticipants | [int32](#int32) |  |  |
 | reindexChats | [int32](#int32) |  |  |
+| reindexFulltextChatMessages | [int32](#int32) |  |  |
 
 
 
@@ -32580,7 +32667,7 @@ deprecated |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | RelationKey | [string](#string) |  |  |
-| type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
+| type | [Search.Order.Type](#anytype-model-Search-Order-Type) |  |  |
 | customOrder | [google.protobuf.Value](#google-protobuf-Value) | repeated |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
 | includeTime | [bool](#bool) |  |  |
@@ -34184,6 +34271,52 @@ stored |
 
 
 
+<a name="anytype-model-Search-Message"></a>
+
+### Search.Message
+
+
+
+
+
+
+
+<a name="anytype-model-Search-Message-Result"></a>
+
+### Search.Message.Result
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatId | [string](#string) |  |  |
+| messageId | [string](#string) |  |  |
+| score | [int64](#int64) |  |  |
+| highlight | [string](#string) |  | truncated text with highlights |
+| highlightRanges | [Range](#anytype-model-Range) | repeated | ranges of the highlight in the text (using utf-16 runes) |
+| message | [ChatMessage](#anytype-model-ChatMessage) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Search-Message-Sort"></a>
+
+### Search.Message.Sort
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [Search.Message.Sort.Key](#anytype-model-Search-Message-Sort-Key) |  |  |
+| type | [Search.Order.Type](#anytype-model-Search-Order-Type) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Search-Meta"></a>
 
 ### Search.Meta
@@ -34197,6 +34330,16 @@ stored |
 | blockId | [string](#string) |  | block id where the highlight has been found |
 | relationKey | [string](#string) |  | relation key of the block where the highlight has been found |
 | relationDetails | [google.protobuf.Struct](#google-protobuf-Struct) |  | contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails |
+
+
+
+
+
+
+<a name="anytype-model-Search-Order"></a>
+
+### Search.Order
+
 
 
 
@@ -34444,19 +34587,6 @@ stored |
 | NotSpecified | 0 |  |
 | Start | 1 |  |
 | End | 2 |  |
-
-
-
-<a name="anytype-model-Block-Content-Dataview-Sort-Type"></a>
-
-### Block.Content.Dataview.Sort.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Asc | 0 |  |
-| Desc | 1 |  |
-| Custom | 2 |  |
 
 
 
@@ -35216,6 +35346,33 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Duplicate | 8 | restricts duplicate object |
 | CreateObjectOfThisType | 9 | can be set only for types. Restricts creating objects of this type |
 | Publish | 10 | object is not allowed to publish |
+
+
+
+<a name="anytype-model-Search-Message-Sort-Key"></a>
+
+### Search.Message.Sort.Key
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ORDER_ID | 0 |  |
+| SCORE | 1 |  |
+| CREATED_AT | 2 |  |
+| MODIFIED_AT | 3 |  |
+
+
+
+<a name="anytype-model-Search-Order-Type"></a>
+
+### Search.Order.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Asc | 0 |  |
+| Desc | 1 |  |
+| Custom | 2 |  |
 
 
 

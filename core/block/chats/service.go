@@ -7,7 +7,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -32,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -59,6 +62,8 @@ type Service interface {
 
 	ReadAll(ctx context.Context) error
 
+	Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error)
+
 	app.ComponentRunnable
 }
 
@@ -82,6 +87,7 @@ type service struct {
 	objectStore             objectstore.ObjectStore
 	chatSubscriptionService chatsubscription.Service
 	eventSender             event.Sender
+	ftSearch                ftsearch.FTSearch
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -118,6 +124,7 @@ func (s *service) Init(a *app.App) error {
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
+	s.ftSearch = app.MustComponent[ftsearch.FTSearch](a)
 	return nil
 }
 
@@ -607,6 +614,88 @@ func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, after
 	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 		return sb.MarkMessagesAsUnread(ctx, afterOrderId, counterType)
 	})
+}
+
+func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
+	ftResults, err := s.ftSearch.Search(req.SpaceId, req.FullText)
+	if err != nil {
+		return nil, fmt.Errorf("search ft: %w", err)
+	}
+
+	messageIds := make([]string, 0, len(ftResults))
+	ftResultsMap := make(map[string]*ftsearch.DocumentMatch, len(ftResults))
+	for _, result := range ftResults {
+		path, err := domain.NewFromPath(result.ID)
+		if err != nil {
+			log.Error("failed to parse ft result", zap.Error(err))
+			continue
+		}
+
+		if path.MessageId == "" || path.ObjectId != req.ChatId {
+			continue
+		}
+
+		messageIds = append(messageIds, path.MessageId)
+		ftResultsMap[path.MessageId] = result
+	}
+
+	messages := make([]*chatmodel.Message, 0, len(messageIds))
+	if err = s.chatObjectDo(ctx, req.ChatId, func(sb chatobject.StoreObject) error {
+		messages, err = sb.GetMessagesByIds(ctx, messageIds)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+
+	results := make([]*model.SearchMessageResult, 0, len(messages))
+	for _, message := range messages {
+		docMatch := ftResultsMap[message.ChatMessage.Id]
+		ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
+		if err != nil {
+			return nil, err
+		}
+
+		result := ftResult.MessageModel()
+		result.Message = message.ChatMessage
+
+		results = append(results, &result)
+	}
+
+	slices.SortFunc(results, getComparator(req.Sorts))
+
+	if req.Offset > 0 && len(results) >= int(req.Offset) {
+		results = results[req.Offset:]
+	}
+
+	if req.Limit > 0 && len(results) > int(req.Limit) {
+		results = results[:req.Limit]
+	}
+
+	return results, nil
+}
+
+func getComparator(sorts []*model.SearchMessageSort) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {
+	return func(a *model.SearchMessageResult, b *model.SearchMessageResult) (cmp int) {
+		for _, sort := range sorts {
+			switch sort.Key {
+			case model.SearchMessageSort_ORDER_ID:
+				cmp = strings.Compare(a.Message.OrderId, b.Message.OrderId)
+			case model.SearchMessageSort_SCORE:
+				cmp = int(a.Score - b.Score)
+			case model.SearchMessageSort_CREATED_AT:
+				cmp = int(a.Message.CreatedAt - b.Message.CreatedAt)
+			case model.SearchMessageSort_MODIFIED_AT:
+				cmp = int(a.Message.ModifiedAt - b.Message.ModifiedAt)
+			}
+			if sort.Type == model.SearchOrder_Desc {
+				cmp = -cmp
+			}
+			if cmp != 0 {
+				return
+			}
+		}
+		return 0
+	}
 }
 
 func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc func(sb chatobject.StoreObject) error) error {

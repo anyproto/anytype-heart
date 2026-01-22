@@ -15,6 +15,8 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -153,6 +155,14 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 
 			// TODO: modify for chat messages
 			objDocs, removedDocIds, err := i.filterOutNotChangedDocuments(object.ObjectId, objDocs)
+
+			// Add deleted message IDs from the queue to the removal list
+			if len(object.DeletedMsgIds) > 0 {
+				for _, msgId := range object.DeletedMsgIds {
+					docId := domain.NewObjectPathWithMessage(object.ObjectId, msgId).String()
+					removedDocIds = append(removedDocIds, docId)
+				}
+			}
 			if err != nil {
 				log.With("id", object.FullId()).Errorf("filter not changed error:: %s", err)
 				// try to process the other returned values.
@@ -265,11 +275,12 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.Full
 
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
 
-	if object.OrderId != "" {
+	if object.OrderId != "" || len(object.DeletedMsgIds) > 0 {
 		docs, err = i.prepareChatSearchDocs(ctx, object)
 		if err != nil {
 			return nil, err
 		}
+		return docs, nil
 	}
 
 	var fulltextSkipped bool
@@ -384,7 +395,14 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object objectstore.
 		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get chat repository: %v", err)
 	}
 
-	msgs, err := repository.GetMessagesForIndexing(ctx, object.OrderId)
+	var msgs []*chatmodel.Message
+	if object.OrderId == objectstore.FtAllOrderId {
+		// TODO: add batch messages fetch by limits
+		msgs, err = repository.GetMessages(ctx, chatrepository.GetMessagesRequest{})
+	} else {
+		msgs, err = repository.GetMessagesForIndexing(ctx, object.OrderId)
+	}
+
 	if err != nil {
 		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get messages for indexing: %v", err)
 	}

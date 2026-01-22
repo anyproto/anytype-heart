@@ -80,14 +80,14 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 		if criterionToSortAfter == bundle.RelationKeyName.String() {
 			nameI := combinedRecords[i].Fields[bundle.RelationKeyName.String()].GetStringValue()
 			nameJ := combinedRecords[j].Fields[bundle.RelationKeyName.String()].GetStringValue()
-			if sorts[0].Type == model.BlockContentDataviewSort_Asc {
+			if sorts[0].Type == model.SearchOrder_Asc {
 				return nameI < nameJ
 			}
 			return nameI > nameJ
 		} else {
 			numI := combinedRecords[i].Fields[criterionToSortAfter].GetNumberValue()
 			numJ := combinedRecords[j].Fields[criterionToSortAfter].GetNumberValue()
-			if sorts[0].Type == model.BlockContentDataviewSort_Asc {
+			if sorts[0].Type == model.SearchOrder_Asc {
 				return numI < numJ
 			}
 			return numI > numJ
@@ -306,14 +306,14 @@ func (s *Service) getSortRelationKey(timestamp apimodel.SortProperty) string {
 }
 
 // getSortDirection returns the sort direction for the given string
-func (s *Service) getSortDirection(direction apimodel.SortDirection) model.BlockContentDataviewSortType {
+func (s *Service) getSortDirection(direction apimodel.SortDirection) model.SearchOrderType {
 	switch direction {
 	case apimodel.Asc:
-		return model.BlockContentDataviewSort_Asc
+		return model.SearchOrder_Asc
 	case apimodel.Desc:
-		return model.BlockContentDataviewSort_Desc
+		return model.SearchOrder_Desc
 	default:
-		return model.BlockContentDataviewSort_Desc
+		return model.SearchOrder_Desc
 	}
 }
 

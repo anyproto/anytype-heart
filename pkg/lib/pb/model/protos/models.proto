@@ -70,6 +70,38 @@ message Search {
         string relationKey = 4; // relation key of the block where the highlight has been found
         google.protobuf.Struct relationDetails = 5; // contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails
     }
+
+    message Order {
+        enum Type {
+            Asc = 0;
+            Desc = 1;
+            Custom = 2;
+        }
+    }
+
+    message Message {
+        message Sort {
+            Key key = 1;
+            Order.Type type = 2;
+
+            enum Key {
+                ORDER_ID = 0;
+                SCORE = 1;
+                CREATED_AT = 2;
+                MODIFIED_AT = 3;
+            }
+        }
+
+        message Result {
+            string chatId = 1;
+            string messageId = 2;
+            int64 score = 3;
+            string highlight = 4; // truncated text with highlights
+            repeated Range highlightRanges = 5; // ranges of the highlight in the text (using utf-16 runes)
+            ChatMessage message = 6;
+        }
+    }
+
 }
 
 message Block {
@@ -426,19 +458,13 @@ message Block {
 
             message Sort {
                 string RelationKey = 1;
-                Type type = 2;
+                Search.Order.Type type = 2;
                 repeated google.protobuf.Value customOrder = 3;
                 RelationFormat format = 4;
                 bool includeTime = 5;
                 string id = 6;
                 EmptyType emptyPlacement = 7;
                 bool noCollate = 8;
-
-                enum Type {
-                    Asc = 0;
-                    Desc = 1;
-                    Custom = 2;
-                }
 
                 enum EmptyType {
                     NotSpecified = 0;

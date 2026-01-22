@@ -1,13 +1,17 @@
 package database
 
 import (
+	"fmt"
+
 	"github.com/anyproto/any-store/anyenc"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/text"
 )
 
 var log = logging.Logger("anytype-database")
@@ -56,7 +60,7 @@ type FilterRequest struct {
 
 type SortRequest struct {
 	RelationKey    domain.RelationKey
-	Type           model.BlockContentDataviewSortType
+	Type           model.SearchOrderType
 	CustomOrder    []domain.Value
 	Format         model.RelationFormat
 	IncludeTime    bool
@@ -171,7 +175,7 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	}
 
 	if !hasScoreSort {
-		sorts = append([]SortRequest{{RelationKey: RecordScoreField, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
+		sorts = append([]SortRequest{{RelationKey: RecordScoreField, Type: model.SearchOrder_Desc}}, sorts...)
 	}
 
 	return sorts
@@ -271,7 +275,7 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) setOrder {
 
 func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders setOrder, order *keyOrder) setOrder {
 	defer b.arena.Reset()
-	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
+	if sort.Type == model.SearchOrder_Custom && len(sort.CustomOrder) > 0 {
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
 		for _, it := range sort.CustomOrder {
@@ -316,6 +320,73 @@ func (r FulltextResult) Model() model.SearchMeta {
 		RelationKey:     r.Path.RelationKey,
 		BlockId:         r.Path.BlockId,
 	}
+}
+
+func (r FulltextResult) MessageModel() model.SearchMessageResult {
+	return model.SearchMessageResult{
+		ChatId:          r.Path.ObjectId,
+		MessageId:       r.Path.MessageId,
+		Score:           int64(r.Score),
+		Highlight:       r.Highlight,
+		HighlightRanges: r.HighlightRanges,
+	}
+}
+
+func FTDocumentMatchToFulltextResult(docMatch *ftsearch.DocumentMatch) (FulltextResult, error) {
+	path, err := domain.NewFromPath(docMatch.ID)
+	if err != nil {
+		return FulltextResult{}, fmt.Errorf("failed to parse ft search result: %w", err)
+	}
+	var highlight string
+	var ranges []*model.Range
+	for _, v := range docMatch.Fragments {
+		if len(v.Ranges) > 0 {
+			highlight = v.Text
+			ranges = convertToHighlightRanges(v.Ranges, highlight)
+			break
+		}
+	}
+	res := FulltextResult{
+		Path:      path,
+		Highlight: highlight,
+		Score:     docMatch.Score,
+	}
+	if highlight != "" {
+		res.Highlight, res.HighlightRanges = highlight, ranges
+	}
+
+	return res, nil
+}
+
+func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
+	var highlightRanges []*model.Range
+
+	byteToRuneIndex := make([]int, len(highlight)+1)
+	for i := range byteToRuneIndex {
+		byteToRuneIndex[i] = text.UTF16RuneCountString(highlight[:i])
+	}
+
+	for _, r := range ranges {
+		if len(r) == 2 {
+			fromByte := r[0]
+			toByte := r[1]
+
+			if fromByte < 0 || toByte > len(highlight) {
+				continue
+			}
+
+			fromRune := byteToRuneIndex[fromByte]
+			toRune := byteToRuneIndex[toByte]
+
+			highlightRange := &model.Range{
+				From: int32(fromRune),
+				To:   int32(toRune),
+			}
+			highlightRanges = append(highlightRanges, highlightRange)
+		}
+	}
+
+	return highlightRanges
 }
 
 // todo: rename to SearchParams?

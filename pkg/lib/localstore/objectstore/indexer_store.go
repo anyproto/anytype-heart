@@ -18,9 +18,10 @@ import (
 )
 
 type FullTextQueuedObject struct {
-	ObjectId string
-	SpaceId  string
-	OrderId  string
+	ObjectId      string
+	SpaceId       string
+	OrderId       string
+	DeletedMsgIds []string
 }
 
 func (o *FullTextQueuedObject) FullId() domain.FullID {
@@ -34,9 +35,14 @@ type FullTextProcessFunc func(objects []FullTextQueuedObject) (succeedIds []doma
 
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
-var orderIdKey = "_o"
 
-const ftSequenceKey = "seq" // used to store the opstamp of the fulltext commit for specific object
+const (
+	ftSequenceKey      = "seq" // used to store the opstamp of the fulltext commit for the specific object
+	ftOrderIdKey       = "_o"
+	ftDeletedMsgIdsKey = "_d" // used to store deleted message IDs for chat messages
+
+	FtAllOrderId = "_all" // constant to fetch all messages on fulltext reindex
+)
 
 var emptyBuffer = make([]byte, 8)
 
@@ -99,7 +105,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
 		obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 		_, err = s.fulltextQueue.UpsertId(txn.Context(), id.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
-			if anyencutil.Equal(v, obj) || v.GetString(orderIdKey) != "" {
+			if anyencutil.Equal(v, obj) || v.GetString(ftOrderIdKey) != "" {
 				return v, false, nil
 			}
 
@@ -127,19 +133,65 @@ func (s *dsObjectStore) AddChatMessageToIndexQueue(ctx context.Context, chatId d
 	obj := arena.NewObject()
 	obj.Set(idKey, arena.NewString(chatId.ObjectID))
 	obj.Set(spaceIdKey, arena.NewString(chatId.SpaceID))
-	obj.Set(orderIdKey, arena.NewString(orderId))
+	obj.Set(ftOrderIdKey, arena.NewString(orderId))
 	obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 	_, err = s.fulltextQueue.UpsertId(txn.Context(), chatId.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 		if anyencutil.Equal(v, obj) {
 			return v, false, nil
 		}
 
-		currentOrderId := v.GetString(orderIdKey)
-		if currentOrderId != "" && currentOrderId < orderId {
-			// we can save only the latest orderId, so on every full text reindex
+		if existingDeleteList := v.Get(ftDeletedMsgIdsKey); existingDeleteList != nil && existingDeleteList.GetArray() != nil {
+			obj.Set(ftDeletedMsgIdsKey, existingDeleteList)
+		}
+
+		currentOrderId := v.GetString(ftOrderIdKey)
+		if currentOrderId != "" && (currentOrderId < orderId || currentOrderId == FtAllOrderId) {
 			// we take messages with orderId equal and more than saved in the queue
 			return v, false, nil
 		}
+
+		return obj, true, nil
+	}))
+	if err != nil {
+		return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
+	}
+	return txn.Commit()
+}
+
+// AddChatMessageDeleteToIndexQueue adds a deleted message to the fulltext index queue
+func (s *dsObjectStore) AddChatMessageDeleteToIndexQueue(ctx context.Context, chatId domain.FullID, messageId string) error {
+	txn, err := s.fulltextQueue.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	arena := s.arenaPool.Get()
+	defer func() {
+		_ = txn.Rollback()
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	obj := arena.NewObject()
+	obj.Set(idKey, arena.NewString(chatId.ObjectID))
+	obj.Set(spaceIdKey, arena.NewString(chatId.SpaceID))
+	obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
+
+	_, err = s.fulltextQueue.UpsertId(txn.Context(), chatId.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+		// Preserve orderId if exists
+		if currentOrderId := v.GetString(ftOrderIdKey); currentOrderId != "" {
+			obj.Set(ftOrderIdKey, a.NewString(currentOrderId))
+		}
+
+		deleteList := v.Get(ftDeletedMsgIdsKey)
+		index := 0
+		if deleteList != nil && deleteList.GetArray() != nil {
+			index = len(deleteList.GetArray())
+		} else {
+			deleteList = a.NewArray()
+		}
+
+		deleteList.SetArrayItem(index, arena.NewString(messageId))
+		obj.Set(ftDeletedMsgIdsKey, deleteList)
 
 		return obj, true, nil
 	}))
@@ -199,10 +251,19 @@ func (s *dsObjectStore) listIdsFromFullTextQueue(spaceIds []string, limit uint) 
 		if err != nil {
 			return nil, fmt.Errorf("read doc: %w", err)
 		}
+
+		var deletedMsgIds []string
+		if deleteList := doc.Value().GetArray(ftDeletedMsgIdsKey); deleteList != nil {
+			for _, v := range deleteList {
+				deletedMsgIds = append(deletedMsgIds, v.GetString())
+			}
+		}
+
 		objects = append(objects, FullTextQueuedObject{
-			ObjectId: doc.Value().GetString(idKey),
-			SpaceId:  doc.Value().GetString(spaceIdKey),
-			OrderId:  doc.Value().GetString(orderIdKey),
+			ObjectId:      doc.Value().GetString(idKey),
+			SpaceId:       doc.Value().GetString(spaceIdKey),
+			OrderId:       doc.Value().GetString(ftOrderIdKey),
+			DeletedMsgIds: deletedMsgIds,
 		})
 	}
 	return objects, nil

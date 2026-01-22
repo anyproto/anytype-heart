@@ -126,7 +126,7 @@ func (s *Service) ListProperties(ctx context.Context, spaceId string, additional
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
-				Type:        model.BlockContentDataviewSort_Asc,
+				Type:        model.SearchOrder_Asc,
 			},
 		},
 		Keys: []string{
