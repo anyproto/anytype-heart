@@ -301,9 +301,9 @@ type uploader struct {
 	customEncryptionKeys map[string]string
 	preloadId            string
 
-	serviceCtx context.Context // used to cancel async operations
-	createdInContext     string
-	createdInBlockId     string
+	serviceCtx       context.Context // used to cancel async operations
+	createdInContext string
+	createdInBlockId string
 }
 
 type bufioSeekClose struct {
