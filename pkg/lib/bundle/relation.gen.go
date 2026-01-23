@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "3cb8329d940d5b4cb4fb14f29c1f42d990f155dfbb97678c24c1e27f833595d0"
+const RelationChecksum = "6352eb2e9e0a991c001d2e4dea3c67df8d44b7f408da6a0a27c416a857fb008c"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -193,6 +193,7 @@ const (
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
 	RelationKey_score                               domain.RelationKey = "_score"
+	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
 )
 
 var (
@@ -1485,6 +1486,20 @@ var (
 			Id:               "_brmentions",
 			Key:              "mentions",
 			Name:             "Mentions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMigrationObjectContext: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Version of file context migration completed for this space",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brmigrationObjectContext",
+			Key:              "migrationObjectContext",
+			MaxCount:         1,
+			Name:             "Object Context Migration Version",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -78,7 +78,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
-	"github.com/anyproto/anytype-heart/core/files/migration"
+	"github.com/anyproto/anytype-heart/core/migration"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/history"
@@ -304,7 +304,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(detailservice.New()).
 		Register(filegc.New()).
 		Register(dataviewservice.New()).
-		Register(migration.NewContextMigrationService()).
+		Register(migration.New()).
 		Register(indexer.New()).
 		Register(detailsupdater.New()).
 		Register(session.NewHookRunner()).

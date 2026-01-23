@@ -139,6 +139,18 @@ func (s *invalidStore) GetOutboundLinksDetailedById(id string) ([]OutgoingLink, 
 	return nil, s.err
 }
 
+func (s *invalidStore) GetOutboundLinksDetailedIterator(f func(id string, links []OutgoingLink) bool) error {
+	return s.err
+}
+
+func (s *invalidStore) GetInboundLinksDetailedById(id string) ([]IncomingLink, error) {
+	return nil, s.err
+}
+
+func (s *invalidStore) GetInboundLinksDetailedIterator(f func(targetId string, links []IncomingLink) bool) error {
+	return s.err
+}
+
 func (s *invalidStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
 	return nil, s.err
 }

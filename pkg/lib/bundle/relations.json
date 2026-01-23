@@ -1866,5 +1866,15 @@
     "name": "Score",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Version of file context migration completed for this space",
+    "format": "number",
+    "hidden": true,
+    "key": "migrationObjectContext",
+    "maxCount": 1,
+    "name": "Object Context Migration Version",
+    "readonly": true,
+    "source": "details"
   }
 ]

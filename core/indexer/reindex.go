@@ -638,8 +638,8 @@ func (i *indexer) getIdsForTypes(space smartblock.Space, sbt ...coresb.SmartBloc
 }
 
 func (i *indexer) GetLogFields() []zap.Field {
-	i.lock.Lock()
-	defer i.lock.Unlock()
+	i.lock.RLock()
+	defer i.lock.RUnlock()
 	return i.reindexLogFields
 }
 

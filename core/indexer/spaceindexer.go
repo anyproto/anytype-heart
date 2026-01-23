@@ -14,34 +14,35 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/migration"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 type spaceIndexer struct {
-	runCtx           context.Context
-	spaceIndex       spaceindex.Store
-	objectStore      objectstore.ObjectStore
-	contextMigration migration.ContextMigrationService
-	batcher          *mb.MB[indexTask]
-	fulltextEnabled  bool
+	runCtx          context.Context
+	spaceIndex      spaceindex.Store
+	objectStore     objectstore.ObjectStore
+	batcher         *mb.MB[indexTask]
+	fulltextEnabled bool
 
 	lastIndex atomic.Time
 }
 
-func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool, contextMigration migration.ContextMigrationService, _ bool) *spaceIndexer {
+func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool) *spaceIndexer {
 	ind := &spaceIndexer{
-		runCtx:           runCtx,
-		spaceIndex:       spaceIndex,
-		objectStore:      objectStore,
-		batcher:          mb.New[indexTask](100),
-		fulltextEnabled:  fulltextEnabled,
-		contextMigration: contextMigration,
+		runCtx:          runCtx,
+		spaceIndex:      spaceIndex,
+		objectStore:     objectStore,
+		batcher:         mb.New[indexTask](100),
+		fulltextEnabled: fulltextEnabled,
 	}
 	go ind.indexBatchLoop()
-	go ind.indexFileCreationContext()
 	return ind
+}
+
+// LastIndex returns the time of the last indexing operation
+func (i *spaceIndexer) LastIndex() time.Time {
+	return i.lastIndex.Load()
 }
 
 func (i *spaceIndexer) close() error {
@@ -62,27 +63,6 @@ func (i *spaceIndexer) indexBatchLoop() {
 		}
 		if iErr := i.indexBatch(tasks); iErr != nil {
 			log.Warnf("indexBatch error: %v", iErr)
-		}
-	}
-}
-
-func (i *spaceIndexer) indexFileCreationContext() {
-	for {
-		select {
-		case <-time.After(time.Second * 10):
-			lastIndex := i.lastIndex.Load()
-			// so we will perform migration only if there were no indexing activities for the last 30 seconds
-			if time.Since(lastIndex) > time.Second*30 {
-				err := i.contextMigration.MigrateSpace(i.runCtx, i.spaceIndex)
-				if err != nil {
-					log.With("spaceId", i.spaceIndex.SpaceId()).Errorf("failed to migrate context for space: %v", err)
-				} else {
-					log.With("spaceId", i.spaceIndex.SpaceId()).Warnf("context migration completed")
-				}
-				return
-			}
-		case <-i.runCtx.Done():
-			return
 		}
 	}
 }

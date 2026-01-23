@@ -35,6 +35,13 @@ type OutgoingLink struct {
 	RelationKey string // Relation key (empty for block links)
 }
 
+// IncomingLink represents a link to this object from another object
+type IncomingLink struct {
+	SourceID    string // ID of the source object that links to this object
+	BlockID     string // Block ID where the link originates (empty for relation links)
+	RelationKey string // Relation key (empty for block links)
+}
+
 type Store interface {
 	SpaceId() string
 	Close() error
@@ -76,6 +83,9 @@ type Store interface {
 	GetInboundLinksById(id string) ([]string, error)
 	GetOutboundLinksById(id string) ([]string, error)
 	GetOutboundLinksDetailedById(id string) ([]OutgoingLink, error)
+	GetOutboundLinksDetailedIterator(f func(id string, links []OutgoingLink) bool) error
+	GetInboundLinksDetailedById(id string) ([]IncomingLink, error)
+
 	GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error)
 
 	SetActiveView(objectId, blockId, viewId string) error

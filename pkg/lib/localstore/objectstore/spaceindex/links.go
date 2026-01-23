@@ -84,6 +84,14 @@ func (s *dsObjectStore) GetOutboundLinksDetailedById(id string) ([]OutgoingLink,
 	return s.findOutboundLinksDetailed(s.componentCtx, id)
 }
 
+func (s *dsObjectStore) GetOutboundLinksDetailedIterator(f func(id string, links []OutgoingLink) bool) error {
+	return s.findOutboundLinksDetailedIterator(s.componentCtx, f)
+}
+
+func (s *dsObjectStore) GetInboundLinksDetailedById(id string) ([]IncomingLink, error) {
+	return s.findInboundLinksDetailed(s.componentCtx, id)
+}
+
 // Find to which IDs specified one has outbound links.
 func (s *dsObjectStore) findOutboundLinks(ctx context.Context, id string) ([]string, error) {
 	doc, err := s.links.FindId(ctx, id)
@@ -150,6 +158,97 @@ func (s *dsObjectStore) findOutboundLinksDetailed(ctx context.Context, id string
 	var links []OutgoingLink
 	for _, targetId := range targetIds {
 		links = append(links, OutgoingLink{TargetID: targetId})
+	}
+	return links, nil
+}
+
+// Find detailed outgoing links with source information
+func (s *dsObjectStore) findOutboundLinksDetailedIterator(ctx context.Context, f func(id string, links []OutgoingLink) bool) error {
+	iter, err := s.links.Find(nil).Iter(ctx)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	var (
+		id    string
+		links []OutgoingLink
+	)
+	defer iter.Close()
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return err
+		}
+		id = doc.Value().GetString("id")
+		// Try to get detailed links first
+		detailedLinksArr := doc.Value().GetArray(linkDetailedField)
+		links = links[:0]
+		if len(detailedLinksArr) > 0 {
+			for _, linkVal := range detailedLinksArr {
+				link := OutgoingLink{
+					TargetID:    string(linkVal.GetStringBytes(linkTargetField)),
+					BlockID:     string(linkVal.GetStringBytes(linkBlockField)),
+					RelationKey: string(linkVal.GetStringBytes(linkRelationField)),
+				}
+				links = append(links, link)
+			}
+			if !f(id, links) {
+				return nil
+			}
+		}
+
+		// Fallback to simple links if detailed links not available
+		arr := doc.Value().GetArray(linkOutboundField)
+		targetIds := anyEncArrayToStrings(arr)
+		for _, targetId := range targetIds {
+			links = append(links, OutgoingLink{TargetID: targetId})
+		}
+		if !f(id, links) {
+			return nil
+		}
+	}
+	return nil
+}
+
+// Find detailed inbound links from other objects to the specified target id
+func (s *dsObjectStore) findInboundLinksDetailed(ctx context.Context, targetId string) ([]IncomingLink, error) {
+	// Use the indexed outbound field to find all documents that link to this target
+	iter, err := s.links.Find(query.Key{Path: []string{linkOutboundField}, Filter: query.NewComp(query.CompOpEq, targetId)}).Iter(ctx)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer iter.Close()
+
+	var links []IncomingLink
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		sourceId := string(doc.Value().GetStringBytes("id"))
+
+		// Try to get detailed links and filter for the target
+		detailedLinksArr := doc.Value().GetArray(linkDetailedField)
+		if len(detailedLinksArr) > 0 {
+			for _, linkVal := range detailedLinksArr {
+				if string(linkVal.GetStringBytes(linkTargetField)) == targetId {
+					links = append(links, IncomingLink{
+						SourceID:    sourceId,
+						BlockID:     string(linkVal.GetStringBytes(linkBlockField)),
+						RelationKey: string(linkVal.GetStringBytes(linkRelationField)),
+					})
+				}
+			}
+		} else {
+			// Fallback: no detailed info available, just return source id
+			links = append(links, IncomingLink{SourceID: sourceId})
+		}
 	}
 	return links, nil
 }

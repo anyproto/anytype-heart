@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
@@ -13,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/migration"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -43,6 +43,7 @@ type Indexer interface {
 	ReindexSpace(space clientspace.Space) error
 	RemoveIndexes(spaceId string) (err error)
 	Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error
+	GetLastIndexTime(spaceId string) time.Time
 	app.ComponentRunnable
 }
 
@@ -51,14 +52,13 @@ type Hasher interface {
 }
 
 type indexer struct {
-	dbProvider              anystoreprovider.Provider
-	store                   objectstore.ObjectStore
-	source                  source.Service
-	picker                  cache.CachedObjectGetter
-	formatFetcher           relationutils.RelationFormatFetcher
-	contextMigrationService migration.ContextMigrationService
-	ftsearch                ftsearch.FTSearch
-	ftsearchLastIndexSeq    uint64
+	dbProvider           anystoreprovider.Provider
+	store                objectstore.ObjectStore
+	source               source.Service
+	picker               cache.CachedObjectGetter
+	formatFetcher        relationutils.RelationFormatFetcher
+	ftsearch             ftsearch.FTSearch
+	ftsearchLastIndexSeq uint64
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
@@ -70,7 +70,7 @@ type indexer struct {
 	forceFt chan struct{}
 
 	// state
-	lock                sync.Mutex
+	lock                sync.RWMutex
 	reindexLogFields    []zap.Field
 	spaceIndexers       map[string]*spaceIndexer
 	techSpaceIdProvider objectstore.TechSpaceIdProvider
@@ -91,7 +91,6 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
 	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	i.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
-	i.contextMigrationService = app.MustComponent[migration.ContextMigrationService](a)
 	return
 }
 
@@ -178,12 +177,21 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 			i.store.SpaceIndex(info.Space.Id()),
 			i.store,
 			i.isFulltextEnabled(info.Space),
-			i.contextMigrationService,
-			i.techSpaceIdProvider.TechSpaceId() == info.Space.Id(),
 		)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}
 	i.lock.Unlock()
 
 	return spaceInd.Index(info, options...)
+}
+
+// GetLastIndexTime returns the time of the last indexing operation for a space
+func (i *indexer) GetLastIndexTime(spaceId string) time.Time {
+	i.lock.RLock()
+	defer i.lock.RUnlock()
+
+	if spaceInd, ok := i.spaceIndexers[spaceId]; ok {
+		return spaceInd.LastIndex()
+	}
+	return time.Time{}
 }
