@@ -92,7 +92,16 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 		return nil
 	}
 
-	// Step 2: Process each file - use indexed lookup for inbound links
+	// Step 2: Build chat attachment index (single scan of all chats)
+	chatAttachmentIndex, err := s.buildChatAttachmentIndex(ctx, spaceId, spaceIndex)
+	if err != nil {
+		l.Warn("failed to build chat attachment index", zap.Error(err))
+		// Continue without chat context - not fatal
+		chatAttachmentIndex = make(ChatAttachmentIndex)
+	}
+	l.Debug("built chat attachment index", zap.Int("attachments", len(chatAttachmentIndex)))
+
+	// Step 3: Process each file - use indexed lookup for inbound links
 	migratedCount := 0
 	for _, fileRecord := range fileRecords {
 		fileId := fileRecord.Details.GetString(bundle.RelationKeyId)
@@ -109,13 +118,16 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 			continue
 		}
 
-		// Find the creation context for this file
-		contextInfo := s.findCreationContext(fileObjectCreatedDate, fileId, inboundLinks)
+		// Find the best context (block link, chat, or relation fallback)
+		chatCtx := chatAttachmentIndex[fileId]
+		contextInfo := s.findBestContext(fileObjectCreatedDate, fileId, inboundLinks, chatCtx)
 		if contextInfo == nil {
 			l.Debug("no creation context found for file", zap.String("fileId", fileId))
 			continue
 		}
-		rec, err := spaceIndex.QueryByIds([]string{contextInfo.contextId})
+
+		// Verify context object exists
+		rec, err := spaceIndex.QueryByIds([]string{contextInfo.objectId})
 		if err != nil {
 			l.Warn("failed to query context object", zap.String("fileId", fileId), zap.Error(err))
 			continue
@@ -125,25 +137,13 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 			continue
 		}
 
-		// double check, source object should be older than file object
-		if rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate) > fileObjectCreatedDate {
-			l.Warn("context object is newer than file object", zap.String("fileId", fileId))
-			continue
-		}
-
-		// Update the file with context information
-		details := []domain.Detail{
-			{
-				Key:   bundle.RelationKeyCreatedInContext,
-				Value: domain.String(contextInfo.contextId),
-			},
-		}
-
-		if contextInfo.blockId != "" {
-			details = append(details, domain.Detail{
-				Key:   bundle.RelationKeyCreatedInBlockId,
-				Value: domain.String(contextInfo.blockId),
-			})
+		// For non-chat contexts, verify context object was created before file object
+		// For chat contexts, we already validated the message timestamp in selectBestContext
+		if contextInfo.messageId == "" {
+			if rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate) > fileObjectCreatedDate {
+				l.Warn("context object is newer than file object", zap.String("fileId", fileId))
+				continue
+			}
 		}
 
 		select {
@@ -152,17 +152,29 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 		default:
 		}
 		// Use detailsService to update the file
-		if err := s.detailsService.SetDetails(nil, fileId, details); err != nil {
+		if err := s.detailsService.ModifyDetails(nil, fileId, func(current *domain.Details) (*domain.Details, error) {
+			if current.GetString(bundle.RelationKeyCreatedInContext) != "" {
+				// double check in case we raced with another user and exit early
+				return current, fmt.Errorf("context detail already set(race?)")
+			}
+			current.Set(bundle.RelationKeyCreatedInContext, domain.String(contextInfo.objectId))
+			if contextInfo.blockId != "" {
+				current.Set(bundle.RelationKeyCreatedInBlockId, domain.String(contextInfo.blockId))
+			} else if contextInfo.messageId != "" {
+				current.Set(bundle.RelationKeyCreatedInBlockId, domain.String(contextInfo.messageId))
+			}
+			return current, nil
+		}); err != nil {
 			l.Error("failed to update file context",
 				zap.String("fileId", fileId),
 				zap.Error(err))
-			continue
+			return fmt.Errorf("failed to update file context: %w", err)
 		}
 
 		migratedCount++
 		l.Debug("migrated file context",
 			zap.String("fileId", fileId),
-			zap.String("contextId", contextInfo.contextId),
+			zap.String("contextId", contextInfo.objectId),
 			zap.String("blockId", contextInfo.blockId))
 	}
 
@@ -181,17 +193,54 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 
 // contextInfo stores the resolved context for a file
 type contextInfo struct {
-	contextId string
-	blockId   string
+	objectId  string // context object ID (page, chat, etc.)
+	blockId   string // block ID for block link contexts
+	messageId string // message ID for chat contexts
+	timestamp int64  // 0 means no timestamp (relation link fallback)
 }
 
-// findCreationContext finds the creation context for a file by looking at incoming links
-func (s *service) findCreationContext(fileObjectTs int64, fileId string, inboundLinks []spaceindex.IncomingLink) *contextInfo {
-	if len(inboundLinks) == 0 {
-		return nil
+// findBestContext finds the best creation context for a file
+// Priority: earliest timed context (block link or chat), then relation link fallback
+func (s *service) findBestContext(fileTs int64, fileId string, inboundLinks []spaceindex.IncomingLink, chatCtx *ChatAttachmentContext) *contextInfo {
+	// Filter links
+	links := s.filterLinks(fileId, inboundLinks)
+
+	// 1. Find earliest block link (has timestamp)
+	blockCtx := s.findBlockContext(fileTs, links)
+
+	// 2. Build chat context if valid
+	var chatInfo *contextInfo
+	if chatCtx != nil {
+		// chat message created little before actual file object
+		if chatCtx.CreatedAt < fileTs+30 {
+			chatInfo = &contextInfo{
+				objectId:  chatCtx.ChatObjectId,
+				messageId: chatCtx.MessageId,
+				timestamp: chatCtx.CreatedAt,
+			}
+		}
 	}
 
-	// Filter out system relations and self-references
+	// 3. Pick earliest timed context
+	if blockCtx != nil && chatInfo != nil {
+		if blockCtx.timestamp <= chatInfo.timestamp {
+			return blockCtx
+		}
+		return chatInfo
+	}
+	if blockCtx != nil {
+		return blockCtx
+	}
+	if chatInfo != nil {
+		return chatInfo
+	}
+
+	// 4. Fallback to relation link (no timestamp)
+	return s.findRelationContext(links)
+}
+
+// filterLinks removes self-references and system relations
+func (s *service) filterLinks(fileId string, inboundLinks []spaceindex.IncomingLink) []spaceindex.IncomingLink {
 	var links []spaceindex.IncomingLink
 	for _, link := range inboundLinks {
 		if link.SourceID == fileId {
@@ -202,51 +251,49 @@ func (s *service) findCreationContext(fileObjectTs int64, fileId string, inbound
 		}
 		links = append(links, link)
 	}
+	return links
+}
 
-	if len(links) == 0 {
-		return nil
+// findBlockContext finds the earliest valid block link context
+func (s *service) findBlockContext(fileTs int64, links []spaceindex.IncomingLink) *contextInfo {
+	var earliest contextInfo
+
+	for _, link := range links {
+		if link.BlockID == "" {
+			continue
+		}
+		blockTs, ok := time2.BsonIdToTimestamp(link.BlockID)
+		if !ok {
+			continue
+		}
+		if blockTs > fileTs {
+			continue
+		}
+		if earliest.timestamp == 0 || blockTs < earliest.timestamp {
+			earliest = contextInfo{
+				objectId:  link.SourceID,
+				blockId:   link.BlockID,
+				timestamp: blockTs,
+			}
+		}
 	}
+	return &earliest
+}
 
-	// Sort: block links first (by blockId for chronological order), then relation links
+// findRelationContext finds the first relation link as fallback (no timestamp)
+func (s *service) findRelationContext(links []spaceindex.IncomingLink) *contextInfo {
+	// Sort for determinism
 	sort.Slice(links, func(i, j int) bool {
-		if links[i].BlockID != "" && links[j].BlockID == "" {
-			return true
-		}
-		if links[i].BlockID == "" && links[j].BlockID != "" {
-			return false
-		}
-		if links[i].BlockID != "" && links[j].BlockID != "" {
-			return links[i].BlockID < links[j].BlockID
-		}
-		// Both are relation links, sort by relation key for determinism
 		return links[i].RelationKey < links[j].RelationKey
 	})
 
-	// Prefer block links over relation links
 	for _, link := range links {
-		if link.BlockID != "" {
-			blockTs, ok := time2.BsonIdToTimestamp(link.BlockID)
-			if !ok {
-				continue
-			}
-			if blockTs > fileObjectTs {
-				// Block created after file object, skip
-				continue
-			}
+		if link.BlockID == "" {
 			return &contextInfo{
-				contextId: link.SourceID,
-				blockId:   link.BlockID,
+				objectId: link.SourceID,
 			}
 		}
 	}
-
-	// Fall back to first relation link
-	if len(links) > 0 {
-		return &contextInfo{
-			contextId: links[0].SourceID,
-		}
-	}
-
 	return nil
 }
 

@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -39,6 +40,7 @@ type service struct {
 	objectStore    objectstore.ObjectStore
 	detailsService detailservice.Service
 	indexer        Indexer
+	dbProvider     anystoreprovider.Provider
 	compCtx        context.Context
 	compCancel     context.CancelFunc
 }
@@ -55,6 +57,7 @@ func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.indexer = app.MustComponent[Indexer](a)
+	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	s.compCtx, s.compCancel = context.WithCancel(context.Background())
 	return nil
 }
