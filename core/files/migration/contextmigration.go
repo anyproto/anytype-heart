@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	time2 "github.com/anyproto/anytype-heart/util/time"
 )
 
 const CName = "files.contextmigration"
@@ -114,7 +115,7 @@ func (s *contextMigrationService) MigrateSpace(ctx context.Context, spaceIndex s
 		return fmt.Errorf("failed to query files without context: %w", err)
 	}
 
-	log.Info("found files without context",
+	log.Warn("found files without context",
 		zap.String("spaceId", spaceId),
 		zap.Int("count", len(fileRecords)))
 
@@ -129,11 +130,30 @@ func (s *contextMigrationService) MigrateSpace(ctx context.Context, spaceIndex s
 	migratedCount := 0
 	for _, fileRecord := range fileRecords {
 		fileId := fileRecord.Details.GetString(bundle.RelationKeyId)
+		fileObjectCreatedDate := fileRecord.Details.GetInt64(bundle.RelationKeyAddedDate)
+		if fileObjectCreatedDate == 0 {
+			log.Warn("file object has no created date", zap.String("fileId", fileId))
+			continue
+		}
 
 		// Find the creation context for this file
-		contextInfo := s.findCreationContext(fileId, incomingLinksMap)
+		contextInfo := s.findCreationContext(fileObjectCreatedDate, fileId, incomingLinksMap)
 		if contextInfo == nil {
 			log.Debug("no creation context found for file", zap.String("fileId", fileId))
+			continue
+		}
+		rec, err := spaceIndex.QueryByIds([]string{contextInfo.contextId})
+		if err != nil {
+			log.Warn("failed to query context object", zap.String("fileId", fileId), zap.Error(err))
+			continue
+		}
+		if len(rec) == 0 {
+			log.Warn("context object not found", zap.String("fileId", fileId))
+			continue
+		}
+
+		if rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate) > fileObjectCreatedDate {
+			log.Warn("context object is newer than file object", zap.String("fileId", fileId))
 			continue
 		}
 
@@ -186,12 +206,14 @@ type incomingLinkInfo struct {
 	objectId    string
 	blockId     string // blockID or chat message ID of the source object
 	relationKey string
+	messageId   string
 }
 
 // contextInfo stores the resolved context for a file
 type contextInfo struct {
 	contextId string
 	blockId   string
+	messageId string
 }
 
 // buildIncomingLinksMap builds a map of targetId -> []incomingLinkInfo for all objects in the space
@@ -236,14 +258,25 @@ func (s *contextMigrationService) buildIncomingLinksMap(spaceId string, spaceInd
 }
 
 // findCreationContext finds the creation context for a file by looking at incoming links
-func (s *contextMigrationService) findCreationContext(fileId string, incomingLinksMap map[string][]incomingLinkInfo) *contextInfo {
+func (s *contextMigrationService) findCreationContext(fileObjectTs int64, fileId string, incomingLinksMap map[string][]incomingLinkInfo) *contextInfo {
 	links, ok := incomingLinksMap[fileId]
 	if !ok || len(links) == 0 {
 		return nil
 	}
 
 	sort.Slice(links, func(i, j int) bool {
-		if links[i].blockId == "" && links[j].blockId == "" {
+		// messages first, then blocks
+		if links[i].messageId != "" && links[j].messageId == "" {
+			return true
+		}
+		if links[i].blockId != "" && links[j].blockId == "" {
+			return true
+		}
+		if links[i].messageId != "" && links[j].messageId != "" {
+			// no meaning here, just to be deterministic
+			return links[i].messageId < links[j].messageId
+		}
+		if links[i].relationKey != "" && links[j].relationKey != "" {
 			// no meaning here, just to be deterministic
 			return links[i].relationKey < links[j].relationKey
 		}
@@ -253,6 +286,14 @@ func (s *contextMigrationService) findCreationContext(fileId string, incomingLin
 	// Prefer block links over relation links
 	for _, link := range links {
 		if link.blockId != "" {
+			blockTs, ok := time2.BsonIdToTimestamp(link.blockId)
+			if !ok {
+				continue
+			}
+			if blockTs > fileObjectTs {
+				// block always creates before the file object, so this link is the context
+				continue
+			}
 			return &contextInfo{
 				contextId: link.objectId,
 				blockId:   link.blockId,

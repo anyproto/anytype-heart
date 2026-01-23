@@ -17,6 +17,10 @@ func TestContextMigrationService_buildIncomingLinksMap(t *testing.T) {
 
 	service := &contextMigrationService{}
 
+	// Use a large timestamp so block timestamp comparisons pass
+	// (block must be created before file for context to be valid)
+	var largeTs int64 = 9999999999
+
 	t.Run("empty map for no links", func(t *testing.T) {
 		incomingLinksMap := make(map[string][]incomingLinkInfo)
 
@@ -24,7 +28,7 @@ func TestContextMigrationService_buildIncomingLinksMap(t *testing.T) {
 		fileId := "file1"
 
 		// Find creation context
-		context := service.findCreationContext(fileId, incomingLinksMap)
+		context := service.findCreationContext(largeTs, fileId, incomingLinksMap)
 
 		// Assert
 		assert.Nil(t, context)
@@ -34,7 +38,8 @@ func TestContextMigrationService_buildIncomingLinksMap(t *testing.T) {
 		fileId := "file1"
 		pageId := "page1"
 		taskId := "task1"
-		blockId := "block1"
+		// Valid BSON ObjectId format (24 hex chars, first 8 are timestamp)
+		blockId := "507f1f77bcf86cd799439011"
 
 		incomingLinksMap := map[string][]incomingLinkInfo{
 			fileId: {
@@ -53,7 +58,7 @@ func TestContextMigrationService_buildIncomingLinksMap(t *testing.T) {
 		}
 
 		// Find creation context
-		context := service.findCreationContext(fileId, incomingLinksMap)
+		context := service.findCreationContext(largeTs, fileId, incomingLinksMap)
 
 		// Assert
 		require.NotNil(t, context)
@@ -80,7 +85,7 @@ func TestContextMigrationService_buildIncomingLinksMap(t *testing.T) {
 		}
 
 		// Find creation context
-		context := service.findCreationContext(fileId, incomingLinksMap)
+		context := service.findCreationContext(largeTs, fileId, incomingLinksMap)
 
 		// Assert - should pick first after sorting by relationKey
 		require.NotNil(t, context)
@@ -102,7 +107,7 @@ func TestContextMigrationService_buildIncomingLinksMap(t *testing.T) {
 		}
 
 		// Find creation context
-		context := service.findCreationContext(fileId, incomingLinksMap)
+		context := service.findCreationContext(largeTs, fileId, incomingLinksMap)
 
 		// Assert
 		require.NotNil(t, context)
