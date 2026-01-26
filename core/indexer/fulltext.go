@@ -18,13 +18,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor"
-	smartblock2 "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -136,7 +137,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				return nil, 0, ctx.Err()
 			default:
 			}
-			objDocs, err := i.prepareSearchDocs(ctx, object)
+			objDocs, isChat, err := i.prepareSearchDocs(ctx, object)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					return nil, 0, err
@@ -153,8 +154,10 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				}
 			}
 
-			// TODO: modify for chat messages
-			objDocs, removedDocIds, err := i.filterOutNotChangedDocuments(object.ObjectId, objDocs)
+			removedDocIds := make([]string, len(object.DeletedMsgIds))
+			if !isChat {
+				objDocs, removedDocIds, err = i.filterOutNotChangedDocuments(object.ObjectId, objDocs)
+			}
 
 			// Add deleted message IDs from the queue to the removal list
 			if len(object.DeletedMsgIds) > 0 {
@@ -262,7 +265,7 @@ var filesLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_pdf:   {},
 }
 
-func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
+func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.FullTextQueuedObject) (docs []ftsearch.SearchDoc, isChat bool, err error) {
 	// shortcut for deleted objects via objectstore
 	// otherwise we can have race condition when object is marked as deleted but the tree is not yet deleted
 	details, err := i.store.SpaceIndex(object.SpaceId).GetDetails(object.ObjectId)
@@ -278,15 +281,17 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.Full
 	if object.OrderId != "" || len(object.DeletedMsgIds) > 0 {
 		docs, err = i.prepareChatSearchDocs(ctx, object)
 		if err != nil {
-			return nil, err
+			return nil, true, err
 		}
-		return docs, nil
+		return docs, true, nil
 	}
 
 	var fulltextSkipped bool
 
-	err = cache.DoContext(i.picker, ctx, object.ObjectId, func(sb smartblock2.SmartBlock) error {
-		fulltext, _, _ := sb.Type().Indexable()
+	err = cache.DoContext(i.picker, ctx, object.ObjectId, func(sb smartblock.SmartBlock) error {
+		sbType := sb.Type()
+		isChat = sbType == coresb.SmartBlockTypeChatDerivedObject
+		fulltext, _, _ := sbType.Indexable()
 		if !fulltext {
 			fulltextSkipped = true
 			return nil
@@ -375,10 +380,10 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.Full
 		// todo: this should be removed. objects which is not supposed to be added to fulltext index should not be added to the queue
 		// but now it happens in the ftInit that some objects still can be added to the queue
 		// we need to avoid TryRemoveFromCache in this case
-		return docs, nil
+		return docs, isChat, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, isChat, err
 	}
 	_, cacheErr := i.picker.TryRemoveFromCache(ctx, object.ObjectId)
 	if cacheErr != nil &&
@@ -386,7 +391,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.Full
 		log.With("objectId", object.FullId()).Errorf("object cache remove: %v", err)
 	}
 
-	return docs, nil
+	return docs, isChat, nil
 }
 
 func (i *indexer) prepareChatSearchDocs(ctx context.Context, object objectstore.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
@@ -396,10 +401,13 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object objectstore.
 	}
 
 	var msgs []*chatmodel.Message
-	if object.OrderId == objectstore.FtAllOrderId {
+	switch object.OrderId {
+	case objectstore.FtAllOrderId:
 		// TODO: add batch messages fetch by limits
 		msgs, err = repository.GetMessages(ctx, chatrepository.GetMessagesRequest{})
-	} else {
+	case "":
+		return nil, nil // no new search docs should be added
+	default:
 		msgs, err = repository.GetMessagesForIndexing(ctx, object.OrderId)
 	}
 
