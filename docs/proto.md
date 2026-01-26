@@ -1291,6 +1291,10 @@
     - [Rpc.Space.Delete.Request](#anytype-Rpc-Space-Delete-Request)
     - [Rpc.Space.Delete.Response](#anytype-Rpc-Space-Delete-Response)
     - [Rpc.Space.Delete.Response.Error](#anytype-Rpc-Space-Delete-Response-Error)
+    - [Rpc.Space.DeleteCorruptedBackup](#anytype-Rpc-Space-DeleteCorruptedBackup)
+    - [Rpc.Space.DeleteCorruptedBackup.Request](#anytype-Rpc-Space-DeleteCorruptedBackup-Request)
+    - [Rpc.Space.DeleteCorruptedBackup.Response](#anytype-Rpc-Space-DeleteCorruptedBackup-Response)
+    - [Rpc.Space.DeleteCorruptedBackup.Response.Error](#anytype-Rpc-Space-DeleteCorruptedBackup-Response-Error)
     - [Rpc.Space.InviteChange](#anytype-Rpc-Space-InviteChange)
     - [Rpc.Space.InviteChange.Request](#anytype-Rpc-Space-InviteChange-Request)
     - [Rpc.Space.InviteChange.Response](#anytype-Rpc-Space-InviteChange-Response)
@@ -1758,6 +1762,7 @@
     - [Rpc.Relation.Option.SetOrder.Response.Error.Code](#anytype-Rpc-Relation-Option-SetOrder-Response-Error-Code)
     - [Rpc.Relation.Options.Response.Error.Code](#anytype-Rpc-Relation-Options-Response-Error-Code)
     - [Rpc.Space.Delete.Response.Error.Code](#anytype-Rpc-Space-Delete-Response-Error-Code)
+    - [Rpc.Space.DeleteCorruptedBackup.Response.Error.Code](#anytype-Rpc-Space-DeleteCorruptedBackup-Response-Error-Code)
     - [Rpc.Space.InviteChange.Response.Error.Code](#anytype-Rpc-Space-InviteChange-Response-Error-Code)
     - [Rpc.Space.InviteGenerate.Response.Error.Code](#anytype-Rpc-Space-InviteGenerate-Response-Error-Code)
     - [Rpc.Space.InviteGetCurrent.Response.Error.Code](#anytype-Rpc-Space-InviteGetCurrent-Response-Error-Code)
@@ -2301,6 +2306,7 @@
 | SpaceParticipantPermissionsChange | [Rpc.Space.ParticipantPermissionsChange.Request](#anytype-Rpc-Space-ParticipantPermissionsChange-Request) | [Rpc.Space.ParticipantPermissionsChange.Response](#anytype-Rpc-Space-ParticipantPermissionsChange-Response) |  |
 | SpaceSetOrder | [Rpc.Space.SetOrder.Request](#anytype-Rpc-Space-SetOrder-Request) | [Rpc.Space.SetOrder.Response](#anytype-Rpc-Space-SetOrder-Response) |  |
 | SpaceUnsetOrder | [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request) | [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response) |  |
+| SpaceDeleteCorruptedBackup | [Rpc.Space.DeleteCorruptedBackup.Request](#anytype-Rpc-Space-DeleteCorruptedBackup-Request) | [Rpc.Space.DeleteCorruptedBackup.Response](#anytype-Rpc-Space-DeleteCorruptedBackup-Response) |  |
 | PublishingCreate | [Rpc.Publishing.Create.Request](#anytype-Rpc-Publishing-Create-Request) | [Rpc.Publishing.Create.Response](#anytype-Rpc-Publishing-Create-Response) | Publishing *** |
 | PublishingRemove | [Rpc.Publishing.Remove.Request](#anytype-Rpc-Publishing-Remove-Request) | [Rpc.Publishing.Remove.Response](#anytype-Rpc-Publishing-Remove-Response) |  |
 | PublishingList | [Rpc.Publishing.List.Request](#anytype-Rpc-Publishing-List-Request) | [Rpc.Publishing.List.Response](#anytype-Rpc-Publishing-List-Response) |  |
@@ -21281,6 +21287,62 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-DeleteCorruptedBackup"></a>
+
+### Rpc.Space.DeleteCorruptedBackup
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-DeleteCorruptedBackup-Request"></a>
+
+### Rpc.Space.DeleteCorruptedBackup.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| backupPath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-DeleteCorruptedBackup-Response"></a>
+
+### Rpc.Space.DeleteCorruptedBackup.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.DeleteCorruptedBackup.Response.Error](#anytype-Rpc-Space-DeleteCorruptedBackup-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-DeleteCorruptedBackup-Response-Error"></a>
+
+### Rpc.Space.DeleteCorruptedBackup.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.DeleteCorruptedBackup.Response.Error.Code](#anytype-Rpc-Space-DeleteCorruptedBackup-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-InviteChange"></a>
 
 ### Rpc.Space.InviteChange
@@ -23353,6 +23415,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Workspace.Open.Response.Error](#anytype-Rpc-Workspace-Open-Response-Error) |  |  |
 | info | [model.Account.Info](#anytype-model-Account-Info) |  |  |
+| corruptedBackupPaths | [string](#string) | repeated | backup paths for corrupted space storage |
 
 
 
@@ -27846,6 +27909,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NOT_SHAREABLE | 105 |  |
+
+
+
+<a name="anytype-Rpc-Space-DeleteCorruptedBackup-Response-Error-Code"></a>
+
+### Rpc.Space.DeleteCorruptedBackup.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
