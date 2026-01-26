@@ -878,6 +878,10 @@
     - [Rpc.MembershipV2.GetStatus.Request](#anytype-Rpc-MembershipV2-GetStatus-Request)
     - [Rpc.MembershipV2.GetStatus.Response](#anytype-Rpc-MembershipV2-GetStatus-Response)
     - [Rpc.MembershipV2.GetStatus.Response.Error](#anytype-Rpc-MembershipV2-GetStatus-Response-Error)
+    - [Rpc.MembershipV2.SubscribeToUpdates](#anytype-Rpc-MembershipV2-SubscribeToUpdates)
+    - [Rpc.MembershipV2.SubscribeToUpdates.Request](#anytype-Rpc-MembershipV2-SubscribeToUpdates-Request)
+    - [Rpc.MembershipV2.SubscribeToUpdates.Response](#anytype-Rpc-MembershipV2-SubscribeToUpdates-Response)
+    - [Rpc.MembershipV2.SubscribeToUpdates.Response.Error](#anytype-Rpc-MembershipV2-SubscribeToUpdates-Response-Error)
     - [Rpc.NameService](#anytype-Rpc-NameService)
     - [Rpc.NameService.ResolveAnyId](#anytype-Rpc-NameService-ResolveAnyId)
     - [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request)
@@ -1653,6 +1657,7 @@
     - [Rpc.MembershipV2.GetPortalLink.Response.Error.Code](#anytype-Rpc-MembershipV2-GetPortalLink-Response-Error-Code)
     - [Rpc.MembershipV2.GetProducts.Response.Error.Code](#anytype-Rpc-MembershipV2-GetProducts-Response-Error-Code)
     - [Rpc.MembershipV2.GetStatus.Response.Error.Code](#anytype-Rpc-MembershipV2-GetStatus-Response-Error-Code)
+    - [Rpc.MembershipV2.SubscribeToUpdates.Response.Error.Code](#anytype-Rpc-MembershipV2-SubscribeToUpdates-Response-Error-Code)
     - [Rpc.NameService.ResolveAnyId.Response.Error.Code](#anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code)
     - [Rpc.NameService.ResolveName.Response.Error.Code](#anytype-Rpc-NameService-ResolveName-Response-Error-Code)
     - [Rpc.NameService.ResolveSpaceId.Response.Error.Code](#anytype-Rpc-NameService-ResolveSpaceId-Response-Error-Code)
@@ -2200,6 +2205,7 @@
     - [MembershipTierData.PeriodType](#anytype-model-MembershipTierData-PeriodType)
     - [MembershipV2.PaymentProvider](#anytype-model-MembershipV2-PaymentProvider)
     - [MembershipV2.Period](#anytype-model-MembershipV2-Period)
+    - [MembershipV2.Platform](#anytype-model-MembershipV2-Platform)
     - [MembershipV2.ProductStatus.Status](#anytype-model-MembershipV2-ProductStatus-Status)
     - [NameserviceNameType](#anytype-model-NameserviceNameType)
     - [Notification.ActionType](#anytype-model-Notification-ActionType)
@@ -2534,6 +2540,7 @@
 | MembershipV2AnyNameAllocate | [Rpc.MembershipV2.AnyNameAllocate.Request](#anytype-Rpc-MembershipV2-AnyNameAllocate-Request) | [Rpc.MembershipV2.AnyNameAllocate.Response](#anytype-Rpc-MembershipV2-AnyNameAllocate-Response) |  |
 | MembershipV2CartGet | [Rpc.MembershipV2.CartGet.Request](#anytype-Rpc-MembershipV2-CartGet-Request) | [Rpc.MembershipV2.CartGet.Response](#anytype-Rpc-MembershipV2-CartGet-Response) |  |
 | MembershipV2CartUpdate | [Rpc.MembershipV2.CartUpdate.Request](#anytype-Rpc-MembershipV2-CartUpdate-Request) | [Rpc.MembershipV2.CartUpdate.Response](#anytype-Rpc-MembershipV2-CartUpdate-Response) |  |
+| MembershipV2SubscribeToUpdates | [Rpc.MembershipV2.SubscribeToUpdates.Request](#anytype-Rpc-MembershipV2-SubscribeToUpdates-Request) | [Rpc.MembershipV2.SubscribeToUpdates.Response](#anytype-Rpc-MembershipV2-SubscribeToUpdates-Response) |  |
 | NameServiceUserAccountGet | [Rpc.NameService.UserAccount.Get.Request](#anytype-Rpc-NameService-UserAccount-Get-Request) | [Rpc.NameService.UserAccount.Get.Response](#anytype-Rpc-NameService-UserAccount-Get-Response) | Name Service: *** hello.any -&gt; data |
 | NameServiceResolveName | [Rpc.NameService.ResolveName.Request](#anytype-Rpc-NameService-ResolveName-Request) | [Rpc.NameService.ResolveName.Response](#anytype-Rpc-NameService-ResolveName-Response) |  |
 | NameServiceResolveAnyId | [Rpc.NameService.ResolveAnyId.Request](#anytype-Rpc-NameService-ResolveAnyId-Request) | [Rpc.NameService.ResolveAnyId.Response](#anytype-Rpc-NameService-ResolveAnyId-Response) | 12D3KooWA8EXV3KjBxEU5EnsPfneLx84vMWAtTBQBeyooN82KSuS -&gt; hello.any |
@@ -15247,6 +15254,65 @@ before requesting a payment link and paying
 
 
 
+<a name="anytype-Rpc-MembershipV2-SubscribeToUpdates"></a>
+
+### Rpc.MembershipV2.SubscribeToUpdates
+
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-SubscribeToUpdates-Request"></a>
+
+### Rpc.MembershipV2.SubscribeToUpdates.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| email | [string](#string) |  |  |
+| platform | [model.MembershipV2.Platform](#anytype-model-MembershipV2-Platform) |  |  |
+| subscribe | [bool](#bool) |  | if false - unsubscribe |
+| context | [string](#string) |  | additional data |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-SubscribeToUpdates-Response"></a>
+
+### Rpc.MembershipV2.SubscribeToUpdates.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MembershipV2.SubscribeToUpdates.Response.Error](#anytype-Rpc-MembershipV2-SubscribeToUpdates-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-MembershipV2-SubscribeToUpdates-Response-Error"></a>
+
+### Rpc.MembershipV2.SubscribeToUpdates.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MembershipV2.SubscribeToUpdates.Response.Error.Code](#anytype-Rpc-MembershipV2-SubscribeToUpdates-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-NameService"></a>
 
 ### Rpc.NameService
@@ -26432,6 +26498,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-MembershipV2-SubscribeToUpdates-Response-Error-Code"></a>
+
+### Rpc.MembershipV2.SubscribeToUpdates.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| CAN_NOT_CONNECT | 3 |  |
+| PLATFORM_NOT_SUPPORTED | 4 |  |
+
+
+
 <a name="anytype-Rpc-NameService-ResolveAnyId-Response-Error-Code"></a>
 
 ### Rpc.NameService.ResolveAnyId.Response.Error.Code
@@ -34978,6 +35059,21 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Monthly | 1 |  |
 | Yearly | 2 |  |
 | ThreeYears | 3 |  |
+
+
+
+<a name="anytype-model-MembershipV2-Platform"></a>
+
+### MembershipV2.Platform
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unknown | 0 |  |
+| Desktop | 1 |  |
+| MobileIOS | 2 |  |
+| MobileAndroid | 3 |  |
+| Web | 4 |  |
 
 
 

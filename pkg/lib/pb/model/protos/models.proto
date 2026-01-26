@@ -1423,6 +1423,14 @@ message MembershipV2 {
         int64 amountCents = 2;
     }
 
+    enum Platform {
+        Unknown = 0;
+        Desktop = 1;
+        MobileIOS = 2;
+        MobileAndroid = 3;
+        Web = 4;
+    }
+
     enum PaymentProvider {
         None = 0;
         Stripe = 1;
