@@ -68,6 +68,7 @@ type IndexerStore interface {
 	AddToIndexQueue(ctx context.Context, id ...domain.FullID) error
 	AddChatMessageToIndexQueue(ctx context.Context, chatId domain.FullID, orderId string) error
 	AddChatMessageDeleteToIndexQueue(ctx context.Context, chatId domain.FullID, messageId string) error
+	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]FullTextQueuedObject, error)
 	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
 
 	// ClearFullTextQueue cleans the pending . Pass nil to clear all spaces.

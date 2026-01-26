@@ -453,7 +453,7 @@ func TestQuery(t *testing.T) {
 				Sorts: []database.SortRequest{
 					{
 						RelationKey: bundle.RelationKeyId,
-						Type:        model.BlockContentDataviewSort_Asc,
+						Type:        model.SearchOrder_Asc,
 					},
 				},
 			})
@@ -658,7 +658,7 @@ func TestQuery(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyName,
-					Type:        model.BlockContentDataviewSort_Asc,
+					Type:        model.SearchOrder_Asc,
 				},
 			},
 		})
@@ -682,7 +682,7 @@ func TestQuery(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyName,
-					Type:        model.BlockContentDataviewSort_Desc,
+					Type:        model.SearchOrder_Desc,
 				},
 			},
 		})
@@ -707,11 +707,11 @@ func TestQuery(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyDescription,
-					Type:        model.BlockContentDataviewSort_Desc,
+					Type:        model.SearchOrder_Desc,
 				},
 				{
 					RelationKey: bundle.RelationKeyName,
-					Type:        model.BlockContentDataviewSort_Asc,
+					Type:        model.SearchOrder_Asc,
 				},
 			},
 		})
@@ -739,7 +739,7 @@ func TestQuery(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyName,
-					Type:        model.BlockContentDataviewSort_Desc,
+					Type:        model.SearchOrder_Desc,
 				},
 			},
 			Offset: 10,
@@ -773,7 +773,7 @@ func TestQuery(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyName,
-					Type:        model.BlockContentDataviewSort_Asc,
+					Type:        model.SearchOrder_Asc,
 				},
 			},
 			Limit: 15,
@@ -808,7 +808,7 @@ func TestQuery(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyName,
-					Type:        model.BlockContentDataviewSort_Asc,
+					Type:        model.SearchOrder_Asc,
 				},
 			},
 			Limit:  limit,
@@ -859,7 +859,7 @@ func TestQuery(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey: bundle.RelationKeyId,
-					Type:        model.BlockContentDataviewSort_Asc,
+					Type:        model.SearchOrder_Asc,
 				},
 			},
 			Limit:  limit,

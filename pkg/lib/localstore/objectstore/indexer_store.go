@@ -203,7 +203,7 @@ func (s *dsObjectStore) AddChatMessageDeleteToIndexQueue(ctx context.Context, ch
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limit uint, processIds FullTextProcessFunc) error {
 	for {
-		ids, err := s.listIdsFromFullTextQueue(spaceIds(), limit)
+		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
 			return fmt.Errorf("list ids from fulltext queue: %w", err)
 		}
@@ -226,7 +226,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limi
 	}
 }
 
-func (s *dsObjectStore) listIdsFromFullTextQueue(spaceIds []string, limit uint) ([]FullTextQueuedObject, error) {
+func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]FullTextQueuedObject, error) {
 	if len(spaceIds) == 0 {
 		return nil, fmt.Errorf("at least one space must be provided")
 	}

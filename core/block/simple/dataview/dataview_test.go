@@ -195,7 +195,7 @@ func getDataview() *Dataview {
 			}},
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
+				Type:        model.SearchOrder_Desc,
 			}},
 		}, {
 			Filters: []*model.BlockContentDataviewFilter{{
@@ -209,7 +209,7 @@ func getDataview() *Dataview {
 			}},
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey: bundle.RelationKeyLastOpenedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
+				Type:        model.SearchOrder_Desc,
 			}},
 		}},
 	}}

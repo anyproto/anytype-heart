@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -59,6 +60,30 @@ func (s *accountServiceDummy) Name() string {
 func (s *accountServiceDummy) Init(a *app.App) error {
 	return nil
 }
+
+type ftSearchDummy struct {
+}
+
+func (s *ftSearchDummy) Index(d ftsearch.SearchDoc) (err error) { return nil }
+func (s *ftSearchDummy) NewAutoBatcher() ftsearch.AutoBatcher   { return nil }
+func (s *ftSearchDummy) BatchDeleteObjects(ids []string) (err error) {
+	return nil
+}
+func (s *ftSearchDummy) Search(spaceId string, query string) (results []*ftsearch.DocumentMatch, err error) {
+	return nil, nil
+}
+func (s *ftSearchDummy) NamePrefixSearch(spaceId string, query string) (results []*ftsearch.DocumentMatch, err error) {
+	return nil, nil
+}
+func (s *ftSearchDummy) Iterate(objectId string, fields []string, shouldContinue func(doc *ftsearch.SearchDoc) bool) (err error) {
+	return nil
+}
+func (s *ftSearchDummy) DocCount() (uint64, error)  { return 0, nil }
+func (s *ftSearchDummy) LastDbState() (uint64, error) { return 0, nil }
+func (s *ftSearchDummy) Name() string               { return "ftSearchDummy" }
+func (s *ftSearchDummy) Init(a *app.App) error      { return nil }
+func (s *ftSearchDummy) Run(ctx context.Context) error { return nil }
+func (s *ftSearchDummy) Close(ctx context.Context) error { return nil }
 
 type actionType int
 
@@ -140,6 +165,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(&pushServiceDummy{})
 	a.Register(&accountServiceDummy{})
+	a.Register(&ftSearchDummy{})
 	a.Register(fx)
 
 	fx.app = a

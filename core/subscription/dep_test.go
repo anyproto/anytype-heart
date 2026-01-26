@@ -63,7 +63,7 @@ func buildTasksReq() SubscribeRequest {
 		}},
 		Sorts: []database.SortRequest{{
 			RelationKey: bundle.RelationKeyAssignee,
-			Type:        model.BlockContentDataviewSort_Asc,
+			Type:        model.SearchOrder_Asc,
 		}},
 		Keys: []string{
 			bundle.RelationKeyId.String(),
@@ -250,7 +250,7 @@ func TestReorderIntegration(t *testing.T) {
 		req := buildTasksReq()
 		req.Sorts = []database.SortRequest{{
 			RelationKey: bundle.RelationKeyName,
-			Type:        model.BlockContentDataviewSort_Asc,
+			Type:        model.SearchOrder_Asc,
 		}}
 		resp, err := f.Search(req)
 
@@ -311,10 +311,10 @@ func TestDependencyService_EnregisterObjectSorts(t *testing.T) {
 		})
 
 		sorts := []database.SortRequest{
-			{RelationKey: "status", Type: model.BlockContentDataviewSort_Asc, Format: model.RelationFormat_status},
-			{RelationKey: "tag", Type: model.BlockContentDataviewSort_Asc, Format: model.RelationFormat_tag},
-			{RelationKey: "assignee", Type: model.BlockContentDataviewSort_Asc, Format: model.RelationFormat_object},
-			{RelationKey: "name", Type: model.BlockContentDataviewSort_Asc, Format: model.RelationFormat_shorttext}, // non-object relation
+			{RelationKey: "status", Type: model.SearchOrder_Asc, Format: model.RelationFormat_status},
+			{RelationKey: "tag", Type: model.SearchOrder_Asc, Format: model.RelationFormat_tag},
+			{RelationKey: "assignee", Type: model.SearchOrder_Asc, Format: model.RelationFormat_object},
+			{RelationKey: "name", Type: model.SearchOrder_Asc, Format: model.RelationFormat_shorttext}, // non-object relation
 		}
 
 		fx.ds.registerObjectSorts("sub1", sorts)
@@ -341,8 +341,8 @@ func TestDependencyService_EnregisterObjectSorts(t *testing.T) {
 		fx := newSSFixture(t)
 
 		sorts := []database.SortRequest{
-			{RelationKey: "name", Type: model.BlockContentDataviewSort_Asc},
-			{RelationKey: "description", Type: model.BlockContentDataviewSort_Asc},
+			{RelationKey: "name", Type: model.SearchOrder_Asc},
+			{RelationKey: "description", Type: model.SearchOrder_Asc},
 		}
 
 		fx.ds.registerObjectSorts("sub1", sorts)

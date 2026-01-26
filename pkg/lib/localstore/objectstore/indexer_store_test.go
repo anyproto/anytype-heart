@@ -121,20 +121,23 @@ func TestIndexerBatch(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "one", SpaceID: "id1"}))
 		require.NoError(t, s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "two", SpaceID: "id1"}))
 		require.NoError(t, s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "three", SpaceID: "id1"}))
-		var batches [][]domain.FullID
+		var batches [][]FullTextQueuedObject
 		err := s.BatchProcessFullTextQueue(
-			context.Background(),
 			func() []string { return []string{"id1"} },
 			2,
-			func(ids []domain.FullID) ([]domain.FullID, uint64, error) {
+			func(ids []FullTextQueuedObject) ([]domain.FullID, uint64, error) {
 				batches = append(batches, ids)
-				return ids, 1, nil
+				fullIds := make([]domain.FullID, len(ids))
+				for i, id := range ids {
+					fullIds[i] = id.FullId()
+				}
+				return fullIds, 1, nil
 			})
 		require.NoError(t, err)
 		require.Len(t, batches, 2)
 
 		// Collect all processed IDs
-		var allProcessed []domain.FullID
+		var allProcessed []FullTextQueuedObject
 		for _, batch := range batches {
 			allProcessed = append(allProcessed, batch...)
 		}

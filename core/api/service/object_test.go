@@ -45,7 +45,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			},
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
+				Type:        model.SearchOrder_Desc,
 				IncludeTime: true,
 			}},
 		}).Return(&pb.RpcObjectSearchResponse{
@@ -153,7 +153,7 @@ func TestObjectService_ListObjects(t *testing.T) {
 			},
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
+				Type:        model.SearchOrder_Desc,
 				IncludeTime: true,
 			}},
 		}).Return(&pb.RpcObjectSearchResponse{

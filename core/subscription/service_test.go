@@ -417,7 +417,7 @@ func TestService_Search(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey: "name",
-					Type:        model.BlockContentDataviewSort_Desc,
+					Type:        model.SearchOrder_Desc,
 				},
 			},
 			Limit: 2,
@@ -486,7 +486,7 @@ func TestService_Search(t *testing.T) {
 			Sorts: []database.SortRequest{
 				{
 					RelationKey:    "name",
-					Type:           model.BlockContentDataviewSort_Asc,
+					Type:           model.SearchOrder_Asc,
 					EmptyPlacement: model.BlockContentDataviewSort_End,
 				},
 			},

@@ -102,7 +102,7 @@ func TestSearchService_GlobalSearch(t *testing.T) {
 			},
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
+				Type:        model.SearchOrder_Desc,
 				Format:      model.RelationFormat_date,
 				IncludeTime: true,
 			}},
@@ -277,7 +277,7 @@ func TestSearchService_Search(t *testing.T) {
 			},
 			Sorts: []*model.BlockContentDataviewSort{{
 				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
+				Type:        model.SearchOrder_Desc,
 				Format:      model.RelationFormat_date,
 				IncludeTime: true,
 			}},

@@ -34,7 +34,7 @@ func TestListService_GetListViews(t *testing.T) {
 			{
 				Id:          "sort-1",
 				RelationKey: "dummy-sort",
-				Type:        model.BlockContentDataviewSort_Asc,
+				Type:        model.SearchOrder_Asc,
 			},
 		}
 		filters := []*model.BlockContentDataviewFilter{
@@ -210,12 +210,12 @@ func TestListService_GetListViews(t *testing.T) {
 			{
 				Id:          "sort-1",
 				RelationKey: "dummy-sort",
-				Type:        model.BlockContentDataviewSort_Asc,
+				Type:        model.SearchOrder_Asc,
 			},
 			{
 				Id:          "sort-2",
 				RelationKey: "dummy-sort2",
-				Type:        model.BlockContentDataviewSort_Desc,
+				Type:        model.SearchOrder_Desc,
 			},
 		}
 		filters := []*model.BlockContentDataviewFilter{
@@ -280,7 +280,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 		sorts := []*model.BlockContentDataviewSort{
 			{
 				RelationKey: "dummy-sort",
-				Type:        model.BlockContentDataviewSort_Asc,
+				Type:        model.SearchOrder_Asc,
 			},
 		}
 		filters := []*model.BlockContentDataviewFilter{
@@ -469,7 +469,7 @@ func TestListService_GetObjectsInList(t *testing.T) {
 												Id:          "view_sort",
 												RelationKey: bundle.RelationKeyLastModifiedDate.String(),
 												Format:      model.RelationFormat_date,
-												Type:        model.BlockContentDataviewSort_Asc,
+												Type:        model.SearchOrder_Asc,
 											},
 										},
 										Filters: []*model.BlockContentDataviewFilter{
