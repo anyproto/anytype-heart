@@ -379,8 +379,8 @@ func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
 			toRune := byteToRuneIndex[toByte]
 
 			highlightRange := &model.Range{
-				From: int32(fromRune),
-				To:   int32(toRune),
+				From: int32(fromRune), //nolint:gosec
+				To:   int32(toRune),   //nolint:gosec
 			}
 			highlightRanges = append(highlightRanges, highlightRange)
 		}

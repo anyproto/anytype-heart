@@ -397,7 +397,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.Full
 func (i *indexer) prepareChatSearchDocs(ctx context.Context, object objectstore.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
 	repository, err := i.chatRepository.Repository(object.SpaceId, object.ObjectId)
 	if err != nil {
-		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get chat repository: %v", err)
+		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get chat repository: %w", err)
 	}
 
 	var msgs []*chatmodel.Message
@@ -412,7 +412,7 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object objectstore.
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get messages for indexing: %v", err)
+		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get messages for indexing: %w", err)
 	}
 
 	for _, msg := range msgs {

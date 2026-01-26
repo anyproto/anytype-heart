@@ -94,7 +94,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
-		_ = txn.Rollback()
+		_ = txn.Rollback() //nolint:errcheck
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
@@ -125,7 +125,7 @@ func (s *dsObjectStore) AddChatMessageToIndexQueue(ctx context.Context, chatId d
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
-		_ = txn.Rollback()
+		_ = txn.Rollback() //nolint:errcheck
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
@@ -166,7 +166,7 @@ func (s *dsObjectStore) AddChatMessageDeleteToIndexQueue(ctx context.Context, ch
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
-		_ = txn.Rollback()
+		_ = txn.Rollback() //nolint:errcheck
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
@@ -311,7 +311,7 @@ func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uin
 
 	arena := s.arenaPool.Get()
 	defer func() {
-		_ = txn.Rollback()
+		_ = txn.Rollback() //nolint:errcheck
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()

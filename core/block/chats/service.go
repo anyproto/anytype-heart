@@ -649,7 +649,7 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 
 	results := make([]*model.SearchMessageResult, 0, len(messages))
 	for _, message := range messages {
-		docMatch := ftResultsMap[message.ChatMessage.Id]
+		docMatch := ftResultsMap[message.Id]
 		ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
 		if err != nil {
 			return nil, err

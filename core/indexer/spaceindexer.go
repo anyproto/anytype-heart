@@ -182,7 +182,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 			}
 		}
 
-		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) && fulltext && i.fulltextEnabled {
+		if (!opts.SkipFullTextIfHeadsNotChanged || lastIndexedHash != headHashToIndex) && fulltext && i.fulltextEnabled {
 			// Use component's context because ctx from parameter contains transaction
 			if err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
 				log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
