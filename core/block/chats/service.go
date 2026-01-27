@@ -687,7 +687,7 @@ func getComparator(sorts []*model.SearchMessageSort) func(result *model.SearchMe
 			case model.SearchMessageSort_MODIFIED_AT:
 				cmp = int(a.Message.ModifiedAt - b.Message.ModifiedAt)
 			}
-			if sort.Type == model.SearchOrder_Desc {
+			if sort.Type == model.SearchMessageSort_Desc {
 				cmp = -cmp
 			}
 			if cmp != 0 {

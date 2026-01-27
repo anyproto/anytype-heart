@@ -6021,7 +6021,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // id of the context object
                 string columnId = 2;
-                anytype.model.Search.Order.Type type = 3;
+                anytype.model.Block.Content.Dataview.Sort.Type type = 3;
             }
 
             message Response {

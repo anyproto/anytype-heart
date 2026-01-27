@@ -78,7 +78,7 @@ func (s *service) setOptionOrderId(details *domain.Details, spc clientspace.Spac
 		},
 		Sorts: []database.SortRequest{{
 			RelationKey: bundle.RelationKeyOrderId,
-			Type:        model.SearchOrder_Asc,
+			Type:        model.BlockContentDataviewSort_Asc,
 			NoCollate:   true,
 		}},
 		Limit: 1,

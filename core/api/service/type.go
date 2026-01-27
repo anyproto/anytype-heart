@@ -51,7 +51,7 @@ func (s *Service) ListTypes(ctx context.Context, spaceId string, additionalFilte
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
-				Type:        model.SearchOrder_Asc,
+				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
 		Keys: []string{

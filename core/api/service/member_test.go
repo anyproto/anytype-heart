@@ -33,7 +33,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
-				Type:        model.SearchOrder_Asc,
+				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
 		Keys: []string{
@@ -65,7 +65,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
-				Type:        model.SearchOrder_Asc,
+				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
 		Keys: []string{

@@ -668,7 +668,7 @@ func (t *editor) Sort(s *state.State, req pb.RpcBlockTableSortRequest) error {
 		i++
 	}
 
-	if req.Type == model.SearchOrder_Asc {
+	if req.Type == model.BlockContentDataviewSort_Asc {
 		sort.Stable(sorter)
 	} else {
 		sort.Stable(sort.Reverse(sorter))

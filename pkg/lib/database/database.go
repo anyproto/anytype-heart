@@ -60,7 +60,7 @@ type FilterRequest struct {
 
 type SortRequest struct {
 	RelationKey    domain.RelationKey
-	Type           model.SearchOrderType
+	Type           model.BlockContentDataviewSortType
 	CustomOrder    []domain.Value
 	Format         model.RelationFormat
 	IncludeTime    bool
@@ -175,7 +175,7 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	}
 
 	if !hasScoreSort {
-		sorts = append([]SortRequest{{RelationKey: RecordScoreField, Type: model.SearchOrder_Desc}}, sorts...)
+		sorts = append([]SortRequest{{RelationKey: RecordScoreField, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
 	}
 
 	return sorts
@@ -275,7 +275,7 @@ func (b *queryBuilder) extractOrder(sorts []SortRequest) setOrder {
 
 func (b *queryBuilder) appendCustomOrder(sort SortRequest, orders setOrder, order *keyOrder) setOrder {
 	defer b.arena.Reset()
-	if sort.Type == model.SearchOrder_Custom && len(sort.CustomOrder) > 0 {
+	if sort.Type == model.BlockContentDataviewSort_Custom && len(sort.CustomOrder) > 0 {
 		idsIndices := make(map[string]int, len(sort.CustomOrder))
 		var idx int
 		for _, it := range sort.CustomOrder {

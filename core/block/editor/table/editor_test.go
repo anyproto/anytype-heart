@@ -1706,7 +1706,7 @@ func TestSort(t *testing.T) {
 				})),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Asc,
+				Type:     model.BlockContentDataviewSort_Asc,
 			},
 			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"},
 				[][]string{
@@ -1733,7 +1733,7 @@ func TestSort(t *testing.T) {
 				})),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Desc,
+				Type:     model.BlockContentDataviewSort_Desc,
 			},
 			want: mkTestTable([]string{"col1", "col2"}, []string{"row2", "row1", "row3"},
 				[][]string{
@@ -1768,7 +1768,7 @@ func TestSort(t *testing.T) {
 				})),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Asc,
+				Type:     model.BlockContentDataviewSort_Asc,
 			},
 			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row3", "row5", "row4", "row2"},
 				[][]string{
@@ -1811,7 +1811,7 @@ func TestSort(t *testing.T) {
 				})),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Desc,
+				Type:     model.BlockContentDataviewSort_Desc,
 			},
 			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row3", "row2", "row4", "row5"},
 				[][]string{
@@ -1846,7 +1846,7 @@ func TestSort(t *testing.T) {
 				})),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Asc,
+				Type:     model.BlockContentDataviewSort_Asc,
 			},
 			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"},
 				[][]string{
@@ -1875,7 +1875,7 @@ func TestSort(t *testing.T) {
 				})),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Asc,
+				Type:     model.BlockContentDataviewSort_Asc,
 			},
 			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row4", "row2"},
 				[][]string{
@@ -1905,7 +1905,7 @@ func TestSort(t *testing.T) {
 			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3", "row4", "row5"}, nil),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col3",
-				Type:     model.SearchOrder_Desc,
+				Type:     model.BlockContentDataviewSort_Desc,
 			},
 		},
 		{
@@ -1919,7 +1919,7 @@ func TestSort(t *testing.T) {
 				}),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Desc,
+				Type:     model.BlockContentDataviewSort_Desc,
 			},
 		},
 		{
@@ -1933,7 +1933,7 @@ func TestSort(t *testing.T) {
 				}),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Asc,
+				Type:     model.BlockContentDataviewSort_Asc,
 			},
 		},
 		{
@@ -1947,7 +1947,7 @@ func TestSort(t *testing.T) {
 				}),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Asc,
+				Type:     model.BlockContentDataviewSort_Asc,
 			},
 		},
 		{
@@ -1961,7 +1961,7 @@ func TestSort(t *testing.T) {
 				}),
 			req: pb.RpcBlockTableSortRequest{
 				ColumnId: "col2",
-				Type:     model.SearchOrder_Asc,
+				Type:     model.BlockContentDataviewSort_Asc,
 			},
 		},
 	} {

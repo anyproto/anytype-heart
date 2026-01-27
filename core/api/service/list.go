@@ -78,7 +78,7 @@ func (s *Service) GetListViews(ctx context.Context, spaceId string, listId strin
 					Id:          srt.Id,
 					PropertyKey: srt.RelationKey,
 					Format:      RelationFormatToPropertyFormat[srt.Format],
-					SortType:    strcase.ToSnake(model.SearchOrderType_name[int32(srt.Type)]),
+					SortType:    strcase.ToSnake(model.BlockContentDataviewSortType_name[int32(srt.Type)]),
 				})
 			}
 			views = append(views, apimodel.View{

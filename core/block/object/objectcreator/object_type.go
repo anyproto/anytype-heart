@@ -172,7 +172,7 @@ func (s *service) setTypeOrderId(details *domain.Details, spc clientspace.Space)
 		},
 		Sorts: []database.SortRequest{{
 			RelationKey: bundle.RelationKeyOrderId,
-			Type:        model.SearchOrder_Asc,
+			Type:        model.BlockContentDataviewSort_Asc,
 			NoCollate:   true,
 		}},
 		Limit: 1,

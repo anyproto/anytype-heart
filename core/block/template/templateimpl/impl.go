@@ -159,7 +159,7 @@ func (s *service) queryTemplatesByType(spaceId, typeId string) ([]database.Recor
 		},
 		Sorts: []database.SortRequest{{
 			RelationKey: bundle.RelationKeyLastModifiedDate,
-			Type:        model.SearchOrder_Desc,
+			Type:        model.BlockContentDataviewSort_Desc,
 		}},
 	})
 }

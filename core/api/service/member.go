@@ -36,7 +36,7 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFil
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
-				Type:        model.SearchOrder_Asc,
+				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String(), bundle.RelationKeyIdentity.String(), bundle.RelationKeyGlobalName.String(), bundle.RelationKeyParticipantPermissions.String(), bundle.RelationKeyParticipantStatus.String()},
@@ -65,7 +65,7 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFil
 		Sorts: []*model.BlockContentDataviewSort{
 			{
 				RelationKey: bundle.RelationKeyName.String(),
-				Type:        model.SearchOrder_Asc,
+				Type:        model.BlockContentDataviewSort_Asc,
 			},
 		},
 		Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), bundle.RelationKeyIconEmoji.String(), bundle.RelationKeyIconImage.String(), bundle.RelationKeyIdentity.String(), bundle.RelationKeyGlobalName.String(), bundle.RelationKeyParticipantPermissions.String(), bundle.RelationKeyParticipantStatus.String()},

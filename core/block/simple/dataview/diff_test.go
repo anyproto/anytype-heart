@@ -598,7 +598,7 @@ func TestDiff(t *testing.T) {
 					{
 						Id:          "1",
 						RelationKey: "name",
-						Type:        model.SearchOrder_Desc,
+						Type:        model.BlockContentDataviewSort_Desc,
 						Format:      model.RelationFormat_longtext,
 						IncludeTime: false,
 					},
@@ -608,7 +608,7 @@ func TestDiff(t *testing.T) {
 		newSort := &model.BlockContentDataviewSort{
 			Id:          "1",
 			RelationKey: "name",
-			Type:        model.SearchOrder_Asc,
+			Type:        model.BlockContentDataviewSort_Asc,
 			Format:      model.RelationFormat_longtext,
 			IncludeTime: false,
 		}
@@ -656,7 +656,7 @@ func TestDiff(t *testing.T) {
 					{
 						Id:          "1",
 						RelationKey: "name",
-						Type:        model.SearchOrder_Desc,
+						Type:        model.BlockContentDataviewSort_Desc,
 						Format:      model.RelationFormat_longtext,
 						IncludeTime: false,
 					},
@@ -666,7 +666,7 @@ func TestDiff(t *testing.T) {
 		addedSort := &model.BlockContentDataviewSort{
 			Id:          "2",
 			RelationKey: "date",
-			Type:        model.SearchOrder_Asc,
+			Type:        model.BlockContentDataviewSort_Asc,
 			Format:      model.RelationFormat_date,
 			IncludeTime: false,
 		}
@@ -677,7 +677,7 @@ func TestDiff(t *testing.T) {
 					{
 						Id:          "1",
 						RelationKey: "name",
-						Type:        model.SearchOrder_Desc,
+						Type:        model.BlockContentDataviewSort_Desc,
 						Format:      model.RelationFormat_longtext,
 						IncludeTime: false,
 					},
@@ -723,7 +723,7 @@ func TestDiff(t *testing.T) {
 					{
 						Id:          "1",
 						RelationKey: "name",
-						Type:        model.SearchOrder_Desc,
+						Type:        model.BlockContentDataviewSort_Desc,
 						Format:      model.RelationFormat_longtext,
 						IncludeTime: false,
 					},

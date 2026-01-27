@@ -81,7 +81,7 @@ func TestMakeDataviewContentNew(t *testing.T) {
 						Sorts: []*model.BlockContentDataviewSort{
 							{
 								RelationKey: bundle.RelationKeyName.String(),
-								Type:        model.SearchOrder_Asc,
+								Type:        model.BlockContentDataviewSort_Asc,
 							},
 						},
 						Relations: makeDataviewRelations(defaultCollectionRelations, defaultVisibleRelations),
@@ -107,7 +107,7 @@ func TestMakeDataviewContentNew(t *testing.T) {
 						Sorts: []*model.BlockContentDataviewSort{
 							{
 								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-								Type:        model.SearchOrder_Desc,
+								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
 						Relations: makeDataviewRelations(append(defaultDataviewRelations, bundle.RelationKeyMentions, bundle.RelationKeyLinkedProjects, bundle.RelationKeyAssignee), defaultVisibleRelations),
@@ -129,7 +129,7 @@ func TestMakeDataviewContentNew(t *testing.T) {
 						Sorts: []*model.BlockContentDataviewSort{
 							{
 								RelationKey: bundle.RelationKeyLastMessageDate.String(),
-								Type:        model.SearchOrder_Desc,
+								Type:        model.BlockContentDataviewSort_Desc,
 								Format:      model.RelationFormat_date,
 								IncludeTime: true,
 							},
@@ -154,7 +154,7 @@ func TestMakeDataviewContentNew(t *testing.T) {
 						Sorts: []*model.BlockContentDataviewSort{
 							{
 								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-								Type:        model.SearchOrder_Desc,
+								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
 						Relations: makeDataviewRelations(
@@ -177,7 +177,7 @@ func TestMakeDataviewContentNew(t *testing.T) {
 						Sorts: []*model.BlockContentDataviewSort{
 							{
 								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-								Type:        model.SearchOrder_Desc,
+								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
 						Relations: makeDataviewRelations(defaultDataviewRelations, defaultVisibleRelations),
@@ -497,7 +497,7 @@ func TestMakeDataviewContent_WithOldContent(t *testing.T) {
 		assert.NotNil(t, result.Dataview.Views[0].Sorts)
 		assert.Len(t, result.Dataview.Views[0].Sorts, 1)
 		assert.Equal(t, bundle.RelationKeyLastModifiedDate.String(), result.Dataview.Views[0].Sorts[0].RelationKey)
-		assert.Equal(t, model.SearchOrder_Desc, result.Dataview.Views[0].Sorts[0].Type)
+		assert.Equal(t, model.BlockContentDataviewSort_Desc, result.Dataview.Views[0].Sorts[0].Type)
 	})
 
 	t.Run("clears default template and object type IDs", func(t *testing.T) {

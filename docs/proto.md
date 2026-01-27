@@ -2164,7 +2164,6 @@
     - [Search.Message.Result](#anytype-model-Search-Message-Result)
     - [Search.Message.Sort](#anytype-model-Search-Message-Sort)
     - [Search.Meta](#anytype-model-Search-Meta)
-    - [Search.Order](#anytype-model-Search-Order)
     - [Search.Result](#anytype-model-Search-Result)
     - [SmartBlockSnapshotBase](#anytype-model-SmartBlockSnapshotBase)
     - [SpaceObjectHeader](#anytype-model-SpaceObjectHeader)
@@ -2180,6 +2179,7 @@
     - [Block.Content.Dataview.Relation.FormulaType](#anytype-model-Block-Content-Dataview-Relation-FormulaType)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
+    - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
     - [Block.Content.Dataview.View.Type](#anytype-model-Block-Content-Dataview-View-Type)
     - [Block.Content.Div.Style](#anytype-model-Block-Content-Div-Style)
@@ -2228,7 +2228,7 @@
     - [Restrictions.DataviewRestriction](#anytype-model-Restrictions-DataviewRestriction)
     - [Restrictions.ObjectRestriction](#anytype-model-Restrictions-ObjectRestriction)
     - [Search.Message.Sort.Key](#anytype-model-Search-Message-Sort-Key)
-    - [Search.Order.Type](#anytype-model-Search-Order-Type)
+    - [Search.Message.Sort.Type](#anytype-model-Search-Message-Sort-Type)
     - [SmartBlockType](#anytype-model-SmartBlockType)
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
@@ -9753,7 +9753,7 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context object |
 | columnId | [string](#string) |  |  |
-| type | [model.Search.Order.Type](#anytype-model-Search-Order-Type) |  |  |
+| type | [model.Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
 
 
 
@@ -32743,7 +32743,7 @@ deprecated |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | RelationKey | [string](#string) |  |  |
-| type | [Search.Order.Type](#anytype-model-Search-Order-Type) |  |  |
+| type | [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type) |  |  |
 | customOrder | [google.protobuf.Value](#google-protobuf-Value) | repeated |  |
 | format | [RelationFormat](#anytype-model-RelationFormat) |  |  |
 | includeTime | [bool](#bool) |  |  |
@@ -34386,7 +34386,7 @@ stored |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [Search.Message.Sort.Key](#anytype-model-Search-Message-Sort-Key) |  |  |
-| type | [Search.Order.Type](#anytype-model-Search-Order-Type) |  |  |
+| type | [Search.Message.Sort.Type](#anytype-model-Search-Message-Sort-Type) |  |  |
 
 
 
@@ -34406,16 +34406,6 @@ stored |
 | blockId | [string](#string) |  | block id where the highlight has been found |
 | relationKey | [string](#string) |  | relation key of the block where the highlight has been found |
 | relationDetails | [google.protobuf.Struct](#google-protobuf-Struct) |  | contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails |
-
-
-
-
-
-
-<a name="anytype-model-Search-Order"></a>
-
-### Search.Order
-
 
 
 
@@ -34663,6 +34653,19 @@ stored |
 | NotSpecified | 0 |  |
 | Start | 1 |  |
 | End | 2 |  |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Sort-Type"></a>
+
+### Block.Content.Dataview.Sort.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Asc | 0 |  |
+| Desc | 1 |  |
+| Custom | 2 |  |
 
 
 
@@ -35439,16 +35442,15 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 
 
-<a name="anytype-model-Search-Order-Type"></a>
+<a name="anytype-model-Search-Message-Sort-Type"></a>
 
-### Search.Order.Type
+### Search.Message.Sort.Type
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Asc | 0 |  |
 | Desc | 1 |  |
-| Custom | 2 |  |
 
 
 
