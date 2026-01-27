@@ -582,15 +582,16 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 
 // checkFTQueueConsistency checks for objects that may have been added to headsState
 // but the FT queue wasn't flushed before crash. It compares the ftEnqueueCtr in headsState
-// against the persisted FT queue counter and re-adds any missing objects to the queue.
+// against the persisted FT queue counter (per-space) and re-adds any missing objects to the queue.
 func (i *indexer) checkFTQueueConsistency(ctx context.Context, store spaceindex.Store, spaceId string) {
-	ftQueueCounter, err := i.store.GetFTQueueCounter(ctx)
+	// Read THIS space's counter from commonDB
+	ftQueueCounter, err := i.store.GetFTQueueCounter(ctx, spaceId)
 	if err != nil {
 		log.With("space", spaceId).Warnf("get ft queue counter: %v", err)
 		return
 	}
 
-	// If counter is 0, this is either first run or no FT queue operations have happened yet
+	// If counter is 0, this is either first run for this space or no FT queue operations have happened yet
 	if ftQueueCounter == 0 {
 		return
 	}
@@ -613,6 +614,7 @@ func (i *indexer) checkFTQueueConsistency(ctx context.Context, store spaceindex.
 		toRequeue = append(toRequeue, domain.FullID{ObjectID: e.ObjectID, SpaceID: spaceId})
 	}
 
+	// Re-adding will update the per-space counter in commonDB
 	_, err = i.store.AddToIndexQueue(ctx, toRequeue...)
 	if err != nil {
 		log.With("space", spaceId).Errorf("re-add to ft queue: %v", err)

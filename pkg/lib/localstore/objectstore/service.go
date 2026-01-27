@@ -91,8 +91,8 @@ type IndexerStore interface {
 	// RunFTConsistencyCheck checks all objects in the object store against the FT index
 	// and enqueues missing ones for FT indexing
 	RunFTConsistencyCheck(ctx context.Context, fts ftsearch.FTSearch) (checked, enqueued int, err error)
-	// GetFTQueueCounter returns the last persisted FT queue counter for crash recovery
-	GetFTQueueCounter(ctx context.Context) (uint64, error)
+	// GetFTQueueCounter returns the last persisted FT queue counter for a specific space (crash recovery)
+	GetFTQueueCounter(ctx context.Context, spaceId string) (uint64, error)
 }
 
 type AccountStore interface {

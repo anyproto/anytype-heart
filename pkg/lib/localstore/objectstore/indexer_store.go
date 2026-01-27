@@ -22,9 +22,13 @@ import (
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
 
-const ftSequenceKey = "seq"                   // used to store the opstamp of the fulltext commit for specific object
-const ftRecheckKey = "_ft_recheck"            // used to save in
-const ftQueueCounterKey = "_ft_queue_counter" // global counter for FT queue consistency
+const ftSequenceKey = "seq"        // used to store the opstamp of the fulltext commit for specific object
+const ftRecheckKey = "_ft_recheck" // used to save in
+
+// ftQueueCounterKey returns the per-space key for FT queue consistency counter
+func ftQueueCounterKey(spaceId string) string {
+	return "_ft_queue_counter_" + spaceId
+}
 
 var emptyBuffer = make([]byte, 8)
 
@@ -152,10 +156,12 @@ func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ids ...d
 		}
 	}
 
-	// Save the counter atomically in the same transaction
+	// Save the counter atomically in the same transaction (per-space)
 	// This ensures the counter is only persisted if the queue entries are also persisted
+	// All objects in batch should be from the same space
+	spaceId := ids[0].SpaceID
 	counterObj := arena.NewObject()
-	counterObj.Set("id", arena.NewString(ftQueueCounterKey))
+	counterObj.Set("id", arena.NewString(ftQueueCounterKey(spaceId)))
 	counterObj.Set("counter", arena.NewNumberFloat64(float64(ftQueueCtr)))
 	err = s.indexerChecksums.UpsertOne(txn.Context(), counterObj)
 	if err != nil {
@@ -393,11 +399,11 @@ func (s *dsObjectStore) SetFTRecheckCounter(ctx context.Context, counter int32) 
 	return s.indexerChecksums.UpsertOne(ctx, obj)
 }
 
-// GetFTQueueCounter returns the last persisted FT queue counter.
+// GetFTQueueCounter returns the last persisted FT queue counter for a specific space.
 // Used during startup to detect objects that may have been added to headsState
 // but not to the FT queue due to a crash before common DB flush.
-func (s *dsObjectStore) GetFTQueueCounter(ctx context.Context) (uint64, error) {
-	doc, err := s.indexerChecksums.FindId(ctx, ftQueueCounterKey)
+func (s *dsObjectStore) GetFTQueueCounter(ctx context.Context, spaceId string) (uint64, error) {
+	doc, err := s.indexerChecksums.FindId(ctx, ftQueueCounterKey(spaceId))
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return 0, nil
 	}
