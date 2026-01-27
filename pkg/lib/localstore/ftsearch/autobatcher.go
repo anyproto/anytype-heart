@@ -137,9 +137,6 @@ func (f *ftSearch) ListAllObjectIds() (map[string]struct{}, error) {
 		return nil, fmt.Errorf("search all docs: %w", err)
 	}
 
-	parser := f.parserPool.Get()
-	defer f.parserPool.Put(parser)
-
 	objectIds := make(map[string]struct{})
 	for _, id := range results.Values {
 		if idx := strings.Index(id, "/"); idx > 0 {

@@ -390,7 +390,6 @@ func (s *dsObjectStore) GetFTRecheckCounter(ctx context.Context) (int32, error) 
 func (s *dsObjectStore) SetFTRecheckCounter(ctx context.Context, counter int32) error {
 	arena := s.arenaPool.Get()
 	defer func() {
-		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
 	obj := arena.NewObject()
