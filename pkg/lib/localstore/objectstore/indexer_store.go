@@ -17,22 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type FullTextQueuedObject struct {
-	ObjectId      string
-	SpaceId       string
-	OrderId       string
-	DeletedMsgIds []string
-}
-
-func (o *FullTextQueuedObject) FullId() domain.FullID {
-	return domain.FullID{
-		ObjectID: o.ObjectId,
-		SpaceID:  o.SpaceId,
-	}
-}
-
-type FullTextProcessFunc func(objects []FullTextQueuedObject) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)
-
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
 
@@ -201,7 +185,7 @@ func (s *dsObjectStore) AddChatMessageDeleteToIndexQueue(ctx context.Context, ch
 	return txn.Commit()
 }
 
-func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limit uint, processIds FullTextProcessFunc) error {
+func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limit uint, processIds domain.FullTextProcessFunc) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -226,7 +210,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limi
 	}
 }
 
-func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]FullTextQueuedObject, error) {
+func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullTextQueuedObject, error) {
 	if len(spaceIds) == 0 {
 		return nil, fmt.Errorf("at least one space must be provided")
 	}
@@ -245,7 +229,7 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 	}
 	defer iter.Close()
 
-	var objects []FullTextQueuedObject
+	var objects []domain.FullTextQueuedObject
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
@@ -259,7 +243,7 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 			}
 		}
 
-		objects = append(objects, FullTextQueuedObject{
+		objects = append(objects, domain.FullTextQueuedObject{
 			ObjectId:      doc.Value().GetString(idKey),
 			SpaceId:       doc.Value().GetString(spaceIdKey),
 			OrderId:       doc.Value().GetString(ftOrderIdKey),

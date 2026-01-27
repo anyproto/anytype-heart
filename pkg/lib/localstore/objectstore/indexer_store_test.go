@@ -56,7 +56,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 		ids, err := s.ListIdsFromFullTextQueue([]string{"id1"}, 0)
 		require.NoError(t, err)
 
-		assert.ElementsMatch(t, []domain.FullID{{ObjectID: "one", SpaceID: "id1"}, {ObjectID: "two", SpaceID: "id1"}}, ids)
+		assert.ElementsMatch(t, []domain.FullTextQueuedObject{{ObjectId: "one", SpaceId: "id1"}, {ObjectId: "two", SpaceId: "id1"}}, ids)
 	})
 
 	t.Run("reconcile", func(t *testing.T) {
@@ -121,11 +121,11 @@ func TestIndexerBatch(t *testing.T) {
 		require.NoError(t, s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "one", SpaceID: "id1"}))
 		require.NoError(t, s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "two", SpaceID: "id1"}))
 		require.NoError(t, s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "three", SpaceID: "id1"}))
-		var batches [][]FullTextQueuedObject
+		var batches [][]domain.FullTextQueuedObject
 		err := s.BatchProcessFullTextQueue(
 			func() []string { return []string{"id1"} },
 			2,
-			func(ids []FullTextQueuedObject) ([]domain.FullID, uint64, error) {
+			func(ids []domain.FullTextQueuedObject) ([]domain.FullID, uint64, error) {
 				batches = append(batches, ids)
 				fullIds := make([]domain.FullID, len(ids))
 				for i, id := range ids {
@@ -137,16 +137,16 @@ func TestIndexerBatch(t *testing.T) {
 		require.Len(t, batches, 2)
 
 		// Collect all processed IDs
-		var allProcessed []FullTextQueuedObject
+		var allProcessed []domain.FullTextQueuedObject
 		for _, batch := range batches {
 			allProcessed = append(allProcessed, batch...)
 		}
 
 		// Verify all items were processed
-		assert.ElementsMatch(t, []domain.FullID{
-			{ObjectID: "one", SpaceID: "id1"},
-			{ObjectID: "two", SpaceID: "id1"},
-			{ObjectID: "three", SpaceID: "id1"},
+		assert.ElementsMatch(t, []domain.FullTextQueuedObject{
+			{ObjectId: "one", SpaceId: "id1"},
+			{ObjectId: "two", SpaceId: "id1"},
+			{ObjectId: "three", SpaceId: "id1"},
 		}, allProcessed)
 
 		// Verify batch sizes

@@ -126,7 +126,7 @@ func (i *indexer) activeSpaces() []string {
 func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
 
-	var processQueuedObjects = func(objects []objectstore.FullTextQueuedObject) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
+	var processQueuedObjects = func(objects []domain.FullTextQueuedObject) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
 		if len(objects) == 0 {
 			return nil, 0, nil
 		}
@@ -265,7 +265,7 @@ var filesLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_pdf:   {},
 }
 
-func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.FullTextQueuedObject) (docs []ftsearch.SearchDoc, isChat bool, err error) {
+func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, isChat bool, err error) {
 	// shortcut for deleted objects via objectstore
 	// otherwise we can have race condition when object is marked as deleted but the tree is not yet deleted
 	details, err := i.store.SpaceIndex(object.SpaceId).GetDetails(object.ObjectId)
@@ -394,7 +394,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object objectstore.Full
 	return docs, isChat, nil
 }
 
-func (i *indexer) prepareChatSearchDocs(ctx context.Context, object objectstore.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
+func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
 	repository, err := i.chatRepository.Repository(object.SpaceId, object.ObjectId)
 	if err != nil {
 		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get chat repository: %w", err)

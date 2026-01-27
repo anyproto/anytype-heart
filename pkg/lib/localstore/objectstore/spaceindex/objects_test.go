@@ -290,7 +290,9 @@ func TestDeleteObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, hash)
 
-		// Note: listIdsFromFullTextQueue is now private, no public API to verify queue state
+		ids, err := s.fulltextQueue.ListIdsFromFullTextQueue([]string{spaceName}, 0)
+		require.NoError(t, err)
+		assert.Empty(t, ids)
 	})
 }
 

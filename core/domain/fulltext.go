@@ -98,3 +98,19 @@ func NewFromPath(path string) (ObjectPath, error) {
 	}
 	return ObjectPath{ObjectId: path}, fmt.Errorf("fts invalid path: %s", path)
 }
+
+type FullTextQueuedObject struct {
+	ObjectId      string
+	SpaceId       string
+	OrderId       string
+	DeletedMsgIds []string
+}
+
+func (o *FullTextQueuedObject) FullId() FullID {
+	return FullID{
+		ObjectID: o.ObjectId,
+		SpaceID:  o.SpaceId,
+	}
+}
+
+type FullTextProcessFunc func(objects []FullTextQueuedObject) (succeedIds []FullID, ftIndexSeq uint64, err error)
