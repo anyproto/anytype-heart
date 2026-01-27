@@ -33,29 +33,30 @@ func ftQueueCounterKey(spaceId string) string {
 var emptyBuffer = make([]byte, 8)
 
 // ftQueueCounter is a global atomic counter for FT queue operations
-// Format: unixTimestamp * 1000 + seqNum (000-999)
+// Format: unixTimestamp * 10000 + seqNum (0000-9999)
 var ftQueueCounter atomic.Uint64
 
-// generateFTQueueCounter returns next monotonic counter (unixTs*1000 + seqNum)
+// generateFTQueueCounter returns next monotonic counter (unixTs*10000 + seqNum)
 // Uses lock-free CAS loop for thread safety
+// IMPORTANT NOTE: WILL sleep in case of > 10000 ops/sec
 func generateFTQueueCounter() uint64 {
 	for {
 		current := ftQueueCounter.Load()
-		currentTs := int64(current / 1000)
-		currentSeq := current % 1000
+		currentTs := int64(current / 10000)
+		currentSeq := current % 10000
 
 		now := time.Now().Unix()
 		var newVal uint64
 
 		if now == currentTs {
-			if currentSeq >= 999 {
+			if currentSeq >= 9999 {
 				// Wait for next second
 				time.Sleep(time.Until(time.Unix(now+1, 0)))
 				continue // retry with new timestamp
 			}
 			newVal = current + 1
 		} else {
-			newVal = uint64(now) * 1000
+			newVal = uint64(now) * 10000
 		}
 
 		if ftQueueCounter.CompareAndSwap(current, newVal) {
@@ -180,7 +181,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
