@@ -403,7 +403,7 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	var msgs []*chatmodel.Message
 	switch object.OrderId {
 	case objectstore.FtAllOrderId:
-		// TODO: add batch messages fetch by limits
+		// TODO: GO-6758 add batch messages fetch by limits
 		msgs, err = repository.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 	case "":
 		return nil, nil // no new search docs should be added
