@@ -20,9 +20,7 @@ func (s *Service) AccountConfigUpdate(req *pb.RpcAccountConfigUpdateRequest) err
 	}
 
 	conf := s.app.MustComponent(config.CName).(*config.Config)
-	cfg := config.ConfigRequired{}
-	cfg.CustomFileStorePath = req.IPFSStorageAddr
-	err := config.WriteJsonConfig(conf.GetConfigPath(), cfg)
+	err := conf.SetCustomFileStorePath(req.IPFSStorageAddr)
 	if err != nil {
 		return errors.Join(ErrFailedToWriteConfig, err)
 	}
