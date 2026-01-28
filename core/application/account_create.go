@@ -106,7 +106,7 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 			return errors.Join(ErrFailedToCreateLocalRepo, err)
 		}
 		// Bootstrap config will later read this config with custom storage location
-		if err := config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: storePath}); err != nil {
+		if err := config.BootstrapPersistedConfig(configPath, config.PersistedConfig{CustomFileStorePath: storePath}); err != nil {
 			return errors.Join(ErrFailedToWriteConfig, err)
 		}
 	}

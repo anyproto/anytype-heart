@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -157,10 +156,9 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		gwAddr = "http://" + gwAddr
 	}
 
-	cfg := config.ConfigRequired{}
-	err = config.GetFileConfig(filepath.Join(s.wallet.RepoPath(), config.ConfigFileName), &cfg)
-	if err != nil || cfg.CustomFileStorePath == "" {
-		cfg.CustomFileStorePath = s.wallet.RepoPath()
+	customFileStorePath := s.config.CustomFileStorePath()
+	if customFileStorePath == "" {
+		customFileStorePath = s.wallet.RepoPath()
 	}
 
 	_, metadataKey, err := domain.DeriveAccountMetadata(s.Keys().SignKey)
@@ -177,7 +175,7 @@ func (s *service) GetInfo(ctx context.Context) (*model.AccountInfo, error) {
 		MarketplaceWorkspaceId: addr.AnytypeMarketplaceWorkspace,
 		DeviceId:               deviceId,
 		GatewayUrl:             gwAddr,
-		LocalStoragePath:       cfg.CustomFileStorePath,
+		LocalStoragePath:       customFileStorePath,
 		AnalyticsId:            analyticsId,
 		NetworkId:              s.getNetworkId(),
 		TechSpaceId:            s.spaceService.TechSpaceId(),

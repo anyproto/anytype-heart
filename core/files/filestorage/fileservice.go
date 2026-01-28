@@ -65,10 +65,7 @@ var _ fileblockstore.BlockStoreLocal = &fileStorage{}
 func (f *fileStorage) Init(a *app.App) (err error) {
 	cfg := app.MustComponent[*config.Config](a)
 	f.cfg = cfg
-	fileCfg, err := cfg.FSConfig()
-	if err != nil {
-		return fmt.Errorf("fail to get file config: %w", err)
-	}
+	fileCfg := cfg.FSConfig()
 
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)

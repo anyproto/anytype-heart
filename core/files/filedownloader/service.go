@@ -80,7 +80,7 @@ func (s *service) Init(a *app.App) error {
 }
 
 func (s *service) Run(ctx context.Context) error {
-	err := s.SetEnabled(s.config.AutoDownloadFiles, s.config.AutoDownloadFiles)
+	err := s.SetEnabled(s.config.AutoDownloadFiles(), s.config.AutoDownloadOnWifiOnly())
 	if err != nil {
 		log.Error("set enabled", zap.Error(err))
 	}
@@ -102,13 +102,7 @@ func (s *service) SetEnabled(enabled bool, wifiOnly bool) error {
 	s.setEnabled(enabled, wifiOnly)
 
 	// Write to the config file only if it's changed
-	if s.config.AutoDownloadFiles != enabled || s.config.AutoDownloadOnWifiOnly != wifiOnly {
-		cfgPart := config.ConfigAutoDownloadFiles{}
-		cfgPart.AutoDownloadFiles = enabled
-		cfgPart.AutoDownloadOnWifiOnly = wifiOnly
-		return config.WriteJsonConfig(s.config.GetConfigPath(), cfgPart)
-	}
-	return nil
+	return s.config.SetAutoDownloadSettings(enabled, wifiOnly)
 }
 
 func (s *service) setEnabled(enabled bool, wifiOnly bool) {
