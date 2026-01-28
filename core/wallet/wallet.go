@@ -2,8 +2,8 @@ package wallet
 
 import (
 	"crypto/ecdsa"
+	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -23,6 +23,8 @@ const (
 	CName         = accountservice.CName
 	keyFileDevice = "device.key"
 )
+
+var log = logging.Logger("wallet")
 
 type EthPrivateKey = *ecdsa.PrivateKey
 type EthAddress = common.Address
@@ -87,22 +89,13 @@ func (r *wallet) Init(a *app.App) (err error) {
 	if r.accountKey == nil {
 		return fmt.Errorf("no account key present")
 	}
-	var b []byte
 	if r.deviceKey == nil {
 		if r.deviceKeyPath == "" {
 			return fmt.Errorf("no path for device key")
 		}
-		b, err = ioutil.ReadFile(r.deviceKeyPath)
+		r.deviceKey, err = r.loadOrCreateDeviceKey()
 		if err != nil {
-			return fmt.Errorf("failed to read device keyfile: %w", err)
-		}
-		dec, err := r.accountKey.Decrypt(b)
-		if err != nil {
-			return fmt.Errorf("failed to decrypt device keyfile: %w", err)
-		}
-		r.deviceKey, err = crypto.UnmarshalEd25519PrivateKeyProto(dec)
-		if err != nil {
-			return fmt.Errorf("failed to unmarshall device keyfile: %w", err)
+			return err
 		}
 	}
 
@@ -120,6 +113,57 @@ func (r *wallet) Init(a *app.App) (err error) {
 
 	r.accountData = accountdata.New(r.deviceKey, r.accountKey)
 	return nil
+}
+
+// loadOrCreateDeviceKey attempts to load device key from file.
+// If the file is missing or corrupted, it generates a new device key and saves it.
+func (r *wallet) loadOrCreateDeviceKey() (crypto.PrivKey, error) {
+	deviceKey, err := r.loadDeviceKey()
+	if err == nil {
+		return deviceKey, nil
+	}
+
+	// Device key is missing or corrupted, generate a new one
+	if errors.Is(err, os.ErrNotExist) {
+		log.Warnf("device key not found, generating new one")
+	} else {
+		log.Warnf("device key corrupted, generating new one: %v", err)
+	}
+
+	deviceKey, _, err = crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate device key: %w", err)
+	}
+
+	if err := r.saveDeviceKey(deviceKey); err != nil {
+		return nil, fmt.Errorf("failed to save device key: %w", err)
+	}
+
+	return deviceKey, nil
+}
+
+func (r *wallet) loadDeviceKey() (crypto.PrivKey, error) {
+	b, err := os.ReadFile(r.deviceKeyPath)
+	if err != nil {
+		return nil, err
+	}
+	dec, err := r.accountKey.Decrypt(b)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decrypt device keyfile: %w", err)
+	}
+	return crypto.UnmarshalEd25519PrivateKeyProto(dec)
+}
+
+func (r *wallet) saveDeviceKey(deviceKey crypto.PrivKey) error {
+	proto, err := deviceKey.Marshall()
+	if err != nil {
+		return fmt.Errorf("failed to marshal device key: %w", err)
+	}
+	encProto, err := r.accountKey.GetPublic().Encrypt(proto)
+	if err != nil {
+		return fmt.Errorf("failed to encrypt device key: %w", err)
+	}
+	return os.WriteFile(r.deviceKeyPath, encProto, 0400)
 }
 
 func (r *wallet) RepoPath() string {
