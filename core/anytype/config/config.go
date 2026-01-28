@@ -53,10 +53,6 @@ var (
 	ErrNetworkFileFailedToRead = fmt.Errorf("failed to read network configuration")
 )
 
-// ConfigRequired is an alias for PersistedConfig for backward compatibility.
-// Deprecated: Use PersistedConfig instead.
-type ConfigRequired = PersistedConfig
-
 type Config struct {
 	persisted  PersistedConfig
 	configPath string
