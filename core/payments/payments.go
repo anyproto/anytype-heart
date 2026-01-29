@@ -3,7 +3,6 @@ package payments
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 	"unicode/utf8"
 
@@ -279,8 +278,6 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 			errs = append(errs, fetchErr)
 		} else {
 			if !tiersAreEqual(cachedTiers, fetchedTiers) {
-				fmt.Printf("%+v\n", fetchedTiers)
-				fmt.Printf("%+v\n", cachedTiers)
 				log.Warn("background refresh tiers: tiers have changed, sending event")
 				s.sendTiersUpdateEvent(fetchedTiers)
 				changed = true

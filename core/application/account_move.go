@@ -26,14 +26,10 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 	dirs := []string{filestorage.FlatfsDirName}
 	conf := s.app.MustComponent(config.CName).(*config.Config)
 
-	configPath := conf.GetConfigPath()
 	srcPath := conf.RepoPath
-	fileConf := config.ConfigRequired{}
-	if err := config.GetFileConfig(configPath, &fileConf); err != nil {
-		return errors.Join(ErrFailedToGetConfig, err)
-	}
-	if fileConf.CustomFileStorePath != "" {
-		srcPath = fileConf.CustomFileStorePath
+	customFileStorePath := conf.CustomFileStorePath()
+	if customFileStorePath != "" {
+		srcPath = customFileStorePath
 	}
 
 	parts := strings.Split(srcPath, string(filepath.Separator))
@@ -71,7 +67,7 @@ func (s *Service) AccountMove(req *pb.RpcAccountMoveRequest) error {
 		}
 	}
 
-	err = config.WriteJsonConfig(configPath, config.ConfigRequired{CustomFileStorePath: destination})
+	err = conf.SetCustomFileStorePath(destination)
 	if err != nil {
 		return errors.Join(ErrFailedToWriteConfig, err)
 	}

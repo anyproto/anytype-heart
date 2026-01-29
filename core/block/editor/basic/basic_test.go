@@ -42,6 +42,18 @@ func newTextBlock(id, contentText string, childrenIds []string) simple.Block {
 	})
 }
 
+func newTextBlockWithStyle(id, contentText string, style model.BlockContentTextStyle) simple.Block {
+	return text.NewText(&model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  contentText,
+				Style: style,
+			},
+		},
+	})
+}
+
 func TestBasic_Create(t *testing.T) {
 	t.Run("generic", func(t *testing.T) {
 		sb := smarttest.New("test")
@@ -367,6 +379,48 @@ func TestBasic_Move(t *testing.T) {
 		st := sb.NewState()
 		err := b.Move(st, nil, "2", model.Block_InnerFirst, []string{"1"})
 		require.Error(t, err)
+	})
+	t.Run("moving blocks inside text block that cannot have children is prohibited", func(t *testing.T) {
+		testCases := []struct {
+			style       model.BlockContentTextStyle
+			name        string
+			shouldAllow bool
+		}{
+			{model.BlockContentText_Paragraph, "paragraph", true},
+			{model.BlockContentText_Header1, "header1", false},
+			{model.BlockContentText_Header2, "header2", false},
+			{model.BlockContentText_Header3, "header3", false},
+			{model.BlockContentText_Header4, "header4", false},
+			{model.BlockContentText_Quote, "quote", true},
+			{model.BlockContentText_Code, "code", false},
+			{model.BlockContentText_Title, "title", false},
+			{model.BlockContentText_Checkbox, "checkbox", true},
+			{model.BlockContentText_Marked, "marked/bulleted", true},
+			{model.BlockContentText_Numbered, "numbered", true},
+			{model.BlockContentText_Toggle, "toggle", true},
+			{model.BlockContentText_Callout, "callout", true},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				sb := smarttest.New("test")
+				sb.AddBlock(newTextBlockWithStyle("target", "target", tc.style))
+				sb.AddBlock(newTextBlock("butt", "butterfly", nil))
+				sb.AddBlock(newTextBlock("frog", "froggy", nil))
+
+				b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+				st := sb.NewState()
+
+				err := b.Move(st, nil, "target", model.Block_InnerFirst, []string{"butt", "frog"})
+
+				if tc.shouldAllow {
+					require.NoError(t, err, "style %s should allow children", tc.name)
+				} else {
+					require.Error(t, err, "style %s should NOT allow children", tc.name)
+					require.Contains(t, err.Error(), "cannot move to block that cannot have children")
+				}
+			})
+		}
 	})
 }
 
