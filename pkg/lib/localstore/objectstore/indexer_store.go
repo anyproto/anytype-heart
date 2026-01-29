@@ -22,8 +22,8 @@ var spaceIdKey = bundle.RelationKeySpaceId.String()
 
 const (
 	ftSequenceKey      = "seq" // used to store the opstamp of the fulltext commit for the specific object
-	ftOrderIdKey       = "_o"
-	ftDeletedMsgIdsKey = "_d" // used to store deleted message IDs for chat messages
+	ftOrderIdKey       = "ord"
+	ftDeletedMsgIdsKey = "del" // used to store deleted message IDs for chat messages
 
 	FtAllOrderId = "_all" // constant to fetch all messages on fulltext reindex
 )
@@ -246,7 +246,7 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 		objects = append(objects, domain.FullTextQueuedObject{
 			ObjectId:      doc.Value().GetString(idKey),
 			SpaceId:       doc.Value().GetString(spaceIdKey),
-			OrderId:       doc.Value().GetString(ftOrderIdKey),
+			MsgOrderId:    doc.Value().GetString(ftOrderIdKey),
 			DeletedMsgIds: deletedMsgIds,
 		})
 	}

@@ -194,7 +194,7 @@ func TestAddChatMessageToIndexQueue(t *testing.T) {
 		require.Len(t, ids, 1)
 		assert.Equal(t, "chat1", ids[0].ObjectId)
 		assert.Equal(t, "space1", ids[0].SpaceId)
-		assert.Equal(t, "order1", ids[0].OrderId)
+		assert.Equal(t, "order1", ids[0].MsgOrderId)
 	})
 
 	t.Run("update with older orderId", func(t *testing.T) {
@@ -220,7 +220,7 @@ func TestAddChatMessageToIndexQueue(t *testing.T) {
 			}
 		}
 		require.NotNil(t, found)
-		assert.Equal(t, "order2", found.OrderId)
+		assert.Equal(t, "order2", found.MsgOrderId)
 	})
 
 	t.Run("ignore newer orderId", func(t *testing.T) {
@@ -247,7 +247,7 @@ func TestAddChatMessageToIndexQueue(t *testing.T) {
 		}
 		require.NotNil(t, found)
 		// Should still have the older orderId
-		assert.Equal(t, "order2", found.OrderId)
+		assert.Equal(t, "order2", found.MsgOrderId)
 	})
 
 	t.Run("preserve deleted message IDs", func(t *testing.T) {
@@ -275,7 +275,7 @@ func TestAddChatMessageToIndexQueue(t *testing.T) {
 		require.NotNil(t, found)
 		// Should preserve deleted message IDs
 		assert.Contains(t, found.DeletedMsgIds, "deletedMsg1")
-		assert.Equal(t, "order1", found.OrderId)
+		assert.Equal(t, "order1", found.MsgOrderId)
 	})
 
 	t.Run("FtAllOrderId takes precedence", func(t *testing.T) {
@@ -302,7 +302,7 @@ func TestAddChatMessageToIndexQueue(t *testing.T) {
 		}
 		require.NotNil(t, found)
 		// Should keep FtAllOrderId
-		assert.Equal(t, FtAllOrderId, found.OrderId)
+		assert.Equal(t, FtAllOrderId, found.MsgOrderId)
 	})
 }
 
@@ -382,7 +382,7 @@ func TestAddChatMessageDeleteToIndexQueue(t *testing.T) {
 		}
 		require.NotNil(t, found)
 		// Should preserve orderId
-		assert.Equal(t, "order1", found.OrderId)
+		assert.Equal(t, "order1", found.MsgOrderId)
 		assert.Contains(t, found.DeletedMsgIds, "deletedMsg1")
 	})
 
@@ -405,8 +405,8 @@ func TestAddChatMessageDeleteToIndexQueue(t *testing.T) {
 			}
 		}
 		require.NotNil(t, found)
-		// OrderId should be empty
-		assert.Empty(t, found.OrderId)
+		// MsgOrderId should be empty
+		assert.Empty(t, found.MsgOrderId)
 		assert.Contains(t, found.DeletedMsgIds, "msg1")
 	})
 }

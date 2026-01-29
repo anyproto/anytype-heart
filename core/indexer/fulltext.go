@@ -278,7 +278,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
 
-	if object.OrderId != "" || len(object.DeletedMsgIds) > 0 {
+	if object.MsgOrderId != "" || len(object.DeletedMsgIds) > 0 {
 		docs, err = i.prepareChatSearchDocs(ctx, object)
 		if err != nil {
 			return nil, true, err
@@ -401,14 +401,14 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	}
 
 	var msgs []*chatmodel.Message
-	switch object.OrderId {
+	switch object.MsgOrderId {
 	case objectstore.FtAllOrderId:
 		// TODO: GO-6758 add batch messages fetch by limits
 		msgs, err = repository.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 	case "":
 		return nil, nil // no new search docs should be added
 	default:
-		msgs, err = repository.GetMessagesForIndexing(ctx, object.OrderId)
+		msgs, err = repository.GetMessagesForIndexing(ctx, object.MsgOrderId)
 	}
 
 	if err != nil {

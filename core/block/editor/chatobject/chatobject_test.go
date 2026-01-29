@@ -237,7 +237,7 @@ func TestAddMessage(t *testing.T) {
 		require.Len(t, ids, 1)
 		assert.Equal(t, testSpaceId, ids[0].SpaceId)
 		assert.Equal(t, chatId, ids[0].ObjectId)
-		assert.NotEmpty(t, ids[0].OrderId)
+		assert.NotEmpty(t, ids[0].MsgOrderId)
 	})
 
 	t.Run("imitate adding other's messages", func(t *testing.T) {
@@ -282,7 +282,7 @@ func TestAddMessage(t *testing.T) {
 		require.Len(t, ids, 1)
 		assert.Equal(t, testSpaceId, ids[0].SpaceId)
 		assert.Equal(t, chatId, ids[0].ObjectId)
-		assert.NotEmpty(t, ids[0].OrderId)
+		assert.NotEmpty(t, ids[0].MsgOrderId)
 	})
 }
 
@@ -387,7 +387,7 @@ func TestEditMessage(t *testing.T) {
 		require.Len(t, ids, 1)
 		assert.Equal(t, testSpaceId, ids[0].SpaceId)
 		assert.Equal(t, chatId, ids[0].ObjectId)
-		assert.NotEmpty(t, ids[0].OrderId)
+		assert.NotEmpty(t, ids[0].MsgOrderId)
 	})
 
 	t.Run("edit other's message", func(t *testing.T) {

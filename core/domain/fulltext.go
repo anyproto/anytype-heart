@@ -102,7 +102,7 @@ func NewFromPath(path string) (ObjectPath, error) {
 type FullTextQueuedObject struct {
 	ObjectId      string
 	SpaceId       string
-	OrderId       string
+	MsgOrderId    string
 	DeletedMsgIds []string
 }
 

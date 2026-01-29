@@ -726,9 +726,9 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 
 		// when
 		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
-			ObjectId: chatId,
-			SpaceId:  spaceId,
-			OrderId:  objectstore.FtAllOrderId,
+			ObjectId:   chatId,
+			SpaceId:    spaceId,
+			MsgOrderId: objectstore.FtAllOrderId,
 		})
 
 		// then
@@ -764,9 +764,9 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 
 		// when
 		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
-			ObjectId: chatId,
-			SpaceId:  spaceId,
-			OrderId:  "o3",
+			ObjectId:   chatId,
+			SpaceId:    spaceId,
+			MsgOrderId: "o3",
 		})
 
 		// then
