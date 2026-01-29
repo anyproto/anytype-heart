@@ -8991,6 +8991,31 @@ message Rpc {
             }
         }
 
+        message Search {
+            message Request {
+                string spaceId = 1;
+                string chatId = 2;
+                repeated anytype.model.Search.Message.Sort sorts = 3;
+                string fullText = 4;
+                int32 offset = 5;
+                int32 limit = 6;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated model.Search.Message.Result results = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
     }
     message PushNotification {
 
