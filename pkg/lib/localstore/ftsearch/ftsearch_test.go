@@ -329,48 +329,6 @@ func assertSearch(t *testing.T, tmpDir string) {
 	_ = ft.Close(nil)
 }
 
-func assertSearchAny(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "test",
-		Title: "Welcome to Anytype",
-		Text:  "We always happy to new users in Anytype",
-	}))
-
-	validateSearch(t, ft, "", "any", 1)
-
-	_ = ft.Close(nil)
-}
-
-func assertSearchBut(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "test",
-		Title: "Butterfly lover",
-		Text:  "I love butterflies",
-	}))
-
-	validateSearch(t, ft, "", "but", 1)
-
-	_ = ft.Close(nil)
-}
-
-func assertSearchTer(t *testing.T, tmpDir string) {
-	fixture := newFixture(tmpDir, t)
-	ft := fixture.ft
-	require.NoError(t, ft.Index(SearchDoc{
-		Id:    "test",
-		Title: "Butterfly lover",
-		Text:  "I love butterflies",
-	}))
-
-	validateSearch(t, ft, "", "ter", 1)
-
-	_ = ft.Close(nil)
-}
-
 func validateSearch(t *testing.T, ft FTSearch, spaceID, qry string, times int) {
 	res, err := ft.Search(spaceID, qry)
 	require.NoError(t, err)
