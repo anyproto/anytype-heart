@@ -26,6 +26,9 @@ packages:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch:
+    interfaces:
+      FTSearch:
   github.com/anyproto/anytype-heart/core/block/editor/file:
     interfaces:
       File:

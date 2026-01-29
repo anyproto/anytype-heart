@@ -21,6 +21,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
@@ -50,8 +51,9 @@ const (
 
 	ForceReindexDeletedObjectsCounter int32 = 1
 
-	ForceReindexParticipantsCounter int32 = 1
-	ForceReindexChatsCounter        int32 = 7
+	ForceReindexParticipantsCounter  int32 = 1
+	ForceReindexChatsCounter         int32 = 7
+	ForceReindexChatsFulltextCounter int32 = 1
 )
 
 type allDeletedIdsProvider interface {
@@ -75,11 +77,12 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 			LinksErase:                       ForceLinksReindexCounter,
 			// global
-			BundledObjects:        ForceBundledObjectsReindexCounter,
-			AreOldFilesRemoved:    true,
-			ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
-			ReindexParticipants:   ForceReindexParticipantsCounter,
-			ReindexChats:          ForceReindexChatsCounter,
+			BundledObjects:              ForceBundledObjectsReindexCounter,
+			AreOldFilesRemoved:          true,
+			ReindexDeletedObjects:       0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
+			ReindexParticipants:         ForceReindexParticipantsCounter,
+			ReindexChats:                ForceReindexChatsCounter,
+			ReindexFulltextChatMessages: ForceReindexChatsFulltextCounter,
 		}
 	}
 
@@ -122,6 +125,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.ReindexChats != ForceReindexChatsCounter {
 		flags.chats = true
+	}
+	if checksums.ReindexFulltextChatMessages != ForceReindexChatsFulltextCounter {
+		flags.messagesFulltext = true
 	}
 	if spaceID == addr.AnytypeMarketplaceWorkspace && checksums.MarketplaceForceReindexCounter != ForceMarketplaceReindex {
 		flags.enableAll()
@@ -212,6 +218,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		err = i.reindexChats(ctx, space)
 		if err != nil {
 			log.Error("reindex chats", zap.Error(err))
+		}
+	}
+
+	if flags.messagesFulltext {
+		err = i.reindexChatMessagesFulltext(ctx, space)
+		if err != nil {
+			log.Error("reindex chats fulltext", zap.Error(err))
 		}
 	}
 
@@ -322,6 +335,25 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	}
 
 	i.reindexIdsIgnoreErr(ctx, space, ids...)
+
+	return nil
+}
+
+func (i *indexer) reindexChatMessagesFulltext(ctx context.Context, space clientspace.Space) error {
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	for _, id := range ids {
+		err = i.store.AddChatMessageToIndexQueue(ctx, domain.FullID{ObjectID: id, SpaceID: space.Id()}, objectstore.FtAllOrderId)
+		if err != nil {
+			log.With("chatId", id).Errorf("failed to add chat to fulltext queue: %v", err)
+		}
+	}
 
 	return nil
 }
@@ -609,6 +641,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
 		ReindexParticipants:              ForceReindexParticipantsCounter,
 		ReindexChats:                     ForceReindexChatsCounter,
+		ReindexFulltextChatMessages:      ForceReindexChatsFulltextCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex

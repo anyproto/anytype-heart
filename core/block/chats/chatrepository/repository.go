@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -34,7 +35,7 @@ const (
 type Service interface {
 	app.ComponentRunnable
 
-	Repository(chatObjectId string) (Repository, error)
+	Repository(spaceId, chatObjectId string) (Repository, error)
 }
 
 type service struct {
@@ -45,6 +46,9 @@ type service struct {
 	dbProvider      anystoreprovider.Provider
 	spaceIdResolver idresolver.Resolver
 	arenaPool       *anyenc.ArenaPool
+
+	cache map[string]Repository
+	lock  sync.RWMutex
 }
 
 func New() Service {
@@ -69,6 +73,8 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
+
+	s.cache = make(map[string]Repository)
 	return nil
 }
 
@@ -76,10 +82,28 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Repository(chatObjectId string) (Repository, error) {
-	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
-	if err != nil {
-		return nil, fmt.Errorf("resolve space id: %w", err)
+func (s *service) Repository(spaceId, chatObjectId string) (Repository, error) {
+	s.lock.RLock()
+	repo, ok := s.cache[chatObjectId]
+	s.lock.RUnlock()
+
+	if ok {
+		return repo, nil
+	}
+
+	return s.getOrInitRepository(spaceId, chatObjectId)
+}
+
+func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if spaceId == "" {
+		var err error
+		spaceId, err = s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+		if err != nil {
+			return nil, fmt.Errorf("resolve space id: %w", err)
+		}
 	}
 
 	crdtDb, err := s.dbProvider.GetCrdtDb(spaceId).Wait()
@@ -99,10 +123,13 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 
-	return &repository{
+	repo := &repository{
 		collection: collection,
 		arenaPool:  s.arenaPool,
-	}, nil
+	}
+
+	s.cache[chatObjectId] = repo
+	return repo, nil
 }
 
 type Repository interface {
@@ -116,6 +143,7 @@ type Repository interface {
 	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
 	GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error)
+	GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error)
 	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string
 	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
@@ -351,6 +379,15 @@ func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatm
 		msgIds = append(msgIds, doc.Value().GetString("id"))
 	}
 	return msgIds, iter.Err()
+}
+
+func (s *repository) GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error) {
+	qry := s.collection.Find(query.Or{
+		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+		query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+	})
+
+	return s.queryMessages(ctx, qry)
 }
 
 func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -518,5 +519,317 @@ func TestFiltersFromProto(t *testing.T) {
 		assert.Equal(t, domain.String("value4"), deepNested[1].Value)
 		assert.Equal(t, model.RelationFormat_shorttext, deepNested[1].Format)
 
+	})
+}
+
+func TestConvertToHighlightRanges(t *testing.T) {
+	t.Run("ascii text with single range", func(t *testing.T) {
+		// given
+		highlight := "hello world"
+		ranges := [][]int{{0, 5}} // "hello"
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Len(t, result, 1)
+		assert.Equal(t, int32(0), result[0].From)
+		assert.Equal(t, int32(5), result[0].To)
+	})
+
+	t.Run("ascii text with multiple ranges", func(t *testing.T) {
+		// given
+		highlight := "hello world test"
+		ranges := [][]int{{0, 5}, {6, 11}, {12, 16}} // "hello", "world", "test"
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Len(t, result, 3)
+		assert.Equal(t, int32(0), result[0].From)
+		assert.Equal(t, int32(5), result[0].To)
+		assert.Equal(t, int32(6), result[1].From)
+		assert.Equal(t, int32(11), result[1].To)
+		assert.Equal(t, int32(12), result[2].From)
+		assert.Equal(t, int32(16), result[2].To)
+	})
+
+	t.Run("cyrillic text with ranges", func(t *testing.T) {
+		// given
+		highlight := "привет мир"
+		// "привет" is bytes 0-12 (6 chars * 2 bytes)
+		ranges := [][]int{{0, 12}}
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Len(t, result, 1)
+		assert.Equal(t, int32(0), result[0].From)
+		assert.Equal(t, int32(6), result[0].To) // 6 UTF-16 runes, not 12
+	})
+
+	t.Run("emoji text with ranges", func(t *testing.T) {
+		// given
+		highlight := "hello 👍 world"
+		// "hello " is 6 bytes
+		// 👍 is 4 bytes (but counts as 2 UTF-16 code units)
+		// " world" is 6 bytes
+		ranges := [][]int{{6, 10}} // emoji
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Len(t, result, 1)
+		assert.Equal(t, int32(6), result[0].From)
+		assert.Equal(t, int32(8), result[0].To) // emoji is 2 UTF-16 code units
+	})
+
+	t.Run("empty ranges", func(t *testing.T) {
+		// given
+		highlight := "hello world"
+		ranges := [][]int{}
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Empty(t, result)
+	})
+
+	t.Run("invalid range - negative from", func(t *testing.T) {
+		// given
+		highlight := "hello world"
+		ranges := [][]int{{-1, 5}}
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Empty(t, result) // invalid ranges should be skipped
+	})
+
+	t.Run("invalid range - to exceeds length", func(t *testing.T) {
+		// given
+		highlight := "hello"
+		ranges := [][]int{{0, 100}}
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Empty(t, result) // invalid ranges should be skipped
+	})
+
+	t.Run("range with wrong length", func(t *testing.T) {
+		// given
+		highlight := "hello world"
+		ranges := [][]int{{0}} // should have 2 elements
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Empty(t, result) // malformed ranges should be skipped
+	})
+
+	t.Run("mixed valid and invalid ranges", func(t *testing.T) {
+		// given
+		highlight := "hello world"
+		ranges := [][]int{{0, 5}, {-1, 3}, {6, 11}} // first and last are valid
+
+		// when
+		result := convertToHighlightRanges(ranges, highlight)
+
+		// then
+		assert.Len(t, result, 2) // only valid ranges
+		assert.Equal(t, int32(0), result[0].From)
+		assert.Equal(t, int32(5), result[0].To)
+		assert.Equal(t, int32(6), result[1].From)
+		assert.Equal(t, int32(11), result[1].To)
+	})
+}
+
+func TestFTDocumentMatchToFulltextResult(t *testing.T) {
+	t.Run("valid document match with highlight", func(t *testing.T) {
+		// given
+		docMatch := &ftsearch.DocumentMatch{
+			ID:    "objectId/r/name", // object with relation
+			Score: 0.95,
+			Fragments: map[string]*ftsearch.Highlight{
+				"text": {
+					Text:   "hello world",
+					Ranges: [][]int{{0, 5}}, // "hello"
+				},
+			},
+		}
+
+		// when
+		result, err := FTDocumentMatchToFulltextResult(docMatch)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, "objectId", result.Path.ObjectId)
+		assert.Equal(t, "name", result.Path.RelationKey)
+		assert.Equal(t, "hello world", result.Highlight)
+		assert.Equal(t, 0.95, result.Score)
+		assert.Len(t, result.HighlightRanges, 1)
+		assert.Equal(t, int32(0), result.HighlightRanges[0].From)
+		assert.Equal(t, int32(5), result.HighlightRanges[0].To)
+	})
+
+	t.Run("document match without highlight ranges", func(t *testing.T) {
+		// given
+		docMatch := &ftsearch.DocumentMatch{
+			ID:    "objectId/b/blockId", // object with block
+			Score: 0.85,
+			Fragments: map[string]*ftsearch.Highlight{
+				"text": {
+					Text:   "some text",
+					Ranges: [][]int{}, // no ranges
+				},
+			},
+		}
+
+		// when
+		result, err := FTDocumentMatchToFulltextResult(docMatch)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, "objectId", result.Path.ObjectId)
+		assert.Equal(t, "blockId", result.Path.BlockId)
+		assert.Empty(t, result.Highlight) // no highlight if no ranges
+		assert.Equal(t, 0.85, result.Score)
+		assert.Nil(t, result.HighlightRanges)
+	})
+
+	t.Run("document match with empty fragments", func(t *testing.T) {
+		// given
+		docMatch := &ftsearch.DocumentMatch{
+			ID:        "objectId/b/blockId",
+			Score:     0.75,
+			Fragments: map[string]*ftsearch.Highlight{},
+		}
+
+		// when
+		result, err := FTDocumentMatchToFulltextResult(docMatch)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, "objectId", result.Path.ObjectId)
+		assert.Equal(t, "blockId", result.Path.BlockId)
+		assert.Empty(t, result.Highlight)
+		assert.Equal(t, 0.75, result.Score)
+		assert.Nil(t, result.HighlightRanges)
+	})
+
+	t.Run("document match with multiple fragments - uses first with ranges", func(t *testing.T) {
+		// given
+		docMatch := &ftsearch.DocumentMatch{
+			ID:    "objectId/r/description",
+			Score: 0.90,
+			Fragments: map[string]*ftsearch.Highlight{
+				"title": {
+					Text:   "no ranges here",
+					Ranges: [][]int{},
+				},
+				"content": {
+					Text:   "highlighted text",
+					Ranges: [][]int{{0, 11}}, // "highlighted"
+				},
+			},
+		}
+
+		// when
+		result, err := FTDocumentMatchToFulltextResult(docMatch)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, "objectId", result.Path.ObjectId)
+		assert.Equal(t, "description", result.Path.RelationKey)
+		// Note: map iteration order is not guaranteed, but one fragment with ranges should be selected
+		if result.Highlight != "" {
+			assert.Equal(t, "highlighted text", result.Highlight)
+			assert.Len(t, result.HighlightRanges, 1)
+		}
+		assert.Equal(t, 0.90, result.Score)
+	})
+
+	t.Run("invalid document path", func(t *testing.T) {
+		// given
+		docMatch := &ftsearch.DocumentMatch{
+			ID:    "invalid-path-format",
+			Score: 0.80,
+			Fragments: map[string]*ftsearch.Highlight{
+				"text": {
+					Text:   "some text",
+					Ranges: [][]int{{0, 4}},
+				},
+			},
+		}
+
+		// when
+		result, err := FTDocumentMatchToFulltextResult(docMatch)
+
+		// then
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to parse ft search result")
+		assert.Equal(t, FulltextResult{}, result)
+	})
+
+	t.Run("chat message path with highlight", func(t *testing.T) {
+		// given
+		docMatch := &ftsearch.DocumentMatch{
+			ID:    "chatId/m/messageId",
+			Score: 0.88,
+			Fragments: map[string]*ftsearch.Highlight{
+				"text": {
+					Text:   "message text here",
+					Ranges: [][]int{{0, 7}}, // "message"
+				},
+			},
+		}
+
+		// when
+		result, err := FTDocumentMatchToFulltextResult(docMatch)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, "chatId", result.Path.ObjectId)
+		assert.Equal(t, "messageId", result.Path.MessageId)
+		assert.Equal(t, "message text here", result.Highlight)
+		assert.Equal(t, 0.88, result.Score)
+		assert.Len(t, result.HighlightRanges, 1)
+		assert.Equal(t, int32(0), result.HighlightRanges[0].From)
+		assert.Equal(t, int32(7), result.HighlightRanges[0].To)
+	})
+
+	t.Run("highlight with cyrillic characters", func(t *testing.T) {
+		// given
+		docMatch := &ftsearch.DocumentMatch{
+			ID:    "objectId/r/name",
+			Score: 0.92,
+			Fragments: map[string]*ftsearch.Highlight{
+				"text": {
+					Text:   "привет мир",     // "hello world" in Russian
+					Ranges: [][]int{{0, 12}}, // "привет" (6 chars * 2 bytes = 12 bytes)
+				},
+			},
+		}
+
+		// when
+		result, err := FTDocumentMatchToFulltextResult(docMatch)
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, "objectId", result.Path.ObjectId)
+		assert.Equal(t, "name", result.Path.RelationKey)
+		assert.Equal(t, "привет мир", result.Highlight)
+		assert.Equal(t, 0.92, result.Score)
+		assert.Len(t, result.HighlightRanges, 1)
+		assert.Equal(t, int32(0), result.HighlightRanges[0].From)
+		assert.Equal(t, int32(6), result.HighlightRanges[0].To) // 6 UTF-16 runes
 	})
 }
