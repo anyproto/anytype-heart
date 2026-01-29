@@ -4048,6 +4048,7 @@ message Rpc {
                 string contextId = 1;
                 string dropTargetId = 2; // id of the simple block to insert considering position
                 anytype.model.Block.Position position = 3;  // position relatively to the dropTargetId simple block
+                anytype.model.Block.Content.File.Style style = 5;
                 repeated string localFilePaths = 4;
             }
             message Response {

@@ -13034,6 +13034,7 @@ Get marks list in the selected range in text block.
 | contextId | [string](#string) |  |  |
 | dropTargetId | [string](#string) |  | id of the simple block to insert considering position |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  | position relatively to the dropTargetId simple block |
+| style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 | localFilePaths | [string](#string) | repeated |  |
 
 
