@@ -398,7 +398,8 @@ service ClientCommands {
     rpc MembershipV2AnyNameAllocate(anytype.Rpc.MembershipV2.AnyNameAllocate.Request) returns (anytype.Rpc.MembershipV2.AnyNameAllocate.Response);
     rpc MembershipV2CartGet(anytype.Rpc.MembershipV2.CartGet.Request) returns (anytype.Rpc.MembershipV2.CartGet.Response);
     rpc MembershipV2CartUpdate(anytype.Rpc.MembershipV2.CartUpdate.Request) returns (anytype.Rpc.MembershipV2.CartUpdate.Response);
-    
+    rpc MembershipV2SubscribeToUpdates(anytype.Rpc.MembershipV2.SubscribeToUpdates.Request) returns (anytype.Rpc.MembershipV2.SubscribeToUpdates.Response);
+
     // Name Service:
     // ***
     // hello.any -> data
