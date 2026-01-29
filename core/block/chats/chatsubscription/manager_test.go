@@ -120,7 +120,7 @@ func TestFlush(t *testing.T) {
 		require.NoError(t, err)
 
 		// Setup
-		repo, err := fx.repo.Repository(chatId)
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
 		require.NoError(t, err)
 		err = repo.AddTestMessage(ctx, givenSimpleMessage("msg2", "world!", "o2"))
 		require.NoError(t, err)
