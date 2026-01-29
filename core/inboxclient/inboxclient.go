@@ -1,5 +1,24 @@
 package inboxclient
 
+/*
+AI generated
+
+Name: Coordinator Inbox Message Receiver
+Scope: global
+
+## Responsibility
+- Fetches encrypted messages from coordinator inbox, verifies signatures, decrypts, and dispatches to registered handlers
+- Provides mechanism for other components to register handlers by payload type
+- Sends messages to other users' inboxes via coordinator
+- DONTs: business logic for specific message types (delegated to registered handlers)
+
+## Background Tasks
+- Periodic message check: polls coordinator every 30s for new messages (checkMessages)
+
+## External State
+- Inbox offset stored in account object via techspace (tracks last processed message ID)
+*/
+
 import (
 	"context"
 	"fmt"

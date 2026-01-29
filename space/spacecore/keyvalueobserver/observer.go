@@ -1,5 +1,20 @@
 package keyvalueobserver
 
+/*
+AI generated
+
+Name: Key-Value Change Observer
+Scope: space
+
+## Responsibility
+- Bridges any-sync key-value storage to client space by implementing keyvaluestorage.Indexer
+- Queues incoming key-value changes and forwards them to the registered observer
+- DONTs: actual key-value processing logic (delegated to observer function)
+
+## Background Tasks
+- Queue processor: reads from updateQueue and invokes observerFunc (Run goroutine)
+*/
+
 import (
 	"context"
 	"errors"

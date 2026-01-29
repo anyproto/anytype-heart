@@ -1,5 +1,25 @@
 package chatsubscription
 
+/*
+AI generated
+
+Name: Chat Message Subscription Events
+Scope: global
+
+## Responsibility
+- Manages subscriptions to chat messages and sends real-time events on changes
+- Tracks message state: add, delete, update, reactions, read status, sync status
+- Maintains chat state with unread counters for messages and mentions
+- Resolves message dependencies (creator identity, attachment details)
+- DONTs: message persistence (handled by chatrepository)
+
+## Documentation
+Each chat object has one subscriptionManager, initialized lazily via futures for lock-free concurrent access.
+Manager maintains a sliding window of messages (skiplist ordered by OrderId, capped by limit).
+Changes accumulate in messagesState and flush as batched events after commit.
+Supports sync events (via session context) and async events (via broadcast).
+*/
+
 import (
 	"context"
 	"fmt"

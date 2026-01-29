@@ -1,5 +1,19 @@
 package objectgraph
 
+/*
+AI generated
+
+Name: Object Graph Builder
+Scope: global
+
+## Responsibility
+- Build graph representation (nodes and edges) for objects within a space
+- Create edges from object/file-type relations and direct links between objects
+- Filter out system relations (Creator, LastModifiedBy, Cover, etc.) that are not meaningful in graph context
+- Auto-fetch Date objects referenced in links but not in initial query results
+- DONTs: object storage, subscription management, relation schema management
+*/
+
 import (
 	"fmt"
 

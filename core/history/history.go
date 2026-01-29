@@ -1,5 +1,24 @@
 package history
 
+/*
+AI generated
+
+Name: Object Version History
+Scope: global
+
+## Responsibility
+- Show object state at any historical version
+- List versions with pagination and 5-minute grouping
+- Diff changes between two versions (blocks, relations, details, dataview)
+- Reset object to a previous version
+- Track block-level authorship (which participant last modified each block)
+- DONTs: does not manage change storage (uses objecttree from space)
+
+## Documentation
+Version IDs: Normally a single change ID. For parallel editing (multiple heads),
+generates a blake3 hash of combined head IDs and caches the mapping for retrieval.
+*/
+
 import (
 	"context"
 	"encoding/hex"

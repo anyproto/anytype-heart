@@ -1,5 +1,24 @@
 package spaceloader
 
+/*
+AI generated
+
+Name: Async Space Loader with Retry
+Scope: space
+
+## Responsibility
+- Initiates asynchronous space building on Run() and exposes WaitLoad() for completion
+- Updates space local status (Loading -> Ok/Missing) via spacestatus component
+- DONTs: space construction (handled by builder), status persistence (handled by spacestatus)
+
+## Background Tasks
+- loadRetry: Retries space loading with exponential backoff (1s -> 20s cap) until success or non-retryable error (loadingspace.go)
+
+## Documentation
+Non-retryable errors that stop retry loop: ErrHasInvalidChanges, ErrUnexpectedSpaceType, or when disableRemoteLoad is set.
+ACL head validation: If latestAclHeadId is provided and remote load is enabled, verifies ACL contains the expected head before considering load complete.
+*/
+
 import (
 	"context"
 	"errors"

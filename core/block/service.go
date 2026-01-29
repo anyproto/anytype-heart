@@ -1,5 +1,29 @@
 package block
 
+/*
+AI generated
+
+Name: Object Operations Facade
+Scope: global
+
+## Responsibility
+- Provides unified API for object lifecycle operations (open, close, show, duplicate, delete)
+- Handles block-level editing operations (create, update, move, split, merge, copy/paste)
+- Manages file upload/download with progress tracking
+- Coordinates workspace/space creation including one-to-one spaces
+- Exposes ObjectGetter interface for cache.Do pattern used throughout codebase
+- Tracks currently opened objects to prevent premature cache eviction
+- DONTs: actual object storage (delegated to space), block content parsing (delegated to editors)
+
+## Background Tasks
+- ObjectBookmarkFetch: async bookmark content update after initial fetch
+- DownloadFile: progress reporting goroutine during file download
+
+## Documentation
+The service uses cache.Do pattern extensively - it implements ObjectGetter interface which allows
+type-safe access to smartblocks via generics. Most operations follow: resolve space -> get object from space cache -> lock -> apply operation -> unlock pattern.
+*/
+
 import (
 	"context"
 	"errors"

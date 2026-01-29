@@ -1,5 +1,32 @@
 package acl
 
+/*
+AI generated
+
+Name: Space Access Control and Sharing
+Scope: global
+
+## Responsibility
+- Space invite management (generate, view, change, revoke invites for member/guest/anyone types)
+- ACL membership operations (join, leave, accept, decline, remove participants)
+- Permission management (change participant permissions, approve leave requests)
+- Guest user account management
+- DONTs: participant object storage (handled by space), ACL record persistence (handled by any-sync)
+
+## Background Tasks
+- aclUpdater: monitors participants with "Removing" status via cross-space subscription,
+  schedules automatic ApproveLeave for owners; monitors space views for spaces where user
+  should self-remove, schedules Leave retries. Uses retryscheduler for exponential backoff.
+
+## Documentation
+The aclUpdater coordinates two subscription-based flows:
+1. participantSub: subscribes to participants with status=Removing across all owned spaces,
+   triggers ApproveLeave for each (owner auto-approves leave requests)
+2. spaceSubscription: subscribes to space views where user is not owner but space is deleted,
+   triggers self-Leave requests with retry logic
+Both flows use a shared retryscheduler that handles failures with exponential backoff.
+*/
+
 import (
 	"context"
 	"errors"

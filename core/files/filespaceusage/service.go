@@ -1,5 +1,17 @@
 package filespaceusage
 
+/*
+AI generated
+
+Name: File Storage Usage Aggregator
+Scope: global
+
+## Responsibility
+- Aggregates file usage statistics from remote node and local storage
+- Provides per-space and node-wide usage queries
+- DONTs: does not track or persist usage data itself
+*/
+
 import (
 	"context"
 	"fmt"

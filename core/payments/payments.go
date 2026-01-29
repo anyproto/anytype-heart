@@ -1,5 +1,27 @@
 package payments
 
+/*
+AI generated
+
+Name: Membership and Payment Service
+Scope: global
+
+## Responsibility
+- Proxies membership/subscription API calls to payment node (V1 and V2 protocols)
+- Caches membership status and tiers locally, broadcasts changes via events
+- Validates and registers any-names through name service
+- Triggers limits updates (file sync, multiplayer) when membership changes
+- DONTs: payment processing, cache persistence (delegated to cache subpackage), email queue (delegated to emailcollector)
+
+## Background Tasks
+- refreshController: polls payment node for membership/tiers changes (60s interval, 10s when forced)
+
+## Documentation
+Cache invalidation: "force refresh" mode triggers aggressive polling for 30 minutes after
+user-initiated payment actions (pay button, manage subscription, finalize, redeem code).
+V1 vs V2: controlled by EnableMembershipV2 config flag set during AccountSelect/AccountCreate.
+*/
+
 import (
 	"context"
 	"errors"

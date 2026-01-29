@@ -1,5 +1,31 @@
 package fileuploader
 
+/*
+AI generated
+
+Name: File Upload Orchestrator
+Scope: global
+
+## Responsibility
+- Creates Uploader instances for uploading files from various sources (bytes, URL, file path)
+- Detects file type via MIME sniffing with fallback to generic file type
+- Supports two-phase upload: preload to storage first, then commit/create object later
+- Manages preloaded upload results for deferred object creation
+- DONTs: file storage, object creation (delegates to fileService and fileObjectService)
+
+## Background Tasks
+- Preload: async file upload to storage without object creation (Preload method)
+- UploadAsync: async file upload with object creation (UploadAsync method)
+
+## Documentation
+Two-phase upload flow:
+1. Preload() - uploads file to storage, returns preloadId, does NOT commit or create object
+2. Upload() with SetPreloadId() - commits the preloaded batch and creates file object
+This allows uploading files speculatively and discarding if not needed (batch.Discard).
+
+Concurrency: uploadFilesLimiter channel limits parallel uploads to 8 goroutines.
+*/
+
 import (
 	"bufio"
 	"bytes"

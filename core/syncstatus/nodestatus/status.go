@@ -1,5 +1,18 @@
 package nodestatus
 
+/*
+AI generated
+
+Name: Per-Space Node Connection Status Store
+Scope: global
+
+## Responsibility
+- Thread-safe storage for node connection status per space
+- Written by PeerManager when fetching responsible peers
+- Read by SpaceSyncStatus to determine overall sync state
+- DONTs: actual connection management (done by PeerManager)
+*/
+
 import (
 	"sync"
 

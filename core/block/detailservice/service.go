@@ -1,5 +1,20 @@
 package detailservice
 
+/*
+AI generated
+
+Name: Object Details and Properties Manager
+Scope: global
+
+## Responsibility
+- Set/modify object details (properties) on single or multiple objects
+- Manage object type relations (recommended, featured)
+- Set favorite/archived status via Home/Archive collections
+- Set space info and workspace dashboard
+- List relations containing specific values across a space
+- DONTs: does not handle object creation/deletion, block content, or indexing
+*/
+
 import (
 	"context"
 	"errors"
