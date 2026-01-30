@@ -74,7 +74,6 @@ func getHEICOrientation(r io.ReadSeeker) (int, error) {
 			return 0, fmt.Errorf("read heic: %w", err)
 		}
 		ra = bytes.NewReader(data)
-		r = bytes.NewReader(data)
 	}
 
 	hf := heif.Open(ra)

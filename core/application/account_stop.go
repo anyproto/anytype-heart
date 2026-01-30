@@ -106,7 +106,7 @@ func (s *Service) AccountChangeNetworkConfigAndRestart(ctx context.Context, req 
 			// wrap errors into each other
 			return errors.Join(config.ErrNetworkFileFailedToRead, err)
 		}
-		if conf.NetworkId != "" && conf.NetworkId != cfg.NetworkId {
+		if conf.NetworkId() != "" && conf.NetworkId() != cfg.NetworkId {
 			return config.ErrNetworkIdMismatch
 		}
 	}
@@ -125,19 +125,15 @@ func (s *Service) accountRemoveLocalData() error {
 	conf := s.app.MustComponent(config.CName).(*config.Config)
 	address := s.app.MustComponent(walletComp.CName).(walletComp.Wallet).GetAccountPrivkey().GetPublic().Account()
 
-	configPath := conf.GetConfigPath()
-	fileConf := config.ConfigRequired{}
-	if err := config.GetFileConfig(configPath, &fileConf); err != nil {
-		return err
-	}
+	customFileStorePath := conf.CustomFileStorePath()
 
 	err := s.stop()
 	if err != nil {
 		return err
 	}
 
-	if fileConf.CustomFileStorePath != "" {
-		if err2 := os.RemoveAll(fileConf.CustomFileStorePath); err2 != nil {
+	if customFileStorePath != "" {
+		if err2 := os.RemoveAll(customFileStorePath); err2 != nil {
 			return err2
 		}
 	}

@@ -402,9 +402,9 @@ func (_c *MockFile_UploadState_Call) RunAndReturn(run func(session.Context, *sta
 	return _c
 }
 
-// dropFilesCreateStructure provides a mock function with given fields: groupId, targetId, pos, entries
-func (_m *MockFile) dropFilesCreateStructure(groupId string, targetId string, pos model.BlockPosition, entries []*dropFileEntry) ([]string, error) {
-	ret := _m.Called(groupId, targetId, pos, entries)
+// dropFilesCreateStructure provides a mock function with given fields: groupId, targetId, pos, style, entries
+func (_m *MockFile) dropFilesCreateStructure(groupId string, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) ([]string, error) {
+	ret := _m.Called(groupId, targetId, pos, style, entries)
 
 	if len(ret) == 0 {
 		panic("no return value specified for dropFilesCreateStructure")
@@ -412,19 +412,19 @@ func (_m *MockFile) dropFilesCreateStructure(groupId string, targetId string, po
 
 	var r0 []string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(string, string, model.BlockPosition, []*dropFileEntry) ([]string, error)); ok {
-		return rf(groupId, targetId, pos, entries)
+	if rf, ok := ret.Get(0).(func(string, string, model.BlockPosition, model.BlockContentFileStyle, []*dropFileEntry) ([]string, error)); ok {
+		return rf(groupId, targetId, pos, style, entries)
 	}
-	if rf, ok := ret.Get(0).(func(string, string, model.BlockPosition, []*dropFileEntry) []string); ok {
-		r0 = rf(groupId, targetId, pos, entries)
+	if rf, ok := ret.Get(0).(func(string, string, model.BlockPosition, model.BlockContentFileStyle, []*dropFileEntry) []string); ok {
+		r0 = rf(groupId, targetId, pos, style, entries)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).([]string)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(string, string, model.BlockPosition, []*dropFileEntry) error); ok {
-		r1 = rf(groupId, targetId, pos, entries)
+	if rf, ok := ret.Get(1).(func(string, string, model.BlockPosition, model.BlockContentFileStyle, []*dropFileEntry) error); ok {
+		r1 = rf(groupId, targetId, pos, style, entries)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -441,14 +441,15 @@ type MockFile_dropFilesCreateStructure_Call struct {
 //   - groupId string
 //   - targetId string
 //   - pos model.BlockPosition
+//   - style model.BlockContentFileStyle
 //   - entries []*dropFileEntry
-func (_e *MockFile_Expecter) dropFilesCreateStructure(groupId interface{}, targetId interface{}, pos interface{}, entries interface{}) *MockFile_dropFilesCreateStructure_Call {
-	return &MockFile_dropFilesCreateStructure_Call{Call: _e.mock.On("dropFilesCreateStructure", groupId, targetId, pos, entries)}
+func (_e *MockFile_Expecter) dropFilesCreateStructure(groupId interface{}, targetId interface{}, pos interface{}, style interface{}, entries interface{}) *MockFile_dropFilesCreateStructure_Call {
+	return &MockFile_dropFilesCreateStructure_Call{Call: _e.mock.On("dropFilesCreateStructure", groupId, targetId, pos, style, entries)}
 }
 
-func (_c *MockFile_dropFilesCreateStructure_Call) Run(run func(groupId string, targetId string, pos model.BlockPosition, entries []*dropFileEntry)) *MockFile_dropFilesCreateStructure_Call {
+func (_c *MockFile_dropFilesCreateStructure_Call) Run(run func(groupId string, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry)) *MockFile_dropFilesCreateStructure_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(model.BlockPosition), args[3].([]*dropFileEntry))
+		run(args[0].(string), args[1].(string), args[2].(model.BlockPosition), args[3].(model.BlockContentFileStyle), args[4].([]*dropFileEntry))
 	})
 	return _c
 }
@@ -458,7 +459,7 @@ func (_c *MockFile_dropFilesCreateStructure_Call) Return(blockIds []string, err 
 	return _c
 }
 
-func (_c *MockFile_dropFilesCreateStructure_Call) RunAndReturn(run func(string, string, model.BlockPosition, []*dropFileEntry) ([]string, error)) *MockFile_dropFilesCreateStructure_Call {
+func (_c *MockFile_dropFilesCreateStructure_Call) RunAndReturn(run func(string, string, model.BlockPosition, model.BlockContentFileStyle, []*dropFileEntry) ([]string, error)) *MockFile_dropFilesCreateStructure_Call {
 	_c.Call.Return(run)
 	return _c
 }

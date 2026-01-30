@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -52,28 +53,10 @@ var (
 	ErrNetworkFileFailedToRead = fmt.Errorf("failed to read network configuration")
 )
 
-type FileConfig interface {
-	GetFileConfig() (ConfigRequired, error)
-	WriteFileConfig(cfg ConfigRequired) (ConfigRequired, error)
-}
-
-type ConfigRequired struct {
-	HostAddr               string `json:",omitempty"`
-	CustomFileStorePath    string `json:",omitempty"`
-	LegacyFileStorePath    string `json:",omitempty"`
-	NetworkId              string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
-	AutoDownloadFiles      bool   `json:",omitempty"`
-	AutoDownloadOnWifiOnly bool   `json:",omitempty"`
-}
-
-// Use separate structure as trick for legacy config management
-type ConfigAutoDownloadFiles struct {
-	AutoDownloadFiles      bool
-	AutoDownloadOnWifiOnly bool
-}
-
 type Config struct {
-	ConfigRequired `json:",inline"`
+	persisted  PersistedConfig
+	configPath string
+	mu         sync.RWMutex
 
 	NewAccount     bool   `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	AutoJoinStream string `ignored:"true"` // contains the invite of the stream space to automatically join
@@ -105,6 +88,117 @@ type Config struct {
 
 func (c *Config) IsLocalOnlyMode() bool {
 	return c.NetworkMode == pb.RpcAccount_LocalOnly
+}
+
+// Getters for persisted config fields (read from memory)
+
+// NetworkId returns the stored network id.
+func (c *Config) NetworkId() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.persisted.NetworkId
+}
+
+// CustomFileStorePath returns the custom file store path.
+func (c *Config) CustomFileStorePath() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.persisted.CustomFileStorePath
+}
+
+// LegacyFileStorePath returns the legacy file store path.
+func (c *Config) LegacyFileStorePath() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.persisted.LegacyFileStorePath
+}
+
+// HostAddr returns the host address.
+func (c *Config) HostAddr() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.persisted.HostAddr
+}
+
+// AutoDownloadFiles returns whether auto download is enabled.
+func (c *Config) AutoDownloadFiles() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.persisted.AutoDownloadFiles
+}
+
+// AutoDownloadOnWifiOnly returns whether auto download is restricted to wifi.
+func (c *Config) AutoDownloadOnWifiOnly() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.persisted.AutoDownloadOnWifiOnly
+}
+
+// Setters for persisted config fields (write to disk on change)
+
+// writeLocked writes the current persisted config to disk.
+// Must be called with c.mu held.
+func (c *Config) writeLocked() error {
+	if c.DisableFileConfig {
+		return nil
+	}
+	return writeConfigSafe(c.configPath, c.persisted)
+}
+
+// SetNetworkId sets the network id and writes to disk if changed.
+func (c *Config) SetNetworkId(id string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.persisted.NetworkId == id {
+		return nil
+	}
+	c.persisted.NetworkId = id
+	return c.writeLocked()
+}
+
+// SetCustomFileStorePath sets the custom file store path and writes to disk if changed.
+func (c *Config) SetCustomFileStorePath(path string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.persisted.CustomFileStorePath == path {
+		return nil
+	}
+	c.persisted.CustomFileStorePath = path
+	return c.writeLocked()
+}
+
+// SetLegacyFileStorePath sets the legacy file store path and writes to disk if changed.
+func (c *Config) SetLegacyFileStorePath(path string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.persisted.LegacyFileStorePath == path {
+		return nil
+	}
+	c.persisted.LegacyFileStorePath = path
+	return c.writeLocked()
+}
+
+// SetHostAddr sets the host address and writes to disk if changed.
+func (c *Config) SetHostAddr(addr string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.persisted.HostAddr == addr {
+		return nil
+	}
+	c.persisted.HostAddr = addr
+	return c.writeLocked()
+}
+
+// SetAutoDownloadSettings sets auto download settings and writes to disk if changed.
+func (c *Config) SetAutoDownloadSettings(enabled, wifiOnly bool) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.persisted.AutoDownloadFiles == enabled && c.persisted.AutoDownloadOnWifiOnly == wifiOnly {
+		return nil
+	}
+	c.persisted.AutoDownloadFiles = enabled
+	c.persisted.AutoDownloadOnWifiOnly = wifiOnly
+	return c.writeLocked()
 }
 
 type FSConfig struct {
@@ -145,6 +239,14 @@ func WithAutoJoinStream(inviteUrl string) func(*Config) {
 	}
 }
 
+// WithLegacyFileStorePath sets the legacy file store path before init.
+// This is used during account recovery from export.
+func WithLegacyFileStorePath(path string) func(*Config) {
+	return func(c *Config) {
+		c.persisted.LegacyFileStorePath = path
+	}
+}
+
 func WithDebugAddr(addr string) func(*Config) {
 	return func(c *Config) {
 		c.DebugAddr = addr
@@ -174,11 +276,14 @@ type quicPreferenceSetter interface {
 }
 
 func New(options ...func(*Config)) *Config {
-	cfg := DefaultConfig
-	for _, opt := range options {
-		opt(&cfg)
+	cfg := &Config{
+		LocalServerAddr: DefaultConfig.LocalServerAddr,
+		DS:              DefaultConfig.DS,
 	}
-	return &cfg
+	for _, opt := range options {
+		opt(cfg)
+	}
+	return cfg
 }
 
 func (c *Config) Init(a *app.App) (err error) {
@@ -211,6 +316,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		return fmt.Errorf("repo is missing")
 	}
 	c.RepoPath = repoPath
+	c.configPath = filepath.Join(repoPath, ConfigFileName)
 	c.AnyStoreConfig = &anystore.Config{}
 	if runtime.GOOS == "android" {
 		split := strings.Split(repoPath, "/files/")
@@ -223,31 +329,37 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 	}
 
 	if !c.DisableFileConfig {
-		var confRequired ConfigRequired
-		err := GetFileConfig(c.GetConfigPath(), &confRequired)
+		confRequired, err := readPersistedConfig(c.configPath)
 		if err != nil && errors.Is(err, ErrInvalidConfigFormat) {
-			log.Errorf("config file init: %v", err)
+			log.Errorf("config file corrupted, reinitializing: %v", err)
+			confRequired = PersistedConfig{}
+			// Try to recover NetworkId from YAML if config is corrupted
+			if networkId, recoverErr := c.deriveNetworkIdFromYAML(); recoverErr == nil && networkId != "" {
+				log.Warnf("recovered network id from YAML: %s", networkId)
+				confRequired.NetworkId = networkId
+			}
+			// Write clean config immediately to replace corrupted file
+			if writeErr := writeConfigSafe(c.configPath, confRequired); writeErr != nil {
+				log.Errorf("failed to write recovered config: %v", writeErr)
+			}
 		} else if err != nil {
 			return err
 		}
 
-		writeConfig := func() error {
-			err = WriteJsonConfig(c.GetConfigPath(), c.ConfigRequired)
-			if err != nil {
-				return fmt.Errorf("failed to save required configuration to the cfg file: %w", err)
-			}
-			return nil
-		}
+		// Get the in-memory legacy file store path before loading from file
+		inMemoryLegacyPath := c.persisted.LegacyFileStorePath
+
+		// Load persisted config into memory
+		c.mu.Lock()
+		c.persisted = confRequired
+		c.mu.Unlock()
 
 		// Do not overwrite the legacy file store path from file if it's already set in memory
-		if confRequired.LegacyFileStorePath == "" && c.LegacyFileStorePath != "" {
-			confRequired.LegacyFileStorePath = c.LegacyFileStorePath
-			c.ConfigRequired = confRequired
-			if err := writeConfig(); err != nil {
+		if confRequired.LegacyFileStorePath == "" && inMemoryLegacyPath != "" {
+			if err := c.SetLegacyFileStorePath(inMemoryLegacyPath); err != nil {
 				return err
 			}
 		}
-		c.ConfigRequired = confRequired
 
 		saveRandomHostAddr := func() error {
 			port, err := getRandomPort()
@@ -255,20 +367,19 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 				port = 4006
 				log.Errorf("failed to get random port for gateway, go with the default %d: %s", port, err)
 			}
-
-			c.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)
-			return writeConfig()
+			return c.SetHostAddr(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port))
 		}
 
-		if c.HostAddr == "" {
+		hostAddr := c.HostAddr()
+		if hostAddr == "" {
 			err = saveRandomHostAddr()
 			if err != nil {
 				return err
 			}
 		} else {
-			parts := strings.Split(c.HostAddr, "/")
+			parts := strings.Split(hostAddr, "/")
 			if len(parts) == 0 {
-				log.Errorf("failed to parse cfg.HostAddr: %s", c.HostAddr)
+				log.Errorf("failed to parse cfg.HostAddr: %s", hostAddr)
 			} else {
 				// lets test the existing port in config
 				addr, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+parts[len(parts)-1])
@@ -302,6 +413,33 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 	return nil
 }
 
+// deriveNetworkIdFromYAML attempts to derive the network ID from the network YAML configuration.
+// This is used for recovery when the config.json is corrupted.
+func (c *Config) deriveNetworkIdFromYAML() (string, error) {
+	var confBytes []byte
+	networkConfigPath := loadenv.Get("ANY_SYNC_NETWORK")
+
+	if networkConfigPath == "" && c.NetworkMode == pb.RpcAccount_CustomConfig {
+		networkConfigPath = c.NetworkCustomConfigFilePath
+	}
+
+	if networkConfigPath != "" {
+		var err error
+		confBytes, err = os.ReadFile(networkConfigPath)
+		if err != nil {
+			return "", err
+		}
+	} else {
+		confBytes = nodesConfYmlBytes
+	}
+
+	var conf nodeconf.Configuration
+	if err := yaml.Unmarshal(confBytes, &conf); err != nil {
+		return "", err
+	}
+	return conf.NetworkId, nil
+}
+
 func (c *Config) Name() (name string) {
 	return CName
 }
@@ -310,14 +448,9 @@ func (c *Config) DSConfig() clientds.Config {
 	return c.DS
 }
 
-func (c *Config) FSConfig() (FSConfig, error) {
-	res := ConfigRequired{}
-	err := GetFileConfig(c.GetConfigPath(), &res)
-	if err != nil {
-		return FSConfig{}, err
-	}
-
-	return FSConfig{IPFSStorageAddr: res.CustomFileStorePath}, nil
+// FSConfig returns the file storage configuration read from memory.
+func (c *Config) FSConfig() FSConfig {
+	return FSConfig{IPFSStorageAddr: c.CustomFileStorePath()}
 }
 
 func (c *Config) GetRepoPath() string {
@@ -433,17 +566,20 @@ func (c *Config) GetNodeConfWithError() (conf nodeconf.Configuration, err error)
 		if err := yaml.Unmarshal(confBytes, &conf); err != nil {
 			return nodeconf.Configuration{}, errors.Join(ErrNetworkFileFailedToRead, err)
 		}
-		if !c.DisableNetworkIdCheck && c.NetworkId != "" && c.NetworkId != conf.NetworkId {
-			log.Warnf("Network id mismatch: %s != %s", c.NetworkId, conf.NetworkId)
-			return nodeconf.Configuration{}, errors.Join(ErrNetworkIdMismatch, fmt.Errorf("network id mismatch: %s != %s", c.NetworkId, conf.NetworkId))
+		networkId := c.NetworkId()
+		if !c.DisableNetworkIdCheck && networkId != "" && networkId != conf.NetworkId {
+			log.Warnf("Network id mismatch: %s != %s", networkId, conf.NetworkId)
+			return nodeconf.Configuration{}, errors.Join(ErrNetworkIdMismatch, fmt.Errorf("network id mismatch: %s != %s", networkId, conf.NetworkId))
 		}
 	case pb.RpcAccount_LocalOnly:
 		confBytes = []byte{}
 	}
 
-	if conf.NetworkId != "" && c.NetworkId == "" {
+	if conf.NetworkId != "" && c.NetworkId() == "" {
 		log.Infof("Network id is not set in config; set to %s", conf.NetworkId)
-		c.NetworkId = conf.NetworkId
+		c.mu.Lock()
+		c.persisted.NetworkId = conf.NetworkId
+		c.mu.Unlock()
 	}
 	return
 }
@@ -482,15 +618,14 @@ func (c *Config) GetQuic() quic.Config {
 }
 
 func (c *Config) ResetStoredNetworkId() error {
-	configCopy := c.ConfigRequired
-	configCopy.NetworkId = ""
-	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+	return c.SetNetworkId("")
 }
 
 func (c *Config) PersistAccountNetworkId() error {
-	configCopy := c.ConfigRequired
-	configCopy.NetworkId = c.NetworkId
-	return WriteJsonConfig(c.GetConfigPath(), configCopy)
+	// The network id is already in memory, just write the current config to disk
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.writeLocked()
 }
 
 func (c *Config) GetSpaceStorageMode() storage.SpaceStorageMode {

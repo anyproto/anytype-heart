@@ -141,7 +141,10 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int, no
 		var data []*pb.RpcHistoryVersion
 
 		e = tree.IterateFrom(tree.Root().Id, sourceimpl.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
-			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
+			var participantId string
+			if c.Identity != nil {
+				participantId = domain.NewParticipantId(id.SpaceID, c.Identity.Account())
+			}
 			data = h.fillVersionData(c, curHeads, participantId, data, hasher)
 			return true
 		})
@@ -561,7 +564,10 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 	st.BlocksInit(st)
 	heads := tree.Heads()
 	if ch, e := tree.GetChange(heads[len(heads)-1]); e == nil {
-		participantId := domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
+		var participantId string
+		if ch.Identity != nil {
+			participantId = domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
+		}
 		ver = &pb.RpcHistoryVersion{
 			Id:          ch.Id,
 			PreviousIds: ch.PreviousIds,

@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/encode"
 )
@@ -425,6 +426,28 @@ func (mw *Middleware) SpaceChangeOwnership(cctx context.Context, request *pb.Rpc
 			Description: getErrorDescription(err),
 		},
 	}
+}
+
+func (mw *Middleware) SpaceDeleteCorruptedBackup(_ context.Context, req *pb.RpcSpaceDeleteCorruptedBackupRequest) *pb.RpcSpaceDeleteCorruptedBackupResponse {
+	response := func(code pb.RpcSpaceDeleteCorruptedBackupResponseErrorCode, err error) *pb.RpcSpaceDeleteCorruptedBackupResponse {
+		m := &pb.RpcSpaceDeleteCorruptedBackupResponse{
+			Error: &pb.RpcSpaceDeleteCorruptedBackupResponseError{Code: code},
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	if req.BackupPath == "" {
+		return response(pb.RpcSpaceDeleteCorruptedBackupResponseError_BAD_INPUT, fmt.Errorf("backup path is required"))
+	}
+
+	storageService := mustService[storage.ClientStorage](mw)
+	if err := storageService.DeleteBackup(req.BackupPath); err != nil {
+		return response(pb.RpcSpaceDeleteCorruptedBackupResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcSpaceDeleteCorruptedBackupResponseError_NULL, nil)
 }
 
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
