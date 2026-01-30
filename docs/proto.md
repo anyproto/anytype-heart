@@ -2185,6 +2185,7 @@
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.EmptyType](#anytype-model-Block-Content-Dataview-Sort-EmptyType)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
+    - [Block.Content.Dataview.View.ListSize](#anytype-model-Block-Content-Dataview-View-ListSize)
     - [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size)
     - [Block.Content.Dataview.View.Type](#anytype-model-Block-Content-Dataview-View-Type)
     - [Block.Content.Div.Style](#anytype-model-Block-Content-Div-Style)
@@ -29121,6 +29122,7 @@ sent when the view have been changed or added
 | wrapContent | [bool](#bool) |  | within the view
 
 Wrap content in view |
+| listSize | [model.Block.Content.Dataview.View.ListSize](#anytype-model-Block-Content-Dataview-View-ListSize) |  | List view size setting |
 
 
 
@@ -32893,6 +32895,7 @@ deprecated |
 | defaultObjectTypeId | [string](#string) |  | Default object type that is chosen for new object created within the view |
 | endRelationKey | [string](#string) |  | Group view by this relationKey |
 | wrapContent | [bool](#bool) |  | Wrap content in view |
+| listSize | [Block.Content.Dataview.View.ListSize](#anytype-model-Block-Content-Dataview-View-ListSize) |  | List view size setting |
 
 
 
@@ -34748,6 +34751,18 @@ stored |
 | Asc | 0 |  |
 | Desc | 1 |  |
 | Custom | 2 |  |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-View-ListSize"></a>
+
+### Block.Content.Dataview.View.ListSize
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Compact | 0 | Single-line display (default) |
+| Regular | 1 | Two-line display with description |
 
 
 
