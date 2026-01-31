@@ -36,6 +36,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1.Use(srv.ensureCacheInitialized())
 	v1.Use(srv.ensureAuthenticated(mw))
 
+	srv.registerChatRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerListRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerMemberRoutes(v1, eventService)
 	srv.registerObjectRoutes(v1, eventService, writeRateLimitMW)
@@ -307,5 +308,41 @@ func (srv *Server) registerTypeRoutes(v1 *gin.RouterGroup, eventService apicore.
 		writeRateLimitMW,
 		ensureAnalyticsEvent("DeleteType", eventService),
 		handler.DeleteTypeHandler(srv.service),
+	)
+}
+
+// registerChatRoutes registers chat-related routes
+func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages",
+		ensureAnalyticsEvent("ListMessages", eventService),
+		handler.ListMessagesHandler(srv.service),
+	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		ensureAnalyticsEvent("GetMessage", eventService),
+		handler.GetMessageHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/messages",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("CreateMessage", eventService),
+		handler.CreateMessageHandler(srv.service),
+	)
+	v1.PATCH("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("UpdateMessage", eventService),
+		handler.UpdateMessageHandler(srv.service),
+	)
+	v1.DELETE("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("DeleteMessage", eventService),
+		handler.DeleteMessageHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/messages/:message_id/reactions",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ToggleReaction", eventService),
+		handler.ToggleReactionHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/search",
+		ensureAnalyticsEvent("SearchMessages", eventService),
+		handler.SearchMessagesHandler(srv.service),
 	)
 }
