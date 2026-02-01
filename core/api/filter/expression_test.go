@@ -523,7 +523,13 @@ func TestBuildExpressionFilters(t *testing.T) {
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
 				m.On("ResolvePropertyApiKey", propertyMap, "links").Return("links", true)
 				// ObjectsFilterItem.GetValue() returns []string, not []interface{}
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "links", []string{"obj1", "obj2"}, propertyMap["links"], propertyMap).Return([]string{"obj1", "obj2"}, nil)
+				// The service must accept []string input for this to work
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "links",
+					mock.MatchedBy(func(v interface{}) bool {
+						_, ok := v.([]string)
+						return ok // Must be []string type
+					}),
+					propertyMap["links"], propertyMap).Return([]string{"obj1", "obj2"}, nil)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
@@ -555,7 +561,14 @@ func TestBuildExpressionFilters(t *testing.T) {
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
 				m.On("ResolvePropertyApiKey", propertyMap, "assignee").Return("assignee", true)
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "assignee", []string{"user1", "user2"}, propertyMap["assignee"], propertyMap).Return([]string{"user1", "user2"}, nil)
+				// ObjectsFilterItem.GetValue() returns []string, not []interface{}
+				// The service must accept []string input for this to work
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "assignee",
+					mock.MatchedBy(func(v interface{}) bool {
+						_, ok := v.([]string)
+						return ok // Must be []string type
+					}),
+					propertyMap["assignee"], propertyMap).Return([]string{"user1", "user2"}, nil)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
