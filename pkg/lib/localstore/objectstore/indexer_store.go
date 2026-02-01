@@ -36,31 +36,30 @@ var emptyBuffer = make([]byte, 8)
 // Format: unixTimestamp * 10000 + seqNum (0000-9999)
 var ftQueueCounter atomic.Uint64
 
-// generateFTQueueCounter returns next monotonic counter (unixTs*10000 + seqNum)
+// GenerateFTQueueCounter returns next monotonic counter (unixTs*10000 + seqNum)
 // Uses lock-free CAS loop for thread safety
 // IMPORTANT NOTE: WILL sleep in case of > 10000 ops/sec
-func generateFTQueueCounter() uint64 {
+func GenerateFTQueueCounter() uint64 {
 	for {
 		current := ftQueueCounter.Load()
-		currentTs := int64(current / 1000)
-		currentSeq := current % 1000
+		currentTs := int64(current / 10000)
+		currentSeq := current % 10000
 
 		now := time.Now().Unix()
 		var newVal uint64
 
 		if now == currentTs {
-			if currentSeq >= 999 {
+			if currentSeq >= 9999 {
 				// Wait for next second
-				panic("ffffffff")
 				time.Sleep(time.Until(time.Unix(now+1, 0)))
 				continue // retry with new timestamp
 			}
 			newVal = current + 1
 		} else {
-			if currentSeq > 1 {
+			if currentSeq > 10 {
 				fmt.Printf("### %d ops/sec on fulltext queue detected\n", currentSeq)
 			}
-			newVal = uint64(now) * 1000
+			newVal = uint64(now) * 10000
 		}
 
 		if ftQueueCounter.CompareAndSwap(current, newVal) {
@@ -73,7 +72,7 @@ func generateFTQueueCounter() uint64 {
 // FtQueueReconcileWithSeq used to check and reindex objects on ft start in case we have consistency issues, otherwise gc the queue
 // must be called before any other fulltext operations
 func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq uint64) error {
-	txn, err := s.fulltextQueue.WriteTx(ctx)
+	txn, err := s.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
@@ -113,23 +112,24 @@ func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq 
 
 // AddToIndexQueue adds objects to the FT queue for indexing.
 // For backwards compatibility, this function does not return the counter.
-func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (enqueued int, err error) {
-	_, enqueued, err = s.AddToIndexQueueWithCounter(ctx, ids...)
-	return enqueued, err
+func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (ftQueueCtr uint64, enqueued int, err error) {
+	ftQueueCtr = GenerateFTQueueCounter()
+	enqueued, err = s.AddToIndexQueueWithCounter(ctx, ftQueueCtr, ids...)
+	return ftQueueCtr, enqueued, err
 }
 
 // AddToIndexQueueWithCounter adds objects to the FT queue and returns a counter for consistency tracking.
 // The counter is saved atomically with the queue entries to enable crash recovery.
 // If the common DB doesn't flush before a crash, the counter won't be persisted,
 // allowing detection of objects that were added to headsState but not to the FT queue.
-func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ids ...domain.FullID) (ftQueueCtr uint64, enqueued int, err error) {
+func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ftQueueCtr uint64, ids ...domain.FullID) (enqueued int, err error) {
 	if len(ids) == 0 {
-		return 0, 0, nil
+		return 0, nil
 	}
 
-	txn, err := s.fulltextQueue.WriteTx(ctx)
+	txn, err := s.WriteTx(ctx)
 	if err != nil {
-		return 0, 0, fmt.Errorf("start write tx: %w", err)
+		return 0, fmt.Errorf("start write tx: %w", err)
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
@@ -138,14 +138,13 @@ func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ids ...d
 		s.arenaPool.Put(arena)
 	}()
 
-	// Generate counter for this batch
-	ftQueueCtr = generateFTQueueCounter()
-
 	obj := arena.NewObject()
 	var modified int
+	var uniqueSpaceIds = make(map[string]struct{})
 	for _, id := range ids {
 		obj.Set(idKey, arena.NewString(id.ObjectID))
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
+		uniqueSpaceIds[id.SpaceID] = struct{}{}
 		obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 		res, err := s.fulltextQueue.UpsertId(txn.Context(), id.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
 			if anyencutil.Equal(v, obj) {
@@ -157,27 +156,28 @@ func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ids ...d
 		modified += res.Modified
 
 		if err != nil {
-			return 0, 0, errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
+			return 0, errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
 		}
 	}
 
 	// Save the counter atomically in the same transaction (per-space)
 	// This ensures the counter is only persisted if the queue entries are also persisted
 	// All objects in batch should be from the same space
-	spaceId := ids[0].SpaceID
-	counterObj := arena.NewObject()
-	counterObj.Set("id", arena.NewString(ftQueueCounterKey(spaceId)))
-	counterObj.Set("counter", arena.NewNumberFloat64(float64(ftQueueCtr)))
-	err = s.indexerChecksums.UpsertOne(txn.Context(), counterObj)
-	if err != nil {
-		return 0, 0, errors.Join(txn.Rollback(), fmt.Errorf("save ft queue counter: %w", err))
+	for spaceId := range uniqueSpaceIds {
+		counterObj := arena.NewObject()
+		counterObj.Set("id", arena.NewString(ftQueueCounterKey(spaceId)))
+		counterObj.Set("counter", arena.NewNumberFloat64(float64(ftQueueCtr)))
+		err = s.indexerChecksums.UpsertOne(txn.Context(), counterObj)
+		if err != nil {
+			return 0, errors.Join(txn.Rollback(), fmt.Errorf("save ft queue counter: %w", err))
+		}
 	}
 
 	err = txn.Commit()
 	if err != nil {
-		return 0, 0, fmt.Errorf("commit: %w", err)
+		return 0, fmt.Errorf("commit: %w", err)
 	}
-	return ftQueueCtr, modified, nil
+	return modified, nil
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(
@@ -185,7 +185,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
+	) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -274,7 +274,7 @@ func ftSeq(seq uint64, arena *anyenc.Arena) *anyenc.Value {
 }
 
 func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error {
-	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
+	txn, err := s.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}

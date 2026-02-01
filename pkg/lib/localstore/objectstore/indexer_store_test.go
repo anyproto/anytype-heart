@@ -49,11 +49,11 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("add to queue", func(t *testing.T) {
-		_, err := s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "one", SpaceID: "id1"})
+		_, _, err := s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "one", SpaceID: "id1"})
 		require.NoError(t, err)
-		_, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "one", SpaceID: "id1"})
+		_, _, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "one", SpaceID: "id1"})
 		require.NoError(t, err)
-		_, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "two", SpaceID: "id1"})
+		_, _, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "two", SpaceID: "id1"})
 		require.NoError(t, err)
 
 		ids, err := s.ListIdsFromFullTextQueue([]string{"id1"}, 0)
@@ -63,11 +63,11 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	})
 
 	t.Run("reconcile", func(t *testing.T) {
-		_, err := s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "x", SpaceID: "id2"})
+		_, _, err := s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "x", SpaceID: "id2"})
 		require.NoError(t, err)
-		_, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "y", SpaceID: "id2"})
+		_, _, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "y", SpaceID: "id2"})
 		require.NoError(t, err)
-		_, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "z", SpaceID: "id2"})
+		_, _, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "z", SpaceID: "id2"})
 		require.NoError(t, err)
 		ids, err := s.ListIdsFromFullTextQueue([]string{"id2"}, 0)
 		require.NoError(t, err)
@@ -124,11 +124,11 @@ func TestIndexerBatch(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("batch - no more than limit", func(t *testing.T) {
-		_, err := s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "one", SpaceID: "id1"})
+		_, _, err := s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "one", SpaceID: "id1"})
 		require.NoError(t, err)
-		_, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "two", SpaceID: "id1"})
+		_, _, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "two", SpaceID: "id1"})
 		require.NoError(t, err)
-		_, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "three", SpaceID: "id1"})
+		_, _, err = s.AddToIndexQueue(ctx, domain.FullID{ObjectID: "three", SpaceID: "id1"})
 		require.NoError(t, err)
 		var batches [][]domain.FullID
 		err = s.BatchProcessFullTextQueue(

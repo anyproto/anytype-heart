@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
@@ -59,7 +60,7 @@ func (q *dummyFulltextQueue) FtQueueMarkAsIndexed(ids []domain.FullID, state uin
 	return nil
 }
 
-func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (int, error) {
+func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (uint64, int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 	var added int
@@ -69,7 +70,7 @@ func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.
 			added++
 		}
 	}
-	return added, nil
+	return uint64(time.Now().Unix()), added, nil
 }
 
 func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error) {

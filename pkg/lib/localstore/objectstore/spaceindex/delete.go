@@ -64,7 +64,7 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	}
 	// add to ft index queue in order to remove the object
 	// it will find the object not found error and remove all the docs
-	_, err = s.fulltextQueue.AddToIndexQueue(txn.Context(), domain.FullID{
+	_, _, err = s.fulltextQueue.AddToIndexQueue(s.componentCtx, domain.FullID{
 		ObjectID: id,
 		SpaceID:  s.spaceId,
 	})

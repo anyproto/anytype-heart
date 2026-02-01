@@ -69,10 +69,10 @@ type ObjectStore interface {
 }
 
 type IndexerStore interface {
-	AddToIndexQueue(ctx context.Context, id ...domain.FullID) (int, error)
+	AddToIndexQueue(ctx context.Context, id ...domain.FullID) (ftQueueCounter uint64, enqueued int, err error)
 	// AddToIndexQueueWithCounter adds objects to FT queue and returns a counter for consistency tracking.
 	// The counter is persisted atomically with the queue entries for crash recovery.
-	AddToIndexQueueWithCounter(ctx context.Context, ids ...domain.FullID) (ftQueueCounter uint64, enqueued int, err error)
+	AddToIndexQueueWithCounter(ctx context.Context, ftQueueCounter uint64, ids ...domain.FullID) (enqueued int, err error)
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
 
@@ -93,6 +93,8 @@ type IndexerStore interface {
 	RunFTConsistencyCheck(ctx context.Context, fts ftsearch.FTSearch) (checked, enqueued int, err error)
 	// GetFTQueueCounter returns the last persisted FT queue counter for a specific space (crash recovery)
 	GetFTQueueCounter(ctx context.Context, spaceId string) (uint64, error)
+	// WriteTx starts a write transaction to commonDB
+	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }
 
 type AccountStore interface {
@@ -502,7 +504,7 @@ func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.
 				fmt.Printf("object %s/%s missisng details: %+v\n", id.SpaceID, id.ObjectID, pbtypes.Sprint(d.ToProto()))
 			}
 		}
-		enqueued, err = s.AddToIndexQueue(ctx, missingIds...)
+		_, enqueued, err = s.AddToIndexQueue(ctx, missingIds...)
 		if err != nil {
 			return checked, 0, fmt.Errorf("batch enqueue: %w", err)
 		}
@@ -525,4 +527,9 @@ func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, er
 
 func (s *dsObjectStore) SubscribeLinksUpdate(callback func(info spaceindex.LinksUpdateInfo)) {
 	s.subManager.SubscribeLinksUpdate(callback)
+}
+
+// WriteTx returns a new write transaction for commonDb
+func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
+	return s.db.WriteTx(ctx)
 }

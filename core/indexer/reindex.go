@@ -615,7 +615,7 @@ func (i *indexer) checkFTQueueConsistency(ctx context.Context, store spaceindex.
 	}
 
 	// Re-adding will update the per-space counter in commonDB
-	_, err = i.store.AddToIndexQueue(ctx, toRequeue...)
+	_, _, err = i.store.AddToIndexQueue(ctx, toRequeue...)
 	if err != nil {
 		log.With("space", spaceId).Errorf("re-add to ft queue: %v", err)
 	}
