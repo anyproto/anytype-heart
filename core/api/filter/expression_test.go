@@ -499,6 +499,71 @@ func TestBuildExpressionFilters(t *testing.T) {
 				assert.Equal(t, pbtypes.String("test"), result.Value)
 			},
 		},
+		{
+			name: "objects filter with in condition",
+			expr: &apimodel.FilterExpression{
+				Conditions: []apimodel.FilterItem{
+					{
+						WrappedFilterItem: apimodel.ObjectsFilterItem{
+							PropertyKey: "links",
+							Condition:   apimodel.FilterConditionIn,
+							Objects:     &[]string{"obj1", "obj2"},
+						},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				propertyMap := map[string]*apimodel.Property{
+					"links": {
+						Key:         "links",
+						RelationKey: bundle.RelationKeyLinks.String(),
+						Format:      apimodel.PropertyFormatObjects,
+					},
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "links").Return("links", true)
+				// ObjectsFilterItem.GetValue() returns []string, not []interface{}
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "links", []string{"obj1", "obj2"}, propertyMap["links"], propertyMap).Return([]string{"obj1", "obj2"}, nil)
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				require.NotNil(t, result)
+				assert.Equal(t, bundle.RelationKeyLinks.String(), result.RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_In, result.Condition)
+				assert.Equal(t, pbtypes.StringList([]string{"obj1", "obj2"}), result.Value)
+			},
+		},
+		{
+			name: "objects filter with all condition",
+			expr: &apimodel.FilterExpression{
+				Conditions: []apimodel.FilterItem{
+					{
+						WrappedFilterItem: apimodel.ObjectsFilterItem{
+							PropertyKey: "assignee",
+							Condition:   apimodel.FilterConditionAll,
+							Objects:     &[]string{"user1", "user2"},
+						},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				propertyMap := map[string]*apimodel.Property{
+					"assignee": {
+						Key:         "assignee",
+						RelationKey: bundle.RelationKeyAssignee.String(),
+						Format:      apimodel.PropertyFormatObjects,
+					},
+				}
+				m.On("GetCachedProperties", spaceId).Return(propertyMap)
+				m.On("ResolvePropertyApiKey", propertyMap, "assignee").Return("assignee", true)
+				m.On("SanitizeAndValidatePropertyValue", spaceId, "assignee", []string{"user1", "user2"}, propertyMap["assignee"], propertyMap).Return([]string{"user1", "user2"}, nil)
+			},
+			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
+				require.NotNil(t, result)
+				assert.Equal(t, bundle.RelationKeyAssignee.String(), result.RelationKey)
+				assert.Equal(t, model.BlockContentDataviewFilter_AllIn, result.Condition)
+				assert.Equal(t, pbtypes.StringList([]string{"user1", "user2"}), result.Value)
+			},
+		},
 	}
 
 	for _, tt := range tests {
