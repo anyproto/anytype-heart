@@ -381,16 +381,25 @@ func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, v
 		}
 		return tag.Id, nil
 	case apimodel.PropertyFormatMultiSelect:
-		keysOrIds, ok := value.([]interface{})
-		if !ok {
+		// Accept both []interface{} (from JSON unmarshaling) and []string (from MultiSelectFilterItem.GetValue())
+		var rawKeysOrIds []string
+		switch v := value.(type) {
+		case []interface{}:
+			for _, item := range v {
+				keyOrId, ok := item.(string)
+				if !ok {
+					return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (tag ids or keys)", key))
+				}
+				rawKeysOrIds = append(rawKeysOrIds, keyOrId)
+			}
+		case []string:
+			rawKeysOrIds = v
+		default:
 			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of tag ids or keys", key))
 		}
+
 		var validIds []string
-		for _, v := range keysOrIds {
-			keyOrId, ok := v.(string)
-			if !ok {
-				return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (tag ids or keys)", key))
-			}
+		for _, keyOrId := range rawKeysOrIds {
 			keyOrId = s.sanitizedString(keyOrId)
 			if !s.isValidSelectOption(spaceId, prop, keyOrId, propertyMap) {
 				return nil, util.ErrBadInput(fmt.Sprintf("invalid multi_select option for %q: %s", key, keyOrId))
