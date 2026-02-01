@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"errors"
@@ -112,13 +113,20 @@ func (s *apiService) startServer() error {
 		return nil
 	}
 
+	// Update OpenAPI docs server URL to match actual listen address
+	actualURL := "http://" + s.listenAddr
+	defaultURL := "http://127.0.0.1:31009" // Hardcoded in swagger annotations
+
+	updatedYAML := bytes.Replace(openapiYAML, []byte("url: "+defaultURL), []byte("url: "+actualURL), 1)
+	updatedJSON := bytes.Replace(openapiJSON, []byte(`"url": "`+defaultURL+`"`), []byte(`"url": "`+actualURL+`"`), 1)
+
 	s.srv = server.NewServer(
 		s.mw,
 		s.accountService,
 		s.eventService,
 		s.crossSpaceSubService,
-		openapiYAML,
-		openapiJSON,
+		updatedYAML,
+		updatedJSON,
 	)
 
 	s.httpSrv = &http.Server{
