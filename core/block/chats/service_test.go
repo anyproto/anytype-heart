@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription/mock_chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
@@ -84,6 +85,7 @@ type fixture struct {
 	app                  *app.App
 	crossSpaceSubService *mock_crossspacesub.MockService
 	ftSearch             *mock_ftsearch.MockFTSearch
+	objectStore          *objectstore.StoreFixture
 
 	lock sync.Mutex
 	// recorded actions (subscribe/unsubscribe) per chat object, in temporal order
@@ -134,6 +136,7 @@ func newFixture(t *testing.T) *fixture {
 		subscriptionService:  subscriptionService,
 		objectGetter:         objectGetter,
 		ftSearch:             ftSearch,
+		objectStore:          objectStore,
 		actions:              map[string][]recordedAction{},
 	}
 
@@ -535,6 +538,235 @@ func TestApplyEmojiMarks(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestBuildPushPayload(t *testing.T) {
+	t.Run("basic message with space and sender names", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		spaceId := "space1"
+		spaceName := "My Workspace"
+		senderName := "John Doe"
+		participantId := domain.NewParticipantId(spaceId, "testAccountId")
+
+		// Set up space name
+		fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("spaceView1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeyTargetSpaceId:  domain.String(spaceId),
+				bundle.RelationKeyName:           domain.String(spaceName),
+			},
+		})
+
+		// Set up sender name (participant)
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(participantId),
+				bundle.RelationKeyName: domain.String(senderName),
+			},
+		})
+
+		fx.start(t)
+
+		req := pushNotificationRequest{
+			spaceId:      spaceId,
+			chatObjectId: "chat1",
+			chatName:     "General",
+			messageId:    "msg1",
+			message: &chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Message: &model.ChatMessageMessageContent{
+						Text: "Hello world",
+					},
+				},
+			},
+		}
+		want := &chatpush.Payload{
+			SpaceId:  spaceId,
+			SenderId: "testAccountId",
+			Type:     chatpush.ChatMessage,
+			NewMessagePayload: &chatpush.NewMessagePayload{
+				ChatId:         "chat1",
+				MsgId:          "msg1",
+				SpaceName:      spaceName,
+				ChatName:       "General",
+				SenderName:     senderName,
+				Text:           "Hello world",
+				HasAttachments: false,
+				Attachments:    nil,
+			},
+		}
+
+		// when
+		got, err := fx.buildPushPayload(req)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("message with attachments", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		spaceId := "space1"
+
+		// Set up attachment details
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("file1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_file)),
+			},
+		})
+
+		fx.start(t)
+
+		req := pushNotificationRequest{
+			spaceId:      spaceId,
+			chatObjectId: "chat1",
+			chatName:     "Team Chat",
+			messageId:    "msg1",
+			message: &chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Message: &model.ChatMessageMessageContent{
+						Text: "Check this file",
+					},
+					Attachments: []*model.ChatMessageAttachment{
+						{Target: "file1"},
+					},
+				},
+			},
+		}
+		want := &chatpush.Payload{
+			SpaceId:  spaceId,
+			SenderId: "testAccountId",
+			Type:     chatpush.ChatMessage,
+			NewMessagePayload: &chatpush.NewMessagePayload{
+				ChatId:         "chat1",
+				MsgId:          "msg1",
+				SpaceName:      "",
+				ChatName:       "Team Chat",
+				SenderName:     "",
+				Text:           "Check this file",
+				HasAttachments: true,
+				Attachments: []*chatpush.Attachment{
+					{Layout: int(model.ObjectType_file)},
+				},
+			},
+		}
+
+		// when
+		got, err := fx.buildPushPayload(req)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("message with emoji marks", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+		fx.start(t)
+
+		req := pushNotificationRequest{
+			spaceId:      "space1",
+			chatObjectId: "chat1",
+			chatName:     "Fun Chat",
+			messageId:    "msg1",
+			message: &chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Message: &model.ChatMessageMessageContent{
+						Text: "Great  ",
+						Marks: []*model.BlockContentTextMark{
+							{
+								Type:  model.BlockContentTextMark_Emoji,
+								Range: &model.Range{From: 6, To: 7},
+								Param: "👍",
+							},
+						},
+					},
+				},
+			},
+		}
+		want := &chatpush.Payload{
+			SpaceId:  "space1",
+			SenderId: "testAccountId",
+			Type:     chatpush.ChatMessage,
+			NewMessagePayload: &chatpush.NewMessagePayload{
+				ChatId:         "chat1",
+				MsgId:          "msg1",
+				SpaceName:      "",
+				ChatName:       "Fun Chat",
+				SenderName:     "",
+				Text:           "Great 👍",
+				HasAttachments: false,
+				Attachments:    nil,
+			},
+		}
+
+		// when
+		got, err := fx.buildPushPayload(req)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("empty chat name", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+		fx.start(t)
+
+		req := pushNotificationRequest{
+			spaceId:      "space1",
+			chatObjectId: "chat1",
+			chatName:     "",
+			messageId:    "msg1",
+			message: &chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Message: &model.ChatMessageMessageContent{
+						Text: "Hello",
+					},
+				},
+			},
+		}
+		want := &chatpush.Payload{
+			SpaceId:  "space1",
+			SenderId: "testAccountId",
+			Type:     chatpush.ChatMessage,
+			NewMessagePayload: &chatpush.NewMessagePayload{
+				ChatId:         "chat1",
+				MsgId:          "msg1",
+				SpaceName:      "",
+				ChatName:       "",
+				SenderName:     "",
+				Text:           "Hello",
+				HasAttachments: false,
+				Attachments:    nil,
+			},
+		}
+
+		// when
+		got, err := fx.buildPushPayload(req)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
 }
 
 func TestService_Search(t *testing.T) {

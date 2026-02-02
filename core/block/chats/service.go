@@ -425,25 +425,25 @@ type pushNotificationRequest struct {
 	mentions     []string
 }
 
-func (s *service) sendPushNotification(ctx context.Context, req pushNotificationRequest) (err error) {
+func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Payload, error) {
 	accountId := s.accountService.AccountID()
 	spaceName := s.objectStore.GetSpaceName(req.spaceId)
 	details, err := s.objectStore.SpaceIndex(req.spaceId).GetDetails(domain.NewParticipantId(req.spaceId, accountId))
 	var senderName string
 	if err != nil {
-		log.Warn("sendPushNotification: failed to get profile name, details are empty", zap.Error(err))
+		log.Warn("buildPushPayload: failed to get profile name, details are empty", zap.Error(err))
 	} else {
 		senderName = details.GetString(bundle.RelationKeyName)
 	}
 
 	attachments, err := s.collectAttachmentPayloads(req.message, req.spaceId)
 	if err != nil {
-		return fmt.Errorf("collect attachments: %w", err)
+		return nil, fmt.Errorf("collect attachments: %w", err)
 	}
 
 	text := applyEmojiMarks(req.message.Message.Text, req.message.Message.Marks)
 
-	payload := &chatpush.Payload{
+	return &chatpush.Payload{
 		SpaceId:  req.spaceId,
 		SenderId: accountId,
 		Type:     chatpush.ChatMessage,
@@ -457,6 +457,13 @@ func (s *service) sendPushNotification(ctx context.Context, req pushNotification
 			HasAttachments: len(req.message.Attachments) > 0,
 			Attachments:    attachments,
 		},
+	}, nil
+}
+
+func (s *service) sendPushNotification(ctx context.Context, req pushNotificationRequest) (err error) {
+	payload, err := s.buildPushPayload(req)
+	if err != nil {
+		return fmt.Errorf("build push payload: %w", err)
 	}
 
 	jsonPayload, err := json.Marshal(payload)
