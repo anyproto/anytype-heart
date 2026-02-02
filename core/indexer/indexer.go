@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 
@@ -118,6 +119,11 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	}
 	i.ftQueueFinished = make(chan struct{})
 	var ftCtx context.Context
+	if os.Getenv("ANYTYPE_DISABLE_FT_INDEXER") == "1" {
+		log.Warn("FT indexer disabled")
+		return
+	}
+	log.Info("Starting full text indexer")
 	ftCtx, i.ftQueueStop = context.WithCancel(i.runCtx)
 	go i.ftLoopRoutine(ftCtx)
 	return
