@@ -10,7 +10,6 @@ Scope: global
 - Creates editor instances (Page, Profile, Archive, Widget, etc.) based on SmartBlockType
 - Initializes objects from sources: loads tree, runs migrations, applies initial state
 - Composes editors with service dependencies (file handling, clipboard, bookmarks, dataview, etc.)
-- DONTs: object caching (done by objectcache), tree synchronization
 */
 
 import (

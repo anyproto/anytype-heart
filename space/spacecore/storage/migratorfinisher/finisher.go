@@ -10,7 +10,6 @@ Scope: global
 - Cleans up old storage artifacts after space storage migration completes
 - Removes CRDT index files from objectstore folder
 - Renames old store folder to "space_store_migrated"
-- DONTs: migration logic itself - only post-migration cleanup
 
 ## External State
 - Renames {oldPath} to "space_store_migrated" on successful migration

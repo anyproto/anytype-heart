@@ -10,7 +10,6 @@ Scope: global
 - Fetches encrypted messages from coordinator inbox, verifies signatures, decrypts, and dispatches to registered handlers
 - Provides mechanism for other components to register handlers by payload type
 - Sends messages to other users' inboxes via coordinator
-- DONTs: business logic for specific message types (delegated to registered handlers)
 
 ## Background Tasks
 - Periodic message check: polls coordinator every 30s for new messages (checkMessages)

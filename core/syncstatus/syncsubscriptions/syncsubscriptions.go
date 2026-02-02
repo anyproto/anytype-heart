@@ -10,7 +10,6 @@ Scope: global
 - Manages per-space subscriptions that track objects with pending sync (syncing/queued/error status)
 - Tracks limited files (files that hit backup limits) and uploading files per space
 - Creates subscriptions lazily on first access per space
-- DONTs: actual sync logic, file upload logic
 */
 
 import (

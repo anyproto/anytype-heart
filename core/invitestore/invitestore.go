@@ -9,7 +9,6 @@ Scope: global
 ## Responsibility
 - Store, retrieve, and remove encrypted space invite payloads via IPFS
 - Encrypt invites with AES before upload, decrypt on retrieval
-- DONTs: invite validation, ACL management, invitation link generation
 */
 
 import (

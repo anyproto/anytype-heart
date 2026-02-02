@@ -11,7 +11,6 @@ Scope: global
 - Delete files from the backup node
 - Track and enforce storage limits per space and per account
 - Provide node/space usage statistics
-- DONTs: local file storage, file indexing, file content processing
 
 ## Background Tasks
 - nodeUsageUpdater: periodically fetches account usage from backup node (10s active, 1min idle) [runNodeUsageUpdater]

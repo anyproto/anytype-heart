@@ -10,7 +10,6 @@ Scope: global
 - Creates and initializes SpaceController instances for all space types (personal, shareable, streamable, marketplace, one-to-one)
 - Creates and initializes TechSpace (special space storing SpaceViews for all other spaces)
 - Handles SpaceView creation in TechSpace when creating new spaces
-- DONTs: does not manage space lifecycle after creation (SpaceController handles that)
 
 ## Documentation
 Space types and their controllers:

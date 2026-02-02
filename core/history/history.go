@@ -12,7 +12,6 @@ Scope: global
 - Diff changes between two versions (blocks, relations, details, dataview)
 - Reset object to a previous version
 - Track block-level authorship (which participant last modified each block)
-- DONTs: does not manage change storage (uses objecttree from space)
 
 ## Documentation
 Version IDs: Normally a single change ID. For parallel editing (multiple heads),

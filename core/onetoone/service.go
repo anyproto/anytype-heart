@@ -10,7 +10,6 @@ Scope: global
 - Sends one-to-one chat invites to other users via coordinator inbox
 - Processes received one-to-one invites by creating 1-1 spaces and initializing chats
 - Retries failed invite sends periodically
-- DONTs: general inbox message handling (delegated to inboxclient), space creation logic (delegated to blockService)
 
 ## Background Tasks
 - Periodic retry: checks for unsent invites (status=ToSend) and resends them every 30s (inboxResend)

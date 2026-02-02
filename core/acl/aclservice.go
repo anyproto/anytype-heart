@@ -11,7 +11,6 @@ Scope: global
 - ACL membership operations (join, leave, accept, decline, remove participants)
 - Permission management (change participant permissions, approve leave requests)
 - Guest user account management
-- DONTs: participant object storage (handled by space), ACL record persistence (handled by any-sync)
 
 ## Background Tasks
 - aclUpdater: monitors participants with "Removing" status via cross-space subscription,

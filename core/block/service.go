@@ -13,7 +13,6 @@ Scope: global
 - Coordinates workspace/space creation including one-to-one spaces
 - Exposes ObjectGetter interface for cache.Do pattern used throughout codebase
 - Tracks currently opened objects to prevent premature cache eviction
-- DONTs: actual object storage (delegated to space), block content parsing (delegated to editors)
 
 ## Background Tasks
 - ObjectBookmarkFetch: async bookmark content update after initial fetch

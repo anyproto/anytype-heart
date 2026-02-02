@@ -11,7 +11,6 @@ Scope: global
 - Fetches URL metadata asynchronously (title, description, cover image, favicon)
 - Updates bookmark objects/blocks with fetched content
 - Parses HTML content into blocks when requested
-- DONTs: does NOT handle bookmark block rendering, only data fetching and object management
 
 ## Background Tasks
 - Content fetching: parallel goroutines fetch metadata, images, favicon concurrently via ContentUpdaters

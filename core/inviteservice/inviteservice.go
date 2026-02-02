@@ -10,7 +10,6 @@ Scope: global
 - Generate, retrieve, view, and remove space invites
 - Build signed invite payloads with space/creator metadata and icon encryption keys
 - Support multiple invite types: member (default), guest, and without-approval
-- DONTs: invite storage (delegated to invitestore), ACL management
 
 ## Documentation
 Invite lifecycle:

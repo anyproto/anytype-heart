@@ -10,7 +10,6 @@ Scope: global
 - Auto-downloads files to local store based on criteria: not available offline, synced, <20MB
 - Provides on-demand partial file caching (CacheFile) with block limits
 - Respects network state for wifi-only download mode
-- DONTs: file upload, sync status tracking, file content manipulation
 
 ## Background Tasks
 - downloader (5 workers): subscribes to eligible files across spaces, downloads full content (runManager, runDownloadWorker)

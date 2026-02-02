@@ -11,7 +11,6 @@ Scope: global
 - Manage dataview relation links and data sources
 - Copy dataview configuration between objects
 - Sync view relations with relation links (ensures new relation links appear in views)
-- DONTs: query execution, data fetching - this is purely configuration/state management
 */
 
 import (

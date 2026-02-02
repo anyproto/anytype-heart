@@ -11,7 +11,6 @@ Scope: space
 - Updates participant objects with identity profile data (name, avatar, etc.)
 - Updates participant objects with ACL state (permissions, status)
 - Handles one-to-one space metadata key retrieval separately from regular spaces
-- DONTs: ACL changes, participant creation (only updates existing participant objects)
 
 ## Documentation
 Called by aclobjectmanager for each account in ACL state. WatchParticipant registers

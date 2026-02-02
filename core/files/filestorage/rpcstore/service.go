@@ -10,7 +10,6 @@ Scope: global
 - Factory for creating RpcStore instances that communicate with file node peers
 - Manages peer observation for connectivity changes
 - Tracks aggregate traffic statistics (inbound/outbound bytes)
-- DONTs: actual RPC operations (delegated to RpcStore/client), local storage
 
 ## Background Tasks
 - checkPeerLoop: manages peer client lifecycle (connect/disconnect, TTL-based GC) [clientManager.checkPeerLoop]

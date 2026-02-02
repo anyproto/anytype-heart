@@ -11,7 +11,6 @@ Scope: global
 - Monitors space views to dynamically include/exclude spaces from cross-space subscriptions
 - Supports predicates to filter spaces based on space view details (creator, status, etc.)
 - Re-maps per-space subscription events to unified cross-space subscription ID
-- DONTs: single-space subscriptions (use core/subscription.Service directly)
 
 ## Background Tasks
 - monitorSpaceViewSub: Watches space view changes to add/remove spaces from active subscriptions (monitorSpaceViewSub)

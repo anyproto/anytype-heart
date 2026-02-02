@@ -10,7 +10,6 @@ Scope: global
 - Persists email verification requests for offline support
 - Retries sending to payment service when online
 - Signs requests with account private key
-- DONTs: email validation, membership management
 
 ## Background Tasks
 - periodicUpdateEmail: sends pending email to payment service (60s interval)

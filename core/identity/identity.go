@@ -11,7 +11,6 @@ Scope: global
 - Polls and caches profiles of other identities registered as observers
 - Resolves global names from naming service for all observed identities
 - Provides encryption keys for identity metadata (used for profile decryption)
-- DONTs: user authentication, identity creation/derivation
 
 ## Background Tasks
 - observeIdentitiesLoop: periodically fetches profiles for registered identities from remote repository

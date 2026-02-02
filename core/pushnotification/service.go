@@ -11,7 +11,6 @@ Scope: global
 - Sends encrypted push notifications via queued delivery with retry
 - Monitors space views and chats to determine subscription topics
 - Registers/revokes device tokens with push server
-- DONTs: direct push server communication (see pushclient.Client)
 
 ## Background Tasks
 - subscriptionSync: registers tokens, syncs topic subscriptions every 5 min or on changes (run)

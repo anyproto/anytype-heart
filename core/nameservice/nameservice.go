@@ -10,7 +10,6 @@ Scope: global
 - Provides RPC API for ".any" name resolution (name -> owner info, AnyId -> name)
 - Provides RPC API for user account status (names/operations quota, attached name)
 - Wraps nameserviceclient for application-level use
-- DONTs: name registration, blockchain operations (handled by naming node)
 */
 
 import (

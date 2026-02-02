@@ -11,7 +11,6 @@ Scope: global
 - Caches membership status and tiers locally, broadcasts changes via events
 - Validates and registers any-names through name service
 - Triggers limits updates (file sync, multiplayer) when membership changes
-- DONTs: payment processing, cache persistence (delegated to cache subpackage), email queue (delegated to emailcollector)
 
 ## Background Tasks
 - refreshController: polls payment node for membership/tiers changes (60s interval, 10s when forced)

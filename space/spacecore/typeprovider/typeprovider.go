@@ -10,7 +10,6 @@ Scope: global
 - Resolves SmartBlockType from object IDs using prefix/CID pattern matching
 - Falls back to space storage tree root for unknown IDs
 - Caches resolved types persistently to avoid repeated storage lookups
-- DONTs: object creation, type definitions, type validation logic
 
 ## External State
 - `smartblock_types` collection in common DB: persisted ID-to-type cache

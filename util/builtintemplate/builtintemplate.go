@@ -10,7 +10,6 @@ Scope: global
 - Provides embedded bundled templates from zip archive
 - Registers bundled templates as static sources in a space
 - Generates version hash for template change detection
-- DONTs: template creation/editing, user template management
 */
 
 import (

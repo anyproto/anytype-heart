@@ -8,7 +8,6 @@ Scope: space (unused - not registered anywhere)
 
 ## Responsibility
 - Stops tree syncing for a space after 10 minutes timeout
-- DONTs: Does NOT manage sync start, does NOT handle sync status
 
 ## Background Tasks
 - spaceCheck: Checks if 10 minutes elapsed since Run() and calls TreeSyncer.StopSync()

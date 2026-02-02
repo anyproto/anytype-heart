@@ -10,7 +10,6 @@ Scope: global
 - Tracks and broadcasts P2P connection status per registered space
 - Reacts to local peer discovery possibility changes (no interfaces, restricted, possible)
 - Counts active local peer connections per space via peerstore
-- DONTs: does NOT manage actual peer connections, only observes and reports status
 
 ## Background Tasks
 - worker: processes space status refresh requests from channel, updates and broadcasts status changes

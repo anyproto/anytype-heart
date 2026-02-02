@@ -9,7 +9,6 @@ Scope: global
 ## Responsibility
 - Defines interface for BadgerDB-backed space storage provider
 - Provides in-memory implementation for testing
-- DONTs: actual storage management (see clientds subpackage)
 
 ## External State
 - spacestore/ (BadgerDB, when using clientds implementation)

@@ -12,7 +12,6 @@ Scope: global
 - Migrate legacy file IDs to file object IDs in blocks and details
 - Manage file sync queue integration for upload/download
 - Delete file data when object is removed (if no other objects reference it)
-- DONTs: file storage/retrieval (files.Service), sync protocol (filesync.FileSync)
 
 ## Background Tasks
 - runIndexingProvider: Polls objectStore every 60s for non-indexed files, adds to queue

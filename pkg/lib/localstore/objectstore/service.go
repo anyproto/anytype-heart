@@ -14,7 +14,6 @@ Scope: global
 - Stores account status and indexer checksums
 - Manages virtual spaces registry
 - Maps object IDs to space IDs (spaceresolverstore)
-- DONTs: actual fulltext indexing (handled by ftsearch), object change detection (handled by indexer)
 
 ## External State
 - any-store collections in common db: fulltext_queue, indexerChecksums, virtualSpaces, file_keys, bindId

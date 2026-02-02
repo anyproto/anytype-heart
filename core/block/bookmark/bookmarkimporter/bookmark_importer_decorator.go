@@ -9,7 +9,6 @@ Scope: global
 ## Responsibility
 - Decorates bookmark.Service to prefer web import when creating bookmark objects
 - Falls back to standard CreateBookmarkObject if web import fails
-- DONTs: fetching bookmark content, managing bookmark state
 */
 
 import (

@@ -9,7 +9,6 @@ Scope: global
 ## Responsibility
 - Factory for creating per-space clientPeerManager instances
 - Provides shared connection pool access (unary and stream)
-- DONTs: peer lifecycle management (handled by clientPeerManager)
 */
 
 import (

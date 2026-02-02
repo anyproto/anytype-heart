@@ -10,7 +10,6 @@ Scope: global
 - Removes locally cached file blocks (IPLD DAG nodes) to free disk space
 - Respects backup status: by default only offloads files already synced to remote
 - Prevents data loss by checking cross-space file references before offloading
-- DONTs: file syncing/uploading (filesync), block storage management (filestorage)
 */
 
 import (

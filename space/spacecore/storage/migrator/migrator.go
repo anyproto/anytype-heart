@@ -11,7 +11,6 @@ Scope: global
 - Migrates object-to-space ID bindings to spaceresolverstore
 - Validates disk space before migration (requires 1.5x old storage size)
 - Reports progress via process.Service during migration
-- DONTs: cleanup of old storage (delegated to migratorfinisher)
 
 ## External State
 - objectstore/objects.db: writes space ID bindings for migrated objects

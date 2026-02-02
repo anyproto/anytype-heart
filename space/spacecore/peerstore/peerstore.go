@@ -11,7 +11,6 @@ Scope: global
 - Maintains bidirectional mappings: peer-to-spaces and space-to-peers
 - Proxies responsible node IDs and file peers from nodeconf service
 - Notifies observers on peer additions, removals, and space membership changes
-- DONTs: peer connection management, actual P2P discovery (handled by localdiscovery)
 */
 
 import (

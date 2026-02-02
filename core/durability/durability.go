@@ -8,14 +8,13 @@ Scope: global
 
 ## Responsibility
 - Triggers database WAL flushes on app state changes (background/closing)
-- DONTs: Does not manage databases directly, only coordinates flush timing
 
 ## Documentation
 StateChange behavior by state:
 - AppClosingInitiated: Best-effort flush (3s timeout, no wait) - DB component does final flush later
 - AppWentBackground: Blocking flush (10s timeout, wait for completion) - ensures data safety before suspend/hibernate
 
-Flush order: space stores first (can be reindexed), then anystore (critical data)
+Flush order: space stores first (critical data), then objectstore (can be reindexed)
 */
 
 import (

@@ -10,7 +10,6 @@ Scope: global
 - JWT token-based session management with scoped permissions
 - Challenge-response authentication for external API clients (4-digit numeric codes)
 - Session context for request/response event correlation
-- DONTs: network sessions, user authentication (only local API auth)
 
 ## Documentation
 Challenge flow: StartNewChallenge generates 4-digit code displayed to user ->

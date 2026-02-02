@@ -11,7 +11,6 @@ Scope: global
 - Broadcasts process lifecycle events (new/update/done) to clients
 - Provides Queue (worker pool with tasks) and Progress (simple counter) abstractions
 - Allows sessions to opt-out of progress update events
-- DONTs: actual task execution logic - that belongs to consumers
 
 ## Background Tasks
 - monitor: Per-process goroutine that broadcasts state updates every 500ms until done

@@ -8,7 +8,6 @@ Scope: space
 
 ## Responsibility
 - Deletes local space storage, files, and indexes when space is being removed
-- DONTs: Network deletion coordination (handled by deletioncontroller)
 
 ## Background Tasks
 - offloadRetry: Retries offload operation every 20s until success or context cancellation

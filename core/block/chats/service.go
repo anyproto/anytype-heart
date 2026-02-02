@@ -11,7 +11,6 @@ Scope: global
 - Tracks all chat objects across spaces via cross-space subscription
 - Manages cross-space message preview subscriptions (last message + state per chat)
 - Sends push notifications on new messages with mentions routing
-- DONTs: message persistence (chatrepository), subscription event delivery (chatsubscription)
 
 ## Background Tasks
 - monitorMessagePreviews: Processes cross-space subscription events to track chat object additions/removals and update preview subscriptions

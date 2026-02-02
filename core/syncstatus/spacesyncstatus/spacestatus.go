@@ -10,7 +10,6 @@ Scope: global
 - Aggregates sync state from multiple sources (node status, storage usage, sync subscriptions)
 - Computes overall space sync status and broadcasts EventSpaceSyncStatusUpdate to clients
 - Deduplicates identical events before broadcasting
-- DONTs: object-level sync tracking (done by detailsupdater), connection management (done by PeerManager)
 
 ## Background Tasks
 - periodicCall: processes queued Refresh requests every 1s (update)

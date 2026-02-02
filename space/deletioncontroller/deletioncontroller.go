@@ -10,7 +10,6 @@ Scope: global
 - Periodically fetches space statuses from coordinator and updates SpaceManager
 - Processes deletion of owned spaces marked via AddSpaceToDelete
 - Syncs shared space limits from coordinator
-- DONTs: local space state management (that's SpaceManager), actual space storage deletion (that's SpaceCore)
 
 ## Background Tasks
 - updateLoop: polls coordinator every 180s, syncs statuses, deletes marked owned spaces (loopIterate)

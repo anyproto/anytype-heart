@@ -10,7 +10,6 @@ Scope: global
 - Periodically polls coordinator for tech space status (deletion state)
 - Broadcasts account status changes to client via events
 - Auto-registers tech space with coordinator if not exists
-- DONTs: Does NOT handle per-space status (see deletioncontroller)
 
 ## Background Tasks
 - statusPoller: Fetches account status from coordinator every 300s (updateStatus)

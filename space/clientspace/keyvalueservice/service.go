@@ -9,7 +9,6 @@ Scope: space
 ## Responsibility
 - Provides privacy layer over per-space key-value storage by hashing keys
 - Manages subscriptions for key change notifications
-- DONTs: Does not manage underlying storage or handle sync
 
 ## Documentation
 Key Privacy Scheme:

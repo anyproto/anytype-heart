@@ -9,7 +9,6 @@ Scope: space
 ## Responsibility
 - Initiates asynchronous space building on Run() and exposes WaitLoad() for completion
 - Updates space local status (Loading -> Ok/Missing) via spacestatus component
-- DONTs: space construction (handled by builder), status persistence (handled by spacestatus)
 
 ## Background Tasks
 - loadRetry: Retries space loading with exponential backoff (1s -> 20s cap) until success or non-retryable error (loadingspace.go)

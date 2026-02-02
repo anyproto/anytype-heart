@@ -11,7 +11,6 @@ Scope: global
 - Sends incremental updates (add/remove/change/position) when subscribed objects change
 - Manages dependent object subscriptions for relation links (object/tag/status fields)
 - Supports subscription types: sorted (query-based), ids (explicit list), collection, group (kanban)
-- DONTs: does not store objects persistently; relies on objectStore for data
 
 ## Background Tasks
 - recordsHandler: batches object changes from objectStore and dispatches to subscriptions (spaceSubscriptions.recordsHandler)

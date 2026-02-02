@@ -11,7 +11,6 @@ Scope: global
 - Install bundled objects (types and relations) from marketplace to user space
 - Reinstall previously deleted bundled objects
 - Create smartblocks from state with appropriate tree derivation
-- DONTs: File objects must be created via fileobject service, not this component
 */
 
 import (

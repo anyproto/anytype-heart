@@ -11,7 +11,6 @@ Scope: global
 - Orchestrates space creation, loading, joining, and deletion
 - Maintains registry of active space controllers
 - Handles account initialization (new vs existing accounts, tech space creation)
-- DONTs: individual space logic (delegated to spacecontroller), low-level sync (delegated to spacecore)
 
 ## Background Tasks
 - spaceWatcher: subscribes to space view changes in tech space, triggers controller updates (onSpaceStatusUpdated)

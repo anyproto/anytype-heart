@@ -14,7 +14,6 @@ Scope: global
   - static: in-memory read-only objects (participants, bundled templates)
   - Virtual sources: date, bundledObjectType, bundledRelation, anytypeProfile, missingObject
 - Binds object IDs to space IDs in object store
-- DONTs: does NOT manage object lifecycle beyond source creation
 */
 
 import (

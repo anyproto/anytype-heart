@@ -9,7 +9,6 @@ Scope: global
 ## Responsibility
 - Wraps DRPC calls to external Anytype push notification server
 - Manages connection pooling to push server peer
-- DONTs: business logic for when/what to notify (see pushnotification.Service)
 */
 
 import (

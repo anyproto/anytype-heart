@@ -12,7 +12,6 @@ Scope: global
 - Provides transactional batch writes with temp directory staging
 - Exposes local garbage collector for cleaning orphaned blocks
 - Serves file blocks to peers via DRPC handler (read-only)
-- DONTs: remote uploads (handled by rpcstore), file metadata management
 
 ## External State
 - flatfs/ directory: sharded IPFS block storage using IPFS_DEF_SHARD

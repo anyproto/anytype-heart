@@ -13,7 +13,6 @@ Scope: global
 - Aggregate debug statistics from stat service
 - Network connectivity diagnostics (yamux/quic probe to coordinators)
 - Debug anystore object changes with order validation
-- DONTs: actual object manipulation, space lifecycle management
 
 ## Background Tasks
 - Debug HTTP server: serves debug endpoints for components implementing Debuggable interface (Run)

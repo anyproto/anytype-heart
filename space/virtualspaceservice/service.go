@@ -8,7 +8,6 @@ Scope: global
 
 ## Responsibility
 - Registers virtual (local-only, non-synced) spaces in the object store
-- DONTs: space lifecycle management, syncing, object caching (handled by clientspace.VirtualSpace)
 
 ## External State
 - virtualSpaces collection in object store (via objectStore.SaveVirtualSpace)

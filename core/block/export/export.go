@@ -11,7 +11,6 @@ Scope: global
 - Resolves and includes dependent objects (nested links, files, relations, types, templates)
 - Manages export output as zip archives or directory structures
 - Provides in-memory single-object export for programmatic use
-- DONTs: import functionality (handled by separate importer)
 
 ## Documentation
 Export collects objects to export via two paths:

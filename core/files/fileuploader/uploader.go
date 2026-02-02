@@ -11,7 +11,6 @@ Scope: global
 - Detects file type via MIME sniffing with fallback to generic file type
 - Supports two-phase upload: preload to storage first, then commit/create object later
 - Manages preloaded upload results for deferred object creation
-- DONTs: file storage, object creation (delegates to fileService and fileObjectService)
 
 ## Background Tasks
 - Preload: async file upload to storage without object creation (Preload method)

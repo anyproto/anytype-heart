@@ -11,7 +11,6 @@ Scope: space
 - Derives push notification keys from ACL metadata
 - Updates space status (owner, participant status, account deletion)
 - Triggers ACL notifications on permission changes
-- DONTs: ACL modifications (read-only consumer of ACL state)
 
 ## Background Tasks
 - process: waits for space load, subscribes to ACL updates via SetAclUpdater

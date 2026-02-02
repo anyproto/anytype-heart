@@ -12,7 +12,6 @@ Scope: global
 - Enforces size limits (different for membership vs default users)
 - Filters exported relations per object type via whitelist (relationswhitelist.go)
 - Optionally embeds space invite link when joinSpace=true (non-personal spaces only)
-- DONTs: does not persist publish state locally (server is source of truth)
 */
 
 import (

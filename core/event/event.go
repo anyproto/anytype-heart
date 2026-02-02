@@ -9,7 +9,6 @@ Scope: global
 ## Responsibility
 - Broadcast pb.Event messages to connected client sessions
 - Track active sessions and route events (to one, all, or filtered sessions)
-- DONTs: event construction logic (callers build events), persistence
 
 ## Background Tasks
 - Session cleanup: handles session disconnection via shutdown channel (GrpcSender only)

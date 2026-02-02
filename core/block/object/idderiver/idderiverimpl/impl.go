@@ -9,7 +9,6 @@ Scope: global
 ## Responsibility
 - Provides a facade to derive deterministic object IDs from UniqueKey within a space
 - Delegates to space.DeriveObjectID after resolving the space by ID
-- DONTs: actual ID derivation logic (handled by space), unique key management
 */
 
 import (

@@ -11,7 +11,6 @@ Scope: global
 - Batches status updates with 500ms intervals to avoid excessive writes
 - Reconciles local sync state with subscription state (UpdateSpaceDetails)
 - Combines file backup status with object sync status for file objects
-- DONTs: does NOT determine sync status - receives it from objectsyncstatus component
 
 ## Background Tasks
 - processEvents: processes batched sync status updates from queue

@@ -10,7 +10,6 @@ Scope: global
 - Provides common anystore database shared across all spaces
 - Provides per-space index and CRDT databases with lazy initialization
 - Auto-reinitializes corrupted databases by removing and recreating files
-- DONTs: does not manage database schema or migrations
 
 ## External State
 - objectstore/objects.db - common database with system collection

@@ -10,7 +10,6 @@ Scope: global
 - Assigns and updates lexicographic order IDs (lexids) to objects for sortable ordering
 - Handles space views, relation options, and object types ordering
 - Minimizes updates: only modifies objects whose order actually changes
-- DONTs: does not store order state itself; writes order IDs directly to objects
 
 ## Documentation
 Uses lexid library to generate sortable string IDs that allow insertion between existing items.

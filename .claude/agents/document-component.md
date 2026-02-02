@@ -22,7 +22,6 @@ Scope: {global|space|other-child}
 
 ## Responsibility
 - {specific responsibility}
-- DONTs: {what should NOT be in this component}
 
 ## Background Tasks
 - {name}: {description} {methodName}

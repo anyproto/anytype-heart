@@ -11,7 +11,6 @@ Scope: global
 - Convert external data into snapshots via format-specific converters
 - Create Anytype objects from snapshots using worker pool parallelization
 - Assign IDs and payloads to imported objects, handle ID remapping
-- DONTs: format-specific parsing (delegated to converters in subpackages)
 
 ## Documentation
 Import flow:

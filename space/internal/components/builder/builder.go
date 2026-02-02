@@ -10,7 +10,6 @@ Scope: space
 - Assembles dependencies and constructs a fully-initialized clientspace.Space
 - Acquires core space from spaceCore service
 - Sets space access type (personal vs private) after construction
-- DONTs: space lifecycle management (handled by spaceloader), indexing, object caching
 */
 
 import (

@@ -10,7 +10,6 @@ Scope: global
 - Stores notifications in local DB and syncs non-local ones to tech space notification object
 - Broadcasts notification events to clients via event sender
 - Provides notification listing with read/unread filtering
-- DONTs: notification type-specific logic (handled by callers like aclnotifications)
 
 ## Background Tasks
 - loadNotificationObject: Loads/creates notification object in tech space and indexes existing notifications {loadNotificationObject}

@@ -11,7 +11,6 @@ Scope: global
 - Tracks message state: add, delete, update, reactions, read status, sync status
 - Maintains chat state with unread counters for messages and mentions
 - Resolves message dependencies (creator identity, attachment details)
-- DONTs: message persistence (handled by chatrepository)
 
 ## Documentation
 Each chat object has one subscriptionManager, initialized lazily via futures for lock-free concurrent access.
