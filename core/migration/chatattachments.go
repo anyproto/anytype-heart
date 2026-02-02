@@ -2,10 +2,7 @@ package migration
 
 import (
 	"context"
-	"errors"
 
-	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/any-store/anyenc"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -29,7 +26,6 @@ type ChatAttachmentIndex map[string]*ChatAttachmentContext
 func (s *service) buildChatAttachmentIndex(ctx context.Context, spaceId string, spaceIndex spaceindex.Store) (ChatAttachmentIndex, error) {
 	index := make(ChatAttachmentIndex)
 
-	// Step 1: Get all chat object IDs in the space
 	chatObjectIds, err := s.getChatObjectIds(spaceIndex)
 	if err != nil {
 		return nil, err
@@ -39,12 +35,6 @@ func (s *service) buildChatAttachmentIndex(ctx context.Context, spaceId string, 
 		return index, nil
 	}
 
-	crdtDb, err := s.dbProvider.GetCrdtDb(spaceId).Wait()
-	if err != nil {
-		return nil, err
-	}
-
-	// Step 2: Scan each chat's messages and extract all attachments
 	for _, chatObjectId := range chatObjectIds {
 		select {
 		case <-ctx.Done():
@@ -52,58 +42,34 @@ func (s *service) buildChatAttachmentIndex(ctx context.Context, spaceId string, 
 		default:
 		}
 
-		collectionName := chatObjectId + "chats"
-		collection, err := crdtDb.OpenCollection(ctx, collectionName)
-		if errors.Is(err, anystore.ErrCollectionNotFound) {
-			continue
-		}
+		repo, err := s.chatRepository.Repository(chatObjectId)
 		if err != nil {
-			log.Debug("error opening chat collection",
+			log.Debug("error getting chat repository",
 				zap.String("chatObjectId", chatObjectId),
 				zap.Error(err))
 			continue
 		}
 
-		// Scan all messages in this chat
-		iter, err := collection.Find(nil).Iter(ctx)
+		attachments, err := repo.GetAllMessageAttachments(ctx, "")
 		if err != nil {
-			log.Debug("error iterating chat messages",
+			log.Debug("error getting chat attachments",
 				zap.String("chatObjectId", chatObjectId),
 				zap.Error(err))
 			continue
 		}
 
-		for iter.Next() {
-			doc, err := iter.Doc()
-			if err != nil {
-				continue
-			}
-
-			val := doc.Value()
-			messageId := val.GetString("id")
-			createdAt := int64(val.GetInt("createdAt"))
-
-			// Get attachments object
-			attachments := val.GetObject("content", "attachments")
-			if attachments == nil {
-				continue
-			}
-
-			// Visit each attachment (key is fileId)
-			attachments.Visit(func(fileIdBytes []byte, _ *anyenc.Value) {
-				fileId := string(fileIdBytes)
-
+		for _, att := range attachments {
+			for _, fileId := range att.FileIds {
 				existing, exists := index[fileId]
-				if !exists || createdAt < existing.CreatedAt {
+				if !exists || att.CreatedAt < existing.CreatedAt {
 					index[fileId] = &ChatAttachmentContext{
 						ChatObjectId: chatObjectId,
-						MessageId:    messageId,
-						CreatedAt:    createdAt,
+						MessageId:    att.MessageId,
+						CreatedAt:    att.CreatedAt,
 					}
 				}
-			})
+			}
 		}
-		iter.Close()
 	}
 
 	return index, nil
