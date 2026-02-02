@@ -265,13 +265,10 @@ type smartBlock struct {
 	formatFetcher   relationutils.RelationFormatFetcher
 	fileGC          filegc.FileGC
 
-	// Track outgoing links for file GC behavior.
-	// baselineLinks contains links that existed when user explicitly opened the object,
-	// plus any links added via remote sync (StateAppend/StateRebuild).
-	// sessionCreatedLinks tracks links added locally in this session that should NOT
-	// be merged into baselineLinks during refresh - these are considered "session-created"
-	// and will be permanently deleted (skipBin=true) when removed.
-	baselineLinks       []string
+	// sessionCreatedLinks tracks links added locally in this session.
+	// These are considered "session-created" and will be permanently deleted (skipBin=true) when removed.
+	// nil means object was never explicitly opened → safe default (archive all removals).
+	// empty map means object was opened but no local links added yet.
 	sessionCreatedLinks map[string]struct{}
 }
 
@@ -614,51 +611,16 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 
 func (sb *smartBlock) RegisterSession(ctx session.Context) {
 	sb.sessions[ctx.ID()] = ctx
-	sb.captureBaselineLinks()
+	sb.initSessionTracking()
 }
 
-// captureBaselineLinks captures the current links as the baseline for session tracking.
-// Only captures if not already captured (first session registration).
-func (sb *smartBlock) captureBaselineLinks() {
-	if sb.baselineLinks != nil {
+// initSessionTracking initializes session-created links tracking.
+// Only initializes if not already done (first session registration).
+func (sb *smartBlock) initSessionTracking() {
+	if sb.sessionCreatedLinks != nil {
 		return
 	}
-	sb.baselineLinks = sb.LocalDetails().GetStringList(bundle.RelationKeyLinks)
 	sb.sessionCreatedLinks = make(map[string]struct{})
-}
-
-// refreshBaselineLinks updates baselineLinks with current state if object was explicitly opened.
-// Called after StateAppend/StateRebuild to include remotely synced links.
-// Preserves session-created links by excluding them from the refreshed baselineLinks.
-func (sb *smartBlock) refreshBaselineLinks() {
-	if sb.baselineLinks == nil {
-		return
-	}
-
-	// Get all current links
-	currentLinks := sb.LocalDetails().GetStringList(bundle.RelationKeyLinks)
-
-	// Build set of baseline links for efficient lookup
-	baselineLinksSet := make(map[string]struct{}, len(sb.baselineLinks))
-	for _, link := range sb.baselineLinks {
-		baselineLinksSet[link] = struct{}{}
-	}
-
-	// Find new links added remotely (not in baselineLinks and not session-created)
-	for _, link := range currentLinks {
-		_, wasBaseline := baselineLinksSet[link]
-		_, wasSessionCreated := sb.sessionCreatedLinks[link]
-		if !wasBaseline && !wasSessionCreated {
-			// This is a new link from remote sync - add to baselineLinks
-			baselineLinksSet[link] = struct{}{}
-		}
-	}
-
-	// Rebuild baselineLinks from the set
-	sb.baselineLinks = make([]string, 0, len(baselineLinksSet))
-	for link := range baselineLinksSet {
-		sb.baselineLinks = append(sb.baselineLinks, link)
-	}
 }
 
 func (sb *smartBlock) IsLocked() bool {
@@ -1065,7 +1027,6 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, changes [
 		sb.CheckSubscriptions()
 	}
 	sb.runIndexer(s)
-	sb.refreshBaselineLinks()
 	var parentDetails *domain.Details
 	if s.ParentState() != nil {
 		parentDetails = s.ParentState().Details()
@@ -1113,7 +1074,6 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.runIndexer(sb.Doc.(*state.State))
-	sb.refreshBaselineLinks()
 	applyInfo := ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()}
 	sb.execHooks(HookAfterApply, applyInfo)
 	err = sb.execHooks(HookOnStateRebuild, applyInfo)
@@ -1580,9 +1540,9 @@ func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []st
 		return
 	}
 
-	// If baselineLinks is nil, object was never explicitly opened by user.
+	// If sessionCreatedLinks is nil, object was never explicitly opened by user.
 	// Treat all removed links as existing (safe default - archive instead of delete).
-	if sb.baselineLinks == nil {
+	if sb.sessionCreatedLinks == nil {
 		if len(removedLinks) > 0 {
 			if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false, nil); err != nil {
 				log.With("objectId", contextId).Errorf("file gc on links removal failed: %v", err)
