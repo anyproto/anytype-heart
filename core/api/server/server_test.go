@@ -36,6 +36,7 @@ func newFixture(t *testing.T) *fixture {
 		GatewayUrl:  mockedGatewayUrl,
 		TechSpaceId: mockedTechSpaceId,
 	}, nil).Once()
+	eventMock.On("RegisterCallback", mock.Anything).Return(func() {}).Once()
 
 	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, []byte{}, []byte{})
 

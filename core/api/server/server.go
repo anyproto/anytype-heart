@@ -23,6 +23,9 @@ type Server struct {
 	mu         sync.Mutex
 	KeyToToken map[string]ApiSessionEntry // appKey -> token
 
+	sseManager         *service.SSESessionManager
+	unregisterCallback func() // To unregister event callback on shutdown
+
 	initOnce sync.Once
 }
 
@@ -33,9 +36,21 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		panic(err)
 	}
 
-	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService)}
+	svc := service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService)
+	sseManager := service.NewSSESessionManager()
+	sseDispatcher := service.NewSSEEventDispatcher(sseManager, svc)
+
+	// Register callback to receive all events
+	unregisterCallback := eventService.RegisterCallback(sseDispatcher.HandleEvent)
+
+	s := &Server{
+		service:            svc,
+		sseManager:         sseManager,
+		unregisterCallback: unregisterCallback,
+		KeyToToken:         make(map[string]ApiSessionEntry),
+	}
+	_ = sseDispatcher // Used for event registration above
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
-	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
 }
@@ -53,6 +68,14 @@ func getAccountInfo(accountService apicore.AccountService) (gatewayUrl string, t
 
 // Stop the service to clean up caches and subscriptions
 func (srv *Server) Stop() {
+	// Unregister event callback
+	if srv.unregisterCallback != nil {
+		srv.unregisterCallback()
+	}
+	// Close all SSE sessions
+	if srv.sseManager != nil {
+		srv.sseManager.CloseAll()
+	}
 	srv.service.Stop()
 }
 

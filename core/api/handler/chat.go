@@ -1,9 +1,15 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -343,5 +349,121 @@ func SearchMessagesHandler(s *service.Service) gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, apimodel.SearchMessagesResponse{Results: results})
+	}
+}
+
+const (
+	defaultSSELimit    = 50
+	sseChannelSize     = 100
+	ssePingInterval    = 30 * time.Second
+	sseMaxInitialLimit = 1000
+)
+
+// SubscribeChatHandler establishes an SSE connection for real-time chat updates
+//
+//	@Summary		Subscribe to chat events
+//	@Description	Establishes a Server-Sent Events (SSE) connection to receive real-time chat updates including new messages, edits, deletions, and reactions.
+//	@Id				subscribe_chat
+//	@Tags			Chat
+//	@Produce		text/event-stream
+//	@Param			Anytype-Version	header	string	true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path	string	true	"The ID of the space"
+//	@Param			chat_id			path	string	true	"The ID of the chat object"
+//	@Param			limit			query	int		false	"Number of initial messages to return"	default(50)	maximum(1000)
+//	@Success		200				"SSE event stream"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError		"Chat not found"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats/{chat_id}/subscribe [get]
+func SubscribeChatHandler(s *service.Service, sseManager *service.SSESessionManager) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		chatId := c.Param("chat_id")
+		limit := parseSSELimit(c.Query("limit"))
+		subId := uuid.New().String()
+
+		// Set SSE headers
+		c.Writer.Header().Set("Content-Type", "text/event-stream")
+		c.Writer.Header().Set("Cache-Control", "no-cache")
+		c.Writer.Header().Set("Connection", "keep-alive")
+		c.Writer.Header().Set("X-Accel-Buffering", "no") // Disable nginx buffering
+
+		// Create subscription and get initial messages
+		messages, state, err := s.SubscribeChat(c.Request.Context(), chatId, subId, limit)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrChatNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrFailedSubscribeChat, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		// Register SSE session
+		session := &service.SSESession{
+			SubId:  subId,
+			ChatId: chatId,
+			Events: make(chan *apimodel.SSEChatEvent, sseChannelSize),
+			Done:   make(chan struct{}),
+		}
+		sseManager.Register(session)
+		defer func() {
+			sseManager.Unregister(subId)
+			_ = s.UnsubscribeChat(c.Request.Context(), chatId, subId) //nolint:errcheck // best effort cleanup
+		}()
+
+		// Send initial messages
+		initialEvent := apimodel.SSEChatEvent{
+			Type:     apimodel.SSEEventTypeInitial,
+			Messages: messages,
+			State:    state,
+		}
+		writeSSE(c.Writer, "initial", initialEvent)
+		c.Writer.Flush()
+
+		// Stream events until client disconnects
+		ticker := time.NewTicker(ssePingInterval)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-c.Request.Context().Done():
+				return
+			case event := <-session.Events:
+				writeSSE(c.Writer, string(event.Type), event)
+				c.Writer.Flush()
+			case <-ticker.C:
+				writeSSE(c.Writer, "ping", nil)
+				c.Writer.Flush()
+			case <-session.Done:
+				return
+			}
+		}
+	}
+}
+
+func parseSSELimit(limitStr string) int {
+	if limitStr == "" {
+		return defaultSSELimit
+	}
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 {
+		return defaultSSELimit
+	}
+	if limit > sseMaxInitialLimit {
+		return sseMaxInitialLimit
+	}
+	return limit
+}
+
+func writeSSE(w io.Writer, eventType string, data interface{}) {
+	fmt.Fprintf(w, "event: %s\n", eventType)
+	if data != nil {
+		jsonData, _ := json.Marshal(data) //nolint:errcheck // SSE best effort
+		fmt.Fprintf(w, "data: %s\n\n", jsonData)
+	} else {
+		fmt.Fprintf(w, "data:\n\n")
 	}
 }

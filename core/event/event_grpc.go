@@ -4,9 +4,11 @@
 package event
 
 import (
+	"fmt"
 	"slices"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/status"
@@ -22,6 +24,7 @@ var log = logging.Logger("anytype-grpc")
 func NewGrpcSender() *GrpcSender {
 	gs := &GrpcSender{
 		shutdownCh: make(chan string),
+		callbacks:  make(map[string]func(*pb.Event)),
 	}
 
 	go func() {
@@ -36,6 +39,9 @@ func NewGrpcSender() *GrpcSender {
 type GrpcSender struct {
 	ServerMutex sync.RWMutex
 	Servers     map[string]*SessionServer
+
+	callbackMu sync.RWMutex
+	callbacks  map[string]func(*pb.Event)
 
 	shutdownCh chan string
 }
@@ -83,13 +89,20 @@ func (es *GrpcSender) sendEvent(server *SessionServer, event *pb.Event) {
 
 func (es *GrpcSender) Broadcast(event *pb.Event) {
 	es.ServerMutex.RLock()
-	defer es.ServerMutex.RUnlock()
 	if len(es.Servers) == 0 {
 		log.Warnf("no servers to broadcast event")
 	}
 	for _, s := range es.Servers {
 		es.sendEvent(s, event)
 	}
+	es.ServerMutex.RUnlock()
+
+	// Also call registered callbacks
+	es.callbackMu.RLock()
+	for _, cb := range es.callbacks {
+		go cb(event)
+	}
+	es.callbackMu.RUnlock()
 }
 
 // BroadcastToOtherSessions broadcasts the event from current session. Do not broadcast to the current session
@@ -114,6 +127,29 @@ func (es *GrpcSender) BroadcastExceptSessions(event *pb.Event, exceptTokens []st
 			es.sendEvent(s, event)
 		}
 	}
+}
+
+// RegisterCallback registers a callback to receive all broadcast events.
+// Returns a function to unregister the callback.
+func (es *GrpcSender) RegisterCallback(callback func(*pb.Event)) func() {
+	es.callbackMu.Lock()
+	defer es.callbackMu.Unlock()
+
+	// Generate a unique ID for this callback
+	id := generateCallbackId()
+	es.callbacks[id] = callback
+
+	return func() {
+		es.callbackMu.Lock()
+		defer es.callbackMu.Unlock()
+		delete(es.callbacks, id)
+	}
+}
+
+var callbackIdCounter uint64
+
+func generateCallbackId() string {
+	return fmt.Sprintf("cb_%d_%d", time.Now().UnixNano(), atomic.AddUint64(&callbackIdCounter, 1))
 }
 
 type SessionServer struct {

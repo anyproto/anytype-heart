@@ -162,7 +162,16 @@ func TestEnsureAnalyticsEvent(t *testing.T) {
 
 		expectedPayload, err := util.NewAnalyticsEventForApi(context.Background(), code, http.StatusAccepted)
 		require.NoError(t, err)
-		msgArg := fx.eventMock.Calls[0].Arguments.Get(0).(*pb.Event)
+
+		// Find the Broadcast call (skip RegisterCallback call from fixture setup)
+		var msgArg *pb.Event
+		for _, call := range fx.eventMock.Calls {
+			if call.Method == "Broadcast" {
+				msgArg = call.Arguments.Get(0).(*pb.Event)
+				break
+			}
+		}
+		require.NotNil(t, msgArg, "Broadcast call not found")
 		require.Len(t, msgArg.Messages, 1)
 
 		wrapper := msgArg.Messages[0].GetPayloadBroadcast()

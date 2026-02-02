@@ -39,12 +39,12 @@ func (s *Service) GetMessages(ctx context.Context, chatId string, beforeOrderId 
 
 	messages := make([]apimodel.ChatMessage, 0, len(resp.Messages))
 	for _, msg := range resp.Messages {
-		messages = append(messages, s.protoMessageToApiMessage(msg))
+		messages = append(messages, s.ProtoMessageToApiMessage(msg))
 	}
 
 	var chatState *apimodel.ChatState
 	if resp.ChatState != nil {
-		chatState = s.protoChatStateToApiChatState(resp.ChatState)
+		chatState = s.ProtoChatStateToApiChatState(resp.ChatState)
 	}
 
 	return messages, chatState, nil
@@ -65,7 +65,7 @@ func (s *Service) GetMessageById(ctx context.Context, chatId string, messageId s
 		return nil, ErrMessageNotFound
 	}
 
-	message := s.protoMessageToApiMessage(resp.Messages[0])
+	message := s.ProtoMessageToApiMessage(resp.Messages[0])
 	return &message, nil
 }
 
@@ -191,7 +191,7 @@ func (s *Service) SearchMessages(ctx context.Context, spaceId string, chatId str
 		}
 
 		if r.Message != nil {
-			result.Message = s.protoMessageToApiMessage(r.Message)
+			result.Message = s.ProtoMessageToApiMessage(r.Message)
 		}
 
 		results = append(results, result)
@@ -200,8 +200,55 @@ func (s *Service) SearchMessages(ctx context.Context, spaceId string, chatId str
 	return results, nil
 }
 
-// protoMessageToApiMessage converts a protobuf ChatMessage to an API ChatMessage.
-func (s *Service) protoMessageToApiMessage(msg *model.ChatMessage) apimodel.ChatMessage {
+var (
+	ErrFailedSubscribeChat   = errors.New("failed to subscribe to chat")
+	ErrFailedUnsubscribeChat = errors.New("failed to unsubscribe from chat")
+)
+
+// SubscribeChat creates a subscription to a chat and returns initial messages
+func (s *Service) SubscribeChat(ctx context.Context, chatId string, subId string, limit int) ([]apimodel.ChatMessage, *apimodel.ChatState, error) {
+	resp := s.mw.ChatSubscribeLastMessages(ctx, &pb.RpcChatSubscribeLastMessagesRequest{
+		ChatObjectId: chatId,
+		SubId:        subId,
+		Limit:        int32(limit),
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcChatSubscribeLastMessagesResponseError_NULL {
+		if resp.Error.Code == pb.RpcChatSubscribeLastMessagesResponseError_BAD_INPUT {
+			return nil, nil, ErrChatNotFound
+		}
+		return nil, nil, ErrFailedSubscribeChat
+	}
+
+	messages := make([]apimodel.ChatMessage, 0, len(resp.Messages))
+	for _, msg := range resp.Messages {
+		messages = append(messages, s.ProtoMessageToApiMessage(msg))
+	}
+
+	var chatState *apimodel.ChatState
+	if resp.ChatState != nil {
+		chatState = s.ProtoChatStateToApiChatState(resp.ChatState)
+	}
+
+	return messages, chatState, nil
+}
+
+// UnsubscribeChat removes a subscription from a chat
+func (s *Service) UnsubscribeChat(ctx context.Context, chatId string, subId string) error {
+	resp := s.mw.ChatUnsubscribe(ctx, &pb.RpcChatUnsubscribeRequest{
+		ChatObjectId: chatId,
+		SubId:        subId,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcChatUnsubscribeResponseError_NULL {
+		return ErrFailedUnsubscribeChat
+	}
+
+	return nil
+}
+
+// ProtoMessageToApiMessage converts a protobuf ChatMessage to an API ChatMessage.
+func (s *Service) ProtoMessageToApiMessage(msg *model.ChatMessage) apimodel.ChatMessage {
 	apiMsg := apimodel.ChatMessage{
 		Object:           "chat_message",
 		Id:               msg.Id,
@@ -250,8 +297,8 @@ func (s *Service) protoMessageToApiMessage(msg *model.ChatMessage) apimodel.Chat
 	return apiMsg
 }
 
-// protoChatStateToApiChatState converts a protobuf ChatState to an API ChatState.
-func (s *Service) protoChatStateToApiChatState(state *model.ChatState) *apimodel.ChatState {
+// ProtoChatStateToApiChatState converts a protobuf ChatState to an API ChatState.
+func (s *Service) ProtoChatStateToApiChatState(state *model.ChatState) *apimodel.ChatState {
 	apiState := &apimodel.ChatState{
 		LastStateId: state.LastStateId,
 	}

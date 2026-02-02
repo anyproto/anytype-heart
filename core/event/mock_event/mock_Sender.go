@@ -52,7 +52,7 @@ func (_c *MockSender_Broadcast_Call) Return() *MockSender_Broadcast_Call {
 }
 
 func (_c *MockSender_Broadcast_Call) RunAndReturn(run func(*pb.Event)) *MockSender_Broadcast_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -86,7 +86,7 @@ func (_c *MockSender_BroadcastExceptSessions_Call) Return() *MockSender_Broadcas
 }
 
 func (_c *MockSender_BroadcastExceptSessions_Call) RunAndReturn(run func(*pb.Event, []string)) *MockSender_BroadcastExceptSessions_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -120,7 +120,7 @@ func (_c *MockSender_BroadcastToOtherSessions_Call) Return() *MockSender_Broadca
 }
 
 func (_c *MockSender_BroadcastToOtherSessions_Call) RunAndReturn(run func(string, *pb.Event)) *MockSender_BroadcastToOtherSessions_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -216,7 +216,7 @@ func (_c *MockSender_IsActive_Call) RunAndReturn(run func(string) bool) *MockSen
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSender) Name() string {
 	ret := _m.Called()
 
@@ -291,7 +291,7 @@ func (_c *MockSender_SendToSession_Call) Return() *MockSender_SendToSession_Call
 }
 
 func (_c *MockSender_SendToSession_Call) RunAndReturn(run func(string, *pb.Event)) *MockSender_SendToSession_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

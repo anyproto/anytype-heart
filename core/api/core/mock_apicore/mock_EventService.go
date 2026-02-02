@@ -49,6 +49,54 @@ func (_c *MockEventService_Broadcast_Call) Return() *MockEventService_Broadcast_
 }
 
 func (_c *MockEventService_Broadcast_Call) RunAndReturn(run func(*pb.Event)) *MockEventService_Broadcast_Call {
+	_c.Run(run)
+	return _c
+}
+
+// RegisterCallback provides a mock function with given fields: callback
+func (_m *MockEventService) RegisterCallback(callback func(*pb.Event)) func() {
+	ret := _m.Called(callback)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RegisterCallback")
+	}
+
+	var r0 func()
+	if rf, ok := ret.Get(0).(func(func(*pb.Event)) func()); ok {
+		r0 = rf(callback)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(func())
+		}
+	}
+
+	return r0
+}
+
+// MockEventService_RegisterCallback_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterCallback'
+type MockEventService_RegisterCallback_Call struct {
+	*mock.Call
+}
+
+// RegisterCallback is a helper method to define mock.On call
+//   - callback func(*pb.Event)
+func (_e *MockEventService_Expecter) RegisterCallback(callback interface{}) *MockEventService_RegisterCallback_Call {
+	return &MockEventService_RegisterCallback_Call{Call: _e.mock.On("RegisterCallback", callback)}
+}
+
+func (_c *MockEventService_RegisterCallback_Call) Run(run func(callback func(*pb.Event))) *MockEventService_RegisterCallback_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func(*pb.Event)))
+	})
+	return _c
+}
+
+func (_c *MockEventService_RegisterCallback_Call) Return(_a0 func()) *MockEventService_RegisterCallback_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockEventService_RegisterCallback_Call) RunAndReturn(run func(func(*pb.Event)) func()) *MockEventService_RegisterCallback_Call {
 	_c.Call.Return(run)
 	return _c
 }

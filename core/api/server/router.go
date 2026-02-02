@@ -345,4 +345,8 @@ func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.
 		ensureAnalyticsEvent("SearchMessages", eventService),
 		handler.SearchMessagesHandler(srv.service),
 	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/subscribe",
+		ensureAnalyticsEvent("SubscribeChat", eventService),
+		handler.SubscribeChatHandler(srv.service, srv.sseManager),
+	)
 }

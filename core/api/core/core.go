@@ -15,6 +15,7 @@ type AccountService interface {
 
 type EventService interface {
 	Broadcast(event *pb.Event)
+	RegisterCallback(callback func(*pb.Event)) func() // Returns unregister function
 }
 
 type CrossSpaceSubscriptionService interface {
@@ -78,4 +79,8 @@ type ClientCommands interface {
 	ChatGetMessagesByIds(context.Context, *pb.RpcChatGetMessagesByIdsRequest) *pb.RpcChatGetMessagesByIdsResponse
 	ChatToggleMessageReaction(context.Context, *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse
 	ChatSearch(context.Context, *pb.RpcChatSearchRequest) *pb.RpcChatSearchResponse
+
+	// Chat subscriptions
+	ChatSubscribeLastMessages(context.Context, *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse
+	ChatUnsubscribe(context.Context, *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse
 }
