@@ -1,5 +1,26 @@
 package onetoone
 
+/*
+AI generated
+
+Name: One-to-One Invite Manager
+Scope: global
+
+## Responsibility
+- Sends one-to-one chat invites to other users via coordinator inbox
+- Processes received one-to-one invites by creating 1-1 spaces and initializing chats
+- Retries failed invite sends periodically
+
+## Background Tasks
+- Periodic retry: checks for unsent invites (status=ToSend) and resends them every 30s (inboxResend)
+
+## Documentation
+Invite status flow:
+- ToSend: initial state when 1-1 space created, invite not yet sent
+- Sent: invite successfully sent via inbox
+- Received: set when processing incoming invite from another user
+*/
+
 import (
 	"context"
 	"errors"

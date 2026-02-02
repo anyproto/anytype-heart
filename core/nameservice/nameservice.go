@@ -1,5 +1,17 @@
 package nameservice
 
+/*
+AI generated
+
+Name: Anyname Resolution API
+Scope: global
+
+## Responsibility
+- Provides RPC API for ".any" name resolution (name -> owner info, AnyId -> name)
+- Provides RPC API for user account status (names/operations quota, attached name)
+- Wraps nameserviceclient for application-level use
+*/
+
 import (
 	"context"
 	"errors"

@@ -1,5 +1,27 @@
 package rpcstore
 
+/*
+AI generated
+
+Name: Remote File Block Store Factory
+Scope: global
+
+## Responsibility
+- Factory for creating RpcStore instances that communicate with file node peers
+- Manages peer observation for connectivity changes
+- Tracks aggregate traffic statistics (inbound/outbound bytes)
+
+## Background Tasks
+- checkPeerLoop: manages peer client lifecycle (connect/disconnect, TTL-based GC) [clientManager.checkPeerLoop]
+- opLoop: per-client worker loops for read/write task execution [client.opLoop]
+
+## Documentation
+Task distribution: Operations are queued as tasks with read/write separation.
+Multiple client workers compete to pick tasks from a shared queue based on
+EWMA speed scores (faster clients get priority). Failed tasks are retried
+on alternative peers via denyPeerIds mechanism.
+*/
+
 import (
 	"fmt"
 	"io"

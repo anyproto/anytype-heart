@@ -10,7 +10,7 @@ import (
 
 const (
 	CollectionStoreKey = "objects"
-	DefaultViewLayout  = model.BlockContentDataviewView_List
+	DefaultViewLayout  = model.BlockContentDataviewView_Table
 	defaultViewName    = "All"
 	defaultWidth       = 200
 	defaultWidthShort  = 100

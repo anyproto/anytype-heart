@@ -1,5 +1,22 @@
 package syncstopper
 
+/*
+AI generated
+
+Name: Delayed Tree Sync Stopper
+Scope: space (unused - not registered anywhere)
+
+## Responsibility
+- Stops tree syncing for a space after 10 minutes timeout
+
+## Background Tasks
+- spaceCheck: Checks if 10 minutes elapsed since Run() and calls TreeSyncer.StopSync()
+
+## Documentation
+Note: This component appears incomplete - periodicCall is created but never started via Run().
+The component is not registered in any space builder.
+*/
+
 import (
 	"context"
 	"time"

@@ -1,5 +1,16 @@
 package idresolver
 
+/*
+AI generated
+
+Name: Object to Space ID Resolver
+Scope: global
+
+## Responsibility
+- Resolves object IDs to their containing space IDs via object store lookup
+- Provides retry variant for eventual consistency scenarios
+*/
+
 import (
 	"context"
 	"errors"

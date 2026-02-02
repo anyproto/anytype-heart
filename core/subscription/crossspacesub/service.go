@@ -1,5 +1,27 @@
 package crossspacesub
 
+/*
+AI generated
+
+Name: Cross-Space Object Subscription Aggregator
+Scope: global
+
+## Responsibility
+- Aggregates object subscriptions across multiple spaces into a single unified subscription
+- Monitors space views to dynamically include/exclude spaces from cross-space subscriptions
+- Supports predicates to filter spaces based on space view details (creator, status, etc.)
+- Re-maps per-space subscription events to unified cross-space subscription ID
+
+## Background Tasks
+- monitorSpaceViewSub: Watches space view changes to add/remove spaces from active subscriptions (monitorSpaceViewSub)
+- crossSpaceSubscription.run: Processes per-space events, aggregates counters, broadcasts unified events (run)
+
+## Documentation
+On Run, subscribes to all space views in tech space. When Subscribe is called, creates per-space
+subscriptions for spaces matching the predicate. Space view changes trigger dynamic add/remove of
+spaces from active subscriptions, with events re-mapped to the unified subscription ID.
+*/
+
 import (
 	"context"
 	"fmt"

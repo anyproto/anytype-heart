@@ -1,6 +1,7 @@
 package chatmodel
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -68,6 +69,30 @@ func TestValidate(t *testing.T) {
 							},
 						},
 					},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("message at max length is valid", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{
+					Text: strings.Repeat("a", MaxMessageLength),
+				},
+			},
+		}
+
+		assert.NoError(t, msg.Validate())
+	})
+
+	t.Run("message exceeds max length", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{
+					Text: strings.Repeat("a", MaxMessageLength+1),
 				},
 			},
 		}

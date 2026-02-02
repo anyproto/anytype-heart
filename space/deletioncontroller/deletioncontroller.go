@@ -1,5 +1,20 @@
 package deletioncontroller
 
+/*
+AI generated
+
+Name: Space Remote Status Sync and Deletion
+Scope: global
+
+## Responsibility
+- Periodically fetches space statuses from coordinator and updates SpaceManager
+- Processes deletion of owned spaces marked via AddSpaceToDelete
+- Syncs shared space limits from coordinator
+
+## Background Tasks
+- updateLoop: polls coordinator every 180s, syncs statuses, deletes marked owned spaces (loopIterate)
+*/
+
 import (
 	"context"
 	"sync"
