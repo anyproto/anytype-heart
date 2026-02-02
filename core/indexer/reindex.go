@@ -613,7 +613,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 }
 
 // checkFTQueueConsistency checks for objects that may have been added to headsState
-// but the FT queue wasn't flushed before crash. It compares the ftEnqueueCtr in headsState
+// but the FT queue wasn't flushed before crash. It compares the ftQueueCtr in headsState
 // against the persisted FT queue counter (per-space) and re-adds any missing objects to the queue.
 func (i *indexer) checkFTQueueConsistency(ctx context.Context, store spaceindex.Store, spaceId string) {
 	// Read THIS space's counter from commonDB
@@ -628,9 +628,9 @@ func (i *indexer) checkFTQueueConsistency(ctx context.Context, store spaceindex.
 		return
 	}
 
-	entries, err := store.GetHeadsWithFTEnqueueCtrGreaterThan(ctx, ftQueueCounter)
+	entries, err := store.GetHeadsWithFtQueueCtrGreaterThan(ctx, ftQueueCounter)
 	if err != nil {
-		log.With("space", spaceId).Warnf("get heads with ftEnqueueCtr > counter: %v", err)
+		log.With("space", spaceId).Warnf("get heads with ftQueueCtr > counter: %v", err)
 		return
 	}
 

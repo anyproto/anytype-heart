@@ -195,11 +195,11 @@ func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, 
 	return s.err
 }
 
-func (s *invalidStore) SaveLastIndexedHeadsHashWithFTEnqueueCtr(ctx context.Context, id string, headsHash string, ftEnqueueCtr uint64) (err error) {
+func (s *invalidStore) SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error) {
 	return s.err
 }
 
-func (s *invalidStore) GetHeadsWithFTEnqueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error) {
+func (s *invalidStore) GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error) {
 	return nil, s.err
 }
 
