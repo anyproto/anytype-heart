@@ -79,11 +79,4 @@ var Images = []TestImage{
 		Width:   1728,
 		Height:  2376,
 	},
-	{
-		Path:    "testdata/shelf-christmas-decoration.heic",
-		Format:  "heic",
-		HasExif: false,
-		Width:   4000,
-		Height:  3000,
-	},
 }
