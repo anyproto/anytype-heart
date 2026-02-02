@@ -34,11 +34,17 @@ type ObjectArchiver interface {
 	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
 }
 
+// ParticipantProvider provides the current user's participant ID for a given space
+type ParticipantProvider interface {
+	MyParticipantId(spaceId string) string
+}
+
 type fileGC struct {
-	objectDeleter    ObjectDeleter
-	objectStore      objectstore.ObjectStore
-	objectArchiver   ObjectArchiver
-	backlinksWatcher BacklinksFlusher
+	objectDeleter       ObjectDeleter
+	objectStore         objectstore.ObjectStore
+	objectArchiver      ObjectArchiver
+	backlinksWatcher    BacklinksFlusher
+	participantProvider ParticipantProvider
 
 	componentCtx context.Context
 }
@@ -56,6 +62,7 @@ func (gc *fileGC) Init(a *app.App) error {
 	gc.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	gc.objectArchiver = app.MustComponent[ObjectArchiver](a)
 	gc.backlinksWatcher = app.MustComponent[BacklinksFlusher](a)
+	gc.participantProvider = app.MustComponent[ParticipantProvider](a)
 	return nil
 }
 
@@ -145,7 +152,18 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		}
 
 		// File has no active backlinks and was created in this context - can be deleted or archived
-		if skipBin {
+		shouldSkipBin := skipBin
+		if shouldSkipBin {
+			// Additional safety: only permanently delete if the file was created by the current user
+			fileCreator := record.Details.GetString(bundle.RelationKeyCreator)
+			myParticipantId := gc.participantProvider.MyParticipantId(spaceId)
+			if fileCreator != myParticipantId {
+				log.Debugf("file %s was created by %s, not current user %s - archiving instead of deleting", fileId, fileCreator, myParticipantId)
+				shouldSkipBin = false
+			}
+		}
+
+		if shouldSkipBin {
 			log.Debugf("deleting orphaned file %s created in context %s", fileId, contextId)
 			// Delete the file object
 			if err := gc.deleteFileObject(spaceId, fileId); err != nil {
