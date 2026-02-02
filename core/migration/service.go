@@ -9,6 +9,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -31,6 +33,12 @@ type Indexer interface {
 	GetLastIndexTime(spaceId string) time.Time
 }
 
+// NetworkConfig provides access to network mode configuration
+type NetworkConfig interface {
+	app.Component
+	GetNetworkMode() pb.RpcAccountNetworkMode
+}
+
 // Service runs migrations when the indexer is idle
 type Service interface {
 	app.Component
@@ -43,6 +51,8 @@ type service struct {
 	indexer        Indexer
 	dbProvider     anystoreprovider.Provider
 	chatRepository chatrepository.Service
+	networkConfig  NetworkConfig
+	nodeStatus     nodestatus.NodeStatus
 	compCtx        context.Context
 	compCancel     context.CancelFunc
 }
@@ -61,6 +71,8 @@ func (s *service) Init(a *app.App) error {
 	s.indexer = app.MustComponent[Indexer](a)
 	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	s.chatRepository = app.MustComponent[chatrepository.Service](a)
+	s.networkConfig = app.MustComponent[NetworkConfig](a)
+	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)
 	s.compCtx, s.compCancel = context.WithCancel(context.Background())
 	return nil
 }
@@ -74,17 +86,30 @@ func (s *service) Close() error {
 	return nil
 }
 
-// RunMigrationsWhenIdle waits for the indexer to become idle and then runs all migrations
+// RunMigrationsWhenIdle waits for the indexer to become idle and then runs all migrations.
+// In network mode (not local-only), it also waits for the node to be connected to the network
+// to ensure remote changes have been received before running migrations.
 func (s *service) RunMigrationsWhenIdle(spaceId string, derivedIDs threads.DerivedSmartblockIds) {
-	// Loop waiting for indexer inactivity
+	isLocalOnly := s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly
+
 	for {
 		select {
 		case <-time.After(idleCheckInterval):
 			lastIndex := s.indexer.GetLastIndexTime(spaceId)
-			if !lastIndex.IsZero() && time.Since(lastIndex) > minIdleDelay {
-				s.runAllMigrations(s.compCtx, spaceId, derivedIDs)
-				return
+			if lastIndex.IsZero() || time.Since(lastIndex) <= minIdleDelay {
+				continue
 			}
+
+			// Indexer is idle - now check network connection if not local-only
+			if !isLocalOnly {
+				status, ok := s.nodeStatus.GetNodeStatusSafe(spaceId)
+				if !ok || status != nodestatus.Online {
+					continue // Status not set yet, or not online
+				}
+			}
+
+			s.runAllMigrations(s.compCtx, spaceId, derivedIDs)
+			return
 		case <-s.compCtx.Done():
 			return
 		}
