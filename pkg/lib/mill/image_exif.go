@@ -60,7 +60,17 @@ func (m *ImageExif) Options(add map[string]interface{}) (string, error) {
 func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	conf, formatStr, err := image.DecodeConfig(r)
 	if err != nil {
-		return nil, err
+		// Try HEIC-specific decoding for problematic files
+		if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+			return nil, err
+		}
+		width, height, heicFormat, heicErr := decodeHEICConfig(r)
+		if heicErr != nil {
+			return nil, err // Return original error
+		}
+		conf.Width = width
+		conf.Height = height
+		formatStr = heicFormat
 	}
 	format := Format(formatStr)
 

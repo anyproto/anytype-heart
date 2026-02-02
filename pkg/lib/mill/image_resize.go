@@ -111,7 +111,17 @@ func (m *ImageResize) Options(add map[string]interface{}) (string, error) {
 func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	imgConfig, formatStr, err := image.DecodeConfig(r)
 	if err != nil {
-		return nil, err
+		// Try HEIC-specific decoding for problematic files
+		if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+			return nil, err
+		}
+		width, height, heicFormat, heicErr := decodeHEICConfig(r)
+		if heicErr != nil {
+			return nil, err // Return original error
+		}
+		imgConfig.Width = width
+		imgConfig.Height = height
+		formatStr = heicFormat
 	}
 	format := Format(formatStr)
 	_, err = r.Seek(0, io.SeekStart)
