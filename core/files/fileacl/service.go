@@ -1,5 +1,16 @@
 package fileacl
 
+/*
+AI generated
+
+Name: File Encryption Keys for Sharing
+Scope: global
+
+## Responsibility
+- Retrieve file CID and encryption keys to include in invites/identity profiles
+- Store received encryption keys from invites to enable decryption of shared files
+*/
+
 import (
 	"fmt"
 	"sort"

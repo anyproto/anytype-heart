@@ -1,5 +1,20 @@
 package configfetcher
 
+/*
+AI generated
+
+Name: Account Status Poller
+Scope: global
+
+## Responsibility
+- Periodically polls coordinator for tech space status (deletion state)
+- Broadcasts account status changes to client via events
+- Auto-registers tech space with coordinator if not exists
+
+## Background Tasks
+- statusPoller: Fetches account status from coordinator every 300s (updateStatus)
+*/
+
 import (
 	"context"
 	"errors"

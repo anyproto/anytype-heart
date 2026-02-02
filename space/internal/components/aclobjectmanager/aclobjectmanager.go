@@ -1,5 +1,26 @@
 package aclobjectmanager
 
+/*
+AI generated
+
+Name: ACL State Processor
+Scope: space
+
+## Responsibility
+- Processes ACL changes and updates participant objects accordingly
+- Derives push notification keys from ACL metadata
+- Updates space status (owner, participant status, account deletion)
+- Triggers ACL notifications on permission changes
+
+## Background Tasks
+- process: waits for space load, subscribes to ACL updates via SetAclUpdater
+
+## Documentation
+On space load, processes initial ACL state. Then subscribes as AclUpdater to receive
+ongoing ACL changes. Each ACL change triggers: participant object updates, status updates,
+notification delivery, and push key derivation.
+*/
+
 import (
 	"context"
 	"fmt"

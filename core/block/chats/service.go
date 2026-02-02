@@ -1,5 +1,27 @@
 package chats
 
+/*
+AI generated
+
+Name: Chat API and Cross-Space Tracking
+Scope: global
+
+## Responsibility
+- Provides RPC API for chat message operations: add, edit, delete, toggle reactions, read/unread
+- Tracks all chat objects across spaces via cross-space subscription
+- Manages cross-space message preview subscriptions (last message + state per chat)
+- Sends push notifications on new messages with mentions routing
+
+## Background Tasks
+- monitorMessagePreviews: Processes cross-space subscription events to track chat object additions/removals and update preview subscriptions
+
+## Documentation
+Preview subscriptions work at two levels:
+1. Cross-space subscription tracks all chatDerived objects across all spaces
+2. For each active preview subscription, subscribes to last message of each chat via chatsubscription.Service
+When chats are added/removed, preview subscriptions are automatically updated and events broadcasted.
+*/
+
 import (
 	"context"
 	"crypto/sha256"

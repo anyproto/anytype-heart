@@ -1,5 +1,44 @@
 package filesync
 
+/*
+AI generated
+
+Name: File Sync to Backup Node
+Scope: global
+
+## Responsibility
+- Upload files (IPLD DAG blocks) to the backup node (file node)
+- Delete files from the backup node
+- Track and enforce storage limits per space and per account
+- Provide node/space usage statistics
+
+## Background Tasks
+- nodeUsageUpdater: periodically fetches account usage from backup node (10s active, 1min idle) [runNodeUsageUpdater]
+- uploader (x10): processes pending uploads from queue [runUploader]
+- batchUploader (x10): sends batched block upload requests to backup node [runBatchUploader]
+- requestsBatcher: batches small files together, splits large files across requests [requestsBatcher.run]
+- limitedUploader: retries uploads when space becomes available [runLimitedUploader]
+- deleter: processes pending deletions from queue [runDeleter]
+- spaceUsage (per space): periodically updates per-space limits from backup node [spaceUsage.update]
+
+## External State
+- filesync/queue collection: persistent queue of file upload/delete operations
+
+## Documentation
+File states: PendingUpload -> Uploading -> Done (or Limited if quota exceeded)
+                          -> PendingDeletion -> Deleted
+
+Upload flow:
+1. AddFile enqueues file with PendingUpload state
+2. Uploader checks block availability on node (which blocks need upload vs bind)
+3. Allocates space in local limit tracker
+4. Walks DAG and batches blocks via requestsBatcher
+5. batchUploader sends BlockPushMany requests to node
+6. On completion, marks file as Done; on limit error, marks as Limited
+
+Limited files are retried when spaceUsageManager detects more free space available.
+*/
+
 import (
 	"context"
 	"errors"

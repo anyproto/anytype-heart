@@ -1,5 +1,29 @@
 package notifications
 
+/*
+AI generated
+
+Name: Notification Storage and Delivery
+Scope: global
+
+## Responsibility
+- Stores notifications in local DB and syncs non-local ones to tech space notification object
+- Broadcasts notification events to clients via event sender
+- Provides notification listing with read/unread filtering
+
+## Background Tasks
+- loadNotificationObject: Loads/creates notification object in tech space and indexes existing notifications {loadNotificationObject}
+
+## External State
+- anystore "notifications" collection: local cache of all notifications
+- Tech space notification object: synced storage for non-local notifications
+
+## Documentation
+Local vs Non-local notifications:
+- Local (IsLocal=true): stored only in local DB, not synced across devices
+- Non-local: stored in both local DB and tech space notification object for cross-device sync
+*/
+
 import (
 	"context"
 	"errors"

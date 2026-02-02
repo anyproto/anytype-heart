@@ -1,5 +1,17 @@
 package editor
 
+/*
+AI generated
+
+Name: SmartBlock Editor Factory
+Scope: global
+
+## Responsibility
+- Creates editor instances (Page, Profile, Archive, Widget, etc.) based on SmartBlockType
+- Initializes objects from sources: loads tree, runs migrations, applies initial state
+- Composes editors with service dependencies (file handling, clipboard, bookmarks, dataview, etc.)
+*/
+
 import (
 	"errors"
 	"fmt"
