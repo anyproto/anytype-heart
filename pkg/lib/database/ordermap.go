@@ -129,7 +129,7 @@ func (m *OrderMap) collectObjectNames(key domain.RelationKey) {
 		RelationKey: key,
 		Condition:   model.BlockContentDataviewFilter_NotEmpty,
 	}}}, func(details *domain.Details) {
-		for _, id := range details.GetStringList(key) {
+		for _, id := range details.WrapToStringList(key) {
 			targetIdsMap[id] = struct{}{}
 		}
 	})

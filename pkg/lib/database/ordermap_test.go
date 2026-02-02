@@ -451,4 +451,66 @@ func TestBuildOrderMap(t *testing.T) {
 		assert.Less(t, second, first)
 		assert.Less(t, first, third)
 	})
+
+	t.Run("build order map by type", func(t *testing.T) {
+		// given
+		key := bundle.RelationKeyType // type handles string, not []string
+		objects := []*domain.Details{
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				key: domain.String(bundle.TypeKeyPage.URL()),
+			}),
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				key: domain.String(bundle.TypeKeyNote.URL()),
+			}),
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				key: domain.String(bundle.TypeKeyTask.URL()),
+			}),
+		}
+
+		types := []*domain.Details{
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:   domain.String(bundle.TypeKeyPage.URL()),
+				bundle.RelationKeyName: domain.String(bundle.TypeKeyPage.String()),
+			}),
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:   domain.String(bundle.TypeKeyNote.URL()),
+				bundle.RelationKeyName: domain.String(bundle.TypeKeyNote.String()),
+			}),
+			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:   domain.String(bundle.TypeKeyTask.URL()),
+				bundle.RelationKeyName: domain.String(bundle.TypeKeyTask.String()),
+			}),
+		}
+
+		store := &stubSpaceObjectStore{
+			iterate: func(q Query, proc func(record *domain.Details)) error {
+				if q.Filters[0].RelationKey == bundle.RelationKeyId {
+					for _, details := range types {
+						proc(details)
+					}
+					return nil
+				}
+
+				for _, details := range objects {
+					proc(details)
+				}
+
+				return nil
+			},
+		}
+
+		// when
+		om := BuildOrderMap(store, key, model.RelationFormat_object, &collate.Buffer{})
+
+		// then
+		require.NotNil(t, om)
+		assert.NotNil(t, om.store)
+		assert.Equal(t, []domain.RelationKey{bundle.RelationKeyName}, om.sortKeys)
+		assert.Len(t, om.data, 3)
+		first := om.data[bundle.TypeKeyNote.URL()].GetString(bundle.RelationKeyName)
+		second := om.data[bundle.TypeKeyPage.URL()].GetString(bundle.RelationKeyName)
+		third := om.data[bundle.TypeKeyTask.URL()].GetString(bundle.RelationKeyName)
+		assert.Less(t, first, second)
+		assert.Less(t, second, third)
+	})
 }

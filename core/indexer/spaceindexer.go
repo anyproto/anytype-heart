@@ -169,7 +169,7 @@ func (i *spaceIndexer) index(ctx context.Context, ftQueueCounter uint64, info sm
 		}
 	}
 
-	_, indexDetails, indexLinks := info.SmartblockType.Indexable()
+	fulltext, indexDetails, indexLinks := info.SmartblockType.Indexable()
 	if !indexDetails && !indexLinks {
 		return false, nil
 	}
@@ -215,14 +215,10 @@ func (i *spaceIndexer) index(ctx context.Context, ftQueueCounter uint64, info sm
 			}
 		}
 
-		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
+		if (!opts.SkipFullTextIfHeadsNotChanged || lastIndexedHash != headHashToIndex) && fulltext && i.fulltextEnabled {
 			// Use component's context because ctx from parameter contains transaction
-			fulltext, _, _ := info.SmartblockType.Indexable()
-
-			if fulltext && i.fulltextEnabled {
-				// Get counter from AddToIndexQueueWithCounter for crash recovery consistency
-				addToFulltextQueue = true
-			}
+			// Get counter from AddToIndexQueueWithCounter for crash recovery consistency
+			addToFulltextQueue = true
 		}
 	} else {
 		_ = i.spaceIndex.DeleteDetails(ctx, []string{info.Id})

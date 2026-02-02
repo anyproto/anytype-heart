@@ -156,8 +156,10 @@ func (s *Service) getBootstrapConfig(req *pb.RpcAccountRecoverFromLegacyExportRe
 		return nil, fmt.Errorf("failed to extract config: %w", err)
 	}
 
-	cfg := anytype.BootstrapConfig(true, "")
-	cfg.LegacyFileStorePath = oldCfg.LegacyFileStorePath
+	cfg := config.New(
+		config.WithNewAccount(true),
+		config.WithLegacyFileStorePath(oldCfg.LegacyFileStorePath),
+	)
 	return cfg, nil
 }
 
@@ -210,21 +212,21 @@ func buildDetails(profile *pb.Profile, icon int64) (profileDetails []domain.Deta
 	return
 }
 
-func extractConfig(archive *zip.ReadCloser) (*config.Config, error) {
+func extractConfig(archive *zip.ReadCloser) (config.PersistedConfig, error) {
 	for _, f := range archive.File {
 		if f.Name == config.ConfigFileName {
 			r, err := f.Open()
 			if err != nil {
-				return nil, err
+				return config.PersistedConfig{}, err
 			}
 
-			var conf config.Config
+			var conf config.PersistedConfig
 			err = json.NewDecoder(r).Decode(&conf)
 			if err != nil {
-				return nil, err
+				return config.PersistedConfig{}, err
 			}
-			return &conf, nil
+			return conf, nil
 		}
 	}
-	return nil, fmt.Errorf("config.json not found in archive")
+	return config.PersistedConfig{}, fmt.Errorf("config.json not found in archive")
 }

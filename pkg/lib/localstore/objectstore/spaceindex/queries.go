@@ -367,32 +367,15 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 	})
 
 	var results = make([]database.FulltextResult, 0, len(objectResults))
-	for _, result := range objectResults {
-		path, err := domain.NewFromPath(result.ID)
+	for _, docMatch := range objectResults {
+		result, err := database.FTDocumentMatchToFulltextResult(docMatch)
 		if err != nil {
 			return nil, fmt.Errorf("fullText search: %w", err)
 		}
-		var highlight string
-		var ranges []*model.Range
-		for _, v := range result.Fragments {
-			if len(v.Ranges) > 0 {
-				highlight = v.Text
-				ranges = convertToHighlightRanges(v.Ranges, highlight)
-				break
-			}
-		}
-		res := database.FulltextResult{
-			Path:      path,
-			Highlight: highlight,
-			Score:     result.Score,
-		}
-		if highlight != "" {
-			res.Highlight, res.HighlightRanges = highlight, ranges
-		}
-		if result.Score < minFulltextScore && len(res.HighlightRanges) == 0 {
+		if result.Score < minFulltextScore && len(result.HighlightRanges) == 0 {
 			continue
 		}
-		results = append(results, res)
+		results = append(results, result)
 
 	}
 
@@ -539,37 +522,6 @@ func preferPluralNameRelation(objectPerBlockResults []*ftsearch.DocumentMatch) *
 		doc = objectPerBlockResults[0]
 	}
 	return doc
-}
-
-func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
-	var highlightRanges []*model.Range
-
-	byteToRuneIndex := make([]int, len(highlight)+1)
-	for i := range byteToRuneIndex {
-		byteToRuneIndex[i] = text2.UTF16RuneCountString(highlight[:i])
-	}
-
-	for _, r := range ranges {
-		if len(r) == 2 {
-			fromByte := r[0]
-			toByte := r[1]
-
-			if fromByte < 0 || toByte > len(highlight) {
-				continue
-			}
-
-			fromRune := byteToRuneIndex[fromByte]
-			toRune := byteToRuneIndex[toByte]
-
-			highlightRange := &model.Range{
-				From: int32(fromRune),
-				To:   int32(toRune),
-			}
-			highlightRanges = append(highlightRanges, highlightRange)
-		}
-	}
-
-	return highlightRanges
 }
 
 // TODO: objstore: no one uses total
