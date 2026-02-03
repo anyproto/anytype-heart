@@ -141,7 +141,7 @@ func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 	}
 	for _, filter := range filters {
 		if len(filter.NestedFilters) > 0 {
-			return hasDefaultFilters(filters[0].NestedFilters)
+			return hasDefaultFilters(filter.NestedFilters)
 		}
 		// include archived objects if we have explicit filter about it
 		if filter.RelationKey == bundle.RelationKeyIsArchived {
