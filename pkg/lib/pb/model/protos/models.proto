@@ -1672,3 +1672,8 @@ enum SyncError {
     SyncErrorNetworkError        = 3;
     SyncErrorOversized           = 4;
 }
+
+enum TemplateNamePrefillType {
+    Empty = 0;
+    FromTemplateName = 1;
+}

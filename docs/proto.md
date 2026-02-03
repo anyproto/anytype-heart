@@ -2248,6 +2248,7 @@
     - [SpaceUxType](#anytype-model-SpaceUxType)
     - [SyncError](#anytype-model-SyncError)
     - [SyncStatus](#anytype-model-SyncStatus)
+    - [TemplateNamePrefillType](#anytype-model-TemplateNamePrefillType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -35773,6 +35774,18 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SyncStatusSyncing | 1 |  |
 | SyncStatusError | 2 |  |
 | SyncStatusQueued | 3 |  |
+
+
+
+<a name="anytype-model-TemplateNamePrefillType"></a>
+
+### TemplateNamePrefillType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Empty | 0 |  |
+| FromTemplateName | 1 |  |
 
 
  
