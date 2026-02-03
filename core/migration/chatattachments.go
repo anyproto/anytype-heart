@@ -42,7 +42,7 @@ func (s *service) buildChatAttachmentIndex(ctx context.Context, spaceId string, 
 		default:
 		}
 
-		repo, err := s.chatRepository.Repository(chatObjectId)
+		repo, err := s.chatRepository.Repository(spaceId, chatObjectId)
 		if err != nil {
 			log.Debug("error getting chat repository",
 				zap.String("chatObjectId", chatObjectId),
