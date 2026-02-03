@@ -32,10 +32,16 @@ func (c *credentialProvider) Name() (name string) {
 }
 
 func (c *credentialProvider) GetCredential(ctx context.Context, spaceHeader *spacesyncproto.RawSpaceHeaderWithId) ([]byte, error) {
+	// For accounts created after identity migration, OldAccount doesn't exist.
+	// Fall back to current identity to avoid nil pointer in SpaceSign.
+	oldAccount := c.wallet.GetOldAccountKey()
+	if oldAccount == nil {
+		oldAccount = c.wallet.GetAccountPrivkey()
+	}
 	payload := coordinatorclient.SpaceSignPayload{
 		SpaceId:     spaceHeader.Id,
 		SpaceHeader: spaceHeader.RawHeader,
-		OldAccount:  c.wallet.GetOldAccountKey(),
+		OldAccount:  oldAccount,
 		Identity:    c.wallet.GetAccountPrivkey(),
 	}
 	receipt, err := c.client.SpaceSign(ctx, payload)

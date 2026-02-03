@@ -88,10 +88,16 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 		if sErr != nil {
 			return sErr
 		}
+		// For accounts created after identity migration, OldAccount doesn't exist.
+		// Fall back to current identity to avoid nil pointer in SpaceSign.
+		oldAccount := c.wallet.GetOldAccountKey()
+		if oldAccount == nil {
+			oldAccount = c.wallet.GetAccountPrivkey()
+		}
 		payload := coordinatorclient.SpaceSignPayload{
 			SpaceId:     techSpace.Id(),
 			SpaceHeader: state.SpaceHeader,
-			OldAccount:  c.wallet.GetOldAccountKey(),
+			OldAccount:  oldAccount,
 			Identity:    c.wallet.GetAccountPrivkey(),
 		}
 		// registering space inside coordinator
