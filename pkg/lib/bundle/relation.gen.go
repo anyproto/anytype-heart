@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "6352eb2e9e0a991c001d2e4dea3c67df8d44b7f408da6a0a27c416a857fb008c"
+const RelationChecksum = "2f5e354c8bfd010bb2e3ef9953481c43cd8efd608451006a422d4efe0c2bfbb1"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -194,6 +194,7 @@ const (
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
 	RelationKey_score                               domain.RelationKey = "_score"
 	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
+	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
 )
 
 var (
@@ -2552,6 +2553,20 @@ var (
 			MaxCount:         1,
 			Name:             "Bundled Template",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTemplateNamePrefillType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Controls whether a template's name should be applied to newly created objects",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brtemplateNamePrefillType",
+			Key:              "templateNamePrefillType",
+			MaxCount:         1,
+			Name:             "Template name prefill type",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

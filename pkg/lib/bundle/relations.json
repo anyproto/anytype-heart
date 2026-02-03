@@ -1876,5 +1876,15 @@
     "name": "Object Context Migration Version",
     "readonly": true,
     "source": "details"
+  },
+  {
+    "description": "Controls whether a template's name should be applied to newly created objects",
+    "format": "number",
+    "hidden": true,
+    "key": "templateNamePrefillType",
+    "maxCount": 1,
+    "name": "Template name prefill type",
+    "readonly": false,
+    "source": "details"
   }
 ]

@@ -1,5 +1,18 @@
 package dataviewservice
 
+/*
+AI generated
+
+Name: Dataview Block Operations
+Scope: global
+
+## Responsibility
+- CRUD operations for dataview views, filters, sorts, and view relations
+- Manage dataview relation links and data sources
+- Copy dataview configuration between objects
+- Sync view relations with relation links (ensures new relation links appear in views)
+*/
+
 import (
 	"fmt"
 

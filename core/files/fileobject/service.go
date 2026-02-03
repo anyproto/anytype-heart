@@ -1,5 +1,41 @@
 package fileobject
 
+/*
+AI generated
+
+Name: File Object Lifecycle Manager
+Scope: global
+
+## Responsibility
+- Create file objects from raw IPFS file data with encryption keys
+- Index file metadata (mime type, dimensions, etc.) into object details
+- Migrate legacy file IDs to file object IDs in blocks and details
+- Manage file sync queue integration for upload/download
+- Delete file data when object is removed (if no other objects reference it)
+
+## Background Tasks
+- runIndexingProvider: Polls objectStore every 60s for non-indexed files, adds to queue
+- runIndexingWorker: Processes index queue, extracts metadata from file variants
+- indexMigrationWorker: Migrates files without variant IDs by touching objects
+- migrationQueue: Persistent queue for migrating legacy files to file objects
+- Startup goroutine: Cleans migrated files in non-personal spaces, ensures sync queue
+
+## External State
+- queue/file_migration in common anystore DB (persistent migration queue)
+
+## Documentation
+Indexing Pipeline:
+1. File created with AsyncMetadataIndexing=true or legacy file detected
+2. runIndexingProvider adds to in-memory indexQueue (deduped by FullID)
+3. runIndexingWorker fetches file variants, extracts metadata, updates object state
+4. FileIndexingStatus set to Indexed when complete
+
+Migration Flow (legacy files):
+1. MigrateFiles called during object open with ChangeFileKeys
+2. Items added to persistent migrationQueue with derived object ID
+3. migrationQueueHandler creates file objects and adds to sync queue
+*/
+
 import (
 	"context"
 	"errors"

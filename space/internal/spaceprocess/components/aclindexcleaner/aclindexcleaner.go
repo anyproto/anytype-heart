@@ -1,5 +1,15 @@
 package aclindexcleaner
 
+/*
+AI generated
+
+Name: ACL Participant Index Cleaner
+Scope: other-child (offloader process)
+
+## Responsibility
+- Removes participant object indexes from store during space offload
+*/
+
 import (
 	"context"
 

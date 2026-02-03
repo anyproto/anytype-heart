@@ -1,5 +1,26 @@
 package filedownloader
 
+/*
+AI generated
+
+Name: File Auto-Download Manager
+Scope: global
+
+## Responsibility
+- Auto-downloads files to local store based on criteria: not available offline, synced, <20MB
+- Provides on-demand partial file caching (CacheFile) with block limits
+- Respects network state for wifi-only download mode
+
+## Background Tasks
+- downloader (5 workers): subscribes to eligible files across spaces, downloads full content (runManager, runDownloadWorker)
+- cacheWarmer (5 workers): processes on-demand cache requests with limited blocks (run, runWorker)
+
+## Documentation
+Two download subsystems:
+- downloader: subscribes to files matching auto-download criteria, downloads entire file, marks FileAvailableOffline
+- cacheWarmer: accepts individual file requests via CacheFile, downloads limited blocks (10) with timeout (2min)
+*/
+
 import (
 	"context"
 	"errors"
@@ -80,7 +101,7 @@ func (s *service) Init(a *app.App) error {
 }
 
 func (s *service) Run(ctx context.Context) error {
-	err := s.SetEnabled(s.config.AutoDownloadFiles, s.config.AutoDownloadFiles)
+	err := s.SetEnabled(s.config.AutoDownloadFiles(), s.config.AutoDownloadOnWifiOnly())
 	if err != nil {
 		log.Error("set enabled", zap.Error(err))
 	}
@@ -102,13 +123,7 @@ func (s *service) SetEnabled(enabled bool, wifiOnly bool) error {
 	s.setEnabled(enabled, wifiOnly)
 
 	// Write to the config file only if it's changed
-	if s.config.AutoDownloadFiles != enabled || s.config.AutoDownloadOnWifiOnly != wifiOnly {
-		cfgPart := config.ConfigAutoDownloadFiles{}
-		cfgPart.AutoDownloadFiles = enabled
-		cfgPart.AutoDownloadOnWifiOnly = wifiOnly
-		return config.WriteJsonConfig(s.config.GetConfigPath(), cfgPart)
-	}
-	return nil
+	return s.config.SetAutoDownloadSettings(enabled, wifiOnly)
 }
 
 func (s *service) setEnabled(enabled bool, wifiOnly bool) {

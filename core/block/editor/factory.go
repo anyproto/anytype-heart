@@ -1,5 +1,17 @@
 package editor
 
+/*
+AI generated
+
+Name: SmartBlock Editor Factory
+Scope: global
+
+## Responsibility
+- Creates editor instances (Page, Profile, Archive, Widget, etc.) based on SmartBlockType
+- Initializes objects from sources: loads tree, runs migrations, applies initial state
+- Composes editors with service dependencies (file handling, clipboard, bookmarks, dataview, etc.)
+*/
+
 import (
 	"errors"
 	"fmt"
@@ -251,7 +263,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.layoutConverter, f.fileObjectService, f.statService), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.objectStore, f.layoutConverter, f.fileObjectService, f.statService), nil
 	case coresb.SmartBlockTypeAccountObject:
 		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {

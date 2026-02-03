@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -13,8 +14,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/source/mock_source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/indexer/mock_indexer"
@@ -26,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -55,10 +61,18 @@ func newFixture(t *testing.T) *fixture {
 	ds, err := datastore.NewInMemory()
 	require.NoError(t, err)
 
+	idResolver := mock_idresolver.NewMockResolver(t)
+	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return("spaceId", nil).Maybe()
+	idResolver.EXPECT().Name().Return(idresolver.CName).Maybe()
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+
 	testApp := &app.App{}
 	testApp.Register(ds)
 	testApp.Register(walletService)
 	testApp.Register(objectStore.FullText)
+	testApp.Register(idResolver)
+	testApp.Register(provider)
 
 	hasher := mock_indexer.NewMockHasher(t)
 	hasher.EXPECT().Hash().Return("5d41402abc4b2a76b9719d911017c592").Maybe()
@@ -79,12 +93,18 @@ func newFixture(t *testing.T) *fixture {
 	techSpaceIdProvider.EXPECT().TechSpaceId().Return("").Maybe()
 	runCtx, cancel := context.WithCancel(ctx)
 
+	chatRepo := chatrepository.New()
+	require.NoError(t, chatRepo.Init(testApp))
+	// err = testApp.Start(context.Background())
+	// require.NoError(t, err)
+
 	indxr := &indexer{
 		store:               objectStore,
 		source:              sourceService,
 		picker:              picker,
 		formatFetcher:       fetcher,
 		ftsearch:            objectStore.FullText,
+		chatRepository:      chatRepo,
 		runCtx:              runCtx,
 		runCtxCancel:        cancel,
 		config:              &config.Config{NetworkMode: pb.RpcAccount_LocalOnly},
@@ -127,7 +147,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, "objectId1").Return(true, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -148,7 +168,7 @@ func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -168,7 +188,7 @@ func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
 	smartTest.SetType(coresb.SmartBlockTypeDate)
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.Len(t, docs, 0)
 	assert.NoError(t, err)
 }
@@ -182,7 +202,7 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 	))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.Len(t, docs, 0)
 	assert.NoError(t, err)
 }
@@ -199,7 +219,7 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
@@ -223,7 +243,7 @@ func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
 	smartTest.Doc.Layout()
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/pluralName", docs[0].Id)
@@ -243,7 +263,7 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
@@ -264,7 +284,7 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	require.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -282,7 +302,7 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -300,7 +320,7 @@ func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -322,7 +342,7 @@ func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -344,7 +364,7 @@ func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: "objectId1", SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -532,7 +552,7 @@ func TestPrepareSearchDocumentWithDetails(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(smartTest, nil)
 	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, objectId).Return(true, nil)
 
-	docs, err := indexerFx.prepareSearchDocument(context.Background(), domain.FullID{ObjectID: objectId, SpaceID: "spaceId1"})
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: objectId, SpaceId: "spaceId1"})
 	require.NoError(t, err)
 	require.Len(t, docs, 1, "Should prepare 1 document")
 	assert.Equal(t, "testObject1/b/blockId1", docs[0].Id)
@@ -674,4 +694,117 @@ func TestPrepareSearchDocument_Reindex_Removed(t *testing.T) {
 
 	count, _ = indexerFx.ftsearch.DocCount()
 	assert.Equal(t, uint64(1), count)
+}
+
+func TestPrepareSearchDocs_ChatObject(t *testing.T) {
+	chatId := "chatId1"
+	spaceId := "spaceId1"
+
+	t.Run("all messages", func(t *testing.T) {
+		// given
+		indexerFx := newFixture(t)
+		repo, err := indexerFx.chatRepository.Repository(spaceId, chatId)
+		require.NoError(t, err)
+
+		err = repo.AddTestMessage(context.Background(), &chatmodel.Message{
+			ChatMessage: &model.ChatMessage{
+				Id:      "msg1",
+				Message: &model.ChatMessageMessageContent{Text: "Hello world"},
+				OrderId: "o1",
+			},
+		})
+		require.NoError(t, err)
+
+		err = repo.AddTestMessage(context.Background(), &chatmodel.Message{
+			ChatMessage: &model.ChatMessage{
+				Id:      "msg2",
+				Message: &model.ChatMessageMessageContent{Text: "Test message"},
+				OrderId: "o2",
+			},
+		})
+		require.NoError(t, err)
+
+		// when
+		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
+			ObjectId:   chatId,
+			SpaceId:    spaceId,
+			MsgOrderId: objectstore.FtAllOrderId,
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, isChat)
+		require.Len(t, docs, 2)
+
+		assert.Equal(t, chatId+"/m/msg1", docs[0].Id)
+		assert.Equal(t, spaceId, docs[0].SpaceId)
+		assert.Contains(t, docs[0].Text, "Hello world")
+
+		assert.Equal(t, chatId+"/m/msg2", docs[1].Id)
+		assert.Equal(t, spaceId, docs[1].SpaceId)
+		assert.Contains(t, docs[1].Text, "Test message")
+	})
+
+	t.Run("messages by orderId", func(t *testing.T) {
+		// given
+		indexerFx := newFixture(t)
+		repo, err := indexerFx.chatRepository.Repository(spaceId, chatId)
+		require.NoError(t, err)
+
+		for i := 1; i <= 5; i++ {
+			err = repo.AddTestMessage(context.Background(), &chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Id:      fmt.Sprintf("msg%d", i),
+					Message: &model.ChatMessageMessageContent{Text: fmt.Sprintf("Message %d", i)},
+					OrderId: fmt.Sprintf("o%d", i),
+				},
+			})
+			require.NoError(t, err)
+		}
+
+		// when
+		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
+			ObjectId:   chatId,
+			SpaceId:    spaceId,
+			MsgOrderId: "o3",
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, isChat)
+		// Should get msg3, msg4, msg5 (3 messages)
+		assert.GreaterOrEqual(t, len(docs), 3)
+	})
+
+	t.Run("chat object", func(t *testing.T) {
+		// given
+		indexerFx := newFixture(t)
+
+		indexerFx.store.SpaceIndex(spaceId).UpdateObjectDetails(context.Background(), chatId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:          domain.String(chatId),
+			bundle.RelationKeyIsDeleted:   domain.Bool(false),
+			bundle.RelationKeyLayout:      domain.Int64(int64(model.ObjectType_chatDerived)),
+			bundle.RelationKeyName:        domain.String("General"),
+			bundle.RelationKeyDescription: domain.String("This is a general chat object"),
+		}))
+
+		chatObject := smarttest.New(chatId)
+		chatObject.SetSpaceId(spaceId)
+		chatObject.SetType(coresb.SmartBlockTypeChatDerivedObject)
+
+		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(chatObject, nil)
+		indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, chatId).Return(true, nil)
+
+		// when
+		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
+			ObjectId: chatId,
+			SpaceId:  spaceId,
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, isChat)
+		assert.Len(t, docs, 0)
+	})
+
 }

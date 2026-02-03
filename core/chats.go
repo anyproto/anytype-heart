@@ -283,3 +283,21 @@ func (mw *Middleware) ChatReadAll(cctx context.Context, req *pb.RpcChatReadAllRe
 	}
 	return &pb.RpcChatReadAllResponse{}
 }
+
+func (mw *Middleware) ChatSearch(cctx context.Context, req *pb.RpcChatSearchRequest) *pb.RpcChatSearchResponse {
+	chatService := mustService[chats.Service](mw)
+
+	results, err := chatService.Search(cctx, req)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatSearchResponseErrorCode](err)
+		return &pb.RpcChatSearchResponse{
+			Error: &pb.RpcChatSearchResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatSearchResponse{
+		Results: results,
+	}
+}

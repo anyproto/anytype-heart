@@ -1,5 +1,25 @@
 package inviteservice
 
+/*
+AI generated
+
+Name: Space Invite Generator
+Scope: global
+
+## Responsibility
+- Generate, retrieve, view, and remove space invites
+- Build signed invite payloads with space/creator metadata and icon encryption keys
+- Support multiple invite types: member (default), guest, and without-approval
+
+## Documentation
+Invite lifecycle:
+1. Generate: build payload -> sign with account key -> store via invitestore -> persist info in workspace smartblock
+2. Remove: clear from workspace smartblock -> remove from invitestore
+3. View/GetPayload: fetch from invitestore -> verify signature -> optionally store icon encryption keys for rendering
+
+Guest invites are stored separately from regular invites and only work for Stream-type spaces.
+*/
+
 import (
 	"context"
 	"fmt"

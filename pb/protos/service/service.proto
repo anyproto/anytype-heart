@@ -76,6 +76,8 @@ service ClientCommands {
     rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
     rpc SpaceSetOrder (anytype.Rpc.Space.SetOrder.Request) returns (anytype.Rpc.Space.SetOrder.Response);
     rpc SpaceUnsetOrder (anytype.Rpc.Space.UnsetOrder.Request) returns (anytype.Rpc.Space.UnsetOrder.Response);
+    rpc SpaceChangeOwnership(anytype.Rpc.Space.ChangeOwnership.Request) returns (anytype.Rpc.Space.ChangeOwnership.Response);
+    rpc SpaceDeleteCorruptedBackup (anytype.Rpc.Space.DeleteCorruptedBackup.Request) returns (anytype.Rpc.Space.DeleteCorruptedBackup.Response);
 
     // Publishing
     // ***
@@ -397,7 +399,8 @@ service ClientCommands {
     rpc MembershipV2AnyNameAllocate(anytype.Rpc.MembershipV2.AnyNameAllocate.Request) returns (anytype.Rpc.MembershipV2.AnyNameAllocate.Response);
     rpc MembershipV2CartGet(anytype.Rpc.MembershipV2.CartGet.Request) returns (anytype.Rpc.MembershipV2.CartGet.Response);
     rpc MembershipV2CartUpdate(anytype.Rpc.MembershipV2.CartUpdate.Request) returns (anytype.Rpc.MembershipV2.CartUpdate.Response);
-    
+    rpc MembershipV2SubscribeToUpdates(anytype.Rpc.MembershipV2.SubscribeToUpdates.Request) returns (anytype.Rpc.MembershipV2.SubscribeToUpdates.Response);
+
     // Name Service:
     // ***
     // hello.any -> data
@@ -427,6 +430,7 @@ service ClientCommands {
     rpc ChatUnsubscribeFromMessagePreviews (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Request) returns (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
     rpc ChatReadAll (anytype.Rpc.Chat.ReadAll.Request) returns (anytype.Rpc.Chat.ReadAll.Response);
+    rpc ChatSearch (anytype.Rpc.Chat.Search.Request) returns (anytype.Rpc.Chat.Search.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);

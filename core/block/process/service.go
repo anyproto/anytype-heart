@@ -1,5 +1,26 @@
 package process
 
+/*
+AI generated
+
+Name: Long-Running Process Pool Manager
+Scope: global
+
+## Responsibility
+- Tracks active long-running processes (imports, exports, migrations)
+- Broadcasts process lifecycle events (new/update/done) to clients
+- Provides Queue (worker pool with tasks) and Progress (simple counter) abstractions
+- Allows sessions to opt-out of progress update events
+
+## Background Tasks
+- monitor: Per-process goroutine that broadcasts state updates every 500ms until done
+
+## Documentation
+Process lifecycle: None -> Running -> Done/Canceled/Error
+Update events are broadcast only when Info() changes (compared via reflect.DeepEqual)
+Sessions can unsubscribe to avoid receiving ProcessUpdate events (still receive New/Done)
+*/
+
 import (
 	"context"
 	"errors"
