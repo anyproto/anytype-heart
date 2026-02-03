@@ -497,6 +497,12 @@ func addDetailsToTemplateState(st *state.State, details *domain.Details) {
 		}
 	}
 
-	st.AddDetails(details.CopyWithoutKeys(keysToExclude...))
+	toAdd := details.CopyWithoutKeys(keysToExclude...)
+	if toAdd.Has(bundle.RelationKeyName) {
+		// Add relation link for name, otherwise we'll write "relation remove" change and name will be deleted from state
+		st.AddBundledRelationLinks(bundle.RelationKeyName)
+	}
+
+	st.AddDetails(toAdd)
 	st.BlocksInit(st)
 }
