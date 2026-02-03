@@ -37,6 +37,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1.Use(srv.ensureAuthenticated(mw))
 
 	srv.registerChatRoutes(v1, eventService, writeRateLimitMW)
+	srv.registerFileRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerListRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerMemberRoutes(v1, eventService)
 	srv.registerObjectRoutes(v1, eventService, writeRateLimitMW)
@@ -353,5 +354,14 @@ func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.
 	v1.GET("/spaces/:space_id/chats/:chat_id/subscribe",
 		ensureAnalyticsEvent("SubscribeChat", eventService),
 		handler.SubscribeChatHandler(srv.service, srv.sseManager),
+	)
+}
+
+// registerFileRoutes registers file-related routes
+func (srv *Server) registerFileRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.POST("/spaces/:space_id/files",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("UploadFile", eventService),
+		handler.UploadFileHandler(srv.service),
 	)
 }

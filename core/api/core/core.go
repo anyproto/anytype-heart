@@ -84,4 +84,7 @@ type ClientCommands interface {
 	ChatSubscribeLastMessages(context.Context, *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse
 	ChatUnsubscribe(context.Context, *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse
 	ChatReadMessages(context.Context, *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse
+
+	// File
+	FileUpload(context.Context, *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse
 }
