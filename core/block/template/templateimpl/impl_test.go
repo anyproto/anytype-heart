@@ -690,9 +690,9 @@ func TestService_collectOriginalDetails(t *testing.T) {
 		assert.Equal(t, customEmoji, result.GetString(bundle.RelationKeyIconEmoji))
 	})
 
-	t.Run("keeps empty name", func(t *testing.T) {
+	t.Run("keeps empty name when no previous template", func(t *testing.T) {
 		// given
-		s := service{}
+		s := service{store: objectstore.NewStoreFixture(t)}
 		st := state.NewDoc("test", nil).NewState()
 		st.SetDetail(bundle.RelationKeyName, domain.String(""))
 
@@ -701,5 +701,90 @@ func TestService_collectOriginalDetails(t *testing.T) {
 
 		// then
 		assert.True(t, result.Has(bundle.RelationKeyName))
+	})
+
+	t.Run("removes name when it matches previous template name", func(t *testing.T) {
+		// given
+		templateName := "Template Name"
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(sourceTemplateId),
+				bundle.RelationKeyName: domain.String(templateName),
+			},
+		})
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(templateName))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.False(t, result.Has(bundle.RelationKeyName), "Name should be removed when it matches template name")
+		assert.False(t, result.Has(bundle.RelationKeySourceObject), "SourceObject should always be removed")
+	})
+
+	t.Run("keeps name when it differs from previous template name", func(t *testing.T) {
+		// given
+		templateName := "Template Name"
+		customName := "My Custom Name"
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(sourceTemplateId),
+				bundle.RelationKeyName: domain.String(templateName),
+			},
+		})
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(customName))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.Equal(t, customName, result.GetString(bundle.RelationKeyName), "Custom name should be preserved")
+	})
+
+	t.Run("keeps name when sourceObject is empty", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(customObjectName))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.Equal(t, customObjectName, result.GetString(bundle.RelationKeyName))
+	})
+
+	t.Run("removes empty name when previous template also had empty name", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(sourceTemplateId),
+				bundle.RelationKeyName: domain.String(""),
+			},
+		})
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(""))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.False(t, result.Has(bundle.RelationKeyName), "Empty name should be removed when previous template also had empty name")
 	})
 }

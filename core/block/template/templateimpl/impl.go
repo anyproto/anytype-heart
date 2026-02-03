@@ -279,16 +279,28 @@ func (s *service) collectOriginalDetails(spaceId string, st *state.State) *domai
 		}
 	}
 
-	emoji := details.GetString(bundle.RelationKeyIconEmoji)
-	if sourceObject == "" || emoji == "" {
+	if sourceObject == "" {
 		return details
 	}
 
 	previousTemplateDetails, _ := s.store.SpaceIndex(spaceId).GetDetails(sourceObject) // nolint:errcheck
-	if previousTemplateDetails != nil {
-		if emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
-			details.Delete(bundle.RelationKeyIconEmoji)
-		}
+	if previousTemplateDetails == nil {
+		return details
+	}
+
+	// If the current emoji matches the previous template's emoji, remove it
+	// so the new template's emoji can be applied
+	emoji := details.GetString(bundle.RelationKeyIconEmoji)
+	if emoji != "" && emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
+		details.Delete(bundle.RelationKeyIconEmoji)
+	}
+
+	// If the current name matches the previous template's name, remove it
+	// so the new template's prefill setting can decide the name
+	// Otherwise preserve the user's custom name
+	name := details.GetString(bundle.RelationKeyName)
+	if name == previousTemplateDetails.GetString(bundle.RelationKeyName) {
+		details.Delete(bundle.RelationKeyName)
 	}
 
 	return details
