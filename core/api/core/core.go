@@ -83,4 +83,5 @@ type ClientCommands interface {
 	// Chat subscriptions
 	ChatSubscribeLastMessages(context.Context, *pb.RpcChatSubscribeLastMessagesRequest) *pb.RpcChatSubscribeLastMessagesResponse
 	ChatUnsubscribe(context.Context, *pb.RpcChatUnsubscribeRequest) *pb.RpcChatUnsubscribeResponse
+	ChatReadMessages(context.Context, *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse
 }

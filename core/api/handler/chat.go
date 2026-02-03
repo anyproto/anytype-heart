@@ -352,6 +352,55 @@ func SearchMessagesHandler(s *service.Service) gin.HandlerFunc {
 	}
 }
 
+// ReadMessagesHandler marks messages as read in a chat
+//
+//	@Summary		Mark messages as read
+//	@Description	Marks messages as read in the specified chat. This updates the unread counter. Use the type parameter to specify whether to mark messages or mentions as read. Rate limited.
+//	@Id				read_messages
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header	string							true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path	string							true	"The ID of the space"
+//	@Param			chat_id			path	string							true	"The ID of the chat object"
+//	@Param			request			body	apimodel.ReadMessagesRequest	true	"The read request specifying the range of messages to mark as read"
+//	@Success		204				"Messages marked as read successfully"
+//	@Failure		400				{object}	util.ValidationError	"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError		"Chat or messages not found"
+//	@Failure		429				{object}	util.RateLimitError		"Rate limit exceeded"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats/{chat_id}/read [post]
+func ReadMessagesHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		chatId := c.Param("chat_id")
+
+		request := apimodel.ReadMessagesRequest{}
+		if err := c.BindJSON(&request); err != nil {
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		err := s.ReadMessages(c.Request.Context(), chatId, request)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(service.ErrChatNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrMessagesNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrFailedReadMessages, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.Status(http.StatusNoContent)
+	}
+}
+
 const (
 	defaultSSELimit    = 50
 	sseChannelSize     = 100

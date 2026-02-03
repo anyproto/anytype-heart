@@ -13,12 +13,14 @@ import (
 var (
 	ErrChatNotFound           = errors.New("chat not found")
 	ErrMessageNotFound        = errors.New("message not found")
+	ErrMessagesNotFound       = errors.New("messages not found")
 	ErrFailedRetrieveMessages = errors.New("failed to retrieve messages")
 	ErrFailedCreateMessage    = errors.New("failed to create message")
 	ErrFailedUpdateMessage    = errors.New("failed to update message")
 	ErrFailedDeleteMessage    = errors.New("failed to delete message")
 	ErrFailedToggleReaction   = errors.New("failed to toggle reaction")
 	ErrFailedSearchMessages   = errors.New("failed to search messages")
+	ErrFailedReadMessages     = errors.New("failed to mark messages as read")
 )
 
 // GetMessages retrieves a paginated list of chat messages.
@@ -204,6 +206,35 @@ var (
 	ErrFailedSubscribeChat   = errors.New("failed to subscribe to chat")
 	ErrFailedUnsubscribeChat = errors.New("failed to unsubscribe from chat")
 )
+
+// ReadMessages marks messages as read in a chat.
+func (s *Service) ReadMessages(ctx context.Context, chatId string, req apimodel.ReadMessagesRequest) error {
+	readType := pb.RpcChatReadMessages_Messages
+	if req.Type == apimodel.ReadMessagesTypeMentions {
+		readType = pb.RpcChatReadMessages_Mentions
+	}
+
+	resp := s.mw.ChatReadMessages(ctx, &pb.RpcChatReadMessagesRequest{
+		ChatObjectId:  chatId,
+		Type:          readType,
+		AfterOrderId:  req.AfterOrderId,
+		BeforeOrderId: req.BeforeOrderId,
+		LastStateId:   req.LastStateId,
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcChatReadMessagesResponseError_NULL {
+		switch resp.Error.Code {
+		case pb.RpcChatReadMessagesResponseError_BAD_INPUT:
+			return ErrChatNotFound
+		case pb.RpcChatReadMessagesResponseError_MESSAGES_NOT_FOUND:
+			return ErrMessagesNotFound
+		default:
+			return ErrFailedReadMessages
+		}
+	}
+
+	return nil
+}
 
 // SubscribeChat creates a subscription to a chat and returns initial messages
 func (s *Service) SubscribeChat(ctx context.Context, chatId string, subId string, limit int) ([]apimodel.ChatMessage, *apimodel.ChatState, error) {

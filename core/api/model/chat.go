@@ -138,3 +138,19 @@ type Range struct {
 type SearchMessagesResponse struct {
 	Results []SearchMessageResult `json:"results"` // The search results
 }
+
+// ReadMessagesType represents the type of messages to mark as read
+type ReadMessagesType string
+
+const (
+	ReadMessagesTypeMessages ReadMessagesType = "messages"
+	ReadMessagesTypeMentions ReadMessagesType = "mentions"
+)
+
+// ReadMessagesRequest represents a request to mark messages as read
+type ReadMessagesRequest struct {
+	Type          ReadMessagesType `json:"type" binding:"required,oneof=messages mentions" example:"messages"` // The type of counter to mark as read
+	AfterOrderId  string           `json:"after_order_id,omitempty" example:""`                                // Read from this orderId; if empty, read from the beginning
+	BeforeOrderId string           `json:"before_order_id" binding:"required" example:"!!Xz"`                  // Read up to this orderId
+	LastStateId   string           `json:"last_state_id" binding:"required" example:"6980b7db..."`             // The last state ID from ChatState to prevent race conditions
+}

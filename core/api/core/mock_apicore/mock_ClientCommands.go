@@ -708,6 +708,55 @@ func (_c *MockClientCommands_ChatUnsubscribe_Call) RunAndReturn(run func(context
 	return _c
 }
 
+// ChatReadMessages provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ChatReadMessages(_a0 context.Context, _a1 *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatReadMessages")
+	}
+
+	var r0 *pb.RpcChatReadMessagesResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatReadMessagesResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ChatReadMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatReadMessages'
+type MockClientCommands_ChatReadMessages_Call struct {
+	*mock.Call
+}
+
+// ChatReadMessages is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatReadMessagesRequest
+func (_e *MockClientCommands_Expecter) ChatReadMessages(_a0 interface{}, _a1 interface{}) *MockClientCommands_ChatReadMessages_Call {
+	return &MockClientCommands_ChatReadMessages_Call{Call: _e.mock.On("ChatReadMessages", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ChatReadMessages_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatReadMessagesRequest)) *MockClientCommands_ChatReadMessages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatReadMessagesRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ChatReadMessages_Call) Return(_a0 *pb.RpcChatReadMessagesResponse) *MockClientCommands_ChatReadMessages_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ChatReadMessages_Call) RunAndReturn(run func(context.Context, *pb.RpcChatReadMessagesRequest) *pb.RpcChatReadMessagesResponse) *MockClientCommands_ChatReadMessages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectCollectionAdd provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectCollectionAdd(_a0 context.Context, _a1 *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse {
 	ret := _m.Called(_a0, _a1)
