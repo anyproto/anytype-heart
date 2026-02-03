@@ -25,7 +25,7 @@ type NodeStatus interface {
 	app.Component
 	SetNodesStatus(spaceId string, status ConnectionStatus)
 	GetNodeStatus(spaceId string) ConnectionStatus
-	GetNodeStatusSafe(spaceId string) (ConnectionStatus, bool)
+	TryGetNodeStatus(spaceId string) (ConnectionStatus, bool)
 }
 
 func NewNodeStatus() NodeStatus {
@@ -52,7 +52,7 @@ func (n *nodeStatus) SetNodesStatus(spaceId string, status ConnectionStatus) {
 	n.nodeStatus[spaceId] = status
 }
 
-func (n *nodeStatus) GetNodeStatusSafe(spaceId string) (ConnectionStatus, bool) {
+func (n *nodeStatus) TryGetNodeStatus(spaceId string) (ConnectionStatus, bool) {
 	n.Lock()
 	defer n.Unlock()
 	status, ok := n.nodeStatus[spaceId]

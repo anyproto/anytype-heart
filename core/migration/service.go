@@ -102,7 +102,7 @@ func (s *service) RunMigrationsWhenIdle(spaceId string, derivedIDs threads.Deriv
 
 			// Indexer is idle - now check network connection if not local-only
 			if !isLocalOnly {
-				status, ok := s.nodeStatus.GetNodeStatusSafe(spaceId)
+				status, ok := s.nodeStatus.TryGetNodeStatus(spaceId)
 				if !ok || status != nodestatus.Online {
 					continue // Status not set yet, or not online
 				}
