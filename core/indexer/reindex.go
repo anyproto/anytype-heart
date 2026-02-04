@@ -28,7 +28,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 20
+	ForceObjectsReindexCounter int32 = 19
 
 	// ForceFilesReindexCounter reindex file objects
 	ForceFilesReindexCounter int32 = 12 //
@@ -54,6 +54,11 @@ const (
 	ForceReindexParticipantsCounter  int32 = 1
 	ForceReindexChatsCounter         int32 = 7
 	ForceReindexChatsFulltextCounter int32 = 1
+
+	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
+	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it
+	// reindexes objects asynchronously and continue reindex after app restart
+	ForceInvalidateObjectsIndexCounter int32 = 1
 )
 
 type allDeletedIdsProvider interface {
@@ -83,6 +88,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			ReindexParticipants:         ForceReindexParticipantsCounter,
 			ReindexChats:                ForceReindexChatsCounter,
 			ReindexFulltextChatMessages: ForceReindexChatsFulltextCounter,
+			InvalidateObjectsIndex:      ForceInvalidateObjectsIndexCounter,
 		}
 	}
 
@@ -128,6 +134,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.ReindexFulltextChatMessages != ForceReindexChatsFulltextCounter {
 		flags.messagesFulltext = true
+	}
+	if checksums.InvalidateObjectsIndex != ForceInvalidateObjectsIndexCounter {
+		flags.invalidateObjectsIndex = true
 	}
 	if spaceID == addr.AnytypeMarketplaceWorkspace && checksums.MarketplaceForceReindexCounter != ForceMarketplaceReindex {
 		flags.enableAll()
@@ -189,6 +198,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, coresb.SmartBlockTypeFileObject)
 			if err != nil {
 				return fmt.Errorf("reindex file objects: %w", err)
+			}
+		}
+
+		if flags.invalidateObjectsIndex {
+			store := i.store.SpaceIndex(space.Id())
+			if err := store.ClearHeadsState(ctx); err != nil {
+				log.With(zap.String("space", space.Id())).Errorf("failed to clear heads state: %s", err)
 			}
 		}
 
@@ -642,6 +658,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		ReindexParticipants:              ForceReindexParticipantsCounter,
 		ReindexChats:                     ForceReindexChatsCounter,
 		ReindexFulltextChatMessages:      ForceReindexChatsFulltextCounter,
+		InvalidateObjectsIndex:           ForceInvalidateObjectsIndexCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex

@@ -3,6 +3,7 @@ package spaceindex
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -32,4 +33,18 @@ func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string,
 		return val, true, nil
 	}))
 	return err
+}
+
+// ClearHeadsState efficiently removes all indexed heads hashes by dropping and recreating the collection.
+// This causes reindexOutdatedObjects to reindex all objects.
+func (s *dsObjectStore) ClearHeadsState(ctx context.Context) error {
+	if err := s.headsState.Drop(ctx); err != nil {
+		return fmt.Errorf("drop headsState collection: %w", err)
+	}
+	headsState, err := s.db.Collection(ctx, "headsState")
+	if err != nil {
+		return fmt.Errorf("reopen headsState collection: %w", err)
+	}
+	s.headsState = headsState
+	return nil
 }

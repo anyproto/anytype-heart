@@ -106,6 +106,7 @@ type Store interface {
 
 	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
+	ClearHeadsState(ctx context.Context) error
 
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }

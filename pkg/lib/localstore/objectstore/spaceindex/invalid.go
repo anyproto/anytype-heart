@@ -215,6 +215,10 @@ func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, 
 	return s.err
 }
 
+func (s *invalidStore) ClearHeadsState(ctx context.Context) error {
+	return s.err
+}
+
 func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return nil, s.err
 }

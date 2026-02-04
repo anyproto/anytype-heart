@@ -160,7 +160,7 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 	db, err := s.openDb(ctx, id)
 	if err != nil {
 		code, isCorrupted := anystorehelper.IsCorruptedError(err)
-		log.With(zap.Bool("isCorrupted", isCorrupted), zap.String("code", code.String()), zap.Error(err)).Error("failed to open spacestore")
+		log.With(zap.String("spaceId", id), zap.Bool("isCorrupted", isCorrupted), zap.String("code", code.String()), zap.Error(err)).Error("failed to open spacestore")
 		return nil, err
 	}
 	if time.Since(start) > time.Second {
