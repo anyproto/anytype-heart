@@ -277,6 +277,10 @@ func (s *service) findBlockContext(fileTs int64, links []spaceindex.IncomingLink
 			}
 		}
 	}
+	// Return nil if no valid block link was found
+	if earliest.objectId == "" {
+		return nil
+	}
 	return &earliest
 }
 

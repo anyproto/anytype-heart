@@ -28,7 +28,7 @@ import (
 
 const (
 	// ForceObjectsReindexCounter reindex thread-based objects
-	ForceObjectsReindexCounter int32 = 19
+	ForceObjectsReindexCounter int32 = 20
 
 	// ForceFilesReindexCounter reindex file objects
 	ForceFilesReindexCounter int32 = 12 //
@@ -44,7 +44,7 @@ const (
 	ForceFilestoreKeysReindexCounter int32 = 2
 
 	// ForceLinksReindexCounter forces to erase links from store and reindex them
-	ForceLinksReindexCounter int32 = 1
+	ForceLinksReindexCounter int32 = 2
 
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1

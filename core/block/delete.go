@@ -41,6 +41,13 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		return fmt.Errorf("get head entry: %w", err)
 	}
 
+	// Check for files created in this context before deleting the object
+	if sbType != coresb.SmartBlockTypeFileObject {
+		if err := s.fileGC.CheckFilesOnContextDeletion(id.SpaceID, id.ObjectID); err != nil {
+			log.With("objectId", id.ObjectID).Warnf("failed to check files on context deletion: %v", err)
+		}
+	}
+
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,

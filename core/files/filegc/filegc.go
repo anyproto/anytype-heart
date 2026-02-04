@@ -22,6 +22,7 @@ const CName = "core.files.filegc"
 type FileGC interface {
 	app.ComponentRunnable
 	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error
+	CheckFilesOnContextDeletion(spaceId, contextId string) error
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -189,4 +190,68 @@ func (gc *fileGC) deleteFileObject(spaceId, fileId string) error {
 		SpaceID:  spaceId,
 		ObjectID: fileId,
 	})
+}
+
+// CheckFilesOnContextDeletion finds all files created in the given context and archives them
+// This should be called when the context object itself is being deleted
+func (gc *fileGC) CheckFilesOnContextDeletion(spaceId, contextId string) error {
+	log.Debugf("checking files on context deletion: %s", contextId)
+
+	// make sure we have all backlinks updates flushed to the store
+	gc.backlinksWatcher.FlushUpdates()
+
+	spaceIndex := gc.objectStore.SpaceIndex(spaceId)
+
+	fileLayouts := make([]int64, 0, len(domain.FileLayouts))
+	for _, layout := range domain.FileLayouts {
+		fileLayouts = append(fileLayouts, int64(layout))
+	}
+
+	// Query all files created in this context
+	fileRecords, err := spaceIndex.Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyCreatedInContext,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(contextId),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List(fileLayouts),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to query file objects: %w", err)
+	}
+
+	if len(fileRecords) == 0 {
+		return nil
+	}
+
+	log.Debugf("found %d files created in context %s", len(fileRecords), contextId)
+
+	for _, record := range fileRecords {
+		fileId := record.Details.GetString(bundle.RelationKeyId)
+
+		// Check if file has any backlinks from other objects (not the context being deleted)
+		backlinks := record.Details.GetStringList(bundle.RelationKeyBacklinks)
+		activeBacklinks := lo.Filter(backlinks, func(link string, _ int) bool {
+			return link != contextId && link != fileId
+		})
+
+		if len(activeBacklinks) > 0 {
+			log.Debugf("file %s has %d active backlinks, keeping", fileId, len(activeBacklinks))
+			continue
+		}
+
+		// File has no active backlinks - archive it since the context is being deleted
+		log.Debugf("archiving orphaned file %s from deleted context %s", fileId, contextId)
+		if err := gc.objectArchiver.SetIsArchived(gc.componentCtx, fileId, true); err != nil {
+			log.Errorf("failed to archive file object %s: %v", fileId, err)
+		}
+	}
+
+	return nil
 }
