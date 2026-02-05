@@ -143,7 +143,13 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 	it.CidsToBind = blocksAvailability.cidsToBind
 	it.CidsToUpload = blocksAvailability.cidsToUpload
 
-	spaceLimits, err := s.limitManager.getSpace(ctx, it.SpaceId)
+	spaceLimits, err := s.limitManager.getSpace(it.SpaceId)
+	// If space is deleted, move file to deletion queue. It'll help to reclaim space if file is partially uploaded
+	if errors.Is(err, errSpaceDeleted) {
+		it.State = FileStatePendingDeletion
+
+		return it, nil
+	}
 	if err != nil {
 		it = it.Reschedule()
 		return it, fmt.Errorf("get space limits: %w", err)
@@ -191,10 +197,6 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		totalBytesToUpload += bytesToUpload
 		return nil
 	})
-
-	// All cids should be bind at this time
-	it.CidsToBind = nil
-
 	if err != nil {
 		if isNodeLimitReachedError(err) {
 			it.State = FileStateLimited
@@ -207,6 +209,9 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		}
 		return it, fmt.Errorf("walk file blocks: %w", err)
 	}
+
+	// All cids should be bind at this time
+	it.CidsToBind = nil
 
 	// Means that we only had to bind blocks
 	if totalBytesToUpload == 0 {

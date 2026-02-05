@@ -3,6 +3,7 @@ package chatobject
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -283,6 +284,15 @@ func TestAddMessage(t *testing.T) {
 		assert.Equal(t, testSpaceId, ids[0].SpaceId)
 		assert.Equal(t, chatId, ids[0].ObjectId)
 		assert.NotEmpty(t, ids[0].MsgOrderId)
+	})
+
+	t.Run("message exceeds max length", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		inputMessage := givenSimpleMessage(strings.Repeat("a", chatmodel.MaxMessageLength+1))
+		_, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.Error(t, err)
 	})
 }
 

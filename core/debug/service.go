@@ -1,5 +1,24 @@
 package debug
 
+/*
+AI generated
+
+Name: Debug and Diagnostics Service
+Scope: global
+
+## Responsibility
+- Export object trees to zip files with optional anonymization and SVG visualization
+- Dump localstore data for debugging
+- Provide space summaries (tree heads for all objects in a space)
+- Aggregate debug statistics from stat service
+- Network connectivity diagnostics (yamux/quic probe to coordinators)
+- Debug anystore object changes with order validation
+
+## Background Tasks
+- Debug HTTP server: serves debug endpoints for components implementing Debuggable interface (Run)
+  - Only enabled when built with `anydebug` tag and ANYDEBUG env var is set
+*/
+
 import (
 	"archive/zip"
 	"context"

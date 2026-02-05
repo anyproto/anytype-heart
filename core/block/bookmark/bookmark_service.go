@@ -1,5 +1,29 @@
 package bookmark
 
+/*
+AI generated
+
+Name: URL Bookmark Object Manager
+Scope: global
+
+## Responsibility
+- Creates bookmark objects from URLs with deduplication (reuses existing bookmark if same URL exists)
+- Fetches URL metadata asynchronously (title, description, cover image, favicon)
+- Updates bookmark objects/blocks with fetched content
+- Parses HTML content into blocks when requested
+
+## Background Tasks
+- Content fetching: parallel goroutines fetch metadata, images, favicon concurrently via ContentUpdaters
+- Object update: goroutine updates object details after content is fetched in CreateBookmarkObject
+
+## Documentation
+Content fetching uses a channel-based updater pattern:
+1. ContentUpdaters returns a channel of update functions
+2. Multiple goroutines send updaters for metadata, cover image, favicon in parallel
+3. Consumer applies updaters sequentially to build final ObjectContent
+4. ContentFuture wraps this for synchronous access - blocks until all updaters complete
+*/
+
 import (
 	"context"
 	"fmt"

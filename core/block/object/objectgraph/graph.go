@@ -1,5 +1,16 @@
 package objectgraph
 
+/*
+AI generated
+
+Name: Object Graph Builder
+Scope: global
+
+## Responsibility
+- Build graph representation (nodes and edges) for objects within a space
+- Create edges from object/file-type relations and direct links between objects
+*/
+
 import (
 	"fmt"
 

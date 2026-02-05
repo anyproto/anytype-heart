@@ -1,5 +1,20 @@
 package typeprovider
 
+/*
+AI generated
+
+Name: SmartBlock Type Resolver
+Scope: global
+
+## Responsibility
+- Resolves SmartBlockType from object IDs using prefix/CID pattern matching
+- Falls back to space storage tree root for unknown IDs
+- Caches resolved types persistently to avoid repeated storage lookups
+
+## External State
+- `smartblock_types` collection in common DB: persisted ID-to-type cache
+*/
+
 import (
 	"context"
 	"encoding/binary"

@@ -1,5 +1,17 @@
 package builder
 
+/*
+AI generated
+
+Name: Client Space Factory
+Scope: space
+
+## Responsibility
+- Assembles dependencies and constructs a fully-initialized clientspace.Space
+- Acquires core space from spaceCore service
+- Sets space access type (personal vs private) after construction
+*/
+
 import (
 	"context"
 	"fmt"

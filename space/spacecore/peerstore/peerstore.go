@@ -1,5 +1,18 @@
 package peerstore
 
+/*
+AI generated
+
+Name: Local Peer Registry
+Scope: global
+
+## Responsibility
+- Tracks local network peers (discovered via P2P/local discovery) and their space memberships
+- Maintains bidirectional mappings: peer-to-spaces and space-to-peers
+- Proxies responsible node IDs and file peers from nodeconf service
+- Notifies observers on peer additions, removals, and space membership changes
+*/
+
 import (
 	"sync"
 

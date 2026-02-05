@@ -1,5 +1,18 @@
 package techspace
 
+/*
+AI generated
+
+Name: Space Metadata Storage
+Scope: global
+
+## Responsibility
+- Creates and manages SpaceView objects (one per user space) containing space metadata
+- Creates and manages a single AccountObject for account-level settings
+- Provides locked access to SpaceView/AccountObject via Do* methods for safe concurrent modification
+- Derives deterministic object IDs from space IDs using unique keys
+*/
+
 import (
 	"context"
 	"errors"

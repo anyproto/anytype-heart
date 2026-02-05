@@ -1,5 +1,21 @@
 package chatrepository
 
+/*
+AI generated
+
+Name: Chat Message Storage
+Scope: global
+
+## Responsibility
+- Provides per-chat Repository instances for message persistence
+- Stores and queries chat messages with pagination support
+- Tracks read/unread state for messages and mentions separately
+- Tracks sync state for messages
+
+## External State
+- CRDT DB collections: one per chat object (`{chatObjectId}chats`)
+*/
+
 import (
 	"context"
 	"errors"

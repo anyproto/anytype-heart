@@ -1,5 +1,30 @@
 package peerstatus
 
+/*
+AI generated
+
+Name: P2P Connection Status Monitor
+Scope: global
+
+## Responsibility
+- Tracks and broadcasts P2P connection status per registered space
+- Reacts to local peer discovery possibility changes (no interfaces, restricted, possible)
+- Counts active local peer connections per space via peerstore
+
+## Background Tasks
+- worker: processes space status refresh requests from channel, updates and broadcasts status changes
+
+## Documentation
+Status transitions per space:
+- Unknown -> Connected/NotConnected/NotPossible/Restricted (on first registration)
+- Any -> Connected (when local peers found for space)
+- Any -> NotConnected (when no peers and discovery possible)
+- Any -> NotPossible (when no network interfaces available)
+- Any -> Restricted (when local network access restricted, iOS-specific)
+
+Events broadcast on status change; new sessions receive current status immediately via session hook.
+*/
+
 import (
 	"context"
 	"errors"

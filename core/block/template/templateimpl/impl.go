@@ -211,14 +211,23 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		return
 	}
 
-	st.RemoveDetail(
+	// Check if template has name prefill enabled
+	prefillType := st.Details().GetInt64(bundle.RelationKeyTemplateNamePrefillType)
+
+	keysToRemove := []domain.RelationKey{
 		bundle.RelationKeyTargetObjectType,
 		bundle.RelationKeyTemplateIsBundled,
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
 		bundle.RelationKeyFeaturedRelations,
-		bundle.RelationKeyName,
-	)
+	}
+
+	// Only remove template name if prefill type is Empty (default)
+	if prefillType == int64(model.TemplateNamePrefillType_Empty) {
+		keysToRemove = append(keysToRemove, bundle.RelationKeyName)
+	}
+
+	st.RemoveDetail(keysToRemove...)
 	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(sb.Id()))
 	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
 	st.SetOriginalCreatedTimestamp(0)
@@ -270,16 +279,28 @@ func (s *service) collectOriginalDetails(spaceId string, st *state.State) *domai
 		}
 	}
 
-	emoji := details.GetString(bundle.RelationKeyIconEmoji)
-	if sourceObject == "" || emoji == "" {
+	if sourceObject == "" {
 		return details
 	}
 
 	previousTemplateDetails, _ := s.store.SpaceIndex(spaceId).GetDetails(sourceObject) // nolint:errcheck
-	if previousTemplateDetails != nil {
-		if emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
-			details.Delete(bundle.RelationKeyIconEmoji)
-		}
+	if previousTemplateDetails == nil {
+		return details
+	}
+
+	// If the current emoji matches the previous template's emoji, remove it
+	// so the new template's emoji can be applied
+	emoji := details.GetString(bundle.RelationKeyIconEmoji)
+	if emoji != "" && emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
+		details.Delete(bundle.RelationKeyIconEmoji)
+	}
+
+	// If the current name matches the previous template's name, remove it
+	// so the new template's prefill setting can decide the name
+	// Otherwise preserve the user's custom name
+	name := details.GetString(bundle.RelationKeyName)
+	if name == previousTemplateDetails.GetString(bundle.RelationKeyName) {
+		details.Delete(bundle.RelationKeyName)
 	}
 
 	return details
@@ -482,7 +503,18 @@ func addDetailsToTemplateState(st *state.State, details *domain.Details) {
 				keysToExclude = append(keysToExclude, key)
 			}
 		}
+		// Preserve template name if it's set and original name is empty
+		if st.Details().GetString(bundle.RelationKeyName) != "" && details.GetString(bundle.RelationKeyName) == "" {
+			keysToExclude = append(keysToExclude, bundle.RelationKeyName)
+		}
 	}
-	st.AddDetails(details.CopyWithoutKeys(keysToExclude...))
+
+	toAdd := details.CopyWithoutKeys(keysToExclude...)
+	if toAdd.Has(bundle.RelationKeyName) {
+		// Add relation link for name, otherwise we'll write "relation remove" change and name will be deleted from state
+		st.AddBundledRelationLinks(bundle.RelationKeyName)
+	}
+
+	st.AddDetails(toAdd)
 	st.BlocksInit(st)
 }

@@ -394,6 +394,7 @@ message Block {
                 string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
                 string endRelationKey = 16; // Group view by this relationKey
                 bool wrapContent = 17; // Wrap content in view
+                ListSize listSize = 18; // List view size setting
 
                 enum Type {
                     Table = 0;
@@ -408,6 +409,11 @@ message Block {
                     Small = 0;
                     Medium = 1;
                     Large = 2;
+                }
+
+                enum ListSize {
+                    Compact = 0;  // Single-line display (default)
+                    Regular = 1;  // Two-line display with description
                 }
             }
 
@@ -1665,4 +1671,9 @@ enum SyncError {
     SyncErrorIncompatibleVersion = 2;
     SyncErrorNetworkError        = 3;
     SyncErrorOversized           = 4;
+}
+
+enum TemplateNamePrefillType {
+    Empty = 0;
+    FromTemplateName = 1;
 }
