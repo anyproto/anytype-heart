@@ -124,7 +124,7 @@ func getHEICConfig(r io.ReadSeeker) (heicConfig, io.Reader, error) {
 
 	reordered, reorderErr := reorderHEIC(data)
 	if reorderErr != nil {
-		return heicConfig{}, nil, fmt.Errorf("get primary item: %w (reorder failed: %v)", err, reorderErr)
+		return heicConfig{}, nil, fmt.Errorf("get primary item: %w (reorder failed: %w)", err, reorderErr)
 	}
 
 	reorderedReader := bytes.NewReader(reordered)
@@ -175,7 +175,7 @@ func parseHEICBoxes(data []byte) ([]heicBoxInfo, error) {
 			if offset+16 > int64(len(data)) {
 				break
 			}
-			actualSize = int64(binary.BigEndian.Uint64(data[offset+8 : offset+16]))
+			actualSize = int64(binary.BigEndian.Uint64(data[offset+8 : offset+16])) // nolint:gosec
 		}
 
 		boxes = append(boxes, heicBoxInfo{offset: offset, size: actualSize, typ: boxType})
@@ -356,11 +356,11 @@ func updateIloc(iloc []byte, adjustment int64) {
 func readSizedInt(data []byte, size int) int64 {
 	switch size {
 	case 2:
-		return int64(binary.BigEndian.Uint16(data[:2]))
+		return int64(binary.BigEndian.Uint16(data[:2])) // nolint:gosec
 	case 4:
-		return int64(binary.BigEndian.Uint32(data[:4]))
+		return int64(binary.BigEndian.Uint32(data[:4])) // nolint:gosec
 	case 8:
-		return int64(binary.BigEndian.Uint64(data[:8]))
+		return int64(binary.BigEndian.Uint64(data[:8])) // nolint:gosec
 	}
 	return 0
 }
@@ -368,11 +368,11 @@ func readSizedInt(data []byte, size int) int64 {
 func writeSizedInt(data []byte, size int, value int64) {
 	switch size {
 	case 2:
-		binary.BigEndian.PutUint16(data[:2], uint16(value))
+		binary.BigEndian.PutUint16(data[:2], uint16(value)) // nolint:gosec
 	case 4:
-		binary.BigEndian.PutUint32(data[:4], uint32(value))
+		binary.BigEndian.PutUint32(data[:4], uint32(value)) // nolint:gosec
 	case 8:
-		binary.BigEndian.PutUint64(data[:8], uint64(value))
+		binary.BigEndian.PutUint64(data[:8], uint64(value)) // nolint:gosec
 	}
 }
 
