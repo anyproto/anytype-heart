@@ -110,20 +110,19 @@ func (m *ImageResize) Options(add map[string]interface{}) (string, error) {
 
 func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	imgConfig, formatStr, err := image.DecodeConfig(r)
+	format := Format(formatStr)
 	if err != nil {
 		// Try HEIC-specific decoding for problematic files
 		if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
-			return nil, err
+			return nil, err // Return original error
 		}
-		width, height, heicFormat, heicErr := decodeHEICConfig(r)
+		var heicErr error
+		imgConfig, heicErr = decodeHEICConfig(r)
 		if heicErr != nil {
 			return nil, err // Return original error
 		}
-		imgConfig.Width = width
-		imgConfig.Height = height
-		formatStr = heicFormat
+		format = HEIC
 	}
-	format := Format(formatStr)
 	_, err = r.Seek(0, io.SeekStart)
 	if err != nil {
 		return nil, err

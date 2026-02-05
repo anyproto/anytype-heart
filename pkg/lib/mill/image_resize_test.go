@@ -10,6 +10,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/adrium/goheif"
 	"github.com/davecgh/go-spew/spew"
 	exif2 "github.com/dsoprea/go-exif/v3"
 	"github.com/rwcarlsen/goexif/exif"
@@ -178,5 +179,56 @@ func TestImageResize_Mill(t *testing.T) {
 		file.Close()
 		err = res.File.Close()
 		require.NoError(t, err)
+	}
+}
+
+func TestGetHEICConfig(t *testing.T) {
+	tests := []struct {
+		name           string
+		path           string
+		expectedWidth  int
+		expectedHeight int
+		expectReorder  bool
+	}{
+		{
+			name:           "normal HEIC file (meta before mdat)",
+			path:           "testdata/image.heic",
+			expectedWidth:  1440,
+			expectedHeight: 960,
+			expectReorder:  false,
+		},
+		{
+			name:           "HEIC file with mdat first",
+			path:           "testdata/image_mdat_first.heic",
+			expectedWidth:  1440,
+			expectedHeight: 960,
+			expectReorder:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := os.Open(tt.path)
+			require.NoError(t, err)
+			defer file.Close()
+
+			cfg, reader, err := getHEICConfig(file)
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expectedWidth, cfg.Width)
+			assert.Equal(t, tt.expectedHeight, cfg.Height)
+			assert.NotNil(t, reader)
+
+			// Check if reader was reordered (returns *bytes.Reader) or original (returns *os.File)
+			_, isReordered := reader.(*bytes.Reader)
+			assert.Equal(t, tt.expectReorder, isReordered, "reorder expectation mismatch")
+
+			// Verify reader is suitable for decoding
+			goheif.SafeEncoding = true
+			img, err := goheif.Decode(reader)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedWidth, img.Bounds().Dx())
+			assert.Equal(t, tt.expectedHeight, img.Bounds().Dy())
+		})
 	}
 }

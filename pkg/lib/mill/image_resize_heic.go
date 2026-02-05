@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/jpeg"
 	"io"
+	"slices"
 	"strconv"
 
 	"github.com/adrium/goheif"
@@ -17,13 +18,7 @@ import (
 )
 
 func (m *ImageResize) resizeHEIC(r io.ReadSeeker) (*Result, error) {
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, fmt.Errorf("read heic: %w", err)
-	}
-
-	// Get configuration (dimensions, rotation) from metadata
-	cfg, err := getHEICConfig(data)
+	cfg, decodeReader, err := getHEICConfig(r)
 	if err != nil {
 		return nil, err
 	}
@@ -41,20 +36,10 @@ func (m *ImageResize) resizeHEIC(r io.ReadSeeker) (*Result, error) {
 		orientation = 6
 	}
 
-	// Decode the image - try standard decoding first, then reordered
 	goheif.SafeEncoding = true
-	var img image.Image
-	img, err = goheif.Decode(bytes.NewReader(data))
+	img, err := goheif.Decode(decodeReader)
 	if err != nil {
-		// Try with reordered boxes for files where mdat comes before meta
-		reordered, reorderErr := reorderHEICFull(data)
-		if reorderErr != nil {
-			return nil, fmt.Errorf("decode heic: %w (reorder failed: %v)", err, reorderErr)
-		}
-		img, err = goheif.Decode(bytes.NewReader(reordered))
-		if err != nil {
-			return nil, fmt.Errorf("decode heic after reorder: %w", err)
-		}
+		return nil, fmt.Errorf("decode heic: %w", err)
 	}
 
 	if orientation > 1 {
@@ -96,25 +81,6 @@ func (m *ImageResize) resizeHEIC(r io.ReadSeeker) (*Result, error) {
 	}, nil
 }
 
-// isHEICFormat checks if the data starts with HEIC magic bytes.
-// HEIC files start with ftyp box followed by a brand like "heic", "heix", "mif1", etc.
-func isHEICFormat(data []byte) bool {
-	if len(data) < 12 {
-		return false
-	}
-	// Check for "ftyp" at offset 4
-	if string(data[4:8]) != "ftyp" {
-		return false
-	}
-	// Check for HEIC-related brands
-	brand := string(data[8:12])
-	switch brand {
-	case "heic", "heix", "hevc", "hevx", "mif1", "msf1":
-		return true
-	}
-	return false
-}
-
 // heicConfig holds HEIC image configuration extracted from metadata.
 type heicConfig struct {
 	Width     int
@@ -123,36 +89,66 @@ type heicConfig struct {
 }
 
 // getHEICConfig extracts image dimensions and rotation from HEIC file.
-// It handles files where mdat box comes before meta box by reordering.
-func getHEICConfig(data []byte) (heicConfig, error) {
-	ra := bytes.NewReader(data)
-	hf := heif.Open(ra)
+// It returns config and a reader suitable for decoding (may be reordered in case of mdat box presence).
+func getHEICConfig(r io.ReadSeeker) (heicConfig, io.Reader, error) {
+	ra, ok := r.(io.ReaderAt)
+	if !ok {
+		return heicConfig{}, nil, fmt.Errorf("reader does not support ReaderAt interface")
+	}
 
+	hf := heif.Open(ra)
 	it, err := hf.PrimaryItem()
+	if err == nil {
+		width, height, ok := it.SpatialExtents()
+		if ok {
+			// Seek back to start for decoding
+			if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+				return heicConfig{}, nil, fmt.Errorf("seek: %w", seekErr)
+			}
+			return heicConfig{
+				Width:     width,
+				Height:    height,
+				Rotations: it.Rotations(),
+			}, r, nil
+		}
+	}
+
+	// Try reordering boxes if standard parsing fails
+	if _, seekErr := r.Seek(0, io.SeekStart); seekErr != nil {
+		return heicConfig{}, nil, fmt.Errorf("seek: %w", seekErr)
+	}
+	data, readErr := io.ReadAll(r)
+	if readErr != nil {
+		return heicConfig{}, nil, fmt.Errorf("read heic: %w", readErr)
+	}
+
+	reordered, reorderErr := reorderHEIC(data)
+	if reorderErr != nil {
+		return heicConfig{}, nil, fmt.Errorf("get primary item: %w (reorder failed: %v)", err, reorderErr)
+	}
+
+	reorderedReader := bytes.NewReader(reordered)
+	hf = heif.Open(reorderedReader)
+	it, err = hf.PrimaryItem()
 	if err != nil {
-		// Try reordering boxes if standard parsing fails
-		reordered, reorderErr := reorderHEICForMetadata(data)
-		if reorderErr != nil {
-			return heicConfig{}, fmt.Errorf("get primary item: %w (reorder failed: %v)", err, reorderErr)
-		}
-		ra = bytes.NewReader(reordered)
-		hf = heif.Open(ra)
-		it, err = hf.PrimaryItem()
-		if err != nil {
-			return heicConfig{}, fmt.Errorf("get primary item after reorder: %w", err)
-		}
+		return heicConfig{}, nil, fmt.Errorf("get primary item after reorder: %w", err)
 	}
 
 	width, height, ok := it.SpatialExtents()
 	if !ok {
-		return heicConfig{}, fmt.Errorf("no spatial extents found")
+		return heicConfig{}, nil, fmt.Errorf("no spatial extents found")
+	}
+
+	// Seek reordered reader back to start for decoding
+	if _, seekErr := reorderedReader.Seek(0, io.SeekStart); seekErr != nil {
+		return heicConfig{}, nil, fmt.Errorf("seek reordered: %w", seekErr)
 	}
 
 	return heicConfig{
 		Width:     width,
 		Height:    height,
 		Rotations: it.Rotations(),
-	}, nil
+	}, reorderedReader, nil
 }
 
 type heicBoxInfo struct {
@@ -189,43 +185,9 @@ func parseHEICBoxes(data []byte) ([]heicBoxInfo, error) {
 	return boxes, nil
 }
 
-// reorderHEICForMetadata creates a byte slice with ftyp + meta boxes,
-// skipping mdat and other data boxes. This allows parsing metadata
-// from files where mdat comes before meta.
-func reorderHEICForMetadata(data []byte) ([]byte, error) {
-	boxes, err := parseHEICBoxes(data)
-	if err != nil {
-		return nil, err
-	}
-
-	var ftyp, meta *heicBoxInfo
-	for i := range boxes {
-		switch boxes[i].typ {
-		case "ftyp":
-			ftyp = &boxes[i]
-		case "meta":
-			meta = &boxes[i]
-		}
-	}
-
-	if ftyp == nil {
-		return nil, fmt.Errorf("ftyp box not found")
-	}
-	if meta == nil {
-		return nil, fmt.Errorf("meta box not found")
-	}
-
-	// Create reordered data: ftyp + meta
-	result := make([]byte, 0, ftyp.size+meta.size)
-	result = append(result, data[ftyp.offset:ftyp.offset+ftyp.size]...)
-	result = append(result, data[meta.offset:meta.offset+meta.size]...)
-
-	return result, nil
-}
-
-// reorderHEICFull reorders HEIC boxes to put meta before mdat and updates iloc offsets.
-// This is needed for full image decoding, not just metadata parsing.
-func reorderHEICFull(data []byte) ([]byte, error) {
+// reorderHEIC reorders HEIC boxes to put meta before mdat and updates iloc offsets.
+// This is needed when mdat comes before meta in the file.
+func reorderHEIC(data []byte) ([]byte, error) {
 	boxes, err := parseHEICBoxes(data)
 	if err != nil {
 		return nil, err
@@ -352,9 +314,13 @@ func updateIloc(iloc []byte, adjustment int64) {
 		pos += 2
 
 		// base_offset - only adjust if construction_method is 0
+		var hasBaseOffset bool
 		if baseOffsetSizeField > 0 {
 			if constructionMethod == 0 {
 				baseOffset := readSizedInt(iloc[pos:], baseOffsetSizeField)
+				if baseOffset != 0 {
+					hasBaseOffset = true
+				}
 				writeSizedInt(iloc[pos:], baseOffsetSizeField, baseOffset+adjustment)
 			}
 			pos += baseOffsetSizeField
@@ -371,9 +337,10 @@ func updateIloc(iloc []byte, adjustment int64) {
 				pos += indexSizeField
 			}
 
-			// extent_offset - only adjust if construction_method is 0
+			// extent_offset - only adjust if construction_method is 0 AND no base_offset
+			// When base_offset is present and non-zero, extent_offset is relative to it
 			if offsetSizeField > 0 {
-				if constructionMethod == 0 {
+				if constructionMethod == 0 && !hasBaseOffset {
 					extentOffset := readSizedInt(iloc[pos:], offsetSizeField)
 					writeSizedInt(iloc[pos:], offsetSizeField, extentOffset+adjustment)
 				}
@@ -409,27 +376,38 @@ func writeSizedInt(data []byte, size int, value int64) {
 	}
 }
 
-// decodeHEICConfig tries to decode HEIC image configuration.
-// Returns the config, format string, and error.
-func decodeHEICConfig(r io.ReadSeeker) (width, height int, format string, err error) {
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return 0, 0, "", fmt.Errorf("read heic data: %w", err)
+// decodeHEICConfig tries to decode HEIC image configuration
+func decodeHEICConfig(r io.ReadSeeker) (image.Config, error) {
+	// HEIC files start with ftyp box followed by a brand like "heic", "heix", "mif1", etc.
+	header := make([]byte, 12)
+	if _, err := r.Read(header); err != nil {
+		return image.Config{}, fmt.Errorf("read heic header: %w", err)
 	}
 
-	if !isHEICFormat(data) {
-		return 0, 0, "", fmt.Errorf("not a HEIC file")
+	if string(header[4:8]) != "ftyp" {
+		return image.Config{}, fmt.Errorf("not a HEIC file")
 	}
 
-	cfg, err := getHEICConfig(data)
-	if err != nil {
-		return 0, 0, "", err
+	brand := string(header[8:12])
+	if !slices.Contains([]string{"heic", "heix", "hevc", "hevx", "mif1", "msf1"}, brand) {
+		return image.Config{}, fmt.Errorf("not a HEIC file")
 	}
 
-	// Reset reader position
 	if _, err := r.Seek(0, io.SeekStart); err != nil {
-		return 0, 0, "", fmt.Errorf("seek: %w", err)
+		return image.Config{}, fmt.Errorf("seek: %w", err)
 	}
 
-	return cfg.Width, cfg.Height, "heic", nil
+	cfg, _, err := getHEICConfig(r)
+	if err != nil {
+		return image.Config{}, err
+	}
+
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return image.Config{}, fmt.Errorf("seek: %w", err)
+	}
+
+	return image.Config{
+		Width:  cfg.Width,
+		Height: cfg.Height,
+	}, nil
 }
