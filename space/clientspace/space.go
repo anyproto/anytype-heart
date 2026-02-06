@@ -218,15 +218,17 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	}
 	go s.tryLoadBundledAndInstallIfMissing(disableRemoteLoad)
 
-	// Start migrations after reindexing - they will wait for indexer to become idle
-	if s.migrationService != nil {
-		go s.migrationService.RunMigrationsWhenIdle(s.Id(), s.derivedIDs)
+	if !s.IsReadOnly() {
+		if s.migrationService != nil {
+			// Start migrations after reindexing - they will wait for indexer to become idle
+			go s.migrationService.RunMigrationsWhenIdle(s.Id(), s.derivedIDs)
+		}
+		err := s.migrationProfileObject(ctx)
+		if err != nil {
+			log.Error("failed to migrate profile object", zap.Error(err))
+		}
 	}
 
-	err := s.migrationProfileObject(ctx)
-	if err != nil {
-		log.Error("failed to migrate profile object", zap.Error(err))
-	}
 	if !disableRemoteLoad {
 		s.common.TreeSyncer().StartSync()
 	}
