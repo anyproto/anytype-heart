@@ -148,7 +148,7 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		})
 
 		if len(activeBacklinks) > 0 {
-			log.Debugf("file %s has %d active backlinks, keeping", fileId, len(activeBacklinks))
+			log.With("fileId", fileId).With("links", len(activeBacklinks)).Debugf("file has active backlinks, keeping")
 			continue
 		}
 
@@ -159,20 +159,20 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 			fileCreator := record.Details.GetString(bundle.RelationKeyCreator)
 			myParticipantId := gc.participantProvider.MyParticipantId(spaceId)
 			if fileCreator != myParticipantId {
-				log.Debugf("file %s was created by %s, not current user %s - archiving instead of deleting", fileId, fileCreator, myParticipantId)
+				log.With("fileId", fileId).Debugf("file was created by another user - archiving instead of deleting")
 				shouldSkipBin = false
 			}
 		}
 
 		if shouldSkipBin {
-			log.Debugf("deleting orphaned file %s created in context %s", fileId, contextId)
+			log.With("fileId", fileId).Debugf("deleting orphaned file created in context %s", contextId)
 			// Delete the file object
 			if err := gc.deleteFileObject(spaceId, fileId); err != nil {
 				log.With("fileId", fileId).Errorf("failed to delete file object: %v", err)
 				// Continue with other files even if one fails
 			}
 		} else {
-			log.Debugf("archiving orphaned file %s created in context %s", fileId, contextId)
+			log.With("fileId", fileId).Debugf("archiving orphaned file created in context %s", contextId)
 			// Archive the file object
 			if err := gc.objectArchiver.SetIsArchived(gc.componentCtx, fileId, true); err != nil {
 				log.With("fileId", fileId).Errorf("failed to archive file object: %v", err)

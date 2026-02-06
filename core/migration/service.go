@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
@@ -49,7 +48,6 @@ type service struct {
 	objectStore    objectstore.ObjectStore
 	detailsService detailservice.Service
 	indexer        Indexer
-	dbProvider     anystoreprovider.Provider
 	chatRepository chatrepository.Service
 	networkConfig  NetworkConfig
 	nodeStatus     nodestatus.NodeStatus
@@ -69,7 +67,6 @@ func (s *service) Init(a *app.App) error {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.indexer = app.MustComponent[Indexer](a)
-	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	s.chatRepository = app.MustComponent[chatrepository.Service](a)
 	s.networkConfig = app.MustComponent[NetworkConfig](a)
 	s.nodeStatus = app.MustComponent[nodestatus.NodeStatus](a)

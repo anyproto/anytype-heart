@@ -1429,7 +1429,7 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 	objectId := sb.Id()
 
 	// Collect links from blocks
-	_ = st.Iterate(func(b simple.Block) (isContinue bool) {
+	if err := st.Iterate(func(b simple.Block) (isContinue bool) {
 		blockModel := b.Model()
 		if blockModel == nil {
 			return true
@@ -1467,75 +1467,92 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 		}
 
 		return true
-	})
+	}); err != nil {
+		log.Warnf("failed to iterate state blocks: %v", err)
+	}
 
 	// Collect links from object relations
-	if st.Details() != nil {
-		for key, val := range st.Details().Iterate() {
-			if slices.Contains(relationsToFilterOutForLinks, key) {
-				continue
-			}
-			format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
-			if err != nil {
-				log.Warnf("failed to get relation format for key %s: %v", key, err)
-				var (
-					id string
-					ok bool
-				)
-				if id, ok = val.TryString(); !ok {
+	outgoingLinks = append(outgoingLinks, sb.collectLinksFromRelations(st, objectId, linkSet)...)
 
-				} else if ids, ok := val.TryStringList(); ok {
-					if len(ids) > 0 {
-						id = ids[0]
-					}
-				}
-				if len(id) > 0 {
-					if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
-						switch sbt {
-						case smartblock.SmartBlockTypePage,
-							smartblock.SmartBlockTypeObjectType,
-							smartblock.SmartBlockTypeParticipant:
-							format = model.RelationFormat_object
-						case smartblock.SmartBlockTypeFileObject:
-							format = model.RelationFormat_file
-						}
-					}
-				}
-			}
+	return outgoingLinks
+}
 
-			if key == bundle.RelationKeyCoverId {
-				// special hacky case for coverId
-				coverType := st.Details().GetInt64(bundle.RelationKeyCoverType)
-				if coverType == 1 {
-					format = model.RelationFormat_file
-				}
-			}
-			// Only process object relations
-			if format != model.RelationFormat_object && format != model.RelationFormat_file {
-				continue
-			}
+// collectLinksFromRelations extracts outgoing links from object relation values
+func (sb *smartBlock) collectLinksFromRelations(st *state.State, objectId string, linkSet map[string]bool) []OutgoingLink {
+	var outgoingLinks []OutgoingLink
+	if st.Details() == nil {
+		return outgoingLinks
+	}
+	for key, val := range st.Details().Iterate() {
+		if slices.Contains(relationsToSkipLinksIndexing, key) {
+			continue
+		}
+		format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
+		if err != nil {
+			log.Warnf("failed to get relation format for key %s: %v", key, err)
+			format = guessRelationFormatFromValue(val)
+		}
 
-			// Extract target IDs based on value type
-			targetIds, ok := val.TryWrapToStringList()
-			if !ok {
-				continue
+		if key == bundle.RelationKeyCoverId {
+			// special hacky case for coverId
+			coverType := st.Details().GetInt64(bundle.RelationKeyCoverType)
+			if coverType == 1 {
+				format = model.RelationFormat_file
 			}
+		}
+		// Only process object relations
+		if format != model.RelationFormat_object && format != model.RelationFormat_file {
+			continue
+		}
 
-			// Add outgoing links for each target
-			// Skip self-references to avoid creating links from an object to itself
-			for _, targetId := range targetIds {
-				if targetId != "" && targetId != objectId && !linkSet[targetId] {
-					linkSet[targetId] = true
-					outgoingLinks = append(outgoingLinks, OutgoingLink{
-						TargetID:    targetId,
-						RelationKey: key.String(),
-					})
-				}
+		// Extract target IDs based on value type
+		targetIds, ok := val.TryWrapToStringList()
+		if !ok {
+			continue
+		}
+
+		// Add outgoing links for each target
+		// Skip self-references to avoid creating links from an object to itself
+		for _, targetId := range targetIds {
+			if targetId != "" && targetId != objectId && !linkSet[targetId] {
+				linkSet[targetId] = true
+				outgoingLinks = append(outgoingLinks, OutgoingLink{
+					TargetID:    targetId,
+					RelationKey: key.String(),
+				})
 			}
 		}
 	}
-
 	return outgoingLinks
+}
+
+// guessRelationFormatFromValue attempts to determine the relation format
+// by inspecting the value's content when the format fetcher fails
+func guessRelationFormatFromValue(val domain.Value) model.RelationFormat {
+	var id string
+	if s, ok := val.TryString(); ok {
+		id = s
+		if ids, ok := val.TryStringList(); ok && len(ids) > 0 {
+			id = ids[0]
+		}
+	}
+	if id == "" {
+		return 0
+	}
+	sbt, err := typeprovider.SmartblockTypeFromID(id)
+	if err != nil {
+		return 0
+	}
+	switch sbt {
+	case smartblock.SmartBlockTypePage,
+		smartblock.SmartBlockTypeObjectType,
+		smartblock.SmartBlockTypeParticipant:
+		return model.RelationFormat_object
+	case smartblock.SmartBlockTypeFileObject:
+		return model.RelationFormat_file
+	default:
+		return 0
+	}
 }
 
 // performFileGC runs the file garbage collector for removed links

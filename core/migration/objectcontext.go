@@ -135,29 +135,14 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 			continue
 		}
 
-		// Verify context object exists
-		rec, err := spaceIndex.QueryByIds([]string{contextInfo.objectId})
-		if err != nil {
-			fl.Warn("failed to query context object", zap.Error(err))
+		// Verify context object exists and was created before the file
+		if err := s.verifyContextObject(spaceIndex, contextInfo, fileObjectCreatedDate); err != nil {
+			fl.Warn("context verification failed",
+				zap.Error(err),
+				zap.String("objectId", contextInfo.objectId),
+				zap.String("blockId", contextInfo.blockId),
+			)
 			continue
-		}
-		if len(rec) == 0 {
-			fl.Warn("context object not found")
-			continue
-		}
-
-		// For non-chat contexts, verify context object was created before(or close) to file object
-		// For chat contexts, we already validated the message timestamp in selectBestContext
-		if contextInfo.messageId == "" {
-			createdDate := rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate)
-			if rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate) > fileObjectCreatedDate+contextTimeTolerance {
-				fl.Warn("context object is newer than file object",
-					zap.Int64("diff", createdDate-fileObjectCreatedDate),
-					zap.String("objectId", contextInfo.objectId),
-					zap.String("blockId", contextInfo.blockId),
-				)
-				continue
-			}
 		}
 
 		select {
@@ -319,6 +304,25 @@ func (s *service) isObjectContextMigrationDone(spaceIndex spaceindex.Store, work
 	}
 	storedVersion := recs[0].Details.GetInt64(bundle.RelationKeyMigrationObjectContext)
 	return storedVersion >= currentObjectContextMigrationVersion
+}
+
+// verifyContextObject checks that the context object exists and was created before (or close to) the file object.
+// For chat contexts (messageId set), the timestamp was already validated in findBestContext.
+func (s *service) verifyContextObject(spaceIndex spaceindex.Store, ci *contextInfo, fileObjectCreatedDate int64) error {
+	rec, err := spaceIndex.QueryByIds([]string{ci.objectId})
+	if err != nil {
+		return fmt.Errorf("failed to query context object: %w", err)
+	}
+	if len(rec) == 0 {
+		return fmt.Errorf("context object not found")
+	}
+	if ci.messageId == "" {
+		createdDate := rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate)
+		if createdDate > fileObjectCreatedDate+contextTimeTolerance {
+			return fmt.Errorf("context object is newer than file object by %d seconds", createdDate-fileObjectCreatedDate)
+		}
+	}
+	return nil
 }
 
 func (s *service) markFileContextMigrationDone(workspaceId string) error {
