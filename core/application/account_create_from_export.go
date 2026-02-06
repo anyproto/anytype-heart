@@ -82,7 +82,7 @@ func (s *Service) RecoverFromLegacy(req *pb.RpcAccountRecoverFromLegacyExportReq
 		return RecoverFromLegacyResponse{}, ErrWalletNotInitialized
 	}
 	address := s.derivedKeys.Identity.GetPublic().Account()
-	if profile.Address != s.derivedKeys.OldAccountKey.GetPublic().Account() && profile.Address != address {
+	if profile.Address != address {
 		return RecoverFromLegacyResponse{}, ErrAccountMismatch
 	}
 	s.rootPath = req.RootPath
