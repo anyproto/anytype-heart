@@ -1344,7 +1344,7 @@
     "source": "details"
   },
   {
-    "description": "Object ID where the file was initially created",
+    "description": "Object ID where the object was initially created",
     "format": "object",
     "hidden": true,
     "key": "createdInContext",
@@ -1354,12 +1354,12 @@
     "source": "details"
   },
   {
-    "description": "Block ID where the file was initially created",
+    "description": "BlockID/RelationKey where the object was initially created",
     "format": "shorttext",
     "hidden": true,
     "key": "createdInBlockId",
     "maxCount": 1,
-    "name": "Created in block",
+    "name": "Created in block/relation",
     "readonly": true,
     "source": "details"
   },

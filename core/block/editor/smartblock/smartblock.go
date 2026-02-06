@@ -1425,6 +1425,7 @@ func getAddedLinks(linksBefore, linksAfter []string) []string {
 func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 	var outgoingLinks []OutgoingLink
 	linkSet := make(map[string]bool) // To avoid duplicates
+	objectId := sb.Id()
 
 	// Collect links from blocks
 	_ = st.Iterate(func(b simple.Block) (isContinue bool) {
@@ -1434,7 +1435,8 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 		}
 
 		// Extract links based on block content type
-		if link := blockModel.GetLink(); link != nil && link.TargetBlockId != "" && !linkSet[link.TargetBlockId] {
+		// Skip self-references to avoid creating links from an object to itself
+		if link := blockModel.GetLink(); link != nil && link.TargetBlockId != "" && link.TargetBlockId != objectId && !linkSet[link.TargetBlockId] {
 			linkSet[link.TargetBlockId] = true
 			outgoingLinks = append(outgoingLinks, OutgoingLink{
 				TargetID:      link.TargetBlockId,
@@ -1442,7 +1444,7 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			})
 		}
 
-		if file := blockModel.GetFile(); file != nil && file.TargetObjectId != "" && !linkSet[file.TargetObjectId] {
+		if file := blockModel.GetFile(); file != nil && file.TargetObjectId != "" && file.TargetObjectId != objectId && !linkSet[file.TargetObjectId] {
 			linkSet[file.TargetObjectId] = true
 			outgoingLinks = append(outgoingLinks, OutgoingLink{
 				TargetID:      file.TargetObjectId,
@@ -1453,7 +1455,7 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 		if text := blockModel.GetText(); text != nil && text.Marks != nil {
 			// Extract mentions from text marks
 			for _, mark := range text.Marks.Marks {
-				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && !linkSet[mark.Param] {
+				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
 					linkSet[mark.Param] = true
 					outgoingLinks = append(outgoingLinks, OutgoingLink{
 						TargetID:      mark.Param,
@@ -1476,7 +1478,8 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 				bundle.RelationKeyCreator,
 				bundle.RelationKeyLastModifiedBy,
 				bundle.RelationKeyType,
-				bundle.RelationKeyFeaturedRelations:
+				bundle.RelationKeyFeaturedRelations,
+				bundle.RelationKeyCreatedInContext:
 				continue
 			}
 			format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
@@ -1519,8 +1522,9 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			}
 
 			// Add outgoing links for each target
+			// Skip self-references to avoid creating links from an object to itself
 			for _, targetId := range targetIds {
-				if targetId != "" && !linkSet[targetId] {
+				if targetId != "" && targetId != objectId && !linkSet[targetId] {
 					linkSet[targetId] = true
 					outgoingLinks = append(outgoingLinks, OutgoingLink{
 						TargetID:    targetId,

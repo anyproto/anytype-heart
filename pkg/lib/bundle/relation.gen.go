@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "2f5e354c8bfd010bb2e3ef9953481c43cd8efd608451006a422d4efe0c2bfbb1"
+const RelationChecksum = "b5503423aa953f0ce1bbfe0d2607e2eebdc471000cfe2dcec440a94434c6eb65"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -529,13 +529,13 @@ var (
 		RelationKeyCreatedInBlockId: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Block ID where the file was initially created",
+			Description:      "BlockID/RelationKey where the object was initially created",
 			Format:           model.RelationFormat_shorttext,
 			Hidden:           true,
 			Id:               "_brcreatedInBlockId",
 			Key:              "createdInBlockId",
 			MaxCount:         1,
-			Name:             "Created in block",
+			Name:             "Created in block/relation",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -543,7 +543,7 @@ var (
 		RelationKeyCreatedInContext: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Object ID where the file was initially created",
+			Description:      "Object ID where the object was initially created",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,
 			Id:               "_brcreatedInContext",
