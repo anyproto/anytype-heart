@@ -399,6 +399,9 @@ func TestBasic_Move(t *testing.T) {
 			{model.BlockContentText_Numbered, "numbered", true},
 			{model.BlockContentText_Toggle, "toggle", true},
 			{model.BlockContentText_Callout, "callout", true},
+			{model.BlockContentText_ToggleHeader1, "toggle header 1", true},
+			{model.BlockContentText_ToggleHeader2, "toggle header 2", true},
+			{model.BlockContentText_ToggleHeader3, "toggle header 3", true},
 		}
 
 		for _, tc := range testCases {

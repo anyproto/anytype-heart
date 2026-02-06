@@ -491,5 +491,8 @@ func canHaveChildren(style model.BlockContentTextStyle) bool {
 		style == model.BlockContentText_Marked ||
 		style == model.BlockContentText_Numbered ||
 		style == model.BlockContentText_Toggle ||
-		style == model.BlockContentText_Callout
+		style == model.BlockContentText_Callout ||
+		style == model.BlockContentText_ToggleHeader1 ||
+		style == model.BlockContentText_ToggleHeader2 ||
+		style == model.BlockContentText_ToggleHeader3
 }

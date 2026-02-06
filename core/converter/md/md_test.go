@@ -362,6 +362,120 @@ func TestMD_Convert(t *testing.T) {
 		exp := "```\n\n\n\n\n```\n"
 		assert.Equal(t, exp, string(res))
 	})
+
+	t.Run("toggle header 1 renders as h1", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 1",
+					Style: model.BlockContentText_ToggleHeader1,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "# Toggle Header 1   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("toggle header 2 renders as h2", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 2",
+					Style: model.BlockContentText_ToggleHeader2,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "## Toggle Header 2   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("toggle header 3 renders as h3", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 3",
+					Style: model.BlockContentText_ToggleHeader3,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "### Toggle Header 3   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("toggle headers with children", func(t *testing.T) {
+		toggleBlock := &model.Block{
+			Id:          "toggle1",
+			ChildrenIds: []string{"child1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header",
+					Style: model.BlockContentText_ToggleHeader1,
+				},
+			},
+		}
+		childBlock := &model.Block{
+			Id: "child1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Child content",
+					Style: model.BlockContentText_Paragraph,
+				},
+			},
+		}
+
+		blocks := map[string]simple.Block{
+			"root":    simple.New(&model.Block{Id: "root", ChildrenIds: []string{"toggle1"}}),
+			"toggle1": simple.New(toggleBlock),
+			"child1":  simple.New(childBlock),
+		}
+		s := state.NewDoc("root", blocks).(*state.State)
+
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+
+		// Toggle header renders as h1 with child indented
+		exp := "# Toggle Header   \n    Child content   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("all toggle headers render correctly", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Toggle H1",
+						Style: model.BlockContentText_ToggleHeader1,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Toggle H2",
+						Style: model.BlockContentText_ToggleHeader2,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Toggle H3",
+						Style: model.BlockContentText_ToggleHeader3,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "# Toggle H1   \n## Toggle H2   \n### Toggle H3   \n"
+		assert.Equal(t, exp, string(res))
+	})
 }
 
 // testFileNamer implements FileNamer interface

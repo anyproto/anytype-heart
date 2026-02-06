@@ -650,11 +650,11 @@ func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, 
 			switch blockText.Style {
 			case model.BlockContentText_Title:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "# ", blockText.Text))
-			case model.BlockContentText_Header1:
+			case model.BlockContentText_Header1, model.BlockContentText_ToggleHeader1:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "## ", blockText.Text))
-			case model.BlockContentText_Header2:
+			case model.BlockContentText_Header2, model.BlockContentText_ToggleHeader2:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "### ", blockText.Text))
-			case model.BlockContentText_Header3:
+			case model.BlockContentText_Header3, model.BlockContentText_ToggleHeader3:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "#### ", blockText.Text))
 			case model.BlockContentText_Header4:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "##### ", blockText.Text))

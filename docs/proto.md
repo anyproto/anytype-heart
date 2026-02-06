@@ -35079,6 +35079,9 @@ stored |
 | Toggle | 11 |  |
 | Description | 12 | currently only one block of this style can exists on a page |
 | Callout | 13 |  |
+| ToggleHeader1 | 14 |  |
+| ToggleHeader2 | 15 |  |
+| ToggleHeader3 | 16 |  |
 
 
 
