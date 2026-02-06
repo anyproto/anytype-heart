@@ -12,6 +12,21 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+var relationsToSkipForLinks = []domain.RelationKey{
+	bundle.RelationKeyId,
+	bundle.RelationKeyLinks,
+	bundle.RelationKeyBacklinks,
+	bundle.RelationKeyMentions,
+	bundle.RelationKeyCreator,
+	bundle.RelationKeyLastModifiedBy,
+	bundle.RelationKeyType,
+	bundle.RelationKeyFileId,
+	bundle.RelationKeyFeaturedRelations,
+	bundle.RelationKeyCreatedInContext,
+	bundle.RelationKeySourceObject,
+	bundle.RelationKeyChatId,
+}
+
 func (sb *smartBlock) updateBackLinks(s *state.State) {
 	backLinks, err := sb.spaceIndex.GetInboundLinksById(sb.Id())
 	if err != nil {

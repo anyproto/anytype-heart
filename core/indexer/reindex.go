@@ -44,7 +44,7 @@ const (
 	ForceFilestoreKeysReindexCounter int32 = 2
 
 	// ForceLinksReindexCounter forces to erase links from store and reindex them
-	ForceLinksReindexCounter int32 = 2
+	ForceLinksReindexCounter int32 = 3
 
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1
@@ -57,8 +57,8 @@ const (
 
 	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
 	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it
-	// reindexes objects asynchronously and continue reindex after app restart
-	ForceInvalidateObjectsIndexCounter int32 = 1
+	// reindexes objects asynchronously and continue reindex after app F
+	ForceInvalidateObjectsIndexCounter int32 = 2
 )
 
 type allDeletedIdsProvider interface {
@@ -584,6 +584,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	store := i.store.SpaceIndex(space.Id())
 	var entries []headstorage.HeadsEntry
 
+	start := time.Now()
 	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
 		// skipping Acl
 		if entry.CommonSnapshot != "" && entry.Id != space.Storage().StateStorage().SettingsId() {
@@ -596,6 +597,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	}
 	var idsToReindex []string
 	for _, entry := range entries {
+		// todo: make it more effective
 		id := entry.Id
 		logErr := func(err error) {
 			log.With("tree", entry.Id).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
@@ -605,15 +607,14 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 			logErr(err)
 			continue
 		}
-		hh := headsHash(entry.Heads)
-		if lastHash != hh {
-			if lastHash != "" {
-				log.With("tree", id).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(entry.Heads))
-			}
+		if lastHash == "" || lastHash != headsHash(entry.Heads) {
 			idsToReindex = append(idsToReindex, id)
 		}
 	}
-
+	if len(idsToReindex) == 0 {
+		return 0, 0, nil
+	}
+	log.Warn("reindexOutdatedObjects: found outdated objects to reindex", zap.Int("len", len(idsToReindex)), zap.Int64("durMs", time.Since(start).Milliseconds()))
 	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
 	return len(idsToReindex), success, nil
 }

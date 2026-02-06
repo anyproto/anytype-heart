@@ -18,7 +18,12 @@ import (
 
 // currentObjectContextMigrationVersion is the version of the object context migration.
 // Bump this to force re-migration if issues are found or we started to a migrate all objects
-const currentObjectContextMigrationVersion = 1
+const currentObjectContextMigrationVersion = 10
+
+// contextTimeTolerance is the maximum allowed time difference (in seconds) between a file's
+// creation and a potential context (block link or chat message). This accounts for the fact
+// that file objects are created before the containing block/message is finalized.
+const contextTimeTolerance = 5 * 60 // 5 minutes
 
 // systemRelationsToSkip contains system relations that should be skipped when building
 // the incoming links map, as they are not meaningful for determining file creation context
@@ -33,6 +38,8 @@ var systemRelationsToSkip = []domain.RelationKey{
 	bundle.RelationKeyRecommendedHiddenRelations,
 	bundle.RelationKeySpaceId,
 	bundle.RelationKeyIdentityProfileLink,
+	bundle.RelationKeyTargetObjectType,
+	bundle.RelationKeySourceObject,
 }
 
 /*
@@ -54,7 +61,7 @@ Context Migration Logic:
 func (s *service) runObjectContextMigration(ctx context.Context, spaceId string, workspaceId string) error {
 	spaceIndex := s.objectStore.SpaceIndex(spaceId)
 
-	var l = log.With("spaceId", spaceId, "version", currentObjectContextMigrationVersion)
+	var l = log.With(zap.String("spaceId", spaceId), zap.Int("version", currentObjectContextMigrationVersion))
 	// Check if migration already done (version >= current)
 	if s.isObjectContextMigrationDone(spaceIndex, workspaceId) {
 		l.Debug("migration already done")
@@ -86,7 +93,7 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 		return fmt.Errorf("failed to query files without context: %w", err)
 	}
 
-	l.With("count", len(fileRecords)).Debug("found files without context")
+	l.With(zap.Int("count", len(fileRecords))).Debug("found files without context")
 
 	if len(fileRecords) == 0 {
 		return nil
@@ -106,15 +113,17 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 	for _, fileRecord := range fileRecords {
 		fileId := fileRecord.Details.GetString(bundle.RelationKeyId)
 		fileObjectCreatedDate := fileRecord.Details.GetInt64(bundle.RelationKeyAddedDate)
+
+		fl := l.With(zap.String("fileId", fileId), zap.Int64("creationDate", fileObjectCreatedDate))
 		if fileObjectCreatedDate == 0 {
-			log.Warn("file object has no created date", zap.String("fileId", fileId))
+			fl.Warn("file object has no created date")
 			continue
 		}
 
 		// Get inbound links for this file using indexed lookup
 		inboundLinks, err := spaceIndex.GetInboundLinksDetailedById(fileId)
 		if err != nil {
-			l.Warn("failed to get inbound links", zap.String("fileId", fileId), zap.Error(err))
+			fl.Warn("failed to get inbound links", zap.Error(err))
 			continue
 		}
 
@@ -122,26 +131,31 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 		chatCtx := chatAttachmentIndex[fileId]
 		contextInfo := s.findBestContext(fileObjectCreatedDate, fileId, inboundLinks, chatCtx)
 		if contextInfo == nil {
-			l.Debug("no creation context found for file", zap.String("fileId", fileId))
+			fl.Debug("no creation context found for file", zap.Int("inboundLinks", len(inboundLinks)), zap.Any("chat", chatCtx))
 			continue
 		}
 
 		// Verify context object exists
 		rec, err := spaceIndex.QueryByIds([]string{contextInfo.objectId})
 		if err != nil {
-			l.Warn("failed to query context object", zap.String("fileId", fileId), zap.Error(err))
+			fl.Warn("failed to query context object", zap.Error(err))
 			continue
 		}
 		if len(rec) == 0 {
-			l.Warn("context object not found", zap.String("fileId", fileId))
+			fl.Warn("context object not found")
 			continue
 		}
 
-		// For non-chat contexts, verify context object was created before file object
+		// For non-chat contexts, verify context object was created before(or close) to file object
 		// For chat contexts, we already validated the message timestamp in selectBestContext
 		if contextInfo.messageId == "" {
-			if rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate) > fileObjectCreatedDate {
-				l.Warn("context object is newer than file object", zap.String("fileId", fileId))
+			createdDate := rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate)
+			if rec[0].Details.GetInt64(bundle.RelationKeyCreatedDate) > fileObjectCreatedDate+contextTimeTolerance {
+				fl.Warn("context object is newer than file object",
+					zap.Int64("diff", createdDate-fileObjectCreatedDate),
+					zap.String("objectId", contextInfo.objectId),
+					zap.String("blockId", contextInfo.blockId),
+				)
 				continue
 			}
 		}
@@ -165,17 +179,14 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 			}
 			return current, nil
 		}); err != nil {
-			l.Error("failed to update file context",
-				zap.String("fileId", fileId),
+			fl.Error("failed to update file context",
+				zap.Int("migratedCount", migratedCount),
 				zap.Error(err))
+			// better to fail fast in this case
 			return fmt.Errorf("failed to update file context: %w", err)
 		}
 
 		migratedCount++
-		l.Debug("migrated file context",
-			zap.String("fileId", fileId),
-			zap.String("contextId", contextInfo.objectId),
-			zap.String("blockId", contextInfo.blockId))
 	}
 
 	l.Info("completed file context migration",
@@ -185,7 +196,7 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 
 	// Mark migration as done with current version
 	if err := s.markFileContextMigrationDone(workspaceId); err != nil {
-		log.Warn("failed to mark migration done", zap.String("spaceId", spaceId), zap.Error(err))
+		l.Warn("failed to mark migration done", zap.Error(err))
 	}
 
 	return nil
@@ -211,8 +222,8 @@ func (s *service) findBestContext(fileTs int64, fileId string, inboundLinks []sp
 	// 2. Build chat context if valid
 	var chatInfo *contextInfo
 	if chatCtx != nil {
-		// chat message created little before actual file object
-		if chatCtx.CreatedAt < fileTs+30 {
+		// chat message may be created shortly after the file object
+		if chatCtx.CreatedAt < fileTs+contextTimeTolerance {
 			chatInfo = &contextInfo{
 				objectId:  chatCtx.ChatObjectId,
 				messageId: chatCtx.MessageId,
@@ -266,7 +277,7 @@ func (s *service) findBlockContext(fileTs int64, links []spaceindex.IncomingLink
 		if !ok {
 			continue
 		}
-		if blockTs > fileTs {
+		if blockTs > fileTs+contextTimeTolerance {
 			continue
 		}
 		if earliest.timestamp == 0 || blockTs < earliest.timestamp {

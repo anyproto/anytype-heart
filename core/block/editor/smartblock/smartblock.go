@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -1471,15 +1472,7 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 	// Collect links from object relations
 	if st.Details() != nil {
 		for key, val := range st.Details().Iterate() {
-			switch key {
-			case bundle.RelationKeyId,
-				bundle.RelationKeyLinks,
-				bundle.RelationKeyBacklinks,
-				bundle.RelationKeyCreator,
-				bundle.RelationKeyLastModifiedBy,
-				bundle.RelationKeyType,
-				bundle.RelationKeyFeaturedRelations,
-				bundle.RelationKeyCreatedInContext:
+			if slices.Contains(relationsToSkipForLinks, key) {
 				continue
 			}
 			format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
@@ -1510,6 +1503,13 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 				}
 			}
 
+			if key == bundle.RelationKeyCoverId {
+				// special hacky case for coverId
+				coverType := st.Details().GetInt64(bundle.RelationKeyCoverType)
+				if coverType == 1 {
+					format = model.RelationFormat_file
+				}
+			}
 			// Only process object relations
 			if format != model.RelationFormat_object && format != model.RelationFormat_file {
 				continue

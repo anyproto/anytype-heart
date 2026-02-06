@@ -26,7 +26,7 @@ const (
 	minIdleDelay = 30 * time.Second
 )
 
-var log = logging.Logger(CName)
+var log = logging.LoggerNotSugared(CName)
 
 // Indexer provides access to index timing information
 type Indexer interface {

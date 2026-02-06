@@ -615,8 +615,7 @@ func (s *repository) GetAllMessageAttachments(ctx context.Context, afterOrderId 
 
 		var fileIds []string
 		for _, att := range msg.Attachments {
-			if (att.Type == model.ChatMessageAttachment_FILE ||
-				att.Type == model.ChatMessageAttachment_IMAGE) && att.Target != "" {
+			if att.Target != "" {
 				fileIds = append(fileIds, att.Target)
 			}
 		}
