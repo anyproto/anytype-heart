@@ -168,14 +168,14 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 			log.Debugf("deleting orphaned file %s created in context %s", fileId, contextId)
 			// Delete the file object
 			if err := gc.deleteFileObject(spaceId, fileId); err != nil {
-				log.Errorf("failed to delete file object %s: %v", fileId, err)
+				log.With("fileId", fileId).Errorf("failed to delete file object: %v", err)
 				// Continue with other files even if one fails
 			}
 		} else {
 			log.Debugf("archiving orphaned file %s created in context %s", fileId, contextId)
 			// Archive the file object
 			if err := gc.objectArchiver.SetIsArchived(gc.componentCtx, fileId, true); err != nil {
-				log.Errorf("failed to archive file object %s: %v", fileId, err)
+				log.With("fileId", fileId).Errorf("failed to archive file object: %v", err)
 				// Continue with other files even if one fails
 			}
 		}

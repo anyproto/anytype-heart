@@ -1472,7 +1472,7 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 	// Collect links from object relations
 	if st.Details() != nil {
 		for key, val := range st.Details().Iterate() {
-			if slices.Contains(relationsToSkipForLinks, key) {
+			if slices.Contains(relationsToFilterOutForLinks, key) {
 				continue
 			}
 			format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)

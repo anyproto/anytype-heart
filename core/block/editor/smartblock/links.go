@@ -1,6 +1,8 @@
 package smartblock
 
 import (
+	"slices"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -12,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-var relationsToSkipForLinks = []domain.RelationKey{
+var relationsToSkipLinksIndexing = []domain.RelationKey{
 	bundle.RelationKeyId,
 	bundle.RelationKeyLinks,
 	bundle.RelationKeyBacklinks,
@@ -25,6 +27,14 @@ var relationsToSkipForLinks = []domain.RelationKey{
 	bundle.RelationKeyCreatedInContext,
 	bundle.RelationKeySourceObject,
 	bundle.RelationKeyChatId,
+}
+
+// relationsToFilterOutForLinks contains relations that we index but filter-out when injecting "links" details
+var relationsToFilterOutForLinks = []domain.RelationKey{
+	bundle.RelationKeyIconImage,
+	bundle.RelationKeyPicture,
+	bundle.RelationKeyFileId,
+	bundle.RelationKeyCoverId,
 }
 
 func (sb *smartBlock) updateBackLinks(s *state.State) {
@@ -49,7 +59,28 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 		NoImages:                 false,
 		RoundDateIdsToDay:        true,
 	})
-	links = slice.RemoveMut(links, sb.Id())
+	links = slice.Filter(links, func(link string) bool {
+		if link == sb.Id() {
+			return false
+		}
+
+		for _, rel := range relationsToFilterOutForLinks {
+			if !s.Details().Has(rel) {
+				continue
+			}
+			val := s.Details().Get(rel)
+			if val.IsString() {
+				if val.String() != link {
+					return false
+				}
+				continue
+			}
+			if val.IsStringList() && slices.Contains(val.StringList(), link) {
+				return false
+			}
+		}
+		return true
+	})
 	s.SetLocalDetail(bundle.RelationKeyLinks, domain.StringList(links))
 }
 
