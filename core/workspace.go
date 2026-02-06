@@ -101,7 +101,7 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	if req.SpaceId == techSpaceId {
 		return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("cannot open tech space"))
 	}
-	
+
 	ctx, cancel := context.WithTimeout(cctx, time.Second*10)
 	defer cancel()
 	info, err := mustService[account.Service](mw).GetSpaceInfo(ctx, req.SpaceId)
