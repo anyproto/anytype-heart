@@ -1483,7 +1483,7 @@ func (sb *smartBlock) collectLinksFromRelations(st *state.State, objectId string
 	if st.Details() == nil {
 		return outgoingLinks
 	}
-	for key, val := range st.Details().Iterate() {
+	for key, val := range st.Details().IterateSorted() {
 		if slices.Contains(relationsToSkipLinksIndexing, key) {
 			continue
 		}

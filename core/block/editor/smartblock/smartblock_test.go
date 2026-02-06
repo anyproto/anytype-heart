@@ -499,4 +499,51 @@ func TestSmartBlock_CollectOutgoingLinks(t *testing.T) {
 		require.Len(t, links, 1)
 		assert.Equal(t, "sameTarget", links[0].TargetID)
 	})
+
+	t.Run("relation links are deterministic", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"parent1"}},
+			{Id: "parent1", ChildrenIds: []string{"file1", "text1"}},
+			{Id: "file1", Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{TargetObjectId: "fileTarget"},
+			}},
+			{Id: "text1", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "hello @mention",
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{
+							{Type: model.BlockContentTextMark_Mention, Param: "mentionTarget"},
+						},
+					},
+				},
+			}},
+		})
+		st := fx.NewState()
+		// Set multiple object-format relations; map iteration order is random
+		st.SetDetail(bundle.RelationKeyCompany, domain.String("company1"))
+		st.SetDetail(bundle.RelationKeyAssignee, domain.String("user1"))
+		st.SetDetail(bundle.RelationKeyAuthor, domain.String("author1"))
+
+		// when: collect multiple times to catch non-determinism
+		var first []OutgoingLink
+		for i := 0; i < 10; i++ {
+			links := fx.collectOutgoingLinks(st)
+			if first == nil {
+				first = links
+			}
+			// then: every call must return the same order
+			require.Equal(t, first, links, "iteration %d produced different order", i)
+		}
+
+		// Block links first (tree order), then relation links (sorted by key)
+		require.Len(t, first, 5)
+		assert.Equal(t, OutgoingLink{TargetID: "fileTarget", SourceBlockID: "file1"}, first[0])
+		assert.Equal(t, OutgoingLink{TargetID: "mentionTarget", SourceBlockID: "text1"}, first[1])
+		assert.Equal(t, OutgoingLink{TargetID: "user1", RelationKey: bundle.RelationKeyAssignee.String()}, first[2])
+		assert.Equal(t, OutgoingLink{TargetID: "author1", RelationKey: bundle.RelationKeyAuthor.String()}, first[3])
+		assert.Equal(t, OutgoingLink{TargetID: "company1", RelationKey: bundle.RelationKeyCompany.String()}, first[4])
+	})
 }

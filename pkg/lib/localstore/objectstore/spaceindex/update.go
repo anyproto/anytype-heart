@@ -1,6 +1,7 @@
 package spaceindex
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -270,6 +271,7 @@ func (s *dsObjectStore) updateObjectLinksDetailed(ctx context.Context, id string
 		}
 
 		removed, added = slice.DifferenceRemovedAdded(prev, current)
+		detailedChanged := len(added)+len(removed) == 0 && isDetailedLinksChanged(val.GetArray(linkDetailedField), outgoingLinks)
 
 		// Store simple links for backward compatibility
 		val.Set(linkOutboundField, stringsToJsonArray(arena, current))
@@ -289,7 +291,26 @@ func (s *dsObjectStore) updateObjectLinksDetailed(ctx context.Context, id string
 		}
 		val.Set(linkDetailedField, detailedLinks)
 
-		return val, len(added)+len(removed) > 0, nil
+		return val, len(added)+len(removed) > 0 || detailedChanged, nil
 	}))
 	return
+}
+
+func isDetailedLinksChanged(prevArr []*anyenc.Value, current []OutgoingLink) bool {
+	if len(prevArr) != len(current) {
+		return true
+	}
+	for i, link := range current {
+		prev := prevArr[i]
+		if !bytes.Equal(prev.GetStringBytes(linkTargetField), []byte(link.TargetID)) {
+			return true
+		}
+		if !bytes.Equal(prev.GetStringBytes(linkBlockField), []byte(link.BlockID)) {
+			return true
+		}
+		if !bytes.Equal(prev.GetStringBytes(linkRelationField), []byte(link.RelationKey)) {
+			return true
+		}
+	}
+	return false
 }
