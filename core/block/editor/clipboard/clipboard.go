@@ -523,11 +523,13 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 		s.Add(b)
 
 		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
-			Bytes:     fs.Data,
-			Path:      fs.LocalPath,
-			Name:      fs.Name,
-			Origin:    objectorigin.Clipboard(),
-			ImageKind: model.ImageKind_Basic,
+			Bytes:               fs.Data,
+			Path:                fs.LocalPath,
+			Name:                fs.Name,
+			Origin:              objectorigin.Clipboard(),
+			ImageKind:           model.ImageKind_Basic,
+			CreatedInContext:    cb.Id(),
+			CreatedInContextRef: b.Model().Id,
 		}, false); err != nil {
 			return
 		}
@@ -602,6 +604,7 @@ func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {
 	objectId, err := cb.fileObjectService.CreateFromImport(
 		domain.FullFileId{SpaceId: cb.SpaceID(), FileId: fileId.FileId},
 		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+		nil,
 	)
 	if err != nil {
 		log.Errorf("failed to create file object: %v", err)

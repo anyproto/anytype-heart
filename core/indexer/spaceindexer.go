@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -23,6 +24,8 @@ type spaceIndexer struct {
 	objectStore     objectstore.ObjectStore
 	batcher         *mb.MB[indexTask]
 	fulltextEnabled bool
+
+	lastIndex atomic.Time
 }
 
 func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool) *spaceIndexer {
@@ -35,6 +38,11 @@ func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, object
 	}
 	go ind.indexBatchLoop()
 	return ind
+}
+
+// LastIndex returns the time of the last indexing operation
+func (i *spaceIndexer) LastIndex() time.Time {
+	return i.lastIndex.Load()
 }
 
 func (i *spaceIndexer) close() error {
@@ -60,6 +68,9 @@ func (i *spaceIndexer) indexBatchLoop() {
 }
 
 func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
+	if len(tasks) == 0 {
+		return nil
+	}
 	tx, err := i.spaceIndex.WriteTx(i.runCtx)
 	if err != nil {
 		return err
@@ -93,6 +104,7 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 		closeTasks(nil)
 	}
 	log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
+	i.lastIndex.Store(time.Now())
 	return
 }
 
@@ -159,9 +171,27 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 
 	var hasError bool
 	if indexLinks {
-		if err = i.spaceIndex.UpdateObjectLinks(ctx, info.Id, info.Links); err != nil {
-			hasError = true
-			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
+		// Convert smartblock.OutgoingLink to spaceindex.OutgoingLink
+		var spaceIndexLinks []spaceindex.OutgoingLink
+		if len(info.OutgoingLinks) > 0 {
+			spaceIndexLinks = make([]spaceindex.OutgoingLink, len(info.OutgoingLinks))
+			for i, link := range info.OutgoingLinks {
+				spaceIndexLinks[i] = spaceindex.OutgoingLink{
+					TargetID:    link.TargetID,
+					BlockID:     link.SourceBlockID,
+					RelationKey: link.RelationKey,
+				}
+			}
+			if err = i.spaceIndex.UpdateObjectLinksDetailed(ctx, info.Id, spaceIndexLinks); err != nil {
+				hasError = true
+				log.With("objectID", info.Id).Errorf("failed to save detailed object links: %v", err)
+			}
+		} else {
+			// Fallback to simple links for backward compatibility
+			if err = i.spaceIndex.UpdateObjectLinks(ctx, info.Id, info.Links); err != nil {
+				hasError = true
+				log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
+			}
 		}
 	}
 

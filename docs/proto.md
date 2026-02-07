@@ -13562,6 +13562,8 @@ Get marks list in the selected range in text block.
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 | preloadOnly | [bool](#bool) |  | if true, only async preload the file without creating object |
 | preloadFileId | [string](#string) |  | if set, reuse already preloaded file with this id. May block if async preload operation is not finished yet |
+| createdInContext | [string](#string) |  | Object ID where the file was initially created |
+| createdInContextRef | [string](#string) |  | Block ID where the file was initially created |
 
 
 
@@ -22749,6 +22751,8 @@ Available undo/redo operations
 | pictureId | [string](#string) |  |  |
 | spaceId | [string](#string) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
+| createdInContext | [string](#string) |  | Object ID where the file was initially created |
+| createdInContextRef | [string](#string) |  | Block ID where the file was initially created |
 
 
 
@@ -32534,6 +32538,7 @@ scenario: Precondition: user A and user B opened the same block
 | reindexParticipants | [int32](#int32) |  |  |
 | reindexChats | [int32](#int32) |  |  |
 | reindexFulltextChatMessages | [int32](#int32) |  |  |
+| invalidateObjectsIndex | [int32](#int32) |  |  |
 
 
 

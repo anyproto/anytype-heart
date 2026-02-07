@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
@@ -43,6 +44,7 @@ type Indexer interface {
 	ReindexSpace(space clientspace.Space) error
 	RemoveIndexes(spaceId string) (err error)
 	Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error
+	GetLastIndexTime(spaceId string) time.Time
 	app.ComponentRunnable
 }
 
@@ -70,7 +72,7 @@ type indexer struct {
 	forceFt chan struct{}
 
 	// state
-	lock                sync.Mutex
+	lock                sync.RWMutex
 	reindexLogFields    []zap.Field
 	spaceIndexers       map[string]*spaceIndexer
 	techSpaceIdProvider objectstore.TechSpaceIdProvider
@@ -184,4 +186,15 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 	i.lock.Unlock()
 
 	return spaceInd.Index(info, options...)
+}
+
+// GetLastIndexTime returns the time of the last indexing operation for a space
+func (i *indexer) GetLastIndexTime(spaceId string) time.Time {
+	i.lock.RLock()
+	defer i.lock.RUnlock()
+
+	if spaceInd, ok := i.spaceIndexers[spaceId]; ok {
+		return spaceInd.LastIndex()
+	}
+	return time.Time{}
 }

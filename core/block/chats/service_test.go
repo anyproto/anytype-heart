@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription/mock_chatsubscription"
+	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject/mock_chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -62,6 +63,19 @@ func (s *accountServiceDummy) Name() string {
 }
 
 func (s *accountServiceDummy) Init(a *app.App) error {
+	return nil
+}
+
+type fileGCDummy struct{}
+
+func (s *fileGCDummy) Name() string { return "fileGCDummy" }
+func (s *fileGCDummy) Init(a *app.App) error { return nil }
+func (s *fileGCDummy) Run(ctx context.Context) error { return nil }
+func (s *fileGCDummy) Close(ctx context.Context) error { return nil }
+func (s *fileGCDummy) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+	return nil
+}
+func (s *fileGCDummy) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
 	return nil
 }
 
@@ -128,6 +142,7 @@ func newFixture(t *testing.T) *fixture {
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return("", nil).Maybe()
 	eventSender := mock_event.NewMockSender(t)
 	eventSender.EXPECT().Broadcast(mock.Anything).Maybe()
+	detailService := mock_detailservice.NewMockService(t)
 	ftSearch := mock_ftsearch.NewMockFTSearch(t)
 
 	fx := &fixture{
@@ -151,6 +166,8 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, ftSearch))
 	a.Register(&pushServiceDummy{})
 	a.Register(&accountServiceDummy{})
+	a.Register(testutil.PrepareMock(ctx, a, detailService))
+	a.Register(&fileGCDummy{})
 	a.Register(fx)
 
 	fx.app = a

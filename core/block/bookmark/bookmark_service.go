@@ -210,7 +210,6 @@ func (s *service) CreateBookmarkObject(
 	if url != "" {
 		go func() {
 			if err := s.UpdateObject(objectId, getContent()); err != nil {
-
 				log.Errorf("update bookmark object %s: %s", objectId, err)
 				return
 			}
@@ -229,7 +228,38 @@ func (s *service) UpdateObject(objectId string, content *bookmark.ObjectContent)
 		{Key: bundle.RelationKeyIconImage, Value: domain.String(content.BookmarkContent.FaviconHash)},
 	}
 
-	return s.detailsSetter.SetDetails(nil, objectId, details)
+	if err := s.detailsSetter.SetDetails(nil, objectId, details); err != nil {
+		return err
+	}
+
+	// Update CreatedInContext for image files to point to this bookmark object
+	s.updateFilesCreatedInContext(objectId, content)
+	return nil
+}
+
+// updateFilesCreatedInContext updates the CreatedInContext relation for image files
+// that were uploaded before the bookmark object was created
+func (s *service) updateFilesCreatedInContext(bookmarkObjectId string, content *bookmark.ObjectContent) {
+	if content == nil || content.BookmarkContent == nil {
+		return
+	}
+
+	fileIds := []string{}
+	if content.BookmarkContent.ImageHash != "" {
+		fileIds = append(fileIds, content.BookmarkContent.ImageHash)
+	}
+	if content.BookmarkContent.FaviconHash != "" {
+		fileIds = append(fileIds, content.BookmarkContent.FaviconHash)
+	}
+
+	for _, fileId := range fileIds {
+		err := s.detailsSetter.SetDetails(nil, fileId, []domain.Detail{
+			{Key: bundle.RelationKeyCreatedInContext, Value: domain.String(bookmarkObjectId)},
+		})
+		if err != nil {
+			log.Errorf("update CreatedInContext for file %s: %s", fileId, err)
+		}
+	}
 }
 
 func (s *service) FetchAsync(spaceID string, blockID string, params bookmark.FetchParams) {

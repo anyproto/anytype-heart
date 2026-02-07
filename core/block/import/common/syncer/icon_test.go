@@ -7,6 +7,7 @@ import (
 
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	block2 "github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -17,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -24,6 +26,7 @@ import (
 func TestIconSyncer_Sync(t *testing.T) {
 	spaceId := "spaceId"
 	objectID := "objectId"
+	blockID := "test"
 	t.Run("icon image missing", func(t *testing.T) {
 		// given
 		syncer := NewIconSyncer(nil, nil)
@@ -32,7 +35,7 @@ func TestIconSyncer_Sync(t *testing.T) {
 			SpaceID:  spaceId,
 		}
 		block := &model.Block{
-			Id: "test",
+			Id: blockID,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 				IconImage: addr.MissingObject,
 			}},
@@ -56,7 +59,7 @@ func TestIconSyncer_Sync(t *testing.T) {
 			SpaceID:  spaceId,
 		}
 		block := &model.Block{
-			Id: "test",
+			Id: blockID,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 				IconImage: rawCid,
 			}},
@@ -79,26 +82,29 @@ func TestIconSyncer_Sync(t *testing.T) {
 
 		service := mock_fileobject.NewMockService(t)
 		fileId := domain.FullFileId{FileId: domain.FileId(rawCid), SpaceId: spaceId}
-		service.EXPECT().CreateFromImport(fileId, objectorigin.Import(model.Import_Pb)).Return(newFileObjectId, nil)
+		service.EXPECT().CreateFromImport(fileId, objectorigin.Import(model.Import_Pb), mock.MatchedBy(func(d *domain.Details) bool {
+			return d.GetString(bundle.RelationKeyCreatedInContext) == objectID &&
+				d.GetString(bundle.RelationKeyCreatedInContextRef) == blockID
+		})).Return(newFileObjectId, nil)
 		id := domain.FullID{
 			ObjectID: objectID,
 			SpaceID:  spaceId,
 		}
 		block := &model.Block{
-			Id: "test",
+			Id: blockID,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 				IconImage: rawCid,
 			}},
 		}
 		rootBlock := &model.Block{
-			Id:          "test",
-			ChildrenIds: []string{"test"},
+			Id:          blockID,
+			ChildrenIds: []string{blockID},
 			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
 		}
 
 		simpleBlock := simple.New(block)
 		rootSimpleBlock := simple.New(rootBlock)
-		doc := state.NewDoc("root", map[string]simple.Block{"root": rootSimpleBlock, "test": simpleBlock})
+		doc := state.NewDoc("root", map[string]simple.Block{"root": rootSimpleBlock, blockID: simpleBlock})
 		smartTest := smarttest.New("root")
 		smartTest.Doc = doc
 
@@ -111,7 +117,7 @@ func TestIconSyncer_Sync(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		testBlock := smartTest.NewState().Get("test")
+		testBlock := smartTest.NewState().Get(blockID)
 		assert.Equal(t, newFileObjectId, testBlock.Model().GetText().GetIconImage())
 	})
 	t.Run("icon image is url", func(t *testing.T) {
@@ -122,20 +128,20 @@ func TestIconSyncer_Sync(t *testing.T) {
 			SpaceID:  spaceId,
 		}
 		block := &model.Block{
-			Id: "test",
+			Id: blockID,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 				IconImage: "http://url.com",
 			}},
 		}
 		rootBlock := &model.Block{
-			Id:          "test",
-			ChildrenIds: []string{"test"},
+			Id:          blockID,
+			ChildrenIds: []string{blockID},
 			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
 		}
 
 		simpleBlock := simple.New(block)
 		rootSimpleBlock := simple.New(rootBlock)
-		doc := state.NewDoc("root", map[string]simple.Block{"root": rootSimpleBlock, "test": simpleBlock})
+		doc := state.NewDoc("root", map[string]simple.Block{"root": rootSimpleBlock, blockID: simpleBlock})
 		smartTest := smarttest.New("root")
 		smartTest.Doc = doc
 
@@ -143,7 +149,8 @@ func TestIconSyncer_Sync(t *testing.T) {
 		fileUploader.EXPECT().GetObject(context.Background(), objectID).Return(smartTest, nil)
 		fileUploader.EXPECT().UploadFile(context.Background(), spaceId, block2.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
-				Url: "http://url.com",
+				Url:              "http://url.com",
+				CreatedInContext: objectID,
 			},
 			ObjectOrigin: objectorigin.Import(model.Import_Pb),
 		}).Return("newFileObjectId", model.BlockContentFile_Image, nil, nil)
@@ -155,7 +162,7 @@ func TestIconSyncer_Sync(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		testBlock := smartTest.NewState().Get("test")
+		testBlock := smartTest.NewState().Get(blockID)
 		assert.Equal(t, "newFileObjectId", testBlock.Model().GetText().GetIconImage())
 	})
 
@@ -167,20 +174,20 @@ func TestIconSyncer_Sync(t *testing.T) {
 			SpaceID:  spaceId,
 		}
 		block := &model.Block{
-			Id: "test",
+			Id: blockID,
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 				IconImage: "http://url.com",
 			}},
 		}
 		rootBlock := &model.Block{
-			Id:          "test",
-			ChildrenIds: []string{"test"},
+			Id:          blockID,
+			ChildrenIds: []string{blockID},
 			Content:     &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}},
 		}
 
 		simpleBlock := simple.New(block)
 		rootSimpleBlock := simple.New(rootBlock)
-		doc := state.NewDoc("root", map[string]simple.Block{"root": rootSimpleBlock, "test": simpleBlock})
+		doc := state.NewDoc("root", map[string]simple.Block{"root": rootSimpleBlock, blockID: simpleBlock})
 		smartTest := smarttest.New("root")
 		smartTest.Doc = doc
 
@@ -188,7 +195,8 @@ func TestIconSyncer_Sync(t *testing.T) {
 		fileUploader.EXPECT().GetObject(context.Background(), objectID).Return(smartTest, nil)
 		fileUploader.EXPECT().UploadFile(context.Background(), spaceId, block2.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
-				Url: "http://url.com",
+				Url:              "http://url.com",
+				CreatedInContext: objectID,
 			},
 			ObjectOrigin: objectorigin.Import(model.Import_Pb),
 		}).Return("", model.BlockContentFile_Image, nil, fmt.Errorf("failed to upload"))
@@ -200,7 +208,7 @@ func TestIconSyncer_Sync(t *testing.T) {
 
 		// then
 		assert.NotNil(t, err)
-		testBlock := smartTest.NewState().Get("test")
+		testBlock := smartTest.NewState().Get(blockID)
 		assert.Equal(t, "", testBlock.Model().GetText().GetIconImage())
 	})
 }

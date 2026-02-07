@@ -193,6 +193,62 @@ func (_c *MockNodeStatus_SetNodesStatus_Call) RunAndReturn(run func(string, node
 	return _c
 }
 
+// TryGetNodeStatus provides a mock function with given fields: spaceId
+func (_m *MockNodeStatus) TryGetNodeStatus(spaceId string) (nodestatus.ConnectionStatus, bool) {
+	ret := _m.Called(spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TryGetNodeStatus")
+	}
+
+	var r0 nodestatus.ConnectionStatus
+	var r1 bool
+	if rf, ok := ret.Get(0).(func(string) (nodestatus.ConnectionStatus, bool)); ok {
+		return rf(spaceId)
+	}
+	if rf, ok := ret.Get(0).(func(string) nodestatus.ConnectionStatus); ok {
+		r0 = rf(spaceId)
+	} else {
+		r0 = ret.Get(0).(nodestatus.ConnectionStatus)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) bool); ok {
+		r1 = rf(spaceId)
+	} else {
+		r1 = ret.Get(1).(bool)
+	}
+
+	return r0, r1
+}
+
+// MockNodeStatus_TryGetNodeStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TryGetNodeStatus'
+type MockNodeStatus_TryGetNodeStatus_Call struct {
+	*mock.Call
+}
+
+// TryGetNodeStatus is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockNodeStatus_Expecter) TryGetNodeStatus(spaceId interface{}) *MockNodeStatus_TryGetNodeStatus_Call {
+	return &MockNodeStatus_TryGetNodeStatus_Call{Call: _e.mock.On("TryGetNodeStatus", spaceId)}
+}
+
+func (_c *MockNodeStatus_TryGetNodeStatus_Call) Run(run func(spaceId string)) *MockNodeStatus_TryGetNodeStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockNodeStatus_TryGetNodeStatus_Call) Return(_a0 nodestatus.ConnectionStatus, _a1 bool) *MockNodeStatus_TryGetNodeStatus_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockNodeStatus_TryGetNodeStatus_Call) RunAndReturn(run func(string) (nodestatus.ConnectionStatus, bool)) *MockNodeStatus_TryGetNodeStatus_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockNodeStatus creates a new instance of MockNodeStatus. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockNodeStatus(t interface {

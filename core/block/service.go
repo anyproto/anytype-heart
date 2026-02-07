@@ -57,6 +57,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
@@ -138,6 +139,7 @@ type Service struct {
 
 	fileUploaderService fileuploader.Service
 	fileOffloader       fileoffloader.Service
+	fileGC              filegc.FileGC
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -179,6 +181,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
+	s.fileGC = app.MustComponent[filegc.FileGC](a)
 	return
 }
 
@@ -494,6 +497,7 @@ func (s *Service) DeleteArchivedObjects(objectIDs []string) error {
 		anySucceed  bool
 	)
 	for _, objectID := range objectIDs {
+		// todo: make batched DeleteArchivedObject
 		err := s.DeleteArchivedObject(objectID)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
@@ -543,16 +547,18 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if id == spc.DerivedIDs().Archive {
 		return fmt.Errorf("cannot delete archive object")
 	}
+	// we need to do it outside of cache.Do to avoid deadlock via filegc
+	err = s.DeleteObject(id)
+	if err != nil {
+		return fmt.Errorf("delete object: %w", err)
+	}
+
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		err = s.DeleteObject(id)
-		if err != nil {
-			return fmt.Errorf("delete object: %w", err)
-		}
 		if exists, _ := archive.HasObject(id); exists {
 			err = archive.RemoveObject(id)
 			if err != nil {

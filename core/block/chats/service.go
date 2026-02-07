@@ -46,10 +46,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -109,6 +111,8 @@ type service struct {
 	objectStore             objectstore.ObjectStore
 	chatSubscriptionService chatsubscription.Service
 	eventSender             event.Sender
+	detailsService          detailservice.Service
+	fileGC                  filegc.FileGC
 	ftSearch                ftsearch.FTSearch
 
 	componentCtx       context.Context
@@ -146,6 +150,8 @@ func (s *service) Init(a *app.App) error {
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
+	s.detailsService = app.MustComponent[detailservice.Service](a)
+	s.fileGC = app.MustComponent[filegc.FileGC](a)
 	s.ftSearch = app.MustComponent[ftsearch.FTSearch](a)
 	return nil
 }
@@ -423,6 +429,11 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		return err
 	})
 	if err == nil {
+		// Update file attachments' CreatedInContextRef to the message ID
+		if len(message.Attachments) > 0 {
+			go s.updateAttachmentsContext(spaceId, chatObjectId, messageId, message.Attachments)
+		}
+
 		pushErr := s.sendPushNotification(ctx, pushNotificationRequest{
 			spaceId:      spaceId,
 			chatObjectId: chatObjectId,
@@ -436,6 +447,57 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		}
 	}
 	return messageId, err
+}
+
+func (s *service) updateAttachmentsContext(spaceId, chatObjectId, messageId string, attachments []*model.ChatMessageAttachment) {
+	// Filter attachments
+	var objectIds []string
+	for _, attachment := range attachments {
+		if attachment.Target != "" {
+			objectIds = append(objectIds, attachment.Target)
+		}
+	}
+
+	if len(objectIds) == 0 {
+		return
+	}
+
+	var details []domain.Detail
+	idx := s.objectStore.SpaceIndex(spaceId)
+	if idx == nil {
+		return
+	}
+	// Update CreatedInContextRef for all file attachments
+	for _, fileId := range objectIds {
+		details = details[:0]
+		rec, err := idx.GetDetails(fileId)
+		if err != nil {
+			continue
+		}
+		current := rec.GetString(bundle.RelationKeyCreatedInContext)
+		if current != chatObjectId {
+			continue
+		}
+		// so we should have CreatedInContext, when creating the file/object in the context of chat
+		// now we need to set the actual messageId
+		if rec.GetString(bundle.RelationKeyCreatedInContextRef) != "" {
+			continue
+		}
+		details = append(details, domain.Detail{
+			Key:   bundle.RelationKeyCreatedInContextRef,
+			Value: domain.String(messageId),
+		})
+		if len(details) == 0 {
+			continue
+		}
+		// Use detail service to update the file object
+		if err := s.detailsService.SetDetails(nil, fileId, details); err != nil {
+			log.Error("failed to update attachment context",
+				zap.String("fileId", fileId),
+				zap.String("messageId", messageId),
+				zap.Error(err))
+		}
+	}
 }
 
 type pushNotificationRequest struct {
@@ -584,9 +646,47 @@ func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string
 }
 
 func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error {
-	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+	var (
+		spaceId     string
+		attachments []*model.ChatMessageAttachment
+	)
+
+	// First get the message to extract attachments before deletion
+	messages, err := s.GetMessagesByIds(ctx, chatObjectId, []string{messageId})
+	if err == nil && len(messages) > 0 && messages[0] != nil {
+		attachments = messages[0].Attachments
+	}
+
+	err = s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		spaceId = sb.SpaceID()
 		return sb.DeleteMessage(ctx, messageId)
 	})
+
+	// If deletion was successful and there were attachments, run file GC
+	if err == nil && len(attachments) > 0 {
+		// Get file IDs from attachments
+		fileIds := make([]string, 0, len(attachments))
+		for _, attachment := range attachments {
+			// do not filter by attachment type, because of bug on anytype-ts
+			// we filter out files by layouts later in CheckFilesOnLinksRemoval
+			fileIds = append(fileIds, attachment.Target)
+		}
+
+		if len(fileIds) > 0 {
+			// Run file GC asynchronously with skipBin=true to permanently delete orphaned files
+			// Pass messageId to only delete files created specifically for this message
+			go func() {
+				if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, chatObjectId, fileIds, true, []string{messageId}); err != nil {
+					log.Error("file GC failed for deleted message",
+						zap.String("messageId", messageId),
+						zap.String("chatObjectId", chatObjectId),
+						zap.Error(err))
+				}
+			}()
+		}
+	}
+
+	return err
 }
 
 func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error) {

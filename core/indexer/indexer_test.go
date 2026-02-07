@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -19,6 +20,7 @@ var ctx = context.Background()
 func TestIndexer(t *testing.T) {
 	space := mock_clientspace.NewMockSpace(t)
 	space.EXPECT().Id().Return("spaceId1").Maybe()
+	space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: "workspaceId1"}).Maybe()
 
 	for _, testCase := range []struct {
 		name    string

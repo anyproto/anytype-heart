@@ -218,7 +218,10 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		}
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
-			r.ContextId = req.ContextId
+			// Don't overwrite contextId if it's already set by the paste controller
+			if r.ContextId == "" {
+				r.ContextId = req.ContextId
+			}
 			req := block.UploadRequest{
 				RpcBlockUploadRequest: r,
 				ObjectOrigin:          objectorigin.Clipboard(),

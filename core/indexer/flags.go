@@ -17,6 +17,7 @@ type reindexFlags struct {
 	removeParticipants      bool
 	chats                   bool
 	messagesFulltext        bool
+	invalidateObjectsIndex  bool
 }
 
 func (f *reindexFlags) any() bool {
@@ -33,7 +34,8 @@ func (f *reindexFlags) any() bool {
 		f.removeParticipants ||
 		f.eraseLinks ||
 		f.chats ||
-		f.messagesFulltext
+		f.messagesFulltext ||
+		f.invalidateObjectsIndex
 }
 
 func (f *reindexFlags) enableAll() {
