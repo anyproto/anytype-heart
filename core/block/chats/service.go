@@ -450,49 +450,44 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 }
 
 func (s *service) updateAttachmentsContext(spaceId, chatObjectId, messageId string, attachments []*model.ChatMessageAttachment) {
-	// Filter file/image attachments
-	var fileIds []string
+	// Filter attachments
+	var objectIds []string
 	for _, attachment := range attachments {
-		if attachment.Type == model.ChatMessageAttachment_FILE || attachment.Type == model.ChatMessageAttachment_IMAGE {
-			if attachment.Target != "" {
-				fileIds = append(fileIds, attachment.Target)
-			}
+		if attachment.Target != "" {
+			objectIds = append(objectIds, attachment.Target)
 		}
 	}
 
-	if len(fileIds) == 0 {
+	if len(objectIds) == 0 {
 		return
 	}
 
+	var details []domain.Detail
 	// Update CreatedInBlockId for all file attachments
-	for _, fileId := range fileIds {
-		details := []domain.Detail{
-			{
-				Key:   bundle.RelationKeyCreatedInBlockId,
-				Value: domain.String(messageId),
-			},
-		}
-
-		// If file doesn't have CreatedInContext set, also set it to the chat object ID
+	for _, fileId := range objectIds {
+		details = details[:0]
 		if idx := s.objectStore.SpaceIndex(spaceId); idx != nil {
-			if recs, err := idx.Query(database.Query{
-				Filters: []database.FilterRequest{
-					{
-						RelationKey: bundle.RelationKeyId,
-						Condition:   model.BlockContentDataviewFilter_Equal,
-						Value:       domain.String(fileId),
-					},
-				},
-			}); err == nil && len(recs) > 0 && recs[0].Details != nil {
-				if recs[0].Details.GetString(bundle.RelationKeyCreatedInContext) == "" {
-					details = append(details, domain.Detail{
-						Key:   bundle.RelationKeyCreatedInContext,
-						Value: domain.String(chatObjectId),
-					})
+			if rec, err := idx.GetDetails(fileId); err == nil {
+				current := rec.GetString(bundle.RelationKeyCreatedInContext)
+				if current != chatObjectId {
+					continue
 				}
+				// so we should have CreatedInContext, when creating the file/object in the context of chat
+				// now we need to set the actual messageId
+				if rec.GetString(bundle.RelationKeyCreatedInBlockId) != "" {
+					continue
+				}
+				details = append(details, domain.Detail{
+					Key:   bundle.RelationKeyCreatedInBlockId,
+					Value: domain.String(messageId),
+				})
+
 			}
 		}
 
+		if len(details) == 0 {
+			continue
+		}
 		// Use detail service to update the file object
 		if err := s.detailsService.SetDetails(nil, fileId, details); err != nil {
 			log.Error("failed to update attachment context",
