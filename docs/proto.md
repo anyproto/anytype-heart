@@ -13563,7 +13563,7 @@ Get marks list in the selected range in text block.
 | preloadOnly | [bool](#bool) |  | if true, only async preload the file without creating object |
 | preloadFileId | [string](#string) |  | if set, reuse already preloaded file with this id. May block if async preload operation is not finished yet |
 | createdInContext | [string](#string) |  | Object ID where the file was initially created |
-| createdInBlockId | [string](#string) |  | Block ID where the file was initially created |
+| createdInContextRef | [string](#string) |  | Block ID where the file was initially created |
 
 
 
@@ -22752,7 +22752,7 @@ Available undo/redo operations
 | spaceId | [string](#string) |  |  |
 | imageKind | [model.ImageKind](#anytype-model-ImageKind) |  |  |
 | createdInContext | [string](#string) |  | Object ID where the file was initially created |
-| createdInBlockId | [string](#string) |  | Block ID where the file was initially created |
+| createdInContextRef | [string](#string) |  | Block ID where the file was initially created |
 
 
 

@@ -252,7 +252,7 @@ type Uploader interface {
 	SetPreloadId(preloadId string) Uploader
 
 	SetCreatedInContext(contextId string) Uploader
-	SetCreatedInBlockId(blockId string) Uploader
+	SetCreatedInContextRef(blockId string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
@@ -326,9 +326,9 @@ type uploader struct {
 	customEncryptionKeys map[string]string
 	preloadId            string
 
-	serviceCtx       context.Context // used to cancel async operations
-	createdInContext string
-	createdInBlockId string
+	serviceCtx          context.Context // used to cancel async operations
+	createdInContext    string
+	createdInContextRef string
 }
 
 type bufioSeekClose struct {
@@ -433,8 +433,8 @@ func (u *uploader) SetCreatedInContext(contextId string) Uploader {
 	return u
 }
 
-func (u *uploader) SetCreatedInBlockId(blockId string) Uploader {
-	u.createdInBlockId = blockId
+func (u *uploader) SetCreatedInContextRef(blockId string) Uploader {
+	u.createdInContextRef = blockId
 	return u
 }
 
@@ -790,8 +790,8 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 	if u.createdInContext != "" {
 		additionalDetails.SetString(bundle.RelationKeyCreatedInContext, u.createdInContext)
 	}
-	if u.createdInBlockId != "" {
-		additionalDetails.SetString(bundle.RelationKeyCreatedInBlockId, u.createdInBlockId)
+	if u.createdInContextRef != "" {
+		additionalDetails.SetString(bundle.RelationKeyCreatedInContextRef, u.createdInContextRef)
 	}
 
 	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, filemodels.CreateRequest{

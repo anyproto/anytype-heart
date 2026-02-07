@@ -339,12 +339,12 @@ func (_c *MockUploader_SetBytes_Call) RunAndReturn(run func([]byte) fileuploader
 	return _c
 }
 
-// SetCreatedInBlockId provides a mock function with given fields: blockId
-func (_m *MockUploader) SetCreatedInBlockId(blockId string) fileuploader.Uploader {
+// SetCreatedInContextRef provides a mock function with given fields: blockId
+func (_m *MockUploader) SetCreatedInContextRef(blockId string) fileuploader.Uploader {
 	ret := _m.Called(blockId)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SetCreatedInBlockId")
+		panic("no return value specified for SetCreatedInContextRef")
 	}
 
 	var r0 fileuploader.Uploader
@@ -359,30 +359,30 @@ func (_m *MockUploader) SetCreatedInBlockId(blockId string) fileuploader.Uploade
 	return r0
 }
 
-// MockUploader_SetCreatedInBlockId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCreatedInBlockId'
-type MockUploader_SetCreatedInBlockId_Call struct {
+// MockUploader_SetCreatedInContextRef_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCreatedInContextRef'
+type MockUploader_SetCreatedInContextRef_Call struct {
 	*mock.Call
 }
 
-// SetCreatedInBlockId is a helper method to define mock.On call
+// SetCreatedInContextRef is a helper method to define mock.On call
 //   - blockId string
-func (_e *MockUploader_Expecter) SetCreatedInBlockId(blockId interface{}) *MockUploader_SetCreatedInBlockId_Call {
-	return &MockUploader_SetCreatedInBlockId_Call{Call: _e.mock.On("SetCreatedInBlockId", blockId)}
+func (_e *MockUploader_Expecter) SetCreatedInContextRef(blockId interface{}) *MockUploader_SetCreatedInContextRef_Call {
+	return &MockUploader_SetCreatedInContextRef_Call{Call: _e.mock.On("SetCreatedInContextRef", blockId)}
 }
 
-func (_c *MockUploader_SetCreatedInBlockId_Call) Run(run func(blockId string)) *MockUploader_SetCreatedInBlockId_Call {
+func (_c *MockUploader_SetCreatedInContextRef_Call) Run(run func(blockId string)) *MockUploader_SetCreatedInContextRef_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string))
 	})
 	return _c
 }
 
-func (_c *MockUploader_SetCreatedInBlockId_Call) Return(_a0 fileuploader.Uploader) *MockUploader_SetCreatedInBlockId_Call {
+func (_c *MockUploader_SetCreatedInContextRef_Call) Return(_a0 fileuploader.Uploader) *MockUploader_SetCreatedInContextRef_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockUploader_SetCreatedInBlockId_Call) RunAndReturn(run func(string) fileuploader.Uploader) *MockUploader_SetCreatedInBlockId_Call {
+func (_c *MockUploader_SetCreatedInContextRef_Call) RunAndReturn(run func(string) fileuploader.Uploader) *MockUploader_SetCreatedInContextRef_Call {
 	_c.Call.Return(run)
 	return _c
 }

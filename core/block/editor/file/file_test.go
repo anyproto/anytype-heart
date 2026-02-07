@@ -467,7 +467,7 @@ func (fx *fileFixture) assertUploaded(t *testing.T, times int) {
 	uploader.EXPECT().SetName(mock.Anything).Return(uploader).Times(times)
 	uploader.EXPECT().SetFile(mock.Anything).Return(uploader).Times(times)
 	uploader.EXPECT().SetCreatedInContext(mock.Anything).Return(uploader).Times(times)
-	uploader.EXPECT().SetCreatedInBlockId(mock.Anything).Return(uploader).Times(times)
+	uploader.EXPECT().SetCreatedInContextRef(mock.Anything).Return(uploader).Times(times)
 	uploader.EXPECT().Upload(mock.Anything).Return(fileuploader.UploadResult{}).Times(times)
 
 	fx.fileUploader.EXPECT().NewUploader(mock.Anything, mock.Anything).Return(uploader).Times(times)

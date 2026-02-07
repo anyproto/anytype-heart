@@ -255,7 +255,7 @@ func TestMigrationDetailsCreation(t *testing.T) {
 		}
 		if ci.blockId != "" {
 			details = append(details, domain.Detail{
-				Key: bundle.RelationKeyCreatedInBlockId, Value: domain.String(ci.blockId),
+				Key: bundle.RelationKeyCreatedInContextRef, Value: domain.String(ci.blockId),
 			})
 		}
 
@@ -275,11 +275,11 @@ func TestMigrationDetailsCreation(t *testing.T) {
 		}
 		if ci.blockId != "" {
 			details = append(details, domain.Detail{
-				Key: bundle.RelationKeyCreatedInBlockId, Value: domain.String(ci.blockId),
+				Key: bundle.RelationKeyCreatedInContextRef, Value: domain.String(ci.blockId),
 			})
 		} else if ci.messageId != "" {
 			details = append(details, domain.Detail{
-				Key: bundle.RelationKeyCreatedInBlockId, Value: domain.String(ci.messageId),
+				Key: bundle.RelationKeyCreatedInContextRef, Value: domain.String(ci.messageId),
 			})
 		}
 

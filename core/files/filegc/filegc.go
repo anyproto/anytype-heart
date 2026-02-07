@@ -118,10 +118,10 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		},
 	}
 
-	// If onlyBlockIds is provided, add filter for CreatedInBlockId
+	// If onlyBlockIds is provided, add filter for CreatedInContextRef
 	if len(onlyBlockIds) > 0 {
 		filters = append(filters, database.FilterRequest{
-			RelationKey: bundle.RelationKeyCreatedInBlockId,
+			RelationKey: bundle.RelationKeyCreatedInContextRef,
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       domain.StringList(onlyBlockIds),
 		})

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "b5503423aa953f0ce1bbfe0d2607e2eebdc471000cfe2dcec440a94434c6eb65"
+const RelationChecksum = "7df65d7b5ce42dc31b823ff42391a199889d1e270a34f50219c50f020be10cb3"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -142,7 +142,7 @@ const (
 	RelationKeyRevision                             domain.RelationKey = "revision"
 	RelationKeyImageKind                            domain.RelationKey = "imageKind"
 	RelationKeyCreatedInContext                     domain.RelationKey = "createdInContext"
-	RelationKeyCreatedInBlockId                     domain.RelationKey = "createdInBlockId"
+	RelationKeyCreatedInContextRef                  domain.RelationKey = "createdInContextRef"
 	RelationKeyImportType                           domain.RelationKey = "importType"
 	RelationKeyGlobalName                           domain.RelationKey = "globalName"
 	RelationKeySyncStatus                           domain.RelationKey = "syncStatus"
@@ -526,20 +526,6 @@ var (
 			Revision:         1,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyCreatedInBlockId: {
-
-			DataSource:       model.Relation_details,
-			Description:      "BlockID/RelationKey where the object was initially created",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Id:               "_brcreatedInBlockId",
-			Key:              "createdInBlockId",
-			MaxCount:         1,
-			Name:             "Created in block/relation",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyCreatedInContext: {
 
 			DataSource:       model.Relation_details,
@@ -550,6 +536,20 @@ var (
 			Key:              "createdInContext",
 			MaxCount:         1,
 			Name:             "Created in context",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInContextRef: {
+
+			DataSource:       model.Relation_details,
+			Description:      "BlockID/RelationKey/MessageId where the object was initially created",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brcreatedInContextRef",
+			Key:              "createdInContextRef",
+			MaxCount:         1,
+			Name:             "Created in context inner locator",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

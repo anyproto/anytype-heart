@@ -429,7 +429,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		return err
 	})
 	if err == nil {
-		// Update file attachments' CreatedInBlockId to the message ID
+		// Update file attachments' CreatedInContextRef to the message ID
 		if len(message.Attachments) > 0 {
 			go s.updateAttachmentsContext(spaceId, chatObjectId, messageId, message.Attachments)
 		}
@@ -463,7 +463,7 @@ func (s *service) updateAttachmentsContext(spaceId, chatObjectId, messageId stri
 	}
 
 	var details []domain.Detail
-	// Update CreatedInBlockId for all file attachments
+	// Update CreatedInContextRef for all file attachments
 	for _, fileId := range objectIds {
 		details = details[:0]
 		if idx := s.objectStore.SpaceIndex(spaceId); idx != nil {
@@ -474,11 +474,11 @@ func (s *service) updateAttachmentsContext(spaceId, chatObjectId, messageId stri
 				}
 				// so we should have CreatedInContext, when creating the file/object in the context of chat
 				// now we need to set the actual messageId
-				if rec.GetString(bundle.RelationKeyCreatedInBlockId) != "" {
+				if rec.GetString(bundle.RelationKeyCreatedInContextRef) != "" {
 					continue
 				}
 				details = append(details, domain.Detail{
-					Key:   bundle.RelationKeyCreatedInBlockId,
+					Key:   bundle.RelationKeyCreatedInContextRef,
 					Value: domain.String(messageId),
 				})
 

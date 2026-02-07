@@ -65,15 +65,15 @@ type File interface {
 }
 
 type FileSource struct {
-	Path             string
-	Url              string // nolint:revive
-	Bytes            []byte
-	Name             string
-	GroupID          string
-	Origin           objectorigin.ObjectOrigin
-	ImageKind        model.ImageKind
-	CreatedInContext string
-	CreatedInBlockId string
+	Path                string
+	Url                 string // nolint:revive
+	Bytes               []byte
+	Name                string
+	GroupID             string
+	Origin              objectorigin.ObjectOrigin
+	ImageKind           model.ImageKind
+	CreatedInContext    string
+	CreatedInContextRef string
 }
 
 type sfile struct {
@@ -167,11 +167,11 @@ func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateA
 		return
 	}
 	if err = sf.upload(s, newId, FileSource{
-		Path:             req.LocalPath,
-		Url:              req.Url,
-		ImageKind:        req.ImageKind,
-		CreatedInContext: req.ContextId,
-		CreatedInBlockId: newId,
+		Path:                req.LocalPath,
+		Url:                 req.Url,
+		ImageKind:           req.ImageKind,
+		CreatedInContext:    req.ContextId,
+		CreatedInContextRef: newId,
 	}, false).Err; err != nil {
 		return
 	}
@@ -207,8 +207,8 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 	if source.CreatedInContext != "" {
 		upl.SetCreatedInContext(source.CreatedInContext)
 	}
-	if source.CreatedInBlockId != "" {
-		upl.SetCreatedInBlockId(source.CreatedInBlockId)
+	if source.CreatedInContextRef != "" {
+		upl.SetCreatedInContextRef(source.CreatedInContextRef)
 	}
 
 	if isSync {
@@ -652,7 +652,7 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 		SetName(f.name).
 		SetFile(f.path).
 		SetCreatedInContext(dp.contextId).
-		SetCreatedInBlockId(f.blockId).
+		SetCreatedInContextRef(f.blockId).
 		Upload(context.Background())
 
 	if res.Err != nil {

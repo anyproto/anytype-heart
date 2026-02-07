@@ -55,7 +55,7 @@ Context Migration Logic:
    - Priority: block links (have blockId) over relation links (no blockId)
    - Sort by blockId and pick first - blockId is BSON ObjectId containing timestamp,
      so lexicographic sort gives chronological order (oldest block first = original context)
-   - Set CreatedInContext = source objectId, CreatedInBlockId = blockId (if block link)
+   - Set CreatedInContext = source objectId, CreatedInContextRef = blockId (if block link)
 */
 
 func (s *service) runObjectContextMigration(ctx context.Context, spaceId string, workspaceId string) error {
@@ -158,9 +158,9 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 			}
 			current.Set(bundle.RelationKeyCreatedInContext, domain.String(contextInfo.objectId))
 			if contextInfo.blockId != "" {
-				current.Set(bundle.RelationKeyCreatedInBlockId, domain.String(contextInfo.blockId))
+				current.Set(bundle.RelationKeyCreatedInContextRef, domain.String(contextInfo.blockId))
 			} else if contextInfo.messageId != "" {
-				current.Set(bundle.RelationKeyCreatedInBlockId, domain.String(contextInfo.messageId))
+				current.Set(bundle.RelationKeyCreatedInContextRef, domain.String(contextInfo.messageId))
 			}
 			return current, nil
 		}); err != nil {

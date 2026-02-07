@@ -1354,12 +1354,12 @@
     "source": "details"
   },
   {
-    "description": "BlockID/RelationKey where the object was initially created",
+    "description": "BlockID/RelationKey/MessageId where the object was initially created",
     "format": "shorttext",
     "hidden": true,
-    "key": "createdInBlockId",
+    "key": "createdInContextRef",
     "maxCount": 1,
-    "name": "Created in block/relation",
+    "name": "Created in context inner locator",
     "readonly": true,
     "source": "details"
   },
