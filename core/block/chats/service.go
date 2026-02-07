@@ -665,9 +665,9 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 		// Get file IDs from attachments
 		var fileIds []string
 		for _, attachment := range attachments {
-			if (attachment.Type == model.ChatMessageAttachment_FILE || attachment.Type == model.ChatMessageAttachment_IMAGE) && attachment.Target != "" {
-				fileIds = append(fileIds, attachment.Target)
-			}
+			// do not filter by attachment type, because of bug on anytype-ts
+			// we filter out files by layouts later in CheckFilesOnLinksRemoval
+			fileIds = append(fileIds, attachment.Target)
 		}
 
 		if len(fileIds) > 0 {
