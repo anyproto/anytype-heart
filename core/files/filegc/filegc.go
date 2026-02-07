@@ -199,7 +199,7 @@ func (gc *fileGC) CheckFilesOnContextArchived(spaceId, contextId string, isArchi
 		return fmt.Errorf("failed to get details of context object: %w", err)
 	}
 
-	if slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(d.GetInt64(bundle.RelationKeyResolvedLayout))) {
+	if slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(int32(d.GetInt64(bundle.RelationKeyResolvedLayout)))) {
 		// files can't have files as children, so there's no need to check them
 		return nil
 	}

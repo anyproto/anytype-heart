@@ -463,28 +463,30 @@ func (s *service) updateAttachmentsContext(spaceId, chatObjectId, messageId stri
 	}
 
 	var details []domain.Detail
+	idx := s.objectStore.SpaceIndex(spaceId)
+	if idx == nil {
+		return
+	}
 	// Update CreatedInContextRef for all file attachments
 	for _, fileId := range objectIds {
 		details = details[:0]
-		if idx := s.objectStore.SpaceIndex(spaceId); idx != nil {
-			if rec, err := idx.GetDetails(fileId); err == nil {
-				current := rec.GetString(bundle.RelationKeyCreatedInContext)
-				if current != chatObjectId {
-					continue
-				}
-				// so we should have CreatedInContext, when creating the file/object in the context of chat
-				// now we need to set the actual messageId
-				if rec.GetString(bundle.RelationKeyCreatedInContextRef) != "" {
-					continue
-				}
-				details = append(details, domain.Detail{
-					Key:   bundle.RelationKeyCreatedInContextRef,
-					Value: domain.String(messageId),
-				})
-
-			}
+		rec, err := idx.GetDetails(fileId)
+		if err != nil {
+			continue
 		}
-
+		current := rec.GetString(bundle.RelationKeyCreatedInContext)
+		if current != chatObjectId {
+			continue
+		}
+		// so we should have CreatedInContext, when creating the file/object in the context of chat
+		// now we need to set the actual messageId
+		if rec.GetString(bundle.RelationKeyCreatedInContextRef) != "" {
+			continue
+		}
+		details = append(details, domain.Detail{
+			Key:   bundle.RelationKeyCreatedInContextRef,
+			Value: domain.String(messageId),
+		})
 		if len(details) == 0 {
 			continue
 		}
@@ -663,7 +665,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 	// If deletion was successful and there were attachments, run file GC
 	if err == nil && len(attachments) > 0 {
 		// Get file IDs from attachments
-		var fileIds []string
+		fileIds := make([]string, 0, len(attachments))
 		for _, attachment := range attachments {
 			// do not filter by attachment type, because of bug on anytype-ts
 			// we filter out files by layouts later in CheckFilesOnLinksRemoval
