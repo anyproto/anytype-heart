@@ -497,6 +497,7 @@ func (s *Service) DeleteArchivedObjects(objectIDs []string) error {
 		anySucceed  bool
 	)
 	for _, objectID := range objectIDs {
+		// todo: make batched DeleteArchivedObject
 		err := s.DeleteArchivedObject(objectID)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
@@ -546,16 +547,18 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if id == spc.DerivedIDs().Archive {
 		return fmt.Errorf("cannot delete archive object")
 	}
+	// we need to do it outside of cache.Do to avoid deadlock via filegc
+	err = s.DeleteObject(id)
+	if err != nil {
+		return fmt.Errorf("delete object: %w", err)
+	}
+
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		err = s.DeleteObject(id)
-		if err != nil {
-			return fmt.Errorf("delete object: %w", err)
-		}
 		if exists, _ := archive.HasObject(id); exists {
 			err = archive.RemoveObject(id)
 			if err != nil {

@@ -3,6 +3,7 @@ package filegc
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
@@ -22,7 +23,7 @@ const CName = "core.files.filegc"
 type FileGC interface {
 	app.ComponentRunnable
 	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error
-	CheckFilesOnContextDeletion(spaceId, contextId string) error
+	CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -32,7 +33,7 @@ type ObjectDeleter interface {
 
 // ObjectArchiver is an interface to archive objects
 type ObjectArchiver interface {
-	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
+	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 // ParticipantProvider provides the current user's participant ID for a given space
@@ -135,6 +136,7 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 		return fmt.Errorf("failed to query file objects: %w", err)
 	}
 
+	var toArchive []string
 	for _, record := range fileRecords {
 		fileId := record.Details.GetString(bundle.RelationKeyId)
 
@@ -173,15 +175,10 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 			}
 		} else {
 			log.With("fileId", fileId).Debugf("archiving orphaned file created in context %s", contextId)
-			// Archive the file object
-			if err := gc.objectArchiver.SetIsArchived(gc.componentCtx, fileId, true); err != nil {
-				log.With("fileId", fileId).Errorf("failed to archive file object: %v", err)
-				// Continue with other files even if one fails
-			}
+			toArchive = append(toArchive, fileId)
 		}
 	}
-
-	return nil
+	return gc.objectArchiver.SetListIsArchived(gc.componentCtx, toArchive, true)
 }
 
 func (gc *fileGC) deleteFileObject(spaceId, fileId string) error {
@@ -192,20 +189,28 @@ func (gc *fileGC) deleteFileObject(spaceId, fileId string) error {
 	})
 }
 
-// CheckFilesOnContextDeletion finds all files created in the given context and archives them
-// This should be called when the context object itself is being deleted
-func (gc *fileGC) CheckFilesOnContextDeletion(spaceId, contextId string) error {
+// CheckFilesOnContextArchived finds all files created in the given context and archives/unarchived them
+// This should be called when the context object itself is being archived/unarchived
+func (gc *fileGC) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
 	log.Debugf("checking files on context deletion: %s", contextId)
-
-	// make sure we have all backlinks updates flushed to the store
-	gc.backlinksWatcher.FlushUpdates()
-
 	spaceIndex := gc.objectStore.SpaceIndex(spaceId)
+	d, err := spaceIndex.GetDetails(contextId)
+	if err != nil {
+		return fmt.Errorf("failed to get details of context object: %w", err)
+	}
+
+	if slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(d.GetInt64(bundle.RelationKeyResolvedLayout))) {
+		// files can't have files as children, so there's no need to check them
+		return nil
+	}
 
 	fileLayouts := make([]int64, 0, len(domain.FileLayouts))
 	for _, layout := range domain.FileLayouts {
 		fileLayouts = append(fileLayouts, int64(layout))
 	}
+
+	// make sure we have all backlinks updates flushed to the store
+	gc.backlinksWatcher.FlushUpdates()
 
 	// Query all files created in this context
 	fileRecords, err := spaceIndex.Query(database.Query{
@@ -220,6 +225,11 @@ func (gc *fileGC) CheckFilesOnContextDeletion(spaceId, contextId string) error {
 				Condition:   model.BlockContentDataviewFilter_In,
 				Value:       domain.Int64List(fileLayouts),
 			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(isArchived),
+			},
 		},
 	})
 	if err != nil {
@@ -232,6 +242,7 @@ func (gc *fileGC) CheckFilesOnContextDeletion(spaceId, contextId string) error {
 
 	log.Debugf("found %d files created in context %s", len(fileRecords), contextId)
 
+	var toProcess []string
 	for _, record := range fileRecords {
 		fileId := record.Details.GetString(bundle.RelationKeyId)
 
@@ -247,11 +258,7 @@ func (gc *fileGC) CheckFilesOnContextDeletion(spaceId, contextId string) error {
 		}
 
 		// File has no active backlinks - archive it since the context is being deleted
-		log.Debugf("archiving orphaned file %s from deleted context %s", fileId, contextId)
-		if err := gc.objectArchiver.SetIsArchived(gc.componentCtx, fileId, true); err != nil {
-			log.Errorf("failed to archive file object %s: %v", fileId, err)
-		}
+		toProcess = append(toProcess, fileId)
 	}
-
-	return nil
+	return gc.objectArchiver.SetListIsArchived(gc.componentCtx, toProcess, isArchived)
 }
