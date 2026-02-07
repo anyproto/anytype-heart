@@ -604,6 +604,7 @@ func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {
 	objectId, err := cb.fileObjectService.CreateFromImport(
 		domain.FullFileId{SpaceId: cb.SpaceID(), FileId: fileId.FileId},
 		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+		nil,
 	)
 	if err != nil {
 		log.Errorf("failed to create file object: %v", err)

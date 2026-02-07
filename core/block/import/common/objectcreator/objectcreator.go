@@ -128,7 +128,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	}
 
 	st.ModifyLinkedFilesInDetails(oc.formatFetcher, func(fileId string) string {
-		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin)
+		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin, newID)
 		if newFileId != fileId {
 			filesToDelete = append(filesToDelete, fileId)
 		}

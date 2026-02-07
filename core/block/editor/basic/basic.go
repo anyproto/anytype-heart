@@ -212,6 +212,7 @@ func (bs *basic) processFileBlock(f *model.BlockContentOfFile, spaceId string) {
 	objectId, err := bs.fileObjectService.CreateFromImport(
 		domain.FullFileId{SpaceId: spaceId, FileId: fileId.FileId},
 		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+		nil,
 	)
 	if err != nil {
 		log.Errorf("failed to create file object: %v", err)

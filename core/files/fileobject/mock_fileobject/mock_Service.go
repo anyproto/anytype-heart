@@ -199,9 +199,9 @@ func (_c *MockService_Create_Call) RunAndReturn(run func(context.Context, string
 	return _c
 }
 
-// CreateFromImport provides a mock function with given fields: fileId, origin
-func (_m *MockService) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
-	ret := _m.Called(fileId, origin)
+// CreateFromImport provides a mock function with given fields: fileId, origin, additionalDetails
+func (_m *MockService) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details) (string, error) {
+	ret := _m.Called(fileId, origin, additionalDetails)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateFromImport")
@@ -209,17 +209,17 @@ func (_m *MockService) CreateFromImport(fileId domain.FullFileId, origin objecto
 
 	var r0 string
 	var r1 error
-	if rf, ok := ret.Get(0).(func(domain.FullFileId, objectorigin.ObjectOrigin) (string, error)); ok {
-		return rf(fileId, origin)
+	if rf, ok := ret.Get(0).(func(domain.FullFileId, objectorigin.ObjectOrigin, *domain.Details) (string, error)); ok {
+		return rf(fileId, origin, additionalDetails)
 	}
-	if rf, ok := ret.Get(0).(func(domain.FullFileId, objectorigin.ObjectOrigin) string); ok {
-		r0 = rf(fileId, origin)
+	if rf, ok := ret.Get(0).(func(domain.FullFileId, objectorigin.ObjectOrigin, *domain.Details) string); ok {
+		r0 = rf(fileId, origin, additionalDetails)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
 
-	if rf, ok := ret.Get(1).(func(domain.FullFileId, objectorigin.ObjectOrigin) error); ok {
-		r1 = rf(fileId, origin)
+	if rf, ok := ret.Get(1).(func(domain.FullFileId, objectorigin.ObjectOrigin, *domain.Details) error); ok {
+		r1 = rf(fileId, origin, additionalDetails)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -235,13 +235,14 @@ type MockService_CreateFromImport_Call struct {
 // CreateFromImport is a helper method to define mock.On call
 //   - fileId domain.FullFileId
 //   - origin objectorigin.ObjectOrigin
-func (_e *MockService_Expecter) CreateFromImport(fileId interface{}, origin interface{}) *MockService_CreateFromImport_Call {
-	return &MockService_CreateFromImport_Call{Call: _e.mock.On("CreateFromImport", fileId, origin)}
+//   - additionalDetails *domain.Details
+func (_e *MockService_Expecter) CreateFromImport(fileId interface{}, origin interface{}, additionalDetails interface{}) *MockService_CreateFromImport_Call {
+	return &MockService_CreateFromImport_Call{Call: _e.mock.On("CreateFromImport", fileId, origin, additionalDetails)}
 }
 
-func (_c *MockService_CreateFromImport_Call) Run(run func(fileId domain.FullFileId, origin objectorigin.ObjectOrigin)) *MockService_CreateFromImport_Call {
+func (_c *MockService_CreateFromImport_Call) Run(run func(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details)) *MockService_CreateFromImport_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(domain.FullFileId), args[1].(objectorigin.ObjectOrigin))
+		run(args[0].(domain.FullFileId), args[1].(objectorigin.ObjectOrigin), args[2].(*domain.Details))
 	})
 	return _c
 }
@@ -251,7 +252,7 @@ func (_c *MockService_CreateFromImport_Call) Return(_a0 string, _a1 error) *Mock
 	return _c
 }
 
-func (_c *MockService_CreateFromImport_Call) RunAndReturn(run func(domain.FullFileId, objectorigin.ObjectOrigin) (string, error)) *MockService_CreateFromImport_Call {
+func (_c *MockService_CreateFromImport_Call) RunAndReturn(run func(domain.FullFileId, objectorigin.ObjectOrigin, *domain.Details) (string, error)) *MockService_CreateFromImport_Call {
 	_c.Call.Return(run)
 	return _c
 }

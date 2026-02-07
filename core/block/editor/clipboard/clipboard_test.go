@@ -1839,7 +1839,7 @@ func TestProcessFileBlock(t *testing.T) {
 		// given
 		file := mock_fileobject.NewMockService(t)
 		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
-		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return(fileObject2, nil)
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything, mock.Anything).Return(fileObject2, nil)
 
 		c := &clipboard{
 			SmartBlock:        sb,
@@ -1859,7 +1859,7 @@ func TestProcessFileBlock(t *testing.T) {
 		// given
 		file := mock_fileobject.NewMockService(t)
 		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
-		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return("", fmt.Errorf("some error"))
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything, mock.Anything).Return("", fmt.Errorf("some error"))
 
 		c := &clipboard{
 			SmartBlock:        sb,

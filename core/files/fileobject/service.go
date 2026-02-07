@@ -91,7 +91,7 @@ type Service interface {
 	CanDeleteFile(ctx context.Context, objectId string) error
 	DeleteFileData(spaceId string, objectId string) error
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
-	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
+	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 
 	DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error
@@ -493,7 +493,7 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 }
 
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
-func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
+func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details) (string, error) {
 	// Check that fileId is not a file object id
 	recs, _, err := s.objectStore.SpaceIndex(fileId.SpaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
@@ -525,6 +525,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 		FileId:                fileId.FileId,
 		EncryptionKeys:        keys,
 		ObjectOrigin:          origin,
+		AdditionalDetails:     additionalDetails,
 		AsyncMetadataIndexing: true,
 	})
 	if err != nil {
