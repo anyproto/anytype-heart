@@ -247,6 +247,15 @@ jobs:
             https://api.github.com/repos/anyproto/anytype-ts/actions/workflows/nightly.yml/dispatches \
             -d '{"ref":"develop","inputs":{"run-diff-check":"false"}}'
 
+      - name: Trigger integration tests in anytype-suite
+        if: needs.build.outputs.tag_name != ''
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.ANYTYPE_SUITE_TRIGGER_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/anyproto/anytype-suite/dispatches \
+            -d "{\"event_type\": \"test-release\", \"client_payload\": {\"version\": \"${{ needs.build.outputs.tag_name }}\"}}"
+
       - name: Notify Slack (workflow result)
         uses: ravsamhq/notify-slack-action@v2
         with:
