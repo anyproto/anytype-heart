@@ -215,9 +215,18 @@ func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, 
 	return s.err
 }
 
+func (s *invalidStore) SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error) {
+	return s.err
+}
+
+func (s *invalidStore) GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error) {
+	return nil, s.err
+}
+
 func (s *invalidStore) ClearHeadsState(ctx context.Context) error {
 	return s.err
 }
+
 
 func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return nil, s.err

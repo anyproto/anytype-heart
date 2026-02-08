@@ -240,7 +240,7 @@ func (m *migrator) run(ctx context.Context) (err error) {
 			}
 
 			for _, objectId := range objectIds {
-				err = resolverStore.BindSpaceId(spaceId, objectId)
+				err = resolverStore.BindSpaceId(ctx, spaceId, objectId)
 				if err != nil {
 					return fmt.Errorf("bind space id: %w", err)
 				}

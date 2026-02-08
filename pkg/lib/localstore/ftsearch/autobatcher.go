@@ -2,6 +2,7 @@ package ftsearch
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	tantivy "github.com/anyproto/tantivy-go"
@@ -94,6 +95,59 @@ func (f *ftSearch) Iterate(objectId string, fields []string, shouldContinue func
 		}
 	}
 	return nil
+}
+func (f *ftSearch) ListByIdPrefix(prefix string) ([]string, error) {
+	query := tantivy.NewQueryBuilder().Query(tantivy.Must, fieldIdRaw, prefix, tantivy.TermPrefixQuery, 1.0).Build()
+	sCtx := tantivy.NewSearchContextBuilder().
+		SetQueryFromJson(&query).
+		SetWithHighlights(false).
+		AddField(fieldIdRaw, 1.0).
+		SetDocsLimit(10000).
+		Build()
+
+	results, err := f.index.SearchFastFieldJson(sCtx, fieldIdRaw)
+	if err != nil {
+		return nil, fmt.Errorf("search ids by id prefix: %w", err)
+	}
+	var ids = make([]string, 0, len(results.Values))
+	for _, id := range results.Values {
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// ListAllObjectIds returns a set of all unique object IDs that have at least one document in the full-text index.
+// Document IDs in Tantivy are structured as "$objectId/r/$relationKey" or "$objectId/b/$blockId".
+// This method extracts the object ID (first part before "/") from each document.
+func (f *ftSearch) ListAllObjectIds() (map[string]struct{}, error) {
+	// Use a very high limit for this one-time consistency check operation
+	// const maxDocsForConsistencyCheck = 10_000_000
+
+	// Build a query that matches all documents using TermPrefixQuery with empty prefix on Id field
+	allQuery := tantivy.NewQueryBuilder().AllQuery(tantivy.Must, 1.0).Build()
+	sCtx := tantivy.NewSearchContextBuilder().
+		SetQueryFromJson(&allQuery).
+		SetWithHighlights(false).
+		AddField(fieldIdRaw, 1.0).
+		SetDocsLimit(1_000_000_000).
+		Build()
+
+	results, err := f.index.SearchFastFieldJson(sCtx, fieldIdRaw)
+	if err != nil {
+		return nil, fmt.Errorf("search all docs: %w", err)
+	}
+
+	objectIds := make(map[string]struct{})
+	for _, id := range results.Values {
+		if idx := strings.Index(id, "/"); idx > 0 {
+			objectIds[id[:idx]] = struct{}{}
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get search results: %w", err)
+	}
+
+	return objectIds, nil
 }
 
 type ftIndexBatcherTantivy struct {

@@ -106,6 +106,8 @@ type Store interface {
 
 	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
+	SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error)
+	GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error)
 	ClearHeadsState(ctx context.Context) error
 
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
@@ -117,7 +119,7 @@ type SourceDetailsFromID interface {
 
 type FulltextQueue interface {
 	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
-	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
+	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (uint64, int, error)
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullTextQueuedObject, error)
 	ClearFullTextQueue(spaceIds []string) error
 }
@@ -286,6 +288,19 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	err = anystorehelper.AddIndexes(ctx, links, linksIndexes)
 	if err != nil {
 		log.Errorf("ensure links indexes: %s", err)
+	}
+
+	// Add sparse index on ftQueueCtr for efficient crash recovery queries
+	headsStateIndexes := []anystore.IndexInfo{
+		{
+			Name:   "ftQueueCtr_idx",
+			Fields: []string{ftQueueCtrField},
+			Sparse: true, // Many objects don't have FT indexing
+		},
+	}
+	err = anystorehelper.AddIndexes(ctx, headsState, headsStateIndexes)
+	if err != nil {
+		log.Errorf("ensure headsState indexes: %s", err)
 	}
 
 	s.objects = objects

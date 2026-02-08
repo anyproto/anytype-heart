@@ -18,7 +18,7 @@ require (
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.1
 	github.com/anyproto/lexid v0.0.6
-	github.com/anyproto/tantivy-go v1.0.4
+	github.com/anyproto/tantivy-go v1.0.6
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
 	github.com/awalterschulze/goderive v0.5.1

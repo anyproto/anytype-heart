@@ -3,7 +3,9 @@ package indexer
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -78,6 +80,8 @@ type indexer struct {
 	techSpaceIdProvider objectstore.TechSpaceIdProvider
 	spaces              map[string]struct{}
 	spacesLock          sync.RWMutex
+
+	ftConsistencyCheckDone atomic.Bool
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -117,6 +121,12 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	}
 	i.ftQueueFinished = make(chan struct{})
 	var ftCtx context.Context
+	if os.Getenv("ANYTYPE_DISABLE_FT_INDEXER") == "1" {
+		close(i.ftQueueFinished)
+		log.Warn("FT indexer disabled")
+		return
+	}
+	log.Info("Starting full text indexer")
 	ftCtx, i.ftQueueStop = context.WithCancel(i.runCtx)
 	go i.ftLoopRoutine(ftCtx)
 	return

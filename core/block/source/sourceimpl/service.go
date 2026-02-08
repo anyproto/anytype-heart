@@ -100,7 +100,7 @@ func (s *service) NewSource(ctx context.Context, space source.Space, id string, 
 	if err != nil {
 		return nil, err
 	}
-	err = s.objectStore.BindSpaceId(src.SpaceID(), src.Id())
+	err = s.objectStore.BindSpaceId(ctx, src.SpaceID(), src.Id())
 	if err != nil {
 		return nil, fmt.Errorf("store space id for object: %w", err)
 	}
@@ -223,7 +223,7 @@ func (s *service) RegisterStaticSource(src source.Source) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[src.Id()] = src
-	err := s.objectStore.BindSpaceId(src.SpaceID(), src.Id())
+	err := s.objectStore.BindSpaceId(context.Background(), src.SpaceID(), src.Id())
 	if err != nil {
 		return fmt.Errorf("store space id for object: %w", err)
 	}

@@ -273,7 +273,10 @@ func (s *service) Run(ctx context.Context) error {
 		}
 
 		for _, rec := range resp.Records {
-			s.allChatObjectIds[rec.GetString(bundle.RelationKeyId)] = rec.GetString(bundle.RelationKeySpaceId)
+			spaceId, chatId := rec.GetString(bundle.RelationKeySpaceId), rec.GetString(bundle.RelationKeyId)
+			// todo: GO-6824 remove this hack after we do a proper recover of bind collection.
+			_ = s.objectStore.BindSpaceId(s.componentCtx, spaceId, chatId)
+			s.allChatObjectIds[chatId] = spaceId
 		}
 		go s.monitorMessagePreviews()
 	}()
@@ -287,6 +290,8 @@ func (s *service) monitorMessagePreviews() {
 			s.lock.Lock()
 			defer s.lock.Unlock()
 
+			// todo: GO-6824 remove this hack after we do a proper recover of bind collection.
+			_ = s.objectStore.BindSpaceId(s.componentCtx, spaceId, add.Id)
 			s.allChatObjectIds[add.Id] = spaceId
 
 			if len(s.subscriptionIds) == 0 {
@@ -294,7 +299,7 @@ func (s *service) monitorMessagePreviews() {
 			}
 
 			for subId := range s.subscriptionIds {
-				err := s.onChatAddedAsync(add.Id, subId)
+				err := s.onChatAddedAsync(spaceId, add.Id, subId)
 				if err != nil {
 					log.Error("init last message subscription", zap.Error(err))
 				}
@@ -340,7 +345,7 @@ func (s *service) onChatAdded(chatObjectId string, subId string) (*chatsubscript
 	})
 }
 
-func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
+func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId string) error {
 	resp, err := s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
 		ChatObjectId:     chatObjectId,
 		SubId:            subId,
@@ -350,11 +355,6 @@ func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
-	}
-
-	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
-	if err != nil {
-		return fmt.Errorf("resolve space id: %w", err)
 	}
 
 	mngr, err := s.chatSubscriptionService.GetManager(spaceId, chatObjectId)
