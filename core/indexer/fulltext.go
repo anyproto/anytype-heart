@@ -295,7 +295,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 
 	var fulltextSkipped bool
 
-	err = cache.DoContext(i.picker, ctx, object.ObjectId, func(sb smartblock.SmartBlock) error {
+	err = cache.DoContextFullID(i.picker, ctx, domain.FullID{SpaceID: object.SpaceId, ObjectID: object.ObjectId}, func(sb smartblock.SmartBlock) error {
 		sbType := sb.Type()
 		isChat = sbType == coresb.SmartBlockTypeChatDerivedObject
 		fulltext, _, _ := sbType.Indexable()
