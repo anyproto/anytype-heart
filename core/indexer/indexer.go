@@ -122,6 +122,7 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	i.ftQueueFinished = make(chan struct{})
 	var ftCtx context.Context
 	if os.Getenv("ANYTYPE_DISABLE_FT_INDEXER") == "1" {
+		close(i.ftQueueFinished)
 		log.Warn("FT indexer disabled")
 		return
 	}
