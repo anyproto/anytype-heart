@@ -4009,6 +4009,8 @@ message Rpc {
                 anytype.model.ImageKind imageKind = 9;
                 bool preloadOnly = 10; // if true, only async preload the file without creating object
                 string preloadFileId = 11; // if set, reuse already preloaded file with this id. May block if async preload operation is not finished yet
+                string createdInContext = 12; // Object ID where the file was initially created
+                string createdInContextRef = 13; // Block ID where the file was initially created
             }
 
             message Response {
@@ -4425,6 +4427,8 @@ message Rpc {
                 string pictureId = 1;
                 string spaceId = 2;
                 anytype.model.ImageKind imageKind = 3;
+                string createdInContext = 4; // Object ID where the file was initially created
+                string createdInContextRef = 5; // Block ID where the file was initially created
             }
 
             message Response {

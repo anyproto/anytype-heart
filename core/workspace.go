@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -94,6 +95,11 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
+	}
+
+	techSpaceId := mustService[objectstore.TechSpaceIdProvider](mw).TechSpaceId()
+	if req.SpaceId == techSpaceId {
+		return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("cannot open tech space"))
 	}
 
 	ctx, cancel := context.WithTimeout(cctx, time.Second*10)

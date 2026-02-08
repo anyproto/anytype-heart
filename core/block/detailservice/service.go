@@ -1,5 +1,19 @@
 package detailservice
 
+/*
+AI generated
+
+Name: Object Details and Properties Manager
+Scope: global
+
+## Responsibility
+- Set/modify object details (properties) on single or multiple objects
+- Manage object type recommended relations
+- Set favorite/archived status via Home/Archive collections
+- Set space info and workspace dashboard
+- List relations containing specific value
+*/
+
 import (
 	"context"
 	"errors"
@@ -14,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -64,6 +79,7 @@ type service struct {
 	spaceService space.Service
 	store        objectstore.ObjectStore
 	fileService  fileService
+	fileGC       filegc.FileGC
 }
 
 func (s *service) Init(a *app.App) error {
@@ -72,6 +88,7 @@ func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileService = app.MustComponent[fileService](a)
+	s.fileGC = app.MustComponent[filegc.FileGC](a)
 	return nil
 }
 

@@ -1,5 +1,18 @@
 package objectcreator
 
+/*
+AI generated
+
+Name: Object Creation and Bundled Object Installation
+Scope: global
+
+## Responsibility
+- Create objects with type-specific handling (object types, relations, relation options, templates, bookmarks, chat-derived, dates)
+- Install bundled objects (types and relations) from marketplace to user space
+- Reinstall previously deleted bundled objects
+- Create smartblocks from state with appropriate tree derivation
+*/
+
 import (
 	"context"
 	"fmt"

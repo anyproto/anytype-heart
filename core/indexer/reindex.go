@@ -45,7 +45,7 @@ const (
 	ForceFilestoreKeysReindexCounter int32 = 2
 
 	// ForceLinksReindexCounter forces to erase links from store and reindex them
-	ForceLinksReindexCounter int32 = 1
+	ForceLinksReindexCounter int32 = 3
 
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1
@@ -59,6 +59,11 @@ const (
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
 	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
 	ForceFTRecheckCounter int32 = 1
+
+	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
+	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it
+	// reindexes objects asynchronously and continue reindex after app F
+	ForceInvalidateObjectsIndexCounter int32 = 2
 )
 
 type allDeletedIdsProvider interface {
@@ -88,6 +93,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			ReindexParticipants:         ForceReindexParticipantsCounter,
 			ReindexChats:                ForceReindexChatsCounter,
 			ReindexFulltextChatMessages: ForceReindexChatsFulltextCounter,
+			InvalidateObjectsIndex:      ForceInvalidateObjectsIndexCounter,
 		}
 	}
 
@@ -133,6 +139,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.ReindexFulltextChatMessages != ForceReindexChatsFulltextCounter {
 		flags.messagesFulltext = true
+	}
+	if checksums.InvalidateObjectsIndex != ForceInvalidateObjectsIndexCounter {
+		flags.invalidateObjectsIndex = true
 	}
 	if spaceID == addr.AnytypeMarketplaceWorkspace && checksums.MarketplaceForceReindexCounter != ForceMarketplaceReindex {
 		flags.enableAll()
@@ -194,6 +203,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			err := i.reindexIDsForSmartblockTypes(ctx, space, metrics.ReindexTypeFiles, coresb.SmartBlockTypeFileObject)
 			if err != nil {
 				return fmt.Errorf("reindex file objects: %w", err)
+			}
+		}
+
+		if flags.invalidateObjectsIndex {
+			store := i.store.SpaceIndex(space.Id())
+			if err := store.ClearHeadsState(ctx); err != nil {
+				log.With(zap.String("space", space.Id())).Errorf("failed to clear heads state: %s", err)
 			}
 		}
 
@@ -578,6 +594,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 
 	var entries []headstorage.HeadsEntry
 
+	start := time.Now()
 	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
 		// skipping Acl
 		if entry.CommonSnapshot != "" && entry.Id != space.Storage().StateStorage().SettingsId() {
@@ -590,6 +607,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	}
 	var idsToReindex []string
 	for _, entry := range entries {
+		// todo: make it more effective
 		id := entry.Id
 		logErr := func(err error) {
 			log.With("tree", entry.Id).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
@@ -599,15 +617,14 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 			logErr(err)
 			continue
 		}
-		hh := headsHash(entry.Heads)
-		if lastHash != hh {
-			if lastHash != "" {
-				log.With("tree", id).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(entry.Heads))
-			}
+		if lastHash == "" || lastHash != headsHash(entry.Heads) {
 			idsToReindex = append(idsToReindex, id)
 		}
 	}
-
+	if len(idsToReindex) == 0 {
+		return 0, 0, nil
+	}
+	log.Warn("reindexOutdatedObjects: found outdated objects to reindex", zap.Int("len", len(idsToReindex)), zap.Int64("durMs", time.Since(start).Milliseconds()))
 	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
 	return len(idsToReindex), success, nil
 }
@@ -693,6 +710,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		ReindexParticipants:              ForceReindexParticipantsCounter,
 		ReindexChats:                     ForceReindexChatsCounter,
 		ReindexFulltextChatMessages:      ForceReindexChatsFulltextCounter,
+		InvalidateObjectsIndex:           ForceInvalidateObjectsIndexCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
@@ -722,8 +740,8 @@ func (i *indexer) getIdsForTypes(space smartblock.Space, sbt ...coresb.SmartBloc
 }
 
 func (i *indexer) GetLogFields() []zap.Field {
-	i.lock.Lock()
-	defer i.lock.Unlock()
+	i.lock.RLock()
+	defer i.lock.RUnlock()
 	return i.reindexLogFields
 }
 

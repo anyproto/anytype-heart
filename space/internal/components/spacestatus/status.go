@@ -1,5 +1,16 @@
 package spacestatus
 
+/*
+AI generated
+
+Name: Space View Accessor
+Scope: space
+
+## Responsibility
+- Thread-safe facade for reading/writing SpaceView properties of a single space
+- Delegates all persistence to TechSpace's SpaceView
+*/
+
 import (
 	"context"
 

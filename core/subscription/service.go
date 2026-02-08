@@ -1,5 +1,27 @@
 package subscription
 
+/*
+AI generated
+
+Name: Object Query Subscription Manager
+Scope: global
+
+## Responsibility
+- Maintains live subscriptions to object queries with filtering, sorting, and pagination
+- Sends incremental updates (add/remove/change/position) when subscribed objects change
+- Manages dependent object subscriptions for relation links (object/tag/status fields)
+- Supports subscription types: sorted (query-based), ids (explicit list), collection, group (kanban)
+
+## Background Tasks
+- recordsHandler: batches object changes from objectStore and dispatches to subscriptions (spaceSubscriptions.recordsHandler)
+- collectionObserver: listens for collection membership changes and triggers re-evaluation (collectionObserver goroutine)
+
+## Documentation
+Change batching: object changes are collected for 250ms before processing to reduce event spam.
+Each subscription maintains a skip-list for sorted results with pagination cursors (afterId/beforeId).
+Dependent subscriptions track objects referenced by relation fields and auto-update when parent results change.
+*/
+
 import (
 	"context"
 	"errors"

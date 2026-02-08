@@ -1640,6 +1640,9 @@ func Test_StyleAndTabExtractionIgnoreStyle(t *testing.T) {
 		{"bulleted", model.BlockContentText_Marked, "some text 1", ""},
 		{"numbered", model.BlockContentText_Numbered, "some text 1", ""},
 		{"callout", model.BlockContentText_Callout, "some text 1", "👍"},
+		{"toggle_header1", model.BlockContentText_ToggleHeader1, "some text 1", ""},
+		{"toggle_header2", model.BlockContentText_ToggleHeader2, "some text 1", ""},
+		{"toggle_header3", model.BlockContentText_ToggleHeader3, "some text 1", ""},
 	}
 
 	for _, testCase := range testData {
@@ -1675,6 +1678,9 @@ func Test_StyleAndTabExtraction(t *testing.T) {
 		{"bulleted", model.BlockContentText_Marked, "\t- some text 1", ""},
 		{"numbered", model.BlockContentText_Numbered, "\t1. some text 1", ""},
 		{"callout", model.BlockContentText_Callout, "\t👍 some text 1", "👍"},
+		{"toggle_header1", model.BlockContentText_ToggleHeader1, "\t## some text 1", ""},
+		{"toggle_header2", model.BlockContentText_ToggleHeader2, "\t### some text 1", ""},
+		{"toggle_header3", model.BlockContentText_ToggleHeader3, "\t#### some text 1", ""},
 	}
 
 	for _, testCase := range testDataWithStyle {
@@ -1839,7 +1845,7 @@ func TestProcessFileBlock(t *testing.T) {
 		// given
 		file := mock_fileobject.NewMockService(t)
 		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
-		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return(fileObject2, nil)
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything, mock.Anything).Return(fileObject2, nil)
 
 		c := &clipboard{
 			SmartBlock:        sb,
@@ -1859,7 +1865,7 @@ func TestProcessFileBlock(t *testing.T) {
 		// given
 		file := mock_fileobject.NewMockService(t)
 		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
-		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return("", fmt.Errorf("some error"))
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything, mock.Anything).Return("", fmt.Errorf("some error"))
 
 		c := &clipboard{
 			SmartBlock:        sb,

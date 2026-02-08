@@ -1,5 +1,30 @@
 package fileuploader
 
+/*
+AI generated
+
+Name: File Upload Orchestrator
+Scope: global
+
+## Responsibility
+- Creates Uploader instances for uploading files from various sources (bytes, URL, file path)
+- Detects file type via MIME sniffing with fallback to generic file type
+- Supports two-phase upload: preload to storage first, then commit/create object later
+- Manages preloaded upload results for deferred object creation
+
+## Background Tasks
+- Preload: async file upload to storage without object creation (Preload method)
+- UploadAsync: async file upload with object creation (UploadAsync method)
+
+## Documentation
+Two-phase upload flow:
+1. Preload() - uploads file to storage, returns preloadId, does NOT commit or create object
+2. Upload() with SetPreloadId() - commits the preloaded batch and creates file object
+This allows uploading files speculatively and discarding if not needed (batch.Discard).
+
+Concurrency: uploadFilesLimiter channel limits parallel uploads to 8 goroutines.
+*/
+
 import (
 	"bufio"
 	"bytes"
@@ -31,6 +56,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
@@ -225,6 +251,8 @@ type Uploader interface {
 	SetImageKind(imageKind model.ImageKind) Uploader
 	SetPreloadId(preloadId string) Uploader
 
+	SetCreatedInContext(contextId string) Uploader
+	SetCreatedInContextRef(blockId string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
@@ -298,7 +326,9 @@ type uploader struct {
 	customEncryptionKeys map[string]string
 	preloadId            string
 
-	serviceCtx context.Context // used to cancel async operations
+	serviceCtx          context.Context // used to cancel async operations
+	createdInContext    string
+	createdInContextRef string
 }
 
 type bufioSeekClose struct {
@@ -395,6 +425,16 @@ func (u *uploader) SetCustomEncryptionKeys(keys map[string]string) Uploader {
 
 func (u *uploader) SetImageKind(imageKind model.ImageKind) Uploader {
 	u.imageKind = imageKind
+	return u
+}
+
+func (u *uploader) SetCreatedInContext(contextId string) Uploader {
+	u.createdInContext = contextId
+	return u
+}
+
+func (u *uploader) SetCreatedInContextRef(blockId string) Uploader {
+	u.createdInContextRef = blockId
 	return u
 }
 
@@ -742,12 +782,24 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 		}
 	}
 
+	// Add creation context to additional details
+	additionalDetails := u.additionalDetails
+	if additionalDetails == nil {
+		additionalDetails = domain.NewDetails()
+	}
+	if u.createdInContext != "" {
+		additionalDetails.SetString(bundle.RelationKeyCreatedInContext, u.createdInContext)
+	}
+	if u.createdInContextRef != "" {
+		additionalDetails.SetString(bundle.RelationKeyCreatedInContextRef, u.createdInContextRef)
+	}
+
 	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, filemodels.CreateRequest{
 		FileId:            addResult.FileId,
 		EncryptionKeys:    addResult.EncryptionKeys.EncryptionKeys,
 		ObjectOrigin:      u.origin,
 		ImageKind:         u.imageKind,
-		AdditionalDetails: u.additionalDetails,
+		AdditionalDetails: additionalDetails,
 		FileVariants:      addResult.Variants,
 	})
 	if err != nil {

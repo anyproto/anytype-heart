@@ -206,7 +206,7 @@ func newFixture(id string, t *testing.T) *fixture {
 		return rel.Format, nil
 	}).Maybe()
 
-	sb := New(space, "", spaceIndex, objectStore, indexer, sender, spaceIdResolver, fetcher).(*smartBlock)
+	sb := New(space, "", spaceIndex, objectStore, indexer, sender, spaceIdResolver, fetcher, nil).(*smartBlock)
 	source := &sourceStub{
 		id:      id,
 		spaceId: "space1",
@@ -277,4 +277,273 @@ func defaultInternalFlags() (flags internalflag.Set) {
 	flags.Add(model.InternalFlag_editorSelectType)
 	flags.Add(model.InternalFlag_editorSelectTemplate)
 	return
+}
+
+func TestSmartBlock_CollectOutgoingLinks(t *testing.T) {
+	t.Run("collect link from link block", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"link1"}},
+			{Id: "link1", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{TargetBlockId: "target1"},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "target1", links[0].TargetID)
+		assert.Equal(t, "link1", links[0].SourceBlockID)
+	})
+
+	t.Run("collect link from file block", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"file1"}},
+			{Id: "file1", Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{TargetObjectId: "fileTarget1"},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "fileTarget1", links[0].TargetID)
+		assert.Equal(t, "file1", links[0].SourceBlockID)
+	})
+
+	t.Run("collect link from text mention", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"text1"}},
+			{Id: "text1", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Hello @mention",
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{
+							{Type: model.BlockContentTextMark_Mention, Param: "mentionTarget1"},
+						},
+					},
+				},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "mentionTarget1", links[0].TargetID)
+		assert.Equal(t, "text1", links[0].SourceBlockID)
+	})
+
+	t.Run("skip self-reference in link block", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"link1"}},
+			{Id: "link1", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{TargetBlockId: objectId}, // self-reference
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		assert.Empty(t, links)
+	})
+
+	t.Run("skip self-reference in file block", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"file1"}},
+			{Id: "file1", Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{TargetObjectId: objectId}, // self-reference
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		assert.Empty(t, links)
+	})
+
+	t.Run("skip self-reference in text mention", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"text1"}},
+			{Id: "text1", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Hello @self",
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{
+							{Type: model.BlockContentTextMark_Mention, Param: objectId}, // self-reference
+						},
+					},
+				},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		assert.Empty(t, links)
+	})
+
+	t.Run("collect link from object relation", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId},
+		})
+		st := fx.NewState()
+		st.SetDetail(bundle.RelationKeyAssignee, domain.String("user1"))
+
+		// when
+		links := fx.collectOutgoingLinks(st)
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "user1", links[0].TargetID)
+		assert.Equal(t, bundle.RelationKeyAssignee.String(), links[0].RelationKey)
+	})
+
+	t.Run("skip createdInContext relation", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId},
+		})
+		st := fx.NewState()
+		st.SetDetail(bundle.RelationKeyCreatedInContext, domain.String("contextObject"))
+
+		// when
+		links := fx.collectOutgoingLinks(st)
+
+		// then
+		assert.Empty(t, links)
+	})
+
+	t.Run("skip backlinks relation", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId},
+		})
+		st := fx.NewState()
+		st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList([]string{"backlink1", "backlink2"}))
+
+		// when
+		links := fx.collectOutgoingLinks(st)
+
+		// then
+		assert.Empty(t, links)
+	})
+
+	t.Run("skip self-reference in object relation", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId},
+		})
+		st := fx.NewState()
+		st.SetDetail(bundle.RelationKeyAssignee, domain.String(objectId)) // self-reference
+
+		// when
+		links := fx.collectOutgoingLinks(st)
+
+		// then
+		assert.Empty(t, links)
+	})
+
+	t.Run("deduplicate links from multiple sources", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"link1", "link2"}},
+			{Id: "link1", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{TargetBlockId: "sameTarget"},
+			}},
+			{Id: "link2", Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{TargetBlockId: "sameTarget"}, // duplicate
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "sameTarget", links[0].TargetID)
+	})
+
+	t.Run("relation links are deterministic", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"parent1"}},
+			{Id: "parent1", ChildrenIds: []string{"file1", "text1"}},
+			{Id: "file1", Content: &model.BlockContentOfFile{
+				File: &model.BlockContentFile{TargetObjectId: "fileTarget"},
+			}},
+			{Id: "text1", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "hello @mention",
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{
+							{Type: model.BlockContentTextMark_Mention, Param: "mentionTarget"},
+						},
+					},
+				},
+			}},
+		})
+		st := fx.NewState()
+		// Set multiple object-format relations; map iteration order is random
+		st.SetDetail(bundle.RelationKeyCompany, domain.String("company1"))
+		st.SetDetail(bundle.RelationKeyAssignee, domain.String("user1"))
+		st.SetDetail(bundle.RelationKeyAuthor, domain.String("author1"))
+
+		// when: collect multiple times to catch non-determinism
+		var first []OutgoingLink
+		for i := 0; i < 10; i++ {
+			links := fx.collectOutgoingLinks(st)
+			if first == nil {
+				first = links
+			}
+			// then: every call must return the same order
+			require.Equal(t, first, links, "iteration %d produced different order", i)
+		}
+
+		// Block links first (tree order), then relation links (sorted by key)
+		require.Len(t, first, 5)
+		assert.Equal(t, OutgoingLink{TargetID: "fileTarget", SourceBlockID: "file1"}, first[0])
+		assert.Equal(t, OutgoingLink{TargetID: "mentionTarget", SourceBlockID: "text1"}, first[1])
+		assert.Equal(t, OutgoingLink{TargetID: "user1", RelationKey: bundle.RelationKeyAssignee.String()}, first[2])
+		assert.Equal(t, OutgoingLink{TargetID: "author1", RelationKey: bundle.RelationKeyAuthor.String()}, first[3])
+		assert.Equal(t, OutgoingLink{TargetID: "company1", RelationKey: bundle.RelationKeyCompany.String()}, first[4])
+	})
 }

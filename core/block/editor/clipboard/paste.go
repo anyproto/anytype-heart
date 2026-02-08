@@ -325,8 +325,9 @@ func (p *pasteCtrl) processFiles() (err error) {
 				}
 			} else {
 				p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
-					BlockId: b.Model().Id,
-					Url:     file.Name,
+					ContextId: p.s.RootId(),
+					BlockId:   b.Model().Id,
+					Url:       file.Name,
 				})
 			}
 		}
@@ -345,8 +346,9 @@ func (p *pasteCtrl) handleBase64(b simple.Block, file *model.BlockContentFile) e
 		}
 		file.Name = "image"
 		p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
-			BlockId: b.Model().Id,
-			Bytes:   fileContent,
+			ContextId: p.s.RootId(),
+			BlockId:   b.Model().Id,
+			Bytes:     fileContent,
 		})
 		return nil
 	}

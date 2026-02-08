@@ -1,5 +1,31 @@
 package objectstore
 
+/*
+AI generated
+
+Name: Object Store and Fulltext Queue Manager
+Scope: global
+
+## Responsibility
+- Manages per-space indexes (spaceindex.Store) for object details and links
+- Provides cross-space queries aggregating data from all space indexes
+- Manages fulltext indexing queue (add, list, mark indexed, reconcile consistency)
+- Stores file encryption keys
+- Stores account status and indexer checksums
+- Manages virtual spaces registry
+- Maps object IDs to space IDs (spaceresolverstore)
+
+## External State
+- any-store collections in common db: fulltext_queue, indexerChecksums, virtualSpaces, file_keys, bindId
+- Per-space databases via spaceindex (objects, links, headsState, activeViews, pendingDetails collections)
+
+## Documentation
+Fulltext queue flow:
+1. Objects added to queue via AddToIndexQueue with seq=0
+2. BatchProcessFullTextQueue processes items: lists pending, calls processor, marks as indexed with ftIndexSeq
+3. On startup, FtQueueReconcileWithSeq checks consistency: resets seq to 0 for items with seq > ftIndexSeq, deletes already-indexed items
+*/
+
 import (
 	"context"
 	"errors"

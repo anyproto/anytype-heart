@@ -212,6 +212,7 @@ func (bs *basic) processFileBlock(f *model.BlockContentOfFile, spaceId string) {
 	objectId, err := bs.fileObjectService.CreateFromImport(
 		domain.FullFileId{SpaceId: spaceId, FileId: fileId.FileId},
 		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+		nil,
 	)
 	if err != nil {
 		log.Errorf("failed to create file object: %v", err)
@@ -491,5 +492,8 @@ func canHaveChildren(style model.BlockContentTextStyle) bool {
 		style == model.BlockContentText_Marked ||
 		style == model.BlockContentText_Numbered ||
 		style == model.BlockContentText_Toggle ||
-		style == model.BlockContentText_Callout
+		style == model.BlockContentText_Callout ||
+		style == model.BlockContentText_ToggleHeader1 ||
+		style == model.BlockContentText_ToggleHeader2 ||
+		style == model.BlockContentText_ToggleHeader3
 }

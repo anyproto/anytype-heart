@@ -1,5 +1,21 @@
 package chatrepository
 
+/*
+AI generated
+
+Name: Chat Message Storage
+Scope: global
+
+## Responsibility
+- Provides per-chat Repository instances for message persistence
+- Stores and queries chat messages with pagination support
+- Tracks read/unread state for messages and mentions separately
+- Tracks sync state for messages
+
+## External State
+- CRDT DB collections: one per chat object (`{chatObjectId}chats`)
+*/
+
 import (
 	"context"
 	"errors"
@@ -132,6 +148,13 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 	return repo, nil
 }
 
+// MessageAttachmentInfo contains attachment metadata from a message
+type MessageAttachmentInfo struct {
+	MessageId string
+	CreatedAt int64
+	FileIds   []string // Target IDs of FILE and IMAGE attachments
+}
+
 type Repository interface {
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 	ReadTx(ctx context.Context) (anystore.ReadTx, error)
@@ -150,6 +173,8 @@ type Repository interface {
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
 	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string
+	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
+	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
 }
 
 type repository struct {
@@ -556,4 +581,52 @@ func (s *repository) GetMessagesByIds(ctx context.Context, messageIds []string) 
 func (s *repository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
 	qry := s.collection.Find(nil).Sort(descOrder).Limit(limit)
 	return s.queryMessages(ctx, qry)
+}
+
+func (s *repository) GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error) {
+	// Filter to only get messages that have attachments set
+	// This uses anystore's Exists filter - can be indexed in the future for better performance
+	var filter query.Filter = query.Key{Path: []string{chatmodel.ContentKey, "attachments"}, Filter: query.Exists{}}
+
+	if afterOrderId != "" {
+		filter = query.And{
+			filter,
+			query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGt, afterOrderId)},
+		}
+	}
+
+	iter, err := s.collection.Find(filter).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("iterate messages: %w", err)
+	}
+	defer iter.Close()
+
+	var results []MessageAttachmentInfo
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			continue
+		}
+
+		msg, err := chatmodel.UnmarshalMessage(doc.Value())
+		if err != nil {
+			continue
+		}
+
+		var fileIds []string
+		for _, att := range msg.Attachments {
+			if att.Target != "" {
+				fileIds = append(fileIds, att.Target)
+			}
+		}
+
+		if len(fileIds) > 0 {
+			results = append(results, MessageAttachmentInfo{
+				MessageId: msg.Id,
+				CreatedAt: msg.CreatedAt,
+				FileIds:   fileIds,
+			})
+		}
+	}
+	return results, iter.Err()
 }

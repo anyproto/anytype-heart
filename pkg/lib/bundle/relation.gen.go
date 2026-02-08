@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "fc4e288e670900b4c987ec16963687b7591fd700788b567702ebc1f7a7bf48e7"
+const RelationChecksum = "7df65d7b5ce42dc31b823ff42391a199889d1e270a34f50219c50f020be10cb3"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -141,6 +141,8 @@ const (
 	RelationKeyLastUsedDate                         domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                             domain.RelationKey = "revision"
 	RelationKeyImageKind                            domain.RelationKey = "imageKind"
+	RelationKeyCreatedInContext                     domain.RelationKey = "createdInContext"
+	RelationKeyCreatedInContextRef                  domain.RelationKey = "createdInContextRef"
 	RelationKeyImportType                           domain.RelationKey = "importType"
 	RelationKeyGlobalName                           domain.RelationKey = "globalName"
 	RelationKeySyncStatus                           domain.RelationKey = "syncStatus"
@@ -191,6 +193,8 @@ const (
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
 	RelationKey_score                               domain.RelationKey = "_score"
+	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
+	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
 )
 
 var (
@@ -520,6 +524,34 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInContext: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Object ID where the object was initially created",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brcreatedInContext",
+			Key:              "createdInContext",
+			MaxCount:         1,
+			Name:             "Created in context",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInContextRef: {
+
+			DataSource:       model.Relation_details,
+			Description:      "BlockID/RelationKey/MessageId where the object was initially created",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brcreatedInContextRef",
+			Key:              "createdInContextRef",
+			MaxCount:         1,
+			Name:             "Created in context inner locator",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreator: {
@@ -1455,6 +1487,20 @@ var (
 			Id:               "_brmentions",
 			Key:              "mentions",
 			Name:             "Mentions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMigrationObjectContext: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Version of file context migration completed for this space",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brmigrationObjectContext",
+			Key:              "migrationObjectContext",
+			MaxCount:         1,
+			Name:             "Object Context Migration Version",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2507,6 +2553,20 @@ var (
 			MaxCount:         1,
 			Name:             "Bundled Template",
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTemplateNamePrefillType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Controls whether a template's name should be applied to newly created objects",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brtemplateNamePrefillType",
+			Key:              "templateNamePrefillType",
+			MaxCount:         1,
+			Name:             "Template name prefill type",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

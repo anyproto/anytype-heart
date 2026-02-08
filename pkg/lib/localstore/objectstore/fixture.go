@@ -55,10 +55,12 @@ func (d *stubDetailsFromId) AddVirtualDetails(id string, det *domain.Details) {
 	d.details[id] = det
 }
 
+const TestTechSpaceId = "test-tech-space"
+
 type stubTechSpaceIdProvider struct{}
 
 func (s *stubTechSpaceIdProvider) TechSpaceId() string {
-	return "test-tech-space"
+	return TestTechSpaceId
 }
 
 func (s *stubTechSpaceIdProvider) Name() string {

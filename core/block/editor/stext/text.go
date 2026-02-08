@@ -381,7 +381,10 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 			model.BlockContentText_Marked,
 			model.BlockContentText_Numbered,
 			model.BlockContentText_Callout,
-			model.BlockContentText_Toggle:
+			model.BlockContentText_Toggle,
+			model.BlockContentText_ToggleHeader1,
+			model.BlockContentText_ToggleHeader2,
+			model.BlockContentText_ToggleHeader3:
 			b.Model().Align = model.Block_AlignLeft
 		case model.BlockContentText_Code:
 			b.Model().Align = model.Block_AlignLeft

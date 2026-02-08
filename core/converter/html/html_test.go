@@ -87,6 +87,68 @@ func TestHTML_Convert(t *testing.T) {
 	})
 }
 
+func TestHTML_ToggleHeaders(t *testing.T) {
+	t.Run("toggle header 1", func(t *testing.T) {
+		// given
+		doc := givenToggleHeader1()
+
+		// when
+		html := convertHtml(doc)
+
+		// then
+		expected := givenTrimmedString(toggleHeader1Expectation)
+		assert.Equal(t, expected, givenTrimmedString(html))
+	})
+
+	t.Run("toggle header 2", func(t *testing.T) {
+		// given
+		doc := givenToggleHeader2()
+
+		// when
+		html := convertHtml(doc)
+
+		// then
+		expected := givenTrimmedString(toggleHeader2Expectation)
+		assert.Equal(t, expected, givenTrimmedString(html))
+	})
+
+	t.Run("toggle header 3", func(t *testing.T) {
+		// given
+		doc := givenToggleHeader3()
+
+		// when
+		html := convertHtml(doc)
+
+		// then
+		expected := givenTrimmedString(toggleHeader3Expectation)
+		assert.Equal(t, expected, givenTrimmedString(html))
+	})
+
+	t.Run("toggle header with children", func(t *testing.T) {
+		// given
+		doc := givenToggleHeaderWithChildren()
+
+		// when
+		html := convertHtml(doc)
+
+		// then
+		expected := givenTrimmedString(toggleHeaderWithChildrenExpectation)
+		assert.Equal(t, expected, givenTrimmedString(html))
+	})
+
+	t.Run("regular toggle uses details/summary", func(t *testing.T) {
+		// given
+		doc := givenRegularToggle()
+
+		// when
+		html := convertHtml(doc)
+
+		// then
+		expected := givenTrimmedString(regularToggleExpectation)
+		assert.Equal(t, expected, givenTrimmedString(html))
+	})
+}
+
 func convertHtml(s *state.State) string {
 	return NewHTMLConverter(s, nil).Convert()
 }
@@ -365,6 +427,91 @@ func givenTrimmedString(s string) string {
 	return res
 }
 
+func givenToggleHeader1() *state.State {
+	return state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{ChildrenIds: []string{"1"}}),
+		"1": simple.New(&model.Block{
+			Id: "1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 1",
+					Style: model.BlockContentText_ToggleHeader1,
+				},
+			},
+		}),
+	}).(*state.State)
+}
+
+func givenToggleHeader2() *state.State {
+	return state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{ChildrenIds: []string{"1"}}),
+		"1": simple.New(&model.Block{
+			Id: "1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 2",
+					Style: model.BlockContentText_ToggleHeader2,
+				},
+			},
+		}),
+	}).(*state.State)
+}
+
+func givenToggleHeader3() *state.State {
+	return state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{ChildrenIds: []string{"1"}}),
+		"1": simple.New(&model.Block{
+			Id: "1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 3",
+					Style: model.BlockContentText_ToggleHeader3,
+				},
+			},
+		}),
+	}).(*state.State)
+}
+
+func givenToggleHeaderWithChildren() *state.State {
+	return state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{ChildrenIds: []string{"1"}}),
+		"1": simple.New(&model.Block{
+			Id:          "1",
+			ChildrenIds: []string{"2"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header",
+					Style: model.BlockContentText_ToggleHeader1,
+				},
+			},
+		}),
+		"2": simple.New(&model.Block{
+			Id: "2",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Child content",
+					Style: model.BlockContentText_Paragraph,
+				},
+			},
+		}),
+	}).(*state.State)
+}
+
+func givenRegularToggle() *state.State {
+	return state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{ChildrenIds: []string{"1"}}),
+		"1": simple.New(&model.Block{
+			Id: "1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Regular Toggle",
+					Style: model.BlockContentText_Toggle,
+				},
+			},
+		}),
+	}).(*state.State)
+}
+
 const markupExpectation = `
 <div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph">
 	<b>0
@@ -440,4 +587,42 @@ const columnsExpectation = `
 		</div>
 	</div>
 </div>
+`
+
+const toggleHeader1Expectation = `
+<details> <summary style="padding: 23px 0px 1px 0px; font-size: 28px; line-height: 32px; letter-spacing: -0.36px; font-weight: 600;">
+		Toggle Header 1
+	</summary>
+</details>
+`
+
+const toggleHeader2Expectation = `
+<details> <summary style="padding: 15px 0px 1px 0px; font-size: 22px; line-height: 28px; letter-spacing: -0.16px; font-weight: 600;">
+		Toggle Header 2
+	</summary>
+</details>
+`
+
+const toggleHeader3Expectation = `
+<details> <summary style="padding: 15px 0px 1px 0px; font-size: 17px; line-height: 24px; font-weight: 600;">
+		Toggle Header 3
+	</summary>
+</details>
+`
+
+const toggleHeaderWithChildrenExpectation = `
+<details> <summary style="padding: 23px 0px 1px 0px; font-size: 28px; line-height: 32px; letter-spacing: -0.36px; font-weight: 600;">
+		Toggle Header
+	</summary>
+	<div style="font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word;" class="paragraph">
+		Child content
+	</div>
+</details>
+`
+
+const regularToggleExpectation = `
+<details> <summary style="font-size:15px;">
+		Regular Toggle
+	</summary>
+</details>
 `

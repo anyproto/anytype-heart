@@ -22,6 +22,8 @@ const (
 const (
 	DiffManagerMessages = "messages"
 	DiffManagerMentions = "mentions"
+
+	MaxMessageLength = 4000
 )
 
 func (t CounterType) DiffManagerName() string {
@@ -110,6 +112,10 @@ func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([
 
 func (m *Message) Validate() error {
 	utf16text := textUtil.StrToUTF16(m.Message.Text)
+
+	if len(utf16text) > MaxMessageLength {
+		return fmt.Errorf("message text exceeds maximum length of %d characters", MaxMessageLength)
+	}
 
 	for _, mark := range m.Message.Marks {
 		if mark.Range.From < 0 {

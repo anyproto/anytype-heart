@@ -928,7 +928,7 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 func TestFilterHasPrefix_FilterObject(t *testing.T) {
 	t.Run("date object id", func(t *testing.T) {
 		key := bundle.RelationKeyMentions
-		now := time.Now()
+		now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 		f := FilterHasPrefix{
 			Key:    key,
 			Prefix: dateutil.NewDateObject(now, false).Id(), // _date_YYYY-MM-DD

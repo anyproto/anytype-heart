@@ -138,9 +138,9 @@ func TestBasic_Duplicate(t *testing.T) {
 			fos: func() fileobject.Service {
 				fos := mock_fileobject.NewMockService(t)
 				fos.EXPECT().GetFileIdFromObject("file1_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file1"}, nil)
-				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file1"}, mock.Anything).Return("file1_space2", nil)
+				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file1"}, mock.Anything, mock.Anything).Return("file1_space2", nil)
 				fos.EXPECT().GetFileIdFromObject("file2_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file2"}, nil)
-				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file2"}, mock.Anything).Return("file2_space2", nil)
+				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file2"}, mock.Anything, mock.Anything).Return("file2_space2", nil)
 				return fos
 			},
 			spaceIds: []string{"space1", "space2"},
@@ -162,7 +162,7 @@ func TestBasic_Duplicate(t *testing.T) {
 				fos := mock_fileobject.NewMockService(t)
 				fos.EXPECT().GetFileIdFromObject("file1_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file1"}, nil)
 				fos.EXPECT().GetFileIdFromObject("file2_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file2"}, nil)
-				fos.EXPECT().CreateFromImport(mock.Anything, mock.Anything).Return("", errors.New("creation failure"))
+				fos.EXPECT().CreateFromImport(mock.Anything, mock.Anything, mock.Anything).Return("", errors.New("creation failure"))
 				return fos
 			},
 			spaceIds: []string{"space1", "space2"},
@@ -399,6 +399,9 @@ func TestBasic_Move(t *testing.T) {
 			{model.BlockContentText_Numbered, "numbered", true},
 			{model.BlockContentText_Toggle, "toggle", true},
 			{model.BlockContentText_Callout, "callout", true},
+			{model.BlockContentText_ToggleHeader1, "toggle header 1", true},
+			{model.BlockContentText_ToggleHeader2, "toggle header 2", true},
+			{model.BlockContentText_ToggleHeader3, "toggle header 3", true},
 		}
 
 		for _, tc := range testCases {

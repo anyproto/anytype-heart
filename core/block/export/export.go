@@ -1,5 +1,35 @@
 package export
 
+/*
+AI generated
+
+Name: Object Exporter
+Scope: global
+
+## Responsibility
+- Exports objects to various formats: Protobuf, JSON, Markdown, DOT, SVG, GraphJSON
+- Resolves and includes dependent objects (nested links, files, relations, types, templates)
+- Manages export output as zip archives or directory structures
+- Provides in-memory single-object export for programmatic use
+
+## Documentation
+Export collects objects to export via two paths:
+1. All objects: queries objectStore for all non-archived objects in space
+2. Specific IDs: queries only requested objects, then expands based on flags
+
+Dependency resolution for Protobuf format (most complete):
+- Collects object types and relations used by exported objects
+- Recursively resolves types referenced in setOf/targetObjectType
+- Adds templates matching collected object types
+- Includes relation options for tag/status relations
+- Adds recommended relations from custom types
+
+For nested objects (includeNested=true):
+- Recursively follows links in blocks and details
+- Creates exportContext copy with isLinkProcess=true for linked objects
+- Linked objects may have filtered state via linkStateFilters
+*/
+
 import (
 	"bytes"
 	"context"

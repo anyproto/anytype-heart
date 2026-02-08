@@ -1,5 +1,34 @@
 package identity
 
+/*
+AI generated
+
+Name: Identity Profile Registry
+Scope: global
+
+## Responsibility
+- Publishes own profile (name, description, icon, global name) to remote identity repository
+- Polls and caches profiles of other identities registered as observers
+- Resolves global names from naming service for all observed identities
+- Provides encryption keys for identity metadata (used for profile decryption)
+
+## Background Tasks
+- observeIdentitiesLoop: periodically fetches profiles for registered identities from remote repository
+- ownProfileSubscription: subscribes to own account object changes, batches and pushes updates to remote
+
+## External State
+- identity_profile collection in commonDb: cached encrypted identity profiles
+- global_name collection in commonDb: cached global names
+
+## Documentation
+Own profile push uses batching: changes to profile details reset a timer, actual push happens
+after pushIdentityBatchTimeout to coalesce rapid updates.
+
+Observer pattern: spaces register identity observers with encryption keys. On profile updates,
+all registered observers for that identity receive callbacks. Observers are per-space to allow
+cleanup when a space is closed.
+*/
+
 import (
 	"context"
 	"errors"
