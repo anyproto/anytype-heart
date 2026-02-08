@@ -9,8 +9,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/jdeng/goheif"
-	"github.com/jdeng/goheif/heif"
+	"github.com/adrium/goheif"
+	"github.com/adrium/goheif/heif"
 	"github.com/kovidgoyal/imaging"
 )
 
