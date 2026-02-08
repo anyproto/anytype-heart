@@ -793,7 +793,6 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 		chatObject.SetType(coresb.SmartBlockTypeChatDerivedObject)
 
 		indexerFx.pickerFx.EXPECT().GetObject(mock.Anything, mock.Anything).Return(chatObject, nil)
-		indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, chatId).Return(true, nil)
 
 		// when
 		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{

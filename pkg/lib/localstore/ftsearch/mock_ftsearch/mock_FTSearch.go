@@ -8,6 +8,7 @@ import (
 	app "github.com/anyproto/any-sync/app"
 
 	ftsearch "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
+	tantivycheck "github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/tantivycheck"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -619,6 +620,168 @@ func (_c *MockFTSearch_Search_Call) Return(results []*ftsearch.DocumentMatch, er
 }
 
 func (_c *MockFTSearch_Search_Call) RunAndReturn(run func(string, string) ([]*ftsearch.DocumentMatch, error)) *MockFTSearch_Search_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ConsistencyReport provides a mock function with given fields:
+func (_m *MockFTSearch) ConsistencyReport() *tantivycheck.ConsistencyReport {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ConsistencyReport")
+	}
+
+	var r0 *tantivycheck.ConsistencyReport
+	if rf, ok := ret.Get(0).(func() *tantivycheck.ConsistencyReport); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*tantivycheck.ConsistencyReport)
+		}
+	}
+
+	return r0
+}
+
+// MockFTSearch_ConsistencyReport_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ConsistencyReport'
+type MockFTSearch_ConsistencyReport_Call struct {
+	*mock.Call
+}
+
+// ConsistencyReport is a helper method to define mock.On call
+func (_e *MockFTSearch_Expecter) ConsistencyReport() *MockFTSearch_ConsistencyReport_Call {
+	return &MockFTSearch_ConsistencyReport_Call{Call: _e.mock.On("ConsistencyReport")}
+}
+
+func (_c *MockFTSearch_ConsistencyReport_Call) Run(run func()) *MockFTSearch_ConsistencyReport_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFTSearch_ConsistencyReport_Call) Return(_a0 *tantivycheck.ConsistencyReport) *MockFTSearch_ConsistencyReport_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFTSearch_ConsistencyReport_Call) RunAndReturn(run func() *tantivycheck.ConsistencyReport) *MockFTSearch_ConsistencyReport_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListAllObjectIds provides a mock function with given fields:
+func (_m *MockFTSearch) ListAllObjectIds() (map[string]struct{}, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListAllObjectIds")
+	}
+
+	var r0 map[string]struct{}
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (map[string]struct{}, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() map[string]struct{}); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]struct{})
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFTSearch_ListAllObjectIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListAllObjectIds'
+type MockFTSearch_ListAllObjectIds_Call struct {
+	*mock.Call
+}
+
+// ListAllObjectIds is a helper method to define mock.On call
+func (_e *MockFTSearch_Expecter) ListAllObjectIds() *MockFTSearch_ListAllObjectIds_Call {
+	return &MockFTSearch_ListAllObjectIds_Call{Call: _e.mock.On("ListAllObjectIds")}
+}
+
+func (_c *MockFTSearch_ListAllObjectIds_Call) Run(run func()) *MockFTSearch_ListAllObjectIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockFTSearch_ListAllObjectIds_Call) Return(_a0 map[string]struct{}, _a1 error) *MockFTSearch_ListAllObjectIds_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockFTSearch_ListAllObjectIds_Call) RunAndReturn(run func() (map[string]struct{}, error)) *MockFTSearch_ListAllObjectIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListByIdPrefix provides a mock function with given fields: prefix
+func (_m *MockFTSearch) ListByIdPrefix(prefix string) ([]string, error) {
+	ret := _m.Called(prefix)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListByIdPrefix")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]string, error)); ok {
+		return rf(prefix)
+	}
+	if rf, ok := ret.Get(0).(func(string) []string); ok {
+		r0 = rf(prefix)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(prefix)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockFTSearch_ListByIdPrefix_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListByIdPrefix'
+type MockFTSearch_ListByIdPrefix_Call struct {
+	*mock.Call
+}
+
+// ListByIdPrefix is a helper method to define mock.On call
+//   - prefix string
+func (_e *MockFTSearch_Expecter) ListByIdPrefix(prefix interface{}) *MockFTSearch_ListByIdPrefix_Call {
+	return &MockFTSearch_ListByIdPrefix_Call{Call: _e.mock.On("ListByIdPrefix", prefix)}
+}
+
+func (_c *MockFTSearch_ListByIdPrefix_Call) Run(run func(prefix string)) *MockFTSearch_ListByIdPrefix_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockFTSearch_ListByIdPrefix_Call) Return(ids []string, err error) *MockFTSearch_ListByIdPrefix_Call {
+	_c.Call.Return(ids, err)
+	return _c
+}
+
+func (_c *MockFTSearch_ListByIdPrefix_Call) RunAndReturn(run func(string) ([]string, error)) *MockFTSearch_ListByIdPrefix_Call {
 	_c.Call.Return(run)
 	return _c
 }
