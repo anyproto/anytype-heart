@@ -58,7 +58,7 @@ const (
 
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
 	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
-	ForceFTRecheckCounter int32 = 1
+	ForceFTRecheckCounter int32 = 0
 
 	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
 	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it
