@@ -1720,8 +1720,7 @@ func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
 	var links []*model.RelationLink
 	for _, key := range keys {
 		if !existingLinks.Has(key.String()) {
-			rel := bundle.MustGetRelation(key)
-			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+			links = append(links, bundle.MustGetRelationLink(key))
 		}
 	}
 	if len(links) > 0 {
