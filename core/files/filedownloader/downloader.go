@@ -34,6 +34,8 @@ type downloader struct {
 	crossSpaceSubService crossspacesub.Service
 	objectGetter         cache.ObjectGetter
 
+	sizeLimitBytes int64
+
 	eventsQueue *mb.MB[*pb.EventMessage]
 
 	handleTask        func(ctx context.Context, t downloadTask) error
@@ -48,13 +50,14 @@ type downloader struct {
 	tasks map[string]downloadTask
 }
 
-func (s *service) newDownloader() *downloader {
+func (s *service) newDownloader(sizeLimitBytes int64) *downloader {
 	ctx, ctxCancel := context.WithCancel(s.ctx)
 	return &downloader{
 		ctx:                  ctx,
 		ctxCancel:            ctxCancel,
 		crossSpaceSubService: s.crossSpaceSubService,
 		objectGetter:         s.objectGetter,
+		sizeLimitBytes:       sizeLimitBytes,
 		handleTask: func(ctx context.Context, t downloadTask) error {
 			return s.DownloadToLocalStore(ctx, t.spaceId, t.fileId, 0)
 		},
@@ -105,31 +108,36 @@ func (s *downloader) runSubscription() error {
 	s.eventsQueue = mb.New[*pb.EventMessage](0)
 	s.lock.Unlock()
 
+	filters := []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyFileAvailableOffline,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Bool(false),
+		},
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.Int64List(domain.FileLayouts),
+		},
+		{
+			RelationKey: bundle.RelationKeyFileBackupStatus,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(filesyncstatus.Synced),
+		},
+	}
+	// Only add size filter when a positive limit is set (not unlimited)
+	if s.sizeLimitBytes > 0 {
+		filters = append(filters, database.FilterRequest{
+			RelationKey: bundle.RelationKeySizeInBytes,
+			Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			Value:       domain.Int64(s.sizeLimitBytes),
+		})
+	}
+
 	resp, err := s.crossSpaceSubService.Subscribe(subscription.SubscribeRequest{
 		SubId:         CName,
 		InternalQueue: s.eventsQueue,
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyFileAvailableOffline,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Bool(false),
-			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List(domain.FileLayouts),
-			},
-			{
-				RelationKey: bundle.RelationKeySizeInBytes,
-				Condition:   model.BlockContentDataviewFilter_Less,
-				Value:       domain.Int64(20 * 1024 * 1024),
-			},
-			{
-				RelationKey: bundle.RelationKeyFileBackupStatus,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(filesyncstatus.Synced),
-			},
-		},
+		Filters:       filters,
 		Keys: []string{
 			bundle.RelationKeyId.String(),
 			bundle.RelationKeyFileId.String(),

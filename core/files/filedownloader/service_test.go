@@ -18,7 +18,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	s := New().(*service)
 	return &fixture{
-		downloader: s.newDownloader(),
+		downloader: s.newDownloader(20 * 1024 * 1024),
 	}
 }
 

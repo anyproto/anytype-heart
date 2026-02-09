@@ -705,6 +705,10 @@
     - [Rpc.Device.SetName.Response](#anytype-Rpc-Device-SetName-Response)
     - [Rpc.Device.SetName.Response.Error](#anytype-Rpc-Device-SetName-Response-Error)
     - [Rpc.File](#anytype-Rpc-File)
+    - [Rpc.File.AutoDownloadSetLimit](#anytype-Rpc-File-AutoDownloadSetLimit)
+    - [Rpc.File.AutoDownloadSetLimit.Request](#anytype-Rpc-File-AutoDownloadSetLimit-Request)
+    - [Rpc.File.AutoDownloadSetLimit.Response](#anytype-Rpc-File-AutoDownloadSetLimit-Response)
+    - [Rpc.File.AutoDownloadSetLimit.Response.Error](#anytype-Rpc-File-AutoDownloadSetLimit-Response-Error)
     - [Rpc.File.CacheCancelDownload](#anytype-Rpc-File-CacheCancelDownload)
     - [Rpc.File.CacheCancelDownload.Request](#anytype-Rpc-File-CacheCancelDownload-Request)
     - [Rpc.File.CacheCancelDownload.Response](#anytype-Rpc-File-CacheCancelDownload-Response)
@@ -1627,6 +1631,7 @@
     - [Rpc.Device.List.Response.Error.Code](#anytype-Rpc-Device-List-Response-Error-Code)
     - [Rpc.Device.NetworkState.Set.Response.Error.Code](#anytype-Rpc-Device-NetworkState-Set-Response-Error-Code)
     - [Rpc.Device.SetName.Response.Error.Code](#anytype-Rpc-Device-SetName-Response-Error-Code)
+    - [Rpc.File.AutoDownloadSetLimit.Response.Error.Code](#anytype-Rpc-File-AutoDownloadSetLimit-Response-Error-Code)
     - [Rpc.File.CacheCancelDownload.Response.Error.Code](#anytype-Rpc-File-CacheCancelDownload-Response-Error-Code)
     - [Rpc.File.CacheDownload.Response.Error.Code](#anytype-Rpc-File-CacheDownload-Response-Error-Code)
     - [Rpc.File.DiscardPreload.Response.Error.Code](#anytype-Rpc-File-DiscardPreload-Response-Error-Code)
@@ -2422,6 +2427,7 @@
 | FileSetAutoDownload | [Rpc.File.SetAutoDownload.Request](#anytype-Rpc-File-SetAutoDownload-Request) | [Rpc.File.SetAutoDownload.Response](#anytype-Rpc-File-SetAutoDownload-Response) |  |
 | FileCacheDownload | [Rpc.File.CacheDownload.Request](#anytype-Rpc-File-CacheDownload-Request) | [Rpc.File.CacheDownload.Response](#anytype-Rpc-File-CacheDownload-Response) |  |
 | FileCacheCancelDownload | [Rpc.File.CacheCancelDownload.Request](#anytype-Rpc-File-CacheCancelDownload-Request) | [Rpc.File.CacheCancelDownload.Response](#anytype-Rpc-File-CacheCancelDownload-Response) |  |
+| FileAutoDownloadSetLimit | [Rpc.File.AutoDownloadSetLimit.Request](#anytype-Rpc-File-AutoDownloadSetLimit-Request) | [Rpc.File.AutoDownloadSetLimit.Response](#anytype-Rpc-File-AutoDownloadSetLimit-Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype-Rpc-Navigation-ListObjects-Request) | [Rpc.Navigation.ListObjects.Response](#anytype-Rpc-Navigation-ListObjects-Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response) |  |
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
@@ -12788,6 +12794,62 @@ Get marks list in the selected range in text block.
 
 ### Rpc.File
 
+
+
+
+
+
+
+<a name="anytype-Rpc-File-AutoDownloadSetLimit"></a>
+
+### Rpc.File.AutoDownloadSetLimit
+
+
+
+
+
+
+
+<a name="anytype-Rpc-File-AutoDownloadSetLimit-Request"></a>
+
+### Rpc.File.AutoDownloadSetLimit.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| size_limit_bytes | [int64](#int64) |  | 0 = no limit, &gt;0 = max file size in bytes |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-AutoDownloadSetLimit-Response"></a>
+
+### Rpc.File.AutoDownloadSetLimit.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.File.AutoDownloadSetLimit.Response.Error](#anytype-Rpc-File-AutoDownloadSetLimit-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-File-AutoDownloadSetLimit-Response-Error"></a>
+
+### Rpc.File.AutoDownloadSetLimit.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.File.AutoDownloadSetLimit.Response.Error.Code](#anytype-Rpc-File-AutoDownloadSetLimit-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -26021,6 +26083,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Device-SetName-Response-Error-Code"></a>
 
 ### Rpc.Device.SetName.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-File-AutoDownloadSetLimit-Response-Error-Code"></a>
+
+### Rpc.File.AutoDownloadSetLimit.Response.Error.Code
 
 
 | Name | Number | Description |
