@@ -733,6 +733,10 @@ func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) error {
 			return nil
 		})
 		if err != nil {
+			if errors.Is(err, domain.ErrObjectNotFound) {
+				log.With("objectId", id).Warnf("collectDerivedObjects: skipping missing object: %v", err)
+				continue
+			}
 			return err
 		}
 	}
