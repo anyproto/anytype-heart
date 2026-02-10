@@ -563,6 +563,29 @@ func TestFilterOptionsEqual(t *testing.T) {
 		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"optionId1", "optionId2", "optionId3"})})
 		assertFilter(t, eq, obj, false)
 	})
+	t.Run("one option as single string, ok", func(t *testing.T) {
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1"}, optionIdToName)
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("optionId1")})
+		assertFilter(t, eq, obj, true)
+	})
+	t.Run("one option as single string, not ok - wrong value", func(t *testing.T) {
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1"}, optionIdToName)
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("optionId2")})
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("one option as single string, not ok - not in options", func(t *testing.T) {
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1"}, optionIdToName)
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("unknownOption")})
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("single string matching one of two filter values - allowed for backward compatibility", func(t *testing.T) {
+		// Note: This behavior matches FilterObject() for single strings
+		// In board view, filters always have a single value, so this case shouldn't occur
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1", "optionId2"}, optionIdToName)
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("optionId1")})
+		// Single string is treated as a valid match if it's in the filter values
+		assertFilter(t, eq, obj, true)
+	})
 }
 
 func TestMakeFilters(t *testing.T) {
