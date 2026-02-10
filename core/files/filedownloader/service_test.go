@@ -182,7 +182,7 @@ func TestSubscriptionReloadOnLimitChange(t *testing.T) {
 		req := fx.waitForSubscribe(t)
 		val, ok := findSizeFilter(req.Filters)
 		require.True(t, ok, "expected SizeInBytes filter")
-		assert.Equal(t, domain.Int64(100), val)
+		assert.Equal(t, domain.Int64(100*1024*1024), val)
 	})
 
 	t.Run("changing limit resubscribes with new filter", func(t *testing.T) {
@@ -193,14 +193,14 @@ func TestSubscriptionReloadOnLimitChange(t *testing.T) {
 		req := fx.waitForSubscribe(t)
 		val, ok := findSizeFilter(req.Filters)
 		require.True(t, ok)
-		assert.Equal(t, domain.Int64(100), val)
+		assert.Equal(t, domain.Int64(100*1024*1024), val)
 
 		// Change limit — downloader restarts, new subscription
 		fx.setDownloadState(true, false, 200)
 		req = fx.waitForSubscribe(t)
 		val, ok = findSizeFilter(req.Filters)
 		require.True(t, ok, "expected SizeInBytes filter with new limit")
-		assert.Equal(t, domain.Int64(200), val)
+		assert.Equal(t, domain.Int64(200*1024*1024), val)
 	})
 
 	t.Run("zero limit subscribes without size filter", func(t *testing.T) {
@@ -216,10 +216,11 @@ func TestSubscriptionReloadOnLimitChange(t *testing.T) {
 	t.Run("changing from limit to unlimited removes size filter", func(t *testing.T) {
 		fx := newServiceFixture(t)
 
-		fx.setDownloadState(true, false, 500)
+		fx.setDownloadState(true, false, 500) // 500 MiB
 		req := fx.waitForSubscribe(t)
-		_, ok := findSizeFilter(req.Filters)
+		val, ok := findSizeFilter(req.Filters)
 		require.True(t, ok)
+		assert.Equal(t, domain.Int64(500*1024*1024), val)
 
 		// Switch to unlimited
 		fx.setDownloadState(true, false, 0)

@@ -4229,8 +4229,8 @@ message Rpc {
 
         message AutoDownloadSetLimit {
             message Request {
-                // 0 = no limit, >0 = max file size in bytes
-                int64 sizeLimitBytes = 1;
+                // 0 = no limit, >0 = max file size in mebibytes
+                int64 sizeLimitMebibytes = 1;
             }
             message Response {
                 Error error = 1;

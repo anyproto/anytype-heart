@@ -257,7 +257,7 @@ func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSe
 }
 
 func (mw *Middleware) FileAutoDownloadSetLimit(ctx context.Context, req *pb.RpcFileAutoDownloadSetLimitRequest) *pb.RpcFileAutoDownloadSetLimitResponse {
-	err := mustService[filedownloader.Service](mw).SetSizeLimit(req.SizeLimitBytes)
+	err := mustService[filedownloader.Service](mw).SetSizeLimit(req.SizeLimitMebibytes)
 	if err != nil {
 		return &pb.RpcFileAutoDownloadSetLimitResponse{
 			Error: &pb.RpcFileAutoDownloadSetLimitResponseError{

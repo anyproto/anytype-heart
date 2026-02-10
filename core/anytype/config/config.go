@@ -134,12 +134,12 @@ func (c *Config) AutoDownloadOnWifiOnly() bool {
 	return c.persisted.AutoDownloadOnWifiOnly
 }
 
-// AutoDownloadSizeLimit returns the auto download size limit in bytes.
-// 0=no limit, >0=max bytes.
-func (c *Config) AutoDownloadSizeLimit() int64 {
+// AutoDownloadSizeLimitMb returns the auto download size limit in mebibytes.
+// 0=no limit, >0=max file size in mebibytes.
+func (c *Config) AutoDownloadSizeLimitMb() int64 {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	return c.persisted.AutoDownloadSizeLimit
+	return c.persisted.AutoDownloadSizeLimitMb
 }
 
 // Setters for persisted config fields (write to disk on change)
@@ -209,15 +209,15 @@ func (c *Config) SetAutoDownloadSettings(enabled, wifiOnly bool) error {
 	return c.writeLocked()
 }
 
-// SetAutoDownloadSizeLimit sets the auto download size limit and writes to disk if changed.
-// 0=no limit, >0=max bytes. Enabling/disabling auto download is controlled separately via SetAutoDownloadSettings.
-func (c *Config) SetAutoDownloadSizeLimit(sizeLimitBytes int64) error {
+// SetAutoDownloadSizeLimitMb sets the auto download size limit in mebibytes and writes to disk if changed.
+// 0=no limit, >0=max file size in mebibytes. Enabling/disabling auto download is controlled separately via SetAutoDownloadSettings.
+func (c *Config) SetAutoDownloadSizeLimitMb(sizeLimitMb int64) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	if c.persisted.AutoDownloadSizeLimit == sizeLimitBytes {
+	if c.persisted.AutoDownloadSizeLimitMb == sizeLimitMb {
 		return nil
 	}
-	c.persisted.AutoDownloadSizeLimit = sizeLimitBytes
+	c.persisted.AutoDownloadSizeLimitMb = sizeLimitMb
 	return c.writeLocked()
 }
 

@@ -163,9 +163,9 @@ func TestReadPersistedConfig(t *testing.T) {
 		cfg, err := readPersistedConfig(configPath)
 		require.NoError(t, err)
 
-		// Migration sets AutoDownloadSizeLimit to 20MB when AutoDownloadFiles is true
+		// Migration sets AutoDownloadSizeLimitMb to 20 MiB when AutoDownloadFiles is true
 		expectedCfg := writeCfg
-		expectedCfg.AutoDownloadSizeLimit = 20 * 1024 * 1024
+		expectedCfg.AutoDownloadSizeLimitMb = 20
 		assert.Equal(t, expectedCfg, cfg)
 	})
 }
