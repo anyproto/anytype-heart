@@ -763,8 +763,17 @@ func (exIn *FilterOptionsEqual) Ok(v *anyenc.Value, docBuf *syncpool.DocBuffer) 
 	defer exIn.arena.Reset()
 
 	arr := v.GetArray(string(exIn.Key))
-	// Just fall back to precompiled filter
 	if len(arr) == 0 {
+		// Handle single string value (not array) - mirrors FilterObject() logic
+		optionId := string(v.GetStringBytes(string(exIn.Key)))
+		if optionId != "" {
+			_, isValidOption := exIn.Options[optionId]
+			if !isValidOption {
+				return false
+			}
+			return slices.Contains(exIn.Value, optionId)
+		}
+		// Fall back to precompiled filter for other non-array types
 		return exIn.valueFilter.Ok(v.Get(string(exIn.Key)), docBuf)
 	}
 
