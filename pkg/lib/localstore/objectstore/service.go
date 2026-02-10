@@ -84,6 +84,7 @@ type ObjectStore interface {
 	SpaceIndex(spaceId string) spaceindex.Store
 
 	SpaceNameGetter
+	GetSpaceViewDetails(spaceId string) (*domain.Details, error)
 	spaceresolverstore.Store
 	CrossSpace
 

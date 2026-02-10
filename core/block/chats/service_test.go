@@ -570,13 +570,14 @@ func TestBuildPushPayload(t *testing.T) {
 		senderName := "John Doe"
 		participantId := domain.NewParticipantId(spaceId, "testAccountId")
 
-		// Set up space name
+		// Set up space name and ux type
 		fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("spaceView1"),
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
 				bundle.RelationKeyTargetSpaceId:  domain.String(spaceId),
 				bundle.RelationKeyName:           domain.String(spaceName),
+				bundle.RelationKeySpaceUxType:    domain.Int64(int64(model.SpaceUxType_Chat)),
 			},
 		})
 
@@ -604,9 +605,10 @@ func TestBuildPushPayload(t *testing.T) {
 			},
 		}
 		want := &chatpush.Payload{
-			SpaceId:  spaceId,
-			SenderId: "testAccountId",
-			Type:     chatpush.ChatMessage,
+			SpaceId:     spaceId,
+			SpaceUxType: int(model.SpaceUxType_Chat),
+			SenderId:    "testAccountId",
+			Type:        chatpush.ChatMessage,
 			NewMessagePayload: &chatpush.NewMessagePayload{
 				ChatId:         "chat1",
 				MsgId:          "msg1",
@@ -772,6 +774,76 @@ func TestBuildPushPayload(t *testing.T) {
 				ChatName:       "",
 				SenderName:     "",
 				Text:           "Hello",
+				HasAttachments: false,
+				Attachments:    nil,
+			},
+		}
+
+		// when
+		got, err := fx.buildPushPayload(req)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("one-to-one space", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		spaceId := "space1"
+		spaceName := "Direct Chat"
+		participantId := domain.NewParticipantId(spaceId, "testAccountId")
+
+		// Set up space view with OneToOne ux type
+		fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("spaceView1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+				bundle.RelationKeyTargetSpaceId:  domain.String(spaceId),
+				bundle.RelationKeyName:           domain.String(spaceName),
+				bundle.RelationKeySpaceUxType:    domain.Int64(int64(model.SpaceUxType_OneToOne)),
+			},
+		})
+
+		// Set up sender name
+		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(participantId),
+				bundle.RelationKeyName: domain.String("Alice"),
+			},
+		})
+
+		fx.start(t)
+
+		req := pushNotificationRequest{
+			spaceId:      spaceId,
+			chatObjectId: "chat1",
+			chatName:     "Direct",
+			messageId:    "msg1",
+			message: &chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Message: &model.ChatMessageMessageContent{
+						Text: "Hey there",
+					},
+				},
+			},
+		}
+		want := &chatpush.Payload{
+			SpaceId:     spaceId,
+			SpaceUxType: int(model.SpaceUxType_OneToOne),
+			SenderId:    "testAccountId",
+			Type:        chatpush.ChatMessage,
+			NewMessagePayload: &chatpush.NewMessagePayload{
+				ChatId:         "chat1",
+				MsgId:          "msg1",
+				SpaceName:      spaceName,
+				ChatName:       "Direct",
+				SenderName:     "Alice",
+				Text:           "Hey there",
 				HasAttachments: false,
 				Attachments:    nil,
 			},

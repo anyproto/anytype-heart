@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with this repository.
 
+## Pull Requests
+
+Always create PRs targeting the `develop` branch by default.
+
 ## Commit Messages
 
 Every commit message must be prefixed with an issue number following this pattern:
