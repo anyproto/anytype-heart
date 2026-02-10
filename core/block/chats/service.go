@@ -511,7 +511,11 @@ type pushNotificationRequest struct {
 
 func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Payload, error) {
 	accountId := s.accountService.AccountID()
-	spaceName := s.objectStore.GetSpaceName(req.spaceId)
+	spaceViewDetails, err := s.objectStore.GetSpaceViewDetails(req.spaceId)
+	if err != nil {
+		log.Warn("buildPushPayload: failed to get space view details", zap.Error(err))
+		spaceViewDetails = domain.NewDetails()
+	}
 	details, err := s.objectStore.SpaceIndex(req.spaceId).GetDetails(domain.NewParticipantId(req.spaceId, accountId))
 	var senderName string
 	if err != nil {
@@ -528,13 +532,14 @@ func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Paylo
 	text := applyEmojiMarks(req.message.Message.Text, req.message.Message.Marks)
 
 	return &chatpush.Payload{
-		SpaceId:  req.spaceId,
-		SenderId: accountId,
-		Type:     chatpush.ChatMessage,
+		SpaceId:     req.spaceId,
+		SpaceUxType: int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceUxType)),
+		SenderId:    accountId,
+		Type:        chatpush.ChatMessage,
 		NewMessagePayload: &chatpush.NewMessagePayload{
 			ChatId:         req.chatObjectId,
 			MsgId:          req.messageId,
-			SpaceName:      spaceName,
+			SpaceName:      spaceViewDetails.GetString(bundle.RelationKeyName),
 			ChatName:       req.chatName,
 			SenderName:     senderName,
 			Text:           textUtil.Truncate(text, 1024, "..."),
