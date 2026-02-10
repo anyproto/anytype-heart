@@ -240,8 +240,7 @@ func (s *downloader) runDownloadWorker() {
 		}
 		err = cache.Do(s.objectGetter, task.objectId, func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
-			localDetails := st.LocalDetails()
-			localDetails.SetBool(bundle.RelationKeyFileAvailableOffline, true)
+			st.SetDetailAndBundledRelation(bundle.RelationKeyFileAvailableOffline, domain.Bool(true))
 			return sb.Apply(st)
 		})
 		if err != nil {
