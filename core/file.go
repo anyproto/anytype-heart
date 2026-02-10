@@ -256,6 +256,19 @@ func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSe
 	return &pb.RpcFileSetAutoDownloadResponse{}
 }
 
+func (mw *Middleware) FileAutoDownloadSetLimit(ctx context.Context, req *pb.RpcFileAutoDownloadSetLimitRequest) *pb.RpcFileAutoDownloadSetLimitResponse {
+	err := mustService[filedownloader.Service](mw).SetSizeLimit(req.SizeLimitMebibytes)
+	if err != nil {
+		return &pb.RpcFileAutoDownloadSetLimitResponse{
+			Error: &pb.RpcFileAutoDownloadSetLimitResponseError{
+				Code:        mapErrorCode[pb.RpcFileAutoDownloadSetLimitResponseErrorCode](err),
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcFileAutoDownloadSetLimitResponse{}
+}
+
 func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCacheDownloadRequest) *pb.RpcFileCacheDownloadResponse {
 	handle := func() error {
 		file, err := mustService[fileobject.Service](mw).GetFileData(ctx, req.FileObjectId)

@@ -18,6 +18,7 @@ type PersistedConfig struct {
 	NetworkId              string `json:""` // in case this account was at least once connected to the network on this device, this field will be set to the network id
 	AutoDownloadFiles      bool   `json:",omitempty"`
 	AutoDownloadOnWifiOnly bool   `json:",omitempty"`
+	AutoDownloadSizeLimitMb int64 `json:",omitempty"` // 0=no limit, >0=max file size in mebibytes
 }
 
 // writeConfigSafe writes config to disk using atomic rename for crash safety.
@@ -84,6 +85,12 @@ func readPersistedConfig(configPath string) (PersistedConfig, error) {
 	err = json.Unmarshal(data, &cfg)
 	if err != nil {
 		return cfg, errors.Join(ErrInvalidConfigFormat, err)
+	}
+
+	// Migration: if legacy AutoDownloadFiles is enabled but no size limit is set,
+	// default to the old 20 MiB limit
+	if cfg.AutoDownloadFiles && cfg.AutoDownloadSizeLimitMb == 0 {
+		cfg.AutoDownloadSizeLimitMb = 20
 	}
 
 	return cfg, nil

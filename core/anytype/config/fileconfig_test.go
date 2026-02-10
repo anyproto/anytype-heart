@@ -147,7 +147,7 @@ func TestReadPersistedConfig(t *testing.T) {
 		tmpDir := t.TempDir()
 		configPath := filepath.Join(tmpDir, "config.json")
 
-		expectedCfg := PersistedConfig{
+		writeCfg := PersistedConfig{
 			NetworkId:              "test-net",
 			CustomFileStorePath:    "/path/to/storage",
 			HostAddr:               "/ip4/0.0.0.0/tcp/1234",
@@ -155,13 +155,17 @@ func TestReadPersistedConfig(t *testing.T) {
 			AutoDownloadOnWifiOnly: true,
 		}
 
-		data, err := json.Marshal(expectedCfg)
+		data, err := json.Marshal(writeCfg)
 		require.NoError(t, err)
 		err = os.WriteFile(configPath, data, 0640)
 		require.NoError(t, err)
 
 		cfg, err := readPersistedConfig(configPath)
 		require.NoError(t, err)
+
+		// Migration sets AutoDownloadSizeLimitMb to 20 MiB when AutoDownloadFiles is true
+		expectedCfg := writeCfg
+		expectedCfg.AutoDownloadSizeLimitMb = 20
 		assert.Equal(t, expectedCfg, cfg)
 	})
 }

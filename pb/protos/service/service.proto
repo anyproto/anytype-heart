@@ -198,6 +198,7 @@ service ClientCommands {
     rpc FileSetAutoDownload (anytype.Rpc.File.SetAutoDownload.Request) returns (anytype.Rpc.File.SetAutoDownload.Response);
     rpc FileCacheDownload (anytype.Rpc.File.CacheDownload.Request) returns (anytype.Rpc.File.CacheDownload.Response);
     rpc FileCacheCancelDownload (anytype.Rpc.File.CacheCancelDownload.Request) returns (anytype.Rpc.File.CacheCancelDownload.Response);
+    rpc FileAutoDownloadSetLimit (anytype.Rpc.File.AutoDownloadSetLimit.Request) returns (anytype.Rpc.File.AutoDownloadSetLimit.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
