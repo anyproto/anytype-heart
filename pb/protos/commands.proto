@@ -4230,7 +4230,7 @@ message Rpc {
         message AutoDownloadSetLimit {
             message Request {
                 // 0 = no limit, >0 = max file size in bytes
-                int64 size_limit_bytes = 1;
+                int64 sizeLimitBytes = 1;
             }
             message Response {
                 Error error = 1;

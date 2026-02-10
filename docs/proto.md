@@ -12818,7 +12818,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| size_limit_bytes | [int64](#int64) |  | 0 = no limit, &gt;0 = max file size in bytes |
+| sizeLimitBytes | [int64](#int64) |  | 0 = no limit, &gt;0 = max file size in bytes |
 
 
 
