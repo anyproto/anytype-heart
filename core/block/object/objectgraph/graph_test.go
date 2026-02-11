@@ -89,6 +89,106 @@ func Test(t *testing.T) {
 		assert.Empty(t, edges)
 	})
 
+	t.Run("old file objects are excluded from graph", func(t *testing.T) {
+		fx := newFixture(t)
+		spaceId := "space1"
+		fileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+		})
+		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:    domain.String("id1"),
+					bundle.RelationKeyLinks: domain.StringList([]string{fileId}),
+				}),
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId: domain.String(fileId),
+				}),
+			},
+		}, nil)
+		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
+		fx.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+
+		graph, edges, err := fx.ObjectGraph(ObjectGraphRequest{SpaceId: spaceId})
+		assert.NoError(t, err)
+		require.Len(t, graph, 1)
+		assert.Equal(t, "id1", graph[0].GetString(bundle.RelationKeyId))
+		assert.Empty(t, edges)
+	})
+
+	t.Run("objects with only id are excluded from graph", func(t *testing.T) {
+		fx := newFixture(t)
+		spaceId := "space1"
+		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+		})
+		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:   domain.String("id1"),
+					bundle.RelationKeyName: domain.String("name1"),
+				}),
+				// object with only id should be excluded
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId: domain.String("id2"),
+				}),
+			},
+		}, nil)
+		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
+		fx.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+
+		graph, edges, err := fx.ObjectGraph(ObjectGraphRequest{SpaceId: spaceId})
+		assert.NoError(t, err)
+		require.Len(t, graph, 1)
+		assert.Equal(t, "id1", graph[0].GetString(bundle.RelationKeyId))
+		assert.Empty(t, edges)
+	})
+
+	t.Run("objects with only id and backlinks are excluded from graph", func(t *testing.T) {
+		fx := newFixture(t)
+		spaceId := "space1"
+		fx.objectStoreMock.AddObjects(t, spaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+				bundle.RelationKeyRelationKey:    domain.String(bundle.RelationKeyId.String()),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+		})
+		fx.subscriptionServiceMock.EXPECT().Search(mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:   domain.String("id1"),
+					bundle.RelationKeyName: domain.String("name1"),
+				}),
+				// object with only id and backlinks should be excluded
+				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					bundle.RelationKeyId:        domain.String("id2"),
+					bundle.RelationKeyBacklinks: domain.StringList([]string{"id1"}),
+				}),
+			},
+		}, nil)
+		fx.subscriptionServiceMock.EXPECT().Unsubscribe(mock.Anything).Return(nil)
+		fx.sbtProviderMock.EXPECT().Type(mock.Anything, mock.Anything).Return(smartblock.SmartBlockTypePage, nil).Maybe()
+
+		graph, edges, err := fx.ObjectGraph(ObjectGraphRequest{SpaceId: spaceId})
+		assert.NoError(t, err)
+		require.Len(t, graph, 1)
+		assert.Equal(t, "id1", graph[0].GetString(bundle.RelationKeyId))
+		assert.Empty(t, edges)
+	})
+
 	t.Run("graph", func(t *testing.T) {
 		fx := newFixture(t)
 		spaceId := "space1"
@@ -133,10 +233,12 @@ func Test(t *testing.T) {
 					bundle.RelationKeyLinks:    domain.StringList([]string{"id2", "id3", dateObject.Id()}),
 				}),
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyId: domain.String("id2"),
+					bundle.RelationKeyId:   domain.String("id2"),
+					bundle.RelationKeyName: domain.String("name2"),
 				}),
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyId: domain.String("id3"),
+					bundle.RelationKeyId:   domain.String("id3"),
+					bundle.RelationKeyName: domain.String("name3"),
 				}),
 			},
 		}, nil)
