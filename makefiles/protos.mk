@@ -68,12 +68,13 @@ protos-swift-local: protos-swift
 
 protos-ts: setup-protoc-js
 	@echo 'Generating protobuf packages (TS)...'
-	@PATH="./node_modules/.bin:$$PATH" protoc -I ./ --ts_out=service=grpc-web:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@mkdir -p $(PROTO_JS_OUT)
+	@PATH="./node_modules/.bin:$$PATH" protoc -I ./ --ts_proto_out=$(PROTO_JS_OUT) --ts_proto_opt=outputServices=grpc-web pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
 protos-js: setup-protoc-js
 	@echo 'Generating protobuf packages (JS)...'
-	@PATH="./node_modules/.bin:$$PATH" protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
-	@PATH="./node_modules/.bin:$$PATH" protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@PATH="./node_modules/.bin:$$PATH" protoc -I ./  --js_out=import_style=commonjs,binary:$(PROTO_JS_OUT) pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@PATH="./node_modules/.bin:$$PATH" protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:$(PROTO_JS_OUT) pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
 protos-java:
 	@echo 'Generating protobuf packages (Java)...'
