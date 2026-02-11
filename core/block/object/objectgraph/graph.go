@@ -157,6 +157,9 @@ func (gr *Builder) buildGraph(
 ) ([]*domain.Details, []*pb.RpcObjectGraphEdge) {
 	existedNodes := fillExistedNodes(records)
 	for _, rec := range records {
+		if isExcludedFromGraph(rec) {
+			continue
+		}
 		sourceId := rec.GetString(bundle.RelationKeyId)
 
 		if len(req.Keys) == 0 {
@@ -218,10 +221,31 @@ func (gr *Builder) appendRelations(
 func fillExistedNodes(records []*domain.Details) map[string]struct{} {
 	existedNodes := make(map[string]struct{}, len(records))
 	for _, rec := range records {
-		id := rec.GetString(bundle.RelationKeyId)
-		existedNodes[id] = struct{}{}
+		if isExcludedFromGraph(rec) {
+			continue
+		}
+		existedNodes[rec.GetString(bundle.RelationKeyId)] = struct{}{}
 	}
 	return existedNodes
+}
+
+func isExcludedFromGraph(details *domain.Details) bool {
+	n := details.Len()
+	// Empty details or containing only id
+	if n <= 1 {
+		return true
+	}
+	// Details only with id + backlinks should be discarded
+	if n == 2 && details.Has(bundle.RelationKeyBacklinks) {
+		return true
+	}
+
+	id := details.GetString(bundle.RelationKeyId)
+	if domain.IsFileId(id) {
+		return true
+	}
+
+	return false
 }
 
 func isExcludedRelation(rel *relationutils.Relation) bool {
