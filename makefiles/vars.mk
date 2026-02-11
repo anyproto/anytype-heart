@@ -1,6 +1,7 @@
 CUSTOM_NETWORK_FILE ?= ./core/anytype/config/nodes/custom.yml
 OPENAPI_DOCS_DIR ?= ./core/api/docs
 CLIENT_DESKTOP_PATH ?= ../anytype-ts
+CLIENT_LIB_DIR ?= dist/lib
 CLIENT_ANDROID_PATH ?= ../anytype-kotlin
 CLIENT_IOS_PATH ?= ../anytype-swift
 TANTIVY_GO_PATH ?= ../tantivy-go

@@ -4,10 +4,12 @@
   "description": "protobuf TS bindings for Anytype middleware library",
   "scripts": {
     "build:js": "protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto",
+    "build:ts": "protoc -I ./ --ts_out=service=grpc-web:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto",
     "build:server": "protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto"
   },
   "devDependencies": {
     "protoc-gen-grpc-web": "^1.5.0",
-    "protoc-gen-js": "^3.21.4-4"
+    "protoc-gen-js": "^3.21.4-4",
+    "ts-protoc-gen": "^0.15.0"
   }
 }
