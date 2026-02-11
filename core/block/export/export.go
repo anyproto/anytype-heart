@@ -716,6 +716,9 @@ func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*Doc
 
 func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) error {
 	for id := range objects {
+		if domain.IsFileId(id) {
+			continue
+		}
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
 			state := b.NewState().Copy().Filter(e.getStateFilters(id))
 			objectRelations := state.AllRelationKeys()

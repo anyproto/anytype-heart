@@ -1398,6 +1398,43 @@ func Test_docsForExport(t *testing.T) {
 	})
 }
 
+func Test_collectDerivedObjects(t *testing.T) {
+	t.Run("skip old file ids", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		objectId := "objectId"
+		objectTypeId := "customObjectType"
+		// Valid CID that domain.IsFileId returns true for
+		oldFileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+
+		smartBlockTest := setupObject(objectId, objectTypeId, smartblock.SmartBlockTypePage, nil)
+		fx.picker.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
+		// No GetObject expectation for oldFileId — it must be skipped
+
+		expCtx := newExportContext(fx.export, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		docs := map[string]*Doc{
+			objectId: {Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId: domain.String(objectId),
+			})},
+			oldFileId: {Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId: domain.String(oldFileId),
+			})},
+		}
+
+		// when
+		err := expCtx.collectDerivedObjects(docs)
+
+		// then
+		require.NoError(t, err)
+		// objectType from the regular object should be collected
+		assert.Contains(t, expCtx.objectTypes, objectTypeId)
+	})
+}
+
 func Test_provideFileName(t *testing.T) {
 	t.Run("file dir for relation", func(t *testing.T) {
 		// when
