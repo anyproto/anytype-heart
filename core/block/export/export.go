@@ -1097,6 +1097,9 @@ func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
 }
 
 func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
+	if doc, ok := e.docs[id]; ok && isExcludedFromExport(doc.Details) {
+		return nil, nil
+	}
 	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
 	var fileObjectsIds []string
 	err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
