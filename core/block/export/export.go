@@ -156,6 +156,7 @@ func (e *export) Export(ctx context.Context, req pb.RpcObjectListExportRequest) 
 	queue.SetMessage("prepare")
 
 	if err = queue.Start(); err != nil {
+		err = fmt.Errorf("start export queue: %w", err)
 		return
 	}
 	exportCtx := newExportContext(e, req)
@@ -292,14 +293,14 @@ func (e *exportContext) getStateFilters(id string) *state.Filters {
 func (e *exportContext) exportObject(ctx context.Context, objectId string) (string, error) {
 	err := e.docsForExport(ctx)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("collect docs for export: %w", err)
 	}
 
 	var docNamer Namer
 	if e.format == model.Export_Markdown && e.gatewayUrl != "" {
 		u, err := url.Parse(e.gatewayUrl)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("parse gateway url: %w", err)
 		}
 		docNamer = &deepLinkNamer{gatewayUrl: *u, spaceId: e.spaceId}
 	} else {
@@ -308,7 +309,7 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 	inMemoryWriter := &InMemoryWriter{fn: docNamer}
 	details, err := e.objectStore.SpaceIndex(e.spaceId).GetDetails(objectId)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("get object details: %w", err)
 	}
 
 	// do not allow file export for in-memory writer
@@ -320,7 +321,7 @@ func (e *exportContext) exportObject(ctx context.Context, objectId string) (stri
 
 	err = e.writeDoc(ctx, inMemoryWriter, objectId, e.docs.transformToDetailsMap())
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("write doc: %w", err)
 	}
 
 	for _, v := range inMemoryWriter.data {
@@ -347,20 +348,23 @@ func (e *exportContext) exportObjects(ctx context.Context, queue process.Queue) 
 	}()
 	err = e.docsForExport(ctx)
 	if err != nil {
-		return "", 0, err
+		return "", 0, fmt.Errorf("collect docs for export: %w", err)
 	}
 	wr, err = e.getWriter()
 	if err != nil {
-		return "", 0, err
+		return "", 0, fmt.Errorf("get writer: %w", err)
 	}
 	succeed, err := e.exportByFormat(ctx, wr, queue)
 	if err != nil {
-		return "", 0, err
+		return "", 0, fmt.Errorf("export by format: %w", err)
 	}
 	wr.Close()
 	if e.zip {
 		path, succeed, err = e.renameZipArchive(wr, succeed)
-		return path, succeed, err
+		if err != nil {
+			return "", 0, fmt.Errorf("rename zip archive: %w", err)
+		}
+		return path, succeed, nil
 	}
 	return wr.Path(), succeed, nil
 }
@@ -372,13 +376,11 @@ func (e *exportContext) getWriter() (writer, error) {
 	)
 	if e.zip {
 		if wr, err = newZipWriter(e.path, tempFileName); err != nil {
-			err = anyerror.CleanupError(err)
-			return nil, err
+			return nil, fmt.Errorf("create zip writer: %w", anyerror.CleanupError(err))
 		}
 	} else {
 		if wr, err = newDirWriter(e.path, e.includeFiles); err != nil {
-			err = anyerror.CleanupError(err)
-			return nil, err
+			return nil, fmt.Errorf("create dir writer: %w", anyerror.CleanupError(err))
 		}
 	}
 	return wr, nil
@@ -463,7 +465,7 @@ func (e *exportContext) renameZipArchive(wr writer, succeed int) (string, int, e
 	err := os.Rename(wr.Path(), zipName)
 	if err != nil {
 		os.Remove(wr.Path())
-		return "", 0, err
+		return "", 0, fmt.Errorf("rename zip archive: %w", err)
 	}
 	return zipName, succeed, nil
 }
@@ -487,7 +489,7 @@ func (e *exportContext) docsForExport(ctx context.Context) (err error) {
 func (e *exportContext) getObjectsByIDs(ctx context.Context, isProtobuf bool) error {
 	res, err := e.queryAndFilterObjectsByRelation(e.spaceId, e.reqIds, bundle.RelationKeyId)
 	if err != nil {
-		return err
+		return fmt.Errorf("query and filter objects by relation: %w", err)
 	}
 	for _, object := range res {
 		id := object.Details.GetString(bundle.RelationKeyId)
@@ -496,13 +498,19 @@ func (e *exportContext) getObjectsByIDs(ctx context.Context, isProtobuf bool) er
 	if e.includeSpace {
 		err = e.addSpaceToDocs(ctx)
 		if err != nil {
-			return err
+			return fmt.Errorf("add space to docs: %w", err)
 		}
 	}
 	if isProtobuf {
-		return e.processProtobuf()
+		if err := e.processProtobuf(); err != nil {
+			return fmt.Errorf("process protobuf: %w", err)
+		}
+		return nil
 	}
-	return e.processNotProtobuf()
+	if err := e.processNotProtobuf(); err != nil {
+		return fmt.Errorf("process non-protobuf: %w", err)
+	}
+	return nil
 }
 
 func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds []string, relationKey domain.RelationKey) ([]database.Record, error) {
@@ -512,13 +520,13 @@ func (e *exportContext) queryAndFilterObjectsByRelation(spaceId string, reqIds [
 		if j+singleBatchCount < len(reqIds) {
 			records, err := e.queryObjectsByRelation(spaceId, reqIds[j:j+singleBatchCount], relationKey)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("query objects by relation: %w", err)
 			}
 			allObjects = append(allObjects, records...)
 		} else {
 			records, err := e.queryObjectsByRelation(spaceId, reqIds[j:], relationKey)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("query objects by relation: %w", err)
 			}
 			allObjects = append(allObjects, records...)
 		}
@@ -542,12 +550,12 @@ func (e *exportContext) queryObjectsByRelation(spaceId string, reqIds []string, 
 func (e *exportContext) addSpaceToDocs(ctx context.Context) error {
 	space, err := e.spaceService.Get(ctx, e.spaceId)
 	if err != nil {
-		return err
+		return fmt.Errorf("get space: %w", err)
 	}
 	workspaceId := space.DerivedIDs().Workspace
 	records, err := e.objectStore.SpaceIndex(e.spaceId).QueryByIds([]string{workspaceId})
 	if err != nil {
-		return err
+		return fmt.Errorf("query workspace details: %w", err)
 	}
 	if len(records) == 0 {
 		return fmt.Errorf("no objects found for space %s", workspaceId)
@@ -561,7 +569,7 @@ func (e *exportContext) processNotProtobuf() error {
 	if e.includeFiles {
 		fileObjectsIds, err := e.processFiles(ids)
 		if err != nil {
-			return err
+			return fmt.Errorf("process files: %w", err)
 		}
 		ids = append(ids, fileObjectsIds...)
 	}
@@ -577,26 +585,26 @@ func (e *exportContext) processProtobuf() error {
 	if !e.includeNested {
 		err := e.addDependentObjectsFromDataview()
 		if err != nil {
-			return err
+			return fmt.Errorf("add dependent objects from dataview: %w", err)
 		}
 	}
 	ids := listObjectIds(e.docs)
 	if e.includeFiles {
 		err := e.addFileObjects(ids)
 		if err != nil {
-			return err
+			return fmt.Errorf("add file objects: %w", err)
 		}
 	}
 
 	err := e.addDerivedObjects()
 	if err != nil {
-		return err
+		return fmt.Errorf("add derived objects: %w", err)
 	}
 	ids = e.listTargetTypesFromTemplates(ids)
 	if e.includeNested {
 		err = e.addNestedObjects(ids)
 		if err != nil {
-			return err
+			return fmt.Errorf("add nested objects: %w", err)
 		}
 	}
 	return nil
@@ -611,17 +619,17 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 		if isObjectWithDataview(details.Details) {
 			viewDependentObjectsIds, err = e.getViewDependentObjects(id, viewDependentObjectsIds)
 			if err != nil {
-				return err
+				return fmt.Errorf("get view dependent objects: %w", err)
 			}
 		}
 	}
 	viewDependentObjects, err := e.queryAndFilterObjectsByRelation(e.spaceId, viewDependentObjectsIds, bundle.RelationKeyId)
 	if err != nil {
-		return err
+		return fmt.Errorf("query dependent objects: %w", err)
 	}
 	templates, err := e.queryAndFilterObjectsByRelation(e.spaceId, viewDependentObjectsIds, bundle.RelationKeyTargetObjectType)
 	if err != nil {
-		return err
+		return fmt.Errorf("query templates: %w", err)
 	}
 	for _, object := range append(viewDependentObjects, templates...) {
 		id := object.Details.GetString(bundle.RelationKeyId)
@@ -641,7 +649,7 @@ func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsI
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get object from cache: %w", err)
 	}
 	return viewDependentObjectsIds, nil
 }
@@ -649,12 +657,12 @@ func (e *exportContext) getViewDependentObjects(id string, viewDependentObjectsI
 func (e *exportContext) addFileObjects(ids []string) error {
 	fileObjectsIds, err := e.processFiles(ids)
 	if err != nil {
-		return err
+		return fmt.Errorf("process files: %w", err)
 	}
 	if e.includeNested {
 		err = e.addNestedObjects(fileObjectsIds)
 		if err != nil {
-			return err
+			return fmt.Errorf("add nested objects: %w", err)
 		}
 	}
 	return nil
@@ -665,7 +673,7 @@ func (e *exportContext) processFiles(ids []string) ([]string, error) {
 	for _, id := range ids {
 		objectFiles, err := e.fillLinkedFiles(id)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("fill linked files: %w", err)
 		}
 		fileObjectsIds = lo.Union(fileObjectsIds, objectFiles)
 	}
@@ -676,16 +684,16 @@ func (e *exportContext) addDerivedObjects() error {
 	processedObjects := make(map[string]struct{}, 0)
 	err := e.getRelationsAndTypes(e.docs, processedObjects)
 	if err != nil {
-		return err
+		return fmt.Errorf("get relations and types: %w", err)
 	}
 
 	err = e.getTemplatesRelationsAndTypes(processedObjects)
 	if err != nil {
-		return err
+		return fmt.Errorf("get templates relations and types: %w", err)
 	}
 	err = e.addRelationsAndTypes()
 	if err != nil {
-		return err
+		return fmt.Errorf("add relations and types: %w", err)
 	}
 	return nil
 }
@@ -693,14 +701,14 @@ func (e *exportContext) addDerivedObjects() error {
 func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*Doc, processedObjects map[string]struct{}) error {
 	err := e.collectDerivedObjects(notProcessedObjects)
 	if err != nil {
-		return err
+		return fmt.Errorf("collect derived objects: %w", err)
 	}
 	// get derived objects only from types,
 	// because relations currently have only system relations and object type
 	if len(e.objectTypes) > 0 || len(e.setOfList) > 0 {
 		err = e.getDerivedObjectsForTypes(processedObjects)
 		if err != nil {
-			return err
+			return fmt.Errorf("get derived objects for types: %w", err)
 		}
 	}
 	return nil
@@ -716,7 +724,7 @@ func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) error {
 			if isObjectWithDataview(details) {
 				dataviewRelations, err := getDataviewRelations(state)
 				if err != nil {
-					return err
+					return fmt.Errorf("get dataview relations: %w", err)
 				}
 				fillObjectsMap(e.relations, dataviewRelations)
 			}
@@ -733,7 +741,7 @@ func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) error {
 			return nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("get object from cache: %w", err)
 		}
 	}
 	return nil
@@ -762,7 +770,10 @@ func getDataviewRelations(state *state.State) ([]string, error) {
 		}
 		return true
 	})
-	return relations, err
+	if err != nil {
+		return nil, fmt.Errorf("iterate state blocks: %w", err)
+	}
+	return relations, nil
 }
 
 func (e *exportContext) getDerivedObjectsForTypes(processedObjects map[string]struct{}) error {
@@ -778,7 +789,7 @@ func (e *exportContext) getDerivedObjectsForTypes(processedObjects map[string]st
 	}
 	err := e.getRelationsAndTypes(notProceedTypes, processedObjects)
 	if err != nil {
-		return err
+		return fmt.Errorf("get relations and types: %w", err)
 	}
 	return nil
 }
@@ -795,7 +806,7 @@ func (e *exportContext) getTemplatesRelationsAndTypes(processedObjects map[strin
 	allTypes := lo.MapToSlice(e.objectTypes, func(key string, value struct{}) string { return key })
 	templates, err := e.queryAndFilterObjectsByRelation(e.spaceId, allTypes, bundle.RelationKeyTargetObjectType)
 	if err != nil {
-		return nil
+		return fmt.Errorf("query templates by target type: %w", err)
 	}
 	if len(templates) == 0 {
 		return nil
@@ -811,7 +822,7 @@ func (e *exportContext) getTemplatesRelationsAndTypes(processedObjects map[strin
 	}
 	err = e.getRelationsAndTypes(templatesToProcess, processedObjects)
 	if err != nil {
-		return err
+		return fmt.Errorf("get relations and types for templates: %w", err)
 	}
 	return nil
 }
@@ -823,11 +834,11 @@ func (e *exportContext) addRelationsAndTypes() error {
 
 	err := e.addRelations(relations)
 	if err != nil {
-		return err
+		return fmt.Errorf("add relations: %w", err)
 	}
 	err = e.processObjectTypesAndSetOfList(types, setOfList)
 	if err != nil {
-		return err
+		return fmt.Errorf("process object types and set of list: %w", err)
 	}
 	return nil
 }
@@ -835,13 +846,13 @@ func (e *exportContext) addRelationsAndTypes() error {
 func (e *exportContext) addRelations(relations []string) error {
 	storeRelations, err := e.getRelationsFromStore(relations)
 	if err != nil {
-		return err
+		return fmt.Errorf("get relations from store: %w", err)
 	}
 	for _, storeRelation := range storeRelations {
 		e.addRelation(storeRelation)
 		err := e.addOptionIfTag(storeRelation)
 		if err != nil {
-			return err
+			return fmt.Errorf("add option if tag: %w", err)
 		}
 	}
 	return nil
@@ -852,13 +863,13 @@ func (e *exportContext) getRelationsFromStore(relations []string) ([]database.Re
 	for _, relation := range relations {
 		uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relation)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("create unique key for relation: %w", err)
 		}
 		uniqueKeys = append(uniqueKeys, uniqueKey.Marshal())
 	}
 	storeRelations, err := e.queryAndFilterObjectsByRelation(e.spaceId, uniqueKeys, bundle.RelationKeyUniqueKey)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query relations by unique key: %w", err)
 	}
 	return storeRelations, nil
 }
@@ -877,7 +888,7 @@ func (e *exportContext) addOptionIfTag(relation database.Record) error {
 	if format == int64(model.RelationFormat_tag) || format == int64(model.RelationFormat_status) {
 		err := e.addRelationOptions(relationKey)
 		if err != nil {
-			return err
+			return fmt.Errorf("add relation options: %w", err)
 		}
 	}
 	return nil
@@ -886,7 +897,7 @@ func (e *exportContext) addOptionIfTag(relation database.Record) error {
 func (e *exportContext) addRelationOptions(relationKey string) error {
 	relationOptions, err := e.getRelationOptions(relationKey)
 	if err != nil {
-		return err
+		return fmt.Errorf("get relation options: %w", err)
 	}
 	for _, option := range relationOptions {
 		id := option.Details.GetString(bundle.RelationKeyId)
@@ -911,7 +922,7 @@ func (e *exportContext) getRelationOptions(relationKey string) ([]database.Recor
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query relation options: %w", err)
 	}
 	return relationOptionsDetails, nil
 }
@@ -919,18 +930,18 @@ func (e *exportContext) getRelationOptions(relationKey string) ([]database.Recor
 func (e *exportContext) processObjectTypesAndSetOfList(objectTypes, setOfList []string) error {
 	objectDetails, err := e.queryAndFilterObjectsByRelation(e.spaceId, lo.Union(objectTypes, setOfList), bundle.RelationKeyId)
 	if err != nil {
-		return err
+		return fmt.Errorf("query object types: %w", err)
 	}
 	if len(objectDetails) == 0 {
 		return nil
 	}
 	recommendedRelations, err := e.addObjectsAndCollectRecommendedRelations(objectDetails)
 	if err != nil {
-		return err
+		return fmt.Errorf("collect recommended relations: %w", err)
 	}
 	err = e.addRecommendedRelations(recommendedRelations)
 	if err != nil {
-		return err
+		return fmt.Errorf("add recommended relations: %w", err)
 	}
 	return nil
 }
@@ -941,14 +952,14 @@ func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []d
 		rawUniqueKey := objectTypes[i].Details.GetString(bundle.RelationKeyUniqueKey)
 		uniqueKey, err := domain.UnmarshalUniqueKey(rawUniqueKey)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshal unique key: %w", err)
 		}
 		id := objectTypes[i].Details.GetString(bundle.RelationKeyId)
 		e.docs[id] = &Doc{Details: objectTypes[i].Details, isLink: e.isLinkProcess}
 		if uniqueKey.SmartblockType() == smartblock.SmartBlockTypeObjectType {
 			key, err := domain.GetTypeKeyFromRawUniqueKey(rawUniqueKey)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("get type key from unique key: %w", err)
 			}
 			if bundle.IsInternalType(key) {
 				continue
@@ -967,7 +978,7 @@ func (e *exportContext) addObjectsAndCollectRecommendedRelations(objectTypes []d
 func (e *exportContext) addRecommendedRelations(recommendedRelations []string) error {
 	relations, err := e.queryAndFilterObjectsByRelation(e.spaceId, recommendedRelations, bundle.RelationKeyId)
 	if err != nil {
-		return err
+		return fmt.Errorf("query recommended relations: %w", err)
 	}
 	for _, relation := range relations {
 		id := relation.Details.GetString(bundle.RelationKeyId)
@@ -978,7 +989,7 @@ func (e *exportContext) addRecommendedRelations(recommendedRelations []string) e
 		relationKey := relation.Details.GetString(bundle.RelationKeyUniqueKey)
 		uniqueKey, err := domain.UnmarshalUniqueKey(relationKey)
 		if err != nil {
-			return err
+			return fmt.Errorf("unmarshal relation unique key: %w", err)
 		}
 		if bundle.IsSystemRelation(domain.RelationKey(uniqueKey.InternalKey())) {
 			continue
@@ -1002,7 +1013,7 @@ func (e *exportContext) addNestedObjects(ids []string) error {
 	exportCtxChild.isLinkProcess = true
 	err := exportCtxChild.processProtobuf()
 	if err != nil {
-		return err
+		return fmt.Errorf("process nested protobuf: %w", err)
 	}
 	for id, object := range exportCtxChild.docs {
 		if _, ok := e.docs[id]; !ok {
@@ -1081,7 +1092,7 @@ func (e *exportContext) fillLinkedFiles(id string) ([]string, error) {
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get object from cache: %w", err)
 	}
 	return fileObjectsIds, nil
 }
@@ -1090,12 +1101,12 @@ func (e *exportContext) getExistedObjects(isProtobuf bool) error {
 	spaceIndex := e.objectStore.SpaceIndex(e.spaceId)
 	res, err := spaceIndex.List(false)
 	if err != nil {
-		return err
+		return fmt.Errorf("list objects: %w", err)
 	}
 	if e.includeArchive {
 		archivedObjects, err := spaceIndex.List(true)
 		if err != nil {
-			return err
+			return fmt.Errorf("list archived objects: %w", err)
 		}
 		res = append(res, archivedObjects...)
 	}
@@ -1144,7 +1155,7 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 					st.SetDetailAndBundledRelation(bundle.RelationKeySource, domain.String(fileName))
 				}
 				if err = mw.Add(b.Space(), st, e.formatFetcher); err != nil {
-					return err
+					return fmt.Errorf("add to multi converter: %w", err)
 				}
 				return nil
 			})
@@ -1160,7 +1171,7 @@ func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiCon
 	}
 
 	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert(0)), 0); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("write export file: %w", err)
 	}
 	err = nil
 	return
@@ -1219,7 +1230,7 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		}
 		lastModifiedDate := st.LocalDetails().GetInt64(bundle.RelationKeyLastModifiedDate)
 		if err = wr.WriteFile(filename, bytes.NewReader(result), lastModifiedDate); err != nil {
-			return err
+			return fmt.Errorf("write file: %w", err)
 		}
 
 		return nil
@@ -1242,7 +1253,7 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 		}
 		file, err = image.GetOriginalFile()
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("get original file: %w", err)
 		}
 	}
 	origName := file.Meta().Name
@@ -1253,28 +1264,31 @@ func (e *exportContext) saveFile(ctx context.Context, wr writer, fileObject sb.S
 	fileName = wr.Namer().Get(rootPath, fileObject.Id(), filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader(context.Background())
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("open file reader: %w", err)
 	}
-	return fileName, wr.WriteFile(fileName, rd, file.LastModifiedDate())
+	if err := wr.WriteFile(fileName, rd, file.LastModifiedDate()); err != nil {
+		return "", fmt.Errorf("write file: %w", err)
+	}
+	return fileName, nil
 }
 
 func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 	spc, err := e.spaceService.Get(context.Background(), spaceID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get space: %w", err)
 	}
 	var spaceDashBoardID string
 
 	pr, err := e.accountService.ProfileInfo()
 	if err != nil {
-		return err
+		return fmt.Errorf("get profile info: %w", err)
 	}
 	err = cache.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
 		spaceDashBoardID = b.CombinedDetails().GetString(bundle.RelationKeySpaceDashboardId)
 		return nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("get workspace: %w", err)
 	}
 	profile := &pb.Profile{
 		SpaceDashboardId: spaceDashBoardID,
@@ -1285,11 +1299,11 @@ func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 	}
 	data, err := profile.Marshal()
 	if err != nil {
-		return err
+		return fmt.Errorf("marshal profile: %w", err)
 	}
 	err = wr.WriteFile(constant.ProfileFile, bytes.NewReader(data), 0)
 	if err != nil {
-		return err
+		return fmt.Errorf("write profile file: %w", err)
 	}
 	return nil
 }
