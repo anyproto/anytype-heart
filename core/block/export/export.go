@@ -1055,6 +1055,9 @@ func (e *exportContext) addNestedObjects(ids []string) error {
 }
 
 func (e *exportContext) addNestedObject(id string, nestedDocs map[string]*Doc) {
+	if doc, ok := e.docs[id]; ok && isExcludedFromExport(doc.Details) {
+		return
+	}
 	var links []string
 	err := cache.Do(e.picker, id, func(sb sb.SmartBlock) error {
 		st := sb.NewState().Copy().Filter(e.getStateFilters(id))

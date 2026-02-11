@@ -1488,6 +1488,57 @@ func Test_fillLinkedFiles(t *testing.T) {
 	})
 }
 
+func Test_addNestedObject(t *testing.T) {
+	t.Run("skip excluded object", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		oldFileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+
+		expCtx := newExportContext(fx.export, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		expCtx.docs[oldFileId] = &Doc{Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String(oldFileId),
+			bundle.RelationKeyType:    domain.String("objectType"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		})}
+
+		// No GetObject expectation — cache.Do must not be called
+
+		// when
+		nestedDocs := map[string]*Doc{}
+		expCtx.addNestedObject(oldFileId, nestedDocs)
+
+		// then
+		assert.Empty(t, nestedDocs)
+	})
+	t.Run("skip object with only id", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		objectId := "objectId"
+
+		expCtx := newExportContext(fx.export, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		expCtx.docs[objectId] = &Doc{Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String(objectId),
+		})}
+
+		// No GetObject expectation — cache.Do must not be called
+
+		// when
+		nestedDocs := map[string]*Doc{}
+		expCtx.addNestedObject(objectId, nestedDocs)
+
+		// then
+		assert.Empty(t, nestedDocs)
+	})
+}
+
 func Test_collectDerivedObjects(t *testing.T) {
 	t.Run("skip old file ids", func(t *testing.T) {
 		// given
