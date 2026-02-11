@@ -223,7 +223,9 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 	if opts == nil {
 		opts = make(map[string]string)
 	}
-	opts["synchronous"] = "off"
+	opts["synchronous"] = "normal"
+	opts["wal_autocheckpoint"] = "0" // we will flush on idle
+
 	return &anystore.Config{
 		ReadConnections:                           4,
 		SQLiteConnectionOptions:                   opts,
