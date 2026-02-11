@@ -71,6 +71,13 @@ func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	if rawFilter.Condition == model.BlockContentDataviewFilter_None {
 		return nil, nil
 	}
+	// model.RelationFormat_longtext may be a default value, so we try to get the actual value. It's important to use
+	// proper format for all filters to work correctly. Date filter is a good example.
+	if rawFilter.Format == model.RelationFormat_longtext && rawFilter.RelationKey != "" {
+		if format, err := store.GetRelationFormatByKey(rawFilter.RelationKey); err == nil {
+			rawFilter.Format = format
+		}
+	}
 	rawFilters := transformDateFilter(rawFilter, time.Now())
 
 	if len(rawFilters) == 1 {
