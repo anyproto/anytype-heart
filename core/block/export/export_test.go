@@ -1398,6 +1398,45 @@ func Test_docsForExport(t *testing.T) {
 	})
 }
 
+func Test_isExcludedFromExport(t *testing.T) {
+	t.Run("nil details", func(t *testing.T) {
+		assert.True(t, isExcludedFromExport(nil))
+	})
+	t.Run("empty details", func(t *testing.T) {
+		details := domain.NewDetails()
+		assert.True(t, isExcludedFromExport(details))
+	})
+	t.Run("only id", func(t *testing.T) {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("objectId"),
+		})
+		assert.True(t, isExcludedFromExport(details))
+	})
+	t.Run("id and backlinks only", func(t *testing.T) {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String("objectId"),
+			bundle.RelationKeyBacklinks: domain.StringList([]string{"link1"}),
+		})
+		assert.True(t, isExcludedFromExport(details))
+	})
+	t.Run("old file id", func(t *testing.T) {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
+			bundle.RelationKeyType:    domain.String("objectType"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		})
+		assert.True(t, isExcludedFromExport(details))
+	})
+	t.Run("valid object", func(t *testing.T) {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String("objectId"),
+			bundle.RelationKeyType:    domain.String("objectType"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		})
+		assert.False(t, isExcludedFromExport(details))
+	})
+}
+
 func Test_collectDerivedObjects(t *testing.T) {
 	t.Run("skip old file ids", func(t *testing.T) {
 		// given
@@ -1418,10 +1457,14 @@ func Test_collectDerivedObjects(t *testing.T) {
 
 		docs := map[string]*Doc{
 			objectId: {Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId: domain.String(objectId),
+				bundle.RelationKeyId:      domain.String(objectId),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			})},
 			oldFileId: {Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyId: domain.String(oldFileId),
+				bundle.RelationKeyId:      domain.String(oldFileId),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
 			})},
 		}
 

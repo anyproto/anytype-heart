@@ -201,6 +201,28 @@ type Doc struct {
 	isLink  bool
 }
 
+func isExcludedFromExport(details *domain.Details) bool {
+	if details == nil {
+		return true
+	}
+	n := details.Len()
+	// Empty details or containing only id
+	if n <= 1 {
+		return true
+	}
+	// Details only with id + backlinks should be discarded
+	if n == 2 && details.Has(bundle.RelationKeyBacklinks) {
+		return true
+	}
+
+	id := details.GetString(bundle.RelationKeyId)
+	if domain.IsFileId(id) {
+		return true
+	}
+
+	return false
+}
+
 type Docs map[string]*Doc
 
 func (d Docs) transformToDetailsMap() map[string]*domain.Details {
@@ -422,7 +444,10 @@ func (e *exportContext) exportDocs(ctx context.Context,
 	tasks []process.Task,
 ) []process.Task {
 	docsDetails := e.docs.transformToDetailsMap()
-	for docId := range e.docs {
+	for docId, doc := range e.docs {
+		if isExcludedFromExport(doc.Details) {
+			continue
+		}
 		did := docId
 		task := func() {
 			if werr := e.writeDoc(ctx, wr, did, docsDetails); werr != nil {
@@ -615,8 +640,11 @@ func (e *exportContext) addDependentObjectsFromDataview() error {
 		viewDependentObjectsIds []string
 		err                     error
 	)
-	for id, details := range e.docs {
-		if isObjectWithDataview(details.Details) {
+	for id, doc := range e.docs {
+		if isExcludedFromExport(doc.Details) {
+			continue
+		}
+		if isObjectWithDataview(doc.Details) {
 			viewDependentObjectsIds, err = e.getViewDependentObjects(id, viewDependentObjectsIds)
 			if err != nil {
 				return fmt.Errorf("get view dependent objects: %w", err)
@@ -715,8 +743,8 @@ func (e *exportContext) getRelationsAndTypes(notProcessedObjects map[string]*Doc
 }
 
 func (e *exportContext) collectDerivedObjects(objects map[string]*Doc) error {
-	for id := range objects {
-		if domain.IsFileId(id) {
+	for id, doc := range objects {
+		if doc != nil && isExcludedFromExport(doc.Details) {
 			continue
 		}
 		err := cache.Do(e.picker, id, func(b sb.SmartBlock) error {
@@ -1142,7 +1170,10 @@ func (e *exportContext) listTargetTypesFromTemplates(ids []string) []string {
 }
 
 func (e *exportContext) writeMultiDoc(ctx context.Context, mw converter.MultiConverter, wr writer, queue process.Queue) (succeed int, err error) {
-	for did := range e.docs {
+	for did, doc := range e.docs {
+		if isExcludedFromExport(doc.Details) {
+			continue
+		}
 		if err = queue.Wait(func() {
 			log.With("objectID", did).Debugf("write doc")
 			werr := cache.Do(e.picker, did, func(b sb.SmartBlock) error {
