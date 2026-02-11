@@ -119,3 +119,24 @@ require.Len(t, slice, expectedLen)
    ```
 
 3. **Flexible matching**: Use `mock.Anything` for parameters you don't need to match exactly
+
+## Error Handling
+
+Always wrap errors with context using `fmt.Errorf("operation description: %w", err)`. Never return bare `err` from functions — every error should carry information about which operation failed.
+
+```go
+// Bad
+if err != nil {
+    return err
+}
+
+// Good
+if err != nil {
+    return fmt.Errorf("query objects by relation: %w", err)
+}
+```
+
+- Use short, lowercase descriptions that identify the failed operation
+- Avoid redundant prefixes like `"failed to"` or `"error in"` — just name the operation
+- Use `%w` verb to preserve the error chain for `errors.Is` / `errors.As`
+- Do not change bare `return` to `return err` without wrapping — change it to `return fmt.Errorf("context: %w", err)`
