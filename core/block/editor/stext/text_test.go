@@ -896,6 +896,179 @@ func TestTextImpl_TurnIntoToggleHeader(t *testing.T) {
 	})
 }
 
+func TestTextImpl_TurnIntoHeaderFromToggleHeader(t *testing.T) {
+	t.Run("toggle header with children becomes header, children moved as siblings", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlockWithStyle("1", "toggle header", model.BlockContentText_ToggleHeader1, "2", "3")).
+			AddBlock(newTextBlock("2", "child1")).
+			AddBlock(newTextBlock("3", "child2"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_Header1, "1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+		assert.Equal(t, model.BlockContentText_Header1, r.Pick("1").Model().GetText().Style)
+		assert.Empty(t, r.Pick("1").Model().ChildrenIds)
+		assert.Equal(t, []string{"1", "2", "3"}, r.Pick("test").Model().ChildrenIds)
+	})
+
+	t.Run("toggle header 2 with children becomes header 2", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"0", "1", "4"}})).
+			AddBlock(newTextBlock("0", "before")).
+			AddBlock(newTextBlockWithStyle("1", "toggle header 2", model.BlockContentText_ToggleHeader2, "2", "3")).
+			AddBlock(newTextBlock("2", "child1")).
+			AddBlock(newTextBlock("3", "child2")).
+			AddBlock(newTextBlock("4", "after"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_Header2, "1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+		assert.Equal(t, model.BlockContentText_Header2, r.Pick("1").Model().GetText().Style)
+		assert.Empty(t, r.Pick("1").Model().ChildrenIds)
+		// children should be placed right after the header, before "4"
+		assert.Equal(t, []string{"0", "1", "2", "3", "4"}, r.Pick("test").Model().ChildrenIds)
+	})
+
+	t.Run("toggle header 3 with children becomes header 3", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlockWithStyle("1", "toggle header 3", model.BlockContentText_ToggleHeader3, "2")).
+			AddBlock(newTextBlock("2", "only child"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_Header3, "1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+		assert.Equal(t, model.BlockContentText_Header3, r.Pick("1").Model().GetText().Style)
+		assert.Empty(t, r.Pick("1").Model().ChildrenIds)
+		assert.Equal(t, []string{"1", "2"}, r.Pick("test").Model().ChildrenIds)
+	})
+
+	t.Run("toggle header without children becomes header without issues", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlockWithStyle("1", "toggle header", model.BlockContentText_ToggleHeader1))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_Header1, "1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+		assert.Equal(t, model.BlockContentText_Header1, r.Pick("1").Model().GetText().Style)
+		assert.Empty(t, r.Pick("1").Model().ChildrenIds)
+		assert.Equal(t, []string{"1"}, r.Pick("test").Model().ChildrenIds)
+	})
+
+	t.Run("toggle header with nested children becomes header, all children unindented", func(t *testing.T) {
+		// given: toggle header "1" has children "2" and "3", and "2" itself has child "2a"
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlockWithStyle("1", "toggle header", model.BlockContentText_ToggleHeader1, "2", "3")).
+			AddBlock(newTextBlock("2", "child with nested", "2a")).
+			AddBlock(newTextBlock("2a", "nested child")).
+			AddBlock(newTextBlock("3", "child2"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_Header1, "1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+		assert.Equal(t, model.BlockContentText_Header1, r.Pick("1").Model().GetText().Style)
+		assert.Empty(t, r.Pick("1").Model().ChildrenIds)
+		// Only direct children are moved up; nested children stay with their parent
+		assert.Equal(t, []string{"1", "2", "3"}, r.Pick("test").Model().ChildrenIds)
+		assert.Equal(t, []string{"2a"}, r.Pick("2").Model().ChildrenIds)
+	})
+
+	t.Run("toggle header to different header level moves children", func(t *testing.T) {
+		// given: ToggleHeader1 with children is turned into Header3
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlockWithStyle("1", "toggle header 1", model.BlockContentText_ToggleHeader1, "2", "3")).
+			AddBlock(newTextBlock("2", "child1")).
+			AddBlock(newTextBlock("3", "child2"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_Header3, "1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+		assert.Equal(t, model.BlockContentText_Header3, r.Pick("1").Model().GetText().Style)
+		assert.Empty(t, r.Pick("1").Model().ChildrenIds)
+		assert.Equal(t, []string{"1", "2", "3"}, r.Pick("test").Model().ChildrenIds)
+	})
+
+	t.Run("toggle header to paragraph keeps children", func(t *testing.T) {
+		// given: ToggleHeader1 with children is turned into Paragraph (which CAN have children)
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlockWithStyle("1", "toggle header", model.BlockContentText_ToggleHeader1, "2", "3")).
+			AddBlock(newTextBlock("2", "child1")).
+			AddBlock(newTextBlock("3", "child2"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_Paragraph, "1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+		assert.Equal(t, model.BlockContentText_Paragraph, r.Pick("1").Model().GetText().Style)
+		// Paragraph CAN have children, so they should remain
+		assert.Equal(t, []string{"2", "3"}, r.Pick("1").Model().ChildrenIds)
+		assert.Equal(t, []string{"1"}, r.Pick("test").Model().ChildrenIds)
+	})
+
+	t.Run("toggle header to code moves children", func(t *testing.T) {
+		// given: Code blocks also cannot have children
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}})).
+			AddBlock(newTextBlockWithStyle("1", "toggle header", model.BlockContentText_ToggleHeader1, "2")).
+			AddBlock(newTextBlock("2", "child"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_Code, "1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+		assert.Equal(t, model.BlockContentText_Code, r.Pick("1").Model().GetText().Style)
+		assert.Empty(t, r.Pick("1").Model().ChildrenIds)
+		assert.Equal(t, []string{"1", "2"}, r.Pick("test").Model().ChildrenIds)
+	})
+}
+
 func newLayoutDivBlock(id string, childrenIds ...string) simple.Block {
 	return simple.New(&model.Block{
 		Id:          id,
