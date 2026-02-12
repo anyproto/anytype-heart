@@ -929,3 +929,65 @@ func TestProcessProperties(t *testing.T) {
 		})
 	})
 }
+
+func TestSanitizeAndValidatePropertyValueTypeObject(t *testing.T) {
+	setupObjectLayoutMock := func(fx *fixture, objectId string, layout model.ObjectTypeLayout, found bool) {
+		response := &pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}
+		if found {
+			response.Records = []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyResolvedLayout.String(): pbtypes.Int64(int64(layout)),
+					},
+				},
+			}
+		}
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(objectId),
+				},
+			},
+			Keys: []string{bundle.RelationKeyResolvedLayout.String()},
+		}).Return(response).Maybe()
+	}
+
+	t.Run("type property allows object type references", func(t *testing.T) {
+		fx := newFixture(t)
+		typeId := "bafytesttype"
+		setupObjectLayoutMock(fx, typeId, model.ObjectType_objectType, true)
+
+		prop := &apimodel.Property{
+			Key:         bundle.RelationKeyType.String(),
+			RelationKey: bundle.RelationKeyType.String(),
+			Format:      apimodel.PropertyFormatObjects,
+		}
+		propertyMap := map[string]*apimodel.Property{bundle.RelationKeyType.String(): prop}
+
+		value, err := fx.service.SanitizeAndValidatePropertyValue(mockedSpaceId, bundle.RelationKeyType.String(), []string{typeId}, prop, propertyMap)
+		require.NoError(t, err)
+		assert.Equal(t, []string{typeId}, value)
+	})
+
+	t.Run("non-type object properties reject object type references", func(t *testing.T) {
+		fx := newFixture(t)
+		typeId := "bafytesttype"
+		setupObjectLayoutMock(fx, typeId, model.ObjectType_objectType, true)
+
+		prop := &apimodel.Property{
+			Key:         "objects_prop",
+			RelationKey: "objects_prop",
+			Format:      apimodel.PropertyFormatObjects,
+		}
+		propertyMap := map[string]*apimodel.Property{"objects_prop": prop}
+
+		_, err := fx.service.SanitizeAndValidatePropertyValue(mockedSpaceId, "objects_prop", []string{typeId}, prop, propertyMap)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid object reference")
+	})
+}
