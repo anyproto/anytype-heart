@@ -62,6 +62,7 @@ type watcher struct {
 	aggregationInterval  time.Duration
 	cancelCtx            context.CancelFunc
 	ctx                  context.Context
+	handlerDone          chan struct{}
 }
 
 func New() UpdateWatcher {
@@ -84,17 +85,31 @@ func (w *watcher) Init(a *app.App) error {
 }
 
 func (w *watcher) Close(context.Context) error {
+	_ = w.infoBatch.Close()
+	if w.handlerDone != nil {
+		// make sure we finish all the work, but protect from deadlocks
+		select {
+		case <-time.After(time.Second * 5):
+			log.Warn("backlinks update handler did not finish in time")
+			if w.cancelCtx != nil {
+				// cancel the active writes and exit
+				// we may lose some updates
+				// todo: GO-6843
+				w.cancelCtx()
+			}
+			return nil
+		case <-w.handlerDone:
+		}
+	}
 	if w.cancelCtx != nil {
 		w.cancelCtx()
-	}
-	if err := w.infoBatch.Close(); err != nil {
-		log.Error("failed to close message batch", zap.Error(err))
 	}
 	return nil
 }
 
 func (w *watcher) Run(ctx context.Context) error {
 	w.ctx, w.cancelCtx = context.WithCancel(context.Background())
+	w.handlerDone = make(chan struct{})
 	w.updater.SubscribeLinksUpdate(func(info spaceindex.LinksUpdateInfo) {
 		if err := w.infoBatch.Add(w.ctx, info); err != nil {
 			log.Error("failed to add backlinks update info to message batch", zap.String("objectId", info.LinksFromId.ObjectID), zap.Error(err))
@@ -159,13 +174,20 @@ func applyUpdate(m map[domain.FullID]*backLinksUpdate, update spaceindex.LinksUp
 }
 
 func (w *watcher) backlinksUpdateHandler() {
+	defer close(w.handlerDone)
+
 	var (
 		lastReceivedUpdates time.Time
 		closedCh            = make(chan struct{})
+		flusherDone         = make(chan struct{})
 	)
-	defer close(closedCh)
+	defer func() {
+		close(closedCh)
+		<-flusherDone
+	}()
 
 	go func() {
+		defer close(flusherDone)
 		for {
 			select {
 			case <-closedCh:
