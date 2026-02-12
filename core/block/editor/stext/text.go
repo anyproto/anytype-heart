@@ -542,10 +542,7 @@ func collectBlocksFromDivs(s *state.State, divsParent simple.Block, targetLevel,
 	var blocks []string
 	var emptyDivsToUnlink []string
 
-	// Take a snapshot of div IDs to avoid issues with slice mutation during unlinking
-	divIds := append([]string(nil), divsParent.Model().ChildrenIds[divPos:]...)
-
-	for idx, divId := range divIds {
+	for idx, divId := range divsParent.Model().ChildrenIds[divPos:] {
 		div := s.Get(divId)
 		if div == nil || !isLayoutDivBlock(div) {
 			continue
