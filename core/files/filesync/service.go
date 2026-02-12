@@ -119,7 +119,9 @@ type fileSync struct {
 	eventSender     event.Sender
 	onStatusUpdated []StatusCallback
 
-	nodeUsageCache keyvaluestore.Store[NodeUsage]
+	nodeUsageStore keyvaluestore.Store[NodeUsage]
+	nodeUsageLock  sync.RWMutex
+	nodeUsage      *NodeUsage
 
 	limitManager    *spaceUsageManager
 	requestsBatcher *requestsBatcher
@@ -171,7 +173,7 @@ func (s *fileSync) Init(a *app.App) (err error) {
 		return info
 	})
 
-	s.nodeUsageCache = keyvaluestore.NewJsonFromCollection[NodeUsage](provider.GetSystemCollection())
+	s.nodeUsageStore = keyvaluestore.NewJsonFromCollection[NodeUsage](provider.GetSystemCollection())
 
 	s.requestsCh = make(chan blockPushManyRequest, 10)
 	s.requestsBatcher = newRequestsBatcher(1024*1024+14, 100*time.Millisecond, s.requestsCh)
