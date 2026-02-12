@@ -381,16 +381,25 @@ func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, v
 		}
 		return tag.Id, nil
 	case apimodel.PropertyFormatMultiSelect:
-		keysOrIds, ok := value.([]interface{})
-		if !ok {
+		// Accept both []interface{} (from JSON unmarshaling) and []string (from MultiSelectFilterItem.GetValue())
+		var rawKeysOrIds []string
+		switch v := value.(type) {
+		case []interface{}:
+			for _, item := range v {
+				keyOrId, ok := item.(string)
+				if !ok {
+					return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (tag ids or keys)", key))
+				}
+				rawKeysOrIds = append(rawKeysOrIds, keyOrId)
+			}
+		case []string:
+			rawKeysOrIds = v
+		default:
 			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of tag ids or keys", key))
 		}
+
 		var validIds []string
-		for _, v := range keysOrIds {
-			keyOrId, ok := v.(string)
-			if !ok {
-				return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (tag ids or keys)", key))
-			}
+		for _, keyOrId := range rawKeysOrIds {
 			keyOrId = s.sanitizedString(keyOrId)
 			if !s.isValidSelectOption(spaceId, prop, keyOrId, propertyMap) {
 				return nil, util.ErrBadInput(fmt.Sprintf("invalid multi_select option for %q: %s", key, keyOrId))
@@ -422,20 +431,29 @@ func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, v
 		}
 		return b, nil
 	case apimodel.PropertyFormatObjects, apimodel.PropertyFormatFiles:
-		ids, ok := value.([]interface{})
-		if !ok {
+		// Accept both []interface{} (from JSON unmarshaling) and []string (from ObjectsFilterItem.GetValue())
+		var rawIds []string
+		switch v := value.(type) {
+		case []interface{}:
+			for _, item := range v {
+				id, ok := item.(string)
+				if !ok {
+					return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (object/file ids)", key))
+				}
+				rawIds = append(rawIds, id)
+			}
+		case []string:
+			rawIds = v
+		default:
 			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (object/file ids)", key))
 		}
+
 		var validIds []string
-		for _, v := range ids {
-			id, ok := v.(string)
-			if !ok {
-				return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (object/file ids)", key))
-			}
+		for _, id := range rawIds {
 			id = s.sanitizedString(id)
 			if prop.Format == apimodel.PropertyFormatFiles && !s.isValidFileReference(spaceId, id) {
 				return nil, util.ErrBadInput(fmt.Sprintf("invalid file reference for %q: %s", key, id))
-			} else if prop.Format == apimodel.PropertyFormatObjects && !s.isValidObjectOrMemberReference(spaceId, id) {
+			} else if prop.Format == apimodel.PropertyFormatObjects && !s.isValidObjectReferenceForProperty(spaceId, id, prop.RelationKey) {
 				return nil, util.ErrBadInput(fmt.Sprintf("invalid object reference for %q: %s", key, id))
 			}
 			validIds = append(validIds, id)
@@ -469,6 +487,20 @@ func (s *Service) isValidObjectOrMemberReference(spaceId string, objectId string
 	}
 	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
 	return util.IsObjectOrMemberLayout(layout)
+}
+
+// isValidObjectReferenceForProperty validates an object reference based on the property's relation key.
+// For the "links" property (a derived system property that can contain any type of linked object),
+// we only check that the object exists. For other object properties, we require the referenced
+// object to have an object or member layout.
+func (s *Service) isValidObjectReferenceForProperty(spaceId string, objectId string, relationKey string) bool {
+	if relationKey == bundle.RelationKeyLinks.String() {
+		// The links property can reference any object type (files, types, pages, etc.)
+		// Just verify the object exists by checking if we can retrieve any fields
+		fields, err := util.GetFieldsById(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
+		return err == nil && fields != nil
+	}
+	return s.isValidObjectOrMemberReference(spaceId, objectId)
 }
 
 func (s *Service) isValidFileReference(spaceId string, fileId string) bool {

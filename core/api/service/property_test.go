@@ -17,6 +17,204 @@ import (
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
+func TestSanitizeAndValidatePropertyValue_ObjectsFormat(t *testing.T) {
+	// Test that SanitizeAndValidatePropertyValue correctly handles []string input for objects properties.
+	// This is important for filter values from ObjectsFilterItem which returns []string, not []interface{}.
+
+	setupValidationMock := func(fx *fixture, objectId string, isValid bool, layout model.ObjectTypeLayout) {
+		response := &pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}
+		if isValid {
+			response.Records = []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyResolvedLayout.String(): pbtypes.Int64(int64(layout)),
+					},
+				},
+			}
+		}
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(objectId),
+				},
+			},
+			Keys: []string{bundle.RelationKeyResolvedLayout.String()},
+		}).Return(response).Maybe()
+	}
+
+	t.Run("accepts []string input for objects property", func(t *testing.T) {
+		// Bug 1: ObjectsFilterItem.GetValue() returns []string but SanitizeAndValidatePropertyValue
+		// expects []interface{}. This test verifies that []string input is handled correctly.
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		setupValidationMock(fx, "obj1", true, model.ObjectType_basic)
+		setupValidationMock(fx, "obj2", true, model.ObjectType_basic)
+
+		prop := &apimodel.Property{
+			Key:         "objects_prop",
+			RelationKey: "objects_prop",
+			Format:      apimodel.PropertyFormatObjects,
+		}
+		propertyMap := fx.service.cache.getProperties(mockedSpaceId)
+
+		// This should work with []string input (from ObjectsFilterItem.GetValue())
+		result, err := fx.service.SanitizeAndValidatePropertyValue(
+			mockedSpaceId,
+			"objects_prop",
+			[]string{"obj1", "obj2"}, // []string, not []interface{}
+			prop,
+			propertyMap,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj1", "obj2"}, result)
+	})
+
+	t.Run("accepts []interface{} input for objects property", func(t *testing.T) {
+		// Existing behavior: []interface{} should still work
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		setupValidationMock(fx, "obj1", true, model.ObjectType_basic)
+		setupValidationMock(fx, "obj2", true, model.ObjectType_basic)
+
+		prop := &apimodel.Property{
+			Key:         "objects_prop",
+			RelationKey: "objects_prop",
+			Format:      apimodel.PropertyFormatObjects,
+		}
+		propertyMap := fx.service.cache.getProperties(mockedSpaceId)
+
+		result, err := fx.service.SanitizeAndValidatePropertyValue(
+			mockedSpaceId,
+			"objects_prop",
+			[]interface{}{"obj1", "obj2"},
+			prop,
+			propertyMap,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"obj1", "obj2"}, result)
+	})
+
+	t.Run("links property allows filtering by any object ID", func(t *testing.T) {
+		// Bug 2: The links property is a derived/system property that can contain
+		// references to any type of object. The validation should not require
+		// that the referenced objects have specific layouts (basic, todo, etc.)
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		// Add the links property to the cache
+		linksProp := &apimodel.Property{
+			Id:          "links_prop_id",
+			Key:         "links",
+			Name:        "Links",
+			Format:      apimodel.PropertyFormatObjects,
+			RelationKey: bundle.RelationKeyLinks.String(),
+		}
+		fx.service.cache.cacheProperty(mockedSpaceId, linksProp)
+
+		// Mock an object with a file layout (not an "object" layout)
+		// This should still be valid for the links property
+		setupValidationMock(fx, "file_obj", true, model.ObjectType_file)
+
+		propertyMap := fx.service.cache.getProperties(mockedSpaceId)
+
+		result, err := fx.service.SanitizeAndValidatePropertyValue(
+			mockedSpaceId,
+			"links",
+			[]string{"file_obj"},
+			linksProp,
+			propertyMap,
+		)
+		require.NoError(t, err, "links property should accept file objects")
+		assert.Equal(t, []string{"file_obj"}, result)
+	})
+}
+
+func TestSanitizeAndValidatePropertyValue_MultiSelectFormat(t *testing.T) {
+	// Test that SanitizeAndValidatePropertyValue correctly handles []string input for multi_select properties.
+	// This is important for filter values from MultiSelectFilterItem which returns []string, not []interface{}.
+
+	setupTagValidationMock := func(fx *fixture, tagId string, propertyKey string, isValid bool) {
+		response := &pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}
+		if isValid {
+			response.Records = []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyResolvedLayout.String(): pbtypes.Int64(int64(model.ObjectType_tag)),
+						bundle.RelationKeyRelationKey.String():    pbtypes.String(propertyKey),
+					},
+				},
+			}
+		}
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(tagId),
+				},
+			},
+			Keys: []string{bundle.RelationKeyResolvedLayout.String(), bundle.RelationKeyRelationKey.String()},
+		}).Return(response).Maybe()
+	}
+
+	t.Run("accepts []string input for multi_select property", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		setupTagValidationMock(fx, "tag1", "multi_select_prop", true)
+		setupTagValidationMock(fx, "tag2", "multi_select_prop", true)
+
+		prop := &apimodel.Property{
+			Key:         "multi_select_prop",
+			RelationKey: "multi_select_prop",
+			Format:      apimodel.PropertyFormatMultiSelect,
+		}
+		propertyMap := fx.service.cache.getProperties(mockedSpaceId)
+
+		// This should work with []string input (from MultiSelectFilterItem.GetValue())
+		result, err := fx.service.SanitizeAndValidatePropertyValue(
+			mockedSpaceId,
+			"multi_select_prop",
+			[]string{"tag1", "tag2"}, // []string, not []interface{}
+			prop,
+			propertyMap,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"tag1", "tag2"}, result)
+	})
+
+	t.Run("accepts []interface{} input for multi_select property", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+		setupTagValidationMock(fx, "tag1", "multi_select_prop", true)
+		setupTagValidationMock(fx, "tag2", "multi_select_prop", true)
+
+		prop := &apimodel.Property{
+			Key:         "multi_select_prop",
+			RelationKey: "multi_select_prop",
+			Format:      apimodel.PropertyFormatMultiSelect,
+		}
+		propertyMap := fx.service.cache.getProperties(mockedSpaceId)
+
+		result, err := fx.service.SanitizeAndValidatePropertyValue(
+			mockedSpaceId,
+			"multi_select_prop",
+			[]interface{}{"tag1", "tag2"},
+			prop,
+			propertyMap,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"tag1", "tag2"}, result)
+	})
+}
+
 func TestProcessProperties(t *testing.T) {
 	ctx := context.Background()
 
