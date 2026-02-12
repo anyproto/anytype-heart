@@ -107,19 +107,6 @@ func makeFilterByCondition(spaceID string, rawFilter FilterRequest, store Object
 		}
 	}
 
-	// replaces "value != false" to "value == true" for expected work with checkboxes
-	if rawFilter.Condition == model.BlockContentDataviewFilter_NotEqual {
-		v, ok := rawFilter.Value.TryBool()
-		if ok && !v {
-			rawFilter = FilterRequest{
-				RelationKey:      rawFilter.RelationKey,
-				RelationProperty: rawFilter.RelationProperty,
-				Condition:        model.BlockContentDataviewFilter_Equal,
-				Value:            domain.Bool(true),
-			}
-		}
-	}
-
 	if str, ok := rawFilter.Value.TryMapValue(); ok {
 		filter, err := makeComplexFilter(rawFilter, str)
 		if err == nil {
@@ -484,6 +471,7 @@ func (e FilterEq) filterObject(v domain.Value) bool {
 	case model.BlockContentDataviewFilter_LessOrEqual:
 		return comp >= 0
 	case model.BlockContentDataviewFilter_NotEqual:
+		// Missing properties compare as non-equal to any defined value.
 		return comp != 0
 	}
 	return false

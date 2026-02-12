@@ -291,6 +291,23 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			expectedError: "invalid filter at index 0: bad input: condition \"gt\" is not valid for property type \"text\"",
 		},
 		{
+			name: "checkbox in condition is rejected",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "is_active",
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       []interface{}{true},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("ResolvePropertyApiKey", mockProperties, "is_active").Return("is_active", true)
+			},
+			expectedError: "invalid filter at index 0: bad input: condition \"in\" is not valid for property type \"checkbox\"",
+		},
+		{
 			name: "invalid value for number property",
 			filters: &filter.ParsedFilters{
 				Filters: []filter.Filter{

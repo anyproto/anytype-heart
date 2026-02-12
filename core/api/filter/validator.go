@@ -128,21 +128,10 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 	}
 	if property.Format == apimodel.PropertyFormatNumber {
 		switch v := value.(type) {
-		case float64:
-			// Already a number.
-		case int:
-			value = float64(v)
-		case int64:
-			value = float64(v)
-		case uint:
-			value = float64(v)
-		case uint64:
-			value = float64(v)
-		case string:
-			trimmed := strings.TrimSpace(v)
-			parsed, err := strconv.ParseFloat(trimmed, 64)
+		case float64, int, int64, uint, uint64, string:
+			parsed, err := convertAnyToFloat(v)
 			if err != nil {
-				return nil, util.ErrBadInput(fmt.Sprintf("invalid number value %q", v))
+				return nil, err
 			}
 			value = parsed
 		}
@@ -153,10 +142,9 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 		case []string:
 			values := make([]interface{}, 0, len(v))
 			for _, item := range v {
-				trimmed := strings.TrimSpace(item)
-				parsed, err := strconv.ParseFloat(trimmed, 64)
+				parsed, err := convertAnyToFloat(item)
 				if err != nil {
-					return nil, util.ErrBadInput(fmt.Sprintf("invalid number value %q", item))
+					return nil, err
 				}
 				values = append(values, parsed)
 			}
@@ -164,27 +152,11 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 		case []interface{}:
 			values := make([]interface{}, 0, len(v))
 			for _, item := range v {
-				switch n := item.(type) {
-				case float64:
-					values = append(values, n)
-				case int:
-					values = append(values, float64(n))
-				case int64:
-					values = append(values, float64(n))
-				case uint:
-					values = append(values, float64(n))
-				case uint64:
-					values = append(values, float64(n))
-				case string:
-					trimmed := strings.TrimSpace(n)
-					parsed, err := strconv.ParseFloat(trimmed, 64)
-					if err != nil {
-						return nil, util.ErrBadInput(fmt.Sprintf("invalid number value %q", n))
-					}
-					values = append(values, parsed)
-				default:
-					return nil, util.ErrBadInput(fmt.Sprintf("invalid number value %v", item))
+				parsed, err := convertAnyToFloat(item)
+				if err != nil {
+					return nil, err
 				}
+				values = append(values, parsed)
 			}
 			value = values
 		}
@@ -201,4 +173,28 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 	}
 
 	return v.apiService.SanitizeAndValidatePropertyValue(spaceId, filter.PropertyKey, value, property, propertyMap)
+}
+
+func convertAnyToFloat(v any) (float64, error) {
+	switch n := v.(type) {
+	case float64:
+		return n, nil
+	case int:
+		return float64(n), nil
+	case int64:
+		return float64(n), nil
+	case uint:
+		return float64(n), nil
+	case uint64:
+		return float64(n), nil
+	case string:
+		trimmed := strings.TrimSpace(n)
+		parsed, err := strconv.ParseFloat(trimmed, 64)
+		if err != nil {
+			return 0, util.ErrBadInput(fmt.Sprintf("invalid number value %q", n))
+		}
+		return parsed, nil
+	default:
+		return 0, util.ErrBadInput(fmt.Sprintf("invalid number value %v", v))
+	}
 }
