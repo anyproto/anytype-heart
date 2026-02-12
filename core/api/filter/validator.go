@@ -130,7 +130,7 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 		for _, item := range items {
 			itemStr, ok := item.(string)
 			if !ok {
-				return nil, util.ErrBadInput(fmt.Sprintf("invalid select option for %q: %v", filter.PropertyKey, item))
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid select filter value for property %q: expected string, got %T (%v)", filter.PropertyKey, item, item))
 			}
 			sanitized, err := v.apiService.SanitizeAndValidatePropertyValue(spaceId, filter.PropertyKey, itemStr, property, propertyMap)
 			if err != nil {
@@ -138,7 +138,7 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 			}
 			tagId, ok := sanitized.(string)
 			if !ok {
-				return nil, util.ErrBadInput(fmt.Sprintf("invalid select option for %q: %v", filter.PropertyKey, itemStr))
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid select option for property %q: could not resolve %v to a tag id", filter.PropertyKey, itemStr))
 			}
 			values = append(values, tagId)
 		}
