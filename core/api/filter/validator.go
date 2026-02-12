@@ -2,6 +2,8 @@ package filter
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -111,6 +113,83 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 	}
 
 	value := filter.Value
+	if property.Format == apimodel.PropertyFormatCheckbox {
+		switch v := value.(type) {
+		case bool:
+			// Already a boolean.
+		case string:
+			trimmed := strings.TrimSpace(v)
+			parsed, err := strconv.ParseBool(trimmed)
+			if err != nil {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid boolean value %q", v))
+			}
+			value = parsed
+		}
+	}
+	if property.Format == apimodel.PropertyFormatNumber {
+		switch v := value.(type) {
+		case float64:
+			// Already a number.
+		case int:
+			value = float64(v)
+		case int64:
+			value = float64(v)
+		case uint:
+			value = float64(v)
+		case uint64:
+			value = float64(v)
+		case string:
+			trimmed := strings.TrimSpace(v)
+			parsed, err := strconv.ParseFloat(trimmed, 64)
+			if err != nil {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid number value %q", v))
+			}
+			value = parsed
+		}
+	}
+	if property.Format == apimodel.PropertyFormatNumber &&
+		(filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn) {
+		switch v := value.(type) {
+		case []string:
+			values := make([]interface{}, 0, len(v))
+			for _, item := range v {
+				trimmed := strings.TrimSpace(item)
+				parsed, err := strconv.ParseFloat(trimmed, 64)
+				if err != nil {
+					return nil, util.ErrBadInput(fmt.Sprintf("invalid number value %q", item))
+				}
+				values = append(values, parsed)
+			}
+			value = values
+		case []interface{}:
+			values := make([]interface{}, 0, len(v))
+			for _, item := range v {
+				switch n := item.(type) {
+				case float64:
+					values = append(values, n)
+				case int:
+					values = append(values, float64(n))
+				case int64:
+					values = append(values, float64(n))
+				case uint:
+					values = append(values, float64(n))
+				case uint64:
+					values = append(values, float64(n))
+				case string:
+					trimmed := strings.TrimSpace(n)
+					parsed, err := strconv.ParseFloat(trimmed, 64)
+					if err != nil {
+						return nil, util.ErrBadInput(fmt.Sprintf("invalid number value %q", n))
+					}
+					values = append(values, parsed)
+				default:
+					return nil, util.ErrBadInput(fmt.Sprintf("invalid number value %v", item))
+				}
+			}
+			value = values
+		}
+	}
+
 	if filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn {
 		switch v := value.(type) {
 		case []string, []interface{}:

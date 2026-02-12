@@ -26,17 +26,27 @@ func assertFilter(t *testing.T, f Filter, obj *domain.Details, expected bool) {
 }
 
 func TestEq_FilterObject(t *testing.T) {
-	t.Run("eq", func(t *testing.T) {
-		t.Run("ok", func(t *testing.T) {
-			eq := FilterEq{Key: "k", Value: domain.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
-			g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("equal test")})
-			assertFilter(t, eq, g, true)
-		})
-		t.Run("list ok", func(t *testing.T) {
-			eq := FilterEq{Key: "k", Value: domain.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
-			g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"11", "equal test", "other"})})
-			assertFilter(t, eq, g, true)
-		})
+		t.Run("eq", func(t *testing.T) {
+			t.Run("ok", func(t *testing.T) {
+				eq := FilterEq{Key: "k", Value: domain.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
+				g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("equal test")})
+				assertFilter(t, eq, g, true)
+			})
+			t.Run("ok number integer-like", func(t *testing.T) {
+				eq := FilterEq{Key: "k", Value: domain.Float64(2), Cond: model.BlockContentDataviewFilter_Equal}
+				g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(2)})
+				assertFilter(t, eq, g, true)
+			})
+			t.Run("ok number float", func(t *testing.T) {
+				eq := FilterEq{Key: "k", Value: domain.Float64(3.14159), Cond: model.BlockContentDataviewFilter_Equal}
+				g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(3.14159)})
+				assertFilter(t, eq, g, true)
+			})
+			t.Run("list ok", func(t *testing.T) {
+				eq := FilterEq{Key: "k", Value: domain.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
+				g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"11", "equal test", "other"})})
+				assertFilter(t, eq, g, true)
+			})
 		t.Run("not ok", func(t *testing.T) {
 			eq := FilterEq{Key: "k", Value: domain.String("equal test"), Cond: model.BlockContentDataviewFilter_Equal}
 			g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("not equal test")})
@@ -179,6 +189,16 @@ func TestIn_FilterObject(t *testing.T) {
 
 		obj = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("1")})
 		assertFilter(t, f, obj, false)
+	})
+	t.Run("ok list -> float integer-like", func(t *testing.T) {
+		inNumber := FilterIn{Key: "k", Value: domain.Float64List([]float64{1, 2, 3}).WrapToList()}
+		g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(2)})
+		assertFilter(t, inNumber, g, true)
+	})
+	t.Run("ok list -> float", func(t *testing.T) {
+		inNumber := FilterIn{Key: "k", Value: domain.Float64List([]float64{3.14159, 2.71828}).WrapToList()}
+		g := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.Float64(3.14159)})
+		assertFilter(t, inNumber, g, true)
 	})
 }
 
@@ -405,7 +425,7 @@ func TestMakeAndFilter(t *testing.T) {
 		}, store)
 		assert.Error(t, err)
 	})
-	t.Run("replace 'value == false' to 'value != true'", func(t *testing.T) {
+	t.Run("value == false does not match missing", func(t *testing.T) {
 		f, err := MakeFilters([]FilterRequest{
 			{
 				RelationKey: "b",
@@ -419,7 +439,7 @@ func TestMakeAndFilter(t *testing.T) {
 		assertFilter(t, f, g, true)
 
 		g = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"not_exists": domain.Bool(false)})
-		assertFilter(t, f, g, true)
+		assertFilter(t, f, g, false)
 
 		g = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"b": domain.Bool(true)})
 		assertFilter(t, f, g, false)

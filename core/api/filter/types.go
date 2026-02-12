@@ -58,6 +58,8 @@ var (
 	numberConditions = []model.BlockContentDataviewFilterCondition{
 		model.BlockContentDataviewFilter_Equal,
 		model.BlockContentDataviewFilter_NotEqual,
+		model.BlockContentDataviewFilter_In,
+		model.BlockContentDataviewFilter_NotIn,
 		model.BlockContentDataviewFilter_Greater,
 		model.BlockContentDataviewFilter_GreaterOrEqual,
 		model.BlockContentDataviewFilter_Less,
