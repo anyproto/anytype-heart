@@ -85,24 +85,17 @@ func (w *watcher) Init(a *app.App) error {
 }
 
 func (w *watcher) Close(context.Context) error {
+	if w.cancelCtx != nil {
+		w.cancelCtx()
+	}
 	_ = w.infoBatch.Close()
 	if w.handlerDone != nil {
 		// make sure we finish all the work, but protect from deadlocks
 		select {
-		case <-time.After(time.Second * 5):
+		case <-time.After(time.Second):
 			log.Warn("backlinks update handler did not finish in time")
-			if w.cancelCtx != nil {
-				// cancel the active writes and exit
-				// we may lose some updates
-				// todo: GO-6843
-				w.cancelCtx()
-			}
-			return nil
 		case <-w.handlerDone:
 		}
-	}
-	if w.cancelCtx != nil {
-		w.cancelCtx()
 	}
 	return nil
 }
