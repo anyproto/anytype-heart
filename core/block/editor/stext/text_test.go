@@ -1100,8 +1100,9 @@ func TestTextImpl_TurnIntoToggleHeaderWithDivBlocks(t *testing.T) {
 		// -div1
 		// --1
 		// --TH1
-		// ---newDiv1 (contains 2)
-		// ---newDiv2 (contains 3, 4)
+		// ---2
+		// ---3
+		// ---4
 		// -div2
 		// --H1-stop
 		// --5
@@ -1131,21 +1132,8 @@ func TestTextImpl_TurnIntoToggleHeaderWithDivBlocks(t *testing.T) {
 		// Check toggle header style
 		assert.Equal(t, model.BlockContentText_ToggleHeader1, r.Pick("H1").Model().GetText().Style)
 
-		// Check toggle header has 2 new div children
-		toggleChildren := r.Pick("H1").Model().ChildrenIds
-		require.Len(t, toggleChildren, 2)
-
-		// First new div should contain block "2"
-		newDiv1 := r.Pick(toggleChildren[0])
-		require.NotNil(t, newDiv1)
-		assert.Equal(t, model.BlockContentLayout_Div, newDiv1.Model().GetLayout().Style)
-		assert.Equal(t, []string{"2"}, newDiv1.Model().ChildrenIds)
-
-		// Second new div should contain blocks "3", "4"
-		newDiv2 := r.Pick(toggleChildren[1])
-		require.NotNil(t, newDiv2)
-		assert.Equal(t, model.BlockContentLayout_Div, newDiv2.Model().GetLayout().Style)
-		assert.Equal(t, []string{"3", "4"}, newDiv2.Model().ChildrenIds)
+		// Blocks are direct children of toggle header (no wrapper divs)
+		assert.Equal(t, []string{"2", "3", "4"}, r.Pick("H1").Model().ChildrenIds)
 
 		// Check div1 structure: should contain "1" and "H1" (toggle header)
 		assert.Equal(t, []string{"1", "H1"}, r.Pick("div1").Model().ChildrenIds)
@@ -1168,8 +1156,9 @@ func TestTextImpl_TurnIntoToggleHeaderWithDivBlocks(t *testing.T) {
 		// root
 		// -div1
 		// --TH1
-		// ---newDiv1 (contains 2)
-		// ---newDiv2 (contains 3, 4)
+		// ---2
+		// ---3
+		// ---4
 		// (div2 is removed as it becomes empty)
 
 		// given
@@ -1191,17 +1180,8 @@ func TestTextImpl_TurnIntoToggleHeaderWithDivBlocks(t *testing.T) {
 		require.NoError(t, err)
 		r := sb.NewState()
 
-		// Check toggle header has 2 new div children
-		toggleChildren := r.Pick("H1").Model().ChildrenIds
-		require.Len(t, toggleChildren, 2)
-
-		// First new div should contain block "2"
-		newDiv1 := r.Pick(toggleChildren[0])
-		assert.Equal(t, []string{"2"}, newDiv1.Model().ChildrenIds)
-
-		// Second new div should contain blocks "3", "4"
-		newDiv2 := r.Pick(toggleChildren[1])
-		assert.Equal(t, []string{"3", "4"}, newDiv2.Model().ChildrenIds)
+		// Blocks are direct children of toggle header
+		assert.Equal(t, []string{"2", "3", "4"}, r.Pick("H1").Model().ChildrenIds)
 
 		// div1 should only contain the toggle header
 		assert.Equal(t, []string{"H1"}, r.Pick("div1").Model().ChildrenIds)
@@ -1225,7 +1205,7 @@ func TestTextImpl_TurnIntoToggleHeaderWithDivBlocks(t *testing.T) {
 		// root
 		// -div1
 		// --TH1
-		// ---newDiv1 (contains 2)
+		// ---2
 		// --H1-stop
 		// --3
 		// -div2
@@ -1251,13 +1231,8 @@ func TestTextImpl_TurnIntoToggleHeaderWithDivBlocks(t *testing.T) {
 		require.NoError(t, err)
 		r := sb.NewState()
 
-		// Check toggle header has 1 new div child
-		toggleChildren := r.Pick("H1").Model().ChildrenIds
-		require.Len(t, toggleChildren, 1)
-
-		// New div should contain block "2"
-		newDiv := r.Pick(toggleChildren[0])
-		assert.Equal(t, []string{"2"}, newDiv.Model().ChildrenIds)
+		// Block "2" is a direct child of toggle header
+		assert.Equal(t, []string{"2"}, r.Pick("H1").Model().ChildrenIds)
 
 		// div1 should contain TH1, H1-stop, 3
 		assert.Equal(t, []string{"H1", "H1-stop", "3"}, r.Pick("div1").Model().ChildrenIds)
@@ -1330,17 +1305,70 @@ func TestTextImpl_TurnIntoToggleHeaderWithDivBlocks(t *testing.T) {
 		require.NoError(t, err)
 		r := sb.NewState()
 
-		// Toggle header should have 2 div children
-		toggleChildren := r.Pick("H2").Model().ChildrenIds
-		require.Len(t, toggleChildren, 2)
-
-		// First div: content1
-		assert.Equal(t, []string{"content1"}, r.Pick(toggleChildren[0]).Model().ChildrenIds)
-
-		// Second div: H3, content2 (H3 is collected because it's lower level than H2)
-		assert.Equal(t, []string{"H3", "content2"}, r.Pick(toggleChildren[1]).Model().ChildrenIds)
+		// Blocks are direct children: content1 from div1, H3 and content2 from div2
+		assert.Equal(t, []string{"content1", "H3", "content2"}, r.Pick("H2").Model().ChildrenIds)
 
 		// div2 should have H2-stop and content3
 		assert.Equal(t, []string{"H2-stop", "content3"}, r.Pick("div2").Model().ChildrenIds)
+	})
+
+	t.Run("collect from many sibling divs", func(t *testing.T) {
+		// Tree Before:
+		// root
+		// -div1
+		// --H1 (converting to TH1)
+		// --1
+		// -div2
+		// --2
+		// -div3
+		// --3
+		// -div4
+		// --4
+		// -div5
+		// --5
+		// -div6
+		// --6
+		//
+		// Tree After:
+		// root
+		// -div1
+		// --TH1
+		// ---1
+		// ---2
+		// ---3
+		// ---4
+		// ---5
+		// ---6
+		// (div2-div6 are removed as they become empty)
+
+		// given
+		sb := smarttest.New("root")
+		sb.AddBlock(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"div1", "div2", "div3", "div4", "div5", "div6"}})).
+			AddBlock(newLayoutDivBlock("div1", "H1", "1")).
+			AddBlock(newLayoutDivBlock("div2", "2")).
+			AddBlock(newLayoutDivBlock("div3", "3")).
+			AddBlock(newLayoutDivBlock("div4", "4")).
+			AddBlock(newLayoutDivBlock("div5", "5")).
+			AddBlock(newLayoutDivBlock("div6", "6")).
+			AddBlock(newTextBlock("H1", "header to convert")).
+			AddBlock(newTextBlock("1", "in div1")).
+			AddBlock(newTextBlock("2", "in div2")).
+			AddBlock(newTextBlock("3", "in div3")).
+			AddBlock(newTextBlock("4", "in div4")).
+			AddBlock(newTextBlock("5", "in div5")).
+			AddBlock(newTextBlock("6", "in div6"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		// when
+		err := tb.TurnInto(nil, model.BlockContentText_ToggleHeader1, "H1")
+
+		// then
+		require.NoError(t, err)
+		r := sb.NewState()
+
+		assert.Equal(t, model.BlockContentText_ToggleHeader1, r.Pick("H1").Model().GetText().Style)
+		assert.Equal(t, []string{"1", "2", "3", "4", "5", "6"}, r.Pick("H1").Model().ChildrenIds)
+		assert.Equal(t, []string{"H1"}, r.Pick("div1").Model().ChildrenIds)
 	})
 }

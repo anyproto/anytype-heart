@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -499,63 +497,11 @@ func turnIntoToggleHeaderInDiv(s *state.State, b text.Block, parentDiv simple.Bl
 		return
 	}
 
-	// Collect blocks from current div (after the target block)
-	var currentDivBlocks []string
-	stopped := false
-	for i := pos + 1; i < len(parentDiv.Model().ChildrenIds); i++ {
-		siblingId := parentDiv.Model().ChildrenIds[i]
-		sibling := s.Pick(siblingId)
-		if sibling == nil {
-			continue
-		}
-
-		siblingLevel := getHeaderLevel(getBlockStyle(sibling))
-		if siblingLevel > 0 && siblingLevel <= targetLevel {
-			stopped = true
-			break
-		}
-
-		currentDivBlocks = append(currentDivBlocks, siblingId)
+	blocksToMove := collectBlocksFromDivs(s, grandparent, targetLevel, divPos, pos+1)
+	for _, blockId := range blocksToMove {
+		s.Unlink(blockId)
 	}
-
-	// If we didn't hit a stopping header in current div, continue to sibling divs
-	var siblingDivBlocks [][]string
-	if !stopped {
-		siblingDivBlocks = collectSiblingDivBlocks(s, grandparent, targetLevel, divPos)
-	}
-
-	addNewDiv := func(blockIds []string) {
-		newDivId := bson.NewObjectId().Hex()
-		newDiv := simple.New(&model.Block{
-			Id:          newDivId,
-			ChildrenIds: blockIds,
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{
-					Style: model.BlockContentLayout_Div,
-				},
-			},
-		})
-		s.Add(newDiv)
-		b.Model().ChildrenIds = append(b.Model().ChildrenIds, newDivId)
-	}
-
-	// Now build the children of the toggle header
-	// First, unlink blocks from current div and wrap in a new div if needed
-	if len(currentDivBlocks) > 0 {
-		for _, blockId := range currentDivBlocks {
-			s.Unlink(blockId)
-		}
-		// Create a new div block for content from current div
-		addNewDiv(currentDivBlocks)
-	}
-
-	// Then, for each sibling div's list of blocks, create a new div and add to toggle header
-	for _, blockIds := range siblingDivBlocks {
-		for _, blockId := range blockIds {
-			s.Unlink(blockId)
-		}
-		addNewDiv(blockIds)
-	}
+	b.Model().ChildrenIds = append(b.Model().ChildrenIds, blocksToMove...)
 }
 
 func isLayoutDivBlock(b simple.Block) bool {
@@ -588,24 +534,32 @@ func getBlockStyle(b simple.Block) model.BlockContentTextStyle {
 	return model.BlockContentText_Paragraph
 }
 
-func collectSiblingDivBlocks(s *state.State, divsParent simple.Block, targetLevel, divPos int) (siblingDivBlocks [][]string) {
-	stopped := false
-	siblingDivBlocks = make([][]string, 0)
+// collectBlocksFromDivs collects block IDs from div children of divsParent, starting from the div
+// at divPos (from startChildIdx within that div) and continuing to subsequent sibling divs.
+// It stops when it encounters a header of same or higher level than targetLevel.
+// Empty divs that had all their children collected are unlinked.
+func collectBlocksFromDivs(s *state.State, divsParent simple.Block, targetLevel, divPos, startChildIdx int) []string {
+	var blocks []string
+	var emptyDivsToUnlink []string
 
-	for i := divPos + 1; i < len(divsParent.Model().ChildrenIds); i++ {
-		siblingDivId := divsParent.Model().ChildrenIds[i]
-		siblingDiv := s.Get(siblingDivId)
-		if siblingDiv == nil {
+	// Take a snapshot of div IDs to avoid issues with slice mutation during unlinking
+	divIds := append([]string(nil), divsParent.Model().ChildrenIds[divPos:]...)
+
+	for idx, divId := range divIds {
+		div := s.Get(divId)
+		if div == nil || !isLayoutDivBlock(div) {
 			continue
 		}
 
-		// Only process layout div blocks
-		if !isLayoutDivBlock(siblingDiv) {
-			continue
+		childStart := 0
+		if idx == 0 {
+			childStart = startChildIdx
 		}
 
+		stopped := false
 		var blocksFromDiv []string
-		for _, childId := range siblingDiv.Model().ChildrenIds {
+		for j := childStart; j < len(div.Model().ChildrenIds); j++ {
+			childId := div.Model().ChildrenIds[j]
 			child := s.Pick(childId)
 			if child == nil {
 				continue
@@ -620,20 +574,22 @@ func collectSiblingDivBlocks(s *state.State, divsParent simple.Block, targetLeve
 			blocksFromDiv = append(blocksFromDiv, childId)
 		}
 
-		if len(blocksFromDiv) > 0 {
-			siblingDivBlocks = append(siblingDivBlocks, blocksFromDiv)
-		}
+		blocks = append(blocks, blocksFromDiv...)
 
 		if stopped {
 			break
 		}
 
-		// If we collected all children from this div, remove the empty div
-		if len(blocksFromDiv) == len(siblingDiv.Model().ChildrenIds) {
-			s.Unlink(siblingDivId)
+		// If we collected all children from a sibling div, mark it for removal
+		if idx != 0 && len(blocksFromDiv) == len(div.Model().ChildrenIds) {
+			emptyDivsToUnlink = append(emptyDivsToUnlink, divId)
 		}
 	}
-	return siblingDivBlocks
+
+	for _, divId := range emptyDivsToUnlink {
+		s.Unlink(divId)
+	}
+	return blocks
 }
 
 func (t *textImpl) isLastTextBlockChanged() (bool, error) {
