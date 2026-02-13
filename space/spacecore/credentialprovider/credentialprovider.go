@@ -9,7 +9,6 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/anyproto/anytype-heart/core/wallet"
 )
 
 func New() app.Component {
@@ -18,12 +17,10 @@ func New() app.Component {
 
 type credentialProvider struct {
 	client coordinatorclient.CoordinatorClient
-	wallet wallet.Wallet
 }
 
 func (c *credentialProvider) Init(a *app.App) (err error) {
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
-	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	return
 }
 
@@ -35,8 +32,6 @@ func (c *credentialProvider) GetCredential(ctx context.Context, spaceHeader *spa
 	payload := coordinatorclient.SpaceSignPayload{
 		SpaceId:     spaceHeader.Id,
 		SpaceHeader: spaceHeader.RawHeader,
-		OldAccount:  c.wallet.GetOldAccountKey(),
-		Identity:    c.wallet.GetAccountPrivkey(),
 	}
 	receipt, err := c.client.SpaceSign(ctx, payload)
 	if err != nil {

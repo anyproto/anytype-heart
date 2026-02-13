@@ -29,7 +29,6 @@ import (
 	"github.com/anyproto/any-sync/util/periodicsync"
 
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -66,8 +65,7 @@ type configFetcher struct {
 	client       coordinatorclient.CoordinatorClient
 	spaceService spacecore.SpaceCoreService
 	getter       techSpaceGetter
-	wallet       wallet.Wallet
-	lastStatus   model.AccountStatusType
+	lastStatus model.AccountStatusType
 	mutex        sync.Mutex
 }
 
@@ -81,7 +79,6 @@ func (c *configFetcher) Run(context.Context) error {
 }
 
 func (c *configFetcher) Init(a *app.App) (err error) {
-	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	c.eventSender = a.MustComponent(event.CName).(event.Sender)
 	c.periodicSync = periodicsync.NewPeriodicSync(refreshIntervalSecs, timeout, c.updateStatus, logger.CtxLogger{Logger: log.Desugar()})
 	c.client = a.MustComponent(coordinatorclient.CName).(coordinatorclient.CoordinatorClient)
@@ -106,8 +103,6 @@ func (c *configFetcher) updateStatus(ctx context.Context) (err error) {
 		payload := coordinatorclient.SpaceSignPayload{
 			SpaceId:     techSpace.Id(),
 			SpaceHeader: state.SpaceHeader,
-			OldAccount:  c.wallet.GetOldAccountKey(),
-			Identity:    c.wallet.GetAccountPrivkey(),
 		}
 		// registering space inside coordinator
 		_, err = c.client.SpaceSign(ctx, payload)
