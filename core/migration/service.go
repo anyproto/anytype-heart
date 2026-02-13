@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -117,7 +118,7 @@ func (s *service) runAllMigrations(ctx context.Context, spaceId string, derivedI
 	workspaceId := derivedIDs.Workspace
 	if err := s.runObjectContextMigration(ctx, spaceId, workspaceId); err != nil {
 		log.Error("object context migration failed",
-			zap.Int("version", currentObjectContextMigrationVersion),
+			zap.Int("version", domain.MigrationObjectContextVersion),
 			zap.String("spaceId", spaceId),
 			zap.Error(err))
 	}
