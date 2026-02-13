@@ -24,6 +24,9 @@ const (
 	idleCheckInterval = 10 * time.Second
 	// minIdleDelay is the minimum time the indexer must be idle before running migrations
 	minIdleDelay = 30 * time.Second
+
+	// minOnlineDelay is the minimum time the node must be online before running migrations
+	minOnlineDelay = 10 * time.Second
 )
 
 var log = logging.LoggerNotSugared(CName)
@@ -89,10 +92,25 @@ func (s *service) Close() error {
 // to ensure remote changes have been received before running migrations.
 func (s *service) RunMigrationsWhenIdle(spaceId string, derivedIDs threads.DerivedSmartblockIds) {
 	isLocalOnly := s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly
-
+	onlineSince := time.Time{}
 	for {
 		select {
 		case <-time.After(idleCheckInterval):
+			if !isLocalOnly {
+				status, ok := s.nodeStatus.TryGetNodeStatus(spaceId)
+				if !ok || status != nodestatus.Online {
+					onlineSince = time.Time{}
+					continue // Status not set yet, or not online
+				}
+				if onlineSince.IsZero() {
+					onlineSince = time.Now()
+				}
+
+				if time.Since(onlineSince) <= minOnlineDelay {
+					continue
+				}
+			}
+
 			lastIndex := s.indexer.GetLastIndexTime(spaceId)
 			if lastIndex.IsZero() || time.Since(lastIndex) <= minIdleDelay {
 				continue
