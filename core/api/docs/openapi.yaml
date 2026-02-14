@@ -438,6 +438,17 @@ components:
     FilterCondition:
       description: The filter condition
       enum:
+      - eq
+      - ne
+      - gt
+      - gte
+      - lt
+      - lte
+      - contains
+      - ncontains
+      - in
+      - nin
+      - all
       - empty
       - nempty
       example: empty
@@ -1841,7 +1852,7 @@ components:
           example: status
           type: string
         select:
-          description: Tag Id - for eq/ne conditions (single selection)
+          description: Tag Id - for eq/ne/in conditions (single selection)
           example: tag_id
           type: string
       type: object
