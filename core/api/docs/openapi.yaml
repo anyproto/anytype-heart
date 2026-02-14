@@ -3586,7 +3586,7 @@ paths:
         in: query
         name: format
         schema:
-          default: '"md"'
+          default: md
           enum:
           - md
           type: string
