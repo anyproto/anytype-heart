@@ -81,6 +81,31 @@ func (fc *FilterCondition) UnmarshalJSON(data []byte) error {
 }
 
 // FilterExpression represents a filter expression that can be nested with AND/OR operators
+//
+//	@Description	Expression filter with nested AND/OR conditions. Supports recursive nesting for complex queries. The 'filters' array can contain nested FilterExpression objects, creating a tree structure for complex logic.
+//	@Description
+//	@Description	Example: (status="done" AND priority="high") OR (created_date > "2024-01-01")
+//	@Description
+//	@Description	```
+//	@Description	{
+//	@Description	"operator": "or",
+//	@Description	"filters": [
+//	@Description	{
+//	@Description	"operator": "and",
+//	@Description	"conditions": [
+//	@Description	{"property_key": "status", "condition": "eq", "select": "done_tag_id"},
+//	@Description	{"property_key": "priority", "condition": "eq", "select": "high_tag_id"}
+//	@Description	]
+//	@Description	},
+//	@Description	{
+//	@Description	"operator": "and",
+//	@Description	"conditions": [
+//	@Description	{"property_key": "created_date", "condition": "gt", "date": "2024-01-01"}
+//	@Description	]
+//	@Description	}
+//	@Description	]
+//	@Description	}
+//	@Description	```
 type FilterExpression struct {
 	Operator   FilterOperator     `json:"operator,omitempty" enums:"and,or"`                                                                                                                                                                                                     // Logical operator for combining filters (and, or)
 	Conditions []FilterItem       `json:"conditions,omitempty" oneOf:"TextFilterItem,NumberFilterItem,SelectFilterItem,MultiSelectFilterItem,DateFilterItem,CheckboxFilterItem,FilesFilterItem,UrlFilterItem,EmailFilterItem,PhoneFilterItem,ObjectsFilterItem,EmptyFilterItem"` // List of format-specific filter conditions
@@ -88,6 +113,8 @@ type FilterExpression struct {
 }
 
 // FilterItem is a wrapper for format-specific filter conditions
+//
+//	@Description	A filter condition that matches a specific property format (text, number, select, date, etc.). Each filter item contains a property_key, condition, and a value field specific to the property format.
 type FilterItem struct {
 	WrappedFilterItem `swaggerignore:"true"`
 }
