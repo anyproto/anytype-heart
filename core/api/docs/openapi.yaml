@@ -2280,7 +2280,11 @@ components:
           description: The layout of the view
           enum:
           - grid
-          - table
+          - list
+          - gallery
+          - kanban
+          - calendar
+          - graph
           example: grid
           type: string
         name:
