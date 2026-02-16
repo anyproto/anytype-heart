@@ -173,21 +173,19 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		it = it.Reschedule()
 		return it, err
 	}
+
+	switch it.State {
+	case FileStateLimited, FileStatePendingDeletion:
+		spaceLimits.deallocateFile(it.Key())
+	case FileStateDone:
+		spaceLimits.markFileUploaded(it.Key())
+	default:
+	}
+
 	return it, nil
 }
 
 func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *blocksAvailabilityResponse) (FileInfo, error) {
-	if it.ObjectId != "" {
-		err := s.updateStatus(it, filesyncstatus.Syncing)
-		if isObjectDeletedError(err) {
-			it.State = FileStatePendingDeletion
-			return it, nil
-		}
-		if err != nil {
-			return it, fmt.Errorf("update status: %w", err)
-		}
-	}
-
 	var totalBytesToUpload int
 	err := s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it, fileBlocks, blocksAvailability.cidsToBind)
@@ -221,6 +219,17 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		}
 		it.State = FileStateDone
 		return it, nil
+	}
+
+	if it.ObjectId != "" && it.State != FileStateLimited {
+		err := s.updateStatus(it, filesyncstatus.Syncing)
+		if isObjectDeletedError(err) {
+			it.State = FileStatePendingDeletion
+			return it, nil
+		}
+		if err != nil {
+			return it, fmt.Errorf("update status: %w", err)
+		}
 	}
 
 	it.State = FileStateUploading

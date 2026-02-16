@@ -34,6 +34,11 @@ func (s *fileSync) addToLimitedQueue(objectId string) error {
 			return FileInfo{}, false, nil
 		}
 
+		space, spaceErr := s.limitManager.getSpace(info.SpaceId)
+		if spaceErr == nil {
+			space.deallocateFile(info.Key())
+		}
+
 		err := s.handleLimitReached(s.loopCtx, info)
 		if err != nil {
 			info.State = FileStatePendingUpload
