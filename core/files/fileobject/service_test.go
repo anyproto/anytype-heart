@@ -10,6 +10,9 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -22,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
@@ -253,4 +257,57 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		})
 		require.ErrorIs(t, err, filemodels.ErrEmptyFileId)
 	})
+}
+
+func TestCreate_importedOriginPreservesTimestampsAndCreator(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+	spaceId := "space1"
+
+	space := mock_clientspace.NewMockSpace(t)
+	space.EXPECT().Id().Return(spaceId).Maybe()
+	space.EXPECT().CreateTreePayload(mock.Anything, mock.Anything).Return(treestorage.TreeStorageCreatePayload{
+		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: "rootId"},
+	}, nil)
+	// The background indexer may pick up the queued file and try to index it.
+	space.EXPECT().Do(mock.Anything, mock.Anything).Return(fmt.Errorf("skip indexing in test")).Maybe()
+	fx.spaceService.EXPECT().Get(mock.Anything, spaceId).Return(space, nil)
+
+	fx.objectCreator.objectId = "fileObjId"
+	fx.objectCreator.details = domain.NewDetails()
+
+	origin := objectorigin.Import(model.Import_Pb)
+	additionalDetails := domain.NewDetails()
+	additionalDetails.SetInt64(bundle.RelationKeyCreatedDate, 1000)
+	additionalDetails.SetInt64(bundle.RelationKeyLastModifiedDate, 2000)
+	additionalDetails.SetString(bundle.RelationKeyCreator, "importCreator")
+	additionalDetails.SetString(bundle.RelationKeyLastModifiedBy, "importEditor")
+
+	id, _, err := fx.Create(ctx, spaceId, filemodels.CreateRequest{
+		FileId:                testFileId,
+		ObjectOrigin:          origin,
+		AdditionalDetails:     additionalDetails,
+		AsyncMetadataIndexing: true,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "fileObjId", id)
+
+	// Verify creation state captured by the stub.
+	st := fx.objectCreator.creationState
+	require.NotNil(t, st)
+
+	assert.Equal(t, domain.ChangeTypeHistoryOperation, st.GetChangeType())
+	assert.Equal(t, int64(1000), st.OriginalCreatedTimestamp())
+
+	// Creator is a derived relation, so SetDetailAndBundledRelation routes it
+	// to local details. The explicit SetLocalDetail call should also set it.
+	localDetails := st.LocalDetails()
+	require.NotNil(t, localDetails)
+	assert.Equal(t, "importCreator", localDetails.GetString(bundle.RelationKeyCreator))
+
+	// AdditionalDetails loop sets all keys via SetDetailAndBundledRelation.
+	combined := st.CombinedDetails()
+	assert.Equal(t, int64(1000), combined.GetInt64(bundle.RelationKeyCreatedDate))
+	assert.Equal(t, int64(2000), combined.GetInt64(bundle.RelationKeyLastModifiedDate))
+	assert.Equal(t, "importEditor", combined.GetString(bundle.RelationKeyLastModifiedBy))
 }
