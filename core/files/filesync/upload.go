@@ -177,17 +177,6 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 }
 
 func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *blocksAvailabilityResponse) (FileInfo, error) {
-	if it.ObjectId != "" {
-		err := s.updateStatus(it, filesyncstatus.Syncing)
-		if isObjectDeletedError(err) {
-			it.State = FileStatePendingDeletion
-			return it, nil
-		}
-		if err != nil {
-			return it, fmt.Errorf("update status: %w", err)
-		}
-	}
-
 	var totalBytesToUpload int
 	err := s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it, fileBlocks, blocksAvailability.cidsToBind)
@@ -221,6 +210,18 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		}
 		it.State = FileStateDone
 		return it, nil
+	}
+
+	// Set Syncing status only after blocks have been successfully queued
+	if it.ObjectId != "" {
+		err := s.updateStatus(it, filesyncstatus.Syncing)
+		if isObjectDeletedError(err) {
+			it.State = FileStatePendingDeletion
+			return it, nil
+		}
+		if err != nil {
+			return it, fmt.Errorf("update status: %w", err)
+		}
 	}
 
 	it.State = FileStateUploading
