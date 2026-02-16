@@ -101,6 +101,90 @@ func TestObjectCreator_Create(t *testing.T) {
 	})
 }
 
+func TestObjectCreator_setArchived(t *testing.T) {
+	t.Run("detail missing keeps false and does not update", func(t *testing.T) {
+		detailsService := mock_detailservice.NewMockService(t)
+		testObject := smarttest.New("obj1")
+		st := testObject.NewState()
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String("obj1"),
+			bundle.RelationKeyIsArchived: domain.Bool(false),
+		}))
+		assert.NoError(t, testObject.Apply(st))
+		getter := newDumbObjectGetter(map[string]smartblock.SmartBlock{"obj1": testObject})
+		oc := &ObjectCreator{detailsService: detailsService, objectGetterDeleter: getter}
+		snapshot := &common.StateSnapshot{Details: domain.NewDetails()}
+		oc.setArchived(context.Background(), snapshot, "obj1")
+	})
+
+	t.Run("detail set false unarchives archived object", func(t *testing.T) {
+		detailsService := mock_detailservice.NewMockService(t)
+		detailsService.EXPECT().SetIsArchived(mock.Anything, "obj1", false).Return(nil).Once()
+		testObject := smarttest.New("obj1")
+		st := testObject.NewState()
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:               domain.String("obj1"),
+			bundle.RelationKeyIsArchived:       domain.Bool(true),
+			bundle.RelationKeyLastModifiedDate: domain.Int64(999),
+		}))
+		assert.NoError(t, testObject.Apply(st))
+		getter := newDumbObjectGetter(map[string]smartblock.SmartBlock{"obj1": testObject})
+		oc := &ObjectCreator{detailsService: detailsService, objectGetterDeleter: getter}
+		snapshot := &common.StateSnapshot{
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyLastModifiedDate: domain.Int64(123),
+			}),
+		}
+		wasUnarchived := oc.setArchived(context.Background(), snapshot, "obj1")
+		assert.True(t, wasUnarchived)
+		oc.restoreLastModifiedDate(snapshot, "obj1")
+		assert.Equal(
+			t,
+			int64(123),
+			testObject.CombinedDetails().GetInt64(bundle.RelationKeyLastModifiedDate),
+		)
+	})
+
+	t.Run("detail set false does not update when already false", func(t *testing.T) {
+		detailsService := mock_detailservice.NewMockService(t)
+		testObject := smarttest.New("obj1")
+		st := testObject.NewState()
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String("obj1"),
+			bundle.RelationKeyIsArchived: domain.Bool(false),
+		}))
+		assert.NoError(t, testObject.Apply(st))
+		getter := newDumbObjectGetter(map[string]smartblock.SmartBlock{"obj1": testObject})
+		oc := &ObjectCreator{detailsService: detailsService, objectGetterDeleter: getter}
+		snapshot := &common.StateSnapshot{
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyIsArchived: domain.Bool(false),
+			}),
+		}
+		oc.setArchived(context.Background(), snapshot, "obj1")
+	})
+
+	t.Run("detail set true archives when currently false", func(t *testing.T) {
+		detailsService := mock_detailservice.NewMockService(t)
+		detailsService.EXPECT().SetIsArchived(mock.Anything, "obj1", true).Return(nil).Once()
+		testObject := smarttest.New("obj1")
+		st := testObject.NewState()
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String("obj1"),
+			bundle.RelationKeyIsArchived: domain.Bool(false),
+		}))
+		assert.NoError(t, testObject.Apply(st))
+		getter := newDumbObjectGetter(map[string]smartblock.SmartBlock{"obj1": testObject})
+		oc := &ObjectCreator{detailsService: detailsService, objectGetterDeleter: getter}
+		snapshot := &common.StateSnapshot{
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyIsArchived: domain.Bool(true),
+			}),
+		}
+		oc.setArchived(context.Background(), snapshot, "obj1")
+	})
+}
+
 func TestObjectCreator_updateKeys(t *testing.T) {
 	t.Run("updateKeys - update relation key", func(t *testing.T) {
 		// given
