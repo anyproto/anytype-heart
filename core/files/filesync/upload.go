@@ -173,6 +173,15 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		it = it.Reschedule()
 		return it, err
 	}
+
+	switch it.State {
+	case FileStateLimited, FileStatePendingDeletion:
+		spaceLimits.deallocateFile(it.Key())
+	case FileStateDone:
+		spaceLimits.markFileUploaded(it.Key())
+	default:
+	}
+
 	return it, nil
 }
 
