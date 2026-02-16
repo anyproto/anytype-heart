@@ -221,7 +221,7 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		return it, nil
 	}
 
-	if it.ObjectId != "" {
+	if it.ObjectId != "" && it.State != FileStateLimited {
 		err := s.updateStatus(it, filesyncstatus.Syncing)
 		if isObjectDeletedError(err) {
 			it.State = FileStatePendingDeletion
