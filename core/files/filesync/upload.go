@@ -212,7 +212,6 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		return it, nil
 	}
 
-	// Set Syncing status only after blocks have been successfully queued
 	if it.ObjectId != "" {
 		err := s.updateStatus(it, filesyncstatus.Syncing)
 		if isObjectDeletedError(err) {
