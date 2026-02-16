@@ -280,6 +280,71 @@ func TestInjectDerivedDetails(t *testing.T) {
 	})
 }
 
+func TestInjectLinksDetails_filterOutRelations(t *testing.T) {
+	const id = "id"
+
+	t.Run("string relation value is filtered out from links", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, map[string]simple.Block{
+			id:     simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
+			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "iconImageId"}}}),
+		}).NewState()
+		st.SetDetail(bundle.RelationKeyIconImage, domain.String("iconImageId"))
+
+		// when
+		fx.injectLinksDetails(st)
+
+		// then
+		links := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		assert.Contains(t, links, "obj1")
+		assert.NotContains(t, links, "iconImageId")
+	})
+
+	t.Run("string list relation value is filtered out from links", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, map[string]simple.Block{
+			id:     simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
+			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "pictureId"}}}),
+		}).NewState()
+		st.SetDetail(bundle.RelationKeyPicture, domain.StringList([]string{"pictureId", "otherPic"}))
+
+		// when
+		fx.injectLinksDetails(st)
+
+		// then
+		links := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		assert.Contains(t, links, "obj1")
+		assert.NotContains(t, links, "pictureId")
+	})
+
+	t.Run("links are preserved when filter relations are set but do not match", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, map[string]simple.Block{
+			id:     simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
+			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj2"}}}),
+		}).NewState()
+		st.SetDetail(bundle.RelationKeyIconImage, domain.String("someImage"))
+		st.SetDetail(bundle.RelationKeyCoverId, domain.String("someCover"))
+
+		// when
+		fx.injectLinksDetails(st)
+
+		// then
+		links := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		assert.Contains(t, links, "obj1")
+		assert.Contains(t, links, "obj2")
+	})
+}
+
 func TestResolveLayout(t *testing.T) {
 	const id = "id"
 	t.Run("resolved layout is injected from layout detail", func(t *testing.T) {
