@@ -29,19 +29,15 @@ import (
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const CName = "chatrepository"
-
-var log = logging.Logger(CName).Desugar()
 
 const (
 	descOrder   = "-_o.id"
@@ -173,7 +169,7 @@ type Repository interface {
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
-	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string
+	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) ([]string, error)
 	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
 }
@@ -496,34 +492,103 @@ func (r *repository) setReadFlag(ctx context.Context, arena *anyenc.Arena, handl
 	return idsModified, nil
 }
 
-func (r *repository) SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string {
+func (r *repository) SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) ([]string, error) {
+	arena := r.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		r.arenaPool.Put(arena)
+	}()
+
 	var idsModified []string
-	for _, id := range msgIds {
-		if id == chatObjectId {
-			// skip tree root
-			continue
-		}
-		res, err := r.collection.UpdateId(ctx, id, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-			oldValue := v.GetBool(chatmodel.SyncedKey)
-			if oldValue != value {
-				v.Set(chatmodel.SyncedKey, arenaNewBool(a, value))
-				return v, true, nil
-			}
-			return v, false, nil
-		}))
-		// Not all changes are messages, skip them
-		if errors.Is(err, anystore.ErrDocNotFound) {
-			continue
-		}
+
+	chunks := lo.Chunk(msgIds, 100)
+	for _, chunk := range chunks {
+		modified, err := r.setSyncedFlag(ctx, arena, chunk, value)
 		if err != nil {
-			log.Error("set synced flag: update message", zap.Error(err), zap.String("changeId", id), zap.String("chatObjectId", chatObjectId))
-			continue
+			return nil, err
+		}
+		idsModified = append(idsModified, modified...)
+	}
+
+	return idsModified, nil
+}
+
+func (r *repository) setSyncedFlag(ctx context.Context, arena *anyenc.Arena, msgIds []string, value bool) ([]string, error) {
+	arena.Reset()
+	encIds := make([]*anyenc.Value, 0, len(msgIds))
+	for _, id := range msgIds {
+		encIds = append(encIds, arena.NewString(id))
+	}
+
+	var syncedFilter query.Filter
+	if value {
+		// Looking for not-yet-synced: match synced=false or missing field
+		syncedFilter = query.Not{
+			Filter: query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)},
+		}
+	} else {
+		// Looking for already synced: exact match
+		syncedFilter = query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	}
+
+	iter, err := r.collection.Find(query.And{
+		syncedFilter,
+		query.Key{
+			Path:   []string{"id"},
+			Filter: query.NewInValue(encIds...),
+		},
+	}).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("iter messages: %w", err)
+	}
+
+	var ids []string
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("read doc: %w", err)
+		}
+		ids = append(ids, doc.Value().GetString("id"))
+	}
+
+	if err = iter.Close(); err != nil {
+		return nil, fmt.Errorf("close iter: %w", err)
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	txn, err := r.collection.WriteTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("start write tx: %w", err)
+	}
+	defer txn.Rollback()
+
+	modifier := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		oldValue := v.GetBool(chatmodel.SyncedKey)
+		if oldValue != value {
+			v.Set(chatmodel.SyncedKey, arenaNewBool(a, value))
+			return v, true, nil
+		}
+		return v, false, nil
+	})
+
+	var idsModified []string
+	for _, id := range ids {
+		res, err := r.collection.UpdateId(txn.Context(), id, modifier)
+		if err != nil {
+			return nil, fmt.Errorf("update message %s: %w", id, err)
 		}
 		if res.Modified > 0 {
 			idsModified = append(idsModified, id)
 		}
 	}
-	return idsModified
+
+	if err = txn.Commit(); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+	return idsModified, nil
 }
 
 type GetMessagesRequest struct {

@@ -184,20 +184,12 @@ func (s *storeObject) setMessagesSyncStatus(changeIds []string) error {
 		return nil
 	}
 
-	txn, err := s.repository.WriteTx(s.componentCtx)
+	idsModified, err := s.repository.SetSyncedFlag(s.componentCtx, s.Id(), changeIds, true)
 	if err != nil {
-		return fmt.Errorf("start write tx: %w", err)
+		return fmt.Errorf("set synced flag: %w", err)
 	}
-	defer txn.Rollback()
-
-	idsModified := s.repository.SetSyncedFlag(txn.Context(), s.Id(), changeIds, true)
 
 	if len(idsModified) > 0 {
-		err = txn.Commit()
-		if err != nil {
-			return fmt.Errorf("commit: %w", err)
-		}
-
 		s.subscription.Lock()
 		defer s.subscription.Unlock()
 		s.subscription.UpdateSyncStatus(idsModified, true)
