@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -99,6 +100,54 @@ func TestObjectCreator_Create(t *testing.T) {
 		assert.Equal(t, participantId, id)
 		assert.Equal(t, testDetails, testParticipant.CombinedDetails())
 	})
+	t.Run("legacy file snapshot updates existing file object details", func(t *testing.T) {
+		spaceID := "spaceId"
+		fileObjectID := "fileObjectId"
+		fileName := "imported-file-name.png"
+		detailsService := mock_detailservice.NewMockService(t)
+
+		oldToNew := map[string]string{"oldFile": fileObjectID}
+		dataObject := NewDataObject(context.Background(), oldToNew, nil, nil, objectorigin.Import(model.Import_Pb), spaceID)
+		sn := &common.Snapshot{
+			Id: "oldFile",
+			Snapshot: &common.SnapshotModel{
+				SbType: coresb.SmartBlockTypeFile,
+				Data: &common.StateSnapshot{
+					Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+						bundle.RelationKeyName:             domain.String(fileName),
+						bundle.RelationKeyLastModifiedDate: domain.Int64(123),
+					}),
+				},
+			},
+		}
+
+		testFile := smarttest.New(fileObjectID)
+		st := testFile.NewState()
+		st.SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String(fileObjectID),
+			bundle.RelationKeyName: domain.String("old-name.png"),
+		}))
+		err := testFile.Apply(st)
+		require.NoError(t, err)
+
+		getter := newDumbObjectGetter(map[string]smartblock.SmartBlock{
+			fileObjectID: testFile,
+		})
+
+		fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+		service := New(detailsService, nil, nil, nil, nil, objectcreator.NewCreator(), getter, fetcher)
+
+		create, id, err := service.Create(dataObject, sn)
+		require.NoError(t, err)
+		assert.Nil(t, create)
+		assert.Equal(t, fileObjectID, id)
+		assert.Equal(t, fileName, testFile.CombinedDetails().GetString(bundle.RelationKeyName))
+		assert.Equal(
+			t,
+			int64(123),
+			testFile.CombinedDetails().GetInt64(bundle.RelationKeyLastModifiedDate),
+		)
+	})
 }
 
 func TestObjectCreator_updateKeys(t *testing.T) {
@@ -165,6 +214,46 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		assert.Equal(t, "test", doc.Details().GetString("key"))
 		assert.True(t, doc.HasRelation("key"))
 	})
+}
+
+func TestCanUpdateObject(t *testing.T) {
+	tests := []struct {
+		name   string
+		sbType coresb.SmartBlockType
+		want   bool
+	}{
+		{
+			name:   "page can be updated",
+			sbType: coresb.SmartBlockTypePage,
+			want:   true,
+		},
+		{
+			name:   "file object can be updated",
+			sbType: coresb.SmartBlockTypeFileObject,
+			want:   true,
+		},
+		{
+			name:   "relation cannot be updated",
+			sbType: coresb.SmartBlockTypeRelation,
+			want:   false,
+		},
+		{
+			name:   "relation option cannot be updated",
+			sbType: coresb.SmartBlockTypeRelationOption,
+			want:   false,
+		},
+		{
+			name:   "participant cannot be updated",
+			sbType: coresb.SmartBlockTypeParticipant,
+			want:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, canUpdateObject(tt.sbType))
+		})
+	}
 }
 
 type dumbObjectGetter struct {

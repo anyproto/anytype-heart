@@ -27,6 +27,11 @@ func (o *fileObject) GetIDAndPayload(ctx context.Context, spaceId string, sn *co
 
 	filePath := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySource)
 	if filePath != "" {
+		// On replace/updateExisting import, preserve the already matched file-object id.
+		// Re-upload can hit dedup "existing object" short-circuit and bypass state reset.
+		if getExisting && id != "" {
+			return id, payload, nil
+		}
 		var encryptionKeys map[string]string
 		if sn.Snapshot.Data.FileInfo != nil {
 			encryptionKeys = make(map[string]string, len(sn.Snapshot.Data.FileInfo.EncryptionKeys))
