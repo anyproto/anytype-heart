@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "7df65d7b5ce42dc31b823ff42391a199889d1e270a34f50219c50f020be10cb3"
+const RelationChecksum = "4bce2f35daef0292921e56df86b74fe2693ef1be4b37f0b272b2859fb3029e32"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -195,6 +195,7 @@ const (
 	RelationKey_score                               domain.RelationKey = "_score"
 	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
 	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
+	RelationKeyPinnedMessages                       domain.RelationKey = "pinnedMessages"
 )
 
 var (
@@ -1680,6 +1681,19 @@ var (
 			MaxCount:         1,
 			Name:             "Picture",
 			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyPinnedMessages: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Ids of messages that are pinned to particular chat",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brpinnedMessages",
+			Key:              "pinnedMessages",
+			Name:             "Pinned chat message ids",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

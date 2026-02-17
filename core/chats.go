@@ -301,3 +301,59 @@ func (mw *Middleware) ChatSearch(cctx context.Context, req *pb.RpcChatSearchRequ
 		Results: results,
 	}
 }
+
+func (mw *Middleware) ChatPinMessages(cctx context.Context, req *pb.RpcChatPinMessagesRequest) *pb.RpcChatPinMessagesResponse {
+	ctx := mw.newContext(cctx)
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.PinMessages(cctx, req.ChatObjectId, req.MessageIds)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatPinMessagesResponseErrorCode](err)
+		return &pb.RpcChatPinMessagesResponse{
+			Error: &pb.RpcChatPinMessagesResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatPinMessagesResponse{
+		Event: ctx.GetResponseEvent(),
+	}
+}
+
+func (mw *Middleware) ChatUnpinMessages(cctx context.Context, req *pb.RpcChatUnpinMessagesRequest) *pb.RpcChatUnpinMessagesResponse {
+	ctx := mw.newContext(cctx)
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.UnpinMessages(cctx, req.ChatObjectId, req.MessageIds)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatUnpinMessagesResponseErrorCode](err)
+		return &pb.RpcChatUnpinMessagesResponse{
+			Error: &pb.RpcChatUnpinMessagesResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatUnpinMessagesResponse{
+		Event: ctx.GetResponseEvent(),
+	}
+}
+
+func (mw *Middleware) ChatGetPinnedMessages(cctx context.Context, req *pb.RpcChatGetPinnedMessagesRequest) *pb.RpcChatGetPinnedMessagesResponse {
+	chatService := mustService[chats.Service](mw)
+
+	messages, err := chatService.GetPinnedMessages(cctx, req.ChatObjectId)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatGetPinnedMessagesResponseErrorCode](err)
+		return &pb.RpcChatGetPinnedMessagesResponse{
+			Error: &pb.RpcChatGetPinnedMessagesResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatGetPinnedMessagesResponse{
+		Messages: messagesToProto(messages),
+	}
+}

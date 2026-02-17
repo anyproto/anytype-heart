@@ -594,6 +594,14 @@
     - [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request)
     - [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response)
     - [Rpc.Chat.GetMessagesByIds.Response.Error](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error)
+    - [Rpc.Chat.GetPinnedMessages](#anytype-Rpc-Chat-GetPinnedMessages)
+    - [Rpc.Chat.GetPinnedMessages.Request](#anytype-Rpc-Chat-GetPinnedMessages-Request)
+    - [Rpc.Chat.GetPinnedMessages.Response](#anytype-Rpc-Chat-GetPinnedMessages-Response)
+    - [Rpc.Chat.GetPinnedMessages.Response.Error](#anytype-Rpc-Chat-GetPinnedMessages-Response-Error)
+    - [Rpc.Chat.PinMessages](#anytype-Rpc-Chat-PinMessages)
+    - [Rpc.Chat.PinMessages.Request](#anytype-Rpc-Chat-PinMessages-Request)
+    - [Rpc.Chat.PinMessages.Response](#anytype-Rpc-Chat-PinMessages-Response)
+    - [Rpc.Chat.PinMessages.Response.Error](#anytype-Rpc-Chat-PinMessages-Response-Error)
     - [Rpc.Chat.ReadAll](#anytype-Rpc-Chat-ReadAll)
     - [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request)
     - [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response)
@@ -619,6 +627,10 @@
     - [Rpc.Chat.ToggleMessageReaction.Request](#anytype-Rpc-Chat-ToggleMessageReaction-Request)
     - [Rpc.Chat.ToggleMessageReaction.Response](#anytype-Rpc-Chat-ToggleMessageReaction-Response)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error)
+    - [Rpc.Chat.UnpinMessages](#anytype-Rpc-Chat-UnpinMessages)
+    - [Rpc.Chat.UnpinMessages.Request](#anytype-Rpc-Chat-UnpinMessages-Request)
+    - [Rpc.Chat.UnpinMessages.Response](#anytype-Rpc-Chat-UnpinMessages-Response)
+    - [Rpc.Chat.UnpinMessages.Response.Error](#anytype-Rpc-Chat-UnpinMessages-Response-Error)
     - [Rpc.Chat.Unread](#anytype-Rpc-Chat-Unread)
     - [Rpc.Chat.Unread.Request](#anytype-Rpc-Chat-Unread-Request)
     - [Rpc.Chat.Unread.Response](#anytype-Rpc-Chat-Unread-Response)
@@ -1602,6 +1614,8 @@
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
     - [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code)
+    - [Rpc.Chat.GetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-GetPinnedMessages-Response-Error-Code)
+    - [Rpc.Chat.PinMessages.Response.Error.Code](#anytype-Rpc-Chat-PinMessages-Response-Error-Code)
     - [Rpc.Chat.ReadAll.Response.Error.Code](#anytype-Rpc-Chat-ReadAll-Response-Error-Code)
     - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
     - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
@@ -1609,6 +1623,7 @@
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
+    - [Rpc.Chat.UnpinMessages.Response.Error.Code](#anytype-Rpc-Chat-UnpinMessages-Response-Error-Code)
     - [Rpc.Chat.Unread.ReadType](#anytype-Rpc-Chat-Unread-ReadType)
     - [Rpc.Chat.Unread.Response.Error.Code](#anytype-Rpc-Chat-Unread-Response-Error-Code)
     - [Rpc.Chat.Unsubscribe.Response.Error.Code](#anytype-Rpc-Chat-Unsubscribe-Response-Error-Code)
@@ -2593,6 +2608,9 @@
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ChatReadAll | [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request) | [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response) |  |
 | ChatSearch | [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request) | [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response) |  |
+| ChatPinMessages | [Rpc.Chat.PinMessages.Request](#anytype-Rpc-Chat-PinMessages-Request) | [Rpc.Chat.PinMessages.Response](#anytype-Rpc-Chat-PinMessages-Response) |  |
+| ChatUnpinMessages | [Rpc.Chat.UnpinMessages.Request](#anytype-Rpc-Chat-UnpinMessages-Request) | [Rpc.Chat.UnpinMessages.Response](#anytype-Rpc-Chat-UnpinMessages-Response) |  |
+| ChatGetPinnedMessages | [Rpc.Chat.GetPinnedMessages.Request](#anytype-Rpc-Chat-GetPinnedMessages-Request) | [Rpc.Chat.GetPinnedMessages.Response](#anytype-Rpc-Chat-GetPinnedMessages-Response) |  |
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | mock AI RPCs for compatibility between branches. Not implemented in main |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
@@ -11226,6 +11244,121 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-GetPinnedMessages"></a>
+
+### Rpc.Chat.GetPinnedMessages
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetPinnedMessages-Request"></a>
+
+### Rpc.Chat.GetPinnedMessages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetPinnedMessages-Response"></a>
+
+### Rpc.Chat.GetPinnedMessages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.GetPinnedMessages.Response.Error](#anytype-Rpc-Chat-GetPinnedMessages-Response-Error) |  |  |
+| messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetPinnedMessages-Response-Error"></a>
+
+### Rpc.Chat.GetPinnedMessages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.GetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-GetPinnedMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-PinMessages"></a>
+
+### Rpc.Chat.PinMessages
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-PinMessages-Request"></a>
+
+### Rpc.Chat.PinMessages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| messageIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-PinMessages-Response"></a>
+
+### Rpc.Chat.PinMessages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.PinMessages.Response.Error](#anytype-Rpc-Chat-PinMessages-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-PinMessages-Response-Error"></a>
+
+### Rpc.Chat.PinMessages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.PinMessages.Response.Error.Code](#anytype-Rpc-Chat-PinMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Chat-ReadAll"></a>
 
 ### Rpc.Chat.ReadAll
@@ -11589,6 +11722,64 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-UnpinMessages"></a>
+
+### Rpc.Chat.UnpinMessages
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-UnpinMessages-Request"></a>
+
+### Rpc.Chat.UnpinMessages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| messageIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-UnpinMessages-Response"></a>
+
+### Rpc.Chat.UnpinMessages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.UnpinMessages.Response.Error](#anytype-Rpc-Chat-UnpinMessages-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-UnpinMessages-Response-Error"></a>
+
+### Rpc.Chat.UnpinMessages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.UnpinMessages.Response.Error.Code](#anytype-Rpc-Chat-UnpinMessages-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -25716,6 +25907,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-GetPinnedMessages-Response-Error-Code"></a>
+
+### Rpc.Chat.GetPinnedMessages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-PinMessages-Response-Error-Code"></a>
+
+### Rpc.Chat.PinMessages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Chat-ReadAll-Response-Error-Code"></a>
 
 ### Rpc.Chat.ReadAll.Response.Error.Code
@@ -25797,6 +26014,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code"></a>
 
 ### Rpc.Chat.ToggleMessageReaction.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Chat-UnpinMessages-Response-Error-Code"></a>
+
+### Rpc.Chat.UnpinMessages.Response.Error.Code
 
 
 | Name | Number | Description |

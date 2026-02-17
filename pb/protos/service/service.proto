@@ -432,6 +432,9 @@ service ClientCommands {
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
     rpc ChatReadAll (anytype.Rpc.Chat.ReadAll.Request) returns (anytype.Rpc.Chat.ReadAll.Response);
     rpc ChatSearch (anytype.Rpc.Chat.Search.Request) returns (anytype.Rpc.Chat.Search.Response);
+    rpc ChatPinMessages (anytype.Rpc.Chat.PinMessages.Request) returns (anytype.Rpc.Chat.PinMessages.Response);
+    rpc ChatUnpinMessages (anytype.Rpc.Chat.UnpinMessages.Request) returns (anytype.Rpc.Chat.UnpinMessages.Response);
+    rpc ChatGetPinnedMessages (anytype.Rpc.Chat.GetPinnedMessages.Request) returns (anytype.Rpc.Chat.GetPinnedMessages.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);

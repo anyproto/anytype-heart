@@ -1886,5 +1886,15 @@
     "name": "Template name prefill type",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Ids of messages that are pinned to particular chat",
+    "format": "longtext",
+    "hidden": true,
+    "key": "pinnedMessages",
+    "maxCount": 0,
+    "name": "Pinned chat message ids",
+    "readonly": false,
+    "source": "details"
   }
 ]

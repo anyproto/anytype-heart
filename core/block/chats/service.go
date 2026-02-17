@@ -62,6 +62,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/slice"
 	textUtil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -87,6 +88,10 @@ type Service interface {
 	ReadAll(ctx context.Context) error
 
 	Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error)
+
+	PinMessages(ctx context.Context, chatObjectId string, messageIds []string) error
+	UnpinMessages(ctx context.Context, chatObjectId string, messageIds []string) error
+	GetPinnedMessages(ctx context.Context, chatObjectId string) ([]*chatmodel.Message, error)
 
 	app.ComponentRunnable
 }
@@ -893,6 +898,78 @@ func (s *service) ReadAll(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageIds []string) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		// Verify that all messages exist
+		existingMessages, err := sb.GetMessagesByIds(ctx, messageIds)
+		if err != nil {
+			return fmt.Errorf("get messages: %w", err)
+		}
+
+		if len(existingMessages) < len(messageIds) {
+			existingMessageMap := make(map[string]bool, len(existingMessages))
+			for _, msg := range existingMessages {
+				existingMessageMap[msg.Id] = true
+			}
+
+			notFoundMessages := make([]string, 0, len(messageIds)-len(existingMessageMap))
+			for _, msgId := range messageIds {
+				if !existingMessageMap[msgId] {
+					notFoundMessages = append(notFoundMessages, msgId)
+				}
+			}
+			return fmt.Errorf("messages %v are not found", notFoundMessages)
+		}
+
+		currentPinned := sb.Details().GetStringList(bundle.RelationKeyPinnedMessages)
+		newPinned := lo.Union(currentPinned, messageIds)
+
+		return sb.SetDetails(nil, []domain.Detail{
+			{
+				Key:   bundle.RelationKeyPinnedMessages,
+				Value: domain.StringList(newPinned),
+			},
+		}, true)
+	})
+}
+
+func (s *service) UnpinMessages(ctx context.Context, chatObjectId string, messageIds []string) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		currentPinned := sb.Details().GetStringList(bundle.RelationKeyPinnedMessages)
+		newPinned := slice.RemoveN(currentPinned, messageIds...)
+
+		return sb.SetDetails(nil, []domain.Detail{
+			{
+				Key:   bundle.RelationKeyPinnedMessages,
+				Value: domain.StringList(newPinned),
+			},
+		}, true)
+	})
+}
+
+func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) ([]*chatmodel.Message, error) {
+	messages := make([]*chatmodel.Message, 0)
+	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		pinnedIds := sb.Details().GetStringList(bundle.RelationKeyPinnedMessages)
+		if len(pinnedIds) == 0 {
+			return nil
+		}
+
+		var err error
+		messages, err = sb.GetMessagesByIds(ctx, pinnedIds)
+		if err != nil {
+			return fmt.Errorf("get pinned messages: %w", err)
+		}
+
+		// Sort messages by order ID (chronological order)
+		sort.Slice(messages, func(i, j int) bool {
+			return messages[i].OrderId < messages[j].OrderId
+		})
+		return nil
+	})
+	return messages, err
 }
 
 func pushGroupId(objectId string) string {
