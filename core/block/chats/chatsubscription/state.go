@@ -367,7 +367,7 @@ func (b *eventsBuffer) buildEvent(msg *model.ChatMessage, action eventAction, pr
 		return event.NewMessage(b.spaceId,
 			&pb.EventMessageValueOfChatUpdatePinnedStatus{
 				ChatUpdatePinnedStatus: &pb.EventChatUpdatePinnedStatus{
-					Ids:      []string{msg.Id},
+					Messages: []*model.ChatMessage{msg},
 					IsPinned: msg.Pinned,
 					SubIds:   subIds,
 				},

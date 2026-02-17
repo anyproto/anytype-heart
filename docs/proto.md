@@ -31381,7 +31381,7 @@ to its type.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| ids | [string](#string) | repeated |  |
+| messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
 | isPinned | [bool](#bool) |  |  |
 | subIds | [string](#string) | repeated |  |
 
