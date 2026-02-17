@@ -1635,6 +1635,7 @@ message ChatMessage {
     bool mentionRead = 12;
     bool hasMention = 14;
     bool synced = 13;
+    bool pinned = 15;
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part

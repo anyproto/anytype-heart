@@ -311,6 +311,16 @@ func (s *subscriptionManager) UpdateReactions(message *chatmodel.Message) {
 	}
 }
 
+func (s *subscriptionManager) UpdatePinned(message *chatmodel.Message) {
+	if !s.canSend() {
+		return
+	}
+
+	for _, sub := range s.subscriptions {
+		sub.state.applyUpdatePinned(message.Id, message.ChatMessage)
+	}
+}
+
 func (s *subscriptionManager) UpdateSyncStatus(messageIds []string, isSynced bool) {
 	if !s.canSend() {
 		return

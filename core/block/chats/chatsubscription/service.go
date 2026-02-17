@@ -54,6 +54,7 @@ type Manager interface {
 	GetLastMessage() (*model.ChatMessage, bool)
 	SetSessionContext(ctx session.Context)
 	UpdateReactions(message *chatmodel.Message)
+	UpdatePinned(message *chatmodel.Message)
 	UpdateFull(message *chatmodel.Message)
 	UpdateChatState(updater func(*model.ChatState) *model.ChatState)
 	Add(prevOrderId string, message *chatmodel.Message)

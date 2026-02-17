@@ -1982,6 +1982,7 @@
     - [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus)
     - [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus)
     - [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus)
+    - [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
     - [Event.File](#anytype-Event-File)
@@ -31372,6 +31373,23 @@ to its type.
 
 
 
+<a name="anytype-Event-Chat-UpdatePinnedStatus"></a>
+
+### Event.Chat.UpdatePinnedStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+| isPinned | [bool](#bool) |  |  |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateReactions"></a>
 
 ### Event.Chat.UpdateReactions
@@ -31673,6 +31691,7 @@ to its type.
 
 received to update per-message mention read status (if needed |
 | chatUpdateMessageSyncStatus | [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus) |  | to highlight the unread mentions in the UI) |
+| chatUpdatePinnedStatus | [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus) |  |  |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
@@ -33627,6 +33646,7 @@ Used to decode block meta only, without the content itself
 | mentionRead | [bool](#bool) |  |  |
 | hasMention | [bool](#bool) |  |  |
 | synced | [bool](#bool) |  |  |
+| pinned | [bool](#bool) |  |  |
 
 
 

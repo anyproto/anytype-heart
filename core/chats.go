@@ -306,7 +306,7 @@ func (mw *Middleware) ChatPinMessages(cctx context.Context, req *pb.RpcChatPinMe
 	ctx := mw.newContext(cctx)
 	chatService := mustService[chats.Service](mw)
 
-	err := chatService.PinMessages(cctx, req.ChatObjectId, req.MessageIds)
+	err := chatService.PinMessages(cctx, req.ChatObjectId, req.MessageIds, true)
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatPinMessagesResponseErrorCode](err)
 		return &pb.RpcChatPinMessagesResponse{
@@ -325,7 +325,7 @@ func (mw *Middleware) ChatUnpinMessages(cctx context.Context, req *pb.RpcChatUnp
 	ctx := mw.newContext(cctx)
 	chatService := mustService[chats.Service](mw)
 
-	err := chatService.UnpinMessages(cctx, req.ChatObjectId, req.MessageIds)
+	err := chatService.PinMessages(cctx, req.ChatObjectId, req.MessageIds, false)
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatUnpinMessagesResponseErrorCode](err)
 		return &pb.RpcChatUnpinMessagesResponse{

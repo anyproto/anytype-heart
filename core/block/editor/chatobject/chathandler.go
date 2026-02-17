@@ -208,6 +208,8 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				msg.ModifiedAt = ch.Change.Timestamp
 				msg.MarshalAnyenc(result, a)
 				d.subscription.UpdateFull(msg)
+			case chatmodel.PinnedKey:
+				d.subscription.UpdatePinned(msg)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 			}

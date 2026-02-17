@@ -175,6 +175,7 @@ type Repository interface {
 	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string
 	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
+	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
 }
 
 type repository struct {
@@ -629,4 +630,9 @@ func (s *repository) GetAllMessageAttachments(ctx context.Context, afterOrderId 
 		}
 	}
 	return results, iter.Err()
+}
+
+func (s *repository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	qry := s.collection.Find(query.Key{Path: []string{chatmodel.PinnedKey}, Filter: query.NewComp(query.CompOpEq, true)}).Sort(descOrder)
+	return s.queryMessages(ctx, qry)
 }
