@@ -1559,46 +1559,25 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyPinnedMessages: domain.StringList([]string{}),
-		})
-		mockChat.EXPECT().Details().Return(details)
-		mockChat.EXPECT().GetMessagesByIds(mock.Anything, messageIds).Return([]*chatmodel.Message{
-			{
-				ChatMessage: &model.ChatMessage{
-					Id:      "msg1",
-					OrderId: "order1",
-				},
-			},
-		}, nil)
-		mockChat.EXPECT().SetDetails(mock.Anything, mock.MatchedBy(func(details []domain.Detail) bool {
-			if len(details) != 1 {
-				return false
-			}
-			if details[0].Key != bundle.RelationKeyPinnedMessages {
-				return false
-			}
-			pinnedMessages := details[0].Value.StringList()
-			return len(pinnedMessages) == 1 && pinnedMessages[0] == "msg1"
-		}), true).Return(nil)
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
 		fx.start(t)
 
 		// when
-		err := fx.PinMessages(ctx, chatObjectId, messageIds)
+		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
 
 		// then
 		require.NoError(t, err)
 	})
 
-	t.Run("pin message to existing pinned list", func(t *testing.T) {
+	t.Run("pin multiple messages", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		ctx := context.Background()
 		chatObjectId := "chatId1"
-		messageIds := []string{"msg3"}
+		messageIds := []string{"msg1", "msg2", "msg3"}
 
 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{},
@@ -1607,30 +1586,46 @@ func TestService_PinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyPinnedMessages: domain.StringList([]string{"msg1", "msg2"}),
-		})
-		mockChat.EXPECT().Details().Return(details)
-		mockChat.EXPECT().GetMessagesByIds(mock.Anything, messageIds).Return([]*chatmodel.Message{
-			{ChatMessage: &model.ChatMessage{Id: "msg3", OrderId: "order3"}},
-		}, nil)
-		mockChat.EXPECT().SetDetails(mock.Anything, mock.MatchedBy(func(details []domain.Detail) bool {
-			if len(details) != 1 {
-				return false
-			}
-			pinnedMessages := details[0].Value.StringList()
-			return len(pinnedMessages) == 3
-		}), true).Return(nil)
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", true).Return(nil)
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg3", true).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
 		fx.start(t)
 
 		// when
-		err := fx.PinMessages(ctx, chatObjectId, messageIds)
+		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
 
 		// then
 		require.NoError(t, err)
+	})
+
+	t.Run("pin message returns error on failure", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+		chatObjectId := "chatId1"
+		messageIds := []string{"msg1"}
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		mockChat := mock_chatobject.NewMockStoreObject(t)
+		mockChat.EXPECT().Lock().Return()
+		mockChat.EXPECT().Unlock().Return()
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(fmt.Errorf("message not found"))
+
+		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+
+		fx.start(t)
+
+		// when
+		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
+
+		// then
+		require.Error(t, err)
 	})
 }
 
@@ -1649,25 +1644,14 @@ func TestService_UnpinMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyPinnedMessages: domain.StringList([]string{"msg1", "msg2", "msg3"}),
-		})
-		mockChat.EXPECT().Details().Return(details)
-		mockChat.EXPECT().SetDetails(mock.Anything, mock.MatchedBy(func(details []domain.Detail) bool {
-			if len(details) != 1 {
-				return false
-			}
-			pinnedMessages := details[0].Value.StringList()
-			// Should only have msg1 and msg3
-			return len(pinnedMessages) == 2
-		}), true).Return(nil)
+		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", false).Return(nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
 		fx.start(t)
 
 		// when
-		err := fx.UnpinMessages(ctx, chatObjectId, messageIds)
+		err := fx.PinMessages(ctx, chatObjectId, messageIds, false)
 
 		// then
 		require.NoError(t, err)
@@ -1690,6 +1674,7 @@ func TestService_GetPinnedMessages(t *testing.T) {
 				ChatMessage: &model.ChatMessage{
 					Id:      "msg1",
 					OrderId: "order1",
+					Pinned:  true,
 					Message: &model.ChatMessageMessageContent{
 						Text: "First message",
 					},
@@ -1699,6 +1684,7 @@ func TestService_GetPinnedMessages(t *testing.T) {
 				ChatMessage: &model.ChatMessage{
 					Id:      "msg2",
 					OrderId: "order2",
+					Pinned:  true,
 					Message: &model.ChatMessageMessageContent{
 						Text: "Second message",
 					},
@@ -1709,11 +1695,7 @@ func TestService_GetPinnedMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyPinnedMessages: domain.StringList([]string{"msg1", "msg2"}),
-		})
-		mockChat.EXPECT().Details().Return(details)
-		mockChat.EXPECT().GetMessagesByIds(mock.Anything, []string{"msg1", "msg2"}).Return(want, nil)
+		mockChat.EXPECT().GetPinnedMessages(mock.Anything).Return(want, nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1724,7 +1706,7 @@ func TestService_GetPinnedMessages(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, got, 2)
+		require.Len(t, got, 2)
 		assert.Equal(t, "msg1", got[0].Id)
 		assert.Equal(t, "msg2", got[1].Id)
 	})
@@ -1742,10 +1724,7 @@ func TestService_GetPinnedMessages(t *testing.T) {
 		mockChat := mock_chatobject.NewMockStoreObject(t)
 		mockChat.EXPECT().Lock().Return()
 		mockChat.EXPECT().Unlock().Return()
-		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyPinnedMessages: domain.StringList([]string{}),
-		})
-		mockChat.EXPECT().Details().Return(details)
+		mockChat.EXPECT().GetPinnedMessages(mock.Anything).Return(nil, nil)
 
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
 
@@ -1756,6 +1735,6 @@ func TestService_GetPinnedMessages(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Len(t, got, 0)
+		assert.Empty(t, got)
 	})
 }

@@ -168,11 +168,11 @@ func (s *messagesState) applyUpdateReactions(msgId string, msg *model.ChatMessag
 func (s *messagesState) applyUpdatePinned(msgId string, msg *model.ChatMessage) {
 	prev, ok := s.messagesByIds[msgId]
 	if ok {
-		prev.msg.Reactions = msg.Reactions
+		prev.msg.Pinned = msg.Pinned
 		prev.events = append(prev.events, eventActionMessagePinned)
 	} else {
 		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
-			entry.msg.Reactions = msg.Reactions
+			entry.msg.Pinned = msg.Pinned
 			entry.events = append(entry.events, eventActionMessagePinned)
 		})
 	}

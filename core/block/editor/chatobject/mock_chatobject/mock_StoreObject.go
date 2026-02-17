@@ -1112,6 +1112,64 @@ func (_c *MockStoreObject_GetMessagesByIds_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetPinnedMessages provides a mock function with given fields: ctx
+func (_m *MockStoreObject) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPinnedMessages")
+	}
+
+	var r0 []*chatmodel.Message
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*chatmodel.Message, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*chatmodel.Message); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*chatmodel.Message)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStoreObject_GetPinnedMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPinnedMessages'
+type MockStoreObject_GetPinnedMessages_Call struct {
+	*mock.Call
+}
+
+// GetPinnedMessages is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockStoreObject_Expecter) GetPinnedMessages(ctx interface{}) *MockStoreObject_GetPinnedMessages_Call {
+	return &MockStoreObject_GetPinnedMessages_Call{Call: _e.mock.On("GetPinnedMessages", ctx)}
+}
+
+func (_c *MockStoreObject_GetPinnedMessages_Call) Run(run func(ctx context.Context)) *MockStoreObject_GetPinnedMessages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_GetPinnedMessages_Call) Return(_a0 []*chatmodel.Message, _a1 error) *MockStoreObject_GetPinnedMessages_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStoreObject_GetPinnedMessages_Call) RunAndReturn(run func(context.Context) ([]*chatmodel.Message, error)) *MockStoreObject_GetPinnedMessages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HandleSyncStatusUpdate provides a mock function with given fields: heads, status, syncError
 func (_m *MockStoreObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
 	_m.Called(heads, status, syncError)
@@ -2363,6 +2421,54 @@ func (_c *MockStoreObject_SetLocker_Call) Return() *MockStoreObject_SetLocker_Ca
 }
 
 func (_c *MockStoreObject_SetLocker_Call) RunAndReturn(run func(smartblock.Locker)) *MockStoreObject_SetLocker_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetMessagePinned provides a mock function with given fields: ctx, messageId, pinned
+func (_m *MockStoreObject) SetMessagePinned(ctx context.Context, messageId string, pinned bool) error {
+	ret := _m.Called(ctx, messageId, pinned)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetMessagePinned")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) error); ok {
+		r0 = rf(ctx, messageId, pinned)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_SetMessagePinned_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMessagePinned'
+type MockStoreObject_SetMessagePinned_Call struct {
+	*mock.Call
+}
+
+// SetMessagePinned is a helper method to define mock.On call
+//   - ctx context.Context
+//   - messageId string
+//   - pinned bool
+func (_e *MockStoreObject_Expecter) SetMessagePinned(ctx interface{}, messageId interface{}, pinned interface{}) *MockStoreObject_SetMessagePinned_Call {
+	return &MockStoreObject_SetMessagePinned_Call{Call: _e.mock.On("SetMessagePinned", ctx, messageId, pinned)}
+}
+
+func (_c *MockStoreObject_SetMessagePinned_Call) Run(run func(ctx context.Context, messageId string, pinned bool)) *MockStoreObject_SetMessagePinned_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(bool))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_SetMessagePinned_Call) Return(_a0 error) *MockStoreObject_SetMessagePinned_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_SetMessagePinned_Call) RunAndReturn(run func(context.Context, string, bool) error) *MockStoreObject_SetMessagePinned_Call {
 	_c.Call.Return(run)
 	return _c
 }

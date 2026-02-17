@@ -474,6 +474,8 @@ func eventsSetSubIds(subIds []string, events []*pb.EventMessage) {
 			v.SubIds = subIds
 		} else if v := ev.GetChatUpdateMessageSyncStatus(); v != nil {
 			v.SubIds = subIds
+		} else if v := ev.GetChatUpdatePinnedStatus(); v != nil {
+			v.SubIds = subIds
 		}
 	}
 }
