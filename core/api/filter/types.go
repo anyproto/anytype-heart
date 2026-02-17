@@ -54,6 +54,11 @@ var (
 		model.BlockContentDataviewFilter_NotEmpty,
 	}
 
+	selectConditions = append([]model.BlockContentDataviewFilterCondition{
+		model.BlockContentDataviewFilter_Equal,
+		model.BlockContentDataviewFilter_NotEqual,
+	}, arrayConditions...)
+
 	// Number properties support comparison operations
 	numberConditions = []model.BlockContentDataviewFilterCondition{
 		model.BlockContentDataviewFilter_Equal,
@@ -105,7 +110,7 @@ var ConditionsForPropertyType = map[apimodel.PropertyFormat][]model.BlockContent
 	apimodel.PropertyFormatCheckbox: checkboxConditions,
 
 	// Array-like types
-	apimodel.PropertyFormatSelect:      arrayConditions,
+	apimodel.PropertyFormatSelect:      selectConditions,
 	apimodel.PropertyFormatMultiSelect: arrayConditions,
 	apimodel.PropertyFormatFiles:       arrayConditions,
 	apimodel.PropertyFormatObjects:     arrayConditions,

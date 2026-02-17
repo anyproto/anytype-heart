@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -23,6 +24,9 @@ const (
 	idleCheckInterval = 10 * time.Second
 	// minIdleDelay is the minimum time the indexer must be idle before running migrations
 	minIdleDelay = 30 * time.Second
+
+	// minOnlineDelay is the minimum time the node must be online before running migrations
+	minOnlineDelay = 10 * time.Second
 )
 
 var log = logging.LoggerNotSugared(CName)
@@ -88,10 +92,25 @@ func (s *service) Close() error {
 // to ensure remote changes have been received before running migrations.
 func (s *service) RunMigrationsWhenIdle(spaceId string, derivedIDs threads.DerivedSmartblockIds) {
 	isLocalOnly := s.networkConfig.GetNetworkMode() == pb.RpcAccount_LocalOnly
-
+	onlineSince := time.Time{}
 	for {
 		select {
 		case <-time.After(idleCheckInterval):
+			if !isLocalOnly {
+				status, ok := s.nodeStatus.TryGetNodeStatus(spaceId)
+				if !ok || status != nodestatus.Online {
+					onlineSince = time.Time{}
+					continue // Status not set yet, or not online
+				}
+				if onlineSince.IsZero() {
+					onlineSince = time.Now()
+				}
+
+				if time.Since(onlineSince) <= minOnlineDelay {
+					continue
+				}
+			}
+
 			lastIndex := s.indexer.GetLastIndexTime(spaceId)
 			if lastIndex.IsZero() || time.Since(lastIndex) <= minIdleDelay {
 				continue
@@ -117,7 +136,7 @@ func (s *service) runAllMigrations(ctx context.Context, spaceId string, derivedI
 	workspaceId := derivedIDs.Workspace
 	if err := s.runObjectContextMigration(ctx, spaceId, workspaceId); err != nil {
 		log.Error("object context migration failed",
-			zap.Int("version", currentObjectContextMigrationVersion),
+			zap.Int("version", domain.MigrationObjectContextVersion),
 			zap.String("spaceId", spaceId),
 			zap.Error(err))
 	}

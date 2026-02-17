@@ -16,9 +16,6 @@ import (
 	time2 "github.com/anyproto/anytype-heart/util/time"
 )
 
-// currentObjectContextMigrationVersion is the version of the object context migration.
-// Bump this to force re-migration if issues are found or we started to a migrate all objects
-const currentObjectContextMigrationVersion = 10
 
 // contextTimeTolerance is the maximum allowed time difference (in seconds) between a file's
 // creation and a potential context (block link or chat message). This accounts for the fact
@@ -61,7 +58,7 @@ Context Migration Logic:
 func (s *service) runObjectContextMigration(ctx context.Context, spaceId string, workspaceId string) error {
 	spaceIndex := s.objectStore.SpaceIndex(spaceId)
 
-	var l = log.With(zap.String("spaceId", spaceId), zap.Int("version", currentObjectContextMigrationVersion))
+	var l = log.With(zap.String("spaceId", spaceId), zap.Int("version", domain.MigrationObjectContextVersion))
 	// Check if migration already done (version >= current)
 	if s.isObjectContextMigrationDone(spaceIndex, workspaceId) {
 		l.Debug("migration already done")
@@ -303,7 +300,7 @@ func (s *service) isObjectContextMigrationDone(spaceIndex spaceindex.Store, work
 		return false
 	}
 	storedVersion := recs[0].Details.GetInt64(bundle.RelationKeyMigrationObjectContext)
-	return storedVersion >= currentObjectContextMigrationVersion
+	return storedVersion >= domain.MigrationObjectContextVersion
 }
 
 // verifyContextObject checks that the context object exists and was created before (or close to) the file object.
@@ -327,6 +324,6 @@ func (s *service) verifyContextObject(spaceIndex spaceindex.Store, ci *contextIn
 
 func (s *service) markFileContextMigrationDone(workspaceId string) error {
 	return s.detailsService.SetDetails(nil, workspaceId, []domain.Detail{
-		{Key: bundle.RelationKeyMigrationObjectContext, Value: domain.Int64(currentObjectContextMigrationVersion)},
+		{Key: bundle.RelationKeyMigrationObjectContext, Value: domain.Int64(domain.MigrationObjectContextVersion)},
 	})
 }

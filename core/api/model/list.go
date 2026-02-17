@@ -5,11 +5,11 @@ type AddObjectsToListRequest struct {
 }
 
 type View struct {
-	Id      string   `json:"id" example:"67bf3f21cda9134102e2422c"`    // The id of the view
-	Name    string   `json:"name" example:"All"`                       // The name of the view
-	Layout  string   `json:"layout" example:"grid" enums:"grid,table"` // The layout of the view
-	Filters []Filter `json:"filters"`                                  // The list of filters
-	Sorts   []Sort   `json:"sorts"`                                    // The list of sorts
+	Id      string   `json:"id" example:"67bf3f21cda9134102e2422c"`                                 // The id of the view
+	Name    string   `json:"name" example:"All"`                                                    // The name of the view
+	Layout  string   `json:"layout" example:"grid" enums:"grid,list,gallery,kanban,calendar,graph"` // The layout of the view
+	Filters []Filter `json:"filters"`                                                               // The list of filters
+	Sorts   []Sort   `json:"sorts"`                                                                 // The list of sorts
 }
 
 type Filter struct {

@@ -232,7 +232,9 @@ func (s *provider) setDefaultConfig() {
 		s.anyStoreConfig.SQLiteConnectionOptions = map[string]string{}
 	}
 	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
-	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
+	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "normal"
+	s.anyStoreConfig.SQLiteConnectionOptions["wal_autocheckpoint"] = "0"
+
 }
 
 func (s *provider) GetCommonDb() anystore.DB {

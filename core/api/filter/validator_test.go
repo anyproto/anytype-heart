@@ -229,6 +229,69 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			},
 		},
 		{
+			name: "valid select filter with tag id",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "status",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       "tag-1",
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("ResolvePropertyApiKey", mockProperties, "status").Return("status", true)
+				m.On("SanitizeAndValidatePropertyValue",
+					testSpaceId,
+					"status",
+					"tag-1",
+					mockProperties["status"],
+					mockProperties,
+				).Return("tag-1", nil)
+			},
+			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
+				require.Len(t, filters.Filters, 1)
+				assert.Equal(t, "status", filters.Filters[0].PropertyKey)
+				assert.Equal(t, "tag-1", filters.Filters[0].Value)
+			},
+		},
+		{
+			name: "valid select in filter with tag ids",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "status",
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       []string{"tag-1", "tag-2"},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("ResolvePropertyApiKey", mockProperties, "status").Return("status", true)
+				m.On("SanitizeAndValidatePropertyValue",
+					testSpaceId,
+					"status",
+					"tag-1",
+					mockProperties["status"],
+					mockProperties,
+				).Return("tag-1", nil)
+				m.On("SanitizeAndValidatePropertyValue",
+					testSpaceId,
+					"status",
+					"tag-2",
+					mockProperties["status"],
+					mockProperties,
+				).Return("tag-2", nil)
+			},
+			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
+				require.Len(t, filters.Filters, 1)
+				assert.Equal(t, "status", filters.Filters[0].PropertyKey)
+				assert.Equal(t, []string{"tag-1", "tag-2"}, filters.Filters[0].Value)
+			},
+		},
+		{
 			name: "property resolved by API key",
 			filters: &filter.ParsedFilters{
 				Filters: []filter.Filter{
@@ -482,7 +545,8 @@ func TestValidator_ConditionValidation(t *testing.T) {
 		{"checkbox with greater", apimodel.PropertyFormatCheckbox, model.BlockContentDataviewFilter_Greater, false},
 
 		// Select format
-		{"select with equal", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_Equal, false},
+		{"select with equal", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_Equal, true},
+		{"select with not equal", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_NotEqual, true},
 		{"select with in", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_In, true},
 		{"select with like", apimodel.PropertyFormatSelect, model.BlockContentDataviewFilter_Like, false},
 

@@ -135,12 +135,14 @@ func (s *fileSync) precacheNodeUsage() {
 	_, ok, err := s.getCachedNodeUsage()
 	// Init cache with default limits
 	if !ok || err != nil {
-		err = s.nodeUsageCache.Set(context.Background(), "node_usage", NodeUsage{
+		defaultUsage := NodeUsage{
 			AccountBytesLimit: 100 * 1024 * 1024, // 100 MB
-		})
+		}
+		err = s.nodeUsageStore.Set(context.Background(), anystoreprovider.SystemKeys.NodeUsage(), defaultUsage)
 		if err != nil {
 			log.Error("can't set default limits", zap.Error(err))
 		}
+		s.setNodeUsageInMemory(defaultUsage)
 	}
 
 	// Load actual node usage
@@ -169,14 +171,29 @@ func (s *fileSync) UpdateNodeUsage(ctx context.Context) error {
 }
 
 func (s *fileSync) getCachedNodeUsage() (NodeUsage, bool, error) {
-	usage, err := s.nodeUsageCache.Get(context.Background(), anystoreprovider.SystemKeys.NodeUsage())
+	s.nodeUsageLock.RLock()
+	if s.nodeUsage != nil {
+		usage := *s.nodeUsage
+		s.nodeUsageLock.RUnlock()
+		return usage, true, nil
+	}
+	s.nodeUsageLock.RUnlock()
+
+	usage, err := s.nodeUsageStore.Get(context.Background(), anystoreprovider.SystemKeys.NodeUsage())
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return NodeUsage{}, false, nil
 	}
 	if err != nil {
 		return NodeUsage{}, false, err
 	}
+	s.setNodeUsageInMemory(usage)
 	return usage, true, nil
+}
+
+func (s *fileSync) setNodeUsageInMemory(usage NodeUsage) {
+	s.nodeUsageLock.Lock()
+	s.nodeUsage = &usage
+	s.nodeUsageLock.Unlock()
 }
 
 func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error) {
@@ -218,10 +235,11 @@ func (s *fileSync) getAndUpdateNodeUsage(ctx context.Context) (NodeUsage, error)
 	if prevUsage.Equal(usage) {
 		return usage, nil
 	}
-	err = s.nodeUsageCache.Set(context.Background(), anystoreprovider.SystemKeys.NodeUsage(), usage)
+	err = s.nodeUsageStore.Set(context.Background(), anystoreprovider.SystemKeys.NodeUsage(), usage)
 	if err != nil {
 		return NodeUsage{}, fmt.Errorf("save node usage info to store: %w", err)
 	}
+	s.setNodeUsageInMemory(usage)
 
 	if !prevUsageFound || prevUsage.AccountBytesLimit != usage.AccountBytesLimit {
 		s.sendLimitUpdatedEvent(uint64(usage.AccountBytesLimit))
