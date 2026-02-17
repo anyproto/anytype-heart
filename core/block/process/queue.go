@@ -3,6 +3,7 @@ package process
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -270,7 +271,11 @@ func (p *queue) worker() {
 	for {
 		msgs, err := p.msgs.NewCond().WithMax(1).Wait(context.Background())
 		if err != nil {
-			log.Errorf("failed wait: %v", err)
+			if strings.Contains(err.Error(), "MB closed") {
+				log.Debugf("failed wait: %v", err)
+			} else {
+				log.Errorf("failed wait: %v", err)
+			}
 			return
 		}
 		if len(msgs) == 0 {

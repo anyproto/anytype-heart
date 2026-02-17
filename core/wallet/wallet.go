@@ -40,8 +40,6 @@ type wallet struct {
 	accountKey    crypto.PrivKey
 	deviceKey     crypto.PrivKey
 	masterKey     crypto.PrivKey
-	oldAccountKey crypto.PrivKey
-
 	// this key is used to sign ethereum transactions
 	// and use Any Naming Service
 	ethereumKey ecdsa.PrivateKey
@@ -56,10 +54,6 @@ func (r *wallet) GetAccountPrivkey() crypto.PrivKey {
 
 func (r *wallet) GetDevicePrivkey() crypto.PrivKey {
 	return r.accountData.PeerKey
-}
-
-func (r *wallet) GetOldAccountKey() crypto.PrivKey {
-	return r.oldAccountKey
 }
 
 func (r *wallet) GetMasterKey() crypto.PrivKey {
@@ -193,9 +187,8 @@ func NewWithAccountRepo(rootPath string, derivationResult crypto.DerivationResul
 		rootPath:      rootPath,
 		repoPath:      repoPath,
 		lang:          lang,
-		masterKey:     derivationResult.MasterKey,
-		oldAccountKey: derivationResult.OldAccountKey,
-		accountKey:    derivationResult.Identity,
+		masterKey:  derivationResult.MasterKey,
+		accountKey: derivationResult.Identity,
 		deviceKeyPath: filepath.Join(repoPath, keyFileDevice),
 		ethereumKey:   derivationResult.EthereumIdentity,
 	}
@@ -221,7 +214,6 @@ type Wallet interface {
 	FtsPrimaryLang() string
 	GetAccountPrivkey() crypto.PrivKey
 	GetDevicePrivkey() crypto.PrivKey
-	GetOldAccountKey() crypto.PrivKey
 	GetMasterKey() crypto.PrivKey
 
 	GetAccountEthPrivkey() EthPrivateKey

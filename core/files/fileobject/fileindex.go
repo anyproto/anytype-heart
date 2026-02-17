@@ -276,6 +276,18 @@ func (ind *indexer) injectMetadataToState(ctx context.Context, st *state.State, 
 	st.AddBundledRelationLinks(keys...)
 
 	details = prevDetails.Merge(details)
+	// Preserve explicitly provided import dates. Metadata extraction can derive
+	// file-system-based times from temp files, which should not overwrite
+	// snapshot dates during restore/import.
+	for _, key := range []domain.RelationKey{
+		bundle.RelationKeyCreatedDate,
+		bundle.RelationKeyLastModifiedDate,
+		bundle.RelationKeyAddedDate,
+	} {
+		if v := prevDetails.GetInt64(key); v > 0 {
+			details.SetInt64(key, v)
+		}
+	}
 	st.SetDetails(details)
 
 	err = fileblocks.AddFileBlocks(st, details, id.ObjectID)

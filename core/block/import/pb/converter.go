@@ -1,16 +1,19 @@
 package pb
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"math/rand"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -25,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -38,6 +42,20 @@ const (
 )
 
 var ErrNotAnyBlockExtension = errors.New("not JSON or PB extension")
+var log = logging.Logger("import-pb")
+
+type snapshotParseMeta struct {
+	fileExt            string
+	objectID           string
+	objectIDFromName   string
+	bytes              int
+	sbType             string
+	logHeadsCount      int
+	fileKeysCount      int
+	hasSnapshot        bool
+	hasSnapshotData    bool
+	hasSnapshotDetails bool
+}
 
 type Pb struct {
 	service         *collection.Service
@@ -254,11 +272,24 @@ func (p *Pb) makeSnapshot(
 		return nil, nil
 	}
 
-	snapshot, errGS := p.getSnapshotFromFile(file, name)
+	snapshot, parseMeta, errGS := p.getSnapshotFromFile(file, name)
 	if errGS != nil {
 		if errors.Is(errGS, ErrNotAnyBlockExtension) {
 			return nil, nil
 		}
+		log.With(
+			zap.String("fileName", name),
+			zap.String("fileExt", parseMeta.fileExt),
+			zap.Int("bytes", parseMeta.bytes),
+			zap.String("objectId", parseMeta.objectID),
+			zap.String("objectIdFromName", parseMeta.objectIDFromName),
+			zap.String("sbType", parseMeta.sbType),
+			zap.Int("logHeadsCount", parseMeta.logHeadsCount),
+			zap.Int("fileKeysCount", parseMeta.fileKeysCount),
+			zap.Bool("hasSnapshot", parseMeta.hasSnapshot),
+			zap.Bool("hasSnapshotData", parseMeta.hasSnapshotData),
+			zap.Bool("hasSnapshotDetails", parseMeta.hasSnapshotDetails),
+		).Errorf("PB: failed to parse import snapshot: %v", errGS)
 		return nil, fmt.Errorf("%w: %s", common.ErrPbNotAnyBlockFormat, errGS.Error())
 	}
 	id := uuid.New().String()
@@ -274,28 +305,85 @@ func (p *Pb) makeSnapshot(
 	}, nil
 }
 
-func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.SnapshotModel, error) {
+func (p *Pb) getSnapshotFromFile(rd io.ReadCloser, name string) (*common.SnapshotModel, snapshotParseMeta, error) {
 	defer rd.Close()
+	parseMeta := snapshotParseMeta{
+		fileExt:          filepath.Ext(name),
+		objectIDFromName: objectIDFromFileName(name),
+	}
 	if filepath.Ext(name) == ".json" {
 		snapshot := &pb.SnapshotWithType{}
-		um := jsonpb.Unmarshaler{AllowUnknownFields: true}
-		if uErr := um.Unmarshal(rd, snapshot); uErr != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w", uErr)
+		data, err := io.ReadAll(rd)
+		parseMeta.bytes = len(data)
+		if err != nil {
+			return nil, parseMeta, err
 		}
-		return common.NewSnapshotModelFromProto(snapshot)
+		um := jsonpb.Unmarshaler{AllowUnknownFields: true}
+		if uErr := um.Unmarshal(bytes.NewReader(data), snapshot); uErr != nil {
+			return nil, parseMeta, fmt.Errorf("PB:GetSnapshot %w", uErr)
+		}
+		fillSnapshotParseMeta(&parseMeta, snapshot)
+		snapshotModel, convErr := common.NewSnapshotModelFromProto(snapshot)
+		if convErr != nil {
+			return nil, parseMeta, convErr
+		}
+		return snapshotModel, parseMeta, nil
 	}
 	if filepath.Ext(name) == ".pb" {
 		snapshot := &pb.SnapshotWithType{}
 		data, err := io.ReadAll(rd)
+		parseMeta.bytes = len(data)
 		if err != nil {
-			return nil, err
+			return nil, parseMeta, err
 		}
 		if err = snapshot.Unmarshal(data); err != nil {
-			return nil, fmt.Errorf("PB:GetSnapshot %w", err)
+			return nil, parseMeta, fmt.Errorf("PB:GetSnapshot %w", err)
 		}
-		return common.NewSnapshotModelFromProto(snapshot)
+		fillSnapshotParseMeta(&parseMeta, snapshot)
+		snapshotModel, convErr := common.NewSnapshotModelFromProto(snapshot)
+		if convErr != nil {
+			return nil, parseMeta, convErr
+		}
+		return snapshotModel, parseMeta, nil
 	}
-	return nil, ErrNotAnyBlockExtension
+	return nil, parseMeta, ErrNotAnyBlockExtension
+}
+
+func fillSnapshotParseMeta(parseMeta *snapshotParseMeta, snapshot *pb.SnapshotWithType) {
+	if parseMeta == nil || snapshot == nil {
+		return
+	}
+	parseMeta.sbType = snapshot.GetSbType().String()
+	changeSnapshot := snapshot.GetSnapshot()
+	parseMeta.hasSnapshot = changeSnapshot != nil
+	if changeSnapshot == nil {
+		return
+	}
+	parseMeta.logHeadsCount = len(changeSnapshot.GetLogHeads())
+	parseMeta.fileKeysCount = len(changeSnapshot.GetFileKeys())
+	data := changeSnapshot.GetData()
+	parseMeta.hasSnapshotData = data != nil
+	if data == nil {
+		return
+	}
+	details := data.GetDetails()
+	parseMeta.hasSnapshotDetails = details != nil
+	if details == nil {
+		return
+	}
+	if idValue, ok := details.GetFields()[string(bundle.RelationKeyId)]; ok && idValue != nil {
+		parseMeta.objectID = idValue.GetStringValue()
+	}
+}
+
+func objectIDFromFileName(name string) string {
+	baseName := filepath.Base(name)
+	baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	baseName = strings.TrimSuffix(baseName, ".pb")
+	if baseName == "" {
+		return ""
+	}
+	return baseName
 }
 
 func (p *Pb) normalizeSnapshot(
