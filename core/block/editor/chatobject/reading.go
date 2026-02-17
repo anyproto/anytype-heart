@@ -54,17 +54,7 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, req ReadMessagesRequ
 }
 
 func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error {
-	txn, err := s.repository.WriteTx(ctx)
-	if err != nil {
-		return fmt.Errorf("create tx: %w", err)
-	}
-	var commited bool
-	defer func() {
-		if !commited {
-			_ = txn.Rollback()
-		}
-	}()
-	messageIds, err := s.repository.GetReadMessagesAfter(txn.Context(), afterOrderId, counterType)
+	messageIds, err := s.repository.GetReadMessagesAfter(ctx, afterOrderId, counterType)
 	if err != nil {
 		return fmt.Errorf("get read messages: %w", err)
 	}
@@ -73,17 +63,20 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return nil
 	}
 
-	idsModified := s.repository.SetReadFlag(txn.Context(), s.Id(), messageIds, counterType, false)
+	idsModified, err := s.repository.SetReadFlag(ctx, s.Id(), messageIds, counterType, false)
+	if err != nil {
+		return fmt.Errorf("set read flag: %w", err)
+	}
 	if len(idsModified) == 0 {
 		return nil
 	}
 
-	newOldestOrderId, err := s.repository.GetOldestOrderId(txn.Context(), counterType)
+	newOldestOrderId, err := s.repository.GetOldestOrderId(ctx, counterType)
 	if err != nil {
 		return fmt.Errorf("get oldest order id: %w", err)
 	}
 
-	lastAdded, err := s.repository.GetLastStateId(txn.Context())
+	lastAdded, err := s.repository.GetLastStateId(ctx)
 	if err != nil {
 		return fmt.Errorf("get last added date: %w", err)
 	}
@@ -101,13 +94,12 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
 	}
-	err = s.storeSource.StoreSeenHeads(txn.Context(), diffManagerMessages)
+	err = s.storeSource.StoreSeenHeads(ctx, diffManagerMessages)
 	if err != nil {
 		return fmt.Errorf("store seen heads: %w", err)
 	}
 
-	commited = true
-	return txn.Commit()
+	return nil
 }
 
 func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel.CounterType) error {
@@ -115,29 +107,15 @@ func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel
 		return nil
 	}
 
-	txn, err := s.repository.WriteTx(s.componentCtx)
+	idsModified, err := s.repository.SetReadFlag(s.componentCtx, s.Id(), changeIds, counterType, true)
 	if err != nil {
-		return fmt.Errorf("start write tx: %w", err)
+		return fmt.Errorf("set read flag: %w", err)
 	}
-	var commited bool
-	defer func() {
-		if !commited {
-			txn.Rollback()
-		}
-	}()
-
-	idsModified := s.repository.SetReadFlag(txn.Context(), s.Id(), changeIds, counterType, true)
 
 	if len(idsModified) > 0 {
-		newOldestOrderId, err := s.repository.GetOldestOrderId(txn.Context(), counterType)
+		newOldestOrderId, err := s.repository.GetOldestOrderId(s.componentCtx, counterType)
 		if err != nil {
 			return fmt.Errorf("get oldest order id: %w", err)
-		}
-
-		commited = true
-		err = txn.Commit()
-		if err != nil {
-			return fmt.Errorf("commit: %w", err)
 		}
 
 		s.subscription.Lock()

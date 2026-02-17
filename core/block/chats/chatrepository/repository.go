@@ -28,6 +28,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/app"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
@@ -167,7 +168,7 @@ type Repository interface {
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
 	GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error)
 	GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error)
-	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string
+	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) ([]string, error)
 	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
@@ -299,7 +300,7 @@ func (s *repository) loadChatStateByType(ctx context.Context, counterType chatmo
 
 func (s *repository) GetOldestOrderId(ctx context.Context, counterType chatmodel.CounterType) (string, error) {
 	handler := newReadHandler(counterType)
-	unreadQuery := s.collection.Find(handler.getUnreadFilter()).Sort(ascOrder)
+	unreadQuery := s.collection.Find(handler.getReadFilter(false)).Sort(ascOrder)
 
 	iter, err := unreadQuery.Limit(1).Iter(ctx)
 	if err != nil {
@@ -321,7 +322,7 @@ func (s *repository) GetOldestOrderId(ctx context.Context, counterType chatmodel
 }
 
 func (s *repository) countUnreadMessages(ctx context.Context, handler readHandler) (int, error) {
-	unreadQuery := s.collection.Find(handler.getUnreadFilter())
+	unreadQuery := s.collection.Find(handler.getReadFilter(false))
 
 	return unreadQuery.Count(ctx)
 }
@@ -364,7 +365,7 @@ func (s *repository) GetUnreadMessageIdsInRange(ctx context.Context, afterOrderI
 			query.Not{Filter: query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.Exists{}}},
 			query.Key{Path: []string{chatmodel.StateIdKey}, Filter: query.NewComp(query.CompOpLte, lastStateId)},
 		},
-		handler.getUnreadFilter(),
+		handler.getReadFilter(false),
 	}
 	iter, err := s.collection.Find(qry).Iter(ctx)
 	if err != nil {
@@ -387,7 +388,7 @@ func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatm
 	handler := newReadHandler(counterType)
 
 	qry := query.And{
-		handler.getUnreadFilter(),
+		handler.getReadFilter(false),
 	}
 	iter, err := s.collection.Find(qry).Iter(ctx)
 	if err != nil {
@@ -415,29 +416,84 @@ func (s *repository) GetMessagesForIndexing(ctx context.Context, afterOrderId st
 	return s.queryMessages(ctx, qry)
 }
 
-func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string {
+func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) ([]string, error) {
 	handler := newReadHandler(counterType)
 
+	arena := r.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		r.arenaPool.Put(arena)
+	}()
+
 	var idsModified []string
-	for _, id := range msgIds {
-		if id == chatObjectId {
-			// skip tree root
-			continue
-		}
-		res, err := r.collection.UpdateId(ctx, id, handler.readModifier(value))
-		// Not all changes are messages, skip them
-		if errors.Is(err, anystore.ErrDocNotFound) {
-			continue
-		}
+
+	chunks := lo.Chunk(msgIds, 100)
+	for _, chunk := range chunks {
+		modified, err := r.setReadFlag(ctx, arena, handler, chunk, value)
 		if err != nil {
-			log.Error("markReadMessages: update message", zap.Error(err), zap.String("changeId", id), zap.String("chatObjectId", chatObjectId))
-			continue
+			return nil, err
+		}
+		idsModified = append(idsModified, modified...)
+	}
+
+	return idsModified, nil
+}
+
+func (r *repository) setReadFlag(ctx context.Context, arena *anyenc.Arena, handler readHandler, msgIds []string, value bool) ([]string, error) {
+	arena.Reset()
+	encIds := make([]*anyenc.Value, 0, len(msgIds))
+	for _, id := range msgIds {
+		encIds = append(encIds, arena.NewString(id))
+	}
+	iter, err := r.collection.Find(query.And{
+		handler.getReadFilter(!value),
+		query.Key{
+			Path:   []string{"id"},
+			Filter: query.NewInValue(encIds...),
+		},
+	}).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("iter messages: %w", err)
+	}
+
+	var ids []string
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("read doc: %w", err)
+		}
+		ids = append(ids, doc.Value().GetString("id"))
+	}
+
+	if err = iter.Close(); err != nil {
+		return nil, fmt.Errorf("close iter: %w", err)
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	txn, err := r.collection.WriteTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("start write tx: %w", err)
+	}
+	defer txn.Rollback()
+
+	var idsModified []string
+	for _, id := range ids {
+		res, err := r.collection.UpdateId(txn.Context(), id, handler.readModifier(value))
+		if err != nil {
+			return nil, fmt.Errorf("update message %s: %w", id, err)
 		}
 		if res.Modified > 0 {
 			idsModified = append(idsModified, id)
 		}
 	}
-	return idsModified
+
+	if err = txn.Commit(); err != nil {
+		return nil, fmt.Errorf("commit: %w", err)
+	}
+	return idsModified, nil
 }
 
 func (r *repository) SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string {

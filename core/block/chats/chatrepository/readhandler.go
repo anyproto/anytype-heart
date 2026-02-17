@@ -8,7 +8,7 @@ import (
 )
 
 type readHandler interface {
-	getUnreadFilter() query.Filter
+	getReadFilter(value bool) query.Filter
 	getMessagesFilter() query.Filter
 	getReadKey() string
 	readModifier(value bool) query.Modifier
@@ -16,7 +16,11 @@ type readHandler interface {
 
 type readMessagesHandler struct{}
 
-func (h readMessagesHandler) getUnreadFilter() query.Filter {
+func (h readMessagesHandler) getReadFilter(value bool) query.Filter {
+	if value {
+		return query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	}
+	// NOT (read == true) to also match documents where the read field is missing
 	return query.Not{
 		Filter: query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)},
 	}
@@ -44,10 +48,10 @@ func (h readMessagesHandler) readModifier(value bool) query.Modifier {
 type readMentionsHandler struct {
 }
 
-func (h readMentionsHandler) getUnreadFilter() query.Filter {
+func (h readMentionsHandler) getReadFilter(value bool) query.Filter {
 	return query.And{
 		query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
-		query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)},
+		query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, value)},
 	}
 }
 
