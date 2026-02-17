@@ -61,8 +61,6 @@ github.com/Shopify/toxiproxy v2.1.4+incompatible/go.mod h1:OXgGpZ6Cli1/URJOF1DMx
 github.com/VividCortex/ewma v1.2.0 h1:f58SaIzcDXrSy3kWaHNvuJgJ3Nmz59Zji6XoJR/q1ow=
 github.com/VividCortex/ewma v1.2.0/go.mod h1:nz4BbCtbLyFDeC9SUHbtcT5644juEuWfUAUnGx7j5l4=
 github.com/VividCortex/gohistogram v1.0.0/go.mod h1:Pf5mBqqDxYaXu3hDrrU+w6nw50o/4+TcAqDqk/vUH7g=
-github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786 h1:zvgtcRb2B5gynWjm+Fc9oJZPHXwmcgyH0xCcNm6Rmo4=
-github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786/go.mod h1:aKVJoQ0cc9K5Xb058XSnnAxXLliR97qbSqWBlm5ca1E=
 github.com/aead/siphash v1.0.1/go.mod h1:Nywa3cDsYNNK3gaciGTWPwHt0wlpNV15vwmswBAUSII=
 github.com/afex/hystrix-go v0.0.0-20180502004556-fa1af6a1f4f5/go.mod h1:SkGFH1ia65gfNATL8TAiHDNxPzPdmEL5uirI2Uyuz6c=
 github.com/ahmetb/govvv v0.3.0 h1:YGLGwEyiUwHFy5eh/RUhdupbuaCGBYn5T5GWXp+WJB0=
@@ -110,6 +108,8 @@ github.com/anyproto/go-slip21 v1.0.0 h1:CI7lUqTIwmPOEGVAj4jyNLoICvueh++0U2HoAi3m
 github.com/anyproto/go-slip21 v1.0.0/go.mod h1:gbIJt7HAdr5DuT4f2pFTKCBSUWYsm/fysHBNqgsuxT0=
 github.com/anyproto/go-sqlite v1.4.2-any h1:ZTIcq/u2mYYJ6rJB4I3Ds5QH/7IlONebMiG14FyZcD4=
 github.com/anyproto/go-sqlite v1.4.2-any/go.mod h1:nW7TvS+4bzPU2vNaPlPFNPYcejK5RdjH6qZY2kjT3Io=
+github.com/anyproto/goheif v0.0.0-20260216083627-c3efd00cd92e h1:m6MvomLslQN8dHmlKvfiZCaQmbckH5l9l0C2boKeZ5U=
+github.com/anyproto/goheif v0.0.0-20260216083627-c3efd00cd92e/go.mod h1:SZgKWZ226XERv6MVcvJUgj7MEMzOU37RX76F8HD+2Xg=
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139 h1:Wp9z0Q2kAstznWUmTZyOb9UgpVmUgYt1LXRvK/cg10E=
 github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139/go.mod h1:1zaDDQVWTRwNksmTUTkcVXqgNF28YHiEUIm8FL9Z+II=
 github.com/anyproto/lexid v0.0.6 h1:lTJd9K11vU1xoBs1dkZVv8VtYfCBo373lNd9kAgXEio=

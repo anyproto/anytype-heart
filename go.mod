@@ -8,7 +8,6 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/VividCortex/ewma v1.2.0
-	github.com/adrium/goheif v0.0.0-20230113233934-ca402e77a786
 	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-store v0.4.4
 	github.com/anyproto/any-sync v0.11.14
@@ -17,6 +16,7 @@ require (
 	github.com/anyproto/go-chash v0.1.0
 	github.com/anyproto/go-naturaldate/v2 v2.0.2-0.20230524105841-9829cfd13438
 	github.com/anyproto/go-slip10 v1.0.1
+	github.com/anyproto/goheif v0.0.0-20260216083627-c3efd00cd92e
 	github.com/anyproto/lexid v0.0.6
 	github.com/anyproto/tantivy-go v1.0.6
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
