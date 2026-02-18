@@ -31305,7 +31305,7 @@ to its type.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
 | isPinned | [bool](#bool) |  |  |
 | subIds | [string](#string) | repeated |  |
 

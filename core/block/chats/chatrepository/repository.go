@@ -139,6 +139,14 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 
+	if err = collection.EnsureIndex(s.componentCtx, anystore.IndexInfo{
+		Fields: []string{"_o.id"},
+	}, anystore.IndexInfo{
+		Fields: []string{chatmodel.PinnedKey},
+	}); err != nil {
+		return nil, fmt.Errorf("ensure indexes: %w", err)
+	}
+
 	repo := &repository{
 		collection: collection,
 		arenaPool:  s.arenaPool,

@@ -181,7 +181,7 @@ message Event {
       repeated string subIds = 2;
     }
     message UpdatePinnedStatus {
-      repeated model.ChatMessage messages = 1;
+      model.ChatMessage message = 1;
       bool isPinned = 2;
       repeated string subIds = 3;
     }
