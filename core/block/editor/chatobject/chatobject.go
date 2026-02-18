@@ -288,7 +288,7 @@ func (s *storeObject) onUpdate() {
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 
-	s.subscription.Flush()
+	s.subscription.Flush(true)
 
 	last, ok := s.subscription.GetLastMessage()
 	if !ok {

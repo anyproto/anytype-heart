@@ -147,10 +147,11 @@ func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool) {
 	return nil, false
 }
 
-// Flush is called after committing changes
-func (s *subscriptionManager) Flush() {
+// Flush is called after committing changes. If reloadStateIfNeeded is true and s.needReloadState is true, it reloads state
+// and resets s.needReloadState to false
+func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 	// Reload ChatState after commit
-	if s.needReloadState {
+	if s.needReloadState && reloadStateIfNeeded {
 		s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
 			newState, err := s.repository.LoadChatState(s.componentCtx)
 			if err != nil {

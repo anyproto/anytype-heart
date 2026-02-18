@@ -84,7 +84,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 	s.subscription.UnreadMessages(newOldestOrderId, lastAdded, idsModified, counterType)
-	s.subscription.Flush()
+	s.subscription.Flush(false)
 
 	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
 	if err != nil {
@@ -121,7 +121,7 @@ func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel
 		s.subscription.Lock()
 		defer s.subscription.Unlock()
 		s.subscription.ReadMessages(newOldestOrderId, idsModified, counterType)
-		s.subscription.Flush()
+		s.subscription.Flush(false)
 	}
 	return nil
 }
@@ -193,7 +193,7 @@ func (s *storeObject) setMessagesSyncStatus(changeIds []string) error {
 		s.subscription.Lock()
 		defer s.subscription.Unlock()
 		s.subscription.UpdateSyncStatus(idsModified, true)
-		s.subscription.Flush()
+		s.subscription.Flush(false)
 	}
 	return nil
 }

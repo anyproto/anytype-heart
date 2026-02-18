@@ -59,7 +59,7 @@ type Manager interface {
 	Add(prevOrderId string, message *chatmodel.Message)
 	Delete(messageId string)
 	ForceSendingChatState()
-	Flush()
+	Flush(reloadStateIfNeeded bool)
 	ReadMessages(newOldestOrderId string, idsModified []string, counterType chatmodel.CounterType)
 	UnreadMessages(newOldestOrderId string, lastStateId string, msgIds []string, counterType chatmodel.CounterType)
 	UpdateSyncStatus(messageIds []string, isSynced bool)
