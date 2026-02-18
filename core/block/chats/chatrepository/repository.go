@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -139,10 +140,9 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 
-	if err = collection.EnsureIndex(s.componentCtx, anystore.IndexInfo{
-		Fields: []string{"_o.id"},
-	}, anystore.IndexInfo{
-		Fields: []string{chatmodel.PinnedKey},
+	if err = anystorehelper.AddIndexes(s.componentCtx, collection, []anystore.IndexInfo{
+		{Fields: []string{"_o.id"}},
+		{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
 	}); err != nil {
 		return nil, fmt.Errorf("ensure indexes: %w", err)
 	}
