@@ -45,31 +45,58 @@ type ObjectResolver interface {
 	GetRelationByKey(relationKey string) (*domain.Details, error)
 }
 
-func NewMDConverter(s *state.State, fn FileNamer, includeRelations bool) converter.Converter {
-	return &MD{s: s, fn: fn, includeRelations: includeRelations, knownDocs: make(map[string]*domain.Details)}
+type Option func(*md)
+
+func WithSchema() Option {
+	return func(c *md) { c.includeSchema = true }
 }
 
-func NewMDConverterWithSchema(s *state.State, fn FileNamer, includeRelations bool, includeSchema bool) converter.Converter {
-	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: true, knownDocs: make(map[string]*domain.Details)}
+func WithResolver(resolver ObjectResolver) Option {
+	return func(c *md) { c.resolver = resolver }
 }
 
-func NewMDConverterWithResolver(s *state.State, fn FileNamer, includeRelations bool, includeSchema bool, resolver ObjectResolver) converter.Converter {
-	return &MD{s: s, fn: fn, includeRelations: includeRelations, includeSchema: includeSchema, resolver: resolver, knownDocs: make(map[string]*domain.Details)}
+func WithRelations() Option {
+	return func(c *md) { c.includeRelations = true }
 }
 
-type MD struct {
+// WithLocalDetails forces converter to include details that are not mentioned in recommended relations of a type.
+// Don't confuse with local details of state that are derived on an object init and are not stored in an object tree
+func WithLocalDetails() Option {
+	return func(c *md) { c.includeLocalDetails = true }
+}
+
+// WithHiddenDetails forces converter to include details mentioned in recommendedHiddenRelations of a type
+func WithHiddenDetails() Option {
+	return func(c *md) { c.includeHiddenDetails = true }
+}
+
+func NewConverter(s *state.State, fn FileNamer, opts ...Option) converter.Converter {
+	c := &md{
+		s:         s,
+		fn:        fn,
+		knownDocs: make(map[string]*domain.Details),
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
+}
+
+type md struct {
 	s *state.State
 
 	fileHashes  []string
 	imageHashes []string
+	knownDocs   map[string]*domain.Details
 
-	knownDocs map[string]*domain.Details
-	resolver  ObjectResolver
+	resolver ObjectResolver
+	mw       *marksWriter
+	fn       FileNamer
 
-	includeRelations bool
-	includeSchema    bool
-	mw               *marksWriter
-	fn               FileNamer
+	includeRelations     bool
+	includeLocalDetails  bool
+	includeHiddenDetails bool
+	includeSchema        bool
 }
 
 var removeArrayRelations = []string{
@@ -78,7 +105,7 @@ var removeArrayRelations = []string{
 	bundle.RelationKeyType.String(),
 }
 
-func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
+func (h *md) Convert(sbType model.SmartBlockType) (result []byte) {
 	if h.s.Pick(h.s.RootId()) == nil {
 		return
 	}
@@ -104,7 +131,7 @@ func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 	return
 }
 
-func (h *MD) renderProperties(buf writer) {
+func (h *md) renderProperties(buf writer) {
 	if !h.includeRelations {
 		return
 	}
@@ -134,7 +161,7 @@ func (h *MD) renderProperties(buf writer) {
 }
 
 // getObjectTypeInfo retrieves object type details and name
-func (h *MD) getObjectTypeInfo() (*domain.Details, string) {
+func (h *md) getObjectTypeInfo() (*domain.Details, string) {
 	objectTypeId := h.s.LocalDetails().GetString(bundle.RelationKeyType)
 	if objectTypeId == "" {
 		return nil, ""
@@ -150,7 +177,7 @@ func (h *MD) getObjectTypeInfo() (*domain.Details, string) {
 }
 
 // collectProperties gathers all properties from relations
-func (h *MD) collectProperties(objectTypeDetails *domain.Details) []yaml.Property {
+func (h *md) collectProperties(objectTypeDetails *domain.Details) []yaml.Property {
 	var properties []yaml.Property
 
 	// Get all relation IDs
@@ -176,25 +203,33 @@ func (h *MD) collectProperties(objectTypeDetails *domain.Details) []yaml.Propert
 	// Add system properties
 	properties = h.addSystemProperties(properties)
 
+	// Add local details if requested
+	if h.includeLocalDetails {
+		properties = h.addLocalDetails(properties)
+	}
+
 	return properties
 }
 
 // getRelationIds returns all relation IDs from the object type
-func (h *MD) getRelationIds(objectTypeDetails *domain.Details) []string {
+func (h *md) getRelationIds(objectTypeDetails *domain.Details) []string {
 	var ids []string
 	ids = append(ids, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations)...)
 	ids = append(ids, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedRelations)...)
+	if h.includeHiddenDetails {
+		ids = append(ids, objectTypeDetails.GetStringList(bundle.RelationKeyRecommendedHiddenRelations)...)
+	}
 	return slices.Compact(ids)
 }
 
 // isCollection checks if the current object is a collection
-func (h *MD) isCollection() bool {
+func (h *md) isCollection() bool {
 	layout, hasLayout := h.s.Layout()
 	return hasLayout && layout == model.ObjectType_collection
 }
 
 // processRelation processes a single relation and returns a property
-func (h *MD) processRelation(details *domain.Details) *yaml.Property {
+func (h *md) processRelation(details *domain.Details) *yaml.Property {
 	// Extract relation metadata
 	key := details.GetString(bundle.RelationKeyRelationKey)
 
@@ -219,7 +254,7 @@ func (h *MD) processRelation(details *domain.Details) *yaml.Property {
 
 // processRelationValue processes a relation value based on its format
 // Returns the processed value and whether it should be included
-func (h *MD) processRelationValue(v domain.Value, format model.RelationFormat, key string) (domain.Value, bool) {
+func (h *md) processRelationValue(v domain.Value, format model.RelationFormat, key string) (domain.Value, bool) {
 	if v.IsNull() {
 		return domain.Value{}, false
 	}
@@ -236,7 +271,7 @@ func (h *MD) processRelationValue(v domain.Value, format model.RelationFormat, k
 }
 
 // processFileRelation handles file format relations
-func (h *MD) processFileRelation(v domain.Value) (domain.Value, bool) {
+func (h *md) processFileRelation(v domain.Value) (domain.Value, bool) {
 	ids := v.WrapToStringList()
 	if len(ids) == 0 {
 		return v, false
@@ -256,7 +291,7 @@ func (h *MD) processFileRelation(v domain.Value) (domain.Value, bool) {
 }
 
 // processFileId processes a single file ID and returns its filename
-func (h *MD) processFileId(fileId string) string {
+func (h *md) processFileId(fileId string) string {
 	info, _ := h.getObjectInfo(fileId)
 	if info == nil {
 		return ""
@@ -283,7 +318,7 @@ func (h *MD) processFileId(fileId string) string {
 }
 
 // isFileLayout checks if the layout represents a file object type
-func (h *MD) isFileLayout(layout int64) bool {
+func (h *md) isFileLayout(layout int64) bool {
 	return layout == int64(model.ObjectType_file) ||
 		layout == int64(model.ObjectType_image) ||
 		layout == int64(model.ObjectType_audio) ||
@@ -292,7 +327,7 @@ func (h *MD) isFileLayout(layout int64) bool {
 }
 
 // processObjectRelation handles object format relations
-func (h *MD) processObjectRelation(v domain.Value, key string) (domain.Value, bool) {
+func (h *md) processObjectRelation(v domain.Value, key string) (domain.Value, bool) {
 	ids := v.WrapToStringList()
 	if len(ids) == 0 {
 		return v, false
@@ -322,7 +357,7 @@ func (h *MD) processObjectRelation(v domain.Value, key string) (domain.Value, bo
 }
 
 // getObjectName returns the appropriate name for an object
-func (h *MD) getObjectName(objectId string) string {
+func (h *md) getObjectName(objectId string) string {
 	title, filename, ok := h.getLinkInfo(objectId)
 	if !ok {
 		return ""
@@ -336,7 +371,7 @@ func (h *MD) getObjectName(objectId string) string {
 }
 
 // processTagOrStatusRelation handles tag and status format relations
-func (h *MD) processTagOrStatusRelation(v domain.Value) (domain.Value, bool) {
+func (h *md) processTagOrStatusRelation(v domain.Value) (domain.Value, bool) {
 	ids := v.WrapToStringList()
 	if len(ids) == 0 {
 		return v, false
@@ -358,7 +393,7 @@ func (h *MD) processTagOrStatusRelation(v domain.Value) (domain.Value, bool) {
 }
 
 // appendObjectId adds object ID after other properties
-func (h *MD) appendObjectId(properties []yaml.Property) []yaml.Property {
+func (h *md) appendObjectId(properties []yaml.Property) []yaml.Property {
 	objectId := h.s.LocalDetails().GetString(bundle.RelationKeyId)
 	if objectId == "" {
 		return properties
@@ -374,7 +409,7 @@ func (h *MD) appendObjectId(properties []yaml.Property) []yaml.Property {
 }
 
 // exportPropertiesToYAML exports properties to YAML format
-func (h *MD) exportPropertiesToYAML(buf writer, properties []yaml.Property, typeName string) {
+func (h *md) exportPropertiesToYAML(buf writer, properties []yaml.Property, typeName string) {
 	exportOptions := &yaml.ExportOptions{}
 
 	// Add schema reference if enabled
@@ -394,7 +429,7 @@ func (h *MD) exportPropertiesToYAML(buf writer, properties []yaml.Property, type
 }
 
 // addCollectionProperty adds Collection property to the properties list if there are collection items
-func (h *MD) addCollectionProperty(properties []yaml.Property) []yaml.Property {
+func (h *md) addCollectionProperty(properties []yaml.Property) []yaml.Property {
 	collectionObjects := h.s.GetStoreSlice(template.CollectionStoreKey)
 	if len(collectionObjects) == 0 {
 		return properties
@@ -429,7 +464,7 @@ func (h *MD) addCollectionProperty(properties []yaml.Property) []yaml.Property {
 }
 
 // addSystemProperties adds system properties that are not already included
-func (h *MD) addSystemProperties(properties []yaml.Property) []yaml.Property {
+func (h *md) addSystemProperties(properties []yaml.Property) []yaml.Property {
 	// Create a map of existing property keys
 	existingKeys := make(map[string]bool)
 	for _, prop := range properties {
@@ -465,7 +500,43 @@ func (h *MD) addSystemProperties(properties []yaml.Property) []yaml.Property {
 	return properties
 }
 
-func (h *MD) Export() (result string) {
+// addLocalDetails adds details from the object that aren't already covered by recommended/system relations
+func (h *md) addLocalDetails(properties []yaml.Property) []yaml.Property {
+	// Build set of already-collected relation keys
+	existingKeys := make(map[string]bool)
+	for _, prop := range properties {
+		existingKeys[prop.Key] = true
+	}
+
+	for key, v := range h.s.CombinedDetails().Iterate() {
+		keyStr := string(key)
+		if existingKeys[keyStr] {
+			continue
+		}
+		if v.IsNull() {
+			continue
+		}
+
+		relDetails, err := h.resolver.GetRelationByKey(keyStr)
+		if err != nil || relDetails == nil {
+			continue
+		}
+
+		hidden := relDetails.GetBool(bundle.RelationKeyIsHidden)
+		if hidden {
+			continue
+		}
+
+		prop := h.processRelation(relDetails)
+		if prop != nil {
+			properties = append(properties, *prop)
+		}
+	}
+
+	return properties
+}
+
+func (h *md) Export() (result string) {
 	buf := bytes.NewBuffer(nil)
 	in := new(renderState)
 	h.renderProperties(buf)
@@ -474,7 +545,7 @@ func (h *MD) Export() (result string) {
 	return buf.String()
 }
 
-func (h *MD) Ext() string {
+func (h *md) Ext() string {
 	return ".md"
 }
 
@@ -498,7 +569,7 @@ type writer interface {
 	WriteRune(r rune) (n int, err error)
 }
 
-func (h *MD) render(buf writer, in *renderState, b *model.Block) {
+func (h *md) render(buf writer, in *renderState, b *model.Block) {
 	switch b.Content.(type) {
 	case *model.BlockContentOfSmartblock:
 	case *model.BlockContentOfText:
@@ -522,7 +593,7 @@ func (h *MD) render(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderChildren(buf writer, in *renderState, parent *model.Block) {
+func (h *md) renderChildren(buf writer, in *renderState, parent *model.Block) {
 	for _, chId := range parent.ChildrenIds {
 		b := h.s.Pick(chId)
 		if b == nil {
@@ -532,7 +603,7 @@ func (h *MD) renderChildren(buf writer, in *renderState, parent *model.Block) {
 	}
 }
 
-func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
+func (h *md) renderText(buf writer, in *renderState, b *model.Block) {
 	text := b.GetText()
 	renderText := func() {
 		mw := h.marksWriter(text)
@@ -622,7 +693,7 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderFile(buf writer, in *renderState, b *model.Block) {
+func (h *md) renderFile(buf writer, in *renderState, b *model.Block) {
 	file := b.GetFile()
 	if file == nil || file.State != model.BlockContentFile_Done {
 		return
@@ -642,7 +713,7 @@ func (h *MD) renderFile(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderBookmark(buf writer, in *renderState, b *model.Block) {
+func (h *md) renderBookmark(buf writer, in *renderState, b *model.Block) {
 	bm := b.GetBookmark()
 	if bm != nil && bm.Url != "" {
 		buf.WriteString(in.indent)
@@ -653,7 +724,7 @@ func (h *MD) renderBookmark(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderDiv(buf writer, in *renderState, b *model.Block) {
+func (h *md) renderDiv(buf writer, in *renderState, b *model.Block) {
 	switch b.GetDiv().Style {
 	case model.BlockContentDiv_Dots, model.BlockContentDiv_Line:
 		buf.WriteString(" --- \n")
@@ -661,7 +732,7 @@ func (h *MD) renderDiv(buf writer, in *renderState, b *model.Block) {
 	h.renderChildren(buf, in, b)
 }
 
-func (h *MD) renderLayout(buf writer, in *renderState, b *model.Block) {
+func (h *md) renderLayout(buf writer, in *renderState, b *model.Block) {
 	style := model.BlockContentLayoutStyle(-1)
 	layout := b.GetLayout()
 	if layout != nil {
@@ -674,7 +745,7 @@ func (h *MD) renderLayout(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderLink(buf writer, in *renderState, b *model.Block) {
+func (h *md) renderLink(buf writer, in *renderState, b *model.Block) {
 	l := b.GetLink()
 	if l != nil && l.TargetBlockId != "" {
 		title, filename, ok := h.getLinkInfo(l.TargetBlockId)
@@ -685,7 +756,7 @@ func (h *MD) renderLink(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderLatex(buf writer, in *renderState, b *model.Block) {
+func (h *md) renderLatex(buf writer, in *renderState, b *model.Block) {
 	l := b.GetLatex()
 	if l != nil {
 		buf.WriteString(in.indent)
@@ -693,7 +764,7 @@ func (h *MD) renderLatex(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
+func (h *md) renderTable(buf writer, in *renderState, b *model.Block) {
 	if t := b.GetTable(); t == nil {
 		return
 	}
@@ -780,15 +851,15 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 	}
 }
 
-func (h *MD) FileHashes() []string {
+func (h *md) FileHashes() []string {
 	return h.fileHashes
 }
 
-func (h *MD) ImageHashes() []string {
+func (h *md) ImageHashes() []string {
 	return h.imageHashes
 }
 
-func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
+func (h *md) marksWriter(text *model.BlockContentText) *marksWriter {
 	if h.mw == nil {
 		h.mw = &marksWriter{
 			h: h,
@@ -797,12 +868,12 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 	return h.mw.Init(text)
 }
 
-func (h *MD) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
+func (h *md) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	h.knownDocs = docs
 	return h
 }
 
-func (h *MD) getObjectInfo(objectId string) (details *domain.Details, isIncludedInExport bool) {
+func (h *md) getObjectInfo(objectId string) (details *domain.Details, isIncludedInExport bool) {
 	details, _ = h.knownDocs[objectId]
 	if details != nil {
 		return details, true
@@ -812,7 +883,7 @@ func (h *MD) getObjectInfo(objectId string) (details *domain.Details, isIncluded
 	return details, false
 }
 
-func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
+func (h *md) getLinkInfo(docId string) (title, filename string, ok bool) {
 	info, _ := h.getObjectInfo(docId)
 	if info == nil {
 		return
@@ -845,7 +916,7 @@ func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
 }
 
 type marksWriter struct {
-	h           *MD
+	h           *md
 	breakpoints map[int]struct {
 		starts []*model.BlockContentTextMark
 		ends   []*model.BlockContentTextMark
@@ -990,7 +1061,7 @@ func GenerateSchemaFileName(typeName string) string {
 }
 
 // GenerateJSONSchema generates a JSON schema for the object type using the schema package
-func (h *MD) GenerateJSONSchema() ([]byte, error) {
+func (h *md) GenerateJSONSchema() ([]byte, error) {
 	if h.resolver == nil {
 		return nil, fmt.Errorf("resolver not set")
 	}
@@ -1034,7 +1105,7 @@ func (h *MD) GenerateJSONSchema() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (h *MD) getRelationOptions(relationKey string) []string {
+func (h *md) getRelationOptions(relationKey string) []string {
 	var options []string
 
 	// Return empty if resolver is not available

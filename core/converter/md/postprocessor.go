@@ -100,10 +100,10 @@ func (p *PostProcessor) Process(docs map[string]*domain.Details, writer Writer) 
 		// Create a temporary state and converter to generate schema
 		tempState := state.NewDoc("temp", nil).(*state.State)
 		tempState.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String(objectTypeId))
-		mdConv := NewMDConverterWithResolver(tempState, p.fileNamer, true, true, p.resolver)
+		mdConv := NewConverter(tempState, p.fileNamer, WithRelations(), WithSchema(), WithResolver(p.resolver), WithHiddenDetails(), WithLocalDetails())
 
 		// Generate and write schema
-		if schemaBytes, err := mdConv.(*MD).GenerateJSONSchema(); err == nil && schemaBytes != nil {
+		if schemaBytes, err := mdConv.(*md).GenerateJSONSchema(); err == nil && schemaBytes != nil {
 			if err = writer.WriteFile(schemaFileName, bytes.NewReader(schemaBytes), 0); err != nil {
 				log.Warnf("failed to write JSON schema: %v", err)
 			} else {
