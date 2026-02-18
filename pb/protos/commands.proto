@@ -9095,33 +9095,11 @@ message Rpc {
             }
         }
 
-        message PinMessages {
+        message SetPinnedMessages {
             message Request {
                 string chatObjectId = 1;
                 repeated string messageIds = 2;
-            }
-
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-
-        message UnpinMessages {
-            message Request {
-                string chatObjectId = 1;
-                repeated string messageIds = 2;
+                bool pinned = 3;
             }
 
             message Response {

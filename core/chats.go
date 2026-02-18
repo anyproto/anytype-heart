@@ -302,40 +302,21 @@ func (mw *Middleware) ChatSearch(cctx context.Context, req *pb.RpcChatSearchRequ
 	}
 }
 
-func (mw *Middleware) ChatPinMessages(cctx context.Context, req *pb.RpcChatPinMessagesRequest) *pb.RpcChatPinMessagesResponse {
+func (mw *Middleware) ChatSetPinnedMessages(cctx context.Context, req *pb.RpcChatSetPinnedMessagesRequest) *pb.RpcChatSetPinnedMessagesResponse {
 	ctx := mw.newContext(cctx)
 	chatService := mustService[chats.Service](mw)
 
-	err := chatService.PinMessages(cctx, req.ChatObjectId, req.MessageIds, true)
+	err := chatService.PinMessages(cctx, req.ChatObjectId, req.MessageIds, req.Pinned)
 	if err != nil {
-		code := mapErrorCode[pb.RpcChatPinMessagesResponseErrorCode](err)
-		return &pb.RpcChatPinMessagesResponse{
-			Error: &pb.RpcChatPinMessagesResponseError{
+		code := mapErrorCode[pb.RpcChatSetPinnedMessagesResponseErrorCode](err)
+		return &pb.RpcChatSetPinnedMessagesResponse{
+			Error: &pb.RpcChatSetPinnedMessagesResponseError{
 				Code:        code,
 				Description: getErrorDescription(err),
 			},
 		}
 	}
-	return &pb.RpcChatPinMessagesResponse{
-		Event: ctx.GetResponseEvent(),
-	}
-}
-
-func (mw *Middleware) ChatUnpinMessages(cctx context.Context, req *pb.RpcChatUnpinMessagesRequest) *pb.RpcChatUnpinMessagesResponse {
-	ctx := mw.newContext(cctx)
-	chatService := mustService[chats.Service](mw)
-
-	err := chatService.PinMessages(cctx, req.ChatObjectId, req.MessageIds, false)
-	if err != nil {
-		code := mapErrorCode[pb.RpcChatUnpinMessagesResponseErrorCode](err)
-		return &pb.RpcChatUnpinMessagesResponse{
-			Error: &pb.RpcChatUnpinMessagesResponseError{
-				Code:        code,
-				Description: getErrorDescription(err),
-			},
-		}
-	}
-	return &pb.RpcChatUnpinMessagesResponse{
+	return &pb.RpcChatSetPinnedMessagesResponse{
 		Event: ctx.GetResponseEvent(),
 	}
 }
