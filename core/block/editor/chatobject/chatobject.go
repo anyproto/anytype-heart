@@ -336,9 +336,12 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	if err != nil {
 		return nil, err
 	}
+	s.subscription.Lock()
+	state := s.subscription.GetChatState()
+	s.subscription.Unlock()
 	return &GetMessagesResponse{
 		Messages:  msgs,
-		ChatState: s.subscription.GetChatState(),
+		ChatState: state,
 	}, nil
 }
 
