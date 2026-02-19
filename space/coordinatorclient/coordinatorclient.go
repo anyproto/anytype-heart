@@ -1,5 +1,16 @@
 package coordinatorclient
 
+/*
+AI generated
+
+Name: Coordinator Client Wrapper
+Scope: global
+
+## Responsibility
+- Wraps any-sync CoordinatorClient with rate limiting for SpaceSign (concurrency=1)
+- Triggers DeletionController status update after successful SpaceSign calls
+*/
+
 import (
 	"context"
 

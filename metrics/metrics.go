@@ -48,7 +48,7 @@ var (
 		Namespace: "anytype",
 		Subsystem: "object",
 		Name:      "change_created",
-		Help:      "Store updated for an object",
+		Help:      "Change created for an object",
 	})
 	ObjectChangeStateAppendedCounter = promauto.NewCounter(prometheus.CounterOpts{
 		Namespace: "anytype",

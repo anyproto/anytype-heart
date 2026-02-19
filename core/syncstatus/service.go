@@ -1,5 +1,15 @@
 package syncstatus
 
+/*
+AI generated
+
+Name: File Sync Status Indexer
+Scope: global
+
+## Responsibility
+- Listen to file sync status changes and update FileBackupStatus detail on file objects
+*/
+
 import (
 	"context"
 	"fmt"

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/cheggaaa/mb/v3"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 
@@ -23,6 +24,8 @@ type spaceIndexer struct {
 	objectStore     objectstore.ObjectStore
 	batcher         *mb.MB[indexTask]
 	fulltextEnabled bool
+
+	lastIndex atomic.Time
 }
 
 func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool) *spaceIndexer {
@@ -30,11 +33,16 @@ func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, object
 		runCtx:          runCtx,
 		spaceIndex:      spaceIndex,
 		objectStore:     objectStore,
-		batcher:         mb.New[indexTask](100),
+		batcher:         mb.New[indexTask](1000),
 		fulltextEnabled: fulltextEnabled,
 	}
 	go ind.indexBatchLoop()
 	return ind
+}
+
+// LastIndex returns the time of the last indexing operation
+func (i *spaceIndexer) LastIndex() time.Time {
+	return i.lastIndex.Load()
 }
 
 func (i *spaceIndexer) close() error {
@@ -56,10 +64,14 @@ func (i *spaceIndexer) indexBatchLoop() {
 		if iErr := i.indexBatch(tasks); iErr != nil {
 			log.Warnf("indexBatch error: %v", iErr)
 		}
+		// todo: add some delay in case batcher returns too many in minute to avoid high cpu/disk usage
 	}
 }
 
 func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
+	if len(tasks) == 0 {
+		return nil
+	}
 	tx, err := i.spaceIndex.WriteTx(i.runCtx)
 	if err != nil {
 		return err
@@ -82,17 +94,48 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 		}
 	}
 
+	fulltextIds := make([]domain.FullID, 0, len(tasks))
+
+	ftQueueCtr := objectstore.GenerateFTQueueCounter()
 	for _, task := range tasks {
-		if iErr := i.index(tx.Context(), task.info, task.options...); iErr != nil {
+		if addToFtQueue, iErr := i.index(tx.Context(), ftQueueCtr, task.info, task.options...); iErr != nil {
 			task.done <- iErr
+		} else if addToFtQueue {
+			fulltextIds = append(fulltextIds, domain.FullID{ObjectID: task.info.Id, SpaceID: task.info.Space.Id()})
+		}
+	}
+
+	commonTx, err := i.objectStore.WriteTx(i.runCtx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = commonTx.Rollback()
+	}()
+
+	for _, task := range tasks {
+		err = i.objectStore.BindSpaceId(commonTx.Context(), task.info.Space.Id(), task.info.Id)
+		if err != nil {
+			log.Error("failed to bind space id", zap.Error(err), zap.String("id", task.info.Id))
+			return err
+		}
+	}
+
+	if len(fulltextIds) > 0 {
+		_, err = i.objectStore.AddToIndexQueueWithCounter(commonTx.Context(), ftQueueCtr, fulltextIds...)
+		if err != nil {
+			log.Errorf("can't add ids to index queue: %v", err)
 		}
 	}
 	if err = tx.Commit(); err != nil {
 		closeTasks(err)
+	} else if commonTx.Commit() != nil {
+		closeTasks(fmt.Errorf("failed to commit commondb tx: %w", err))
 	} else {
 		closeTasks(nil)
 	}
-	log.Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
+	log.With("spaceId", i.spaceIndex.SpaceId()).Infof("indexBatch: indexed %d docs for a %v: err: %v", len(tasks), time.Since(st), err)
+	i.lastIndex.Store(time.Now())
 	return
 }
 
@@ -113,32 +156,34 @@ func (i *spaceIndexer) Index(info smartblock.DocInfo, options ...smartblock.Inde
 	}
 }
 
-func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+func (i *spaceIndexer) index(ctx context.Context, ftQueueCounter uint64, info smartblock.DocInfo, options ...smartblock.IndexOption) (addToFulltextQueue bool, err error) {
 	// options are stored in smartblock pkg because of cyclic dependency :(
 	opts := &smartblock.IndexOptions{}
 	for _, o := range options {
 		o(opts)
 	}
-	err := i.objectStore.BindSpaceId(info.Space.Id(), info.Id)
-	if err != nil {
-		log.Error("failed to bind space id", zap.Error(err), zap.String("id", info.Id))
-		return err
-	}
+
 	headHashToIndex := headsHash(info.Heads)
+
 	saveIndexedHash := func() {
 		if headHashToIndex == "" {
 			return
 		}
 
-		err = i.spaceIndex.SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
+		// If we have ftQueueCtr, use the method that saves it for crash recovery
+		if ftQueueCounter > 0 {
+			err = i.spaceIndex.SaveLastIndexedHeadsHashWithFtQueueCtr(ctx, info.Id, headHashToIndex, ftQueueCounter)
+		} else {
+			err = i.spaceIndex.SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
+		}
 		if err != nil {
 			log.With("objectID", info.Id).Errorf("failed to save indexed heads hash: %v", err)
 		}
 	}
 
-	_, indexDetails, indexLinks := info.SmartblockType.Indexable()
+	fulltext, indexDetails, indexLinks := info.SmartblockType.Indexable()
 	if !indexDetails && !indexLinks {
-		return nil
+		return false, nil
 	}
 
 	lastIndexedHash, err := i.spaceIndex.GetLastIndexedHeadsHash(ctx, info.Id)
@@ -151,7 +196,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 			log.With("objectID", info.Id).Errorf("heads hash is empty")
 		} else if lastIndexedHash == headHashToIndex {
 			log.With("objectID", info.Id).Debugf("heads not changed, skipping indexing")
-			return nil
+			return false, nil
 		}
 	}
 
@@ -159,9 +204,27 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 
 	var hasError bool
 	if indexLinks {
-		if err = i.spaceIndex.UpdateObjectLinks(ctx, info.Id, info.Links); err != nil {
-			hasError = true
-			log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
+		// Convert smartblock.OutgoingLink to spaceindex.OutgoingLink
+		var spaceIndexLinks []spaceindex.OutgoingLink
+		if len(info.OutgoingLinks) > 0 {
+			spaceIndexLinks = make([]spaceindex.OutgoingLink, len(info.OutgoingLinks))
+			for i, link := range info.OutgoingLinks {
+				spaceIndexLinks[i] = spaceindex.OutgoingLink{
+					TargetID:    link.TargetID,
+					BlockID:     link.SourceBlockID,
+					RelationKey: link.RelationKey,
+				}
+			}
+			if err = i.spaceIndex.UpdateObjectLinksDetailed(ctx, info.Id, spaceIndexLinks); err != nil {
+				hasError = true
+				log.With("objectID", info.Id).Errorf("failed to save detailed object links: %v", err)
+			}
+		} else {
+			// Fallback to simple links for backward compatibility
+			if err = i.spaceIndex.UpdateObjectLinks(ctx, info.Id, info.Links); err != nil {
+				hasError = true
+				log.With("objectID", info.Id).Errorf("failed to save object links: %v", err)
+			}
 		}
 	}
 
@@ -182,15 +245,10 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 			}
 		}
 
-		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
+		if (!opts.SkipFullTextIfHeadsNotChanged || lastIndexedHash != headHashToIndex) && fulltext && i.fulltextEnabled {
 			// Use component's context because ctx from parameter contains transaction
-			fulltext, _, _ := info.SmartblockType.Indexable()
-
-			if fulltext && i.fulltextEnabled {
-				if err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
-					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
-				}
-			}
+			// Get counter from AddToIndexQueueWithCounter for crash recovery consistency
+			addToFulltextQueue = true
 		}
 	} else {
 		_ = i.spaceIndex.DeleteDetails(ctx, []string{info.Id})
@@ -200,7 +258,7 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		saveIndexedHash()
 	}
 
-	return nil
+	return addToFulltextQueue, nil
 }
 
 func headsHash(heads []string) string {

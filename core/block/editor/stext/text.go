@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/undo"
@@ -390,6 +391,10 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 			b.Model().GetText().Marks = &model.BlockContentTextMarks{
 				Marks: nil,
 			}
+		case model.BlockContentText_ToggleHeader1,
+			model.BlockContentText_ToggleHeader2,
+			model.BlockContentText_ToggleHeader3:
+			turnIntoToggleHeader(s, b, style)
 		}
 	}
 
@@ -421,6 +426,167 @@ func (t *textImpl) TurnInto(ctx session.Context, style model.BlockContentTextSty
 	}
 
 	return t.Apply(s)
+}
+
+func turnIntoToggleHeader(s *state.State, b text.Block, style model.BlockContentTextStyle) {
+	parent := s.GetParentOf(b.Model().Id)
+	if parent == nil {
+		return
+	}
+
+	pos := slice.FindPos(parent.Model().ChildrenIds, b.Model().Id)
+	if pos == -1 {
+		return
+	}
+
+	// Get the level of the target toggle header style
+	targetLevel := getHeaderLevel(style)
+	if targetLevel == 0 {
+		return
+	}
+
+	if isLayoutDivBlock(parent) {
+		turnIntoToggleHeaderInDiv(s, b, parent, pos, targetLevel)
+		return
+	}
+
+	// Standard case: parent is not a div block
+	moveSiblingsToToggleHeader(s, b, parent, pos, targetLevel)
+}
+
+// moveSiblingsToToggleHeader collects siblings after the block until a header of same/higher level
+func moveSiblingsToToggleHeader(s *state.State, b text.Block, parent simple.Block, pos int, targetLevel int) {
+	var siblingsToMove []string
+	for i := pos + 1; i < len(parent.Model().ChildrenIds); i++ {
+		siblingId := parent.Model().ChildrenIds[i]
+		sibling := s.Pick(siblingId)
+		if sibling == nil {
+			continue
+		}
+
+		// Check if it's a header of the same or higher level (stop condition)
+		siblingLevel := getHeaderLevel(getBlockStyle(sibling))
+		if siblingLevel > 0 && siblingLevel <= targetLevel {
+			break
+		}
+
+		siblingsToMove = append(siblingsToMove, siblingId)
+	}
+
+	// Make collected blocks children of current block
+	if len(siblingsToMove) > 0 {
+		for _, siblingId := range siblingsToMove {
+			s.Unlink(siblingId)
+		}
+		b.Model().ChildrenIds = append(b.Model().ChildrenIds, siblingsToMove...)
+	}
+}
+
+// turnIntoToggleHeaderInDiv handles the case when the block is inside a layout div block
+func turnIntoToggleHeaderInDiv(s *state.State, b text.Block, parentDiv simple.Block, pos int, targetLevel int) {
+	// Get grandparent (parent of the div)
+	grandparent := s.GetParentOf(parentDiv.Model().Id)
+	if grandparent == nil {
+		moveSiblingsToToggleHeader(s, b, parentDiv, pos, targetLevel) // fallback
+		return
+	}
+
+	divPos := slice.FindPos(grandparent.Model().ChildrenIds, parentDiv.Model().Id)
+	if divPos == -1 {
+		moveSiblingsToToggleHeader(s, b, parentDiv, pos, targetLevel) // fallback
+		return
+	}
+
+	blocksToMove := collectBlocksFromDivs(s, grandparent, targetLevel, divPos, pos+1)
+	for _, blockId := range blocksToMove {
+		s.Unlink(blockId)
+	}
+	b.Model().ChildrenIds = append(b.Model().ChildrenIds, blocksToMove...)
+}
+
+func isLayoutDivBlock(b simple.Block) bool {
+	if layout := b.Model().GetLayout(); layout != nil {
+		return layout.Style == model.BlockContentLayout_Div
+	}
+	return false
+}
+
+// getHeaderLevel returns the header level (1, 2, 3) for header styles, or 0 if not a header.
+// Lower number means higher level (H1 > H2 > H3).
+func getHeaderLevel(style model.BlockContentTextStyle) int {
+	switch style {
+	case model.BlockContentText_Header1, model.BlockContentText_ToggleHeader1:
+		return 1
+	case model.BlockContentText_Header2, model.BlockContentText_ToggleHeader2:
+		return 2
+	case model.BlockContentText_Header3, model.BlockContentText_ToggleHeader3:
+		return 3
+	case model.BlockContentText_Header4:
+		return 4
+	}
+	return 0
+}
+
+func getBlockStyle(b simple.Block) model.BlockContentTextStyle {
+	if txtContent := b.Model().GetText(); txtContent != nil {
+		return txtContent.Style
+	}
+	return model.BlockContentText_Paragraph
+}
+
+// collectBlocksFromDivs collects block IDs from div children of divsParent, starting from the div
+// at divPos (from startChildIdx within that div) and continuing to subsequent sibling divs.
+// It stops when it encounters a header of same or higher level than targetLevel.
+// Empty divs that had all their children collected are unlinked.
+func collectBlocksFromDivs(s *state.State, divsParent simple.Block, targetLevel, divPos, startChildIdx int) []string {
+	var blocks []string
+	var emptyDivsToUnlink []string
+
+	for idx, divId := range divsParent.Model().ChildrenIds[divPos:] {
+		div := s.Get(divId)
+		if div == nil || !isLayoutDivBlock(div) {
+			continue
+		}
+
+		childStart := 0
+		if idx == 0 {
+			childStart = startChildIdx
+		}
+
+		stopped := false
+		var blocksFromDiv []string
+		for j := childStart; j < len(div.Model().ChildrenIds); j++ {
+			childId := div.Model().ChildrenIds[j]
+			child := s.Pick(childId)
+			if child == nil {
+				continue
+			}
+
+			childLevel := getHeaderLevel(getBlockStyle(child))
+			if childLevel > 0 && childLevel <= targetLevel {
+				stopped = true
+				break
+			}
+
+			blocksFromDiv = append(blocksFromDiv, childId)
+		}
+
+		blocks = append(blocks, blocksFromDiv...)
+
+		if stopped {
+			break
+		}
+
+		// If we collected all children from a sibling div, mark it for removal
+		if idx != 0 && len(blocksFromDiv) == len(div.Model().ChildrenIds) {
+			emptyDivsToUnlink = append(emptyDivsToUnlink, divId)
+		}
+	}
+
+	for _, divId := range emptyDivsToUnlink {
+		s.Unlink(divId)
+	}
+	return blocks
 }
 
 func (t *textImpl) isLastTextBlockChanged() (bool, error) {

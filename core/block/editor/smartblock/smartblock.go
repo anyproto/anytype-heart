@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -28,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -39,6 +41,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -97,6 +100,7 @@ func New(
 	eventSender event.Sender,
 	spaceIdResolver idresolver.Resolver,
 	formatFetcher relationutils.RelationFormatFetcher,
+	fileGC filegc.FileGC,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -108,6 +112,7 @@ func New(
 
 		spaceIndex:      spaceIndex,
 		indexer:         indexer,
+		fileGC:          fileGC,
 		eventSender:     eventSender,
 		objectStore:     objectStore,
 		spaceIdResolver: spaceIdResolver,
@@ -186,6 +191,16 @@ type DocInfo struct {
 	Details *domain.Details
 
 	SmartblockType smartblock.SmartBlockType
+
+	// OutgoingLinks contains detailed information about links from this object
+	OutgoingLinks []OutgoingLink
+}
+
+// OutgoingLink represents a link from this object to another object
+type OutgoingLink struct {
+	TargetID      string // ID of the target object
+	SourceBlockID string // Block ID where the link originates (empty for relation links)
+	RelationKey   string // Relation key (empty for block links)
 }
 
 // TODO Maybe create constructor? Don't want to forget required fields
@@ -249,6 +264,13 @@ type smartBlock struct {
 	eventSender     event.Sender
 	spaceIdResolver idresolver.Resolver
 	formatFetcher   relationutils.RelationFormatFetcher
+	fileGC          filegc.FileGC
+
+	// sessionCreatedLinks tracks links added locally in this session.
+	// These are considered "session-created" and will be permanently deleted (skipBin=true) when removed.
+	// nil means object was never explicitly opened → safe default (archive all removals).
+	// empty map means object was opened but no local links added yet.
+	sessionCreatedLinks map[string]struct{}
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -590,6 +612,16 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 
 func (sb *smartBlock) RegisterSession(ctx session.Context) {
 	sb.sessions[ctx.ID()] = ctx
+	sb.initSessionTracking()
+}
+
+// initSessionTracking initializes session-created links tracking.
+// Only initializes if not already done (first session registration).
+func (sb *smartBlock) initSessionTracking() {
+	if sb.sessionCreatedLinks != nil {
+		return
+	}
+	sb.sessionCreatedLinks = make(map[string]struct{})
 }
 
 func (sb *smartBlock) IsLocked() bool {
@@ -662,6 +694,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return ErrApplyOnEmptyTreeDisallowed
 	}
 
+	// Capture current links before applying changes (for GC)
+	var linksBefore []string
+	if parent := s.ParentState(); parent != nil {
+		linksBefore = parent.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+	}
+
 	// Inject derived details to make sure we have consistent state.
 	// For example, we have to set ObjectTypeID into Type relation according to ObjectTypeKey from the state
 	sb.injectDerivedDetails(s, sb.SpaceID(), sb.Type())
@@ -711,7 +749,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
-
 	// we may have layout changed, so we need to update restrictions
 	sb.updateRestrictions()
 	sb.setRestrictionsDetail(s)
@@ -814,6 +851,31 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	if sb.hasDepIds(&act) {
 		sb.CheckSubscriptions()
+	}
+
+	// Check for file GC after successful apply
+	if parent := s.ParentState(); parent != nil && len(linksBefore) > 0 {
+		linksAfter := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+
+		// Track newly added links as session-created (if object was explicitly opened)
+		if sb.sessionCreatedLinks != nil {
+			addedLinks := getAddedLinks(linksBefore, linksAfter)
+			for _, link := range addedLinks {
+				sb.sessionCreatedLinks[link] = struct{}{}
+			}
+		}
+
+		removedLinks := getRemovedLinks(linksBefore, linksAfter)
+		if len(removedLinks) > 0 {
+			// Clean up session-created tracking for removed links
+			if sb.sessionCreatedLinks != nil {
+				for _, link := range removedLinks {
+					delete(sb.sessionCreatedLinks, link)
+				}
+			}
+			// Perform file GC asynchronously to not block the Apply
+			go sb.performFileGC(sb.SpaceID(), sb.Id(), removedLinks)
+		}
 	}
 	if hooks {
 		var parentDetails *domain.Details
@@ -1227,6 +1289,9 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 			heads = []string{lastChangeId}
 		}
 	}
+	// Collect outgoing links with source information
+	outgoingLinks := sb.collectOutgoingLinks(st)
+
 	return DocInfo{
 		Id:             sb.Id(),
 		Space:          sb.Space(),
@@ -1236,6 +1301,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Details:        sb.CombinedDetails(),
 		Type:           sb.ObjectTypeKey(),
 		SmartblockType: sb.Type(),
+		OutgoingLinks:  outgoingLinks,
 	}
 }
 
@@ -1323,3 +1389,217 @@ func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 }
 
 type InitFunc = func(id string) *InitContext
+
+// getRemovedLinks returns links that were in linksBefore but not in linksAfter
+func getRemovedLinks(linksBefore, linksAfter []string) []string {
+	afterSet := make(map[string]struct{}, len(linksAfter))
+	for _, link := range linksAfter {
+		afterSet[link] = struct{}{}
+	}
+
+	var removed []string
+	for _, link := range linksBefore {
+		if _, exists := afterSet[link]; !exists {
+			removed = append(removed, link)
+		}
+	}
+	return removed
+}
+
+// getAddedLinks returns links that are in linksAfter but not in linksBefore
+func getAddedLinks(linksBefore, linksAfter []string) []string {
+	beforeSet := make(map[string]struct{}, len(linksBefore))
+	for _, link := range linksBefore {
+		beforeSet[link] = struct{}{}
+	}
+
+	var added []string
+	for _, link := range linksAfter {
+		if _, exists := beforeSet[link]; !exists {
+			added = append(added, link)
+		}
+	}
+	return added
+}
+
+// collectOutgoingLinks collects all outgoing links from blocks and relations with their source information
+func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
+	var outgoingLinks []OutgoingLink
+	linkSet := make(map[string]bool) // To avoid duplicates
+	objectId := sb.Id()
+
+	// Collect links from blocks
+	if err := st.Iterate(func(b simple.Block) (isContinue bool) {
+		blockModel := b.Model()
+		if blockModel == nil {
+			return true
+		}
+
+		// Extract links based on block content type
+		// Skip self-references to avoid creating links from an object to itself
+		if link := blockModel.GetLink(); link != nil && link.TargetBlockId != "" && link.TargetBlockId != objectId && !linkSet[link.TargetBlockId] {
+			linkSet[link.TargetBlockId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      link.TargetBlockId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
+		if file := blockModel.GetFile(); file != nil && file.TargetObjectId != "" && file.TargetObjectId != objectId && !linkSet[file.TargetObjectId] {
+			linkSet[file.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      file.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
+		if text := blockModel.GetText(); text != nil && text.Marks != nil {
+			// Extract mentions from text marks
+			for _, mark := range text.Marks.Marks {
+				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
+					linkSet[mark.Param] = true
+					outgoingLinks = append(outgoingLinks, OutgoingLink{
+						TargetID:      mark.Param,
+						SourceBlockID: blockModel.Id,
+					})
+				}
+			}
+		}
+
+		return true
+	}); err != nil {
+		log.Warnf("failed to iterate state blocks: %v", err)
+	}
+
+	// Collect links from object relations
+	outgoingLinks = append(outgoingLinks, sb.collectLinksFromRelations(st, objectId, linkSet)...)
+
+	return outgoingLinks
+}
+
+// collectLinksFromRelations extracts outgoing links from object relation values
+func (sb *smartBlock) collectLinksFromRelations(st *state.State, objectId string, linkSet map[string]bool) []OutgoingLink {
+	var outgoingLinks []OutgoingLink
+	if st.Details() == nil {
+		return outgoingLinks
+	}
+	for key, val := range st.Details().IterateSorted() {
+		if slices.Contains(relationsToSkipLinksIndexing, key) {
+			continue
+		}
+		format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
+		if err != nil {
+			log.Warnf("failed to get relation format for key %s: %v", key, err)
+			format = guessRelationFormatFromValue(val)
+		}
+
+		if key == bundle.RelationKeyCoverId {
+			// special hacky case for coverId
+			coverType := st.Details().GetInt64(bundle.RelationKeyCoverType)
+			if coverType == 1 {
+				format = model.RelationFormat_file
+			}
+		}
+		// Only process object relations
+		if format != model.RelationFormat_object && format != model.RelationFormat_file {
+			continue
+		}
+
+		// Extract target IDs based on value type
+		targetIds, ok := val.TryWrapToStringList()
+		if !ok {
+			continue
+		}
+
+		// Add outgoing links for each target
+		// Skip self-references to avoid creating links from an object to itself
+		for _, targetId := range targetIds {
+			if targetId != "" && targetId != objectId && !linkSet[targetId] {
+				linkSet[targetId] = true
+				outgoingLinks = append(outgoingLinks, OutgoingLink{
+					TargetID:    targetId,
+					RelationKey: key.String(),
+				})
+			}
+		}
+	}
+	return outgoingLinks
+}
+
+// guessRelationFormatFromValue attempts to determine the relation format
+// by inspecting the value's content when the format fetcher fails
+func guessRelationFormatFromValue(val domain.Value) model.RelationFormat {
+	var id string
+	if s, ok := val.TryString(); ok {
+		id = s
+		if ids, ok := val.TryStringList(); ok && len(ids) > 0 {
+			id = ids[0]
+		}
+	}
+	if id == "" {
+		return 0
+	}
+	sbt, err := typeprovider.SmartblockTypeFromID(id)
+	if err != nil {
+		return 0
+	}
+	switch sbt {
+	case smartblock.SmartBlockTypePage,
+		smartblock.SmartBlockTypeObjectType,
+		smartblock.SmartBlockTypeParticipant:
+		return model.RelationFormat_object
+	case smartblock.SmartBlockTypeFileObject:
+		return model.RelationFormat_file
+	default:
+		return 0
+	}
+}
+
+// performFileGC runs the file garbage collector for removed links
+func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []string) {
+	if sb.fileGC == nil {
+		return
+	}
+
+	// If sessionCreatedLinks is nil, object was never explicitly opened by user.
+	// Treat all removed links as existing (safe default - archive instead of delete).
+	if sb.sessionCreatedLinks == nil {
+		if len(removedLinks) > 0 {
+			if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false, nil); err != nil {
+				log.With("objectId", contextId).Errorf("file gc on links removal failed: %v", err)
+			}
+		}
+		return
+	}
+
+	// Classify removed links as session-created or existing.
+	// Session-created links are tracked explicitly in sessionCreatedLinks map
+	// (populated during Apply when links are added locally).
+	// This ensures that links added by remote sync are NOT considered session-created.
+	var sessionCreated []string
+	var existing []string
+
+	for _, link := range removedLinks {
+		if _, isSessionCreated := sb.sessionCreatedLinks[link]; isSessionCreated {
+			// This link was added during the current session by the local user
+			sessionCreated = append(sessionCreated, link)
+		} else {
+			// This link existed at open time OR was added via remote sync
+			existing = append(existing, link)
+		}
+	}
+
+	// Process existing files - archive them (skipBin=false)
+	if len(existing) > 0 {
+		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, existing, false, nil); err != nil {
+			log.Errorf("file GC failed for existing files in context %s: %v", contextId, err)
+		}
+	}
+
+	// Process session-created files - delete them permanently (skipBin=true)
+	if len(sessionCreated) > 0 {
+		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, sessionCreated, true, nil); err != nil {
+			log.Errorf("file GC failed for session-created files in context %s: %v", contextId, err)
+		}
+	}
+}

@@ -10,18 +10,23 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
 	"github.com/globalsign/mgo/bson"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type ChatHandler struct {
 	repository      chatrepository.Repository
 	subscription    chatsubscription.Manager
+	indexerStore    objectstore.IndexerStore
+	chatFullId      domain.FullID
 	currentIdentity string
 	myParticipantId string
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
@@ -33,16 +38,7 @@ func (d *ChatHandler) CollectionName() string {
 }
 
 func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err error) {
-	coll, err := s.Collection(ctx, CollectionName)
-	if err != nil {
-		return err
-	}
-	iErr := coll.EnsureIndex(ctx, anystore.IndexInfo{
-		Fields: []string{"_o.id"},
-	})
-	if iErr != nil && !errors.Is(iErr, anystore.ErrIndexExists) {
-		return iErr
-	}
+	_, err = s.Collection(ctx, CollectionName)
 	return
 }
 
@@ -111,12 +107,19 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	d.subscription.Add(prevOrderId, msg)
 
+	if err = d.indexerStore.AddChatMessageToIndexQueue(ctx, d.chatFullId, msg.OrderId); err != nil {
+		return fmt.Errorf("add chat message to full text index queue: %w", err)
+	}
+
 	msg.MarshalAnyenc(ch.Value, ch.Arena)
 
 	return nil
 }
 
 func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
+	if err = d.indexerStore.AddChatMessageToIndexQueue(ctx, d.chatFullId, ch.Change.Order); err != nil {
+		return 0, fmt.Errorf("add chat message to full text index queue: %w", err)
+	}
 	return storestate.ModifyModeUpsert, nil
 }
 
@@ -147,6 +150,11 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	d.subscription.Lock()
 	defer d.subscription.Unlock()
 	d.subscription.Delete(messageId)
+
+	if err = d.indexerStore.AddChatMessageDeleteToIndexQueue(ctx, d.chatFullId, messageId); err != nil {
+		log.With(zap.String("chatId", d.chatFullId.ObjectID), zap.String("messageId", messageId), zap.Error(err)).
+			Error("failed to add message to fulltext delete queue")
+	}
 
 	return storestate.DeleteModeDelete, nil
 }
@@ -191,6 +199,8 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				msg.ModifiedAt = ch.Change.Timestamp
 				msg.MarshalAnyenc(result, a)
 				d.subscription.UpdateFull(msg)
+			case chatmodel.PinnedKey:
+				d.subscription.UpdatePinned(msg)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 			}

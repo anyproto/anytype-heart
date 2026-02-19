@@ -523,11 +523,13 @@ func (cb *clipboard) pasteFiles(ctx session.Context, req *pb.RpcBlockPasteReques
 		s.Add(b)
 
 		if err = cb.file.UploadState(ctx, s, b.Model().Id, file.FileSource{
-			Bytes:     fs.Data,
-			Path:      fs.LocalPath,
-			Name:      fs.Name,
-			Origin:    objectorigin.Clipboard(),
-			ImageKind: model.ImageKind_Basic,
+			Bytes:               fs.Data,
+			Path:                fs.LocalPath,
+			Name:                fs.Name,
+			Origin:              objectorigin.Clipboard(),
+			ImageKind:           model.ImageKind_Basic,
+			CreatedInContext:    cb.Id(),
+			CreatedInContextRef: b.Model().Id,
 		}, false); err != nil {
 			return
 		}
@@ -602,6 +604,7 @@ func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {
 	objectId, err := cb.fileObjectService.CreateFromImport(
 		domain.FullFileId{SpaceId: cb.SpaceID(), FileId: fileId.FileId},
 		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+		nil,
 	)
 	if err != nil {
 		log.Errorf("failed to create file object: %v", err)
@@ -650,11 +653,11 @@ func extractTextWithStyleAndTabs(block *model.Block, texts []string, level int, 
 			switch blockText.Style {
 			case model.BlockContentText_Title:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "# ", blockText.Text))
-			case model.BlockContentText_Header1:
+			case model.BlockContentText_Header1, model.BlockContentText_ToggleHeader1:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "## ", blockText.Text))
-			case model.BlockContentText_Header2:
+			case model.BlockContentText_Header2, model.BlockContentText_ToggleHeader2:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "### ", blockText.Text))
-			case model.BlockContentText_Header3:
+			case model.BlockContentText_Header3, model.BlockContentText_ToggleHeader3:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "#### ", blockText.Text))
 			case model.BlockContentText_Header4:
 				texts = append(texts, fmt.Sprintf("%s%s%s", strings.Repeat("\t", level), "##### ", blockText.Text))

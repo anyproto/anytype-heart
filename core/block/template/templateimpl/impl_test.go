@@ -410,6 +410,192 @@ func TestBuildTemplateStateFromObject(t *testing.T) {
 	})
 }
 
+func newTemplateTestWithPrefillType(templateName, typeKey string, prefillType model.TemplateNamePrefillType) smartblock.SmartBlock {
+	sb := smarttest.New(templateName)
+	details := []domain.Detail{
+		{
+			Key:   bundle.RelationKeyName,
+			Value: domain.String(templateName),
+		},
+		{
+			Key:   bundle.RelationKeyDescription,
+			Value: domain.String(templateName),
+		},
+		{
+			Key:   bundle.RelationKeyTemplateNamePrefillType,
+			Value: domain.Int64(int64(prefillType)),
+		},
+	}
+	_ = sb.SetDetails(nil, details, false)
+	sb.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTemplate, domain.TypeKey(typeKey)})
+	sb.AddBlock(simple.New(&model.Block{Id: templateName, ChildrenIds: []string{template.TitleBlockId, template.DescriptionBlockId}}))
+	sb.AddBlock(text.NewDetails(&model.Block{
+		Id: template.TitleBlockId,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{},
+		},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				text.DetailsKeyFieldName: pbtypes.String("name"),
+			},
+		}}, text.DetailsKeys{
+		Text:    "name",
+		Checked: "done",
+	}))
+	sb.AddBlock(text.NewDetails(&model.Block{
+		Id: template.DescriptionBlockId,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{},
+		},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				text.DetailsKeyFieldName: pbtypes.String(template.DescriptionBlockId),
+			},
+		},
+	}, text.DetailsKeys{
+		Text:    template.DescriptionBlockId,
+		Checked: "done",
+	}))
+	return sb
+}
+
+func TestService_TemplateNamePrefill(t *testing.T) {
+	const templateName = "My Template Name"
+
+	t.Run("prefill type Empty - name should not be inherited from template", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_Empty)
+		s := service{picker: &testPicker{sb: tmpl}}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
+
+		// then
+		assert.NoError(t, err)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName), "name should be empty when prefill type is Empty")
+	})
+
+	t.Run("prefill type FromTemplateName - name should be inherited from template", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_FromTemplateName)
+		s := service{picker: &testPicker{sb: tmpl}}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, templateName, st.Details().GetString(bundle.RelationKeyName), "name should be inherited when prefill type is FromTemplateName")
+	})
+
+	t.Run("prefill type not set (default) - name should not be inherited from template", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTest(templateName, bundle.TypeKeyTask.String())
+		s := service{picker: &testPicker{sb: tmpl}}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
+
+		// then
+		assert.NoError(t, err)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName), "name should be empty when prefill type is not set (defaults to Empty)")
+	})
+
+	t.Run("prefill type FromTemplateName with custom details - custom name takes precedence", func(t *testing.T) {
+		// given
+		customName := "Custom Object Name"
+		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_FromTemplateName)
+		s := service{picker: &testPicker{sb: tmpl}}
+		details := domain.NewDetails()
+		details.Set(bundle.RelationKeyName, domain.String(customName))
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName, Details: details})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, customName, st.Details().GetString(bundle.RelationKeyName), "custom name should take precedence over template name")
+		assert.True(t, st.PickRelationLinks().Has(bundle.RelationKeyName.String()), "Name relation link should exist")
+	})
+
+	t.Run("prefill type Empty with custom details - custom name is applied", func(t *testing.T) {
+		// given
+		customName := "Custom Object Name"
+		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_Empty)
+		s := service{picker: &testPicker{sb: tmpl}}
+		details := domain.NewDetails()
+		details.Set(bundle.RelationKeyName, domain.String(customName))
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName, Details: details})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, customName, st.Details().GetString(bundle.RelationKeyName), "custom name should be applied when prefill type is Empty")
+		assert.True(t, st.PickRelationLinks().Has(bundle.RelationKeyName.String()), "Name relation link should exist")
+	})
+
+	t.Run("prefill type FromTemplateName with empty name in details - template name should be preserved", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_FromTemplateName)
+		s := service{picker: &testPicker{sb: tmpl}}
+		details := domain.NewDetails()
+		details.Set(bundle.RelationKeyName, domain.String(""))
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName, Details: details})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, templateName, st.Details().GetString(bundle.RelationKeyName), "template name should be preserved when details has empty name")
+	})
+
+	t.Run("blank template without custom name - name should be empty", func(t *testing.T) {
+		// given
+		s := service{converter: converter.NewLayoutConverter()}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: blankTemplateId})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, blankTemplateId, st.RootId())
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName), "blank template should have empty name")
+	})
+
+	t.Run("blank template with custom name - custom name should be applied", func(t *testing.T) {
+		// given
+		customName := "Custom Object Name"
+		s := service{converter: converter.NewLayoutConverter()}
+		details := domain.NewDetails()
+		details.Set(bundle.RelationKeyName, domain.String(customName))
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: blankTemplateId, Details: details})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, blankTemplateId, st.RootId())
+		assert.Equal(t, customName, st.Details().GetString(bundle.RelationKeyName), "custom name should be applied to blank template")
+		assert.True(t, st.PickRelationLinks().Has(bundle.RelationKeyName.String()), "Name relation link should exist")
+	})
+
+	t.Run("blank template with empty name in details - name should remain empty", func(t *testing.T) {
+		// given
+		s := service{converter: converter.NewLayoutConverter()}
+		details := domain.NewDetails()
+		details.Set(bundle.RelationKeyName, domain.String(""))
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: blankTemplateId, Details: details})
+
+		// then
+		assert.NoError(t, err)
+		assert.Equal(t, blankTemplateId, st.RootId())
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyName), "blank template should have empty name when details has empty name")
+	})
+}
+
 func TestService_collectOriginalDetails(t *testing.T) {
 	const (
 		spaceId          = "space1"
@@ -504,9 +690,9 @@ func TestService_collectOriginalDetails(t *testing.T) {
 		assert.Equal(t, customEmoji, result.GetString(bundle.RelationKeyIconEmoji))
 	})
 
-	t.Run("keeps empty name", func(t *testing.T) {
+	t.Run("keeps empty name when no previous template", func(t *testing.T) {
 		// given
-		s := service{}
+		s := service{store: objectstore.NewStoreFixture(t)}
 		st := state.NewDoc("test", nil).NewState()
 		st.SetDetail(bundle.RelationKeyName, domain.String(""))
 
@@ -515,5 +701,90 @@ func TestService_collectOriginalDetails(t *testing.T) {
 
 		// then
 		assert.True(t, result.Has(bundle.RelationKeyName))
+	})
+
+	t.Run("removes name when it matches previous template name", func(t *testing.T) {
+		// given
+		templateName := "Template Name"
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(sourceTemplateId),
+				bundle.RelationKeyName: domain.String(templateName),
+			},
+		})
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(templateName))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.False(t, result.Has(bundle.RelationKeyName), "Name should be removed when it matches template name")
+		assert.False(t, result.Has(bundle.RelationKeySourceObject), "SourceObject should always be removed")
+	})
+
+	t.Run("keeps name when it differs from previous template name", func(t *testing.T) {
+		// given
+		templateName := "Template Name"
+		customName := "My Custom Name"
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(sourceTemplateId),
+				bundle.RelationKeyName: domain.String(templateName),
+			},
+		})
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(customName))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.Equal(t, customName, result.GetString(bundle.RelationKeyName), "Custom name should be preserved")
+	})
+
+	t.Run("keeps name when sourceObject is empty", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(customObjectName))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.Equal(t, customObjectName, result.GetString(bundle.RelationKeyName))
+	})
+
+	t.Run("removes empty name when previous template also had empty name", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:   domain.String(sourceTemplateId),
+				bundle.RelationKeyName: domain.String(""),
+			},
+		})
+		s := service{store: store}
+
+		st := state.NewDoc("test", nil).NewState()
+		st.SetDetail(bundle.RelationKeyName, domain.String(""))
+		st.SetDetail(bundle.RelationKeySourceObject, domain.String(sourceTemplateId))
+
+		// when
+		result := s.collectOriginalDetails(spaceId, st)
+
+		// then
+		assert.False(t, result.Has(bundle.RelationKeyName), "Empty name should be removed when previous template also had empty name")
 	})
 }

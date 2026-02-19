@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 )
+
+var errBlockNotFound = errors.New("block not found")
 
 const batchSize = 10
 
@@ -33,6 +36,9 @@ func (s *fileSync) walkFileBlocks(ctx context.Context, spaceId string, fileId do
 		return nil
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "could not find") {
+			return errors.Join(err, errBlockNotFound)
+		}
 		return fmt.Errorf("walk DAG: %w", err)
 	}
 

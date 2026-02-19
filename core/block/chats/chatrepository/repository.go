@@ -1,11 +1,28 @@
 package chatrepository
 
+/*
+AI generated
+
+Name: Chat Message Storage
+Scope: global
+
+## Responsibility
+- Provides per-chat Repository instances for message persistence
+- Stores and queries chat messages with pagination support
+- Tracks read/unread state for messages and mentions separately
+- Tracks sync state for messages
+
+## External State
+- CRDT DB collections: one per chat object (`{chatObjectId}chats`)
+*/
+
 import (
 	"context"
 	"errors"
 	"fmt"
 	"slices"
 	"sort"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -17,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -34,7 +52,7 @@ const (
 type Service interface {
 	app.ComponentRunnable
 
-	Repository(chatObjectId string) (Repository, error)
+	Repository(spaceId, chatObjectId string) (Repository, error)
 }
 
 type service struct {
@@ -45,6 +63,9 @@ type service struct {
 	dbProvider      anystoreprovider.Provider
 	spaceIdResolver idresolver.Resolver
 	arenaPool       *anyenc.ArenaPool
+
+	cache map[string]Repository
+	lock  sync.RWMutex
 }
 
 func New() Service {
@@ -69,6 +90,8 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
+
+	s.cache = make(map[string]Repository)
 	return nil
 }
 
@@ -76,10 +99,28 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) Repository(chatObjectId string) (Repository, error) {
-	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
-	if err != nil {
-		return nil, fmt.Errorf("resolve space id: %w", err)
+func (s *service) Repository(spaceId, chatObjectId string) (Repository, error) {
+	s.lock.RLock()
+	repo, ok := s.cache[chatObjectId]
+	s.lock.RUnlock()
+
+	if ok {
+		return repo, nil
+	}
+
+	return s.getOrInitRepository(spaceId, chatObjectId)
+}
+
+func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	if spaceId == "" {
+		var err error
+		spaceId, err = s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+		if err != nil {
+			return nil, fmt.Errorf("resolve space id: %w", err)
+		}
 	}
 
 	crdtDb, err := s.dbProvider.GetCrdtDb(spaceId).Wait()
@@ -99,10 +140,27 @@ func (s *service) Repository(chatObjectId string) (Repository, error) {
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 
-	return &repository{
+	if err = anystorehelper.AddIndexes(s.componentCtx, collection, []anystore.IndexInfo{
+		{Fields: []string{"_o.id"}},
+		{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
+	}); err != nil {
+		return nil, fmt.Errorf("ensure indexes: %w", err)
+	}
+
+	repo := &repository{
 		collection: collection,
 		arenaPool:  s.arenaPool,
-	}, nil
+	}
+
+	s.cache[chatObjectId] = repo
+	return repo, nil
+}
+
+// MessageAttachmentInfo contains attachment metadata from a message
+type MessageAttachmentInfo struct {
+	MessageId string
+	CreatedAt int64
+	FileIds   []string // Target IDs of FILE and IMAGE attachments
 }
 
 type Repository interface {
@@ -116,12 +174,16 @@ type Repository interface {
 	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
 	GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error)
+	GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error)
 	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string
 	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
 	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) []string
+	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
+	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
+	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
 }
 
 type repository struct {
@@ -353,6 +415,15 @@ func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatm
 	return msgIds, iter.Err()
 }
 
+func (s *repository) GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error) {
+	qry := s.collection.Find(query.Or{
+		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+		query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+	})
+
+	return s.queryMessages(ctx, qry)
+}
+
 func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) []string {
 	handler := newReadHandler(counterType)
 
@@ -518,5 +589,58 @@ func (s *repository) GetMessagesByIds(ctx context.Context, messageIds []string) 
 
 func (s *repository) GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error) {
 	qry := s.collection.Find(nil).Sort(descOrder).Limit(limit)
+	return s.queryMessages(ctx, qry)
+}
+
+func (s *repository) GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error) {
+	// Filter to only get messages that have attachments set
+	// This uses anystore's Exists filter - can be indexed in the future for better performance
+	var filter query.Filter = query.Key{Path: []string{chatmodel.ContentKey, "attachments"}, Filter: query.Exists{}}
+
+	if afterOrderId != "" {
+		filter = query.And{
+			filter,
+			query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGt, afterOrderId)},
+		}
+	}
+
+	iter, err := s.collection.Find(filter).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("iterate messages: %w", err)
+	}
+	defer iter.Close()
+
+	var results []MessageAttachmentInfo
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			continue
+		}
+
+		msg, err := chatmodel.UnmarshalMessage(doc.Value())
+		if err != nil {
+			continue
+		}
+
+		var fileIds []string
+		for _, att := range msg.Attachments {
+			if att.Target != "" {
+				fileIds = append(fileIds, att.Target)
+			}
+		}
+
+		if len(fileIds) > 0 {
+			results = append(results, MessageAttachmentInfo{
+				MessageId: msg.Id,
+				CreatedAt: msg.CreatedAt,
+				FileIds:   fileIds,
+			})
+		}
+	}
+	return results, iter.Err()
+}
+
+func (s *repository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	qry := s.collection.Find(query.Key{Path: []string{chatmodel.PinnedKey}, Filter: query.NewComp(query.CompOpEq, true)}).Sort(descOrder)
 	return s.queryMessages(ctx, qry)
 }

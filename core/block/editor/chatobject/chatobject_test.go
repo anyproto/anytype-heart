@@ -3,6 +3,7 @@ package chatobject
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -78,11 +79,15 @@ type fixture struct {
 	eventSender        *mock_event.MockSender
 	events             []*pb.EventMessage
 	spaceIndex         spaceindex.Store
+	storeFixture       *objectstore.StoreFixture
 
 	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
 }
 
-const testCreator = "accountId1"
+const (
+	testCreator = "accountId1"
+	chatId      = "chatId1"
+)
 
 func newFixture(t *testing.T) *fixture {
 	ctx := context.Background()
@@ -97,7 +102,7 @@ func newFixture(t *testing.T) *fixture {
 
 	eventSender := mock_event.NewMockSender(t)
 
-	sb := smarttest.New("chatId1")
+	sb := smarttest.New(chatId)
 
 	objectStore := objectstore.NewStoreFixture(t)
 	spaceIndex := objectStore.SpaceIndex(testSpaceId)
@@ -125,7 +130,7 @@ func newFixture(t *testing.T) *fixture {
 	db, err := provider.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
-	object := New(sb, accountService, db, repo, subscriptions, nil, nil, nil, debugstat.NewNoOp())
+	object := New(sb, accountService, db, repo, subscriptions, nil, objectStore, nil, nil, debugstat.NewNoOp())
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{
@@ -134,6 +139,7 @@ func newFixture(t *testing.T) *fixture {
 		sourceCreator:      testCreator,
 		eventSender:        eventSender,
 		spaceIndex:         spaceIndex,
+		storeFixture:       objectStore,
 	}
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(event *pb.Event) {
 		for _, msg := range event.Messages {
@@ -142,7 +148,7 @@ func newFixture(t *testing.T) *fixture {
 	}).Return().Maybe()
 
 	source := mock_source.NewMockStore(t)
-	source.EXPECT().Id().Return("chatId1")
+	source.EXPECT().Id().Return(chatId)
 	source.EXPECT().SpaceID().Return(testSpaceId)
 	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
@@ -226,6 +232,13 @@ func TestAddMessage(t *testing.T) {
 
 		got := messagesResp.Messages[0]
 		assertMessagesEqual(t, want, got)
+
+		ids, err := fx.storeFixture.ListIdsFromFullTextQueue([]string{testSpaceId}, 0)
+		require.NoError(t, err)
+		require.Len(t, ids, 1)
+		assert.Equal(t, testSpaceId, ids[0].SpaceId)
+		assert.Equal(t, chatId, ids[0].ObjectId)
+		assert.NotEmpty(t, ids[0].MsgOrderId)
 	})
 
 	t.Run("imitate adding other's messages", func(t *testing.T) {
@@ -264,6 +277,22 @@ func TestAddMessage(t *testing.T) {
 
 		got := messagesResp.Messages[0]
 		assertMessagesEqual(t, want, got)
+
+		ids, err := fx.storeFixture.ListIdsFromFullTextQueue([]string{testSpaceId}, 0)
+		require.NoError(t, err)
+		require.Len(t, ids, 1)
+		assert.Equal(t, testSpaceId, ids[0].SpaceId)
+		assert.Equal(t, chatId, ids[0].ObjectId)
+		assert.NotEmpty(t, ids[0].MsgOrderId)
+	})
+
+	t.Run("message exceeds max length", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		inputMessage := givenSimpleMessage(strings.Repeat("a", chatmodel.MaxMessageLength+1))
+		_, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.Error(t, err)
 	})
 }
 
@@ -362,6 +391,13 @@ func TestEditMessage(t *testing.T) {
 		assert.True(t, got.ModifiedAt > 0)
 		got.ModifiedAt = 0
 		assertMessagesEqual(t, want, got)
+
+		ids, err := fx.storeFixture.ListIdsFromFullTextQueue([]string{testSpaceId}, 0)
+		require.NoError(t, err)
+		require.Len(t, ids, 1)
+		assert.Equal(t, testSpaceId, ids[0].SpaceId)
+		assert.Equal(t, chatId, ids[0].ObjectId)
+		assert.NotEmpty(t, ids[0].MsgOrderId)
 	})
 
 	t.Run("edit other's message", func(t *testing.T) {

@@ -81,6 +81,31 @@ func (fc *FilterCondition) UnmarshalJSON(data []byte) error {
 }
 
 // FilterExpression represents a filter expression that can be nested with AND/OR operators
+//
+//	@Description	Expression filter with nested AND/OR conditions. Supports recursive nesting for complex queries. The 'filters' array can contain nested FilterExpression objects, creating a tree structure for complex logic.
+//	@Description
+//	@Description	Example: (status="done" AND priority="high") OR (created_date > "2024-01-01")
+//	@Description
+//	@Description	```
+//	@Description	{
+//	@Description	"operator": "or",
+//	@Description	"filters": [
+//	@Description	{
+//	@Description	"operator": "and",
+//	@Description	"conditions": [
+//	@Description	{"property_key": "status", "condition": "eq", "select": "done_tag_id"},
+//	@Description	{"property_key": "priority", "condition": "eq", "select": "high_tag_id"}
+//	@Description	]
+//	@Description	},
+//	@Description	{
+//	@Description	"operator": "and",
+//	@Description	"conditions": [
+//	@Description	{"property_key": "created_date", "condition": "gt", "date": "2024-01-01"}
+//	@Description	]
+//	@Description	}
+//	@Description	]
+//	@Description	}
+//	@Description	```
 type FilterExpression struct {
 	Operator   FilterOperator     `json:"operator,omitempty" enums:"and,or"`                                                                                                                                                                                                     // Logical operator for combining filters (and, or)
 	Conditions []FilterItem       `json:"conditions,omitempty" oneOf:"TextFilterItem,NumberFilterItem,SelectFilterItem,MultiSelectFilterItem,DateFilterItem,CheckboxFilterItem,FilesFilterItem,UrlFilterItem,EmailFilterItem,PhoneFilterItem,ObjectsFilterItem,EmptyFilterItem"` // List of format-specific filter conditions
@@ -88,6 +113,8 @@ type FilterExpression struct {
 }
 
 // FilterItem is a wrapper for format-specific filter conditions
+//
+//	@Description	A filter condition that matches a specific property format (text, number, select, date, etc.). Each filter item contains a property_key, condition, and a value field specific to the property format.
 type FilterItem struct {
 	WrappedFilterItem `swaggerignore:"true"`
 }
@@ -217,9 +244,9 @@ type WrappedFilterItem interface {
 
 // TextFilterItem for text property filters
 type TextFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"description"`                                         // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"contains" enums:"eq,ne,contains,ncontains,empty,nempty"` // The filter condition
-	Text        *string         `json:"text" example:"Some text..."`                                                // The text value to filter by
+	PropertyKey string          `json:"property_key" example:"description"`                                                                  // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"contains" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: eq, ne, contains, ncontains, empty, nempty)
+	Text        *string         `json:"text" example:"Some text..."`                                                                         // The text value to filter by
 }
 
 func (TextFilterItem) isFilterItem()                   {}
@@ -234,9 +261,9 @@ func (f TextFilterItem) GetValue() interface{} {
 
 // NumberFilterItem for number property filters
 type NumberFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"height"`                                   // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"gt" enums:"eq,ne,gt,gte,lt,lte,empty,nempty"` // The filter condition
-	Number      *float64        `json:"number" example:"42"`                                             // The number value to filter by
+	PropertyKey string          `json:"property_key" example:"height"`                                                                 // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"gt" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: eq, ne, gt, gte, lt, lte, empty, nempty)
+	Number      *float64        `json:"number" example:"42"`                                                                           // The number value to filter by
 }
 
 func (NumberFilterItem) isFilterItem()                   {}
@@ -251,9 +278,9 @@ func (f NumberFilterItem) GetValue() interface{} {
 
 // SelectFilterItem for select property filters
 type SelectFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"status"`                          // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"in" enums:"in,all,nin,empty,nempty"` // The filter condition
-	Select      *string         `json:"select" example:"tag_id"`                                // Tag Id - for eq/ne conditions (single selection)
+	PropertyKey string          `json:"property_key" example:"status"`                                                                 // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"in" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: eq, ne, in, all, nin, empty, nempty)
+	Select      *string         `json:"select" example:"tag_id"`                                                                       // Tag Id - for eq/ne/in conditions (single selection)
 }
 
 func (SelectFilterItem) isFilterItem()                   {}
@@ -269,7 +296,7 @@ func (f SelectFilterItem) GetValue() interface{} {
 // MultiSelectFilterItem for multi-select property filters
 type MultiSelectFilterItem struct {
 	PropertyKey string          `json:"property_key" example:"tag"`                                                                                                                     // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"all" enums:"in,all,nin,empty,nempty"`                                                                                        // The filter condition
+	Condition   FilterCondition `json:"condition" example:"all" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"`                                                 // The filter condition (valid: in, all, nin, empty, nempty)
 	MultiSelect *[]string       `json:"multi_select" example:"bafyreiaixlnaefu3ci22zdenjhsdlyaeeoyjrsid5qhfeejzlccijbj7sq,bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // The tag IDs to filter by
 }
 
@@ -285,9 +312,9 @@ func (f MultiSelectFilterItem) GetValue() interface{} {
 
 // DateFilterItem for date property filters
 type DateFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"last_modified_date"`                        // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"lte" enums:"eq,gt,gte,lt,lte,in,empty,nempty"` // The filter condition
-	Date        *string         `json:"date" example:"2006-01-02T15:04:05Z"`                              // The date value to filter by. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
+	PropertyKey string          `json:"property_key" example:"last_modified_date"`                                                      // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"lte" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: eq, gt, gte, lt, lte, in, empty, nempty)
+	Date        *string         `json:"date" example:"2006-01-02T15:04:05Z"`                                                            // The date value to filter by. Accepts dates in RFC3339 format (2006-01-02T15:04:05Z) or date-only format (2006-01-02)
 }
 
 func (DateFilterItem) isFilterItem()                   {}
@@ -302,9 +329,9 @@ func (f DateFilterItem) GetValue() interface{} {
 
 // CheckboxFilterItem for checkbox property filters
 type CheckboxFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"done"`          // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"eq" enums:"eq,ne"` // The filter condition
-	Checkbox    *bool           `json:"checkbox" example:"true"`              // The checkbox value to filter by
+	PropertyKey string          `json:"property_key" example:"done"`                                                                   // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"eq" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: eq, ne)
+	Checkbox    *bool           `json:"checkbox" example:"true"`                                                                       // The checkbox value to filter by
 }
 
 func (CheckboxFilterItem) isFilterItem()                   {}
@@ -319,9 +346,9 @@ func (f CheckboxFilterItem) GetValue() interface{} {
 
 // FilesFilterItem for files property filters
 type FilesFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"files"`                                                // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"in" enums:"in,all,nin,empty,nempty"`                      // The filter condition
-	Files       *[]string       `json:"files" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // File IDs for contains condition
+	PropertyKey string          `json:"property_key" example:"files"`                                                                  // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"in" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: in, all, nin, empty, nempty)
+	Files       *[]string       `json:"files" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                   // File IDs for contains condition
 }
 
 func (FilesFilterItem) isFilterItem()                   {}
@@ -336,9 +363,9 @@ func (f FilesFilterItem) GetValue() interface{} {
 
 // UrlFilterItem for URL property filters
 type UrlFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"source"`                                              // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"contains" enums:"eq,ne,contains,ncontains,empty,nempty"` // The filter condition
-	Url         *string         `json:"url" example:"https://example.com"`                                          // The Url value to filter by
+	PropertyKey string          `json:"property_key" example:"source"`                                                                       // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"contains" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: eq, ne, contains, ncontains, empty, nempty)
+	Url         *string         `json:"url" example:"https://example.com"`                                                                   // The Url value to filter by
 }
 
 func (UrlFilterItem) isFilterItem()                   {}
@@ -353,9 +380,9 @@ func (f UrlFilterItem) GetValue() interface{} {
 
 // EmailFilterItem for email property filters
 type EmailFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"email"`                                         // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"eq" enums:"eq,ne,contains,ncontains,empty,nempty"` // The filter condition
-	Email       *string         `json:"email" example:"example@example.com"`                                  // The email value to filter by
+	PropertyKey string          `json:"property_key" example:"email"`                                                                  // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"eq" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: eq, ne, contains, ncontains, empty, nempty)
+	Email       *string         `json:"email" example:"example@example.com"`                                                           // The email value to filter by
 }
 
 func (EmailFilterItem) isFilterItem()                   {}
@@ -370,9 +397,9 @@ func (f EmailFilterItem) GetValue() interface{} {
 
 // PhoneFilterItem for phone property filters
 type PhoneFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"phone"`                                         // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"eq" enums:"eq,ne,contains,ncontains,empty,nempty"` // The filter condition
-	Phone       *string         `json:"phone" example:"+1234567890"`                                          // The phone value to filter by
+	PropertyKey string          `json:"property_key" example:"phone"`                                                                  // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"eq" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: eq, ne, contains, ncontains, empty, nempty)
+	Phone       *string         `json:"phone" example:"+1234567890"`                                                                   // The phone value to filter by
 }
 
 func (PhoneFilterItem) isFilterItem()                   {}
@@ -387,9 +414,9 @@ func (f PhoneFilterItem) GetValue() interface{} {
 
 // ObjectsFilterItem for objects/relation property filters
 type ObjectsFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"creator"`                                                // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"in" enums:"in,all,nin,empty,nempty"`                        // The filter condition
-	Objects     *[]string       `json:"objects" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"` // Object Ids to filter by
+	PropertyKey string          `json:"property_key" example:"creator"`                                                                // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"in" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: in, all, nin, empty, nempty)
+	Objects     *[]string       `json:"objects" example:"bafyreie6n5l5nkbjal37su54cha4coy7qzuhrnajluzv5qd5jvtsrxkequ"`                 // Object Ids to filter by
 }
 
 func (ObjectsFilterItem) isFilterItem()                   {}
@@ -404,8 +431,8 @@ func (f ObjectsFilterItem) GetValue() interface{} {
 
 // EmptyFilterItem for checking if property is empty/not empty (without specifying format)
 type EmptyFilterItem struct {
-	PropertyKey string          `json:"property_key" example:"description"`             // The property key to filter on
-	Condition   FilterCondition `json:"condition" example:"empty" enums:"empty,nempty"` // The filter condition
+	PropertyKey string          `json:"property_key" example:"description"`                                                               // The property key to filter on
+	Condition   FilterCondition `json:"condition" example:"empty" enums:"eq,ne,gt,gte,lt,lte,contains,ncontains,in,nin,all,empty,nempty"` // The filter condition (valid: empty, nempty)
 }
 
 func (EmptyFilterItem) isFilterItem()                   {}

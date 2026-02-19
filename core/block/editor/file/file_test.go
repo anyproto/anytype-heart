@@ -166,7 +166,7 @@ func TestDropFiles(t *testing.T) {
 			mockService := mock_fileobject.NewMockService(t)
 			mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
 
-			fx.assertUploaded(t)
+			fx.assertUploaded(t, 1)
 
 			// when
 			err = fx.sfile.DropFiles(pb.RpcFileDropRequest{
@@ -197,7 +197,7 @@ func TestDropFiles(t *testing.T) {
 			mockService := mock_fileobject.NewMockService(t)
 			mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
 
-			fx.assertUploaded(t)
+			fx.assertUploaded(t, 1)
 
 			// when
 			err = fx.sfile.DropFiles(pb.RpcFileDropRequest{
@@ -228,7 +228,7 @@ func TestDropFiles(t *testing.T) {
 			mockService := mock_fileobject.NewMockService(t)
 			mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
 
-			fx.assertUploaded(t)
+			fx.assertUploaded(t, 1)
 
 			// when
 			proc := &dropFilesProcess{
@@ -240,7 +240,7 @@ func TestDropFiles(t *testing.T) {
 			err = proc.Init([]string{file.Name()})
 			assert.Nil(t, err)
 			var ch = make(chan error)
-			proc.Start(fx, "", model.Block_Bottom, ch)
+			proc.Start(fx, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
 			err = <-ch
 
 			// then
@@ -265,7 +265,7 @@ func TestDropFiles(t *testing.T) {
 			mockService := mock_fileobject.NewMockService(t)
 			mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
 
-			fx.assertUploaded(t)
+			fx.assertUploaded(t, 1)
 
 			// when
 			proc := &dropFilesProcess{
@@ -277,7 +277,7 @@ func TestDropFiles(t *testing.T) {
 			err = proc.Init([]string{dir})
 			assert.Nil(t, err)
 			var ch = make(chan error)
-			proc.Start(fx, "", model.Block_Bottom, ch)
+			proc.Start(fx, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
 			err = <-ch
 
 			// then
@@ -289,13 +289,186 @@ func TestDropFiles(t *testing.T) {
 			time.Sleep(1 * time.Second)
 		})
 	})
+
+	t.Run("style propagates to file block", func(t *testing.T) {
+		synctest.Run(func() {
+			// given
+			dir := t.TempDir()
+			file, err := os.Create(filepath.Join(dir, "test.jpg"))
+			assert.Nil(t, err)
+
+			fx := newFixture(t)
+			fx.sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text("", blockbuilder.ID("targetBlock")),
+				)))
+
+			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
+
+			fx.assertUploaded(t, 1)
+
+			// when
+			proc := &dropFilesProcess{
+				spaceID:             fx.SpaceID(),
+				processService:      fx.processService,
+				picker:              fx.picker,
+				fileUploaderFactory: fx.fileUploaderFactory,
+			}
+			err = proc.Init([]string{file.Name()})
+			assert.Nil(t, err)
+			var ch = make(chan error)
+			go proc.Start(fx, pb.RpcFileDropRequest{
+				DropTargetId: "targetBlock",
+				Position:     model.Block_Bottom,
+				Style:        model.BlockContentFile_Embed,
+			}, ch)
+			err = <-ch
+
+			// then
+			assert.Nil(t, err)
+
+			// Find the created file block
+			var fileBlock *model.Block
+			for _, block := range fx.sb.Blocks() {
+				if block.GetFile() != nil && block.GetFile().Name == "test.jpg" {
+					fileBlock = block
+					break
+				}
+			}
+
+			require.NotNil(t, fileBlock, "file block should be created")
+			assert.Equal(t, model.BlockContentFile_Embed, fileBlock.GetFile().Style, "style should be propagated to file block")
+
+			// wait for background processes to finish
+			time.Sleep(1 * time.Second)
+		})
+	})
+
+	t.Run("style propagates to multiple file blocks", func(t *testing.T) {
+		synctest.Run(func() {
+			// given
+			dir := t.TempDir()
+			file1, err := os.Create(filepath.Join(dir, "test1.jpg"))
+			assert.Nil(t, err)
+			file2, err := os.Create(filepath.Join(dir, "test2.png"))
+			assert.Nil(t, err)
+
+			fx := newFixture(t)
+			fx.sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text("", blockbuilder.ID("targetBlock")),
+				)))
+
+			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
+
+			fx.assertUploaded(t, 2)
+
+			// when
+			proc := &dropFilesProcess{
+				spaceID:             fx.SpaceID(),
+				processService:      fx.processService,
+				picker:              fx.picker,
+				fileUploaderFactory: fx.fileUploaderFactory,
+			}
+			err = proc.Init([]string{file1.Name(), file2.Name()})
+			assert.Nil(t, err)
+			var ch = make(chan error)
+			go proc.Start(fx, pb.RpcFileDropRequest{
+				DropTargetId: "targetBlock",
+				Position:     model.Block_Bottom,
+				Style:        model.BlockContentFile_Link,
+			}, ch)
+			err = <-ch
+
+			// then
+			assert.Nil(t, err)
+
+			// Find all created file blocks
+			var fileBlocks []*model.Block
+			for _, block := range fx.sb.Blocks() {
+				if block.GetFile() != nil && (block.GetFile().Name == "test1.jpg" || block.GetFile().Name == "test2.png") {
+					fileBlocks = append(fileBlocks, block)
+				}
+			}
+
+			require.Len(t, fileBlocks, 2, "two file blocks should be created")
+			for _, fileBlock := range fileBlocks {
+				assert.Equal(t, model.BlockContentFile_Link, fileBlock.GetFile().Style, "style should be propagated to all file blocks")
+			}
+
+			// wait for background processes to finish
+			time.Sleep(1 * time.Second)
+		})
+	})
+
+	t.Run("default style when not specified", func(t *testing.T) {
+		synctest.Run(func() {
+			// given
+			dir := t.TempDir()
+			file, err := os.Create(filepath.Join(dir, "test.pdf"))
+			assert.Nil(t, err)
+
+			fx := newFixture(t)
+			fx.sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text("", blockbuilder.ID("targetBlock")),
+				)))
+
+			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
+
+			fx.assertUploaded(t, 1)
+
+			// when - no style specified, should default to Auto
+			proc := &dropFilesProcess{
+				spaceID:             fx.SpaceID(),
+				processService:      fx.processService,
+				picker:              fx.picker,
+				fileUploaderFactory: fx.fileUploaderFactory,
+			}
+			err = proc.Init([]string{file.Name()})
+			assert.Nil(t, err)
+			var ch = make(chan error)
+			go proc.Start(fx, pb.RpcFileDropRequest{
+				DropTargetId: "targetBlock",
+				Position:     model.Block_Bottom,
+				Style:        model.BlockContentFile_Auto,
+			}, ch)
+			err = <-ch
+
+			// then
+			assert.Nil(t, err)
+
+			// Find the created file block
+			var fileBlock *model.Block
+			for _, block := range fx.sb.Blocks() {
+				if block.GetFile() != nil && block.GetFile().Name == "test.pdf" {
+					fileBlock = block
+					break
+				}
+			}
+
+			require.NotNil(t, fileBlock, "file block should be created")
+			assert.Equal(t, model.BlockContentFile_Auto, fileBlock.GetFile().Style, "default style should be Auto")
+
+			// wait for background processes to finish
+			time.Sleep(1 * time.Second)
+		})
+	})
 }
 
-func (fx *fileFixture) assertUploaded(t *testing.T) {
+func (fx *fileFixture) assertUploaded(t *testing.T, times int) {
 	uploader := mock_fileuploader.NewMockUploader(t)
-	uploader.EXPECT().SetName(mock.Anything).Return(uploader)
-	uploader.EXPECT().SetFile(mock.Anything).Return(uploader)
-	uploader.EXPECT().Upload(mock.Anything).Return(fileuploader.UploadResult{})
+	uploader.EXPECT().SetName(mock.Anything).Return(uploader).Times(times)
+	uploader.EXPECT().SetFile(mock.Anything).Return(uploader).Times(times)
+	uploader.EXPECT().SetCreatedInContext(mock.Anything).Return(uploader).Times(times)
+	uploader.EXPECT().SetCreatedInContextRef(mock.Anything).Return(uploader).Times(times)
+	uploader.EXPECT().Upload(mock.Anything).Return(fileuploader.UploadResult{}).Times(times)
 
-	fx.fileUploader.EXPECT().NewUploader(mock.Anything, mock.Anything).Return(uploader)
+	fx.fileUploader.EXPECT().NewUploader(mock.Anything, mock.Anything).Return(uploader).Times(times)
 }

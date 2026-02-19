@@ -251,7 +251,10 @@ func isBlockCanHaveChild(block model.Block) bool {
 			t.Style == model.BlockContentText_Marked ||
 			t.Style == model.BlockContentText_Toggle ||
 			t.Style == model.BlockContentText_Quote ||
-			t.Style == model.BlockContentText_Checkbox
+			t.Style == model.BlockContentText_Checkbox ||
+			t.Style == model.BlockContentText_ToggleHeader1 ||
+			t.Style == model.BlockContentText_ToggleHeader2 ||
+			t.Style == model.BlockContentText_ToggleHeader3
 	}
 
 	return false

@@ -143,7 +143,13 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 	it.CidsToBind = blocksAvailability.cidsToBind
 	it.CidsToUpload = blocksAvailability.cidsToUpload
 
-	spaceLimits, err := s.limitManager.getSpace(ctx, it.SpaceId)
+	spaceLimits, err := s.limitManager.getSpace(it.SpaceId)
+	// If space is deleted, move file to deletion queue. It'll help to reclaim space if file is partially uploaded
+	if errors.Is(err, errSpaceDeleted) {
+		it.State = FileStatePendingDeletion
+
+		return it, nil
+	}
 	if err != nil {
 		it = it.Reschedule()
 		return it, fmt.Errorf("get space limits: %w", err)
@@ -167,21 +173,19 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		it = it.Reschedule()
 		return it, err
 	}
+
+	switch it.State {
+	case FileStateLimited, FileStatePendingDeletion:
+		spaceLimits.deallocateFile(it.Key())
+	case FileStateDone:
+		spaceLimits.markFileUploaded(it.Key())
+	default:
+	}
+
 	return it, nil
 }
 
 func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *blocksAvailabilityResponse) (FileInfo, error) {
-	if it.ObjectId != "" {
-		err := s.updateStatus(it, filesyncstatus.Syncing)
-		if isObjectDeletedError(err) {
-			it.State = FileStatePendingDeletion
-			return it, nil
-		}
-		if err != nil {
-			return it, fmt.Errorf("update status: %w", err)
-		}
-	}
-
 	var totalBytesToUpload int
 	err := s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it, fileBlocks, blocksAvailability.cidsToBind)
@@ -191,10 +195,6 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		totalBytesToUpload += bytesToUpload
 		return nil
 	})
-
-	// All cids should be bind at this time
-	it.CidsToBind = nil
-
 	if err != nil {
 		if isNodeLimitReachedError(err) {
 			it.State = FileStateLimited
@@ -208,6 +208,9 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		return it, fmt.Errorf("walk file blocks: %w", err)
 	}
 
+	// All cids should be bind at this time
+	it.CidsToBind = nil
+
 	// Means that we only had to bind blocks
 	if totalBytesToUpload == 0 {
 		err := s.updateStatus(it, filesyncstatus.Synced)
@@ -216,6 +219,17 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		}
 		it.State = FileStateDone
 		return it, nil
+	}
+
+	if it.ObjectId != "" && it.State != FileStateLimited {
+		err := s.updateStatus(it, filesyncstatus.Syncing)
+		if isObjectDeletedError(err) {
+			it.State = FileStatePendingDeletion
+			return it, nil
+		}
+		if err != nil {
+			return it, fmt.Errorf("update status: %w", err)
+		}
 	}
 
 	it.State = FileStateUploading

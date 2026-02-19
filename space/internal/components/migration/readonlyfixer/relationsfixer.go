@@ -15,11 +15,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type detailsSettable interface {
-	SetDetails(ctx session.Context, details []*model.Detail, showEvent bool) (err error)
+	SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error)
 }
 
 const MName = "ReadonlyRelationsFixer"
@@ -55,9 +54,9 @@ func (m Migration) Run(ctx context.Context, log logger.CtxLogger, store dependen
 		format := model.RelationFormat_name[int32(r.Details.GetInt64(bundle.RelationKeyRelationFormat))]
 		log.Debug("setting relationReadonlyValue to FALSE for relation", zap.String("name", name), zap.String("uniqueKey", uk), zap.String("format", format), zap.String("migration", MName))
 
-		det := []*model.Detail{{
-			Key:   bundle.RelationKeyRelationReadonlyValue.String(),
-			Value: pbtypes.Bool(false),
+		det := []domain.Detail{{
+			Key:   bundle.RelationKeyRelationReadonlyValue,
+			Value: domain.Bool(false),
 		}}
 		e := space.DoCtx(ctx, r.Details.GetString(bundle.RelationKeyId), func(sb smartblock.SmartBlock) error {
 			if ds, ok := sb.(detailsSettable); ok {

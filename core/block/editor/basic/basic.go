@@ -212,6 +212,7 @@ func (bs *basic) processFileBlock(f *model.BlockContentOfFile, spaceId string) {
 	objectId, err := bs.fileObjectService.CreateFromImport(
 		domain.FullFileId{SpaceId: spaceId, FileId: fileId.FileId},
 		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+		nil,
 	)
 	if err != nil {
 		log.Errorf("failed to create file object: %v", err)
@@ -289,6 +290,10 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 	}
 
 	if targetContent, ok := target.Model().Content.(*model.BlockContentOfText); ok && targetContent.Text != nil {
+		if (position == model.Block_Inner || position == model.Block_InnerFirst) && !canHaveChildren(targetContent.Text.Style) {
+			return fmt.Errorf("cannot move to block that cannot have children")
+		}
+
 		if targetContent.Text.Style == model.BlockContentText_Paragraph &&
 			targetContent.Text.Text == "" && position == model.Block_InnerFirst {
 
@@ -478,4 +483,17 @@ func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string
 		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
+}
+
+func canHaveChildren(style model.BlockContentTextStyle) bool {
+	return style == model.BlockContentText_Paragraph ||
+		style == model.BlockContentText_Quote ||
+		style == model.BlockContentText_Checkbox ||
+		style == model.BlockContentText_Marked ||
+		style == model.BlockContentText_Numbered ||
+		style == model.BlockContentText_Toggle ||
+		style == model.BlockContentText_Callout ||
+		style == model.BlockContentText_ToggleHeader1 ||
+		style == model.BlockContentText_ToggleHeader2 ||
+		style == model.BlockContentText_ToggleHeader3
 }

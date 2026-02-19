@@ -1,5 +1,17 @@
 package editor
 
+/*
+AI generated
+
+Name: SmartBlock Editor Factory
+Scope: global
+
+## Responsibility
+- Creates editor instances (Page, Profile, Archive, Widget, etc.) based on SmartBlockType
+- Initializes objects from sources: loads tree, runs migrations, applies initial state
+- Composes editors with service dependencies (file handling, clipboard, bookmarks, dataview, etc.)
+*/
+
 import (
 	"errors"
 	"fmt"
@@ -28,6 +40,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
@@ -89,6 +102,7 @@ type ObjectFactory struct {
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
 	formatFetcher           relationutils.RelationFormatFetcher
+	fileGC                  filegc.FileGC
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -123,6 +137,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
+	f.fileGC = app.MustComponent[filegc.FileGC](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
 	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	if err != nil {
@@ -198,6 +213,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 		f.eventSender,
 		f.spaceIdResolver,
 		f.formatFetcher,
+		f.fileGC,
 	), store
 }
 
@@ -247,7 +263,7 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.layoutConverter, f.fileObjectService, f.statService), nil
+		return chatobject.New(sb, f.accountService, crdtDb, f.chatRepositoryService, f.chatSubscriptionService, spaceIndex, f.objectStore, f.layoutConverter, f.fileObjectService, f.statService), nil
 	case coresb.SmartBlockTypeAccountObject:
 		db, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
 		if err != nil {

@@ -65,13 +65,15 @@ type File interface {
 }
 
 type FileSource struct {
-	Path      string
-	Url       string // nolint:revive
-	Bytes     []byte
-	Name      string
-	GroupID   string
-	Origin    objectorigin.ObjectOrigin
-	ImageKind model.ImageKind
+	Path                string
+	Url                 string // nolint:revive
+	Bytes               []byte
+	Name                string
+	GroupID             string
+	Origin              objectorigin.ObjectOrigin
+	ImageKind           model.ImageKind
+	CreatedInContext    string
+	CreatedInContextRef string
 }
 
 type sfile struct {
@@ -165,9 +167,11 @@ func (sf *sfile) CreateAndUpload(ctx session.Context, req pb.RpcBlockFileCreateA
 		return
 	}
 	if err = sf.upload(s, newId, FileSource{
-		Path:      req.LocalPath,
-		Url:       req.Url,
-		ImageKind: req.ImageKind,
+		Path:                req.LocalPath,
+		Url:                 req.Url,
+		ImageKind:           req.ImageKind,
+		CreatedInContext:    req.ContextId,
+		CreatedInContextRef: newId,
 	}, false).Err; err != nil {
 		return
 	}
@@ -197,6 +201,14 @@ func (sf *sfile) upload(s *state.State, id string, source FileSource, isSync boo
 		upl.SetBytes(source.Bytes).
 			SetName(source.Name).
 			SetLastModifiedDate()
+	}
+
+	// Set creation context if provided
+	if source.CreatedInContext != "" {
+		upl.SetCreatedInContext(source.CreatedInContext)
+	}
+	if source.CreatedInContextRef != "" {
+		upl.SetCreatedInContextRef(source.CreatedInContextRef)
 	}
 
 	if isSync {
@@ -239,17 +251,18 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 		processService:      sf.processService,
 		picker:              sf.picker,
 		fileUploaderFactory: sf.fileUploaderFactory,
+		contextId:           req.ContextId,
 	}
 	if err = proc.Init(req.LocalFilePaths); err != nil {
 		return
 	}
 	var ch = make(chan error)
-	go proc.Start(sf, req.DropTargetId, req.Position, ch)
+	go proc.Start(sf, req, ch)
 	err = <-ch
 	return
 }
 
-func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error) {
+func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) (blockIds []string, err error) {
 	s := sf.NewState().SetGroupId(groupId)
 	pageTypeId, err := sf.Space().GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
 	if err != nil {
@@ -287,7 +300,8 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 		} else {
 			fb := simple.New(&model.Block{Content: &model.BlockContentOfFile{
 				File: &model.BlockContentFile{
-					Name: entry.name,
+					Name:  entry.name,
+					Style: style,
 				},
 			}})
 			blockId = fb.Model().Id
@@ -334,7 +348,11 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 			f.SetState(model.BlockContentFile_Error)
 			return nil
 		}
+		existingStyle := f.Model().GetFile().GetStyle()
 		f.SetModel(info.file)
+		if existingStyle != model.BlockContentFile_Auto {
+			f.SetStyle(existingStyle)
+		}
 		return nil
 	})
 }
@@ -356,7 +374,7 @@ type dropFileInfo struct {
 }
 
 type dropFilesHandler interface {
-	dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, entries []*dropFileEntry) (blockIds []string, err error)
+	dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) (blockIds []string, err error)
 	dropFilesSetInfo(info dropFileInfo) (err error)
 	newUploader(origin objectorigin.ObjectOrigin) fileuploader.Uploader
 }
@@ -372,6 +390,7 @@ type dropFilesProcess struct {
 	doneCh         chan struct{}
 	canceling      int32
 	groupId        string
+	contextId      string
 
 	fileUploaderFactory fileuploader.Service
 }
@@ -473,7 +492,7 @@ func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (o
 	return true, nil
 }
 
-func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, targetId string, pos model.BlockPosition, rootDone chan error) {
+func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, req pb.RpcFileDropRequest, rootDone chan error) {
 	dp.id = uuid.New().String()
 	dp.doneCh = make(chan struct{})
 	dp.cancel = make(chan struct{})
@@ -495,7 +514,7 @@ func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, targetId string, p
 	if isCollection(file) {
 		dp.handleDragAndDropInCollection(file.RootId(), dp.root.child, rootDone, in)
 	} else {
-		dp.handleDragAndDropInDocument(file.RootId(), targetId, pos, rootDone, in)
+		dp.handleDragAndDropInDocument(file.RootId(), req.DropTargetId, req.Position, req.Style, rootDone, in)
 	}
 	wg.Wait()
 }
@@ -531,7 +550,13 @@ func (dp *dropFilesProcess) getFilesToUploadFromDirs(droppedFiles []*dropFileEnt
 	return totalFiles
 }
 
-func (dp *dropFilesProcess) handleDragAndDropInDocument(rootId, targetId string, pos model.BlockPosition, rootDone chan error, in chan *dropFileInfo) {
+func (dp *dropFilesProcess) handleDragAndDropInDocument(
+	rootId, targetId string,
+	pos model.BlockPosition,
+	style model.BlockContentFileStyle,
+	rootDone chan error,
+	in chan *dropFileInfo,
+) {
 	var flatEntries = [][]*dropFileEntry{dp.root.child}
 	var smartBlockIds = []string{rootId}
 	var handleLevel = func(idx int) (isContinue bool, err error) {
@@ -544,7 +569,7 @@ func (dp *dropFilesProcess) handleDragAndDropInDocument(rootId, targetId string,
 				isContinue = idx != 0
 				return fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
 			}
-			blockIds, err := sbHandler.dropFilesCreateStructure(dp.groupId, targetId, pos, flatEntries[idx])
+			blockIds, err := sbHandler.dropFilesCreateStructure(dp.groupId, targetId, pos, style, flatEntries[idx])
 			if err != nil {
 				isContinue = idx != 0
 				return err
@@ -626,6 +651,8 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 	res := upl.
 		SetName(f.name).
 		SetFile(f.path).
+		SetCreatedInContext(dp.contextId).
+		SetCreatedInContextRef(f.blockId).
 		Upload(context.Background())
 
 	if res.Err != nil {

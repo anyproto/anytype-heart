@@ -79,8 +79,11 @@ func (sbt SmartBlockType) Indexable() (fulltext, details, outgoingLinks bool) {
 	case SmartBlockTypeWorkspace,
 		SmartBlockTypeAccountObject,
 		SmartBlockTypeChatObjectDeprecated,
+		SmartBlockTypeChatDerivedObject,
 		SmartBlockTypeSpaceView:
 		return false, true, true
+	case SmartBlockTypeMissingObject:
+		return false, false, false
 	default:
 		return true, true, true
 	}

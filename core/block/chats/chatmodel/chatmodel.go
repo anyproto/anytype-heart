@@ -22,6 +22,8 @@ const (
 const (
 	DiffManagerMessages = "messages"
 	DiffManagerMentions = "mentions"
+
+	MaxMessageLength = 4000
 )
 
 func (t CounterType) DiffManagerName() string {
@@ -47,6 +49,7 @@ const (
 	StateIdKey     = "stateId"
 	OrderKey       = "_o"
 	SyncedKey      = "synced"
+	PinnedKey      = "pinned"
 )
 
 type Message struct {
@@ -110,6 +113,10 @@ func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([
 
 func (m *Message) Validate() error {
 	utf16text := textUtil.StrToUTF16(m.Message.Text)
+
+	if len(utf16text) > MaxMessageLength {
+		return fmt.Errorf("message text exceeds maximum length of %d characters", MaxMessageLength)
+	}
 
 	for _, mark := range m.Message.Marks {
 		if mark.Range.From < 0 {
@@ -192,7 +199,8 @@ func newMessageWrapper(val *anyenc.Value) *messageUnmarshaller {
   "reactions": { // [addToSet], [pull] to specify the emoji
     "<emoji1>": ["<user_id_1>", "<user_id_2>"], // Users who reacted with this emoji
     "<emoji2>": ["<user_id_3>"] // Users who reacted with this emoji
-  }
+  },
+  "pinned": false,
 }
 
 */
@@ -250,6 +258,12 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(StateIdKey, arena.NewString(m.StateId))
 	marshalTo.Set(ReactionsKey, reactions)
 	marshalTo.Set(SyncedKey, arenaNewBool(arena, m.Synced))
+	if m.Pinned {
+		// we save Pinned value only in case of =true for good sparse index search
+		marshalTo.Set(PinnedKey, arenaNewBool(arena, m.Pinned))
+	} else {
+		marshalTo.Del(PinnedKey)
+	}
 }
 
 func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
@@ -277,6 +291,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Reactions:        m.reactionsToModel(),
 			Synced:           m.val.GetBool(SyncedKey),
 			HasMention:       m.val.GetBool(HasMentionKey),
+			Pinned:           m.val.GetBool(PinnedKey),
 		},
 	}, nil
 }

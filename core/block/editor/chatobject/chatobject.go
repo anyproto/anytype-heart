@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -60,6 +61,8 @@ type StoreObject interface {
 	DeleteMessage(ctx context.Context, messageId string) error
 	MarkReadMessages(ctx context.Context, req ReadMessagesRequest) (markedCount int, err error)
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
+	SetMessagePinned(ctx context.Context, messageId string, pinned bool) error
+	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
 }
 
 type AccountService interface {
@@ -90,7 +93,7 @@ type storeObject struct {
 	repository              chatrepository.Repository
 	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
-	spaceIndex              spaceindex.Store
+	indexerStore            objectstore.IndexerStore
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -150,6 +153,7 @@ func New(
 	repositoryService chatrepository.Service,
 	chatSubscriptionService chatsubscription.Service,
 	spaceIndex spaceindex.Store,
+	indexerStore objectstore.IndexerStore,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	statService debugstat.StatService,
@@ -164,6 +168,7 @@ func New(
 		arenaPool:               &anyenc.ArenaPool{},
 		crdtDb:                  crdtDb,
 		repositoryService:       repositoryService,
+		indexerStore:            indexerStore,
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
@@ -179,7 +184,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	var err error
-	s.repository, err = s.repositoryService.Repository(storeSource.Id())
+	s.repository, err = s.repositoryService.Repository(ctx.Source.SpaceID(), storeSource.Id())
 	if err != nil {
 		return fmt.Errorf("get repository: %w", err)
 	}
@@ -220,6 +225,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.chatHandler = &ChatHandler{
 		repository:      s.repository,
 		subscription:    s.subscription,
+		indexerStore:    s.indexerStore,
+		chatFullId:      domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
 		currentIdentity: s.accountService.AccountID(),
 		myParticipantId: myParticipantId,
 	}
@@ -246,7 +253,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		collectionName:     EditorCollectionName,
 		storeSource:        storeSource,
 		storeState:         stateStore,
-		spaceIndex:         s.spaceIndex,
 		sb:                 s.SmartBlock,
 		deniedRelationKeys: []domain.RelationKey{bundle.RelationKeyInternalFlags},
 	}
@@ -505,6 +511,34 @@ func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.Objec
 			log.Error("mark sync status heads", zap.Error(err))
 		}
 	}
+}
+
+func (s *storeObject) SetMessagePinned(ctx context.Context, messageId string, pinned bool) error {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	builder := storestate.Builder{}
+	err := builder.Modify(CollectionName, messageId, []string{chatmodel.PinnedKey}, pb.ModifyOp_Set, arena.NewBool(pinned))
+	if err != nil {
+		return fmt.Errorf("modify content: %w", err)
+	}
+
+	_, err = s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   s.store,
+		Time:    time.Now(),
+	})
+	if err != nil {
+		return fmt.Errorf("push change: %w", err)
+	}
+	return nil
+}
+
+func (s *storeObject) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	return s.repository.GetPinnedMessages(ctx)
 }
 
 type treeSeenHeadsCollector struct {

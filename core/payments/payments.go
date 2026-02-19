@@ -1,9 +1,29 @@
 package payments
 
+/*
+AI generated
+
+Name: Membership and Payment Service
+Scope: global
+
+## Responsibility
+- Proxies membership/subscription API calls to payment node (V1 and V2 protocols)
+- Caches membership status and tiers locally, broadcasts changes via events
+- Validates and registers any-names through name service
+- Triggers limits updates (file sync, multiplayer) when membership changes
+
+## Background Tasks
+- refreshController: polls payment node for membership/tiers changes (60s interval, 10s when forced)
+
+## Documentation
+Cache invalidation: "force refresh" mode triggers aggressive polling for 30 minutes after
+user-initiated payment actions (pay button, manage subscription, finalize, redeem code).
+V1 vs V2: controlled by EnableMembershipV2 config flag set during AccountSelect/AccountCreate.
+*/
+
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 	"unicode/utf8"
 
@@ -128,6 +148,8 @@ type Service interface {
 	V2AnyNameAllocate(ctx context.Context, req *pb.RpcMembershipV2AnyNameAllocateRequest) (*pb.RpcMembershipV2AnyNameAllocateResponse, error)
 	V2CartGet(ctx context.Context, req *pb.RpcMembershipV2CartGetRequest) (*pb.RpcMembershipV2CartGetResponse, error)
 	V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartUpdateRequest) (*pb.RpcMembershipV2CartUpdateResponse, error)
+	V2SubscribeToUpdates(ctx context.Context, req *pb.RpcMembershipV2SubscribeToUpdatesRequest) (*pb.RpcMembershipV2SubscribeToUpdatesResponse, error)
+
 	app.ComponentRunnable
 }
 
@@ -277,8 +299,6 @@ func (s *service) fetchAndUpdate(ctx context.Context, forceIfNotExpired, fetchTi
 			errs = append(errs, fetchErr)
 		} else {
 			if !tiersAreEqual(cachedTiers, fetchedTiers) {
-				fmt.Printf("%+v\n", fetchedTiers)
-				fmt.Printf("%+v\n", cachedTiers)
 				log.Warn("background refresh tiers: tiers have changed, sending event")
 				s.sendTiersUpdateEvent(fetchedTiers)
 				changed = true
@@ -1479,4 +1499,24 @@ func (s *service) sendMembershipV2ProductsUpdateEvent(products []*model.Membersh
 			Products: products,
 		},
 	}))
+}
+
+func (s *service) V2SubscribeToUpdates(ctx context.Context, req *pb.RpcMembershipV2SubscribeToUpdatesRequest) (*pb.RpcMembershipV2SubscribeToUpdatesResponse, error) {
+	subr := proto.MembershipV2_SubscribeToUpdatesRequest{
+		Email:     req.Email,
+		Platform:  proto.MembershipV2_Platform(req.Platform),
+		Subscribe: req.Subscribe,
+		Context:   req.Context,
+	}
+
+	_, err := s.ppclient2.SubscribeToUpdates(ctx, &subr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pb.RpcMembershipV2SubscribeToUpdatesResponse{
+		Error: &pb.RpcMembershipV2SubscribeToUpdatesResponseError{
+			Code: pb.RpcMembershipV2SubscribeToUpdatesResponseError_NULL,
+		},
+	}, nil
 }

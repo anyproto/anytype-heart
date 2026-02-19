@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
@@ -59,25 +60,29 @@ func (q *dummyFulltextQueue) FtQueueMarkAsIndexed(ids []domain.FullID, state uin
 	return nil
 }
 
-func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
+func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (uint64, int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
+	var added int
 	for _, id := range ids {
 		if !lo.Contains(q.ids, id.ObjectID) {
 			q.ids = append(q.ids, id.ObjectID)
+			added++
 		}
 	}
-	return nil
+	return uint64(time.Now().Unix()), added, nil
 }
 
-func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error) {
+func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullTextQueuedObject, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	if limit > uint(len(q.ids)) {
 		limit = uint(len(q.ids))
 	}
-	return lo.Map(q.ids[:limit], func(item string, index int) domain.FullID { return domain.FullID{ObjectID: item} }), nil
+	return lo.Map(q.ids[:limit], func(item string, index int) domain.FullTextQueuedObject {
+		return domain.FullTextQueuedObject{ObjectId: item}
+	}), nil
 }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
@@ -82,7 +83,10 @@ func (s *FileSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 }
 
 func (s *FileSyncer) migrateFile(objectId string, fileBlockId string, fileId domain.FullFileId, origin objectorigin.ObjectOrigin) error {
-	fileObjectId, err := s.fileObjectService.CreateFromImport(fileId, origin)
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyCreatedInContext, objectId)
+	details.SetString(bundle.RelationKeyCreatedInContextRef, fileBlockId)
+	fileObjectId, err := s.fileObjectService.CreateFromImport(fileId, origin, details)
 	if err != nil {
 		return fmt.Errorf("create file object: %w", err)
 	}
