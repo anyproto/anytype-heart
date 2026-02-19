@@ -52,11 +52,11 @@ type collectionSmartTest struct {
 
 type noopBacklinksWatcher struct{}
 
-func (noopBacklinksWatcher) Init(a *app.App) error            { return nil }
-func (noopBacklinksWatcher) Name() string                     { return "noopBacklinksWatcher" }
-func (noopBacklinksWatcher) Run(ctx context.Context) error    { return nil }
-func (noopBacklinksWatcher) Close(ctx context.Context) error  { return nil }
-func (noopBacklinksWatcher) FlushUpdates()                    {}
+func (noopBacklinksWatcher) Init(a *app.App) error           { return nil }
+func (noopBacklinksWatcher) Name() string                    { return "noopBacklinksWatcher" }
+func (noopBacklinksWatcher) Run(ctx context.Context) error   { return nil }
+func (noopBacklinksWatcher) Close(ctx context.Context) error { return nil }
+func (noopBacklinksWatcher) FlushUpdates()                   {}
 
 func newCollectionSmartTest(id string) *collectionSmartTest {
 	sb := smarttest.New(id)
@@ -110,6 +110,7 @@ func newFixture(t *testing.T) *fileFixture {
 		processService:      service,
 		fileUploaderFactory: fileUploader,
 		objectCreator:       objCreator,
+		collection:          fx.Collection,
 	}
 	return fx
 }

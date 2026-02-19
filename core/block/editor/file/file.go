@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -41,7 +40,7 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service, objectCreator ObjectCreator) File {
+func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service, objectCreator ObjectCreator, collection collection.Collection) File {
 	return &sfile{
 		SmartBlock:          sb,
 		blockService:        blockService,
@@ -49,6 +48,7 @@ func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.O
 		processService:      processService,
 		fileUploaderFactory: fileUploaderFactory,
 		objectCreator:       objectCreator,
+		collection:          collection,
 	}
 }
 
@@ -85,6 +85,9 @@ type FileSource struct {
 
 type sfile struct {
 	smartblock.SmartBlock
+
+	// collection could be nil if object doesn't have collection component
+	collection collection.Collection
 
 	blockService        BlockService
 	picker              cache.ObjectGetter
@@ -309,11 +312,22 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 		if info.file == nil {
 			return fmt.Errorf("file block is nil")
 		}
-		s := sf.NewState()
-		if !s.HasInStore([]string{info.file.TargetObjectId}) {
-			s.UpdateStoreSlice(template.CollectionStoreKey, append(s.GetStoreSlice(template.CollectionStoreKey), info.file.TargetObjectId))
+		if sf.collection != nil {
+			existing := sf.collection.ListIdsFromCollection()
+			var afterId string
+			if len(existing) > 0 {
+				afterId = existing[len(existing)-1]
+			}
+			err := sf.collection.AddToCollection(nil, &pb.RpcObjectCollectionAddRequest{
+				AfterId:   afterId,
+				ObjectIds: []string{info.file.TargetObjectId},
+			})
+			if err != nil {
+				return fmt.Errorf("add to collection: %w", err)
+			}
+		} else {
+			return fmt.Errorf("collection component not found")
 		}
-		return sf.Apply(s)
 	}
 	return sf.UpdateFile(info.blockId, info.groupId, func(f file.Block) error {
 		if info.err != nil || info.file == nil || info.file.State == model.BlockContentFile_Error {

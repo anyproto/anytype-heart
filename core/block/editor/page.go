@@ -73,7 +73,8 @@ type Page struct {
 
 func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page {
 	store := f.objectStore.SpaceIndex(spaceId)
-	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService, f.objectCreator)
+	collectionComponent := collection.New(sb, f.backlinksUpdater)
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService, f.objectCreator, collectionComponent)
 	return &Page{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),
@@ -96,7 +97,7 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService),
 		Dataview:    dataview.NewDataview(sb, store),
 		TableEditor: table.NewEditor(sb),
-		Collection:  collection.New(sb, f.backlinksUpdater),
+		Collection:  collectionComponent,
 
 		objectStore:       store,
 		fileObjectService: f.fileObjectService,
