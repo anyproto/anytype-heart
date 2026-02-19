@@ -371,9 +371,9 @@ func (_c *MockService_SetEnabled_Call) RunAndReturn(run func(bool, bool) error) 
 	return _c
 }
 
-// SetSizeLimit provides a mock function with given fields: sizeLimitBytes
-func (_m *MockService) SetSizeLimit(sizeLimitBytes int64) error {
-	ret := _m.Called(sizeLimitBytes)
+// SetSizeLimit provides a mock function with given fields: sizeLimitMb
+func (_m *MockService) SetSizeLimit(sizeLimitMb int64) error {
+	ret := _m.Called(sizeLimitMb)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetSizeLimit")
@@ -381,7 +381,7 @@ func (_m *MockService) SetSizeLimit(sizeLimitBytes int64) error {
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func(int64) error); ok {
-		r0 = rf(sizeLimitBytes)
+		r0 = rf(sizeLimitMb)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -395,12 +395,12 @@ type MockService_SetSizeLimit_Call struct {
 }
 
 // SetSizeLimit is a helper method to define mock.On call
-//   - sizeLimitBytes int64
-func (_e *MockService_Expecter) SetSizeLimit(sizeLimitBytes interface{}) *MockService_SetSizeLimit_Call {
-	return &MockService_SetSizeLimit_Call{Call: _e.mock.On("SetSizeLimit", sizeLimitBytes)}
+//   - sizeLimitMb int64
+func (_e *MockService_Expecter) SetSizeLimit(sizeLimitMb interface{}) *MockService_SetSizeLimit_Call {
+	return &MockService_SetSizeLimit_Call{Call: _e.mock.On("SetSizeLimit", sizeLimitMb)}
 }
 
-func (_c *MockService_SetSizeLimit_Call) Run(run func(sizeLimitBytes int64)) *MockService_SetSizeLimit_Call {
+func (_c *MockService_SetSizeLimit_Call) Run(run func(sizeLimitMb int64)) *MockService_SetSizeLimit_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(int64))
 	})
