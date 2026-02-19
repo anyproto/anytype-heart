@@ -222,10 +222,11 @@ func (s *subscriptionManager) Flush() {
 	}
 
 	if len(asyncSubIds) > 0 {
-		eventsSetSubIds(asyncSubIds, events)
+		asyncEvents := cloneEvents(events)
+		eventsSetSubIds(asyncSubIds, asyncEvents)
 		ev := &pb.Event{
 			ContextId: s.chatId,
-			Messages:  events,
+			Messages:  asyncEvents,
 		}
 		s.eventSender.Broadcast(ev)
 	}
