@@ -1,6 +1,8 @@
 package pb
 
 import (
+	"fmt"
+
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -36,7 +38,10 @@ func (g *GalleryImport) ProvideCollection(
 	}
 	var widgetObjects []string
 	if widget := snapshots.GetWidget(); widget != nil {
-		widgetObjects = g.getObjectsFromWidgets(widget)
+		widgetObjects, err = g.getObjectsFromWidgets(widget)
+		if err != nil {
+			return nil, fmt.Errorf("get objects from widgets: %w", err)
+		}
 	}
 	var icon string
 	if workspace := snapshots.GetWorkspace(); workspace != nil { // we use space icon for import collection
@@ -95,10 +100,13 @@ func (g *GalleryImport) getWidgetsCollection(collectionName string,
 	return collectionsSnapshots, nil
 }
 
-func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) []string {
-	widgetState := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot.ToProto()).(*state.State)
+func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) ([]string, error) {
+	widgetState, err := state.NewDocFromSnapshot("", widgetSnapshot.Snapshot.ToProto())
+	if err != nil {
+		return nil, fmt.Errorf("doc from snapshot: %w", err)
+	}
 	var objectsInWidget []string
-	err := widgetState.Iterate(func(b simple.Block) (isContinue bool) {
+	err = widgetState.Iterate(func(b simple.Block) (isContinue bool) {
 		if link := b.Model().GetLink(); link != nil && link.TargetBlockId != "" {
 			if widgets.IsPredefinedWidgetTargetId(link.TargetBlockId) {
 				return true
@@ -111,9 +119,9 @@ func (g *GalleryImport) getObjectsFromWidgets(widgetSnapshot *common.Snapshot) [
 		return true
 	})
 	if err != nil {
-		return nil
+		return nil, nil
 	}
-	return objectsInWidget
+	return objectsInWidget, nil
 }
 
 func (g *GalleryImport) addCollectionWidget(widgetSnapshot *common.Snapshot, collectionID string) {

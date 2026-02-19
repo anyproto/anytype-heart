@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -16,9 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 )
 
 var ctx = context.Background()
@@ -45,10 +44,18 @@ func (q *dummyFulltextQueue) ClearFullTextQueue(spaceIds []string) error {
 	return nil
 }
 
-func (q *dummyFulltextQueue) RemoveIdsFromFullTextQueue(ids []string) error {
+func (q *dummyFulltextQueue) FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error {
 	q.lock.Lock()
 	defer q.lock.Unlock()
-	q.ids = lo.Without(q.ids, ids...)
+	// filter-out ids that are not in the queue
+	q.ids = lo.Filter(q.ids, func(item string, index int) bool {
+		for _, id := range ids {
+			if item == id.ObjectID {
+				return false
+			}
+		}
+		return true
+	})
 	return nil
 }
 
@@ -79,31 +86,24 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	walletService.EXPECT().RepoPath().Return(t.TempDir())
 	walletService.EXPECT().FtsPrimaryLang().Return("")
 
+	provider, err := anystoreprovider.NewInPath(t.TempDir())
+	require.NoError(t, err)
+
 	fullText := ftsearch.TantivyNew()
 	testApp := &app.App{}
 
-	dataStore, err := datastore.NewInMemory()
-	require.NoError(t, err)
-
-	testApp.Register(dataStore)
 	testApp.Register(walletService)
 	err = fullText.Init(testApp)
 	require.NoError(t, err)
 	err = fullText.Run(context.Background())
 	require.NoError(t, err)
 
-	oldStore := oldstore.New()
-	err = oldStore.Init(testApp)
-	require.NoError(t, err)
-
 	s := New(context.Background(), "test", Deps{
-		DbPath:         filepath.Join(t.TempDir(), "test.db"),
-		Fts:            fullText,
-		OldStore:       oldStore,
-		SourceService:  &detailsFromId{},
-		SubManager:     &SubscriptionManager{},
-		AnyStoreConfig: nil,
-		FulltextQueue:  &dummyFulltextQueue{},
+		DbProvider:    provider,
+		Fts:           fullText,
+		SourceService: &detailsFromId{},
+		SubManager:    &SubscriptionManager{},
+		FulltextQueue: &dummyFulltextQueue{},
 	})
 	err = s.Init()
 	require.NoError(t, err)
@@ -120,6 +120,12 @@ func (o TestObject) Id() string {
 
 func (o TestObject) Details() *domain.Details {
 	return makeDetails(o)
+}
+
+func (o TestObject) Record() database.Record {
+	return database.Record{
+		Details: o.Details(),
+	}
 }
 
 func generateObjectWithRandomID() TestObject {

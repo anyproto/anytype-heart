@@ -8,15 +8,14 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/oldstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -96,30 +95,29 @@ type SourceDetailsFromID interface {
 }
 
 type FulltextQueue interface {
-	RemoveIdsFromFullTextQueue(ids []string) error
+	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
 	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
 	ClearFullTextQueue(spaceIds []string) error
 }
 
 type dsObjectStore struct {
-	spaceId        string
-	db             anystore.DB
-	dbPath         string
-	objects        anystore.Collection
-	links          anystore.Collection
-	headsState     anystore.Collection
+	spaceId    string
+	db         anystore.DB
+	objects    anystore.Collection
+	links      anystore.Collection
+	headsState anystore.Collection
+
 	activeViews    anystore.Collection
 	pendingDetails anystore.Collection
 	collections    []anystore.Collection
 
 	// Deps
-	anyStoreConfig *anystore.Config
-	fts            ftsearch.FTSearch
-	sourceService  SourceDetailsFromID
-	oldStore       oldstore.Service
-	subManager     *SubscriptionManager
-	fulltextQueue  FulltextQueue
+	fts           ftsearch.FTSearch
+	sourceService SourceDetailsFromID
+	subManager    *SubscriptionManager
+	fulltextQueue FulltextQueue
+	dbProvider    anystoreprovider.Provider
 
 	componentCtx       context.Context
 	arenaPool          *anyenc.ArenaPool
@@ -133,13 +131,11 @@ type dsObjectStore struct {
 }
 
 type Deps struct {
-	AnyStoreConfig *anystore.Config
-	Fts            ftsearch.FTSearch
-	SourceService  SourceDetailsFromID
-	OldStore       oldstore.Service
-	SubManager     *SubscriptionManager
-	DbPath         string
-	FulltextQueue  FulltextQueue
+	DbProvider    anystoreprovider.Provider
+	Fts           ftsearch.FTSearch
+	SourceService SourceDetailsFromID
+	SubManager    *SubscriptionManager
+	FulltextQueue FulltextQueue
 }
 
 func New(componentCtx context.Context, spaceId string, deps Deps) Store {
@@ -148,14 +144,13 @@ func New(componentCtx context.Context, spaceId string, deps Deps) Store {
 		componentCtx:       componentCtx,
 		arenaPool:          &anyenc.ArenaPool{},
 		collatorBufferPool: newCollatorBufferPool(),
-		anyStoreConfig:     deps.AnyStoreConfig,
 		sourceService:      deps.SourceService,
-		oldStore:           deps.OldStore,
 		fts:                deps.Fts,
 		subManager:         deps.SubManager,
 		fulltextQueue:      deps.FulltextQueue,
-		dbPath:             deps.DbPath,
+		dbProvider:         deps.DbProvider,
 	}
+
 	return s
 }
 
@@ -167,11 +162,14 @@ func (s *dsObjectStore) Init() error {
 		return nil
 	}
 
-	err := s.openDatabase(s.componentCtx, s.dbPath)
+	db, err := s.dbProvider.GetSpaceIndexDb(s.spaceId)
 	if err != nil {
-		return err
+		return fmt.Errorf("get crdt db: %w", err)
 	}
-	return nil
+
+	s.db = db
+
+	return s.initCollections(s.componentCtx)
 }
 
 type LinksUpdateInfo struct {
@@ -185,32 +183,26 @@ func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return s.db.WriteTx(ctx)
 }
 
-func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
-	var err error
-	s.db, s.dbLockRemove, err = anystorehelper.OpenDatabaseWithLockCheck(s.componentCtx, path, s.anyStoreConfig)
-	if err != nil {
-		return err
-	}
-
+func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	objects, err := s.newCollection(ctx, "objects")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open objects collection: %w", err))
+		return fmt.Errorf("open objects collection: %w", err)
 	}
 	links, err := s.newCollection(ctx, "links")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open links collection: %w", err))
+		return fmt.Errorf("open links collection: %w", err)
 	}
 	headsState, err := s.newCollection(ctx, "headsState")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open headsState collection: %w", err))
+		return fmt.Errorf("open headsState collection: %w", err)
 	}
 	activeViews, err := s.newCollection(ctx, "activeViews")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open activeViews collection: %w", err))
+		return fmt.Errorf("open activeViews collection: %w", err)
 	}
 	pendingDetails, err := s.newCollection(ctx, "pendingDetails")
 	if err != nil {
-		return errors.Join(s.db.Close(), fmt.Errorf("open pendingDetails collection: %w", err))
+		return fmt.Errorf("open pendingDetails collection: %w", err)
 	}
 
 	objectIndexes := []anystore.IndexInfo{
@@ -223,7 +215,7 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 			Fields: []string{bundle.RelationKeySource.String()},
 		},
 		{
-			Name:   "layout",
+			Name:   "resolvedLayout",
 			Fields: []string{bundle.RelationKeyResolvedLayout.String()},
 		},
 		{
@@ -248,8 +240,18 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 			Fields: []string{bundle.RelationKeyOldAnytypeID.String()},
 			Sparse: true,
 		},
+		{
+			Name:   "fileVariantChecksums",
+			Fields: []string{bundle.RelationKeyFileVariantChecksums.String()},
+			Sparse: true,
+		},
+		{
+			Name:   "fileSourceChecksum",
+			Fields: []string{bundle.RelationKeyFileSourceChecksum.String()},
+			Sparse: true,
+		},
 	}
-	err = s.addIndexes(ctx, objects, objectIndexes)
+	err = anystorehelper.AddIndexes(ctx, objects, objectIndexes)
 	if err != nil {
 		log.Errorf("ensure object indexes: %s", err)
 	}
@@ -260,7 +262,7 @@ func (s *dsObjectStore) openDatabase(ctx context.Context, path string) error {
 			Fields: []string{linkOutboundField},
 		},
 	}
-	err = s.addIndexes(ctx, links, linksIndexes)
+	err = anystorehelper.AddIndexes(ctx, links, linksIndexes)
 	if err != nil {
 		log.Errorf("ensure links indexes: %s", err)
 	}
@@ -288,46 +290,7 @@ func (s *dsObjectStore) Close() error {
 	for _, col := range s.collections {
 		err = errors.Join(err, col.Close())
 	}
-
-	s.lock.Lock()
-	err = errors.Join(err, s.db.Checkpoint(context.Background(), true))
-	s.lock.Unlock()
-
-	err = errors.Join(err, s.db.Close())
-	// remove lock file only after successful close
-	err = errors.Join(err, s.dbLockRemove())
 	return err
-}
-
-func (s *dsObjectStore) addIndexes(ctx context.Context, coll anystore.Collection, indexes []anystore.IndexInfo) error {
-	gotIndexes := coll.GetIndexes()
-	toCreate := indexes[:0]
-	var toDrop []string
-	for _, idx := range indexes {
-		if !slices.ContainsFunc(gotIndexes, func(i anystore.Index) bool {
-			return i.Info().Name == idx.Name
-		}) {
-			toCreate = append(toCreate, idx)
-		}
-	}
-	for _, idx := range gotIndexes {
-		if !slices.ContainsFunc(indexes, func(i anystore.IndexInfo) bool {
-			return i.Name == idx.Info().Name
-		}) {
-			toDrop = append(toDrop, idx.Info().Name)
-		}
-	}
-	if len(toDrop) > 0 {
-		for _, indexName := range toDrop {
-			if err := coll.DropIndex(ctx, indexName); err != nil {
-				return err
-			}
-		}
-	}
-	if len(toCreate) > 0 {
-		return coll.EnsureIndex(ctx, toCreate...)
-	}
-	return nil
 }
 
 func (s *dsObjectStore) SpaceId() string {

@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Route",
+  "description": "A cycling or hiking route with distance and difficulty information",
+  "x-plural": "Routes",
+  "x-icon-emoji": "🚴",
+  "x-icon-name": "route-icon",
+  "type": "object",
+  "properties": {
+    "Object type": {
+      "type": "string",
+      "const": "Route"
+    },
+    "Distance (km)": {
+      "type": "number"
+    },
+    "Difficulty Level": {
+      "type": "string",
+      "enum": ["Easy", "Moderate", "Difficult", "Expert"]
+    },
+    "Start Date": {
+      "type": "string",
+      "format": "date"
+    },
+    "End Date": {
+      "type": "string",
+      "format": "date"
+    },
+    "Terrain Type": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "Is Circular": {
+      "type": "boolean"
+    },
+    "Route URL": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": ["Distance (km)", "Difficulty Level"]
+}

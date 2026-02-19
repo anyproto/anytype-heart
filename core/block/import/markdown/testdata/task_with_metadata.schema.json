@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Task",
+  "description": "A task to be completed with priority and status tracking",
+  "x-plural": "Tasks",
+  "x-icon-emoji": "✅",
+  "x-icon-name": "task-icon",
+  "type": "object",
+  "properties": {
+    "Type": {
+      "type": "string",
+      "const": "Task"
+    },
+    "title": {
+      "type": "string",
+      "description": "Task title"
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["Low", "Medium", "High"],
+      "description": "Task priority level"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["Open", "In-Progress", "Done", "Cancelled"],
+      "description": "Current task status"
+    },
+    "assignee": {
+      "type": "string",
+      "description": "Reference to another object (person assigned to this task)"
+    },
+    "dueDate": {
+      "type": "string",
+      "format": "date",
+      "description": "Task due date"
+    },
+    "done": {
+      "type": "boolean",
+      "description": "Whether the task is completed"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Task labels or categories"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed task description"
+    }
+  },
+  "required": ["title", "priority", "status"]
+}

@@ -51,7 +51,7 @@ const (
 	ForceReindexDeletedObjectsCounter int32 = 1
 
 	ForceReindexParticipantsCounter int32 = 1
-	ForceReindexChatsCounter        int32 = 3
+	ForceReindexChatsCounter        int32 = 7
 )
 
 type allDeletedIdsProvider interface {
@@ -199,7 +199,7 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
 			if success != total {
 				l.Errorf("reindex outdated partially failed")
-			} else {
+			} else if total != 0 {
 				l.Debugf("reindex outdated finished")
 			}
 			if total > 0 {
@@ -234,6 +234,48 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	return i.saveLatestChecksums(space.Id())
 }
 
+func (i *indexer) cleanChatCollection(ctx context.Context, db anystore.DB, chatId string, colName string) error {
+	col, err := db.OpenCollection(ctx, chatId+colName)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		return nil
+	}
+
+	if err != nil {
+		return fmt.Errorf("open collection: %w", err)
+	}
+	var docIds []string
+	it, err := col.Find(nil).Iter(ctx)
+	if err != nil {
+		return fmt.Errorf("create iterator: %w", err)
+	}
+
+	err = func() error {
+		defer it.Close()
+
+		for it.Next() {
+			doc, err := it.Doc()
+			if err != nil {
+				return fmt.Errorf("get doc: %w", err)
+			}
+			id := doc.Value().Get("id").GetString()
+			docIds = append(docIds, id)
+		}
+		return nil
+	}()
+	if err != nil {
+		return fmt.Errorf("collect doc ids: %w", err)
+	}
+
+	for _, id := range docIds {
+		err = col.DeleteId(ctx, id)
+		if err != nil {
+			return fmt.Errorf("delete doc id: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) error {
 	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
 	if err != nil {
@@ -242,7 +284,8 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if len(ids) == 0 {
 		return nil
 	}
-	db, err := i.store.GetCrdtDb(space.Id()).Wait()
+
+	db, err := i.dbProvider.GetCrdtDb(space.Id()).Wait()
 	if err != nil {
 		return fmt.Errorf("get crdt db: %w", err)
 	}
@@ -251,39 +294,28 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	if err != nil {
 		return fmt.Errorf("write tx: %w", err)
 	}
-	var commited bool
 	defer func() {
-		if !commited {
-			txn.Rollback()
-		}
+		_ = txn.Rollback()
 	}()
+
 	for _, id := range ids {
-		col, err := db.OpenCollection(txn.Context(), id+chatobject.CollectionName)
-		if errors.Is(err, anystore.ErrCollectionNotFound) {
-			continue
-		}
+		// Collection for messages
+		err = i.cleanChatCollection(txn.Context(), db, id, chatobject.CollectionName)
 		if err != nil {
 			return fmt.Errorf("open collection: %w", err)
 		}
-		err = col.Drop(txn.Context())
+		// Collection for details
+		err = i.cleanChatCollection(txn.Context(), db, id, chatobject.EditorCollectionName)
 		if err != nil {
-			return fmt.Errorf("drop chat collection: %w", err)
+			return fmt.Errorf("open collection: %w", err)
 		}
-
-		col, err = db.OpenCollection(txn.Context(), id+storestate.CollChangeOrders)
-		if errors.Is(err, anystore.ErrCollectionNotFound) {
-			continue
-		}
+		// Collection for orders
+		err = i.cleanChatCollection(txn.Context(), db, id, storestate.CollChangeOrders)
 		if err != nil {
-			return fmt.Errorf("open orders collection: %w", err)
-		}
-		err = col.Drop(txn.Context())
-		if err != nil {
-			return fmt.Errorf("drop chat orders collection: %w", err)
+			return fmt.Errorf("open collection: %w", err)
 		}
 	}
 
-	commited = true
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("commit: %w", err)
@@ -452,15 +484,6 @@ func (i *indexer) removeDetails(spaceId string) error {
 func (i *indexer) removeCommonIndexes(spaceId string, space clientspace.Space, flags reindexFlags) (err error) {
 	if flags.any() {
 		log.Infof("start store reindex (%s)", flags.String())
-	}
-
-	if flags.fileKeys {
-		err = i.fileStore.RemoveEmptyFileKeys()
-		if err != nil {
-			log.Errorf("reindex failed to RemoveEmptyFileKeys: %v", err)
-		} else {
-			log.Infof("RemoveEmptyFileKeys filekeys succeed")
-		}
 	}
 
 	if flags.eraseLinks {

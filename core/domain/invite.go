@@ -8,13 +8,16 @@ import (
 )
 
 type InviteView struct {
-	SpaceId      string
-	SpaceName    string
-	SpaceIconCid string
-	CreatorName  string
-	AclKey       []byte
-	GuestKey     []byte
-	InviteType   InviteType
+	SpaceId         string
+	SpaceName       string
+	SpaceIconCid    string
+	SpaceIconOption int
+	SpaceUxType     model.SpaceUxType
+	CreatorName     string
+	CreatorIconCid  string
+	AclKey          []byte
+	GuestKey        []byte
+	InviteType      InviteType
 }
 
 func (i InviteView) IsGuestUserInvite() bool {
@@ -56,8 +59,9 @@ func ConvertParticipantPermissions(permissions model.ParticipantPermissions) lis
 		return list.AclPermissionsReader
 	case model.ParticipantPermissions_Owner:
 		return list.AclPermissionsOwner
+	default:
+		return list.AclPermissionsNone
 	}
-	return list.AclPermissionsNone
 }
 
 func ConvertAclPermissions(permissions list.AclPermissions) model.ParticipantPermissions {
@@ -68,6 +72,33 @@ func ConvertAclPermissions(permissions list.AclPermissions) model.ParticipantPer
 		return model.ParticipantPermissions_Reader
 	case aclrecordproto.AclUserPermissions_Owner:
 		return model.ParticipantPermissions_Owner
+	default:
+		return model.ParticipantPermissions_NoPermissions
 	}
-	return model.ParticipantPermissions_NoPermissions
+}
+
+func ConvertAclStatus(status list.AclStatus) model.ParticipantStatus {
+	switch status {
+	case list.StatusActive:
+		return model.ParticipantStatus_Active
+	case list.StatusCanceled:
+		return model.ParticipantStatus_Canceled
+	case list.StatusRemoving:
+		return model.ParticipantStatus_Removing
+	case list.StatusRemoved:
+		return model.ParticipantStatus_Removed
+	case list.StatusDeclined:
+		return model.ParticipantStatus_Declined
+	default:
+		return model.ParticipantStatus_Joining
+	}
+}
+
+func ConvertInviteType(inviteType InviteType) aclrecordproto.AclInviteType {
+	switch inviteType {
+	case InviteTypeDefault:
+		return aclrecordproto.AclInviteType_RequestToJoin
+	default:
+		return aclrecordproto.AclInviteType_AnyoneCanJoin
+	}
 }

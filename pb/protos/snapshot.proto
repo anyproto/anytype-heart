@@ -17,5 +17,12 @@ message Profile {
   string spaceDashboardId = 5;
   string profileId = 6;
   string analyticsId = 7;
-  string startingPage = 8;
+  string startingPage = 8; // deprecated
+  repeated WidgetBlock widgets = 9;
+}
+
+message WidgetBlock {
+  model.Block.Content.Widget.Layout layout = 1;
+  string targetObjectId = 2;
+  int32 objectLimit = 3;
 }

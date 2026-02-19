@@ -29,24 +29,10 @@ func (v *virtualSpaceService) Name() string {
 }
 
 func (v *virtualSpaceService) Run(ctx context.Context) (err error) {
-	return v.cleanupVirtualSpaces(err)
+	return nil
 }
 
 func (v *virtualSpaceService) Close(ctx context.Context) (err error) {
-	return v.cleanupVirtualSpaces(err)
-}
-
-func (v *virtualSpaceService) cleanupVirtualSpaces(err error) error {
-	spaces, err := v.objectStore.ListVirtualSpaces()
-	if err != nil {
-		return err
-	}
-	for _, id := range spaces {
-		err := v.objectStore.DeleteVirtualSpace(id)
-		if err != nil {
-			return err
-		}
-	}
 	return nil
 }
 

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
@@ -51,6 +52,7 @@ type service struct {
 	fileObjectMigrator fileObjectMigrator
 	idDeriver          idderiver.Deriver
 	spaceService       space.Service
+	formatFetcher      relationutils.RelationFormatFetcher
 
 	mu        sync.Mutex
 	staticIds map[string]source.Source
@@ -66,6 +68,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	s.idDeriver = app.MustComponent[idderiver.Deriver](a)
 	s.spaceService = app.MustComponent[space.Service](a)
+	s.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 
 	s.fileService = app.MustComponent[files.Service](a)
 	s.fileObjectMigrator = app.MustComponent[fileObjectMigrator](a)

@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -76,7 +77,7 @@ func (g *graphjson) ImageHashes() []string {
 	return g.imageHashes
 }
 
-func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
+func (g *graphjson) Add(space smartblock.Space, st *state.State, fetcher relationutils.RelationFormatFetcher) error {
 	n := Node{
 		Id:          st.RootId(),
 		Name:        st.Details().GetString(bundle.RelationKeyName),
@@ -90,7 +91,7 @@ func (g *graphjson) Add(space smartblock.Space, st *state.State) error {
 	g.nodes[st.RootId()] = &n
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, objectlink.Flags{
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, fetcher, objectlink.Flags{
 		Blocks:    true,
 		Details:   true,
 		Relations: false,

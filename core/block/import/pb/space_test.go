@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -28,7 +29,8 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		// then
 		assert.Nil(t, err)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
+		rootCollectionState, err := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto())
+		require.NoError(t, err)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 0)
 	})
@@ -84,7 +86,8 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
+		rootCollectionState, err := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto())
+		require.NoError(t, err)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 3)
 		assert.Equal(t, objectsInCollection[0], "id1")
@@ -175,7 +178,8 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
+		rootCollectionState, err := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto())
+		require.NoError(t, err)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "id5")
@@ -265,7 +269,8 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
+		rootCollectionState, err := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto())
+		require.NoError(t, err)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, objectsInCollection, 1)
 		assert.Equal(t, objectsInCollection[0], "id4")
@@ -370,7 +375,8 @@ func TestSpaceImport_ProvideCollection(t *testing.T) {
 		assert.Nil(t, err)
 		assert.NotNil(t, collection)
 		assert.Len(t, collection, 1)
-		rootCollectionState := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto()).(*state.State)
+		rootCollectionState, err := state.NewDocFromSnapshot("", collection[0].Snapshot.ToProto())
+		require.NoError(t, err)
 		objectsInCollection := rootCollectionState.GetStoreSlice(template.CollectionStoreKey)
 		assert.Equal(t, []string{"newObjectInWidget", "id1", "spaceDashboardId"}, objectsInCollection)
 	})

@@ -40,19 +40,6 @@ func (mw *Middleware) ObjectCreate(cctx context.Context, req *pb.RpcObjectCreate
 	if req.WithChat {
 		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
-	if req.CreateTypeWidgetIfMissing {
-		err := mw.doBlockService(func(bs *block.Service) (err error) {
-			typeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
-			if err != nil {
-				return err
-			}
-			err = bs.CreateTypeWidgetIfMissing(cctx, req.SpaceId, typeKey)
-			return err
-		})
-		if err != nil {
-			return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", nil, err)
-		}
-	}
 	return response(pb.RpcObjectCreateResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 
@@ -128,7 +115,6 @@ func (mw *Middleware) ObjectCreateBookmark(cctx context.Context, req *pb.RpcObje
 	if req.WithChat {
 		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", nil, fmt.Errorf("WithChat is not implemented"))
 	}
-
 	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, newDetails.ToProto(), nil)
 }
 

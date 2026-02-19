@@ -16,15 +16,18 @@ func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids []string) error {
 	if err != nil {
 		return fmt.Errorf("write txn: %w", err)
 	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
 	for _, id := range ids {
 		err := s.objects.DeleteId(txn.Context(), id)
 		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-			return errors.Join(txn.Rollback(), fmt.Errorf("delete object %s: %w", id, err))
+			return fmt.Errorf("delete object %s: %w", id, err)
 		}
 
 		err = s.headsState.DeleteId(txn.Context(), id)
 		if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
-			return errors.Join(txn.Rollback(), fmt.Errorf("delete headsState %s: %w", id, err))
+			return fmt.Errorf("delete headsState %s: %w", id, err)
 		}
 	}
 	return txn.Commit()
@@ -36,11 +39,8 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	if err != nil {
 		return fmt.Errorf("write txn: %w", err)
 	}
-	var commited bool
 	defer func() {
-		if !commited {
-			txn.Rollback()
-		}
+		txn.Rollback()
 	}()
 
 	newDetails := domain.NewDetails()
@@ -53,10 +53,6 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	if err != nil {
 		return fmt.Errorf("delete: update details: %w", err)
 	}
-	err = s.fulltextQueue.RemoveIdsFromFullTextQueue([]string{id})
-	if err != nil {
-		return fmt.Errorf("delete: fulltext queue remove: %w", err)
-	}
 
 	err = s.headsState.DeleteId(txn.Context(), id)
 	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
@@ -66,15 +62,21 @@ func (s *dsObjectStore) DeleteObject(id string) error {
 	if err != nil {
 		return fmt.Errorf("delete: erase links: %w", err)
 	}
-	commited = true
+	// add to ft index queue in order to remove the object
+	// it will find the object not found error and remove all the docs
+	err = s.fulltextQueue.AddToIndexQueue(txn.Context(), domain.FullID{
+		ObjectID: id,
+		SpaceID:  s.spaceId,
+	})
+	if err != nil {
+		log.Errorf("delete object %s: add to fulltext queue: %v", id, err)
+	}
+
 	err = txn.Commit()
 	if err != nil {
 		return fmt.Errorf("delete object info: %w", err)
 	}
 
-	if err := s.fts.DeleteObject(id); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -83,10 +85,13 @@ func (s *dsObjectStore) DeleteLinks(ids []string) error {
 	if err != nil {
 		return fmt.Errorf("read txn: %w", err)
 	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
 	for _, id := range ids {
 		err := s.eraseLinksForObject(txn.Context(), id)
 		if err != nil {
-			return errors.Join(txn.Rollback(), fmt.Errorf("erase links for %s: %w", id, err))
+			return fmt.Errorf("erase links for %s: %w", id, err)
 		}
 	}
 	return txn.Commit()

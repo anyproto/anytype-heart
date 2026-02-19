@@ -1,20 +1,24 @@
 package editor
 
 import (
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/anyproto/lexid"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/order"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -24,8 +28,6 @@ import (
 var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
-
-var lx = lexid.Must(lexid.CharsBase64, 4, 1000)
 
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
@@ -45,7 +47,6 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 }
 
 type spaceService interface {
-	OnViewUpdated(info spaceinfo.SpacePersistentInfo)
 	OnWorkspaceChanged(spaceId string, details *domain.Details)
 	PersonalSpaceId() string
 }
@@ -53,6 +54,7 @@ type spaceService interface {
 // SpaceView is a wrapper around smartblock.SmartBlock that indicates the current space state
 type SpaceView struct {
 	smartblock.SmartBlock
+	order.OrderSettable
 	spaceService      spaceService
 	fileObjectService fileobject.Service
 	log               *logging.Sugared
@@ -62,6 +64,7 @@ type SpaceView struct {
 func (f *ObjectFactory) newSpaceView(sb smartblock.SmartBlock) *SpaceView {
 	return &SpaceView{
 		SmartBlock:        sb,
+		OrderSettable:     order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder),
 		spaceService:      f.spaceService,
 		log:               spaceViewLog,
 		fileObjectService: f.fileObjectService,
@@ -91,7 +94,6 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 		SetRemoteStatus(spaceinfo.RemoteStatusUnknown).
 		UpdateDetails(ctx.State).
 		Log(log)
-	s.spaceService.OnViewUpdated(newInfo)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)
 	return
 }
@@ -139,10 +141,93 @@ func (s *SpaceView) SetOwner(ownerId string, createdDate int64) (err error) {
 	return s.Apply(st)
 }
 
-func (s *SpaceView) SetAclIsEmpty(isEmpty bool) (err error) {
+func (s *SpaceView) SetMyParticipantStatus(status model.ParticipantStatus) (err error) {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isEmpty))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyMyParticipantStatus, domain.Int64(int64(status)))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetAclInfo(isAclEmpty bool, pushKey crypto.PrivKey, pushEncKey crypto.SymKey, joinedDate int64) error {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsAclShared, domain.Bool(!isAclEmpty))
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceJoinDate, domain.Int64(joinedDate))
+
+	if pushKey != nil {
+		pushKeyBinary, err := pushKey.Marshall()
+		if err != nil {
+			return err
+		}
+		pushKeyString := base64.StdEncoding.EncodeToString(pushKeyBinary)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationKey, domain.String(pushKeyString))
+	}
+
+	if pushEncKey != nil {
+		pushEncBinary, err := pushEncKey.Raw()
+		if err != nil {
+			return err
+		}
+		pushEncString := base64.StdEncoding.EncodeToString(pushEncBinary)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationEncryptionKey, domain.String(pushEncString))
+	}
+
 	s.updateAccessType(st)
+	return s.Apply(st)
+}
+
+var (
+	pushNotificationIdsRelByMode = map[pb.RpcPushNotificationMode]domain.RelationKey{
+		pb.RpcPushNotification_All:      bundle.RelationKeySpacePushNotificationForceAllIds,
+		pb.RpcPushNotification_Mentions: bundle.RelationKeySpacePushNotificationForceMentionIds,
+		pb.RpcPushNotification_Nothing:  bundle.RelationKeySpacePushNotificationForceMuteIds,
+	}
+)
+
+func (s *SpaceView) SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error) {
+	if _, ok := pushNotificationIdsRelByMode[mode]; !ok {
+		return fmt.Errorf("unknown push notification mode: %v", mode)
+	}
+
+	st := s.NewStateCtx(ctx)
+	details := st.Details()
+	for keyMode, key := range pushNotificationIdsRelByMode {
+		if keyMode == mode {
+			existingIds := details.GetStringList(key)
+			for _, id := range chatIds {
+				if !slices.Contains(existingIds, id) {
+					existingIds = append(existingIds, id)
+				}
+			}
+			st.SetDetail(key, domain.StringList(existingIds))
+		} else {
+			existingIds := details.GetStringList(key)
+			filteredIds := existingIds[:0]
+			for _, id := range existingIds {
+				if !slices.Contains(chatIds, id) {
+					filteredIds = append(filteredIds, id)
+				}
+			}
+			st.SetDetail(key, domain.StringList(filteredIds))
+		}
+	}
+	return s.Apply(st)
+}
+
+func (s *SpaceView) ResetPushNotificationIds(ctx session.Context, chatIds []string) (err error) {
+	st := s.NewStateCtx(ctx)
+	details := st.Details()
+
+	for _, key := range pushNotificationIdsRelByMode {
+		existingIds := details.GetStringList(key)
+		filteredIds := existingIds[:0]
+		for _, id := range existingIds {
+			if !slices.Contains(chatIds, id) {
+				filteredIds = append(filteredIds, id)
+			}
+		}
+		st.SetDetail(key, domain.StringList(filteredIds))
+	}
+
 	return s.Apply(st)
 }
 
@@ -182,12 +267,23 @@ func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error) {
+	st := s.NewStateCtx(ctx)
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpacePushNotificationMode, domain.Int64(mode))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error) {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(status))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) GetSharedSpacesLimit() (limit int) {
 	return int(s.CombinedDetails().GetInt64(bundle.RelationKeySharedSpacesLimit))
 }
 
 func (s *SpaceView) afterApply(info smartblock.ApplyInfo) (err error) {
-	s.spaceService.OnViewUpdated(s.getSpacePersistentInfo(info.State))
 	return nil
 }
 
@@ -221,14 +317,6 @@ func (s *SpaceView) targetSpaceID() (id string, err error) {
 	return changePayload.Key, nil
 }
 
-func (s *SpaceView) getSpacePersistentInfo(st *state.State) (info spaceinfo.SpacePersistentInfo) {
-	details := st.CombinedDetails()
-	spaceInfo := spaceinfo.NewSpacePersistentInfo(details.GetString(bundle.RelationKeyTargetSpaceId))
-	spaceInfo.SetAccountStatus(spaceinfo.AccountStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus))).
-		SetAclHeadId(details.GetString(bundle.RelationKeyLatestAclHeadId))
-	return spaceInfo
-}
-
 var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyName,
 	bundle.RelationKeyIconImage,
@@ -238,14 +326,13 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyCreatedDate,
 	bundle.RelationKeyChatId,
 	bundle.RelationKeyDescription,
+	bundle.RelationKeyOneToOneIdentity,
+	bundle.RelationKeyAnalyticsSpaceId,
 }
 
-func (s *SpaceView) GetSpaceDescription() (data spaceinfo.SpaceDescription) {
+func (s *SpaceView) GetSpaceDescription() spaceinfo.SpaceDescription {
 	details := s.CombinedDetails()
-	data.Name = details.GetString(bundle.RelationKeyName)
-	data.IconImage = details.GetString(bundle.RelationKeyIconImage)
-	data.SpaceUxType = model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType))
-	return
+	return spaceinfo.NewSpaceDescriptionFromDetails(details)
 }
 
 func (s *SpaceView) SetSpaceData(details *domain.Details) error {
@@ -290,35 +377,7 @@ func (s *SpaceView) SetSpaceData(details *domain.Details) error {
 func (s *SpaceView) UpdateLastOpenedDate() error {
 	st := s.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
-	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags)
-}
-
-func (s *SpaceView) SetOrder(prevViewOrderId string) (string, error) {
-	st := s.NewState()
-	spaceOrderId := lx.Next(prevViewOrderId)
-	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
-	return spaceOrderId, s.Apply(st)
-}
-
-func (s *SpaceView) SetAfterGivenView(viewOrderId string) error {
-	st := s.NewState()
-	spaceOrderId := st.Details().GetString(bundle.RelationKeySpaceOrder)
-	if viewOrderId > spaceOrderId {
-		spaceOrderId = lx.Next(viewOrderId)
-		st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(spaceOrderId))
-		return s.Apply(st)
-	}
-	return nil
-}
-
-func (s *SpaceView) SetBetweenViews(prevViewOrderId, afterViewOrderId string) error {
-	st := s.NewState()
-	before, err := lx.NextBefore(prevViewOrderId, afterViewOrderId)
-	if err != nil {
-		return fmt.Errorf("failed to get before lexid, %w", err)
-	}
-	st.SetDetail(bundle.RelationKeySpaceOrder, domain.String(before))
-	return s.Apply(st)
+	return s.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags)
 }
 
 func stateSetAccessType(st *state.State, accessType spaceinfo.AccessType) {

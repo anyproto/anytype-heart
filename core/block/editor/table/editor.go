@@ -6,12 +6,15 @@ import (
 	"sort"
 
 	"github.com/globalsign/mgo/bson"
+	"golang.org/x/text/collate"
+	"golang.org/x/text/language"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/block/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -630,8 +633,9 @@ func (t *editor) Sort(s *state.State, req pb.RpcBlockTableSortRequest) error {
 
 	rows := s.Get(tb.Rows().Id)
 	sorter := tableSorter{
-		rowIDs: make([]string, 0, len(rows.Model().ChildrenIds)),
-		values: make([]string, len(rows.Model().ChildrenIds)),
+		rowIDs:   make([]string, 0, len(rows.Model().ChildrenIds)),
+		values:   make([]string, len(rows.Model().ChildrenIds)),
+		collator: collate.New(language.Und),
 	}
 
 	var headers []string
@@ -704,6 +708,8 @@ func (t *editor) cleanupTables(_ smartblock.ApplyInfo) error {
 	if err != nil {
 		log.Errorf("cleanup iterate: %s", err)
 	}
+
+	s.SetChangeType(domain.ChangeTypeCleanupTables)
 
 	if err = t.sb.Apply(s, smartblock.KeepInternalFlags); err != nil {
 		if errors.Is(err, source.ErrReadOnly) {

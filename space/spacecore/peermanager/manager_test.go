@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/atomic"
 	"go.uber.org/mock/gomock"
 	"storj.io/drpc"
 
@@ -201,7 +202,7 @@ func (t *testPeer) AcquireDrpcConn(ctx context.Context) (drpc.Conn, error) {
 	return nil, fmt.Errorf("not implemented")
 }
 
-func (t *testPeer) ReleaseDrpcConn(conn drpc.Conn) {}
+func (t *testPeer) ReleaseDrpcConn(ctx context.Context, conn drpc.Conn) {}
 
 func (t *testPeer) Context() context.Context {
 	return t.ctx
@@ -274,16 +275,18 @@ func newFixtureManager(t *testing.T, spaceId string) *fixture {
 	store := peerstore.New()
 	updater := mock_peermanager.NewMockUpdater(t)
 	peerToPeerStatus := mock_peermanager.NewMockPeerToPeerStatus(t)
+	responsibleNodeIdsUpdated := atomic.NewTime(time.Now().Add(time.Minute))
 	cm := &clientPeerManager{
-		responsibleNodeIds: []string{"nodeId"},
-		p:                  provider,
-		spaceId:            spaceId,
-		peerStore:          store,
-		watchingPeers:      map[string]struct{}{},
-		ctx:                context.Background(),
-		nodeStatus:         ns,
-		spaceSyncService:   updater,
-		peerToPeerStatus:   peerToPeerStatus,
+		responsibleNodeIds:        []string{"nodeId"},
+		responsibleNodeIdsUpdated: *responsibleNodeIdsUpdated,
+		p:                         provider,
+		spaceId:                   spaceId,
+		peerStore:                 store,
+		watchingPeers:             map[string]struct{}{},
+		ctx:                       context.Background(),
+		nodeStatus:                ns,
+		spaceSyncService:          updater,
+		peerToPeerStatus:          peerToPeerStatus,
 	}
 	return &fixture{
 		cm:               cm,

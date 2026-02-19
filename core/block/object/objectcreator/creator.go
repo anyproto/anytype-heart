@@ -32,7 +32,7 @@ type (
 	}
 
 	objectArchiver interface {
-		SetIsArchived(objectId string, isArchived bool) error
+		SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
 	}
 )
 
@@ -46,9 +46,9 @@ type Service interface {
 
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
-	AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string) (chatId string, err error)
+	AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string, addAnalyticsId bool) (chatId string, err error)
 
-	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string, isNewSpace bool) (ids []string, objects []*domain.Details, err error)
+	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string) (ids []string, objects []*domain.Details, err error)
 	app.Component
 }
 
@@ -83,6 +83,7 @@ type CreateObjectRequest struct {
 	InternalFlags []*model.InternalFlag
 	TemplateId    string
 	ObjectTypeKey domain.TypeKey
+	UniqueKey     domain.UniqueKey
 }
 
 // CreateObject is high-level method for creating new objects
@@ -116,10 +117,8 @@ func (s *service) createObjectInSpace(
 	}
 	details = internalflag.PutToDetails(details, req.InternalFlags)
 
-	if bundle.HasObjectTypeByKey(req.ObjectTypeKey) {
-		if t := bundle.MustGetType(req.ObjectTypeKey); t.RestrictObjectCreation {
-			return "", nil, errors.Wrap(restriction.ErrRestricted, "creation of this object type is restricted")
-		}
+	if t, e := bundle.GetType(req.ObjectTypeKey); e == nil && t.RestrictObjectCreation && req.ObjectTypeKey != bundle.TypeKeyTemplate {
+		return "", nil, errors.Wrap(restriction.ErrRestricted, "creation of this object type is restricted")
 	}
 
 	switch req.ObjectTypeKey {
@@ -132,7 +131,7 @@ func (s *service) createObjectInSpace(
 	case bundle.TypeKeyRelationOption:
 		return s.createRelationOption(ctx, space, details)
 	case bundle.TypeKeyChatDerived:
-		return s.createChatDerived(ctx, space, details)
+		return s.createChatDerived(ctx, space, details, true)
 	case bundle.TypeKeyFile:
 		return "", nil, fmt.Errorf("files must be created via fileobject service")
 	case bundle.TypeKeyTemplate:
@@ -171,6 +170,11 @@ func (s *service) createTemplate(
 	if err != nil {
 		return
 	}
+
+	if req.UniqueKey != nil {
+		createState.SetUniqueKeyInternal(req.UniqueKey.InternalKey())
+	}
+
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
 }
 
@@ -198,6 +202,7 @@ func (s *service) createCommonObject(
 	if err != nil {
 		return
 	}
+
 	return s.CreateSmartBlockFromStateInSpace(ctx, space, []domain.TypeKey{req.ObjectTypeKey}, createState)
 }
 

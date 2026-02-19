@@ -23,6 +23,12 @@ type Source interface {
 	IsRootFile(fileName string) bool
 }
 
+// FilterableSource extends Source with the ability to filter files
+type FilterableSource interface {
+	Source
+	InitializeWithFilter(importPath string, selectedPaths []string) error
+}
+
 func GetSource(importPath string) Source {
 	importFileExt := filepath.Ext(importPath)
 	switch {

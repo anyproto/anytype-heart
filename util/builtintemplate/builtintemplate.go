@@ -104,7 +104,10 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 		}
 	}
 
-	st := state.NewDocFromSnapshot(id, snapshot).(*state.State)
+	st, err := state.NewDocFromSnapshot(id, snapshot)
+	if err != nil {
+		return fmt.Errorf("new state from snapshot: %w", err)
+	}
 	st.SetRootId(id)
 	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled, domain.Bool(true))
 	st.RemoveDetail(bundle.RelationKeyCreator, bundle.RelationKeyLastModifiedBy)
@@ -121,9 +124,9 @@ func (b *builtinTemplate) registerBuiltin(space clientspace.Space, rd io.ReadClo
 	// fix divergence between extra relations and simple block relations
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if _, ok := b.(relation.Block); ok {
-			relKey := b.Model().GetRelation().Key
+			relKey := domain.RelationKey(b.Model().GetRelation().Key)
 			if !st.HasRelation(relKey) {
-				st.AddBundledRelationLinks(domain.RelationKey(relKey))
+				st.AddBundledRelationLinks(relKey)
 			}
 		}
 		return true

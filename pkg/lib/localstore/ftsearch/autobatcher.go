@@ -8,13 +8,13 @@ import (
 )
 
 type AutoBatcher interface {
-	// UpdateDoc adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
-	UpdateDoc(doc SearchDoc) error
+	// UpsertDoc adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
+	UpsertDoc(doc SearchDoc) error
 	// DeleteDoc adds a delete operation to the batcher
 	// maxSize limit check is not performed for this operation
 	DeleteDoc(id string) error
 	// Finish performs the operations
-	Finish() error
+	Finish() (ftIndexSeq uint64, err error)
 }
 
 func (f *ftSearch) NewAutoBatcher() AutoBatcher {
@@ -97,14 +97,15 @@ func (f *ftSearch) Iterate(objectId string, fields []string, shouldContinue func
 }
 
 type ftIndexBatcherTantivy struct {
-	index      *tantivy.TantivyContext
-	deleteIds  []string
-	updateDocs []*tantivy.Document
-	mu         *sync.Mutex // original mutex, temporary solution
+	index          *tantivy.TantivyContext
+	deleteIds      []string
+	updateDocs     []*tantivy.Document
+	tantivyOpstamp uint64
+	mu             *sync.Mutex // original mutex, temporary solution
 }
 
 // Add adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
-func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
+func (f *ftIndexBatcherTantivy) UpsertDoc(searchDoc SearchDoc) error {
 	err := f.DeleteDoc(searchDoc.Id)
 	if err != nil {
 		return err
@@ -137,26 +138,30 @@ func (f *ftIndexBatcherTantivy) UpdateDoc(searchDoc SearchDoc) error {
 	f.updateDocs = append(f.updateDocs, doc)
 
 	if len(f.updateDocs) >= docLimit {
-		return f.Finish()
+		f.tantivyOpstamp, err = f.Finish()
+		if err != nil {
+			return fmt.Errorf("finish batch failed: %w", err)
+		}
 	}
 	return nil
 }
 
 // Finish indexes the remaining documents in the batch.
-func (f *ftIndexBatcherTantivy) Finish() error {
+func (f *ftIndexBatcherTantivy) Finish() (ftIndexSeq uint64, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	err := f.index.DeleteDocuments(fieldIdRaw, f.deleteIds...)
+
+	opstamp, err := f.index.BatchAddAndDeleteDocumentsWithOpstamp(f.updateDocs, fieldIdRaw, f.deleteIds)
 	if err != nil {
-		return err
-	}
-	err = f.index.AddAndConsumeDocuments(f.updateDocs...)
-	if err != nil {
-		return err
+		if f.tantivyOpstamp > 0 {
+			log.Warnf("batch was partially commited with opstamp %d, but failed to finish: %v", f.tantivyOpstamp, err)
+		}
+		return 0, err
 	}
 	f.deleteIds = f.deleteIds[:0]
 	f.updateDocs = f.updateDocs[:0]
-	return nil
+
+	return opstamp, nil
 }
 
 // Delete adds a delete operation to the batcher

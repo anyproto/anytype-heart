@@ -27,6 +27,8 @@ const (
 type EthPrivateKey = *ecdsa.PrivateKey
 type EthAddress = common.Address
 
+var EmptyEthereumAddress = common.HexToAddress("0x0000000000000000000000000000000000000000")
+
 type wallet struct {
 	rootPath      string
 	repoPath      string // other components will init their files/dirs inside
@@ -67,6 +69,11 @@ func (r *wallet) GetAccountEthPrivkey() *ecdsa.PrivateKey {
 }
 
 func (r *wallet) GetAccountEthAddress() EthAddress {
+	key := r.ethereumKey
+	if key == (ecdsa.PrivateKey{}) {
+		return EmptyEthereumAddress
+	}
+
 	publicKey := r.ethereumKey.Public()
 
 	// eat the error, we know it's an ecdsa.PublicKey

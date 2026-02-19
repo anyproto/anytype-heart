@@ -66,13 +66,19 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 		}
 	}
 
+	if ch.Change.Creator == d.currentIdentity {
+		msg.Synced = false
+	} else {
+		msg.Synced = true
+	}
+
 	msg.StateId = bson.NewObjectId().Hex()
 
 	isMentioned, err := msg.IsCurrentUserMentioned(ctx, d.myParticipantId, d.currentIdentity, d.repository)
 	if err != nil {
 		return fmt.Errorf("check if current user is mentioned: %w", err)
 	}
-	msg.CurrentUserMentioned = isMentioned
+	msg.HasMention = isMentioned
 	msg.OrderId = ch.Change.Order
 
 	prevOrderId, err := d.repository.GetPrevOrderId(ctx, ch.Change.Order)
@@ -123,6 +129,9 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	messageId := ch.Change.Change.GetDelete().GetDocumentId()
 
 	doc, err := coll.FindId(ctx, messageId)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return storestate.DeleteModeDelete, nil
+	}
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("get message: %w", err)
 	}

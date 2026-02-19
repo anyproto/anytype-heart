@@ -9,16 +9,18 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	bookmarksvc "github.com/anyproto/anytype-heart/core/block/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -32,9 +34,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
+	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
+	"github.com/anyproto/anytype-heart/core/onetoone"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -45,8 +48,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
 	"github.com/anyproto/anytype-heart/util/mutex"
+	"github.com/anyproto/anytype-heart/util/slice"
 	"github.com/anyproto/anytype-heart/util/uri"
 
 	_ "github.com/anyproto/anytype-heart/core/block/editor/table"
@@ -79,20 +84,28 @@ func init() {
 func New() *Service {
 	s := &Service{
 		openedObjs: &openedObjects{
-			objects: make(map[string]bool),
+			objects: make(map[string]string),
 			lock:    &sync.Mutex{},
 		},
 	}
 	return s
 }
 
+type IdentityService interface {
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
+	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
+}
+
 type Service struct {
+	accountService       account.Service
 	eventSender          event.Sender
 	process              process.Service
 	objectStore          objectstore.ObjectStore
 	bookmark             bookmarksvc.Service
 	objectCreator        objectcreator.Service
 	templateService      template.Service
+	identityService      IdentityService
+	onetoone             onetoone.Service
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
@@ -100,8 +113,8 @@ type Service struct {
 	fileObjectService    fileobject.Service
 	detailsService       detailservice.Service
 
-	fileService         files.Service
 	fileUploaderService fileuploader.Service
+	fileOffloader       fileoffloader.Service
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -115,7 +128,7 @@ type builtinObjects interface {
 }
 
 type openedObjects struct {
-	objects map[string]bool
+	objects map[string]string
 	lock    *sync.Mutex
 }
 
@@ -130,18 +143,19 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.eventSender = a.MustComponent(event.CName).(event.Sender)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
+	s.identityService = app.MustComponent[IdentityService](a)
+	s.onetoone = app.MustComponent[onetoone.Service](a)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[template.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
-	s.fileService = app.MustComponent[files.Service](a)
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.fileUploaderService = app.MustComponent[fileuploader.Service](a)
-
+	s.fileOffloader = app.MustComponent[fileoffloader.Service](a)
 	s.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
-
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
+	s.accountService = app.MustComponent[account.Service](a)
 	return
 }
 
@@ -158,7 +172,7 @@ func (s *Service) GetObject(ctx context.Context, objectID string) (sb smartblock
 }
 
 func (s *Service) WaitAndGetObject(ctx context.Context, objectID string) (sb smartblock.SmartBlock, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(objectID)
+	spaceID, err := s.resolver.ResolveSpaceIdWithRetry(ctx, objectID)
 	if err != nil {
 		return nil, err
 	}
@@ -200,9 +214,24 @@ func (s *Service) WaitAndGetObjectByFullID(ctx context.Context, id domain.FullID
 	return spc.GetObject(ctx, id.ObjectID)
 }
 
+func (s *Service) ObjectRefresh(ctx context.Context, id domain.FullID) (err error) {
+	id = s.resolveFullId(id)
+	sp, err := s.spaceService.Get(ctx, id.SpaceID)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+	return sp.RefreshObjects([]string{id.ObjectID})
+}
+
 func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
-	err = s.DoFullId(id, func(ob smartblock.SmartBlock) error {
+
+	spc, err := s.spaceService.Wait(s.componentCtx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("wait space: %w", err)
+	}
+
+	err = spc.Do(id.ObjectID, func(ob smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			ob.EnabledRelationAsDependentObjects()
 		}
@@ -212,8 +241,11 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		st := ob.NewState()
 
 		st.SetLocalDetail(bundle.RelationKeyLastOpenedDate, domain.Int64(time.Now().Unix()))
-		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
+		if err = ob.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions); err != nil {
 			log.Errorf("failed to update lastOpenedDate: %s", err)
+		}
+		if err = ob.Space().RefreshObjects([]string{ob.Id()}); err != nil {
+			log.Debug("failed to sync object", zap.String("objectId", id.ObjectID), zap.Error(err))
 		}
 		if obj, err = ob.Show(); err != nil {
 			return fmt.Errorf("show: %w", err)
@@ -226,14 +258,37 @@ func (s *Service) OpenBlock(sctx session.Context, id domain.FullID, includeRelat
 		if v, ok := ob.(withVirtualBlocks); ok {
 			v.InjectVirtualBlocks(id.ObjectID, obj)
 		}
-
 		return nil
 	})
 	if err != nil {
 		return nil, err
 	}
-	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id.ObjectID] = true; return nil })
+	mutex.WithLock(s.openedObjs.lock, func() any { s.openedObjs.objects[id.ObjectID] = id.SpaceID; return nil })
 	return obj, nil
+}
+
+func (s *Service) RefreshOpenedObjects(ctx context.Context) {
+	openedObjects := s.GetOpenedObjects()
+	if len(openedObjects) == 0 {
+		return
+	}
+	objsPerSpace := make(map[string][]string)
+	for _, entry := range openedObjects {
+		curVal := objsPerSpace[entry.Value]
+		curVal = append(curVal, entry.Key)
+		objsPerSpace[entry.Value] = curVal
+	}
+	for spaceId, objectIds := range objsPerSpace {
+		sp, err := s.spaceService.Get(ctx, spaceId)
+		if err != nil {
+			log.Debug("failed to refresh: get space", zap.Error(err), zap.String("spaceId", spaceId))
+			continue
+		}
+		err = sp.RefreshObjects(objectIds)
+		if err != nil {
+			log.Debug("failed to refresh: refresh objects", zap.Error(err), zap.String("spaceId", spaceId), zap.Strings("objectIds", objectIds))
+		}
+	}
 }
 
 func (s *Service) DoFullId(id domain.FullID, apply func(sb smartblock.SmartBlock) error) error {
@@ -260,7 +315,13 @@ func (s *Service) resolveFullId(id domain.FullID) domain.FullID {
 
 func (s *Service) ShowBlock(id domain.FullID, includeRelationsAsDependentObjects bool) (obj *model.ObjectView, err error) {
 	id = s.resolveFullId(id)
-	err = s.DoFullId(id, func(b smartblock.SmartBlock) error {
+
+	spc, err := s.spaceService.Wait(s.componentCtx, id.SpaceID)
+	if err != nil {
+		return nil, fmt.Errorf("wait space: %w", err)
+	}
+
+	err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
 		if includeRelationsAsDependentObjects {
 			b.EnabledRelationAsDependentObjects()
 		}
@@ -302,8 +363,8 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 	return nil
 }
 
-func (s *Service) GetOpenedObjects() []string {
-	return mutex.WithLock(s.openedObjs.lock, func() []string { return lo.Keys(s.openedObjs.objects) })
+func (s *Service) GetOpenedObjects() []lo.Entry[string, string] {
+	return mutex.WithLock(s.openedObjs.lock, func() []lo.Entry[string, string] { return lo.Entries[string, string](s.openedObjs.objects) })
 }
 
 func (s *Service) SpaceInstallBundledObject(
@@ -315,7 +376,7 @@ func (s *Service) SpaceInstallBundledObject(
 	if err != nil {
 		return "", nil, fmt.Errorf("get space: %w", err)
 	}
-	ids, details, err := s.objectCreator.InstallBundledObjects(ctx, spc, []string{sourceObjectId}, false)
+	ids, details, err := s.objectCreator.InstallBundledObjects(ctx, spc, []string{sourceObjectId})
 	if err != nil {
 		return "", nil, err
 	}
@@ -335,10 +396,10 @@ func (s *Service) SpaceInstallBundledObjects(
 	if err != nil {
 		return nil, nil, fmt.Errorf("get space: %w", err)
 	}
-	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds, false)
+	return s.objectCreator.InstallBundledObjects(ctx, spc, sourceObjectIds)
 }
 
-func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
+func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalyticsId bool) error {
 	spc, err := s.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
@@ -361,14 +422,17 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		return err
 	}
 
+	// cheap check if chat already exists
 	if spaceChatExists, err := spc.Storage().HasTree(ctx, chatId); err != nil {
 		return err
-	} else if !spaceChatExists {
-		_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId)
-		if err != nil {
-			if !errors.Is(err, treestorage.ErrTreeExists) {
-				return fmt.Errorf("add chat derived object: %w", err)
-			}
+	} else if spaceChatExists {
+		return nil
+	}
+
+	_, err = s.objectCreator.AddChatDerivedObject(ctx, spc, workspaceId, addAnalyticsId)
+	if err != nil {
+		if !errors.Is(err, treestorage.ErrTreeExists) {
+			return fmt.Errorf("add chat derived object: %w", err)
 		}
 	}
 
@@ -377,12 +441,11 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string) error {
 		st.SetLocalDetail(bundle.RelationKeyChatId, domain.String(chatId))
 		st.SetDetail(bundle.RelationKeyHasChat, domain.Bool(true))
 
-		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.SkipIfNoChanges, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags, smartblock.IgnoreNoPermissions)
 	})
 	if err != nil {
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
-
 	return nil
 }
 
@@ -458,7 +521,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 		return fmt.Errorf("cannot delete archive object")
 	}
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
+		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
@@ -574,41 +637,6 @@ func (s *Service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 	return nil
 }
 
-func (s *Service) ObjectToBookmark(ctx context.Context, id string, url string) (objectId string, err error) {
-	spaceID, err := s.resolver.ResolveSpaceID(id)
-	if err != nil {
-		return "", fmt.Errorf("resolve spaceID: %w", err)
-	}
-	req := objectcreator.CreateObjectRequest{
-		ObjectTypeKey: bundle.TypeKeyBookmark,
-		Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeySource: domain.String(url),
-		}),
-	}
-	objectId, _, err = s.objectCreator.CreateObject(ctx, spaceID, req)
-	if err != nil {
-		return
-	}
-
-	res, err := s.objectStore.SpaceIndex(spaceID).GetWithLinksInfoById(id)
-	if err != nil {
-		return
-	}
-	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, objectId); err != nil {
-			return
-		}
-	}
-	err = s.DeleteObject(id)
-	if err != nil {
-		// intentionally do not return error here
-		log.Errorf("failed to delete object after conversion to bookmark: %s", err)
-		err = nil
-	}
-
-	return
-}
-
 func (s *Service) CreateObjectFromUrl(
 	ctx context.Context, req *pb.RpcObjectCreateFromUrlRequest,
 ) (id string, objectDetails *domain.Details, err error) {
@@ -698,12 +726,6 @@ func (s *Service) updateBookmarkContentWithUserDetails(userDetails, objectDetail
 	return shouldUpdate
 }
 
-func (s *Service) replaceLink(id, oldId, newId string) error {
-	return cache.Do(s, id, func(b basic.CommonOperations) error {
-		return b.ReplaceLink(oldId, newId)
-	})
-}
-
 func (s *Service) GetLogFields() []zap.Field {
 	var fields []zap.Field
 	if s.predefinedObjectWasMissing {
@@ -737,8 +759,49 @@ func (s *Service) SyncObjectsWithType(typeId string) error {
 		return fmt.Errorf("failed to get details of type object: %w", err)
 	}
 
+	removeDescriptionFromRecommended(typeId, details, spc)
+
 	syncer := layout.NewSyncer(typeId, spc, index)
 	newLayout := layout.NewLayoutStateFromDetails(details)
 	oldLayout := newLayout.Copy()
 	return syncer.SyncLayoutWithType(oldLayout, newLayout, true, true, false)
+}
+
+// removeDescriptionFromRecommended removes description relation id from recommended relations lists of type if it was added accidentally (see GO-5826)
+func removeDescriptionFromRecommended(typeId string, details *domain.Details, spc clientspace.Space) {
+	descriptionId, err := spc.DeriveObjectID(nil, domain.MustUniqueKey(coresb.SmartBlockTypeRelation, bundle.RelationKeyDescription.String()))
+	if err != nil {
+		return
+	}
+
+	detailsToSet := make([]domain.Detail, 0)
+	for _, key := range []domain.RelationKey{
+		bundle.RelationKeyRecommendedRelations,
+		bundle.RelationKeyRecommendedFeaturedRelations,
+		bundle.RelationKeyRecommendedFileRelations,
+		bundle.RelationKeyRecommendedHiddenRelations,
+	} {
+		list := details.GetStringList(key)
+		i := slice.FindPos(list, descriptionId)
+		if i == -1 {
+			continue
+		}
+
+		detailsToSet = append(detailsToSet, domain.Detail{
+			Key:   key,
+			Value: domain.StringList(slice.RemoveIndex(list, i)),
+		})
+	}
+
+	if len(detailsToSet) == 0 {
+		return
+	}
+
+	// nolint:errcheck
+	spc.Do(typeId, func(sb smartblock.SmartBlock) error {
+		if ds, ok := sb.(basic.DetailsSettable); ok {
+			return ds.SetDetails(nil, detailsToSet, false)
+		}
+		return nil
+	})
 }

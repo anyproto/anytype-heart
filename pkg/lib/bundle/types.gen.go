@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "880c466315e22d0b573f6542b4ca1dcc4e2cb3395de3bad901f87460ff914191"
+const TypeChecksum = "0c111399adb4bd83c03846bf38a73c8460681e0404cdef75ba5e9bfd86eb0429"
 const (
 	TypePrefix = "_ot"
 )
@@ -41,7 +41,6 @@ const (
 	TypeKeyGoal           domain.TypeKey = "goal"
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
-	TypeKeyChat           domain.TypeKey = "chat"
 	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
 )
 
@@ -90,32 +89,17 @@ var (
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "bookmark",
 		},
-		TypeKeyChat: {
-
-			Description:   "",
-			Hidden:        true,
-			IconColor:     7,
-			IconName:      "chatbubble",
-			Layout:        model.ObjectType_chat,
-			Name:          "Chat [deprecated]",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      2,
-			Types:         []model.SmartBlockType{model.SmartBlockType_ChatObject},
-			Url:           TypePrefix + "chat",
-		},
 		TypeKeyChatDerived: {
 
 			Description:   "",
-			Hidden:        true,
 			IconColor:     7,
 			IconName:      "chatbubble",
 			Layout:        model.ObjectType_chatDerived,
-			Name:          "Chat Derived Object",
-			PluralName:    "Chat Derived Objects",
+			Name:          "Chat",
+			PluralName:    "Chats",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      4,
+			Revision:      7,
 			Types:         []model.SmartBlockType{model.SmartBlockType_ChatDerivedObject},
 			Url:           TypePrefix + "chatDerived",
 		},
@@ -354,8 +338,8 @@ var (
 			IconColor:     7,
 			IconName:      "share-social",
 			Layout:        model.ObjectType_relation,
-			Name:          "Relation",
-			PluralName:    "Relation",
+			Name:          "Property",
+			PluralName:    "Properties",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyRelationFormat), MustGetRelationLink(RelationKeyRelationMaxCount), MustGetRelationLink(RelationKeyRelationDefaultValue), MustGetRelationLink(RelationKeyRelationFormatObjectTypes)},
 			Revision:      3,
@@ -435,17 +419,18 @@ var (
 		},
 		TypeKeyTemplate: {
 
-			Description:   "",
-			IconColor:     8,
-			IconName:      "copy",
-			Layout:        model.ObjectType_basic,
-			Name:          "Template",
-			PluralName:    "Templates",
-			Readonly:      true,
-			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
-			Revision:      4,
-			Types:         []model.SmartBlockType{model.SmartBlockType_Template},
-			Url:           TypePrefix + "template",
+			Description:            "",
+			IconColor:              8,
+			IconName:               "copy",
+			Layout:                 model.ObjectType_basic,
+			Name:                   "Template",
+			PluralName:             "Templates",
+			Readonly:               true,
+			RelationLinks:          []*model.RelationLink{MustGetRelationLink(RelationKeyTargetObjectType), MustGetRelationLink(RelationKeyTemplateIsBundled)},
+			RestrictObjectCreation: true,
+			Revision:               4,
+			Types:                  []model.SmartBlockType{model.SmartBlockType_Template},
+			Url:                    TypePrefix + "template",
 		},
 		TypeKeyVideo: {
 

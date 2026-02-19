@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -26,7 +27,8 @@ var participantRequiredRelations = []domain.RelationKey{
 type participant struct {
 	smartblock.SmartBlock
 	basic.DetailsUpdatable
-	objectStore spaceindex.Store
+	objectStore    spaceindex.Store
+	accountService accountService
 }
 
 func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock, spaceIndex spaceindex.Store) *participant {
@@ -35,6 +37,7 @@ func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock,
 		SmartBlock:       sb,
 		DetailsUpdatable: basicComponent,
 		objectStore:      spaceIndex,
+		accountService:   f.accountService,
 	}
 }
 
@@ -88,8 +91,11 @@ func (p *participant) ModifyIdentityDetails(profile *model.IdentityProfile) (err
 	return p.modifyDetails(details)
 }
 
-func (p *participant) ModifyParticipantAclState(accState spaceinfo.ParticipantAclInfo) (err error) {
-	details := buildParticipantDetails(accState.Id, accState.SpaceId, accState.Identity, accState.Permissions, accState.Status)
+func (p *participant) ModifyParticipantAclState(accState spaceinfo.ParticipantAclInfo) error {
+	details, err := p.buildParticipantDetails(accState)
+	if err != nil {
+		return fmt.Errorf("build participant details: %w", err)
+	}
 	return p.modifyDetails(details)
 }
 
@@ -103,20 +109,23 @@ func (p *participant) modifyDetails(newDetails *domain.Details) (err error) {
 	})
 }
 
-func buildParticipantDetails(
-	id string,
-	spaceId string,
-	identity string,
-	permissions model.ParticipantPermissions,
-	status model.ParticipantStatus,
-) *domain.Details {
+func (p *participant) buildParticipantDetails(
+	accState spaceinfo.ParticipantAclInfo,
+) (*domain.Details, error) {
 	det := domain.NewDetails()
-	det.SetString(bundle.RelationKeyId, id)
-	det.SetString(bundle.RelationKeyIdentity, identity)
-	det.SetString(bundle.RelationKeySpaceId, spaceId)
-	det.SetString(bundle.RelationKeyLastModifiedBy, id)
-	det.SetInt64(bundle.RelationKeyParticipantPermissions, int64(permissions))
-	det.SetInt64(bundle.RelationKeyParticipantStatus, int64(status))
-	det.SetBool(bundle.RelationKeyIsHiddenDiscovery, status != model.ParticipantStatus_Active)
-	return det
+	det.SetString(bundle.RelationKeyId, accState.Id)
+	det.SetString(bundle.RelationKeyIdentity, accState.Identity)
+	det.SetString(bundle.RelationKeySpaceId, accState.SpaceId)
+	det.SetString(bundle.RelationKeyLastModifiedBy, accState.Id)
+	det.SetInt64(bundle.RelationKeyParticipantPermissions, int64(accState.Permissions))
+	det.SetInt64(bundle.RelationKeyParticipantStatus, int64(accState.Status))
+	det.SetBool(bundle.RelationKeyIsHiddenDiscovery, accState.Status != model.ParticipantStatus_Active)
+	if p.accountService.MyParticipantId(p.SpaceID()) == p.Id() {
+		accountObjectId, err := p.accountService.GetAccountObjectId()
+		if err != nil {
+			return nil, fmt.Errorf("get account object id: %w", err)
+		}
+		det.SetString(bundle.RelationKeyIdentityProfileLink, accountObjectId)
+	}
+	return det, nil
 }

@@ -9,16 +9,18 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // ListTypesHandler retrieves a list of types in a space
 //
 //	@Summary		List types
-//	@Description	This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type’s record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
+//	@Description	This endpoint retrieves a paginated list of types (e.g. 'Page', 'Note', 'Task') available within the specified space. Each type's record includes its unique identifier, type key, display name, icon, and layout. While a type's id is truly unique, a type's key can be the same across spaces for known types, e.g. 'page' for 'Page'. Clients use this information when offering choices for object creation or for filtering objects by type through search.
+//	@Description	Supports dynamic filtering via query parameters (e.g. ?name[contains]=task). See FilterCondition enum for available conditions.
 //	@Id				list_types
 //	@Tags			Types
 //	@Produce		json
-//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string										true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string										true	"The ID of the space to retrieve types from; must be retrieved from ListSpaces endpoint"
 //	@Param			offset			query		int											false	"The number of items to skip before starting to collect the result set"	default(0)
 //	@Param			limit			query		int											false	"The number of items to return"											default(100)	maximum(1000)
@@ -30,16 +32,19 @@ import (
 func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
-		offset := c.GetInt("offset")
-		limit := c.GetInt("limit")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
 
-		types, total, hasMore, err := s.ListTypes(c.Request.Context(), spaceId, offset, limit)
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		types, total, hasMore, err := s.ListTypes(c.Request.Context(), spaceId, filters, offset, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedRetrieveTypes, http.StatusInternalServerError),
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
@@ -55,7 +60,7 @@ func ListTypesHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				get_type
 //	@Tags			Types
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space from which to retrieve the type; must be retrieved from ListSpaces endpoint"
 //	@Param			type_id			path		string					true	"The ID of the type to retrieve; must be retrieved from ListTypes endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.TypeResponse	"The requested type"
@@ -78,12 +83,12 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -95,7 +100,7 @@ func GetTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string						true	"The ID of the space in which to create the type; must be retrieved from ListSpaces endpoint"
 //	@Param			type			body		apimodel.CreateTypeRequest	true	"The type to create"
 //	@Success		201				{object}	apimodel.TypeResponse		"The created type"
@@ -111,7 +116,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.CreateTypeRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -124,12 +129,12 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusCreated, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -141,7 +146,7 @@ func CreateTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Tags			Types
 //	@Accept			json
 //	@Produce		json
-//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string						true	"The ID of the space in which the type exists; must be retrieved from ListSpaces endpoint"
 //	@Param			type_id			path		string						true	"The ID of the type to update; must be retrieved from ListTypes endpoint or obtained from response context"
 //	@Param			type			body		apimodel.UpdateTypeRequest	true	"The type details to update"
@@ -161,7 +166,7 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 
 		request := apimodel.UpdateTypeRequest{}
 		if err := c.BindJSON(&request); err != nil {
-			apiErr := util.CodeToAPIError(http.StatusBadRequest, err.Error())
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
 			c.JSON(http.StatusBadRequest, apiErr)
 			return
 		}
@@ -176,12 +181,12 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }
 
@@ -192,7 +197,7 @@ func UpdateTypeHandler(s *service.Service) gin.HandlerFunc {
 //	@Id				delete_type
 //	@Tags			Types
 //	@Produce		json
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
 //	@Param			space_id		path		string					true	"The ID of the space from which to delete the type; must be retrieved from ListSpaces endpoint"
 //	@Param			type_id			path		string					true	"The ID of the type to delete; must be retrieved from ListTypes endpoint or obtained from response context"
 //	@Success		200				{object}	apimodel.TypeResponse	"The deleted type"
@@ -218,11 +223,11 @@ func DeleteTypeHandler(s *service.Service) gin.HandlerFunc {
 		)
 
 		if code != http.StatusOK {
-			apiErr := util.CodeToAPIError(code, err.Error())
+			apiErr := util.CodeToApiError(code, err.Error())
 			c.JSON(code, apiErr)
 			return
 		}
 
-		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: object})
+		c.JSON(http.StatusOK, apimodel.TypeResponse{Type: *object})
 	}
 }

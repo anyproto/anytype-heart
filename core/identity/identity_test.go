@@ -15,6 +15,7 @@ import (
 	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,12 +24,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/tests/testutil"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/mutex"
 )
 
@@ -54,8 +54,7 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 	accountService := mock_account.NewMockService(t)
 	spaceService := mock_space.NewMockService(t)
 	fileAclService := mock_fileacl.NewMockService(t)
-	dataStoreProvider, err := datastore.NewInMemory()
-	require.NoError(t, err)
+
 	wallet := mock_wallet.NewMockWallet(t)
 	nsClient := mock_nameserviceclient.NewMockAnyNsClientService(ctrl)
 	nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), &nameserviceproto.BatchNameByAnyIdRequest{AnyAddresses: []string{testIdentity}}).AnyTimes().
@@ -67,11 +66,12 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 			Name:  "",
 		},
 		}}, nil)
-	err = dataStoreProvider.Run(ctx)
+
+	dbProvider, err := anystoreprovider.NewInPath(t.TempDir())
 	require.NoError(t, err)
 
 	a := new(app.App)
-	a.Register(dataStoreProvider)
+	a.Register(dbProvider)
 	a.Register(objectStore)
 	a.Register(identityRepoClient)
 	a.Register(testutil.PrepareMock(ctx, a, accountService))
@@ -88,9 +88,6 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 	require.NoError(t, err)
 
 	svcRef := svc.(*service)
-	db, err := dataStoreProvider.LocalStorage()
-	require.NoError(t, err)
-	svcRef.db = db
 	// TODO
 	// svcRef.currentProfileDetails = &types.Struct{Fields: make(map[string]*types.Value)}
 	fx := &fixture{
@@ -198,9 +195,9 @@ func TestIdentityProfileCache(t *testing.T) {
 		// Global name is cached separately
 		wantProfile.GlobalName = globalName
 
-		err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+		err = fx.service.identityProfileCacheStore.Set(context.Background(), identity, wantData)
 		require.NoError(t, err)
-		err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+		err = fx.service.identityGlobalNameCacheStore.Set(context.Background(), identity, globalName)
 		require.NoError(t, err)
 
 		var (
@@ -236,7 +233,7 @@ func TestIdentityProfileCache(t *testing.T) {
 		// Global name is cached separately
 		wantProfile.GlobalName = globalName
 
-		err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+		err = fx.service.identityGlobalNameCacheStore.Set(context.Background(), identity, globalName)
 		require.NoError(t, err)
 
 		var called uint64
@@ -247,7 +244,7 @@ func TestIdentityProfileCache(t *testing.T) {
 		})
 		require.NoError(t, err)
 
-		err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+		err = fx.service.identityProfileCacheStore.Set(context.Background(), identity, wantData)
 		require.NoError(t, err)
 
 		time.Sleep(testObserverPeriod * 2)
@@ -256,6 +253,9 @@ func TestIdentityProfileCache(t *testing.T) {
 }
 
 func TestObservers(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+
 	testObserverPeriod := 10 * time.Millisecond
 	fx := newFixture(t, testObserverPeriod)
 
@@ -271,12 +271,9 @@ func TestObservers(t *testing.T) {
 	}
 	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
-	var wg sync.WaitGroup
-	var callbackCalls []*model.IdentityProfile
-	wg.Add(2)
+	callbackCalls := mb.New[*model.IdentityProfile](0)
 	err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(gotIdentity string, gotProfile *model.IdentityProfile) {
-		callbackCalls = append(callbackCalls, gotProfile)
-		wg.Done()
+		callbackCalls.Add(ctx, gotProfile)
 	})
 	require.NoError(t, err)
 
@@ -309,7 +306,8 @@ func TestObservers(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	wg.Wait()
+	gotCalls, err := callbackCalls.NewCond().WithMin(2).WithMax(2).Wait(ctx)
+	require.NoError(t, err)
 
 	wantCalls := []*model.IdentityProfile{
 		{
@@ -324,16 +322,26 @@ func TestObservers(t *testing.T) {
 			GlobalName:  globalName,
 		},
 	}
-	assert.Equal(t, wantCalls, callbackCalls)
+	assert.Equal(t, wantCalls, gotCalls)
 
+	secondCallbackCalls := mb.New[*model.IdentityProfile](0)
 	t.Run("callback should be called at least once for each observer", func(t *testing.T) {
-		wg.Add(1)
 		err = fx.RegisterIdentity("space2", identity, profileSymKey, func(gotIdentity string, gotProfile *model.IdentityProfile) {
-			wg.Done()
+			secondCallbackCalls.Add(ctx, gotProfile)
 		})
 		require.NoError(t, err)
-		wg.Wait()
 	})
+
+	for {
+		gotCalls, err = secondCallbackCalls.NewCond().WithMin(1).WithMax(1).Wait(ctx)
+		require.NoError(t, err)
+
+		// Eventually we have to receive last profile edit
+		ok := proto.Equal(wantCalls[1], gotCalls[0])
+		if ok {
+			break
+		}
+	}
 }
 
 func TestGetIdentitiesDataFromRepo(t *testing.T) {
@@ -497,9 +505,9 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 				Found: false,
 				Name:  "",
 			})
-			err = badgerhelper.SetValue(fx.db, makeIdentityProfileKey(identity), wantData)
+			err = fx.service.identityProfileCacheStore.Set(context.Background(), identity, wantData)
 			require.NoError(t, err)
-			err = badgerhelper.SetValue(fx.db, makeGlobalNameKey(identity), globalName)
+			err = fx.service.identityGlobalNameCacheStore.Set(context.Background(), identity, globalName)
 			require.NoError(t, err)
 		}
 		fx.nsClient.EXPECT().BatchGetNameByAnyId(gomock.Any(), gomock.Any()).Return(&nameserviceproto.BatchNameByAddressResponse{Results: nsServiceResult}, nil)

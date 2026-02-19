@@ -6,16 +6,20 @@ import (
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -39,7 +43,7 @@ func TestObjectCreator_Create(t *testing.T) {
 		importedSpaceIdParticipantId := domain.NewParticipantId(importedSpaceId, identity)
 
 		oldToNew := map[string]string{importedSpaceIdParticipantId: participantId}
-		dataObject := NewDataObject(context.Background(), oldToNew, nil, objectorigin.Import(model.Import_Pb), spaceID)
+		dataObject := NewDataObject(context.Background(), oldToNew, nil, nil, objectorigin.Import(model.Import_Pb), spaceID)
 		sn := &common.Snapshot{
 			Id: importedSpaceIdParticipantId,
 			Snapshot: &common.SnapshotModel{
@@ -75,7 +79,16 @@ func TestObjectCreator_Create(t *testing.T) {
 			participantId: testParticipant,
 		})
 
-		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), getter)
+		fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+		fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+			rel, err := bundle.GetRelation(key)
+			if err != nil {
+				return 0, err
+			}
+			return rel.Format, nil
+		}).Maybe()
+
+		service := New(detailsService, nil, nil, nil, mockService, objectcreator.NewCreator(), getter, fetcher)
 
 		// when
 		create, id, err := service.Create(dataObject, sn)
@@ -101,7 +114,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 			Key: "oldKey",
 		})
 		// when
-		oc.updateKeys(doc, oldToNew)
+		oc.updateKeys(doc, oldToNew, nil)
 
 		// then
 		assert.False(t, doc.Details().Has("oldKey"))
@@ -116,7 +129,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc.SetObjectTypeKey("oldKey")
 
 		// when
-		oc.updateKeys(doc, oldToNew)
+		oc.updateKeys(doc, oldToNew, nil)
 
 		// then
 		assert.Equal(t, domain.TypeKey("newKey"), doc.ObjectTypeKey())
@@ -128,7 +141,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 		doc := state.NewDoc("oldId", nil).(*state.State)
 
 		// when
-		oc.updateKeys(doc, oldToNew)
+		oc.updateKeys(doc, oldToNew, nil)
 
 		// then
 		assert.False(t, doc.Details().Has("newKey"))
@@ -146,7 +159,7 @@ func TestObjectCreator_updateKeys(t *testing.T) {
 			Key: "key",
 		})
 		// when
-		oc.updateKeys(doc, oldToNew)
+		oc.updateKeys(doc, oldToNew, nil)
 
 		// then
 		assert.Equal(t, "test", doc.Details().GetString("key"))
@@ -186,4 +199,153 @@ func (g *dumbObjectGetter) GetObjectByFullID(ctx context.Context, id domain.Full
 func (g *dumbObjectGetter) DeleteObject(id string) error {
 	delete(g.objects, id)
 	return nil
+}
+
+func TestObjectCreator_createNewObject(t *testing.T) {
+	t.Run("collection store IDs are replaced during object creation", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		spaceID := "spaceId"
+		newObjectID := "newCollectionID"
+		oldObjectID1 := "oldObjectID1"
+		oldObjectID2 := "oldObjectID2"
+		newObjectID1 := "newObjectID1"
+		newObjectID2 := "newObjectID2"
+
+		oldIDtoNew := map[string]string{
+			oldObjectID1: newObjectID1,
+			oldObjectID2: newObjectID2,
+		}
+
+		st := state.NewDoc(newObjectID, nil).(*state.State)
+		st.UpdateStoreSlice(template.CollectionStoreKey, []string{oldObjectID1, oldObjectID2})
+
+		initialObjects := st.GetStoreSlice(template.CollectionStoreKey)
+		assert.Equal(t, []string{oldObjectID1, oldObjectID2}, initialObjects)
+
+		mockService := mock_space.NewMockService(t)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+
+		var capturedState *state.State
+		testBlock := smarttest.New(newObjectID)
+		testDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String(newObjectID),
+		})
+		testState := testBlock.NewState()
+		testState.SetDetails(testDetails)
+		testBlock.Apply(testState)
+
+		mockService.EXPECT().Get(ctx, spaceID).Return(mockSpace, nil)
+		mockSpace.EXPECT().CreateTreeObjectWithPayload(ctx, mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc func(string) *smartblock.InitContext) (smartblock.SmartBlock, error) {
+				initCtx := initFunc(newObjectID)
+				testBlock.Init(initCtx)
+				defer func() {
+					capturedState = testBlock.NewState()
+				}()
+				return testBlock, testBlock.Apply(initCtx.State)
+			})
+
+		oc := ObjectCreator{
+			spaceService: mockService,
+		}
+
+		details, err := oc.createNewObject(ctx, spaceID, treestorage.TreeStorageCreatePayload{}, st, newObjectID, oldIDtoNew)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, details)
+
+		assert.NotNil(t, capturedState)
+		finalObjects := capturedState.GetStoreSlice(template.CollectionStoreKey)
+		assert.Equal(t, []string{newObjectID1, newObjectID2}, finalObjects)
+	})
+
+	t.Run("does not crash when store is nil", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		spaceID := "spaceId"
+		newObjectID := "newObjectID"
+
+		st := &state.State{}
+
+		mockService := mock_space.NewMockService(t)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+
+		testBlock := smarttest.New(newObjectID)
+		testDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String(newObjectID),
+		})
+		testState := testBlock.NewState()
+		testState.SetDetails(testDetails)
+		testBlock.Apply(testState)
+
+		mockService.EXPECT().Get(ctx, spaceID).Return(mockSpace, nil)
+		mockSpace.EXPECT().CreateTreeObjectWithPayload(ctx, mock.Anything, mock.Anything).RunAndReturn(
+			func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc func(string) *smartblock.InitContext) (smartblock.SmartBlock, error) {
+				return testBlock, testBlock.Apply(initFunc(newObjectID).State)
+			})
+
+		oc := ObjectCreator{
+			spaceService: mockService,
+		}
+
+		// when
+		details, err := oc.createNewObject(ctx, spaceID, treestorage.TreeStorageCreatePayload{}, st, newObjectID, nil)
+
+		// then
+		assert.NoError(t, err)
+		assert.NotNil(t, details)
+	})
+}
+
+func TestObjectCreator_replaceInCollection(t *testing.T) {
+	t.Run("replace collection store IDs correctly", func(t *testing.T) {
+		// given
+		oc := ObjectCreator{}
+		oldID1 := "oldObjectID1"
+		oldID2 := "oldObjectID2"
+		newID1 := "newObjectID1"
+		newID2 := "newObjectID2"
+
+		oldIDtoNew := map[string]string{
+			oldID1: newID1,
+			oldID2: newID2,
+		}
+
+		st := state.NewDoc("testDoc", nil).(*state.State)
+		st.UpdateStoreSlice(template.CollectionStoreKey, []string{oldID1, oldID2})
+
+		initialObjects := st.GetStoreSlice(template.CollectionStoreKey)
+		assert.Equal(t, []string{oldID1, oldID2}, initialObjects)
+
+		// when
+		oc.replaceInCollection(st, oldIDtoNew)
+
+		// then
+		finalObjects := st.GetStoreSlice(template.CollectionStoreKey)
+		assert.Equal(t, []string{newID1, newID2}, finalObjects)
+	})
+
+	t.Run("handle missing mappings in collection store", func(t *testing.T) {
+		// given
+		oc := ObjectCreator{}
+		oldID1 := "oldObjectID1"
+		oldID2 := "oldObjectID2"
+		unmappedID := "unmappedID"
+		newID1 := "newObjectID1"
+
+		oldIDtoNew := map[string]string{
+			oldID1: newID1,
+		}
+
+		st := state.NewDoc("testDoc", nil).(*state.State)
+		st.UpdateStoreSlice(template.CollectionStoreKey, []string{oldID1, oldID2, unmappedID})
+
+		// when
+		oc.replaceInCollection(st, oldIDtoNew)
+
+		// then
+		finalObjects := st.GetStoreSlice(template.CollectionStoreKey)
+		assert.Equal(t, []string{newID1}, finalObjects)
+	})
 }

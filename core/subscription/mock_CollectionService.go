@@ -86,8 +86,21 @@ func (_c *MockCollectionService_SubscribeForCollection_Call) RunAndReturn(run fu
 }
 
 // UnsubscribeFromCollection provides a mock function with given fields: collectionID, subscriptionID
-func (_m *MockCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) {
-	_m.Called(collectionID, subscriptionID)
+func (_m *MockCollectionService) UnsubscribeFromCollection(collectionID string, subscriptionID string) error {
+	ret := _m.Called(collectionID, subscriptionID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnsubscribeFromCollection")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string, string) error); ok {
+		r0 = rf(collectionID, subscriptionID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // MockCollectionService_UnsubscribeFromCollection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnsubscribeFromCollection'
@@ -109,12 +122,12 @@ func (_c *MockCollectionService_UnsubscribeFromCollection_Call) Run(run func(col
 	return _c
 }
 
-func (_c *MockCollectionService_UnsubscribeFromCollection_Call) Return() *MockCollectionService_UnsubscribeFromCollection_Call {
-	_c.Call.Return()
+func (_c *MockCollectionService_UnsubscribeFromCollection_Call) Return(_a0 error) *MockCollectionService_UnsubscribeFromCollection_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockCollectionService_UnsubscribeFromCollection_Call) RunAndReturn(run func(string, string)) *MockCollectionService_UnsubscribeFromCollection_Call {
+func (_c *MockCollectionService_UnsubscribeFromCollection_Call) RunAndReturn(run func(string, string) error) *MockCollectionService_UnsubscribeFromCollection_Call {
 	_c.Call.Return(run)
 	return _c
 }

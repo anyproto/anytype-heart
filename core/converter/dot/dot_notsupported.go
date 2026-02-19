@@ -8,6 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 )
@@ -43,7 +44,7 @@ func (d *dot) ImageHashes() []string {
 	return nil
 }
 
-func (d *dot) Add(space smartblock.Space, st *state.State) error {
+func (d *dot) Add(space smartblock.Space, st *state.State, fetcher relationutils.RelationFormatFetcher) error {
 	return nil
 }
 

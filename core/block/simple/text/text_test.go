@@ -331,6 +331,67 @@ func TestText_Merge(t *testing.T) {
 		assert.Equal(t, mergeTo.content.Style, model.BlockContentText_Header1)
 		assert.Equal(t, mergeTo.BackgroundColor, "grey")
 	})
+
+	t.Run("preserve style of block with text", func(t *testing.T) {
+		// given
+		mergeTo := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Two",
+				},
+			},
+		}).(*Text)
+
+		mergeFrom := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "One",
+					Style: model.BlockContentText_Header1,
+				},
+			},
+		}).(*Text)
+		mergeFrom.BackgroundColor = "grey"
+
+		// when
+		err := mergeTo.Merge(mergeFrom)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentText_Paragraph, mergeTo.content.Style)
+		assert.Empty(t, mergeTo.BackgroundColor)
+		assert.Equal(t, "TwoOne", mergeTo.content.Text)
+	})
+
+	t.Run("preserve style != 0", func(t *testing.T) {
+		// given
+		mergeTo := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "",
+					Style: model.BlockContentText_Numbered,
+				},
+			},
+		}).(*Text)
+
+		mergeFrom := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "One",
+					Style: model.BlockContentText_Header1,
+				},
+			},
+		}).(*Text)
+		mergeFrom.BackgroundColor = "grey"
+
+		// when
+		err := mergeTo.Merge(mergeFrom)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, model.BlockContentText_Numbered, mergeTo.content.Style)
+		assert.Empty(t, mergeTo.BackgroundColor)
+		assert.Equal(t, "One", mergeTo.content.Text)
+	})
 }
 
 func TestText_SetMarkForAllText(t *testing.T) {

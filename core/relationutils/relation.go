@@ -1,10 +1,17 @@
 package relationutils
 
 import (
+	"github.com/anyproto/any-sync/app"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+type RelationFormatFetcher interface {
+	GetRelationFormatByKey(spaceId string, key domain.RelationKey) (model.RelationFormat, error)
+	app.ComponentRunnable
+}
 
 func RelationFromDetails(det *domain.Details) *Relation {
 	key := det.GetString(bundle.RelationKeyRelationKey)
@@ -25,6 +32,7 @@ func RelationFromDetails(det *domain.Details) *Relation {
 			Description:      det.GetString(bundle.RelationKeyDescription),
 			Creator:          det.GetString(bundle.RelationKeyCreator),
 			Revision:         det.GetInt64(bundle.RelationKeyRevision),
+			IncludeTime:      det.GetBool(bundle.RelationKeyRelationFormatIncludeTime),
 		},
 	}
 
@@ -59,8 +67,9 @@ func (r *Relation) ToDetails() *domain.Details {
 		bundle.RelationKeyRelationReadonlyValue:     domain.Bool(r.GetReadOnly()),
 		bundle.RelationKeyType:                      domain.String(bundle.TypeKeyRelation.BundledURL()),
 		// TODO Is it ok?
-		bundle.RelationKeyUniqueKey: domain.String(domain.RelationKey(r.GetKey()).URL()),
-		bundle.RelationKeyRevision:  domain.Int64(r.GetRevision()),
+		bundle.RelationKeyUniqueKey:                 domain.String(domain.RelationKey(r.GetKey()).URL()),
+		bundle.RelationKeyRevision:                  domain.Int64(r.GetRevision()),
+		bundle.RelationKeyRelationFormatIncludeTime: domain.Bool(r.GetIncludeTime()),
 	})
 }
 

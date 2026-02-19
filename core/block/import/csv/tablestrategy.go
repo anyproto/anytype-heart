@@ -41,11 +41,10 @@ func (c *TableStrategy) CreateObjects(path string, csvTable [][]string, params *
 
 	details := common.GetCommonDetails(path, "", "", model.ObjectType_basic)
 	sn := &common.StateSnapshot{
-		Blocks:        st.Blocks(),
-		Details:       details,
-		ObjectTypes:   []string{bundle.TypeKeyPage.String()},
-		Collections:   st.Store(),
-		RelationLinks: st.GetRelationLinks(),
+		Blocks:      st.Blocks(),
+		Details:     details,
+		ObjectTypes: []string{bundle.TypeKeyPage.String()},
+		Collections: st.Store(),
 	}
 
 	snapshot := &common.Snapshot{

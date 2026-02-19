@@ -855,7 +855,8 @@ func TestProfileMigrationExtractCustomState(t *testing.T) {
 	err := jsonpb.UnmarshalString(stateOriginal, &sn)
 	require.NoError(t, err)
 	var identityBlockId = "identity"
-	originalState := state.NewDocFromSnapshot(stateOriginalRootId, sn.Snapshot).(*state.State)
+	originalState, err := state.NewDocFromSnapshot(stateOriginalRootId, sn.Snapshot)
+	require.NoError(t, err)
 	originalStateCopy := originalState.Copy()
 	extractedState, err := ExtractCustomState(originalState)
 	require.NoError(t, err)
@@ -914,7 +915,8 @@ func TestProfileMigrationExtractCustomStateEmpty(t *testing.T) {
 	sn := pb.SnapshotWithType{}
 	err := jsonpb.UnmarshalString(stateOriginalEmpty, &sn)
 	require.NoError(t, err)
-	originalStateEmpty := state.NewDocFromSnapshot(stateOriginalEmptyRootId, sn.Snapshot).(*state.State)
+	originalStateEmpty, err := state.NewDocFromSnapshot(stateOriginalEmptyRootId, sn.Snapshot)
+	require.NoError(t, err)
 	_, err = ExtractCustomState(originalStateEmpty)
 
 	require.ErrorIsf(t, err, ErrNoCustomStateFound, "should return error because profile was not changed by user")

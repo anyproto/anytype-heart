@@ -618,17 +618,17 @@ func (_c *MockService_SetDetailsList_Call) RunAndReturn(run func(session.Context
 	return _c
 }
 
-// SetIsArchived provides a mock function with given fields: objectId, isArchived
-func (_m *MockService) SetIsArchived(objectId string, isArchived bool) error {
-	ret := _m.Called(objectId, isArchived)
+// SetIsArchived provides a mock function with given fields: ctx, objectId, isArchived
+func (_m *MockService) SetIsArchived(ctx context.Context, objectId string, isArchived bool) error {
+	ret := _m.Called(ctx, objectId, isArchived)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetIsArchived")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, bool) error); ok {
-		r0 = rf(objectId, isArchived)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) error); ok {
+		r0 = rf(ctx, objectId, isArchived)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -642,15 +642,16 @@ type MockService_SetIsArchived_Call struct {
 }
 
 // SetIsArchived is a helper method to define mock.On call
+//   - ctx context.Context
 //   - objectId string
 //   - isArchived bool
-func (_e *MockService_Expecter) SetIsArchived(objectId interface{}, isArchived interface{}) *MockService_SetIsArchived_Call {
-	return &MockService_SetIsArchived_Call{Call: _e.mock.On("SetIsArchived", objectId, isArchived)}
+func (_e *MockService_Expecter) SetIsArchived(ctx interface{}, objectId interface{}, isArchived interface{}) *MockService_SetIsArchived_Call {
+	return &MockService_SetIsArchived_Call{Call: _e.mock.On("SetIsArchived", ctx, objectId, isArchived)}
 }
 
-func (_c *MockService_SetIsArchived_Call) Run(run func(objectId string, isArchived bool)) *MockService_SetIsArchived_Call {
+func (_c *MockService_SetIsArchived_Call) Run(run func(ctx context.Context, objectId string, isArchived bool)) *MockService_SetIsArchived_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(bool))
+		run(args[0].(context.Context), args[1].(string), args[2].(bool))
 	})
 	return _c
 }
@@ -660,22 +661,22 @@ func (_c *MockService_SetIsArchived_Call) Return(_a0 error) *MockService_SetIsAr
 	return _c
 }
 
-func (_c *MockService_SetIsArchived_Call) RunAndReturn(run func(string, bool) error) *MockService_SetIsArchived_Call {
+func (_c *MockService_SetIsArchived_Call) RunAndReturn(run func(context.Context, string, bool) error) *MockService_SetIsArchived_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetIsFavorite provides a mock function with given fields: objectId, isFavorite, createWidget
-func (_m *MockService) SetIsFavorite(objectId string, isFavorite bool, createWidget bool) error {
-	ret := _m.Called(objectId, isFavorite, createWidget)
+// SetIsFavorite provides a mock function with given fields: objectId, isFavorite
+func (_m *MockService) SetIsFavorite(objectId string, isFavorite bool) error {
+	ret := _m.Called(objectId, isFavorite)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetIsFavorite")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, bool, bool) error); ok {
-		r0 = rf(objectId, isFavorite, createWidget)
+	if rf, ok := ret.Get(0).(func(string, bool) error); ok {
+		r0 = rf(objectId, isFavorite)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -691,14 +692,13 @@ type MockService_SetIsFavorite_Call struct {
 // SetIsFavorite is a helper method to define mock.On call
 //   - objectId string
 //   - isFavorite bool
-//   - createWidget bool
-func (_e *MockService_Expecter) SetIsFavorite(objectId interface{}, isFavorite interface{}, createWidget interface{}) *MockService_SetIsFavorite_Call {
-	return &MockService_SetIsFavorite_Call{Call: _e.mock.On("SetIsFavorite", objectId, isFavorite, createWidget)}
+func (_e *MockService_Expecter) SetIsFavorite(objectId interface{}, isFavorite interface{}) *MockService_SetIsFavorite_Call {
+	return &MockService_SetIsFavorite_Call{Call: _e.mock.On("SetIsFavorite", objectId, isFavorite)}
 }
 
-func (_c *MockService_SetIsFavorite_Call) Run(run func(objectId string, isFavorite bool, createWidget bool)) *MockService_SetIsFavorite_Call {
+func (_c *MockService_SetIsFavorite_Call) Run(run func(objectId string, isFavorite bool)) *MockService_SetIsFavorite_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(bool), args[2].(bool))
+		run(args[0].(string), args[1].(bool))
 	})
 	return _c
 }
@@ -708,22 +708,22 @@ func (_c *MockService_SetIsFavorite_Call) Return(_a0 error) *MockService_SetIsFa
 	return _c
 }
 
-func (_c *MockService_SetIsFavorite_Call) RunAndReturn(run func(string, bool, bool) error) *MockService_SetIsFavorite_Call {
+func (_c *MockService_SetIsFavorite_Call) RunAndReturn(run func(string, bool) error) *MockService_SetIsFavorite_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// SetListIsArchived provides a mock function with given fields: objectIds, isArchived
-func (_m *MockService) SetListIsArchived(objectIds []string, isArchived bool) error {
-	ret := _m.Called(objectIds, isArchived)
+// SetListIsArchived provides a mock function with given fields: ctx, objectIds, isArchived
+func (_m *MockService) SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error {
+	ret := _m.Called(ctx, objectIds, isArchived)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetListIsArchived")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func([]string, bool) error); ok {
-		r0 = rf(objectIds, isArchived)
+	if rf, ok := ret.Get(0).(func(context.Context, []string, bool) error); ok {
+		r0 = rf(ctx, objectIds, isArchived)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -737,15 +737,16 @@ type MockService_SetListIsArchived_Call struct {
 }
 
 // SetListIsArchived is a helper method to define mock.On call
+//   - ctx context.Context
 //   - objectIds []string
 //   - isArchived bool
-func (_e *MockService_Expecter) SetListIsArchived(objectIds interface{}, isArchived interface{}) *MockService_SetListIsArchived_Call {
-	return &MockService_SetListIsArchived_Call{Call: _e.mock.On("SetListIsArchived", objectIds, isArchived)}
+func (_e *MockService_Expecter) SetListIsArchived(ctx interface{}, objectIds interface{}, isArchived interface{}) *MockService_SetListIsArchived_Call {
+	return &MockService_SetListIsArchived_Call{Call: _e.mock.On("SetListIsArchived", ctx, objectIds, isArchived)}
 }
 
-func (_c *MockService_SetListIsArchived_Call) Run(run func(objectIds []string, isArchived bool)) *MockService_SetListIsArchived_Call {
+func (_c *MockService_SetListIsArchived_Call) Run(run func(ctx context.Context, objectIds []string, isArchived bool)) *MockService_SetListIsArchived_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].([]string), args[1].(bool))
+		run(args[0].(context.Context), args[1].([]string), args[2].(bool))
 	})
 	return _c
 }
@@ -755,7 +756,7 @@ func (_c *MockService_SetListIsArchived_Call) Return(_a0 error) *MockService_Set
 	return _c
 }
 
-func (_c *MockService_SetListIsArchived_Call) RunAndReturn(run func([]string, bool) error) *MockService_SetListIsArchived_Call {
+func (_c *MockService_SetListIsArchived_Call) RunAndReturn(run func(context.Context, []string, bool) error) *MockService_SetListIsArchived_Call {
 	_c.Call.Return(run)
 	return _c
 }

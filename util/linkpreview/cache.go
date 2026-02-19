@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/golang/groupcache/lru"
+	lru "github.com/hashicorp/golang-lru/v2"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -19,12 +19,16 @@ func NewWithCache() LinkPreview {
 
 type cache struct {
 	lp    LinkPreview
-	cache *lru.Cache
+	cache *lru.Cache[string, model.LinkPreview]
 }
 
-func (c *cache) Init(_ *app.App) (err error) {
+func (c *cache) Init(a *app.App) (err error) {
 	c.lp = New()
-	c.cache = lru.New(maxCacheEntries)
+	err = c.lp.Init(a)
+	if err != nil {
+		return
+	}
+	c.cache, err = lru.New[string, model.LinkPreview](maxCacheEntries)
 	return
 }
 
@@ -32,11 +36,14 @@ func (c *cache) Name() string {
 	return CName
 }
 
-func (c *cache) Fetch(ctx context.Context, url string) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
-	if res, ok := c.cache.Get(url); ok {
-		return res.(model.LinkPreview), nil, false, nil
+func (c *cache) Fetch(
+	ctx context.Context, url string, withResponseBody bool,
+) (linkPreview model.LinkPreview, responseBody []byte, isFile bool, err error) {
+	// we do not cache responseBody, that's why withResponseBody flag is needed
+	if linkPreview, ok := c.cache.Get(url); ok && !withResponseBody {
+		return linkPreview, nil, false, nil
 	}
-	linkPreview, responseBody, _, err = c.lp.Fetch(ctx, url)
+	linkPreview, responseBody, isFile, err = c.lp.Fetch(ctx, url, withResponseBody)
 	if err != nil {
 		return
 	}

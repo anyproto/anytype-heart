@@ -7,8 +7,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -27,16 +26,16 @@ var dashboardRequiredRelations = []domain.RelationKey{}
 type Dashboard struct {
 	smartblock.SmartBlock
 	basic.AllOperations
-	collection.Collection
+	blockcollection.Collection
 
 	objectStore spaceindex.Store
 }
 
-func NewDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store, layoutConverter converter.LayoutConverter) *Dashboard {
+func (f *ObjectFactory) newDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store) *Dashboard {
 	return &Dashboard{
 		SmartBlock:    sb,
-		AllOperations: basic.NewBasic(sb, objectStore, layoutConverter, nil),
-		Collection:    collection.NewCollection(sb, objectStore),
+		AllOperations: basic.NewBasic(sb, objectStore, f.layoutConverter, nil),
+		Collection:    blockcollection.NewCollection(sb, objectStore),
 		objectStore:   objectStore,
 	}
 }

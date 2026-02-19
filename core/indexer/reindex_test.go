@@ -26,12 +26,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage/mock_anystorage"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 )
 
 func TestReindexMarketplaceSpace(t *testing.T) {
 	spaceId := addr.AnytypeMarketplaceWorkspace
-	getMockSpace := func(fx *IndexerFixture) *clientspace.VirtualSpace {
+	getMockSpace := func(fx *fixture) *clientspace.VirtualSpace {
 		virtualSpace := clientspace.NewVirtualSpace(spaceId, clientspace.VirtualSpaceDeps{
 			Indexer: fx,
 		})
@@ -50,15 +49,12 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 	t.Run("reindex missing object", func(t *testing.T) {
 		// given
-		indexerFx := NewIndexerFixture(t)
+		indexerFx := newFixture(t)
 		checksums := indexerFx.getLatestChecksums(true)
 		err := indexerFx.store.SaveChecksums(spaceId, &checksums)
 		assert.Nil(t, err)
 
 		virtualSpace := getMockSpace(indexerFx)
-
-		storage := mock_storage.NewMockClientStorage(t)
-		indexerFx.storageService = storage
 
 		// when
 		err = indexerFx.ReindexMarketplaceSpace(virtualSpace)
@@ -71,7 +67,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 	t.Run("do not reindex links in marketplace", func(t *testing.T) {
 		// given
-		fx := NewIndexerFixture(t)
+		fx := newFixture(t)
 
 		store := fx.store.SpaceIndex("space1")
 
@@ -94,9 +90,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 		err = fx.objectStore.SaveChecksums(spaceId, &checksums)
 		require.NoError(t, err)
 
-		storage := mock_storage.NewMockClientStorage(t)
-		fx.storageService = storage
-
 		// when
 		err = fx.ReindexMarketplaceSpace(getMockSpace(fx))
 		assert.NoError(t, err)
@@ -116,7 +109,7 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 	t.Run("full marketplace reindex on force flag update", func(t *testing.T) {
 		// given
-		fx := NewIndexerFixture(t)
+		fx := newFixture(t)
 		fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{{
 			bundle.RelationKeyId:      domain.String("relationThatWillBeDeleted"),
 			bundle.RelationKeyName:    domain.String("Relation-That-Will-Be-Deleted"),
@@ -128,9 +121,6 @@ func TestReindexMarketplaceSpace(t *testing.T) {
 
 		err := fx.objectStore.SaveChecksums(spaceId, &checksums)
 		require.NoError(t, err)
-
-		storage := mock_storage.NewMockClientStorage(t)
-		fx.storageService = storage
 
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 
@@ -150,7 +140,7 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 		spaceId1 = "space1"
 		spaceId2 = "space2"
 	)
-	fx := NewIndexerFixture(t)
+	fx := newFixture(t)
 
 	fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 		{
@@ -206,7 +196,7 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 
 			spc := mock_space.NewMockSpace(t)
 			spc.EXPECT().Id().Return(space)
-			spc.EXPECT().Storage().Return(storage)
+			spc.EXPECT().Storage().Return(storage).Maybe()
 			fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 
 			// when
@@ -230,7 +220,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		spaceId1 = "space1"
 		spaceId2 = "space2"
 	)
-	fx := NewIndexerFixture(t)
+	fx := newFixture(t)
 
 	fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).RunAndReturn(
 		func(_ source.Space, sbt coresb.SmartBlockType) (source.IDsLister, error) {
@@ -288,7 +278,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
 	storage := mock_anystorage.NewMockClientSpaceStorage(t)
-	storage.EXPECT().HeadStorage().Return(headStorage)
+	storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
 	headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).AnyTimes().
 		DoAndReturn(func(ctx context.Context, opts headstorage.IterOpts, entryIter headstorage.EntryIterator) error {
 			return nil
@@ -313,7 +303,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
-		space1.EXPECT().Storage().Return(storage)
+		space1.EXPECT().Storage().Return(storage).Maybe()
 
 		// when
 		err = fx.ReindexSpace(space1)
@@ -354,7 +344,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId2)
-		space1.EXPECT().Storage().Return(storage)
+		space1.EXPECT().Storage().Return(storage).Maybe()
 		// when
 		err = fx.ReindexSpace(space1)
 		assert.NoError(t, err)
@@ -380,7 +370,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 	t.Run("addSyncRelations local only", func(t *testing.T) {
 		// given
 		const spaceId1 = "spaceId1"
-		fx := NewIndexerFixture(t)
+		fx := newFixture(t)
 
 		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
@@ -405,7 +395,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeTemplate).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeProfilePage).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatDerivedObject).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatObject).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatObjectDeprecated).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeSpaceView).Return(idsLister{Ids: []string{}}, nil)
 
 		space1.EXPECT().DoLockedIfNotExists("1", mock.AnythingOfType("func() error")).Return(nil)
@@ -420,7 +410,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 	t.Run("addSyncRelations", func(t *testing.T) {
 		// given
 		const spaceId1 = "spaceId1"
-		fx := NewIndexerFixture(t)
+		fx := newFixture(t)
 
 		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
@@ -445,7 +435,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeTemplate).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeProfilePage).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatDerivedObject).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatObject).Return(idsLister{Ids: []string{}}, nil)
+		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatObjectDeprecated).Return(idsLister{Ids: []string{}}, nil)
 		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeSpaceView).Return(idsLister{Ids: []string{}}, nil)
 
 		space1.EXPECT().DoLockedIfNotExists("1", mock.AnythingOfType("func() error")).Return(nil)
@@ -458,7 +448,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 	})
 }
 
-func (fx *IndexerFixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
+func (fx *fixture) queryDeletedObjectIds(t *testing.T, spaceId string) []string {
 	ids, _, err := fx.objectStore.SpaceIndex(spaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
 			{

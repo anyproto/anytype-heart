@@ -1,6 +1,10 @@
 package pbtypes
 
-import "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+import (
+	"slices"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
 
 // TODO Add domaain model for link
 type RelationLinks []*model.RelationLink
@@ -27,10 +31,10 @@ func (rl RelationLinks) Append(l *model.RelationLink) RelationLinks {
 	return append(rl, l)
 }
 
-func (rl RelationLinks) Remove(id string) RelationLinks {
+func (rl RelationLinks) Remove(keys ...string) RelationLinks {
 	var n int
 	for _, x := range rl {
-		if x.Key != id {
+		if !slices.Contains(keys, x.Key) {
 			rl[n] = x
 			n++
 		}

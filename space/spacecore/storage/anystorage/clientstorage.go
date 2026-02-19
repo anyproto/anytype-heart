@@ -6,6 +6,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
@@ -114,19 +115,24 @@ func (r *clientStorage) modifyState(ctx context.Context, isCreated bool) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	arena := &anyenc.Arena{}
 	val := arena.NewTrue()
 	if !isCreated {
 		val = arena.NewFalse()
 	}
 	mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		if anyencutil.Equal(v.Get(createdKey), val) {
+			return v, false, nil
+		}
 		v.Set(createdKey, val)
 		return v, true, nil
 	})
 	_, err = r.clientColl.UpsertId(tx.Context(), clientDocumentKey, mod)
 	if err != nil {
-		rollErr := tx.Rollback()
-		return errors.Join(err, rollErr)
+		return err
 	}
 	return tx.Commit()
 }

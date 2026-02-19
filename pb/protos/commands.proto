@@ -11,11 +11,6 @@ import "google/protobuf/struct.proto";
 
 import "google/protobuf/descriptor.proto";
 
-// To disable authorization in specific method use no_auth option inside Request of that method
-extend google.protobuf.MessageOptions {
-    bool no_auth = 7777;
-}
-
 /*
  * Rpc is a namespace, that agregates all of the service commands between client and middleware.
  * Structure: Topic > Subtopic > Subsub... > Action > (Request, Response).
@@ -26,7 +21,6 @@ message Rpc {
     message App {
         message GetVersion {
             message Request {
-                option (no_auth) = true;
             }
             message Response {
                 Error error = 1;
@@ -50,8 +44,8 @@ message Rpc {
                 DeviceState deviceState = 1;
 
                 enum DeviceState {
-                    BACKGROUND = 0;
-                    FOREGROUND = 1;
+                    BACKGROUND = 0; // went to background on mobile, hibernated on desktop
+                    FOREGROUND = 1; // went to foreground on mobile, woke from hibernation on desktop
                 }
             }
 
@@ -326,6 +320,9 @@ message Rpc {
                 string spaceName = 3;
                 string spaceIconCid = 4;
                 string creatorName = 5;
+                string creatorIconCid = 10;
+                uint32 spaceIconOption = 8;
+                uint32 spaceUxType = 9;
                 bool   isGuestUserInvite = 6; // deprecated, use inviteType
                 model.InviteType inviteType = 7;
 
@@ -561,6 +558,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                repeated string spaceViewOrder = 2; // final order of space view ids with their lexids
 
                 message Error {
                     Code code = 1;
@@ -602,7 +600,6 @@ message Rpc {
             * Front-end-to-middleware request to create a new wallet
             */
             message Request {
-                option (no_auth) = true;
                 string rootPath = 1; // Path to a wallet directory
                 string fulltextPrimaryLanguage = 2; // optional, default fts language
             }
@@ -613,7 +610,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 string mnemonic = 2; // Mnemonic of a new account (sequence of words, divided by spaces)
-
+                string accountKey = 3;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -635,11 +632,10 @@ message Rpc {
             * Front end to middleware request-to-recover-a wallet with this mnemonic and a rootPath
             */
             message Request {
-                option (no_auth) = true;
-
                 string rootPath = 1; // Path to a wallet directory
-                string mnemonic = 2; // Mnemonic of a wallet to recover
+                string mnemonic = 2; // Mnemonic of a wallet to recover (mutually exclusive with accountKey)
                 string fulltextPrimaryLanguage = 3; // optional, default fts language
+                string accountKey = 4; // optional: serialized account master node (base64 encoded), used to auth account instead of mnemonic
             }
 
             /**
@@ -689,10 +685,11 @@ message Rpc {
 
         message CreateSession {
             message Request {
-                option (no_auth) = true;
                 oneof auth {
                     string mnemonic = 1; // cold auth
-                    string appKey = 2; // persistent app key, that can be used to restore session
+                    string appKey = 2; // persistent app key, that can be used to restore session. Used for Local JSON API
+                    string token = 3; // token from the previous session
+                    string accountKey = 4; // private key of specific account
                 }
             }
 
@@ -736,7 +733,6 @@ message Rpc {
                 }
             }
         }
-
     }
 
     message Account {
@@ -754,8 +750,6 @@ message Rpc {
             * Front end to middleware request-to-create-an account
             */
             message Request {
-                option (no_auth) = true;
-
                 string name = 1; // Account name
                 oneof avatar {//TODO: Remove if not needed, GO-1926
                     string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
@@ -768,6 +762,9 @@ message Rpc {
                 bool preferYamuxTransport = 8; // optional, default is false, recommended in case of problems with QUIC transport
                 string jsonApiListenAddr = 9; // optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one
                 string joinStreamUrl = 10; // anytype:// schema URL to join an embed stream
+                // if true - will run membership v2 polling loop, v2 methods will be available
+                // if false - will run membership v1 polling loop, v2 methods will return error
+                bool enableMembershipV2 = 11; // optional, default is false
             }
             /**
             * Middleware-to-front-end response for an account creation request, that can contain a NULL error and created account or a non-NULL error and an empty account
@@ -878,7 +875,6 @@ message Rpc {
 
         message Migrate {
             message Request {
-                option (no_auth) = true;
                 string id = 1; // Id of a selected account
                 string rootPath = 2;
                 string fulltextPrimaryLanguage = 3; // optional, default fts language
@@ -907,7 +903,6 @@ message Rpc {
 
         message MigrateCancel {
             message Request {
-                option (no_auth) = true;
                 string id = 1; // Id of a selected account
             }
 
@@ -932,7 +927,6 @@ message Rpc {
             * User can select an account from those, that came with an AccountAdd events
             */
             message Request {
-                option (no_auth) = true;
                 string id = 1; // Id of a selected account
                 string rootPath = 2; // Root path is optional, set if this is a first request
                 bool disableLocalNetworkSync = 3; // Disable local network discovery
@@ -942,6 +936,9 @@ message Rpc {
                 string jsonApiListenAddr = 7; // optional, if empty json api will not be started; 127.0.0.1:31009 should be the default one
                 string fulltextPrimaryLanguage = 8; // optional, default fts language
                 string joinStreamURL = 9; // anytype:// schema URL to join an embed stream
+                // if true - will run membership v2 polling loop, v2 methods will be available
+                // if false - will run membership v1 polling loop, v2 methods will return error
+                bool enableMembershipV2 = 10; // optional, default is false
             }
 
             /**
@@ -1106,7 +1103,6 @@ message Rpc {
 
         message RecoverFromLegacyExport {
             message Request {
-                option (no_auth) = true;
                 string path = 1;
                 string rootPath = 2;
                 int64 icon = 3;
@@ -1213,7 +1209,6 @@ message Rpc {
         message LocalLink {
             message NewChallenge {
                 message Request {
-                    option (no_auth) = true;
                     string appName = 1; // just for info, not secure to rely on
                     model.Account.Auth.LocalApiScope scope = 2;
                 }
@@ -1238,7 +1233,6 @@ message Rpc {
             }
             message SolveChallenge {
                 message Request {
-                    option (no_auth) = true;
                     string challengeId = 1;
                     string answer = 2;
                 }
@@ -1385,7 +1379,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1; // object details
                 anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
-                bool withChat = 3; // create space-level chat; temporary solution, should be removed after chats released for all users
+                bool withChat = 3; // deprecated, use spaceUxType
             }
 
             message Response {
@@ -1410,7 +1404,7 @@ message Rpc {
         message Open {
             message Request {
                 string spaceId = 1;
-                bool withChat = 2; // create space-level chat if not exists; temporary solution, should be removed after chats released for all users
+                bool withChat = 2; // deprecated, chat will be created automatically if space is shared
             }
 
             message Response {
@@ -1615,6 +1609,7 @@ message Rpc {
                         NO_SUCH_OBJECT = 101;
                         NO_SUCH_SPACE = 102;
                         LIMIT_EXCEEDED = 103;
+                        URL_ALREADY_TAKEN = 409;
                     }
                 }
             }
@@ -1705,6 +1700,30 @@ message Rpc {
     }
 
     message Object {
+        message Refresh {
+            message Request {
+                string objectId = 1;
+                string spaceId = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        OBJECT_DELETED = 4;
+                    }
+                }
+            }
+        }
+
         message Open {
             message Request {
                 string contextId = 1; // id of the context blo1k
@@ -1801,7 +1820,6 @@ message Rpc {
                 string spaceId = 4;
                 string objectTypeUniqueKey = 5;
                 bool withChat = 6;
-                bool createTypeWidgetIfMissing = 7; // experimental flag to auto-create type widget if missing
             }
 
             message Response {
@@ -2033,30 +2051,6 @@ message Rpc {
             }
         }
 
-        message ToBookmark {
-            message Request {
-                string contextId = 1;
-                string url = 2;
-            }
-
-            message Response {
-                Error error = 1;
-                string objectId = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-
         message Duplicate {
             message Request {
                 string contextId = 1;
@@ -2228,6 +2222,7 @@ message Rpc {
                 string spaceId = 5;
                 string collectionId = 6;
                 repeated string setSource = 7;
+                bool includeTypeEdges = 8;
             }
 
             message Edge {
@@ -2364,7 +2359,7 @@ message Rpc {
 
         message CrossSpaceSearchUnsubscribe {
             message Request {
-                   string subId = 1;
+                string subId = 1;
             }
 
             message Response {
@@ -2980,6 +2975,8 @@ message Rpc {
                 StateFilters linksStateFilters = 12;
                 bool includeBacklinks = 13;
                 bool includeSpace = 14;
+                // include properties frontmatter and schema in directory for markdown export
+                bool mdIncludePropertiesAndSchema = 15;
             }
             message StateFilters {
                 repeated RelationsWhiteList relationsWhiteList = 1;
@@ -3041,7 +3038,6 @@ message Rpc {
 
         message Import {
             message Request {
-                option (no_auth) = true;
                 string spaceId = 14;
                 oneof params {
                     NotionParams notionParams = 1;
@@ -3066,6 +3062,9 @@ message Rpc {
 
                 message MarkdownParams {
                     repeated string path = 1;
+                    bool createDirectoryPages = 2;
+                    bool includePropertiesAsBlock = 3;
+                    bool noCollection = 4;
                 }
 
                 message BookmarksParams {
@@ -3205,10 +3204,11 @@ message Rpc {
                 enum UseCase {
                     NONE = 0;
                     GET_STARTED = 1;
-                    EMPTY = 2;
+                    DATA_SPACE = 2;
                     GUIDE_ONLY = 3; // only the guide without other tables
                     GET_STARTED_MOBILE = 4;
-                    EMPTY_MOBILE = 5;
+                    CHAT_SPACE = 5;
+                    DATA_SPACE_MOBILE = 6;
                 }
             }
 
@@ -3236,6 +3236,7 @@ message Rpc {
                 string url = 2;
                 string title = 3;
                 bool isNewSpace = 4;
+                bool isAi = 5;
             }
 
             message Response {
@@ -3610,6 +3611,30 @@ message Rpc {
                 }
             }
         }
+
+
+        message SetOrder {
+            message Request {
+                string spaceId = 1;
+                repeated string typeIds = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated string orderIds = 2; // final list of order ids
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
     }
 
     message Relation {
@@ -3653,6 +3678,32 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message Option {
+            message SetOrder {
+                message Request {
+                    string spaceId = 1;
+                    string relationKey = 2;
+                    repeated string relationOptionOrder = 3; // result order of relation option ids
+                }
+
+                message Response {
+                    Error error = 1;
+                    repeated string relationOptionOrder = 2; // final order of relation option ids with their lexids
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
                     }
                 }
             }
@@ -3909,14 +3960,35 @@ message Rpc {
                 google.protobuf.Struct details = 7; // additional details for file object
                 anytype.model.ObjectOrigin origin = 8;
                 anytype.model.ImageKind imageKind = 9;
-                bool createTypeWidgetIfMissing = 10; // experimental flag to auto-create type widget if missing
+                bool preloadOnly = 10; // if true, only async preload the file without creating object
+                string preloadFileId = 11; // if set, reuse already preloaded file with this id. May block if async preload operation is not finished yet
             }
 
             message Response {
                 Error error = 1;
                 string objectId = 2;
                 google.protobuf.Struct details = 3;
+                string preloadFileId = 4; // returned when preloadOnly is true, can be passed back in subsequent requests
 
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        message DiscardPreload {
+            message Request {
+                string fileId = 1;
+                string spaceId = 2;
+            }
+            message Response {
+                Error error = 1;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -4040,6 +4112,66 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         // ...
+                    }
+                }
+            }
+        }
+
+        message SetAutoDownload {
+            message Request {
+              bool enabled = 1;
+              bool wifi_only = 2;
+            }
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message CacheDownload {
+            message Request {
+                string fileObjectId = 1;
+            }
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message CacheCancelDownload {
+            message Request {
+                string fileObjectId = 1;
+            }
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
                     }
                 }
             }
@@ -4200,6 +4332,7 @@ message Rpc {
                     NULL = 0;
                     UNKNOWN_ERROR = 1;
                     BAD_INPUT = 2;
+                    PRIVATE_LINK = 3;
                 }
             }
         }
@@ -7220,7 +7353,6 @@ message Rpc {
 
         message RunProfiler {
             message Request {
-                option (no_auth) = true;
                 int32 durationInSeconds = 1;
             }
 
@@ -7242,7 +7374,6 @@ message Rpc {
         }
         message AccountSelectTrace {
             message Request {
-                option (no_auth) = true;
                 string dir = 1; // empty means using OS-provided temp dir
             }
 
@@ -7265,7 +7396,6 @@ message Rpc {
 
         message ExportLog {
             message Request {
-                option (no_auth) = true;
                 string dir = 1; // empty means using OS-provided temp dir
             }
 
@@ -7372,7 +7502,6 @@ message Rpc {
     message Initial {
         message SetParameters {
             message Request {
-                option (no_auth) = true;
                 string platform = 1;
                 string version = 2;
                 string workdir = 3;
@@ -7966,6 +8095,317 @@ message Rpc {
                 }
             }
         }
+
+        message CodeGetInfo {
+            message Request {
+                string code = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                // which tier current code can unlock
+                uint32 requestedTier = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        CODE_NOT_FOUND = 5;
+                        CODE_ALREADY_USED = 6;
+                    }
+                }
+            }
+        }
+
+        message CodeRedeem {
+            message Request {
+                string code = 1;
+
+                string nsName = 2;
+
+                anytype.model.NameserviceNameType nsNameType = 3;
+            }
+
+            message Response {
+                Error error = 1;
+
+                // which tier does the current code unlock
+                uint32 requestedTier = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        CODE_NOT_FOUND = 5;
+                        CODE_ALREADY_USED = 6;
+                        BAD_ANYNAME = 7;
+                    }
+                }
+            }
+        }
+    }
+
+    message MembershipV2 {
+        message GetPortalLink {
+            message Request {
+
+            }
+
+            message Response {
+                Error error = 1;
+
+                string url = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        AUTH_BAD = 5;
+
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 6;
+                    }
+                }
+            }
+        }
+
+        message GetProducts {
+            message Request {
+                // pass true to force the cache update
+                // by default this is false
+                bool noCache = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                repeated anytype.model.MembershipV2.Product products = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+
+                        AUTH_BAD = 5;
+
+                        CACHE_ERROR = 6;
+                        CAN_NOT_CONNECT = 7;
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 8;
+                    }
+                }
+            }
+        }
+
+        message GetStatus {
+            message Request {
+                // pass true to force the cache update
+                // by default this is false
+                bool noCache = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.MembershipV2.Data data = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        MEMBERSHIP_NOT_FOUND = 6;
+                        MEMBERSHIP_WRONG_STATE = 7;
+                        CAN_NOT_CONNECT = 8;
+                        
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 9;
+                    }
+                }
+            }
+        }
+
+        /**
+        * Check if the requested name is valid and vacant for the requested tier
+        * before requesting a payment link and paying
+        */
+        message AnyNameIsValid {
+            message Request {
+                string nsName = 1;
+
+                anytype.model.NameserviceNameType nsNameType = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        TOO_SHORT = 3;
+                        TOO_LONG = 4;
+                        HAS_INVALID_CHARS = 5;
+
+                        // if nothing bought
+                        ACCOUNT_FEATURES_NO_NAME = 6;
+
+                        NOT_LOGGED_IN = 8;
+                        PAYMENT_NODE_ERROR = 9;
+                        CACHE_ERROR = 10;
+                        // for some probable future use (if needed)
+                        CAN_NOT_RESERVE = 11;
+                        CAN_NOT_CONNECT = 12;
+                        // Same as if NameService.ResolveName returned that name is already
+                        // occupied by some user
+                        NAME_IS_RESERVED = 13;
+
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 14;
+                    }
+                }
+            }
+        }
+
+        message AnyNameAllocate {
+            message Request {
+                // PP node will register that name on behalf of the user
+                string nsName = 1;
+
+                anytype.model.NameserviceNameType nsNameType = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NOT_LOGGED_IN = 3;
+                        PAYMENT_NODE_ERROR = 4;
+                        CACHE_ERROR = 5;
+
+                        MEMBERSHIP_NOT_FOUND = 6;
+                        MEMBERSHIP_WRONG_STATE = 7;
+
+                        BAD_ANYNAME = 8;
+
+                        CAN_NOT_CONNECT = 9;
+
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 10;
+                    }
+                }
+            }
+        }
+
+        message CartGet {
+            message Request {
+                
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.MembershipV2.Cart cart = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2; 
+                        CAN_NOT_CONNECT = 3;
+
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 4;           
+                    }
+                }
+            }
+        }
+
+	    message CartUpdate {
+            message Request {
+                repeated string productIds = 1;
+
+                bool isYearly = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                anytype.model.MembershipV2.Cart cart = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        CAN_NOT_CONNECT = 3;
+                        BAD_PRODUCT = 4;
+
+                        // set enableMembershipV2 in AccountCreate or AccountSelect
+                        V2_CALL_NOT_ENABLED = 5;                      
+                    }
+                }
+            }
+        }
     }
 
     message NameService {
@@ -8258,6 +8698,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
+                bool added = 2; // Added is true when reaction is added, false when removed
 
                 message Error {
                     Code code = 1;
@@ -8532,6 +8973,13 @@ message Rpc {
 
     }
     message PushNotification {
+
+        enum Mode {
+            All = 0;
+            Mentions = 1;
+            Nothing = 2;
+        }
+
         message RegisterToken {
             message Request {
                 string token = 1;
@@ -8555,6 +9003,71 @@ message Rpc {
                 }
             }
         }
+        message SetSpaceMode {
+            message Request {
+                string spaceId = 1;
+                Mode mode = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message SetForceModeIds {
+            message Request {
+                string spaceId = 1;
+                repeated string chatIds = 2;
+                Mode mode = 3;
+            }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message ResetIds {
+            message Request {
+                string spaceId = 1;
+                repeated string chatIds = 2;
+            }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
     }
 }
 

@@ -19,7 +19,3 @@ type SpaceController interface {
 	GetStatus() spaceinfo.AccountStatus
 	GetLocalStatus() spaceinfo.LocalStatus
 }
-
-type DeleteController interface {
-	Delete(ctx context.Context) error
-}

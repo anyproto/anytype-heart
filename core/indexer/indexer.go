@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -14,16 +13,17 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/filestore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 )
 
 const (
@@ -51,12 +51,13 @@ type Hasher interface {
 }
 
 type indexer struct {
-	store          objectstore.ObjectStore
-	fileStore      filestore.FileStore
-	source         source.Service
-	picker         cache.CachedObjectGetter
-	ftsearch       ftsearch.FTSearch
-	storageService storage.ClientStorage
+	dbProvider           anystoreprovider.Provider
+	store                objectstore.ObjectStore
+	source               source.Service
+	picker               cache.CachedObjectGetter
+	formatFetcher        relationutils.RelationFormatFetcher
+	ftsearch             ftsearch.FTSearch
+	ftsearchLastIndexSeq uint64
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
@@ -78,10 +79,8 @@ type indexer struct {
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	i.storageService = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
 	i.source = app.MustComponent[source.Service](a)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
-	i.fileStore = app.MustComponent[filestore.FileStore](a)
 	i.ftsearch = app.MustComponent[ftsearch.FTSearch](a)
 	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
@@ -89,6 +88,8 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.config = app.MustComponent[*config.Config](a)
 	i.spaceIndexers = map[string]*spaceIndexer{}
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
+	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
+	i.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return
 }
 
@@ -100,9 +101,9 @@ func (i *indexer) Run(context.Context) (err error) {
 	return i.StartFullTextIndex()
 }
 
-func (f *indexer) StateChange(state int) {
-	if state == int(domain.CompStateAppClosingInitiated) && f.ftQueueStop != nil {
-		f.ftQueueStop()
+func (i *indexer) StateChange(state int) {
+	if state == int(domain.CompStateAppClosingInitiated) && i.ftQueueStop != nil {
+		i.ftQueueStop()
 	}
 }
 
@@ -147,14 +148,23 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 			},
 		},
 	})
-	if err != nil {
-		return fmt.Errorf("remove acl: %w", err)
-	}
 	err = i.store.ClearFullTextQueue([]string{spaceId})
 	if err != nil {
 		return fmt.Errorf("remove fts: %w", err)
 	}
+
+	// todo: should we use the queue here as well?
+	err = i.ftsearch.BatchDeleteObjects(ids)
+	if err != nil {
+		return fmt.Errorf("remove acl: %w", err)
+	}
+
 	return store.DeleteDetails(i.runCtx, ids)
+}
+
+func (i *indexer) isFulltextEnabled(space smartblock.Space) bool {
+	return i.techSpaceIdProvider.TechSpaceId() != space.Id() &&
+		space.Id() != addr.AnytypeMarketplaceWorkspace
 }
 
 func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
@@ -165,7 +175,7 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 			i.runCtx,
 			i.store.SpaceIndex(info.Space.Id()),
 			i.store,
-			i.techSpaceIdProvider.TechSpaceId() == info.Space.Id(),
+			i.isFulltextEnabled(info.Space),
 		)
 		i.spaceIndexers[info.Space.Id()] = spaceInd
 	}

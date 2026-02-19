@@ -49,6 +49,8 @@ func TestDependenciesSubscription(t *testing.T) {
 		fx.spaceIdResolver.EXPECT().ResolveSpaceID(space1obj2).Return(testSpaceId, nil)
 		fx.spaceIdResolver.EXPECT().ResolveSpaceID(space2obj1).Return("space2", nil)
 
+		fx.space.EXPECT().Id().Return(testSpaceId)
+
 		root := bb.Root(
 			bb.ID(mainObjId),
 			bb.Children(

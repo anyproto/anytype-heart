@@ -57,15 +57,21 @@ func (d *dsObjectStore) modifyBind(ctx context.Context, objectId, spaceId string
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	arena := d.arenaPool.Get()
 	defer d.arenaPool.Put(arena)
 	mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		if v.GetString(bindKey) == spaceId {
+			return v, false, nil
+		}
 		v.Set(bindKey, arena.NewString(spaceId))
 		return v, true, nil
 	})
 	_, err = d.collection.UpsertId(tx.Context(), objectId, mod)
 	if err != nil {
-		return errors.Join(err, tx.Rollback())
+		return err
 	}
 	return tx.Commit()
 }

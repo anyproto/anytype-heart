@@ -11,11 +11,11 @@ import (
 
 	"github.com/anyproto/any-sync/app/logger"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -95,10 +95,10 @@ func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.Ob
 		return fmt.Errorf("layout conversion from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 	}
 
-	if fromLayout == model.ObjectType_chat || fromLayout == model.ObjectType_chatDerived {
+	if fromLayout == model.ObjectType_chatDeprecated || fromLayout == model.ObjectType_chatDerived {
 		return fmt.Errorf("can't convert from chat")
 	}
-	if toLayout == model.ObjectType_chat || toLayout == model.ObjectType_chatDerived {
+	if toLayout == model.ObjectType_chatDeprecated || toLayout == model.ObjectType_chatDerived {
 		return fmt.Errorf("can't convert to chat")
 	}
 
@@ -176,9 +176,8 @@ func (c *layoutConverter) fromNoteToSet(st *state.State) error {
 	return c.fromAnyToSet(st)
 }
 
-func (c *layoutConverter) fromAnyToSet(st *state.State) error {
-	source := st.Details().GetStringList(bundle.RelationKeySetOf)
-	dvBlock, err := dataview.BlockBySource(c.objectStore.SpaceIndex(st.SpaceID()), source, "")
+func (c *layoutConverter) fromAnyToSet(st *state.State) (err error) {
+	dvBlock, err := c.buildDataviewBlock(st)
 	if err != nil {
 		return err
 	}
@@ -283,7 +282,7 @@ func (c *layoutConverter) fromNoteToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
-	blockContent := template.MakeDataviewContent(true, nil, nil, "")
+	blockContent := template.MakeDataviewContent(true, nil, nil, nil)
 	if err := c.insertTypeLevelFieldsToDataview(blockContent, st); err != nil {
 		log.Error("failed to insert type level fields to dataview block", zap.Error(err))
 	}
@@ -305,10 +304,39 @@ func (c *layoutConverter) fromAnyToNote(st *state.State) error {
 	return nil
 }
 
+func (c *layoutConverter) buildDataviewBlock(st *state.State) (*model.BlockContentOfDataview, error) {
+	sources := st.Details().GetStringList(bundle.RelationKeySetOf)
+	if len(sources) == 0 {
+		return template.MakeDataviewContent(false, nil, nil, nil), nil
+	}
+
+	index := c.objectStore.SpaceIndex(st.SpaceID())
+	ot, err := index.GetObjectType(sources[0])
+	if err == nil {
+		return template.MakeDataviewContent(false, ot, nil, nil), nil
+	}
+
+	relations := make([]*model.RelationLink, 0, len(sources))
+	for _, relId := range sources {
+		rel, err := index.GetRelationById(relId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get relation %s: %w", relId, err)
+		}
+
+		relations = append(relations, (&relationutils.Relation{Relation: rel}).RelationLink())
+	}
+
+	return template.MakeDataviewContent(false, nil, relations, nil), nil
+}
+
 func (c *layoutConverter) removeRelationSetOf(st *state.State) {
 	st.RemoveDetail(bundle.RelationKeySetOf)
 
 	fr := st.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
+	if len(fr) == 0 {
+		return
+	}
+
 	fr = slice.RemoveMut(fr, bundle.RelationKeySetOf.String())
 	st.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(fr))
 }

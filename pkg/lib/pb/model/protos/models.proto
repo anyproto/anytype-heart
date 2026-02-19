@@ -51,7 +51,7 @@ enum SmartBlockType {
 
     NotificationObject = 0x217;
     DevicesObject = 0x218;
-    ChatObject = 0x219; // Container for any-store based chats
+    ChatObjectDeprecated = 0x219; // DEPRECATED Container for any-store based chats
     ChatDerivedObject = 0x220; // Any-store based object for chat
     AccountObject = 0x221; // Container for account data in tech space
 }
@@ -364,6 +364,7 @@ message Block {
                 string defaultTemplateId = 14; // Default template that is chosen for new object created within the view
                 string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
                 string endRelationKey = 16; // Group view by this relationKey
+                bool wrapContent = 17; // Wrap content in view
 
                 enum Type {
                     Table = 0;
@@ -386,10 +387,9 @@ message Block {
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
                 // bool isReadOnly = 4; // deprecated
-
-                bool dateIncludeTime = 5;
-                TimeFormat timeFormat = 6;
-                DateFormat dateFormat = 7;
+                bool dateIncludeTime = 5; // deprecated
+                TimeFormat timeFormat = 6; // deprecated
+                DateFormat dateFormat = 7; // deprecated
                 FormulaType formula = 8;
                 Block.Align align = 9;
 
@@ -499,6 +499,9 @@ message Block {
                     NextMonth = 9;
                     NumberOfDaysAgo = 10;
                     NumberOfDaysNow = 11;
+                    LastYear = 12;
+                    CurrentYear = 13;
+                    NextYear = 14;
                 }
             }
 
@@ -578,6 +581,8 @@ message Block {
                 Graphviz = 20;
                 Sketchfab = 21;
                 Image = 22;
+                Drawio = 23;
+                Spotify = 24;
             }
         }
 
@@ -662,6 +667,7 @@ message Account {
         string profileObjectId = 4; // profile block id
         string marketplaceWorkspaceId = 11; // marketplace workspace id
         string workspaceObjectId = 15; // workspace object id. used for space-level chat
+        string spaceChatId = 16; // space-level chat if exists
 
         string deviceId = 8;
         string accountSpaceId = 9; // the first created private space. It's filled only when account is created
@@ -675,6 +681,7 @@ message Account {
         string analyticsId = 105;
         string networkId = 106; // network id to which anytype is connected
         string ethereumAddress = 107; // we have Any PK AND Ethereum PK derived from one seed phrase
+        string metaDataKey = 108; // symmetric key for encrypting profile metadata
     }
 
     message Auth {
@@ -808,9 +815,13 @@ message ObjectType {
         participant = 19;
 
         pdf = 20;
-        chat = 21; // deprecated
+        chatDeprecated = 21; // deprecated
         chatDerived = 22;
         tag = 23;
+
+        notification = 24;
+        missingObject = 25;
+        devices = 26;
     }
 }
 
@@ -854,6 +865,7 @@ message Relation {
     Scope scope = 20; // deprecated, to be removed
     string creator = 21; // creator profile id
     int64 revision = 22; // revision of system relation. Used to check if we should change relation content or not
+    bool includeTime = 23; // indicates whether value of relation with date format should be processed with seconds precision
 
     message Option {
         string id = 1; // id generated automatically if omitted
@@ -861,6 +873,7 @@ message Relation {
         string color = 3; // stored
         // 4 is reserved for old relation format
         string relationKey = 5; // stored
+        string orderId = 6; // lexicographic id of relation option for ordering
     }
 
     enum Scope {
@@ -1038,9 +1051,11 @@ enum SpaceAccessType {
 }
 
 enum SpaceUxType {
-    Chat = 0; // chat-first UX
+    None = 0; // old value for chat, deprecated
     Data = 1; // objects-first UX
     Stream = 2; // stream UX (chat with limited amount of owners)
+    Chat = 3; // chat UX
+    OneToOne = 4; // onetoone UX (space with chat and immutable ACL between two participants)
 }
 
 message Metadata {
@@ -1177,6 +1192,7 @@ message Import {
         Html = 4;
         Txt = 5;
         Csv = 6;
+        Obsidian = 7; // Markdown with obsidian improvements
     }
 
     enum ErrorCode {
@@ -1212,11 +1228,17 @@ message Invite {
 message InvitePayload {
     string creatorIdentity = 1;
     string creatorName = 2;
+    string creatorIconCid = 12;
+    repeated FileEncryptionKey creatorIconEncryptionKeys = 13;
+
     bytes aclKey = 3;
     string spaceId = 4;
     string spaceName = 5;
     string spaceIconCid = 6;
+    uint32 spaceIconOption = 10;
+    uint32 spaceUxType = 11;
     repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
+
 
     InviteType inviteType = 8;
     bytes guestKey = 9;
@@ -1229,6 +1251,11 @@ message IdentityProfile {
     repeated FileEncryptionKey iconEncryptionKeys = 4;
     string description = 5;
     string globalName = 6;
+}
+
+message IdentityProfileWithKey {
+    IdentityProfile identityProfile = 1;
+    bytes requestMetadata = 2;
 }
 
 message FileInfo {
@@ -1261,7 +1288,7 @@ enum SpaceShareableStatus {
 }
 
 message ManifestInfo {
-    string schema = 1;
+    string schema = 1 [json_name="$schema"];
     string id = 2;
     string name = 3;
     string author = 4;
@@ -1384,6 +1411,137 @@ message MembershipTierData {
     string offer = 19;
 }
 
+message MembershipV2 {
+    message Amount {
+        // ISO 4217 currency code
+        string currency = 1;
+
+        // $0.01 = 1
+        // $1.00 = 100
+        // also supports negative amounts! 
+        // some invoices can have negatice amount (refund)
+        int64 amountCents = 2;
+    }
+
+    enum PaymentProvider {
+        None = 0;
+        Stripe = 1;
+        Crypto = 2;
+        BillingPortal = 3;
+        AppStore = 4;
+        GooglePlay = 5;
+    }
+
+    enum Period {
+        Unlimited = 0;
+        Monthly = 1;
+        Yearly = 2;
+        ThreeYears = 3;
+    }
+
+    message Invoice {
+        uint64 date = 1;
+        Amount total = 2;
+    }
+
+    message Features {
+        uint64 storageBytes = 1;
+        uint32 spaceReaders = 2;
+        uint32 spaceWriters = 3;
+        uint32 sharedSpaces = 4;
+        uint32 teamSeats = 5;
+        uint32 anyNameCount = 6;
+        uint32 anyNameMinLen = 7;
+        uint32 privateSpaces = 8; 
+    }
+
+    message Product {
+        string id = 1;
+        string name = 2;
+        string description = 3;
+
+        bool isTopLevel = 4;
+        bool isHidden = 5;
+
+        // isIntro flag can be used as follows:
+        // 
+        // 1. if current user's top level product has isIntro flag -> 
+        // then you'd rather show a FULL list of all products 
+        // to enable upgrading from CURRENT product
+        // 2. but if current user's top level product has no isIntro flag ->
+        // then it means that this plan was aquired and user need to control it. 
+        // then show "second screen" to control that product instead
+        bool isIntro = 6;
+        
+        // isUpgradeable can be used as follows:
+        // 
+        // if current user's top level product has isUpgradeable flag ->
+        // show incentives to buy something else
+        bool isUpgradeable = 7;
+
+        repeated Amount pricesYearly = 8;
+        repeated Amount pricesMonthly = 9;
+
+        // green, blue, red, purple, custom, etc
+        string colorStr = 10;
+        string offer = 11;
+
+        Features features = 12;
+    }
+
+    message PurchaseInfo {
+        uint64 dateStarted = 1;
+        uint64 dateEnds = 2;
+        bool isAutoRenew = 3;
+        Period period = 4;
+    }
+
+    message ProductStatus {
+        enum Status {
+            StatusUnknown = 0;
+            StatusPending = 1;
+            StatusActive = 2;
+            StatusPendingRequiresAnyNameAllocation = 3;
+        }
+        Status status = 1;
+    }
+
+    message PurchasedProduct {
+        Product product = 1;
+        PurchaseInfo purchaseInfo = 2;
+        ProductStatus productStatus = 3;
+    }
+
+    message CartProduct {
+        Product product = 1;    
+        // otherwise - monthly
+        bool isYearly = 2;
+        // set to true if you want to remove this item from the customer
+        // it's like setting -1 to some product
+        bool remove = 3;
+    }
+
+    message Cart {
+        // if you add Nx the same product - it will be Nx in the 'products' array, i.e:
+        // each product instance has a unique index
+        repeated CartProduct products = 1;
+        // total amount of the cart (including discounts, etc)
+        Amount total = 2;
+
+        // in case you are paying in the middle of the period (for existing customers)
+        // the next invoice amount will also be generated
+        Amount totalNextInvoice = 3;
+        uint64 nextInvoiceDate = 4;
+    }
+
+    message Data {
+        repeated PurchasedProduct products = 1;
+        Invoice nextInvoice = 2;
+        string teamOwnerID = 3;
+        PaymentProvider paymentProvider = 4;
+    }
+}
+
 enum DeviceNetworkType {
     WIFI = 0;
     CELLULAR = 1;
@@ -1411,6 +1569,7 @@ message ChatState {
     UnreadState messages = 1; // unread messages
     UnreadState mentions = 2; // unread mentions
     string lastStateId = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
+    int64 order = 4; // Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order
 }
 
 message ChatMessage {
@@ -1429,6 +1588,8 @@ message ChatMessage {
     Reactions reactions = 8;  // Reactions to the message
     bool read = 10; // Message read status
     bool mentionRead = 12;
+    bool hasMention = 14;
+    bool synced = 13;
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
@@ -1453,4 +1614,18 @@ message ChatMessage {
             repeated string ids = 1; // List of user IDs
         }
     }
+}
+
+enum SyncStatus {
+    SyncStatusSynced  = 0;
+    SyncStatusSyncing = 1;
+    SyncStatusError   = 2;
+    SyncStatusQueued  = 3;
+}
+
+enum SyncError {
+    SyncErrorNull                = 0;
+    SyncErrorIncompatibleVersion = 2;
+    SyncErrorNetworkError        = 3;
+    SyncErrorOversized           = 4;
 }

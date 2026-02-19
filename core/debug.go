@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 
+	"github.com/samber/lo"
+
 	"github.com/anyproto/anytype-heart/core/application"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/debug"
@@ -204,7 +206,9 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 	}
 	var objectIDs []string
 	err := mw.doBlockService(func(s *block.Service) error {
-		objectIDs = s.GetOpenedObjects()
+		objectIDs = lo.Map(s.GetOpenedObjects(), func(item lo.Entry[string, string], index int) string {
+			return item.Key
+		})
 		return nil
 	})
 	return response(objectIDs, err)

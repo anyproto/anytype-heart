@@ -7,7 +7,7 @@
 //   - every expected <segment>.<opstamp>.del file exists
 //   - there are no extra segment prefixes on disk
 //   - there are no extra .del files on disk
-//   - the special lock files INDEX_WRITER_LOCK and META_LOCK are noted
+//   - the special lock files .tantivy-writer.lock and .tantivy-meta.lock are noted
 //
 // Nothing is modified on disk; you simply get a ConsistencyReport back.
 package tantivycheck
@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+
+	"github.com/gofrs/flock"
 )
 
 // -----------------------------------------------------------------------------
@@ -37,6 +39,7 @@ var (
 
 // ConsistencyReport gathers all findings of the dry-run.
 type ConsistencyReport struct {
+	dir string // Directory that was checked
 	// Segments present in meta.json but with no files on disk.
 	MissingSegments []string
 	// <segment>.<opstamp>.del files that meta.json expects but are absent.
@@ -47,8 +50,8 @@ type ConsistencyReport struct {
 	ExtraDelFiles []string
 
 	// Lock-file information
-	WriterLockPresent bool // true if INDEX_WRITER_LOCK exists
-	MetaLockPresent   bool // true if META_LOCK exists
+	WriterLockPresent bool // true if .tantivy-writer.lock exists and is locked
+	MetaLockPresent   bool // true if .tantivy-meta.lock exists and is locked
 
 	// Informational counters
 	TotalSegmentsInMeta         int
@@ -84,7 +87,9 @@ func Check(dir string) (ConsistencyReport, error) {
 	segmentPrefixesDisk := map[string]struct{}{}
 	delFilesDisk := map[[2]string]struct{}{} // key = [segPrefix, opstamp]
 
-	var writerLockPresent, metaLockPresent bool
+	// Check lock files using TryLock instead of just file existence
+	writerLockPresent := isLocked(filepath.Join(dir, ".tantivy-writer.lock"))
+	metaLockPresent := isLocked(filepath.Join(dir, ".tantivy-meta.lock"))
 
 	err = filepath.WalkDir(dir, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -95,13 +100,6 @@ func Check(dir string) (ConsistencyReport, error) {
 		}
 
 		name := d.Name()
-
-		switch name {
-		case "INDEX_WRITER_LOCK":
-			writerLockPresent = true
-		case "META_LOCK":
-			metaLockPresent = true
-		}
 
 		if m := segPrefixRe.FindStringSubmatch(name); m != nil {
 			segmentPrefixesDisk[m[1]] = struct{}{}
@@ -163,6 +161,7 @@ func Check(dir string) (ConsistencyReport, error) {
 	// 4) Return aggregated report
 	// ---------------------------------------------------------------------
 	return ConsistencyReport{
+		dir:                         dir,
 		MissingSegments:             missingSegments,
 		MissingDelFiles:             missingDelFiles,
 		ExtraSegments:               extraSegments,
@@ -181,7 +180,7 @@ func Check(dir string) (ConsistencyReport, error) {
 //   - no extra segments are present
 //   - no extra .del files are present
 //
-// The presence of INDEX_WRITER_LOCK or META_LOCK is *not* considered
+// The presence of .tantivy-writer.lock or .tantivy-meta.lock is *not* considered
 // an inconsistency—these files are expected during normal operation and
 // merely reported for information.
 func (r *ConsistencyReport) IsOk() bool {
@@ -191,6 +190,37 @@ func (r *ConsistencyReport) IsOk() bool {
 		len(r.ExtraDelFiles) == 0 &&
 		!r.WriterLockPresent &&
 		!r.MetaLockPresent
+}
+
+var segmentFileExts = []string{".fast", ".fieldnorm", ".pos", ".store", ".term", ".idx"}
+
+// GCExtraFiles removes all extra segment files and .del files that are not
+// referenced in meta.json.
+// MUST be called before any write operations to the index directory.
+func (r *ConsistencyReport) GCExtraFiles() error {
+	if r.WriterLockPresent || r.MetaLockPresent {
+		return fmt.Errorf("cannot run GC when .tantivy-writer.lock or .tantivy-meta.lock is present")
+	}
+
+	for _, seg := range r.ExtraSegments {
+		for _, ext := range segmentFileExts {
+			segFile := filepath.Join(r.dir, seg+ext)
+			if err := os.Remove(segFile); err != nil {
+				if os.IsNotExist(err) {
+					continue // file already gone
+				}
+				return fmt.Errorf("removing segment file %s: %w", segFile, err)
+			}
+			fmt.Printf("ft: Removed extra segment file: %s\n", segFile)
+		}
+	}
+	for _, delFile := range r.ExtraDelFiles {
+		if err := os.Remove(filepath.Join(r.dir, delFile)); err != nil {
+			return fmt.Errorf("removing extra .del file %s: %w", delFile, err)
+		}
+		fmt.Printf("ft: Removed extra .del file: %s\n", delFile)
+	}
+	return nil
 }
 
 // -----------------------------------------------------------------------------
@@ -227,4 +257,27 @@ func stripDashes(s string) string {
 		}
 	}
 	return string(out)
+}
+
+// isLocked checks if a lock file exists and is actually locked
+func isLocked(lockPath string) bool {
+	if _, err := os.Stat(lockPath); err != nil {
+		// File doesn't exist
+		return false
+	}
+	
+	// File exists, check if it's actually locked
+	fl := flock.New(lockPath)
+	locked, err := fl.TryLock()
+	if err != nil {
+		// Error trying to lock, assume it's locked
+		return true
+	}
+	if locked {
+		// We got the lock, so it wasn't locked
+		fl.Unlock()
+		return false
+	}
+	// Couldn't get lock, so it's locked
+	return true
 }

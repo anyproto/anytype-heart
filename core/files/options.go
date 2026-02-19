@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/gabriel-vasile/mimetype"
 )
 
@@ -17,8 +18,15 @@ type AddOptions struct {
 	LastModifiedDate     int64
 	CustomEncryptionKeys map[string]string
 
+	// FileHandler is an optional custom file handler with batch support
+	// If nil, the default file handler will be used
+	FileHandler *fileservice.FileHandler
+
 	// checksum of original file, calculated from Reader
 	checksum string
+
+	// AddResult is passed when using a preloaded file
+	AddResult *AddResult
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
@@ -42,6 +50,18 @@ func WithLastModifiedDate(timestamp int64) AddOption {
 func WithCustomEncryptionKeys(keys map[string]string) AddOption {
 	return func(args *AddOptions) {
 		args.CustomEncryptionKeys = keys
+	}
+}
+
+func WithAddResult(result *AddResult) AddOption {
+	return func(args *AddOptions) {
+		args.AddResult = result
+	}
+}
+
+func WithFileHandler(handler *fileservice.FileHandler) AddOption {
+	return func(args *AddOptions) {
+		args.FileHandler = handler
 	}
 }
 

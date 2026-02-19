@@ -3,6 +3,7 @@ package basic
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -23,72 +24,66 @@ import (
 var log = logging.Logger("anytype-mw-editor-basic")
 
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	_, err = bs.setDetails(ctx, details, showEvent)
-	return err
-}
-
-func (bs *basic) setDetails(ctx session.Context, details []domain.Detail, showEvent bool) (updatedKeys []domain.RelationKey, err error) {
-	s := bs.NewStateCtx(ctx)
-
-	var updates []domain.Detail
-	// Collect updates handling special cases. These cases could update details themselves, so we
-	// have to apply changes later
-	updates, updatedKeys = bs.collectDetailUpdates(details, s)
-	newDetails := applyDetailUpdates(s.CombinedDetails(), updates)
-	s.SetDetails(newDetails)
-
-	flags := internalflag.NewFromState(s.ParentState())
-	flags.Remove(model.InternalFlag_editorDeleteEmpty)
-	flags.AddToState(s)
-
-	if err = bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags); err != nil {
-		return nil, err
+	if err = bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
+		return applyDetailUpdates(current, details), nil
+	}); err != nil {
+		return err
 	}
 
 	bs.discardOwnSetDetailsEvent(ctx, showEvent)
-	return updatedKeys, nil
+	return nil
 }
 
-func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error) {
-	_, _, err = bs.updateDetails(ctx, update)
-	return err
-}
-
-func (bs *basic) updateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (oldDetails *domain.Details, newDetails *domain.Details, err error) {
+func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) error {
 	if update == nil {
-		return nil, nil, fmt.Errorf("update function is nil")
+		return fmt.Errorf("update function is nil")
 	}
 	s := bs.NewStateCtx(ctx)
 
-	oldDetails = s.CombinedDetails()
+	oldDetails := s.CombinedDetails()
 	oldDetailsCopy := oldDetails.Copy()
 
-	newDetails, err = update(oldDetailsCopy)
+	newDetails, err := update(oldDetailsCopy)
 	if err != nil {
-		return
+		return err
 	}
+
+	diff, removedKeys := domain.StructDiff(oldDetails, newDetails)
+	if err = bs.validateUpdates(s, diff, removedKeys); err != nil {
+		return err
+	}
+
 	s.SetDetails(newDetails)
-
 	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
-		return nil, nil, err
+		return err
 	}
 
-	return oldDetails, newDetails, bs.Apply(s)
+	flags := internalflag.NewFromState(s.ParentState())
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) {
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
+		flags.AddToState(s)
+	}
+
+	return bs.Apply(s, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
 }
 
-func (bs *basic) collectDetailUpdates(details []domain.Detail, s *state.State) ([]domain.Detail, []domain.RelationKey) {
-	updates := make([]domain.Detail, 0, len(details))
-	keys := make([]domain.RelationKey, 0, len(details))
-	for _, detail := range details {
-		update, err := bs.createDetailUpdate(s, detail)
-		if err == nil {
-			updates = append(updates, update)
-			keys = append(keys, update.Key)
-		} else {
-			log.Errorf("can't set detail %s: %s", detail.Key, err)
+func (bs *basic) validateUpdates(st *state.State, diff *domain.Details, removedKeys []domain.RelationKey) error {
+	for key, value := range diff.Iterate() {
+		if value.Ok() {
+			if err := bs.validateSpecialCases(st, domain.Detail{Key: key, Value: value}); err != nil {
+				return fmt.Errorf("special case: %w", err)
+			}
+			if err := bs.validateDetailFormat(key, value); err != nil {
+				return fmt.Errorf("failed to validate relation: %w", err)
+			}
 		}
 	}
-	return updates, keys
+
+	if slices.ContainsFunc(removedKeys, bundle.IsInternalRelation) {
+		return fmt.Errorf("deletion of internal relation is prohibited: %v", removedKeys)
+	}
+
+	return nil
 }
 
 func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *domain.Details {
@@ -106,26 +101,7 @@ func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *do
 	return newDetails
 }
 
-// TODO make no sense?
-func (bs *basic) createDetailUpdate(st *state.State, detail domain.Detail) (domain.Detail, error) {
-	if detail.Value.Ok() {
-		if err := bs.setDetailSpecialCases(st, detail); err != nil {
-			return domain.Detail{}, fmt.Errorf("special case: %w", err)
-		}
-		if err := bs.addRelationLink(st, detail.Key); err != nil {
-			return domain.Detail{}, err
-		}
-		if err := bs.validateDetailFormat(bs.SpaceID(), detail.Key, detail.Value); err != nil {
-			return domain.Detail{}, fmt.Errorf("failed to validate relation: %w", err)
-		}
-	}
-	return domain.Detail{
-		Key:   detail.Key,
-		Value: detail.Value,
-	}, nil
-}
-
-func (bs *basic) validateDetailFormat(spaceID string, key domain.RelationKey, v domain.Value) error {
+func (bs *basic) validateDetailFormat(key domain.RelationKey, v domain.Value) error {
 	if !v.Ok() {
 		return fmt.Errorf("invalid value")
 	}
@@ -255,7 +231,7 @@ func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error 
 	return nil
 }
 
-func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) error {
+func (bs *basic) validateSpecialCases(st *state.State, detail domain.Detail) error {
 	if detail.Key == bundle.RelationKeyType {
 		return fmt.Errorf("can't change object type directly: %w", domain.ErrValidationFailed)
 	}
@@ -269,6 +245,7 @@ func (bs *basic) setDetailSpecialCases(st *state.State, detail domain.Detail) er
 	return nil
 }
 
+// TODO: GO-4284 remove
 func (bs *basic) addRelationLink(st *state.State, relationKey domain.RelationKey) error {
 	relLink, err := bs.objectStore.GetRelationLink(relationKey.String())
 	if err != nil || relLink == nil {
@@ -350,13 +327,28 @@ func (bs *basic) SetObjectTypesInState(s *state.State, objectTypeKeys []domain.T
 
 	s.SetObjectTypeKeys(objectTypeKeys)
 	removeInternalFlags(s)
-	s.Details().Delete(bundle.RelationKeyLayout)
+	removeLayoutSettings(s)
 
 	toLayout, err := bs.getLayoutForType(objectTypeKeys[0])
 	if err != nil {
 		return fmt.Errorf("get layout for type %s: %w", objectTypeKeys[0], err)
 	}
 	return bs.SetLayoutInState(s, toLayout, ignoreRestrictions)
+}
+
+func removeLayoutSettings(s *state.State) {
+	featuredRelations := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
+	newFRValue := domain.Null()
+	if slices.Contains(featuredRelations, bundle.RelationKeyDescription.String()) {
+		newFRValue = domain.StringList([]string{bundle.RelationKeyDescription.String()})
+	}
+	updates := []domain.Detail{
+		{Key: bundle.RelationKeyLayout, Value: domain.Null()},
+		{Key: bundle.RelationKeyLayoutAlign, Value: domain.Null()},
+		{Key: bundle.RelationKeyFeaturedRelations, Value: newFRValue},
+	}
+	newDetails := applyDetailUpdates(s.Details(), updates)
+	s.SetDetails(newDetails)
 }
 
 func (bs *basic) getLayoutForType(objectTypeKey domain.TypeKey) (model.ObjectTypeLayout, error) {

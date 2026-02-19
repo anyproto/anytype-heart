@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -25,6 +26,7 @@ type (
 	KeyToIDConverter interface {
 		GetRelationIdByKey(ctx context.Context, key domain.RelationKey) (id string, err error)
 		GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error)
+		Id() string
 	}
 
 	linkSource interface {
@@ -52,7 +54,7 @@ type Flags struct {
 	NoBackLinks bool
 }
 
-func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags) (ids []string) {
+func DependentObjectIDs(s *state.State, converter KeyToIDConverter, fetcher relationutils.RelationFormatFetcher, flags Flags) (ids []string) {
 	// TODO Blocks is always true
 	if flags.Blocks {
 		ids = collectIdsFromBlocks(s, flags)
@@ -67,11 +69,11 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 		det = s.CombinedDetails()
 	}
 
-	for _, rel := range s.GetRelationLinks() {
+	for _, key := range s.AllRelationKeys() {
 		if flags.Relations {
-			id, err := converter.GetRelationIdByKey(context.Background(), domain.RelationKey(rel.Key))
+			id, err := converter.GetRelationIdByKey(context.Background(), key)
 			if err != nil {
-				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", rel.Key, err)
+				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", key, err)
 				continue
 			}
 			ids = append(ids, id)
@@ -81,7 +83,13 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 			continue
 		}
 
-		ids = append(ids, collectIdsFromDetail(rel, det, flags)...)
+		format, err := fetcher.GetRelationFormatByKey(converter.Id(), key)
+		if err != nil {
+			// let's suppose relation has an object format, so we don't miss dependencies
+			format = model.RelationFormat_object
+		}
+
+		ids = append(ids, collectIdsFromDetail(&model.RelationLink{Key: key.String(), Format: format}, det, flags)...)
 	}
 
 	if flags.Collection {
@@ -96,8 +104,15 @@ func DependentObjectIDs(s *state.State, converter KeyToIDConverter, flags Flags)
 	return
 }
 
-func DependentObjectIDsPerSpace(rootSpaceId string, s *state.State, converter KeyToIDConverter, resolver spaceIdResolver, flags Flags) map[string][]string {
-	ids := DependentObjectIDs(s, converter, flags)
+func DependentObjectIDsPerSpace(
+	rootSpaceId string,
+	s *state.State,
+	converter KeyToIDConverter,
+	resolver spaceIdResolver,
+	formatFetcher relationutils.RelationFormatFetcher,
+	flags Flags,
+) map[string][]string {
+	ids := DependentObjectIDs(s, converter, formatFetcher, flags)
 	perSpace := map[string][]string{}
 	for _, id := range ids {
 		if dateObject, parseErr := dateutil.BuildDateObjectFromId(id); parseErr == nil {

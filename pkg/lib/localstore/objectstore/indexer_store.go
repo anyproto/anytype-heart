@@ -2,21 +2,68 @@ package objectstore
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 var idKey = bundle.RelationKeyId.String()
 var spaceIdKey = bundle.RelationKeySpaceId.String()
+
+const ftSequenceKey = "seq" // used to store the opstamp of the fulltext commit for specific object
+
+var emptyBuffer = make([]byte, 8)
+
+// FtQueueReconcileWithSeq used to check and reindex objects on ft start in case we have consistency issues, otherwise gc the queue
+// must be called before any other fulltext operations
+func (s *dsObjectStore) FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq uint64) error {
+	txn, err := s.fulltextQueue.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("start write tx: %w", err)
+	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	emptyVal := arena.NewBinary(emptyBuffer)
+	res, err := s.fulltextQueue.Find(ftQueueFilterSeq(ftIndexSeq, query.CompOpGt, arena)).Update(txn.Context(), query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		val.Set(ftSequenceKey, emptyVal)
+		return val, true, nil
+	}))
+
+	if err != nil {
+		return fmt.Errorf("create iterator: %w", err)
+	}
+	if res.Matched > 0 {
+		log.With("seq", ftIndexSeq).Errorf("ft incosistency: found %d objects to reindex", res.Matched)
+	} else {
+		// no inconsistency found, we can safely delete all objects with state > 0
+		res, err := s.fulltextQueue.Find(ftQueueFilterSeq(0, query.CompOpGt, arena)).Delete(txn.Context())
+		if err != nil {
+			return fmt.Errorf("gc fulltext queue: %w", err)
+		} else if res.Matched > 0 {
+			log.With("seq", ftIndexSeq).Warnf("ft queue gc: found %d objects to remove from the queue", res.Matched)
+		}
+	}
+	return txn.Commit()
+
+}
 
 func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
 	txn, err := s.fulltextQueue.WriteTx(ctx)
@@ -25,6 +72,7 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	}
 	arena := s.arenaPool.Get()
 	defer func() {
+		_ = txn.Rollback()
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
@@ -33,7 +81,14 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 	for _, id := range ids {
 		obj.Set(idKey, arena.NewString(id.ObjectID))
 		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
-		err = s.fulltextQueue.UpsertOne(txn.Context(), obj)
+		obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
+		_, err = s.fulltextQueue.UpsertId(txn.Context(), id.ObjectID, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (*anyenc.Value, bool, error) {
+			if anyencutil.Equal(v, obj) {
+				return v, false, nil
+			}
+
+			return obj, true, nil
+		}))
 		if err != nil {
 			return errors.Join(txn.Rollback(), fmt.Errorf("upsert: %w", err))
 		}
@@ -42,11 +97,11 @@ func (s *dsObjectStore) AddToIndexQueue(ctx context.Context, ids ...domain.FullI
 }
 
 func (s *dsObjectStore) BatchProcessFullTextQueue(
-	ctx context.Context,
+	_ context.Context,
 	spaceIds func() []string,
 	limit uint,
 	processIds func(objectIds []domain.FullID,
-	) (succeedIds []string, err error)) error {
+) (succeedIds []domain.FullID, ftIndexSeq uint64, err error)) error {
 	for {
 		ids, err := s.ListIdsFromFullTextQueue(spaceIds(), limit)
 		if err != nil {
@@ -55,7 +110,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 		if len(ids) == 0 {
 			return nil
 		}
-		succeedIds, err := processIds(ids)
+		succeedIds, ftIndexSeq, err := processIds(ids)
 		if err != nil {
 			// if all failed it will return an error and we will exit here
 			return fmt.Errorf("process ids: %w", err)
@@ -64,7 +119,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(
 			// special case to prevent infinite loop
 			return fmt.Errorf("all ids failed to process")
 		}
-		err = s.RemoveIdsFromFullTextQueue(succeedIds)
+		err = s.FtQueueMarkAsIndexed(succeedIds, ftIndexSeq)
 		if err != nil {
 			return fmt.Errorf("remove ids from fulltext queue: %w", err)
 		}
@@ -76,9 +131,15 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 		return nil, fmt.Errorf("at least one space must be provided")
 	}
 
-	filterIn := inSpaceIds(spaceIds)
-
-	iter, err := s.fulltextQueue.Find(filterIn).Limit(limit).Iter(s.componentCtx)
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+	filters := query.And{}
+	filters = append(filters, ftQueueFilterSpaceIds(spaceIds))
+	filters = append(filters, ftQueueFilterSeq(0, query.CompOpLte, arena))
+	iter, err := s.fulltextQueue.Find(filters).Limit(limit).Iter(s.componentCtx)
 	if err != nil {
 		return nil, fmt.Errorf("create iterator: %w", err)
 	}
@@ -97,26 +158,65 @@ func (s *dsObjectStore) ListIdsFromFullTextQueue(spaceIds []string, limit uint) 
 	return ids, nil
 }
 
-func inSpaceIds(spaceIds []string) query.Filter {
-	sourceList := make([]domain.Value, 0, len(spaceIds))
-	for _, id := range spaceIds {
-		sourceList = append(sourceList, domain.String(id))
+func ftQueueFilterSpaceIds(spaceIds []string) query.Filter {
+	if len(spaceIds) == 0 {
+		return query.And{} // no filter, return all
 	}
-	filterIn := database.FilterIn{
-		Key:   bundle.RelationKeySpaceId,
-		Value: sourceList,
+	arena := &anyenc.Arena{}
+	inVals := make([]*anyenc.Value, 0, len(spaceIds))
+	for _, v := range spaceIds {
+		inVals = append(inVals, arena.NewString(v))
 	}
-	return filterIn.AnystoreFilter()
+	filter := query.NewInValue(inVals...)
+	return query.Key{
+		Path:   []string{spaceIdKey},
+		Filter: filter,
+	}
 }
 
-func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
+// ftQueueFilterSeq creates a filter for the fulltext queue based on sequence number
+func ftQueueFilterSeq(seq uint64, comp query.CompOp, arena *anyenc.Arena) query.Filter {
+	return query.Key{
+		Path:   []string{ftSequenceKey},
+		Filter: query.NewCompValue(comp, ftSeq(seq, arena)),
+	}
+}
+
+// ftSeq return anyenc binary value which is lexigraphically comparable
+func ftSeq(seq uint64, arena *anyenc.Arena) *anyenc.Value {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, seq)
+	return arena.NewBinary(buf)
+}
+
+func (s *dsObjectStore) FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error {
 	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	arena := s.arenaPool.Get()
+	defer func() {
+		_ = txn.Rollback()
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	obj := arena.NewObject()
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, ftIndexSeq)
+	obj.Set(ftSequenceKey, arena.NewBinary(buf))
 	for _, id := range ids {
-		err := s.fulltextQueue.DeleteId(txn.Context(), id)
+		obj.Set(idKey, arena.NewString(id.ObjectID))
+		obj.Set(spaceIdKey, arena.NewString(id.SpaceID))
+		// stateKey is set outside the loop
+		err := s.fulltextQueue.UpdateOne(txn.Context(), obj)
 		if errors.Is(err, anystore.ErrDocNotFound) {
+			// should not happen
+			log.Warnf("tried to remove %s from fulltext queue, but it was not found", id)
 			continue
 		}
 		if err != nil {
@@ -124,14 +224,16 @@ func (s *dsObjectStore) RemoveIdsFromFullTextQueue(ids []string) error {
 			log.Errorf("failed to remove %s from index, will redo the fulltext index: %v", id, err)
 		}
 	}
-	return txn.Commit()
+
+	err = txn.Commit()
+	if err != nil {
+		return fmt.Errorf("commit write tx: %w", err)
+	}
+
+	return nil
 }
 
 func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
-	var filterIn query.Filter
-	if len(spaceIds) > 0 {
-		filterIn = inSpaceIds(spaceIds)
-	}
 	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
@@ -142,7 +244,7 @@ func (s *dsObjectStore) ClearFullTextQueue(spaceIds []string) error {
 			txn.Rollback()
 		}
 	}()
-	iter, err := s.fulltextQueue.Find(filterIn).Iter(txn.Context())
+	iter, err := s.fulltextQueue.Find(ftQueueFilterSpaceIds(spaceIds)).Iter(txn.Context())
 	if err != nil {
 		return fmt.Errorf("create iterator: %w", err)
 	}
@@ -181,10 +283,16 @@ func (s *dsObjectStore) SaveChecksums(spaceId string, checksums *model.ObjectSto
 		s.arenaPool.Put(arena)
 	}()
 
-	it, err := keyValueItem(arena, spaceId, checksums)
-	if err != nil {
-		return err
-	}
-	err = s.indexerChecksums.UpsertOne(s.componentCtx, it)
+	_, err = s.indexerChecksums.UpsertId(s.componentCtx, spaceId, query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		newVal, err := keyValueItem(a, spaceId, checksums)
+		if err != nil {
+			return nil, false, err
+		}
+
+		if anyencutil.Equal(newVal, v) {
+			return v, false, nil
+		}
+		return newVal, true, nil
+	}))
 	return err
 }

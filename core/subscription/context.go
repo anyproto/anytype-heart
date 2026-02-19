@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/samber/lo"
@@ -209,7 +210,7 @@ func (ctx *opCtx) addDetailsEvents(prev, curr *entry, info struct {
 			msgs = ctx.appendObjectDetailsSetMessage(msgs, curr, subIdsToSendSetDetails, info.keys)
 		}
 	} else {
-		msgs = ctx.appendObjectDetailsSetMessage(msgs, curr, info.subIds, info.keys)
+		msgs = ctx.appendObjectDetailsSetMessage(msgs, curr, slices.Clone(info.subIds), info.keys)
 	}
 	return msgs
 }

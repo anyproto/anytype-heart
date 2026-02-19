@@ -457,6 +457,17 @@ func newFixture(t *testing.T, spaceId string, initialStatus pb.EventP2PStatusSta
 		pool:         pool,
 		hookRegister: hookRegister,
 	}
+
+	for range 10 {
+		f.p2pStatus.Lock()
+		if len(f.p2pStatus.spaceIds) != 0 {
+			f.p2pStatus.Unlock()
+			return f
+		}
+		f.p2pStatus.Unlock()
+		time.Sleep(time.Millisecond * 10)
+	}
+	t.Fatalf("failed to register space")
 	return f
 }
 

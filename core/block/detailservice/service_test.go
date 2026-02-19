@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -38,6 +39,7 @@ type fixture struct {
 	spaceService *mock_space.MockService
 	store        *objectstore.StoreFixture
 	space        *mock_clientspace.MockSpace
+	fileSerivce  *mock_fileobject.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -49,12 +51,14 @@ func newFixture(t *testing.T) *fixture {
 	spc := mock_clientspace.NewMockSpace(t)
 	resolver.EXPECT().ResolveSpaceID(mock.Anything).Return(spaceId, nil).Maybe()
 	spaceService.EXPECT().Get(mock.Anything, mock.Anything).Return(spc, nil).Maybe()
+	fileService := mock_fileobject.NewMockService(t)
 
 	s := &service{
 		objectGetter: getter,
 		resolver:     resolver,
 		spaceService: spaceService,
 		store:        store,
+		fileService:  fileService,
 	}
 
 	return &fixture{
@@ -64,6 +68,7 @@ func newFixture(t *testing.T) *fixture {
 		spaceService,
 		store,
 		spc,
+		fileService,
 	}
 }
 
@@ -330,109 +335,14 @@ func TestService_SetListIsFavorite(t *testing.T) {
 			{bundle.RelationKeyId: domain.String("obj2"), bundle.RelationKeySpaceId: domain.String(spaceId)},
 			{bundle.RelationKeyId: domain.String("obj3"), bundle.RelationKeySpaceId: domain.String(spaceId)},
 		}
-		homeId   = "home"
-		widgetId = "widget"
+		homeId = "home"
 	)
-
-	t.Run("no error on favoriting", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		home := smarttest.New(homeId)
-		home.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
-		widget := smarttest.New(widgetId)
-		widget.AddBlock(simple.New(&model.Block{Id: widgetId, ChildrenIds: []string{}}))
-		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().Id().Return(spaceId)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
-		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			switch objectId {
-			case homeId:
-				return editor.NewDashboard(home, fx.store.SpaceIndex(spaceId), nil), nil
-			case widgetId:
-				return editor.NewWidgetObject(widget, fx.store.SpaceIndex(spaceId), nil), nil
-			}
-			return nil, fmt.Errorf("failed to get object")
-		})
-
-		// when
-		err := fx.SetListIsFavorite([]string{"obj1", "obj2", "obj3"}, true)
-
-		// then
-		assert.NoError(t, err)
-		assert.Len(t, home.Blocks(), 4)
-		assert.Len(t, widget.Blocks(), 3)
-	})
-
-	t.Run("no error on unfavoriting", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		home := smarttest.New(homeId)
-		home.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{"obj1", "obj2", "obj3"}}))
-		home.AddBlock(simple.New(&model.Block{Id: "obj1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}))
-		home.AddBlock(simple.New(&model.Block{Id: "obj2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj2"}}}))
-		home.AddBlock(simple.New(&model.Block{Id: "obj3", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj3"}}}))
-		widget := smarttest.New(widgetId)
-		widget.AddBlock(simple.New(&model.Block{Id: widgetId, ChildrenIds: []string{}}))
-		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
-		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			switch objectId {
-			case homeId:
-				return editor.NewDashboard(home, fx.store.SpaceIndex(spaceId), nil), nil
-			case widgetId:
-				return editor.NewWidgetObject(widget, fx.store.SpaceIndex(spaceId), nil), nil
-			}
-			return nil, fmt.Errorf("failed to get object")
-		})
-
-		// when
-		err := fx.SetListIsFavorite([]string{"obj3", "obj1"}, false)
-
-		// then
-		assert.NoError(t, err)
-		assert.Len(t, home.Blocks(), 2)
-		assert.Len(t, widget.Blocks(), 1)
-	})
-
-	t.Run("some updates failed", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		home := smarttest.New(homeId)
-		home.AddBlock(simple.New(&model.Block{Id: homeId, ChildrenIds: []string{}}))
-		widget := smarttest.New(widgetId)
-		widget.AddBlock(simple.New(&model.Block{Id: widgetId, ChildrenIds: []string{}}))
-		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().Id().Return(spaceId)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
-		flag := false
-		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			switch objectId {
-			case homeId:
-				if flag {
-					return nil, fmt.Errorf("unexpected error")
-				}
-				flag = true
-				return editor.NewDashboard(home, fx.store.SpaceIndex(spaceId), nil), nil
-			case widgetId:
-				return editor.NewWidgetObject(widget, fx.store.SpaceIndex(spaceId), nil), nil
-			}
-			return nil, fmt.Errorf("failed to get object")
-		})
-
-		// when
-		err := fx.SetListIsFavorite([]string{"obj3", "obj1"}, true)
-
-		// then
-		assert.NoError(t, err)
-		assert.Len(t, home.Blocks(), 2)
-		assert.Len(t, widget.Blocks(), 3)
-	})
 
 	t.Run("all updates failed", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.store.AddObjects(t, spaceId, objects)
-		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId, Widgets: widgetId})
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Home: homeId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			require.Equal(t, homeId, objectId)
 			return nil, fmt.Errorf("unexpected error")
@@ -469,7 +379,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived("obj1", true)
+		err := fx.SetIsArchived(context.Background(), "obj1", true)
 
 		// then
 		assert.NoError(t, err)
@@ -493,11 +403,31 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived("obj1", true)
+		err := fx.SetIsArchived(context.Background(), "obj1", true)
 
 		// then
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, restriction.ErrRestricted)
+	})
+
+	t.Run("can't delete others files", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		sb := smarttest.New(binId)
+		sb.SetType(coresb.SmartBlockTypeFileObject)
+		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			return sb, nil
+		})
+		fx.store.AddObjects(t, spaceId, objects)
+		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(fmt.Errorf("not allowed"))
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+
+		// when
+		err := fx.SetIsArchived(context.Background(), "obj1", true)
+
+		// then
+		assert.Error(t, err)
 	})
 }
 
@@ -526,7 +456,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived([]string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -543,6 +473,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "obj2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj2"}}}))
 		sb.AddBlock(simple.New(&model.Block{Id: "obj3", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj3"}}}))
 
+		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
@@ -553,7 +484,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived([]string{"obj1", "obj2", "obj3"}, false)
+		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, false)
 
 		// then
 		assert.NoError(t, err)
@@ -578,7 +509,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived([]string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -589,13 +520,14 @@ func TestService_SetListIsArchived(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.store.AddObjects(t, spaceId, objects)
+		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(nil).Maybe()
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 			return nil, fmt.Errorf("failed to get object")
 		})
 
 		// when
-		err := fx.SetListIsArchived([]string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.Error(t, err)

@@ -5,8 +5,9 @@ import (
 
 	"storj.io/drpc"
 
+	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
+
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver"
-	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
 

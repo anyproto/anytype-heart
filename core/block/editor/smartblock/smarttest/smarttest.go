@@ -16,7 +16,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -80,6 +79,10 @@ func (st *SmartTest) SetSpace(space smartblock.Space) {
 type stubSpace struct {
 }
 
+func (s *stubSpace) RefreshObjects(objectIds []string) (err error) {
+	return nil
+}
+
 func (s *stubSpace) Id() string {
 	return ""
 }
@@ -117,6 +120,10 @@ func (s *stubSpace) TryRemove(objectId string) (bool, error) {
 }
 
 func (s *stubSpace) IsPersonal() bool {
+	return false
+}
+
+func (s *stubSpace) IsOneToOne() bool {
 	return false
 }
 
@@ -198,19 +205,6 @@ func (st *SmartTest) AddHookOnce(id string, f smartblock.HookCallback, events ..
 	}
 }
 
-func (st *SmartTest) HasRelation(s *state.State, key string) bool {
-	for _, rel := range s.GetRelationLinks() {
-		if rel.Key == key {
-			return true
-		}
-	}
-	return false
-}
-
-func (st *SmartTest) Relations(s *state.State) relationutils.Relations {
-	return nil
-}
-
 func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }
@@ -219,18 +213,15 @@ func (st *SmartTest) TemplateCreateFromObjectState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddRelationLinks(ctx session.Context, relationKeys ...domain.RelationKey) (err error) {
+// TODO: GO-4284 remove
+func (st *SmartTest) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
 	for _, key := range relationKeys {
-		st.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+		s.AddRelationLinks(&model.RelationLink{
 			Key:    key.String(),
 			Format: 0, // todo
 		})
 	}
 	return nil
-}
-
-func (st *SmartTest) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) (err error) {
-	return st.AddRelationLinks(nil, relationKeys...)
 }
 
 func (st *SmartTest) CheckSubscriptions() (changed bool) {
@@ -241,7 +232,7 @@ func (st *SmartTest) RefreshLocalDetails(ctx session.Context) error {
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error) {
+func (st *SmartTest) RemoveRelations(ctx session.Context, relationKeys []domain.RelationKey) (err error) {
 	return nil
 }
 
@@ -286,6 +277,8 @@ func (st *SmartTest) UpdateDetails(ctx session.Context, update func(current *dom
 func (st *SmartTest) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.State == nil {
 		ctx.State = st.NewState()
+	} else {
+		ctx.State.SetParent(st.Doc.(*state.State))
 	}
 	return
 }

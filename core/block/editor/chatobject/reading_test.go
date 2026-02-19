@@ -27,7 +27,7 @@ func TestReadMessages(t *testing.T) {
 	// All messages forced as not read
 	messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-	err := fx.MarkReadMessages(ctx, ReadMessagesRequest{
+	_, err := fx.MarkReadMessages(ctx, ReadMessagesRequest{
 		AfterOrderId:  "",
 		BeforeOrderId: messagesResp.Messages[2].OrderId,
 		LastStateId:   messagesResp.ChatState.LastStateId,
@@ -63,7 +63,7 @@ func TestReadMessagesLoadedInBackground(t *testing.T) {
 	secondMessage, err := fx.GetMessageById(ctx, secondMessageId)
 	require.NoError(t, err)
 
-	err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+	_, err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
 		AfterOrderId:  "",
 		BeforeOrderId: firstMessage.OrderId,
 		LastStateId:   firstMessage.StateId,
@@ -88,6 +88,7 @@ func TestReadMessagesLoadedInBackground(t *testing.T) {
 			},
 			Mentions:    &model.ChatStateUnreadState{},
 			LastStateId: secondMessage.StateId,
+			Order:       4,
 		},
 	}
 	assert.Equal(t, wantResponse, gotResponse)
@@ -106,7 +107,7 @@ func TestReadMentions(t *testing.T) {
 		// All messages forced as not read
 		messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-		err := fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		_, err := fx.MarkReadMessages(ctx, ReadMessagesRequest{
 			AfterOrderId:  "",
 			BeforeOrderId: messagesResp.Messages[2].OrderId,
 			LastStateId:   messagesResp.ChatState.LastStateId,
@@ -138,7 +139,7 @@ func TestReadMentions(t *testing.T) {
 		// All messages forced as not read
 		messagesResp := fx.assertReadStatus(t, ctx, "", "", false, false)
 
-		err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
+		_, err = fx.MarkReadMessages(ctx, ReadMessagesRequest{
 			AfterOrderId:  "",
 			BeforeOrderId: secondMessage.OrderId,
 			LastStateId:   messagesResp.ChatState.LastStateId,

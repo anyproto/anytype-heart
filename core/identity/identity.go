@@ -2,16 +2,17 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	"github.com/anyproto/any-sync/nameservice/nameserviceclient"
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/dgraph-io/badger/v4"
 	"github.com/gogo/protobuf/proto"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
@@ -19,13 +20,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
-	"github.com/anyproto/anytype-heart/pkg/lib/datastore"
+	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
-	"github.com/anyproto/anytype-heart/util/badgerhelper"
 	"github.com/anyproto/anytype-heart/util/conc"
+	"github.com/anyproto/anytype-heart/util/keyvaluestore"
 )
 
 const CName = "identity"
@@ -46,7 +47,10 @@ type Service interface {
 	UnregisterIdentity(spaceId string, identity string)
 	// UnregisterIdentitiesInSpace removes all identity observers in the space
 	UnregisterIdentitiesInSpace(spaceId string)
-
+	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
+	GetMetadataKey(identity string) (crypto.SymKey, error)
+	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
 	app.ComponentRunnable
 }
 
@@ -63,8 +67,6 @@ type identityRepoClient interface {
 
 type service struct {
 	ownProfileSubscription *ownProfileSubscription
-	dbProvider             datastore.Datastore
-	db                     *badger.DB
 	accountService         account.Service
 	identityRepoClient     identityRepoClient
 	fileAclService         fileacl.Service
@@ -77,6 +79,9 @@ type service struct {
 	pushIdentityBatchTimeout time.Duration
 	identityObservePeriod    time.Duration
 	identityForceUpdate      chan struct{}
+
+	identityProfileCacheStore    keyvaluestore.Store[[]byte]
+	identityGlobalNameCacheStore keyvaluestore.Store[string]
 
 	lock sync.Mutex
 	// identity => spaceId => observer
@@ -105,15 +110,26 @@ func (s *service) Init(a *app.App) (err error) {
 	s.accountService = app.MustComponent[account.Service](a)
 	s.identityRepoClient = app.MustComponent[identityRepoClient](a)
 	s.fileAclService = app.MustComponent[fileacl.Service](a)
-	s.dbProvider = app.MustComponent[datastore.Datastore](a)
 	s.namingService = app.MustComponent[nameserviceclient.AnyNsClientService](a)
 
 	objectStore := app.MustComponent[objectstore.ObjectStore](a)
 	spaceService := app.MustComponent[space.Service](a)
 
+	provider := app.MustComponent[anystoreprovider.Provider](a)
+
+	s.identityProfileCacheStore, err = keyvaluestore.New(provider.GetCommonDb(), "identity_profile", keyvaluestore.BytesMarshal, keyvaluestore.BytesUnmarshal)
+	if err != nil {
+		return fmt.Errorf("init identity profile cache store: %w", err)
+	}
+	s.identityGlobalNameCacheStore, err = keyvaluestore.New(provider.GetCommonDb(), "global_name", keyvaluestore.StringMarshal, keyvaluestore.StringUnmarshal)
+	if err != nil {
+		return fmt.Errorf("init global name cache store: %w", err)
+	}
+
 	s.ownProfileSubscription = newOwnProfileSubscription(
 		spaceService, objectStore, s.accountService, s.identityRepoClient,
-		s.fileAclService, s, s.namingService, s.dbProvider, s.pushIdentityBatchTimeout,
+		s.fileAclService, s, s.namingService, s.pushIdentityBatchTimeout,
+		s.identityGlobalNameCacheStore, s.identityProfileCacheStore,
 	)
 	return
 }
@@ -123,11 +139,6 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	s.db, err = s.dbProvider.LocalStorage()
-	if err != nil {
-		return err
-	}
-
 	s.myIdentity = s.accountService.AccountID()
 
 	err = s.ownProfileSubscription.run(ctx)
@@ -172,6 +183,48 @@ func (s *service) WaitProfile(ctx context.Context, identity string) *model.Ident
 		}
 	}
 }
+func (s *service) GetMetadataKey(identity string) (crypto.SymKey, error) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	key, ok := s.identityEncryptionKeys[identity]
+	if !ok {
+		// FIXME We have a race condition somewhere and our own key could not be indexed yet at this moment.
+		// Derive a key as a temporarily solution
+		if s.myIdentity == identity {
+			_, key, err := domain.DeriveAccountMetadata(s.accountService.Keys().SignKey)
+			if err != nil {
+				return nil, err
+			}
+			s.identityEncryptionKeys[identity] = key
+			return key, nil
+		}
+		return nil, fmt.Errorf("identityEncryptionKey doesnt exist for identity")
+	}
+
+	return key, nil
+}
+
+func (s *service) WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error) {
+	profile := s.WaitProfile(ctx, identity)
+	if profile == nil {
+		return nil, fmt.Errorf("wait profile: got nil profile")
+	}
+	key, err := s.GetMetadataKey(identity)
+	if err != nil {
+		return nil, err
+	}
+
+	keyBytes, err := key.Marshall()
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.IdentityProfileWithKey{
+		IdentityProfile: profile,
+		RequestMetadata: keyBytes,
+	}, nil
+}
 
 func (s *service) getProfileFromCache(identity string) *model.IdentityProfile {
 	s.lock.Lock()
@@ -197,6 +250,7 @@ func (s *service) observeIdentitiesLoop() {
 		case <-s.componentCtx.Done():
 			return
 		case <-s.identityForceUpdate:
+			ticker.Reset(s.identityObservePeriod)
 			observe()
 		case <-ticker.C:
 			observe()
@@ -260,29 +314,23 @@ func (s *service) getIdentitiesDataFromRepo(ctx context.Context, identities []st
 }
 
 func (s *service) processFailedIdentities(res []*identityrepoproto.DataWithIdentity, failedIdentities []string) ([]*identityrepoproto.DataWithIdentity, error) {
-	err := s.db.View(func(txn *badger.Txn) error {
-		for _, identity := range failedIdentities {
-			rawData, err := badgerhelper.GetValueTxn(txn, makeIdentityProfileKey(identity), badgerhelper.UnmarshalBytes)
-			if badgerhelper.IsNotFound(err) {
-				continue
-			}
-			if err != nil {
-				return err
-			}
-			res = append(res, &identityrepoproto.DataWithIdentity{
-				Identity: identity,
-				Data: []*identityrepoproto.Data{
-					{
-						Kind: identityRepoDataKind,
-						Data: rawData,
-					},
-				},
-			})
+	for _, identity := range failedIdentities {
+		rawData, err := s.identityProfileCacheStore.Get(context.Background(), identity)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			continue
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("get identities data from local cache: %w", err)
+		if err != nil {
+			return nil, fmt.Errorf("get: %w", err)
+		}
+		res = append(res, &identityrepoproto.DataWithIdentity{
+			Identity: identity,
+			Data: []*identityrepoproto.Data{
+				{
+					Kind: identityRepoDataKind,
+					Data: rawData,
+				},
+			},
+		})
 	}
 	return res, nil
 }
@@ -306,7 +354,7 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	}
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
-	hasUpdates := !ok || !proto.Equal(prevProfile, profile)
+	hasUpdates := !ok || !prevProfile.Equal(profile)
 
 	observers := s.identityObservers[identityData.Identity]
 	for _, obs := range observers {
@@ -327,10 +375,40 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 			return fmt.Errorf("index icon image: %w", err)
 		}
 
-		return badgerhelper.SetValue(s.db, makeIdentityProfileKey(profile.Identity), rawProfile)
+		return s.identityProfileCacheStore.Set(context.Background(), profile.Identity, rawProfile)
 	}
 
 	return nil
+}
+
+// AddIdentityProfile puts identity profile to cache from external place (e.g. from onetoone inbox).
+// Returns immediately if key already exists.
+func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.SymKey) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if _, ok := s.identityEncryptionKeys[profile.Identity]; ok {
+		log.Info("addIdentityProfile: profile key already exists, skip", zap.String("identity", profile.Identity))
+		return nil
+	}
+
+	profileBytes, err := proto.Marshal(profile)
+	if err != nil {
+		return err
+	}
+
+	encryptedProfileBytes, err := key.Encrypt(profileBytes)
+	if err != nil {
+		return err
+	}
+
+	s.identityEncryptionKeys[profile.Identity] = key
+
+	err = s.indexIconImage(profile)
+	if err != nil {
+		log.Error("addIdentityProfile: index icon error", zap.Error(err))
+	}
+
+	return s.identityProfileCacheStore.Set(context.Background(), profile.Identity, encryptedProfileBytes)
 }
 
 func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {
@@ -348,6 +426,7 @@ func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) 
 	s.lock.Lock()
 	key := s.identityEncryptionKeys[identityData.Identity]
 	s.lock.Unlock()
+
 	return extractProfile(identityData, key)
 }
 
@@ -393,7 +472,7 @@ func (s *service) fetchGlobalNames(identities []string) error {
 		s.identityGlobalNames[identity] = result
 		s.lock.Unlock()
 
-		err := badgerhelper.SetValue(s.db, makeGlobalNameKey(identity), result.Name)
+		err := s.identityGlobalNameCacheStore.Set(context.Background(), identity, result.Name)
 		if err != nil {
 			log.Error("save global name", zap.String("identity", identity), zap.Error(err))
 		}
@@ -410,8 +489,8 @@ func makeGlobalNameKey(identity string) []byte {
 }
 
 func (s *service) getCachedIdentityProfile(identity string) (*identityrepoproto.DataWithIdentity, error) {
-	rawData, err := badgerhelper.GetValue(s.db, makeIdentityProfileKey(identity), badgerhelper.UnmarshalBytes)
-	if badgerhelper.IsNotFound(err) {
+	rawData, err := s.identityProfileCacheStore.Get(context.Background(), identity)
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil, nil
 	}
 	if err != nil {
@@ -429,8 +508,8 @@ func (s *service) getCachedIdentityProfile(identity string) (*identityrepoproto.
 }
 
 func (s *service) getCachedGlobalName(identity string) (string, error) {
-	rawData, err := badgerhelper.GetValue(s.db, makeGlobalNameKey(identity), badgerhelper.UnmarshalString)
-	if badgerhelper.IsNotFound(err) {
+	rawData, err := s.identityGlobalNameCacheStore.Get(context.Background(), identity)
+	if errors.Is(err, anystore.ErrDocNotFound) {
 		return "", nil
 	}
 	if err != nil {
@@ -489,6 +568,13 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 			initialized: isInitialized,
 		}
 	}
+
+	if identity == s.myIdentity {
+		ownProfile := s.ownProfileSubscription.prepareIdentityProfile()
+		observerCallback(identity, ownProfile)
+		return nil
+	}
+
 	select {
 	case s.identityForceUpdate <- struct{}{}:
 	default:

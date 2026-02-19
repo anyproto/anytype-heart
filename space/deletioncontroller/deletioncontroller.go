@@ -15,7 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-const CName = "mockClient.space.deletioncontroller"
+const CName = "space.deletioncontroller"
 
 var log = logger.NewNamed(CName)
 

@@ -20,7 +20,6 @@
   "lastOpenedDate",
   "featuredRelations",
   "isFavorite",
-  "workspaceId",
   "spaceId",
   "links",
   "internalFlags",
@@ -54,6 +53,7 @@
   "oldAnytypeID",
   "spaceDashboardId",
   "recommendedRelations",
+  "myParticipantStatus",
   "iconOption",
   "widthInPixels",
   "heightInPixels",
@@ -101,5 +101,6 @@
   "defaultViewType",
   "defaultTypeId",
   "resolvedLayout",
-  "pluralName"
+  "pluralName",
+  "lastMessageDate"
 ]

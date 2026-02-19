@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "urn:anytype:schema:2024-06-14:author-user:type-project:ver-1.0",
+  "type": "object",
+  "title": "Project",
+  "description": "A project or initiative",
+  "x-type-key": "project",
+  "x-schema-version": "1.0",
+  "x-icon-emoji": "📁",
+  "x-plural-name": "Projects",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier of the Anytype object",
+      "readOnly": true,
+      "x-order": 0,
+      "x-key": "id"
+    },
+    "Object type": {
+      "type": "string",
+      "const": "Project",
+      "x-order": 1,
+      "x-key": "type"
+    },
+    "Name": {
+      "type": "string",
+      "x-featured": true,
+      "x-order": 2,
+      "x-key": "project_name",
+      "x-format": "shorttext",
+      "description": "The name of the project"
+    },
+    "Description": {
+      "type": "string",
+      "x-order": 3,
+      "x-key": "project_description",
+      "x-format": "longtext",
+      "description": "Detailed description of the project goals and scope"
+    },
+    "Status": {
+      "type": "string",
+      "enum": ["Planning", "Active", "On Hold", "Completed", "Cancelled"],
+      "x-featured": true,
+      "x-order": 4,
+      "x-key": "project_status",
+      "x-format": "status",
+      "description": "Current status of the project"
+    },
+    "Start Date": {
+      "type": "string",
+      "format": "date",
+      "x-featured": true,
+      "x-order": 5,
+      "x-key": "project_start_date",
+      "x-format": "date",
+      "description": "When the project begins"
+    },
+    "End Date": {
+      "type": "string",
+      "format": "date",
+      "x-order": 6,
+      "x-key": "project_end_date",
+      "x-format": "date",
+      "description": "When the project is expected to complete"
+    },
+    "Owner": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-order": 7,
+      "x-key": "project_owner",
+      "x-format": "object",
+      "x-object-types": ["participant"],
+      "description": "Project owner or manager"
+    },
+    "Team": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-order": 8,
+      "x-key": "project_team",
+      "x-format": "object",
+      "x-object-types": ["participant"],
+      "description": "Team members working on the project"
+    },
+    "Budget": {
+      "type": "number",
+      "x-order": 9,
+      "x-key": "project_budget",
+      "x-format": "number",
+      "description": "Project budget in dollars"
+    },
+    "Tasks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "x-order": 10,
+      "x-key": "project_tasks",
+      "x-format": "object",
+      "x-object-types": ["task"],
+      "description": "Tasks associated with this project"
+    }
+  }
+}

@@ -12,6 +12,7 @@ const (
 	RelationKeyToIdPrefix          = "rel-" //
 	ObjectTypeKeyToIdPrefix        = "ot-"  //
 	ObjectTypeAllViewId            = "all"
+	ObjectTypeAllTableViewId       = "table" // used for types created during import and ai-onboarding
 
 	BundledRelationURLPrefix = "_br"
 
@@ -19,7 +20,7 @@ const (
 	BundledTemplatesURLPrefix  = "_bt"
 
 	AnytypeProfileId            = "_anytype_profile"
-	AnytypeMarketplaceWorkspace = "_anytype_marketplace"
+	AnytypeMarketplaceWorkspace = "_anytype_marketplace" // deprecated, to be removed
 	VirtualPrefix               = "_virtual"
 	DatePrefix                  = "_date_"
 

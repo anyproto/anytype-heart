@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -114,6 +115,17 @@ func (mw *Middleware) RelationOptions(_ context.Context, _ *pb.RpcRelationOption
 	panic("implement me")
 }
 
+func (mw *Middleware) RelationOptionSetOrder(_ context.Context, req *pb.RpcRelationOptionSetOrderRequest) *pb.RpcRelationOptionSetOrderResponse {
+	orderIds, err := mustService[order.OrderSetter](mw).SetOptionsOrder(req.SpaceId, domain.RelationKey(req.RelationKey), req.RelationOptionOrder)
+	return &pb.RpcRelationOptionSetOrderResponse{
+		RelationOptionOrder: orderIds,
+		Error: &pb.RpcRelationOptionSetOrderResponseError{
+			Code:        mapErrorCode[pb.RpcRelationOptionSetOrderResponseErrorCode](err),
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) RelationListWithValue(_ context.Context, req *pb.RpcRelationListWithValueRequest) *pb.RpcRelationListWithValueResponse {
 	response := func(list []*pb.RpcRelationListWithValueResponseResponseItem, err error) *pb.RpcRelationListWithValueResponse {
 		m := &pb.RpcRelationListWithValueResponse{Error: &pb.RpcRelationListWithValueResponseError{Code: pb.RpcRelationListWithValueResponseError_NULL}}
@@ -154,6 +166,21 @@ func (mw *Middleware) ObjectTypeResolveLayoutConflicts(_ context.Context, req *p
 	}
 	return &pb.RpcObjectTypeResolveLayoutConflictsResponse{
 		Error: &pb.RpcObjectTypeResolveLayoutConflictsResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) ObjectTypeSetOrder(cctx context.Context, req *pb.RpcObjectTypeSetOrderRequest) *pb.RpcObjectTypeSetOrderResponse {
+	orderService := mustService[order.OrderSetter](mw)
+	orderIds, err := orderService.SetObjectTypesOrder(req.SpaceId, req.TypeIds)
+
+	code := mapErrorCode[pb.RpcObjectTypeSetOrderResponseErrorCode](err)
+
+	return &pb.RpcObjectTypeSetOrderResponse{
+		OrderIds: orderIds,
+		Error: &pb.RpcObjectTypeSetOrderResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

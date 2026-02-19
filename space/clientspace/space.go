@@ -56,11 +56,17 @@ type Space interface {
 
 	IsReadOnly() bool
 	IsPersonal() bool
+	IsOneToOne() bool
 	GetAclIdentity() crypto.PubKey
 
 	KeyValueService() keyvalueservice.Service
+	RefreshObjects(objectIds []string) (err error)
 
 	Close(ctx context.Context) error
+}
+
+type clientSyncer interface {
+	RefreshTrees(ids []string) error
 }
 
 type spaceIndexer interface {
@@ -70,7 +76,7 @@ type spaceIndexer interface {
 }
 
 type bundledObjectsInstaller interface {
-	InstallBundledObjects(ctx context.Context, spc Space, ids []string, isNewSpace bool) ([]string, []*domain.Details, error)
+	InstallBundledObjects(ctx context.Context, spc Space, ids []string) ([]string, []*domain.Details, error)
 
 	BundledObjectsIdsToInstall(ctx context.Context, spc Space, sourceObjectIds []string) (ids domain.BundledObjectIds, err error)
 }
@@ -152,7 +158,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 			return nil, fmt.Errorf("unmark space created: %w", err)
 		}
 		ids := getBundledObjectsToInstall()
-		if _, _, err = sp.installer.InstallBundledObjects(ctx, sp, ids, true); err != nil {
+		if _, _, err = sp.installer.InstallBundledObjects(ctx, sp, ids); err != nil {
 			return nil, fmt.Errorf("install bundled objects: %w", err)
 		}
 	}
@@ -181,6 +187,11 @@ func (s *space) tryLoadBundledAndInstallIfMissing(disableRemoteLoad bool) {
 	}
 	if len(missingSourceIds) > 0 {
 		log.Warn("missing bundled objects", zap.Strings("ids", missingSourceIds))
+	}
+
+	_, _, err = s.installer.InstallBundledObjects(s.loadMissingBundledObjectsCtx, s, missingSourceIds)
+	if err != nil {
+		log.Error("failed to install bundled objects", zap.Error(err))
 	}
 }
 
@@ -286,6 +297,10 @@ func (s *space) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id stri
 
 func (s *space) IsPersonal() bool {
 	return s.Id() == s.personalSpaceId
+}
+
+func (s *space) IsOneToOne() bool {
+	return s.CommonSpace().Acl().AclState().IsOneToOne()
 }
 
 func (s *space) GetAclIdentity() crypto.PubKey {
@@ -411,6 +426,14 @@ func (s *space) migrationProfileObject(ctx context.Context) error {
 
 		return sb.Apply(st)
 	})
+}
+
+func (s *space) RefreshObjects(objectIds []string) (err error) {
+	syncer, ok := s.common.TreeSyncer().(clientSyncer)
+	if !ok {
+		return fmt.Errorf("space %s does not support client syncer", s.Id())
+	}
+	return syncer.RefreshTrees(objectIds)
 }
 
 func (s *space) IsReadOnly() bool {

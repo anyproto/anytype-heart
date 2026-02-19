@@ -13,6 +13,8 @@ func TestSimpleSub_Changes(t *testing.T) {
 		sub := &simpleSub{
 			keys:  []domain.RelationKey{"id", "order"},
 			cache: newCache(),
+			isDep: true,
+			ds:    &dependencyService{sorts: sortsMap{}},
 		}
 		require.NoError(t, sub.init(genEntries(10, false)))
 		ctx := &opCtx{c: sub.cache}
@@ -24,6 +26,8 @@ func TestSimpleSub_Changes(t *testing.T) {
 		sub := &simpleSub{
 			keys:  []domain.RelationKey{"id", "order"},
 			cache: newCache(),
+			isDep: true,
+			ds:    &dependencyService{sorts: sortsMap{}},
 		}
 		require.NoError(t, sub.init(genEntries(10, false)))
 		ctx := &opCtx{c: sub.cache}
@@ -37,6 +41,8 @@ func TestSimpleSub_Refill(t *testing.T) {
 	sub := &simpleSub{
 		keys:  []domain.RelationKey{"id", "order"},
 		cache: newCache(),
+		ds:    newDependencyService(nil),
+		isDep: true,
 	}
 	require.NoError(t, sub.init(genEntries(3, false)))
 	ctx := &opCtx{}

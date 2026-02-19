@@ -82,7 +82,7 @@ func New(accountService accountservice.Service, objectFactory ObjectFactory, per
 		ocache.WithGCPeriod(time.Minute),
 		// TODO: [MR] Get ttl from config
 		ocache.WithTTL(time.Duration(60)*time.Second),
-		ocache.WithPrometheusMetrics(metrics.ObjectCacheHitCounter, metrics.ObjectCacheMissCounter, metrics.ObjectCacheGCCount),
+		ocache.WithPrometheusMetrics(metrics.ObjectCacheHitCounter, metrics.ObjectCacheMissCounter, metrics.ObjectCacheGCCount, nil),
 	)
 	metricSetSpace(space.Id(), c.cache.Len)
 

@@ -83,7 +83,7 @@ func (ce *ConvertError) Error() error {
 	for _, err := range ce.errors {
 		errorString.WriteString(fmt.Sprintf(pattern, err.Error()))
 	}
-	return fmt.Errorf(errorString.String())
+	return fmt.Errorf("%s", errorString.String())
 }
 
 func (ce *ConvertError) GetResultError(importType model.ImportType) error {

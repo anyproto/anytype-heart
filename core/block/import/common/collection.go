@@ -119,11 +119,10 @@ func (r *ImportCollection) getRootCollectionSnapshot(
 		Snapshot: &SnapshotModel{
 			SbType: sb.SmartBlockTypePage,
 			Data: &StateSnapshot{
-				Blocks:        st.Blocks(),
-				Details:       detailsStruct,
-				ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
-				RelationLinks: st.GetRelationLinks(),
-				Collections:   st.Store(),
+				Blocks:      st.Blocks(),
+				Details:     detailsStruct,
+				ObjectTypes: []string{bundle.TypeKeyCollection.String()},
+				Collections: st.Store(),
 			},
 		},
 	}

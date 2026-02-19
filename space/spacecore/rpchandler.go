@@ -6,12 +6,11 @@ import (
 	"net/url"
 
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
-
-	"github.com/anyproto/anytype-heart/space/spacecore/clientspaceproto"
 )
 
 type rpcHandler struct {
@@ -67,9 +66,11 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 			}
 			portAddrs = append(portAddrs, addr)
 		}
-		r.s.peerService.SetPeerAddrs(peerId, portAddrs)
+		// addSchema adds discovered protocol for connection.
+		// Otherwise localdiscovery fallbacks to tcp, but anytype clients are listening on udp
+		r.s.peerService.SetPeerAddrs(peerId, r.s.addSchema(portAddrs))
 		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)
-		log.Info("updated local peer", zap.Strings("ips", portAddrs), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
+		log.Info("updated local peer", zap.Strings("ips", r.s.addSchema(portAddrs)), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
 	}
 	log.Debug("returning list with ids", zap.Strings("spaceIds", allIds))
 	resp = &clientspaceproto.SpaceExchangeResponse{SpaceIds: allIds}

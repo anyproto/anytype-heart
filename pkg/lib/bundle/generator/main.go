@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/samber/lo"
@@ -49,6 +50,7 @@ type Relation struct {
 	Source      string   `json:"source"`
 	Description string   `json:"description"`
 	Revision    int      `json:"revision"`
+	IncludeTime bool     `json:"includeTime"` // nolint: tagliatelle
 }
 
 type ObjectType struct {
@@ -74,7 +76,13 @@ type Layout struct {
 }
 
 func main() {
-	err := generateRelations()
+	rootPath, err := os.Getwd()
+	exitOnError(err)
+	if strings.HasSuffix(rootPath, "bundle") {
+		err = os.Chdir(filepath.Join("..", "..", ".."))
+		exitOnError(err)
+	}
+	err = generateRelations()
 	exitOnError(err)
 
 	err = generateTypes()
@@ -146,7 +154,7 @@ func excludeInternalRelations(allSystemKeys []domain.RelationKey) []domain.Relat
 
 func exitOnError(err error) {
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, err.Error())
+		_, _ = fmt.Fprintf(os.Stderr, "%s", err.Error())
 		os.Exit(1)
 	}
 }
@@ -221,6 +229,9 @@ func generateRelations() error {
 			}
 			if relation.Revision != 0 {
 				dictS[Id("Revision")] = Lit(relation.Revision)
+			}
+			if relation.IncludeTime {
+				dictS[Id("IncludeTime")] = Lit(relation.IncludeTime)
 			}
 
 			dict[Id(relConst(relation.Key))] = Block(dictS)

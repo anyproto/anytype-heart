@@ -104,8 +104,6 @@ func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlock
 	switch typeKey {
 	case bundle.TypeKeyObjectType:
 		return coresb.SmartBlockTypeObjectType
-	case bundle.TypeKeyChat:
-		return coresb.SmartBlockTypeChatObject
 	case bundle.TypeKeyChatDerived:
 		return coresb.SmartBlockTypeChatDerivedObject
 	case bundle.TypeKeyRelation:

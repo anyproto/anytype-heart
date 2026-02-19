@@ -8,6 +8,8 @@ import (
 	"reflect"
 )
 
+var ErrInvalidConfigFormat = errors.New("failed to decode")
+
 // GetFileConfig - returns data from config file, if file doesn't exist returns same cfg struct
 func GetFileConfig(configPath string, cfg interface{}) error {
 	if reflect.ValueOf(cfg).Kind() != reflect.Ptr {
@@ -29,7 +31,7 @@ func GetFileConfig(configPath string, cfg interface{}) error {
 		if info.Size() > 0 {
 			err = json.NewDecoder(cfgFile).Decode(cfg)
 			if err != nil {
-				return fmt.Errorf("invalid file config format: %w", err)
+				return errors.Join(ErrInvalidConfigFormat, err)
 			}
 		}
 	}

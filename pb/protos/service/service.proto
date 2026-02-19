@@ -23,6 +23,7 @@ service ClientCommands {
 
     rpc WalletCreateSession (anytype.Rpc.Wallet.CreateSession.Request) returns (anytype.Rpc.Wallet.CreateSession.Response);
     rpc WalletCloseSession (anytype.Rpc.Wallet.CloseSession.Request) returns (anytype.Rpc.Wallet.CloseSession.Response);
+
     // Workspace
     // ***
     rpc WorkspaceCreate (anytype.Rpc.Workspace.Create.Request) returns (anytype.Rpc.Workspace.Create.Response);
@@ -87,6 +88,7 @@ service ClientCommands {
     // Object
     // ***
     rpc ObjectOpen (anytype.Rpc.Object.Open.Request) returns (anytype.Rpc.Object.Open.Response);
+    rpc ObjectRefresh (anytype.Rpc.Object.Refresh.Request) returns (anytype.Rpc.Object.Refresh.Response);
     rpc ObjectClose (anytype.Rpc.Object.Close.Request) returns (anytype.Rpc.Object.Close.Response);
     rpc ObjectShow (anytype.Rpc.Object.Show.Request) returns (anytype.Rpc.Object.Show.Response);
 
@@ -134,7 +136,6 @@ service ClientCommands {
     rpc ObjectListExport (anytype.Rpc.Object.ListExport.Request) returns (anytype.Rpc.Object.ListExport.Response);
     rpc ObjectExport (anytype.Rpc.Object.Export.Request) returns (anytype.Rpc.Object.Export.Response);
     rpc ObjectBookmarkFetch (anytype.Rpc.Object.BookmarkFetch.Request) returns (anytype.Rpc.Object.BookmarkFetch.Response);
-    rpc ObjectToBookmark (anytype.Rpc.Object.ToBookmark.Request) returns (anytype.Rpc.Object.ToBookmark.Response);
     rpc ObjectImport (anytype.Rpc.Object.Import.Request) returns (anytype.Rpc.Object.Import.Response);
     rpc ObjectImportList (anytype.Rpc.Object.ImportList.Request) returns (anytype.Rpc.Object.ImportList.Response);
     rpc ObjectImportNotionValidateToken (anytype.Rpc.Object.Import.Notion.ValidateToken.Request) returns (anytype.Rpc.Object.Import.Notion.ValidateToken.Response);
@@ -154,6 +155,7 @@ service ClientCommands {
     rpc ObjectCreateRelationOption (anytype.Rpc.Object.CreateRelationOption.Request) returns (anytype.Rpc.Object.CreateRelationOption.Response);
     rpc RelationListRemoveOption (anytype.Rpc.Relation.ListRemoveOption.Request) returns (anytype.Rpc.Relation.ListRemoveOption.Response);
     rpc RelationOptions (anytype.Rpc.Relation.Options.Request) returns (anytype.Rpc.Relation.Options.Response);
+    rpc RelationOptionSetOrder (anytype.Rpc.Relation.Option.SetOrder.Request) returns (anytype.Rpc.Relation.Option.SetOrder.Response);
     rpc RelationListWithValue (anytype.Rpc.Relation.ListWithValue.Request) returns (anytype.Rpc.Relation.ListWithValue.Response);
 
     // Object Relations
@@ -173,6 +175,7 @@ service ClientCommands {
     rpc ObjectTypeRecommendedFeaturedRelationsSet (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Request) returns (anytype.Rpc.ObjectType.Recommended.FeaturedRelationsSet.Response);
     rpc ObjectTypeListConflictingRelations (anytype.Rpc.ObjectType.ListConflictingRelations.Request) returns (anytype.Rpc.ObjectType.ListConflictingRelations.Response);
     rpc ObjectTypeResolveLayoutConflicts (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Request) returns (anytype.Rpc.ObjectType.ResolveLayoutConflicts.Response);
+    rpc ObjectTypeSetOrder (anytype.Rpc.ObjectType.SetOrder.Request) returns (anytype.Rpc.ObjectType.SetOrder.Response);
 
     rpc HistoryShowVersion (anytype.Rpc.History.ShowVersion.Request) returns (anytype.Rpc.History.ShowVersion.Response);
     rpc HistoryGetVersions (anytype.Rpc.History.GetVersions.Request) returns (anytype.Rpc.History.GetVersions.Response);
@@ -186,9 +189,13 @@ service ClientCommands {
     rpc FileListOffload (anytype.Rpc.File.ListOffload.Request) returns (anytype.Rpc.File.ListOffload.Response);
     rpc FileUpload (anytype.Rpc.File.Upload.Request) returns (anytype.Rpc.File.Upload.Response);
     rpc FileDownload (anytype.Rpc.File.Download.Request) returns (anytype.Rpc.File.Download.Response);
+    rpc FileDiscardPreload (anytype.Rpc.File.DiscardPreload.Request) returns (anytype.Rpc.File.DiscardPreload.Response);
     rpc FileDrop (anytype.Rpc.File.Drop.Request) returns (anytype.Rpc.File.Drop.Response);
     rpc FileSpaceUsage (anytype.Rpc.File.SpaceUsage.Request) returns (anytype.Rpc.File.SpaceUsage.Response);
     rpc FileNodeUsage (anytype.Rpc.File.NodeUsage.Request) returns (anytype.Rpc.File.NodeUsage.Response);
+    rpc FileSetAutoDownload (anytype.Rpc.File.SetAutoDownload.Request) returns (anytype.Rpc.File.SetAutoDownload.Response);
+    rpc FileCacheDownload (anytype.Rpc.File.CacheDownload.Request) returns (anytype.Rpc.File.CacheDownload.Response);
+    rpc FileCacheCancelDownload (anytype.Rpc.File.CacheCancelDownload.Request) returns (anytype.Rpc.File.CacheCancelDownload.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
@@ -379,7 +386,18 @@ service ClientCommands {
     rpc MembershipFinalize (anytype.Rpc.Membership.Finalize.Request) returns (anytype.Rpc.Membership.Finalize.Response);
     rpc MembershipGetTiers (anytype.Rpc.Membership.GetTiers.Request) returns (anytype.Rpc.Membership.GetTiers.Response);
     rpc MembershipVerifyAppStoreReceipt (anytype.Rpc.Membership.VerifyAppStoreReceipt.Request) returns (anytype.Rpc.Membership.VerifyAppStoreReceipt.Response);
-
+    rpc MembershipCodeGetInfo (anytype.Rpc.Membership.CodeGetInfo.Request) returns (anytype.Rpc.Membership.CodeGetInfo.Response);
+    rpc MembershipCodeRedeem (anytype.Rpc.Membership.CodeRedeem.Request) returns (anytype.Rpc.Membership.CodeRedeem.Response);
+    
+    // enumerate all available for purchase products
+    rpc MembershipV2GetProducts(anytype.Rpc.MembershipV2.GetProducts.Request) returns (anytype.Rpc.MembershipV2.GetProducts.Response);
+    rpc MembershipV2GetStatus(anytype.Rpc.MembershipV2.GetStatus.Request) returns (anytype.Rpc.MembershipV2.GetStatus.Response);
+    rpc MembershipV2GetPortalLink (anytype.Rpc.MembershipV2.GetPortalLink.Request) returns (anytype.Rpc.MembershipV2.GetPortalLink.Response);
+    rpc MembershipV2AnyNameIsValid(anytype.Rpc.MembershipV2.AnyNameIsValid.Request) returns (anytype.Rpc.MembershipV2.AnyNameIsValid.Response);
+    rpc MembershipV2AnyNameAllocate(anytype.Rpc.MembershipV2.AnyNameAllocate.Request) returns (anytype.Rpc.MembershipV2.AnyNameAllocate.Response);
+    rpc MembershipV2CartGet(anytype.Rpc.MembershipV2.CartGet.Request) returns (anytype.Rpc.MembershipV2.CartGet.Response);
+    rpc MembershipV2CartUpdate(anytype.Rpc.MembershipV2.CartUpdate.Request) returns (anytype.Rpc.MembershipV2.CartUpdate.Response);
+    
     // Name Service:
     // ***
     // hello.any -> data
@@ -418,4 +436,7 @@ service ClientCommands {
 
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
+    rpc PushNotificationSetSpaceMode(anytype.Rpc.PushNotification.SetSpaceMode.Request) returns (anytype.Rpc.PushNotification.SetSpaceMode.Response);
+    rpc PushNotificationSetForceModeIds(anytype.Rpc.PushNotification.SetForceModeIds.Request) returns (anytype.Rpc.PushNotification.SetForceModeIds.Response);
+    rpc PushNotificationResetIds(anytype.Rpc.PushNotification.ResetIds.Request) returns (anytype.Rpc.PushNotification.ResetIds.Response);
 }

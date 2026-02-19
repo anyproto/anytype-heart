@@ -6,26 +6,17 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/spacestate"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/syncstatus"
 
 	"github.com/anyproto/any-sync/nodeconf"
-	"github.com/anyproto/any-sync/util/periodicsync"
 	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
-
-const (
-	syncUpdateInterval = 3
-	syncTimeout        = time.Second
-)
-
-var log = logger.NewNamed(syncstatus.CName)
 
 type SyncStatus int
 
@@ -65,11 +56,9 @@ type Updater interface {
 
 type syncStatusService struct {
 	sync.Mutex
-	periodicSync periodicsync.PeriodicSync
 
 	spaceId         string
 	spaceSettingsId string
-	synced          []string
 	tempSynced      map[string]struct{}
 	treeHeads       map[string]treeHeadsEntry
 
@@ -91,15 +80,8 @@ func NewSyncStatusService() StatusService {
 func (s *syncStatusService) Init(a *app.App) (err error) {
 	sharedState := app.MustComponent[*spacestate.SpaceState](a)
 	spaceStorage := app.MustComponent[spacestorage.SpaceStorage](a)
-	s.updateIntervalSecs = syncUpdateInterval
-	s.updateTimeout = syncTimeout
 	s.spaceId = sharedState.SpaceId
 	s.spaceSettingsId = spaceStorage.StateStorage().SettingsId()
-	s.periodicSync = periodicsync.NewPeriodicSync(
-		s.updateIntervalSecs,
-		s.updateTimeout,
-		s.update,
-		log)
 	s.syncDetailsUpdater = app.MustComponent[Updater](a)
 	s.config = app.MustComponent[*config.Config](a)
 	s.nodeConfService = app.MustComponent[nodeconf.Service](a)
@@ -111,7 +93,6 @@ func (s *syncStatusService) Name() (name string) {
 }
 
 func (s *syncStatusService) Run(ctx context.Context) error {
-	s.periodicSync.Run()
 	return nil
 }
 
@@ -130,7 +111,8 @@ func (s *syncStatusService) ObjectReceive(senderId, treeId string, heads []strin
 		s.tempSynced[treeId] = struct{}{}
 		return
 	}
-	s.synced = append(s.synced, treeId)
+
+	s.updateDetails(treeId, domain.ObjectSyncStatusSynced)
 }
 
 func (s *syncStatusService) HeadsApply(senderId, treeId string, heads []string, allAdded bool) {
@@ -145,7 +127,8 @@ func (s *syncStatusService) HeadsApply(senderId, treeId string, heads []string, 
 	if !allAdded {
 		return
 	}
-	s.synced = append(s.synced, treeId)
+	s.updateDetails(treeId, domain.ObjectSyncStatusSynced)
+
 	if curTreeHeads, ok := s.treeHeads[treeId]; ok {
 		// checking if we received the head that we are interested in
 		for _, head := range heads {
@@ -158,27 +141,6 @@ func (s *syncStatusService) HeadsApply(senderId, treeId string, heads []string, 
 		}
 		s.treeHeads[treeId] = curTreeHeads
 	}
-}
-
-func (s *syncStatusService) update(ctx context.Context) (err error) {
-	s.Lock()
-	var updateDetailsStatuses = make([]treeStatus, 0, len(s.synced))
-	for _, treeId := range s.synced {
-		updateDetailsStatuses = append(updateDetailsStatuses, treeStatus{treeId, StatusSynced})
-	}
-	s.synced = s.synced[:0]
-	s.Unlock()
-	for _, entry := range updateDetailsStatuses {
-		s.updateDetails(entry.treeId, mapStatus(entry.status))
-	}
-	return
-}
-
-func mapStatus(status SyncStatus) domain.ObjectSyncStatus {
-	if status == StatusSynced {
-		return domain.ObjectSyncStatusSynced
-	}
-	return domain.ObjectSyncStatusSyncing
 }
 
 func (s *syncStatusService) HeadsReceive(senderId, treeId string, heads []string) {
@@ -214,13 +176,12 @@ func (s *syncStatusService) RemoveAllExcept(senderId string, differentRemoteIds 
 	for treeId := range s.tempSynced {
 		delete(s.tempSynced, treeId)
 		if _, found := slices.BinarySearch(differentRemoteIds, treeId); !found {
-			s.synced = append(s.synced, treeId)
+			s.updateDetails(treeId, domain.ObjectSyncStatusSynced)
 		}
 	}
 }
 
 func (s *syncStatusService) Close(ctx context.Context) error {
-	s.periodicSync.Close()
 	return nil
 }
 

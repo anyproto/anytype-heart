@@ -88,13 +88,16 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 		return domain.InviteView{}, err
 	}
 	return domain.InviteView{
-		SpaceId:      invitePayload.SpaceId,
-		SpaceName:    invitePayload.SpaceName,
-		SpaceIconCid: invitePayload.SpaceIconCid,
-		CreatorName:  invitePayload.CreatorName,
-		AclKey:       invitePayload.AclKey,
-		GuestKey:     invitePayload.GuestKey,
-		InviteType:   domain.InviteType(invitePayload.InviteType),
+		SpaceId:         invitePayload.SpaceId,
+		SpaceName:       invitePayload.SpaceName,
+		SpaceIconCid:    invitePayload.SpaceIconCid,
+		SpaceUxType:     model.SpaceUxType(invitePayload.SpaceUxType),
+		SpaceIconOption: int(invitePayload.SpaceIconOption),
+		CreatorName:     invitePayload.CreatorName,
+		CreatorIconCid:  invitePayload.CreatorIconCid,
+		AclKey:          invitePayload.AclKey,
+		GuestKey:        invitePayload.GuestKey,
+		InviteType:      domain.InviteType(invitePayload.InviteType),
 	}, nil
 }
 
@@ -285,9 +288,18 @@ func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, invit
 	if !ok {
 		return nil, badContentError("verify creator identity", fmt.Errorf("signature is invalid"))
 	}
-	err = i.fileAcl.StoreFileKeys(domain.FileId(invitePayload.SpaceIconCid), invitePayload.SpaceIconEncryptionKeys)
-	if err != nil {
-		return nil, getInviteError("store space icon encryption keys", err)
+	if invitePayload.SpaceIconCid != "" {
+		err = i.fileAcl.StoreFileKeys(domain.FileId(invitePayload.SpaceIconCid), invitePayload.SpaceIconEncryptionKeys)
+		if err != nil {
+			return nil, getInviteError("store space icon encryption keys", err)
+		}
+	}
+
+	if invitePayload.CreatorIconCid != "" {
+		err = i.fileAcl.StoreFileKeys(domain.FileId(invitePayload.CreatorIconCid), invitePayload.CreatorIconEncryptionKeys)
+		if err != nil {
+			return nil, getInviteError("store creator icon encryption keys", err)
+		}
 	}
 	return &invitePayload, nil
 }
@@ -350,6 +362,8 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateI
 	if err != nil {
 		return nil, fmt.Errorf("get space description: %w", err)
 	}
+	invitePayload.SpaceIconOption = uint32(description.IconOption)
+	invitePayload.SpaceUxType = uint32(description.SpaceUxType)
 	if description.IconImage != "" {
 		iconCid, iconEncryptionKeys, err := i.fileAcl.GetInfoForFileSharing(description.IconImage)
 		if err == nil {
@@ -357,6 +371,16 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateI
 			invitePayload.SpaceIconEncryptionKeys = iconEncryptionKeys
 		} else {
 			log.Error("get space icon info", zap.Error(err))
+		}
+	}
+
+	if profile.IconImage != "" {
+		iconCid, iconEncryptionKeys, err := i.fileAcl.GetInfoForFileSharing(profile.IconImage)
+		if err == nil {
+			invitePayload.CreatorIconCid = iconCid
+			invitePayload.CreatorIconEncryptionKeys = iconEncryptionKeys
+		} else {
+			log.Error("get creator icon info", zap.Error(err))
 		}
 	}
 	return invitePayload, nil

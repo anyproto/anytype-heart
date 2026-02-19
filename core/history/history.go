@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
-	"github.com/gogo/protobuf/proto"
 	"github.com/samber/lo"
 	"github.com/zeebo/blake3"
 
@@ -26,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -63,11 +63,12 @@ type History interface {
 }
 
 type history struct {
-	picker       cache.ObjectGetter
-	objectStore  objectstore.ObjectStore
-	spaceService space.Service
-	resolver     idresolver.Resolver
-	heads        map[string]string
+	picker        cache.ObjectGetter
+	objectStore   objectstore.ObjectStore
+	spaceService  space.Service
+	resolver      idresolver.Resolver
+	formatFetcher relationutils.RelationFormatFetcher
+	heads         map[string]string
 }
 
 func (h *history) Init(a *app.App) (err error) {
@@ -75,6 +76,7 @@ func (h *history) Init(a *app.App) (err error) {
 	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	h.spaceService = app.MustComponent[space.Service](a)
 	h.resolver = app.MustComponent[idresolver.Resolver](a)
+	h.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return
 }
 
@@ -101,11 +103,6 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		log.With("error", err).Errorf("failed to collect details of dependent objects")
 	}
 
-	relations, err := h.objectStore.SpaceIndex(id.SpaceID).FetchRelationByLinks(s.PickRelationLinks())
-	if err != nil {
-		return nil, nil, fmt.Errorf("fetch relations by links: %w", err)
-	}
-
 	blocksParticipants, err := h.GetBlocksParticipants(id, versionID, s.Blocks())
 	if err != nil {
 		return nil, nil, fmt.Errorf("get blocks modifiers: %w", err)
@@ -116,7 +113,6 @@ func (h *history) Show(id domain.FullID, versionID string) (bs *model.ObjectView
 		Type:              model.SmartBlockType(sbType),
 		Blocks:            s.Blocks(),
 		Details:           details,
-		RelationLinks:     relations.RelationLinks(),
 		BlockParticipants: blocksParticipants,
 	}, ver, nil
 }
@@ -254,11 +250,10 @@ func (h *history) DiffVersions(req *pb.RpcHistoryDiffVersionsRequest) ([]*pb.Eve
 	}
 
 	objectView := &model.ObjectView{
-		RootId:        id.ObjectID,
-		Type:          model.SmartBlockType(sbType),
-		Blocks:        currState.Blocks(),
-		Details:       details,
-		RelationLinks: currState.GetRelationLinks(),
+		RootId:  id.ObjectID,
+		Type:    model.SmartBlockType(sbType), // nolint:gosec
+		Blocks:  currState.Blocks(),
+		Details: details,
 	}
 	return historyEvents, objectView, nil
 }
@@ -270,7 +265,7 @@ func (h *history) buildDetails(s *state.State, spc clientspace.Space) (details [
 		Details: rootDetails.ToProto(),
 	}}
 
-	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, objectlink.Flags{
+	dependentObjectIds := objectlink.DependentObjectIDsPerSpace(spc.Id(), s, spc, h.resolver, h.formatFetcher, objectlink.Flags{
 		Blocks:    true,
 		Details:   true,
 		Relations: false,
@@ -537,7 +532,7 @@ func (h *history) treeWithId(id domain.FullID, versionId string, includeBeforeId
 	}
 
 	payload := &model.ObjectChangePayload{}
-	err = proto.Unmarshal(ht.ChangeInfo().ChangePayload, payload)
+	err = payload.Unmarshal(ht.ChangeInfo().ChangePayload)
 	if err != nil {
 		return
 	}
@@ -564,7 +559,8 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 	}
 
 	st.BlocksInit(st)
-	if ch, e := tree.GetChange(versionId); e == nil {
+	heads := tree.Heads()
+	if ch, e := tree.GetChange(heads[len(heads)-1]); e == nil {
 		participantId := domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
 		ver = &pb.RpcHistoryVersion{
 			Id:          ch.Id,

@@ -3,8 +3,10 @@ package application
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/util/namegenerator"
 )
 
 func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateRequest) (*model.Account, error) {
@@ -32,17 +35,18 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 
 	s.requireClientWithVersion()
 
-	derivationResult, err := core.WalletAccountAt(s.mnemonic, 0)
-	if err != nil {
-		return nil, err
-	}
-	accountID := derivationResult.Identity.GetPublic().Account()
-
-	if err = core.WalletInitRepo(s.rootPath, derivationResult.Identity); err != nil {
-		return nil, err
+	if s.derivedKeys == nil {
+		return nil, ErrWalletNotInitialized
 	}
 
-	if err = s.handleCustomStorageLocation(req, accountID); err != nil {
+	var err error
+	accountID := s.derivedKeys.Identity.GetPublic().Account()
+
+	if err := core.WalletInitRepo(s.rootPath, s.derivedKeys.Identity); err != nil {
+		return nil, err
+	}
+
+	if err := s.handleCustomStorageLocation(req, accountID); err != nil {
 		return nil, err
 	}
 
@@ -53,6 +57,9 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	if req.PreferYamuxTransport {
 		cfg.PeferYamuxTransport = true
 	}
+	if req.EnableMembershipV2 {
+		cfg.EnableMembershipV2 = true
+	}
 	if req.NetworkMode > 0 {
 		cfg.NetworkMode = req.NetworkMode
 		cfg.NetworkCustomConfigFilePath = req.NetworkCustomConfigFilePath
@@ -62,7 +69,7 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 	}
 	comps := []app.Component{
 		cfg,
-		anytype.BootstrapWallet(s.rootPath, derivationResult, s.fulltextPrimaryLanguage),
+		anytype.BootstrapWallet(s.rootPath, *s.derivedKeys, s.fulltextPrimaryLanguage),
 		s.eventSender,
 	}
 
@@ -83,10 +90,10 @@ func (s *Service) AccountCreate(ctx context.Context, req *pb.RpcAccountCreateReq
 		return newAcc, errors.Join(ErrFailedToStartApplication, err)
 	}
 
-	if err = s.setAccountAndProfileDetails(ctx, req, newAcc); err != nil {
-		return newAcc, err
+	err = s.setProfileDetails(ctx, req, newAcc)
+	if err != nil {
+		return newAcc, fmt.Errorf("set profile details: %w", err)
 	}
-
 	return newAcc, nil
 }
 
@@ -106,7 +113,7 @@ func (s *Service) handleCustomStorageLocation(req *pb.RpcAccountCreateRequest, a
 	return nil
 }
 
-func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
+func (s *Service) setProfileDetails(ctx context.Context, req *pb.RpcAccountCreateRequest, newAcc *model.Account) error {
 	spaceService := app.MustComponent[space.Service](s.app)
 	techSpaceId := spaceService.TechSpaceId()
 	var err error
@@ -117,21 +124,25 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 	// TODO: remove it release 8, this is need for client to set "My First Space" as space name
 	newAcc.Info.AccountSpaceId = spaceService.FirstCreatedSpaceId()
 
-	bs := s.app.MustComponent(block.CName).(*block.Service)
-	commonDetails := []domain.Detail{
+	profileName := req.Name
+	if profileName == "" {
+		nameGenerator := namegenerator.NewNameGenerator(time.Now().UnixNano())
+		profileName = nameGenerator.Generate()
+	}
+
+	profileDetails := []domain.Detail{
 		{
 			Key:   bundle.RelationKeyName,
-			Value: domain.String(req.Name),
+			Value: domain.String(profileName),
 		},
 		{
 			Key:   bundle.RelationKeyIconOption,
 			Value: domain.Int64(req.Icon),
 		},
 	}
-	profileDetails := make([]domain.Detail, 0)
-	profileDetails = append(profileDetails, commonDetails...)
 
 	if req.GetAvatarLocalPath() != "" {
+		bs := s.app.MustComponent(block.CName).(*block.Service)
 		hash, _, _, err := bs.UploadFile(context.Background(), techSpaceId, block.FileUploadRequest{
 			RpcFileUploadRequest: pb.RpcFileUploadRequest{
 				LocalPath: req.GetAvatarLocalPath(),
@@ -154,10 +165,7 @@ func (s *Service) setAccountAndProfileDetails(ctx context.Context, req *pb.RpcAc
 		return errors.Join(ErrSetDetails, err)
 	}
 	ds := app.MustComponent[detailservice.Service](s.app)
-	if err := ds.SetDetails(nil,
-		accId,
-		profileDetails,
-	); err != nil {
+	if err = ds.SetDetails(nil, accId, profileDetails); err != nil {
 		return errors.Join(ErrSetDetails, err)
 	}
 	return nil

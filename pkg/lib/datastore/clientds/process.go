@@ -26,7 +26,6 @@ func RemoveExpiredLocks(path string) {
 		return
 	}
 
-	cleanupAfterOldProcess(exePath, filepath.Join(path, localstoreDSDir, lock))
 	cleanupAfterOldProcess(exePath, filepath.Join(path, SpaceDSDir, lock))
 }
 

@@ -22,10 +22,8 @@ import (
 )
 
 const (
-	CName           = "datastore"
-	oldLitestoreDir = "ipfslite_v3"
-	localstoreDSDir = "localstore"
-	SpaceDSDir      = "spacestore"
+	CName      = "datastore"
+	SpaceDSDir = "spacestore"
 )
 
 var log = logging.Logger("anytype-clientds")
@@ -35,25 +33,22 @@ var ErrSpaceStoreNotAvailable = fmt.Errorf("space store badger db is not availab
 type clientds struct {
 	running bool
 
-	spaceStorageMode                           storage.SpaceStorageMode
-	spaceDS                                    *badger.DB
-	localstoreDS                               *badger.DB
-	cfg                                        Config
-	repoPath                                   string
-	spaceStoreWasMissing, localStoreWasMissing bool
-	spentOnInit                                time.Duration
-	closing                                    chan struct{}
-	syncerFinished                             chan struct{}
+	spaceStorageMode     storage.SpaceStorageMode
+	spaceDS              *badger.DB
+	cfg                  Config
+	repoPath             string
+	spaceStoreWasMissing bool
+	spentOnInit          time.Duration
+	closing              chan struct{}
+	syncerFinished       chan struct{}
 }
 
 type Config struct {
 	Spacestore badger.Options
-	Localstore badger.Options
 }
 
 var DefaultConfig = Config{
 	Spacestore: badger.DefaultOptions(""),
-	Localstore: badger.DefaultOptions(""),
 }
 
 type DSConfigGetter interface {
@@ -79,16 +74,6 @@ func init() {
 	DefaultConfig.Spacestore.SyncWrites = false
 	DefaultConfig.Spacestore.BlockCacheSize = 0
 	DefaultConfig.Spacestore.Compression = options.None
-
-	// used to store objects localstore + threads logs info
-	DefaultConfig.Localstore.MemTableSize = 32 * 1024 * 1024
-	DefaultConfig.Localstore.ValueLogFileSize = 16 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
-	DefaultConfig.Localstore.ValueThreshold = 1024 * 1024        // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
-	DefaultConfig.Localstore.Logger = loggerWrapper{logging.Logger("store.localstore")}
-	DefaultConfig.Localstore.SyncWrites = false
-	DefaultConfig.Localstore.BlockCacheSize = 0
-	DefaultConfig.Localstore.Compression = options.None
-
 }
 
 func openBadgerWithRecover(opts badger.Options) (db *badger.DB, err error) {
@@ -149,49 +134,14 @@ func (r *clientds) Init(a *app.App) (err error) {
 			"ds config is missing")
 	}
 
-	if _, err := os.Stat(filepath.Join(r.getRepoPath(oldLitestoreDir))); !os.IsNotExist(err) {
-		return fmt.Errorf("old repo found")
-	}
-
-	if _, err := os.Stat(r.getRepoPath(localstoreDSDir)); os.IsNotExist(err) {
-		r.localStoreWasMissing = true
-	}
-
 	if _, err := os.Stat(r.getRepoPath(SpaceDSDir)); os.IsNotExist(err) {
 		r.spaceStoreWasMissing = true
 	}
 
 	RemoveExpiredLocks(r.repoPath)
 
-	opts := r.cfg.Localstore
-	opts.Dir = r.getRepoPath(localstoreDSDir)
-	opts.ValueDir = opts.Dir
-
-	r.localstoreDS, err = openBadgerWithRecover(opts)
-	err = anyerror.CleanupError(err)
-	if err != nil && isBadgerCorrupted(err) {
-		log.With("error", err).Error("badger db is corrupted")
-		// because localstore contains mostly recoverable info (with th only exception of objects' lastOpenedDate)
-		// we can just remove and recreate it
-		err2 := os.Rename(opts.Dir, opts.Dir+"-corrupted")
-		if err2 != nil {
-			log.Errorf("failed to rename corrupted localstore: %s", err2)
-		}
-		var errAfterRemove error
-		r.localstoreDS, errAfterRemove = openBadgerWithRecover(opts)
-		errAfterRemove = anyerror.CleanupError(errAfterRemove)
-		log.With("db", "localstore").With("reset", true).With("err_remove", errAfterRemove).With("err", err.Error()).Errorf("failed to open db")
-		if errAfterRemove != nil {
-			// should not happen, but just in case
-			return errAfterRemove
-		}
-	} else if err != nil {
-		log.With("db", "localstore").With("reset", false).With("err", err.Error()).Errorf("failed to open db")
-		return err
-	}
-
 	if r.spaceStorageMode == storage.SpaceStorageModeBadger {
-		opts = r.cfg.Spacestore
+		opts := r.cfg.Spacestore
 		opts.Dir = r.getRepoPath(SpaceDSDir)
 		opts.ValueDir = opts.Dir
 		r.spaceDS, err = openBadgerWithRecover(opts)
@@ -222,13 +172,6 @@ func (r *clientds) SpaceStorage() (*badger.DB, error) {
 	return r.spaceDS, nil
 }
 
-func (r *clientds) LocalStorage() (*badger.DB, error) {
-	if !r.running {
-		return nil, fmt.Errorf("exact ds may be requested only after Run")
-	}
-	return r.localstoreDS, nil
-}
-
 func (r *clientds) Name() (name string) {
 	return CName
 }
@@ -242,13 +185,7 @@ func (r *clientds) Close(ctx context.Context) (err error) {
 		return fmt.Errorf("sync time out")
 	}
 	// wait syncer goroutine to finish to make sure we don't have in-progress requests, because it may cause panics
-
-	if r.localstoreDS != nil {
-		err2 := r.localstoreDS.Close()
-		if err2 != nil {
-			err = multierror.Append(err, err2)
-		}
-	}
+	<-r.syncerFinished
 
 	if r.spaceDS != nil {
 		err2 := r.spaceDS.Close()
@@ -272,7 +209,6 @@ func (r *clientds) GetLogFields() []zap.Field {
 	return []zap.Field{
 		zap.Bool("spaceStoreWasMissing", r.spaceStoreWasMissing),
 		zap.Int("spaceStoreMode", int(r.spaceStorageMode)),
-		zap.Bool("localStoreWasMissing", r.localStoreWasMissing),
 		zap.Int64("spentOnInit", r.spentOnInit.Milliseconds()),
 	}
 }

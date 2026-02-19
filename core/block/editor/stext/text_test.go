@@ -495,7 +495,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
 	})
-	t.Run("apply only for parents", func(t *testing.T) {
+	t.Run("apply both for parents and children", func(t *testing.T) {
 		ctx := session.NewContext()
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
@@ -508,8 +508,8 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		require.NoError(t, tb.TurnInto(ctx, model.BlockContentText_Checkbox, "1", "1.1", "2", "2.2"))
 		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1").Model().GetText().Style)
-		assert.NotEqual(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1.1").Model().GetText().Style)
-		assert.NotEqual(t, model.BlockContentText_Checkbox, sb.Doc.Pick("2.2").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1.1").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("2.2").Model().GetText().Style)
 	})
 	t.Run("move children up", func(t *testing.T) {
 		sb := smarttest.New("test")
@@ -523,8 +523,8 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Code, "1", "1.1", "2", "2.2"))
 		assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick("2").Model().GetText().Style)
-		assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick("1.1").Model().GetText().Style)
-		assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick("2.2").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick("1.1").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick("2.2").Model().GetText().Style)
 		assert.Equal(t, []string{"1", "1.1", "2", "2.2"}, sb.Doc.Pick("test").Model().ChildrenIds)
 	})
 	t.Run("turn link into text", func(t *testing.T) {

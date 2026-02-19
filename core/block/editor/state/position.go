@@ -27,10 +27,13 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	}
 
 	if targetId == "" {
-		reqPos = model.Block_Inner
 		target = s.Get(s.RootId())
 		if target == nil {
 			return fmt.Errorf("target (root) block not found")
+		}
+		// target block is root, so we should support only inner insertions
+		if reqPos != model.Block_InnerFirst {
+			reqPos = model.Block_Inner
 		}
 	} else {
 		target = s.Get(targetId)

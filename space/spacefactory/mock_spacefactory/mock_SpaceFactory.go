@@ -266,6 +266,67 @@ func (_c *MockSpaceFactory_CreateMarketplaceSpace_Call) RunAndReturn(run func(co
 	return _c
 }
 
+// CreateOneToOneSpace provides a mock function with given fields: ctx, id, description, participantData
+func (_m *MockSpaceFactory) CreateOneToOneSpace(ctx context.Context, id string, description *spaceinfo.SpaceDescription, participantData spaceinfo.OneToOneParticipantData) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, id, description, participantData)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateOneToOneSpace")
+	}
+
+	var r0 spacecontroller.SpaceController
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, *spaceinfo.SpaceDescription, spaceinfo.OneToOneParticipantData) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, id, description, participantData)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, *spaceinfo.SpaceDescription, spaceinfo.OneToOneParticipantData) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, id, description, participantData)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(spacecontroller.SpaceController)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, *spaceinfo.SpaceDescription, spaceinfo.OneToOneParticipantData) error); ok {
+		r1 = rf(ctx, id, description, participantData)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceFactory_CreateOneToOneSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateOneToOneSpace'
+type MockSpaceFactory_CreateOneToOneSpace_Call struct {
+	*mock.Call
+}
+
+// CreateOneToOneSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - id string
+//   - description *spaceinfo.SpaceDescription
+//   - participantData spaceinfo.OneToOneParticipantData
+func (_e *MockSpaceFactory_Expecter) CreateOneToOneSpace(ctx interface{}, id interface{}, description interface{}, participantData interface{}) *MockSpaceFactory_CreateOneToOneSpace_Call {
+	return &MockSpaceFactory_CreateOneToOneSpace_Call{Call: _e.mock.On("CreateOneToOneSpace", ctx, id, description, participantData)}
+}
+
+func (_c *MockSpaceFactory_CreateOneToOneSpace_Call) Run(run func(ctx context.Context, id string, description *spaceinfo.SpaceDescription, participantData spaceinfo.OneToOneParticipantData)) *MockSpaceFactory_CreateOneToOneSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(*spaceinfo.SpaceDescription), args[3].(spaceinfo.OneToOneParticipantData))
+	})
+	return _c
+}
+
+func (_c *MockSpaceFactory_CreateOneToOneSpace_Call) Return(sp spacecontroller.SpaceController, err error) *MockSpaceFactory_CreateOneToOneSpace_Call {
+	_c.Call.Return(sp, err)
+	return _c
+}
+
+func (_c *MockSpaceFactory_CreateOneToOneSpace_Call) RunAndReturn(run func(context.Context, string, *spaceinfo.SpaceDescription, spaceinfo.OneToOneParticipantData) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreateOneToOneSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreatePersonalSpace provides a mock function with given fields: ctx, metadata
 func (_m *MockSpaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte) (spacecontroller.SpaceController, error) {
 	ret := _m.Called(ctx, metadata)
@@ -325,9 +386,9 @@ func (_c *MockSpaceFactory_CreatePersonalSpace_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// CreateShareableSpace provides a mock function with given fields: ctx, id
-func (_m *MockSpaceFactory) CreateShareableSpace(ctx context.Context, id string) (spacecontroller.SpaceController, error) {
-	ret := _m.Called(ctx, id)
+// CreateShareableSpace provides a mock function with given fields: ctx, id, desc
+func (_m *MockSpaceFactory) CreateShareableSpace(ctx context.Context, id string, desc *spaceinfo.SpaceDescription) (spacecontroller.SpaceController, error) {
+	ret := _m.Called(ctx, id, desc)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateShareableSpace")
@@ -335,19 +396,19 @@ func (_m *MockSpaceFactory) CreateShareableSpace(ctx context.Context, id string)
 
 	var r0 spacecontroller.SpaceController
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (spacecontroller.SpaceController, error)); ok {
-		return rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, string, *spaceinfo.SpaceDescription) (spacecontroller.SpaceController, error)); ok {
+		return rf(ctx, id, desc)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) spacecontroller.SpaceController); ok {
-		r0 = rf(ctx, id)
+	if rf, ok := ret.Get(0).(func(context.Context, string, *spaceinfo.SpaceDescription) spacecontroller.SpaceController); ok {
+		r0 = rf(ctx, id, desc)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(spacecontroller.SpaceController)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = rf(ctx, id)
+	if rf, ok := ret.Get(1).(func(context.Context, string, *spaceinfo.SpaceDescription) error); ok {
+		r1 = rf(ctx, id, desc)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -363,13 +424,14 @@ type MockSpaceFactory_CreateShareableSpace_Call struct {
 // CreateShareableSpace is a helper method to define mock.On call
 //   - ctx context.Context
 //   - id string
-func (_e *MockSpaceFactory_Expecter) CreateShareableSpace(ctx interface{}, id interface{}) *MockSpaceFactory_CreateShareableSpace_Call {
-	return &MockSpaceFactory_CreateShareableSpace_Call{Call: _e.mock.On("CreateShareableSpace", ctx, id)}
+//   - desc *spaceinfo.SpaceDescription
+func (_e *MockSpaceFactory_Expecter) CreateShareableSpace(ctx interface{}, id interface{}, desc interface{}) *MockSpaceFactory_CreateShareableSpace_Call {
+	return &MockSpaceFactory_CreateShareableSpace_Call{Call: _e.mock.On("CreateShareableSpace", ctx, id, desc)}
 }
 
-func (_c *MockSpaceFactory_CreateShareableSpace_Call) Run(run func(ctx context.Context, id string)) *MockSpaceFactory_CreateShareableSpace_Call {
+func (_c *MockSpaceFactory_CreateShareableSpace_Call) Run(run func(ctx context.Context, id string, desc *spaceinfo.SpaceDescription)) *MockSpaceFactory_CreateShareableSpace_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(*spaceinfo.SpaceDescription))
 	})
 	return _c
 }
@@ -379,7 +441,7 @@ func (_c *MockSpaceFactory_CreateShareableSpace_Call) Return(sp spacecontroller.
 	return _c
 }
 
-func (_c *MockSpaceFactory_CreateShareableSpace_Call) RunAndReturn(run func(context.Context, string) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreateShareableSpace_Call {
+func (_c *MockSpaceFactory_CreateShareableSpace_Call) RunAndReturn(run func(context.Context, string, *spaceinfo.SpaceDescription) (spacecontroller.SpaceController, error)) *MockSpaceFactory_CreateShareableSpace_Call {
 	_c.Call.Return(run)
 	return _c
 }

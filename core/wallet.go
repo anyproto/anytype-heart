@@ -9,12 +9,13 @@ import (
 )
 
 func (mw *Middleware) WalletCreate(cctx context.Context, req *pb.RpcWalletCreateRequest) *pb.RpcWalletCreateResponse {
-	mnemonic, err := mw.applicationService.WalletCreate(req)
+	mnemonic, accountKey, err := mw.applicationService.WalletCreate(req)
 	code := mapErrorCode(err,
 		errToCode(application.ErrFailedToCreateLocalRepo, pb.RpcWalletCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO),
 	)
 	return &pb.RpcWalletCreateResponse{
-		Mnemonic: mnemonic,
+		Mnemonic:   mnemonic,
+		AccountKey: accountKey,
 		Error: &pb.RpcWalletCreateResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),

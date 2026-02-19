@@ -83,6 +83,13 @@ var (
 	})
 	// anytype_object_cache_size is registered in objectCache pkg due to circular import
 
+	LinkPreviewStatusCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "mw",
+		Name:      "link_preview_non_ok_status_total",
+		Help:      "Total count of HTTP status codes from LinkPreview URL fetches",
+	}, []string{"status_code", "status_class"})
+
 	allocatorMMapCounter = prometheus.NewDesc(
 		"libc_allocator_mmap",
 		"Number of current mmap allocations",

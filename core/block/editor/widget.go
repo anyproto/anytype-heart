@@ -3,10 +3,8 @@ package editor
 import (
 	"context"
 	"errors"
-	"slices"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
-	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -32,12 +30,11 @@ type WidgetObject struct {
 	basic.DetailsSettable
 }
 
-func NewWidgetObject(
+func (f *ObjectFactory) newWidgetObject(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
-	layoutConverter converter.LayoutConverter,
 ) *WidgetObject {
-	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil)
+	bs := basic.NewBasic(sb, objectStore, f.layoutConverter, nil)
 	return &WidgetObject{
 		SmartBlock:      sb,
 		Movable:         bs,
@@ -89,6 +86,7 @@ func (w *WidgetObject) Init(ctx *smartblock.InitContext) (err error) {
 	for _, id := range removeIds {
 		ctx.State.Unlink(id)
 	}
+
 	return nil
 }
 
@@ -116,13 +114,6 @@ func replaceWidgetTarget(st *state.State, targetFrom string, targetTo string, vi
 				childBlock := st.Get(child.Model().Id)
 				if linkBlock, ok := childBlock.Model().Content.(*model.BlockContentOfLink); ok {
 					if linkBlock.Link.TargetBlockId == targetFrom {
-						targets := st.Details().Get(bundle.RelationKeyAutoWidgetTargets).StringList()
-						if slices.Contains(targets, targetTo) {
-							return false
-						}
-						targets = append(targets, targetTo)
-						st.SetDetail(bundle.RelationKeyAutoWidgetTargets, domain.StringList(targets))
-
 						linkBlock.Link.TargetBlockId = targetTo
 						wc.Widget.ViewId = viewId
 						wc.Widget.Layout = layout

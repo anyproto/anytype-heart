@@ -13,9 +13,10 @@ import (
 )
 
 type Directory struct {
-	fileReaders map[string]struct{}
-	importPath  string
-	rootDirs    map[string]bool
+	fileReaders   map[string]struct{}
+	importPath    string
+	rootDirs      map[string]bool
+	selectedPaths map[string]bool // For filtering
 }
 
 func NewDirectory() *Directory {
@@ -23,6 +24,22 @@ func NewDirectory() *Directory {
 }
 
 func (d *Directory) Initialize(importPath string) error {
+	return d.InitializeWithFilter(importPath, nil)
+}
+
+func (d *Directory) InitializeWithFilter(importPath string, selectedPaths []string) error {
+	// Build selectedPaths map for quick lookup
+	d.selectedPaths = make(map[string]bool)
+	if len(selectedPaths) > 0 {
+		for _, p := range selectedPaths {
+			absPath, err := filepath.Abs(p)
+			if err != nil {
+				continue
+			}
+			d.selectedPaths[absPath] = true
+		}
+	}
+	
 	files := make(map[string]struct{})
 	err := filepath.Walk(importPath,
 		func(path string, info os.FileInfo, err error) error {
@@ -30,6 +47,32 @@ func (d *Directory) Initialize(importPath string) error {
 				return nil
 			}
 			if info != nil && !info.IsDir() {
+				// If we have a filter, check if this file should be included
+				if len(d.selectedPaths) > 0 {
+					absPath, err := filepath.Abs(path)
+					if err != nil {
+						return nil
+					}
+					
+					// Check if this file is in the selected paths or is a descendant of a selected directory
+					include := false
+					if d.selectedPaths[absPath] {
+						include = true
+					} else {
+						// Check if any selected path is a directory that contains this file
+						for selectedPath := range d.selectedPaths {
+							if strings.HasPrefix(absPath, selectedPath+string(filepath.Separator)) {
+								include = true
+								break
+							}
+						}
+					}
+					
+					if !include {
+						return nil
+					}
+				}
+				
 				files[path] = struct{}{}
 			}
 			return nil

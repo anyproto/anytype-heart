@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 var (
@@ -114,7 +115,7 @@ func (ls *loadingSpace) logErrors(ctx context.Context, err error, mandatoryObjec
 }
 
 func (ls *loadingSpace) isNotRetryable(err error) bool {
-	return errors.Is(err, objecttree.ErrHasInvalidChanges) || ls.disableRemoteLoad
+	return errors.Is(err, objecttree.ErrHasInvalidChanges) || errors.Is(err, spacedomain.ErrUnexpectedSpaceType) || ls.disableRemoteLoad
 }
 
 func (ls *loadingSpace) load(ctx context.Context) (ok bool, err error) {

@@ -14,7 +14,7 @@ func TestCache_Fetch(t *testing.T) {
 	ts := newTestServer("text/html", strings.NewReader(tetsHtml))
 	lp := NewWithCache()
 	lp.Init(nil)
-	info, _, _, err := lp.Fetch(ctx, ts.URL)
+	info, _, _, err := lp.Fetch(ctx, ts.URL, false)
 	require.NoError(t, err)
 	assert.Equal(t, model.LinkPreview{
 		Url:         ts.URL,
@@ -27,7 +27,7 @@ func TestCache_Fetch(t *testing.T) {
 
 	ts.Close()
 
-	info, _, _, err = lp.Fetch(ctx, ts.URL)
+	info, _, _, err = lp.Fetch(ctx, ts.URL, false)
 	require.NoError(t, err)
 	assert.Equal(t, model.LinkPreview{
 		Url:         ts.URL,

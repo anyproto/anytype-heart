@@ -99,9 +99,9 @@ func MapErrorCode(err error, mappings ...errCodeMapping) int {
 	return http.StatusInternalServerError
 }
 
-// CodeToAPIError returns an instance of the correct struct
+// CodeToApiError returns an instance of the correct struct
 // for the given HTTP code, embedding the supplied message.
-func CodeToAPIError(code int, message string) any {
+func CodeToApiError(code int, message string) any {
 	switch code {
 
 	case http.StatusBadRequest:

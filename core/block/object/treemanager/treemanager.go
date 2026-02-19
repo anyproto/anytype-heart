@@ -24,16 +24,16 @@ type treeManager struct {
 	eventSender  event.Sender
 	spaceService space.Service
 
-	onDelete func(id domain.FullID) error
+	beforeDelete func(id domain.FullID) error
 }
 
 func New() treemanager.TreeManager {
 	return newTreeManager(nil)
 }
 
-func newTreeManager(onDelete func(id domain.FullID) error) *treeManager {
+func newTreeManager(beforeDelete func(id domain.FullID) error) *treeManager {
 	return &treeManager{
-		onDelete: onDelete,
+		beforeDelete: beforeDelete,
 	}
 }
 
@@ -41,17 +41,17 @@ func (m *treeManager) Name() string {
 	return treemanager.CName
 }
 
-type onDeleteProvider interface {
-	OnDelete(id domain.FullID, workspaceRemove func() error) error
+type beforeDeleteProvider interface {
+	BeforeDelete(id domain.FullID, workspaceRemove func() error) error
 }
 
 func (m *treeManager) Init(a *app.App) error {
 	m.eventSender = app.MustComponent[event.Sender](a)
 	m.spaceService = app.MustComponent[space.Service](a)
 
-	onDelete := app.MustComponent[onDeleteProvider](a).OnDelete
-	m.onDelete = func(id domain.FullID) error {
-		return onDelete(id, nil)
+	beforeDelete := app.MustComponent[beforeDeleteProvider](a).BeforeDelete
+	m.beforeDelete = func(id domain.FullID) error {
+		return beforeDelete(id, nil)
 	}
 
 	return nil
@@ -91,7 +91,7 @@ func (m *treeManager) ValidateAndPutTree(ctx context.Context, spaceId string, pa
 }
 
 func (m *treeManager) MarkTreeDeleted(ctx context.Context, spaceId, treeId string) error {
-	err := m.onDelete(domain.FullID{
+	err := m.beforeDelete(domain.FullID{
 		SpaceID:  spaceId,
 		ObjectID: treeId,
 	})

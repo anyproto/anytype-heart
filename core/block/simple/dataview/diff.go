@@ -23,8 +23,8 @@ func (d *Dataview) Diff(spaceId string, b simple.Block) (msgs []simple.EventMess
 
 	msgs = d.diffGroupOrders(spaceId, other, msgs)
 	msgs = d.diffObjectOrders(spaceId, other, msgs)
-	msgs = d.diffViews(spaceId, other, msgs)
 	msgs = d.diffRelationLinks(spaceId, other, msgs)
+	msgs = d.diffViews(spaceId, other, msgs)
 	msgs = d.diffSources(spaceId, other, msgs)
 	msgs = d.diffOrderOfViews(spaceId, other, msgs)
 	msgs = d.diffTargetObjectIDs(spaceId, other, msgs)

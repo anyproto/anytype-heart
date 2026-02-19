@@ -4,23 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
-	"github.com/anyproto/anytype-heart/core/block/editor/collection"
+	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -62,7 +58,7 @@ func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId strin
 	return id, err
 }
 
-func (s *service) SetIsFavorite(objectId string, isFavorite, createWidget bool) error {
+func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -74,18 +70,10 @@ func (s *service) SetIsFavorite(objectId string, isFavorite, createWidget bool) 
 	if err = s.objectLinksCollectionModify(spc.DerivedIDs().Home, objectId, isFavorite); err != nil {
 		return err
 	}
-
-	if createWidget && isFavorite {
-		err = s.createFavoriteWidget(spc)
-		if err != nil {
-			log.Error("failed to create favorite widget", zap.Error(err))
-		}
-	}
-
 	return nil
 }
 
-func (s *service) SetIsArchived(objectId string, isArchived bool) error {
+func (s *service) SetIsArchived(ctx context.Context, objectId string, isArchived bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -97,7 +85,7 @@ func (s *service) SetIsArchived(objectId string, isArchived bool) error {
 	if objectId == spc.DerivedIDs().Archive {
 		return fmt.Errorf("can't archive archive itself")
 	}
-	if err := s.checkArchivedRestriction(isArchived, objectId); err != nil {
+	if err := s.checkArchivedRestriction(ctx, isArchived, objectId); err != nil {
 		return err
 	}
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
@@ -119,9 +107,9 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 			return err
 		}
 
-		for i, id := range ids {
+		for _, id := range ids {
 			// TODO Set list of ids at once
-			err := s.SetIsFavorite(id, isFavorite, i == 0)
+			err := s.SetIsFavorite(id, isFavorite)
 			if err != nil {
 				log.Error("failed to favorite object", zap.String("objectId", id), zap.Error(err))
 				resultError = errors.Join(resultError, err)
@@ -140,7 +128,7 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 	return resultError
 }
 
-func (s *service) SetListIsArchived(objectIds []string, isArchived bool) error {
+func (s *service) SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error {
 	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
 		return fmt.Errorf("partition object ids by spaces: %w", err)
@@ -151,7 +139,7 @@ func (s *service) SetListIsArchived(objectIds []string, isArchived bool) error {
 		anySucceed bool
 	)
 	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
-		err = s.setIsArchivedForObjects(spaceId, objectIdsOfThisSpace, isArchived)
+		err = s.setIsArchivedForObjects(ctx, spaceId, objectIdsOfThisSpace, isArchived)
 		if err != nil {
 			log.Error("failed to set isArchived to objects", zap.String("spaceId", spaceId),
 				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
@@ -166,11 +154,18 @@ func (s *service) SetListIsArchived(objectIds []string, isArchived bool) error {
 	return resultErr
 }
 
-func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
+func (s *service) checkArchivedRestriction(ctx context.Context, isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil
 	}
 	return cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
+		if sb.Type() == coresb.SmartBlockTypeFileObject {
+			err := s.fileService.CanDeleteFile(ctx, objectId)
+			if err != nil {
+				return err
+			}
+		}
+
 		return restriction.CheckRestrictions(sb, model.Restrictions_Delete)
 	})
 }
@@ -180,7 +175,7 @@ func (s *service) objectLinksCollectionModify(collectionId string, objectId stri
 		return fmt.Errorf("can't add links collection to itself")
 	}
 	return cache.Do(s.objectGetter, collectionId, func(b smartblock.SmartBlock) error {
-		coll, ok := b.(collection.Collection)
+		coll, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unsupported sb block type: %T", b)
 		}
@@ -204,13 +199,13 @@ func (s *service) partitionObjectIdsBySpaceId(objectIds []string) (map[string][]
 	return res, nil
 }
 
-func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, isArchived bool) error {
+func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
 	spc, err := s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(collection.Collection)
+		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
@@ -229,7 +224,7 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 			}
 			return true
 		})
-		anySucceed, err := s.modifyArchiveLinks(archive, isArchived, ids...)
+		anySucceed, err := s.modifyArchiveLinks(ctx, archive, isArchived, ids...)
 
 		if err != nil {
 			log.Warn("failed to archive", zap.Error(err))
@@ -241,11 +236,9 @@ func (s *service) setIsArchivedForObjects(spaceId string, objectIds []string, is
 	})
 }
 
-func (s *service) modifyArchiveLinks(
-	coll collection.Collection, value bool, ids ...string,
-) (anySucceed bool, resultErr error) {
+func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.Collection, value bool, ids ...string) (anySucceed bool, resultErr error) {
 	for _, id := range ids {
-		err := s.checkArchivedRestriction(value, id)
+		err := s.checkArchivedRestriction(ctx, value, id)
 		if err == nil {
 			if value {
 				err = coll.AddObject(id)
@@ -260,23 +253,4 @@ func (s *service) modifyArchiveLinks(
 		anySucceed = true
 	}
 	return
-}
-
-func (s *service) createFavoriteWidget(spc clientspace.Space) error {
-	widgetObjectId := spc.DerivedIDs().Widgets
-	widgetDetails, err := s.store.SpaceIndex(spc.Id()).GetDetails(widgetObjectId)
-	if err != nil {
-		return fmt.Errorf("get widget details: %w", err)
-	}
-	if widgetDetails.GetBool(bundle.RelationKeyAutoWidgetDisabled) {
-		return nil
-	}
-	targetIds := widgetDetails.GetStringList(bundle.RelationKeyAutoWidgetTargets)
-	if slices.Contains(targetIds, widget.DefaultWidgetFavorite) {
-		return nil
-	}
-
-	return cache.DoState(s.objectGetter, widgetObjectId, func(st *state.State, w widget.Widget) (err error) {
-		return w.AddAutoWidget(st, widget.DefaultWidgetFavorite, widget.DefaultWidgetFavorite, "", model.BlockContentWidget_CompactList, widget.DefaultWidgetFavoriteEventName)
-	})
 }

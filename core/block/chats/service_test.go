@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription/mock_chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
@@ -32,7 +33,11 @@ const techSpaceId = "techSpaceId"
 type pushServiceDummy struct {
 }
 
-func (s *pushServiceDummy) Notify(ctx context.Context, spaceId string, topic []string, payload []byte) (err error) {
+func (s *pushServiceDummy) Notify(ctx context.Context, spaceId, groupId string, topic []string, payload []byte) (err error) {
+	return nil
+}
+
+func (s *pushServiceDummy) NotifyRead(ctx context.Context, spaceId, groupId string) (err error) {
 	return nil
 }
 
@@ -114,6 +119,8 @@ func newFixture(t *testing.T) *fixture {
 	subscriptionService := mock_chatsubscription.NewMockService(t)
 	idResolver := mock_idresolver.NewMockResolver(t)
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return("", nil).Maybe()
+	eventSender := mock_event.NewMockSender(t)
+	eventSender.EXPECT().Broadcast(mock.Anything).Maybe()
 
 	fx := &fixture{
 		service:              New().(*service),
@@ -130,6 +137,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(testutil.PrepareMock(ctx, a, crossSpaceSubService))
 	a.Register(testutil.PrepareMock(ctx, a, subscriptionService))
 	a.Register(testutil.PrepareMock(ctx, a, idResolver))
+	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(&pushServiceDummy{})
 	a.Register(&accountServiceDummy{})
 	a.Register(fx)
@@ -201,9 +209,7 @@ func (fx *fixture) expectSubscribe(t *testing.T) {
 func (fx *fixture) assertSendEvents(t *testing.T, chatIds []string) {
 	manager := mock_chatsubscription.NewMockManager(t)
 	manager.EXPECT().Lock().Return()
-	manager.EXPECT().Add(mock.Anything, mock.Anything).Return().Maybe()
-	manager.EXPECT().ForceSendingChatState().Return()
-	manager.EXPECT().Flush().Return()
+	manager.EXPECT().GetChatState().Return(&model.ChatState{}).Maybe()
 	manager.EXPECT().Unlock().Return()
 
 	for _, chatId := range chatIds {
@@ -216,7 +222,7 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx := newFixture(t)
 		ctx := context.Background()
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId:      domain.String("chat1"),
@@ -272,7 +278,7 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx := newFixture(t)
 		ctx := context.Background()
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
@@ -321,7 +327,7 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx := newFixture(t)
 		ctx := context.Background()
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId:      domain.String("chat1"),
@@ -373,7 +379,7 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 		fx := newFixture(t)
 		ctx := context.Background()
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything).Return(&subscription.SubscribeResponse{
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
 			Records: []*domain.Details{
 				domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 					bundle.RelationKeyId:      domain.String("chat1"),
@@ -418,4 +424,107 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 			},
 		})
 	})
+}
+
+func TestApplyEmojiMarks(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		text  string
+		marks []*model.BlockContentTextMark
+		want  string
+	}{
+		{
+			name:  "empty text",
+			text:  "",
+			marks: []*model.BlockContentTextMark{},
+			want:  "",
+		},
+		{
+			name:  "no marks",
+			text:  "hello",
+			marks: []*model.BlockContentTextMark{},
+			want:  "hello",
+		},
+		{
+			name: "invalid range",
+			text: "hello",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 100,
+						To:   101,
+					},
+					Param: "👍",
+				},
+			},
+			want: "hello",
+		},
+		{
+			name: "only emoji",
+			text: " ",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 0,
+						To:   1,
+					},
+					Param: "👍",
+				},
+			},
+			want: "👍",
+		},
+		{
+			name: "with cyrillic symbol",
+			text: "ц ",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 1,
+						To:   2,
+					},
+					Param: "👍",
+				},
+			},
+			want: "ц👍",
+		},
+		{
+			name: "multiple marks",
+			text: " a b ",
+			marks: []*model.BlockContentTextMark{
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 0,
+						To:   1,
+					},
+					Param: "👍",
+				},
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 2,
+						To:   3,
+					},
+					Param: "👌",
+				},
+				{
+					Type: model.BlockContentTextMark_Emoji,
+					Range: &model.Range{
+						From: 4,
+						To:   5,
+					},
+					Param: "😀",
+				},
+			},
+			want: "👍a👌b😀",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got := applyEmojiMarks(tc.text, tc.marks)
+			assert.Equal(t, tc.want, got)
+		})
+	}
 }

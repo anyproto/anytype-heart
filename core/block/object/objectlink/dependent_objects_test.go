@@ -7,14 +7,18 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/dateutil"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type fakeConverter struct {
@@ -26,6 +30,26 @@ func (f *fakeConverter) GetRelationIdByKey(ctx context.Context, key domain.Relat
 
 func (f *fakeConverter) GetTypeIdByKey(ctx context.Context, key domain.TypeKey) (id string, err error) {
 	return fakeDerivedID(key.String()), nil
+}
+
+func (f *fakeConverter) Id() string {
+	return ""
+}
+
+func setupFetcher(t *testing.T, links pbtypes.RelationLinks) relationutils.RelationFormatFetcher {
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		rel, err := bundle.GetRelation(key)
+		if err == nil {
+			return rel.Format, nil
+		}
+		link := links.Get(key.String())
+		if link != nil {
+			return link.Format, nil
+		}
+		return 0, err
+	}).Maybe()
+	return fetcher
 }
 
 func fakeDerivedID(key string) string {
@@ -88,14 +112,15 @@ func TestState_DepSmartIdsLinks(t *testing.T) {
 			}}),
 	}).(*state.State)
 	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, nil)
 
 	t.Run("block option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true})
 		assert.Len(t, objectIDs, 4)
 	})
 
 	t.Run("all options are turned off", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{})
 		assert.Len(t, objectIDs, 0)
 	})
 }
@@ -203,24 +228,31 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 		},
 	}
 	stateWithLinks.AddRelationLinks(relations...)
+	stateWithLinks.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		"relation1": domain.String("image_with_cute_kitten"),
+		"relation2": domain.String("Important"),
+		"relation3": domain.String("TODO"),
+		"relation4": domain.String("Project"),
+	}))
+	fetcher := setupFetcher(t, relations)
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true})
 		assert.Len(t, objectIDs, 11)
 	})
 
 	t.Run("dataview only target option is turned on: get only target from blocks", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, DataviewBlockOnlyTarget: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true, DataviewBlockOnlyTarget: true})
 		assert.Len(t, objectIDs, 9)
 	})
 
 	t.Run("no images option is turned on: get ids from blocks except images", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, NoImages: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true, NoImages: true})
 		assert.Len(t, objectIDs, 10)
 	})
 
 	t.Run("blocks option and relations options are turned on: get ids from blocks and relations", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true, Relations: true})
 		assert.Len(t, objectIDs, 15) // 11 links + 4 relations
 	})
 
@@ -231,7 +263,7 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 			Key:    bundle.RelationKeyBacklinks.String(),
 			Format: model.RelationFormat_object,
 		})
-		objectIDs := DependentObjectIDs(st, converter, Flags{Details: true})
+		objectIDs := DependentObjectIDs(st, converter, fetcher, Flags{Details: true})
 		assert.Len(t, objectIDs, 1)
 		assert.Contains(t, objectIDs, "link1")
 	})
@@ -242,7 +274,7 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 			Key:    bundle.RelationKeyBacklinks.String(),
 			Format: model.RelationFormat_object,
 		})
-		objectIDs := DependentObjectIDs(st, converter, Flags{Details: true, NoBackLinks: true})
+		objectIDs := DependentObjectIDs(st, converter, fetcher, Flags{Details: true, NoBackLinks: true})
 		assert.Len(t, objectIDs, 0)
 	})
 }
@@ -326,17 +358,18 @@ func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 	// given
 	stateWithLinks := buildStateWithLinks()
 	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, stateWithLinks.PickRelationLinks())
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true})
 		assert.Len(t, objectIDs, 4) // links
 	})
 	t.Run("blocks option and relations option are turned on: get ids from blocks and relations", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true, Relations: true})
 		assert.Len(t, objectIDs, 9) // 4 links + 5 relations
 	})
 	t.Run("blocks, relations and details option are turned on: get ids from blocks, relations and details", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Blocks: true, Relations: true, Details: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true, Relations: true, Details: true})
 		assert.Len(t, objectIDs, 14) // 4 links + 5 relations + 3 options + 1 fileID + 1 date
 	})
 }
@@ -368,14 +401,15 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 	stateWithLinks.SetDetail(bundle.RelationKeyCreator, domain.String("creator"))
 	stateWithLinks.SetDetail(bundle.RelationKeyLastModifiedBy, domain.String("lastModifiedBy"))
 	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, relations)
 
 	t.Run("details option is turned on: get ids only from details", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Details: true, CreatorModifierWorkspace: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Details: true, CreatorModifierWorkspace: true})
 		assert.Len(t, objectIDs, 3) // creator + lastModifiedBy + 1 date
 	})
 
 	t.Run("details and relations options are turned on: get ids from details and relations", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Details: true, Relations: true, CreatorModifierWorkspace: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Details: true, Relations: true, CreatorModifierWorkspace: true})
 		assert.Len(t, objectIDs, 7) // 4 relations + creator + lastModifiedBy + 1 date
 	})
 }
@@ -385,13 +419,14 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 	stateWithLinks := state.NewDoc("root", nil).(*state.State)
 	stateWithLinks.SetObjectTypeKey(bundle.TypeKeyPage)
 	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, stateWithLinks.PickRelationLinks())
 
 	t.Run("all options are turned off", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{})
 		assert.Len(t, objectIDs, 0)
 	})
 	t.Run("objTypes option is turned on, get only object types id", func(t *testing.T) {
-		objectIDs := DependentObjectIDs(stateWithLinks, converter, Flags{Types: true})
+		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Types: true})
 		assert.Equal(t, []string{
 			fakeDerivedID(bundle.TypeKeyPage.String()),
 		}, objectIDs)
@@ -407,6 +442,7 @@ func TestDependentObjectIDsPerSpace(t *testing.T) {
 	)
 	st := buildStateWithLinks()
 	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, st.PickRelationLinks())
 	resolver := &fakeSpaceIdResolver{idsToSpaceIds: map[string]string{
 		"objectID":  spc1,
 		"objectID2": spc2,
@@ -425,7 +461,7 @@ func TestDependentObjectIDsPerSpace(t *testing.T) {
 	}}
 
 	// when
-	ids := DependentObjectIDsPerSpace(spc1, st, converter, resolver, Flags{Blocks: true, Relations: true, Details: true})
+	ids := DependentObjectIDsPerSpace(spc1, st, converter, resolver, fetcher, Flags{Blocks: true, Relations: true, Details: true})
 
 	// then
 	require.Len(t, ids, 3)

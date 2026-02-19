@@ -8,7 +8,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
-	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/block/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -118,7 +117,7 @@ func (ds *Service) makeDatabaseSnapshot(
 	api.UploadFileRelationLocally(fileDownloader, details, relationLinks)
 	details = st.CombinedDetails().Merge(details)
 	snapshots := ds.makeRelationsSnapshots(d, st, relations)
-	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, details, relationLinks)
+	id, databaseSnapshot := ds.provideDatabaseSnapshot(d, st, details)
 	ds.fillImportContext(d, importContext, id, databaseSnapshot)
 	snapshots = append(snapshots, databaseSnapshot)
 	return snapshots, nil
@@ -301,13 +300,12 @@ func (ds *Service) getCollectionDetails(d Database) (*domain.Details, []*model.R
 	return details, relationLinks
 }
 
-func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, details *domain.Details, links []*model.RelationLink) (string, *common.Snapshot) {
+func (ds *Service) provideDatabaseSnapshot(d Database, st *state.State, details *domain.Details) (string, *common.Snapshot) {
 	snapshot := &common.StateSnapshot{
-		Blocks:        st.Blocks(),
-		Details:       details,
-		ObjectTypes:   []string{bundle.TypeKeyCollection.String()},
-		Collections:   st.Store(),
-		RelationLinks: lo.Union(st.GetRelationLinks(), links),
+		Blocks:      st.Blocks(),
+		Details:     details,
+		ObjectTypes: []string{bundle.TypeKeyCollection.String()},
+		Collections: st.Store(),
 	}
 
 	id := uuid.New().String()

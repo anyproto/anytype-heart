@@ -15,11 +15,10 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/files/filedownloader/mock_filedownloader"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/storage"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
@@ -48,12 +47,6 @@ func TestGetImage(t *testing.T) {
 
 		const imageData = "image data"
 		const fileObjectId = "fileObjectId"
-		fullFileId := domain.FullFileId{
-			SpaceId: "space1",
-			FileId:  "fileId1",
-		}
-
-		fx.fileObjectService.EXPECT().GetFileIdFromObjectWaitLoad(mock.Anything, fileObjectId).Return(fullFileId, nil)
 
 		file := mock_files.NewMockFile(t)
 		file.EXPECT().Reader(mock.Anything).Return(strings.NewReader(imageData), nil)
@@ -61,11 +54,14 @@ func TestGetImage(t *testing.T) {
 			Media: "image/jpeg",
 			Name:  "test image",
 		})
-		file.EXPECT().Info().Return(&storage.FileInfo{Name: "test image"})
+		file.EXPECT().Name().Return("test image")
 
 		image := mock_files.NewMockImage(t)
 		image.EXPECT().GetOriginalFile().Return(file, nil)
-		fx.fileService.EXPECT().ImageByHash(mock.Anything, fullFileId).Return(image, nil)
+		image.EXPECT().SpaceId().Return("space1")
+		file.EXPECT().MimeType().Return("image/jpeg")
+
+		fx.fileObjectService.EXPECT().GetImageData(mock.Anything, mock.Anything).Return(image, nil)
 
 		path := "http://" + fx.Addr() + "/image/" + fileObjectId
 
@@ -95,11 +91,13 @@ func newFixture(t *testing.T) *fixture {
 
 	fileService := mock_files.NewMockService(t)
 	fileObjectService := mock_fileobject.NewMockService(t)
+	fileDownloader := mock_filedownloader.NewMockService(t)
 	gw := New().(*gateway)
 
 	ctx := context.Background()
 	a.Register(testutil.PrepareMock(ctx, a, fileService))
 	a.Register(testutil.PrepareMock(ctx, a, fileObjectService))
+	a.Register(testutil.PrepareMock(ctx, a, fileDownloader))
 	a.Register(gw)
 	err := a.Start(ctx)
 	assert.NoError(t, err)

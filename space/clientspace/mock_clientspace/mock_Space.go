@@ -1343,6 +1343,51 @@ func (_c *MockSpace_Id_Call) RunAndReturn(run func() string) *MockSpace_Id_Call 
 	return _c
 }
 
+// IsOneToOne provides a mock function with given fields:
+func (_m *MockSpace) IsOneToOne() bool {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsOneToOne")
+	}
+
+	var r0 bool
+	if rf, ok := ret.Get(0).(func() bool); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(bool)
+	}
+
+	return r0
+}
+
+// MockSpace_IsOneToOne_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsOneToOne'
+type MockSpace_IsOneToOne_Call struct {
+	*mock.Call
+}
+
+// IsOneToOne is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) IsOneToOne() *MockSpace_IsOneToOne_Call {
+	return &MockSpace_IsOneToOne_Call{Call: _e.mock.On("IsOneToOne")}
+}
+
+func (_c *MockSpace_IsOneToOne_Call) Run(run func()) *MockSpace_IsOneToOne_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_IsOneToOne_Call) Return(_a0 bool) *MockSpace_IsOneToOne_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_IsOneToOne_Call) RunAndReturn(run func() bool) *MockSpace_IsOneToOne_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsPersonal provides a mock function with given fields:
 func (_m *MockSpace) IsPersonal() bool {
 	ret := _m.Called()
@@ -1557,6 +1602,52 @@ func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Return() *MockSpace_LoadObjectsI
 }
 
 func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) RunAndReturn(run func(context.Context, []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RefreshObjects provides a mock function with given fields: objectIds
+func (_m *MockSpace) RefreshObjects(objectIds []string) error {
+	ret := _m.Called(objectIds)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RefreshObjects")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func([]string) error); ok {
+		r0 = rf(objectIds)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpace_RefreshObjects_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RefreshObjects'
+type MockSpace_RefreshObjects_Call struct {
+	*mock.Call
+}
+
+// RefreshObjects is a helper method to define mock.On call
+//   - objectIds []string
+func (_e *MockSpace_Expecter) RefreshObjects(objectIds interface{}) *MockSpace_RefreshObjects_Call {
+	return &MockSpace_RefreshObjects_Call{Call: _e.mock.On("RefreshObjects", objectIds)}
+}
+
+func (_c *MockSpace_RefreshObjects_Call) Run(run func(objectIds []string)) *MockSpace_RefreshObjects_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpace_RefreshObjects_Call) Return(err error) *MockSpace_RefreshObjects_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockSpace_RefreshObjects_Call) RunAndReturn(run func([]string) error) *MockSpace_RefreshObjects_Call {
 	_c.Call.Return(run)
 	return _c
 }

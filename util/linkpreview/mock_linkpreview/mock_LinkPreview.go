@@ -25,9 +25,9 @@ func (_m *MockLinkPreview) EXPECT() *MockLinkPreview_Expecter {
 	return &MockLinkPreview_Expecter{mock: &_m.Mock}
 }
 
-// Fetch provides a mock function with given fields: ctx, url
-func (_m *MockLinkPreview) Fetch(ctx context.Context, url string) (model.LinkPreview, []byte, bool, error) {
-	ret := _m.Called(ctx, url)
+// Fetch provides a mock function with given fields: ctx, url, withResponseBody
+func (_m *MockLinkPreview) Fetch(ctx context.Context, url string, withResponseBody bool) (model.LinkPreview, []byte, bool, error) {
+	ret := _m.Called(ctx, url, withResponseBody)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Fetch")
@@ -37,31 +37,31 @@ func (_m *MockLinkPreview) Fetch(ctx context.Context, url string) (model.LinkPre
 	var r1 []byte
 	var r2 bool
 	var r3 error
-	if rf, ok := ret.Get(0).(func(context.Context, string) (model.LinkPreview, []byte, bool, error)); ok {
-		return rf(ctx, url)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) (model.LinkPreview, []byte, bool, error)); ok {
+		return rf(ctx, url, withResponseBody)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, string) model.LinkPreview); ok {
-		r0 = rf(ctx, url)
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) model.LinkPreview); ok {
+		r0 = rf(ctx, url, withResponseBody)
 	} else {
 		r0 = ret.Get(0).(model.LinkPreview)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, string) []byte); ok {
-		r1 = rf(ctx, url)
+	if rf, ok := ret.Get(1).(func(context.Context, string, bool) []byte); ok {
+		r1 = rf(ctx, url, withResponseBody)
 	} else {
 		if ret.Get(1) != nil {
 			r1 = ret.Get(1).([]byte)
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string) bool); ok {
-		r2 = rf(ctx, url)
+	if rf, ok := ret.Get(2).(func(context.Context, string, bool) bool); ok {
+		r2 = rf(ctx, url, withResponseBody)
 	} else {
 		r2 = ret.Get(2).(bool)
 	}
 
-	if rf, ok := ret.Get(3).(func(context.Context, string) error); ok {
-		r3 = rf(ctx, url)
+	if rf, ok := ret.Get(3).(func(context.Context, string, bool) error); ok {
+		r3 = rf(ctx, url, withResponseBody)
 	} else {
 		r3 = ret.Error(3)
 	}
@@ -77,13 +77,14 @@ type MockLinkPreview_Fetch_Call struct {
 // Fetch is a helper method to define mock.On call
 //   - ctx context.Context
 //   - url string
-func (_e *MockLinkPreview_Expecter) Fetch(ctx interface{}, url interface{}) *MockLinkPreview_Fetch_Call {
-	return &MockLinkPreview_Fetch_Call{Call: _e.mock.On("Fetch", ctx, url)}
+//   - withResponseBody bool
+func (_e *MockLinkPreview_Expecter) Fetch(ctx interface{}, url interface{}, withResponseBody interface{}) *MockLinkPreview_Fetch_Call {
+	return &MockLinkPreview_Fetch_Call{Call: _e.mock.On("Fetch", ctx, url, withResponseBody)}
 }
 
-func (_c *MockLinkPreview_Fetch_Call) Run(run func(ctx context.Context, url string)) *MockLinkPreview_Fetch_Call {
+func (_c *MockLinkPreview_Fetch_Call) Run(run func(ctx context.Context, url string, withResponseBody bool)) *MockLinkPreview_Fetch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string))
+		run(args[0].(context.Context), args[1].(string), args[2].(bool))
 	})
 	return _c
 }
@@ -93,7 +94,7 @@ func (_c *MockLinkPreview_Fetch_Call) Return(linkPreview model.LinkPreview, resp
 	return _c
 }
 
-func (_c *MockLinkPreview_Fetch_Call) RunAndReturn(run func(context.Context, string) (model.LinkPreview, []byte, bool, error)) *MockLinkPreview_Fetch_Call {
+func (_c *MockLinkPreview_Fetch_Call) RunAndReturn(run func(context.Context, string, bool) (model.LinkPreview, []byte, bool, error)) *MockLinkPreview_Fetch_Call {
 	_c.Call.Return(run)
 	return _c
 }

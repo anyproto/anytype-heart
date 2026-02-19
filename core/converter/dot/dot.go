@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
 	"github.com/anyproto/anytype-heart/core/converter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -93,7 +94,7 @@ func (d *dot) ImageHashes() []string {
 	return d.imageHashes
 }
 
-func (d *dot) Add(space smartblock.Space, st *state.State) error {
+func (d *dot) Add(space smartblock.Space, st *state.State, fetcher relationutils.RelationFormatFetcher) error {
 	n, e := d.graph.CreateNodeByName(st.RootId())
 	if e != nil {
 		return e
@@ -123,7 +124,7 @@ func (d *dot) Add(space smartblock.Space, st *state.State) error {
 
 	// TODO: add relations
 
-	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, objectlink.Flags{
+	dependentObjectIDs := objectlink.DependentObjectIDs(st, space, fetcher, objectlink.Flags{
 		Blocks:    true,
 		Details:   true,
 		Relations: false,

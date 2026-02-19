@@ -17,6 +17,29 @@ import (
 	"github.com/anyproto/anytype-heart/util/debug"
 )
 
+func (s *service) DebugRouter(r chi.Router) {
+	r.Get("/per_object/{spaceId}", debug.PlaintextHandler(s.debugPerObject))
+	r.Get("/per_subscription/{spaceId}", debug.PlaintextHandler(s.debugPerSubscription))
+}
+
+func (s *service) debugPerObject(w io.Writer, req *http.Request) error {
+	spaceId := chi.URLParam(req, "spaceId")
+	spaceSub, ok := s.spaceSubs[spaceId]
+	if !ok {
+		return fmt.Errorf("no sub for space %s", spaceId)
+	}
+	return spaceSub.subDebugger.printPerObject(w, req)
+}
+
+func (s *service) debugPerSubscription(w io.Writer, req *http.Request) error {
+	spaceId := chi.URLParam(req, "spaceId")
+	spaceSub, ok := s.spaceSubs[spaceId]
+	if !ok {
+		return fmt.Errorf("no sub for space %s", spaceId)
+	}
+	return spaceSub.subDebugger.printPerSubscription(w, req)
+}
+
 func (s *spaceSubscriptions) initDebugger() {
 	s.subDebugger = newSubDebugger()
 }
@@ -25,19 +48,6 @@ func (s *spaceSubscriptions) debugEvents(ev *pb.Event) {
 	for _, msg := range ev.Messages {
 		s.subDebugger.addEvent(msg)
 	}
-}
-
-func (s *spaceSubscriptions) DebugRouter(r chi.Router) {
-	r.Get("/per_object", debug.PlaintextHandler(s.debugPerObject))
-	r.Get("/per_subscription", debug.PlaintextHandler(s.debugPerSubscription))
-}
-
-func (s *spaceSubscriptions) debugPerObject(w io.Writer, req *http.Request) error {
-	return s.subDebugger.printPerObject(w, req)
-}
-
-func (s *spaceSubscriptions) debugPerSubscription(w io.Writer, req *http.Request) error {
-	return s.subDebugger.printPerSubscription(w, req)
 }
 
 type debugEntrySet pb.EventMessageValueOfObjectDetailsSet

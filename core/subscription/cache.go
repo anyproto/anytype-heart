@@ -57,6 +57,18 @@ func (e *entry) SetSub(subId string, isActive bool, isFullDetailSent bool) {
 	}
 }
 
+func (e *entry) IsInSub(subId string) bool {
+	if e == nil {
+		return false
+	}
+	for _, id := range e.subIds {
+		if id == subId {
+			return true
+		}
+	}
+	return false
+}
+
 // GetActive returns all active subscriptions for entry
 func (e *entry) GetActive() []string {
 	var subIsActive []string

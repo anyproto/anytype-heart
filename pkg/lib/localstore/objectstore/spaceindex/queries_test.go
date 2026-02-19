@@ -738,7 +738,7 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId,
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Desc,
 				},
 			},
@@ -751,8 +751,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := a.GetString(bundle.RelationKeyId)
-			idB := b.GetString(bundle.RelationKeyId)
+			idA := a.GetString(bundle.RelationKeyName)
+			idB := b.GetString(bundle.RelationKeyName)
 			// Desc order
 			return idA > idB
 		})
@@ -772,7 +772,7 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId,
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -785,8 +785,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := a.GetString(bundle.RelationKeyId)
-			idB := b.GetString(bundle.RelationKeyId)
+			idA := a.GetString(bundle.RelationKeyName)
+			idB := b.GetString(bundle.RelationKeyName)
 			return idA < idB
 		})
 		assertRecordsEqual(t, want[:15], recs)
@@ -807,7 +807,7 @@ func TestQuery(t *testing.T) {
 		recs, err := s.Query(database.Query{
 			Sorts: []database.SortRequest{
 				{
-					RelationKey: bundle.RelationKeyId,
+					RelationKey: bundle.RelationKeyName,
 					Type:        model.BlockContentDataviewSort_Asc,
 				},
 			},
@@ -821,8 +821,8 @@ func TestQuery(t *testing.T) {
 		sort.Slice(want, func(i, j int) bool {
 			a := makeDetails(want[i])
 			b := makeDetails(want[j])
-			idA := a.GetString(bundle.RelationKeyId)
-			idB := b.GetString(bundle.RelationKeyId)
+			idA := a.GetString(bundle.RelationKeyName)
+			idB := b.GetString(bundle.RelationKeyName)
 			return idA < idB
 		})
 		assertRecordsEqual(t, want[offset:offset+limit], recs)

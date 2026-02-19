@@ -18,20 +18,20 @@ import (
 )
 
 type spaceIndexer struct {
-	runCtx      context.Context
-	spaceIndex  spaceindex.Store
-	objectStore objectstore.ObjectStore
-	batcher     *mb.MB[indexTask]
-	isTechSpace bool
+	runCtx          context.Context
+	spaceIndex      spaceindex.Store
+	objectStore     objectstore.ObjectStore
+	batcher         *mb.MB[indexTask]
+	fulltextEnabled bool
 }
 
-func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, isTechSpace bool) *spaceIndexer {
+func newSpaceIndexer(runCtx context.Context, spaceIndex spaceindex.Store, objectStore objectstore.ObjectStore, fulltextEnabled bool) *spaceIndexer {
 	ind := &spaceIndexer{
-		runCtx:      runCtx,
-		spaceIndex:  spaceIndex,
-		objectStore: objectStore,
-		batcher:     mb.New[indexTask](100),
-		isTechSpace: isTechSpace,
+		runCtx:          runCtx,
+		spaceIndex:      spaceIndex,
+		objectStore:     objectStore,
+		batcher:         mb.New[indexTask](100),
+		fulltextEnabled: fulltextEnabled,
 	}
 	go ind.indexBatchLoop()
 	return ind
@@ -64,6 +64,9 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = tx.Rollback()
+	}()
 	st := time.Now()
 
 	closeTasks := func(closeErr error) {
@@ -182,7 +185,8 @@ func (i *spaceIndexer) index(ctx context.Context, info smartblock.DocInfo, optio
 		if !(opts.SkipFullTextIfHeadsNotChanged && lastIndexedHash == headHashToIndex) {
 			// Use component's context because ctx from parameter contains transaction
 			fulltext, _, _ := info.SmartblockType.Indexable()
-			if fulltext && !i.isTechSpace {
+
+			if fulltext && i.fulltextEnabled {
 				if err := i.objectStore.AddToIndexQueue(i.runCtx, domain.FullID{ObjectID: info.Id, SpaceID: info.Space.Id()}); err != nil {
 					log.With("objectID", info.Id).Errorf("can't add id to index queue: %v", err)
 				}
