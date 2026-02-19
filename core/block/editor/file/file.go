@@ -11,7 +11,6 @@ import (
 	"sync/atomic"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -31,7 +30,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -358,12 +356,11 @@ func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry 
 		ObjectTypeUniqueKey: bundle.TypeKeyCollection.URL(),
 		TargetId:            targetId,
 		Position:            pos,
-		Details: &types.Struct{
-			Fields: map[string]*types.Value{
-				"name":      pbtypes.String(dirEntry.name),
-				"iconEmoji": pbtypes.String("📁"),
-			},
-		},
+		Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:      domain.String(dirEntry.name),
+			bundle.RelationKeyIconEmoji: domain.String("📁"),
+			bundle.RelationKeyOrigin:    domain.Int64(objectorigin.DragAndDrop().Origin),
+		}).ToProto(),
 		Block: &model.Block{
 			Content: &model.BlockContentOfLink{
 				Link: &model.BlockContentLink{
@@ -552,6 +549,7 @@ func (dp *dropFilesProcess) createCollectionForFolder(ctx context.Context, name 
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyIconEmoji, "📁")
+	objectorigin.DragAndDrop().AddToDetails(details)
 
 	id, _, err := dp.objectCreator.CreateObject(ctx, dp.spaceID, objectcreator.CreateObjectRequest{
 		Details:       details,
