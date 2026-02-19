@@ -258,7 +258,10 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(StateIdKey, arena.NewString(m.StateId))
 	marshalTo.Set(ReactionsKey, reactions)
 	marshalTo.Set(SyncedKey, arenaNewBool(arena, m.Synced))
-	marshalTo.Set(PinnedKey, arenaNewBool(arena, m.Pinned))
+	if m.Pinned {
+		// we save Pinned value only in case of =true for good sparse index search
+		marshalTo.Set(PinnedKey, arenaNewBool(arena, m.Pinned))
+	}
 }
 
 func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
