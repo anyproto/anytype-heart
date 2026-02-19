@@ -33,6 +33,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/process"
@@ -103,6 +104,7 @@ type ObjectFactory struct {
 	backlinksUpdater        backlinks.UpdateWatcher
 	formatFetcher           relationutils.RelationFormatFetcher
 	fileGC                  filegc.FileGC
+	objectCreator           file.ObjectCreator
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -144,6 +146,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 		f.statService = debugstat.NewNoOp()
 	}
 	f.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
+	f.objectCreator = app.MustComponent[objectcreator.Service](a)
 	return nil
 }
 

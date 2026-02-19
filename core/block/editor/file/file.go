@@ -15,9 +15,11 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
@@ -39,18 +41,23 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service) File {
+func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service, objectCreator ObjectCreator) File {
 	return &sfile{
 		SmartBlock:          sb,
 		blockService:        blockService,
 		picker:              picker,
 		processService:      processService,
 		fileUploaderFactory: fileUploaderFactory,
+		objectCreator:       objectCreator,
 	}
 }
 
 type BlockService interface {
 	CreateLinkToTheNewObject(ctx context.Context, sctx session.Context, req *pb.RpcBlockLinkCreateWithObjectRequest) (linkID string, pageID string, details *domain.Details, err error)
+}
+
+type ObjectCreator interface {
+	CreateObject(ctx context.Context, spaceID string, req objectcreator.CreateObjectRequest) (id string, details *domain.Details, err error)
 }
 
 type File interface {
@@ -83,6 +90,7 @@ type sfile struct {
 	picker              cache.ObjectGetter
 	processService      process.Service
 	fileUploaderFactory fileuploader.Service
+	objectCreator       ObjectCreator
 }
 
 func (sf *sfile) Upload(ctx session.Context, blockId string, source FileSource, isSync bool) (fileObjectId string, err error) {
@@ -251,6 +259,7 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 		processService:      sf.processService,
 		picker:              sf.picker,
 		fileUploaderFactory: sf.fileUploaderFactory,
+		objectCreator:       sf.objectCreator,
 		contextId:           req.ContextId,
 	}
 	if err = proc.Init(req.LocalFilePaths); err != nil {
@@ -264,55 +273,21 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 
 func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) (blockIds []string, err error) {
 	s := sf.NewState().SetGroupId(groupId)
-	pageTypeId, err := sf.Space().GetTypeIdByKey(context.Background(), bundle.TypeKeyPage)
-	if err != nil {
-		return
-	}
 	for _, entry := range entries {
-		var blockId, pageId string
-		if entry.isDir {
-			if err = sf.Apply(s); err != nil {
-				return
-			}
-			sf.Unlock()
-			blockId, pageId, _, err = sf.blockService.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
-				SpaceId:             sf.SpaceID(),
-				ContextId:           sf.Id(),
-				ObjectTypeUniqueKey: bundle.TypeKeyPage.URL(),
-				TargetId:            targetId,
-				Position:            pos,
-				Details: &types.Struct{
-					Fields: map[string]*types.Value{
-						"type":      pbtypes.String(pageTypeId),
-						"name":      pbtypes.String(entry.name),
-						"iconEmoji": pbtypes.String("📁"),
-					},
-				},
-			})
-			sf.Lock()
-			if err != nil {
-				return
-			}
-			targetId = blockId
-			pos = model.Block_Bottom
-			blockId = pageId
-			s = sf.NewState().SetGroupId(groupId)
-		} else {
-			fb := simple.New(&model.Block{Content: &model.BlockContentOfFile{
-				File: &model.BlockContentFile{
-					Name:  entry.name,
-					Style: style,
-				},
-			}})
-			blockId = fb.Model().Id
-			fb.(file.Block).SetState(model.BlockContentFile_Uploading)
-			s.Add(fb)
-			if err = s.InsertTo(targetId, pos, blockId); err != nil {
-				return
-			}
-			targetId = blockId
-			pos = model.Block_Bottom
+		fb := simple.New(&model.Block{Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
+				Name:  entry.name,
+				Style: style,
+			},
+		}})
+		blockId := fb.Model().Id
+		fb.(file.Block).SetState(model.BlockContentFile_Uploading)
+		s.Add(fb)
+		if err = s.InsertTo(targetId, pos, blockId); err != nil {
+			return
 		}
+		targetId = blockId
+		pos = model.Block_Bottom
 		blockIds = append(blockIds, blockId)
 	}
 	if err = sf.Apply(s); err != nil {
@@ -357,6 +332,44 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 	})
 }
 
+func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition, in chan *dropFileInfo) error {
+	// Create a link block to a new collection object in the document
+	if err := sf.Apply(sf.NewState()); err != nil {
+		return fmt.Errorf("apply state before creating link: %w", err)
+	}
+	sf.Unlock()
+	_, collectionId, _, err := sf.blockService.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
+		SpaceId:             sf.SpaceID(),
+		ContextId:           sf.Id(),
+		ObjectTypeUniqueKey: bundle.TypeKeyCollection.URL(),
+		TargetId:            targetId,
+		Position:            pos,
+		Details: &types.Struct{
+			Fields: map[string]*types.Value{
+				"name":      pbtypes.String(dirEntry.name),
+				"iconEmoji": pbtypes.String("📁"),
+			},
+		},
+		Block: &model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					Style:    model.BlockContentLink_Page,
+					IconSize: model.BlockContentLink_SizeSmall,
+				},
+			},
+		},
+	})
+	sf.Lock()
+	if err != nil {
+		return fmt.Errorf("create linked collection: %w", err)
+	}
+	atomic.AddInt64(&dp.done, 1)
+
+	// Process children into the new collection
+	dp.processCollectionEntries(collectionId, dirEntry.child, in)
+	return nil
+}
+
 type dropFileEntry struct {
 	name  string
 	path  string
@@ -376,6 +389,7 @@ type dropFileInfo struct {
 type dropFilesHandler interface {
 	dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) (blockIds []string, err error)
 	dropFilesSetInfo(info dropFileInfo) (err error)
+	dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition, in chan *dropFileInfo) error
 	newUploader(origin objectorigin.ObjectOrigin) fileuploader.Uploader
 }
 
@@ -393,6 +407,7 @@ type dropFilesProcess struct {
 	contextId      string
 
 	fileUploaderFactory fileuploader.Service
+	objectCreator       ObjectCreator
 }
 
 func (dp *dropFilesProcess) Id() string {
@@ -519,35 +534,76 @@ func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, req pb.RpcFileDrop
 	wg.Wait()
 }
 
-func (dp *dropFilesProcess) handleDragAndDropInCollection(rootId string, droppedFiles []*dropFileEntry, rootDone chan error, in chan *dropFileInfo) {
-	close(rootDone)
-	filesToUpload := dp.getFilesToUploadFromDirs(droppedFiles)
-	for _, entry := range filesToUpload {
-		in <- &dropFileInfo{
-			pageId: rootId,
-			path:   entry.path,
-			name:   entry.name,
-		}
+func (dp *dropFilesProcess) createCollectionForFolder(ctx context.Context, name string) (string, error) {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyName, name)
+	details.SetString(bundle.RelationKeyIconEmoji, "📁")
+
+	id, _, err := dp.objectCreator.CreateObject(ctx, dp.spaceID, objectcreator.CreateObjectRequest{
+		Details:       details,
+		ObjectTypeKey: bundle.TypeKeyCollection,
+	})
+	if err != nil {
+		return "", fmt.Errorf("create collection for folder %q: %w", name, err)
 	}
-	close(in)
+	return id, nil
 }
 
-func (dp *dropFilesProcess) getFilesToUploadFromDirs(droppedFiles []*dropFileEntry) []*dropFileEntry {
-	var (
-		stack      []*dropFileEntry
-		totalFiles []*dropFileEntry
-	)
-	stack = append(stack, droppedFiles...)
-	for len(stack) > 0 {
-		entry := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if entry.isDir {
-			stack = append(stack, entry.child...)
-		} else {
-			totalFiles = append(totalFiles, entry)
+func (dp *dropFilesProcess) addObjectToCollection(collectionId, objectId string) error {
+	return cache.Do(dp.picker, collectionId, func(coll collection.Collection) error {
+		return coll.AddToCollection(nil, &pb.RpcObjectCollectionAddRequest{
+			ObjectIds: []string{objectId},
+		})
+	})
+}
+
+func (dp *dropFilesProcess) processCollectionEntries(parentCollectionId string, entries []*dropFileEntry, in chan *dropFileInfo) {
+	type level struct {
+		collectionId string
+		entries      []*dropFileEntry
+	}
+	queue := []level{{collectionId: parentCollectionId, entries: entries}}
+
+	for len(queue) > 0 {
+		if atomic.LoadInt32(&dp.canceling) != 0 {
+			return
+		}
+		cur := queue[0]
+		queue = queue[1:]
+
+		for _, entry := range cur.entries {
+			if atomic.LoadInt32(&dp.canceling) != 0 {
+				return
+			}
+			if entry.isDir {
+				collId, err := dp.createCollectionForFolder(context.Background(), entry.name)
+				if err != nil {
+					log.Warnf("create collection for folder: %v", err)
+					atomic.AddInt64(&dp.done, 1)
+					continue
+				}
+				if err := dp.addObjectToCollection(cur.collectionId, collId); err != nil {
+					log.Warnf("add collection to parent: %v", err)
+					atomic.AddInt64(&dp.done, 1)
+					continue
+				}
+				atomic.AddInt64(&dp.done, 1)
+				queue = append(queue, level{collectionId: collId, entries: entry.child})
+			} else {
+				in <- &dropFileInfo{
+					pageId: cur.collectionId,
+					path:   entry.path,
+					name:   entry.name,
+				}
+			}
 		}
 	}
-	return totalFiles
+}
+
+func (dp *dropFilesProcess) handleDragAndDropInCollection(rootId string, droppedFiles []*dropFileEntry, rootDone chan error, in chan *dropFileInfo) {
+	close(rootDone)
+	dp.processCollectionEntries(rootId, droppedFiles, in)
+	close(in)
 }
 
 func (dp *dropFilesProcess) handleDragAndDropInDocument(
@@ -557,68 +613,69 @@ func (dp *dropFilesProcess) handleDragAndDropInDocument(
 	rootDone chan error,
 	in chan *dropFileInfo,
 ) {
-	var flatEntries = [][]*dropFileEntry{dp.root.child}
-	var smartBlockIds = []string{rootId}
-	var handleLevel = func(idx int) (isContinue bool, err error) {
-		if idx >= len(smartBlockIds) {
-			return
+	// Separate root entries into files and directories
+	var fileEntries []*dropFileEntry
+	var dirEntries []*dropFileEntry
+	for _, entry := range dp.root.child {
+		if entry.isDir {
+			dirEntries = append(dirEntries, entry)
+		} else {
+			fileEntries = append(fileEntries, entry)
 		}
-		err = cache.Do(dp.picker, smartBlockIds[idx], func(sb File) error {
+	}
+
+	// Create file blocks in the document for file entries
+	if len(fileEntries) > 0 {
+		err := cache.Do(dp.picker, rootId, func(sb File) error {
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
-				isContinue = idx != 0
 				return fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
 			}
-			blockIds, err := sbHandler.dropFilesCreateStructure(dp.groupId, targetId, pos, style, flatEntries[idx])
+			blockIds, err := sbHandler.dropFilesCreateStructure(dp.groupId, targetId, pos, style, fileEntries)
 			if err != nil {
-				isContinue = idx != 0
 				return err
 			}
-			for i, entry := range flatEntries[idx] {
-				if entry.isDir {
-					smartBlockIds = append(smartBlockIds, blockIds[i])
-					flatEntries = append(flatEntries, entry.child)
-					atomic.AddInt64(&dp.done, 1)
-				} else {
-					in <- &dropFileInfo{
-						pageId:  smartBlockIds[idx],
-						blockId: blockIds[i],
-						path:    entry.path,
-						name:    entry.name,
-						groupId: dp.groupId,
-					}
+			for i, entry := range fileEntries {
+				in <- &dropFileInfo{
+					pageId:  rootId,
+					blockId: blockIds[i],
+					path:    entry.path,
+					name:    entry.name,
+					groupId: dp.groupId,
 				}
 			}
 			return nil
 		})
+		rootDone <- err
 		if err != nil {
-			return isContinue, err
+			log.Warnf("can't create file blocks: %v", err)
+			close(in)
+			return
 		}
-		if atomic.LoadInt32(&dp.canceling) != 0 {
-			return false, err
-		}
-		return true, nil
+	} else {
+		rootDone <- nil
 	}
-	var idx = 0
-	for {
-		ok, err := handleLevel(idx)
-		if idx == 0 {
-			rootDone <- err
-			if err != nil {
-				log.Warnf("can't create files: %v", err)
-				close(in)
-				return
-			}
-			targetId = ""
-			pos = 0
-		}
-		if err != nil {
-			log.Warnf("can't create files: %v", err)
-		}
-		if !ok {
+
+	// For each directory, create a collection linked in the document, then process children
+	for _, dirEntry := range dirEntries {
+		if atomic.LoadInt32(&dp.canceling) != 0 {
 			break
 		}
-		idx++
+		err := cache.Do(dp.picker, rootId, func(sb File) error {
+			sbHandler, ok := sb.(dropFilesHandler)
+			if !ok {
+				return fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
+			}
+			return sbHandler.dropFilesCreateLinkedCollection(dp, dirEntry, targetId, pos, in)
+		})
+		if err != nil {
+			log.Warnf("can't create linked collection: %v", err)
+			atomic.AddInt64(&dp.done, 1)
+			continue
+		}
+		// After the first directory, insert below it
+		targetId = ""
+		pos = 0
 	}
 	close(in)
 }
