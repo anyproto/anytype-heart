@@ -205,7 +205,7 @@ func TestDropFiles(t *testing.T) {
 			st := fx.sb.Doc.NewState()
 			st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 			fx.sb.Doc = st
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil).Maybe()
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 			mockService := mock_fileobject.NewMockService(t)
 			mockService.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
@@ -240,8 +240,8 @@ func TestDropFiles(t *testing.T) {
 			childColl := newCollectionSmartTest("childColl")
 
 			fx.objectCreator.On("CreateObject", mock.Anything, mock.Anything, mock.Anything).Return("childColl", domain.NewDetails(), nil)
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "childColl").Return(childColl, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 			fx.assertUploaded(t, 1)
@@ -274,7 +274,7 @@ func TestDropFiles(t *testing.T) {
 			st := fx.sb.Doc.NewState()
 			st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 			fx.sb.Doc = st
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil)
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
 			mockService := mock_fileobject.NewMockService(t)
 			mockService.EXPECT().Create(context.Background(), "", mock.Anything).Return("fileObjectId", domain.NewDetails(), nil).Maybe()
@@ -315,8 +315,8 @@ func TestDropFiles(t *testing.T) {
 			childColl := newCollectionSmartTest("childColl")
 
 			fx.objectCreator.On("CreateObject", mock.Anything, mock.Anything, mock.Anything).Return("childColl", domain.NewDetails(), nil)
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "childColl").Return(childColl, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil)
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
 
 			fx.assertUploaded(t, 1)
@@ -360,7 +360,7 @@ func TestDropFiles(t *testing.T) {
 					blockbuilder.Text("", blockbuilder.ID("targetBlock")),
 				)))
 
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil)
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
 
 			fx.assertUploaded(t, 1)
@@ -418,7 +418,7 @@ func TestDropFiles(t *testing.T) {
 					blockbuilder.Text("", blockbuilder.ID("targetBlock")),
 				)))
 
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil)
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
 
 			fx.assertUploaded(t, 2)
@@ -475,7 +475,7 @@ func TestDropFiles(t *testing.T) {
 					blockbuilder.Text("", blockbuilder.ID("targetBlock")),
 				)))
 
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil)
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil)
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
 
 			fx.assertUploaded(t, 1)
@@ -542,8 +542,8 @@ func TestDropFiles(t *testing.T) {
 
 			childColl := newCollectionSmartTest("childColl")
 
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "childColl").Return(childColl, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 			fx.assertUploaded(t, 1)
@@ -604,9 +604,9 @@ func TestDropFiles(t *testing.T) {
 				return req.Details.GetString(bundle.RelationKeyName) == "subdir"
 			})).Return("childColl", domain.NewDetails(), nil).Once()
 
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "root").Return(fx, nil).Maybe()
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "parentColl").Return(parentColl, nil).Maybe()
-			fx.pickerFx.EXPECT().GetObject(context.Background(), "childColl").Return(childColl, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(fx, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "parentColl").Return(parentColl, nil).Maybe()
+			fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
 			fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 
 			fx.assertUploaded(t, 1)

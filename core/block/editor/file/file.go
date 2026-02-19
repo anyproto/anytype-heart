@@ -338,7 +338,7 @@ func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry 
 		return fmt.Errorf("apply state before creating link: %w", err)
 	}
 	sf.Unlock()
-	_, collectionId, _, err := sf.blockService.CreateLinkToTheNewObject(context.Background(), nil, &pb.RpcBlockLinkCreateWithObjectRequest{
+	_, collectionId, _, err := sf.blockService.CreateLinkToTheNewObject(dp.ctx, nil, &pb.RpcBlockLinkCreateWithObjectRequest{
 		SpaceId:             sf.SpaceID(),
 		ContextId:           sf.Id(),
 		ObjectTypeUniqueKey: bundle.TypeKeyCollection.URL(),
@@ -400,9 +400,9 @@ type dropFilesProcess struct {
 	picker         cache.ObjectGetter
 	root           *dropFileEntry
 	total, done    int64
-	cancel         chan struct{}
+	ctx            context.Context
+	ctxCancel      context.CancelFunc
 	doneCh         chan struct{}
-	canceling      int32
 	groupId        string
 	contextId      string
 
@@ -415,8 +415,8 @@ func (dp *dropFilesProcess) Id() string {
 }
 
 func (dp *dropFilesProcess) Cancel() (err error) {
-	if atomic.AddInt32(&dp.canceling, 1) == 1 {
-		close(dp.cancel)
+	if dp.ctxCancel != nil {
+		dp.ctxCancel()
 	}
 	return
 }
@@ -429,7 +429,7 @@ func (dp *dropFilesProcess) Info() pb.ModelProcess {
 	default:
 		state = pb.ModelProcess_Running
 	}
-	if atomic.LoadInt32(&dp.canceling) != 0 {
+	if dp.ctx.Err() != nil {
 		state = pb.ModelProcess_Canceled
 	}
 	return pb.ModelProcess{
@@ -510,7 +510,7 @@ func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (o
 func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, req pb.RpcFileDropRequest, rootDone chan error) {
 	dp.id = uuid.New().String()
 	dp.doneCh = make(chan struct{})
-	dp.cancel = make(chan struct{})
+	dp.ctx, dp.ctxCancel = context.WithCancel(context.Background())
 	defer close(dp.doneCh)
 	dp.processService.Add(dp)
 
@@ -549,8 +549,8 @@ func (dp *dropFilesProcess) createCollectionForFolder(ctx context.Context, name 
 	return id, nil
 }
 
-func (dp *dropFilesProcess) addObjectToCollection(collectionId, objectId string) error {
-	return cache.Do(dp.picker, collectionId, func(coll collection.Collection) error {
+func (dp *dropFilesProcess) addObjectToCollection(ctx context.Context, collectionId, objectId string) error {
+	return cache.DoContext(dp.picker, ctx, collectionId, func(coll collection.Collection) error {
 		return coll.AddToCollection(nil, &pb.RpcObjectCollectionAddRequest{
 			ObjectIds: []string{objectId},
 		})
@@ -565,24 +565,21 @@ func (dp *dropFilesProcess) processCollectionEntries(parentCollectionId string, 
 	queue := []level{{collectionId: parentCollectionId, entries: entries}}
 
 	for len(queue) > 0 {
-		if atomic.LoadInt32(&dp.canceling) != 0 {
-			return
-		}
 		cur := queue[0]
 		queue = queue[1:]
 
 		for _, entry := range cur.entries {
-			if atomic.LoadInt32(&dp.canceling) != 0 {
+			if dp.ctx.Err() != nil {
 				return
 			}
 			if entry.isDir {
-				collId, err := dp.createCollectionForFolder(context.Background(), entry.name)
+				collId, err := dp.createCollectionForFolder(dp.ctx, entry.name)
 				if err != nil {
 					log.Warnf("create collection for folder: %v", err)
 					atomic.AddInt64(&dp.done, 1)
 					continue
 				}
-				if err := dp.addObjectToCollection(cur.collectionId, collId); err != nil {
+				if err := dp.addObjectToCollection(dp.ctx, cur.collectionId, collId); err != nil {
 					log.Warnf("add collection to parent: %v", err)
 					atomic.AddInt64(&dp.done, 1)
 					continue
@@ -590,10 +587,14 @@ func (dp *dropFilesProcess) processCollectionEntries(parentCollectionId string, 
 				atomic.AddInt64(&dp.done, 1)
 				queue = append(queue, level{collectionId: collId, entries: entry.child})
 			} else {
-				in <- &dropFileInfo{
+				select {
+				case <-dp.ctx.Done():
+					return
+				case in <- &dropFileInfo{
 					pageId: cur.collectionId,
 					path:   entry.path,
 					name:   entry.name,
+				}:
 				}
 			}
 		}
@@ -658,10 +659,10 @@ func (dp *dropFilesProcess) handleDragAndDropInDocument(
 
 	// For each directory, create a collection linked in the document, then process children
 	for _, dirEntry := range dirEntries {
-		if atomic.LoadInt32(&dp.canceling) != 0 {
-			break
+		if dp.ctx.Err() != nil {
+			return
 		}
-		err := cache.Do(dp.picker, rootId, func(sb File) error {
+		err := cache.DoContext(dp.picker, dp.ctx, rootId, func(sb File) error {
 			sbHandler, ok := sb.(dropFilesHandler)
 			if !ok {
 				return fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
@@ -685,7 +686,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 	var canceled bool
 	for {
 		select {
-		case <-dp.cancel:
+		case <-dp.ctx.Done():
 			canceled = true
 		case info, ok := <-in:
 			if !ok {
@@ -710,7 +711,7 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 		SetFile(f.path).
 		SetCreatedInContext(dp.contextId).
 		SetCreatedInContextRef(f.blockId).
-		Upload(context.Background())
+		Upload(dp.ctx)
 
 	if res.Err != nil {
 		log.Errorf("upload error: %s", res.Err)
@@ -723,7 +724,7 @@ func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
 
 func (dp *dropFilesProcess) apply(f *dropFileInfo) (err error) {
 	defer func() {
-		if f.err != context.Canceled {
+		if !errors.Is(f.err, context.Canceled) {
 			atomic.AddInt64(&dp.done, 1)
 		}
 	}()
