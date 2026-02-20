@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -661,4 +662,167 @@ func (fx *fileFixture) assertUploaded(t *testing.T, times int) {
 	uploader.EXPECT().Upload(mock.Anything).Return(fileuploader.UploadResult{}).Times(times)
 
 	fx.fileUploader.EXPECT().NewUploader(mock.Anything, mock.Anything).Return(uploader).Times(times)
+}
+
+func TestDropFilesDedup(t *testing.T) {
+	t.Run("second call with same checksum reuses existing collection", func(t *testing.T) {
+		// given
+		objectStore := spaceindex.NewStoreFixture(t)
+		objCreator := &mockObjectCreator{}
+
+		dp := &dropFilesProcess{
+			spaceID:       "space1",
+			objectCreator: objCreator,
+			objectStore:   objectStore,
+			ctx:           context.Background(),
+		}
+
+		checksum := "abc123"
+
+		// First call: no existing collection, should create
+		objCreator.On("CreateObject", mock.Anything, mock.Anything, mock.Anything).
+			Return("childColl", domain.NewDetails(), nil).Once()
+
+		id1, err := dp.createCollectionForFolder(context.Background(), "myFolder", checksum)
+		require.NoError(t, err)
+		assert.Equal(t, "childColl", id1)
+		objCreator.AssertNumberOfCalls(t, "CreateObject", 1)
+
+		// Simulate that the collection is now in the store
+		objectStore.AddObjects(t, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:                 domain.String("childColl"),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_collection)),
+				bundle.RelationKeyFileSourceChecksum: domain.String(checksum),
+			},
+		})
+
+		// Second call: existing collection found, should reuse
+		id2, err := dp.createCollectionForFolder(context.Background(), "myFolder", checksum)
+		require.NoError(t, err)
+		assert.Equal(t, "childColl", id2)
+
+		// CreateObject should not have been called again
+		objCreator.AssertNumberOfCalls(t, "CreateObject", 1)
+	})
+
+	t.Run("different checksum creates new collection", func(t *testing.T) {
+		// given
+		objectStore := spaceindex.NewStoreFixture(t)
+		objCreator := &mockObjectCreator{}
+
+		dp := &dropFilesProcess{
+			spaceID:       "space1",
+			objectCreator: objCreator,
+			objectStore:   objectStore,
+			ctx:           context.Background(),
+		}
+
+		objCreator.On("CreateObject", mock.Anything, mock.Anything, mock.MatchedBy(func(req objectcreator.CreateObjectRequest) bool {
+			return req.Details.GetString(bundle.RelationKeyName) == "folder1"
+		})).Return("coll1", domain.NewDetails(), nil).Once()
+		objCreator.On("CreateObject", mock.Anything, mock.Anything, mock.MatchedBy(func(req objectcreator.CreateObjectRequest) bool {
+			return req.Details.GetString(bundle.RelationKeyName) == "folder2"
+		})).Return("coll2", domain.NewDetails(), nil).Once()
+
+		// First folder
+		id1, err := dp.createCollectionForFolder(context.Background(), "folder1", "checksum_aaa")
+		require.NoError(t, err)
+		assert.Equal(t, "coll1", id1)
+
+		// Store first collection
+		objectStore.AddObjects(t, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:                 domain.String("coll1"),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_collection)),
+				bundle.RelationKeyFileSourceChecksum: domain.String("checksum_aaa"),
+			},
+		})
+
+		// Second folder with different checksum
+		id2, err := dp.createCollectionForFolder(context.Background(), "folder2", "checksum_bbb")
+		require.NoError(t, err)
+		assert.Equal(t, "coll2", id2)
+
+		// Both CreateObject calls should have happened
+		objCreator.AssertNumberOfCalls(t, "CreateObject", 2)
+	})
+
+	t.Run("create collection includes fileSourceChecksum in details", func(t *testing.T) {
+		// given
+		objectStore := spaceindex.NewStoreFixture(t)
+		objCreator := &mockObjectCreator{}
+
+		dp := &dropFilesProcess{
+			spaceID:       "space1",
+			objectCreator: objCreator,
+			objectStore:   objectStore,
+			ctx:           context.Background(),
+		}
+
+		var capturedDetails *domain.Details
+		objCreator.On("CreateObject", mock.Anything, mock.Anything, mock.Anything).
+			Run(func(args mock.Arguments) {
+				req := args.Get(2).(objectcreator.CreateObjectRequest)
+				capturedDetails = req.Details
+			}).
+			Return("childColl", domain.NewDetails(), nil).Once()
+
+		// when
+		_, err := dp.createCollectionForFolder(context.Background(), "myFolder", "test_checksum_123")
+		require.NoError(t, err)
+
+		// then
+		require.NotNil(t, capturedDetails)
+		checksum := capturedDetails.GetString(bundle.RelationKeyFileSourceChecksum)
+		assert.Equal(t, "test_checksum_123", checksum)
+	})
+
+	t.Run("checksum is computed during Init for directory entries", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		_, err := os.Create(filepath.Join(dir, "file_b.txt"))
+		require.NoError(t, err)
+		_, err = os.Create(filepath.Join(dir, "file_a.txt"))
+		require.NoError(t, err)
+
+		dp := &dropFilesProcess{}
+		err = dp.Init([]string{dir})
+		require.NoError(t, err)
+
+		// then - the root child (dir) should have a checksum
+		require.Len(t, dp.root.child, 1)
+		dirEntry := dp.root.child[0]
+		assert.True(t, dirEntry.isDir)
+		assert.NotEmpty(t, dirEntry.checksum)
+
+		// Verify determinism: same dir produces same checksum
+		dp2 := &dropFilesProcess{}
+		err = dp2.Init([]string{dir})
+		require.NoError(t, err)
+		assert.Equal(t, dirEntry.checksum, dp2.root.child[0].checksum)
+	})
+
+}
+
+func TestComputeDirectoryChecksum(t *testing.T) {
+	t.Run("same children produce same checksum", func(t *testing.T) {
+		children1 := []*dropFileEntry{{name: "b.txt"}, {name: "a.txt"}}
+		children2 := []*dropFileEntry{{name: "a.txt"}, {name: "b.txt"}}
+		assert.Equal(t, computeDirectoryChecksum(children1), computeDirectoryChecksum(children2))
+	})
+
+	t.Run("different children produce different checksum", func(t *testing.T) {
+		children1 := []*dropFileEntry{{name: "a.txt"}}
+		children2 := []*dropFileEntry{{name: "b.txt"}}
+		assert.NotEqual(t, computeDirectoryChecksum(children1), computeDirectoryChecksum(children2))
+	})
+
+	t.Run("empty children produce consistent checksum", func(t *testing.T) {
+		children := []*dropFileEntry{}
+		c1 := computeDirectoryChecksum(children)
+		c2 := computeDirectoryChecksum(children)
+		assert.Equal(t, c1, c2)
+		assert.NotEmpty(t, c1)
+	})
 }

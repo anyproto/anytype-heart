@@ -37,7 +37,7 @@ type Profile struct {
 
 func (f *ObjectFactory) newProfile(spaceId string, sb smartblock.SmartBlock) *Profile {
 	store := f.objectStore.SpaceIndex(spaceId)
-	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService, f.objectCreator, nil)
+	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService, f.objectCreator, nil, store)
 	return &Profile{
 		SmartBlock:    sb,
 		AllOperations: basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),

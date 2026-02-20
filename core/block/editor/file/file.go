@@ -2,10 +2,13 @@ package file
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -27,6 +30,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
@@ -38,7 +43,7 @@ const (
 
 var log = logging.Logger("anytype-mw-smartfile")
 
-func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service, objectCreator ObjectCreator, collection collection.Collection) File {
+func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.ObjectGetter, processService process.Service, fileUploaderFactory fileuploader.Service, objectCreator ObjectCreator, collection collection.Collection, objectStore spaceindex.Store) File {
 	return &sfile{
 		SmartBlock:          sb,
 		blockService:        blockService,
@@ -47,6 +52,7 @@ func NewFile(sb smartblock.SmartBlock, blockService BlockService, picker cache.O
 		fileUploaderFactory: fileUploaderFactory,
 		objectCreator:       objectCreator,
 		collection:          collection,
+		objectStore:         objectStore,
 	}
 }
 
@@ -92,6 +98,7 @@ type sfile struct {
 	processService      process.Service
 	fileUploaderFactory fileuploader.Service
 	objectCreator       ObjectCreator
+	objectStore         spaceindex.Store
 }
 
 func (sf *sfile) Upload(ctx session.Context, blockId string, source FileSource, isSync bool) (fileObjectId string, err error) {
@@ -261,6 +268,7 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 		picker:              sf.picker,
 		fileUploaderFactory: sf.fileUploaderFactory,
 		objectCreator:       sf.objectCreator,
+		objectStore:         sf.objectStore,
 		contextId:           req.ContextId,
 	}
 	if err = proc.Init(req.LocalFilePaths); err != nil {
@@ -345,7 +353,43 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 }
 
 func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition, in chan *dropFileInfo) error {
+	// Check if a collection with the same checksum already exists
+	if existingId, ok := dp.findExistingCollectionByChecksum(dirEntry.checksum); ok {
+		// Create a link block to the existing collection
+		s := sf.NewState()
+		linkBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: existingId,
+					Style:         model.BlockContentLink_Page,
+					IconSize:      model.BlockContentLink_SizeSmall,
+				},
+			},
+		})
+		s.Add(linkBlock)
+		if err := s.InsertTo(targetId, pos, linkBlock.Model().Id); err != nil {
+			return fmt.Errorf("insert link to existing collection: %w", err)
+		}
+		if err := sf.Apply(s); err != nil {
+			return fmt.Errorf("apply link to existing collection: %w", err)
+		}
+		atomic.AddInt64(&dp.done, 1)
+
+		// Process children into the existing collection
+		dp.processCollectionEntries(existingId, dirEntry.child, in)
+		return nil
+	}
+
 	// Create a link block to a new collection object in the document
+	detailsMap := map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:      domain.String(dirEntry.name),
+		bundle.RelationKeyIconEmoji: domain.String("📁"),
+		bundle.RelationKeyOrigin:    domain.Int64(objectorigin.DragAndDrop().Origin),
+	}
+	if dirEntry.checksum != "" {
+		detailsMap[bundle.RelationKeyFileSourceChecksum] = domain.String(dirEntry.checksum)
+	}
+
 	if err := sf.Apply(sf.NewState()); err != nil {
 		return fmt.Errorf("apply state before creating link: %w", err)
 	}
@@ -356,11 +400,7 @@ func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry 
 		ObjectTypeUniqueKey: bundle.TypeKeyCollection.URL(),
 		TargetId:            targetId,
 		Position:            pos,
-		Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyName:      domain.String(dirEntry.name),
-			bundle.RelationKeyIconEmoji: domain.String("📁"),
-			bundle.RelationKeyOrigin:    domain.Int64(objectorigin.DragAndDrop().Origin),
-		}).ToProto(),
+		Details:             domain.NewDetailsFromMap(detailsMap).ToProto(),
 		Block: &model.Block{
 			Content: &model.BlockContentOfLink{
 				Link: &model.BlockContentLink{
@@ -382,10 +422,11 @@ func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry 
 }
 
 type dropFileEntry struct {
-	name  string
-	path  string
-	isDir bool
-	child []*dropFileEntry
+	name     string
+	path     string
+	isDir    bool
+	checksum string
+	child    []*dropFileEntry
 }
 
 type dropFileInfo struct {
@@ -419,6 +460,7 @@ type dropFilesProcess struct {
 
 	fileUploaderFactory fileuploader.Service
 	objectCreator       ObjectCreator
+	objectStore         spaceindex.Store
 }
 
 func (dp *dropFilesProcess) Id() string {
@@ -515,7 +557,18 @@ func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (o
 			dp.total++
 		}
 	}
+	entry.checksum = computeDirectoryChecksum(entry.child)
 	return true, nil
+}
+
+func computeDirectoryChecksum(children []*dropFileEntry) string {
+	names := make([]string, len(children))
+	for i, ch := range children {
+		names[i] = ch.name
+	}
+	sort.Strings(names)
+	h := sha256.Sum256([]byte(strings.Join(names, "\x00")))
+	return hex.EncodeToString(h[:])
 }
 
 func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, req pb.RpcFileDropRequest, rootDone chan error) {
@@ -545,10 +598,42 @@ func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, req pb.RpcFileDrop
 	wg.Wait()
 }
 
-func (dp *dropFilesProcess) createCollectionForFolder(ctx context.Context, name string) (string, error) {
+func (dp *dropFilesProcess) findExistingCollectionByChecksum(checksum string) (string, bool) {
+	if checksum == "" || dp.objectStore == nil {
+		return "", false
+	}
+	existingIds, _, err := dp.objectStore.QueryObjectIds(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyFileSourceChecksum,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(checksum),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_collection)),
+			},
+		},
+		Limit: 1,
+	})
+	if err != nil || len(existingIds) == 0 {
+		return "", false
+	}
+	return existingIds[0], true
+}
+
+func (dp *dropFilesProcess) createCollectionForFolder(ctx context.Context, name, checksum string) (string, error) {
+	if id, ok := dp.findExistingCollectionByChecksum(checksum); ok {
+		return id, nil
+	}
+
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeyName, name)
 	details.SetString(bundle.RelationKeyIconEmoji, "📁")
+	if checksum != "" {
+		details.SetString(bundle.RelationKeyFileSourceChecksum, checksum)
+	}
 	objectorigin.DragAndDrop().AddToDetails(details)
 
 	id, _, err := dp.objectCreator.CreateObject(ctx, dp.spaceID, objectcreator.CreateObjectRequest{
@@ -585,7 +670,7 @@ func (dp *dropFilesProcess) processCollectionEntries(parentCollectionId string, 
 				return
 			}
 			if entry.isDir {
-				collId, err := dp.createCollectionForFolder(dp.ctx, entry.name)
+				collId, err := dp.createCollectionForFolder(dp.ctx, entry.name, entry.checksum)
 				if err != nil {
 					log.Warnf("create collection for folder: %v", err)
 					atomic.AddInt64(&dp.done, 1)
