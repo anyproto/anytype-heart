@@ -493,73 +493,23 @@ func (r *repository) setSyncedFlag(ctx context.Context, arena *anyenc.Arena, msg
 
 	var syncedFilter query.Filter
 	if value {
-		// Looking for not-yet-synced: match synced=false or missing field
-		syncedFilter = query.Not{
-			Filter: query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)},
-		}
+		syncedFilter = filterSyncedFalse
 	} else {
-		// Looking for already synced: exact match
-		syncedFilter = query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)}
+		syncedFilter = filterSyncedTrue
 	}
 
-	iter, err := r.collection.Find(query.And{
+	mod := &syncedModifier{value: value}
+	_, err := r.collection.Find(query.And{
 		syncedFilter,
 		query.Key{
 			Path:   []string{"id"},
 			Filter: query.NewInValue(encIds...),
 		},
-	}).Iter(ctx)
+	}).Update(ctx, mod)
 	if err != nil {
-		return nil, fmt.Errorf("iter messages: %w", err)
+		return nil, fmt.Errorf("update synced flag: %w", err)
 	}
-
-	var ids []string
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return nil, fmt.Errorf("read doc: %w", err)
-		}
-		ids = append(ids, doc.Value().GetString("id"))
-	}
-
-	if err = iter.Close(); err != nil {
-		return nil, fmt.Errorf("close iter: %w", err)
-	}
-
-	if len(ids) == 0 {
-		return nil, nil
-	}
-
-	txn, err := r.collection.WriteTx(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("start write tx: %w", err)
-	}
-	defer txn.Rollback()
-
-	modifier := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-		oldValue := v.GetBool(chatmodel.SyncedKey)
-		if oldValue != value {
-			v.Set(chatmodel.SyncedKey, arenaNewBool(a, value))
-			return v, true, nil
-		}
-		return v, false, nil
-	})
-
-	var idsModified []string
-	for _, id := range ids {
-		res, err := r.collection.UpdateId(txn.Context(), id, modifier)
-		if err != nil {
-			return nil, fmt.Errorf("update message %s: %w", id, err)
-		}
-		if res.Modified > 0 {
-			idsModified = append(idsModified, id)
-		}
-	}
-
-	if err = txn.Commit(); err != nil {
-		return nil, fmt.Errorf("commit: %w", err)
-	}
-	return idsModified, nil
+	return mod.getModifiedIds(), nil
 }
 
 type GetMessagesRequest struct {

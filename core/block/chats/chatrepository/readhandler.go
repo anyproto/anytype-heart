@@ -14,6 +14,9 @@ var (
 	filterHasMention        = query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterMentionReadTrue   = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)}}
 	filterMentionReadFalse  = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)}}
+
+	filterSyncedTrue  = query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	filterSyncedFalse = query.Not{Filter: filterSyncedTrue}
 )
 
 type readHandler interface {
@@ -126,5 +129,23 @@ func (m *readMentionsModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result 
 }
 
 func (m *readMentionsModifier) getModifiedIds() []string {
+	return m.modifiedIds
+}
+
+type syncedModifier struct {
+	value       bool
+	modifiedIds []string
+}
+
+func (m *syncedModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+	if v.GetBool(chatmodel.SyncedKey) != m.value {
+		v.Set(chatmodel.SyncedKey, arenaNewBool(a, m.value))
+		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
+		return v, true, nil
+	}
+	return v, false, nil
+}
+
+func (m *syncedModifier) getModifiedIds() []string {
 	return m.modifiedIds
 }
