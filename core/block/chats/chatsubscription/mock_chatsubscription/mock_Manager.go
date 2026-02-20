@@ -92,9 +92,9 @@ func (_c *MockManager_Delete_Call) RunAndReturn(run func(string)) *MockManager_D
 	return _c
 }
 
-// Flush provides a mock function with given fields:
-func (_m *MockManager) Flush() {
-	_m.Called()
+// Flush provides a mock function with given fields: reloadStateIfNeeded
+func (_m *MockManager) Flush(reloadStateIfNeeded bool) {
+	_m.Called(reloadStateIfNeeded)
 }
 
 // MockManager_Flush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Flush'
@@ -103,13 +103,14 @@ type MockManager_Flush_Call struct {
 }
 
 // Flush is a helper method to define mock.On call
-func (_e *MockManager_Expecter) Flush() *MockManager_Flush_Call {
-	return &MockManager_Flush_Call{Call: _e.mock.On("Flush")}
+//   - reloadStateIfNeeded bool
+func (_e *MockManager_Expecter) Flush(reloadStateIfNeeded interface{}) *MockManager_Flush_Call {
+	return &MockManager_Flush_Call{Call: _e.mock.On("Flush", reloadStateIfNeeded)}
 }
 
-func (_c *MockManager_Flush_Call) Run(run func()) *MockManager_Flush_Call {
+func (_c *MockManager_Flush_Call) Run(run func(reloadStateIfNeeded bool)) *MockManager_Flush_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(bool))
 	})
 	return _c
 }
@@ -119,7 +120,7 @@ func (_c *MockManager_Flush_Call) Return() *MockManager_Flush_Call {
 	return _c
 }
 
-func (_c *MockManager_Flush_Call) RunAndReturn(run func()) *MockManager_Flush_Call {
+func (_c *MockManager_Flush_Call) RunAndReturn(run func(bool)) *MockManager_Flush_Call {
 	_c.Call.Return(run)
 	return _c
 }

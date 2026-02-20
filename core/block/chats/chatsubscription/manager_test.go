@@ -156,9 +156,9 @@ func TestFlush(t *testing.T) {
 		})
 		mngr.ReadMessages("oldestOrderId", []string{"msg5"}, chatmodel.CounterTypeMessage)
 		mngr.ReadMessages("oldestOrderId", []string{"msg5"}, chatmodel.CounterTypeMention)
-		mngr.Flush()
+		mngr.Flush(true)
 		t.Run("flush again, expect no extra events", func(t *testing.T) {
-			mngr.Flush()
+			mngr.Flush(true)
 		})
 
 		generateWantEvents := func(subId string) []*pb.Event {
@@ -266,6 +266,60 @@ func TestFlush(t *testing.T) {
 	})
 }
 
+func TestFlushReloadStateFlag(t *testing.T) {
+	t.Run("flush false skips state reload, flush true performs it", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenSimpleMessage("msg1", "hello", "o1"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when: Delete sets needReloadState, then Flush(false) skips the reload
+		mngr.Delete("msg1")
+		mngr.Flush(false)
+
+		// then: delete event is sent, but no ChatStateUpdate (state reload was skipped)
+		require.Len(t, fx.events, 1)
+		require.Len(t, fx.events[0].Messages, 1)
+		assert.NotNil(t, fx.events[0].Messages[0].GetChatDelete())
+
+		// when: reset captured events and call Flush(true) which should reload state
+		fx.lock.Lock()
+		fx.events = nil
+		fx.lock.Unlock()
+		mngr.Flush(true)
+
+		// then: ChatStateUpdate is sent from the deferred state reload
+		require.Len(t, fx.events, 1)
+		require.Len(t, fx.events[0].Messages, 1)
+		stateUpdate := fx.events[0].Messages[0].GetChatStateUpdate()
+		require.NotNil(t, stateUpdate, "expected ChatStateUpdate event after Flush(true)")
+
+		// when: flush again, no more events (needReloadState was reset)
+		fx.lock.Lock()
+		fx.events = nil
+		fx.lock.Unlock()
+		mngr.Flush(true)
+
+		// then
+		assert.Empty(t, fx.events)
+	})
+}
+
 func TestOutOfWindowEvents(t *testing.T) {
 	t.Run("update full", func(t *testing.T) {
 		fx := newFixture(t)
@@ -284,9 +338,9 @@ func TestOutOfWindowEvents(t *testing.T) {
 
 		updatedMessage := givenComplexMessage("msg1", "with reactions", "o1")
 		mngr.UpdateFull(updatedMessage)
-		mngr.Flush()
+		mngr.Flush(true)
 		t.Run("flush again, expect no extra events", func(t *testing.T) {
-			mngr.Flush()
+			mngr.Flush(true)
 		})
 
 		want := []*pb.Event{
@@ -327,9 +381,9 @@ func TestOutOfWindowEvents(t *testing.T) {
 		})
 
 		mngr.UpdateReactions(givenComplexMessage("msg1", "", "o1"))
-		mngr.Flush()
+		mngr.Flush(true)
 		t.Run("flush again, expect no extra events", func(t *testing.T) {
-			mngr.Flush()
+			mngr.Flush(true)
 		})
 
 		want := []*pb.Event{

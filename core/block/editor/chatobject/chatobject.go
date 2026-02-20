@@ -290,7 +290,7 @@ func (s *storeObject) onUpdate() {
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 
-	s.subscription.Flush()
+	s.subscription.Flush(true)
 
 	last, ok := s.subscription.GetLastMessage()
 	if !ok {
@@ -338,9 +338,12 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	if err != nil {
 		return nil, err
 	}
+	s.subscription.Lock()
+	state := s.subscription.GetChatState()
+	s.subscription.Unlock()
 	return &GetMessagesResponse{
 		Messages:  msgs,
-		ChatState: s.subscription.GetChatState(),
+		ChatState: state,
 	}, nil
 }
 

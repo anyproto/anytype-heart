@@ -334,9 +334,7 @@ func (m *messageUnmarshaller) attachmentsToModel() []*model.ChatMessageAttachmen
 
 func (m *messageUnmarshaller) reactionsToModel() *model.ChatMessageReactions {
 	inReactions := m.val.GetObject(ReactionsKey)
-	reactions := &model.ChatMessageReactions{
-		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},
-	}
+	reactions := &model.ChatMessageReactions{}
 	if inReactions != nil {
 		inReactions.Visit(func(emoji []byte, inReaction *anyenc.Value) {
 			inReactionArr := inReaction.GetArray()
@@ -345,6 +343,9 @@ func (m *messageUnmarshaller) reactionsToModel() *model.ChatMessageReactions {
 				identities = append(identities, string(identity.GetStringBytes()))
 			}
 			if len(identities) > 0 {
+				if reactions.Reactions == nil {
+					reactions.Reactions = make(map[string]*model.ChatMessageReactionsIdentityList)
+				}
 				reactions.Reactions[string(emoji)] = &model.ChatMessageReactionsIdentityList{
 					Ids: identities,
 				}
