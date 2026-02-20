@@ -243,6 +243,12 @@ func (bs *basic) validateDetailFormat(key domain.RelationKey, v domain.Value) er
 
 		// check if the symbol is emoji
 		return nil
+	case model.RelationFormat_map:
+		_, ok := v.TryMapValue()
+		if !ok {
+			return fmt.Errorf("incorrect type: %v instead of map", v)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unsupported rel format: %s", r.Format.String())
 	}
@@ -420,7 +426,7 @@ func (bs *basic) processTemplatePlaceholders(details []domain.Detail) []domain.D
 		return details
 	}
 
-	currentPlaceholders := domain.UnmarshalPlaceholders(bs.CombinedDetails().GetString(bundle.RelationKeyTemplatePlaceholders))
+	currentPlaceholders := bs.Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders).ToMap()
 
 	var filtered []domain.Detail
 	changed := false
@@ -429,9 +435,11 @@ func (bs *basic) processTemplatePlaceholders(details []domain.Detail) []domain.D
 			continue
 		}
 
-		placeholder := domain.GetPlaceholderValue(d.Value)
-		if placeholder != "" {
-			currentPlaceholders[string(d.Key)] = placeholder
+		if domain.IsPlaceholder(d.Value) {
+			if currentPlaceholders == nil {
+				currentPlaceholders = make(map[string]domain.Value, 1)
+			}
+			currentPlaceholders[d.Key.String()] = d.Value
 			changed = true
 			continue
 		}
@@ -448,7 +456,7 @@ func (bs *basic) processTemplatePlaceholders(details []domain.Detail) []domain.D
 	if changed {
 		filtered = append(filtered, domain.Detail{
 			Key:   bundle.RelationKeyTemplatePlaceholders,
-			Value: domain.String(domain.MarshalPlaceholders(currentPlaceholders)),
+			Value: domain.NewValueMap(currentPlaceholders),
 		})
 	}
 
