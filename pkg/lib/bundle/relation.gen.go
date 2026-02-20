@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "33b752b3618688fb548408b767bccf5376a33033d855edf5642cdf8dc3496a91"
+const RelationChecksum = "e2e51c1a2a0b39fa034af8017cfde0f0a06735d5b11118d3964b779dead441f2"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -198,6 +198,7 @@ const (
 	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
 	RelationKeySpaceType                            domain.RelationKey = "spaceType"
 	RelationKeyHomepage                             domain.RelationKey = "homepage"
+	RelationKeyTemplatePlaceholders                 domain.RelationKey = "templatePlaceholders"
 )
 
 var (
@@ -2611,6 +2612,20 @@ var (
 			Key:              "templateNamePrefillType",
 			MaxCount:         1,
 			Name:             "Template name prefill type",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTemplatePlaceholders: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Dynamic placeholder mappings for template relation default values",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brtemplatePlaceholders",
+			Key:              "templatePlaceholders",
+			MaxCount:         1,
+			Name:             "Template Placeholders",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

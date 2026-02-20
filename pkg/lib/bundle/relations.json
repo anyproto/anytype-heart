@@ -1916,5 +1916,15 @@
     "name": "Home page",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Dynamic placeholder mappings for template relation default values",
+    "format": "longtext",
+    "hidden": true,
+    "key": "templatePlaceholders",
+    "maxCount": 1,
+    "name": "Template Placeholders",
+    "readonly": false,
+    "source": "details"
   }
 ]
