@@ -63,7 +63,7 @@ const (
 	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
 	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it
 	// reindexes objects asynchronously and continue reindex after app F
-	ForceInvalidateObjectsIndexCounter int32 = 2
+	ForceInvalidateObjectsIndexCounter int32 = 3
 )
 
 type allDeletedIdsProvider interface {

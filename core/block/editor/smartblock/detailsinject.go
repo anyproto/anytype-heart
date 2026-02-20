@@ -322,7 +322,11 @@ func convertLayoutBlocks(st *state.State, oldLayout, newLayout domain.Value) {
 			return
 		}
 		log.With("objectId", st.RootId()).Infof("convert layout: %s -> %s", oldLayout, newLayout)
-		template.InitTemplate(st, template.WithNameFromFirstBlock, template.WithTitle)
+		templates := []template.StateTransformer{template.WithNameFromFirstBlock, template.WithTitle}
+		if st.Details().GetString(bundle.RelationKeyDescription) != "" {
+			templates = append(templates, template.WithDescription)
+		}
+		template.InitTemplate(st, templates...)
 	} else if newLayout.Int64() == int64(model.ObjectType_note) {
 		if !st.Exists(state.TitleBlockID) {
 			return

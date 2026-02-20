@@ -70,7 +70,7 @@ func (sb *smartBlock) injectLinksDetails(s *state.State) {
 			}
 			val := s.Details().Get(rel)
 			if val.IsString() {
-				if val.String() != link {
+				if val.String() == link {
 					return false
 				}
 				continue

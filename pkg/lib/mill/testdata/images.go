@@ -79,12 +79,11 @@ var Images = []TestImage{
 		Width:   1728,
 		Height:  2376,
 	},
-	// TODO: GO-6630 Uncomment this when mdat-first heic images resize will be fixed
-	// {
-	// 	Path:    "testdata/image_mdat_first.heic",
-	// 	Format:  "heic",
-	// 	HasExif: false,
-	// 	Width:   1440,
-	// 	Height:  960,
-	// },
+	{
+		Path:    "testdata/image_mdat_first.heic",
+		Format:  "heic",
+		HasExif: false,
+		Width:   1440,
+		Height:  960,
+	},
 }

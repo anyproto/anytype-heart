@@ -34,6 +34,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -136,6 +137,13 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 		return nil, fmt.Errorf("get collection: %w", err)
 	}
 
+	if err = anystorehelper.AddIndexes(s.componentCtx, collection, []anystore.IndexInfo{
+		{Fields: []string{"_o.id"}},
+		{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
+	}); err != nil {
+		return nil, fmt.Errorf("ensure indexes: %w", err)
+	}
+
 	repo := &repository{
 		collection: collection,
 		arenaPool:  s.arenaPool,
@@ -172,6 +180,7 @@ type Repository interface {
 	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) ([]string, error)
 	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
+	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
 }
 
 type repository struct {
@@ -711,4 +720,9 @@ func (s *repository) GetAllMessageAttachments(ctx context.Context, afterOrderId 
 		}
 	}
 	return results, iter.Err()
+}
+
+func (s *repository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	qry := s.collection.Find(query.Key{Path: []string{chatmodel.PinnedKey}, Filter: query.NewComp(query.CompOpEq, true)}).Sort(descOrder)
+	return s.queryMessages(ctx, qry)
 }

@@ -223,10 +223,11 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 	}
 
 	if len(asyncSubIds) > 0 {
-		eventsSetSubIds(asyncSubIds, events)
+		asyncEvents := cloneEvents(events)
+		eventsSetSubIds(asyncSubIds, asyncEvents)
 		ev := &pb.Event{
 			ContextId: s.chatId,
-			Messages:  events,
+			Messages:  asyncEvents,
 		}
 		s.eventSender.Broadcast(ev)
 	}
@@ -309,6 +310,16 @@ func (s *subscriptionManager) UpdateReactions(message *chatmodel.Message) {
 
 	for _, sub := range s.subscriptions {
 		sub.state.applyUpdateReactions(message.Id, message.ChatMessage)
+	}
+}
+
+func (s *subscriptionManager) UpdatePinned(message *chatmodel.Message) {
+	if !s.canSend() {
+		return
+	}
+
+	for _, sub := range s.subscriptions {
+		sub.state.applyUpdatePinned(message.Id, message.ChatMessage)
 	}
 }
 
@@ -464,6 +475,8 @@ func eventsSetSubIds(subIds []string, events []*pb.EventMessage) {
 		} else if v := ev.GetChatStateUpdate(); v != nil {
 			v.SubIds = subIds
 		} else if v := ev.GetChatUpdateMessageSyncStatus(); v != nil {
+			v.SubIds = subIds
+		} else if v := ev.GetChatUpdatePinnedStatus(); v != nil {
 			v.SubIds = subIds
 		}
 	}

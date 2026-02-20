@@ -75,6 +75,18 @@ func (d *CFBDecryptor) Seek(offset int64, whence int) (int64, error) {
 	case io.SeekEnd:
 		if sizable, ok := cipherTextReader.(Sizable); ok {
 			newoffset = int64(sizable.Size()) + offset
+			if newoffset < 0 || newoffset > int64(sizable.Size()) {
+				return 0, fmt.Errorf("offset out of range")
+			}
+			if offset == 0 {
+				// Fast path for size queries: return file size without seeking the
+				// underlying reader. This avoids expensive IPFS block preloading
+				// (~10MB) that would be immediately discarded. http.ServeContent
+				// calls Seek(0, SeekEnd) to determine size, then always does
+				// Seek(start, SeekStart) before reading, which sets up cipher state.
+				d.currOffset = newoffset
+				return newoffset, nil
+			}
 		} else {
 			var err error
 			newoffset, err = cipherTextReader.Seek(offset, whence)
