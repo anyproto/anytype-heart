@@ -402,12 +402,12 @@ func (_c *MockFile_UploadState_Call) RunAndReturn(run func(session.Context, *sta
 	return _c
 }
 
-// dropFilesCreateStructure provides a mock function with given fields: groupId, targetId, pos, style, entries
-func (_m *MockFile) dropFilesCreateStructure(groupId string, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) ([]string, error) {
+// dropFilesCreateBlocks provides a mock function with given fields: groupId, targetId, pos, style, entries
+func (_m *MockFile) dropFilesCreateBlocks(groupId string, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) ([]string, error) {
 	ret := _m.Called(groupId, targetId, pos, style, entries)
 
 	if len(ret) == 0 {
-		panic("no return value specified for dropFilesCreateStructure")
+		panic("no return value specified for dropFilesCreateBlocks")
 	}
 
 	var r0 []string
@@ -432,34 +432,83 @@ func (_m *MockFile) dropFilesCreateStructure(groupId string, targetId string, po
 	return r0, r1
 }
 
-// MockFile_dropFilesCreateStructure_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'dropFilesCreateStructure'
-type MockFile_dropFilesCreateStructure_Call struct {
+// MockFile_dropFilesCreateBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'dropFilesCreateBlocks'
+type MockFile_dropFilesCreateBlocks_Call struct {
 	*mock.Call
 }
 
-// dropFilesCreateStructure is a helper method to define mock.On call
+// dropFilesCreateBlocks is a helper method to define mock.On call
 //   - groupId string
 //   - targetId string
 //   - pos model.BlockPosition
 //   - style model.BlockContentFileStyle
 //   - entries []*dropFileEntry
-func (_e *MockFile_Expecter) dropFilesCreateStructure(groupId interface{}, targetId interface{}, pos interface{}, style interface{}, entries interface{}) *MockFile_dropFilesCreateStructure_Call {
-	return &MockFile_dropFilesCreateStructure_Call{Call: _e.mock.On("dropFilesCreateStructure", groupId, targetId, pos, style, entries)}
+func (_e *MockFile_Expecter) dropFilesCreateBlocks(groupId interface{}, targetId interface{}, pos interface{}, style interface{}, entries interface{}) *MockFile_dropFilesCreateBlocks_Call {
+	return &MockFile_dropFilesCreateBlocks_Call{Call: _e.mock.On("dropFilesCreateBlocks", groupId, targetId, pos, style, entries)}
 }
 
-func (_c *MockFile_dropFilesCreateStructure_Call) Run(run func(groupId string, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry)) *MockFile_dropFilesCreateStructure_Call {
+func (_c *MockFile_dropFilesCreateBlocks_Call) Run(run func(groupId string, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry)) *MockFile_dropFilesCreateBlocks_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(string), args[1].(string), args[2].(model.BlockPosition), args[3].(model.BlockContentFileStyle), args[4].([]*dropFileEntry))
 	})
 	return _c
 }
 
-func (_c *MockFile_dropFilesCreateStructure_Call) Return(blockIds []string, err error) *MockFile_dropFilesCreateStructure_Call {
+func (_c *MockFile_dropFilesCreateBlocks_Call) Return(blockIds []string, err error) *MockFile_dropFilesCreateBlocks_Call {
 	_c.Call.Return(blockIds, err)
 	return _c
 }
 
-func (_c *MockFile_dropFilesCreateStructure_Call) RunAndReturn(run func(string, string, model.BlockPosition, model.BlockContentFileStyle, []*dropFileEntry) ([]string, error)) *MockFile_dropFilesCreateStructure_Call {
+func (_c *MockFile_dropFilesCreateBlocks_Call) RunAndReturn(run func(string, string, model.BlockPosition, model.BlockContentFileStyle, []*dropFileEntry) ([]string, error)) *MockFile_dropFilesCreateBlocks_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// dropFilesCreateLinkedCollection provides a mock function with given fields: dp, dirEntry, targetId, pos
+func (_m *MockFile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition) error {
+	ret := _m.Called(dp, dirEntry, targetId, pos)
+
+	if len(ret) == 0 {
+		panic("no return value specified for dropFilesCreateLinkedCollection")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(*dropFilesProcess, *dropFileEntry, string, model.BlockPosition) error); ok {
+		r0 = rf(dp, dirEntry, targetId, pos)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFile_dropFilesCreateLinkedCollection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'dropFilesCreateLinkedCollection'
+type MockFile_dropFilesCreateLinkedCollection_Call struct {
+	*mock.Call
+}
+
+// dropFilesCreateLinkedCollection is a helper method to define mock.On call
+//   - dp *dropFilesProcess
+//   - dirEntry *dropFileEntry
+//   - targetId string
+//   - pos model.BlockPosition
+func (_e *MockFile_Expecter) dropFilesCreateLinkedCollection(dp interface{}, dirEntry interface{}, targetId interface{}, pos interface{}) *MockFile_dropFilesCreateLinkedCollection_Call {
+	return &MockFile_dropFilesCreateLinkedCollection_Call{Call: _e.mock.On("dropFilesCreateLinkedCollection", dp, dirEntry, targetId, pos)}
+}
+
+func (_c *MockFile_dropFilesCreateLinkedCollection_Call) Run(run func(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition)) *MockFile_dropFilesCreateLinkedCollection_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*dropFilesProcess), args[1].(*dropFileEntry), args[2].(string), args[3].(model.BlockPosition))
+	})
+	return _c
+}
+
+func (_c *MockFile_dropFilesCreateLinkedCollection_Call) Return(_a0 error) *MockFile_dropFilesCreateLinkedCollection_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFile_dropFilesCreateLinkedCollection_Call) RunAndReturn(run func(*dropFilesProcess, *dropFileEntry, string, model.BlockPosition) error) *MockFile_dropFilesCreateLinkedCollection_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -506,56 +555,6 @@ func (_c *MockFile_dropFilesSetInfo_Call) Return(err error) *MockFile_dropFilesS
 }
 
 func (_c *MockFile_dropFilesSetInfo_Call) RunAndReturn(run func(dropFileInfo) error) *MockFile_dropFilesSetInfo_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// dropFilesCreateLinkedCollection provides a mock function with given fields: dp, dirEntry, targetId, pos, in
-func (_m *MockFile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition, in chan *dropFileInfo) error {
-	ret := _m.Called(dp, dirEntry, targetId, pos, in)
-
-	if len(ret) == 0 {
-		panic("no return value specified for dropFilesCreateLinkedCollection")
-	}
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(*dropFilesProcess, *dropFileEntry, string, model.BlockPosition, chan *dropFileInfo) error); ok {
-		r0 = rf(dp, dirEntry, targetId, pos, in)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MockFile_dropFilesCreateLinkedCollection_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'dropFilesCreateLinkedCollection'
-type MockFile_dropFilesCreateLinkedCollection_Call struct {
-	*mock.Call
-}
-
-// dropFilesCreateLinkedCollection is a helper method to define mock.On call
-//   - dp *dropFilesProcess
-//   - dirEntry *dropFileEntry
-//   - targetId string
-//   - pos model.BlockPosition
-//   - in chan *dropFileInfo
-func (_e *MockFile_Expecter) dropFilesCreateLinkedCollection(dp interface{}, dirEntry interface{}, targetId interface{}, pos interface{}, in interface{}) *MockFile_dropFilesCreateLinkedCollection_Call {
-	return &MockFile_dropFilesCreateLinkedCollection_Call{Call: _e.mock.On("dropFilesCreateLinkedCollection", dp, dirEntry, targetId, pos, in)}
-}
-
-func (_c *MockFile_dropFilesCreateLinkedCollection_Call) Run(run func(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition, in chan *dropFileInfo)) *MockFile_dropFilesCreateLinkedCollection_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*dropFilesProcess), args[1].(*dropFileEntry), args[2].(string), args[3].(model.BlockPosition), args[4].(chan *dropFileInfo))
-	})
-	return _c
-}
-
-func (_c *MockFile_dropFilesCreateLinkedCollection_Call) Return(err error) *MockFile_dropFilesCreateLinkedCollection_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockFile_dropFilesCreateLinkedCollection_Call) RunAndReturn(run func(*dropFilesProcess, *dropFileEntry, string, model.BlockPosition, chan *dropFileInfo) error) *MockFile_dropFilesCreateLinkedCollection_Call {
 	_c.Call.Return(run)
 	return _c
 }

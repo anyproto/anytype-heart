@@ -280,7 +280,7 @@ func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	return
 }
 
-func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) (blockIds []string, err error) {
+func (sf *sfile) dropFilesCreateBlocks(groupId, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) (blockIds []string, err error) {
 	s := sf.NewState().SetGroupId(groupId)
 	for _, entry := range entries {
 		fb := simple.New(&model.Block{Content: &model.BlockContentOfFile{
@@ -356,7 +356,7 @@ func appendToCollection(col collection.Collection, id string) error {
 	})
 }
 
-func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition, in chan *dropFileInfo) error {
+func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition) error {
 	// Check if a collection with the same checksum already exists
 	if existingId, ok := dp.findExistingCollectionByChecksum(dirEntry.checksum); ok {
 		// Create a link block to the existing collection
@@ -380,7 +380,7 @@ func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry 
 		atomic.AddInt64(&dp.done, 1)
 
 		// Process children into the existing collection
-		dp.processCollectionEntries(existingId, dirEntry.child, in)
+		dp.processCollectionEntries(existingId, dirEntry.child)
 		return nil
 	}
 
@@ -421,7 +421,7 @@ func (sf *sfile) dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry 
 	atomic.AddInt64(&dp.done, 1)
 
 	// Process children into the new collection
-	dp.processCollectionEntries(collectionId, dirEntry.child, in)
+	dp.processCollectionEntries(collectionId, dirEntry.child)
 	return nil
 }
 
@@ -443,9 +443,9 @@ type dropFileInfo struct {
 }
 
 type dropFilesHandler interface {
-	dropFilesCreateStructure(groupId, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) (blockIds []string, err error)
+	dropFilesCreateBlocks(groupId, targetId string, pos model.BlockPosition, style model.BlockContentFileStyle, entries []*dropFileEntry) (blockIds []string, err error)
 	dropFilesSetInfo(info dropFileInfo) (err error)
-	dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition, in chan *dropFileInfo) error
+	dropFilesCreateLinkedCollection(dp *dropFilesProcess, dirEntry *dropFileEntry, targetId string, pos model.BlockPosition) error
 	newUploader(origin objectorigin.ObjectOrigin) fileuploader.Uploader
 }
 
@@ -461,6 +461,7 @@ type dropFilesProcess struct {
 	doneCh         chan struct{}
 	groupId        string
 	contextId      string
+	uploadCh       chan *dropFileInfo
 
 	fileUploaderFactory fileuploader.Service
 	objectCreator       ObjectCreator
@@ -583,21 +584,24 @@ func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, req pb.RpcFileDrop
 	dp.processService.Add(dp)
 
 	// start addFiles workers
-	var wc = int(dp.total)
-	var in = make(chan *dropFileInfo, wc)
-	if wc > addFileWorkersCount {
-		wc = addFileWorkersCount
+	workersCount := int(dp.total)
+	if workersCount > addFileWorkersCount {
+		workersCount = addFileWorkersCount
 	}
+	dp.uploadCh = make(chan *dropFileInfo, workersCount)
+
 	var wg = &sync.WaitGroup{}
-	wg.Add(wc)
-	for i := 0; i < wc; i++ {
-		go dp.addFilesWorker(wg, in)
+	wg.Add(workersCount)
+	for i := 0; i < workersCount; i++ {
+		go dp.uploadFilesWorker(wg)
 	}
 
 	if isCollection(file) {
-		dp.handleDragAndDropInCollection(file.RootId(), dp.root.child, rootDone, in)
+		dp.handleDropInCollection(file.RootId(), dp.root.child, rootDone)
+		close(dp.uploadCh)
 	} else {
-		dp.handleDragAndDropInDocument(file.RootId(), req.DropTargetId, req.Position, req.Style, rootDone, in)
+		dp.handleDropInObject(file.RootId(), req.DropTargetId, req.Position, req.Style, rootDone)
+		close(dp.uploadCh)
 	}
 	wg.Wait()
 }
@@ -656,7 +660,7 @@ func (dp *dropFilesProcess) addObjectToCollection(ctx context.Context, collectio
 	})
 }
 
-func (dp *dropFilesProcess) processCollectionEntries(parentCollectionId string, entries []*dropFileEntry, in chan *dropFileInfo) {
+func (dp *dropFilesProcess) processCollectionEntries(parentCollectionId string, entries []*dropFileEntry) {
 	type level struct {
 		collectionId string
 		entries      []*dropFileEntry
@@ -689,7 +693,7 @@ func (dp *dropFilesProcess) processCollectionEntries(parentCollectionId string, 
 				select {
 				case <-dp.ctx.Done():
 					return
-				case in <- &dropFileInfo{
+				case dp.uploadCh <- &dropFileInfo{
 					pageId: cur.collectionId,
 					path:   entry.path,
 					name:   entry.name,
@@ -700,18 +704,16 @@ func (dp *dropFilesProcess) processCollectionEntries(parentCollectionId string, 
 	}
 }
 
-func (dp *dropFilesProcess) handleDragAndDropInCollection(rootId string, droppedFiles []*dropFileEntry, rootDone chan error, in chan *dropFileInfo) {
+func (dp *dropFilesProcess) handleDropInCollection(rootId string, droppedFiles []*dropFileEntry, rootDone chan error) {
 	close(rootDone)
-	dp.processCollectionEntries(rootId, droppedFiles, in)
-	close(in)
+	dp.processCollectionEntries(rootId, droppedFiles)
 }
 
-func (dp *dropFilesProcess) handleDragAndDropInDocument(
+func (dp *dropFilesProcess) handleDropInObject(
 	rootId, targetId string,
 	pos model.BlockPosition,
 	style model.BlockContentFileStyle,
 	rootDone chan error,
-	in chan *dropFileInfo,
 ) {
 	// Separate root entries into files and directories
 	var fileEntries []*dropFileEntry
@@ -731,12 +733,12 @@ func (dp *dropFilesProcess) handleDragAndDropInDocument(
 			if !ok {
 				return fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
 			}
-			blockIds, err := sbHandler.dropFilesCreateStructure(dp.groupId, targetId, pos, style, fileEntries)
+			blockIds, err := sbHandler.dropFilesCreateBlocks(dp.groupId, targetId, pos, style, fileEntries)
 			if err != nil {
 				return err
 			}
 			for i, entry := range fileEntries {
-				in <- &dropFileInfo{
+				dp.uploadCh <- &dropFileInfo{
 					pageId:  rootId,
 					blockId: blockIds[i],
 					path:    entry.path,
@@ -749,7 +751,6 @@ func (dp *dropFilesProcess) handleDragAndDropInDocument(
 		rootDone <- err
 		if err != nil {
 			log.Warnf("can't create file blocks: %v", err)
-			close(in)
 			return
 		}
 	} else {
@@ -766,7 +767,7 @@ func (dp *dropFilesProcess) handleDragAndDropInDocument(
 			if !ok {
 				return fmt.Errorf("unexpected smartblock interface %T; want dropFilesHandler", sb)
 			}
-			return sbHandler.dropFilesCreateLinkedCollection(dp, dirEntry, targetId, pos, in)
+			return sbHandler.dropFilesCreateLinkedCollection(dp, dirEntry, targetId, pos)
 		})
 		if err != nil {
 			log.Warnf("can't create linked collection: %v", err)
@@ -777,24 +778,23 @@ func (dp *dropFilesProcess) handleDragAndDropInDocument(
 		targetId = ""
 		pos = 0
 	}
-	close(in)
 }
 
-func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFileInfo) {
+func (dp *dropFilesProcess) uploadFilesWorker(wg *sync.WaitGroup) {
 	defer wg.Done()
 	var canceled bool
 	for {
 		select {
 		case <-dp.ctx.Done():
 			canceled = true
-		case info, ok := <-in:
+		case info, ok := <-dp.uploadCh:
 			if !ok {
 				return
 			}
 			if canceled {
 				info.err = context.Canceled
 			} else {
-				dp.addFile(info)
+				dp.uploadFile(info)
 			}
 			if err := dp.apply(info); err != nil {
 				log.Warnf("can't apply file: %v", err)
@@ -803,7 +803,7 @@ func (dp *dropFilesProcess) addFilesWorker(wg *sync.WaitGroup, in chan *dropFile
 	}
 }
 
-func (dp *dropFilesProcess) addFile(f *dropFileInfo) {
+func (dp *dropFilesProcess) uploadFile(f *dropFileInfo) {
 	upl := dp.fileUploaderFactory.NewUploader(dp.spaceID, objectorigin.DragAndDrop())
 	res := upl.
 		SetName(f.name).
