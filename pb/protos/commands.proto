@@ -4079,6 +4079,7 @@ message Rpc {
                 anytype.model.Block.Position position = 3;  // position relatively to the dropTargetId simple block
                 anytype.model.Block.Content.File.Style style = 5;
                 repeated string localFilePaths = 4;
+                string spaceId = 6; // used when contextId is empty to identify target space
             }
             message Response {
                 Error error = 1;

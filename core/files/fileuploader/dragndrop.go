@@ -74,6 +74,7 @@ type dropFilesProcess struct {
 	spaceId   string
 	groupId   string
 	contextId string
+	noContext  bool
 
 	root        *dropFileEntry
 	total, done int64
@@ -220,7 +221,10 @@ func (dp *dropFilesProcess) Start(rootId string, isCollection bool, req pb.RpcFi
 		go dp.uploadFilesWorker(wg)
 	}
 
-	if isCollection {
+	if dp.noContext {
+		dp.handleDropInSpace(rootDone)
+		close(dp.uploadCh)
+	} else if isCollection {
 		dp.handleDropInCollection(rootId, dp.root.children, rootDone)
 		close(dp.uploadCh)
 	} else {
@@ -233,6 +237,34 @@ func (dp *dropFilesProcess) Start(rootId string, isCollection bool, req pb.RpcFi
 func (dp *dropFilesProcess) handleDropInCollection(rootId string, droppedFiles []*dropFileEntry, rootDone chan error) {
 	close(rootDone)
 	dp.processCollectionEntries(rootId, droppedFiles)
+}
+
+func (dp *dropFilesProcess) handleDropInSpace(rootDone chan error) {
+	close(rootDone)
+	for _, entry := range dp.root.children {
+		if dp.ctx.Err() != nil {
+			return
+		}
+		if entry.isDir {
+			collId, err := dp.createCollectionForFolder(dp.ctx, entry.name, entry.checksum)
+			if err != nil {
+				log.Warnf("create collection for folder: %v", err)
+				atomic.AddInt64(&dp.done, 1)
+				continue
+			}
+			atomic.AddInt64(&dp.done, 1)
+			dp.processCollectionEntries(collId, entry.children)
+		} else {
+			select {
+			case <-dp.ctx.Done():
+				return
+			case dp.uploadCh <- &dropFileInfo{
+				path: entry.path,
+				name: entry.name,
+			}:
+			}
+		}
+	}
 }
 
 func (dp *dropFilesProcess) handleDropInObject(
@@ -333,6 +365,11 @@ func (dp *dropFilesProcess) applyFileInfo(info *dropFileInfo) error {
 
 	if info.err != nil {
 		return fmt.Errorf("drop file: %w", info.err)
+	}
+
+	// For standalone space uploads (no container), file object already exists
+	if info.blockId == "" && info.objectId == "" {
+		return nil
 	}
 
 	// For collection entries (no blockId), just append to collection

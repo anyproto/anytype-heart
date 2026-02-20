@@ -238,23 +238,31 @@ func (f *service) Close(_ context.Context) (err error) {
 }
 
 func (f *service) DropFiles(req pb.RpcFileDropRequest) error {
-	// Get target info + restriction check via cache.Do
 	var spaceID, rootId string
 	var isCol bool
-	err := cache.Do(f.picker, req.ContextId, func(sb smartblock.SmartBlock) error {
-		spaceID = sb.SpaceID()
-		rootId = sb.RootId()
-		layout, ok := sb.Layout()
-		isCol = ok && layout == model.ObjectType_collection
-		if !isCol {
-			if err := sb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
-				return err
-			}
+	noContext := req.ContextId == ""
+
+	if noContext {
+		spaceID = req.SpaceId
+		if spaceID == "" {
+			return fmt.Errorf("spaceId is required when contextId is empty")
 		}
-		return nil
-	})
-	if err != nil {
-		return err
+	} else {
+		err := cache.Do(f.picker, req.ContextId, func(sb smartblock.SmartBlock) error {
+			spaceID = sb.SpaceID()
+			rootId = sb.RootId()
+			layout, ok := sb.Layout()
+			isCol = ok && layout == model.ObjectType_collection
+			if !isCol {
+				if err := sb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	proc := &dropFilesProcess{
@@ -265,6 +273,7 @@ func (f *service) DropFiles(req pb.RpcFileDropRequest) error {
 		objectCreator:  f.objectCreator,
 		objectStore:    f.objectStore.SpaceIndex(spaceID),
 		contextId:      req.ContextId,
+		noContext:       noContext,
 	}
 	if err := proc.Init(req.LocalFilePaths); err != nil {
 		return err

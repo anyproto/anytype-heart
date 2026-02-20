@@ -391,6 +391,127 @@ func TestDropFiles(t *testing.T) {
 	})
 }
 
+func TestDropFilesInSpace(t *testing.T) {
+	t.Run("drop files with empty contextId - uploads to space", func(t *testing.T) {
+		// given
+		dir := t.TempDir()
+		f1, err := os.Create(filepath.Join(dir, "file1.txt"))
+		require.NoError(t, err)
+		f2, err := os.Create(filepath.Join(dir, "file2.txt"))
+		require.NoError(t, err)
+
+		fx := newDropFixture(t)
+		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+		fx.expectUpload(t, 2)
+
+		// when
+		proc := &dropFilesProcess{
+			spaceId:        "space1",
+			processService: fx.processServ,
+			picker:         fx.pickerFx,
+			service:        fx.fileUploader,
+			noContext:       true,
+		}
+		err = proc.Init([]string{f1.Name(), f2.Name()})
+		require.NoError(t, err)
+
+		ch := make(chan error)
+		go proc.Start("", false, pb.RpcFileDropRequest{}, ch)
+		err = <-ch
+
+		// then
+		assert.NoError(t, err)
+		<-proc.Done()
+	})
+
+	t.Run("drop dir with empty contextId - creates collection", func(t *testing.T) {
+		// given
+		objectStore := spaceindex.NewStoreFixture(t)
+		dir := t.TempDir()
+		_, err := os.Create(filepath.Join(dir, "test.txt"))
+		require.NoError(t, err)
+
+		fx := newDropFixture(t)
+		childColl := newObjectWithCollection("childColl")
+
+		fx.objectCreator.fn = func(_ context.Context, _ string, _ objectcreator.CreateObjectRequest) (string, *domain.Details, error) {
+			return "childColl", domain.NewDetails(), nil
+		}
+		fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
+		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+		fx.expectUpload(t, 1)
+
+		// when
+		proc := &dropFilesProcess{
+			spaceId:        "space1",
+			processService: fx.processServ,
+			picker:         fx.pickerFx,
+			service:        fx.fileUploader,
+			objectCreator:  fx.objectCreator,
+			objectStore:    objectStore,
+			noContext:       true,
+		}
+		err = proc.Init([]string{dir})
+		require.NoError(t, err)
+
+		ch := make(chan error)
+		go proc.Start("", false, pb.RpcFileDropRequest{}, ch)
+		err = <-ch
+
+		// then
+		assert.NoError(t, err)
+		<-proc.Done()
+		childStore := childColl.NewState().GetStoreSlice(template.CollectionStoreKey)
+		assert.Len(t, childStore, 1)
+	})
+
+	t.Run("drop mix of files and dirs with empty contextId", func(t *testing.T) {
+		// given
+		objectStore := spaceindex.NewStoreFixture(t)
+		base := t.TempDir()
+		subdir := filepath.Join(base, "subdir")
+		err := os.Mkdir(subdir, 0o755)
+		require.NoError(t, err)
+		_, err = os.Create(filepath.Join(subdir, "nested.txt"))
+		require.NoError(t, err)
+
+		file1, err := os.Create(filepath.Join(base, "standalone.txt"))
+		require.NoError(t, err)
+
+		fx := newDropFixture(t)
+		childColl := newObjectWithCollection("childColl")
+
+		fx.objectCreator.fn = func(_ context.Context, _ string, _ objectcreator.CreateObjectRequest) (string, *domain.Details, error) {
+			return "childColl", domain.NewDetails(), nil
+		}
+		fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
+		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
+		// 1 standalone file + 1 file inside directory = 2 uploads
+		fx.expectUpload(t, 2)
+
+		// when
+		proc := &dropFilesProcess{
+			spaceId:        "space1",
+			processService: fx.processServ,
+			picker:         fx.pickerFx,
+			service:        fx.fileUploader,
+			objectCreator:  fx.objectCreator,
+			objectStore:    objectStore,
+			noContext:       true,
+		}
+		err = proc.Init([]string{file1.Name(), subdir})
+		require.NoError(t, err)
+
+		ch := make(chan error)
+		go proc.Start("", false, pb.RpcFileDropRequest{}, ch)
+		err = <-ch
+
+		// then
+		assert.NoError(t, err)
+		<-proc.Done()
+	})
+}
+
 func TestDropFilesDedup(t *testing.T) {
 	t.Run("second call with same checksum reuses existing collection", func(t *testing.T) {
 		// given
