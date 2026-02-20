@@ -291,7 +291,11 @@ func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromNoteToAny(st *state.State) error {
-	template.InitTemplate(st, template.WithNameFromFirstBlock)
+	templates := []template.StateTransformer{template.WithNameFromFirstBlock}
+	if st.Details().GetString(bundle.RelationKeyDescription) != "" {
+		templates = append(templates, template.WithDescription)
+	}
+	template.InitTemplate(st, templates...)
 	return nil
 }
 

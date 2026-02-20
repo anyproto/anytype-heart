@@ -539,6 +539,39 @@ func (_c *MockManager_UpdateFull_Call) RunAndReturn(run func(*chatmodel.Message)
 	return _c
 }
 
+// UpdatePinned provides a mock function with given fields: message
+func (_m *MockManager) UpdatePinned(message *chatmodel.Message) {
+	_m.Called(message)
+}
+
+// MockManager_UpdatePinned_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdatePinned'
+type MockManager_UpdatePinned_Call struct {
+	*mock.Call
+}
+
+// UpdatePinned is a helper method to define mock.On call
+//   - message *chatmodel.Message
+func (_e *MockManager_Expecter) UpdatePinned(message interface{}) *MockManager_UpdatePinned_Call {
+	return &MockManager_UpdatePinned_Call{Call: _e.mock.On("UpdatePinned", message)}
+}
+
+func (_c *MockManager_UpdatePinned_Call) Run(run func(message *chatmodel.Message)) *MockManager_UpdatePinned_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*chatmodel.Message))
+	})
+	return _c
+}
+
+func (_c *MockManager_UpdatePinned_Call) Return() *MockManager_UpdatePinned_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_UpdatePinned_Call) RunAndReturn(run func(*chatmodel.Message)) *MockManager_UpdatePinned_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // UpdateReactions provides a mock function with given fields: message
 func (_m *MockManager) UpdateReactions(message *chatmodel.Message) {
 	_m.Called(message)

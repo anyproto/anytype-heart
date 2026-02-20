@@ -288,7 +288,7 @@ func TestInjectLinksDetails_filterOutRelations(t *testing.T) {
 		fx := newFixture(id, t)
 
 		st := state.NewDoc(id, map[string]simple.Block{
-			id:     simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			id:      simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
 			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
 			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "iconImageId"}}}),
 		}).NewState()
@@ -308,7 +308,7 @@ func TestInjectLinksDetails_filterOutRelations(t *testing.T) {
 		fx := newFixture(id, t)
 
 		st := state.NewDoc(id, map[string]simple.Block{
-			id:     simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			id:      simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
 			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
 			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "pictureId"}}}),
 		}).NewState()
@@ -328,7 +328,7 @@ func TestInjectLinksDetails_filterOutRelations(t *testing.T) {
 		fx := newFixture(id, t)
 
 		st := state.NewDoc(id, map[string]simple.Block{
-			id:     simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			id:      simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
 			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
 			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj2"}}}),
 		}).NewState()
@@ -471,6 +471,34 @@ func TestResolveLayout(t *testing.T) {
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
 		assert.NotNil(t, st.Pick(state.TitleBlockID))
+	})
+	t.Run("conversion from note adds Description if it is not empty", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", map[string]simple.Block{
+			"id":   simple.New(&model.Block{Id: id, ChildrenIds: []string{state.HeaderLayoutID, "text"}}),
+			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "First note block"}}}),
+		}).NewState()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
+		st.SetDetail(bundle.RelationKeyDescription, domain.String("description"))
+
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
+		}})
+
+		// when
+		fx.resolveLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
+		assert.NotNil(t, st.Pick(state.TitleBlockID))
+		assert.NotNil(t, st.Pick(state.DescriptionBlockID))
+		require.True(t, st.Details().Has(bundle.RelationKeyFeaturedRelations))
+		assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), "description")
 	})
 	t.Run("conversion from note works on sb.Init", func(t *testing.T) {
 		// given

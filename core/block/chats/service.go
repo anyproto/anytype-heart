@@ -88,6 +88,9 @@ type Service interface {
 
 	Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error)
 
+	PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error
+	GetPinnedMessages(ctx context.Context, chatObjectId string) ([]*chatmodel.Message, error)
+
 	app.ComponentRunnable
 }
 
@@ -893,6 +896,25 @@ func (s *service) ReadAll(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		for _, msgId := range messageIds {
+			if err := sb.SetMessagePinned(ctx, msgId, pinned); err != nil {
+				return fmt.Errorf("failed to set pinned status %v to message: %w", pinned, err)
+			}
+		}
+		return nil
+	})
+}
+
+func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) (msgs []*chatmodel.Message, err error) {
+	err = s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		msgs, err = sb.GetPinnedMessages(ctx)
+		return err
+	})
+	return msgs, err
 }
 
 func pushGroupId(objectId string) string {
