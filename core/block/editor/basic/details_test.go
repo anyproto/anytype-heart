@@ -206,7 +206,9 @@ func TestBasic_ProcessTemplatePlaceholders(t *testing.T) {
 		// then
 		require.Len(t, details, 1)
 		assert.Equal(t, bundle.RelationKeyTemplatePlaceholders, details[0].Key)
-		assert.Contains(t, details[0].Value.String(), `"dueDate":"_today"`)
+		m := details[0].Value.MapValue()
+		require.NotNil(t, m)
+		assert.Equal(t, domain.PlaceholderToday, m.Get("dueDate").String())
 	})
 
 	t.Run("setting placeholder value does not include actual detail", func(t *testing.T) {
@@ -224,7 +226,9 @@ func TestBasic_ProcessTemplatePlaceholders(t *testing.T) {
 		require.Len(t, details, 2)
 		assert.Equal(t, bundle.RelationKeyName, details[0].Key)
 		assert.Equal(t, bundle.RelationKeyTemplatePlaceholders, details[1].Key)
-		assert.Contains(t, details[1].Value.String(), `"assignee":"_current_user"`)
+		m := details[1].Value.MapValue()
+		require.NotNil(t, m)
+		assert.Equal(t, domain.PlaceholderCurrentUser, m.Get("assignee").String())
 	})
 
 	t.Run("setting real value does not remove existing placeholder", func(t *testing.T) {
@@ -232,7 +236,9 @@ func TestBasic_ProcessTemplatePlaceholders(t *testing.T) {
 		f := newBasicFixture(t)
 		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
 		err := f.sb.SetDetails(nil, []domain.Detail{
-			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.String(`{"dueDate":"_today"}`)},
+			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(map[string]domain.Value{
+				"dueDate": domain.String(domain.PlaceholderToday),
+			})},
 		}, false)
 		require.NoError(t, err)
 
@@ -244,7 +250,6 @@ func TestBasic_ProcessTemplatePlaceholders(t *testing.T) {
 		// then
 		require.Len(t, details, 1)
 		assert.Equal(t, domain.RelationKey("dueDate"), details[0].Key)
-		// Placeholder should still be in state, no templatePlaceholders update emitted
 	})
 
 	t.Run("clearing placeholder with null value removes it", func(t *testing.T) {
@@ -252,7 +257,10 @@ func TestBasic_ProcessTemplatePlaceholders(t *testing.T) {
 		f := newBasicFixture(t)
 		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
 		err := f.sb.SetDetails(nil, []domain.Detail{
-			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.String(`{"dueDate":"_today","assignee":"_current_user"}`)},
+			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(map[string]domain.Value{
+				"dueDate":  domain.String(domain.PlaceholderToday),
+				"assignee": domain.String(domain.PlaceholderCurrentUser),
+			})},
 		}, false)
 		require.NoError(t, err)
 
@@ -266,8 +274,10 @@ func TestBasic_ProcessTemplatePlaceholders(t *testing.T) {
 		assert.Equal(t, domain.RelationKey("dueDate"), details[0].Key)
 		assert.True(t, details[0].Value.IsNull())
 		assert.Equal(t, bundle.RelationKeyTemplatePlaceholders, details[1].Key)
-		assert.Contains(t, details[1].Value.String(), `"assignee":"_current_user"`)
-		assert.NotContains(t, details[1].Value.String(), `"dueDate"`)
+		m := details[1].Value.MapValue()
+		require.NotNil(t, m)
+		assert.Equal(t, domain.PlaceholderCurrentUser, m.Get("assignee").String())
+		assert.True(t, m.Get("dueDate").IsEmpty())
 	})
 
 	t.Run("non-template objects are not processed", func(t *testing.T) {
@@ -299,9 +309,10 @@ func TestBasic_ProcessTemplatePlaceholders(t *testing.T) {
 		// then
 		require.Len(t, details, 1)
 		assert.Equal(t, bundle.RelationKeyTemplatePlaceholders, details[0].Key)
-		placeholders := domain.UnmarshalPlaceholders(details[0].Value.String())
-		assert.Equal(t, domain.PlaceholderToday, placeholders["dueDate"])
-		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders["assignee"])
+		m := details[0].Value.MapValue()
+		require.NotNil(t, m)
+		assert.Equal(t, domain.PlaceholderToday, m.Get("dueDate").String())
+		assert.Equal(t, domain.PlaceholderCurrentUser, m.Get("assignee").String())
 	})
 }
 
