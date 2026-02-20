@@ -7,6 +7,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 )
 
+var (
+	filterReadTrue  = query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	filterReadFalse = query.Not{Filter: filterReadTrue}
+
+	filterHasMention        = query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	filterMentionReadTrue   = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)}}
+	filterMentionReadFalse  = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, false)}}
+)
+
 type readHandler interface {
 	getReadFilter(value bool) query.Filter
 	getMessagesFilter() query.Filter
@@ -18,12 +27,10 @@ type readMessagesHandler struct{}
 
 func (h readMessagesHandler) getReadFilter(value bool) query.Filter {
 	if value {
-		return query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)}
+		return filterReadTrue
 	}
 	// NOT (read == true) to also match documents where the read field is missing
-	return query.Not{
-		Filter: query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)},
-	}
+	return filterReadFalse
 }
 
 func (h readMessagesHandler) getMessagesFilter() query.Filter {
@@ -38,18 +45,17 @@ func (h readMessagesHandler) readModifier(value bool) readModifier {
 	return &readMessagesModifier{value: value}
 }
 
-type readMentionsHandler struct {
-}
+type readMentionsHandler struct{}
 
 func (h readMentionsHandler) getReadFilter(value bool) query.Filter {
-	return query.And{
-		query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)},
-		query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, value)},
+	if value {
+		return filterMentionReadTrue
 	}
+	return filterMentionReadFalse
 }
 
 func (h readMentionsHandler) getMessagesFilter() query.Filter {
-	return query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	return filterHasMention
 }
 
 func (h readMentionsHandler) getReadKey() string {
