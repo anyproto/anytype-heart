@@ -181,7 +181,6 @@ type repository struct {
 
 func (s *repository) AddTestMessage(ctx context.Context, msg *chatmodel.Message) error {
 	arena := s.arenaPool.Get()
-	arena.Reset()
 	defer s.arenaPool.Put(arena)
 
 	val := arena.NewObject()
@@ -459,7 +458,6 @@ func (r *repository) setReadFlag(ctx context.Context, arena *anyenc.Arena, handl
 func (r *repository) SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) ([]string, error) {
 	arena := r.arenaPool.Get()
 	defer func() {
-		arena.Reset()
 		r.arenaPool.Put(arena)
 	}()
 
@@ -590,7 +588,6 @@ func (s *repository) GetMessages(ctx context.Context, req GetMessagesRequest) ([
 func (s *repository) queryMessages(ctx context.Context, query anystore.Query) ([]*chatmodel.Message, error) {
 	arena := s.arenaPool.Get()
 	defer func() {
-		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
 
