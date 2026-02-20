@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -24,6 +26,8 @@ import (
 var log = logging.Logger("anytype-mw-editor-basic")
 
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
+	details = bs.processTemplatePlaceholders(details)
+
 	if err = bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
 		return applyDetailUpdates(current, details), nil
 	}); err != nil {
@@ -405,4 +409,48 @@ func removeInternalFlags(s *state.State) {
 	flags.Remove(model.InternalFlag_editorSelectType)
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(s)
+}
+
+// processTemplatePlaceholders intercepts placeholder values when setting details on template objects.
+// Placeholder values (e.g. "_today", "_current_user") are stored in the templatePlaceholders JSON map
+// instead of being set as actual detail values (which would fail format validation).
+// Placeholders are only removed when client explicitly sets value=null for the corresponding key.
+func (bs *basic) processTemplatePlaceholders(details []domain.Detail) []domain.Detail {
+	if !lo.Contains(bs.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
+		return details
+	}
+
+	currentPlaceholders := domain.UnmarshalPlaceholders(bs.CombinedDetails().GetString(bundle.RelationKeyTemplatePlaceholders))
+
+	var filtered []domain.Detail
+	changed := false
+	for _, d := range details {
+		if d.Key == bundle.RelationKeyTemplatePlaceholders {
+			continue
+		}
+
+		placeholder := domain.GetPlaceholderValue(d.Value)
+		if placeholder != "" {
+			currentPlaceholders[string(d.Key)] = placeholder
+			changed = true
+			continue
+		}
+
+		if d.Value.IsNull() {
+			if _, ok := currentPlaceholders[string(d.Key)]; ok {
+				delete(currentPlaceholders, string(d.Key))
+				changed = true
+			}
+		}
+		filtered = append(filtered, d)
+	}
+
+	if changed {
+		filtered = append(filtered, domain.Detail{
+			Key:   bundle.RelationKeyTemplatePlaceholders,
+			Value: domain.String(domain.MarshalPlaceholders(currentPlaceholders)),
+		})
+	}
+
+	return filtered
 }

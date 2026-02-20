@@ -596,6 +596,290 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 	})
 }
 
+type accountServiceStub struct {
+	accountId string
+}
+
+func (a accountServiceStub) AccountID() string { return a.accountId }
+
+func newTemplateTestWithPlaceholders(templateName, typeKey, placeholdersJSON string) smartblock.SmartBlock {
+	sb := newTemplateTest(templateName, typeKey).(*smarttest.SmartTest)
+	_ = sb.SetDetails(nil, []domain.Detail{
+		{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.String(placeholdersJSON)},
+	}, false)
+	return sb
+}
+
+func TestService_ResolveTemplatePlaceholders(t *testing.T) {
+	const (
+		testSpaceId  = "space1"
+		testAccount  = "accountABC"
+		templateName = "template"
+	)
+
+	t.Run("template with _today placeholder resolves to current date", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), `{"dueDate":"_today"}`)
+		store := objectstore.NewStoreFixture(t)
+		s := service{
+			picker:         &testPicker{sb: tmpl},
+			store:          store,
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+		})
+
+		// then
+		require.NoError(t, err)
+		dueDateVal := st.Details().GetFloat64(domain.RelationKey("dueDate"))
+		assert.NotZero(t, dueDateVal, "dueDate should be resolved to a timestamp")
+		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders), "templatePlaceholders should be removed from new object")
+	})
+
+	t.Run("template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), `{"assignee":"_current_user"}`)
+		s := service{
+			picker:         &testPicker{sb: tmpl},
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+		})
+
+		// then
+		require.NoError(t, err)
+		assigneeList := st.Details().GetStringList(domain.RelationKey("assignee"))
+		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
+		require.Len(t, assigneeList, 1)
+		assert.Equal(t, expectedParticipantId, assigneeList[0])
+		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+	})
+
+	t.Run("template with no placeholders - no changes", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTest(templateName, bundle.TypeKeyTask.String())
+		s := service{
+			picker:         &testPicker{sb: tmpl},
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+	})
+
+	t.Run("CreateTemplateStateFromSmartBlock also resolves placeholders", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), `{"assignee":"_current_user"}`)
+		s := service{
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		st := s.CreateTemplateStateFromSmartBlock(tmpl, templateSvc.CreateTemplateRequest{
+			SpaceId: testSpaceId,
+		})
+
+		// then
+		assigneeList := st.Details().GetStringList(domain.RelationKey("assignee"))
+		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
+		require.Len(t, assigneeList, 1)
+		assert.Equal(t, expectedParticipantId, assigneeList[0])
+		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+	})
+}
+
+type multiPicker struct {
+	objects map[string]smartblock.SmartBlock
+}
+
+func (p *multiPicker) GetObject(_ context.Context, id string) (smartblock.SmartBlock, error) {
+	sb, ok := p.objects[id]
+	if !ok {
+		return nil, fmt.Errorf("object %s not found", id)
+	}
+	return sb, nil
+}
+
+func (p *multiPicker) GetObjectByFullID(_ context.Context, id domain.FullID) (smartblock.SmartBlock, error) {
+	return p.GetObject(nil, id.ObjectID)
+}
+
+func (p *multiPicker) Init(_ *app.App) error { return nil }
+func (p *multiPicker) Name() string          { return "" }
+
+func TestService_ObjectApplyTemplate(t *testing.T) {
+	const (
+		testSpaceId = "space1"
+		testAccount = "accountABC"
+		objectId    = "targetObject"
+		templateId  = "myTemplate"
+	)
+
+	t.Run("applying template with _today placeholder resolves it on the target object", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), `{"dueDate":"_today"}`)
+
+		targetObj := smarttest.New(objectId)
+		targetObj.SetSpaceId(testSpaceId)
+		targetObj.Doc.(*state.State).SetLocalDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+			bundle.RelationKeyType:           domain.String("ot-task"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+		}))
+		targetObj.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTask})
+
+		picker := &multiPicker{objects: map[string]smartblock.SmartBlock{
+			objectId:   targetObj,
+			templateId: tmpl,
+		}}
+
+		s := service{
+			picker:         picker,
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		err := s.ObjectApplyTemplate(objectId, templateId)
+
+		// then
+		require.NoError(t, err)
+		dueDateVal := targetObj.NewState().Details().GetFloat64(domain.RelationKey("dueDate"))
+		assert.NotZero(t, dueDateVal, "dueDate should be resolved to a timestamp")
+		assert.False(t, targetObj.NewState().Details().Has(bundle.RelationKeyTemplatePlaceholders),
+			"templatePlaceholders should not be present on the target object")
+	})
+
+	t.Run("applying template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), `{"assignee":"_current_user"}`)
+
+		targetObj := smarttest.New(objectId)
+		targetObj.SetSpaceId(testSpaceId)
+		targetObj.Doc.(*state.State).SetLocalDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+			bundle.RelationKeyType:           domain.String("ot-task"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+		}))
+		targetObj.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTask})
+
+		picker := &multiPicker{objects: map[string]smartblock.SmartBlock{
+			objectId:   targetObj,
+			templateId: tmpl,
+		}}
+
+		s := service{
+			picker:         picker,
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		err := s.ObjectApplyTemplate(objectId, templateId)
+
+		// then
+		require.NoError(t, err)
+		assigneeList := targetObj.NewState().Details().GetStringList(domain.RelationKey("assignee"))
+		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
+		require.Len(t, assigneeList, 1)
+		assert.Equal(t, expectedParticipantId, assigneeList[0])
+		assert.False(t, targetObj.NewState().Details().Has(bundle.RelationKeyTemplatePlaceholders))
+	})
+
+	t.Run("applying template with multiple placeholders resolves all of them", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(),
+			`{"dueDate":"_today","assignee":"_current_user"}`)
+
+		targetObj := smarttest.New(objectId)
+		targetObj.SetSpaceId(testSpaceId)
+		targetObj.Doc.(*state.State).SetLocalDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+			bundle.RelationKeyType:           domain.String("ot-task"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+		}))
+		targetObj.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTask})
+
+		picker := &multiPicker{objects: map[string]smartblock.SmartBlock{
+			objectId:   targetObj,
+			templateId: tmpl,
+		}}
+
+		s := service{
+			picker:         picker,
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		err := s.ObjectApplyTemplate(objectId, templateId)
+
+		// then
+		require.NoError(t, err)
+
+		details := targetObj.NewState().Details()
+		dueDateVal := details.GetFloat64(domain.RelationKey("dueDate"))
+		assert.NotZero(t, dueDateVal, "dueDate should be resolved")
+
+		assigneeList := details.GetStringList(domain.RelationKey("assignee"))
+		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
+		require.Len(t, assigneeList, 1)
+		assert.Equal(t, expectedParticipantId, assigneeList[0])
+
+		assert.False(t, details.Has(bundle.RelationKeyTemplatePlaceholders))
+	})
+
+	t.Run("applying template without placeholders does not set placeholder-related details", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTest(templateId, bundle.TypeKeyTask.String())
+
+		targetObj := smarttest.New(objectId)
+		targetObj.SetSpaceId(testSpaceId)
+		targetObj.Doc.(*state.State).SetLocalDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeySpaceId:        domain.String(testSpaceId),
+			bundle.RelationKeyType:           domain.String("ot-task"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+		}))
+		targetObj.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTask})
+
+		picker := &multiPicker{objects: map[string]smartblock.SmartBlock{
+			objectId:   targetObj,
+			templateId: tmpl,
+		}}
+
+		s := service{
+			picker:         picker,
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		err := s.ObjectApplyTemplate(objectId, templateId)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, targetObj.NewState().Details().Has(bundle.RelationKeyTemplatePlaceholders))
+	})
+}
+
 func TestService_collectOriginalDetails(t *testing.T) {
 	const (
 		spaceId          = "space1"

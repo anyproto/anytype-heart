@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -49,14 +51,19 @@ var (
 	}
 )
 
+type accountIdProvider interface {
+	AccountID() string
+}
+
 type service struct {
-	picker       cache.ObjectGetter
-	store        objectstore.ObjectStore
-	spaceService space.Service
-	creator      objectcreator.Service
-	resolver     idresolver.Resolver
-	exporter     export.Export
-	converter    converter.LayoutConverter
+	picker         cache.ObjectGetter
+	store          objectstore.ObjectStore
+	spaceService   space.Service
+	creator        objectcreator.Service
+	resolver       idresolver.Resolver
+	exporter       export.Export
+	converter      converter.LayoutConverter
+	accountService accountIdProvider
 }
 
 func New() templateSvc.Service {
@@ -75,6 +82,7 @@ func (s *service) Init(a *app.App) error {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.exporter = a.MustComponent(export.CName).(export.Export)
 	s.converter = app.MustComponent[converter.LayoutConverter](a)
+	s.accountService = app.MustComponent[account.Service](a)
 	return nil
 }
 
@@ -101,6 +109,7 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 		}
 	}
 
+	s.resolveTemplatePlaceholders(targetState, req.SpaceId)
 	addDetailsToTemplateState(targetState, req.Details)
 	return targetState, nil
 }
@@ -171,6 +180,7 @@ func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, re
 	if err != nil {
 		st = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
 	}
+	s.resolveTemplatePlaceholders(st, req.SpaceId)
 	addDetailsToTemplateState(st, req.Details)
 	return st
 }
@@ -492,6 +502,47 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(st)
 	return st, nil
+}
+
+// resolveTemplatePlaceholders reads the templatePlaceholders JSON map from the template state,
+// resolves each placeholder to its actual value, and removes the templatePlaceholders detail.
+func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
+	raw := st.Details().GetString(bundle.RelationKeyTemplatePlaceholders)
+	if raw == "" {
+		return
+	}
+
+	placeholders := domain.UnmarshalPlaceholders(raw)
+
+	for relKey, placeholderType := range placeholders {
+		switch placeholderType {
+		case domain.PlaceholderToday:
+			ts := s.resolveToday(spaceId, domain.RelationKey(relKey))
+			st.SetDetail(domain.RelationKey(relKey), domain.Float64(float64(ts)))
+		case domain.PlaceholderCurrentUser:
+			if s.accountService != nil {
+				participantId := domain.NewParticipantId(spaceId, s.accountService.AccountID())
+				st.SetDetail(domain.RelationKey(relKey), domain.StringList([]string{participantId}))
+			}
+		}
+	}
+
+	st.RemoveDetail(bundle.RelationKeyTemplatePlaceholders)
+}
+
+func (s *service) resolveToday(spaceId string, relKey domain.RelationKey) int64 {
+	now := time.Now()
+	includeTime := false
+	if spaceId != "" {
+		rel, err := s.store.SpaceIndex(spaceId).FetchRelationByKey(relKey.String())
+		if err == nil {
+			includeTime = rel.GetIncludeTime()
+		}
+	}
+	if !includeTime {
+		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	}
+	return now.Unix()
 }
 
 func addDetailsToTemplateState(st *state.State, details *domain.Details) {
