@@ -605,10 +605,10 @@ type accountServiceStub struct {
 
 func (a accountServiceStub) AccountID() string { return a.accountId }
 
-func newTemplateTestWithPlaceholders(templateName, typeKey, placeholdersJSON string) smartblock.SmartBlock {
+func newTemplateTestWithPlaceholders(templateName, typeKey string, placeholders map[string]domain.Value) smartblock.SmartBlock {
 	sb := newTemplateTest(templateName, typeKey).(*smarttest.SmartTest)
 	_ = sb.SetDetails(nil, []domain.Detail{
-		{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.String(placeholdersJSON)},
+		{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(placeholders)},
 	}, false)
 	return sb
 }
@@ -622,11 +622,12 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 
 	t.Run("template with _today placeholder resolves to current date", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), `{"dueDate":"_today"}`)
-		store := objectstore.NewStoreFixture(t)
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
+			"dueDate": domain.String(domain.PlaceholderToday),
+		})
 		s := service{
 			picker:         &testPicker{sb: tmpl},
-			store:          store,
+			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
 		}
 
@@ -645,7 +646,9 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 
 	t.Run("template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), `{"assignee":"_current_user"}`)
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
+			"assignee": domain.String(domain.PlaceholderCurrentUser),
+		})
 		s := service{
 			picker:         &testPicker{sb: tmpl},
 			store:          objectstore.NewStoreFixture(t),
@@ -689,7 +692,9 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 
 	t.Run("CreateTemplateStateFromSmartBlock also resolves placeholders", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), `{"assignee":"_current_user"}`)
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
+			"assignee": domain.String(domain.PlaceholderCurrentUser),
+		})
 		s := service{
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
@@ -738,7 +743,9 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 
 	t.Run("applying template with _today placeholder resolves it on the target object", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), `{"dueDate":"_today"}`)
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
+			"dueDate": domain.String(domain.PlaceholderToday),
+		})
 
 		targetObj := smarttest.New(objectId)
 		targetObj.SetSpaceId(testSpaceId)
@@ -773,7 +780,9 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 
 	t.Run("applying template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), `{"assignee":"_current_user"}`)
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
+			"assignee": domain.String(domain.PlaceholderCurrentUser),
+		})
 
 		targetObj := smarttest.New(objectId)
 		targetObj.SetSpaceId(testSpaceId)
@@ -809,8 +818,10 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 
 	t.Run("applying template with multiple placeholders resolves all of them", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(),
-			`{"dueDate":"_today","assignee":"_current_user"}`)
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
+			"dueDate":  domain.String(domain.PlaceholderToday),
+			"assignee": domain.String(domain.PlaceholderCurrentUser),
+		})
 
 		targetObj := smarttest.New(objectId)
 		targetObj.SetSpaceId(testSpaceId)
