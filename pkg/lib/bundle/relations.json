@@ -1899,7 +1899,7 @@
   },
   {
     "description": "Dynamic placeholder mappings for template relation default values",
-    "format": "longtext",
+    "format": "map",
     "hidden": true,
     "key": "templatePlaceholders",
     "maxCount": 1,

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "ed88849d1c468c10844f38c8a7b30a6ad337bf8288850c22b95f9612d588fc72"
+const RelationChecksum = "db6b3df3315ef72a54c36bddfa3bc8381da8f457dc679376c357c363d48c58d6"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -2575,7 +2575,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Dynamic placeholder mappings for template relation default values",
-			Format:           model.RelationFormat_longtext,
+			Format:           model.RelationFormat_map,
 			Hidden:           true,
 			Id:               "_brtemplatePlaceholders",
 			Key:              "templatePlaceholders",
