@@ -507,15 +507,14 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 // resolveTemplatePlaceholders reads the templatePlaceholders JSON map from the template state,
 // resolves each placeholder to its actual value, and removes the templatePlaceholders detail.
 func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
-	raw := st.Details().GetString(bundle.RelationKeyTemplatePlaceholders)
-	if raw == "" {
+	placeholders, ok := st.Details().TryMapValue(bundle.RelationKeyTemplatePlaceholders)
+	if !ok {
 		return
 	}
 
-	placeholders := domain.UnmarshalPlaceholders(raw)
-
-	for relKey, placeholderType := range placeholders {
-		switch placeholderType {
+	for relKey, placeholderType := range placeholders.Iterate() {
+		rawPlaceholder := placeholderType.String()
+		switch rawPlaceholder {
 		case domain.PlaceholderToday:
 			ts := s.resolveToday(spaceId, domain.RelationKey(relKey))
 			st.SetDetail(domain.RelationKey(relKey), domain.Float64(float64(ts)))
