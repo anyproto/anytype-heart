@@ -441,55 +441,19 @@ func (r *repository) setReadFlag(ctx context.Context, arena *anyenc.Arena, handl
 	for _, id := range msgIds {
 		encIds = append(encIds, arena.NewString(id))
 	}
-	iter, err := r.collection.Find(query.And{
+
+	mod := handler.readModifier(value)
+	_, err := r.collection.Find(query.And{
 		handler.getReadFilter(!value),
 		query.Key{
 			Path:   []string{"id"},
 			Filter: query.NewInValue(encIds...),
 		},
-	}).Iter(ctx)
+	}).Update(ctx, mod)
 	if err != nil {
-		return nil, fmt.Errorf("iter messages: %w", err)
+		return nil, fmt.Errorf("update read flag: %w", err)
 	}
-
-	var ids []string
-	for iter.Next() {
-		doc, err := iter.Doc()
-		if err != nil {
-			return nil, fmt.Errorf("read doc: %w", err)
-		}
-		ids = append(ids, doc.Value().GetString("id"))
-	}
-
-	if err = iter.Close(); err != nil {
-		return nil, fmt.Errorf("close iter: %w", err)
-	}
-
-	if len(ids) == 0 {
-		return nil, nil
-	}
-
-	txn, err := r.collection.WriteTx(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("start write tx: %w", err)
-	}
-	defer txn.Rollback()
-
-	var idsModified []string
-	for _, id := range ids {
-		res, err := r.collection.UpdateId(txn.Context(), id, handler.readModifier(value))
-		if err != nil {
-			return nil, fmt.Errorf("update message %s: %w", id, err)
-		}
-		if res.Modified > 0 {
-			idsModified = append(idsModified, id)
-		}
-	}
-
-	if err = txn.Commit(); err != nil {
-		return nil, fmt.Errorf("commit: %w", err)
-	}
-	return idsModified, nil
+	return mod.getModifiedIds(), nil
 }
 
 func (r *repository) SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) ([]string, error) {

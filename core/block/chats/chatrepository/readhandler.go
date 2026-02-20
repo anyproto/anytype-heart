@@ -11,7 +11,7 @@ type readHandler interface {
 	getReadFilter(value bool) query.Filter
 	getMessagesFilter() query.Filter
 	getReadKey() string
-	readModifier(value bool) query.Modifier
+	readModifier(value bool) readModifier
 }
 
 type readMessagesHandler struct{}
@@ -34,15 +34,8 @@ func (h readMessagesHandler) getReadKey() string {
 	return chatmodel.ReadKey
 }
 
-func (h readMessagesHandler) readModifier(value bool) query.Modifier {
-	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-		oldValue := v.GetBool(h.getReadKey())
-		if oldValue != value {
-			v.Set(h.getReadKey(), arenaNewBool(a, value))
-			return v, true, nil
-		}
-		return v, false, nil
-	})
+func (h readMessagesHandler) readModifier(value bool) readModifier {
+	return &readMessagesModifier{value: value}
 }
 
 type readMentionsHandler struct {
@@ -63,17 +56,8 @@ func (h readMentionsHandler) getReadKey() string {
 	return chatmodel.MentionReadKey
 }
 
-func (h readMentionsHandler) readModifier(value bool) query.Modifier {
-	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-		if v.GetBool(chatmodel.HasMentionKey) {
-			oldValue := v.GetBool(h.getReadKey())
-			if oldValue != value {
-				v.Set(h.getReadKey(), arenaNewBool(a, value))
-				return v, true, nil
-			}
-		}
-		return v, false, nil
-	})
+func (h readMentionsHandler) readModifier(value bool) readModifier {
+	return &readMentionsModifier{value: value}
 }
 
 func newReadHandler(counterType chatmodel.CounterType) readHandler {
@@ -93,4 +77,48 @@ func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
 	} else {
 		return a.NewFalse()
 	}
+}
+
+type readModifier interface {
+	query.Modifier
+	getModifiedIds() []string
+}
+
+type readMessagesModifier struct {
+	value       bool
+	modifiedIds []string
+}
+
+func (m *readMessagesModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+	if v.GetBool(chatmodel.ReadKey) != m.value {
+		v.Set(chatmodel.ReadKey, arenaNewBool(a, m.value))
+		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
+		return v, true, nil
+	}
+	return v, false, nil
+}
+
+func (m *readMessagesModifier) getModifiedIds() []string {
+	return m.modifiedIds
+}
+
+type readMentionsModifier struct {
+	value       bool
+	modifiedIds []string
+}
+
+func (m *readMentionsModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+	if !v.GetBool(chatmodel.HasMentionKey) {
+		return v, false, nil
+	}
+	if v.GetBool(chatmodel.MentionReadKey) != m.value {
+		v.Set(chatmodel.MentionReadKey, arenaNewBool(a, m.value))
+		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
+		return v, true, nil
+	}
+	return v, false, nil
+}
+
+func (m *readMentionsModifier) getModifiedIds() []string {
+	return m.modifiedIds
 }
