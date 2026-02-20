@@ -228,6 +228,7 @@ func TestDropFiles(t *testing.T) {
 		})
 	})
 	t.Run("drop dir in collection - creates child collection", func(t *testing.T) {
+		objectStore := spaceindex.NewStoreFixture(t)
 		synctest.Run(func() {
 			// given
 			dir := t.TempDir()
@@ -235,6 +236,7 @@ func TestDropFiles(t *testing.T) {
 			assert.Nil(t, err)
 
 			fx := newFixture(t)
+			fx.sfile.objectStore = objectStore
 			st := fx.sb.Doc.NewState()
 			st.SetDetail(bundle.RelationKeyResolvedLayout, domain.Int64(int64(model.ObjectType_collection)))
 			fx.sb.Doc = st
@@ -303,6 +305,7 @@ func TestDropFiles(t *testing.T) {
 		})
 	})
 	t.Run("drop dir with file in collection - creates child collection with file", func(t *testing.T) {
+		objectStore := spaceindex.NewStoreFixture(t)
 		synctest.Run(func() {
 			// given
 			dir := t.TempDir()
@@ -330,6 +333,7 @@ func TestDropFiles(t *testing.T) {
 				picker:              fx.picker,
 				fileUploaderFactory: fx.fileUploaderFactory,
 				objectCreator:       fx.objectCreator,
+				objectStore:         objectStore,
 			}
 			err = proc.Init([]string{dir})
 			assert.Nil(t, err)
@@ -520,6 +524,7 @@ func TestDropFiles(t *testing.T) {
 	})
 
 	t.Run("drop dir in document - creates linked collection", func(t *testing.T) {
+		objectStore := spaceindex.NewStoreFixture(t)
 		synctest.Run(func() {
 			// given
 			dir := t.TempDir()
@@ -557,6 +562,7 @@ func TestDropFiles(t *testing.T) {
 				picker:              fx.picker,
 				fileUploaderFactory: fx.fileUploaderFactory,
 				objectCreator:       fx.objectCreator,
+				objectStore:         objectStore,
 			}
 			err = proc.Init([]string{dir})
 			assert.Nil(t, err)
@@ -581,6 +587,7 @@ func TestDropFiles(t *testing.T) {
 	})
 
 	t.Run("drop nested dirs in collection - preserves structure", func(t *testing.T) {
+		objectStore := spaceindex.NewStoreFixture(t)
 		synctest.Run(func() {
 			// given - create dir/subdir/file structure
 			dir := t.TempDir()
@@ -620,6 +627,7 @@ func TestDropFiles(t *testing.T) {
 				picker:              fx.picker,
 				fileUploaderFactory: fx.fileUploaderFactory,
 				objectCreator:       fx.objectCreator,
+				objectStore:         objectStore,
 			}
 			err = proc.Init([]string{dir})
 			assert.Nil(t, err)

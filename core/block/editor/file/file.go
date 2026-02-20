@@ -319,17 +319,9 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 			return fmt.Errorf("file block is nil")
 		}
 		if sf.collection != nil {
-			existing := sf.collection.ListIdsFromCollection()
-			var afterId string
-			if len(existing) > 0 {
-				afterId = existing[len(existing)-1]
-			}
-			err := sf.collection.AddToCollection(nil, &pb.RpcObjectCollectionAddRequest{
-				AfterId:   afterId,
-				ObjectIds: []string{info.file.TargetObjectId},
-			})
+			err = appendToCollection(sf.collection, info.file.TargetObjectId)
 			if err != nil {
-				return fmt.Errorf("add to collection: %w", err)
+				return fmt.Errorf("append to collection: %w", err)
 			}
 		} else {
 			return fmt.Errorf("collection component not found")
@@ -349,6 +341,18 @@ func (sf *sfile) dropFilesSetInfo(info dropFileInfo) (err error) {
 			f.SetStyle(existingStyle)
 		}
 		return nil
+	})
+}
+
+func appendToCollection(col collection.Collection, id string) error {
+	existing := col.ListIdsFromCollection()
+	var afterId string
+	if len(existing) > 0 {
+		afterId = existing[len(existing)-1]
+	}
+	return col.AddToCollection(nil, &pb.RpcObjectCollectionAddRequest{
+		AfterId:   afterId,
+		ObjectIds: []string{id},
 	})
 }
 
@@ -599,7 +603,7 @@ func (dp *dropFilesProcess) Start(file smartblock.SmartBlock, req pb.RpcFileDrop
 }
 
 func (dp *dropFilesProcess) findExistingCollectionByChecksum(checksum string) (string, bool) {
-	if checksum == "" || dp.objectStore == nil {
+	if checksum == "" {
 		return "", false
 	}
 	existingIds, _, err := dp.objectStore.QueryObjectIds(database.Query{
@@ -648,9 +652,7 @@ func (dp *dropFilesProcess) createCollectionForFolder(ctx context.Context, name,
 
 func (dp *dropFilesProcess) addObjectToCollection(ctx context.Context, collectionId, objectId string) error {
 	return cache.DoContext(dp.picker, ctx, collectionId, func(coll collection.Collection) error {
-		return coll.AddToCollection(nil, &pb.RpcObjectCollectionAddRequest{
-			ObjectIds: []string{objectId},
-		})
+		return appendToCollection(coll, objectId)
 	})
 }
 
