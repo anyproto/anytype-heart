@@ -52,7 +52,7 @@ type ObjectType struct {
 
 func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) *ObjectType {
 	store := f.objectStore.SpaceIndex(spaceId)
-	fileComponent := file.NewFile(sb, f.fileBlockService, f.picker, f.processService, f.fileUploaderService, f.objectCreator, nil, store)
+	fileComponent := file.NewFile(sb, f.picker, f.fileUploaderService)
 	return &ObjectType{
 		SmartBlock:     sb,
 		ChangeReceiver: sb.(source.ChangeReceiver),

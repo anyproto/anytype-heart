@@ -47,6 +47,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
@@ -58,6 +59,8 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -68,12 +71,18 @@ import (
 
 var log = logging.Logger("file-uploader")
 
+// objectStoreProvider provides space-scoped object stores.
+type objectStoreProvider interface {
+	SpaceIndex(spaceId string) spaceindex.Store
+}
+
 type Service interface {
 	app.Component
 
 	NewUploader(spaceId string, origin objectorigin.ObjectOrigin) Uploader
 	GetPreloadResult(preloadId string) (*files.AddResult, bool)
 	RemovePreloadResult(preloadId string)
+	DropFiles(req pb.RpcFileDropRequest) error
 }
 
 // preloadEntry tracks the status of a preload operation and implements Process interface
@@ -95,6 +104,8 @@ type service struct {
 	picker            cache.ObjectGetter
 	fileObjectService FileObjectService
 	processService    process.Service
+	objectCreator     objectCreator
+	objectStore       objectStoreProvider
 
 	// Manage preloaded results
 	preloadMu      sync.RWMutex
@@ -207,6 +218,8 @@ func (f *service) Init(a *app.App) error {
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.fileObjectService = app.MustComponent[FileObjectService](a)
+	f.objectCreator = app.MustComponent[objectCreator](a)
+	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	// Process service is optional - tests may not provide it
 	if ps := a.Component(process.CName); ps != nil {
 		f.processService = ps.(process.Service)
@@ -222,6 +235,43 @@ func (f *service) Run(_ context.Context) (err error) {
 func (f *service) Close(_ context.Context) (err error) {
 	f.ctxCancel()
 	return nil
+}
+
+func (f *service) DropFiles(req pb.RpcFileDropRequest) error {
+	// Get target info + restriction check via cache.Do
+	var spaceID, rootId string
+	var isCol bool
+	err := cache.Do(f.picker, req.ContextId, func(sb smartblock.SmartBlock) error {
+		spaceID = sb.SpaceID()
+		rootId = sb.RootId()
+		layout, ok := sb.Layout()
+		isCol = ok && layout == model.ObjectType_collection
+		if !isCol {
+			if err := sb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	proc := &dropFilesProcess{
+		spaceId:        spaceID,
+		processService: f.processService,
+		picker:         f.picker,
+		service:        f,
+		objectCreator:  f.objectCreator,
+		objectStore:    f.objectStore.SpaceIndex(spaceID),
+		contextId:      req.ContextId,
+	}
+	if err := proc.Init(req.LocalFilePaths); err != nil {
+		return err
+	}
+	ch := make(chan error)
+	go proc.Start(rootId, isCol, req, ch)
+	return <-ch
 }
 
 var (

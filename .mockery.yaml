@@ -66,7 +66,15 @@ packages:
   github.com/anyproto/anytype-heart/core/files/fileuploader:
     interfaces:
       Service:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
       Uploader:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/acl:
     interfaces:
       participantRemover:
