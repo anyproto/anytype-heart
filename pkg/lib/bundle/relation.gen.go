@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a44309a103773f403e2cb14c85ff84a2ae8abb5c65ffd74b3a7a51110a960a1a"
+const RelationChecksum = "ed88849d1c468c10844f38c8a7b30a6ad337bf8288850c22b95f9612d588fc72"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -150,7 +150,6 @@ const (
 	RelationKeySyncError                            domain.RelationKey = "syncError"
 	RelationKeyHasChat                              domain.RelationKey = "hasChat"
 	RelationKeyChatId                               domain.RelationKey = "chatId"
-	RelationKeyDiscussionId                         domain.RelationKey = "discussionId"
 	RelationKeyMentions                             domain.RelationKey = "mentions"
 	RelationKeyTimestamp                            domain.RelationKey = "timestamp"
 	RelationKeyLayoutWidth                          domain.RelationKey = "layoutWidth"
@@ -196,6 +195,7 @@ const (
 	RelationKey_score                               domain.RelationKey = "_score"
 	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
 	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
+	RelationKeyTemplatePlaceholders                 domain.RelationKey = "templatePlaceholders"
 )
 
 var (
@@ -622,20 +622,6 @@ var (
 			MaxCount:         1,
 			Name:             "Description",
 			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyDiscussionId: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Discussion id",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brdiscussionId",
-			Key:              "discussionId",
-			MaxCount:         1,
-			Name:             "Discussion id",
-			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1576,8 +1562,8 @@ var (
 		},
 		RelationKeyOneToOneIdentity: {
 
-			DataSource:       model.Relation_local,
-			Description:      "OneToOne other participant identity",
+			DataSource:       model.Relation_details,
+			Description:      "OneToOne (second) participant identity",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_broneToOneIdentity",
@@ -2581,6 +2567,20 @@ var (
 			Key:              "templateNamePrefillType",
 			MaxCount:         1,
 			Name:             "Template name prefill type",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTemplatePlaceholders: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Dynamic placeholder mappings for template relation default values",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brtemplatePlaceholders",
+			Key:              "templatePlaceholders",
+			MaxCount:         1,
+			Name:             "Template Placeholders",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

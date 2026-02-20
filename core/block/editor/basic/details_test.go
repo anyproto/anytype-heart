@@ -192,6 +192,119 @@ func TestBasic_UpdateDetails(t *testing.T) {
 	})
 }
 
+func TestBasic_ProcessTemplatePlaceholders(t *testing.T) {
+	t.Run("setting placeholder value on template stores it in templatePlaceholders", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+
+		// when
+		details := f.basic.(*basic).processTemplatePlaceholders([]domain.Detail{
+			{Key: "dueDate", Value: domain.String(domain.PlaceholderToday)},
+		})
+
+		// then
+		require.Len(t, details, 1)
+		assert.Equal(t, bundle.RelationKeyTemplatePlaceholders, details[0].Key)
+		assert.Contains(t, details[0].Value.String(), `"dueDate":"_today"`)
+	})
+
+	t.Run("setting placeholder value does not include actual detail", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+
+		// when
+		details := f.basic.(*basic).processTemplatePlaceholders([]domain.Detail{
+			{Key: "assignee", Value: domain.String(domain.PlaceholderCurrentUser)},
+			{Key: bundle.RelationKeyName, Value: domain.String("My Task")},
+		})
+
+		// then
+		require.Len(t, details, 2)
+		assert.Equal(t, bundle.RelationKeyName, details[0].Key)
+		assert.Equal(t, bundle.RelationKeyTemplatePlaceholders, details[1].Key)
+		assert.Contains(t, details[1].Value.String(), `"assignee":"_current_user"`)
+	})
+
+	t.Run("setting real value does not remove existing placeholder", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+		err := f.sb.SetDetails(nil, []domain.Detail{
+			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.String(`{"dueDate":"_today"}`)},
+		}, false)
+		require.NoError(t, err)
+
+		// when
+		details := f.basic.(*basic).processTemplatePlaceholders([]domain.Detail{
+			{Key: "dueDate", Value: domain.Float64(1234567890)},
+		})
+
+		// then
+		require.Len(t, details, 1)
+		assert.Equal(t, domain.RelationKey("dueDate"), details[0].Key)
+		// Placeholder should still be in state, no templatePlaceholders update emitted
+	})
+
+	t.Run("clearing placeholder with null value removes it", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+		err := f.sb.SetDetails(nil, []domain.Detail{
+			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.String(`{"dueDate":"_today","assignee":"_current_user"}`)},
+		}, false)
+		require.NoError(t, err)
+
+		// when
+		details := f.basic.(*basic).processTemplatePlaceholders([]domain.Detail{
+			{Key: "dueDate", Value: domain.Null()},
+		})
+
+		// then
+		require.Len(t, details, 2)
+		assert.Equal(t, domain.RelationKey("dueDate"), details[0].Key)
+		assert.True(t, details[0].Value.IsNull())
+		assert.Equal(t, bundle.RelationKeyTemplatePlaceholders, details[1].Key)
+		assert.Contains(t, details[1].Value.String(), `"assignee":"_current_user"`)
+		assert.NotContains(t, details[1].Value.String(), `"dueDate"`)
+	})
+
+	t.Run("non-template objects are not processed", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+
+		// when
+		details := f.basic.(*basic).processTemplatePlaceholders([]domain.Detail{
+			{Key: "dueDate", Value: domain.String(domain.PlaceholderToday)},
+		})
+
+		// then
+		require.Len(t, details, 1)
+		assert.Equal(t, domain.RelationKey("dueDate"), details[0].Key)
+		assert.Equal(t, domain.PlaceholderToday, details[0].Value.String())
+	})
+
+	t.Run("multiple placeholders in single call", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+
+		// when
+		details := f.basic.(*basic).processTemplatePlaceholders([]domain.Detail{
+			{Key: "dueDate", Value: domain.String(domain.PlaceholderToday)},
+			{Key: "assignee", Value: domain.String(domain.PlaceholderCurrentUser)},
+		})
+
+		// then
+		require.Len(t, details, 1)
+		assert.Equal(t, bundle.RelationKeyTemplatePlaceholders, details[0].Key)
+		placeholders := domain.UnmarshalPlaceholders(details[0].Value.String())
+		assert.Equal(t, domain.PlaceholderToday, placeholders["dueDate"])
+		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders["assignee"])
+	})
+}
+
 func TestBasic_SetObjectTypesInState(t *testing.T) {
 	t.Run("no error", func(t *testing.T) {
 		// given
