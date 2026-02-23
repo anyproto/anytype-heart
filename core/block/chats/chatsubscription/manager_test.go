@@ -419,27 +419,39 @@ func TestGetLastMessage(t *testing.T) {
 	mngr, err := fx.GetManager(testSpaceId, chatId)
 	require.NoError(t, err)
 
-	t.Run("with no subscriptions", func(t *testing.T) {
-		_, ok := mngr.GetLastMessage()
+	t.Run("with no subscriptions and no messages in db", func(t *testing.T) {
+		_, ok, err := mngr.GetLastMessage()
+		require.NoError(t, err)
 		assert.False(t, ok)
 	})
 
+	t.Run("with no subscriptions, fallback to repository", func(t *testing.T) {
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		dbMsg := givenSimpleMessage("dbMsg1", "from db", "o0")
+		err = repo.AddTestMessage(ctx, dbMsg)
+		require.NoError(t, err)
+
+		got, ok, err := mngr.GetLastMessage()
+		require.NoError(t, err)
+		assert.True(t, ok)
+		assert.Equal(t, dbMsg.Id, got.Id)
+		assert.Equal(t, dbMsg.ChatMessage.Message.Text, got.Message.Text)
+	})
+
+	// Subscribe after messages are already in db — subscription will load them
 	_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
 		ChatObjectId: chatId,
 		SubId:        subId,
 	})
 	require.NoError(t, err)
 
-	t.Run("with no messages", func(t *testing.T) {
-		_, ok := mngr.GetLastMessage()
-		assert.False(t, ok)
-	})
-
 	msg := givenComplexMessage("msg1", "text", "o1")
 	mngr.Add("", msg)
 
 	t.Run("with only one message", func(t *testing.T) {
-		got, ok := mngr.GetLastMessage()
+		got, ok, err := mngr.GetLastMessage()
+		require.NoError(t, err)
 		assert.True(t, ok)
 		assert.Equal(t, msg.ChatMessage, got)
 	})
@@ -448,7 +460,8 @@ func TestGetLastMessage(t *testing.T) {
 	mngr.Add("o1", msg2)
 
 	t.Run("with multiple messages", func(t *testing.T) {
-		got, ok := mngr.GetLastMessage()
+		got, ok, err := mngr.GetLastMessage()
+		require.NoError(t, err)
 		assert.True(t, ok)
 		assert.Equal(t, msg2.ChatMessage, got)
 	})
