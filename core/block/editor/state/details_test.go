@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -204,5 +205,77 @@ func TestState_AllRelationKeys(t *testing.T) {
 
 		// then
 		assert.Len(t, keys, 5)
+	})
+}
+
+func TestState_ApplyNullDetailDoesNotGenerateDuplicateChange(t *testing.T) {
+	t.Run("apply detailsSet with nil proto value then SetDetail with Null should not produce change", func(t *testing.T) {
+		// given
+		// Simulate building state from changes: change sets iconOption to null (nil *types.Value in proto)
+		doc := NewDoc("root", nil).(*State)
+		doc.details = domain.NewDetails()
+		doc.details.Set("iconOption", domain.Int64(1))
+
+		// Apply a change that sets iconOption to null (nil proto value, as seen in the tree)
+		err := doc.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDetailsSet{
+				DetailsSet: &pb.ChangeDetailsSet{
+					Key:   "iconOption",
+					Value: nil, // null in proto/JSON
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		// After applying the change, iconOption should still be present as Null, not deleted
+		assert.True(t, doc.Details().Has("iconOption"), "iconOption should still be present in details after applying null change")
+		assert.True(t, doc.Details().Get("iconOption").IsNull(), "iconOption should be Null value")
+
+		// Now simulate what happens on startup: SetDetail is called with domain.Null()
+		s := doc.NewState()
+		s.SetDetail("iconOption", domain.Null())
+
+		// This should NOT produce any changes because the value is already Null
+		msgs, _, err := ApplyState("space1", s, false)
+		require.NoError(t, err)
+		assert.Empty(t, msgs, "setting Null on already-Null detail should not produce events")
+		assert.Empty(t, s.GetChanges(), "setting Null on already-Null detail should not produce changes")
+	})
+
+	t.Run("repeated null changes should not generate duplicate detailsSet", func(t *testing.T) {
+		// given
+		// Build state from a sequence of changes like seen in the bug report:
+		// change 608: detailsSet iconOption=null
+		// change 609: detailsSet iconOption=null (duplicate!)
+		doc := NewDoc("root", nil).(*State)
+		doc.details = domain.NewDetails()
+		doc.details.Set("iconOption", domain.Int64(5))
+
+		// First null change
+		err := doc.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDetailsSet{
+				DetailsSet: &pb.ChangeDetailsSet{
+					Key:   "iconOption",
+					Value: nil,
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		// After first null change, SetDetail with Null should be a no-op
+		s := doc.NewState()
+		s.SetDetail("iconOption", domain.Null())
+
+		msgs, _, err := ApplyState("space1", s, false)
+		require.NoError(t, err)
+		assert.Empty(t, msgs, "first SetDetail(Null) after null change should not produce events")
+
+		// And again — still should be a no-op
+		s2 := doc.NewState()
+		s2.SetDetail("iconOption", domain.Null())
+
+		msgs, _, err = ApplyState("space1", s2, false)
+		require.NoError(t, err)
+		assert.Empty(t, msgs, "second SetDetail(Null) should not produce events")
 	})
 }
