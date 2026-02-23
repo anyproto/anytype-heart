@@ -548,6 +548,9 @@ func (s *storeObject) Close() error {
 }
 
 func (s *storeObject) canManageMessages(identity string) bool {
+	if s.Space().IsOneToOne() {
+		return false
+	}
 	aclList := s.Tree().AclList()
 	aclList.RLock()
 	defer aclList.RUnlock()
