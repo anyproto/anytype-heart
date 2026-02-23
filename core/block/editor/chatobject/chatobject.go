@@ -255,6 +255,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		currentIdentity:       s.accountService.AccountID(),
 		myParticipantId:       myParticipantId,
 		reactionsCounterEpoch: s.reactionsCounterEpoch,
+		canManageMessages:     s.canManageMessages,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
@@ -544,6 +545,18 @@ func (s *storeObject) Close() error {
 	s.componentCtxCancel()
 	s.statService.RemoveProvider(s)
 	return s.SmartBlock.Close()
+}
+
+func (s *storeObject) canManageMessages(identity string) bool {
+	aclList := s.Tree().AclList()
+	aclList.RLock()
+	defer aclList.RUnlock()
+	for _, acc := range aclList.AclState().CurrentAccounts() {
+		if acc.PubKey.Account() == identity {
+			return acc.Permissions.CanManageAccounts()
+		}
+	}
+	return false
 }
 
 func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {

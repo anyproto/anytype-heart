@@ -463,37 +463,90 @@ func TestEditMessage(t *testing.T) {
 }
 
 func TestDeleteMessage(t *testing.T) {
-	t.Run("delete own message", func(t *testing.T) {
+	t.Run("user can delete own message", func(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
-		inputMessage := givenComplexMessage()
+		// given
+		inputMessage := givenSimpleMessage("hello")
 		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 		require.NoError(t, err)
 
+		// when
 		err = fx.DeleteMessage(ctx, messageId)
-		require.NoError(t, err)
 
+		// then
+		require.NoError(t, err)
 		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 0)
 	})
 
-	t.Run("delete other's message", func(t *testing.T) {
+	t.Run("admin can delete another user's message", func(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
-		inputMessage := givenComplexMessage()
+		// given: message created by another user
+		fx.sourceCreator = "otherUser"
+		inputMessage := givenSimpleMessage("bad message")
 		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
 		require.NoError(t, err)
 
-		fx.sourceCreator = "maliciousPerson"
-
-		err = fx.DeleteMessage(ctx, messageId)
-		require.Error(t, err)
-
-		// Check that message is not deleted
+		// when: admin deletes the message
 		fx.sourceCreator = testCreator
+		fx.chatHandler.canManageMessages = func(identity string) bool {
+			return true
+		}
+		err = fx.DeleteMessage(ctx, messageId)
+
+		// then
+		require.NoError(t, err)
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
+		require.NoError(t, err)
+		require.Len(t, messagesResp.Messages, 0)
+	})
+
+	t.Run("writer cannot delete another user's message", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// given: message created by another user
+		fx.sourceCreator = "otherUser"
+		inputMessage := givenSimpleMessage("some message")
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.NoError(t, err)
+
+		// when: writer tries to delete the message
+		fx.sourceCreator = testCreator
+		fx.chatHandler.canManageMessages = func(identity string) bool {
+			return false
+		}
+		err = fx.DeleteMessage(ctx, messageId)
+
+		// then
+		require.Error(t, err)
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
+		require.NoError(t, err)
+		require.Len(t, messagesResp.Messages, 1)
+	})
+
+	t.Run("nil callback preserves existing behavior", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// given: message created by another user, no callback set
+		fx.sourceCreator = "otherUser"
+		inputMessage := givenSimpleMessage("some message")
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.NoError(t, err)
+
+		// when: try to delete without canManageMessages callback
+		fx.sourceCreator = testCreator
+		fx.chatHandler.canManageMessages = nil
+		err = fx.DeleteMessage(ctx, messageId)
+
+		// then
+		require.Error(t, err)
 		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)

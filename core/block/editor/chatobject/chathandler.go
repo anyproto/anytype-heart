@@ -33,6 +33,9 @@ type ChatHandler struct {
 	reactionsCounterEpoch int64
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
+	// canManageMessages reports whether the given identity has permission
+	// to delete messages created by other users (Owner/Admin).
+	canManageMessages func(identity string) bool
 }
 
 func (d *ChatHandler) CollectionName() string {
@@ -146,7 +149,9 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
 	}
 	if message.Creator != ch.Change.Creator {
-		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
+		if d.canManageMessages == nil || !d.canManageMessages(ch.Change.Creator) {
+			return storestate.DeleteModeDelete, errors.New("can't delete not own message")
+		}
 	}
 
 	d.subscription.Lock()
