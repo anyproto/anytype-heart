@@ -278,7 +278,31 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
 
+	s.onInit(ctx)
+
 	return nil
+}
+
+func (s *storeObject) onInit(ctx *smartblock.InitContext) {
+	s.subscription.Lock()
+	defer s.subscription.Unlock()
+
+	s.subscription.Flush(true)
+
+	last, ok := s.subscription.GetLastMessage()
+	if !ok {
+		msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
+		if err != nil {
+			log.Error("onUpdate: get last message", zap.Error(err))
+		}
+		if len(msgs) > 0 {
+			last = msgs[0].ChatMessage
+		}
+	}
+
+	if last != nil {
+		ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
+	}
 }
 
 func (s *storeObject) onUpdate() {
