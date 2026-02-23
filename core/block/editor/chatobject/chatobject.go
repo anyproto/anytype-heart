@@ -223,12 +223,13 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.chatHandler = &ChatHandler{
-		repository:      s.repository,
-		subscription:    s.subscription,
-		indexerStore:    s.indexerStore,
-		chatFullId:      domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
-		currentIdentity: s.accountService.AccountID(),
-		myParticipantId: myParticipantId,
+		repository:        s.repository,
+		subscription:      s.subscription,
+		indexerStore:      s.indexerStore,
+		chatFullId:        domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
+		currentIdentity:   s.accountService.AccountID(),
+		myParticipantId:   myParticipantId,
+		canManageMessages: s.canManageMessages,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
@@ -505,6 +506,18 @@ func (s *storeObject) Close() error {
 	s.componentCtxCancel()
 	s.statService.RemoveProvider(s)
 	return s.SmartBlock.Close()
+}
+
+func (s *storeObject) canManageMessages(identity string) bool {
+	aclList := s.Tree().AclList()
+	aclList.RLock()
+	defer aclList.RUnlock()
+	for _, acc := range aclList.AclState().CurrentAccounts() {
+		if acc.PubKey.Account() == identity {
+			return acc.Permissions.CanManageAccounts()
+		}
+	}
+	return false
 }
 
 func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
