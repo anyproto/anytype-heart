@@ -83,6 +83,7 @@ func marshalFileInfo(arena *anyenc.Arena, info FileInfo) *anyenc.Value {
 	var i int
 	for c := range info.CidsToUpload {
 		cidsToUpload.SetArrayItem(i, arena.NewString(c.String()))
+		i++
 	}
 	obj.Set("cidsToUpload", cidsToUpload)
 
@@ -90,6 +91,7 @@ func marshalFileInfo(arena *anyenc.Arena, info FileInfo) *anyenc.Value {
 	i = 0
 	for c := range info.CidsToBind {
 		cidsToBind.SetArrayItem(i, arena.NewString(c.String()))
+		i++
 	}
 	obj.Set("cidsToBind", cidsToBind)
 	return obj
