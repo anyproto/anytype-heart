@@ -508,7 +508,11 @@ func (s *storeObject) Close() error {
 	return s.SmartBlock.Close()
 }
 
-func (s *storeObject) canManageMessages(identity string) bool {
+func (s *storeObject) canManageMessages(identity string, aclHeadId string) bool {
+	return false
+
+	// TODO Enable after we upgrade protocol version
+
 	if s.Space().IsOneToOne() {
 		return false
 	}
@@ -517,7 +521,11 @@ func (s *storeObject) canManageMessages(identity string) bool {
 	defer aclList.RUnlock()
 	for _, acc := range aclList.AclState().CurrentAccounts() {
 		if acc.PubKey.Account() == identity {
-			return acc.Permissions.CanManageAccounts()
+			perms, err := aclList.AclState().PermissionsAtRecord(aclHeadId, acc.PubKey)
+			if err != nil {
+				return false
+			}
+			return perms.CanManageAccounts()
 		}
 	}
 	return false
