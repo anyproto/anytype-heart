@@ -64,6 +64,7 @@ func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
 		Changes:   storeChange.ChangeSet,
 		Creator:   change.Identity.Account(),
 		Timestamp: change.Timestamp,
+		AclHeadId: change.AclHeadId,
 	}
 	err = a.tx.ApplyChangeSet(set)
 	// Skip invalid changes

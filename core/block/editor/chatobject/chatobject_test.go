@@ -494,7 +494,7 @@ func TestDeleteMessage(t *testing.T) {
 
 		// when: admin deletes the message
 		fx.sourceCreator = testCreator
-		fx.chatHandler.canManageMessages = func(identity string) bool {
+		fx.chatHandler.canManageMessages = func(identity string, aclHeadId string) bool {
 			return true
 		}
 		err = fx.DeleteMessage(ctx, messageId)
@@ -518,7 +518,7 @@ func TestDeleteMessage(t *testing.T) {
 
 		// when: writer tries to delete the message
 		fx.sourceCreator = testCreator
-		fx.chatHandler.canManageMessages = func(identity string) bool {
+		fx.chatHandler.canManageMessages = func(identity string, aclHeadId string) bool {
 			return false
 		}
 		err = fx.DeleteMessage(ctx, messageId)

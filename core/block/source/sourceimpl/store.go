@@ -261,9 +261,15 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		return "", fmt.Errorf("marshal change: %w", err)
 	}
 
+	acl := s.ObjectTree.AclList()
+	acl.RLock()
+	key := acl.AclState().Key()
+	aclHeadId := acl.Head().Id
+	acl.RUnlock()
+
 	addResult, err := s.ObjectTree.AddContentWithValidator(ctx, objecttree.SignableChangeContent{
 		Data:              data,
-		Key:               s.ObjectTree.AclList().AclState().Key(),
+		Key:               key,
 		ShouldBeEncrypted: true,
 		DataType:          dataType,
 		Timestamp:         params.Time.Unix(),
@@ -274,6 +280,7 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 			Changes:   params.Changes,
 			Creator:   s.accountService.AccountID(),
 			Timestamp: params.Time.Unix(),
+			AclHeadId: aclHeadId,
 		})
 		if err != nil {
 			return fmt.Errorf("apply change set: %w", err)

@@ -34,8 +34,8 @@ type ChatHandler struct {
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
 	// canManageMessages reports whether the given identity has permission
-	// to delete messages created by other users (Owner/Admin).
-	canManageMessages func(identity string) bool
+	// to delete messages created by other users (Owner/Admin) at the specific ACL state.
+	canManageMessages func(identity string, aclHeadId string) bool
 }
 
 func (d *ChatHandler) CollectionName() string {
@@ -146,11 +146,11 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 
 	message, err := chatmodel.UnmarshalMessage(doc.Value())
 	if err != nil {
-		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
+		return storestate.DeleteModeDelete, errors.Join(storestate.ErrValidation, fmt.Errorf("unmarshal message: %w", err))
 	}
 	if message.Creator != ch.Change.Creator {
-		if d.canManageMessages == nil || !d.canManageMessages(ch.Change.Creator) {
-			return storestate.DeleteModeDelete, errors.New("can't delete not own message")
+		if d.canManageMessages == nil || !d.canManageMessages(ch.Change.Creator, ch.Change.AclHeadId) {
+			return storestate.DeleteModeDelete, errors.Join(storestate.ErrValidation, errors.New("can't delete not own message"))
 		}
 	}
 
