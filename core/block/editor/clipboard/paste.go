@@ -323,7 +323,7 @@ func (p *pasteCtrl) processFiles() (err error) {
 				if err != nil {
 					log.Errorf("error handling base64 image: %v", err)
 				}
-			} else {
+			} else if file.Name != "" {
 				p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
 					ContextId: p.s.RootId(),
 					BlockId:   b.Model().Id,

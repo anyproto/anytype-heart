@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
+	_ "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
@@ -1898,5 +1899,176 @@ func TestProcessFileBlock(t *testing.T) {
 
 		// then
 		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
+	})
+
+	t.Run("empty target object id is skipped without calling GetFileIdFromObject", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		// No expectations set — any call to GetFileIdFromObject would fail the test
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: ""}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, "", fb.File.TargetObjectId)
+	})
+
+	t.Run("nil file content is skipped", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: nil}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Nil(t, fb.File)
+	})
+}
+
+func TestPasteEmptyFileBlock(t *testing.T) {
+	t.Run("empty file placeholder pastes without error", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{"text1"}, emptyMarks))
+		cb := newFixture(t, sb)
+
+		req := &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "1",
+			SelectedTextRange: &model.Range{From: 5, To: 5},
+			AnySlot: []*model.Block{
+				{
+					Id: "fileBlock1",
+					Content: &model.BlockContentOfFile{
+						File: &model.BlockContentFile{
+							State: model.BlockContentFile_Empty,
+							Type:  model.BlockContentFile_File,
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		blockIds, uploadArr, _, _, err := cb.Paste(nil, req, "")
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, blockIds)
+		assert.Empty(t, uploadArr)
+	})
+
+	t.Run("empty file placeholder generates no upload requests", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
+		cb := newFixture(t, sb)
+
+		req := &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "",
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				{
+					Id: "fileBlock1",
+					Content: &model.BlockContentOfFile{
+						File: &model.BlockContentFile{
+							State: model.BlockContentFile_Empty,
+							Type:  model.BlockContentFile_Image,
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		_, uploadArr, _, _, err := cb.Paste(nil, req, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, uploadArr)
+	})
+
+	t.Run("file block with URL in Name still generates upload request", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
+		cb := newFixture(t, sb)
+
+		req := &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "",
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				{
+					Id: "fileBlock1",
+					Content: &model.BlockContentOfFile{
+						File: &model.BlockContentFile{
+							State: model.BlockContentFile_Empty,
+							Type:  model.BlockContentFile_Image,
+							Name:  "https://example.com/image.png",
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		_, uploadArr, _, _, err := cb.Paste(nil, req, "")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, uploadArr, 1)
+		assert.Equal(t, "https://example.com/image.png", uploadArr[0].Url)
+	})
+
+	t.Run("mixed text and empty file blocks all paste correctly", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
+		cb := newFixture(t, sb)
+
+		req := &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "",
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				{
+					Id: "textBlock1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: "hello"},
+					},
+				},
+				{
+					Id: "fileBlock1",
+					Content: &model.BlockContentOfFile{
+						File: &model.BlockContentFile{
+							State: model.BlockContentFile_Empty,
+							Type:  model.BlockContentFile_File,
+						},
+					},
+				},
+				{
+					Id: "textBlock2",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: "world"},
+					},
+				},
+			},
+		}
+
+		// when
+		blockIds, uploadArr, _, _, err := cb.Paste(nil, req, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Len(t, blockIds, 3)
+		assert.Empty(t, uploadArr)
 	})
 }
