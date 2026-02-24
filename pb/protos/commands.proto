@@ -6834,6 +6834,7 @@ message Rpc {
                 message Response {
                     Error error = 1;
                     ResponseEvent event = 2;
+                    string filterId = 3; // ID of added filter
 
                     message Error {
                         Code code = 1;
@@ -6885,6 +6886,7 @@ message Rpc {
                 message Response {
                     Error error = 1;
                     ResponseEvent event = 2;
+                    string filterId = 3; // ID of new filter
 
                     message Error {
                         Code code = 1;
