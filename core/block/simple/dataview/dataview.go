@@ -77,9 +77,9 @@ type Block interface {
 	ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate)
 	ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderUpdate)
 
-	AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error
+	AddFilter(viewID string, filter *model.BlockContentDataviewFilter) (filterId string, err error)
 	RemoveFilters(viewID string, filterIDs []string) error
-	ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error
+	ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) (filterId string, err error)
 	ReorderFilters(viewID string, ids []string) error
 
 	AddSort(viewID string, sort *model.BlockContentDataviewSort) error

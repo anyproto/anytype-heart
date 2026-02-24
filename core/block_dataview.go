@@ -282,11 +282,7 @@ func (mw *Middleware) BlockDataviewFilterAdd(cctx context.Context, req *pb.RpcBl
 		return r
 	}
 
-	err := mustService[dataviewservice.Service](mw).AddDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Filter)
-	if err != nil {
-		return resp("", err)
-	}
-	return resp(req.Filter.Id, nil)
+	return resp(mustService[dataviewservice.Service](mw).AddDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Filter))
 }
 
 func (mw *Middleware) BlockDataviewFilterRemove(cctx context.Context, req *pb.RpcBlockDataviewFilterRemoveRequest) *pb.RpcBlockDataviewFilterRemoveResponse {
@@ -328,8 +324,7 @@ func (mw *Middleware) BlockDataviewFilterReplace(cctx context.Context, req *pb.R
 		return r
 	}
 
-	err := mustService[dataviewservice.Service](mw).ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Filter)
-	return resp(req.Filter.Id, err)
+	return resp(mustService[dataviewservice.Service](mw).ReplaceDataviewFilter(ctx, req.ContextId, req.BlockId, req.ViewId, req.Id, req.Filter))
 }
 
 func (mw *Middleware) BlockDataviewFilterSort(cctx context.Context, req *pb.RpcBlockDataviewFilterSortRequest) *pb.RpcBlockDataviewFilterSortResponse {
