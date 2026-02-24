@@ -1544,119 +1544,121 @@ func TestService_Search(t *testing.T) {
 	})
 }
 
-func TestService_PinMessages(t *testing.T) {
-	t.Run("pin single message successfully", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		ctx := context.Background()
-		chatObjectId := "chatId1"
-		messageIds := []string{"msg1"}
+// TODO: GO-6749 uncomment when old clients will be able to unmarshal messages with pinned=true
+// func TestService_PinMessages(t *testing.T) {
+// 	t.Run("pin single message successfully", func(t *testing.T) {
+// 		// given
+// 		fx := newFixture(t)
+// 		ctx := context.Background()
+// 		chatObjectId := "chatId1"
+// 		messageIds := []string{"msg1"}
+//
+// 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+// 			Records: []*domain.Details{},
+// 		}, nil).Maybe()
+//
+// 		mockChat := mock_chatobject.NewMockStoreObject(t)
+// 		mockChat.EXPECT().Lock().Return()
+// 		mockChat.EXPECT().Unlock().Return()
+// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
+//
+// 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+//
+// 		fx.start(t)
+//
+// 		// when
+// 		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
+//
+// 		// then
+// 		require.NoError(t, err)
+// 	})
+//
+// 	t.Run("pin multiple messages", func(t *testing.T) {
+// 		// given
+// 		fx := newFixture(t)
+// 		ctx := context.Background()
+// 		chatObjectId := "chatId1"
+// 		messageIds := []string{"msg1", "msg2", "msg3"}
+//
+// 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+// 			Records: []*domain.Details{},
+// 		}, nil).Maybe()
+//
+// 		mockChat := mock_chatobject.NewMockStoreObject(t)
+// 		mockChat.EXPECT().Lock().Return()
+// 		mockChat.EXPECT().Unlock().Return()
+// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
+// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", true).Return(nil)
+// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg3", true).Return(nil)
+//
+// 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+//
+// 		fx.start(t)
+//
+// 		// when
+// 		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
+//
+// 		// then
+// 		require.NoError(t, err)
+// 	})
+//
+// 	t.Run("pin message returns error on failure", func(t *testing.T) {
+// 		// given
+// 		fx := newFixture(t)
+// 		ctx := context.Background()
+// 		chatObjectId := "chatId1"
+// 		messageIds := []string{"msg1"}
+//
+// 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+// 			Records: []*domain.Details{},
+// 		}, nil).Maybe()
+//
+// 		mockChat := mock_chatobject.NewMockStoreObject(t)
+// 		mockChat.EXPECT().Lock().Return()
+// 		mockChat.EXPECT().Unlock().Return()
+// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(fmt.Errorf("message not found"))
+//
+// 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+//
+// 		fx.start(t)
+//
+// 		// when
+// 		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
+//
+// 		// then
+// 		require.Error(t, err)
+// 	})
+// }
 
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*domain.Details{},
-		}, nil).Maybe()
-
-		mockChat := mock_chatobject.NewMockStoreObject(t)
-		mockChat.EXPECT().Lock().Return()
-		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
-
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
-
-		fx.start(t)
-
-		// when
-		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
-
-		// then
-		require.NoError(t, err)
-	})
-
-	t.Run("pin multiple messages", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		ctx := context.Background()
-		chatObjectId := "chatId1"
-		messageIds := []string{"msg1", "msg2", "msg3"}
-
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*domain.Details{},
-		}, nil).Maybe()
-
-		mockChat := mock_chatobject.NewMockStoreObject(t)
-		mockChat.EXPECT().Lock().Return()
-		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(nil)
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", true).Return(nil)
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg3", true).Return(nil)
-
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
-
-		fx.start(t)
-
-		// when
-		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
-
-		// then
-		require.NoError(t, err)
-	})
-
-	t.Run("pin message returns error on failure", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		ctx := context.Background()
-		chatObjectId := "chatId1"
-		messageIds := []string{"msg1"}
-
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*domain.Details{},
-		}, nil).Maybe()
-
-		mockChat := mock_chatobject.NewMockStoreObject(t)
-		mockChat.EXPECT().Lock().Return()
-		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg1", true).Return(fmt.Errorf("message not found"))
-
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
-
-		fx.start(t)
-
-		// when
-		err := fx.PinMessages(ctx, chatObjectId, messageIds, true)
-
-		// then
-		require.Error(t, err)
-	})
-}
-
-func TestService_UnpinMessages(t *testing.T) {
-	t.Run("unpin single message successfully", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		ctx := context.Background()
-		chatObjectId := "chatId1"
-		messageIds := []string{"msg2"}
-
-		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
-			Records: []*domain.Details{},
-		}, nil).Maybe()
-
-		mockChat := mock_chatobject.NewMockStoreObject(t)
-		mockChat.EXPECT().Lock().Return()
-		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", false).Return(nil)
-
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
-
-		fx.start(t)
-
-		// when
-		err := fx.PinMessages(ctx, chatObjectId, messageIds, false)
-
-		// then
-		require.NoError(t, err)
-	})
-}
+// TODO: GO-6749 uncomment when old clients will be able to unmarshal messages with pinned=true
+// func TestService_UnpinMessages(t *testing.T) {
+// 	t.Run("unpin single message successfully", func(t *testing.T) {
+// 		// given
+// 		fx := newFixture(t)
+// 		ctx := context.Background()
+// 		chatObjectId := "chatId1"
+// 		messageIds := []string{"msg2"}
+//
+// 		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+// 			Records: []*domain.Details{},
+// 		}, nil).Maybe()
+//
+// 		mockChat := mock_chatobject.NewMockStoreObject(t)
+// 		mockChat.EXPECT().Lock().Return()
+// 		mockChat.EXPECT().Unlock().Return()
+// 		mockChat.EXPECT().SetMessagePinned(mock.Anything, "msg2", false).Return(nil)
+//
+// 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+//
+// 		fx.start(t)
+//
+// 		// when
+// 		err := fx.PinMessages(ctx, chatObjectId, messageIds, false)
+//
+// 		// then
+// 		require.NoError(t, err)
+// 	})
+// }
 
 func TestService_GetPinnedMessages(t *testing.T) {
 	t.Run("get pinned messages successfully", func(t *testing.T) {
