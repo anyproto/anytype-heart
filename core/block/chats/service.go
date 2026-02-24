@@ -899,7 +899,7 @@ func (s *service) ReadAll(ctx context.Context) error {
 }
 
 func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error {
-	return nil
+	return fmt.Errorf("not implemented")
 	// TODO: GO-6749 uncomment when old clients will be able to unmarshal messages with pinned=true
 	// return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
 	// 	for _, msgId := range messageIds {
