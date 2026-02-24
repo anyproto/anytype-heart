@@ -780,6 +780,9 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 	}
 
 	var prevMap = make(map[domain.TypeKey]struct{}, len(prev))
+	for _, v := range prev {
+		prevMap[v] = struct{}{}
+	}
 	var curMap = make(map[domain.TypeKey]struct{}, len(s.objectTypeKeys))
 
 	for _, v := range s.objectTypeKeys {
