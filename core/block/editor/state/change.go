@@ -258,11 +258,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	if s.details == nil {
 		s.details = det.Copy()
 	}
-	if set.Value != nil {
-		s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
-	} else {
-		s.details.Delete(domain.RelationKey(set.Key))
-	}
+	s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
 	return nil
 }
 

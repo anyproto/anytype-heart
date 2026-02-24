@@ -92,9 +92,9 @@ func (_c *MockManager_Delete_Call) RunAndReturn(run func(string)) *MockManager_D
 	return _c
 }
 
-// Flush provides a mock function with given fields:
-func (_m *MockManager) Flush() {
-	_m.Called()
+// Flush provides a mock function with given fields: reloadStateIfNeeded
+func (_m *MockManager) Flush(reloadStateIfNeeded bool) {
+	_m.Called(reloadStateIfNeeded)
 }
 
 // MockManager_Flush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Flush'
@@ -103,13 +103,14 @@ type MockManager_Flush_Call struct {
 }
 
 // Flush is a helper method to define mock.On call
-func (_e *MockManager_Expecter) Flush() *MockManager_Flush_Call {
-	return &MockManager_Flush_Call{Call: _e.mock.On("Flush")}
+//   - reloadStateIfNeeded bool
+func (_e *MockManager_Expecter) Flush(reloadStateIfNeeded interface{}) *MockManager_Flush_Call {
+	return &MockManager_Flush_Call{Call: _e.mock.On("Flush", reloadStateIfNeeded)}
 }
 
-func (_c *MockManager_Flush_Call) Run(run func()) *MockManager_Flush_Call {
+func (_c *MockManager_Flush_Call) Run(run func(reloadStateIfNeeded bool)) *MockManager_Flush_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(bool))
 	})
 	return _c
 }
@@ -119,7 +120,7 @@ func (_c *MockManager_Flush_Call) Return() *MockManager_Flush_Call {
 	return _c
 }
 
-func (_c *MockManager_Flush_Call) RunAndReturn(run func()) *MockManager_Flush_Call {
+func (_c *MockManager_Flush_Call) RunAndReturn(run func(bool)) *MockManager_Flush_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -204,7 +205,7 @@ func (_c *MockManager_GetChatState_Call) RunAndReturn(run func() *model.ChatStat
 }
 
 // GetLastMessage provides a mock function with given fields:
-func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool) {
+func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -213,7 +214,8 @@ func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool) {
 
 	var r0 *model.ChatMessage
 	var r1 bool
-	if rf, ok := ret.Get(0).(func() (*model.ChatMessage, bool)); ok {
+	var r2 error
+	if rf, ok := ret.Get(0).(func() (*model.ChatMessage, bool, error)); ok {
 		return rf()
 	}
 	if rf, ok := ret.Get(0).(func() *model.ChatMessage); ok {
@@ -230,7 +232,13 @@ func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool) {
 		r1 = ret.Get(1).(bool)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func() error); ok {
+		r2 = rf()
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MockManager_GetLastMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLastMessage'
@@ -250,12 +258,12 @@ func (_c *MockManager_GetLastMessage_Call) Run(run func()) *MockManager_GetLastM
 	return _c
 }
 
-func (_c *MockManager_GetLastMessage_Call) Return(_a0 *model.ChatMessage, _a1 bool) *MockManager_GetLastMessage_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockManager_GetLastMessage_Call) Return(_a0 *model.ChatMessage, _a1 bool, _a2 error) *MockManager_GetLastMessage_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockManager_GetLastMessage_Call) RunAndReturn(run func() (*model.ChatMessage, bool)) *MockManager_GetLastMessage_Call {
+func (_c *MockManager_GetLastMessage_Call) RunAndReturn(run func() (*model.ChatMessage, bool, error)) *MockManager_GetLastMessage_Call {
 	_c.Call.Return(run)
 	return _c
 }

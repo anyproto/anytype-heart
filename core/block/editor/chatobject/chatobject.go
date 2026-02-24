@@ -278,7 +278,26 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
 
+	s.onInit(ctx)
+
 	return nil
+}
+
+func (s *storeObject) onInit(ctx *smartblock.InitContext) {
+	s.subscription.Lock()
+	defer s.subscription.Unlock()
+
+	// It's important to flush updates to subscriptions after reading a store document, or we can lose some important
+	// updates such as unread counters state
+	s.subscription.Flush(true)
+
+	last, ok, err := s.subscription.GetLastMessage()
+	if err != nil {
+		log.Error("onInit: get last message", zap.Error(err))
+	}
+	if ok && last != nil {
+		ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
+	}
 }
 
 func (s *storeObject) onUpdate() {
@@ -290,20 +309,13 @@ func (s *storeObject) onUpdate() {
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 
-	s.subscription.Flush()
+	s.subscription.Flush(true)
 
-	last, ok := s.subscription.GetLastMessage()
-	if !ok {
-		msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
-		if err != nil {
-			log.Error("onUpdate: get last message", zap.Error(err))
-		}
-		if len(msgs) > 0 {
-			last = msgs[0].ChatMessage
-		}
+	last, ok, err := s.subscription.GetLastMessage()
+	if err != nil {
+		log.Error("onUpdate: get last message", zap.Error(err))
 	}
-
-	if last != nil {
+	if ok && last != nil {
 		st := s.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 		err = s.Apply(st, smartblock.NotPushChanges)
@@ -338,9 +350,12 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	if err != nil {
 		return nil, err
 	}
+	s.subscription.Lock()
+	state := s.subscription.GetChatState()
+	s.subscription.Unlock()
 	return &GetMessagesResponse{
 		Messages:  msgs,
-		ChatState: s.subscription.GetChatState(),
+		ChatState: state,
 	}, nil
 }
 

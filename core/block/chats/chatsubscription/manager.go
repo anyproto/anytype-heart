@@ -2,6 +2,7 @@ package chatsubscription
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -135,22 +136,31 @@ func (s *subscriptionManager) ForceSendingChatState() {
 	s.chatStateUpdated = true
 }
 
-func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool) {
+func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool, error) {
 	// get the last message from any subscription. It works because we don't have offsets for subscriptions, so
 	// it's guaranteed for the last message in a subscription to be the last message in a set of all messages.
 	for _, sub := range s.subscriptions {
 		last := sub.state.messages.Back()
 		if last != nil {
-			return last.Value.(*stateEntry).msg, true
+			return proto.Clone(last.Value.(*stateEntry).msg).(*model.ChatMessage), true, nil
 		}
 	}
-	return nil, false
+
+	msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
+	if err != nil {
+		return nil, false, fmt.Errorf("get last message from repository: %w", err)
+	}
+	if len(msgs) > 0 {
+		return msgs[0].ChatMessage, true, nil
+	}
+	return nil, false, nil
 }
 
-// Flush is called after committing changes
-func (s *subscriptionManager) Flush() {
+// Flush is called after committing changes. If reloadStateIfNeeded is true and s.needReloadState is true, it reloads state
+// and resets s.needReloadState to false
+func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 	// Reload ChatState after commit
-	if s.needReloadState {
+	if s.needReloadState && reloadStateIfNeeded {
 		s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
 			newState, err := s.repository.LoadChatState(s.componentCtx)
 			if err != nil {
