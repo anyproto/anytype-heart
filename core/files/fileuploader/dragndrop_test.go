@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -93,24 +94,20 @@ func newDropFixture(t *testing.T) *dropFixture {
 }
 
 func (fx *dropFixture) expectUpload(t *testing.T, times int) {
-	upl := NewMockUploader(t)
-	upl.EXPECT().SetName(mock.Anything).RunAndReturn(func(name string) Uploader {
-		// store name for later use in Upload
-		upl.EXPECT().Upload(mock.Anything).Unset()
-		upl.EXPECT().Upload(mock.Anything).Return(UploadResult{
-			FileObjectId: "fileObj-" + name,
-			Name:         name,
-		}).Maybe()
+	fx.fileUploader.EXPECT().NewUploader(mock.Anything, mock.Anything).RunAndReturn(func(_ string, _ objectorigin.ObjectOrigin) Uploader {
+		upl := NewMockUploader(t)
+		upl.EXPECT().SetName(mock.Anything).RunAndReturn(func(name string) Uploader {
+			upl.EXPECT().Upload(mock.Anything).Return(UploadResult{
+				FileObjectId: "fileObj-" + name,
+				Name:         name,
+			}).Once()
+			return upl
+		}).Once()
+		upl.EXPECT().SetFile(mock.Anything).Return(upl).Once()
+		upl.EXPECT().SetCreatedInContext(mock.Anything).Return(upl).Once()
+		upl.EXPECT().SetCreatedInContextRef(mock.Anything).Return(upl).Once()
 		return upl
 	}).Times(times)
-	upl.EXPECT().SetFile(mock.Anything).Return(upl).Times(times)
-	upl.EXPECT().SetCreatedInContext(mock.Anything).Return(upl).Times(times)
-	upl.EXPECT().SetCreatedInContextRef(mock.Anything).Return(upl).Times(times)
-	upl.EXPECT().Upload(mock.Anything).Return(UploadResult{
-		FileObjectId: "fileObj",
-		Name:         "uploaded",
-	}).Maybe()
-	fx.fileUploader.EXPECT().NewUploader(mock.Anything, mock.Anything).Return(upl).Times(times)
 }
 
 // --- Tests ---
@@ -195,11 +192,12 @@ func TestDropFiles(t *testing.T) {
 		require.NoError(t, err)
 
 		ch := make(chan error)
-		proc.Start("root", true, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
+		go proc.Start("root", true, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
 		err = <-ch
 
 		// then
 		assert.Nil(t, err)
+		<-proc.Done()
 		storeSlice := cst.NewState().GetStoreSlice(template.CollectionStoreKey)
 		assert.Contains(t, storeSlice, "childColl")
 	})
@@ -217,8 +215,8 @@ func TestDropFiles(t *testing.T) {
 		sb.Doc = st
 
 		cst := &objectWithCollection{SmartTest: sb, Collection: collection.New(sb, noopBacklinksWatcher{})}
-		fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(cst, nil)
-		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(cst, nil).Maybe()
+		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 		fx.expectUpload(t, 1)
 
 		// when
@@ -231,11 +229,12 @@ func TestDropFiles(t *testing.T) {
 		err = proc.Init([]string{f.Name()})
 		require.NoError(t, err)
 		ch := make(chan error)
-		proc.Start("root", true, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
+		go proc.Start("root", true, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
 		err = <-ch
 
 		// then
 		assert.Nil(t, err)
+		<-proc.Done()
 		storeSlice := cst.NewState().GetStoreSlice(template.CollectionStoreKey)
 		assert.Len(t, storeSlice, 1)
 	})
@@ -259,9 +258,9 @@ func TestDropFiles(t *testing.T) {
 		fx.objectCreator.fn = func(_ context.Context, _ string, _ objectcreator.CreateObjectRequest) (string, *domain.Details, error) {
 			return "childColl", domain.NewDetails(), nil
 		}
-		fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(cst, nil)
+		fx.pickerFx.EXPECT().GetObject(mock.Anything, "root").Return(cst, nil).Maybe()
 		fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
-		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return()
+		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 		fx.expectUpload(t, 1)
 
 		// when
@@ -276,11 +275,12 @@ func TestDropFiles(t *testing.T) {
 		err = proc.Init([]string{dir})
 		require.NoError(t, err)
 		ch := make(chan error)
-		proc.Start("root", true, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
+		go proc.Start("root", true, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
 		err = <-ch
 
 		// then
 		assert.Nil(t, err)
+		<-proc.Done()
 		storeSlice := cst.NewState().GetStoreSlice(template.CollectionStoreKey)
 		assert.Contains(t, storeSlice, "childColl")
 	})
@@ -379,11 +379,12 @@ func TestDropFiles(t *testing.T) {
 		err = proc.Init([]string{dir})
 		require.NoError(t, err)
 		ch := make(chan error)
-		proc.Start("root", true, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
+		go proc.Start("root", true, pb.RpcFileDropRequest{Position: model.Block_Bottom}, ch)
 		err = <-ch
 
 		// then
 		assert.Nil(t, err)
+		<-proc.Done()
 		rootStore := cst.NewState().GetStoreSlice(template.CollectionStoreKey)
 		assert.Contains(t, rootStore, "parentColl")
 		parentStore := parentColl.NewState().GetStoreSlice(template.CollectionStoreKey)
