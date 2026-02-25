@@ -214,9 +214,9 @@ func detectFileType(path, name string) model.BlockContentFileType {
 }
 
 // isTypeFilterActive returns true when type-based filtering should be applied.
-// Only None disables filtering.
+// None and File disable filtering — both allow all file types through.
 func isTypeFilterActive(fileType model.BlockContentFileType) bool {
-	return fileType != model.BlockContentFile_None
+	return fileType != model.BlockContentFile_None && fileType != model.BlockContentFile_File
 }
 
 // filterFileType returns the type to match against during filtering.

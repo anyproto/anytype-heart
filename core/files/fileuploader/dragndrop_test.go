@@ -714,8 +714,8 @@ func TestIsTypeFilterActive(t *testing.T) {
 	t.Run("Video is active", func(t *testing.T) {
 		assert.True(t, isTypeFilterActive(model.BlockContentFile_Video))
 	})
-	t.Run("File is active", func(t *testing.T) {
-		assert.True(t, isTypeFilterActive(model.BlockContentFile_File))
+	t.Run("File is not active", func(t *testing.T) {
+		assert.False(t, isTypeFilterActive(model.BlockContentFile_File))
 	})
 	t.Run("PDF is active", func(t *testing.T) {
 		assert.True(t, isTypeFilterActive(model.BlockContentFile_PDF))
@@ -818,7 +818,7 @@ func TestDropFilesTypeFilter(t *testing.T) {
 		}
 	})
 
-	t.Run("type=File filters out images and keeps generic files", func(t *testing.T) {
+	t.Run("type=File allows all file types through", func(t *testing.T) {
 		// given — 1 generic file + 1 PNG image
 		dir := t.TempDir()
 		pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
@@ -835,11 +835,10 @@ func TestDropFilesTypeFilter(t *testing.T) {
 			filepath.Join(dir, "photo.png"),
 		})
 
-		// then — only the generic file is included, image is filtered out
+		// then — both files are included, File type disables filtering
 		require.NoError(t, err)
-		assert.Equal(t, int64(1), proc.total)
-		require.Len(t, proc.root.children, 1)
-		assert.Equal(t, "data.bin", proc.root.children[0].name)
+		assert.Equal(t, int64(2), proc.total)
+		require.Len(t, proc.root.children, 2)
 	})
 
 	t.Run("type filter ignored when dropping to editor", func(t *testing.T) {
