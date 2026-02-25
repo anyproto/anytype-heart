@@ -1,78 +1,38 @@
 package filesync
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	fileproto "github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
-
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore/mock_rpcstore"
-	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const techSpaceId = "tech-space-id"
-const regularSpaceId = "regular-space-id"
-
-func newManagerFixture(t *testing.T, initialSpaceViewDetails, initialDeletedSpacesDetails []*domain.Details) *spaceUsageManager {
-	makeSpaceViewParams := objectsubscription.SubscriptionParams[*spaceUsage]{
-		SetDetails: func(details *domain.Details) (string, *spaceUsage) {
-			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
-			return spaceId, &spaceUsage{spaceId: spaceId}
-		},
-		UpdateKeys: func(_ []objectsubscription.RelationKeyValue, cur *spaceUsage) *spaceUsage {
-			return cur
-		},
-		RemoveKeys: func(_ []string, cur *spaceUsage) *spaceUsage {
-			return cur
-		},
-	}
-
-	deletedParams := objectsubscription.SubscriptionParams[struct{}]{
-		SetDetails: func(details *domain.Details) (string, struct{}) {
-			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
-			return spaceId, struct{}{}
-		},
-		UpdateKeys: func(_ []objectsubscription.RelationKeyValue, cur struct{}) struct{} {
-			return cur
-		},
-		RemoveKeys: func(_ []string, cur struct{}) struct{} {
-			return cur
-		},
-	}
-
-	spaceViews := objectsubscription.NewFromQueue[*spaceUsage](nil, makeSpaceViewParams, initialSpaceViewDetails)
-	deletedSpaceViews := objectsubscription.NewFromQueue[struct{}](nil, deletedParams, initialDeletedSpacesDetails)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
-	rpcStore := mock_rpcstore.NewMockRpcStore(t)
-	rpcStore.EXPECT().SpaceInfo(mock.Anything, mock.Anything).Return(nil, fileproto.ErrForbidden).Maybe()
-
-	return &spaceUsageManager{
-		ctx:               ctx,
-		ctxCancel:         cancel,
-		techSpaceId:       techSpaceId,
-		rpcStore:          rpcStore,
-		spaceViews:        spaceViews,
-		deletedSpaceViews: deletedSpaceViews,
-		updateCh:          make(chan updateMessage, 1),
-	}
-}
-
 func TestGetSpace(t *testing.T) {
-	t.Run("tech space creates dedicated spaceUsage", func(t *testing.T) {
+	t.Run("regular space found directly", func(t *testing.T) {
 		// given
-		m := newManagerFixture(t, nil, nil)
+		fx := newFixture(t, 1024*1024)
+		defer fx.Finish(t)
 
 		// when
-		got, err := m.getSpace(techSpaceId)
+		got, err := fx.limitManager.getSpace("space1")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "space1", got.spaceId)
+	})
+
+	t.Run("tech space creates dedicated spaceUsage", func(t *testing.T) {
+		// given
+		fx := newFixture(t, 1024*1024)
+		defer fx.Finish(t)
+
+		// when
+		got, err := fx.limitManager.getSpace(techSpaceId)
 
 		// then
 		require.NoError(t, err)
@@ -81,12 +41,13 @@ func TestGetSpace(t *testing.T) {
 
 	t.Run("tech space returns same instance on second call", func(t *testing.T) {
 		// given
-		m := newManagerFixture(t, nil, nil)
+		fx := newFixture(t, 1024*1024)
+		defer fx.Finish(t)
 
 		// when
-		first, err := m.getSpace(techSpaceId)
+		first, err := fx.limitManager.getSpace(techSpaceId)
 		require.NoError(t, err)
-		second, err := m.getSpace(techSpaceId)
+		second, err := fx.limitManager.getSpace(techSpaceId)
 		require.NoError(t, err)
 
 		// then
@@ -95,10 +56,11 @@ func TestGetSpace(t *testing.T) {
 
 	t.Run("unknown space returns spaceView not found", func(t *testing.T) {
 		// given
-		m := newManagerFixture(t, nil, nil)
+		fx := newFixture(t, 1024*1024)
+		defer fx.Finish(t)
 
 		// when
-		_, err := m.getSpace("unknownSpace")
+		_, err := fx.limitManager.getSpace("unknownSpace")
 
 		// then
 		require.EqualError(t, err, "spaceView not found")
@@ -106,32 +68,22 @@ func TestGetSpace(t *testing.T) {
 
 	t.Run("deleted space returns errSpaceDeleted", func(t *testing.T) {
 		// given
-		m := newManagerFixture(t, nil, []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyTargetSpaceId: domain.String("deletedSpace"),
-			}),
+		fx := newFixtureNotStarted(t, 1024*1024)
+		fx.subService.AddObjects(t, techSpaceId, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:                 domain.String("spaceViewDeleted"),
+				bundle.RelationKeyTargetSpaceId:      domain.String("deletedSpace"),
+				bundle.RelationKeyResolvedLayout:     domain.Int64(model.ObjectType_spaceView),
+				bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+			},
 		})
+		require.NoError(t, fx.a.Start(ctx))
+		defer fx.Finish(t)
 
 		// when
-		_, err := m.getSpace("deletedSpace")
+		_, err := fx.limitManager.getSpace("deletedSpace")
 
 		// then
 		require.ErrorIs(t, err, errSpaceDeleted)
-	})
-
-	t.Run("regular space found directly", func(t *testing.T) {
-		// given
-		m := newManagerFixture(t, []*domain.Details{
-			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyTargetSpaceId: domain.String(regularSpaceId),
-			}),
-		}, nil)
-
-		// when
-		got, err := m.getSpace(regularSpaceId)
-
-		// then
-		require.NoError(t, err)
-		assert.Equal(t, regularSpaceId, got.spaceId)
 	})
 }
