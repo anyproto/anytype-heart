@@ -193,6 +193,9 @@ func (m *spaceUsageManager) setupUpdateCh() chan updateMessage {
 }
 
 func (m *spaceUsageManager) getSpace(spaceId string) (*spaceUsage, error) {
+	if spaceId == m.techSpaceId {
+		return m.getTechSpace(), nil
+	}
 	spc, ok := m.spaceViews.GetByKey(spaceId)
 	if ok {
 		return spc, nil
@@ -200,9 +203,6 @@ func (m *spaceUsageManager) getSpace(spaceId string) (*spaceUsage, error) {
 	_, ok = m.deletedSpaceViews.GetByKey(spaceId)
 	if ok {
 		return nil, errSpaceDeleted
-	}
-	if spaceId == m.techSpaceId {
-		return m.getTechSpace(), nil
 	}
 	return nil, fmt.Errorf("spaceView not found")
 }

@@ -16,10 +16,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
-func TestGetSpace(t *testing.T) {
-	const techSpaceId = "tech-space-id"
-	const regularSpaceId = "regular-space-id"
+const techSpaceId = "tech-space-id"
+const regularSpaceId = "regular-space-id"
 
+func newManagerFixture(t *testing.T, initialSpaceViewDetails, initialDeletedSpacesDetails []*domain.Details) *spaceUsageManager {
 	makeSpaceViewParams := objectsubscription.SubscriptionParams[*spaceUsage]{
 		SetDetails: func(details *domain.Details) (string, *spaceUsage) {
 			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
@@ -46,29 +46,30 @@ func TestGetSpace(t *testing.T) {
 		},
 	}
 
-	newManager := func(t *testing.T, spaceViews *objectsubscription.ObjectSubscription[*spaceUsage], deletedSpaceViews *objectsubscription.ObjectSubscription[struct{}]) *spaceUsageManager {
-		ctx, cancel := context.WithCancel(context.Background())
-		t.Cleanup(cancel)
+	spaceViews := objectsubscription.NewFromQueue[*spaceUsage](nil, makeSpaceViewParams, initialSpaceViewDetails)
+	deletedSpaceViews := objectsubscription.NewFromQueue[struct{}](nil, deletedParams, initialDeletedSpacesDetails)
 
-		rpcStore := mock_rpcstore.NewMockRpcStore(t)
-		rpcStore.EXPECT().SpaceInfo(mock.Anything, mock.Anything).Return(nil, fileproto.ErrForbidden).Maybe()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
 
-		return &spaceUsageManager{
-			ctx:               ctx,
-			ctxCancel:         cancel,
-			techSpaceId:       techSpaceId,
-			rpcStore:          rpcStore,
-			spaceViews:        spaceViews,
-			deletedSpaceViews: deletedSpaceViews,
-			updateCh:          make(chan updateMessage, 1),
-		}
+	rpcStore := mock_rpcstore.NewMockRpcStore(t)
+	rpcStore.EXPECT().SpaceInfo(mock.Anything, mock.Anything).Return(nil, fileproto.ErrForbidden).Maybe()
+
+	return &spaceUsageManager{
+		ctx:               ctx,
+		ctxCancel:         cancel,
+		techSpaceId:       techSpaceId,
+		rpcStore:          rpcStore,
+		spaceViews:        spaceViews,
+		deletedSpaceViews: deletedSpaceViews,
+		updateCh:          make(chan updateMessage, 1),
 	}
+}
 
+func TestGetSpace(t *testing.T) {
 	t.Run("tech space creates dedicated spaceUsage", func(t *testing.T) {
 		// given
-		spaceViews := objectsubscription.NewFromQueue[*spaceUsage](nil, makeSpaceViewParams, nil)
-		deletedSpaceViews := objectsubscription.NewFromQueue[struct{}](nil, deletedParams, nil)
-		m := newManager(t, spaceViews, deletedSpaceViews)
+		m := newManagerFixture(t, nil, nil)
 
 		// when
 		got, err := m.getSpace(techSpaceId)
@@ -80,9 +81,7 @@ func TestGetSpace(t *testing.T) {
 
 	t.Run("tech space returns same instance on second call", func(t *testing.T) {
 		// given
-		spaceViews := objectsubscription.NewFromQueue[*spaceUsage](nil, makeSpaceViewParams, nil)
-		deletedSpaceViews := objectsubscription.NewFromQueue[struct{}](nil, deletedParams, nil)
-		m := newManager(t, spaceViews, deletedSpaceViews)
+		m := newManagerFixture(t, nil, nil)
 
 		// when
 		first, err := m.getSpace(techSpaceId)
@@ -96,9 +95,7 @@ func TestGetSpace(t *testing.T) {
 
 	t.Run("unknown space returns spaceView not found", func(t *testing.T) {
 		// given
-		spaceViews := objectsubscription.NewFromQueue[*spaceUsage](nil, makeSpaceViewParams, nil)
-		deletedSpaceViews := objectsubscription.NewFromQueue[struct{}](nil, deletedParams, nil)
-		m := newManager(t, spaceViews, deletedSpaceViews)
+		m := newManagerFixture(t, nil, nil)
 
 		// when
 		_, err := m.getSpace("unknownSpace")
@@ -109,13 +106,11 @@ func TestGetSpace(t *testing.T) {
 
 	t.Run("deleted space returns errSpaceDeleted", func(t *testing.T) {
 		// given
-		spaceViews := objectsubscription.NewFromQueue[*spaceUsage](nil, makeSpaceViewParams, nil)
-		deletedSpaceViews := objectsubscription.NewFromQueue[struct{}](nil, deletedParams, []*domain.Details{
+		m := newManagerFixture(t, nil, []*domain.Details{
 			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyTargetSpaceId: domain.String("deletedSpace"),
 			}),
 		})
-		m := newManager(t, spaceViews, deletedSpaceViews)
 
 		// when
 		_, err := m.getSpace("deletedSpace")
@@ -126,13 +121,11 @@ func TestGetSpace(t *testing.T) {
 
 	t.Run("regular space found directly", func(t *testing.T) {
 		// given
-		spaceViews := objectsubscription.NewFromQueue[*spaceUsage](nil, makeSpaceViewParams, []*domain.Details{
+		m := newManagerFixture(t, []*domain.Details{
 			domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 				bundle.RelationKeyTargetSpaceId: domain.String(regularSpaceId),
 			}),
-		})
-		deletedSpaceViews := objectsubscription.NewFromQueue[struct{}](nil, deletedParams, nil)
-		m := newManager(t, spaceViews, deletedSpaceViews)
+		}, nil)
 
 		// when
 		got, err := m.getSpace(regularSpaceId)
