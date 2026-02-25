@@ -82,7 +82,7 @@ type Service interface {
 	NewUploader(spaceId string, origin objectorigin.ObjectOrigin) Uploader
 	GetPreloadResult(preloadId string) (*files.AddResult, bool)
 	RemovePreloadResult(preloadId string)
-	DropFiles(req pb.RpcFileDropRequest) error
+	DropFiles(req pb.RpcFileDropRequest) (int, error)
 }
 
 // preloadEntry tracks the status of a preload operation and implements Process interface
@@ -237,7 +237,7 @@ func (f *service) Close(_ context.Context) (err error) {
 	return nil
 }
 
-func (f *service) DropFiles(req pb.RpcFileDropRequest) error {
+func (f *service) DropFiles(req pb.RpcFileDropRequest) (int, error) {
 	var spaceID, rootId string
 	var isCol bool
 	noContext := req.ContextId == ""
@@ -245,7 +245,7 @@ func (f *service) DropFiles(req pb.RpcFileDropRequest) error {
 	if noContext {
 		spaceID = req.SpaceId
 		if spaceID == "" {
-			return fmt.Errorf("spaceId is required when contextId is empty")
+			return 0, fmt.Errorf("spaceId is required when contextId is empty")
 		}
 	} else {
 		err := cache.Do(f.picker, req.ContextId, func(sb smartblock.SmartBlock) error {
@@ -261,7 +261,7 @@ func (f *service) DropFiles(req pb.RpcFileDropRequest) error {
 			return nil
 		})
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
@@ -274,13 +274,14 @@ func (f *service) DropFiles(req pb.RpcFileDropRequest) error {
 		objectStore:    f.objectStore.SpaceIndex(spaceID),
 		contextId:      req.ContextId,
 		noContext:       noContext,
+		fileType:       req.Type,
 	}
 	if err := proc.Init(req.LocalFilePaths); err != nil {
-		return err
+		return 0, err
 	}
 	ch := make(chan error)
 	go proc.Start(rootId, isCol, req, ch)
-	return <-ch
+	return int(proc.total), <-ch
 }
 
 var (

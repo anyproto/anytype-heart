@@ -26,21 +26,31 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // DropFiles provides a mock function with given fields: req
-func (_m *MockService) DropFiles(req pb.RpcFileDropRequest) error {
+func (_m *MockService) DropFiles(req pb.RpcFileDropRequest) (int, error) {
 	ret := _m.Called(req)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DropFiles")
 	}
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(pb.RpcFileDropRequest) error); ok {
+	var r0 int
+	var r1 error
+	if rf, ok := ret.Get(0).(func(pb.RpcFileDropRequest) (int, error)); ok {
+		return rf(req)
+	}
+	if rf, ok := ret.Get(0).(func(pb.RpcFileDropRequest) int); ok {
 		r0 = rf(req)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(int)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(pb.RpcFileDropRequest) error); ok {
+		r1 = rf(req)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockService_DropFiles_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DropFiles'
@@ -61,12 +71,12 @@ func (_c *MockService_DropFiles_Call) Run(run func(req pb.RpcFileDropRequest)) *
 	return _c
 }
 
-func (_c *MockService_DropFiles_Call) Return(_a0 error) *MockService_DropFiles_Call {
-	_c.Call.Return(_a0)
+func (_c *MockService_DropFiles_Call) Return(_a0 int, _a1 error) *MockService_DropFiles_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_DropFiles_Call) RunAndReturn(run func(pb.RpcFileDropRequest) error) *MockService_DropFiles_Call {
+func (_c *MockService_DropFiles_Call) RunAndReturn(run func(pb.RpcFileDropRequest) (int, error)) *MockService_DropFiles_Call {
 	_c.Call.Return(run)
 	return _c
 }

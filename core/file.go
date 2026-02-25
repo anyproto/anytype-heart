@@ -40,8 +40,8 @@ func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownload
 
 func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcFileDropResponseErrorCode, err error) *pb.RpcFileDropResponse {
-		m := &pb.RpcFileDropResponse{Error: &pb.RpcFileDropResponseError{Code: code}}
+	response := func(filesCount int, code pb.RpcFileDropResponseErrorCode, err error) *pb.RpcFileDropResponse {
+		m := &pb.RpcFileDropResponse{Error: &pb.RpcFileDropResponseError{Code: code}, FilesCount: int64(filesCount)}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		} else {
@@ -49,13 +49,15 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 		}
 		return m
 	}
+	var filesCount int
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DropFiles(*req)
+		filesCount, err = bs.DropFiles(*req)
+		return
 	})
 	if err != nil {
-		return response(pb.RpcFileDropResponseError_UNKNOWN_ERROR, err)
+		return response(0, pb.RpcFileDropResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcFileDropResponseError_NULL, nil)
+	return response(filesCount, pb.RpcFileDropResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {

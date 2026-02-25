@@ -13,6 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/globalsign/mgo/bson"
 	"github.com/google/uuid"
 
@@ -74,7 +75,8 @@ type dropFilesProcess struct {
 	spaceId   string
 	groupId   string
 	contextId string
-	noContext  bool
+	noContext bool
+	fileType  model.BlockContentFileType
 
 	root        *dropFileEntry
 	total, done int64
@@ -126,12 +128,31 @@ func (dp *dropFilesProcess) Done() chan struct{} {
 	return dp.doneCh
 }
 
-func (dp *dropFilesProcess) Init(paths []string) (err error) {
+func (dp *dropFilesProcess) Init(paths []string) error {
 	dp.root = &dropFileEntry{}
+	if isTypeFilterActive(dp.fileType) {
+		dp.collectFilteredPaths(paths)
+	} else {
+		err := dp.collectAllPaths(paths)
+		if err != nil {
+			return fmt.Errorf("collect all paths: %w", err)
+		}
+	}
+	dp.groupId = bson.NewObjectId().Hex()
+	return nil
+}
+
+func (dp *dropFilesProcess) collectFilteredPaths(paths []string) {
+	for _, path := range paths {
+		dp.initFilteredEntry(path)
+	}
+}
+
+func (dp *dropFilesProcess) collectAllPaths(paths []string) error {
 	for _, path := range paths {
 		entry := &dropFileEntry{path: path, name: filepath.Base(path)}
-		ok, e := dp.readdir(entry, true)
-		if e != nil {
+		ok, err := dp.readdir(entry, true)
+		if err != nil {
 			return anyerror.CleanupError(err)
 		}
 		if ok {
@@ -139,8 +160,62 @@ func (dp *dropFilesProcess) Init(paths []string) (err error) {
 			dp.total++
 		}
 	}
-	dp.groupId = bson.NewObjectId().Hex()
-	return
+	return nil
+}
+
+// initFilteredEntry recursively collects files matching the requested type.
+// Directories are not tracked as entries — only matching files are added flat to dp.root.
+func (dp *dropFilesProcess) initFilteredEntry(path string) {
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return
+	}
+	if fi.IsDir() {
+		dp.walkDirFiltered(path)
+		return
+	}
+	name := filepath.Base(path)
+	if detectFileType(path, name) == dp.fileType {
+		dp.root.children = append(dp.root.children, &dropFileEntry{path: path, name: name})
+		dp.total++
+	}
+}
+
+// walkDirFiltered recursively walks a directory, collecting only files that match dp.fileType.
+func (dp *dropFilesProcess) walkDirFiltered(dir string) {
+	f, err := os.Open(dir)
+	if err != nil {
+		return
+	}
+	names, err := f.Readdirnames(-1)
+	f.Close()
+	if err != nil {
+		return
+	}
+	for _, name := range names {
+		if strings.HasPrefix(name, ".") {
+			continue
+		}
+		dp.initFilteredEntry(filepath.Join(dir, name))
+	}
+}
+
+// detectFileType detects file type by reading file content (magic bytes).
+func detectFileType(path, name string) model.BlockContentFileType {
+	mime, err := mimetype.DetectFile(path)
+	if err != nil {
+		return model.BlockContentFile_File
+	}
+	return file.DetectTypeByMIME(name, mime.String())
+}
+
+// isTypeFilterActive returns true for types that trigger filtering (Image, Audio, Video).
+func isTypeFilterActive(fileType model.BlockContentFileType) bool {
+	switch fileType {
+	case model.BlockContentFile_Image, model.BlockContentFile_Audio, model.BlockContentFile_Video:
+		return true
+	}
+	return false
 }
 
 func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (ok bool, err error) {

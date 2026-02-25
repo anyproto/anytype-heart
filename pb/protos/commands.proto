@@ -4080,10 +4080,12 @@ message Rpc {
                 anytype.model.Block.Content.File.Style style = 5;
                 repeated string localFilePaths = 4;
                 string spaceId = 6; // used when contextId is empty to identify target space
+                anytype.model.Block.Content.File.Type type = 7;
             }
             message Response {
                 Error error = 1;
                 ResponseEvent event = 2;
+                int64 filesCount = 3;
                 message Error {
                     Code code = 1;
                     string description = 2;
