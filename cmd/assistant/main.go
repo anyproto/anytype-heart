@@ -61,6 +61,15 @@ func run() error {
 		return fmt.Errorf("SubscribeToMessagePreviews: %w", err)
 	}
 
+	// Create middleware wrapper for API service
+	mw := core.NewWithApplicationService(app.appService)
+	crossSpaceSub := getService[apicore.CrossSpaceSubscriptionService](app)
+	svc := apiservice.NewService(mw, app.account.Info.GatewayUrl, app.account.Info.TechSpaceId, crossSpaceSub)
+	// Initialize caches to populate properties, types, and tags
+	if err := svc.InitializeAllCaches(); err != nil {
+		fmt.Printf("InitializeAllCaches err: %s\n", err.Error())
+	}
+
 	for {
 		msg, err := app.eventQueue.WaitOne(ctx)
 		if err != nil {
@@ -72,17 +81,6 @@ func run() error {
 			chatId, currentSpaceId, err := chatService.FindChatByMessageId(ctx, chatAddEv.Id)
 			if err != nil {
 				fmt.Printf("findChatByMessageId err: %s\n", err.Error())
-				continue
-			}
-
-			// Create middleware wrapper for API service
-			mw := core.NewWithApplicationService(app.appService)
-			crossSpaceSub := getService[apicore.CrossSpaceSubscriptionService](app)
-			svc := apiservice.NewService(mw, app.account.Info.GatewayUrl, app.account.Info.TechSpaceId, crossSpaceSub)
-
-			// Initialize caches to populate properties, types, and tags
-			if err := svc.InitializeAllCaches(); err != nil {
-				fmt.Printf("InitializeAllCaches err: %s\n", err.Error())
 				continue
 			}
 
