@@ -38,7 +38,8 @@ type spaceUsageManager struct {
 	ctxCancel context.CancelFunc
 
 	techSpaceId         string
-	getTechSpaceUsage   func() *spaceUsage
+	techSpaceLock       sync.Mutex
+	techSpaceUsage      *spaceUsage
 	subscriptionService subscription.Service
 	rpcStore            rpcstore.RpcStore
 
@@ -49,7 +50,7 @@ type spaceUsageManager struct {
 
 func newSpaceUsageManager(subscriptionService subscription.Service, rpcStore rpcstore.RpcStore, techSpaceId string) *spaceUsageManager {
 	ctx, cancel := context.WithCancel(context.Background())
-	m := &spaceUsageManager{
+	return &spaceUsageManager{
 		ctx:                 ctx,
 		ctxCancel:           cancel,
 		techSpaceId:         techSpaceId,
@@ -59,12 +60,6 @@ func newSpaceUsageManager(subscriptionService subscription.Service, rpcStore rpc
 		// Use buffered channel of size 1 to always receive at least one update signal
 		updateCh: make(chan updateMessage, 1),
 	}
-	techSpaceOnce := sync.OnceValue(func() *spaceUsage {
-		updateCh := m.setupUpdateCh()
-		return newSpaceUsage(ctx, techSpaceId, rpcStore, updateCh)
-	})
-	m.getTechSpaceUsage = techSpaceOnce
-	return m
 }
 
 func (m *spaceUsageManager) createDeletedSpacesSub() error {
@@ -207,9 +202,22 @@ func (m *spaceUsageManager) getSpace(spaceId string) (*spaceUsage, error) {
 		return nil, errSpaceDeleted
 	}
 	if spaceId == m.techSpaceId {
-		return m.getTechSpaceUsage(), nil
+		return m.getTechSpace(), nil
 	}
 	return nil, fmt.Errorf("spaceView not found")
+}
+
+func (m *spaceUsageManager) getTechSpace() *spaceUsage {
+	m.techSpaceLock.Lock()
+	defer m.techSpaceLock.Unlock()
+
+	if m.techSpaceUsage != nil {
+		return m.techSpaceUsage
+	}
+
+	updateCh := m.setupUpdateCh()
+	m.techSpaceUsage = newSpaceUsage(m.ctx, m.techSpaceId, m.rpcStore, updateCh)
+	return m.techSpaceUsage
 }
 
 func (m *spaceUsageManager) close() {

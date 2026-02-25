@@ -2,7 +2,6 @@ package filesync
 
 import (
 	"context"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -54,21 +53,15 @@ func TestGetSpace(t *testing.T) {
 		rpcStore := mock_rpcstore.NewMockRpcStore(t)
 		rpcStore.EXPECT().SpaceInfo(mock.Anything, mock.Anything).Return(nil, fileproto.ErrForbidden).Maybe()
 
-		updateCh := make(chan updateMessage, 1)
-		m := &spaceUsageManager{
+		return &spaceUsageManager{
 			ctx:               ctx,
 			ctxCancel:         cancel,
 			techSpaceId:       techSpaceId,
 			rpcStore:          rpcStore,
 			spaceViews:        spaceViews,
 			deletedSpaceViews: deletedSpaceViews,
-			updateCh:          updateCh,
+			updateCh:          make(chan updateMessage, 1),
 		}
-		m.getTechSpaceUsage = sync.OnceValue(func() *spaceUsage {
-			ch := m.setupUpdateCh()
-			return newSpaceUsage(ctx, techSpaceId, rpcStore, ch)
-		})
-		return m
 	}
 
 	t.Run("tech space creates dedicated spaceUsage", func(t *testing.T) {
