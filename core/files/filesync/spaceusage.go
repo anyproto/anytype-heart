@@ -187,14 +187,29 @@ func (m *spaceUsageManager) init() error {
 
 func (m *spaceUsageManager) getSpace(spaceId string) (*spaceUsage, error) {
 	spc, ok := m.spaceViews.GetByKey(spaceId)
-	if !ok {
-		_, ok := m.deletedSpaceViews.GetByKey(spaceId)
-		if ok {
-			return nil, errSpaceDeleted
-		}
-		return nil, fmt.Errorf("spaceView not found")
+	if ok {
+		return spc, nil
 	}
-	return spc, nil
+	_, ok = m.deletedSpaceViews.GetByKey(spaceId)
+	if ok {
+		return nil, errSpaceDeleted
+	}
+	if spaceId == m.techSpaceId {
+		return m.getAnySpace()
+	}
+	return nil, fmt.Errorf("spaceView not found")
+}
+
+func (m *spaceUsageManager) getAnySpace() (*spaceUsage, error) {
+	var result *spaceUsage
+	m.spaceViews.Iterate(func(_ string, spc *spaceUsage) bool {
+		result = spc
+		return false
+	})
+	if result == nil {
+		return nil, fmt.Errorf("no spaces available")
+	}
+	return result, nil
 }
 
 func (m *spaceUsageManager) close() {
