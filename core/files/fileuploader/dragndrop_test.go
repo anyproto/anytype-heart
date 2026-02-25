@@ -424,20 +424,13 @@ func TestDropFilesInSpace(t *testing.T) {
 		<-proc.Done()
 	})
 
-	t.Run("drop dir with empty contextId - creates collection", func(t *testing.T) {
+	t.Run("drop dir with empty contextId - uploads files flat", func(t *testing.T) {
 		// given
-		objectStore := spaceindex.NewStoreFixture(t)
 		dir := t.TempDir()
 		_, err := os.Create(filepath.Join(dir, "test.txt"))
 		require.NoError(t, err)
 
 		fx := newDropFixture(t)
-		childColl := newObjectWithCollection("childColl")
-
-		fx.objectCreator.fn = func(_ context.Context, _ string, _ objectcreator.CreateObjectRequest) (string, *domain.Details, error) {
-			return "childColl", domain.NewDetails(), nil
-		}
-		fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
 		fx.expectUpload(t, 1)
 
@@ -447,27 +440,25 @@ func TestDropFilesInSpace(t *testing.T) {
 			processService: fx.processServ,
 			picker:         fx.pickerFx,
 			service:        fx.fileUploader,
-			objectCreator:  fx.objectCreator,
-			objectStore:    objectStore,
 			noContext:       true,
 		}
 		err = proc.Init([]string{dir})
 		require.NoError(t, err)
 
+		// then — directory is flattened, only files are collected
+		assert.Equal(t, int64(1), proc.total)
+		require.Len(t, proc.root.children, 1)
+		assert.False(t, proc.root.children[0].isDir)
+
 		ch := make(chan error)
 		go proc.Start("", false, pb.RpcFileDropRequest{}, ch)
 		err = <-ch
-
-		// then
 		assert.NoError(t, err)
 		<-proc.Done()
-		childStore := childColl.NewState().GetStoreSlice(template.CollectionStoreKey)
-		assert.Len(t, childStore, 1)
 	})
 
-	t.Run("drop mix of files and dirs with empty contextId", func(t *testing.T) {
+	t.Run("drop mix of files and dirs with empty contextId - all flat", func(t *testing.T) {
 		// given
-		objectStore := spaceindex.NewStoreFixture(t)
 		base := t.TempDir()
 		subdir := filepath.Join(base, "subdir")
 		err := os.Mkdir(subdir, 0o755)
@@ -479,14 +470,8 @@ func TestDropFilesInSpace(t *testing.T) {
 		require.NoError(t, err)
 
 		fx := newDropFixture(t)
-		childColl := newObjectWithCollection("childColl")
-
-		fx.objectCreator.fn = func(_ context.Context, _ string, _ objectcreator.CreateObjectRequest) (string, *domain.Details, error) {
-			return "childColl", domain.NewDetails(), nil
-		}
-		fx.pickerFx.EXPECT().GetObject(mock.Anything, "childColl").Return(childColl, nil).Maybe()
 		fx.mockSender.EXPECT().Broadcast(mock.Anything).Return().Maybe()
-		// 1 standalone file + 1 file inside directory = 2 uploads
+		// 1 standalone file + 1 nested file = 2 uploads, all flat
 		fx.expectUpload(t, 2)
 
 		// when
@@ -495,18 +480,20 @@ func TestDropFilesInSpace(t *testing.T) {
 			processService: fx.processServ,
 			picker:         fx.pickerFx,
 			service:        fx.fileUploader,
-			objectCreator:  fx.objectCreator,
-			objectStore:    objectStore,
 			noContext:       true,
 		}
 		err = proc.Init([]string{file1.Name(), subdir})
 		require.NoError(t, err)
 
+		// then — all entries are flat files
+		assert.Equal(t, int64(2), proc.total)
+		for _, child := range proc.root.children {
+			assert.False(t, child.isDir)
+		}
+
 		ch := make(chan error)
 		go proc.Start("", false, pb.RpcFileDropRequest{}, ch)
 		err = <-ch
-
-		// then
 		assert.NoError(t, err)
 		<-proc.Done()
 	})
@@ -726,14 +713,32 @@ func TestIsTypeFilterActive(t *testing.T) {
 	t.Run("Video is active", func(t *testing.T) {
 		assert.True(t, isTypeFilterActive(model.BlockContentFile_Video))
 	})
-	t.Run("File is not active", func(t *testing.T) {
-		assert.False(t, isTypeFilterActive(model.BlockContentFile_File))
+	t.Run("File is active", func(t *testing.T) {
+		assert.True(t, isTypeFilterActive(model.BlockContentFile_File))
+	})
+	t.Run("PDF is active", func(t *testing.T) {
+		assert.True(t, isTypeFilterActive(model.BlockContentFile_PDF))
 	})
 	t.Run("None is not active", func(t *testing.T) {
 		assert.False(t, isTypeFilterActive(model.BlockContentFile_None))
 	})
-	t.Run("PDF is not active", func(t *testing.T) {
-		assert.False(t, isTypeFilterActive(model.BlockContentFile_PDF))
+}
+
+func TestFilterFileType(t *testing.T) {
+	t.Run("Image maps to Image", func(t *testing.T) {
+		assert.Equal(t, model.BlockContentFile_Image, filterFileType(model.BlockContentFile_Image))
+	})
+	t.Run("Audio maps to Audio", func(t *testing.T) {
+		assert.Equal(t, model.BlockContentFile_Audio, filterFileType(model.BlockContentFile_Audio))
+	})
+	t.Run("Video maps to Video", func(t *testing.T) {
+		assert.Equal(t, model.BlockContentFile_Video, filterFileType(model.BlockContentFile_Video))
+	})
+	t.Run("File maps to File", func(t *testing.T) {
+		assert.Equal(t, model.BlockContentFile_File, filterFileType(model.BlockContentFile_File))
+	})
+	t.Run("PDF maps to File", func(t *testing.T) {
+		assert.Equal(t, model.BlockContentFile_File, filterFileType(model.BlockContentFile_PDF))
 	})
 }
 
@@ -749,7 +754,8 @@ func TestDropFilesTypeFilter(t *testing.T) {
 
 		// when
 		proc := &dropFilesProcess{
-			fileType: model.BlockContentFile_Image,
+			fileType:  model.BlockContentFile_Image,
+			noContext: true,
 		}
 		err := proc.Init([]string{
 			filepath.Join(dir, "photo1.png"),
@@ -775,7 +781,8 @@ func TestDropFilesTypeFilter(t *testing.T) {
 
 		// when
 		proc := &dropFilesProcess{
-			fileType: model.BlockContentFile_Image,
+			fileType:  model.BlockContentFile_Image,
+			noContext: true,
 		}
 		err := proc.Init([]string{subdir})
 
@@ -787,37 +794,74 @@ func TestDropFilesTypeFilter(t *testing.T) {
 		assert.False(t, proc.root.children[0].isDir)
 	})
 
-	t.Run("type=None applies no filtering", func(t *testing.T) {
-		// given
+	t.Run("type=None collects all files flat without directories", func(t *testing.T) {
+		// given — directory with an image and a text file
 		dir := t.TempDir()
+		pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "photo.png"), pngHeader, 0o644))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "file.txt"), []byte("hello"), 0o644))
 
 		// when
 		proc := &dropFilesProcess{
-			fileType: model.BlockContentFile_None,
+			fileType:  model.BlockContentFile_None,
+			noContext: true,
 		}
-		err := proc.Init([]string{filepath.Join(dir, "file.txt")})
+		err := proc.Init([]string{dir})
 
-		// then — file is included regardless of type
+		// then — both files collected flat, no directory entry
 		require.NoError(t, err)
-		assert.Equal(t, int64(1), proc.total)
-		assert.Len(t, proc.root.children, 1)
+		assert.Equal(t, int64(2), proc.total)
+		require.Len(t, proc.root.children, 2)
+		for _, child := range proc.root.children {
+			assert.False(t, child.isDir)
+		}
 	})
 
-	t.Run("type=File applies no filtering", func(t *testing.T) {
-		// given
+	t.Run("type=File filters out images and keeps generic files", func(t *testing.T) {
+		// given — 1 generic file + 1 PNG image
 		dir := t.TempDir()
+		pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "data.bin"), []byte{0x00, 0x01}, 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "photo.png"), pngHeader, 0o644))
 
 		// when
 		proc := &dropFilesProcess{
-			fileType: model.BlockContentFile_File,
+			fileType:  model.BlockContentFile_File,
+			noContext: true,
 		}
-		err := proc.Init([]string{filepath.Join(dir, "data.bin")})
+		err := proc.Init([]string{
+			filepath.Join(dir, "data.bin"),
+			filepath.Join(dir, "photo.png"),
+		})
 
-		// then — file is included (no filtering for generic File type)
+		// then — only the generic file is included, image is filtered out
 		require.NoError(t, err)
 		assert.Equal(t, int64(1), proc.total)
+		require.Len(t, proc.root.children, 1)
+		assert.Equal(t, "data.bin", proc.root.children[0].name)
+	})
+
+	t.Run("type filter ignored when dropping to editor", func(t *testing.T) {
+		// given — 1 PNG + 1 text file dropped into editor (noContext=false)
+		dir := t.TempDir()
+		pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "photo.png"), pngHeader, 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(dir, "readme.txt"), []byte("hello"), 0o644))
+
+		// when — fileType is set but noContext is false
+		proc := &dropFilesProcess{
+			fileType:  model.BlockContentFile_Image,
+			noContext: false,
+		}
+		err := proc.Init([]string{
+			filepath.Join(dir, "photo.png"),
+			filepath.Join(dir, "readme.txt"),
+		})
+
+		// then — both files are included, no filtering applied
+		require.NoError(t, err)
+		assert.Equal(t, int64(2), proc.total)
+		assert.Len(t, proc.root.children, 2)
 	})
 
 	t.Run("type=Image with full upload flow including directory", func(t *testing.T) {

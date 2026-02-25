@@ -49,8 +49,9 @@ type collectionAppender interface {
 
 // dropFileEntry represents a file or directory entry in a drag-n-drop operation.
 type dropFileEntry struct {
-	name     string
-	path     string
+	name string
+	path string
+	// if isDir true, create a collection for children
 	isDir    bool
 	checksum string
 	children []*dropFileEntry
@@ -130,8 +131,8 @@ func (dp *dropFilesProcess) Done() chan struct{} {
 
 func (dp *dropFilesProcess) Init(paths []string) error {
 	dp.root = &dropFileEntry{}
-	if isTypeFilterActive(dp.fileType) {
-		dp.collectFilteredPaths(paths)
+	if dp.noContext {
+		dp.collectFlatPaths(paths)
 	} else {
 		err := dp.collectAllPaths(paths)
 		if err != nil {
@@ -142,9 +143,11 @@ func (dp *dropFilesProcess) Init(paths []string) error {
 	return nil
 }
 
-func (dp *dropFilesProcess) collectFilteredPaths(paths []string) {
+// collectFlatPaths collects files recursively without creating directory entries.
+// When type filter is active, only matching files are included.
+func (dp *dropFilesProcess) collectFlatPaths(paths []string) {
 	for _, path := range paths {
-		dp.initFilteredEntry(path)
+		dp.collectFlatEntry(path)
 	}
 }
 
@@ -163,26 +166,27 @@ func (dp *dropFilesProcess) collectAllPaths(paths []string) error {
 	return nil
 }
 
-// initFilteredEntry recursively collects files matching the requested type.
-// Directories are not tracked as entries — only matching files are added flat to dp.root.
-func (dp *dropFilesProcess) initFilteredEntry(path string) {
+// collectFlatEntry recursively collects files without creating directory entries.
+// When type filter is active, only files matching the requested type are included.
+func (dp *dropFilesProcess) collectFlatEntry(path string) {
 	fi, err := os.Lstat(path)
 	if err != nil {
 		return
 	}
 	if fi.IsDir() {
-		dp.walkDirFiltered(path)
+		dp.walkDirFlat(path)
 		return
 	}
 	name := filepath.Base(path)
-	if detectFileType(path, name) == dp.fileType {
-		dp.root.children = append(dp.root.children, &dropFileEntry{path: path, name: name})
-		dp.total++
+	if isTypeFilterActive(dp.fileType) && detectFileType(path, name) != filterFileType(dp.fileType) {
+		return
 	}
+	dp.root.children = append(dp.root.children, &dropFileEntry{path: path, name: name})
+	dp.total++
 }
 
-// walkDirFiltered recursively walks a directory, collecting only files that match dp.fileType.
-func (dp *dropFilesProcess) walkDirFiltered(dir string) {
+// walkDirFlat recursively walks a directory, delegating to collectFlatEntry for each child.
+func (dp *dropFilesProcess) walkDirFlat(dir string) {
 	f, err := os.Open(dir)
 	if err != nil {
 		return
@@ -196,7 +200,7 @@ func (dp *dropFilesProcess) walkDirFiltered(dir string) {
 		if strings.HasPrefix(name, ".") {
 			continue
 		}
-		dp.initFilteredEntry(filepath.Join(dir, name))
+		dp.collectFlatEntry(filepath.Join(dir, name))
 	}
 }
 
@@ -209,13 +213,21 @@ func detectFileType(path, name string) model.BlockContentFileType {
 	return file.DetectTypeByMIME(name, mime.String())
 }
 
-// isTypeFilterActive returns true for types that trigger filtering (Image, Audio, Video).
+// isTypeFilterActive returns true when type-based filtering should be applied.
+// Only None disables filtering.
 func isTypeFilterActive(fileType model.BlockContentFileType) bool {
+	return fileType != model.BlockContentFile_None
+}
+
+// filterFileType returns the type to match against during filtering.
+// Image, Audio, and Video match exactly; everything else matches as File.
+func filterFileType(fileType model.BlockContentFileType) model.BlockContentFileType {
 	switch fileType {
 	case model.BlockContentFile_Image, model.BlockContentFile_Audio, model.BlockContentFile_Video:
-		return true
+		return fileType
+	default:
+		return model.BlockContentFile_File
 	}
-	return false
 }
 
 func (dp *dropFilesProcess) readdir(entry *dropFileEntry, allowSymlinks bool) (ok bool, err error) {
