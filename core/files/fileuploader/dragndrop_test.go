@@ -410,7 +410,7 @@ func TestDropFilesInSpace(t *testing.T) {
 			processService: fx.processServ,
 			picker:         fx.pickerFx,
 			service:        fx.fileUploader,
-			noContext:       true,
+			isDropInSpace:  true,
 		}
 		err = proc.Init([]string{f1.Name(), f2.Name()})
 		require.NoError(t, err)
@@ -440,7 +440,7 @@ func TestDropFilesInSpace(t *testing.T) {
 			processService: fx.processServ,
 			picker:         fx.pickerFx,
 			service:        fx.fileUploader,
-			noContext:       true,
+			isDropInSpace:  true,
 		}
 		err = proc.Init([]string{dir})
 		require.NoError(t, err)
@@ -480,7 +480,7 @@ func TestDropFilesInSpace(t *testing.T) {
 			processService: fx.processServ,
 			picker:         fx.pickerFx,
 			service:        fx.fileUploader,
-			noContext:       true,
+			isDropInSpace:  true,
 		}
 		err = proc.Init([]string{file1.Name(), subdir})
 		require.NoError(t, err)
@@ -754,8 +754,8 @@ func TestDropFilesTypeFilter(t *testing.T) {
 
 		// when
 		proc := &dropFilesProcess{
-			fileType:  model.BlockContentFile_Image,
-			noContext: true,
+			fileType:      model.BlockContentFile_Image,
+			isDropInSpace: true,
 		}
 		err := proc.Init([]string{
 			filepath.Join(dir, "photo1.png"),
@@ -781,8 +781,8 @@ func TestDropFilesTypeFilter(t *testing.T) {
 
 		// when
 		proc := &dropFilesProcess{
-			fileType:  model.BlockContentFile_Image,
-			noContext: true,
+			fileType:      model.BlockContentFile_Image,
+			isDropInSpace: true,
 		}
 		err := proc.Init([]string{subdir})
 
@@ -803,8 +803,8 @@ func TestDropFilesTypeFilter(t *testing.T) {
 
 		// when
 		proc := &dropFilesProcess{
-			fileType:  model.BlockContentFile_None,
-			noContext: true,
+			fileType:      model.BlockContentFile_None,
+			isDropInSpace: true,
 		}
 		err := proc.Init([]string{dir})
 
@@ -826,8 +826,8 @@ func TestDropFilesTypeFilter(t *testing.T) {
 
 		// when
 		proc := &dropFilesProcess{
-			fileType:  model.BlockContentFile_File,
-			noContext: true,
+			fileType:      model.BlockContentFile_File,
+			isDropInSpace: true,
 		}
 		err := proc.Init([]string{
 			filepath.Join(dir, "data.bin"),
@@ -842,16 +842,16 @@ func TestDropFilesTypeFilter(t *testing.T) {
 	})
 
 	t.Run("type filter ignored when dropping to editor", func(t *testing.T) {
-		// given — 1 PNG + 1 text file dropped into editor (noContext=false)
+		// given — 1 PNG + 1 text file dropped into editor (isDropInSpace=false)
 		dir := t.TempDir()
 		pngHeader := []byte{0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "photo.png"), pngHeader, 0o644))
 		require.NoError(t, os.WriteFile(filepath.Join(dir, "readme.txt"), []byte("hello"), 0o644))
 
-		// when — fileType is set but noContext is false
+		// when — fileType is set but isDropInSpace is false
 		proc := &dropFilesProcess{
-			fileType:  model.BlockContentFile_Image,
-			noContext: false,
+			fileType:      model.BlockContentFile_Image,
+			isDropInSpace: false,
 		}
 		err := proc.Init([]string{
 			filepath.Join(dir, "photo.png"),
@@ -886,7 +886,7 @@ func TestDropFilesTypeFilter(t *testing.T) {
 			processService: fx.processServ,
 			picker:         fx.pickerFx,
 			service:        fx.fileUploader,
-			noContext:       true,
+			isDropInSpace:  true,
 			fileType:       model.BlockContentFile_Image,
 		}
 		err := proc.Init([]string{

@@ -240,9 +240,9 @@ func (f *service) Close(_ context.Context) (err error) {
 func (f *service) DropFiles(req pb.RpcFileDropRequest) (int, error) {
 	var spaceID, rootId string
 	var isCol bool
-	noContext := req.ContextId == ""
+	isDropInSpace := req.ContextId == ""
 
-	if noContext {
+	if isDropInSpace {
 		spaceID = req.SpaceId
 		if spaceID == "" {
 			return 0, fmt.Errorf("spaceId is required when contextId is empty")
@@ -273,7 +273,7 @@ func (f *service) DropFiles(req pb.RpcFileDropRequest) (int, error) {
 		objectCreator:  f.objectCreator,
 		objectStore:    f.objectStore.SpaceIndex(spaceID),
 		contextId:      req.ContextId,
-		noContext:       noContext,
+		isDropInSpace:  isDropInSpace,
 		fileType:       req.Type,
 	}
 	if err := proc.Init(req.LocalFilePaths); err != nil {

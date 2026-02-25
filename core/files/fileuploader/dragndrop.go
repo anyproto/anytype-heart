@@ -70,14 +70,14 @@ type dropFileInfo struct {
 
 // dropFilesProcess orchestrates a drag-n-drop file upload operation.
 type dropFilesProcess struct {
-	ctx       context.Context
-	ctxCancel context.CancelFunc
-	id        string
-	spaceId   string
-	groupId   string
-	contextId string
-	noContext bool
-	fileType  model.BlockContentFileType
+	ctx           context.Context
+	ctxCancel     context.CancelFunc
+	id            string
+	spaceId       string
+	groupId       string
+	contextId     string
+	isDropInSpace bool
+	fileType      model.BlockContentFileType
 
 	root        *dropFileEntry
 	total, done int64
@@ -131,7 +131,7 @@ func (dp *dropFilesProcess) Done() chan struct{} {
 
 func (dp *dropFilesProcess) Init(paths []string) error {
 	dp.root = &dropFileEntry{}
-	if dp.noContext {
+	if dp.isDropInSpace {
 		dp.collectFlatPaths(paths)
 	} else {
 		err := dp.collectAllPaths(paths)
@@ -308,7 +308,7 @@ func (dp *dropFilesProcess) Start(rootId string, isCollection bool, req pb.RpcFi
 		go dp.uploadFilesWorker(wg)
 	}
 
-	if dp.noContext {
+	if dp.isDropInSpace {
 		dp.handleDropInSpace(rootDone)
 		close(dp.uploadCh)
 	} else if isCollection {
