@@ -3,7 +3,9 @@ package core
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/template"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 )
 
@@ -72,4 +74,31 @@ func (mw *Middleware) TemplateExportAll(ctx context.Context, req *pb.RpcTemplate
 	}
 	path, err := mustService[template.Service](mw).TemplateExportAll(ctx, req.Path)
 	return response(path, err)
+}
+
+func (mw *Middleware) TemplateSetPlaceholders(cctx context.Context, req *pb.RpcTemplateSetPlaceholdersRequest) *pb.RpcTemplateSetPlaceholdersResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcTemplateSetPlaceholdersResponseErrorCode, err error) *pb.RpcTemplateSetPlaceholdersResponse {
+		m := &pb.RpcTemplateSetPlaceholdersResponse{Error: &pb.RpcTemplateSetPlaceholdersResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.Event = mw.getResponseEvent(ctx)
+		}
+		return m
+	}
+
+	placeholders := make([]domain.TemplatePlaceholder, 0, len(req.Placeholders))
+	for _, p := range req.Placeholders {
+		placeholders = append(placeholders, domain.TemplatePlaceholder{
+			RelationKey: domain.RelationKey(p.RelationKey),
+			Type:        p.Type,
+		})
+	}
+
+	err := mustService[detailservice.Service](mw).SetTemplatePlaceholders(ctx, req.TemplateId, placeholders)
+	if err != nil {
+		return response(pb.RpcTemplateSetPlaceholdersResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcTemplateSetPlaceholdersResponseError_NULL, nil)
 }
