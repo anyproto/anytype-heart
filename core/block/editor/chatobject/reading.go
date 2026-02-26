@@ -130,9 +130,21 @@ func (s *storeObject) markReadReactions(changeIds []string) error {
 	if len(changeIds) == 0 {
 		return nil
 	}
-	idsModified, err := s.repository.ClearUnreadReactionByChangeIds(s.componentCtx, changeIds)
+
+	var maxOrderId string
+	for _, chId := range changeIds {
+		ch, err := s.Tree().GetChange(chId)
+		if err != nil {
+			continue
+		}
+		if ch.OrderId > maxOrderId {
+			maxOrderId = ch.OrderId
+		}
+	}
+
+	idsModified, err := s.repository.ClearUnreadReactions(s.componentCtx, changeIds, maxOrderId)
 	if err != nil {
-		return fmt.Errorf("clear unread reaction flag: %w", err)
+		return fmt.Errorf("clear unread reactions: %w", err)
 	}
 	if len(idsModified) > 0 {
 		newOrderId, err := s.repository.GetNewestUnreadReactionOrderId(s.componentCtx)
@@ -147,7 +159,7 @@ func (s *storeObject) markReadReactions(changeIds []string) error {
 	return nil
 }
 
-func (s *storeObject) MarkReadReactions(ctx context.Context) error {
+func (s *storeObject) MarkReadReactions(ctx context.Context, orderId string) error {
 	changeIds, err := s.repository.GetAllUnreadReactionChangeIds(ctx)
 	if err != nil {
 		return fmt.Errorf("get unread reaction change ids: %w", err)

@@ -141,6 +141,7 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 		{Fields: []string{"_o.id"}},
 		{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
 		{Fields: []string{chatmodel.ReactionReadChangeIdKey}, Sparse: true},
+		{Fields: []string{chatmodel.ReactionReadOrderIdKey}, Sparse: true},
 	}); err != nil {
 		return nil, fmt.Errorf("ensure indexes: %w", err)
 	}
@@ -183,7 +184,7 @@ type Repository interface {
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
 	GetAllUnreadReactionChangeIds(ctx context.Context) ([]string, error)
-	ClearUnreadReactionByChangeIds(ctx context.Context, changeIds []string) (modifiedMsgIds []string, err error)
+	ClearUnreadReactions(ctx context.Context, changeIds []string, maxOrderId string) (modifiedMsgIds []string, err error)
 	GetNewestUnreadReactionOrderId(ctx context.Context) (string, error)
 }
 
@@ -717,7 +718,7 @@ func (s *repository) GetAllUnreadReactionChangeIds(ctx context.Context) ([]strin
 	return changeIds, iter.Err()
 }
 
-func (s *repository) ClearUnreadReactionByChangeIds(ctx context.Context, changeIds []string) (modifiedMsgIds []string, err error) {
+func (s *repository) ClearUnreadReactions(ctx context.Context, changeIds []string, maxOrderId string) (modifiedMsgIds []string, err error) {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -726,7 +727,7 @@ func (s *repository) ClearUnreadReactionByChangeIds(ctx context.Context, changeI
 
 	chunks := lo.Chunk(changeIds, 100)
 	for _, chunk := range chunks {
-		modified, chunkErr := s.clearUnreadReactionChunk(ctx, arena, chunk)
+		modified, chunkErr := s.clearUnreadReactionChunk(ctx, arena, chunk, maxOrderId)
 		if chunkErr != nil {
 			return nil, chunkErr
 		}
@@ -735,14 +736,14 @@ func (s *repository) ClearUnreadReactionByChangeIds(ctx context.Context, changeI
 	return modifiedMsgIds, nil
 }
 
-func (s *repository) clearUnreadReactionChunk(ctx context.Context, arena *anyenc.Arena, changeIds []string) ([]string, error) {
+func (s *repository) clearUnreadReactionChunk(ctx context.Context, arena *anyenc.Arena, changeIds []string, maxOrderId string) ([]string, error) {
 	arena.Reset()
 	encIds := make([]*anyenc.Value, 0, len(changeIds))
 	for _, id := range changeIds {
 		encIds = append(encIds, arena.NewString(id))
 	}
 
-	mod := &reactionReadModifier{}
+	mod := &reactionReadModifier{maxOrderId: maxOrderId}
 	_, err := s.collection.Find(query.And{
 		filterReactionUnread,
 		query.Key{
@@ -751,7 +752,7 @@ func (s *repository) clearUnreadReactionChunk(ctx context.Context, arena *anyenc
 		},
 	}).Update(ctx, mod)
 	if err != nil {
-		return nil, fmt.Errorf("clear unread reaction flag: %w", err)
+		return nil, fmt.Errorf("clear unread reactions: %w", err)
 	}
 	return mod.modifiedIds, nil
 }

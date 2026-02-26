@@ -293,7 +293,7 @@ func TestUnreadReactionTracking(t *testing.T) {
 		assert.False(t, msg.UnreadReaction, "should be read because all unread reactions removed")
 	})
 
-	t.Run("ClearUnreadReactionByChangeIds clears both fields", func(t *testing.T) {
+	t.Run("ClearUnreadReactions clears both fields", func(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
@@ -322,7 +322,8 @@ func TestUnreadReactionTracking(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, changeIds, 2)
 
-		_, err = fx.repository.ClearUnreadReactionByChangeIds(ctx, changeIds)
+		// Full clear — empty maxOrderId clears all
+		_, err = fx.repository.ClearUnreadReactions(ctx, changeIds, "")
 		require.NoError(t, err)
 
 		msg, err = fx.GetMessageById(ctx, messageId)

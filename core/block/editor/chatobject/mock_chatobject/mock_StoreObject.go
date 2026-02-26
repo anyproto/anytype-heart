@@ -1718,17 +1718,17 @@ func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
-// MarkReadReactions provides a mock function with given fields: ctx
-func (_m *MockStoreObject) MarkReadReactions(ctx context.Context) error {
-	ret := _m.Called(ctx)
+// MarkReadReactions provides a mock function with given fields: ctx, orderId
+func (_m *MockStoreObject) MarkReadReactions(ctx context.Context, orderId string) error {
+	ret := _m.Called(ctx, orderId)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MarkReadReactions")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
-		r0 = rf(ctx)
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, orderId)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1743,13 +1743,14 @@ type MockStoreObject_MarkReadReactions_Call struct {
 
 // MarkReadReactions is a helper method to define mock.On call
 //   - ctx context.Context
-func (_e *MockStoreObject_Expecter) MarkReadReactions(ctx interface{}) *MockStoreObject_MarkReadReactions_Call {
-	return &MockStoreObject_MarkReadReactions_Call{Call: _e.mock.On("MarkReadReactions", ctx)}
+//   - orderId string
+func (_e *MockStoreObject_Expecter) MarkReadReactions(ctx interface{}, orderId interface{}) *MockStoreObject_MarkReadReactions_Call {
+	return &MockStoreObject_MarkReadReactions_Call{Call: _e.mock.On("MarkReadReactions", ctx, orderId)}
 }
 
-func (_c *MockStoreObject_MarkReadReactions_Call) Run(run func(ctx context.Context)) *MockStoreObject_MarkReadReactions_Call {
+func (_c *MockStoreObject_MarkReadReactions_Call) Run(run func(ctx context.Context, orderId string)) *MockStoreObject_MarkReadReactions_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
+		run(args[0].(context.Context), args[1].(string))
 	})
 	return _c
 }
@@ -1759,7 +1760,7 @@ func (_c *MockStoreObject_MarkReadReactions_Call) Return(_a0 error) *MockStoreOb
 	return _c
 }
 
-func (_c *MockStoreObject_MarkReadReactions_Call) RunAndReturn(run func(context.Context) error) *MockStoreObject_MarkReadReactions_Call {
+func (_c *MockStoreObject_MarkReadReactions_Call) RunAndReturn(run func(context.Context, string) error) *MockStoreObject_MarkReadReactions_Call {
 	_c.Call.Return(run)
 	return _c
 }

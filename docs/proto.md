@@ -11436,6 +11436,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | chatObjectId | [string](#string) |  |  |
+| orderId | [string](#string) |  |  |
 
 
 
@@ -33669,6 +33670,7 @@ Used to decode block meta only, without the content itself
 | synced | [bool](#bool) |  |  |
 | pinned | [bool](#bool) |  |  |
 | unreadReaction | [bool](#bool) |  |  |
+| lastUnreadReactionOrderId | [string](#string) |  |  |
 
 
 

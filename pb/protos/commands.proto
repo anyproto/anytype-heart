@@ -9075,6 +9075,7 @@ message Rpc {
         message ReadReactions {
             message Request {
                 string chatObjectId = 1;
+                string orderId = 2;
             }
 
             message Response {

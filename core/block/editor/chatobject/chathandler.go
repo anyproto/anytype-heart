@@ -239,6 +239,7 @@ func (d *ChatHandler) handleReactionsModify(
 			// New reaction added
 			msg.AddUnreadReaction(emoji, identity, chatmodel.ReactionChangeEntry{
 				ChangeId: ch.Change.Id,
+				OrderId:  msg.OrderId,
 			})
 			msg.UnreadReaction = true
 			msg.MarshalUnreadReactionIds(result, a)

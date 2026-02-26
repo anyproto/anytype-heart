@@ -61,7 +61,7 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, messageId string) error
 	MarkReadMessages(ctx context.Context, req ReadMessagesRequest) (markedCount int, err error)
-	MarkReadReactions(ctx context.Context) error
+	MarkReadReactions(ctx context.Context, orderId string) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
 	SetMessagePinned(ctx context.Context, messageId string, pinned bool) error
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)

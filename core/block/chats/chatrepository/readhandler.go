@@ -135,17 +135,45 @@ func (m *readMentionsModifier) getModifiedIds() []string {
 }
 
 type reactionReadModifier struct {
+	maxOrderId  string
 	modifiedIds []string
 }
 
 func (m *reactionReadModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-	if v.GetString(chatmodel.ReactionReadChangeIdKey) != "" {
+	msgOrderId := v.GetString(chatmodel.ReactionReadOrderIdKey)
+
+	if m.maxOrderId == "" || msgOrderId <= m.maxOrderId {
+		// Full clear — all reactions on this message are covered
 		v.Del(chatmodel.ReactionReadChangeIdKey)
 		v.Del(chatmodel.ReactionReadChangeIdsKey)
+		v.Del(chatmodel.ReactionReadOrderIdKey)
 		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
 		return v, true, nil
 	}
-	return v, false, nil
+
+	// Partial clear — remove only entries with OrderId <= maxOrderId
+	msg, err := chatmodel.UnmarshalMessage(v)
+	if err != nil {
+		return v, false, err
+	}
+	changed := false
+	for emoji, identities := range msg.UnreadReactionIds {
+		for identity, entry := range identities {
+			if entry.OrderId <= m.maxOrderId {
+				delete(identities, identity)
+				changed = true
+			}
+		}
+		if len(identities) == 0 {
+			delete(msg.UnreadReactionIds, emoji)
+		}
+	}
+	if !changed {
+		return v, false, nil
+	}
+	msg.MarshalUnreadReactionIds(v, a)
+	m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
+	return v, true, nil
 }
 
 type syncedModifier struct {

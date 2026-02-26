@@ -52,11 +52,13 @@ const (
 	PinnedKey               = "pinned"
 	ReactionReadChangeIdKey  = "rReadChId"
 	ReactionReadChangeIdsKey = "rReadChIds"
+	ReactionReadOrderIdKey   = "rReadOrdId"
 )
 
 // ReactionChangeEntry tracks the change that added an unread reaction.
 type ReactionChangeEntry struct {
 	ChangeId string
+	OrderId  string
 }
 
 type Message struct {
@@ -113,7 +115,7 @@ func (m *Message) RemoveUnreadReaction(emoji, identity string) (empty bool) {
 }
 
 // MarshalUnreadReactionIds serializes the UnreadReactionIds to the given anyenc value,
-// updating both rReadChIds and rReadChId fields.
+// updating rReadChIds, rReadChId, and rReadOrdId fields.
 func (m *Message) MarshalUnreadReactionIds(v *anyenc.Value, arena *anyenc.Arena) {
 	if len(m.UnreadReactionIds) > 0 {
 		chIds := arena.NewObject()
@@ -122,16 +124,30 @@ func (m *Message) MarshalUnreadReactionIds(v *anyenc.Value, arena *anyenc.Arena)
 			for identity, entry := range identities {
 				entryObj := arena.NewObject()
 				entryObj.Set("c", arena.NewString(entry.ChangeId))
+				if entry.OrderId != "" {
+					entryObj.Set("o", arena.NewString(entry.OrderId))
+				}
 				emojiObj.Set(identity, entryObj)
 			}
 			chIds.Set(emoji, emojiObj)
 		}
 		v.Set(ReactionReadChangeIdsKey, chIds)
 		v.Set(ReactionReadChangeIdKey, arena.NewString(m.PickRemainingChangeId()))
+		if orderId := m.pickOrderId(); orderId != "" {
+			v.Set(ReactionReadOrderIdKey, arena.NewString(orderId))
+		} else {
+			v.Del(ReactionReadOrderIdKey)
+		}
 	} else {
 		v.Del(ReactionReadChangeIdsKey)
 		v.Del(ReactionReadChangeIdKey)
+		v.Del(ReactionReadOrderIdKey)
 	}
+}
+
+// pickOrderId returns the OrderId from the message itself (for indexing purposes).
+func (m *Message) pickOrderId() string {
+	return m.ChatMessage.GetOrderId()
 }
 
 // PickRemainingChangeId returns an arbitrary change ID from the unread reactions map.
@@ -359,34 +375,37 @@ func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
 }
 
 func (m *messageUnmarshaller) toModel() (*Message, error) {
-	unreadReactionIds := m.unreadReactionIdsToModel()
+	unreadReactionIds, lastUnreadReactionOrderId := m.unreadReactionIdsToModel()
 	return &Message{
 		ChatMessage: &model.ChatMessage{
-			Id:               string(m.val.GetStringBytes("id")),
-			Creator:          string(m.val.GetStringBytes(CreatorKey)),
-			CreatedAt:        int64(m.val.GetInt(CreatedAtKey)),
-			ModifiedAt:       int64(m.val.GetInt(ModifiedAtKey)),
-			StateId:          m.val.GetString(StateIdKey),
-			OrderId:          string(m.val.GetStringBytes("_o", "id")),
-			ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
-			Message:          m.contentToModel(),
-			Read:             m.val.GetBool(ReadKey),
-			MentionRead:      m.val.GetBool(MentionReadKey),
-			Attachments:      m.attachmentsToModel(),
-			Reactions:        m.reactionsToModel(),
-			Synced:           m.val.GetBool(SyncedKey),
-			HasMention:       m.val.GetBool(HasMentionKey),
-			Pinned:           m.val.GetBool(PinnedKey),
-			UnreadReaction:   len(unreadReactionIds) > 0 || m.val.GetString(ReactionReadChangeIdKey) != "",
+			Id:                        string(m.val.GetStringBytes("id")),
+			Creator:                   string(m.val.GetStringBytes(CreatorKey)),
+			CreatedAt:                 int64(m.val.GetInt(CreatedAtKey)),
+			ModifiedAt:                int64(m.val.GetInt(ModifiedAtKey)),
+			StateId:                   m.val.GetString(StateIdKey),
+			OrderId:                   string(m.val.GetStringBytes("_o", "id")),
+			ReplyToMessageId:          string(m.val.GetStringBytes("replyToMessageId")),
+			Message:                   m.contentToModel(),
+			Read:                      m.val.GetBool(ReadKey),
+			MentionRead:               m.val.GetBool(MentionReadKey),
+			Attachments:               m.attachmentsToModel(),
+			Reactions:                 m.reactionsToModel(),
+			Synced:                    m.val.GetBool(SyncedKey),
+			HasMention:                m.val.GetBool(HasMentionKey),
+			Pinned:                    m.val.GetBool(PinnedKey),
+			UnreadReaction:            len(unreadReactionIds) > 0 || m.val.GetString(ReactionReadChangeIdKey) != "",
+			LastUnreadReactionOrderId: lastUnreadReactionOrderId,
 		},
 		UnreadReactionIds: unreadReactionIds,
 	}, nil
 }
 
-func (m *messageUnmarshaller) unreadReactionIdsToModel() map[string]map[string]ReactionChangeEntry {
+func (m *messageUnmarshaller) unreadReactionIdsToModel() (map[string]map[string]ReactionChangeEntry, string) {
+	lastUnreadReactionOrderId := m.val.GetString(ReactionReadOrderIdKey)
+
 	chIdsObj := m.val.GetObject(ReactionReadChangeIdsKey)
 	if chIdsObj == nil {
-		return nil
+		return nil, lastUnreadReactionOrderId
 	}
 	result := make(map[string]map[string]ReactionChangeEntry)
 	chIdsObj.Visit(func(emoji []byte, emojiVal *anyenc.Value) {
@@ -398,6 +417,7 @@ func (m *messageUnmarshaller) unreadReactionIdsToModel() map[string]map[string]R
 		emojiObj.Visit(func(identity []byte, entryVal *anyenc.Value) {
 			identities[string(identity)] = ReactionChangeEntry{
 				ChangeId: entryVal.GetString("c"),
+				OrderId:  entryVal.GetString("o"),
 			}
 		})
 		if len(identities) > 0 {
@@ -405,9 +425,9 @@ func (m *messageUnmarshaller) unreadReactionIdsToModel() map[string]map[string]R
 		}
 	})
 	if len(result) == 0 {
-		return nil
+		return nil, lastUnreadReactionOrderId
 	}
-	return result
+	return result, lastUnreadReactionOrderId
 }
 
 func (m *messageUnmarshaller) contentToModel() *model.ChatMessageMessageContent {

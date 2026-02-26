@@ -246,13 +246,14 @@ func TestMarshalUnmarshalUnreadReactionIds(t *testing.T) {
 		msg := &Message{
 			ChatMessage: &model.ChatMessage{
 				Id:      "msg1",
+				OrderId: "ord1",
 				Creator: "creator1",
 				Message: &model.ChatMessageMessageContent{Text: "hello"},
 			},
 		}
-		msg.AddUnreadReaction("👍", "user1", ReactionChangeEntry{ChangeId: "ch1"})
-		msg.AddUnreadReaction("👍", "user2", ReactionChangeEntry{ChangeId: "ch2"})
-		msg.AddUnreadReaction("❤️", "user3", ReactionChangeEntry{ChangeId: "ch3"})
+		msg.AddUnreadReaction("👍", "user1", ReactionChangeEntry{ChangeId: "ch1", OrderId: "ord1"})
+		msg.AddUnreadReaction("👍", "user2", ReactionChangeEntry{ChangeId: "ch2", OrderId: "ord1"})
+		msg.AddUnreadReaction("❤️", "user3", ReactionChangeEntry{ChangeId: "ch3", OrderId: "ord1"})
 
 		// when
 		arena := &anyenc.Arena{}
@@ -265,10 +266,14 @@ func TestMarshalUnmarshalUnreadReactionIds(t *testing.T) {
 		require.Len(t, got.UnreadReactionIds, 2)
 		require.Len(t, got.UnreadReactionIds["👍"], 2)
 		assert.Equal(t, "ch1", got.UnreadReactionIds["👍"]["user1"].ChangeId)
+		assert.Equal(t, "ord1", got.UnreadReactionIds["👍"]["user1"].OrderId)
 		assert.Equal(t, "ch2", got.UnreadReactionIds["👍"]["user2"].ChangeId)
+		assert.Equal(t, "ord1", got.UnreadReactionIds["👍"]["user2"].OrderId)
 		require.Len(t, got.UnreadReactionIds["❤️"], 1)
 		assert.Equal(t, "ch3", got.UnreadReactionIds["❤️"]["user3"].ChangeId)
+		assert.Equal(t, "ord1", got.UnreadReactionIds["❤️"]["user3"].OrderId)
 		assert.True(t, got.UnreadReaction)
+		assert.Equal(t, "ord1", got.LastUnreadReactionOrderId)
 	})
 
 	t.Run("round trip with empty map clears fields", func(t *testing.T) {
