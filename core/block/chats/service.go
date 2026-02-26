@@ -84,6 +84,7 @@ type Service interface {
 	SubscribeToMessagePreviews(ctx context.Context, subId string) (*SubscribeToMessagePreviewsResponse, error)
 	UnsubscribeFromMessagePreviews(subId string) error
 
+	ReadReaction(ctx context.Context, chatObjectId string) error
 	ReadAll(ctx context.Context) error
 
 	Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error)
@@ -771,6 +772,12 @@ func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, after
 	})
 }
 
+func (s *service) ReadReaction(ctx context.Context, chatObjectId string) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.MarkReadReactions(ctx)
+	})
+}
+
 func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
 	ftResults, err := s.ftSearch.Search(req.SpaceId, req.FullText)
 	if err != nil {
@@ -882,6 +889,9 @@ func (s *service) ReadAll(ctx context.Context) error {
 			})
 			if err != nil {
 				return fmt.Errorf("mentions: %w", err)
+			}
+			if err := sb.MarkReadReactions(ctx); err != nil {
+				return fmt.Errorf("reactions: %w", err)
 			}
 			if markedMessages+markedMentions > 0 {
 				if nErr := s.pushService.NotifyRead(ctx, sb.SpaceID(), pushGroupId(chatId)); nErr != nil {

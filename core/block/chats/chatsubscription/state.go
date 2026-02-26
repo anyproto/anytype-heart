@@ -21,6 +21,7 @@ const (
 	eventActionUpdateReactions
 	eventActionMessageSynced
 	eventActionMessagePinned
+	eventActionReactionRead
 )
 
 type stateEntry struct {
@@ -188,6 +189,16 @@ func (s *messagesState) updateOutOfWindowEvent(msgId string, modifier func(entry
 		}
 		modifier(prev)
 		s.outOfWindowEvents[msgId] = prev
+	}
+}
+
+func (s *messagesState) applyUpdateReactionReadStatus(msgIds []string, isUnread bool) {
+	for _, id := range msgIds {
+		prev, ok := s.messagesByIds[id]
+		if ok {
+			prev.msg.UnreadReaction = isUnread
+			prev.events = append(prev.events, eventActionReactionRead)
+		}
 	}
 }
 
@@ -369,6 +380,16 @@ func (b *eventsBuffer) buildEvent(msg *model.ChatMessage, action eventAction, pr
 				ChatUpdatePinnedStatus: &pb.EventChatUpdatePinnedStatus{
 					Message:  msg,
 					IsPinned: msg.Pinned,
+					SubIds:   subIds,
+				},
+			},
+		)
+	case eventActionReactionRead:
+		return event.NewMessage(b.spaceId,
+			&pb.EventMessageValueOfChatUpdateReactionReadStatus{
+				ChatUpdateReactionReadStatus: &pb.EventChatUpdateReactionReadStatus{
+					Ids:      []string{msg.Id},
+					IsUnread: msg.UnreadReaction,
 					SubIds:   subIds,
 				},
 			},

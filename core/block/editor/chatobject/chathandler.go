@@ -167,6 +167,15 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 
 		path := key.KeyPath[0]
 
+		// Capture old reactions state BEFORE modification (for new-reaction detection).
+		// Only needed when reactionRead is absent (no tracking yet).
+		var oldReactions *model.ChatMessageReactions
+		if path == chatmodel.ReactionsKey && v.Get(chatmodel.ReactionReadKey) == nil {
+			if oldMsg, unmarshalErr := chatmodel.UnmarshalMessage(v); unmarshalErr == nil {
+				oldReactions = oldMsg.GetReactions()
+			}
+		}
+
 		result, modified, err = mod.Modify(a, v)
 		if err != nil {
 			return nil, false, err
@@ -190,6 +199,28 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				}
 				// TODO Count validation
 
+				// Detect if this is a new reaction on my message from another user
+				if msg.Creator == d.currentIdentity &&
+					ch.Change.Creator != d.currentIdentity &&
+					len(key.KeyPath) > 1 {
+					emoji := key.KeyPath[1]
+					wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
+					isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)
+					if !wasPresent && isPresent && result.Get(chatmodel.ReactionReadKey) == nil {
+						result.Set(chatmodel.ReactionReadKey, a.NewFalse())
+						result.Set(chatmodel.ReactionReadChangeIdKey, a.NewString(ch.Change.Id))
+						msg.UnreadReaction = true
+
+						d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+							if msg.OrderId > state.UnreadReactionOrderId {
+								state.UnreadReactionOrderId = msg.OrderId
+							}
+							return state
+						})
+						d.subscription.UpdateReactionReadStatus(msg.Id, true)
+					}
+				}
+
 				d.subscription.UpdateReactions(msg)
 			case chatmodel.ContentKey:
 				creator := msg.Creator
@@ -208,4 +239,20 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 
 		return result, modified, nil
 	})
+}
+
+func isIdentityInReactions(reactions *model.ChatMessageReactions, emoji string, identity string) bool {
+	if reactions == nil {
+		return false
+	}
+	identityList, ok := reactions.GetReactions()[emoji]
+	if !ok {
+		return false
+	}
+	for _, id := range identityList.GetIds() {
+		if id == identity {
+			return true
+		}
+	}
+	return false
 }

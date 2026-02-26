@@ -380,6 +380,40 @@ func (_c *MockManager_ReadMessages_Call) RunAndReturn(run func(string, []string,
 	return _c
 }
 
+// ReadReactions provides a mock function with given fields: newOrderId, idsModified
+func (_m *MockManager) ReadReactions(newOrderId string, idsModified []string) {
+	_m.Called(newOrderId, idsModified)
+}
+
+// MockManager_ReadReactions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadReactions'
+type MockManager_ReadReactions_Call struct {
+	*mock.Call
+}
+
+// ReadReactions is a helper method to define mock.On call
+//   - newOrderId string
+//   - idsModified []string
+func (_e *MockManager_Expecter) ReadReactions(newOrderId interface{}, idsModified interface{}) *MockManager_ReadReactions_Call {
+	return &MockManager_ReadReactions_Call{Call: _e.mock.On("ReadReactions", newOrderId, idsModified)}
+}
+
+func (_c *MockManager_ReadReactions_Call) Run(run func(newOrderId string, idsModified []string)) *MockManager_ReadReactions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockManager_ReadReactions_Call) Return() *MockManager_ReadReactions_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_ReadReactions_Call) RunAndReturn(run func(string, []string)) *MockManager_ReadReactions_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetSessionContext provides a mock function with given fields: ctx
 func (_m *MockManager) SetSessionContext(ctx session.Context) {
 	_m.Called(ctx)
@@ -576,6 +610,40 @@ func (_c *MockManager_UpdatePinned_Call) Return() *MockManager_UpdatePinned_Call
 }
 
 func (_c *MockManager_UpdatePinned_Call) RunAndReturn(run func(*chatmodel.Message)) *MockManager_UpdatePinned_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateReactionReadStatus provides a mock function with given fields: msgId, unread
+func (_m *MockManager) UpdateReactionReadStatus(msgId string, unread bool) {
+	_m.Called(msgId, unread)
+}
+
+// MockManager_UpdateReactionReadStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateReactionReadStatus'
+type MockManager_UpdateReactionReadStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateReactionReadStatus is a helper method to define mock.On call
+//   - msgId string
+//   - unread bool
+func (_e *MockManager_Expecter) UpdateReactionReadStatus(msgId interface{}, unread interface{}) *MockManager_UpdateReactionReadStatus_Call {
+	return &MockManager_UpdateReactionReadStatus_Call{Call: _e.mock.On("UpdateReactionReadStatus", msgId, unread)}
+}
+
+func (_c *MockManager_UpdateReactionReadStatus_Call) Run(run func(msgId string, unread bool)) *MockManager_UpdateReactionReadStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(bool))
+	})
+	return _c
+}
+
+func (_c *MockManager_UpdateReactionReadStatus_Call) Return() *MockManager_UpdateReactionReadStatus_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_UpdateReactionReadStatus_Call) RunAndReturn(run func(string, bool)) *MockManager_UpdateReactionReadStatus_Call {
 	_c.Call.Return(run)
 	return _c
 }

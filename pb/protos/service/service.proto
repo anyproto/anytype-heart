@@ -431,6 +431,7 @@ service ClientCommands {
     rpc ChatUnsubscribeFromMessagePreviews (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Request) returns (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
     rpc ChatReadAll (anytype.Rpc.Chat.ReadAll.Request) returns (anytype.Rpc.Chat.ReadAll.Response);
+    rpc ChatReadReaction (anytype.Rpc.Chat.ReadReaction.Request) returns (anytype.Rpc.Chat.ReadReaction.Response);
     rpc ChatSearch (anytype.Rpc.Chat.Search.Request) returns (anytype.Rpc.Chat.Search.Response);
     rpc ChatSetPinnedMessages (anytype.Rpc.Chat.SetPinnedMessages.Request) returns (anytype.Rpc.Chat.SetPinnedMessages.Response);
     rpc ChatGetPinnedMessages (anytype.Rpc.Chat.GetPinnedMessages.Request) returns (anytype.Rpc.Chat.GetPinnedMessages.Response);

@@ -606,6 +606,10 @@
     - [Rpc.Chat.ReadMessages.Request](#anytype-Rpc-Chat-ReadMessages-Request)
     - [Rpc.Chat.ReadMessages.Response](#anytype-Rpc-Chat-ReadMessages-Response)
     - [Rpc.Chat.ReadMessages.Response.Error](#anytype-Rpc-Chat-ReadMessages-Response-Error)
+    - [Rpc.Chat.ReadReaction](#anytype-Rpc-Chat-ReadReaction)
+    - [Rpc.Chat.ReadReaction.Request](#anytype-Rpc-Chat-ReadReaction-Request)
+    - [Rpc.Chat.ReadReaction.Response](#anytype-Rpc-Chat-ReadReaction-Response)
+    - [Rpc.Chat.ReadReaction.Response.Error](#anytype-Rpc-Chat-ReadReaction-Response-Error)
     - [Rpc.Chat.Search](#anytype-Rpc-Chat-Search)
     - [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request)
     - [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response)
@@ -1614,6 +1618,7 @@
     - [Rpc.Chat.ReadAll.Response.Error.Code](#anytype-Rpc-Chat-ReadAll-Response-Error-Code)
     - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
     - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
+    - [Rpc.Chat.ReadReaction.Response.Error.Code](#anytype-Rpc-Chat-ReadReaction-Response-Error-Code)
     - [Rpc.Chat.Search.Response.Error.Code](#anytype-Rpc-Chat-Search-Response-Error-Code)
     - [Rpc.Chat.SetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-SetPinnedMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
@@ -1978,6 +1983,7 @@
     - [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus)
     - [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus)
     - [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus)
+    - [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
     - [Event.File](#anytype-Event-File)
@@ -2603,6 +2609,7 @@
 | ChatUnsubscribeFromMessagePreviews | [Rpc.Chat.UnsubscribeFromMessagePreviews.Request](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request) | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ChatReadAll | [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request) | [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response) |  |
+| ChatReadReaction | [Rpc.Chat.ReadReaction.Request](#anytype-Rpc-Chat-ReadReaction-Request) | [Rpc.Chat.ReadReaction.Response](#anytype-Rpc-Chat-ReadReaction-Response) |  |
 | ChatSearch | [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request) | [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response) |  |
 | ChatSetPinnedMessages | [Rpc.Chat.SetPinnedMessages.Request](#anytype-Rpc-Chat-SetPinnedMessages-Request) | [Rpc.Chat.SetPinnedMessages.Response](#anytype-Rpc-Chat-SetPinnedMessages-Response) |  |
 | ChatGetPinnedMessages | [Rpc.Chat.GetPinnedMessages.Request](#anytype-Rpc-Chat-GetPinnedMessages-Request) | [Rpc.Chat.GetPinnedMessages.Response](#anytype-Rpc-Chat-GetPinnedMessages-Response) |  |
@@ -11403,6 +11410,63 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadReaction"></a>
+
+### Rpc.Chat.ReadReaction
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadReaction-Request"></a>
+
+### Rpc.Chat.ReadReaction.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadReaction-Response"></a>
+
+### Rpc.Chat.ReadReaction.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.ReadReaction.Response.Error](#anytype-Rpc-Chat-ReadReaction-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-ReadReaction-Response-Error"></a>
+
+### Rpc.Chat.ReadReaction.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.ReadReaction.Response.Error.Code](#anytype-Rpc-Chat-ReadReaction-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -25899,6 +25963,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-ReadReaction-Response-Error-Code"></a>
+
+### Rpc.Chat.ReadReaction.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Chat-Search-Response-Error-Code"></a>
 
 ### Rpc.Chat.Search.Response.Error.Code
@@ -31316,6 +31393,23 @@ to its type.
 
 
 
+<a name="anytype-Event-Chat-UpdateReactionReadStatus"></a>
+
+### Event.Chat.UpdateReactionReadStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated |  |
+| isUnread | [bool](#bool) |  |  |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateReactions"></a>
 
 ### Event.Chat.UpdateReactions
@@ -31618,6 +31712,7 @@ to its type.
 received to update per-message mention read status (if needed |
 | chatUpdateMessageSyncStatus | [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus) |  | to highlight the unread mentions in the UI) |
 | chatUpdatePinnedStatus | [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus) |  |  |
+| chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
@@ -33573,6 +33668,7 @@ Used to decode block meta only, without the content itself
 | hasMention | [bool](#bool) |  |  |
 | synced | [bool](#bool) |  |  |
 | pinned | [bool](#bool) |  |  |
+| unreadReaction | [bool](#bool) |  |  |
 
 
 
@@ -33670,6 +33766,7 @@ Used to decode block meta only, without the content itself
 | mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
 | lastStateId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
 | order | [int64](#int64) |  | Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order |
+| unreadReactionOrderId | [string](#string) |  | newest unread reaction order id |
 
 
 

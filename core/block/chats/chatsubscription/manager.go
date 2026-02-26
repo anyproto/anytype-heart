@@ -392,6 +392,28 @@ func (s *subscriptionManager) updateMentionRead(ids []string, read bool) {
 	}
 }
 
+func (s *subscriptionManager) UpdateReactionReadStatus(msgId string, unread bool) {
+	if !s.canSend() {
+		return
+	}
+	for _, sub := range s.subscriptions {
+		sub.state.applyUpdateReactionReadStatus([]string{msgId}, unread)
+	}
+}
+
+func (s *subscriptionManager) ReadReactions(newOrderId string, idsModified []string) {
+	s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+		state.UnreadReactionOrderId = newOrderId
+		return state
+	})
+	if !s.canSend() {
+		return
+	}
+	for _, sub := range s.subscriptions {
+		sub.state.applyUpdateReactionReadStatus(idsModified, false)
+	}
+}
+
 func (s *subscriptionManager) canSend() bool {
 	if s.sessionContext != nil {
 		return true
@@ -441,10 +463,11 @@ func copyChatState(state *model.ChatState) *model.ChatState {
 		return nil
 	}
 	return &model.ChatState{
-		Messages:    copyReadState(state.Messages),
-		Mentions:    copyReadState(state.Mentions),
-		LastStateId: state.LastStateId,
-		Order:       state.Order,
+		Messages:              copyReadState(state.Messages),
+		Mentions:              copyReadState(state.Mentions),
+		LastStateId:           state.LastStateId,
+		Order:                 state.Order,
+		UnreadReactionOrderId: state.UnreadReactionOrderId,
 	}
 }
 
@@ -486,6 +509,8 @@ func eventsSetSubIds(subIds []string, events []*pb.EventMessage) {
 		} else if v := ev.GetChatUpdateMessageSyncStatus(); v != nil {
 			v.SubIds = subIds
 		} else if v := ev.GetChatUpdatePinnedStatus(); v != nil {
+			v.SubIds = subIds
+		} else if v := ev.GetChatUpdateReactionReadStatus(); v != nil {
 			v.SubIds = subIds
 		}
 	}

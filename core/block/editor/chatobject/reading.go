@@ -126,6 +126,38 @@ func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel
 	return nil
 }
 
+func (s *storeObject) markReadReactions(changeIds []string) error {
+	if len(changeIds) == 0 {
+		return nil
+	}
+	idsModified, err := s.repository.ClearUnreadReactionByChangeIds(s.componentCtx, s.Id(), changeIds)
+	if err != nil {
+		return fmt.Errorf("clear unread reaction flag: %w", err)
+	}
+	if len(idsModified) > 0 {
+		newOrderId, err := s.repository.GetNewestUnreadReactionOrderId(s.componentCtx)
+		if err != nil {
+			return fmt.Errorf("get newest unread reaction order id: %w", err)
+		}
+		s.subscription.Lock()
+		defer s.subscription.Unlock()
+		s.subscription.ReadReactions(newOrderId, idsModified)
+		s.subscription.Flush(false)
+	}
+	return nil
+}
+
+func (s *storeObject) MarkReadReactions(ctx context.Context) error {
+	changeIds, err := s.repository.GetAllUnreadReactionChangeIds(ctx)
+	if err != nil {
+		return fmt.Errorf("get unread reaction change ids: %w", err)
+	}
+	if len(changeIds) == 0 {
+		return nil
+	}
+	return s.storeSource.MarkSeenHeads(ctx, diffManagerReactions, changeIds)
+}
+
 type readStoreTreeHook struct {
 	joinedAclRecordId string
 	headsBeforeJoin   []string
@@ -175,6 +207,10 @@ func (h *readStoreTreeHook) AfterDiffManagersInit(ctx context.Context) error {
 	err = h.source.MarkSeenHeads(ctx, diffManagerMentions, h.headsBeforeJoin)
 	if err != nil {
 		return fmt.Errorf("mark read mentions: %w", err)
+	}
+	err = h.source.MarkSeenHeads(ctx, diffManagerReactions, h.headsBeforeJoin)
+	if err != nil {
+		return fmt.Errorf("mark read reactions: %w", err)
 	}
 	return nil
 }

@@ -38,18 +38,20 @@ func (t CounterType) DiffManagerName() string {
 }
 
 const (
-	CreatorKey     = "creator"
-	CreatedAtKey   = "createdAt"
-	ModifiedAtKey  = "modifiedAt"
-	ReactionsKey   = "reactions"
-	ContentKey     = "content"
-	ReadKey        = "read"
-	MentionReadKey = "mentionRead"
-	HasMentionKey  = "hasMention"
-	StateIdKey     = "stateId"
-	OrderKey       = "_o"
-	SyncedKey      = "synced"
-	PinnedKey      = "pinned"
+	CreatorKey              = "creator"
+	CreatedAtKey            = "createdAt"
+	ModifiedAtKey           = "modifiedAt"
+	ReactionsKey            = "reactions"
+	ContentKey              = "content"
+	ReadKey                 = "read"
+	MentionReadKey          = "mentionRead"
+	HasMentionKey           = "hasMention"
+	StateIdKey              = "stateId"
+	OrderKey                = "_o"
+	SyncedKey               = "synced"
+	PinnedKey               = "pinned"
+	ReactionReadKey         = "rRead"
+	ReactionReadChangeIdKey = "rReadChId"
 )
 
 type Message struct {
@@ -292,6 +294,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Synced:           m.val.GetBool(SyncedKey),
 			HasMention:       m.val.GetBool(HasMentionKey),
 			Pinned:           m.val.GetBool(PinnedKey),
+			UnreadReaction:   m.val.Get(ReactionReadKey) != nil && !m.val.GetBool(ReactionReadKey),
 		},
 	}, nil
 }
