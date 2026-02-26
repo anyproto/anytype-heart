@@ -44,7 +44,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
-	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -630,17 +629,6 @@ func (s *Service) Close(_ context.Context) (err error) {
 	return nil
 }
 
-func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, err := s.GetObject(context.Background(), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(file.File); ok {
-		return apply(bb)
-	}
-	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
-}
 
 func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 	return cache.Do(s, pageID, func(sb smartblock.SmartBlock) error {

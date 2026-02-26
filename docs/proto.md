@@ -13302,6 +13302,8 @@ Get marks list in the selected range in text block.
 | position | [model.Block.Position](#anytype-model-Block-Position) |  | position relatively to the dropTargetId simple block |
 | style | [model.Block.Content.File.Style](#anytype-model-Block-Content-File-Style) |  |  |
 | localFilePaths | [string](#string) | repeated |  |
+| spaceId | [string](#string) |  | used when contextId is empty to identify target space |
+| type | [model.Block.Content.File.Type](#anytype-model-Block-Content-File-Type) |  |  |
 
 
 
@@ -13318,6 +13320,7 @@ Get marks list in the selected range in text block.
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.File.Drop.Response.Error](#anytype-Rpc-File-Drop-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| filesCount | [int64](#int64) |  |  |
 
 
 

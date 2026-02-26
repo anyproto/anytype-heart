@@ -31,11 +31,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -76,7 +74,6 @@ type deviceService interface {
 
 type ObjectFactory struct {
 	bookmarkService         bookmark.BookmarkService
-	fileBlockService        file.BlockService
 	layoutConverter         converter.LayoutConverter
 	objectStore             objectstore.ObjectStore
 	sourceService           source.Service
@@ -89,7 +86,6 @@ type ObjectFactory struct {
 	spaceService            spaceService
 	accountService          accountService
 	fileObjectService       fileobject.Service
-	processService          process.Service
 	fileUploaderService     fileuploader.Service
 	fileReconciler          reconciler.Reconciler
 	objectDeleter           ObjectDeleter
@@ -121,12 +117,10 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)
 	f.deviceService = app.MustComponent[deviceService](a)
 	f.accountService = app.MustComponent[accountService](a)
-	f.processService = app.MustComponent[process.Service](a)
 	f.fileReconciler = app.MustComponent[reconciler.Reconciler](a)
 	f.bookmarkService = app.MustComponent[bookmark.BookmarkService](a)
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.layoutConverter = app.MustComponent[converter.LayoutConverter](a)
-	f.fileBlockService = app.MustComponent[file.BlockService](a)
 	f.fileObjectService = app.MustComponent[fileobject.Service](a)
 	f.fileUploaderService = app.MustComponent[fileuploader.Service](a)
 	f.objectDeleter = app.MustComponent[ObjectDeleter](a)

@@ -112,6 +112,11 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	})
 	err = s.Init()
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		fullText.Close(context.Background())
+		provider.Close(context.Background())
+	})
 	return &StoreFixture{
 		dsObjectStore: s.(*dsObjectStore),
 	}
