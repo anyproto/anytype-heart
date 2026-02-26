@@ -1149,11 +1149,6 @@
     - [Rpc.Object.SetSource.Request](#anytype-Rpc-Object-SetSource-Request)
     - [Rpc.Object.SetSource.Response](#anytype-Rpc-Object-SetSource-Response)
     - [Rpc.Object.SetSource.Response.Error](#anytype-Rpc-Object-SetSource-Response-Error)
-    - [Rpc.Object.SetTemplatePlaceholders](#anytype-Rpc-Object-SetTemplatePlaceholders)
-    - [Rpc.Object.SetTemplatePlaceholders.Request](#anytype-Rpc-Object-SetTemplatePlaceholders-Request)
-    - [Rpc.Object.SetTemplatePlaceholders.Request.Placeholder](#anytype-Rpc-Object-SetTemplatePlaceholders-Request-Placeholder)
-    - [Rpc.Object.SetTemplatePlaceholders.Response](#anytype-Rpc-Object-SetTemplatePlaceholders-Response)
-    - [Rpc.Object.SetTemplatePlaceholders.Response.Error](#anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error)
     - [Rpc.Object.ShareByLink](#anytype-Rpc-Object-ShareByLink)
     - [Rpc.Object.ShareByLink.Request](#anytype-Rpc-Object-ShareByLink-Request)
     - [Rpc.Object.ShareByLink.Response](#anytype-Rpc-Object-ShareByLink-Response)
@@ -1409,6 +1404,11 @@
     - [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request)
     - [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response)
     - [Rpc.Template.ExportAll.Response.Error](#anytype-Rpc-Template-ExportAll-Response-Error)
+    - [Rpc.Template.SetPlaceholders](#anytype-Rpc-Template-SetPlaceholders)
+    - [Rpc.Template.SetPlaceholders.Request](#anytype-Rpc-Template-SetPlaceholders-Request)
+    - [Rpc.Template.SetPlaceholders.Request.Placeholder](#anytype-Rpc-Template-SetPlaceholders-Request-Placeholder)
+    - [Rpc.Template.SetPlaceholders.Response](#anytype-Rpc-Template-SetPlaceholders-Response)
+    - [Rpc.Template.SetPlaceholders.Response.Error](#anytype-Rpc-Template-SetPlaceholders-Response-Error)
     - [Rpc.Unsplash](#anytype-Rpc-Unsplash)
     - [Rpc.Unsplash.Download](#anytype-Rpc-Unsplash-Download)
     - [Rpc.Unsplash.Download.Request](#anytype-Rpc-Unsplash-Download-Request)
@@ -1764,7 +1764,6 @@
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype-Rpc-Object-SetLayout-Response-Error-Code)
     - [Rpc.Object.SetObjectType.Response.Error.Code](#anytype-Rpc-Object-SetObjectType-Response-Error-Code)
     - [Rpc.Object.SetSource.Response.Error.Code](#anytype-Rpc-Object-SetSource-Response-Error-Code)
-    - [Rpc.Object.SetTemplatePlaceholders.Response.Error.Code](#anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error-Code)
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype-Rpc-Object-ShareByLink-Response-Error-Code)
     - [Rpc.Object.Show.Response.Error.Code](#anytype-Rpc-Object-Show-Response-Error-Code)
     - [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code)
@@ -1828,6 +1827,7 @@
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
+    - [Rpc.Template.SetPlaceholders.Response.Error.Code](#anytype-Rpc-Template-SetPlaceholders-Response-Error-Code)
     - [Rpc.Unsplash.Download.Response.Error.Code](#anytype-Rpc-Unsplash-Download-Response-Error-Code)
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype-Rpc-Unsplash-Search-Response-Error-Code)
     - [Rpc.Wallet.CloseSession.Response.Error.Code](#anytype-Rpc-Wallet-CloseSession-Response-Error-Code)
@@ -2395,7 +2395,6 @@
 | ObjectGroupsSubscribe | [Rpc.Object.GroupsSubscribe.Request](#anytype-Rpc-Object-GroupsSubscribe-Request) | [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response) |  |
 | ObjectSetDetails | [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request) | [Rpc.Object.SetDetails.Response](#anytype-Rpc-Object-SetDetails-Response) |  |
-| ObjectSetTemplatePlaceholders | [Rpc.Object.SetTemplatePlaceholders.Request](#anytype-Rpc-Object-SetTemplatePlaceholders-Request) | [Rpc.Object.SetTemplatePlaceholders.Response](#anytype-Rpc-Object-SetTemplatePlaceholders-Response) |  |
 | ObjectDuplicate | [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request) | [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response) |  |
 | ObjectSetObjectType | [Rpc.Object.SetObjectType.Request](#anytype-Rpc-Object-SetObjectType-Request) | [Rpc.Object.SetObjectType.Response](#anytype-Rpc-Object-SetObjectType-Response) | ObjectSetObjectType sets an existing object type to the object so it will appear in sets and suggests relations from this type |
 | ObjectSetLayout | [Rpc.Object.SetLayout.Request](#anytype-Rpc-Object-SetLayout-Request) | [Rpc.Object.SetLayout.Response](#anytype-Rpc-Object-SetLayout-Response) |  |
@@ -2469,6 +2468,7 @@
 | TemplateCreateFromObject | [Rpc.Template.CreateFromObject.Request](#anytype-Rpc-Template-CreateFromObject-Request) | [Rpc.Template.CreateFromObject.Response](#anytype-Rpc-Template-CreateFromObject-Response) |  |
 | TemplateClone | [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request) | [Rpc.Template.Clone.Response](#anytype-Rpc-Template-Clone-Response) |  |
 | TemplateExportAll | [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request) | [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response) |  |
+| TemplateSetPlaceholders | [Rpc.Template.SetPlaceholders.Request](#anytype-Rpc-Template-SetPlaceholders-Request) | [Rpc.Template.SetPlaceholders.Response](#anytype-Rpc-Template-SetPlaceholders-Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
 | UnsplashSearch | [Rpc.Unsplash.Search.Request](#anytype-Rpc-Unsplash-Search-Request) | [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response) |  |
 | UnsplashDownload | [Rpc.Unsplash.Download.Request](#anytype-Rpc-Unsplash-Download-Request) | [Rpc.Unsplash.Download.Response](#anytype-Rpc-Unsplash-Download-Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
@@ -19365,80 +19365,6 @@ DEPRECATED, GO-1926 |
 
 
 
-<a name="anytype-Rpc-Object-SetTemplatePlaceholders"></a>
-
-### Rpc.Object.SetTemplatePlaceholders
-
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Request"></a>
-
-### Rpc.Object.SetTemplatePlaceholders.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| templateId | [string](#string) |  |  |
-| placeholders | [Rpc.Object.SetTemplatePlaceholders.Request.Placeholder](#anytype-Rpc-Object-SetTemplatePlaceholders-Request-Placeholder) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Request-Placeholder"></a>
-
-### Rpc.Object.SetTemplatePlaceholders.Request.Placeholder
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relationKey | [string](#string) |  |  |
-| type | [model.TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Response"></a>
-
-### Rpc.Object.SetTemplatePlaceholders.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.SetTemplatePlaceholders.Response.Error](#anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error"></a>
-
-### Rpc.Object.SetTemplatePlaceholders.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.SetTemplatePlaceholders.Response.Error.Code](#anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Object-ShareByLink"></a>
 
 ### Rpc.Object.ShareByLink
@@ -23067,6 +22993,80 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Template-SetPlaceholders"></a>
+
+### Rpc.Template.SetPlaceholders
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Template-SetPlaceholders-Request"></a>
+
+### Rpc.Template.SetPlaceholders.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| templateId | [string](#string) |  |  |
+| placeholders | [Rpc.Template.SetPlaceholders.Request.Placeholder](#anytype-Rpc-Template-SetPlaceholders-Request-Placeholder) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Template-SetPlaceholders-Request-Placeholder"></a>
+
+### Rpc.Template.SetPlaceholders.Request.Placeholder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| type | [model.TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Template-SetPlaceholders-Response"></a>
+
+### Rpc.Template.SetPlaceholders.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Template.SetPlaceholders.Response.Error](#anytype-Rpc-Template-SetPlaceholders-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Template-SetPlaceholders-Response-Error"></a>
+
+### Rpc.Template.SetPlaceholders.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Template.SetPlaceholders.Response.Error.Code](#anytype-Rpc-Template-SetPlaceholders-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -28057,19 +28057,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error-Code"></a>
-
-### Rpc.Object.SetTemplatePlaceholders.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-
-
-
 <a name="anytype-Rpc-Object-ShareByLink-Response-Error-Code"></a>
 
 ### Rpc.Object.ShareByLink.Response.Error.Code
@@ -28987,6 +28974,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Template-SetPlaceholders-Response-Error-Code"></a>
+
+### Rpc.Template.SetPlaceholders.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

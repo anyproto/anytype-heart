@@ -32,33 +32,6 @@ func (mw *Middleware) ObjectSetDetails(cctx context.Context, req *pb.RpcObjectSe
 	return response(pb.RpcObjectSetDetailsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectSetTemplatePlaceholders(cctx context.Context, req *pb.RpcObjectSetTemplatePlaceholdersRequest) *pb.RpcObjectSetTemplatePlaceholdersResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcObjectSetTemplatePlaceholdersResponseErrorCode, err error) *pb.RpcObjectSetTemplatePlaceholdersResponse {
-		m := &pb.RpcObjectSetTemplatePlaceholdersResponse{Error: &pb.RpcObjectSetTemplatePlaceholdersResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-
-	placeholders := make([]domain.TemplatePlaceholder, 0, len(req.Placeholders))
-	for _, p := range req.Placeholders {
-		placeholders = append(placeholders, domain.TemplatePlaceholder{
-			RelationKey: domain.RelationKey(p.RelationKey),
-			Type:        p.Type,
-		})
-	}
-
-	err := mustService[detailservice.Service](mw).SetTemplatePlaceholders(ctx, req.TemplateId, placeholders)
-	if err != nil {
-		return response(pb.RpcObjectSetTemplatePlaceholdersResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcObjectSetTemplatePlaceholdersResponseError_NULL, nil)
-}
-
 func (mw *Middleware) ObjectListSetDetails(cctx context.Context, req *pb.RpcObjectListSetDetailsRequest) *pb.RpcObjectListSetDetailsResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectListSetDetailsResponseErrorCode, err error) *pb.RpcObjectListSetDetailsResponse {
