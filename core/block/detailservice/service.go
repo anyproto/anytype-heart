@@ -58,6 +58,7 @@ type Service interface {
 
 	SetSpaceInfo(spaceId string, details *domain.Details) error
 	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
+	SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []domain.TemplatePlaceholder) error
 
 	SetIsFavorite(objectId string, isFavorite bool) error
 	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
@@ -99,6 +100,12 @@ func (s *service) Name() string {
 func (s *service) SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error) {
 	return cache.Do(s.objectGetter, objectId, func(b basic.DetailsSettable) error {
 		return b.SetDetails(ctx, details, true)
+	})
+}
+
+func (s *service) SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []domain.TemplatePlaceholder) error {
+	return cache.Do(s.objectGetter, templateId, func(b basic.TemplatePlaceholdersSetter) error {
+		return b.SetTemplatePlaceholders(ctx, placeholders)
 	})
 }
 

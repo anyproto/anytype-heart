@@ -26,8 +26,6 @@ import (
 var log = logging.Logger("anytype-mw-editor-basic")
 
 func (bs *basic) SetDetails(ctx session.Context, details []domain.Detail, showEvent bool) (err error) {
-	details = bs.processTemplatePlaceholders(details)
-
 	if err = bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
 		return applyDetailUpdates(current, details), nil
 	}); err != nil {
@@ -417,48 +415,31 @@ func removeInternalFlags(s *state.State) {
 	flags.AddToState(s)
 }
 
-// processTemplatePlaceholders intercepts placeholder values when setting details on template objects.
-// Placeholder values (e.g. "_today", "_current_user") are stored in the templatePlaceholders JSON map
-// instead of being set as actual detail values (which would fail format validation).
-// Placeholders are only removed when client explicitly sets value=null for the corresponding key.
-func (bs *basic) processTemplatePlaceholders(details []domain.Detail) []domain.Detail {
+func (bs *basic) SetTemplatePlaceholders(ctx session.Context, placeholders []domain.TemplatePlaceholder) error {
 	if !lo.Contains(bs.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
-		return details
+		return fmt.Errorf("object is not a template")
 	}
 
-	currentPlaceholders := bs.Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders).ToMap()
-
-	var filtered []domain.Detail
-	changed := false
-	for _, d := range details {
-		if d.Key == bundle.RelationKeyTemplatePlaceholders {
-			continue
+	return bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
+		existing := current.GetMapValue(bundle.RelationKeyTemplatePlaceholders).ToMap()
+		if existing == nil {
+			existing = make(map[string]domain.Value, len(placeholders))
 		}
 
-		if domain.IsPlaceholder(d.Value) {
-			if currentPlaceholders == nil {
-				currentPlaceholders = make(map[string]domain.Value, 1)
-			}
-			currentPlaceholders[d.Key.String()] = d.Value
-			changed = true
-			continue
-		}
-
-		if d.Value.IsNull() {
-			if _, ok := currentPlaceholders[string(d.Key)]; ok {
-				delete(currentPlaceholders, string(d.Key))
-				changed = true
+		for _, p := range placeholders {
+			key := p.RelationKey.String()
+			if p.Type == model.TemplatePlaceholderType_TemplatePlaceholderNone {
+				delete(existing, key)
+			} else {
+				existing[key] = domain.String(domain.PlaceholderTypeToString(p.Type))
 			}
 		}
-		filtered = append(filtered, d)
-	}
 
-	if changed {
-		filtered = append(filtered, domain.Detail{
-			Key:   bundle.RelationKeyTemplatePlaceholders,
-			Value: domain.NewValueMap(currentPlaceholders),
-		})
-	}
-
-	return filtered
+		if len(existing) == 0 {
+			current.Delete(bundle.RelationKeyTemplatePlaceholders)
+		} else {
+			current.Set(bundle.RelationKeyTemplatePlaceholders, domain.NewValueMap(existing))
+		}
+		return current, nil
+	})
 }

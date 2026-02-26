@@ -1680,3 +1680,9 @@ enum TemplateNamePrefillType {
     Empty = 0;
     FromTemplateName = 1;
 }
+
+enum TemplatePlaceholderType {
+    TemplatePlaceholderNone = 0;
+    TemplatePlaceholderToday = 1;
+    TemplatePlaceholderCurrentUser = 2;
+}
