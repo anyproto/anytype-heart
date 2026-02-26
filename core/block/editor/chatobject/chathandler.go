@@ -198,7 +198,7 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				}
 				// TODO Count validation
 
-				// Detect if this is a new reaction on my message from another user
+				// Detect reaction changes on my message from another user
 				if msg.Creator == d.currentIdentity &&
 					ch.Change.Creator != d.currentIdentity &&
 					len(key.KeyPath) > 1 {
@@ -206,8 +206,12 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 					wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
 					isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)
 					if !wasPresent && isPresent {
-						result.Set(chatmodel.ReactionReadChangeIdKey, a.NewString(ch.Change.Id))
+						// New reaction added
+						msg.AddUnreadReaction(emoji, identity, chatmodel.ReactionChangeEntry{
+							ChangeId: ch.Change.Id,
+						})
 						msg.UnreadReaction = true
+						msg.MarshalUnreadReactionIds(result, a)
 
 						d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
 							if msg.OrderId > state.UnreadReactionOrderId {
@@ -216,6 +220,16 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 							return state
 						})
 						d.subscription.UpdateReactionReadStatus(msg.Id, true)
+					} else if wasPresent && !isPresent {
+						// Reaction removed — clean up tracking
+						if empty := msg.RemoveUnreadReaction(emoji, identity); empty {
+							msg.UnreadReaction = false
+							msg.MarshalUnreadReactionIds(result, a)
+							d.subscription.UpdateReactionReadStatus(msg.Id, false)
+							d.subscription.ForceReloadState()
+						} else {
+							msg.MarshalUnreadReactionIds(result, a)
+						}
 					}
 				}
 

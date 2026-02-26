@@ -141,6 +141,7 @@ type reactionReadModifier struct {
 func (m *reactionReadModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
 	if v.GetString(chatmodel.ReactionReadChangeIdKey) != "" {
 		v.Del(chatmodel.ReactionReadChangeIdKey)
+		v.Del(chatmodel.ReactionReadChangeIdsKey)
 		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
 		return v, true, nil
 	}

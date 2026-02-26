@@ -294,6 +294,10 @@ func (s *subscriptionManager) collectMessageDependencies(message *model.ChatMess
 	return result
 }
 
+func (s *subscriptionManager) ForceReloadState() {
+	s.needReloadState = true
+}
+
 func (s *subscriptionManager) Delete(messageId string) {
 	for _, sub := range s.subscriptions {
 		sub.state.applyDeleteMessage(messageId)

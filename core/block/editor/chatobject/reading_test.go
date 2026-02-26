@@ -186,3 +186,147 @@ func TestMarkMentionsAsNotRead(t *testing.T) {
 
 	fx.assertReadStatus(t, ctx, "", "", true, false)
 }
+
+func TestUnreadReactionTracking(t *testing.T) {
+	const (
+		anotherPerson = "anotherPerson"
+		thirdPerson   = "thirdPerson"
+	)
+
+	t.Run("reaction from another user marks unread and tracks in rReadChIds", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// Create message as testCreator (current identity)
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Another person adds a reaction
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+		assert.True(t, added)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+	})
+
+	t.Run("second reaction from different user also tracked", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// First reaction
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		// Second reaction (different emoji, different user)
+		fx.sourceCreator = thirdPerson
+		fx.accountServiceStub.accountId = thirdPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "❤️")
+		require.NoError(t, err)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+	})
+
+	t.Run("remove first reaction keeps unread when second remains", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Add two reactions from different users
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		fx.sourceCreator = thirdPerson
+		fx.accountServiceStub.accountId = thirdPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "❤️")
+		require.NoError(t, err)
+
+		// Remove first reaction (toggle off)
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+		assert.False(t, added)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction, "should still be unread because second reaction remains")
+	})
+
+	t.Run("remove last reaction clears unread", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Add one reaction
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+
+		// Remove the reaction
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		msg, err = fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction, "should be read because all unread reactions removed")
+	})
+
+	t.Run("ClearUnreadReactionByChangeIds clears both fields", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Add reactions
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		fx.sourceCreator = thirdPerson
+		fx.accountServiceStub.accountId = thirdPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "❤️")
+		require.NoError(t, err)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+
+		// Collect all change IDs and clear them directly via repository
+		fx.sourceCreator = testCreator
+		fx.accountServiceStub.accountId = testCreator
+		changeIds, err := fx.repository.GetAllUnreadReactionChangeIds(ctx)
+		require.NoError(t, err)
+		require.Len(t, changeIds, 2)
+
+		_, err = fx.repository.ClearUnreadReactionByChangeIds(ctx, changeIds)
+		require.NoError(t, err)
+
+		msg, err = fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction, "should be read after clearing all reaction change IDs")
+	})
+}

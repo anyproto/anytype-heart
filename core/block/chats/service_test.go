@@ -899,8 +899,8 @@ func TestService_Search(t *testing.T) {
 			assert.Contains(t, ids, "msg1")
 			assert.Contains(t, ids, "msg2")
 			return []*chatmodel.Message{
-				{&model.ChatMessage{Id: "msg1"}},
-				{&model.ChatMessage{Id: "msg2"}},
+				{ChatMessage: &model.ChatMessage{Id: "msg1"}},
+				{ChatMessage: &model.ChatMessage{Id: "msg2"}},
 			}, nil
 		})
 		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatId).Return(mockChatObj, nil)
@@ -1039,7 +1039,7 @@ func TestService_Search(t *testing.T) {
 		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
-				messages[i] = &chatmodel.Message{&model.ChatMessage{Id: id}}
+				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
 		})
@@ -1091,7 +1091,7 @@ func TestService_Search(t *testing.T) {
 		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
-				messages[i] = &chatmodel.Message{&model.ChatMessage{Id: id}}
+				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
 		})
@@ -1164,7 +1164,7 @@ func TestService_Search(t *testing.T) {
 		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
-				messages[i] = &chatmodel.Message{&model.ChatMessage{Id: id}}
+				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
 		})
@@ -1233,7 +1233,7 @@ func TestService_Search(t *testing.T) {
 		mockChatObj.EXPECT().GetMessagesByIds(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, ids []string) ([]*chatmodel.Message, error) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
-				messages[i] = &chatmodel.Message{&model.ChatMessage{
+				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{
 					Id:      id,
 					OrderId: fmt.Sprintf("order_%s", id), // order_msg1, order_msg2, order_msg3
 				}}
@@ -1306,7 +1306,7 @@ func TestService_Search(t *testing.T) {
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
 				timestamp := int64(1000 + i) // msg1=1000, msg2=1001, msg3=1002
-				messages[i] = &chatmodel.Message{&model.ChatMessage{
+				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{
 					Id:        id,
 					CreatedAt: timestamp,
 				}}
@@ -1383,7 +1383,7 @@ func TestService_Search(t *testing.T) {
 			}
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
-				messages[i] = &chatmodel.Message{&model.ChatMessage{
+				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{
 					Id:      id,
 					OrderId: orderMap[id],
 				}}
@@ -1466,7 +1466,7 @@ func TestService_Search(t *testing.T) {
 
 			messages := make([]*chatmodel.Message, len(ids))
 			for i, id := range ids {
-				messages[i] = &chatmodel.Message{&model.ChatMessage{Id: id}}
+				messages[i] = &chatmodel.Message{ChatMessage: &model.ChatMessage{Id: id}}
 			}
 			return messages, nil
 		})

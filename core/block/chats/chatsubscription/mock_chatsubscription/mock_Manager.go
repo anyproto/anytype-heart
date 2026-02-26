@@ -125,6 +125,38 @@ func (_c *MockManager_Flush_Call) RunAndReturn(run func(bool)) *MockManager_Flus
 	return _c
 }
 
+// ForceReloadState provides a mock function with given fields:
+func (_m *MockManager) ForceReloadState() {
+	_m.Called()
+}
+
+// MockManager_ForceReloadState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ForceReloadState'
+type MockManager_ForceReloadState_Call struct {
+	*mock.Call
+}
+
+// ForceReloadState is a helper method to define mock.On call
+func (_e *MockManager_Expecter) ForceReloadState() *MockManager_ForceReloadState_Call {
+	return &MockManager_ForceReloadState_Call{Call: _e.mock.On("ForceReloadState")}
+}
+
+func (_c *MockManager_ForceReloadState_Call) Run(run func()) *MockManager_ForceReloadState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockManager_ForceReloadState_Call) Return() *MockManager_ForceReloadState_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_ForceReloadState_Call) RunAndReturn(run func()) *MockManager_ForceReloadState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ForceSendingChatState provides a mock function with given fields:
 func (_m *MockManager) ForceSendingChatState() {
 	_m.Called()

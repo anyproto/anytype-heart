@@ -183,7 +183,7 @@ type Repository interface {
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
 	GetAllUnreadReactionChangeIds(ctx context.Context) ([]string, error)
-	ClearUnreadReactionByChangeIds(ctx context.Context, chatObjectId string, changeIds []string) (modifiedMsgIds []string, err error)
+	ClearUnreadReactionByChangeIds(ctx context.Context, changeIds []string) (modifiedMsgIds []string, err error)
 	GetNewestUnreadReactionOrderId(ctx context.Context) (string, error)
 }
 
@@ -700,15 +700,24 @@ func (s *repository) GetAllUnreadReactionChangeIds(ctx context.Context) ([]strin
 		if err != nil {
 			return nil, fmt.Errorf("get doc: %w", err)
 		}
-		changeId := doc.Value().GetString(chatmodel.ReactionReadChangeIdKey)
-		if changeId != "" {
-			changeIds = append(changeIds, changeId)
+
+		msg, err := chatmodel.UnmarshalMessage(doc.Value())
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal message: %w", err)
+		}
+
+		for _, identities := range msg.UnreadReactionIds {
+			for _, entry := range identities {
+				if entry.ChangeId != "" {
+					changeIds = append(changeIds, entry.ChangeId)
+				}
+			}
 		}
 	}
 	return changeIds, iter.Err()
 }
 
-func (s *repository) ClearUnreadReactionByChangeIds(ctx context.Context, chatObjectId string, changeIds []string) (modifiedMsgIds []string, err error) {
+func (s *repository) ClearUnreadReactionByChangeIds(ctx context.Context, changeIds []string) (modifiedMsgIds []string, err error) {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
