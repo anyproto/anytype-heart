@@ -191,49 +191,9 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 
 			switch path {
 			case chatmodel.ReactionsKey:
-				// Do not parse json, just trim "
-				identity := strings.Trim(key.ModifyValue, `"`)
-				if identity != ch.Change.Creator {
-					return v, false, errors.Join(storestate.ErrValidation, fmt.Errorf("can't toggle someone else's reactions"))
+				if err := d.handleReactionsModify(ch, key, oldReactions, msg, result, a); err != nil {
+					return v, false, err
 				}
-				// TODO Count validation
-
-				// Detect reaction changes on my message from another user
-				if msg.Creator == d.currentIdentity &&
-					ch.Change.Creator != d.currentIdentity &&
-					len(key.KeyPath) > 1 {
-					emoji := key.KeyPath[1]
-					wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
-					isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)
-					if !wasPresent && isPresent {
-						// New reaction added
-						msg.AddUnreadReaction(emoji, identity, chatmodel.ReactionChangeEntry{
-							ChangeId: ch.Change.Id,
-						})
-						msg.UnreadReaction = true
-						msg.MarshalUnreadReactionIds(result, a)
-
-						d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
-							if msg.OrderId > state.UnreadReactionOrderId {
-								state.UnreadReactionOrderId = msg.OrderId
-							}
-							return state
-						})
-						d.subscription.UpdateReactionReadStatus(msg.Id, true)
-					} else if wasPresent && !isPresent {
-						// Reaction removed — clean up tracking
-						if empty := msg.RemoveUnreadReaction(emoji, identity); empty {
-							msg.UnreadReaction = false
-							msg.MarshalUnreadReactionIds(result, a)
-							d.subscription.UpdateReactionReadStatus(msg.Id, false)
-							d.subscription.ForceReloadState()
-						} else {
-							msg.MarshalUnreadReactionIds(result, a)
-						}
-					}
-				}
-
-				d.subscription.UpdateReactions(msg)
 			case chatmodel.ContentKey:
 				creator := msg.Creator
 				if creator != ch.Change.Creator {
@@ -251,6 +211,60 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 
 		return result, modified, nil
 	})
+}
+
+func (d *ChatHandler) handleReactionsModify(
+	ch storestate.ChangeOp,
+	key *pb.KeyModify,
+	oldReactions *model.ChatMessageReactions,
+	msg *chatmodel.Message,
+	result *anyenc.Value,
+	a *anyenc.Arena,
+) error {
+	// Do not parse json, just trim "
+	identity := strings.Trim(key.ModifyValue, `"`)
+	if identity != ch.Change.Creator {
+		return errors.Join(storestate.ErrValidation, fmt.Errorf("can't toggle someone else's reactions"))
+	}
+	// TODO Count validation
+
+	// Detect reaction changes on my message from another user
+	if msg.Creator == d.currentIdentity &&
+		ch.Change.Creator != d.currentIdentity &&
+		len(key.KeyPath) > 1 {
+		emoji := key.KeyPath[1]
+		wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
+		isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)
+		if !wasPresent && isPresent {
+			// New reaction added
+			msg.AddUnreadReaction(emoji, identity, chatmodel.ReactionChangeEntry{
+				ChangeId: ch.Change.Id,
+			})
+			msg.UnreadReaction = true
+			msg.MarshalUnreadReactionIds(result, a)
+
+			d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+				if msg.OrderId > state.UnreadReactionOrderId {
+					state.UnreadReactionOrderId = msg.OrderId
+				}
+				return state
+			})
+			d.subscription.UpdateReactionReadStatus(msg.Id, true)
+		} else if wasPresent && !isPresent {
+			// Reaction removed — clean up tracking
+			if empty := msg.RemoveUnreadReaction(emoji, identity); empty {
+				msg.UnreadReaction = false
+				msg.MarshalUnreadReactionIds(result, a)
+				d.subscription.UpdateReactionReadStatus(msg.Id, false)
+				d.subscription.ForceReloadState()
+			} else {
+				msg.MarshalUnreadReactionIds(result, a)
+			}
+		}
+	}
+
+	d.subscription.UpdateReactions(msg)
+	return nil
 }
 
 func isIdentityInReactions(reactions *model.ChatMessageReactions, emoji string, identity string) bool {
