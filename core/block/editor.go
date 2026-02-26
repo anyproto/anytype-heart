@@ -487,10 +487,8 @@ func (s *Service) DiscardPreloadedFile(ctx context.Context, spaceId string, file
 	return nil
 }
 
-func (s *Service) DropFiles(req pb.RpcFileDropRequest) (err error) {
-	return s.DoFileNonLock(req.ContextId, func(b file.File) error {
-		return b.DropFiles(req)
-	})
+func (s *Service) DropFiles(req pb.RpcFileDropRequest) (int, error) {
+	return s.fileUploaderService.DropFiles(req)
 }
 
 func (s *Service) SetFileTargetObjectId(ctx session.Context, contextId string, blockId, targetObjectId string) error {
