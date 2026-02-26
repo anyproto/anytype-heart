@@ -1149,6 +1149,11 @@
     - [Rpc.Object.SetSource.Request](#anytype-Rpc-Object-SetSource-Request)
     - [Rpc.Object.SetSource.Response](#anytype-Rpc-Object-SetSource-Response)
     - [Rpc.Object.SetSource.Response.Error](#anytype-Rpc-Object-SetSource-Response-Error)
+    - [Rpc.Object.SetTemplatePlaceholders](#anytype-Rpc-Object-SetTemplatePlaceholders)
+    - [Rpc.Object.SetTemplatePlaceholders.Request](#anytype-Rpc-Object-SetTemplatePlaceholders-Request)
+    - [Rpc.Object.SetTemplatePlaceholders.Request.Placeholder](#anytype-Rpc-Object-SetTemplatePlaceholders-Request-Placeholder)
+    - [Rpc.Object.SetTemplatePlaceholders.Response](#anytype-Rpc-Object-SetTemplatePlaceholders-Response)
+    - [Rpc.Object.SetTemplatePlaceholders.Response.Error](#anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error)
     - [Rpc.Object.ShareByLink](#anytype-Rpc-Object-ShareByLink)
     - [Rpc.Object.ShareByLink.Request](#anytype-Rpc-Object-ShareByLink-Request)
     - [Rpc.Object.ShareByLink.Response](#anytype-Rpc-Object-ShareByLink-Response)
@@ -1759,6 +1764,7 @@
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype-Rpc-Object-SetLayout-Response-Error-Code)
     - [Rpc.Object.SetObjectType.Response.Error.Code](#anytype-Rpc-Object-SetObjectType-Response-Error-Code)
     - [Rpc.Object.SetSource.Response.Error.Code](#anytype-Rpc-Object-SetSource-Response-Error-Code)
+    - [Rpc.Object.SetTemplatePlaceholders.Response.Error.Code](#anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error-Code)
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype-Rpc-Object-ShareByLink-Response-Error-Code)
     - [Rpc.Object.Show.Response.Error.Code](#anytype-Rpc-Object-Show-Response-Error-Code)
     - [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code)
@@ -2281,6 +2287,7 @@
     - [SyncError](#anytype-model-SyncError)
     - [SyncStatus](#anytype-model-SyncStatus)
     - [TemplateNamePrefillType](#anytype-model-TemplateNamePrefillType)
+    - [TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -2386,6 +2393,7 @@
 | ObjectGroupsSubscribe | [Rpc.Object.GroupsSubscribe.Request](#anytype-Rpc-Object-GroupsSubscribe-Request) | [Rpc.Object.GroupsSubscribe.Response](#anytype-Rpc-Object-GroupsSubscribe-Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response) |  |
 | ObjectSetDetails | [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request) | [Rpc.Object.SetDetails.Response](#anytype-Rpc-Object-SetDetails-Response) |  |
+| ObjectSetTemplatePlaceholders | [Rpc.Object.SetTemplatePlaceholders.Request](#anytype-Rpc-Object-SetTemplatePlaceholders-Request) | [Rpc.Object.SetTemplatePlaceholders.Response](#anytype-Rpc-Object-SetTemplatePlaceholders-Response) |  |
 | ObjectDuplicate | [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request) | [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response) |  |
 | ObjectSetObjectType | [Rpc.Object.SetObjectType.Request](#anytype-Rpc-Object-SetObjectType-Request) | [Rpc.Object.SetObjectType.Response](#anytype-Rpc-Object-SetObjectType-Response) | ObjectSetObjectType sets an existing object type to the object so it will appear in sets and suggests relations from this type |
 | ObjectSetLayout | [Rpc.Object.SetLayout.Request](#anytype-Rpc-Object-SetLayout-Request) | [Rpc.Object.SetLayout.Response](#anytype-Rpc-Object-SetLayout-Response) |  |
@@ -19356,6 +19364,80 @@ DEPRECATED, GO-1926 |
 
 
 
+<a name="anytype-Rpc-Object-SetTemplatePlaceholders"></a>
+
+### Rpc.Object.SetTemplatePlaceholders
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Request"></a>
+
+### Rpc.Object.SetTemplatePlaceholders.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| templateId | [string](#string) |  |  |
+| placeholders | [Rpc.Object.SetTemplatePlaceholders.Request.Placeholder](#anytype-Rpc-Object-SetTemplatePlaceholders-Request-Placeholder) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Request-Placeholder"></a>
+
+### Rpc.Object.SetTemplatePlaceholders.Request.Placeholder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| type | [model.TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Response"></a>
+
+### Rpc.Object.SetTemplatePlaceholders.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SetTemplatePlaceholders.Response.Error](#anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error"></a>
+
+### Rpc.Object.SetTemplatePlaceholders.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SetTemplatePlaceholders.Response.Error.Code](#anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ShareByLink"></a>
 
 ### Rpc.Object.ShareByLink
@@ -27975,6 +28057,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-SetTemplatePlaceholders-Response-Error-Code"></a>
+
+### Rpc.Object.SetTemplatePlaceholders.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Object-ShareByLink-Response-Error-Code"></a>
 
 ### Rpc.Object.ShareByLink.Response.Error.Code
@@ -36316,6 +36411,19 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ---- | ------ | ----------- |
 | Empty | 0 |  |
 | FromTemplateName | 1 |  |
+
+
+
+<a name="anytype-model-TemplatePlaceholderType"></a>
+
+### TemplatePlaceholderType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TemplatePlaceholderNone | 0 |  |
+| TemplatePlaceholderToday | 1 |  |
+| TemplatePlaceholderCurrentUser | 2 |  |
 
 
  

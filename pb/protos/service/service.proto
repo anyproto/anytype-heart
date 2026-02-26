@@ -112,6 +112,7 @@ service ClientCommands {
     rpc ObjectGroupsSubscribe (anytype.Rpc.Object.GroupsSubscribe.Request) returns (anytype.Rpc.Object.GroupsSubscribe.Response);
     rpc ObjectSearchUnsubscribe (anytype.Rpc.Object.SearchUnsubscribe.Request) returns (anytype.Rpc.Object.SearchUnsubscribe.Response);
     rpc ObjectSetDetails (anytype.Rpc.Object.SetDetails.Request) returns (anytype.Rpc.Object.SetDetails.Response);
+    rpc ObjectSetTemplatePlaceholders (anytype.Rpc.Object.SetTemplatePlaceholders.Request) returns (anytype.Rpc.Object.SetTemplatePlaceholders.Response);
     rpc ObjectDuplicate (anytype.Rpc.Object.Duplicate.Request) returns (anytype.Rpc.Object.Duplicate.Response);
     // ObjectSetObjectType sets an existing object type to the object so it will appear in sets and suggests relations from this type
     rpc ObjectSetObjectType (anytype.Rpc.Object.SetObjectType.Request) returns (anytype.Rpc.Object.SetObjectType.Response);
