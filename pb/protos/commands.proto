@@ -9072,7 +9072,7 @@ message Rpc {
             }
         }
 
-        message ReadReaction {
+        message ReadReactions {
             message Request {
                 string chatObjectId = 1;
             }
