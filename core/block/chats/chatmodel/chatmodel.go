@@ -50,7 +50,6 @@ const (
 	OrderKey                = "_o"
 	SyncedKey               = "synced"
 	PinnedKey               = "pinned"
-	ReactionReadKey         = "rRead"
 	ReactionReadChangeIdKey = "rReadChId"
 )
 
@@ -294,7 +293,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Synced:           m.val.GetBool(SyncedKey),
 			HasMention:       m.val.GetBool(HasMentionKey),
 			Pinned:           m.val.GetBool(PinnedKey),
-			UnreadReaction:   m.val.Get(ReactionReadKey) != nil && !m.val.GetBool(ReactionReadKey),
+			UnreadReaction:   m.val.GetString(ReactionReadChangeIdKey) != "",
 		},
 	}, nil
 }

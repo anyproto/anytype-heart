@@ -141,7 +141,6 @@ func (s *service) getOrInitRepository(spaceId, chatObjectId string) (Repository,
 		{Fields: []string{"_o.id"}},
 		{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
 		{Fields: []string{chatmodel.ReactionReadChangeIdKey}, Sparse: true},
-		{Fields: []string{chatmodel.ReactionReadKey}, Sparse: true},
 	}); err != nil {
 		return nil, fmt.Errorf("ensure indexes: %w", err)
 	}

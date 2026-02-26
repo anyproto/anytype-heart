@@ -18,7 +18,7 @@ var (
 	filterSyncedTrue  = query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterSyncedFalse = query.Not{Filter: filterSyncedTrue}
 
-	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionReadKey}, Filter: query.NewComp(query.CompOpEq, false)}
+	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionReadChangeIdKey}, Filter: query.Exists{}}
 )
 
 type readHandler interface {
@@ -139,8 +139,7 @@ type reactionReadModifier struct {
 }
 
 func (m *reactionReadModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-	if v.Get(chatmodel.ReactionReadKey) != nil && !v.GetBool(chatmodel.ReactionReadKey) {
-		v.Set(chatmodel.ReactionReadKey, a.NewTrue())
+	if v.GetString(chatmodel.ReactionReadChangeIdKey) != "" {
 		v.Del(chatmodel.ReactionReadChangeIdKey)
 		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
 		return v, true, nil

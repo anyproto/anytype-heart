@@ -168,9 +168,8 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 		path := key.KeyPath[0]
 
 		// Capture old reactions state BEFORE modification (for new-reaction detection).
-		// Only needed when reactionRead is absent (no tracking yet).
 		var oldReactions *model.ChatMessageReactions
-		if path == chatmodel.ReactionsKey && v.Get(chatmodel.ReactionReadKey) == nil {
+		if path == chatmodel.ReactionsKey {
 			if oldMsg, unmarshalErr := chatmodel.UnmarshalMessage(v); unmarshalErr == nil {
 				oldReactions = oldMsg.GetReactions()
 			}
@@ -206,8 +205,7 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 					emoji := key.KeyPath[1]
 					wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
 					isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)
-					if !wasPresent && isPresent && result.Get(chatmodel.ReactionReadKey) == nil {
-						result.Set(chatmodel.ReactionReadKey, a.NewFalse())
+					if !wasPresent && isPresent {
 						result.Set(chatmodel.ReactionReadChangeIdKey, a.NewString(ch.Change.Id))
 						msg.UnreadReaction = true
 
