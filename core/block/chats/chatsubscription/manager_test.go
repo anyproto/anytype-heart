@@ -2,6 +2,7 @@ package chatsubscription
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -464,6 +465,86 @@ func TestGetLastMessage(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, ok)
 		assert.Equal(t, msg2.ChatMessage, got)
+	})
+}
+
+func TestMultiSubEventMerge(t *testing.T) {
+	// These tests verify that when two subscriptions with different window sizes
+	// coexist (e.g. preview Limit=1 and chat Limit=50), the full message is always
+	// used in EventChatAdd, even when an out-of-window subscription with a minimal
+	// message is merged first due to non-deterministic map iteration.
+	//
+	// The scenario:
+	// 1. Both subs receive Add(msg0), Add(msg1 — newer)
+	// 2. Preview (Limit=1) evicts msg0, keeping only msg1
+	// 3. A partial update (reactions/pinned) for msg0 creates a minimal out-of-window
+	//    entry in the preview sub ({Id: "msg0"} with only reactions/pinned set)
+	// 4. Chat (Limit=50) keeps msg0 in window with full content
+	// 5. During Flush, if the preview sub is iterated first, the minimal message
+	//    would be placed in the events buffer and never overwritten by the chat sub's
+	//    full message — resulting in an EventChatAdd with empty Creator/text/content.
+	//
+	// Multiple iterations are used because Go map iteration order is non-deterministic,
+	// so a single run may not trigger the problematic ordering.
+
+	t.Run("add event preserves full message when out-of-window reactions update exists", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+
+		for i := 0; i < 10; i++ {
+			chatId := fmt.Sprintf("chat_reactions_%d", i)
+
+			mngr, err := fx.GetManager(testSpaceId, chatId)
+			require.NoError(t, err)
+
+			// given: preview (Limit=1) and chat (Limit=50) subscriptions
+			_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+				ChatObjectId: chatId,
+				SubId:        "preview",
+				Limit:        1,
+			})
+			require.NoError(t, err)
+			_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+				ChatObjectId: chatId,
+				SubId:        "chat",
+				Limit:        50,
+			})
+			require.NoError(t, err)
+
+			msg0 := givenSimpleMessage("msg0", "hello", "o0")
+			msg1 := givenSimpleMessage("msg1", "world", "o1")
+
+			// when: msg0 added, then msg1 (newer, evicts msg0 from preview),
+			// then reactions update for msg0 (out-of-window in preview, in-window in chat)
+			mngr.Add("", msg0)
+			mngr.Add("o0", msg1)
+			mngr.UpdateReactions(&chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Id:        "msg0",
+					Reactions: givenReactions(),
+				},
+			})
+
+			fx.lock.Lock()
+			fx.events = nil
+			fx.lock.Unlock()
+
+			mngr.Flush(true)
+
+			// then: EventChatAdd for msg0 must carry the full message
+			require.NotEmpty(t, fx.events, "iteration %d", i)
+			var found bool
+			for _, ev := range fx.events[0].Messages {
+				if add := ev.GetChatAdd(); add != nil && add.Id == "msg0" {
+					found = true
+					require.NotNil(t, add.Message.Message, "iteration %d: message content is nil", i)
+					assert.Equal(t, "hello", add.Message.Message.Text, "iteration %d", i)
+					assert.Equal(t, testCreator, add.Message.Creator, "iteration %d", i)
+					assert.Equal(t, "o0", add.Message.OrderId, "iteration %d", i)
+				}
+			}
+			assert.True(t, found, "iteration %d: expected EventChatAdd for msg0", i)
+		}
 	})
 }
 
