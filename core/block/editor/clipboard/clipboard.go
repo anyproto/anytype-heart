@@ -591,6 +591,9 @@ func (cb *clipboard) newHTMLConverter(s *state.State) *html.HTML {
 }
 
 func (cb *clipboard) processFileBlock(f *model.BlockContentOfFile) {
+	if f.File == nil || f.File.TargetObjectId == "" {
+		return
+	}
 	fileId, err := cb.fileObjectService.GetFileIdFromObject(f.File.TargetObjectId)
 	if err != nil {
 		log.Errorf("failed to get fileId: %v", err)

@@ -594,6 +594,10 @@
     - [Rpc.Chat.GetMessagesByIds.Request](#anytype-Rpc-Chat-GetMessagesByIds-Request)
     - [Rpc.Chat.GetMessagesByIds.Response](#anytype-Rpc-Chat-GetMessagesByIds-Response)
     - [Rpc.Chat.GetMessagesByIds.Response.Error](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error)
+    - [Rpc.Chat.GetPinnedMessages](#anytype-Rpc-Chat-GetPinnedMessages)
+    - [Rpc.Chat.GetPinnedMessages.Request](#anytype-Rpc-Chat-GetPinnedMessages-Request)
+    - [Rpc.Chat.GetPinnedMessages.Response](#anytype-Rpc-Chat-GetPinnedMessages-Response)
+    - [Rpc.Chat.GetPinnedMessages.Response.Error](#anytype-Rpc-Chat-GetPinnedMessages-Response-Error)
     - [Rpc.Chat.ReadAll](#anytype-Rpc-Chat-ReadAll)
     - [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request)
     - [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response)
@@ -606,6 +610,10 @@
     - [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request)
     - [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response)
     - [Rpc.Chat.Search.Response.Error](#anytype-Rpc-Chat-Search-Response-Error)
+    - [Rpc.Chat.SetPinnedMessages](#anytype-Rpc-Chat-SetPinnedMessages)
+    - [Rpc.Chat.SetPinnedMessages.Request](#anytype-Rpc-Chat-SetPinnedMessages-Request)
+    - [Rpc.Chat.SetPinnedMessages.Response](#anytype-Rpc-Chat-SetPinnedMessages-Response)
+    - [Rpc.Chat.SetPinnedMessages.Response.Error](#anytype-Rpc-Chat-SetPinnedMessages-Response-Error)
     - [Rpc.Chat.SubscribeLastMessages](#anytype-Rpc-Chat-SubscribeLastMessages)
     - [Rpc.Chat.SubscribeLastMessages.Request](#anytype-Rpc-Chat-SubscribeLastMessages-Request)
     - [Rpc.Chat.SubscribeLastMessages.Response](#anytype-Rpc-Chat-SubscribeLastMessages-Response)
@@ -1602,10 +1610,12 @@
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
     - [Rpc.Chat.GetMessagesByIds.Response.Error.Code](#anytype-Rpc-Chat-GetMessagesByIds-Response-Error-Code)
+    - [Rpc.Chat.GetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-GetPinnedMessages-Response-Error-Code)
     - [Rpc.Chat.ReadAll.Response.Error.Code](#anytype-Rpc-Chat-ReadAll-Response-Error-Code)
     - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
     - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
     - [Rpc.Chat.Search.Response.Error.Code](#anytype-Rpc-Chat-Search-Response-Error-Code)
+    - [Rpc.Chat.SetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-SetPinnedMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeToMessagePreviews.Response.Error.Code](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response-Error-Code)
     - [Rpc.Chat.ToggleMessageReaction.Response.Error.Code](#anytype-Rpc-Chat-ToggleMessageReaction-Response-Error-Code)
@@ -1967,6 +1977,7 @@
     - [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus)
     - [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus)
     - [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus)
+    - [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
     - [Event.File](#anytype-Event-File)
@@ -2593,6 +2604,8 @@
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
 | ChatReadAll | [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request) | [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response) |  |
 | ChatSearch | [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request) | [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response) |  |
+| ChatSetPinnedMessages | [Rpc.Chat.SetPinnedMessages.Request](#anytype-Rpc-Chat-SetPinnedMessages-Request) | [Rpc.Chat.SetPinnedMessages.Response](#anytype-Rpc-Chat-SetPinnedMessages-Response) |  |
+| ChatGetPinnedMessages | [Rpc.Chat.GetPinnedMessages.Request](#anytype-Rpc-Chat-GetPinnedMessages-Request) | [Rpc.Chat.GetPinnedMessages.Response](#anytype-Rpc-Chat-GetPinnedMessages-Response) |  |
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | mock AI RPCs for compatibility between branches. Not implemented in main |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
@@ -6667,6 +6680,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockDataview.Filter.Add.Response.Error](#anytype-Rpc-BlockDataview-Filter-Add-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| filterId | [string](#string) |  | ID of added filter |
 
 
 
@@ -6788,6 +6802,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockDataview.Filter.Replace.Response.Error](#anytype-Rpc-BlockDataview-Filter-Replace-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| filterId | [string](#string) |  | ID of new filter |
 
 
 
@@ -11226,6 +11241,63 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-GetPinnedMessages"></a>
+
+### Rpc.Chat.GetPinnedMessages
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetPinnedMessages-Request"></a>
+
+### Rpc.Chat.GetPinnedMessages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetPinnedMessages-Response"></a>
+
+### Rpc.Chat.GetPinnedMessages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.GetPinnedMessages.Response.Error](#anytype-Rpc-Chat-GetPinnedMessages-Response-Error) |  |  |
+| messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-GetPinnedMessages-Response-Error"></a>
+
+### Rpc.Chat.GetPinnedMessages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.GetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-GetPinnedMessages-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Chat-ReadAll"></a>
 
 ### Rpc.Chat.ReadAll
@@ -11393,6 +11465,65 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Chat.Search.Response.Error.Code](#anytype-Rpc-Chat-Search-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SetPinnedMessages"></a>
+
+### Rpc.Chat.SetPinnedMessages
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SetPinnedMessages-Request"></a>
+
+### Rpc.Chat.SetPinnedMessages.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| messageIds | [string](#string) | repeated |  |
+| pinned | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SetPinnedMessages-Response"></a>
+
+### Rpc.Chat.SetPinnedMessages.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.SetPinnedMessages.Response.Error](#anytype-Rpc-Chat-SetPinnedMessages-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-SetPinnedMessages-Response-Error"></a>
+
+### Rpc.Chat.SetPinnedMessages.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.SetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-SetPinnedMessages-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -25719,6 +25850,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-GetPinnedMessages-Response-Error-Code"></a>
+
+### Rpc.Chat.GetPinnedMessages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Chat-ReadAll-Response-Error-Code"></a>
 
 ### Rpc.Chat.ReadAll.Response.Error.Code
@@ -25768,6 +25912,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Chat-SetPinnedMessages-Response-Error-Code"></a>
+
+### Rpc.Chat.SetPinnedMessages.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -31145,6 +31302,23 @@ to its type.
 
 
 
+<a name="anytype-Event-Chat-UpdatePinnedStatus"></a>
+
+### Event.Chat.UpdatePinnedStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| message | [model.ChatMessage](#anytype-model-ChatMessage) |  |  |
+| isPinned | [bool](#bool) |  |  |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateReactions"></a>
 
 ### Event.Chat.UpdateReactions
@@ -31446,6 +31620,7 @@ to its type.
 
 received to update per-message mention read status (if needed |
 | chatUpdateMessageSyncStatus | [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus) |  | to highlight the unread mentions in the UI) |
+| chatUpdatePinnedStatus | [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus) |  |  |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
@@ -33400,6 +33575,7 @@ Used to decode block meta only, without the content itself
 | mentionRead | [bool](#bool) |  |  |
 | hasMention | [bool](#bool) |  |  |
 | synced | [bool](#bool) |  |  |
+| pinned | [bool](#bool) |  |  |
 
 
 

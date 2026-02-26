@@ -2127,7 +2127,10 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.False(t, st.Details().Has("relationKey"))
+		// nil proto value is stored as domain.Null(), not deleted, to avoid
+		// generating duplicate changes on subsequent SetDetail(Null) calls
+		assert.True(t, st.Details().Has("relationKey"))
+		assert.True(t, st.Details().Get("relationKey").IsNull())
 	})
 }
 

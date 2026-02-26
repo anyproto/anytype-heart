@@ -1004,3 +1004,58 @@ func TestTableChanges(t *testing.T) {
 
 	})
 }
+
+func TestMakeObjectTypesChanges(t *testing.T) {
+	t.Run("no changes when types are the same", func(t *testing.T) {
+		// given
+		parent := &State{
+			objectTypeKeys: []domain.TypeKey{"ot-page", "ot-note"},
+		}
+		child := &State{
+			parent:         parent,
+			objectTypeKeys: []domain.TypeKey{"ot-page", "ot-note"},
+		}
+
+		// when
+		ch := child.makeObjectTypesChanges()
+
+		// then
+		assert.Empty(t, ch)
+	})
+	t.Run("add generates only ObjectTypeAdd for new type", func(t *testing.T) {
+		// given
+		parent := &State{
+			objectTypeKeys: []domain.TypeKey{"ot-page"},
+		}
+		child := &State{
+			parent:         parent,
+			objectTypeKeys: []domain.TypeKey{"ot-page", "ot-note"},
+		}
+
+		// when
+		ch := child.makeObjectTypesChanges()
+
+		// then
+		require.Len(t, ch, 1)
+		add := ch[0].GetValue().(*pb.ChangeContentValueOfObjectTypeAdd)
+		assert.Equal(t, domain.TypeKey("ot-note").URL(), add.ObjectTypeAdd.Url)
+	})
+	t.Run("remove generates only ObjectTypeRemove for removed type", func(t *testing.T) {
+		// given
+		parent := &State{
+			objectTypeKeys: []domain.TypeKey{"ot-page", "ot-note"},
+		}
+		child := &State{
+			parent:         parent,
+			objectTypeKeys: []domain.TypeKey{"ot-page"},
+		}
+
+		// when
+		ch := child.makeObjectTypesChanges()
+
+		// then
+		require.Len(t, ch, 1)
+		remove := ch[0].GetValue().(*pb.ChangeContentValueOfObjectTypeRemove)
+		assert.Equal(t, domain.TypeKey("ot-note").URL(), remove.ObjectTypeRemove.Url)
+	})
+}

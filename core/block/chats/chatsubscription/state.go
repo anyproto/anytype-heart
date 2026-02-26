@@ -20,6 +20,7 @@ const (
 	eventActionMessageRead
 	eventActionUpdateReactions
 	eventActionMessageSynced
+	eventActionMessagePinned
 )
 
 type stateEntry struct {
@@ -160,6 +161,19 @@ func (s *messagesState) applyUpdateReactions(msgId string, msg *model.ChatMessag
 		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
 			entry.msg.Reactions = msg.Reactions
 			entry.events = append(entry.events, eventActionUpdateReactions)
+		})
+	}
+}
+
+func (s *messagesState) applyUpdatePinned(msgId string, msg *model.ChatMessage) {
+	prev, ok := s.messagesByIds[msgId]
+	if ok {
+		prev.msg.Pinned = msg.Pinned
+		prev.events = append(prev.events, eventActionMessagePinned)
+	} else {
+		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
+			entry.msg.Pinned = msg.Pinned
+			entry.events = append(entry.events, eventActionMessagePinned)
 		})
 	}
 }
@@ -345,6 +359,16 @@ func (b *eventsBuffer) buildEvent(msg *model.ChatMessage, action eventAction, pr
 				ChatUpdateMessageSyncStatus: &pb.EventChatUpdateMessageSyncStatus{
 					Ids:      []string{msg.Id},
 					IsSynced: msg.Synced,
+					SubIds:   subIds,
+				},
+			},
+		)
+	case eventActionMessagePinned:
+		return event.NewMessage(b.spaceId,
+			&pb.EventMessageValueOfChatUpdatePinnedStatus{
+				ChatUpdatePinnedStatus: &pb.EventChatUpdatePinnedStatus{
+					Message:  msg,
+					IsPinned: msg.Pinned,
 					SubIds:   subIds,
 				},
 			},

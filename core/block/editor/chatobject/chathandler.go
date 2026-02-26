@@ -38,16 +38,7 @@ func (d *ChatHandler) CollectionName() string {
 }
 
 func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err error) {
-	coll, err := s.Collection(ctx, CollectionName)
-	if err != nil {
-		return err
-	}
-	iErr := coll.EnsureIndex(ctx, anystore.IndexInfo{
-		Fields: []string{"_o.id"},
-	})
-	if iErr != nil && !errors.Is(iErr, anystore.ErrIndexExists) {
-		return iErr
-	}
+	_, err = s.Collection(ctx, CollectionName)
 	return
 }
 
@@ -208,6 +199,8 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 				msg.ModifiedAt = ch.Change.Timestamp
 				msg.MarshalAnyenc(result, a)
 				d.subscription.UpdateFull(msg)
+			case chatmodel.PinnedKey:
+				d.subscription.UpdatePinned(msg)
 			default:
 				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
 			}
