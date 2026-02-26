@@ -947,6 +947,54 @@ func (_c *MockService_SetSpaceInfo_Call) RunAndReturn(run func(string, *domain.G
 	return _c
 }
 
+// SetTemplatePlaceholders provides a mock function with given fields: ctx, templateId, placeholders
+func (_m *MockService) SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []domain.TemplatePlaceholder) error {
+	ret := _m.Called(ctx, templateId, placeholders)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetTemplatePlaceholders")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, string, []domain.TemplatePlaceholder) error); ok {
+		r0 = rf(ctx, templateId, placeholders)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_SetTemplatePlaceholders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTemplatePlaceholders'
+type MockService_SetTemplatePlaceholders_Call struct {
+	*mock.Call
+}
+
+// SetTemplatePlaceholders is a helper method to define mock.On call
+//   - ctx session.Context
+//   - templateId string
+//   - placeholders []domain.TemplatePlaceholder
+func (_e *MockService_Expecter) SetTemplatePlaceholders(ctx interface{}, templateId interface{}, placeholders interface{}) *MockService_SetTemplatePlaceholders_Call {
+	return &MockService_SetTemplatePlaceholders_Call{Call: _e.mock.On("SetTemplatePlaceholders", ctx, templateId, placeholders)}
+}
+
+func (_c *MockService_SetTemplatePlaceholders_Call) Run(run func(ctx session.Context, templateId string, placeholders []domain.TemplatePlaceholder)) *MockService_SetTemplatePlaceholders_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].(string), args[2].([]domain.TemplatePlaceholder))
+	})
+	return _c
+}
+
+func (_c *MockService_SetTemplatePlaceholders_Call) Return(_a0 error) *MockService_SetTemplatePlaceholders_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_SetTemplatePlaceholders_Call) RunAndReturn(run func(session.Context, string, []domain.TemplatePlaceholder) error) *MockService_SetTemplatePlaceholders_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMockService creates a new instance of MockService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockService(t interface {
