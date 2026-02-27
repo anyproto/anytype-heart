@@ -1,5 +1,17 @@
 package builder
 
+/*
+AI generated
+
+Name: Client Space Factory
+Scope: space
+
+## Responsibility
+- Assembles dependencies and constructs a fully-initialized clientspace.Space
+- Acquires core space from spaceCore service
+- Sets space access type (personal vs private) after construction
+*/
+
 import (
 	"context"
 	"fmt"
@@ -41,6 +53,7 @@ type spaceBuilder struct {
 	personalSpaceId  string
 	customAccountKey crypto.PrivKey
 	status           spacestatus.SpaceStatus
+	migrationService dependencies2.MigrationService
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -55,6 +68,7 @@ func (b *spaceBuilder) Init(a *app.App) (err error) {
 	b.accountService = app.MustComponent[accountservice.Service](a)
 	b.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
 	b.storageService = app.MustComponent[storage.ClientStorage](a)
+	b.migrationService = app.MustComponent[dependencies2.MigrationService](a)
 	b.personalSpaceId, err = b.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
 	return
 }
@@ -104,6 +118,7 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 		SpaceCore:        b.spaceCore,
 		LoadCtx:          b.ctx,
 		KeyValueObserver: coreSpace.KeyValueObserver(),
+		MigrationService: b.migrationService,
 	}
 	space, err := clientspace.BuildSpace(ctx, deps)
 	if err != nil {

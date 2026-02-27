@@ -381,8 +381,16 @@ func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, v
 		}
 		return tag.Id, nil
 	case apimodel.PropertyFormatMultiSelect:
-		keysOrIds, ok := value.([]interface{})
-		if !ok {
+		var keysOrIds []interface{}
+		switch v := value.(type) {
+		case []interface{}:
+			keysOrIds = v
+		case []string:
+			keysOrIds = make([]interface{}, 0, len(v))
+			for _, item := range v {
+				keysOrIds = append(keysOrIds, item)
+			}
+		default:
 			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of tag ids or keys", key))
 		}
 		var validIds []string
@@ -422,11 +430,20 @@ func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, v
 		}
 		return b, nil
 	case apimodel.PropertyFormatObjects, apimodel.PropertyFormatFiles:
-		ids, ok := value.([]interface{})
-		if !ok {
+		var ids []interface{}
+		switch v := value.(type) {
+		case []interface{}:
+			ids = v
+		case []string:
+			ids = make([]interface{}, 0, len(v))
+			for _, item := range v {
+				ids = append(ids, item)
+			}
+		default:
 			return nil, util.ErrBadInput(fmt.Sprintf("property %q must be an array of strings (object/file ids)", key))
 		}
 		var validIds []string
+		allowTypeObject := key == bundle.RelationKeyType.String()
 		for _, v := range ids {
 			id, ok := v.(string)
 			if !ok {
@@ -435,7 +452,7 @@ func (s *Service) SanitizeAndValidatePropertyValue(spaceId string, key string, v
 			id = s.sanitizedString(id)
 			if prop.Format == apimodel.PropertyFormatFiles && !s.isValidFileReference(spaceId, id) {
 				return nil, util.ErrBadInput(fmt.Sprintf("invalid file reference for %q: %s", key, id))
-			} else if prop.Format == apimodel.PropertyFormatObjects && !s.isValidObjectOrMemberReference(spaceId, id) {
+			} else if prop.Format == apimodel.PropertyFormatObjects && !s.isValidObjectReference(spaceId, id, allowTypeObject) {
 				return nil, util.ErrBadInput(fmt.Sprintf("invalid object reference for %q: %s", key, id))
 			}
 			validIds = append(validIds, id)
@@ -462,12 +479,15 @@ func (s *Service) isValidSelectOption(spaceId string, property *apimodel.Propert
 	return util.IsTagLayout(layout) && expectedRk == fields[bundle.RelationKeyRelationKey.String()].GetStringValue()
 }
 
-func (s *Service) isValidObjectOrMemberReference(spaceId string, objectId string) bool {
+func (s *Service) isValidObjectReference(spaceId string, objectId string, allowTypeObject bool) bool {
 	fields, err := util.GetFieldsById(s.mw, spaceId, objectId, []string{bundle.RelationKeyResolvedLayout.String()})
 	if err != nil {
 		return false
 	}
 	layout := model.ObjectTypeLayout(fields[bundle.RelationKeyResolvedLayout.String()].GetNumberValue())
+	if allowTypeObject && layout == model.ObjectType_objectType {
+		return true
+	}
 	return util.IsObjectOrMemberLayout(layout)
 }
 

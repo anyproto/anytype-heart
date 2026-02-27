@@ -1,5 +1,21 @@
 package migrator
 
+/*
+AI generated
+
+Name: Old-to-New Space Storage Migrator
+Scope: global
+
+## Responsibility
+- Migrates all spaces from old storage format (badger/sqlite) to new storage format
+- Migrates object-to-space ID bindings to spaceresolverstore
+- Validates disk space before migration (requires 1.5x old storage size)
+- Reports progress via process.Service during migration
+
+## External State
+- objectstore/objects.db: writes space ID bindings for migrated objects
+*/
+
 import (
 	"context"
 	"errors"
@@ -224,7 +240,7 @@ func (m *migrator) run(ctx context.Context) (err error) {
 			}
 
 			for _, objectId := range objectIds {
-				err = resolverStore.BindSpaceId(spaceId, objectId)
+				err = resolverStore.BindSpaceId(ctx, spaceId, objectId)
 				if err != nil {
 					return fmt.Errorf("bind space id: %w", err)
 				}

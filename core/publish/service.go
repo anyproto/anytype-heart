@@ -1,5 +1,19 @@
 package publish
 
+/*
+AI generated
+
+Name: Web Publishing Service
+Scope: global
+
+## Responsibility
+- Publishes objects to remote publish server for public web access
+- Exports object with nested objects as protobuf, converts to JSON, creates gzipped uber-snapshot (index.json.gz)
+- Enforces size limits (different for membership vs default users)
+- Filters exported relations per object type via whitelist (relationswhitelist.go)
+- Optionally embeds space invite link when joinSpace=true (non-personal spaces only)
+*/
+
 import (
 	"compress/gzip"
 	"context"

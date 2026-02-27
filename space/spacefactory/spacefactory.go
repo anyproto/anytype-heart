@@ -1,5 +1,29 @@
 package spacefactory
 
+/*
+AI generated
+
+Name: Space Controller Factory
+Scope: global
+
+## Responsibility
+- Creates and initializes SpaceController instances for all space types (personal, shareable, streamable, marketplace, one-to-one)
+- Creates and initializes TechSpace (special space storing SpaceViews for all other spaces)
+- Handles SpaceView creation in TechSpace when creating new spaces
+
+## Documentation
+Space types and their controllers:
+- Personal: user's primary space, derived deterministically from account
+- Shareable: spaces that can be shared with others (inviting, active states)
+- Streamable: spaces accessed via private key (e.g., for streaming/guest access)
+- Marketplace: virtual space for bundled types/relations (deprecated)
+- OneToOne: direct messaging spaces between two participants
+
+Create vs New methods:
+- Create*: derives/creates underlying storage, creates SpaceView in TechSpace, then creates controller
+- New*: loads existing space (SpaceView already exists), creates controller only
+*/
+
 import (
 	"context"
 	"encoding/base64"

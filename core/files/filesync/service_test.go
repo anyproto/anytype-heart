@@ -32,6 +32,8 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
+const techSpaceId = "techSpaceId"
+
 var ctx = context.Background()
 
 type dummyCollectionService struct {
@@ -74,11 +76,11 @@ func newFixtureNotStarted(t *testing.T, limit int) *fixture {
 	kanbanService := mock_kanban.NewMockService(t)
 
 	spaceService := mock_space.NewMockService(t)
-	spaceService.EXPECT().TechSpaceId().Return("techSpaceId").Maybe()
+	spaceService.EXPECT().TechSpaceId().Return(techSpaceId).Maybe()
 
 	fx.subService = subscription.NewInternalTestService(t)
 
-	fx.subService.AddObjects(t, "techSpaceId", []spaceindex.TestObject{
+	fx.subService.AddObjects(t, techSpaceId, []spaceindex.TestObject{
 		{
 			bundle.RelationKeyId:             domain.String("spaceView1"),
 			bundle.RelationKeyTargetSpaceId:  domain.String("space1"),

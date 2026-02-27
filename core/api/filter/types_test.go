@@ -255,10 +255,16 @@ func TestIsValidConditionForType(t *testing.T) {
 		},
 		// Select format tests
 		{
-			name:      "select with equal (invalid)",
+			name:      "select with equal",
 			format:    apimodel.PropertyFormatSelect,
 			condition: model.BlockContentDataviewFilter_Equal,
-			expected:  false,
+			expected:  true,
+		},
+		{
+			name:      "select with not equal",
+			format:    apimodel.PropertyFormatSelect,
+			condition: model.BlockContentDataviewFilter_NotEqual,
+			expected:  true,
 		},
 		{
 			name:      "select with in",

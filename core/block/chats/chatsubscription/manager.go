@@ -2,6 +2,7 @@ package chatsubscription
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -135,22 +136,31 @@ func (s *subscriptionManager) ForceSendingChatState() {
 	s.chatStateUpdated = true
 }
 
-func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool) {
+func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool, error) {
 	// get the last message from any subscription. It works because we don't have offsets for subscriptions, so
 	// it's guaranteed for the last message in a subscription to be the last message in a set of all messages.
 	for _, sub := range s.subscriptions {
 		last := sub.state.messages.Back()
 		if last != nil {
-			return last.Value.(*stateEntry).msg, true
+			return proto.Clone(last.Value.(*stateEntry).msg).(*model.ChatMessage), true, nil
 		}
 	}
-	return nil, false
+
+	msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
+	if err != nil {
+		return nil, false, fmt.Errorf("get last message from repository: %w", err)
+	}
+	if len(msgs) > 0 {
+		return msgs[0].ChatMessage, true, nil
+	}
+	return nil, false, nil
 }
 
-// Flush is called after committing changes
-func (s *subscriptionManager) Flush() {
+// Flush is called after committing changes. If reloadStateIfNeeded is true and s.needReloadState is true, it reloads state
+// and resets s.needReloadState to false
+func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 	// Reload ChatState after commit
-	if s.needReloadState {
+	if s.needReloadState && reloadStateIfNeeded {
 		s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
 			newState, err := s.repository.LoadChatState(s.componentCtx)
 			if err != nil {
@@ -222,10 +232,11 @@ func (s *subscriptionManager) Flush() {
 	}
 
 	if len(asyncSubIds) > 0 {
-		eventsSetSubIds(asyncSubIds, events)
+		asyncEvents := cloneEvents(events)
+		eventsSetSubIds(asyncSubIds, asyncEvents)
 		ev := &pb.Event{
 			ContextId: s.chatId,
-			Messages:  events,
+			Messages:  asyncEvents,
 		}
 		s.eventSender.Broadcast(ev)
 	}
@@ -308,6 +319,16 @@ func (s *subscriptionManager) UpdateReactions(message *chatmodel.Message) {
 
 	for _, sub := range s.subscriptions {
 		sub.state.applyUpdateReactions(message.Id, message.ChatMessage)
+	}
+}
+
+func (s *subscriptionManager) UpdatePinned(message *chatmodel.Message) {
+	if !s.canSend() {
+		return
+	}
+
+	for _, sub := range s.subscriptions {
+		sub.state.applyUpdatePinned(message.Id, message.ChatMessage)
 	}
 }
 
@@ -463,6 +484,8 @@ func eventsSetSubIds(subIds []string, events []*pb.EventMessage) {
 		} else if v := ev.GetChatStateUpdate(); v != nil {
 			v.SubIds = subIds
 		} else if v := ev.GetChatUpdateMessageSyncStatus(); v != nil {
+			v.SubIds = subIds
+		} else if v := ev.GetChatUpdatePinnedStatus(); v != nil {
 			v.SubIds = subIds
 		}
 	}

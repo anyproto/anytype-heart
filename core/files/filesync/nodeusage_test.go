@@ -72,7 +72,8 @@ func TestSpaceLimit(t *testing.T) {
 					return &fileproto.SpaceInfoResponse{
 						SpaceId:         spaceId,
 						LimitBytes:      uint64(tc.limit),
-						SpaceUsageBytes: uint64(tc.usage),
+						SpaceUsageBytes: 0,
+						TotalUsageBytes: uint64(tc.usage),
 					}, nil
 				})
 

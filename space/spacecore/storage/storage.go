@@ -22,7 +22,12 @@ type ClientStorage interface {
 	app.ComponentRunnable
 	AllSpaceIds() (ids []string, err error)
 	DeleteSpaceStorage(ctx context.Context, spaceId string) error
+	ListCorruptedBackups() []CorruptedBackup
+	DeleteBackup(backupPath string) error
 }
+
+// CorruptedBackup represents a backup of a corrupted space storage
+type CorruptedBackup = anystorage.CorruptedBackup
 
 // storageService is a proxy for the actual storage implementation
 type storageService struct {

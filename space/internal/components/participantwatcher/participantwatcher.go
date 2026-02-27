@@ -1,5 +1,23 @@
 package participantwatcher
 
+/*
+AI generated
+
+Name: Participant Identity Sync
+Scope: space
+
+## Responsibility
+- Registers identity observers to receive profile updates for space participants
+- Updates participant objects with identity profile data (name, avatar, etc.)
+- Updates participant objects with ACL state (permissions, status)
+- Handles one-to-one space metadata key retrieval separately from regular spaces
+
+## Documentation
+Called by aclobjectmanager for each account in ACL state. WatchParticipant registers
+an identity observer that triggers updateParticipantFromIdentity on profile changes.
+On Close, unregisters all identity observers for the space.
+*/
+
 import (
 	"context"
 	"encoding/base64"

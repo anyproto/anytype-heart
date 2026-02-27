@@ -20,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
 
 func TestFileSync_AddFile(t *testing.T) {
@@ -207,6 +208,47 @@ func TestFileSync_AddFile(t *testing.T) {
 			},
 		}, currentUsage.Spaces)
 	})
+}
+
+func TestFileSync_NoSyncingStatusWhenLimitReached(t *testing.T) {
+	fx := newFixtureNotStarted(t, 1024)
+	spaceId := "space1"
+
+	var mu sync.Mutex
+	statuses := map[string][]filesyncstatus.Status{}
+	fx.OnStatusUpdated(func(objectId string, _ domain.FullFileId, status filesyncstatus.Status) error {
+		mu.Lock()
+		statuses[objectId] = append(statuses[objectId], status)
+		mu.Unlock()
+		return nil
+	})
+
+	require.NoError(t, fx.a.Start(ctx))
+	defer fx.Finish(t)
+
+	fileId, _ := fx.givenFileAddedToDAG(t, 1024)
+	objectId := "limitedObject"
+	require.NoError(t, fx.AddFile(AddFileRequest{
+		FileObjectId:   objectId,
+		FileId:         domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		UploadedByUser: true,
+	}))
+
+	waitCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	it, err := fx.queue.GetNext(waitCtx, filequeue.GetNextRequest[FileInfo]{
+		Subscribe:   true,
+		StoreFilter: filterByState(FileStateLimited),
+		Filter:      func(info FileInfo) bool { return info.ObjectId == objectId && info.State == FileStateLimited },
+	})
+	require.NoError(t, err)
+	require.NoError(t, fx.queue.ReleaseAndUpdate(it.ObjectId, it))
+
+	mu.Lock()
+	defer mu.Unlock()
+	for _, s := range statuses[objectId] {
+		assert.NotEqual(t, filesyncstatus.Syncing, s, "limited file should never get Syncing status")
+	}
 }
 
 func (fx *fixture) assertFileUploadedToRemoteNode(t *testing.T, fileNode ipld.Node, wantSize int) []cid.Cid {

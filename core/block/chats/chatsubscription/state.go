@@ -20,6 +20,7 @@ const (
 	eventActionMessageRead
 	eventActionUpdateReactions
 	eventActionMessageSynced
+	eventActionMessagePinned
 )
 
 type stateEntry struct {
@@ -164,6 +165,19 @@ func (s *messagesState) applyUpdateReactions(msgId string, msg *model.ChatMessag
 	}
 }
 
+func (s *messagesState) applyUpdatePinned(msgId string, msg *model.ChatMessage) {
+	prev, ok := s.messagesByIds[msgId]
+	if ok {
+		prev.msg.Pinned = msg.Pinned
+		prev.events = append(prev.events, eventActionMessagePinned)
+	} else {
+		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
+			entry.msg.Pinned = msg.Pinned
+			entry.events = append(entry.events, eventActionMessagePinned)
+		})
+	}
+}
+
 func (s *messagesState) updateOutOfWindowEvent(msgId string, modifier func(entry *stateEntry)) {
 	prev, ok := s.outOfWindowEvents[msgId]
 	if ok {
@@ -204,6 +218,14 @@ func (s *messagesState) appendEventsTo(subId string, buf *eventsBuffer) {
 			buf.eventsByMsgId[entry.msg.Id] = prev
 			buf.events = append(buf.events, prev)
 		} else {
+			// Prefer full message from entries with Add events over minimal
+			// out-of-window messages. Out-of-window events for partial updates
+			// (reactions, pinned) create entries with only the message ID set,
+			// while Add events always carry the complete message.
+			if slices.Contains(entry.events, eventActionAdd) {
+				prev.msg = entry.msg
+				prev.prevOrderId = entry.prevOrderId
+			}
 			prev.subIds = append(prev.subIds, subId)
 			prev.addEvents(entry.events)
 		}
@@ -345,6 +367,16 @@ func (b *eventsBuffer) buildEvent(msg *model.ChatMessage, action eventAction, pr
 				ChatUpdateMessageSyncStatus: &pb.EventChatUpdateMessageSyncStatus{
 					Ids:      []string{msg.Id},
 					IsSynced: msg.Synced,
+					SubIds:   subIds,
+				},
+			},
+		)
+	case eventActionMessagePinned:
+		return event.NewMessage(b.spaceId,
+			&pb.EventMessageValueOfChatUpdatePinnedStatus{
+				ChatUpdatePinnedStatus: &pb.EventChatUpdatePinnedStatus{
+					Message:  msg,
+					IsPinned: msg.Pinned,
 					SubIds:   subIds,
 				},
 			},

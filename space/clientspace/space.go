@@ -84,16 +84,21 @@ type bundledObjectsInstaller interface {
 var log = logger.NewNamed("client.space")
 var BundledObjectsPeerFindTimeout = time.Second * 30
 
+type migrationService interface {
+	RunMigrationsWhenIdle(spaceId string, derivedIDs threads.DerivedSmartblockIds)
+}
+
 type space struct {
 	objectcache.Cache
 	objectprovider.ObjectProvider
 
-	indexer         spaceIndexer
-	derivedIDs      threads.DerivedSmartblockIds
-	installer       bundledObjectsInstaller
-	spaceCore       spacecore.SpaceCoreService
-	keyValueService keyvalueservice.Service
-	personalSpaceId string
+	indexer          spaceIndexer
+	derivedIDs       threads.DerivedSmartblockIds
+	installer        bundledObjectsInstaller
+	spaceCore        spacecore.SpaceCoreService
+	keyValueService  keyvalueservice.Service
+	personalSpaceId  string
+	migrationService migrationService
 
 	aclIdentity crypto.PubKey
 	common      commonspace.Space
@@ -117,6 +122,7 @@ type SpaceDeps struct {
 	PersonalSpaceId   string
 	LoadCtx           context.Context
 	DisableRemoteLoad bool
+	MigrationService  migrationService
 }
 
 func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
@@ -128,6 +134,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		spaceCore:              deps.SpaceCore,
 		aclIdentity:            deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
+		migrationService:       deps.MigrationService,
 	}
 
 	if res, ok := ctx.Value(spacecore.OptsKey).(spacecore.Opts); ok && res.SignKey != nil {
@@ -211,10 +218,17 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	}
 	go s.tryLoadBundledAndInstallIfMissing(disableRemoteLoad)
 
-	err := s.migrationProfileObject(ctx)
-	if err != nil {
-		log.Error("failed to migrate profile object", zap.Error(err))
+	if !s.IsReadOnly() {
+		if s.migrationService != nil {
+			// Start migrations after reindexing - they will wait for indexer to become idle
+			go s.migrationService.RunMigrationsWhenIdle(s.Id(), s.derivedIDs)
+		}
+		err := s.migrationProfileObject(ctx)
+		if err != nil {
+			log.Error("failed to migrate profile object", zap.Error(err))
+		}
 	}
+
 	if !disableRemoteLoad {
 		s.common.TreeSyncer().StartSync()
 	}

@@ -557,21 +557,21 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 	buf.WriteString(in.indent)
 
 	switch text.Style {
-	case model.BlockContentText_Header1, model.BlockContentText_Title:
+	case model.BlockContentText_Header1, model.BlockContentText_ToggleHeader1, model.BlockContentText_Title:
 		_, err := buf.WriteString(`# `)
 		if err != nil {
 			log.Warnf("failed to export header1 in markdown: %v", err)
 		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
-	case model.BlockContentText_Header2:
+	case model.BlockContentText_Header2, model.BlockContentText_ToggleHeader2:
 		_, err := buf.WriteString(`## `)
 		if err != nil {
 			log.Warnf("failed to export header2 in markdown: %v", err)
 		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
-	case model.BlockContentText_Header3:
+	case model.BlockContentText_Header3, model.BlockContentText_ToggleHeader3:
 		_, err := buf.WriteString(`### `)
 		if err != nil {
 			log.Warnf("failed to export header3 in markdown: %v", err)

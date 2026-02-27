@@ -1,5 +1,17 @@
 package builtintemplate
 
+/*
+AI generated
+
+Name: Bundled Template Provider
+Scope: global
+
+## Responsibility
+- Provides embedded bundled templates from zip archive
+- Registers bundled templates as static sources in a space
+- Generates version hash for template change detection
+*/
+
 import (
 	"archive/zip"
 	"bytes"

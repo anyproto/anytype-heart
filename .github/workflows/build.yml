@@ -156,6 +156,15 @@ jobs:
           generate_release_notes: true
           files: '.release/*'
 
+      - name: Trigger integration tests in anytype-suite
+        if: github.event_name == 'push'
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.ANYTYPE_SUITE_TRIGGER_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/anyproto/anytype-suite/dispatches \
+            -d "{\"event_type\": \"test-release\", \"client_payload\": {\"version\": \"${{ env.VERSION }}\"}}"
+
       # # start of notifications in Linear
       # - name: Clone DevOps Utils Repository
       #   run: |

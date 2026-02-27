@@ -88,6 +88,9 @@ func (s *service) SetIsArchived(ctx context.Context, objectId string, isArchived
 	if err := s.checkArchivedRestriction(ctx, isArchived, objectId); err != nil {
 		return err
 	}
+
+	s.triggerFileGCOnArchive(spaceID, []string{objectId}, isArchived)
+
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
 }
 
@@ -204,6 +207,9 @@ func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, o
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
+
+	s.triggerFileGCOnArchive(spaceId, objectIds, isArchived)
+
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
 		if !ok {
@@ -253,4 +259,20 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 		anySucceed = true
 	}
 	return
+}
+
+// triggerFileGCOnArchive runs file GC for all "children" files that doesn't have other backlinks
+// This helps clean up orphaned files when objects are moved to archive as well as unarchive the children of archived objects.
+func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string, isArchived bool) {
+	if len(objectIds) == 0 {
+		return
+	}
+
+	for _, objId := range objectIds {
+		go func(objId string) {
+			if err := s.fileGC.CheckFilesOnContextArchived(spaceId, objId, isArchived); err != nil {
+				log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
+			}
+		}(objId)
+	}
 }

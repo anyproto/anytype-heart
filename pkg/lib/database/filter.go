@@ -71,6 +71,13 @@ func makeFilter(spaceID string, rawFilter FilterRequest, store ObjectStore) (Fil
 	if rawFilter.Condition == model.BlockContentDataviewFilter_None {
 		return nil, nil
 	}
+	// model.RelationFormat_longtext may be a default value, so we try to get the actual value. It's important to use
+	// proper format for all filters to work correctly. Date filter is a good example.
+	if rawFilter.Format == model.RelationFormat_longtext && rawFilter.RelationKey != "" {
+		if format, err := store.GetRelationFormatByKey(rawFilter.RelationKey); err == nil {
+			rawFilter.Format = format
+		}
+	}
 	rawFilters := transformDateFilter(rawFilter, time.Now())
 
 	if len(rawFilters) == 1 {
@@ -763,8 +770,17 @@ func (exIn *FilterOptionsEqual) Ok(v *anyenc.Value, docBuf *syncpool.DocBuffer) 
 	defer exIn.arena.Reset()
 
 	arr := v.GetArray(string(exIn.Key))
-	// Just fall back to precompiled filter
 	if len(arr) == 0 {
+		// Handle single string value (not array) - mirrors FilterObject() logic
+		optionId := string(v.GetStringBytes(string(exIn.Key)))
+		if optionId != "" {
+			_, isValidOption := exIn.Options[optionId]
+			if !isValidOption {
+				return false
+			}
+			return slices.Contains(exIn.Value, optionId)
+		}
+		// Fall back to precompiled filter for other non-array types
 		return exIn.valueFilter.Ok(v.Get(string(exIn.Key)), docBuf)
 	}
 

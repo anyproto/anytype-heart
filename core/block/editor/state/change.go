@@ -258,11 +258,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	if s.details == nil {
 		s.details = det.Copy()
 	}
-	if set.Value != nil {
-		s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
-	} else {
-		s.details.Delete(domain.RelationKey(set.Key))
-	}
+	s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
 	return nil
 }
 
@@ -784,6 +780,9 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 	}
 
 	var prevMap = make(map[domain.TypeKey]struct{}, len(prev))
+	for _, v := range prev {
+		prevMap[v] = struct{}{}
+	}
 	var curMap = make(map[domain.TypeKey]struct{}, len(s.objectTypeKeys))
 
 	for _, v := range s.objectTypeKeys {

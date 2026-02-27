@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -31,6 +32,19 @@ import (
 )
 
 const spaceId = "spaceId"
+
+type fileGCStub struct{}
+
+func (f *fileGCStub) Name() string                        { return "fileGCStub" }
+func (f *fileGCStub) Init(a *app.App) error               { return nil }
+func (f *fileGCStub) Run(ctx context.Context) error        { return nil }
+func (f *fileGCStub) Close(ctx context.Context) error      { return nil }
+func (f *fileGCStub) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+	return nil
+}
+func (f *fileGCStub) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
+	return nil
+}
 
 type fixture struct {
 	Service
@@ -59,6 +73,7 @@ func newFixture(t *testing.T) *fixture {
 		spaceService: spaceService,
 		store:        store,
 		fileService:  fileService,
+		fileGC:       &fileGCStub{},
 	}
 
 	return &fixture{

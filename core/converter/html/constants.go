@@ -61,20 +61,23 @@ const (
 )
 
 type styleTag struct {
-	OpenTag, CloseTag string
+	OpenTag, ToggleCloseTag, CloseTag string
 }
 
 var styleTags = map[model.BlockContentTextStyle]styleTag{
-	model.BlockContentText_Header1:  {OpenTag: `<h1 style="` + styleHeader1 + `">`, CloseTag: `</h1>`},
-	model.BlockContentText_Header2:  {OpenTag: `<h2 style="` + styleHeader2 + `">`, CloseTag: `</h2>`},
-	model.BlockContentText_Header3:  {OpenTag: `<h3 style="` + styleHeader3 + `">`, CloseTag: `</h3>`},
-	model.BlockContentText_Header4:  {OpenTag: `<h4 style="` + styleHeader4 + `">`, CloseTag: `</h4>`},
-	model.BlockContentText_Quote:    {OpenTag: `<quote style="` + styleQuote + `">`, CloseTag: `</quote>`},
-	model.BlockContentText_Code:     {OpenTag: `<code style="` + styleCode + `"><pre>`, CloseTag: `</pre></code>`},
-	model.BlockContentText_Title:    {OpenTag: `<h1 style="` + styleTitle + `">`, CloseTag: `</h1>`},
-	model.BlockContentText_Checkbox: {OpenTag: `<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>`, CloseTag: `</div>`},
-	model.BlockContentText_Toggle:   {OpenTag: `<div style="` + styleToggle + `" class="toggle">`, CloseTag: `</div>`},
-	defaultStyle:                    {OpenTag: `<div style="` + styleParagraph + `" class="paragraph">`, CloseTag: `</div>`},
+	model.BlockContentText_Header1:       {OpenTag: `<h1 style="` + styleHeader1 + `">`, CloseTag: `</h1>`},
+	model.BlockContentText_Header2:       {OpenTag: `<h2 style="` + styleHeader2 + `">`, CloseTag: `</h2>`},
+	model.BlockContentText_Header3:       {OpenTag: `<h3 style="` + styleHeader3 + `">`, CloseTag: `</h3>`},
+	model.BlockContentText_Header4:       {OpenTag: `<h4 style="` + styleHeader4 + `">`, CloseTag: `</h4>`},
+	model.BlockContentText_Quote:         {OpenTag: `<quote style="` + styleQuote + `">`, CloseTag: `</quote>`},
+	model.BlockContentText_Code:          {OpenTag: `<code style="` + styleCode + `"><pre>`, CloseTag: `</pre></code>`},
+	model.BlockContentText_Title:         {OpenTag: `<h1 style="` + styleTitle + `">`, CloseTag: `</h1>`},
+	model.BlockContentText_Checkbox:      {OpenTag: `<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>`, CloseTag: `</div>`},
+	model.BlockContentText_Toggle:        {OpenTag: `<details> <summary style="` + styleToggle + `">`, ToggleCloseTag: `</summary>`, CloseTag: `</details>`},
+	model.BlockContentText_ToggleHeader1: {OpenTag: `<details> <summary style="` + styleHeader1 + `">`, ToggleCloseTag: `</summary>`, CloseTag: `</details>`},
+	model.BlockContentText_ToggleHeader2: {OpenTag: `<details> <summary style="` + styleHeader2 + `">`, ToggleCloseTag: `</summary>`, CloseTag: `</details>`},
+	model.BlockContentText_ToggleHeader3: {OpenTag: `<details> <summary style="` + styleHeader3 + `">`, ToggleCloseTag: `</summary>`, CloseTag: `</details>`},
+	defaultStyle:                         {OpenTag: `<div style="` + styleParagraph + `" class="paragraph">`, CloseTag: `</div>`},
 }
 
 func textColor(color string) string {

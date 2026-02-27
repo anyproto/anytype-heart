@@ -1,5 +1,16 @@
 package idderiverimpl
 
+/*
+AI generated
+
+Name: Object ID Derivation Facade
+Scope: global
+
+## Responsibility
+- Provides a facade to derive deterministic object IDs from UniqueKey within a space
+- Delegates to space.DeriveObjectID after resolving the space by ID
+*/
+
 import (
 	"context"
 

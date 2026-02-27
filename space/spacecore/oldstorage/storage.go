@@ -1,5 +1,20 @@
 package oldstorage
 
+/*
+AI generated
+
+Name: Legacy Space Storage Proxy
+Scope: global
+
+## Responsibility
+- Proxy for legacy space storage implementations (Badger or SQLite)
+- Selects storage backend based on account repo age (SQLite for new, Badger for existing)
+
+## External State
+- Badger DB via datastore (legacy accounts)
+- SQLite DB at configured path (new accounts)
+*/
+
 import (
 	"context"
 	"fmt"

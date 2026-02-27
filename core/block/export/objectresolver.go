@@ -1,6 +1,8 @@
 package export
 
 import (
+	"fmt"
+
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/converter/md"
@@ -51,7 +53,7 @@ func (r *lazyObjectResolver) ResolveRelation(relationId string) (*domain.Details
 		Limit: 1,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query relation: %w", err)
 	}
 
 	if len(records) > 0 {
@@ -88,7 +90,7 @@ func (r *lazyObjectResolver) GetRelationByKey(relationKey string) (*domain.Detai
 		Limit: 1,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query relation by key: %w", err)
 	}
 
 	if len(records) > 0 {
@@ -124,7 +126,7 @@ func (r *lazyObjectResolver) ResolveType(typeId string) (*domain.Details, error)
 		Limit: 1,
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query type: %w", err)
 	}
 
 	if len(records) > 0 {
@@ -153,7 +155,7 @@ func (r *lazyObjectResolver) ResolveRelationOptions(relationKey string) ([]*doma
 		},
 	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query relation options: %w", err)
 	}
 
 	options := make([]*domain.Details, 0, len(records))

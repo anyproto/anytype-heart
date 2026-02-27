@@ -1,5 +1,23 @@
 package history
 
+/*
+AI generated
+
+Name: Object Version History
+Scope: global
+
+## Responsibility
+- Show object state at any historical version
+- List versions with pagination and 5-minute grouping
+- Diff changes between two versions (blocks, relations, details, dataview)
+- Reset object to a previous version
+- Track block-level authorship (which participant last modified each block)
+
+## Documentation
+Version IDs: Normally a single change ID. For parallel editing (multiple heads),
+generates a blake3 hash of combined head IDs and caches the mapping for retrieval.
+*/
+
 import (
 	"context"
 	"encoding/hex"
@@ -141,7 +159,10 @@ func (h *history) Versions(id domain.FullID, lastVersionId string, limit int, no
 		var data []*pb.RpcHistoryVersion
 
 		e = tree.IterateFrom(tree.Root().Id, sourceimpl.UnmarshalChange, func(c *objecttree.Change) (isContinue bool) {
-			participantId := domain.NewParticipantId(id.SpaceID, c.Identity.Account())
+			var participantId string
+			if c.Identity != nil {
+				participantId = domain.NewParticipantId(id.SpaceID, c.Identity.Account())
+			}
 			data = h.fillVersionData(c, curHeads, participantId, data, hasher)
 			return true
 		})
@@ -561,7 +582,10 @@ func (h *history) buildState(id domain.FullID, versionId string) (
 	st.BlocksInit(st)
 	heads := tree.Heads()
 	if ch, e := tree.GetChange(heads[len(heads)-1]); e == nil {
-		participantId := domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
+		var participantId string
+		if ch.Identity != nil {
+			participantId = domain.NewParticipantId(id.SpaceID, ch.Identity.Account())
+		}
 		ver = &pb.RpcHistoryVersion{
 			Id:          ch.Id,
 			PreviousIds: ch.PreviousIds,

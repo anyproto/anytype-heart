@@ -3,8 +3,6 @@ package template
 import (
 	"slices"
 
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -12,7 +10,7 @@ import (
 
 const (
 	CollectionStoreKey = "objects"
-	DefaultViewLayout  = model.BlockContentDataviewView_List
+	DefaultViewLayout  = model.BlockContentDataviewView_Table
 	defaultViewName    = "All"
 	defaultWidth       = 200
 	defaultWidthShort  = 100
@@ -61,7 +59,7 @@ func MakeDataviewContent(isCollection bool, ot *model.ObjectType, relLinks []*mo
 	if oldContent == nil {
 		visibleRelations := slices.Concat(defaultVisibleRelations, commonVisibleRelations)
 		view := &model.BlockContentDataviewView{
-			Id:        bson.NewObjectId().Hex(),
+			Id:        "default",
 			Type:      DefaultViewLayout,
 			Name:      defaultViewName,
 			Sorts:     buildSorts(isCollection, ot, nil),
@@ -210,7 +208,7 @@ func buildSorts(isCollection bool, ot *model.ObjectType, oldSorts []*model.Block
 func DefaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
 	return []*model.BlockContentDataviewSort{
 		{
-			Id:          bson.NewObjectId().Hex(),
+			Id:          "byLastModifiedDate",
 			RelationKey: bundle.RelationKeyLastModifiedDate.String(),
 			Type:        model.BlockContentDataviewSort_Desc,
 		},
@@ -220,7 +218,7 @@ func DefaultLastModifiedDateSort() []*model.BlockContentDataviewSort {
 func defaultNameSort() []*model.BlockContentDataviewSort {
 	return []*model.BlockContentDataviewSort{
 		{
-			Id:          bson.NewObjectId().Hex(),
+			Id:          "byName",
 			RelationKey: bundle.RelationKeyName.String(),
 			Type:        model.BlockContentDataviewSort_Asc,
 		},
@@ -234,7 +232,7 @@ func defaultChatSort() []*model.BlockContentDataviewSort {
 			Type:        model.BlockContentDataviewSort_Desc,
 			Format:      model.RelationFormat_date,
 			IncludeTime: true,
-			Id:          bson.NewObjectId().Hex(),
+			Id:          "byLastMessageDate",
 		},
 	}
 }

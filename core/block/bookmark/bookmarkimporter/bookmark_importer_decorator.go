@@ -1,5 +1,16 @@
 package bookmarkimporter
 
+/*
+AI generated
+
+Name: Bookmark Creation with Web Import Fallback
+Scope: global
+
+## Responsibility
+- Decorates bookmark.Service to prefer web import when creating bookmark objects
+- Falls back to standard CreateBookmarkObject if web import fails
+*/
+
 import (
 	"context"
 
