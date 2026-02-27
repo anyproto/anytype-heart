@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription/mock_chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
@@ -62,6 +63,16 @@ func (s *accountServiceDummy) Name() string {
 
 func (s *accountServiceDummy) Init(a *app.App) error {
 	return nil
+}
+
+type chatRepoServiceDummy struct{}
+
+func (s *chatRepoServiceDummy) Name() string                                                    { return "chatRepoServiceDummy" }
+func (s *chatRepoServiceDummy) Init(a *app.App) error                                           { return nil }
+func (s *chatRepoServiceDummy) Run(ctx context.Context) error                                   { return nil }
+func (s *chatRepoServiceDummy) Close(ctx context.Context) error                                 { return nil }
+func (s *chatRepoServiceDummy) Repository(spaceId, chatObjectId string) (chatrepository.Repository, error) {
+	return nil, nil
 }
 
 type fileGCDummy struct{}
@@ -166,6 +177,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(&accountServiceDummy{})
 	a.Register(testutil.PrepareMock(ctx, a, detailService))
 	a.Register(&fileGCDummy{})
+	a.Register(&chatRepoServiceDummy{})
 	a.Register(fx)
 
 	fx.app = a

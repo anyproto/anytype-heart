@@ -18,6 +18,7 @@ Scope: global
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -185,6 +186,7 @@ type Repository interface {
 	GetAllUnreadReactionChangeIds(ctx context.Context) ([]string, error)
 	ClearUnreadReactions(ctx context.Context, maxOrderId string) (modifiedMsgIds []string, err error)
 	GetNewestUnreadReactionOrderId(ctx context.Context) (string, error)
+	GetAllRawMessages(ctx context.Context) ([]json.RawMessage, error)
 }
 
 type repository struct {
@@ -742,7 +744,7 @@ func (s *repository) ClearUnreadReactions(ctx context.Context, maxOrderId string
 }
 
 func (s *repository) GetNewestUnreadReactionOrderId(ctx context.Context) (string, error) {
-	iter, err := s.collection.Find(filterReactionUnread).Sort(descOrder).Limit(1).Iter(ctx)
+	iter, err := s.collection.Find(filterReactionUnread).Sort("-" + chatmodel.ReactionUnreadOrderIdKey).Limit(1).Iter(ctx)
 	if err != nil {
 		return "", fmt.Errorf("find newest unread reaction: %w", err)
 	}
@@ -759,4 +761,22 @@ func (s *repository) GetNewestUnreadReactionOrderId(ctx context.Context) (string
 		}
 	}
 	return "", nil
+}
+
+func (s *repository) GetAllRawMessages(ctx context.Context) ([]json.RawMessage, error) {
+	iter, err := s.collection.Find(nil).Sort(ascOrder).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("iterate messages: %w", err)
+	}
+	defer iter.Close()
+
+	var result []json.RawMessage
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		result = append(result, json.RawMessage(doc.Value().String()))
+	}
+	return result, nil
 }

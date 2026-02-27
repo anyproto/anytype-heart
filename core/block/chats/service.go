@@ -118,6 +118,7 @@ type service struct {
 	detailsService          detailservice.Service
 	fileGC                  filegc.FileGC
 	ftSearch                ftsearch.FTSearch
+	chatRepoService         chatrepository.Service
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -157,6 +158,7 @@ func (s *service) Init(a *app.App) error {
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.fileGC = app.MustComponent[filegc.FileGC](a)
 	s.ftSearch = app.MustComponent[ftsearch.FTSearch](a)
+	s.chatRepoService = app.MustComponent[chatrepository.Service](a)
 	return nil
 }
 
