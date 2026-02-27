@@ -180,6 +180,10 @@ func (st *SmartTest) Tree() objecttree.ObjectTree {
 	return st.objectTree
 }
 
+func (st *SmartTest) SetTree(tree objecttree.ObjectTree) {
+	st.objectTree = tree
+}
+
 func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }
