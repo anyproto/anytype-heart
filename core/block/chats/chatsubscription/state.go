@@ -218,6 +218,14 @@ func (s *messagesState) appendEventsTo(subId string, buf *eventsBuffer) {
 			buf.eventsByMsgId[entry.msg.Id] = prev
 			buf.events = append(buf.events, prev)
 		} else {
+			// Prefer full message from entries with Add events over minimal
+			// out-of-window messages. Out-of-window events for partial updates
+			// (reactions, pinned) create entries with only the message ID set,
+			// while Add events always carry the complete message.
+			if slices.Contains(entry.events, eventActionAdd) {
+				prev.msg = entry.msg
+				prev.prevOrderId = entry.prevOrderId
+			}
 			prev.subIds = append(prev.subIds, subId)
 			prev.addEvents(entry.events)
 		}
