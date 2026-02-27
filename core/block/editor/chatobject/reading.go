@@ -159,7 +159,7 @@ func (s *storeObject) markReadReactions(changeIds []string) error {
 	return nil
 }
 
-func (s *storeObject) MarkReadReactions(ctx context.Context, orderId string) error {
+func (s *storeObject) MarkReadReactions(ctx context.Context) error {
 	changeIds, err := s.repository.GetAllUnreadReactionChangeIds(ctx)
 	if err != nil {
 		return fmt.Errorf("get unread reaction change ids: %w", err)

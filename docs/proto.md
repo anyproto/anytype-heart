@@ -33771,7 +33771,7 @@ Used to decode block meta only, without the content itself
 | mentions | [ChatState.UnreadState](#anytype-model-ChatState-UnreadState) |  | unread mentions |
 | lastStateId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
 | order | [int64](#int64) |  | Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order |
-| unreadReactionOrderId | [string](#string) |  | newest unread reaction order id |
+| unreadReactionOrderId | [string](#string) |  | order id of the newest message with any unread reactions |
 
 
 

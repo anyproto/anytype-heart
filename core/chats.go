@@ -288,7 +288,7 @@ func (mw *Middleware) ChatReadReactions(cctx context.Context, req *pb.RpcChatRea
 	ctx := mw.newContext(cctx)
 	chatService := mustService[chats.Service](mw)
 
-	err := chatService.ReadReaction(cctx, req.ChatObjectId, req.OrderId)
+	err := chatService.ReadReaction(cctx, req.ChatObjectId)
 	if err != nil {
 		code := mapErrorCode[pb.RpcChatReadReactionsResponseErrorCode](err)
 		return &pb.RpcChatReadReactionsResponse{
