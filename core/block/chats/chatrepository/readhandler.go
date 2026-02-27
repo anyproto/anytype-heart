@@ -134,6 +134,9 @@ func (m *readMentionsModifier) getModifiedIds() []string {
 	return m.modifiedIds
 }
 
+// reactionReadModifier marks unread reactions as read in the store.
+// When maxOrderId is empty, all unread reaction tracking is cleared from matched messages.
+// When maxOrderId is set, only entries with OrderId <= maxOrderId are cleared (partial read).
 type reactionReadModifier struct {
 	maxOrderId  string
 	modifiedIds []string

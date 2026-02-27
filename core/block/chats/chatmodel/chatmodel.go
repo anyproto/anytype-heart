@@ -63,9 +63,17 @@ type ReactionChangeEntry struct {
 type Message struct {
 	*model.ChatMessage
 
-	// UnreadReactionIds tracks individual unread reactions: emoji → identity → entry.
-	// This is a local-only field (not in protobuf) used to detect when reactions are
-	// removed and to update the unread state accordingly.
+	// UnreadReactionIds tracks individual unread reactions per message: emoji → identity → entry.
+	// This is a local-only field (not in protobuf), persisted in the store as rUnreadChIds/rUnreadOrdId.
+	//
+	// Each entry records the ChangeId and OrderId of the change that added the reaction.
+	// When the user calls ChatReadReactions(maxOrderId), reactionReadModifier walks the map
+	// and removes only entries with OrderId <= maxOrderId (partial read). If all entries are
+	// removed, both rUnreadChIds and rUnreadOrdId are deleted from the document.
+	//
+	// When a reaction is removed by its author, handleReactionsModify calls RemoveUnreadReaction
+	// to drop that single entry. If the map becomes empty, ForceReloadReactionState is triggered
+	// so the subscription recalculates UnreadReactionOrderId without a full state reload.
 	UnreadReactionIds map[string]map[string]ReactionChangeEntry
 }
 
