@@ -258,7 +258,7 @@ func (d *ChatHandler) handleReactionsModify(
 				msg.UnreadReaction = false
 				msg.MarshalUnreadReactionIds(result, a)
 				d.subscription.UpdateReactionReadStatus(msg.Id, false)
-				d.subscription.ForceReloadState()
+				d.subscription.ForceReloadReactionState()
 			} else {
 				msg.MarshalUnreadReactionIds(result, a)
 			}

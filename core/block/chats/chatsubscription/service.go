@@ -66,7 +66,7 @@ type Manager interface {
 	UpdateSyncStatus(messageIds []string, isSynced bool)
 	UpdateReactionReadStatus(msgId string, unread bool)
 	ReadReactions(newOrderId string, idsModified []string)
-	ForceReloadState()
+	ForceReloadReactionState()
 }
 
 type Service interface {
