@@ -30,6 +30,12 @@ type stateEntry struct {
 	events      []eventAction
 }
 
+func (e *stateEntry) addEvent(action eventAction) {
+	if !slices.Contains(e.events, action) {
+		e.events = append(e.events, action)
+	}
+}
+
 type messagesState struct {
 	limit int
 
@@ -124,11 +130,11 @@ func (s *messagesState) applyUpdate(msgId string, msg *model.ChatMessage) {
 	prev, ok := s.messagesByIds[msgId]
 	if ok {
 		prev.msg = msg
-		prev.events = append(prev.events, eventActionUpdate)
+		prev.addEvent(eventActionUpdate)
 	} else {
 		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
 			entry.msg = msg
-			entry.events = append(entry.events, eventActionUpdate)
+			entry.addEvent(eventActionUpdate)
 		})
 	}
 }
@@ -138,7 +144,7 @@ func (s *messagesState) applyUpdateMentionReadStatus(msgIds []string, isRead boo
 		prev, ok := s.messagesByIds[id]
 		if ok {
 			prev.msg.MentionRead = isRead
-			prev.events = append(prev.events, eventActionMentionRead)
+			prev.addEvent(eventActionMentionRead)
 		}
 	}
 }
@@ -148,7 +154,7 @@ func (s *messagesState) applyUpdateMessageReadStatus(msgIds []string, isRead boo
 		prev, ok := s.messagesByIds[id]
 		if ok {
 			prev.msg.Read = isRead
-			prev.events = append(prev.events, eventActionMessageRead)
+			prev.addEvent(eventActionMessageRead)
 		}
 	}
 }
@@ -157,11 +163,11 @@ func (s *messagesState) applyUpdateReactions(msgId string, msg *model.ChatMessag
 	prev, ok := s.messagesByIds[msgId]
 	if ok {
 		prev.msg.Reactions = msg.Reactions
-		prev.events = append(prev.events, eventActionUpdateReactions)
+		prev.addEvent(eventActionUpdateReactions)
 	} else {
 		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
 			entry.msg.Reactions = msg.Reactions
-			entry.events = append(entry.events, eventActionUpdateReactions)
+			entry.addEvent(eventActionUpdateReactions)
 		})
 	}
 }
@@ -170,11 +176,11 @@ func (s *messagesState) applyUpdatePinned(msgId string, msg *model.ChatMessage) 
 	prev, ok := s.messagesByIds[msgId]
 	if ok {
 		prev.msg.Pinned = msg.Pinned
-		prev.events = append(prev.events, eventActionMessagePinned)
+		prev.addEvent(eventActionMessagePinned)
 	} else {
 		s.updateOutOfWindowEvent(msgId, func(entry *stateEntry) {
 			entry.msg.Pinned = msg.Pinned
-			entry.events = append(entry.events, eventActionMessagePinned)
+			entry.addEvent(eventActionMessagePinned)
 		})
 	}
 }
@@ -197,7 +203,7 @@ func (s *messagesState) applyUpdateReactionReadStatus(msgIds []string, isUnread 
 		prev, ok := s.messagesByIds[id]
 		if ok {
 			prev.msg.UnreadReaction = isUnread
-			prev.events = append(prev.events, eventActionReactionRead)
+			prev.addEvent(eventActionReactionRead)
 		}
 	}
 }
@@ -207,7 +213,7 @@ func (s *messagesState) applyUpdateMessageSyncStatus(msgIds []string, isSynced b
 		prev, ok := s.messagesByIds[id]
 		if ok {
 			prev.msg.Synced = isSynced
-			prev.events = append(prev.events, eventActionMessageSynced)
+			prev.addEvent(eventActionMessageSynced)
 		}
 	}
 }

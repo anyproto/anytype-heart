@@ -233,13 +233,14 @@ func (d *ChatHandler) handleReactionsModify(
 		ch.Change.Creator != d.currentIdentity &&
 		len(key.KeyPath) > 1 {
 		emoji := key.KeyPath[1]
+
 		wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
 		isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)
 		if !wasPresent && isPresent {
 			// New reaction added
 			msg.AddUnreadReaction(emoji, identity, chatmodel.ReactionChangeEntry{
 				ChangeId: ch.Change.Id,
-				OrderId:  msg.OrderId,
+				OrderId:  ch.Change.Order,
 			})
 			msg.UnreadReaction = true
 			msg.MarshalUnreadReactionIds(result, a)

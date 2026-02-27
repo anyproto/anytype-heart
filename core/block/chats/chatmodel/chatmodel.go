@@ -38,18 +38,18 @@ func (t CounterType) DiffManagerName() string {
 }
 
 const (
-	CreatorKey              = "creator"
-	CreatedAtKey            = "createdAt"
-	ModifiedAtKey           = "modifiedAt"
-	ReactionsKey            = "reactions"
-	ContentKey              = "content"
-	ReadKey                 = "read"
-	MentionReadKey          = "mentionRead"
-	HasMentionKey           = "hasMention"
-	StateIdKey              = "stateId"
-	OrderKey                = "_o"
-	SyncedKey               = "synced"
-	PinnedKey               = "pinned"
+	CreatorKey                 = "creator"
+	CreatedAtKey               = "createdAt"
+	ModifiedAtKey              = "modifiedAt"
+	ReactionsKey               = "reactions"
+	ContentKey                 = "content"
+	ReadKey                    = "read"
+	MentionReadKey             = "mentionRead"
+	HasMentionKey              = "hasMention"
+	StateIdKey                 = "stateId"
+	OrderKey                   = "_o"
+	SyncedKey                  = "synced"
+	PinnedKey                  = "pinned"
 	ReactionUnreadChangeIdsKey = "rUnreadChIds"
 	ReactionUnreadOrderIdKey   = "rUnreadOrdId"
 )
@@ -155,7 +155,6 @@ func (m *Message) pickOrderId() string {
 	}
 	return minOrderId
 }
-
 
 type MessagesGetter interface {
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error)
