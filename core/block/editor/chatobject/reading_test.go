@@ -193,7 +193,7 @@ func TestUnreadReactionTracking(t *testing.T) {
 		thirdPerson   = "thirdPerson"
 	)
 
-	t.Run("reaction from another user marks unread and tracks in rReadChIds", func(t *testing.T) {
+	t.Run("reaction from another user marks unread and tracks in rUnreadChIds", func(t *testing.T) {
 		ctx := context.Background()
 		fx := newFixture(t)
 
@@ -323,7 +323,7 @@ func TestUnreadReactionTracking(t *testing.T) {
 		require.Len(t, changeIds, 2)
 
 		// Full clear — empty maxOrderId clears all
-		_, err = fx.repository.ClearUnreadReactions(ctx, changeIds, "")
+		_, err = fx.repository.ClearUnreadReactions(ctx, "")
 		require.NoError(t, err)
 
 		msg, err = fx.GetMessageById(ctx, messageId)

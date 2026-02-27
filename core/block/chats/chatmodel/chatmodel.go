@@ -50,9 +50,8 @@ const (
 	OrderKey                = "_o"
 	SyncedKey               = "synced"
 	PinnedKey               = "pinned"
-	ReactionReadChangeIdKey  = "rReadChId"
-	ReactionReadChangeIdsKey = "rReadChIds"
-	ReactionReadOrderIdKey   = "rReadOrdId"
+	ReactionUnreadChangeIdsKey = "rUnreadChIds"
+	ReactionUnreadOrderIdKey   = "rUnreadOrdId"
 )
 
 // ReactionChangeEntry tracks the change that added an unread reaction.
@@ -115,7 +114,7 @@ func (m *Message) RemoveUnreadReaction(emoji, identity string) (empty bool) {
 }
 
 // MarshalUnreadReactionIds serializes the UnreadReactionIds to the given anyenc value,
-// updating rReadChIds, rReadChId, and rReadOrdId fields.
+// updating rUnreadChIds and rUnreadOrdId fields.
 func (m *Message) MarshalUnreadReactionIds(v *anyenc.Value, arena *anyenc.Arena) {
 	if len(m.UnreadReactionIds) > 0 {
 		chIds := arena.NewObject()
@@ -131,34 +130,32 @@ func (m *Message) MarshalUnreadReactionIds(v *anyenc.Value, arena *anyenc.Arena)
 			}
 			chIds.Set(emoji, emojiObj)
 		}
-		v.Set(ReactionReadChangeIdsKey, chIds)
-		v.Set(ReactionReadChangeIdKey, arena.NewString(m.PickRemainingChangeId()))
+		v.Set(ReactionUnreadChangeIdsKey, chIds)
 		if orderId := m.pickOrderId(); orderId != "" {
-			v.Set(ReactionReadOrderIdKey, arena.NewString(orderId))
+			v.Set(ReactionUnreadOrderIdKey, arena.NewString(orderId))
 		} else {
-			v.Del(ReactionReadOrderIdKey)
+			v.Del(ReactionUnreadOrderIdKey)
 		}
 	} else {
-		v.Del(ReactionReadChangeIdsKey)
-		v.Del(ReactionReadChangeIdKey)
-		v.Del(ReactionReadOrderIdKey)
+		v.Del(ReactionUnreadChangeIdsKey)
+		v.Del(ReactionUnreadOrderIdKey)
 	}
 }
 
-// pickOrderId returns the OrderId from the message itself (for indexing purposes).
+// pickOrderId returns the minimum OrderId among all unread reaction entries (for indexing purposes).
+// This allows query-level filtering: if min(OrderId) > maxOrderId, no entries need clearing.
 func (m *Message) pickOrderId() string {
-	return m.ChatMessage.GetOrderId()
-}
-
-// PickRemainingChangeId returns an arbitrary change ID from the unread reactions map.
-func (m *Message) PickRemainingChangeId() string {
+	var minOrderId string
 	for _, identities := range m.UnreadReactionIds {
 		for _, entry := range identities {
-			return entry.ChangeId
+			if entry.OrderId != "" && (minOrderId == "" || entry.OrderId < minOrderId) {
+				minOrderId = entry.OrderId
+			}
 		}
 	}
-	return ""
+	return minOrderId
 }
+
 
 type MessagesGetter interface {
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error)
@@ -393,7 +390,7 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Synced:                    m.val.GetBool(SyncedKey),
 			HasMention:                m.val.GetBool(HasMentionKey),
 			Pinned:                    m.val.GetBool(PinnedKey),
-			UnreadReaction:            len(unreadReactionIds) > 0 || m.val.GetString(ReactionReadChangeIdKey) != "",
+			UnreadReaction:            len(unreadReactionIds) > 0 || m.val.GetString(ReactionUnreadOrderIdKey) != "",
 			LastUnreadReactionOrderId: lastUnreadReactionOrderId,
 		},
 		UnreadReactionIds: unreadReactionIds,
@@ -401,9 +398,9 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 }
 
 func (m *messageUnmarshaller) unreadReactionIdsToModel() (map[string]map[string]ReactionChangeEntry, string) {
-	lastUnreadReactionOrderId := m.val.GetString(ReactionReadOrderIdKey)
+	lastUnreadReactionOrderId := m.val.GetString(ReactionUnreadOrderIdKey)
 
-	chIdsObj := m.val.GetObject(ReactionReadChangeIdsKey)
+	chIdsObj := m.val.GetObject(ReactionUnreadChangeIdsKey)
 	if chIdsObj == nil {
 		return nil, lastUnreadReactionOrderId
 	}

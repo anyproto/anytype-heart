@@ -142,7 +142,7 @@ func (s *storeObject) markReadReactions(changeIds []string) error {
 		}
 	}
 
-	idsModified, err := s.repository.ClearUnreadReactions(s.componentCtx, changeIds, maxOrderId)
+	idsModified, err := s.repository.ClearUnreadReactions(s.componentCtx, maxOrderId)
 	if err != nil {
 		return fmt.Errorf("clear unread reactions: %w", err)
 	}

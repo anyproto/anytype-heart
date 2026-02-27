@@ -195,23 +195,6 @@ func TestRemoveUnreadReaction(t *testing.T) {
 	})
 }
 
-func TestPickRemainingChangeId(t *testing.T) {
-	t.Run("empty map returns empty string", func(t *testing.T) {
-		msg := &Message{ChatMessage: &model.ChatMessage{}}
-
-		assert.Equal(t, "", msg.PickRemainingChangeId())
-	})
-
-	t.Run("returns a change id from the map", func(t *testing.T) {
-		msg := &Message{ChatMessage: &model.ChatMessage{}}
-		msg.AddUnreadReaction("👍", "user1", ReactionChangeEntry{ChangeId: "ch1"})
-		msg.AddUnreadReaction("❤️", "user2", ReactionChangeEntry{ChangeId: "ch2"})
-
-		got := msg.PickRemainingChangeId()
-
-		assert.Contains(t, []string{"ch1", "ch2"}, got)
-	})
-}
 
 func TestCloneUnreadReactionIds(t *testing.T) {
 	t.Run("clone with nil UnreadReactionIds", func(t *testing.T) {
@@ -323,8 +306,8 @@ func TestMarshalUnmarshalUnreadReactionIds(t *testing.T) {
 		assert.False(t, got.UnreadReaction)
 	})
 
-	t.Run("UnreadReaction true from legacy rReadChId only", func(t *testing.T) {
-		// given: manually set rReadChId without rReadChIds (backward compat)
+	t.Run("UnreadReaction true from rUnreadOrdId without rUnreadChIds", func(t *testing.T) {
+		// given: manually set rUnreadOrdId without rUnreadChIds (e.g. data inconsistency)
 		arena := &anyenc.Arena{}
 		v := arena.NewObject()
 		msg := &Message{
@@ -335,7 +318,7 @@ func TestMarshalUnmarshalUnreadReactionIds(t *testing.T) {
 			},
 		}
 		msg.MarshalAnyenc(v, arena)
-		v.Set(ReactionReadChangeIdKey, arena.NewString("legacy-change-id"))
+		v.Set(ReactionUnreadOrderIdKey, arena.NewString("order1"))
 
 		// when
 		got, err := UnmarshalMessage(v)
@@ -344,25 +327,5 @@ func TestMarshalUnmarshalUnreadReactionIds(t *testing.T) {
 		require.NoError(t, err)
 		assert.Nil(t, got.UnreadReactionIds)
 		assert.True(t, got.UnreadReaction)
-	})
-
-	t.Run("rReadChId is set from PickRemainingChangeId", func(t *testing.T) {
-		// given
-		msg := &Message{
-			ChatMessage: &model.ChatMessage{
-				Id:      "msg1",
-				Creator: "creator1",
-				Message: &model.ChatMessageMessageContent{Text: "hello"},
-			},
-		}
-		msg.AddUnreadReaction("👍", "user1", ReactionChangeEntry{ChangeId: "ch1"})
-
-		// when
-		arena := &anyenc.Arena{}
-		v := arena.NewObject()
-		msg.MarshalAnyenc(v, arena)
-
-		// then: rReadChId should be set to the change id
-		assert.Equal(t, "ch1", v.GetString(ReactionReadChangeIdKey))
 	})
 }

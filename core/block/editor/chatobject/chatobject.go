@@ -387,8 +387,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	obj.Del(chatmodel.ReadKey)
 	obj.Del(chatmodel.MentionReadKey)
 	obj.Del(chatmodel.SyncedKey)
-	obj.Del(chatmodel.ReactionReadChangeIdKey)
-	obj.Del(chatmodel.ReactionReadChangeIdsKey)
+	obj.Del(chatmodel.ReactionUnreadChangeIdsKey)
 
 	builder := storestate.Builder{}
 	err = builder.Create(CollectionName, storestate.IdFromChange, obj)

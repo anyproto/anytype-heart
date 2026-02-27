@@ -18,7 +18,7 @@ var (
 	filterSyncedTrue  = query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterSyncedFalse = query.Not{Filter: filterSyncedTrue}
 
-	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionReadChangeIdKey}, Filter: query.Exists{}}
+	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.Exists{}}
 )
 
 type readHandler interface {
@@ -140,22 +140,28 @@ type reactionReadModifier struct {
 }
 
 func (m *reactionReadModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
-	msgOrderId := v.GetString(chatmodel.ReactionReadOrderIdKey)
+	if m.maxOrderId == "" {
+		// Full clear — maxOrderId empty means clear everything
+		v.Del(chatmodel.ReactionUnreadChangeIdsKey)
+		v.Del(chatmodel.ReactionUnreadOrderIdKey)
+		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
+		return v, true, nil
+	}
 
-	if m.maxOrderId == "" || msgOrderId <= m.maxOrderId {
-		// Full clear — all reactions on this message are covered
-		v.Del(chatmodel.ReactionReadChangeIdKey)
-		v.Del(chatmodel.ReactionReadChangeIdsKey)
-		v.Del(chatmodel.ReactionReadOrderIdKey)
+	msg, err := chatmodel.UnmarshalMessage(v)
+	if err != nil {
+		return v, false, err
+	}
+
+	// Message with rUnreadOrdId but no structured entries — full clear
+	if len(msg.UnreadReactionIds) == 0 {
+		v.Del(chatmodel.ReactionUnreadChangeIdsKey)
+		v.Del(chatmodel.ReactionUnreadOrderIdKey)
 		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
 		return v, true, nil
 	}
 
 	// Partial clear — remove only entries with OrderId <= maxOrderId
-	msg, err := chatmodel.UnmarshalMessage(v)
-	if err != nil {
-		return v, false, err
-	}
 	changed := false
 	for emoji, identities := range msg.UnreadReactionIds {
 		for identity, entry := range identities {
