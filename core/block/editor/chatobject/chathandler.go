@@ -228,45 +228,60 @@ func (d *ChatHandler) handleReactionsModify(
 	}
 	// TODO Count validation
 
-	// Detect reaction changes on my message from another user
-	if msg.Creator == d.currentIdentity &&
-		ch.Change.Creator != d.currentIdentity &&
-		len(key.KeyPath) > 1 {
+	// Track unread reaction changes on current user's messages from other users
+	if msg.Creator == d.currentIdentity && ch.Change.Creator != d.currentIdentity && len(key.KeyPath) > 1 {
 		emoji := key.KeyPath[1]
-
 		wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
 		isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)
-		if !wasPresent && isPresent {
-			// New reaction added
-			msg.AddUnreadReaction(emoji, identity, chatmodel.ReactionChangeEntry{
-				ChangeId: ch.Change.Id,
-				OrderId:  ch.Change.Order,
-			})
-			msg.UnreadReaction = true
-			msg.MarshalUnreadReactionIds(result, a)
 
-			d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
-				if msg.OrderId > state.UnreadReactionOrderId {
-					state.UnreadReactionOrderId = msg.OrderId
-				}
-				return state
-			})
-			d.subscription.UpdateReactionReadStatus(msg.Id, true)
-		} else if wasPresent && !isPresent {
-			// Reaction removed — clean up tracking
-			if empty := msg.RemoveUnreadReaction(emoji, identity); empty {
-				msg.UnreadReaction = false
-				msg.MarshalUnreadReactionIds(result, a)
-				d.subscription.UpdateReactionReadStatus(msg.Id, false)
-				d.subscription.ForceReloadReactionState()
-			} else {
-				msg.MarshalUnreadReactionIds(result, a)
-			}
+		switch {
+		case !wasPresent && isPresent:
+			d.onReactionAdded(ch, msg, emoji, identity, result, a)
+		case wasPresent && !isPresent:
+			d.onReactionRemoved(msg, emoji, identity, result, a)
 		}
 	}
 
 	d.subscription.UpdateReactions(msg)
 	return nil
+}
+
+func (d *ChatHandler) onReactionAdded(
+	ch storestate.ChangeOp,
+	msg *chatmodel.Message,
+	emoji, identity string,
+	result *anyenc.Value,
+	a *anyenc.Arena,
+) {
+	msg.AddUnreadReaction(emoji, identity, chatmodel.ReactionChangeEntry{
+		ChangeId: ch.Change.Id,
+		OrderId:  ch.Change.Order,
+	})
+	msg.UnreadReaction = true
+	msg.MarshalUnreadReactionIds(result, a)
+
+	d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+		if msg.OrderId > state.UnreadReactionOrderId {
+			state.UnreadReactionOrderId = msg.OrderId
+		}
+		return state
+	})
+	d.subscription.UpdateReactionReadStatus(msg.Id, true)
+}
+
+func (d *ChatHandler) onReactionRemoved(
+	msg *chatmodel.Message,
+	emoji, identity string,
+	result *anyenc.Value,
+	a *anyenc.Arena,
+) {
+	empty := msg.RemoveUnreadReaction(emoji, identity)
+	msg.MarshalUnreadReactionIds(result, a)
+	if empty {
+		msg.UnreadReaction = false
+		d.subscription.UpdateReactionReadStatus(msg.Id, false)
+		d.subscription.ForceReloadReactionState()
+	}
 }
 
 func isIdentityInReactions(reactions *model.ChatMessageReactions, emoji string, identity string) bool {
