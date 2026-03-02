@@ -1489,7 +1489,7 @@ func (sb *smartBlock) collectLinksFromRelations(st *state.State, objectId string
 		}
 		format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
 		if err != nil {
-			log.Warnf("failed to get relation format for key %s: %v", key, err)
+			log.Debugf("failed to get relation format for key %s: %v", key, err)
 			format = guessRelationFormatFromValue(val)
 		}
 
