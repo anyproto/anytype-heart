@@ -2,14 +2,15 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
+	"anyproto/anytype-agent-runtime/anyruntime"
+	agentrt "anyproto/anytype-agent-runtime/runtime"
+	"anyproto/anytype-agent-runtime/runtime/hostfn"
+
 	anystore "github.com/anyproto/any-store"
-	"github.com/anyproto/anytype-heart/cmd/assistant/runtime"
-	"github.com/anyproto/anytype-heart/core"
-	apicore "github.com/anyproto/anytype-heart/core/api/core"
-	apiservice "github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -24,6 +25,8 @@ var log = logging.Logger("assistant").Desugar()
 type DbProvider interface {
 	GetCommonDb() anystore.DB
 }
+
+const mainProgram = "private:init_agent@v1"
 
 func run() error {
 	if len(os.Args) < 3 {
@@ -61,14 +64,12 @@ func run() error {
 		return fmt.Errorf("SubscribeToMessagePreviews: %w", err)
 	}
 
-	// Create middleware wrapper for API service
-	mw := core.NewWithApplicationService(app.appService)
-	crossSpaceSub := getService[apicore.CrossSpaceSubscriptionService](app)
-	svc := apiservice.NewService(mw, app.account.Info.GatewayUrl, app.account.Info.TechSpaceId, crossSpaceSub)
-	// Initialize caches to populate properties, types, and tags
-	if err := svc.InitializeAllCaches(); err != nil {
-		fmt.Printf("InitializeAllCaches err: %s\n", err.Error())
-	}
+	apiBaseUrl := app.config.GetApiBaseUrl()
+	privateSpaceId := os.Getenv("ANYTYPE_PRIVATE_SPACE_ID")
+	claudeKey := os.Getenv("CLAUDE_API_KEY")
+
+	fmt.Printf("API base URL: %s\n", apiBaseUrl)
+	fmt.Printf("Private space ID: %s\n", privateSpaceId)
 
 	for {
 		msg, err := app.eventQueue.WaitOne(ctx)
@@ -76,48 +77,133 @@ func run() error {
 			return fmt.Errorf("wait event: %w", err)
 		}
 		chatAddEv := msg.GetChatAdd()
-		if chatAddEv != nil && chatAddEv.Message.Creator != app.config.AccountId {
+		if chatAddEv == nil || chatAddEv.Message.Creator == app.config.AccountId {
+			continue
+		}
 
-			chatId, currentSpaceId, err := chatService.FindChatByMessageId(ctx, chatAddEv.Id)
-			if err != nil {
-				fmt.Printf("findChatByMessageId err: %s\n", err.Error())
-				continue
-			}
+		chatId, currentSpaceId, err := chatService.FindChatByMessageId(ctx, chatAddEv.Id)
+		if err != nil {
+			fmt.Printf("findChatByMessageId err: %s\n", err.Error())
+			continue
+		}
 
-			reply, trace, err := runtime.HandleChatMsg(ctx, runtime.HandleChatMsgParams{
-				ChatAddEv:      chatAddEv,
-				OpenAIKey:      app.config.OpenAIKey,
-				ClaudeKey:      app.config.ClaudeKey,
-				ApiService:     svc,
-				CurrentSpaceId: currentSpaceId,
-				MainProgram:    "assistant@v2", // TODO: make configurable
-				ApiBaseUrl:     app.config.GetApiBaseUrl(),
-			})
-			if trace != nil {
-				fmt.Printf("-- trace:\n%s\n", runtime.TraceToJSON(trace))
-			}
-			if err != nil {
-				fmt.Printf("handleChatMsg err: %s\n", err.Error())
-				continue
-			}
+		fmt.Printf("-- message in chat %s (space %s)\n", chatId, currentSpaceId)
 
-			todoCtx := session.NewContext()
-			fmt.Printf("-- replying to chat:  %s\n", chatId)
-			_, err = chatService.AddMessage(ctx, todoCtx, chatId, &chatmodel.Message{
-				ChatMessage: &model.ChatMessage{
-					Message: &model.ChatMessageMessageContent{
-						Text: reply,
+		// Create a new runtime for each message
+		rt, err := createMessageRuntime(ctx, chatService, chatId, currentSpaceId, apiBaseUrl, privateSpaceId, claudeKey)
+		if err != nil {
+			fmt.Printf("create runtime err: %s\n", err.Error())
+			continue
+		}
+
+		quotedText, _ := json.Marshal(chatAddEv.Message.Message.Text)
+		quotedIdentity, _ := json.Marshal(chatAddEv.Message.Creator)
+		quotedSpaceId, _ := json.Marshal(currentSpaceId)
+		quotedApiBaseUrl, _ := json.Marshal(apiBaseUrl)
+
+		wrapperSource := fmt.Sprintf(`import { main as entryMain } from %q;
+export function main() {
+  return entryMain({ text: %s, identity: %s, spaceId: %s, apiBaseUrl: %s, verbose: false });
+}`, mainProgram, string(quotedText), string(quotedIdentity), string(quotedSpaceId), string(quotedApiBaseUrl))
+
+		res, err := rt.EvalToString("__wrapper__", wrapperSource, nil)
+		if res != nil {
+			anyruntime.PrintTrace(res.Trace)
+			if res.Error != "" {
+				fmt.Printf("-- runtime error: %s\n", res.Error)
+			}
+		}
+		if err != nil {
+			fmt.Printf("runtime eval err: %s\n", err.Error())
+			continue
+		}
+
+		// If the program returned a string (old-style), send it as a reply too
+		if res != nil && res.Result != nil {
+			if reply, ok := res.Result.(string); ok && reply != "" {
+				todoCtx := session.NewContext()
+				fmt.Printf("-- replying to chat: %s\n", chatId)
+				_, err = chatService.AddMessage(ctx, todoCtx, chatId, &chatmodel.Message{
+					ChatMessage: &model.ChatMessage{
+						Message: &model.ChatMessageMessageContent{
+							Text: reply,
+						},
 					},
-				},
-			})
-			if err != nil {
-				fmt.Printf("response in chat: %s", err.Error())
-				continue
+				})
+				if err != nil {
+					fmt.Printf("response in chat err: %s\n", err.Error())
+					continue
+				}
 			}
-
 		}
 	}
+}
 
+// createMessageRuntime creates a new anytype-agent-runtime for a single message,
+// following the same pattern as anyruntime.CreateAnytypeJSRuntime but with:
+// - chatReply wired to send messages to chat via chatService
+// - per-message space ID
+// - API URL pointing to our local API server
+func createMessageRuntime(ctx context.Context, chatService chats.Service, chatId string, spaceId string, apiBaseUrl string, privateSpaceId string, claudeKey string) (agentrt.Runtime, error) {
+	rt, err := agentrt.NewSobekRuntime()
+	if err != nil {
+		return nil, fmt.Errorf("create sobek runtime: %w", err)
+	}
+
+	rt.SetEffectResolver("fetch", hostfn.Fetch)
+	rt.SetEffectResolver("sleep", hostfn.Sleep)
+
+	// Wire chatReply to actually send messages to the chat
+	rt.SetEffectResolver("chatReply", newChatReplyEffect(ctx, chatService, chatId))
+
+	rt.EnableConsole()
+	rt.EnableJSEval()
+
+	rt.SetGlobal("env", map[string]any{
+		"ANYTYPE_API_URL":          apiBaseUrl,
+		"ANYTYPE_API_KEY":          "", // auth disabled via ANYTYPE_API_DISABLE_AUTH=1
+		"ANYTYPE_SPACE_ID":         spaceId,
+		"ANYTYPE_PRIVATE_SPACE_ID": privateSpaceId,
+		"CLAUDE_API_KEY":           claudeKey,
+	})
+
+	loader := anyruntime.NewAnytypeLoader(anyruntime.AnytypeLoaderConfig{
+		BaseURL:        apiBaseUrl,
+		SpaceID:        spaceId,
+		PrivateSpaceID: privateSpaceId,
+		APIKey:         "", // auth disabled
+	})
+	rt.SetModuleResolver(loader)
+
+	return rt, nil
+}
+
+// newChatReplyEffect returns a chatReply effect handler that sends messages
+// to the given chat via chatService.AddMessage.
+func newChatReplyEffect(ctx context.Context, chatService chats.Service, chatId string) func(tr *agentrt.TraceRecord, args ...any) any {
+	return func(tr *agentrt.TraceRecord, args ...any) any {
+		if len(args) == 0 {
+			return nil
+		}
+		msg := fmt.Sprintf("%v", args[0])
+		tr.SetInput(msg)
+
+		fmt.Printf("-- chatReply to %s: %s\n", chatId, msg)
+
+		todoCtx := session.NewContext()
+		_, err := chatService.AddMessage(ctx, todoCtx, chatId, &chatmodel.Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{
+					Text: msg,
+				},
+			},
+		})
+		if err != nil {
+			fmt.Printf("chatReply err: %s\n", err.Error())
+			return map[string]any{"error": err.Error()}
+		}
+		return nil
+	}
 }
 
 func main() {

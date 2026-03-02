@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -38,13 +39,34 @@ type assistantConfig struct {
 	OpenAIKey      string
 	ClaudeKey      string
 	ApiListenAddr  string // defaults to 127.0.0.1:31009
+
+	resolvedListenAddr string // runtime-allocated, not serialized (unexported)
 }
 
 func (c *assistantConfig) GetApiListenAddr() string {
 	if c.ApiListenAddr != "" {
 		return c.ApiListenAddr
 	}
-	return defaultApiListenAddr
+	if c.resolvedListenAddr != "" {
+		return c.resolvedListenAddr
+	}
+	// Find a free port to avoid conflicts with other Anytype instances
+	port, err := findFreePort()
+	if err != nil {
+		c.resolvedListenAddr = defaultApiListenAddr
+	} else {
+		c.resolvedListenAddr = fmt.Sprintf("127.0.0.1:%d", port)
+	}
+	return c.resolvedListenAddr
+}
+
+func findFreePort() (int, error) {
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
 func (c *assistantConfig) GetApiBaseUrl() string {
@@ -147,6 +169,10 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 	eventQueue := createEventQueue(ctx, app)
 
 	// Set middleware params for API server before creating account
+	if config == nil {
+		config = &assistantConfig{}
+	}
+
 	mw := core.NewWithApplicationService(app)
 	api.SetMiddlewareParams(mw)
 
@@ -157,10 +183,6 @@ func createAccount(ctx context.Context, app *application.Service, repoDir string
 	})
 	if err != nil {
 		return nil, fmt.Errorf("account create: %w", err)
-	}
-
-	if config == nil {
-		config = &assistantConfig{}
 	}
 
 	config.AccountId = acc.Id
