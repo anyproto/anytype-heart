@@ -79,7 +79,7 @@ func (s *dsObjectStore) getObjectsWithObjectInRelation(details *domain.Details, 
 	recs, err := s.queryAnyStore(database.FiltersAnd{
 		database.FilterAllIn{Key: domain.RelationKey(relationKey), Strings: []string{id}},
 		params.FilterObj,
-	}, params.Order, uint(limit), 0)
+	}, params.Order, uint(limit), 0) //nolint:gosec
 	if err != nil {
 		log.Errorf("queryAnyStore failed to get objects with object in relation: %v", err)
 		return nil
