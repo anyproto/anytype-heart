@@ -45,28 +45,20 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 }
 
 // getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
-func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey domain.RelationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
-	f := database.FiltersAnd{
-		database.FilterAllIn{Key: relationKey, Strings: []string{objectId}},
-		params.FilterObj,
-	}
-	return s.queryAnyStore(f, params.Order, uint(limit), 0)
-}
-
-func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
-	var injectedResults []database.Record
-	id := details.GetString(bundle.RelationKeyId)
+func (s *dsObjectStore) getObjectsWithObjectInRelation(details *domain.Details, score float64, path domain.ObjectPath, limit int, params database.Filters) []database.Record {
 	if path.RelationKey != bundle.RelationKeyName.String() && path.RelationKey != bundle.RelationKeyPluralName.String() {
 		// inject only in case we match the name
 		return nil
 	}
+
 	var (
 		relationKey string
 		err         error
+		id          = details.GetString(bundle.RelationKeyId)
+		isDeleted   = details.GetBool(bundle.RelationKeyIsDeleted)
+		isArchived  = details.GetBool(bundle.RelationKeyIsArchived)
 	)
 
-	isDeleted := details.GetBool(bundle.RelationKeyIsDeleted)
-	isArchived := details.GetBool(bundle.RelationKeyIsArchived)
 	if isDeleted || isArchived {
 		return nil
 	}
@@ -78,15 +70,22 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 		relationKey = details.GetString(bundle.RelationKeyRelationKey)
 	case model.ObjectType_objectType:
 		relationKey = bundle.RelationKeyType.String()
+	case model.ObjectType_basic, model.ObjectType_note, model.ObjectType_profile, model.ObjectType_todo, model.ObjectType_participant:
+		relationKey = bundle.RelationKeyLinks.String()
 	default:
 		return nil
 	}
-	recs, err := s.getObjectsWithObjectInRelation(domain.RelationKey(relationKey), id, maxLength, params)
+
+	recs, err := s.queryAnyStore(database.FiltersAnd{
+		database.FilterAllIn{Key: domain.RelationKey(relationKey), Strings: []string{id}},
+		params.FilterObj,
+	}, params.Order, uint(limit), 0)
 	if err != nil {
-		log.Errorf("getInjectedResults failed to get objects with object in relation: %v", err)
+		log.Errorf("queryAnyStore failed to get objects with object in relation: %v", err)
 		return nil
 	}
 
+	injectedResults := make([]database.Record, 0, len(recs))
 	for _, rec := range recs {
 		relDetails := pbtypes.StructFilterKeys(details.ToProto(), []string{
 			bundle.RelationKeyId.String(),
@@ -108,7 +107,7 @@ func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float6
 			Meta:    metaInj,
 		})
 
-		if len(injectedResults) == maxLength {
+		if len(injectedResults) == limit {
 			break
 		}
 	}
@@ -242,7 +241,9 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			}
 		}
 
-		injectedResults := s.getInjectedResults(details, res.Score, res.Path, limit, params)
+		// fulltext does not search by names of objects in tag/status/object details,
+		// so we need to query those objects that have objects got by fulltext as values in their details
+		injectedResults := s.getObjectsWithObjectInRelation(details, res.Score, res.Path, limit, params)
 		if len(injectedResults) == 0 {
 			continue
 		}
