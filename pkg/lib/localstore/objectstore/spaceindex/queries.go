@@ -242,7 +242,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			}
 		}
 
-		injectedResults := s.getInjectedResults(details, res.Score, res.Path, 10, params)
+		injectedResults := s.getInjectedResults(details, res.Score, res.Path, limit, params)
 		if len(injectedResults) == 0 {
 			continue
 		}
