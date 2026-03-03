@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
@@ -107,6 +108,10 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	info, err := mustService[account.Service](mw).GetSpaceInfo(ctx, req.SpaceId)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
+			cfg := mustService[*config.Config](mw)
+			if cfg.IsLocalOnlyMode() {
+				return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("space is not ready: please try again later"))
+			}
 			return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("space is not ready: check your internet connection and try again later"))
 		}
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
