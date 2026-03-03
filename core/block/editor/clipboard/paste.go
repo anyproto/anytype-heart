@@ -268,8 +268,6 @@ func (p *pasteCtrl) singleRange() (err error) {
 		p.mode.removeSelection = true
 		if wasEmpty && firstPasteText != nil {
 			p.mode.removeSelection = false
-			selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
-			p.ps.Unlink(firstPasteText.Model().Id)
 		}
 	}
 	return
