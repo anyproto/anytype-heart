@@ -1,6 +1,7 @@
 package debug
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"sort"
@@ -27,8 +28,15 @@ type debugParticipant struct {
 	Spaces    []debugParticipantSpace `json:"spaces"`
 }
 
+type debugSpaceSystemObjects struct {
+	SpaceId   string            `json:"spaceId"`
+	SpaceName string            `json:"spaceName"`
+	Objects   map[string]string `json:"objects"`
+}
+
 func (d *debug) DebugRouter(r chi.Router) {
 	r.Get("/participants", utilDebug.JSONHandler(d.debugListParticipants))
+	r.Get("/system_objects", utilDebug.JSONHandler(d.debugListSystemObjects))
 }
 
 func (d *debug) debugListParticipants(req *http.Request) ([]debugParticipant, error) {
@@ -84,6 +92,57 @@ func (d *debug) debugListParticipants(req *http.Request) ([]debugParticipant, er
 	}
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
+	})
+
+	return result, nil
+}
+
+func (d *debug) debugListSystemObjects(req *http.Request) ([]debugSpaceSystemObjects, error) {
+	var result []debugSpaceSystemObjects
+
+	err := d.store.IterateSpaceIndex(func(store spaceindex.Store) error {
+		spaceId := store.SpaceId()
+		spc, err := d.spaceService.Get(context.Background(), spaceId)
+		if err != nil {
+			return nil
+		}
+
+		ids := spc.DerivedIDs()
+		spaceName := d.store.GetSpaceName(spaceId)
+
+		objects := map[string]string{}
+		if ids.Home != "" {
+			objects["home"] = ids.Home
+		}
+		if ids.Archive != "" {
+			objects["archive"] = ids.Archive
+		}
+		if ids.Widgets != "" {
+			objects["widgets"] = ids.Widgets
+		}
+		if ids.Workspace != "" {
+			objects["workspace"] = ids.Workspace
+		}
+		if ids.Profile != "" {
+			objects["profile"] = ids.Profile
+		}
+		if ids.SpaceChat != "" {
+			objects["spaceChat"] = ids.SpaceChat
+		}
+
+		result = append(result, debugSpaceSystemObjects{
+			SpaceId:   spaceId,
+			SpaceName: spaceName,
+			Objects:   objects,
+		})
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("iterate space indexes: %w", err)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].SpaceName < result[j].SpaceName
 	})
 
 	return result, nil
