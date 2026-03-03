@@ -484,6 +484,122 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 	assert.Equal(t, wantEvents, fx.events)
 }
 
+func TestSubscriptionReactionCounters(t *testing.T) {
+	const anotherPerson = "anotherPerson"
+
+	ctx := context.Background()
+	fx := newFixture(t)
+
+	subscribeResp, err := fx.chatSubscriptionService.SubscribeLastMessages(ctx, chatsubscription.SubscribeLastMessagesRequest{
+		ChatObjectId: fx.Id(), SubId: "subId", Limit: 10,
+	})
+	require.NoError(t, err)
+
+	assert.Empty(t, subscribeResp.Messages)
+	assert.Equal(t, &model.ChatState{
+		Messages:    &model.ChatStateUnreadState{},
+		Mentions:    &model.ChatStateUnreadState{},
+		LastStateId: "",
+	}, subscribeResp.ChatState)
+
+	// Add message as testCreator
+	firstMessageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+	require.NoError(t, err)
+	firstMessage, err := fx.GetMessageById(ctx, firstMessageId)
+	require.NoError(t, err)
+
+	// Clear events from message creation
+	fx.events = nil
+
+	// Another person adds a reaction to testCreator's message
+	fx.sourceCreator = anotherPerson
+	fx.accountServiceStub.accountId = anotherPerson
+	_, err = fx.ToggleMessageReaction(ctx, firstMessageId, "👍")
+	require.NoError(t, err)
+
+	wantEvents := []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateReactionReadStatus{
+				ChatUpdateReactionReadStatus: &pb.EventChatUpdateReactionReadStatus{
+					Ids:      []string{firstMessageId},
+					IsUnread: true,
+					SubIds:   []string{"subId"},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateReactions{
+				ChatUpdateReactions: &pb.EventChatUpdateReactions{
+					Id: firstMessageId,
+					Reactions: &model.ChatMessageReactions{
+						Reactions: map[string]*model.ChatMessageReactionsIdentityList{
+							"👍": {
+								Ids: []string{anotherPerson},
+							},
+						},
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages:              &model.ChatStateUnreadState{},
+						Mentions:              &model.ChatStateUnreadState{},
+						LastStateId:           firstMessage.StateId,
+						Order:                 2,
+						UnreadReactionOrderId: firstMessage.OrderId,
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+	}
+	assert.Equal(t, wantEvents, fx.events)
+
+	// Clear events
+	fx.events = nil
+
+	// Switch back to testCreator and mark reactions as read
+	fx.sourceCreator = testCreator
+	fx.accountServiceStub.accountId = testCreator
+	err = fx.MarkReadReactions(ctx)
+	require.NoError(t, err)
+
+	wantEvents = []*pb.EventMessage{
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateReactionReadStatus{
+				ChatUpdateReactionReadStatus: &pb.EventChatUpdateReactionReadStatus{
+					Ids:      []string{firstMessageId},
+					IsUnread: false,
+					SubIds:   []string{"subId"},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatStateUpdate{
+				ChatStateUpdate: &pb.EventChatUpdateState{
+					State: &model.ChatState{
+						Messages:    &model.ChatStateUnreadState{},
+						Mentions:    &model.ChatStateUnreadState{},
+						LastStateId: firstMessage.StateId,
+						Order:       3,
+					},
+					SubIds: []string{"subId"},
+				},
+			},
+		},
+	}
+	assert.Equal(t, wantEvents, fx.events)
+}
+
 func TestSubscriptionWithDeps(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)

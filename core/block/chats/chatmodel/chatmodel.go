@@ -38,28 +38,130 @@ func (t CounterType) DiffManagerName() string {
 }
 
 const (
-	CreatorKey     = "creator"
-	CreatedAtKey   = "createdAt"
-	ModifiedAtKey  = "modifiedAt"
-	ReactionsKey   = "reactions"
-	ContentKey     = "content"
-	ReadKey        = "read"
-	MentionReadKey = "mentionRead"
-	HasMentionKey  = "hasMention"
-	StateIdKey     = "stateId"
-	OrderKey       = "_o"
-	SyncedKey      = "synced"
-	PinnedKey      = "pinned"
+	CreatorKey                 = "creator"
+	CreatedAtKey               = "createdAt"
+	ModifiedAtKey              = "modifiedAt"
+	ReactionsKey               = "reactions"
+	ContentKey                 = "content"
+	ReadKey                    = "read"
+	MentionReadKey             = "mentionRead"
+	HasMentionKey              = "hasMention"
+	StateIdKey                 = "stateId"
+	OrderKey                   = "_o"
+	SyncedKey                  = "synced"
+	PinnedKey                  = "pinned"
+	ReactionUnreadChangeIdsKey = "rUnreadChIds"
+	ReactionUnreadOrderIdKey   = "rUnreadOrdId"
 )
+
+// ReactionChangeEntry tracks the change that added an unread reaction.
+type ReactionChangeEntry struct {
+	ChangeId string
+	OrderId  string
+}
 
 type Message struct {
 	*model.ChatMessage
+
+	// UnreadReactionIds tracks individual unread reactions per message: emoji → identity → entry.
+	// This is a local-only field (not in protobuf), persisted in the store as rUnreadChIds/rUnreadOrdId.
+	//
+	// Each entry records the ChangeId and OrderId of the change that added the reaction.
+	// When the user calls ChatReadReactions(maxOrderId), reactionReadModifier walks the map
+	// and removes only entries with OrderId <= maxOrderId (partial read). If all entries are
+	// removed, both rUnreadChIds and rUnreadOrdId are deleted from the document.
+	//
+	// When a reaction is removed by its author, handleReactionsModify calls RemoveUnreadReaction
+	// to drop that single entry. If the map becomes empty, ForceReloadReactionState is triggered
+	// so the subscription recalculates UnreadReactionOrderId without a full state reload.
+	UnreadReactionIds map[string]map[string]ReactionChangeEntry
 }
 
 func (m *Message) Clone() *Message {
-	return &Message{
+	cloned := &Message{
 		ChatMessage: proto.Clone(m.ChatMessage).(*model.ChatMessage),
 	}
+	if m.UnreadReactionIds != nil {
+		cloned.UnreadReactionIds = make(map[string]map[string]ReactionChangeEntry, len(m.UnreadReactionIds))
+		for emoji, identities := range m.UnreadReactionIds {
+			identitiesCopy := make(map[string]ReactionChangeEntry, len(identities))
+			for id, entry := range identities {
+				identitiesCopy[id] = entry
+			}
+			cloned.UnreadReactionIds[emoji] = identitiesCopy
+		}
+	}
+	return cloned
+}
+
+// AddUnreadReaction records an unread reaction from identity on emoji.
+func (m *Message) AddUnreadReaction(emoji, identity string, entry ReactionChangeEntry) {
+	if m.UnreadReactionIds == nil {
+		m.UnreadReactionIds = make(map[string]map[string]ReactionChangeEntry)
+	}
+	if m.UnreadReactionIds[emoji] == nil {
+		m.UnreadReactionIds[emoji] = make(map[string]ReactionChangeEntry)
+	}
+	m.UnreadReactionIds[emoji][identity] = entry
+}
+
+// RemoveUnreadReaction removes an unread reaction entry. Returns true if the map is now empty.
+func (m *Message) RemoveUnreadReaction(emoji, identity string) (empty bool) {
+	if m.UnreadReactionIds == nil {
+		return true
+	}
+	identities := m.UnreadReactionIds[emoji]
+	if identities == nil {
+		return len(m.UnreadReactionIds) == 0
+	}
+	delete(identities, identity)
+	if len(identities) == 0 {
+		delete(m.UnreadReactionIds, emoji)
+	}
+	return len(m.UnreadReactionIds) == 0
+}
+
+// MarshalUnreadReactionIds serializes the UnreadReactionIds to the given anyenc value,
+// updating rUnreadChIds and rUnreadOrdId fields.
+func (m *Message) MarshalUnreadReactionIds(v *anyenc.Value, arena *anyenc.Arena) {
+	if len(m.UnreadReactionIds) > 0 {
+		chIds := arena.NewObject()
+		for emoji, identities := range m.UnreadReactionIds {
+			emojiObj := arena.NewObject()
+			for identity, entry := range identities {
+				entryObj := arena.NewObject()
+				entryObj.Set("c", arena.NewString(entry.ChangeId))
+				if entry.OrderId != "" {
+					entryObj.Set("o", arena.NewString(entry.OrderId))
+				}
+				emojiObj.Set(identity, entryObj)
+			}
+			chIds.Set(emoji, emojiObj)
+		}
+		v.Set(ReactionUnreadChangeIdsKey, chIds)
+		if orderId := m.pickOrderId(); orderId != "" {
+			v.Set(ReactionUnreadOrderIdKey, arena.NewString(orderId))
+		} else {
+			v.Del(ReactionUnreadOrderIdKey)
+		}
+	} else {
+		v.Del(ReactionUnreadChangeIdsKey)
+		v.Del(ReactionUnreadOrderIdKey)
+	}
+}
+
+// pickOrderId returns the minimum OrderId among all unread reaction entries (for indexing purposes).
+// This allows query-level filtering: if min(OrderId) > maxOrderId, no entries need clearing.
+func (m *Message) pickOrderId() string {
+	var minOrderId string
+	for _, identities := range m.UnreadReactionIds {
+		for _, entry := range identities {
+			if entry.OrderId != "" && (minOrderId == "" || entry.OrderId < minOrderId) {
+				minOrderId = entry.OrderId
+			}
+		}
+	}
+	return minOrderId
 }
 
 type MessagesGetter interface {
@@ -264,6 +366,8 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	} else {
 		marshalTo.Del(PinnedKey)
 	}
+
+	m.MarshalUnreadReactionIds(marshalTo, arena)
 }
 
 func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
@@ -275,25 +379,59 @@ func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
 }
 
 func (m *messageUnmarshaller) toModel() (*Message, error) {
+	unreadReactionIds, lastUnreadReactionOrderId := m.unreadReactionIdsToModel()
 	return &Message{
 		ChatMessage: &model.ChatMessage{
-			Id:               string(m.val.GetStringBytes("id")),
-			Creator:          string(m.val.GetStringBytes(CreatorKey)),
-			CreatedAt:        int64(m.val.GetInt(CreatedAtKey)),
-			ModifiedAt:       int64(m.val.GetInt(ModifiedAtKey)),
-			StateId:          m.val.GetString(StateIdKey),
-			OrderId:          string(m.val.GetStringBytes("_o", "id")),
-			ReplyToMessageId: string(m.val.GetStringBytes("replyToMessageId")),
-			Message:          m.contentToModel(),
-			Read:             m.val.GetBool(ReadKey),
-			MentionRead:      m.val.GetBool(MentionReadKey),
-			Attachments:      m.attachmentsToModel(),
-			Reactions:        m.reactionsToModel(),
-			Synced:           m.val.GetBool(SyncedKey),
-			HasMention:       m.val.GetBool(HasMentionKey),
-			Pinned:           m.val.GetBool(PinnedKey),
+			Id:                        string(m.val.GetStringBytes("id")),
+			Creator:                   string(m.val.GetStringBytes(CreatorKey)),
+			CreatedAt:                 int64(m.val.GetInt(CreatedAtKey)),
+			ModifiedAt:                int64(m.val.GetInt(ModifiedAtKey)),
+			StateId:                   m.val.GetString(StateIdKey),
+			OrderId:                   string(m.val.GetStringBytes("_o", "id")),
+			ReplyToMessageId:          string(m.val.GetStringBytes("replyToMessageId")),
+			Message:                   m.contentToModel(),
+			Read:                      m.val.GetBool(ReadKey),
+			MentionRead:               m.val.GetBool(MentionReadKey),
+			Attachments:               m.attachmentsToModel(),
+			Reactions:                 m.reactionsToModel(),
+			Synced:                    m.val.GetBool(SyncedKey),
+			HasMention:                m.val.GetBool(HasMentionKey),
+			Pinned:                    m.val.GetBool(PinnedKey),
+			UnreadReaction:            len(unreadReactionIds) > 0 || m.val.GetString(ReactionUnreadOrderIdKey) != "",
+			LastUnreadReactionOrderId: lastUnreadReactionOrderId,
 		},
+		UnreadReactionIds: unreadReactionIds,
 	}, nil
+}
+
+func (m *messageUnmarshaller) unreadReactionIdsToModel() (map[string]map[string]ReactionChangeEntry, string) {
+	lastUnreadReactionOrderId := m.val.GetString(ReactionUnreadOrderIdKey)
+
+	chIdsObj := m.val.GetObject(ReactionUnreadChangeIdsKey)
+	if chIdsObj == nil {
+		return nil, lastUnreadReactionOrderId
+	}
+	result := make(map[string]map[string]ReactionChangeEntry)
+	chIdsObj.Visit(func(emoji []byte, emojiVal *anyenc.Value) {
+		emojiObj := emojiVal.GetObject()
+		if emojiObj == nil {
+			return
+		}
+		identities := make(map[string]ReactionChangeEntry)
+		emojiObj.Visit(func(identity []byte, entryVal *anyenc.Value) {
+			identities[string(identity)] = ReactionChangeEntry{
+				ChangeId: entryVal.GetString("c"),
+				OrderId:  entryVal.GetString("o"),
+			}
+		})
+		if len(identities) > 0 {
+			result[string(emoji)] = identities
+		}
+	})
+	if len(result) == 0 {
+		return nil, lastUnreadReactionOrderId
+	}
+	return result, lastUnreadReactionOrderId
 }
 
 func (m *messageUnmarshaller) contentToModel() *model.ChatMessageMessageContent {
