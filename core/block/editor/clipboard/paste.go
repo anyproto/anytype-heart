@@ -44,6 +44,10 @@ type pasteMode struct {
 	textBuf                    string
 }
 
+// Exec runs the paste operation: determines the paste mode via configure, executes the
+// mode-specific handler (multiRange / intoCodeBlock / intoBlock / singleRange), then
+// inserts remaining paste blocks under the selection, removes replaced blocks, normalizes
+// styles, and collects file upload requests.
 func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 	if err = p.configure(req); err != nil {
 		return
@@ -76,6 +80,17 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 	return
 }
 
+// configure determines the paste mode based on the request parameters:
+//   - FocusedBlockId set → singleRange mode (cursor is inside a block). Also sets
+//     IsPartOfBlock = true so that single-text-block paste routes to intoBlock.
+//     If the focused block is Code or a table cell, switches to intoBlockMergeWithoutStyle.
+//   - Multiple selIds → multiRange mode (several blocks selected for replacement).
+//   - Single text block in paste state + IsPartOfBlock → intoBlock mode (merge inline).
+//   - Otherwise stays in singleRange mode (split at cursor, insert paste blocks in between).
+//
+// intoBlockCopyStyle is set to true unless the paste content has Title/Description style
+// or the target is a required block (title, description), in which case the target's
+// style is preserved.
 func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 	if req.SelectedTextRange != nil {
 		p.selRange = *req.SelectedTextRange
@@ -84,6 +99,7 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 	if req.FocusedBlockId != "" {
 		p.selIds = append([]string{req.FocusedBlockId}, p.selIds...)
 		p.mode.singleRange = true
+		req.IsPartOfBlock = true
 		if firstSelText := p.getFirstSelectedText(); firstSelText != nil {
 			p.mode.intoBlockMergeWithoutStyle = firstSelText.Model().GetText().Style == model.BlockContentText_Code ||
 				table.IsTableCell(firstSelText.Model().Id)
@@ -132,6 +148,8 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 	return
 }
 
+// isSpecificStyle returns true if the block has a Title or Description style.
+// Used to prevent copying these internal styles when pasting into regular blocks.
 func isSpecificStyle(block text.Block) bool {
 	if block == nil {
 		return false
@@ -190,6 +208,21 @@ func (p *pasteCtrl) getLastPasteText() (tb text.Block) {
 	return
 }
 
+// singleRange handles pasting when the cursor is inside a single block (FocusedBlockId set)
+// and the paste content has multiple blocks (so intoBlock mode was not chosen).
+//
+// It splits the focused block's text at the selection range via RangeSplit, producing:
+//   - selText: text before the range (runes[:from]) — stays in the original block
+//   - secondBlock: text after the range (runes[to:]) — inserted below
+//
+// Paste blocks from the paste state are then inserted between them by insertUnderSelection.
+//
+// Special cases:
+//   - Header blocks (title/description): merge first paste text into the header, return early.
+//   - Originally empty blocks (wasEmpty): merge first paste text content and marks into the
+//     block instead of deleting it. This preserves the block's style (bullet, toggle, etc.).
+//   - Blocks that became empty after split (had text, cursor at pos 0): mark for removal
+//     so the paste content replaces the block.
 func (p *pasteCtrl) singleRange() (err error) {
 	var (
 		selText     = p.getFirstSelectedText()
@@ -200,6 +233,7 @@ func (p *pasteCtrl) singleRange() (err error) {
 	}
 
 	targetId := selText.Model().Id
+	wasEmpty := selText.GetText() == ""
 	if secondBlock, err = selText.RangeSplit(p.selRange.From, p.selRange.To, false); err != nil {
 		return
 	}
@@ -221,8 +255,8 @@ func (p *pasteCtrl) singleRange() (err error) {
 	if secondBlock.Model().GetText().Text == "" {
 		p.s.Unlink(secondBlock.Model().Id)
 	}
+	firstPasteText := p.getFirstPasteText()
 	if isPasteToHeader && selText.GetText() == "" {
-		firstPasteText := p.getFirstPasteText()
 		if firstPasteText != nil {
 			selText.SetText(firstPasteText.GetText(), nil)
 			p.ps.Unlink(firstPasteText.Model().Id)
@@ -232,10 +266,20 @@ func (p *pasteCtrl) singleRange() (err error) {
 	}
 	if selText.GetText() == "" {
 		p.mode.removeSelection = true
+		if wasEmpty && firstPasteText != nil {
+			p.mode.removeSelection = false
+			selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
+			p.ps.Unlink(firstPasteText.Model().Id)
+		}
 	}
 	return
 }
 
+// intoBlock handles pasting a single text block into the focused block inline.
+// It calls RangeTextPaste to insert the paste text at the selection range within the
+// existing block, then unlinks the paste text from the paste state.
+// When intoBlockCopyStyle is true and the paste replaces all text (or fills an empty
+// Paragraph block), the target block's style is overwritten with the paste block's style.
 func (p *pasteCtrl) intoBlock() (err error) {
 	var (
 		firstSelText   = p.getFirstSelectedText()
@@ -249,6 +293,10 @@ func (p *pasteCtrl) intoBlock() (err error) {
 	return
 }
 
+// multiRange handles pasting when multiple blocks are selected. It merges the first paste
+// text into the first selected block (if styles match), and the last paste text into the
+// last selected block (if styles match). The middle selected blocks are marked for removal
+// via removeSelection, and the paste blocks replace them via insertUnderSelection.
 func (p *pasteCtrl) multiRange() (err error) {
 	var (
 		firstSelText   = p.getFirstSelectedText()
@@ -283,6 +331,9 @@ func (p *pasteCtrl) multiRange() (err error) {
 	return
 }
 
+// insertUnderSelection moves all remaining blocks from the paste state into the document.
+// Non-root paste blocks are added to the doc state and their IDs collected in blockIds.
+// The paste root's children are inserted right after the first selected block (Block_Bottom).
 func (p *pasteCtrl) insertUnderSelection() (err error) {
 	var (
 		targetId  string
@@ -355,6 +406,9 @@ func (p *pasteCtrl) handleBase64(b simple.Block, file *model.BlockContentFile) e
 	return errors.New("invalid base64 image")
 }
 
+// normalize adjusts paste block styles that are only valid for specific system blocks:
+// Title style is converted to Header1, Description style is converted to Paragraph.
+// The original title/description blocks are exempt from conversion.
 func (p *pasteCtrl) normalize() {
 	p.ps.Iterate(func(b simple.Block) (isContinue bool) {
 		if txtBlock := b.Model().GetText(); txtBlock != nil {
@@ -368,6 +422,10 @@ func (p *pasteCtrl) normalize() {
 	})
 }
 
+// intoCodeBlock handles pasting into a Code block or table cell. All paste text blocks
+// are joined with newlines into a single string (or the TextSlot buffer is used directly),
+// then inserted via RangeTextPaste with style copying enabled. The paste state children
+// are cleared so insertUnderSelection does not duplicate them.
 func (p *pasteCtrl) intoCodeBlock() (err error) {
 	selText := p.getFirstSelectedText()
 	var txt = p.mode.textBuf
