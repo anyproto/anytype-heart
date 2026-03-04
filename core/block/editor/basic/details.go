@@ -239,12 +239,6 @@ func (bs *basic) validateDetailFormat(key domain.RelationKey, v domain.Value) er
 
 		// check if the symbol is emoji
 		return nil
-	case model.RelationFormat_map:
-		_, ok := v.TryMapValue()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of map", v)
-		}
-		return nil
 	default:
 		return fmt.Errorf("unsupported rel format: %s", r.Format.String())
 	}

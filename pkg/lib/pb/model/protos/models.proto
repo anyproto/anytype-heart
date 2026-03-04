@@ -946,7 +946,6 @@ enum RelationFormat {
 
     object = 100; // relation can has objectType to specify objectType
     relations = 101; // base64-encoded relation pb model
-    map = 102; // relation that handle map of values
 }
 
 enum ObjectOrigin {

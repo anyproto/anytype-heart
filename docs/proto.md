@@ -36030,7 +36030,6 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | emoji | 10 | one emoji, can contains multiple utf-8 symbols |
 | object | 100 | relation can has objectType to specify objectType |
 | relations | 101 | base64-encoded relation pb model |
-| map | 102 | relation that handle map of values |
 
 
 
