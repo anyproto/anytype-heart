@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -205,6 +206,7 @@ func newFixture(t *testing.T) *fixture {
 	err = object.Init(&smartblock.InitContext{
 		Ctx:    ctx,
 		Source: source,
+		Doc:    state.NewDoc(chatId, nil),
 	})
 	require.NoError(t, err)
 

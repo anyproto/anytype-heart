@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -184,6 +185,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if !ok {
 		return fmt.Errorf("source is not a store")
 	}
+
+	// Set object type and layout details for this fake state
+	st := ctx.Doc.(*state.State)
+	st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
 
 	var err error
 	s.repository, err = s.repositoryService.Repository(ctx.Source.SpaceID(), storeSource.Id())
