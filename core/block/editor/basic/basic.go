@@ -274,7 +274,7 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		return err
 	}
 
-	var ctx outdentOpContext
+	var opCtx *outdentOpContext
 	var replacementCandidate simple.Block
 	for i, id := range blockIds {
 		if b := srcState.Pick(id); b != nil {
@@ -287,7 +287,7 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 
 			// Capture outdent context of last moving block before unlinking
 			if i == len(blockIds)-1 {
-				ctx = collectOutdentContext(srcState, id)
+				opCtx = collectOutdentContext(srcState, id)
 			}
 
 			srcState.Unlink(id)
@@ -331,15 +331,15 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		return err
 	}
 
-	return processOutdentOperation(ctx, srcState, targetBlockId, position)
+	return processOutdentOperation(opCtx, srcState, targetBlockId, position)
 }
 
-func collectOutdentContext(srcState *state.State, blockId string) outdentOpContext {
+func collectOutdentContext(srcState *state.State, blockId string) *outdentOpContext {
 	parent := srcState.GetParentOf(blockId)
 	if parent == nil {
-		return outdentOpContext{}
+		return nil
 	}
-	ctx := outdentOpContext{
+	ctx := &outdentOpContext{
 		blockId:          blockId,
 		originalParent:   parent,
 		positionInParent: slice.FindPos(parent.Model().ChildrenIds, blockId),
@@ -353,19 +353,19 @@ func collectOutdentContext(srcState *state.State, blockId string) outdentOpConte
 	return ctx
 }
 
-func processOutdentOperation(ctx outdentOpContext, srcState *state.State, targetBlockId string, pos model.BlockPosition) error {
-	if ctx.originalParent == nil || len(ctx.followingSiblings) == 0 {
+func processOutdentOperation(opCtx *outdentOpContext, srcState *state.State, targetBlockId string, pos model.BlockPosition) error {
+	if opCtx == nil || opCtx.originalParent == nil || len(opCtx.followingSiblings) == 0 {
 		return nil
 	}
 
 	// Detect outdent: moving to be sibling of a current parent
 	// This happens when target is the current parent and position is Top/Bottom
-	if targetBlockId == "" || ctx.originalParent.Model().Id != targetBlockId || (pos != model.Block_Top && pos != model.Block_Bottom) {
+	if targetBlockId == "" || opCtx.originalParent.Model().Id != targetBlockId || (pos != model.Block_Top && pos != model.Block_Bottom) {
 		return nil
 	}
 
 	// Validate moved block can have children
-	movedBlock := srcState.Get(ctx.blockId)
+	movedBlock := srcState.Get(opCtx.blockId)
 	if movedBlock != nil {
 		if textContent, ok := movedBlock.Model().Content.(*model.BlockContentOfText); ok {
 			if textContent.Text != nil && !canHaveChildren(textContent.Text.Style) {
@@ -375,10 +375,10 @@ func processOutdentOperation(ctx outdentOpContext, srcState *state.State, target
 	}
 
 	// Reassign siblings as children
-	for _, siblingId := range ctx.followingSiblings {
+	for _, siblingId := range opCtx.followingSiblings {
 		srcState.Unlink(siblingId)
 	}
-	if err := srcState.InsertTo(ctx.blockId, model.Block_Inner, ctx.followingSiblings...); err != nil {
+	if err := srcState.InsertTo(opCtx.blockId, model.Block_Inner, opCtx.followingSiblings...); err != nil {
 		return fmt.Errorf("reassign siblings during outdent: %w", err)
 	}
 	return nil
