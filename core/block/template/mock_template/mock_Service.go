@@ -10,6 +10,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	pb "github.com/anyproto/anytype-heart/pb"
+
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 
 	state "github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -499,6 +501,64 @@ func (_c *MockService_TemplateExportAll_Call) Return(_a0 string, _a1 error) *Moc
 }
 
 func (_c *MockService_TemplateExportAll_Call) RunAndReturn(run func(context.Context, string) (string, error)) *MockService_TemplateExportAll_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// TemplateGetPlaceholders provides a mock function with given fields: templateId
+func (_m *MockService) TemplateGetPlaceholders(templateId string) ([]*pb.RpcTemplateGetPlaceholdersResponsePlaceholder, error) {
+	ret := _m.Called(templateId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for TemplateGetPlaceholders")
+	}
+
+	var r0 []*pb.RpcTemplateGetPlaceholdersResponsePlaceholder
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*pb.RpcTemplateGetPlaceholdersResponsePlaceholder, error)); ok {
+		return rf(templateId)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*pb.RpcTemplateGetPlaceholdersResponsePlaceholder); ok {
+		r0 = rf(templateId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*pb.RpcTemplateGetPlaceholdersResponsePlaceholder)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(templateId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_TemplateGetPlaceholders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'TemplateGetPlaceholders'
+type MockService_TemplateGetPlaceholders_Call struct {
+	*mock.Call
+}
+
+// TemplateGetPlaceholders is a helper method to define mock.On call
+//   - templateId string
+func (_e *MockService_Expecter) TemplateGetPlaceholders(templateId interface{}) *MockService_TemplateGetPlaceholders_Call {
+	return &MockService_TemplateGetPlaceholders_Call{Call: _e.mock.On("TemplateGetPlaceholders", templateId)}
+}
+
+func (_c *MockService_TemplateGetPlaceholders_Call) Run(run func(templateId string)) *MockService_TemplateGetPlaceholders_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_TemplateGetPlaceholders_Call) Return(_a0 []*pb.RpcTemplateGetPlaceholdersResponsePlaceholder, _a1 error) *MockService_TemplateGetPlaceholders_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_TemplateGetPlaceholders_Call) RunAndReturn(run func(string) ([]*pb.RpcTemplateGetPlaceholdersResponsePlaceholder, error)) *MockService_TemplateGetPlaceholders_Call {
 	_c.Call.Return(run)
 	return _c
 }

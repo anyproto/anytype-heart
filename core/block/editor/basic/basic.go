@@ -68,8 +68,9 @@ type DetailsUpdatable interface {
 	UpdateDetails(ctx session.Context, update func(current *domain.Details) (*domain.Details, error)) (err error)
 }
 
-type TemplatePlaceholdersSetter interface {
+type PlaceholdersOwner interface {
 	SetTemplatePlaceholders(ctx session.Context, placeholders []domain.TemplatePlaceholder) error
+	GetTemplatePlaceholders() ([]domain.TemplatePlaceholder, error)
 }
 
 type Restrictionable interface {

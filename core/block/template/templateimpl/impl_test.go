@@ -604,9 +604,11 @@ func (a accountServiceStub) AccountID() string { return a.accountId }
 
 func newTemplateTestWithPlaceholders(templateName, typeKey string, placeholders map[string]domain.Value) smartblock.SmartBlock {
 	sb := newTemplateTest(templateName, typeKey).(*smarttest.SmartTest)
-	_ = sb.SetDetails(nil, []domain.Detail{
-		{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(placeholders)},
-	}, false)
+	s := sb.NewState()
+	for key, value := range placeholders {
+		s.SetInStore([]string{template.PlaceholdersStoreKey, key}, pbtypes.String(value.String()))
+	}
+	_ = sb.Apply(s)
 	return sb
 }
 
@@ -638,7 +640,8 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 		require.NoError(t, err)
 		dueDateVal := st.Details().GetFloat64(domain.RelationKey("dueDate"))
 		assert.NotZero(t, dueDateVal, "dueDate should be resolved to a timestamp")
-		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders), "templatePlaceholders should be removed from new object")
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0, "templatePlaceholders should be removed from new object")
 	})
 
 	t.Run("template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
@@ -664,7 +667,8 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
 		require.Len(t, assigneeList, 1)
 		assert.Equal(t, expectedParticipantId, assigneeList[0])
-		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
 	t.Run("template with no placeholders - no changes", func(t *testing.T) {
@@ -684,7 +688,8 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
 	t.Run("CreateTemplateStateFromSmartBlock also resolves placeholders", func(t *testing.T) {
@@ -707,7 +712,8 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
 		require.Len(t, assigneeList, 1)
 		assert.Equal(t, expectedParticipantId, assigneeList[0])
-		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 }
 
@@ -810,7 +816,8 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
 		require.Len(t, assigneeList, 1)
 		assert.Equal(t, expectedParticipantId, assigneeList[0])
-		assert.False(t, targetObj.NewState().Details().Has(bundle.RelationKeyTemplatePlaceholders))
+		placeholders := targetObj.NewState().GetSubObjectCollection(template.PlaceholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
 	t.Run("applying template with multiple placeholders resolves all of them", func(t *testing.T) {
@@ -855,7 +862,8 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 		require.Len(t, assigneeList, 1)
 		assert.Equal(t, expectedParticipantId, assigneeList[0])
 
-		assert.False(t, details.Has(bundle.RelationKeyTemplatePlaceholders))
+		placeholders := targetObj.NewState().GetSubObjectCollection(template.PlaceholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
 	t.Run("applying template without placeholders does not set placeholder-related details", func(t *testing.T) {
@@ -887,7 +895,8 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.False(t, targetObj.NewState().Details().Has(bundle.RelationKeyTemplatePlaceholders))
+		placeholders := targetObj.NewState().GetSubObjectCollection(template.PlaceholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 }
 

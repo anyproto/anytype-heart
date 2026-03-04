@@ -9,12 +9,14 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type basicFixture struct {
@@ -193,7 +195,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 }
 
 func TestBasic_SetTemplatePlaceholders(t *testing.T) {
-	t.Run("setting placeholders on template stores them in templatePlaceholders", func(t *testing.T) {
+	t.Run("setting placeholders on template stores them in store", func(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
 		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
@@ -205,8 +207,10 @@ func TestBasic_SetTemplatePlaceholders(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		m := f.sb.Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders)
-		assert.Equal(t, domain.PlaceholderToday, m.Get("dueDate").String())
+		st := f.sb.NewState()
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		require.NotNil(t, placeholders)
+		assert.Equal(t, domain.PlaceholderToday, placeholders.Fields["dueDate"].GetStringValue())
 	})
 
 	t.Run("multiple placeholders in single call", func(t *testing.T) {
@@ -222,21 +226,21 @@ func TestBasic_SetTemplatePlaceholders(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		m := f.sb.Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders)
-		assert.Equal(t, domain.PlaceholderToday, m.Get("dueDate").String())
-		assert.Equal(t, domain.PlaceholderCurrentUser, m.Get("assignee").String())
+		st := f.sb.NewState()
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		require.NotNil(t, placeholders)
+		assert.Equal(t, domain.PlaceholderToday, placeholders.Fields["dueDate"].GetStringValue())
+		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders.Fields["assignee"].GetStringValue())
 	})
 
 	t.Run("setting None type removes specific placeholder and preserves others", func(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
 		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-		err := f.sb.SetDetails(nil, []domain.Detail{
-			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(map[string]domain.Value{
-				"dueDate":  domain.String(domain.PlaceholderToday),
-				"assignee": domain.String(domain.PlaceholderCurrentUser),
-			})},
-		}, false)
+		s := f.sb.NewState()
+		s.SetInStore([]string{template.PlaceholdersStoreKey, "dueDate"}, pbtypes.String(domain.PlaceholderToday))
+		s.SetInStore([]string{template.PlaceholdersStoreKey, "assignee"}, pbtypes.String(domain.PlaceholderCurrentUser))
+		err := f.sb.Apply(s)
 		require.NoError(t, err)
 
 		// when
@@ -246,20 +250,20 @@ func TestBasic_SetTemplatePlaceholders(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		m := f.sb.Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders)
-		assert.True(t, m.Get("dueDate").IsEmpty())
-		assert.Equal(t, domain.PlaceholderCurrentUser, m.Get("assignee").String())
+		st := f.sb.NewState()
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		require.NotNil(t, placeholders)
+		assert.Nil(t, placeholders.Fields["dueDate"])
+		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders.Fields["assignee"].GetStringValue())
 	})
 
-	t.Run("setting None on last placeholder removes the detail entirely", func(t *testing.T) {
+	t.Run("setting None on last placeholder removes the store key entirely", func(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
 		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-		err := f.sb.SetDetails(nil, []domain.Detail{
-			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(map[string]domain.Value{
-				"dueDate": domain.String(domain.PlaceholderToday),
-			})},
-		}, false)
+		s := f.sb.NewState()
+		s.SetInStore([]string{template.PlaceholdersStoreKey, "dueDate"}, pbtypes.String(domain.PlaceholderToday))
+		err := f.sb.Apply(s)
 		require.NoError(t, err)
 
 		// when
@@ -269,7 +273,10 @@ func TestBasic_SetTemplatePlaceholders(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.False(t, f.sb.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+		st := f.sb.NewState()
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		// The store key should be completely removed when the last placeholder is deleted
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
 	t.Run("non-template objects return error", func(t *testing.T) {
@@ -290,12 +297,10 @@ func TestBasic_SetTemplatePlaceholders(t *testing.T) {
 		// given
 		f := newBasicFixture(t)
 		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-		err := f.sb.SetDetails(nil, []domain.Detail{
-			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(map[string]domain.Value{
-				"dueDate":  domain.String(domain.PlaceholderToday),
-				"assignee": domain.String(domain.PlaceholderCurrentUser),
-			})},
-		}, false)
+		s := f.sb.NewState()
+		s.SetInStore([]string{template.PlaceholdersStoreKey, "dueDate"}, pbtypes.String(domain.PlaceholderToday))
+		s.SetInStore([]string{template.PlaceholdersStoreKey, "assignee"}, pbtypes.String(domain.PlaceholderCurrentUser))
+		err := f.sb.Apply(s)
 		require.NoError(t, err)
 
 		// when
@@ -305,12 +310,65 @@ func TestBasic_SetTemplatePlaceholders(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		m := f.sb.Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders)
-		assert.Equal(t, domain.PlaceholderCurrentUser, m.Get("dueDate").String())
-		assert.Equal(t, domain.PlaceholderCurrentUser, m.Get("assignee").String())
+		st := f.sb.NewState()
+		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		require.NotNil(t, placeholders)
+		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders.Fields["dueDate"].GetStringValue())
+		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders.Fields["assignee"].GetStringValue())
+	})
+
+	t.Run("get placeholders returns stored placeholders", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+		s := f.sb.NewState()
+		s.SetInStore([]string{template.PlaceholdersStoreKey, "dueDate"}, pbtypes.String(domain.PlaceholderToday))
+		s.SetInStore([]string{template.PlaceholdersStoreKey, "assignee"}, pbtypes.String(domain.PlaceholderCurrentUser))
+		err := f.sb.Apply(s)
+		require.NoError(t, err)
+
+		// when
+		placeholders, err := f.basic.(*basic).GetTemplatePlaceholders()
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, placeholders, 2)
+		assert.Contains(t, placeholders, domain.TemplatePlaceholder{
+			RelationKey: "dueDate",
+			Type:        model.TemplatePlaceholderType_TemplatePlaceholderToday,
+		})
+		assert.Contains(t, placeholders, domain.TemplatePlaceholder{
+			RelationKey: "assignee",
+			Type:        model.TemplatePlaceholderType_TemplatePlaceholderCurrentUser,
+		})
+	})
+
+	t.Run("get placeholders on non-template returns error", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTask})
+
+		// when
+		_, err := f.basic.(*basic).GetTemplatePlaceholders()
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "not a template")
+	})
+
+	t.Run("get placeholders returns nil when no placeholders exist", func(t *testing.T) {
+		// given
+		f := newBasicFixture(t)
+		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+
+		// when
+		placeholders, err := f.basic.(*basic).GetTemplatePlaceholders()
+
+		// then
+		require.NoError(t, err)
+		assert.Nil(t, placeholders)
 	})
 }
-
 
 func TestBasic_SetObjectTypesInState(t *testing.T) {
 	t.Run("no error", func(t *testing.T) {

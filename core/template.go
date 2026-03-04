@@ -102,3 +102,33 @@ func (mw *Middleware) TemplateSetPlaceholders(cctx context.Context, req *pb.RpcT
 	}
 	return response(pb.RpcTemplateSetPlaceholdersResponseError_NULL, nil)
 }
+
+func (mw *Middleware) TemplateGetPlaceholders(ctx context.Context, req *pb.RpcTemplateGetPlaceholdersRequest) *pb.RpcTemplateGetPlaceholdersResponse {
+	response := func(placeholders []*pb.RpcTemplateGetPlaceholdersResponsePlaceholder, err error) *pb.RpcTemplateGetPlaceholdersResponse {
+		m := &pb.RpcTemplateGetPlaceholdersResponse{
+			Error:        &pb.RpcTemplateGetPlaceholdersResponseError{Code: pb.RpcTemplateGetPlaceholdersResponseError_NULL},
+			Placeholders: placeholders,
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcTemplateGetPlaceholdersResponseError_UNKNOWN_ERROR
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	domainPlaceholders, err := mustService[detailservice.Service](mw).GetTemplatePlaceholders(req.TemplateId)
+	if err != nil {
+		return response(nil, err)
+	}
+
+	// Convert domain placeholders to proto placeholders
+	placeholders := make([]*pb.RpcTemplateGetPlaceholdersResponsePlaceholder, 0, len(domainPlaceholders))
+	for _, p := range domainPlaceholders {
+		placeholders = append(placeholders, &pb.RpcTemplateGetPlaceholdersResponsePlaceholder{
+			RelationKey: p.RelationKey.String(),
+			Type:        p.Type,
+		})
+	}
+
+	return response(placeholders, nil)
+}

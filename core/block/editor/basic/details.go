@@ -10,6 +10,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -420,26 +422,59 @@ func (bs *basic) SetTemplatePlaceholders(ctx session.Context, placeholders []dom
 		return fmt.Errorf("object is not a template")
 	}
 
-	return bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
-		existing := current.GetMapValue(bundle.RelationKeyTemplatePlaceholders).ToMap()
-		if existing == nil {
-			existing = make(map[string]domain.Value, len(placeholders))
-		}
+	s := bs.NewStateCtx(ctx)
 
-		for _, p := range placeholders {
-			key := p.RelationKey.String()
-			if p.Type == model.TemplatePlaceholderType_TemplatePlaceholderNone {
-				delete(existing, key)
-			} else {
-				existing[key] = domain.String(domain.PlaceholderTypeToString(p.Type))
-			}
+	// Get existing placeholders from store
+	placeholdersStruct := s.GetSubObjectCollection(template.PlaceholdersStoreKey)
+	existing := make(map[string]string)
+	if placeholdersStruct != nil && placeholdersStruct.Fields != nil {
+		for k, v := range placeholdersStruct.Fields {
+			existing[k] = v.GetStringValue()
 		}
+	}
 
-		if len(existing) == 0 {
-			current.Delete(bundle.RelationKeyTemplatePlaceholders)
+	// Update placeholders
+	for _, p := range placeholders {
+		key := p.RelationKey.String()
+		if p.Type == model.TemplatePlaceholderType_TemplatePlaceholderNone {
+			delete(existing, key)
+			s.RemoveFromStore([]string{template.PlaceholdersStoreKey, key})
 		} else {
-			current.Set(bundle.RelationKeyTemplatePlaceholders, domain.NewValueMap(existing))
+			existing[key] = domain.PlaceholderTypeToString(p.Type)
+			s.SetInStore([]string{template.PlaceholdersStoreKey, key}, pbtypes.String(domain.PlaceholderTypeToString(p.Type)))
 		}
-		return current, nil
-	})
+	}
+
+	return bs.Apply(s)
+}
+
+func (bs *basic) GetTemplatePlaceholders() ([]domain.TemplatePlaceholder, error) {
+	if !lo.Contains(bs.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
+		return nil, fmt.Errorf("object is not a template")
+	}
+
+	st := bs.NewState()
+	placeholdersStruct := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+	if placeholdersStruct == nil || placeholdersStruct.Fields == nil {
+		return nil, nil
+	}
+
+	var placeholders []domain.TemplatePlaceholder
+	for relKey, typeValue := range placeholdersStruct.Fields {
+		placeholderTypeStr := typeValue.GetStringValue()
+		var placeholderType model.TemplatePlaceholderType
+		switch placeholderTypeStr {
+		case domain.PlaceholderToday:
+			placeholderType = model.TemplatePlaceholderType_TemplatePlaceholderToday
+		case domain.PlaceholderCurrentUser:
+			placeholderType = model.TemplatePlaceholderType_TemplatePlaceholderCurrentUser
+		default:
+			continue
+		}
+		placeholders = append(placeholders, domain.TemplatePlaceholder{
+			RelationKey: domain.RelationKey(relKey),
+			Type:        placeholderType,
+		})
+	}
+	return placeholders, nil
 }

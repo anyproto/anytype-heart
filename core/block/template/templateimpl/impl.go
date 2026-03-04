@@ -504,16 +504,16 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 	return st, nil
 }
 
-// resolveTemplatePlaceholders reads the templatePlaceholders JSON map from the template state,
-// resolves each placeholder to its actual value, and removes the templatePlaceholders detail.
+// resolveTemplatePlaceholders reads the templatePlaceholders from the template state store,
+// resolves each placeholder to its actual value, and clears the placeholders from store.
 func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
-	placeholders, ok := st.Details().TryMapValue(bundle.RelationKeyTemplatePlaceholders)
-	if !ok {
+	placeholdersStruct := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+	if placeholdersStruct == nil || placeholdersStruct.Fields == nil {
 		return
 	}
 
-	for relKey, placeholderType := range placeholders.Iterate() {
-		rawPlaceholder := placeholderType.String()
+	for relKey, placeholderTypeValue := range placeholdersStruct.Fields {
+		rawPlaceholder := placeholderTypeValue.GetStringValue()
 		switch rawPlaceholder {
 		case domain.PlaceholderToday:
 			ts := s.resolveToday(spaceId, domain.RelationKey(relKey))
@@ -526,7 +526,8 @@ func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
 		}
 	}
 
-	st.RemoveDetail(bundle.RelationKeyTemplatePlaceholders)
+	// Clear placeholders from store after resolving
+	st.RemoveFromStore([]string{template.PlaceholdersStoreKey})
 }
 
 func (s *service) resolveToday(spaceId string, relKey domain.RelationKey) int64 {
