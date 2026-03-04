@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"fmt"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -8,18 +10,6 @@ const (
 	PlaceholderToday       = "_today"
 	PlaceholderCurrentUser = "_current_user"
 )
-
-func IsPlaceholder(v Value) bool {
-	s, ok := v.TryString()
-	if !ok {
-		return false
-	}
-	switch s {
-	case PlaceholderToday, PlaceholderCurrentUser:
-		return true
-	}
-	return false
-}
 
 type TemplatePlaceholder struct {
 	RelationKey RelationKey
@@ -35,4 +25,14 @@ func PlaceholderTypeToString(t model.TemplatePlaceholderType) string {
 	default:
 		return ""
 	}
+}
+
+func ParsePlaceholderType(s string) (model.TemplatePlaceholderType, error) {
+	switch s {
+	case PlaceholderToday:
+		return model.TemplatePlaceholderType_TemplatePlaceholderToday, nil
+	case PlaceholderCurrentUser:
+		return model.TemplatePlaceholderType_TemplatePlaceholderCurrentUser, nil
+	}
+	return 0, fmt.Errorf("unknown placeholder type: %s", s)
 }

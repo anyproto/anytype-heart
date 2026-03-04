@@ -69,8 +69,8 @@ type DetailsUpdatable interface {
 }
 
 type PlaceholdersOwner interface {
-	SetTemplatePlaceholders(ctx session.Context, placeholders []domain.TemplatePlaceholder) error
-	GetTemplatePlaceholders() ([]domain.TemplatePlaceholder, error)
+	SetPlaceholders(ctx session.Context, placeholders []domain.TemplatePlaceholder) error
+	GetPlaceholders() []domain.TemplatePlaceholder
 }
 
 type Restrictionable interface {

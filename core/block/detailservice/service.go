@@ -106,16 +106,15 @@ func (s *service) SetDetails(ctx session.Context, objectId string, details []dom
 
 func (s *service) SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []domain.TemplatePlaceholder) error {
 	return cache.Do(s.objectGetter, templateId, func(b basic.PlaceholdersOwner) error {
-		return b.SetTemplatePlaceholders(ctx, placeholders)
+		return b.SetPlaceholders(ctx, placeholders)
 	})
 }
 
 func (s *service) GetTemplatePlaceholders(templateId string) ([]domain.TemplatePlaceholder, error) {
 	var placeholders []domain.TemplatePlaceholder
 	err := cache.Do(s.objectGetter, templateId, func(b basic.PlaceholdersOwner) error {
-		var err error
-		placeholders, err = b.GetTemplatePlaceholders()
-		return err
+		placeholders = b.GetPlaceholders()
+		return nil
 	})
 	return placeholders, err
 }

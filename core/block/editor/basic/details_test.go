@@ -9,14 +9,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type basicFixture struct {
@@ -191,182 +189,6 @@ func TestBasic_UpdateDetails(t *testing.T) {
 		_, found := f.sb.Details().TryString(bundle.RelationKeyAperture)
 		assert.False(t, found)
 		assert.False(t, f.sb.NewState().HasRelation(bundle.RelationKeyAperture))
-	})
-}
-
-func TestBasic_SetTemplatePlaceholders(t *testing.T) {
-	t.Run("setting placeholders on template stores them in store", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-
-		// when
-		err := f.basic.(*basic).SetTemplatePlaceholders(nil, []domain.TemplatePlaceholder{
-			{RelationKey: "dueDate", Type: model.TemplatePlaceholderType_TemplatePlaceholderToday},
-		})
-
-		// then
-		require.NoError(t, err)
-		st := f.sb.NewState()
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
-		require.NotNil(t, placeholders)
-		assert.Equal(t, domain.PlaceholderToday, placeholders.Fields["dueDate"].GetStringValue())
-	})
-
-	t.Run("multiple placeholders in single call", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-
-		// when
-		err := f.basic.(*basic).SetTemplatePlaceholders(nil, []domain.TemplatePlaceholder{
-			{RelationKey: "dueDate", Type: model.TemplatePlaceholderType_TemplatePlaceholderToday},
-			{RelationKey: "assignee", Type: model.TemplatePlaceholderType_TemplatePlaceholderCurrentUser},
-		})
-
-		// then
-		require.NoError(t, err)
-		st := f.sb.NewState()
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
-		require.NotNil(t, placeholders)
-		assert.Equal(t, domain.PlaceholderToday, placeholders.Fields["dueDate"].GetStringValue())
-		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders.Fields["assignee"].GetStringValue())
-	})
-
-	t.Run("setting None type removes specific placeholder and preserves others", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-		s := f.sb.NewState()
-		s.SetInStore([]string{template.PlaceholdersStoreKey, "dueDate"}, pbtypes.String(domain.PlaceholderToday))
-		s.SetInStore([]string{template.PlaceholdersStoreKey, "assignee"}, pbtypes.String(domain.PlaceholderCurrentUser))
-		err := f.sb.Apply(s)
-		require.NoError(t, err)
-
-		// when
-		err = f.basic.(*basic).SetTemplatePlaceholders(nil, []domain.TemplatePlaceholder{
-			{RelationKey: "dueDate", Type: model.TemplatePlaceholderType_TemplatePlaceholderNone},
-		})
-
-		// then
-		require.NoError(t, err)
-		st := f.sb.NewState()
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
-		require.NotNil(t, placeholders)
-		assert.Nil(t, placeholders.Fields["dueDate"])
-		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders.Fields["assignee"].GetStringValue())
-	})
-
-	t.Run("setting None on last placeholder removes the store key entirely", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-		s := f.sb.NewState()
-		s.SetInStore([]string{template.PlaceholdersStoreKey, "dueDate"}, pbtypes.String(domain.PlaceholderToday))
-		err := f.sb.Apply(s)
-		require.NoError(t, err)
-
-		// when
-		err = f.basic.(*basic).SetTemplatePlaceholders(nil, []domain.TemplatePlaceholder{
-			{RelationKey: "dueDate", Type: model.TemplatePlaceholderType_TemplatePlaceholderNone},
-		})
-
-		// then
-		require.NoError(t, err)
-		st := f.sb.NewState()
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
-		// The store key should be completely removed when the last placeholder is deleted
-		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
-	})
-
-	t.Run("non-template objects return error", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-
-		// when
-		err := f.basic.(*basic).SetTemplatePlaceholders(nil, []domain.TemplatePlaceholder{
-			{RelationKey: "dueDate", Type: model.TemplatePlaceholderType_TemplatePlaceholderToday},
-		})
-
-		// then
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "object is not a template")
-	})
-
-	t.Run("overwriting existing placeholder preserves others", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-		s := f.sb.NewState()
-		s.SetInStore([]string{template.PlaceholdersStoreKey, "dueDate"}, pbtypes.String(domain.PlaceholderToday))
-		s.SetInStore([]string{template.PlaceholdersStoreKey, "assignee"}, pbtypes.String(domain.PlaceholderCurrentUser))
-		err := f.sb.Apply(s)
-		require.NoError(t, err)
-
-		// when
-		err = f.basic.(*basic).SetTemplatePlaceholders(nil, []domain.TemplatePlaceholder{
-			{RelationKey: "dueDate", Type: model.TemplatePlaceholderType_TemplatePlaceholderCurrentUser},
-		})
-
-		// then
-		require.NoError(t, err)
-		st := f.sb.NewState()
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
-		require.NotNil(t, placeholders)
-		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders.Fields["dueDate"].GetStringValue())
-		assert.Equal(t, domain.PlaceholderCurrentUser, placeholders.Fields["assignee"].GetStringValue())
-	})
-
-	t.Run("get placeholders returns stored placeholders", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-		s := f.sb.NewState()
-		s.SetInStore([]string{template.PlaceholdersStoreKey, "dueDate"}, pbtypes.String(domain.PlaceholderToday))
-		s.SetInStore([]string{template.PlaceholdersStoreKey, "assignee"}, pbtypes.String(domain.PlaceholderCurrentUser))
-		err := f.sb.Apply(s)
-		require.NoError(t, err)
-
-		// when
-		placeholders, err := f.basic.(*basic).GetTemplatePlaceholders()
-
-		// then
-		require.NoError(t, err)
-		require.Len(t, placeholders, 2)
-		assert.Contains(t, placeholders, domain.TemplatePlaceholder{
-			RelationKey: "dueDate",
-			Type:        model.TemplatePlaceholderType_TemplatePlaceholderToday,
-		})
-		assert.Contains(t, placeholders, domain.TemplatePlaceholder{
-			RelationKey: "assignee",
-			Type:        model.TemplatePlaceholderType_TemplatePlaceholderCurrentUser,
-		})
-	})
-
-	t.Run("get placeholders on non-template returns error", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTask})
-
-		// when
-		_, err := f.basic.(*basic).GetTemplatePlaceholders()
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "not a template")
-	})
-
-	t.Run("get placeholders returns nil when no placeholders exist", func(t *testing.T) {
-		// given
-		f := newBasicFixture(t)
-		f.sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
-
-		// when
-		placeholders, err := f.basic.(*basic).GetTemplatePlaceholders()
-
-		// then
-		require.NoError(t, err)
-		assert.Nil(t, placeholders)
 	})
 }
 
