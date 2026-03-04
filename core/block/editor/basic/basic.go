@@ -331,7 +331,10 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		return err
 	}
 
-	return processOutdentOperation(opCtx, srcState, targetBlockId, position)
+	if opCtx != nil {
+		return processOutdentOperation(opCtx, srcState, targetBlockId, position)
+	}
+	return nil
 }
 
 func collectOutdentContext(srcState *state.State, blockId string) *outdentOpContext {
@@ -354,7 +357,7 @@ func collectOutdentContext(srcState *state.State, blockId string) *outdentOpCont
 }
 
 func processOutdentOperation(opCtx *outdentOpContext, srcState *state.State, targetBlockId string, pos model.BlockPosition) error {
-	if opCtx == nil || opCtx.originalParent == nil || len(opCtx.followingSiblings) == 0 {
+	if opCtx.originalParent == nil || len(opCtx.followingSiblings) == 0 {
 		return nil
 	}
 
