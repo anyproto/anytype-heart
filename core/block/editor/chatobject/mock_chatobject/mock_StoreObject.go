@@ -2775,6 +2775,98 @@ func (_c *MockStoreObject_SpaceID_Call) RunAndReturn(run func() string) *MockSto
 	return _c
 }
 
+// StateAppend provides a mock function with given fields: _a0
+func (_m *MockStoreObject) StateAppend(_a0 func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StateAppend")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_StateAppend_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StateAppend'
+type MockStoreObject_StateAppend_Call struct {
+	*mock.Call
+}
+
+// StateAppend is a helper method to define mock.On call
+//   - _a0 func(state.Doc)(*state.State , []*pb.ChangeContent , error)
+func (_e *MockStoreObject_Expecter) StateAppend(_a0 interface{}) *MockStoreObject_StateAppend_Call {
+	return &MockStoreObject_StateAppend_Call{Call: _e.mock.On("StateAppend", _a0)}
+}
+
+func (_c *MockStoreObject_StateAppend_Call) Run(run func(_a0 func(state.Doc) (*state.State, []*pb.ChangeContent, error))) *MockStoreObject_StateAppend_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func(state.Doc) (*state.State, []*pb.ChangeContent, error)))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_StateAppend_Call) Return(_a0 error) *MockStoreObject_StateAppend_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_StateAppend_Call) RunAndReturn(run func(func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error) *MockStoreObject_StateAppend_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StateRebuild provides a mock function with given fields: d
+func (_m *MockStoreObject) StateRebuild(d state.Doc) error {
+	ret := _m.Called(d)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StateRebuild")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(state.Doc) error); ok {
+		r0 = rf(d)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_StateRebuild_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StateRebuild'
+type MockStoreObject_StateRebuild_Call struct {
+	*mock.Call
+}
+
+// StateRebuild is a helper method to define mock.On call
+//   - d state.Doc
+func (_e *MockStoreObject_Expecter) StateRebuild(d interface{}) *MockStoreObject_StateRebuild_Call {
+	return &MockStoreObject_StateRebuild_Call{Call: _e.mock.On("StateRebuild", d)}
+}
+
+func (_c *MockStoreObject_StateRebuild_Call) Run(run func(d state.Doc)) *MockStoreObject_StateRebuild_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.Doc))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_StateRebuild_Call) Return(err error) *MockStoreObject_StateRebuild_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockStoreObject_StateRebuild_Call) RunAndReturn(run func(state.Doc) error) *MockStoreObject_StateRebuild_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ToggleMessageReaction provides a mock function with given fields: ctx, messageId, emoji
 func (_m *MockStoreObject) ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error) {
 	ret := _m.Called(ctx, messageId, emoji)

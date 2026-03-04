@@ -177,6 +177,13 @@ func (f *ObjectFactory) InitObject(space smartblock.Space, id string, initCtx *s
 	// adding locks as a temporary measure to find the place where we have races in our code
 	sb.Lock()
 	defer sb.Unlock()
+
+	doc, err := sc.ReadDoc(initCtx.Ctx, sb, initCtx.State != nil)
+	if err != nil {
+		return nil, fmt.Errorf("reading document: %w", err)
+	}
+	initCtx.Doc = doc
+
 	err = sb.Init(initCtx)
 	if err != nil {
 		return nil, fmt.Errorf("init smartblock: %w", err)

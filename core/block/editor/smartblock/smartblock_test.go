@@ -238,6 +238,7 @@ func (fx *fixture) init(t *testing.T, blocks []*model.Block) *InitContext {
 		Ctx:     context.Background(),
 		SpaceID: "space1",
 		Source:  fx.source,
+		Doc:     doc,
 	}
 	err := fx.Init(initCtx)
 	require.NoError(t, err)

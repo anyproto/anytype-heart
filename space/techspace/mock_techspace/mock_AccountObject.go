@@ -2491,6 +2491,98 @@ func (_c *MockAccountObject_SpaceID_Call) RunAndReturn(run func() string) *MockA
 	return _c
 }
 
+// StateAppend provides a mock function with given fields: _a0
+func (_m *MockAccountObject) StateAppend(_a0 func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StateAppend")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAccountObject_StateAppend_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StateAppend'
+type MockAccountObject_StateAppend_Call struct {
+	*mock.Call
+}
+
+// StateAppend is a helper method to define mock.On call
+//   - _a0 func(state.Doc)(*state.State , []*pb.ChangeContent , error)
+func (_e *MockAccountObject_Expecter) StateAppend(_a0 interface{}) *MockAccountObject_StateAppend_Call {
+	return &MockAccountObject_StateAppend_Call{Call: _e.mock.On("StateAppend", _a0)}
+}
+
+func (_c *MockAccountObject_StateAppend_Call) Run(run func(_a0 func(state.Doc) (*state.State, []*pb.ChangeContent, error))) *MockAccountObject_StateAppend_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func(state.Doc) (*state.State, []*pb.ChangeContent, error)))
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_StateAppend_Call) Return(_a0 error) *MockAccountObject_StateAppend_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockAccountObject_StateAppend_Call) RunAndReturn(run func(func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error) *MockAccountObject_StateAppend_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StateRebuild provides a mock function with given fields: d
+func (_m *MockAccountObject) StateRebuild(d state.Doc) error {
+	ret := _m.Called(d)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StateRebuild")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(state.Doc) error); ok {
+		r0 = rf(d)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockAccountObject_StateRebuild_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StateRebuild'
+type MockAccountObject_StateRebuild_Call struct {
+	*mock.Call
+}
+
+// StateRebuild is a helper method to define mock.On call
+//   - d state.Doc
+func (_e *MockAccountObject_Expecter) StateRebuild(d interface{}) *MockAccountObject_StateRebuild_Call {
+	return &MockAccountObject_StateRebuild_Call{Call: _e.mock.On("StateRebuild", d)}
+}
+
+func (_c *MockAccountObject_StateRebuild_Call) Run(run func(d state.Doc)) *MockAccountObject_StateRebuild_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.Doc))
+	})
+	return _c
+}
+
+func (_c *MockAccountObject_StateRebuild_Call) Return(err error) *MockAccountObject_StateRebuild_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockAccountObject_StateRebuild_Call) RunAndReturn(run func(state.Doc) error) *MockAccountObject_StateRebuild_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Tree provides a mock function with given fields:
 func (_m *MockAccountObject) Tree() objecttree.ObjectTree {
 	ret := _m.Called()

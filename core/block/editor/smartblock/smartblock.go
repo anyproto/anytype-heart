@@ -175,6 +175,9 @@ type SmartBlock interface {
 
 	Space() Space
 
+	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
+	StateRebuild(d state.Doc) (err error)
+
 	ocache.Object
 	state.Doc
 	sync.Locker
@@ -216,6 +219,7 @@ type InitContext struct {
 	SpaceID                      string
 	BuildOpts                    source.BuildOptions
 	Ctx                          context.Context
+	Doc                          state.Doc
 }
 
 type linkSource interface {
@@ -323,9 +327,7 @@ func (sb *smartBlock) ObjectTypeID() string {
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, bundle.RequiredInternalRelations...)
-	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
-		return fmt.Errorf("reading document: %w", err)
-	}
+	sb.Doc = ctx.Doc
 
 	sb.source = ctx.Source
 	if provider, ok := sb.source.(source.ObjectTreeProvider); ok {

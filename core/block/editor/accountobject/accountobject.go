@@ -280,7 +280,7 @@ func (a *accountObject) onUpdate() {
 		log.Warn("get profile details", zap.Error(err))
 		return
 	}
-	err = a.SmartBlock.(source.ChangeReceiver).StateRebuild(st)
+	err = a.SmartBlock.StateRebuild(st)
 	if err != nil {
 		log.Warn("state rebuild", zap.Error(err))
 		return
