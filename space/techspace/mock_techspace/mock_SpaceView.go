@@ -476,6 +476,52 @@ func (_c *MockSpaceView_SetOneToOneInboxInviteStatus_Call) RunAndReturn(run func
 	return _c
 }
 
+// SetOneToOneOtherIdentity provides a mock function with given fields: identity
+func (_m *MockSpaceView) SetOneToOneOtherIdentity(identity string) error {
+	ret := _m.Called(identity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetOneToOneOtherIdentity")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(identity)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceView_SetOneToOneOtherIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetOneToOneOtherIdentity'
+type MockSpaceView_SetOneToOneOtherIdentity_Call struct {
+	*mock.Call
+}
+
+// SetOneToOneOtherIdentity is a helper method to define mock.On call
+//   - identity string
+func (_e *MockSpaceView_Expecter) SetOneToOneOtherIdentity(identity interface{}) *MockSpaceView_SetOneToOneOtherIdentity_Call {
+	return &MockSpaceView_SetOneToOneOtherIdentity_Call{Call: _e.mock.On("SetOneToOneOtherIdentity", identity)}
+}
+
+func (_c *MockSpaceView_SetOneToOneOtherIdentity_Call) Run(run func(identity string)) *MockSpaceView_SetOneToOneOtherIdentity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockSpaceView_SetOneToOneOtherIdentity_Call) Return(_a0 error) *MockSpaceView_SetOneToOneOtherIdentity_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceView_SetOneToOneOtherIdentity_Call) RunAndReturn(run func(string) error) *MockSpaceView_SetOneToOneOtherIdentity_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetOwner provides a mock function with given fields: ownerId, createdDate
 func (_m *MockSpaceView) SetOwner(ownerId string, createdDate int64) error {
 	ret := _m.Called(ownerId, createdDate)

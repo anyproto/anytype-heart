@@ -228,7 +228,7 @@ func (s *onetoone) inboxResend(ctx context.Context) (err error) {
 	}
 
 	for _, record := range records {
-		bobIdentity := record.Details.GetString(bundle.RelationKeyOneToOneIdentity)
+		bobIdentity := record.Details.GetString(bundle.RelationKeyOneToOneOtherIdentity)
 		err := s.SendOneToOneInvite(ctx, bobIdentity)
 		if err != nil {
 			log.Error("inboxResend: error (re)sending inbox invite", zap.String("identity", bobIdentity), zap.Error(err))

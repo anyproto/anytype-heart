@@ -43,7 +43,7 @@ func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInf
 		st.SetDetail(bundle.RelationKeyGuestKey, domain.String(s.EncodedKey))
 	}
 	if s.OneToOneIdentity != "" {
-		st.SetDetail(bundle.RelationKeyOneToOneIdentity, domain.String(s.OneToOneIdentity))
+		st.SetDetail(bundle.RelationKeyOneToOneOtherIdentity, domain.String(s.OneToOneIdentity))
 	}
 	if s.OneToOneRequestMetadataKey != "" {
 		st.SetDetail(bundle.RelationKeyOneToOneRequestMetadataKey, domain.String(s.OneToOneRequestMetadataKey))

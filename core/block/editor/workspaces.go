@@ -84,30 +84,9 @@ func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 		return
 	}
 
-	otherIdentity := state.Details().GetString(bundle.RelationKeyOneToOneIdentity)
-	// Fix other's identity if it was set to the current account id
-	if otherIdentity == w.accountService.AccountID() {
-		w.Tree().AclList().RLock()
-		for _, acc := range w.Tree().AclList().AclState().CurrentAccounts() {
-			// Account with permissions = owner is the special identity derived from two participants identities.
-			// We should ignore it as it isn't used in business logic
-			if acc.Permissions == list.AclPermissionsOwner {
-				continue
-			}
-			identity := acc.PubKey.Account()
-			// We need other's identity
-			if identity != w.accountService.AccountID() {
-				otherIdentity = identity
-				toSave := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeyOneToOneIdentity: domain.String(otherIdentity),
-				})
-				state.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneIdentity, domain.String(otherIdentity))
-				w.spaceService.OnWorkspaceChanged(w.SpaceID(), toSave)
-				break
-			}
-		}
-		w.Tree().AclList().RUnlock()
-	}
+	otherIdentity := w.oneToOneGetOtherIdentity()
+	w.spaceService.SpaceViewSetOneToOneOtherIdentity(w.SpaceID(), otherIdentity)
+
 	participantId := domain.NewParticipantId(w.SpaceID(), otherIdentity)
 	recordsCh := make(chan *domain.Details)
 	sub := database.NewSubscription(nil, recordsCh)
@@ -129,6 +108,24 @@ func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 			w.updateOneToOneInfo(otherDetails)
 		}
 	}()
+}
+
+func (w *Workspaces) oneToOneGetOtherIdentity() string {
+	w.Tree().AclList().RLock()
+	defer w.Tree().AclList().RUnlock()
+	for _, acc := range w.Tree().AclList().AclState().CurrentAccounts() {
+		// Account with permissions = owner is the special identity derived from two participants identities.
+		// We should ignore it as it isn't used in business logic
+		if acc.Permissions == list.AclPermissionsOwner {
+			continue
+		}
+		identity := acc.PubKey.Account()
+		// We need other's identity
+		if identity != w.accountService.AccountID() {
+			return identity
+		}
+	}
+	return ""
 }
 
 func (w *Workspaces) updateOneToOneInfo(details *domain.Details) {

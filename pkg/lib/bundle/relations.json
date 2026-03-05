@@ -1569,7 +1569,7 @@
     "source": "details"
   },
   {
-    "description": "OneToOne (second) participant identity",
+    "description": "OneToOne (second) participant identity DEPRECATED",
     "format": "longtext",
     "hidden": true,
     "key": "oneToOneIdentity",
@@ -1577,6 +1577,16 @@
     "name": "oneToOneIdentity",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "OneToOne other participant identity",
+    "format": "longtext",
+    "hidden": true,
+    "key": "oneToOneOtherIdentity",
+    "maxCount": 1,
+    "name": "oneToOneOtherIdentity",
+    "readonly": false,
+    "source": "local"
   },
   {
     "description": "OneToOne Inbox invite sent status",
