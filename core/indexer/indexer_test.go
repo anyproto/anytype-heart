@@ -5,9 +5,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
@@ -89,6 +92,71 @@ func TestIndexer(t *testing.T) {
 			assert.Equal(t, 1, len(count))
 		})
 	}
+
+	t.Run("ftQueueCtr is saved when object is added to fulltext queue", func(t *testing.T) {
+		// given
+		indexerFx := newFixture(t)
+		smartTest := smarttest.New("objectId1")
+		smartTest.SetSpaceId("spaceId1")
+		smartTest.SetSpace(space)
+		smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"to index",
+					blockbuilder.ID("blockId1"),
+				),
+			)))
+
+		smartTest.SetType(coresb.SmartBlockTypePage)
+		info := smartTest.GetDocInfo()
+		info.Details = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("test"),
+		})
+
+		// when
+		err := indexerFx.Index(info)
+
+		// then
+		assert.NoError(t, err)
+		entries, err := indexerFx.store.SpaceIndex("spaceId1").GetHeadsWithFtQueueCtrGreaterThan(ctx, 0)
+		require.NoError(t, err)
+		require.Len(t, entries, 1)
+		assert.Equal(t, "objectId1", entries[0].ObjectID)
+		assert.Greater(t, entries[0].FTQueueCtr, uint64(0))
+	})
+
+	t.Run("ftQueueCtr is not saved when object is not added to fulltext queue", func(t *testing.T) {
+		// given
+		indexerFx := newFixture(t)
+		smartTest := smarttest.New("objectId1")
+		smartTest.SetSpaceId("spaceId1")
+		smartTest.SetSpace(space)
+		smartTest.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("root"),
+			blockbuilder.Children(
+				blockbuilder.Text(
+					"to index",
+					blockbuilder.ID("blockId1"),
+				),
+			)))
+
+		// SmartBlockTypeWorkspace has fulltext=false, so it won't be added to FT queue
+		smartTest.SetType(coresb.SmartBlockTypeWorkspace)
+		info := smartTest.GetDocInfo()
+		info.Details = domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("test"),
+		})
+
+		// when
+		err := indexerFx.Index(info)
+
+		// then
+		assert.NoError(t, err)
+		entries, err := indexerFx.store.SpaceIndex("spaceId1").GetHeadsWithFtQueueCtrGreaterThan(ctx, 0)
+		require.NoError(t, err)
+		assert.Len(t, entries, 0)
+	})
 
 	t.Run("index has started - when hashes match and options are not provided", func(t *testing.T) {
 		// given

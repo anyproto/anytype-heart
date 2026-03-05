@@ -379,7 +379,7 @@ func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
 }
 
 func (m *messageUnmarshaller) toModel() (*Message, error) {
-	unreadReactionIds, lastUnreadReactionOrderId := m.unreadReactionIdsToModel()
+	unreadReactionIds := m.unreadReactionIdsToModel()
 	return &Message{
 		ChatMessage: &model.ChatMessage{
 			Id:                        string(m.val.GetStringBytes("id")),
@@ -398,18 +398,15 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			HasMention:                m.val.GetBool(HasMentionKey),
 			Pinned:                    m.val.GetBool(PinnedKey),
 			UnreadReaction:            len(unreadReactionIds) > 0 || m.val.GetString(ReactionUnreadOrderIdKey) != "",
-			LastUnreadReactionOrderId: lastUnreadReactionOrderId,
 		},
 		UnreadReactionIds: unreadReactionIds,
 	}, nil
 }
 
-func (m *messageUnmarshaller) unreadReactionIdsToModel() (map[string]map[string]ReactionChangeEntry, string) {
-	lastUnreadReactionOrderId := m.val.GetString(ReactionUnreadOrderIdKey)
-
+func (m *messageUnmarshaller) unreadReactionIdsToModel() map[string]map[string]ReactionChangeEntry {
 	chIdsObj := m.val.GetObject(ReactionUnreadChangeIdsKey)
 	if chIdsObj == nil {
-		return nil, lastUnreadReactionOrderId
+		return nil
 	}
 	result := make(map[string]map[string]ReactionChangeEntry)
 	chIdsObj.Visit(func(emoji []byte, emojiVal *anyenc.Value) {
@@ -429,9 +426,9 @@ func (m *messageUnmarshaller) unreadReactionIdsToModel() (map[string]map[string]
 		}
 	})
 	if len(result) == 0 {
-		return nil, lastUnreadReactionOrderId
+		return nil
 	}
-	return result, lastUnreadReactionOrderId
+	return result
 }
 
 func (m *messageUnmarshaller) contentToModel() *model.ChatMessageMessageContent {
