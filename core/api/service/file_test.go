@@ -23,7 +23,7 @@ func TestFileService_UploadFile(t *testing.T) {
 		fx.mwMock.On("FileUpload", mock.Anything, &pb.RpcFileUploadRequest{
 			SpaceId:   mockedSpaceId,
 			LocalPath: "/tmp/test.txt",
-			Type:      model.BlockContentFile_File,
+			Type:      model.BlockContentFile_None,
 		}).Return(&pb.RpcFileUploadResponse{
 			ObjectId:      "obj123",
 			PreloadFileId: "bafyreiabc123",

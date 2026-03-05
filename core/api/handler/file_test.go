@@ -30,7 +30,7 @@ func TestUploadFileHandler(t *testing.T) {
 		svc := service.NewService(mwMock, "http://localhost:31006", "techspace", crossSpaceSubService)
 
 		mwMock.On("FileUpload", mock.Anything, mock.MatchedBy(func(req *pb.RpcFileUploadRequest) bool {
-			return req.SpaceId == "space1" && req.Type == model.BlockContentFile_File
+			return req.SpaceId == "space1" && req.Type == model.BlockContentFile_None
 		})).Return(&pb.RpcFileUploadResponse{
 			ObjectId:      "obj123",
 			PreloadFileId: "bafyreiabc123",

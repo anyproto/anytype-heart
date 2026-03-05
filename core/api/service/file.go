@@ -21,7 +21,7 @@ func (s *Service) UploadFile(ctx context.Context, spaceId string, localPath stri
 	req := &pb.RpcFileUploadRequest{
 		SpaceId:   spaceId,
 		LocalPath: localPath,
-		Type:      model.BlockContentFile_File, // default to generic file
+		Type:      model.BlockContentFile_None,
 	}
 
 	resp := s.mw.FileUpload(ctx, req)
