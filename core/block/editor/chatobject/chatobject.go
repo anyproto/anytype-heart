@@ -40,8 +40,8 @@ const (
 	EditorCollectionName  = "editor"
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
-	diffManagerSyncStatus  = "syncStatus"
-	diffManagerReactions   = "reactions"
+	diffManagerSyncStatus = "syncStatus"
+	diffManagerReactions  = "reactions"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -96,6 +96,8 @@ type storeObject struct {
 	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
 	indexerStore            objectstore.IndexerStore
+
+	reactionsCounterEpoch int64
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -171,6 +173,7 @@ func New(
 		crdtDb:                  crdtDb,
 		repositoryService:       repositoryService,
 		indexerStore:            indexerStore,
+		reactionsCounterEpoch:   time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC).Unix(),
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
@@ -231,12 +234,13 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.chatHandler = &ChatHandler{
-		repository:      s.repository,
-		subscription:    s.subscription,
-		indexerStore:    s.indexerStore,
-		chatFullId:      domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
-		currentIdentity: s.accountService.AccountID(),
-		myParticipantId: myParticipantId,
+		repository:            s.repository,
+		subscription:          s.subscription,
+		indexerStore:          s.indexerStore,
+		chatFullId:            domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
+		currentIdentity:       s.accountService.AccountID(),
+		myParticipantId:       myParticipantId,
+		reactionsCounterEpoch: s.reactionsCounterEpoch,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
