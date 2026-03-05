@@ -165,13 +165,13 @@ func (i *spaceIndexer) index(ctx context.Context, ftQueueCounter uint64, info sm
 
 	headHashToIndex := headsHash(info.Heads)
 
-	saveIndexedHash := func() {
+	saveIndexedHash := func(updateFtCounter bool) {
 		if headHashToIndex == "" {
 			return
 		}
 
 		// If we have ftQueueCtr, use the method that saves it for crash recovery
-		if ftQueueCounter > 0 {
+		if ftQueueCounter > 0 && updateFtCounter {
 			err = i.spaceIndex.SaveLastIndexedHeadsHashWithFtQueueCtr(ctx, info.Id, headHashToIndex, ftQueueCounter)
 		} else {
 			err = i.spaceIndex.SaveLastIndexedHeadsHash(ctx, info.Id, headHashToIndex)
@@ -255,7 +255,7 @@ func (i *spaceIndexer) index(ctx context.Context, ftQueueCounter uint64, info sm
 	}
 
 	if !hasError {
-		saveIndexedHash()
+		saveIndexedHash(addToFulltextQueue)
 	}
 
 	return addToFulltextQueue, nil
