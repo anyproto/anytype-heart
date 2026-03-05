@@ -172,10 +172,10 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		}
 
 		injectLimit := 0
-		if upperBound >= len(records) {
+		if upperBound > len(records) {
 			injectLimit = upperBound - len(records)
 		} else if upperBound > 0 {
-			continue // len(recs) > upperBound > 0, so we can stop collecting new records
+			continue // len(recs) >= upperBound > 0, so we can stop collecting new records
 		}
 		// fulltext does not search by names of objects in tag/status/object details,
 		// so we need to query those objects that have objects got by fulltext as values in their details

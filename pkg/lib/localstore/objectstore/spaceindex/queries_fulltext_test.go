@@ -1163,6 +1163,130 @@ func TestQueryFromFulltext(t *testing.T) {
 		}
 	})
 
+	t.Run("no limit allows unlimited injection from tags", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+
+		tagObj := TestObject{
+			bundle.RelationKeyId:             domain.String("tag1"),
+			bundle.RelationKeyName:           domain.String("Color"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:    domain.String("color"),
+		}
+		objects := []TestObject{tagObj}
+		for i := 0; i < 5; i++ {
+			objects = append(objects, TestObject{
+				bundle.RelationKeyId:             domain.String("colored" + string(rune('A'+i))),
+				bundle.RelationKeyName:           domain.String("Colored object"),
+				domain.RelationKey("color"):      domain.StringList([]string{"tag1"}),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			})
+		}
+		s.AddObjects(t, objects)
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+		}
+
+		// when — no limit (upperBound = 0, injectLimit stays 0 = unlimited)
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 0, 0, "Color")
+
+		// then — tag1 + all 5 colored objects
+		require.NoError(t, err)
+		assert.Len(t, recs, 6)
+	})
+
+	t.Run("injection is capped to remaining limit capacity", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+
+		tagObj := TestObject{
+			bundle.RelationKeyId:             domain.String("tag1"),
+			bundle.RelationKeyName:           domain.String("Priority"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:    domain.String("priority"),
+		}
+		objects := []TestObject{tagObj}
+		for i := 0; i < 5; i++ {
+			objects = append(objects, TestObject{
+				bundle.RelationKeyId:             domain.String("task" + string(rune('A'+i))),
+				bundle.RelationKeyName:           domain.String("Task item"),
+				domain.RelationKey("priority"):   domain.StringList([]string{"tag1"}),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			})
+		}
+		s.AddObjects(t, objects)
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+		}
+
+		// when — limit=3 → upperBound=3
+		// After tag1 added: len(records)=1, upperBound(3) > 1 → injectLimit = 3-1 = 2
+		// Only 2 of 5 tagged objects are injected
+		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Priority")
+
+		// then — tag1 + 2 injected = 3 total
+		require.NoError(t, err)
+		assert.Len(t, recs, 3)
+	})
+
+	t.Run("injection is skipped when limit is already reached by direct results", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+
+		obj1 := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("ZZZ First"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		obj2 := TestObject{
+			bundle.RelationKeyId:             domain.String("obj2"),
+			bundle.RelationKeyName:           domain.String("ZZZ Second"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		tagObj := TestObject{
+			bundle.RelationKeyId:             domain.String("tag1"),
+			bundle.RelationKeyName:           domain.String("MyTag"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:    domain.String("tagRel"),
+		}
+		taggedObj := TestObject{
+			bundle.RelationKeyId:             domain.String("tagged1"),
+			bundle.RelationKeyName:           domain.String("AAA Tagged"),
+			domain.RelationKey("tagRel"):     domain.StringList([]string{"tag1"}),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{obj1, obj2, tagObj, taggedObj})
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+		}
+
+		params := newFilters(t, s, nil, []database.SortRequest{
+			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
+		})
+
+		// when — limit=2 → upperBound=2
+		// After obj1: len=1, 2>1 → injectLimit=1 (basic, no linkers → no injection)
+		// After obj2: len=2, !(2>2), 2>0 → continue (injection skipped)
+		// After tag1: len=3, !(2>3), 2>0 → continue (injection skipped)
+		// records=[obj1,obj2,tag1], sorted by name=[tag1,obj1,obj2], sliced to 2=[tag1,obj1]
+		// tagged1 would sort first ("AAA") if injected, but injection was skipped
+		recs, err := s.QueryFromFulltext(results, params, 2, 0, "test")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, recs, 2)
+		gotIds := []string{
+			recs[0].Details.GetString(bundle.RelationKeyId),
+			recs[1].Details.GetString(bundle.RelationKeyId),
+		}
+		assert.NotContains(t, gotIds, "tagged1")
+	})
+
 	t.Run("archived tag does not inject results", func(t *testing.T) {
 		// given
 		s := NewStoreFixture(t)
