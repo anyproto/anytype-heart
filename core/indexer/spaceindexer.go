@@ -129,7 +129,7 @@ func (i *spaceIndexer) indexBatch(tasks []indexTask) (err error) {
 	}
 	if err = tx.Commit(); err != nil {
 		closeTasks(err)
-	} else if commonTx.Commit() != nil {
+	} else if err = commonTx.Commit(); err != nil {
 		closeTasks(fmt.Errorf("failed to commit commondb tx: %w", err))
 	} else {
 		closeTasks(nil)
