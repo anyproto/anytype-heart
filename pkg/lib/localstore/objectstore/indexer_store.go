@@ -186,8 +186,8 @@ func (s *dsObjectStore) AddToIndexQueueWithCounter(ctx context.Context, ftQueueC
 	return modified, nil
 }
 
-func (s *dsObjectStore) AddChatMessageToIndexQueue(ctx context.Context, chatId domain.FullID, orderId string) error {
-	txn, err := s.fulltextQueue.WriteTx(ctx)
+func (s *dsObjectStore) AddChatMessageToIndexQueue(_ context.Context, chatId domain.FullID, orderId string) error {
+	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
@@ -227,8 +227,8 @@ func (s *dsObjectStore) AddChatMessageToIndexQueue(ctx context.Context, chatId d
 }
 
 // AddChatMessageDeleteToIndexQueue adds a deleted message to the fulltext index queue
-func (s *dsObjectStore) AddChatMessageDeleteToIndexQueue(ctx context.Context, chatId domain.FullID, messageId string) error {
-	txn, err := s.fulltextQueue.WriteTx(ctx)
+func (s *dsObjectStore) AddChatMessageDeleteToIndexQueue(_ context.Context, chatId domain.FullID, messageId string) error {
+	txn, err := s.fulltextQueue.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
 	}
