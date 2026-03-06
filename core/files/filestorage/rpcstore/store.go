@@ -80,6 +80,7 @@ type store struct {
 
 	bannedMu       sync.Mutex
 	bannedLocalMap map[string]time.Time
+
 }
 
 func newStore(pool pool.Pool, peerStore peerstore.PeerStore) *store {
@@ -192,7 +193,7 @@ func (s *store) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 }
 
 func (s *store) getFromLocalPeers(ctx context.Context, spaceId string, k cid.Cid) ([]byte, error) {
-	localPeerIds := s.filterBannedPeers(s.peerStore.AllLocalPeers())
+	localPeerIds := s.filterBannedPeers(s.peerStore.LocalPeerIds(spaceId))
 	if len(localPeerIds) == 0 {
 		return nil, fmt.Errorf("no local peers available")
 	}
