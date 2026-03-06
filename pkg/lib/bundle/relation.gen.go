@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9d588d9062829f2f00ce91547cfd9104cfd476d2c183652e80193979475f3714"
+const RelationChecksum = "a2b4d0588409ad64e473ee01f16060d59af2211a9d7d95a3631720a8ee99d11c"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -165,7 +165,6 @@ const (
 	RelationKeySpaceOrder                           domain.RelationKey = "spaceOrder"
 	RelationKeyOrderId                              domain.RelationKey = "orderId"
 	RelationKeyOneToOneIdentity                     domain.RelationKey = "oneToOneIdentity"
-	RelationKeyOneToOneOtherIdentity                domain.RelationKey = "oneToOneOtherIdentity"
 	RelationKeyOneToOneInboxSentStatus              domain.RelationKey = "oneToOneInboxSentStatus"
 	RelationKeyOneToOneRequestMetadataKey           domain.RelationKey = "oneToOneRequestMetadataKey"
 	RelationKeyIconName                             domain.RelationKey = "iconName"
@@ -1562,8 +1561,8 @@ var (
 		},
 		RelationKeyOneToOneIdentity: {
 
-			DataSource:       model.Relation_details,
-			Description:      "OneToOne (second) participant identity DEPRECATED",
+			DataSource:       model.Relation_local,
+			Description:      "OneToOne other participant identity",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_broneToOneIdentity",
@@ -1584,20 +1583,6 @@ var (
 			Key:              "oneToOneInboxSentStatus",
 			MaxCount:         1,
 			Name:             "OneToOne Inbox sent status",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyOneToOneOtherIdentity: {
-
-			DataSource:       model.Relation_local,
-			Description:      "OneToOne other participant identity",
-			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
-			Id:               "_broneToOneOtherIdentity",
-			Key:              "oneToOneOtherIdentity",
-			MaxCount:         1,
-			Name:             "oneToOneOtherIdentity",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

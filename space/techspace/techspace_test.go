@@ -50,7 +50,7 @@ func (s *spaceViewStub) SetPushNotificationForceModeIds(ctx session.Context, cha
 	return
 }
 
-func (s *spaceViewStub) SetOneToOneOtherIdentity(identity string) error {
+func (s *spaceViewStub) SetOneToOneIdentity(identity string) error {
 	return nil
 }
 

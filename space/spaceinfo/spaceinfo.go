@@ -148,7 +148,7 @@ func NewSpaceDescriptionFromDetails(details *domain.Details) SpaceDescription {
 		IconImage:                  details.GetString(bundle.RelationKeyIconImage),
 		IconOption:                 int(details.GetInt64(bundle.RelationKeyIconOption)),
 		SpaceUxType:                model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)), // #nosec G115
-		OneToOneIdentity:           details.GetString(bundle.RelationKeyOneToOneOtherIdentity),
+		OneToOneIdentity:           details.GetString(bundle.RelationKeyOneToOneIdentity),
 		OneToOneRequestMetadataKey: details.GetString(bundle.RelationKeyOneToOneRequestMetadataKey),
 	}
 }

@@ -1569,22 +1569,12 @@
     "source": "details"
   },
   {
-    "description": "OneToOne (second) participant identity DEPRECATED",
+    "description": "OneToOne other participant identity",
     "format": "longtext",
     "hidden": true,
     "key": "oneToOneIdentity",
     "maxCount": 1,
     "name": "oneToOneIdentity",
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "OneToOne other participant identity",
-    "format": "longtext",
-    "hidden": true,
-    "key": "oneToOneOtherIdentity",
-    "maxCount": 1,
-    "name": "oneToOneOtherIdentity",
     "readonly": false,
     "source": "local"
   },

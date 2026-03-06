@@ -82,7 +82,7 @@ type TechSpace interface {
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) (err error)
-	SpaceViewSetOneToOneOtherIdentity(ctx context.Context, spaceId string, identity string) (err error)
+	SpaceViewSetOneToOneIdentity(ctx context.Context, spaceId string, identity string) (err error)
 	SpaceViewId(id string) (string, error)
 	AccountObjectId() (string, error)
 }
@@ -102,7 +102,7 @@ type SpaceView interface {
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
 	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error)
-	SetOneToOneOtherIdentity(identity string) error
+	SetOneToOneIdentity(identity string) error
 	SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error)
 	SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error)
 	ResetPushNotificationIds(ctx session.Context, allIds []string) error
@@ -234,9 +234,9 @@ func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, detail
 	})
 }
 
-func (s *techSpace) SpaceViewSetOneToOneOtherIdentity(ctx context.Context, spaceId string, identity string) (err error) {
+func (s *techSpace) SpaceViewSetOneToOneIdentity(ctx context.Context, spaceId string, identity string) (err error) {
 	return s.DoSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
-		return spaceView.SetOneToOneOtherIdentity(identity)
+		return spaceView.SetOneToOneIdentity(identity)
 	})
 }
 

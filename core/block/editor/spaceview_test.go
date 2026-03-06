@@ -188,7 +188,7 @@ func (s *spaceServiceStub) OnViewUpdated(info spaceinfo.SpacePersistentInfo) {
 func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.Details) {
 }
 
-func (s *spaceServiceStub) SpaceViewSetOneToOneOtherIdentity(spaceId string, identity string) {
+func (s *spaceServiceStub) SpaceViewSetOneToOneIdentity(spaceId string, identity string) {
 }
 
 func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {

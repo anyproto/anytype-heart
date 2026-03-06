@@ -85,7 +85,7 @@ func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
 	}
 
 	otherIdentity := w.oneToOneGetOtherIdentity()
-	w.spaceService.SpaceViewSetOneToOneOtherIdentity(w.SpaceID(), otherIdentity)
+	w.spaceService.SpaceViewSetOneToOneIdentity(w.SpaceID(), otherIdentity)
 
 	participantId := domain.NewParticipantId(w.SpaceID(), otherIdentity)
 	recordsCh := make(chan *domain.Details)

@@ -48,7 +48,7 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 
 type spaceService interface {
 	OnWorkspaceChanged(spaceId string, details *domain.Details)
-	SpaceViewSetOneToOneOtherIdentity(spaceId string, identity string)
+	SpaceViewSetOneToOneIdentity(spaceId string, identity string)
 	PersonalSpaceId() string
 }
 
@@ -274,9 +274,9 @@ func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPush
 	return s.Apply(st)
 }
 
-func (s *SpaceView) SetOneToOneOtherIdentity(identity string) error {
+func (s *SpaceView) SetOneToOneIdentity(identity string) error {
 	st := s.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneOtherIdentity, domain.String(identity))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneIdentity, domain.String(identity))
 	return s.Apply(st)
 }
 
