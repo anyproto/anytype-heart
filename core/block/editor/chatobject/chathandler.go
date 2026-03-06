@@ -29,6 +29,8 @@ type ChatHandler struct {
 	chatFullId      domain.FullID
 	currentIdentity string
 	myParticipantId string
+	// reactionsCounterEpoch is the unix timestamp after which reactions counters are tracked
+	reactionsCounterEpoch int64
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
 }
@@ -228,8 +230,10 @@ func (d *ChatHandler) handleReactionsModify(
 	}
 	// TODO Count validation
 
+	reactionsCounterEnabled := ch.Change.Timestamp > d.reactionsCounterEpoch
+
 	// Track unread reaction changes on current user's messages from other users
-	if msg.Creator == d.currentIdentity && ch.Change.Creator != d.currentIdentity && len(key.KeyPath) > 1 {
+	if reactionsCounterEnabled && msg.Creator == d.currentIdentity && ch.Change.Creator != d.currentIdentity && len(key.KeyPath) > 1 {
 		emoji := key.KeyPath[1]
 		wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
 		isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)

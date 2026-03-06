@@ -256,7 +256,6 @@ func TestMarshalUnmarshalUnreadReactionIds(t *testing.T) {
 		assert.Equal(t, "ch3", got.UnreadReactionIds["❤️"]["user3"].ChangeId)
 		assert.Equal(t, "ord1", got.UnreadReactionIds["❤️"]["user3"].OrderId)
 		assert.True(t, got.UnreadReaction)
-		assert.Equal(t, "ord1", got.LastUnreadReactionOrderId)
 	})
 
 	t.Run("round trip with empty map clears fields", func(t *testing.T) {

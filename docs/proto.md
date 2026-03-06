@@ -33673,7 +33673,6 @@ Used to decode block meta only, without the content itself
 | synced | [bool](#bool) |  |  |
 | pinned | [bool](#bool) |  |  |
 | unreadReaction | [bool](#bool) |  |  |
-| lastUnreadReactionOrderId | [string](#string) |  |  |
 
 
 

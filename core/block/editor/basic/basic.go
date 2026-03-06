@@ -96,6 +96,13 @@ type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
+type outdentOpContext struct {
+	blockId           string
+	originalParent    simple.Block
+	positionInParent  int
+	followingSiblings []string
+}
+
 func NewBasic(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
@@ -267,8 +274,9 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		return err
 	}
 
+	var opCtx *outdentOpContext
 	var replacementCandidate simple.Block
-	for _, id := range blockIds {
+	for i, id := range blockIds {
 		if b := srcState.Pick(id); b != nil {
 			if replacementCandidate == nil {
 				replacementCandidate = srcState.Get(id)
@@ -276,6 +284,12 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 			if slices.Contains(b.Model().ChildrenIds, targetBlockId) {
 				return fmt.Errorf("cannot move block to its child")
 			}
+
+			// Capture outdent context of last moving block before unlinking
+			if i == len(blockIds)-1 {
+				opCtx = collectOutdentContext(srcState, id)
+			}
+
 			srcState.Unlink(id)
 		}
 	}
@@ -313,7 +327,64 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		}
 	}
 
-	return srcState.InsertTo(targetBlockId, position, blockIds...)
+	if err = srcState.InsertTo(targetBlockId, position, blockIds...); err != nil {
+		return err
+	}
+
+	if opCtx != nil {
+		return processOutdentOperation(opCtx, srcState, targetBlockId, position)
+	}
+	return nil
+}
+
+func collectOutdentContext(srcState *state.State, blockId string) *outdentOpContext {
+	parent := srcState.GetParentOf(blockId)
+	if parent == nil {
+		return nil
+	}
+	ctx := &outdentOpContext{
+		blockId:          blockId,
+		originalParent:   parent,
+		positionInParent: slice.FindPos(parent.Model().ChildrenIds, blockId),
+	}
+	// Get siblings after this position - make a copy to avoid slice aliasing
+	if ctx.positionInParent != -1 && ctx.positionInParent < len(parent.Model().ChildrenIds)-1 {
+		siblings := parent.Model().ChildrenIds[ctx.positionInParent+1:]
+		ctx.followingSiblings = make([]string, len(siblings))
+		copy(ctx.followingSiblings, siblings)
+	}
+	return ctx
+}
+
+func processOutdentOperation(opCtx *outdentOpContext, srcState *state.State, targetBlockId string, pos model.BlockPosition) error {
+	if opCtx.originalParent == nil || len(opCtx.followingSiblings) == 0 {
+		return nil
+	}
+
+	// Detect outdent: moving to be sibling of a current parent
+	// This happens when target is the current parent and position is Top/Bottom
+	if targetBlockId == "" || opCtx.originalParent.Model().Id != targetBlockId || (pos != model.Block_Top && pos != model.Block_Bottom) {
+		return nil
+	}
+
+	// Validate moved block can have children
+	movedBlock := srcState.Get(opCtx.blockId)
+	if movedBlock != nil {
+		if textContent, ok := movedBlock.Model().Content.(*model.BlockContentOfText); ok {
+			if textContent.Text != nil && !canHaveChildren(textContent.Text.Style) {
+				return nil // Skip if block can't have children
+			}
+		}
+	}
+
+	// Reassign siblings as children
+	for _, siblingId := range opCtx.followingSiblings {
+		srcState.Unlink(siblingId)
+	}
+	if err := srcState.InsertTo(opCtx.blockId, model.Block_Inner, opCtx.followingSiblings...); err != nil {
+		return fmt.Errorf("reassign siblings during outdent: %w", err)
+	}
+	return nil
 }
 
 func (bs *basic) Replace(ctx session.Context, id string, block *model.Block) (newId string, err error) {

@@ -1005,6 +1005,63 @@ func TestTableChanges(t *testing.T) {
 	})
 }
 
+func TestChangeBlockDetailsSet_SkipsLocalAndDerivedKeys(t *testing.T) {
+	t.Run("local relation key is skipped", func(t *testing.T) {
+		// given
+		root := NewDoc("root", nil)
+		s := root.NewState()
+
+		// when
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDetailsSet{
+				DetailsSet: &pb.ChangeDetailsSet{
+					Key:   string(bundle.RelationKeySyncStatus),
+					Value: pbtypes.Int64(1),
+				},
+			},
+		}))
+
+		// then
+		assert.False(t, s.Details().Has(bundle.RelationKeySyncStatus))
+	})
+	t.Run("derived relation key is skipped", func(t *testing.T) {
+		// given
+		root := NewDoc("root", nil)
+		s := root.NewState()
+
+		// when
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDetailsSet{
+				DetailsSet: &pb.ChangeDetailsSet{
+					Key:   string(bundle.RelationKeySpaceId),
+					Value: pbtypes.String("space1"),
+				},
+			},
+		}))
+
+		// then
+		assert.False(t, s.Details().Has(bundle.RelationKeySpaceId))
+	})
+	t.Run("regular relation key is applied", func(t *testing.T) {
+		// given
+		root := NewDoc("root", nil)
+		s := root.NewState()
+
+		// when
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDetailsSet{
+				DetailsSet: &pb.ChangeDetailsSet{
+					Key:   string(bundle.RelationKeyName),
+					Value: pbtypes.String("test"),
+				},
+			},
+		}))
+
+		// then
+		assert.Equal(t, "test", s.Details().GetString(bundle.RelationKeyName))
+	})
+}
+
 func TestMakeObjectTypesChanges(t *testing.T) {
 	t.Run("no changes when types are the same", func(t *testing.T) {
 		// given

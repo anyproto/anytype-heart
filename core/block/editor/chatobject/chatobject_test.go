@@ -100,7 +100,15 @@ const (
 	chatId      = "chatId1"
 )
 
-func newFixture(t *testing.T) *fixture {
+type fixtureOption func(fx *fixture)
+
+func withReactionsCounterEpoch(epoch int64) fixtureOption {
+	return func(fx *fixture) {
+		fx.reactionsCounterEpoch = epoch
+	}
+}
+
+func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 	ctx := context.Background()
 
 	a := &app.App{}
@@ -201,6 +209,10 @@ func newFixture(t *testing.T) *fixture {
 	}).Maybe()
 
 	fx.source = source
+
+	for _, opt := range opts {
+		opt(fx)
+	}
 
 	err = object.Init(&smartblock.InitContext{
 		Ctx:    ctx,

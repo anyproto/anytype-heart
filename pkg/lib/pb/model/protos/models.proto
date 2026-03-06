@@ -1638,7 +1638,6 @@ message ChatMessage {
     bool synced = 13;
     bool pinned = 15;
     bool unreadReaction = 16;
-    string lastUnreadReactionOrderId = 17;
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
