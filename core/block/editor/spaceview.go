@@ -48,6 +48,7 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 
 type spaceService interface {
 	OnWorkspaceChanged(spaceId string, details *domain.Details)
+	SpaceViewSetOneToOneIdentity(spaceId string, identity string)
 	PersonalSpaceId() string
 }
 
@@ -273,6 +274,12 @@ func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPush
 	return s.Apply(st)
 }
 
+func (s *SpaceView) SetOneToOneIdentity(identity string) error {
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneIdentity, domain.String(identity))
+	return s.Apply(st)
+}
+
 func (s *SpaceView) SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error) {
 	st := s.NewState()
 	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(status))
@@ -326,7 +333,6 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyCreatedDate,
 	bundle.RelationKeyChatId,
 	bundle.RelationKeyDescription,
-	bundle.RelationKeyOneToOneIdentity,
 	bundle.RelationKeyAnalyticsSpaceId,
 }
 

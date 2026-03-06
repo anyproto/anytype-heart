@@ -1569,14 +1569,14 @@
     "source": "details"
   },
   {
-    "description": "OneToOne (second) participant identity",
+    "description": "OneToOne other participant identity",
     "format": "longtext",
     "hidden": true,
     "key": "oneToOneIdentity",
     "maxCount": 1,
     "name": "oneToOneIdentity",
     "readonly": false,
-    "source": "details"
+    "source": "local"
   },
   {
     "description": "OneToOne Inbox invite sent status",

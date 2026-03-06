@@ -41,6 +41,7 @@ const (
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
 	diffManagerSyncStatus = "syncStatus"
+	diffManagerReactions  = "reactions"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -60,6 +61,7 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, messageId string) error
 	MarkReadMessages(ctx context.Context, req ReadMessagesRequest) (markedCount int, err error)
+	MarkReadReactions(ctx context.Context) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
 	SetMessagePinned(ctx context.Context, messageId string, pinned bool) error
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
@@ -94,6 +96,8 @@ type storeObject struct {
 	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
 	indexerStore            objectstore.IndexerStore
+
+	reactionsCounterEpoch int64
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -169,6 +173,7 @@ func New(
 		crdtDb:                  crdtDb,
 		repositoryService:       repositoryService,
 		indexerStore:            indexerStore,
+		reactionsCounterEpoch:   time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC).Unix(),
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
@@ -205,6 +210,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 			log.Error("mark read mentions", zap.Error(markErr))
 		}
 	})
+	storeSource.RegisterDiffManager(diffManagerReactions, func(removed []string) {
+		markErr := s.markReadReactions(removed)
+		if markErr != nil {
+			log.Error("mark read reactions", zap.Error(markErr))
+		}
+	})
 	storeSource.RegisterDiffManager(diffManagerSyncStatus, func(removed []string) {
 		updateErr := s.setMessagesSyncStatus(removed)
 		if updateErr != nil {
@@ -223,12 +234,13 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.chatHandler = &ChatHandler{
-		repository:      s.repository,
-		subscription:    s.subscription,
-		indexerStore:    s.indexerStore,
-		chatFullId:      domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
-		currentIdentity: s.accountService.AccountID(),
-		myParticipantId: myParticipantId,
+		repository:            s.repository,
+		subscription:          s.subscription,
+		indexerStore:          s.indexerStore,
+		chatFullId:            domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
+		currentIdentity:       s.accountService.AccountID(),
+		myParticipantId:       myParticipantId,
+		reactionsCounterEpoch: s.reactionsCounterEpoch,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
@@ -379,6 +391,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	obj.Del(chatmodel.ReadKey)
 	obj.Del(chatmodel.MentionReadKey)
 	obj.Del(chatmodel.SyncedKey)
+	obj.Del(chatmodel.ReactionUnreadChangeIdsKey)
 
 	builder := storestate.Builder{}
 	err = builder.Create(CollectionName, storestate.IdFromChange, obj)

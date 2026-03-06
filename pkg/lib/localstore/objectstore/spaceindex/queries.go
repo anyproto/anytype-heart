@@ -44,78 +44,6 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 	return recs, err
 }
 
-// getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
-func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey domain.RelationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
-	f := database.FiltersAnd{
-		database.FilterAllIn{Key: relationKey, Strings: []string{objectId}},
-		params.FilterObj,
-	}
-	return s.queryAnyStore(f, params.Order, uint(limit), 0)
-}
-
-func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
-	var injectedResults []database.Record
-	id := details.GetString(bundle.RelationKeyId)
-	if path.RelationKey != bundle.RelationKeyName.String() && path.RelationKey != bundle.RelationKeyPluralName.String() {
-		// inject only in case we match the name
-		return nil
-	}
-	var (
-		relationKey string
-		err         error
-	)
-
-	isDeleted := details.GetBool(bundle.RelationKeyIsDeleted)
-	isArchived := details.GetBool(bundle.RelationKeyIsArchived)
-	if isDeleted || isArchived {
-		return nil
-	}
-
-	//nolint:gosec
-	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
-	switch layout {
-	case model.ObjectType_relationOption:
-		relationKey = details.GetString(bundle.RelationKeyRelationKey)
-	case model.ObjectType_objectType:
-		relationKey = bundle.RelationKeyType.String()
-	default:
-		return nil
-	}
-	recs, err := s.getObjectsWithObjectInRelation(domain.RelationKey(relationKey), id, maxLength, params)
-	if err != nil {
-		log.Errorf("getInjectedResults failed to get objects with object in relation: %v", err)
-		return nil
-	}
-
-	for _, rec := range recs {
-		relDetails := pbtypes.StructFilterKeys(details.ToProto(), []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyType.String(),
-			bundle.RelationKeyResolvedLayout.String(),
-			bundle.RelationKeyRelationOptionColor.String(),
-		})
-		metaInj := model.SearchMeta{
-			RelationKey:     relationKey,
-			RelationDetails: relDetails,
-		}
-
-		detailsCopy := rec.Details.Copy()
-		// set the same score as original object
-		detailsCopy.SetFloat64(database.RecordScoreField, score)
-		injectedResults = append(injectedResults, database.Record{
-			Details: detailsCopy,
-			Meta:    metaInj,
-		})
-
-		if len(injectedResults) == maxLength {
-			break
-		}
-	}
-
-	return injectedResults
-}
-
 func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
 	anystoreFilter := filter.AnystoreFilter()
 	var sortsArg []any
@@ -181,9 +109,10 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
 	records := make([]database.Record, 0, len(results))
+	upperBound := offset + limit
 	resultObjectMap := make(map[string]struct{})
 	// we assume that results are already sorted by score DESC.
-	// this mean we use map to ignore duplicates without checking score
+	// this means we use a map to ignore duplicates without checking the score
 	for _, res := range results {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
@@ -193,7 +122,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 					SpaceID:  s.SpaceId(),
 				})
 				if err != nil {
-					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
+					log.Errorf("QueryFromFulltext failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
 					continue
 				}
 				details.SetString(bundle.RelationKeyId, res.Path.ObjectId)
@@ -242,7 +171,15 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			}
 		}
 
-		injectedResults := s.getInjectedResults(details, res.Score, res.Path, 10, params)
+		injectLimit := 0
+		if upperBound > len(records) {
+			injectLimit = upperBound - len(records)
+		} else if upperBound > 0 {
+			continue // len(recs) >= upperBound > 0, so we can stop collecting new records
+		}
+		// fulltext does not search by names of objects in tag/status/object details,
+		// so we need to query those objects that have objects got by fulltext as values in their details
+		injectedResults := s.getObjectsWithObjectInRelation(details, res.Score, res.Path, injectLimit, params)
 		if len(injectedResults) == 0 {
 			continue
 		}
@@ -270,13 +207,83 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		})
 	}
 	if limit > 0 {
-		upperBound := offset + limit
 		if upperBound > len(records) {
 			upperBound = len(records)
 		}
 		return records[offset:upperBound], nil
 	}
 	return records[offset:], nil
+}
+
+// getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
+func (s *dsObjectStore) getObjectsWithObjectInRelation(details *domain.Details, score float64, path domain.ObjectPath, limit int, params database.Filters) []database.Record {
+	if path.RelationKey != bundle.RelationKeyName.String() && path.RelationKey != bundle.RelationKeyPluralName.String() {
+		// inject only in case we match the name
+		return nil
+	}
+
+	var (
+		relationKey string
+		err         error
+		id          = details.GetString(bundle.RelationKeyId)
+		isDeleted   = details.GetBool(bundle.RelationKeyIsDeleted)
+		isArchived  = details.GetBool(bundle.RelationKeyIsArchived)
+	)
+
+	if isDeleted || isArchived {
+		return nil
+	}
+
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
+	switch layout {
+	case model.ObjectType_relationOption:
+		relationKey = details.GetString(bundle.RelationKeyRelationKey)
+	case model.ObjectType_objectType:
+		relationKey = bundle.RelationKeyType.String()
+	case model.ObjectType_basic, model.ObjectType_note, model.ObjectType_profile, model.ObjectType_todo, model.ObjectType_participant:
+		relationKey = bundle.RelationKeyLinks.String()
+	default:
+		return nil
+	}
+
+	recs, err := s.queryAnyStore(database.FiltersAnd{
+		database.FilterAllIn{Key: domain.RelationKey(relationKey), Strings: []string{id}},
+		params.FilterObj,
+	}, params.Order, uint(limit), 0) //nolint:gosec
+	if err != nil {
+		log.Errorf("queryAnyStore failed to get objects with object in relation: %v", err)
+		return nil
+	}
+
+	injectedResults := make([]database.Record, 0, len(recs))
+	for _, rec := range recs {
+		relDetails := pbtypes.StructFilterKeys(details.ToProto(), []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyType.String(),
+			bundle.RelationKeyResolvedLayout.String(),
+			bundle.RelationKeyRelationOptionColor.String(),
+		})
+		metaInj := model.SearchMeta{
+			RelationKey:     relationKey,
+			RelationDetails: relDetails,
+		}
+
+		detailsCopy := rec.Details.Copy()
+		// set the same score as original object
+		detailsCopy.SetFloat64(database.RecordScoreField, score)
+		injectedResults = append(injectedResults, database.Record{
+			Details: detailsCopy,
+			Meta:    metaInj,
+		})
+
+		if len(injectedResults) == limit {
+			break
+		}
+	}
+
+	return injectedResults
 }
 
 func (s *dsObjectStore) performQuery(q database.Query) (records []database.Record, err error) {

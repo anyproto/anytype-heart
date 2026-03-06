@@ -35,10 +35,11 @@ type subscriptionManager struct {
 	identityCache *expirable.LRU[string, *domain.Details]
 	subscriptions map[string]*subscription
 
-	chatStateOrder   int64
-	chatState        *model.ChatState
-	needReloadState  bool
-	chatStateUpdated bool
+	chatStateOrder          int64
+	chatState               *model.ChatState
+	needReloadState         bool
+	needReloadReactionState bool
+	chatStateUpdated        bool
 
 	// Deps
 	spaceIndex  spaceindex.Store
@@ -170,6 +171,20 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 			return newState
 		})
 		s.needReloadState = false
+		s.needReloadReactionState = false
+	}
+
+	if s.needReloadReactionState && reloadStateIfNeeded {
+		s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+			newOrderId, err := s.repository.GetNewestUnreadReactionOrderId(s.componentCtx)
+			if err != nil {
+				log.Error("failed to reload reaction state", zap.Error(err))
+				return state
+			}
+			state.UnreadReactionOrderId = newOrderId
+			return state
+		})
+		s.needReloadReactionState = false
 	}
 
 	if !s.canSend() {
@@ -294,6 +309,10 @@ func (s *subscriptionManager) collectMessageDependencies(message *model.ChatMess
 	return result
 }
 
+func (s *subscriptionManager) ForceReloadReactionState() {
+	s.needReloadReactionState = true
+}
+
 func (s *subscriptionManager) Delete(messageId string) {
 	for _, sub := range s.subscriptions {
 		sub.state.applyDeleteMessage(messageId)
@@ -392,6 +411,28 @@ func (s *subscriptionManager) updateMentionRead(ids []string, read bool) {
 	}
 }
 
+func (s *subscriptionManager) UpdateReactionReadStatus(msgId string, unread bool) {
+	if !s.canSend() {
+		return
+	}
+	for _, sub := range s.subscriptions {
+		sub.state.applyUpdateReactionReadStatus([]string{msgId}, unread)
+	}
+}
+
+func (s *subscriptionManager) ReadReactions(newOrderId string, idsModified []string) {
+	s.UpdateChatState(func(state *model.ChatState) *model.ChatState {
+		state.UnreadReactionOrderId = newOrderId
+		return state
+	})
+	if !s.canSend() {
+		return
+	}
+	for _, sub := range s.subscriptions {
+		sub.state.applyUpdateReactionReadStatus(idsModified, false)
+	}
+}
+
 func (s *subscriptionManager) canSend() bool {
 	if s.sessionContext != nil {
 		return true
@@ -441,10 +482,11 @@ func copyChatState(state *model.ChatState) *model.ChatState {
 		return nil
 	}
 	return &model.ChatState{
-		Messages:    copyReadState(state.Messages),
-		Mentions:    copyReadState(state.Mentions),
-		LastStateId: state.LastStateId,
-		Order:       state.Order,
+		Messages:              copyReadState(state.Messages),
+		Mentions:              copyReadState(state.Mentions),
+		LastStateId:           state.LastStateId,
+		Order:                 state.Order,
+		UnreadReactionOrderId: state.UnreadReactionOrderId,
 	}
 }
 
@@ -486,6 +528,8 @@ func eventsSetSubIds(subIds []string, events []*pb.EventMessage) {
 		} else if v := ev.GetChatUpdateMessageSyncStatus(); v != nil {
 			v.SubIds = subIds
 		} else if v := ev.GetChatUpdatePinnedStatus(); v != nil {
+			v.SubIds = subIds
+		} else if v := ev.GetChatUpdateReactionReadStatus(); v != nil {
 			v.SubIds = subIds
 		}
 	}

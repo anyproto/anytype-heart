@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "7df65d7b5ce42dc31b823ff42391a199889d1e270a34f50219c50f020be10cb3"
+const RelationChecksum = "a2b4d0588409ad64e473ee01f16060d59af2211a9d7d95a3631720a8ee99d11c"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -1561,8 +1561,8 @@ var (
 		},
 		RelationKeyOneToOneIdentity: {
 
-			DataSource:       model.Relation_details,
-			Description:      "OneToOne (second) participant identity",
+			DataSource:       model.Relation_local,
+			Description:      "OneToOne other participant identity",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_broneToOneIdentity",

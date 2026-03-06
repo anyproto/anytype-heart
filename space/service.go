@@ -423,6 +423,14 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 	}()
 }
 
+func (s *service) SpaceViewSetOneToOneIdentity(spaceId string, identity string) {
+	go func() {
+		if err := s.techSpace.SpaceViewSetOneToOneIdentity(s.ctx, spaceId, identity); err != nil {
+			log.Warn("SpaceViewSetOneToOneIdentity error", zap.Error(err))
+		}
+	}()
+}
+
 func (s *service) OnWorkspaceChanged(spaceId string, details *domain.Details) {
 	go func() {
 		if err := s.techSpace.SpaceViewSetData(s.ctx, spaceId, details); err != nil {

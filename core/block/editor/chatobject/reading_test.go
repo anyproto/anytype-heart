@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -185,4 +186,283 @@ func TestMarkMentionsAsNotRead(t *testing.T) {
 	require.NoError(t, err)
 
 	fx.assertReadStatus(t, ctx, "", "", true, false)
+}
+
+func TestMarkReadReactions(t *testing.T) {
+	const (
+		anotherPerson = "anotherPerson"
+		thirdPerson   = "thirdPerson"
+	)
+
+	t.Run("marks all unread reactions as read", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// Create message as testCreator (current identity)
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Another person adds a reaction
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		// Third person adds a reaction
+		fx.sourceCreator = thirdPerson
+		fx.accountServiceStub.accountId = thirdPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "❤️")
+		require.NoError(t, err)
+
+		// Verify unread
+		fx.sourceCreator = testCreator
+		fx.accountServiceStub.accountId = testCreator
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+
+		changeIds, err := fx.repository.GetAllUnreadReactionChangeIds(ctx)
+		require.NoError(t, err)
+		require.Len(t, changeIds, 2)
+
+		// Mark all reactions as read
+		err = fx.MarkReadReactions(ctx)
+		require.NoError(t, err)
+
+		// Verify read
+		msg, err = fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction)
+
+		changeIds, err = fx.repository.GetAllUnreadReactionChangeIds(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, changeIds)
+	})
+
+	t.Run("no-op when no unread reactions", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		err = fx.MarkReadReactions(ctx)
+		require.NoError(t, err)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction)
+	})
+}
+
+func TestUnreadReactionTracking(t *testing.T) {
+	const (
+		anotherPerson = "anotherPerson"
+		thirdPerson   = "thirdPerson"
+	)
+
+	t.Run("reaction from another user marks unread and tracks in rUnreadChIds", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// Create message as testCreator (current identity)
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Another person adds a reaction
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+		assert.True(t, added)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+	})
+
+	t.Run("second reaction from different user also tracked", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// First reaction
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		// Second reaction (different emoji, different user)
+		fx.sourceCreator = thirdPerson
+		fx.accountServiceStub.accountId = thirdPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "❤️")
+		require.NoError(t, err)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+	})
+
+	t.Run("remove first reaction keeps unread when second remains", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Add two reactions from different users
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		fx.sourceCreator = thirdPerson
+		fx.accountServiceStub.accountId = thirdPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "❤️")
+		require.NoError(t, err)
+
+		// Remove first reaction (toggle off)
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+		assert.False(t, added)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction, "should still be unread because second reaction remains")
+	})
+
+	t.Run("remove last reaction clears unread", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Add one reaction
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+
+		// Remove the reaction
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		msg, err = fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction, "should be read because all unread reactions removed")
+	})
+
+	t.Run("ClearUnreadReactions clears both fields", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Add reactions
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+
+		fx.sourceCreator = thirdPerson
+		fx.accountServiceStub.accountId = thirdPerson
+		_, err = fx.ToggleMessageReaction(ctx, messageId, "❤️")
+		require.NoError(t, err)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.True(t, msg.UnreadReaction)
+
+		// Collect all change IDs and clear them directly via repository
+		fx.sourceCreator = testCreator
+		fx.accountServiceStub.accountId = testCreator
+		changeIds, err := fx.repository.GetAllUnreadReactionChangeIds(ctx)
+		require.NoError(t, err)
+		require.Len(t, changeIds, 2)
+
+		// Full clear — empty maxOrderId clears all
+		_, err = fx.repository.ClearUnreadReactions(ctx, "")
+		require.NoError(t, err)
+
+		msg, err = fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction, "should be read after clearing all reaction change IDs")
+	})
+
+	t.Run("reaction on non-author message does not track unread", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// anotherPerson creates a message (not testCreator's message)
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("not my message"))
+		require.NoError(t, err)
+
+		// thirdPerson adds a reaction to anotherPerson's message
+		fx.sourceCreator = thirdPerson
+		fx.accountServiceStub.accountId = thirdPerson
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+		assert.True(t, added)
+
+		// From testCreator's perspective, should not be unread (not my message)
+		fx.sourceCreator = testCreator
+		fx.accountServiceStub.accountId = testCreator
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction)
+	})
+
+	t.Run("self-reaction does not track unread", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		// testCreator creates a message
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// testCreator reacts to own message
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+		assert.True(t, added)
+
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction)
+	})
+
+	t.Run("reaction before epoch does not track unread", func(t *testing.T) {
+		ctx := context.Background()
+		// Set epoch far in the future so current time is before it
+		fx := newFixture(t, withReactionsCounterEpoch(time.Now().Add(time.Hour).Unix()))
+
+		// testCreator creates a message
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Another person adds a reaction (timestamp is before epoch)
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+		assert.True(t, added)
+
+		// Reaction should be applied but not tracked as unread
+		fx.sourceCreator = testCreator
+		fx.accountServiceStub.accountId = testCreator
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction, "reactions before epoch should not be tracked as unread")
+	})
 }

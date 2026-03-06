@@ -64,6 +64,9 @@ type Manager interface {
 	ReadMessages(newOldestOrderId string, idsModified []string, counterType chatmodel.CounterType)
 	UnreadMessages(newOldestOrderId string, lastStateId string, msgIds []string, counterType chatmodel.CounterType)
 	UpdateSyncStatus(messageIds []string, isSynced bool)
+	UpdateReactionReadStatus(msgId string, unread bool)
+	ReadReactions(newOrderId string, idsModified []string)
+	ForceReloadReactionState()
 }
 
 type Service interface {
