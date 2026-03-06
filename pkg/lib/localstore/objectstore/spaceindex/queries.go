@@ -137,7 +137,7 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 				if exp, expErr := query.Explain(s.componentCtx); expErr == nil {
 					for _, idx := range exp.Indexes {
 						if idx.Used {
-							explain += fmt.Sprintf("index: %s %d ", idx.Name, idx.Weight)
+							explain += fmt.Sprintf("index: %s %f ", idx.Name, idx.Cost)
 						}
 					}
 				}

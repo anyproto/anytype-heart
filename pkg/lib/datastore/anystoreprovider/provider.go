@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"sync"
@@ -228,13 +227,6 @@ func (s *provider) setDefaultConfig() {
 	if s.anyStoreConfig == nil {
 		s.anyStoreConfig = &anystore.Config{}
 	}
-	if s.anyStoreConfig.SQLiteConnectionOptions == nil {
-		s.anyStoreConfig.SQLiteConnectionOptions = map[string]string{}
-	}
-	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
-	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "normal"
-	s.anyStoreConfig.SQLiteConnectionOptions["wal_autocheckpoint"] = "0"
-
 }
 
 func (s *provider) GetCommonDb() anystore.DB {
@@ -321,10 +313,7 @@ func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 
 func (s *provider) getAnyStoreConfig() *anystore.Config {
 	return &anystore.Config{
-		Namespace:               s.anyStoreConfig.Namespace,
-		ReadConnections:         s.anyStoreConfig.ReadConnections,
-		SQLiteConnectionOptions: maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions),
-		SyncPoolElementMaxSize:  s.anyStoreConfig.SyncPoolElementMaxSize,
+		SyncPoolElementMaxSize: s.anyStoreConfig.SyncPoolElementMaxSize,
 		Durability: anystore.DurabilityConfig{
 			AutoFlush: true,
 			IdleAfter: time.Second * 20,

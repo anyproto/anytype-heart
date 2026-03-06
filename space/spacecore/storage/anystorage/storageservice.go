@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"go.uber.org/zap"
-	"golang.org/x/exp/maps"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
@@ -219,20 +218,8 @@ func (s *storageService) DeleteSpaceStorage(ctx context.Context, spaceId string)
 func (s *storageService) anyStoreConfig() *anystore.Config {
 	s.configMu.Lock()
 	defer s.configMu.Unlock()
-	opts := maps.Clone(s.config.SQLiteConnectionOptions)
-	if opts == nil {
-		opts = make(map[string]string)
-	}
-	opts["synchronous"] = "normal"
-	opts["wal_autocheckpoint"] = "0" // we will flush on idle
 
 	return &anystore.Config{
-		ReadConnections:                           4,
-		SQLiteConnectionOptions:                   opts,
-		SQLiteGlobalPageCachePreallocateSizeBytes: 1 << 26,
-
-		StalledConnectionsPanicOnClose:    time.Second * 45,
-		StalledConnectionsDetectorEnabled: true,
 		Durability: anystore.DurabilityConfig{
 			AutoFlush: true,
 			IdleAfter: time.Second * 20,

@@ -344,8 +344,6 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 			return fmt.Errorf("failed to split repo path: %s", repoPath)
 		}
 		c.SqliteTempPath = filepath.Join(split[0], "files")
-		c.AnyStoreConfig.SQLiteConnectionOptions = make(map[string]string)
-		c.AnyStoreConfig.SQLiteConnectionOptions["temp_store_directory"] = "'" + c.SqliteTempPath + "'"
 	}
 
 	if !c.DisableFileConfig {
