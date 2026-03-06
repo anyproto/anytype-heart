@@ -76,7 +76,6 @@ type store struct {
 	peerStore peerstore.PeerStore
 
 	mu           sync.Mutex
-	reservedPeer peer.Peer
 	reservedConn drpc.Conn
 
 	bannedMu       sync.Mutex
@@ -158,7 +157,7 @@ func (s *store) ensureReservedConn(ctx context.Context) error {
 		select {
 		case <-s.reservedConn.Closed():
 			s.reservedConn = nil
-			s.reservedPeer = nil
+
 		default:
 			return nil
 		}
@@ -171,14 +170,12 @@ func (s *store) ensureReservedConn(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("acquire reserved conn: %w", err)
 	}
-	s.reservedPeer = p
 	s.reservedConn = conn
 	return nil
 }
 
 func (s *store) resetReservedConnLocked() {
 	s.reservedConn = nil
-	s.reservedPeer = nil
 }
 
 // Get retrieves a block, trying local peers first then falling back to the node peer.
