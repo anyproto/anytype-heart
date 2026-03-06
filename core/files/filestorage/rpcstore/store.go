@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
+	"github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/pool"
 	"github.com/anyproto/any-sync/net/rpc/rpcerr"
@@ -206,7 +207,9 @@ func (s *store) getFromLocalPeers(ctx context.Context, spaceId string, k cid.Cid
 	}
 	data, err := s.getBlock(localCtx, p, spaceId, k, false)
 	if err != nil {
-		s.banLocalPeer(p.Id())
+		if errors.Is(err, net.ErrUnableToConnect) || errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+			s.banLocalPeer(p.Id())
+		}
 		return nil, err
 	}
 	return data, nil
@@ -361,7 +364,7 @@ func (s *store) BindCids(ctx context.Context, spaceID string, fileId domain.File
 	for i, c := range cids {
 		cidsB[i] = c.Bytes()
 	}
-	return s.doNodeReserved(ctx, func(cl fileproto.DRPCFileClient) error {
+	return s.doNodeDrpc(ctx, func(cl fileproto.DRPCFileClient) error {
 		_, err := cl.BlocksBind(ctx, &fileproto.BlocksBindRequest{
 			SpaceId: spaceID,
 			FileId:  fileId.String(),
@@ -380,7 +383,7 @@ func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...doma
 	for _, id := range fileIds {
 		rawFileIds = append(rawFileIds, id.String())
 	}
-	return s.doNodeReserved(ctx, func(cl fileproto.DRPCFileClient) error {
+	return s.doNodeDrpc(ctx, func(cl fileproto.DRPCFileClient) error {
 		_, err := cl.FilesDelete(ctx, &fileproto.FilesDeleteRequest{
 			SpaceId: spaceId,
 			FileIds: rawFileIds,

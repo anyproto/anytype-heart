@@ -1,5 +1,16 @@
 package rpcstore
 
+/*
+AI generated
+
+Name: Remote File Block Store Factory
+Scope: global
+
+## Responsibility
+- Factory for creating RpcStore instances that communicate with file node peers
+- Provides pool and peer store dependencies to each RpcStore instance
+*/
+
 import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
