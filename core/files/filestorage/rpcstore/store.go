@@ -5,7 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"sync"
+	"sync/atomic"
+	"text/tabwriter"
 	"time"
 
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
@@ -81,14 +84,31 @@ type store struct {
 	bannedMu       sync.Mutex
 	bannedLocalMap map[string]time.Time
 
+	// debug stats
+	localBytesTotal  atomic.Int64
+	localBlocksTotal atomic.Int64
+	localWaitTotal   atomic.Int64
+	nodeBytesTotal   atomic.Int64
+	nodeBlocksTotal  atomic.Int64
+	nodeWaitTotal    atomic.Int64
+
+	seenSpacesMu sync.Mutex
+	seenSpaces   map[string]struct{}
+
+	debugCtxCancel context.CancelFunc
 }
 
 func newStore(pool pool.Pool, peerStore peerstore.PeerStore) *store {
-	return &store{
+	debugCtx, debugCancel := context.WithCancel(context.Background())
+	s := &store{
 		pool:           pool,
 		peerStore:      peerStore,
 		bannedLocalMap: make(map[string]time.Time),
+		seenSpaces:     make(map[string]struct{}),
+		debugCtxCancel: debugCancel,
 	}
+	go s.debugLoop(debugCtx)
+	return s
 }
 
 func (s *store) banLocalPeer(peerId string) {
@@ -182,6 +202,7 @@ func (s *store) resetReservedConnLocked() {
 // Get retrieves a block, trying local peers first then falling back to the node peer.
 func (s *store) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	spaceId := fileblockstore.CtxGetSpaceId(ctx)
+	s.trackSpace(spaceId)
 	data, err := s.getFromLocalPeers(ctx, spaceId, k)
 	if err != nil {
 		data, err = s.getFromNodePeer(ctx, spaceId, k)
@@ -199,6 +220,7 @@ func (s *store) getFromLocalPeers(ctx context.Context, spaceId string, k cid.Cid
 	}
 	localCtx, cancel := context.WithTimeout(ctx, localPeerTimeout)
 	defer cancel()
+	start := time.Now()
 	p, err := s.pool.GetOneOf(localCtx, localPeerIds)
 	if err != nil {
 		return nil, fmt.Errorf("get local peer: %w", err)
@@ -210,15 +232,22 @@ func (s *store) getFromLocalPeers(ctx context.Context, spaceId string, k cid.Cid
 		}
 		return nil, err
 	}
+	s.addLocalStats(len(data), time.Since(start))
 	return data, nil
 }
 
 func (s *store) getFromNodePeer(ctx context.Context, spaceId string, k cid.Cid) ([]byte, error) {
+	start := time.Now()
 	p, err := s.getNodePeer(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get node peer: %w", err)
 	}
-	return s.getBlock(ctx, p, spaceId, k, IsWaitWhenAvailable(ctx))
+	data, err := s.getBlock(ctx, p, spaceId, k, IsWaitWhenAvailable(ctx))
+	if err != nil {
+		return nil, err
+	}
+	s.addNodeStats(len(data), time.Since(start))
+	return data, nil
 }
 
 func (s *store) getBlock(ctx context.Context, p peer.Peer, spaceId string, k cid.Cid, wait bool) ([]byte, error) {
@@ -481,7 +510,131 @@ func iterateSpaceFiles(ctx context.Context, client fileproto.DRPCFileClient, spa
 	}
 }
 
-// Close is a no-op; the reserved connection is closed with the pool component.
+func (s *store) addLocalStats(bytes int, wait time.Duration) {
+	s.localBytesTotal.Add(int64(bytes))
+	s.localBlocksTotal.Add(1)
+	s.localWaitTotal.Add(int64(wait))
+}
+
+func (s *store) addNodeStats(bytes int, wait time.Duration) {
+	s.nodeBytesTotal.Add(int64(bytes))
+	s.nodeBlocksTotal.Add(1)
+	s.nodeWaitTotal.Add(int64(wait))
+}
+
+func (s *store) trackSpace(spaceId string) {
+	s.seenSpacesMu.Lock()
+	s.seenSpaces[spaceId] = struct{}{}
+	s.seenSpacesMu.Unlock()
+}
+
+func (s *store) debugLoop(ctx context.Context) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.printDebugStats()
+		}
+	}
+}
+
+func (s *store) printDebugStats() {
+	var buf strings.Builder
+	w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
+
+	filePeers := s.peerStore.ResponsibleFilePeers()
+	allLocal := s.peerStore.AllLocalPeers()
+
+	reserved := "none"
+	s.mu.Lock()
+	if s.reservedConn != nil {
+		select {
+		case <-s.reservedConn.Closed():
+			reserved = "closed"
+		default:
+			reserved = "open"
+		}
+	}
+	s.mu.Unlock()
+
+	fmt.Fprintf(w, "[rpcstore] all_local=%d\tfile_peers=%d\treserved=%s\n", len(allLocal), len(filePeers), reserved)
+
+	// per-space local peer counts
+	s.seenSpacesMu.Lock()
+	spaces := make([]string, 0, len(s.seenSpaces))
+	for sp := range s.seenSpaces {
+		spaces = append(spaces, sp)
+	}
+	s.seenSpacesMu.Unlock()
+
+	for _, sp := range spaces {
+		peerIds := s.peerStore.LocalPeerIds(sp)
+		unbanned := s.filterBannedPeers(peerIds)
+		short := sp
+		if len(short) > 16 {
+			short = short[:16]
+		}
+		fmt.Fprintf(w, "  space=%s...\tlocal_peers=%d\tunbanned=%d\n", short, len(peerIds), len(unbanned))
+	}
+
+	// p2p stats
+	lb := s.localBytesTotal.Load()
+	lbl := s.localBlocksTotal.Load()
+	lw := time.Duration(s.localWaitTotal.Load())
+	var lavg time.Duration
+	if lbl > 0 {
+		lavg = lw / time.Duration(lbl)
+	}
+	fmt.Fprintf(w, "  p2p:\tblocks=%d\tbytes=%s\tavg_wait=%v\n", lbl, formatBytes(lb), lavg)
+
+	// node stats
+	nb := s.nodeBytesTotal.Load()
+	nbl := s.nodeBlocksTotal.Load()
+	nw := time.Duration(s.nodeWaitTotal.Load())
+	var navg time.Duration
+	if nbl > 0 {
+		navg = nw / time.Duration(nbl)
+	}
+	fmt.Fprintf(w, "  node:\tblocks=%d\tbytes=%s\tavg_wait=%v\n", nbl, formatBytes(nb), navg)
+
+	// banned list
+	s.bannedMu.Lock()
+	now := time.Now()
+	for id, until := range s.bannedLocalMap {
+		if now.Before(until) {
+			short := id
+			if len(short) > 16 {
+				short = short[:16]
+			}
+			fmt.Fprintf(w, "  banned=%s...\tremaining=%v\n", short, until.Sub(now).Truncate(time.Second))
+		}
+	}
+	s.bannedMu.Unlock()
+
+	w.Flush()
+	fmt.Print(buf.String())
+}
+
+func formatBytes(b int64) string {
+	switch {
+	case b >= 1<<30:
+		return fmt.Sprintf("%.2f GB", float64(b)/float64(1<<30))
+	case b >= 1<<20:
+		return fmt.Sprintf("%.2f MB", float64(b)/float64(1<<20))
+	case b >= 1<<10:
+		return fmt.Sprintf("%.2f KB", float64(b)/float64(1<<10))
+	default:
+		return fmt.Sprintf("%d B", b)
+	}
+}
+
+// Close stops the debug loop.
 func (s *store) Close() error {
+	if s.debugCtxCancel != nil {
+		s.debugCtxCancel()
+	}
 	return nil
 }
