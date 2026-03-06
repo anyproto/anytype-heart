@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -121,16 +122,30 @@ func (s *apiService) startServer() error {
 		openapiJSON,
 	)
 
+	listener, err := net.Listen("tcp", s.listenAddr)
+	if err != nil {
+		host, _, splitErr := net.SplitHostPort(s.listenAddr)
+		if splitErr != nil {
+			log.Errorf("API server: failed to listen on %s: %v", s.listenAddr, err)
+			return nil
+		}
+		log.Warnf("API server: %s is unavailable, picking a free port", s.listenAddr)
+		listener, err = net.Listen("tcp", net.JoinHostPort(host, "0"))
+		if err != nil {
+			log.Errorf("API server: failed to listen on free port: %v", err)
+			return nil
+		}
+	}
+
 	s.httpSrv = &http.Server{
-		Addr:              s.listenAddr,
 		Handler:           s.srv.Engine(),
 		ReadHeaderTimeout: readTimeout,
 	}
 
-	log.Infof("Starting API server on %s", s.httpSrv.Addr)
+	log.Warnf("API server listening on %s", listener.Addr().String())
 
 	go func() {
-		if err := s.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err := s.httpSrv.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Errorf("API server error: %v", err)
 		}
 	}()
