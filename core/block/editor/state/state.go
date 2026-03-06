@@ -1487,8 +1487,7 @@ func (s *State) removeFromStore(path []string) bool {
 	return true
 }
 
-// GetSubObjectCollection returns the sub object collection, right now only used for account object
-func (s *State) GetSubObjectCollection(collectionName string) *types.Struct {
+func (s *State) GetStoreStruct(collectionName string) *types.Struct {
 	coll := s.Store()
 	if coll == nil {
 		return nil

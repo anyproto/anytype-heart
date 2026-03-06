@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -34,21 +35,26 @@ import (
 const (
 	deletedTemplateId  = "iamdeleted"
 	archivedTemplateId = "iamarchived"
+	testAccount        = "accountABC"
 )
 
 type testPicker struct {
-	sb smartblock.SmartBlock
+	objects map[string]smartblock.SmartBlock
 }
 
 func (t *testPicker) GetObject(_ context.Context, id string) (sb smartblock.SmartBlock, err error) {
 	if id == deletedTemplateId {
 		return nil, spacestorage.ErrTreeStorageAlreadyDeleted
 	}
-	return t.sb, nil
+	sb, ok := t.objects[id]
+	if !ok {
+		return nil, fmt.Errorf("object %s not found", id)
+	}
+	return sb, nil
 }
 
 func (t *testPicker) GetObjectByFullID(_ context.Context, id domain.FullID) (sb smartblock.SmartBlock, err error) {
-	return t.sb, nil
+	return t.GetObject(nil, id.ObjectID)
 }
 
 func (t *testPicker) Init(_ *app.App) error { return nil }
@@ -115,7 +121,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 	t.Run("empty page name should remain empty after template apply", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTest(templateName, "")
-		s := service{picker: &testPicker{sb: tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 
 		// when
 		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
@@ -132,7 +138,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 				"when template is %s and target detail is %s", nameInTemplate, nameToAdd), func(t *testing.T) {
 				// given
 				tmpl := newTemplateTest(nameInTemplate, "")
-				s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
+				s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}, converter: converter.NewLayoutConverter()}
 				details := domain.NewDetails()
 				details.Set(bundle.RelationKeyName, domain.String(nameToAdd))
 				details.Set(bundle.RelationKeyDescription, domain.String(nameToAdd))
@@ -158,7 +164,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		t.Run("create blank template in case "+testCase[0], func(t *testing.T) {
 			// given
 			tmpl := newTemplateTest(testCase[1], "")
-			s := service{picker: &testPicker{sb: tmpl}, converter: converter.NewLayoutConverter()}
+			s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{testCase[1]: tmpl}}, converter: converter.NewLayoutConverter()}
 
 			// when
 			st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: testCase[1]})
@@ -186,7 +192,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 	t.Run("template typeKey is removed", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTest(templateName, bundle.TypeKeyGoal.String())
-		s := service{picker: &testPicker{sb: tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 
 		// when
 		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
@@ -227,7 +233,7 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		err := tmpl.SetDetails(nil, []domain.Detail{{Key: bundle.RelationKeyAddedDate, Value: domain.Int64(sometime)}}, false)
 		require.NoError(t, err)
 
-		s := service{picker: &testPicker{tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 
 		// when
 		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
@@ -465,7 +471,7 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 	t.Run("prefill type Empty - name should not be inherited from template", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_Empty)
-		s := service{picker: &testPicker{sb: tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 
 		// when
 		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
@@ -478,7 +484,7 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 	t.Run("prefill type FromTemplateName - name should be inherited from template", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_FromTemplateName)
-		s := service{picker: &testPicker{sb: tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 
 		// when
 		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
@@ -491,7 +497,7 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 	t.Run("prefill type not set (default) - name should not be inherited from template", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTest(templateName, bundle.TypeKeyTask.String())
-		s := service{picker: &testPicker{sb: tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 
 		// when
 		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
@@ -505,7 +511,7 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 		// given
 		customName := "Custom Object Name"
 		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_FromTemplateName)
-		s := service{picker: &testPicker{sb: tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 		details := domain.NewDetails()
 		details.Set(bundle.RelationKeyName, domain.String(customName))
 
@@ -522,7 +528,7 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 		// given
 		customName := "Custom Object Name"
 		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_Empty)
-		s := service{picker: &testPicker{sb: tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 		details := domain.NewDetails()
 		details.Set(bundle.RelationKeyName, domain.String(customName))
 
@@ -538,7 +544,7 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 	t.Run("prefill type FromTemplateName with empty name in details - template name should be preserved", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPrefillType(templateName, bundle.TypeKeyTask.String(), model.TemplateNamePrefillType_FromTemplateName)
-		s := service{picker: &testPicker{sb: tmpl}}
+		s := service{picker: &testPicker{objects: map[string]smartblock.SmartBlock{templateName: tmpl}}}
 		details := domain.NewDetails()
 		details.Set(bundle.RelationKeyName, domain.String(""))
 
@@ -602,108 +608,174 @@ type accountServiceStub struct {
 
 func (a accountServiceStub) AccountID() string { return a.accountId }
 
-func newTemplateTestWithPlaceholders(templateName, typeKey string, placeholders map[string]domain.Value) smartblock.SmartBlock {
+func newTemplateTestWithPlaceholders(templateName, typeKey string, placeholders []*model.Placeholder) smartblock.SmartBlock {
 	sb := newTemplateTest(templateName, typeKey).(*smarttest.SmartTest)
 	s := sb.NewState()
-	for key, value := range placeholders {
-		s.SetInStore([]string{template.PlaceholdersStoreKey, key}, pbtypes.String(value.String()))
+	for _, placeholder := range placeholders {
+		key := placeholder.RelationKey
+		values := make([]*types.Value, 0, len(placeholder.Values))
+		for _, v := range placeholder.Values {
+			values = append(values, pbtypes.Struct(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				"type":  domain.Int64(int64(v.Type)),
+				"value": domain.ValueFromProto(v.Value),
+			}).ToProto()))
+		}
+		s.SetInStore([]string{placeholdersStoreKey, key}, &types.Value{
+			Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: values}},
+		})
 	}
 	_ = sb.Apply(s)
 	return sb
 }
 
+type fixture struct {
+	*service
+	picker *testPicker
+	store  *objectstore.StoreFixture
+}
+
+func newFixture(t *testing.T) *fixture {
+	picker := &testPicker{objects: make(map[string]smartblock.SmartBlock)}
+	store := objectstore.NewStoreFixture(t)
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(spaceId string, key domain.RelationKey) (model.RelationFormat, error) {
+		// Try bundle first
+		format, err := bundle.GetRelationFormat(key)
+		if err == nil {
+			return format, nil
+		}
+		// Fallback to store for custom test relations
+		rel, err := store.SpaceIndex(spaceId).FetchRelationByKey(key.String())
+		if err != nil {
+			return 0, err
+		}
+		return rel.Format, nil
+	}).Maybe()
+	return &fixture{
+		service: &service{
+			picker:         picker,
+			store:          store,
+			formatFetcher:  fetcher,
+			accountService: accountServiceStub{accountId: testAccount},
+		},
+		picker: picker,
+		store:  store,
+	}
+}
+
 func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 	const (
 		testSpaceId  = "space1"
-		testAccount  = "accountABC"
 		templateName = "template"
 	)
 
 	t.Run("template with _today placeholder resolves to current date", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"dueDate": domain.String(domain.PlaceholderToday),
-		})
-		s := service{
-			picker:         &testPicker{sb: tmpl},
-			store:          objectstore.NewStoreFixture(t),
-			accountService: accountServiceStub{accountId: testAccount},
-		}
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), []*model.Placeholder{{
+			RelationKey: "dueDate",
+			Values: []*model.PlaceholderValue{
+				{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.Null()},
+			},
+		}})
+		fx := newFixture(t)
+		fx.picker.objects[templateName] = tmpl
 
 		// when
-		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+		st, err := fx.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
 			SpaceId:    testSpaceId,
 			TemplateId: templateName,
 		})
 
 		// then
 		require.NoError(t, err)
-		dueDateVal := st.Details().GetFloat64(domain.RelationKey("dueDate"))
+		dueDateVal := st.Details().GetFloat64("dueDate")
 		assert.NotZero(t, dueDateVal, "dueDate should be resolved to a timestamp")
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		placeholders := st.GetStoreStruct(placeholdersStoreKey)
 		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0, "templatePlaceholders should be removed from new object")
 	})
 
 	t.Run("template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"assignee": domain.String(domain.PlaceholderCurrentUser),
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), []*model.Placeholder{
+			{RelationKey: "assignee", Values: []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()}}},
 		})
-		s := service{
-			picker:         &testPicker{sb: tmpl},
-			store:          objectstore.NewStoreFixture(t),
-			accountService: accountServiceStub{accountId: testAccount},
-		}
+		fx := newFixture(t)
+		fx.picker.objects[templateName] = tmpl
 
 		// when
-		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+		st, err := fx.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
 			SpaceId:    testSpaceId,
 			TemplateId: templateName,
 		})
 
 		// then
 		require.NoError(t, err)
-		assigneeList := st.Details().GetStringList(domain.RelationKey("assignee"))
+		assigneeList := st.Details().GetStringList("assignee")
 		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
 		require.Len(t, assigneeList, 1)
 		assert.Equal(t, expectedParticipantId, assigneeList[0])
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		placeholders := st.GetStoreStruct(placeholdersStoreKey)
 		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
 	t.Run("template with no placeholders - no changes", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTest(templateName, bundle.TypeKeyTask.String())
-		s := service{
-			picker:         &testPicker{sb: tmpl},
-			store:          objectstore.NewStoreFixture(t),
-			accountService: accountServiceStub{accountId: testAccount},
-		}
+		fx := newFixture(t)
+		fx.picker.objects[templateName] = tmpl
 
 		// when
-		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+		st, err := fx.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
 			SpaceId:    testSpaceId,
 			TemplateId: templateName,
 		})
 
 		// then
 		require.NoError(t, err)
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		placeholders := st.GetStoreStruct(placeholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
+	})
+
+	t.Run("template with multiple placeholders", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), []*model.Placeholder{
+			{RelationKey: "assignee", Values: []*model.PlaceholderValue{
+				{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()},
+				{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("kirill")},
+				{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("GO team")},
+			}},
+		})
+		fx := newFixture(t)
+		fx.picker.objects[templateName] = tmpl
+
+		// when
+		st, err := fx.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+		})
+
+		// then
+		require.NoError(t, err)
+		assigneeList := st.Details().GetStringList("assignee")
+		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
+		require.Len(t, assigneeList, 3)
+		assert.Equal(t, expectedParticipantId, assigneeList[0])
+		assert.Equal(t, "kirill", assigneeList[1])
+		assert.Equal(t, "GO team", assigneeList[2])
+		placeholders := st.GetStoreStruct(placeholdersStoreKey)
 		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
 	t.Run("CreateTemplateStateFromSmartBlock also resolves placeholders", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"assignee": domain.String(domain.PlaceholderCurrentUser),
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), []*model.Placeholder{
+			{RelationKey: "assignee", Values: []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()}}},
 		})
-		s := service{
-			store:          objectstore.NewStoreFixture(t),
-			accountService: accountServiceStub{accountId: testAccount},
-		}
+		fx := newFixture(t)
+		fx.picker.objects[templateName] = tmpl
 
 		// when
-		st := s.CreateTemplateStateFromSmartBlock(tmpl, templateSvc.CreateTemplateRequest{
+		st := fx.CreateTemplateStateFromSmartBlock(tmpl, templateSvc.CreateTemplateRequest{
 			SpaceId: testSpaceId,
 		})
 
@@ -712,29 +784,10 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
 		require.Len(t, assigneeList, 1)
 		assert.Equal(t, expectedParticipantId, assigneeList[0])
-		placeholders := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
+		placeholders := st.GetStoreStruct(placeholdersStoreKey)
 		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 }
-
-type multiPicker struct {
-	objects map[string]smartblock.SmartBlock
-}
-
-func (p *multiPicker) GetObject(_ context.Context, id string) (smartblock.SmartBlock, error) {
-	sb, ok := p.objects[id]
-	if !ok {
-		return nil, fmt.Errorf("object %s not found", id)
-	}
-	return sb, nil
-}
-
-func (p *multiPicker) GetObjectByFullID(_ context.Context, id domain.FullID) (smartblock.SmartBlock, error) {
-	return p.GetObject(nil, id.ObjectID)
-}
-
-func (p *multiPicker) Init(_ *app.App) error { return nil }
-func (p *multiPicker) Name() string          { return "" }
 
 func TestService_ObjectApplyTemplate(t *testing.T) {
 	const (
@@ -746,8 +799,8 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 
 	t.Run("applying template with _today placeholder resolves it on the target object", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"dueDate": domain.String(domain.PlaceholderToday),
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), []*model.Placeholder{
+			{RelationKey: "dueDate", Values: []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.Null()}}},
 		})
 
 		targetObj := smarttest.New(objectId)
@@ -759,32 +812,26 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 		}))
 		targetObj.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTask})
 
-		picker := &multiPicker{objects: map[string]smartblock.SmartBlock{
-			objectId:   targetObj,
-			templateId: tmpl,
-		}}
-
-		s := service{
-			picker:         picker,
-			store:          objectstore.NewStoreFixture(t),
-			accountService: accountServiceStub{accountId: testAccount},
-		}
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.picker.objects[objectId] = targetObj
 
 		// when
-		err := s.ObjectApplyTemplate(objectId, templateId)
+		err := fx.ObjectApplyTemplate(objectId, templateId)
 
 		// then
 		require.NoError(t, err)
 		dueDateVal := targetObj.NewState().Details().GetFloat64(domain.RelationKey("dueDate"))
 		assert.NotZero(t, dueDateVal, "dueDate should be resolved to a timestamp")
-		assert.False(t, targetObj.NewState().Details().Has(bundle.RelationKeyTemplatePlaceholders),
-			"templatePlaceholders should not be present on the target object")
+		placeholders := targetObj.NewState().GetStoreStruct(placeholdersStoreKey)
+		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0,
+			"templatePlaceholders should be removed from store after resolution")
 	})
 
 	t.Run("applying template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"assignee": domain.String(domain.PlaceholderCurrentUser),
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), []*model.Placeholder{
+			{RelationKey: "assignee", Values: []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()}}},
 		})
 
 		targetObj := smarttest.New(objectId)
@@ -796,35 +843,28 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 		}))
 		targetObj.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTask})
 
-		picker := &multiPicker{objects: map[string]smartblock.SmartBlock{
-			objectId:   targetObj,
-			templateId: tmpl,
-		}}
-
-		s := service{
-			picker:         picker,
-			store:          objectstore.NewStoreFixture(t),
-			accountService: accountServiceStub{accountId: testAccount},
-		}
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.picker.objects[objectId] = targetObj
 
 		// when
-		err := s.ObjectApplyTemplate(objectId, templateId)
+		err := fx.ObjectApplyTemplate(objectId, templateId)
 
 		// then
 		require.NoError(t, err)
-		assigneeList := targetObj.NewState().Details().GetStringList(domain.RelationKey("assignee"))
+		assigneeList := targetObj.NewState().Details().GetStringList("assignee")
 		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
 		require.Len(t, assigneeList, 1)
 		assert.Equal(t, expectedParticipantId, assigneeList[0])
-		placeholders := targetObj.NewState().GetSubObjectCollection(template.PlaceholdersStoreKey)
+		placeholders := targetObj.NewState().GetStoreStruct(placeholdersStoreKey)
 		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
 	t.Run("applying template with multiple placeholders resolves all of them", func(t *testing.T) {
 		// given
-		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"dueDate":  domain.String(domain.PlaceholderToday),
-			"assignee": domain.String(domain.PlaceholderCurrentUser),
+		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), []*model.Placeholder{
+			{RelationKey: "dueDate", Values: []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.Null()}}},
+			{RelationKey: "assignee", Values: []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()}}},
 		})
 
 		targetObj := smarttest.New(objectId)
@@ -836,19 +876,12 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 		}))
 		targetObj.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTask})
 
-		picker := &multiPicker{objects: map[string]smartblock.SmartBlock{
-			objectId:   targetObj,
-			templateId: tmpl,
-		}}
-
-		s := service{
-			picker:         picker,
-			store:          objectstore.NewStoreFixture(t),
-			accountService: accountServiceStub{accountId: testAccount},
-		}
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.picker.objects[objectId] = targetObj
 
 		// when
-		err := s.ObjectApplyTemplate(objectId, templateId)
+		err := fx.ObjectApplyTemplate(objectId, templateId)
 
 		// then
 		require.NoError(t, err)
@@ -862,7 +895,7 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 		require.Len(t, assigneeList, 1)
 		assert.Equal(t, expectedParticipantId, assigneeList[0])
 
-		placeholders := targetObj.NewState().GetSubObjectCollection(template.PlaceholdersStoreKey)
+		placeholders := targetObj.NewState().GetStoreStruct(placeholdersStoreKey)
 		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 
@@ -879,23 +912,16 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 		}))
 		targetObj.Doc.(*state.State).SetObjectTypeKeys([]domain.TypeKey{bundle.TypeKeyTask})
 
-		picker := &multiPicker{objects: map[string]smartblock.SmartBlock{
-			objectId:   targetObj,
-			templateId: tmpl,
-		}}
-
-		s := service{
-			picker:         picker,
-			store:          objectstore.NewStoreFixture(t),
-			accountService: accountServiceStub{accountId: testAccount},
-		}
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.picker.objects[objectId] = targetObj
 
 		// when
-		err := s.ObjectApplyTemplate(objectId, templateId)
+		err := fx.ObjectApplyTemplate(objectId, templateId)
 
 		// then
 		require.NoError(t, err)
-		placeholders := targetObj.NewState().GetSubObjectCollection(template.PlaceholdersStoreKey)
+		placeholders := targetObj.NewState().GetStoreStruct(placeholdersStoreKey)
 		assert.True(t, placeholders == nil || placeholders.Fields == nil || len(placeholders.Fields) == 0)
 	})
 }
@@ -1090,5 +1116,764 @@ func TestService_collectOriginalDetails(t *testing.T) {
 
 		// then
 		assert.False(t, result.Has(bundle.RelationKeyName), "Empty name should be removed when previous template also had empty name")
+	})
+}
+
+func TestService_SetGetTemplatePlaceholders(t *testing.T) {
+	const (
+		templateId = "template1"
+		spaceId    = "space1"
+	)
+
+	newTemplateSmartBlock := func(id string) smartblock.SmartBlock {
+		sb := smarttest.New(id)
+		sb.SetSpaceId(spaceId)
+		sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+		return sb
+	}
+
+	t.Run("set single placeholder and retrieve it", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		placeholders := []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.Null()},
+				},
+			},
+		}
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, placeholders)
+		require.NoError(t, err)
+
+		// then - verify storage structure
+		st := tmpl.NewState()
+		placeholdersStruct := st.GetStoreStruct(placeholdersStoreKey)
+		require.NotNil(t, placeholdersStruct, "placeholders struct should exist in store")
+		require.NotNil(t, placeholdersStruct.Fields, "placeholders fields should not be nil")
+
+		// Verify it's a ListValue
+		dueDateValue := placeholdersStruct.Fields["dueDate"]
+		require.NotNil(t, dueDateValue, "dueDate should be in store")
+		listValue := dueDateValue.GetListValue()
+		require.NotNil(t, listValue, "dueDate should be a ListValue")
+		require.Len(t, listValue.Values, 1, "should have one placeholder value")
+
+		// Verify each value in list is a Struct with 'type' and 'value' fields
+		valueStruct := listValue.Values[0].GetStructValue()
+		require.NotNil(t, valueStruct, "list item should be a struct")
+		require.NotNil(t, valueStruct.Fields["type"], "struct should have 'type' field")
+		require.NotNil(t, valueStruct.Fields["value"], "struct should have 'value' field")
+		assert.Equal(t, float64(model.Placeholder_PlaceholderToday), valueStruct.Fields["type"].GetNumberValue())
+
+		// when - retrieve placeholders
+		retrieved, err := fx.GetTemplatePlaceholders(templateId)
+		require.NoError(t, err)
+
+		// then
+		require.Len(t, retrieved, 1)
+		assert.Equal(t, "dueDate", retrieved[0].RelationKey)
+		require.Len(t, retrieved[0].Values, 1)
+		assert.Equal(t, model.Placeholder_PlaceholderToday, retrieved[0].Values[0].Type)
+	})
+
+	t.Run("set multiple placeholder values for single relation", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-tags"),
+				bundle.RelationKeyRelationKey:    domain.String("tags"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-tags"),
+			},
+		})
+		placeholders := []*model.Placeholder{
+			{
+				RelationKey: "tags",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("tag1")},
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("tag2")},
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("tag3")},
+				},
+			},
+		}
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, placeholders)
+		require.NoError(t, err)
+
+		// then - verify storage structure
+		st := tmpl.NewState()
+		placeholdersStruct := st.GetStoreStruct(placeholdersStoreKey)
+		require.NotNil(t, placeholdersStruct)
+
+		tagsValue := placeholdersStruct.Fields["tags"]
+		require.NotNil(t, tagsValue)
+		listValue := tagsValue.GetListValue()
+		require.NotNil(t, listValue, "tags should be stored as ListValue")
+		require.Len(t, listValue.Values, 3, "should have three placeholder values")
+
+		// Verify each value in list is a proper Struct
+		for i, expectedTag := range []string{"tag1", "tag2", "tag3"} {
+			valueStruct := listValue.Values[i].GetStructValue()
+			require.NotNil(t, valueStruct, "list item %d should be a struct", i)
+			assert.Equal(t, float64(model.Placeholder_PlaceholderValue), valueStruct.Fields["type"].GetNumberValue())
+			assert.Equal(t, expectedTag, valueStruct.Fields["value"].GetStringValue())
+		}
+
+		// when - retrieve placeholders
+		retrieved, err := fx.GetTemplatePlaceholders(templateId)
+		require.NoError(t, err)
+
+		// then
+		require.Len(t, retrieved, 1)
+		assert.Equal(t, "tags", retrieved[0].RelationKey)
+		require.Len(t, retrieved[0].Values, 3)
+		assert.Equal(t, "tag1", retrieved[0].Values[0].Value.GetStringValue())
+		assert.Equal(t, "tag2", retrieved[0].Values[1].Value.GetStringValue())
+		assert.Equal(t, "tag3", retrieved[0].Values[2].Value.GetStringValue())
+	})
+
+	t.Run("set multiple relations with different placeholder types", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		placeholders := []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.Null()},
+				},
+			},
+			{
+				RelationKey: "assignee",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()},
+				},
+			},
+			{
+				RelationKey: "status",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("status-done")},
+				},
+			},
+		}
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, placeholders)
+		require.NoError(t, err)
+
+		// then - verify storage structure
+		st := tmpl.NewState()
+		placeholdersStruct := st.GetStoreStruct(placeholdersStoreKey)
+		require.NotNil(t, placeholdersStruct)
+		assert.Len(t, placeholdersStruct.Fields, 3, "should have 3 relations stored")
+
+		// Verify each relation is stored as ListValue with proper Struct items
+		for relKey, expectedType := range map[string]model.PlaceholderType{
+			"dueDate":  model.Placeholder_PlaceholderToday,
+			"assignee": model.Placeholder_PlaceholderCurrentUser,
+			"status":   model.Placeholder_PlaceholderValue,
+		} {
+			relValue := placeholdersStruct.Fields[relKey]
+			require.NotNil(t, relValue, "relation %s should exist", relKey)
+			listValue := relValue.GetListValue()
+			require.NotNil(t, listValue, "relation %s should be ListValue", relKey)
+			require.Len(t, listValue.Values, 1, "relation %s should have one value", relKey)
+
+			valueStruct := listValue.Values[0].GetStructValue()
+			require.NotNil(t, valueStruct, "value for %s should be Struct", relKey)
+			assert.Equal(t, float64(expectedType), valueStruct.Fields["type"].GetNumberValue())
+		}
+
+		// when - retrieve placeholders
+		retrieved, err := fx.GetTemplatePlaceholders(templateId)
+		require.NoError(t, err)
+
+		// then
+		require.Len(t, retrieved, 3)
+		relKeys := make(map[string]*model.Placeholder)
+		for _, p := range retrieved {
+			relKeys[p.RelationKey] = p
+		}
+		assert.Contains(t, relKeys, "dueDate")
+		assert.Contains(t, relKeys, "assignee")
+		assert.Contains(t, relKeys, "status")
+		assert.Equal(t, model.Placeholder_PlaceholderToday, relKeys["dueDate"].Values[0].Type)
+		assert.Equal(t, model.Placeholder_PlaceholderCurrentUser, relKeys["assignee"].Values[0].Type)
+		assert.Equal(t, model.Placeholder_PlaceholderValue, relKeys["status"].Values[0].Type)
+	})
+
+	t.Run("update existing placeholder preserves others", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+
+		// Set initial placeholders
+		initial := []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values:      []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.Null()}},
+			},
+			{
+				RelationKey: "assignee",
+				Values:      []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()}},
+			},
+		}
+		err := fx.SetTemplatePlaceholders(nil, templateId, initial)
+		require.NoError(t, err)
+
+		// when - update only dueDate
+		updated := []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.Int64(1704067200)},
+				},
+			},
+		}
+		err = fx.SetTemplatePlaceholders(nil, templateId, updated)
+		require.NoError(t, err)
+
+		// then
+		retrieved, err := fx.GetTemplatePlaceholders(templateId)
+		require.NoError(t, err)
+		require.Len(t, retrieved, 2, "should still have both relations")
+
+		relKeys := make(map[string]*model.Placeholder)
+		for _, p := range retrieved {
+			relKeys[p.RelationKey] = p
+		}
+
+		// dueDate should be updated
+		assert.Equal(t, model.Placeholder_PlaceholderValue, relKeys["dueDate"].Values[0].Type)
+		assert.Equal(t, float64(1704067200), relKeys["dueDate"].Values[0].Value.GetNumberValue())
+
+		// assignee should remain unchanged
+		assert.Equal(t, model.Placeholder_PlaceholderCurrentUser, relKeys["assignee"].Values[0].Type)
+	})
+
+	t.Run("remove placeholder by setting empty values", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+
+		// Set initial placeholders
+		initial := []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values:      []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.Null()}},
+			},
+			{
+				RelationKey: "assignee",
+				Values:      []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()}},
+			},
+		}
+		err := fx.SetTemplatePlaceholders(nil, templateId, initial)
+		require.NoError(t, err)
+
+		// when - remove dueDate by setting empty values
+		remove := []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values:      []*model.PlaceholderValue{}, // empty values
+			},
+		}
+		err = fx.SetTemplatePlaceholders(nil, templateId, remove)
+		require.NoError(t, err)
+
+		// then
+		st := tmpl.NewState()
+		placeholdersStruct := st.GetStoreStruct(placeholdersStoreKey)
+		require.NotNil(t, placeholdersStruct)
+		assert.Nil(t, placeholdersStruct.Fields["dueDate"], "dueDate should be removed from store")
+		assert.NotNil(t, placeholdersStruct.Fields["assignee"], "assignee should still exist")
+
+		retrieved, err := fx.GetTemplatePlaceholders(templateId)
+		require.NoError(t, err)
+		require.Len(t, retrieved, 1, "should only have assignee left")
+		assert.Equal(t, "assignee", retrieved[0].RelationKey)
+	})
+
+	t.Run("get placeholders returns nil when none exist", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+
+		// when
+		retrieved, err := fx.GetTemplatePlaceholders(templateId)
+
+		// then
+		require.NoError(t, err)
+		assert.Nil(t, retrieved)
+	})
+
+	t.Run("setting same placeholder values is idempotent", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-tags"),
+				bundle.RelationKeyRelationKey:    domain.String("tags"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-tags"),
+			},
+		})
+		placeholders := []*model.Placeholder{
+			{
+				RelationKey: "tags",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("tag1")},
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("tag2")},
+				},
+			},
+		}
+
+		// when - set twice
+		err := fx.SetTemplatePlaceholders(nil, templateId, placeholders)
+		require.NoError(t, err)
+		err = fx.SetTemplatePlaceholders(nil, templateId, placeholders)
+		require.NoError(t, err)
+
+		// then
+		retrieved, err := fx.GetTemplatePlaceholders(templateId)
+		require.NoError(t, err)
+		require.Len(t, retrieved, 1)
+		assert.Equal(t, "tags", retrieved[0].RelationKey)
+		require.Len(t, retrieved[0].Values, 2)
+	})
+}
+
+func TestService_ValidatePlaceholderValue(t *testing.T) {
+	const (
+		templateId = "template1"
+		spaceId    = "space1"
+	)
+
+	newTemplateSmartBlock := func(id string) smartblock.SmartBlock {
+		sb := smarttest.New(id)
+		sb.SetSpaceId(spaceId)
+		sb.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyTemplate, bundle.TypeKeyTask})
+		return sb
+	}
+
+	t.Run("PlaceholderToday with null value - valid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-dueDate"),
+				bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+			},
+		})
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.Null()},
+				},
+			},
+		})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("PlaceholderToday with non-null value - invalid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-dueDate"),
+				bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderToday, Value: pbtypes.String("2024-01-01")},
+				},
+			},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "null value expected")
+	})
+
+	t.Run("PlaceholderCurrentUser with null value - valid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-assignee"),
+				bundle.RelationKeyRelationKey:    domain.String("assignee"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "assignee",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.Null()},
+				},
+			},
+		})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("PlaceholderCurrentUser with non-null value - invalid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-assignee"),
+				bundle.RelationKeyRelationKey:    domain.String("assignee"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "assignee",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderCurrentUser, Value: pbtypes.String("user123")},
+				},
+			},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "null value expected")
+	})
+
+	t.Run("PlaceholderValue with string for tag relation - valid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-tags"),
+				bundle.RelationKeyRelationKey:    domain.String("tags"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-tags"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "tags",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("tag1")},
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("tag2")},
+				},
+			},
+		})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("PlaceholderValue with number for tag relation - invalid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-tags"),
+				bundle.RelationKeyRelationKey:    domain.String("tags"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-tags"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "tags",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.Int64(123)},
+				},
+			},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "string expected")
+	})
+
+	t.Run("PlaceholderValue with string for status relation - valid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-status"),
+				bundle.RelationKeyRelationKey:    domain.String("status"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-status"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "status",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("status-done")},
+				},
+			},
+		})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("PlaceholderValue with string for object relation - valid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-assignee"),
+				bundle.RelationKeyRelationKey:    domain.String("assignee"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_object)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-assignee"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "assignee",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("user-id-123")},
+				},
+			},
+		})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("PlaceholderValue with string for file relation - valid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-cover"),
+				bundle.RelationKeyRelationKey:    domain.String("cover"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_file)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-cover"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "cover",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("file-id-456")},
+				},
+			},
+		})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("PlaceholderValue with number for date relation - valid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-dueDate"),
+				bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-dueDate"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.Int64(1704067200)},
+				},
+			},
+		})
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("PlaceholderValue with string for date relation - invalid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-dueDate"),
+				bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-dueDate"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "dueDate",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("2024-01-01")},
+				},
+			},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "number expected")
+	})
+
+	t.Run("PlaceholderValue with unsupported relation format - invalid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-description"),
+				bundle.RelationKeyRelationKey:    domain.String("description"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_longtext)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-description"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "description",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("some text")},
+				},
+			},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported format")
+	})
+
+	t.Run("mixed valid and invalid placeholders - all invalid", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-tags"),
+				bundle.RelationKeyRelationKey:    domain.String("tags"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-tags"),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel-dueDate"),
+				bundle.RelationKeyRelationKey:    domain.String("dueDate"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_date)),
+				bundle.RelationKeyUniqueKey:      domain.String("rel-dueDate"),
+			},
+		})
+
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "tags",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("tag1")}, // valid
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.Int64(123)},     // invalid
+				},
+			},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "string expected")
+	})
+
+	t.Run("relation does not exist - error", func(t *testing.T) {
+		// given
+		tmpl := newTemplateSmartBlock(templateId)
+		fx := newFixture(t)
+		fx.picker.objects[templateId] = tmpl
+
+		// when
+		err := fx.SetTemplatePlaceholders(nil, templateId, []*model.Placeholder{
+			{
+				RelationKey: "nonExistentRelation",
+				Values: []*model.PlaceholderValue{
+					{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("value")},
+				},
+			},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get relation format")
 	})
 }

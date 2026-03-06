@@ -685,7 +685,7 @@ func TestState_GetSubObjectCollection(t *testing.T) {
 		st := NewDoc("test", nil).(*State)
 		// when do nothing
 		// then
-		assert.Nil(t, st.GetSubObjectCollection(collectionName))
+		assert.Nil(t, st.GetStoreStruct(collectionName))
 	})
 	t.Run("sub object collection is empty", func(t *testing.T) {
 		// given
@@ -693,7 +693,7 @@ func TestState_GetSubObjectCollection(t *testing.T) {
 		// when
 		st.SetInStore([]string{collectionName}, nil)
 		// then
-		assert.Nil(t, st.GetSubObjectCollection(collectionName))
+		assert.Nil(t, st.GetStoreStruct(collectionName))
 	})
 	t.Run("add sub objects", func(t *testing.T) {
 		// given
@@ -708,8 +708,8 @@ func TestState_GetSubObjectCollection(t *testing.T) {
 		// when
 		st.SetInStore([]string{collectionName}, subObjectDetails)
 		// then
-		assert.NotNil(t, st.GetSubObjectCollection(collectionName))
-		assert.Equal(t, subObjectDetails.GetStructValue(), st.GetSubObjectCollection(collectionName))
+		assert.NotNil(t, st.GetStoreStruct(collectionName))
+		assert.Equal(t, subObjectDetails.GetStructValue(), st.GetStoreStruct(collectionName))
 	})
 }
 

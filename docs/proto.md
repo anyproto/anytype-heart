@@ -1404,10 +1404,8 @@
     - [Rpc.Template.GetPlaceholders.Request](#anytype-Rpc-Template-GetPlaceholders-Request)
     - [Rpc.Template.GetPlaceholders.Response](#anytype-Rpc-Template-GetPlaceholders-Response)
     - [Rpc.Template.GetPlaceholders.Response.Error](#anytype-Rpc-Template-GetPlaceholders-Response-Error)
-    - [Rpc.Template.GetPlaceholders.Response.Placeholder](#anytype-Rpc-Template-GetPlaceholders-Response-Placeholder)
     - [Rpc.Template.SetPlaceholders](#anytype-Rpc-Template-SetPlaceholders)
     - [Rpc.Template.SetPlaceholders.Request](#anytype-Rpc-Template-SetPlaceholders-Request)
-    - [Rpc.Template.SetPlaceholders.Request.Placeholder](#anytype-Rpc-Template-SetPlaceholders-Request-Placeholder)
     - [Rpc.Template.SetPlaceholders.Response](#anytype-Rpc-Template-SetPlaceholders-Response)
     - [Rpc.Template.SetPlaceholders.Response.Error](#anytype-Rpc-Template-SetPlaceholders-Response-Error)
     - [Rpc.Unsplash](#anytype-Rpc-Unsplash)
@@ -2188,6 +2186,8 @@
     - [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize)
     - [ObjectView.RelationWithValuePerObject](#anytype-model-ObjectView-RelationWithValuePerObject)
     - [ParticipantPermissionChange](#anytype-model-ParticipantPermissionChange)
+    - [Placeholder](#anytype-model-Placeholder)
+    - [Placeholder.Value](#anytype-model-Placeholder-Value)
     - [Range](#anytype-model-Range)
     - [Relation](#anytype-model-Relation)
     - [Relation.Option](#anytype-model-Relation-Option)
@@ -2262,6 +2262,7 @@
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [ParticipantPermissions](#anytype-model-ParticipantPermissions)
     - [ParticipantStatus](#anytype-model-ParticipantStatus)
+    - [Placeholder.Type](#anytype-model-Placeholder-Type)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
     - [RelationFormat](#anytype-model-RelationFormat)
@@ -2277,7 +2278,6 @@
     - [SyncError](#anytype-model-SyncError)
     - [SyncStatus](#anytype-model-SyncStatus)
     - [TemplateNamePrefillType](#anytype-model-TemplateNamePrefillType)
-    - [TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -22960,7 +22960,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Template.GetPlaceholders.Response.Error](#anytype-Rpc-Template-GetPlaceholders-Response-Error) |  |  |
-| placeholders | [Rpc.Template.GetPlaceholders.Response.Placeholder](#anytype-Rpc-Template-GetPlaceholders-Response-Placeholder) | repeated |  |
+| placeholders | [model.Placeholder](#anytype-model-Placeholder) | repeated |  |
 
 
 
@@ -22977,22 +22977,6 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Template.GetPlaceholders.Response.Error.Code](#anytype-Rpc-Template-GetPlaceholders-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-GetPlaceholders-Response-Placeholder"></a>
-
-### Rpc.Template.GetPlaceholders.Response.Placeholder
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relationKey | [string](#string) |  |  |
-| type | [model.TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType) |  |  |
 
 
 
@@ -23018,23 +23002,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | templateId | [string](#string) |  |  |
-| placeholders | [Rpc.Template.SetPlaceholders.Request.Placeholder](#anytype-Rpc-Template-SetPlaceholders-Request-Placeholder) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-SetPlaceholders-Request-Placeholder"></a>
-
-### Rpc.Template.SetPlaceholders.Request.Placeholder
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relationKey | [string](#string) |  |  |
-| type | [model.TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType) |  |  |
+| placeholders | [model.Placeholder](#anytype-model-Placeholder) | repeated |  |
 
 
 
@@ -34780,6 +34748,38 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 
 
+<a name="anytype-model-Placeholder"></a>
+
+### Placeholder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| values | [Placeholder.Value](#anytype-model-Placeholder-Value) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Placeholder-Value"></a>
+
+### Placeholder.Value
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [Placeholder.Type](#anytype-model-Placeholder-Type) |  |  |
+| value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Range"></a>
 
 ### Range
@@ -35980,6 +35980,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
+<a name="anytype-model-Placeholder-Type"></a>
+
+### Placeholder.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PlaceholderValue | 0 |  |
+| PlaceholderToday | 1 |  |
+| PlaceholderCurrentUser | 2 |  |
+
+
+
 <a name="anytype-model-Relation-DataSource"></a>
 
 ### Relation.DataSource
@@ -36231,19 +36244,6 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ---- | ------ | ----------- |
 | Empty | 0 |  |
 | FromTemplateName | 1 |  |
-
-
-
-<a name="anytype-model-TemplatePlaceholderType"></a>
-
-### TemplatePlaceholderType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| TemplatePlaceholderNone | 0 |  |
-| TemplatePlaceholderToday | 1 |  |
-| TemplatePlaceholderCurrentUser | 2 |  |
 
 
  

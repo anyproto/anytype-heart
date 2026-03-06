@@ -4385,12 +4385,7 @@ message Rpc {
         message SetPlaceholders {
             message Request {
                 string templateId = 1;
-                repeated Placeholder placeholders = 2;
-
-                message Placeholder {
-                    string relationKey = 1;
-                    anytype.model.TemplatePlaceholderType type = 2;
-                }
+                repeated anytype.model.Placeholder placeholders = 2;
             }
             message Response {
                 Error error = 1;
@@ -4414,12 +4409,7 @@ message Rpc {
             }
             message Response {
                 Error error = 1;
-                repeated Placeholder placeholders = 2;
-
-                message Placeholder {
-                    string relationKey = 1;
-                    anytype.model.TemplatePlaceholderType type = 2;
-                }
+                repeated anytype.model.Placeholder placeholders = 2;
 
                 message Error {
                     Code code = 1;

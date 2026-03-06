@@ -168,7 +168,7 @@ func collectionKeyToTypeKey(collKey string) (domain.TypeKey, bool) {
 
 func (m *subObjectsMigration) iterateAllSubObjects(st *state.State, proc func(info smartblock.DocInfo, path []string)) {
 	for typeKey, coll := range objectTypeToCollection {
-		collection := st.GetSubObjectCollection(coll)
+		collection := st.GetStoreStruct(coll)
 		if collection == nil {
 			continue
 		}

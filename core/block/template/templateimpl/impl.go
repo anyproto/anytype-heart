@@ -8,6 +8,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/gogo/protobuf/types"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -33,12 +36,14 @@ import (
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/util/internalflag"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const (
-	CName           = "template"
-	blankTemplateId = "blank"
+	CName                = "template"
+	blankTemplateId      = "blank"
+	placeholdersStoreKey = "placeholders"
 )
 
 var (
@@ -63,6 +68,7 @@ type service struct {
 	resolver       idresolver.Resolver
 	exporter       export.Export
 	converter      converter.LayoutConverter
+	formatFetcher  relationutils.RelationFormatFetcher
 	accountService accountIdProvider
 }
 
@@ -82,6 +88,7 @@ func (s *service) Init(a *app.App) error {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.exporter = a.MustComponent(export.CName).(export.Export)
 	s.converter = app.MustComponent[converter.LayoutConverter](a)
+	s.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	s.accountService = app.MustComponent[account.Service](a)
 	return nil
 }
@@ -504,30 +511,180 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 	return st, nil
 }
 
+// SetTemplatePlaceholders sets placeholder values to template state, that then are applied to state of new objects.
+// Placeholders are saved to state.store in the following format:
+//
+//	store: {
+//	   "placeholders": Struct {
+//	     fields: {
+//	       "relationKey": ListValue([
+//	         Struct({
+//	           "type": Int64(PlaceholderType enum value),  // stored as float64 when retrieved
+//	           "value": google.protobuf.Value
+//	         }),
+//	         ...
+//	       ])
+//	     }
+//	   }
+//	 }
+func (s *service) SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []*model.Placeholder) error {
+	return cache.Do(s.picker, templateId, func(b smartblock.SmartBlock) error {
+		st := b.NewStateCtx(ctx)
+
+		// Get existing placeholders from store
+		placeholdersStruct := st.GetStoreStruct(placeholdersStoreKey)
+		existing := make(map[string]*types.ListValue)
+		if placeholdersStruct != nil && placeholdersStruct.Fields != nil {
+			for k, v := range placeholdersStruct.Fields {
+				existing[k] = v.GetListValue()
+			}
+		}
+
+		// Update placeholders
+		for _, placeholder := range placeholders {
+			key := placeholder.RelationKey
+			values := make([]*types.Value, 0, len(placeholder.Values))
+			for _, v := range placeholder.Values {
+				err := s.validatePlaceholderValue(b.SpaceID(), key, v)
+				if err != nil {
+					return fmt.Errorf("validate: %w", err)
+				}
+				values = append(values, pbtypes.Struct(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+					"type":  domain.Int64(v.Type),
+					"value": domain.ValueFromProto(v.Value),
+				}).ToProto()))
+			}
+
+			if len(values) == 0 {
+				delete(existing, key)
+				st.RemoveFromStore([]string{placeholdersStoreKey, key})
+			} else {
+				newValue := &types.ListValue{Values: values}
+				existingValue, ok := existing[key]
+				if ok && existingValue.Equal(newValue) {
+					continue
+				}
+				existing[key] = newValue
+				st.SetInStore([]string{placeholdersStoreKey, key}, &types.Value{
+					Kind: &types.Value_ListValue{ListValue: newValue},
+				})
+			}
+		}
+
+		return b.Apply(st)
+	})
+}
+
+func (s *service) validatePlaceholderValue(spaceId string, key string, value *model.PlaceholderValue) error {
+	if value.Type != model.Placeholder_PlaceholderValue {
+		if !pbtypes.IsNullValue(value.Value) {
+			return fmt.Errorf("null value expected for placeholder type %s", model.PlaceholderType_name[int32(value.Type)])
+		}
+		return nil
+	}
+	
+	format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, domain.RelationKey(key))
+	if err != nil {
+		return fmt.Errorf("failed to get relation format: %w", err)
+	}
+
+	switch format {
+	case model.RelationFormat_object, model.RelationFormat_status, model.RelationFormat_tag, model.RelationFormat_file:
+		if _, ok := value.Value.Kind.(*types.Value_StringValue); !ok {
+			return fmt.Errorf("invalid placeholder value %v for key %s: string expected", value.Value, key)
+		}
+		return nil
+	case model.RelationFormat_date:
+		if _, ok := value.Value.Kind.(*types.Value_NumberValue); !ok {
+			return fmt.Errorf("invalid placeholder value %v for key %s: number expected", value.Value, key)
+		}
+		return nil
+	}
+	return fmt.Errorf("unsupported format of placeholder value %v for key %s: %s", value.Value, key, model.RelationFormat_name[int32(format)])
+}
+
+func (s *service) GetTemplatePlaceholders(templateId string) ([]*model.Placeholder, error) {
+	var placeholders []*model.Placeholder
+	err := cache.Do(s.picker, templateId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		placeholders = getPlaceholdersFromState(st)
+		return nil
+	})
+	return placeholders, err
+}
+
+func getPlaceholdersFromState(st *state.State) []*model.Placeholder {
+	placeholdersStruct := st.GetStoreStruct(placeholdersStoreKey)
+	if placeholdersStruct == nil || placeholdersStruct.Fields == nil {
+		return nil
+	}
+	placeholders := make([]*model.Placeholder, 0, len(placeholdersStruct.Fields))
+	for k, v := range placeholdersStruct.Fields {
+		listValue := v.GetListValue()
+		if listValue == nil || len(listValue.Values) == 0 {
+			continue
+		}
+		values := make([]*model.PlaceholderValue, 0, len(listValue.Values))
+		for _, value := range listValue.Values {
+			details := domain.NewDetailsFromProto(value.GetStructValue())
+			if details.Len() == 0 {
+				continue
+			}
+			values = append(values, &model.PlaceholderValue{
+				Type:  model.PlaceholderType(pbtypes.GetInt64(value.GetStructValue(), "type")),
+				Value: pbtypes.Get(value.GetStructValue(), "value"),
+			})
+		}
+		placeholders = append(placeholders, &model.Placeholder{
+			RelationKey: k,
+			Values:      values,
+		})
+	}
+	return placeholders
+}
+
 // resolveTemplatePlaceholders reads the templatePlaceholders from the template state store,
 // resolves each placeholder to its actual value, and clears the placeholders from store.
 func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
-	placeholdersStruct := st.GetSubObjectCollection(template.PlaceholdersStoreKey)
-	if placeholdersStruct == nil || placeholdersStruct.Fields == nil {
-		return
-	}
+	placeholders := getPlaceholdersFromState(st)
 
-	for relKey, placeholderTypeValue := range placeholdersStruct.Fields {
-		rawPlaceholder := placeholderTypeValue.GetStringValue()
-		switch rawPlaceholder {
-		case domain.PlaceholderToday:
-			ts := s.resolveToday(spaceId, domain.RelationKey(relKey))
-			st.SetDetail(domain.RelationKey(relKey), domain.Float64(float64(ts)))
-		case domain.PlaceholderCurrentUser:
-			if s.accountService != nil {
-				participantId := domain.NewParticipantId(spaceId, s.accountService.AccountID())
-				st.SetDetail(domain.RelationKey(relKey), domain.StringList([]string{participantId}))
+	for _, placeholder := range placeholders {
+		relationKey := domain.RelationKey(placeholder.RelationKey)
+		protoValues := make([]*types.Value, 0, len(placeholder.Values))
+		for _, v := range placeholder.Values {
+			switch v.Type {
+			case model.Placeholder_PlaceholderValue:
+				protoValues = append(protoValues, v.Value)
+			case model.Placeholder_PlaceholderToday:
+				ts := s.resolveToday(spaceId, relationKey)
+				protoValues = append(protoValues, pbtypes.Int64(ts))
+			case model.Placeholder_PlaceholderCurrentUser:
+				if s.accountService != nil {
+					participantId := domain.NewParticipantId(spaceId, s.accountService.AccountID())
+					protoValues = append(protoValues, pbtypes.String(participantId))
+				}
 			}
+		}
+		format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, relationKey)
+		if err != nil {
+			log.Warn("failed to fetch format of relation %s: %v", relationKey, err)
+			continue
+		}
+
+		switch format {
+		case model.RelationFormat_object, model.RelationFormat_status, model.RelationFormat_tag, model.RelationFormat_file:
+			values := make([]domain.Value, 0, len(protoValues))
+			for _, v := range protoValues {
+				values = append(values, domain.ValueFromProto(v))
+			}
+			st.SetDetail(relationKey, domain.ValueList(values))
+		case model.RelationFormat_date:
+			st.SetDetail(relationKey, domain.ValueFromProto(protoValues[0]))
 		}
 	}
 
 	// Clear placeholders from store after resolving
-	st.RemoveFromStore([]string{template.PlaceholdersStoreKey})
+	st.RemoveFromStore([]string{placeholdersStoreKey})
 }
 
 func (s *service) resolveToday(spaceId string, relKey domain.RelationKey) int64 {

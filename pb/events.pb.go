@@ -9320,7 +9320,6 @@ func (m *EventBlockDataviewViewUpdateRelationMove) GetIds() []string {
 
 type EventBlockDataviewViewUpdateSort struct {
 	// Types that are valid to be assigned to Operation:
-	//
 	//	*EventBlockDataviewViewUpdateSortOperationOfAdd
 	//	*EventBlockDataviewViewUpdateSortOperationOfRemove
 	//	*EventBlockDataviewViewUpdateSortOperationOfUpdate

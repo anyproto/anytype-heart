@@ -9,12 +9,11 @@ import (
 )
 
 const (
-	CollectionStoreKey   = "objects"
-	PlaceholdersStoreKey = "placeholders"
-	DefaultViewLayout    = model.BlockContentDataviewView_Table
-	defaultViewName      = "All"
-	defaultWidth         = 200
-	defaultWidthShort    = 100
+	CollectionStoreKey = "objects"
+	DefaultViewLayout  = model.BlockContentDataviewView_Table
+	defaultViewName    = "All"
+	defaultWidth       = 200
+	defaultWidthShort  = 100
 )
 
 var (
