@@ -17,6 +17,8 @@ var (
 
 	filterSyncedTrue  = query.Key{Path: []string{chatmodel.SyncedKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterSyncedFalse = query.Not{Filter: filterSyncedTrue}
+
+	filterReactionUnread = query.Key{Path: []string{chatmodel.ReactionUnreadOrderIdKey}, Filter: query.Exists{}}
 )
 
 type readHandler interface {
@@ -130,6 +132,57 @@ func (m *readMentionsModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result 
 
 func (m *readMentionsModifier) getModifiedIds() []string {
 	return m.modifiedIds
+}
+
+// reactionReadModifier marks unread reactions as read in the store.
+// When maxOrderId is empty, all unread reaction tracking is cleared from matched messages.
+// When maxOrderId is set, only entries with OrderId <= maxOrderId are cleared (partial read).
+type reactionReadModifier struct {
+	maxOrderId  string
+	modifiedIds []string
+}
+
+func (m *reactionReadModifier) Modify(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+	if m.maxOrderId == "" {
+		// Full clear — maxOrderId empty means clear everything
+		v.Del(chatmodel.ReactionUnreadChangeIdsKey)
+		v.Del(chatmodel.ReactionUnreadOrderIdKey)
+		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
+		return v, true, nil
+	}
+
+	msg, err := chatmodel.UnmarshalMessage(v)
+	if err != nil {
+		return v, false, err
+	}
+
+	// Message with rUnreadOrdId but no structured entries — full clear
+	if len(msg.UnreadReactionIds) == 0 {
+		v.Del(chatmodel.ReactionUnreadChangeIdsKey)
+		v.Del(chatmodel.ReactionUnreadOrderIdKey)
+		m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
+		return v, true, nil
+	}
+
+	// Partial clear — remove only entries with OrderId <= maxOrderId
+	changed := false
+	for emoji, identities := range msg.UnreadReactionIds {
+		for identity, entry := range identities {
+			if entry.OrderId <= m.maxOrderId {
+				delete(identities, identity)
+				changed = true
+			}
+		}
+		if len(identities) == 0 {
+			delete(msg.UnreadReactionIds, emoji)
+		}
+	}
+	if !changed {
+		return v, false, nil
+	}
+	msg.MarshalUnreadReactionIds(v, a)
+	m.modifiedIds = append(m.modifiedIds, v.GetString("id"))
+	return v, true, nil
 }
 
 type syncedModifier struct {

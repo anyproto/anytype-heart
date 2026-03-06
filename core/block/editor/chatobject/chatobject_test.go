@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
@@ -63,6 +64,16 @@ func (a *accountServiceStub) Init(ap *app.App) error {
 	return nil
 }
 
+// stubTree satisfies objecttree.ObjectTree for tests.
+// Only GetChange is called (by markReadReactions); all other methods are unused and will panic if called.
+type stubTree struct {
+	objecttree.ObjectTree
+}
+
+func (s *stubTree) GetChange(string) (*objecttree.Change, error) {
+	return nil, fmt.Errorf("change not found")
+}
+
 type stubSeenHeadsCollector struct {
 	heads []string
 }
@@ -103,6 +114,7 @@ func newFixture(t *testing.T) *fixture {
 	eventSender := mock_event.NewMockSender(t)
 
 	sb := smarttest.New(chatId)
+	sb.SetTree(&stubTree{})
 
 	objectStore := objectstore.NewStoreFixture(t)
 	spaceIndex := objectStore.SpaceIndex(testSpaceId)

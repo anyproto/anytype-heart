@@ -548,6 +548,20 @@ func TestMultiSubEventMerge(t *testing.T) {
 	})
 }
 
+func givenMessageWithUnreadReaction(id, text, orderId, reactionOrderId string) *chatmodel.Message {
+	msg := givenSimpleMessage(id, text, orderId)
+	msg.UnreadReaction = true
+	msg.UnreadReactionIds = map[string]map[string]chatmodel.ReactionChangeEntry{
+		"👍": {
+			"identity1": {
+				ChangeId: "change1",
+				OrderId:  reactionOrderId,
+			},
+		},
+	}
+	return msg
+}
+
 func givenSimpleMessage(id string, text string, orderId string) *chatmodel.Message {
 	return &chatmodel.Message{
 		ChatMessage: &model.ChatMessage{
@@ -606,6 +620,385 @@ func givenComplexMessage(id string, text string, orderId string) *chatmodel.Mess
 			Reactions: givenReactions(),
 		},
 	}
+}
+
+func TestForceReloadReactionState(t *testing.T) {
+	t.Run("Flush(true) reloads UnreadReactionOrderId", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg1", "hello", "o1", "r1"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when
+		mngr.ForceReloadReactionState()
+		mngr.Flush(true)
+
+		// then
+		require.Len(t, fx.events, 1)
+		require.Len(t, fx.events[0].Messages, 1)
+		stateUpdate := fx.events[0].Messages[0].GetChatStateUpdate()
+		require.NotNil(t, stateUpdate, "expected ChatStateUpdate event")
+		assert.Equal(t, "o1", stateUpdate.State.UnreadReactionOrderId)
+
+		// when: flush again - no extra events
+		fx.lock.Lock()
+		fx.events = nil
+		fx.lock.Unlock()
+		mngr.Flush(true)
+
+		// then
+		assert.Empty(t, fx.events)
+	})
+
+	t.Run("Flush(false) defers reaction state reload", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg1", "hello", "o1", "r1"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when: Flush(false) skips the reaction state reload
+		mngr.ForceReloadReactionState()
+		mngr.Flush(false)
+
+		// then: no events
+		assert.Empty(t, fx.events)
+
+		// when: Flush(true) performs the deferred reload
+		mngr.Flush(true)
+
+		// then
+		require.Len(t, fx.events, 1)
+		require.Len(t, fx.events[0].Messages, 1)
+		stateUpdate := fx.events[0].Messages[0].GetChatStateUpdate()
+		require.NotNil(t, stateUpdate, "expected ChatStateUpdate event after Flush(true)")
+		assert.Equal(t, "o1", stateUpdate.State.UnreadReactionOrderId)
+	})
+
+	t.Run("Delete clears needReloadReactionState", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenSimpleMessage("msg1", "hello", "o1"))
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg2", "world", "o2", "r2"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when: both flags are set, then Flush(true)
+		mngr.ForceReloadReactionState()
+		mngr.Delete("msg1")
+		mngr.Flush(true)
+
+		// then: full state reload runs (ChatDelete + ChatStateUpdate)
+		require.Len(t, fx.events, 1)
+		var hasDelete, hasStateUpdate bool
+		for _, msg := range fx.events[0].Messages {
+			if del := msg.GetChatDelete(); del != nil {
+				hasDelete = true
+				assert.Equal(t, "msg1", del.Id)
+			}
+			if su := msg.GetChatStateUpdate(); su != nil {
+				hasStateUpdate = true
+			}
+		}
+		assert.True(t, hasDelete, "expected ChatDelete event")
+		assert.True(t, hasStateUpdate, "expected ChatStateUpdate event")
+
+		// when: flush again - no extra events (reaction flag was cleared too)
+		fx.lock.Lock()
+		fx.events = nil
+		fx.lock.Unlock()
+		mngr.Flush(true)
+
+		// then
+		assert.Empty(t, fx.events)
+	})
+
+	t.Run("returns newest order ID from multiple messages", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg1", "hello", "o1", "r1"))
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg2", "world", "o2", "r2"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when
+		mngr.ForceReloadReactionState()
+		mngr.Flush(true)
+
+		// then: newest order ID is from msg2 (has higher rUnreadOrdId)
+		require.Len(t, fx.events, 1)
+		var stateUpdate *pb.EventChatUpdateState
+		for _, msg := range fx.events[0].Messages {
+			if su := msg.GetChatStateUpdate(); su != nil {
+				stateUpdate = su
+			}
+		}
+		require.NotNil(t, stateUpdate, "expected ChatStateUpdate event")
+		assert.Equal(t, "o2", stateUpdate.State.UnreadReactionOrderId)
+	})
+}
+
+func TestReadReactions(t *testing.T) {
+	t.Run("updates state and generates read events", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg1", "hello", "o1", "r1"))
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg2", "world", "o2", "r2"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when
+		mngr.ReadReactions("newOrdId", []string{"msg1", "msg2"})
+		mngr.Flush(true)
+
+		// then
+		require.NotEmpty(t, fx.events)
+		var reactionReadEvents []*pb.EventChatUpdateReactionReadStatus
+		var stateUpdate *pb.EventChatUpdateState
+		for _, msg := range fx.events[0].Messages {
+			if rr := msg.GetChatUpdateReactionReadStatus(); rr != nil {
+				reactionReadEvents = append(reactionReadEvents, rr)
+			}
+			if su := msg.GetChatStateUpdate(); su != nil {
+				stateUpdate = su
+			}
+		}
+		require.Len(t, reactionReadEvents, 2)
+		for _, rr := range reactionReadEvents {
+			assert.False(t, rr.IsUnread)
+		}
+		require.NotNil(t, stateUpdate)
+		assert.Equal(t, "newOrdId", stateUpdate.State.UnreadReactionOrderId)
+	})
+
+	t.Run("updates state even without subscription", func(t *testing.T) {
+		fx := newFixture(t)
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// when: no subscription, just call ReadReactions
+		mngr.ReadReactions("newOrdId", []string{"msg1"})
+
+		// then: state is updated
+		state := mngr.GetChatState()
+		assert.Equal(t, "newOrdId", state.UnreadReactionOrderId)
+
+		// no events emitted (no subscription)
+		assert.Empty(t, fx.events)
+	})
+
+	t.Run("only in-window messages generate events", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg1", "hello", "o1", "r1"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when: ReadReactions with one in-window and one non-existent message
+		mngr.ReadReactions("newOrdId", []string{"msg1", "nonexistent"})
+		mngr.Flush(true)
+
+		// then
+		require.NotEmpty(t, fx.events)
+		var reactionReadEvents []*pb.EventChatUpdateReactionReadStatus
+		var stateUpdate *pb.EventChatUpdateState
+		for _, msg := range fx.events[0].Messages {
+			if rr := msg.GetChatUpdateReactionReadStatus(); rr != nil {
+				reactionReadEvents = append(reactionReadEvents, rr)
+			}
+			if su := msg.GetChatStateUpdate(); su != nil {
+				stateUpdate = su
+			}
+		}
+		// Only msg1 gets a reaction read event
+		require.Len(t, reactionReadEvents, 1)
+		assert.Equal(t, []string{"msg1"}, reactionReadEvents[0].Ids)
+		assert.False(t, reactionReadEvents[0].IsUnread)
+		require.NotNil(t, stateUpdate)
+		assert.Equal(t, "newOrdId", stateUpdate.State.UnreadReactionOrderId)
+	})
+}
+
+func TestUpdateReactionReadStatus(t *testing.T) {
+	t.Run("marks reaction as unread", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenSimpleMessage("msg1", "hello", "o1"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when
+		mngr.UpdateReactionReadStatus("msg1", true)
+		mngr.Flush(true)
+
+		// then
+		require.NotEmpty(t, fx.events)
+		var found bool
+		for _, msg := range fx.events[0].Messages {
+			if rr := msg.GetChatUpdateReactionReadStatus(); rr != nil {
+				found = true
+				assert.Equal(t, []string{"msg1"}, rr.Ids)
+				assert.True(t, rr.IsUnread)
+			}
+		}
+		assert.True(t, found, "expected EventChatUpdateReactionReadStatus")
+	})
+
+	t.Run("marks reaction as read", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		// given
+		repo, err := fx.repo.Repository(testSpaceId, chatId)
+		require.NoError(t, err)
+		err = repo.AddTestMessage(ctx, givenMessageWithUnreadReaction("msg1", "hello", "o1", "r1"))
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when
+		mngr.UpdateReactionReadStatus("msg1", false)
+		mngr.Flush(true)
+
+		// then
+		require.NotEmpty(t, fx.events)
+		var found bool
+		for _, msg := range fx.events[0].Messages {
+			if rr := msg.GetChatUpdateReactionReadStatus(); rr != nil {
+				found = true
+				assert.Equal(t, []string{"msg1"}, rr.Ids)
+				assert.False(t, rr.IsUnread)
+			}
+		}
+		assert.True(t, found, "expected EventChatUpdateReactionReadStatus")
+	})
+
+	t.Run("no event for out-of-window message", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx := context.Background()
+		const chatId = "chatId1"
+
+		mngr, err := fx.GetManager(testSpaceId, chatId)
+		require.NoError(t, err)
+
+		_, err = fx.SubscribeLastMessages(ctx, SubscribeLastMessagesRequest{
+			ChatObjectId: chatId,
+			SubId:        "sub1",
+		})
+		require.NoError(t, err)
+
+		// when: update a message that's not in any subscription window
+		mngr.UpdateReactionReadStatus("nonexistent", true)
+		mngr.Flush(true)
+
+		// then: no events
+		assert.Empty(t, fx.events)
+	})
 }
 
 func givenReactions() *model.ChatMessageReactions {

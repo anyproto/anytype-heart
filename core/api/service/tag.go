@@ -132,7 +132,16 @@ func (s *Service) CreateTag(ctx context.Context, spaceId string, propertyId stri
 		return nil, ErrFailedCreateTag
 	}
 
-	return s.GetTag(ctx, spaceId, propertyId, resp.ObjectId)
+	tag, err := s.GetTag(ctx, spaceId, propertyId, resp.ObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("get created tag: %w", err)
+	}
+
+	// Synchronously cache the tag so it's immediately available for subsequent
+	// requests (e.g. object creation) without waiting for async subscription events.
+	s.cache.cacheTag(spaceId, tag)
+
+	return tag, nil
 }
 
 // UpdateTag updates an existing tag option for a given property ID in a space.

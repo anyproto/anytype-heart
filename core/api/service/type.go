@@ -130,7 +130,16 @@ func (s *Service) CreateType(ctx context.Context, spaceId string, request apimod
 		return nil, ErrFailedCreateType
 	}
 
-	return s.GetType(ctx, spaceId, resp.ObjectId)
+	t, err := s.GetType(ctx, spaceId, resp.ObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("get created type: %w", err)
+	}
+
+	// Synchronously cache the type so it's immediately available for subsequent
+	// requests without waiting for async subscription events.
+	s.cache.cacheType(spaceId, t)
+
+	return t, nil
 }
 
 // UpdateType updates an existing type in a specific space.

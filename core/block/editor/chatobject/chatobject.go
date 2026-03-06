@@ -40,7 +40,8 @@ const (
 	EditorCollectionName  = "editor"
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
-	diffManagerSyncStatus = "syncStatus"
+	diffManagerSyncStatus  = "syncStatus"
+	diffManagerReactions   = "reactions"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -60,6 +61,7 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, messageId string) error
 	MarkReadMessages(ctx context.Context, req ReadMessagesRequest) (markedCount int, err error)
+	MarkReadReactions(ctx context.Context) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
 	SetMessagePinned(ctx context.Context, messageId string, pinned bool) error
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
@@ -203,6 +205,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		markErr := s.markReadMessages(removed, chatmodel.CounterTypeMention)
 		if markErr != nil {
 			log.Error("mark read mentions", zap.Error(markErr))
+		}
+	})
+	storeSource.RegisterDiffManager(diffManagerReactions, func(removed []string) {
+		markErr := s.markReadReactions(removed)
+		if markErr != nil {
+			log.Error("mark read reactions", zap.Error(markErr))
 		}
 	})
 	storeSource.RegisterDiffManager(diffManagerSyncStatus, func(removed []string) {
@@ -379,6 +387,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	obj.Del(chatmodel.ReadKey)
 	obj.Del(chatmodel.MentionReadKey)
 	obj.Del(chatmodel.SyncedKey)
+	obj.Del(chatmodel.ReactionUnreadChangeIdsKey)
 
 	builder := storestate.Builder{}
 	err = builder.Create(CollectionName, storestate.IdFromChange, obj)

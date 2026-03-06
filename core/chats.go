@@ -284,6 +284,25 @@ func (mw *Middleware) ChatReadAll(cctx context.Context, req *pb.RpcChatReadAllRe
 	return &pb.RpcChatReadAllResponse{}
 }
 
+func (mw *Middleware) ChatReadReactions(cctx context.Context, req *pb.RpcChatReadReactionsRequest) *pb.RpcChatReadReactionsResponse {
+	ctx := mw.newContext(cctx)
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.ReadReaction(cctx, req.ChatObjectId)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatReadReactionsResponseErrorCode](err)
+		return &pb.RpcChatReadReactionsResponse{
+			Error: &pb.RpcChatReadReactionsResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatReadReactionsResponse{
+		Event: ctx.GetResponseEvent(),
+	}
+}
+
 func (mw *Middleware) ChatSearch(cctx context.Context, req *pb.RpcChatSearchRequest) *pb.RpcChatSearchResponse {
 	chatService := mustService[chats.Service](mw)
 

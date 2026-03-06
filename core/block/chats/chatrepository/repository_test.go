@@ -83,6 +83,22 @@ func (f *fixture) getMessage(t *testing.T, id string) *chatmodel.Message {
 	return msgs[0]
 }
 
+func (f *fixture) addMessageWithUnreadReactions(t *testing.T, id, orderId string, reactions map[string]map[string]chatmodel.ReactionChangeEntry) {
+	t.Helper()
+	msg := &chatmodel.Message{
+		ChatMessage: &model.ChatMessage{
+			Id:      id,
+			OrderId: orderId,
+			Message: &model.ChatMessageMessageContent{
+				Text: "test",
+			},
+		},
+		UnreadReactionIds: reactions,
+	}
+	err := f.repo.AddTestMessage(context.Background(), msg)
+	require.NoError(t, err)
+}
+
 func TestSetReadFlag(t *testing.T) {
 	chatObjectId := "chatObj1"
 
@@ -303,5 +319,109 @@ func TestSetSyncedFlag(t *testing.T) {
 
 		assert.True(t, fx.getMessage(t, "msg1").Synced)
 		assert.True(t, fx.getMessage(t, "msg2").Synced)
+	})
+}
+
+func TestClearUnreadReactions(t *testing.T) {
+	t.Run("empty maxOrderId clears all unread reactions", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.addMessageWithUnreadReactions(t, "msg1", "order1", map[string]map[string]chatmodel.ReactionChangeEntry{
+			"👍": {"user1": {ChangeId: "ch1", OrderId: "order1"}},
+		})
+		fx.addMessageWithUnreadReactions(t, "msg2", "order2", map[string]map[string]chatmodel.ReactionChangeEntry{
+			"❤️": {"user2": {ChangeId: "ch2", OrderId: "order2"}},
+		})
+
+		modified, err := fx.repo.ClearUnreadReactions(context.Background(), "")
+		require.NoError(t, err)
+
+		assert.ElementsMatch(t, []string{"msg1", "msg2"}, modified)
+		assert.False(t, fx.getMessage(t, "msg1").UnreadReaction)
+		assert.False(t, fx.getMessage(t, "msg2").UnreadReaction)
+	})
+
+	t.Run("maxOrderId clears only messages with orderId <= maxOrderId", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.addMessageWithUnreadReactions(t, "msg1", "order1", map[string]map[string]chatmodel.ReactionChangeEntry{
+			"👍": {"user1": {ChangeId: "ch1", OrderId: "order1"}},
+		})
+		fx.addMessageWithUnreadReactions(t, "msg2", "order2", map[string]map[string]chatmodel.ReactionChangeEntry{
+			"❤️": {"user2": {ChangeId: "ch2", OrderId: "order2"}},
+		})
+		fx.addMessageWithUnreadReactions(t, "msg3", "order3", map[string]map[string]chatmodel.ReactionChangeEntry{
+			"🎉": {"user3": {ChangeId: "ch3", OrderId: "order3"}},
+		})
+
+		modified, err := fx.repo.ClearUnreadReactions(context.Background(), "order2")
+		require.NoError(t, err)
+
+		assert.ElementsMatch(t, []string{"msg1", "msg2"}, modified)
+		assert.False(t, fx.getMessage(t, "msg1").UnreadReaction)
+		assert.False(t, fx.getMessage(t, "msg2").UnreadReaction)
+		assert.True(t, fx.getMessage(t, "msg3").UnreadReaction)
+	})
+
+	t.Run("partial clear removes only entries with orderId <= maxOrderId within a message", func(t *testing.T) {
+		fx := newFixture(t)
+		// Message has two reactions with different order IDs
+		fx.addMessageWithUnreadReactions(t, "msg1", "order2", map[string]map[string]chatmodel.ReactionChangeEntry{
+			"👍": {"user1": {ChangeId: "ch1", OrderId: "order1"}},
+			"❤️": {"user2": {ChangeId: "ch2", OrderId: "order3"}},
+		})
+
+		// maxOrderId < message's rUnreadOrdId, so partial clear applies
+		modified, err := fx.repo.ClearUnreadReactions(context.Background(), "order1")
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"msg1"}, modified)
+		msg := fx.getMessage(t, "msg1")
+		// The reaction from user2 with order3 > order1 should remain
+		assert.True(t, msg.UnreadReaction)
+		assert.Nil(t, msg.UnreadReactionIds["👍"])
+		require.Len(t, msg.UnreadReactionIds["❤️"], 1)
+		assert.Equal(t, "ch2", msg.UnreadReactionIds["❤️"]["user2"].ChangeId)
+	})
+
+	t.Run("no unread reactions returns empty", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.addMessage(t, "msg1", "order1", false, false, false)
+
+		modified, err := fx.repo.ClearUnreadReactions(context.Background(), "")
+		require.NoError(t, err)
+
+		assert.Empty(t, modified)
+	})
+
+	t.Run("messages without unread reactions are not affected", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.addMessage(t, "msg1", "order1", false, false, false)
+		fx.addMessageWithUnreadReactions(t, "msg2", "order2", map[string]map[string]chatmodel.ReactionChangeEntry{
+			"👍": {"user1": {ChangeId: "ch1", OrderId: "order2"}},
+		})
+
+		modified, err := fx.repo.ClearUnreadReactions(context.Background(), "")
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"msg2"}, modified)
+		assert.False(t, fx.getMessage(t, "msg2").UnreadReaction)
+	})
+
+	t.Run("more than 100 messages are batched", func(t *testing.T) {
+		fx := newFixture(t)
+		for i := range 150 {
+			id := fmt.Sprintf("msg%03d", i)
+			fx.addMessageWithUnreadReactions(t, id, fmt.Sprintf("order%03d", i), map[string]map[string]chatmodel.ReactionChangeEntry{
+				"👍": {"user1": {ChangeId: fmt.Sprintf("ch%03d", i), OrderId: fmt.Sprintf("order%03d", i)}},
+			})
+		}
+
+		modified, err := fx.repo.ClearUnreadReactions(context.Background(), "")
+		require.NoError(t, err)
+
+		assert.Len(t, modified, 150)
+		for i := range 150 {
+			id := fmt.Sprintf("msg%03d", i)
+			assert.False(t, fx.getMessage(t, id).UnreadReaction, id)
+		}
 	})
 }

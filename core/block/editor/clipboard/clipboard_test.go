@@ -399,10 +399,10 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 }
 
 func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
-	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
+	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: paste text is merged into block at cursor position", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 0, To: 0}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa\nbbbbb", "qwerty", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa\nbbbbbqwerty", "55555"})
 	})
 
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
@@ -1182,6 +1182,94 @@ func TestClipboard_PasteToTableCellBlock(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	assert.Equal(t, "text1\ntext2\ntabletable", sb.Doc.Pick("2-2").Model().GetText().Text)
+}
+
+func TestPasteIntoEmptyStyledBlock(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		style      model.BlockContentTextStyle
+		pasteBlocks []*model.Block
+	}{
+		{
+			name:  "multi-block header paste into empty bullet",
+			style: model.BlockContentText_Marked,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+		},
+		{
+			name:  "multi-block header paste into empty toggle",
+			style: model.BlockContentText_Toggle,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+		},
+		{
+			name:  "multi-block header paste into empty callout",
+			style: model.BlockContentText_Callout,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+		},
+		{
+			name:  "single header paste into empty bullet",
+			style: model.BlockContentText_Marked,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+			},
+		},
+		{
+			name:  "multi-block paragraph paste into empty checkbox",
+			style: model.BlockContentText_Checkbox,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("First Line", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+				blockbuilder.Text("Second Line", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			sb := smarttest.New("test")
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text(
+						"",
+						blockbuilder.ID("1"),
+						blockbuilder.TextStyle(tc.style),
+					),
+				)))
+
+			// when
+			cb := newFixture(t, sb)
+			blockIds, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "1",
+				SelectedTextRange: &model.Range{From: 0, To: 0},
+				AnySlot:           tc.pasteBlocks,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			targetBlock := sb.Doc.Pick("1")
+			require.NotNil(t, targetBlock, "target block should not be deleted")
+			assert.Equal(t, tc.style, targetBlock.Model().GetText().Style, "target block style should be preserved")
+			
+			// For multi-block paste: target stays empty, blocks inserted separately
+			// For single-block paste: text merges into target (intoBlock mode)
+			if len(tc.pasteBlocks) > 1 {
+				assert.Equal(t, "", targetBlock.Model().GetText().Text, "target block should remain empty for multi-block paste")
+				require.NotEmpty(t, blockIds, "pasted blocks should be inserted")
+				firstPasteBlock := sb.Doc.Pick(blockIds[0])
+				require.NotNil(t, firstPasteBlock, "first paste block should exist in state")
+				assert.Equal(t, tc.pasteBlocks[0].GetText().Text, firstPasteBlock.Model().GetText().Text, "first paste block text should be preserved")
+			} else {
+				assert.Equal(t, tc.pasteBlocks[0].GetText().Text, targetBlock.Model().GetText().Text, "single block text should merge into target")
+			}
+		})
+	}
 }
 
 func Test_PasteText(t *testing.T) {
