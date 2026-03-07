@@ -68,8 +68,8 @@ protos-swift-local: protos-swift
 
 protos-js: setup-protoc-js
 	@echo 'Generating protobuf packages (JS)...'
-	@PATH="./node_modules/.bin:$$PATH" protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
-	@PATH="./node_modules/.bin:$$PATH" protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@PATH="./node_modules/.bin:$$PATH" protoc -I ./ $(if $(PROTOBUF_INCLUDE),-I $(PROTOBUF_INCLUDE)) --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@PATH="./node_modules/.bin:$$PATH" protoc -I ./ $(if $(PROTOBUF_INCLUDE),-I $(PROTOBUF_INCLUDE)) --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
 protos-java:
 	@echo 'Generating protobuf packages (Java)...'
