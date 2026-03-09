@@ -109,7 +109,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	d.subscription.Add(prevOrderId, msg)
 
-	if err = d.indexerStore.AddChatMessageToIndexQueue(ctx, d.chatFullId, msg.OrderId); err != nil {
+	if err = d.indexerStore.AddChatMessageToIndexQueue(context.Background(), d.chatFullId, msg.OrderId); err != nil {
 		return fmt.Errorf("add chat message to full text index queue: %w", err)
 	}
 
@@ -119,7 +119,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 }
 
 func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
-	if err = d.indexerStore.AddChatMessageToIndexQueue(ctx, d.chatFullId, ch.Change.Order); err != nil {
+	if err = d.indexerStore.AddChatMessageToIndexQueue(context.Background(), d.chatFullId, ch.Change.Order); err != nil {
 		return 0, fmt.Errorf("add chat message to full text index queue: %w", err)
 	}
 	return storestate.ModifyModeUpsert, nil
@@ -153,7 +153,7 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	defer d.subscription.Unlock()
 	d.subscription.Delete(messageId)
 
-	if err = d.indexerStore.AddChatMessageDeleteToIndexQueue(ctx, d.chatFullId, messageId); err != nil {
+	if err = d.indexerStore.AddChatMessageDeleteToIndexQueue(context.Background(), d.chatFullId, messageId); err != nil {
 		log.With(zap.String("chatId", d.chatFullId.ObjectID), zap.String("messageId", messageId), zap.Error(err)).
 			Error("failed to add message to fulltext delete queue")
 	}
