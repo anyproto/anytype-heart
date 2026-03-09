@@ -104,7 +104,6 @@ type outdentOpContext struct {
 }
 
 type indentOpContext struct {
-	blockId     string
 	childrenIds []string // copy of block's children before the move
 	nextSibling string   // sibling after the block in original parent, or empty
 	parentId    string   // original parent id
@@ -436,7 +435,6 @@ func collectIndentContext(srcState *state.State, block simple.Block, targetBlock
 	copy(copiedChildren, childrenIds)
 
 	return &indentOpContext{
-		blockId:     blockId,
 		childrenIds: copiedChildren,
 		nextSibling: nextSibling,
 		parentId:    parent.Model().Id,
