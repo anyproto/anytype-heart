@@ -21,6 +21,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+const HomepageWidgets = "widgets"
+
 var workspaceRequiredRelations = []domain.RelationKey{
 	// SpaceInviteFileCid and SpaceInviteFileKey are added only when creating invite
 }
@@ -257,7 +259,7 @@ func (w *Workspaces) StateMigrations() migration.Migrations {
 				// Change lastOpened homepage to widgets
 				dashboardId := s.Details().GetString(bundle.RelationKeySpaceDashboardId)
 				if dashboardId == "lastOpened" {
-					s.SetDetail(bundle.RelationKeySpaceDashboardId, domain.String("widgets"))
+					s.SetDetail(bundle.RelationKeySpaceDashboardId, domain.String(HomepageWidgets))
 				}
 			},
 		},

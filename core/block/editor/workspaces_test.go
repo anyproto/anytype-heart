@@ -1,12 +1,11 @@
 package editor
 
 import (
-	"context"
 	"testing"
 
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
-	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
@@ -18,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 )
 
 func TestWorkspaces_FileInfo(t *testing.T) {
@@ -97,36 +96,11 @@ func (f *workspacesFixture) finish() {
 	f.ctrl.Finish()
 }
 
-// testMigrationSpace implements smartblock.Space for migration tests, returning a fixed chatId from DeriveObjectID.
-type testMigrationSpace struct {
-	chatId string
-}
-
-func (s *testMigrationSpace) Id() string                         { return "" }
-func (s *testMigrationSpace) TreeBuilder() objecttreebuilder.TreeBuilder { return nil }
-func (s *testMigrationSpace) DerivedIDs() threads.DerivedSmartblockIds {
-	return threads.DerivedSmartblockIds{}
-}
-func (s *testMigrationSpace) GetRelationIdByKey(_ context.Context, _ domain.RelationKey) (string, error) {
-	return "", nil
-}
-func (s *testMigrationSpace) GetTypeIdByKey(_ context.Context, _ domain.TypeKey) (string, error) {
-	return "", nil
-}
-func (s *testMigrationSpace) DeriveObjectID(_ context.Context, _ domain.UniqueKey) (string, error) {
-	return s.chatId, nil
-}
-func (s *testMigrationSpace) IsPersonal() bool                            { return false }
-func (s *testMigrationSpace) IsOneToOne() bool                            { return false }
-func (s *testMigrationSpace) Do(string, func(smartblock.SmartBlock) error) error { return nil }
-func (s *testMigrationSpace) DoLockedIfNotExists(string, func() error) error    { return nil }
-func (s *testMigrationSpace) TryRemove(string) (bool, error)                    { return true, nil }
-func (s *testMigrationSpace) StoredIds() []string                                { return nil }
-func (s *testMigrationSpace) RefreshObjects([]string) error                      { return nil }
-
 func newWorkspaceForMigration(t *testing.T, spaceUxType model.SpaceUxType, dashboardId string, chatId string) *Workspaces {
 	sb := smarttest.New("workspaceId")
-	sb.SetSpace(&testMigrationSpace{chatId: chatId})
+	spc := mock_clientspace.NewMockSpace(t)
+	spc.EXPECT().DeriveObjectID(mock.Anything, mock.Anything).Return(chatId, nil).Maybe()
+	sb.SetSpace(spc)
 
 	w := &Workspaces{
 		SmartBlock:   sb,
@@ -163,7 +137,7 @@ func TestWorkspaces_StateMigrationV3(t *testing.T) {
 	t.Run("Chat space gets homepage=chatId and UxType=Data", func(t *testing.T) {
 		w := newWorkspaceForMigration(t, model.SpaceUxType_Chat, "oldDashboard", "derivedChatId")
 
-		details := w.CombinedDetails()
+		details := w.Details()
 		assert.Equal(t, "derivedChatId", details.GetString(bundle.RelationKeySpaceDashboardId))
 		assert.Equal(t, int64(model.SpaceUxType_Data), details.GetInt64(bundle.RelationKeySpaceUxType))
 	})
@@ -171,7 +145,7 @@ func TestWorkspaces_StateMigrationV3(t *testing.T) {
 	t.Run("OneToOne space gets homepage=chatId, UxType stays OneToOne", func(t *testing.T) {
 		w := newWorkspaceForMigration(t, model.SpaceUxType_OneToOne, "oldDashboard", "derivedChatId")
 
-		details := w.CombinedDetails()
+		details := w.Details()
 		assert.Equal(t, "derivedChatId", details.GetString(bundle.RelationKeySpaceDashboardId))
 		assert.Equal(t, int64(model.SpaceUxType_OneToOne), details.GetInt64(bundle.RelationKeySpaceUxType))
 	})
@@ -179,15 +153,15 @@ func TestWorkspaces_StateMigrationV3(t *testing.T) {
 	t.Run("Data space with lastOpened gets homepage=widgets", func(t *testing.T) {
 		w := newWorkspaceForMigration(t, model.SpaceUxType_Data, "lastOpened", "")
 
-		details := w.CombinedDetails()
-		assert.Equal(t, "widgets", details.GetString(bundle.RelationKeySpaceDashboardId))
+		details := w.Details()
+		assert.Equal(t, HomepageWidgets, details.GetString(bundle.RelationKeySpaceDashboardId))
 		assert.Equal(t, int64(model.SpaceUxType_Data), details.GetInt64(bundle.RelationKeySpaceUxType))
 	})
 
 	t.Run("Data space with custom homepage is unchanged", func(t *testing.T) {
 		w := newWorkspaceForMigration(t, model.SpaceUxType_Data, "customObjectId", "")
 
-		details := w.CombinedDetails()
+		details := w.Details()
 		assert.Equal(t, "customObjectId", details.GetString(bundle.RelationKeySpaceDashboardId))
 		assert.Equal(t, int64(model.SpaceUxType_Data), details.GetInt64(bundle.RelationKeySpaceUxType))
 	})

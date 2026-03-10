@@ -21,6 +21,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -50,8 +51,6 @@ import (
 const (
 	CName            = "builtinobjects"
 	injectionTimeout = 30 * time.Second
-
-	defaultDashboardId = "widgets"
 
 	contentLengthHeader        = "Content-Length"
 	archiveDownloadingPercents = 30
@@ -535,18 +534,18 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 }
 
 func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (dashboardId string) {
-	newId, oldId := defaultDashboardId, defaultDashboardId
+	newId, oldId := editor.HomepageWidgets, editor.HomepageWidgets
 	if profile != nil && profile.SpaceDashboardId != "" {
 		oldId = profile.SpaceDashboardId
 	}
 
-	if oldId != defaultDashboardId {
+	if oldId != editor.HomepageWidgets {
 		var err error
 		newId, err = b.getNewObjectId(spaceId, oldId)
 		if err != nil {
 			log.Errorf("failed to get new id of home page object: %v", err)
 		} else {
-			newId = defaultDashboardId
+			newId = editor.HomepageWidgets
 		}
 	}
 	dashboardId = newId

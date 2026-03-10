@@ -10,6 +10,7 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -128,7 +129,7 @@ func validateDetails(s *common.SnapshotModel, info *useCaseInfo, fixConfig FixCo
 				}
 			}
 
-			if k == bundle.RelationKeySpaceDashboardId && (val == "lastOpened" || val == "widgets") {
+			if k == bundle.RelationKeySpaceDashboardId && (val == "lastOpened" || val == editor.HomepageWidgets) {
 				continue
 			}
 

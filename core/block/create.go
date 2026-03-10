@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -98,7 +99,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
 		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
 		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(inviteSentStatus))},
-		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("widgets")},
+		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String(editor.HomepageWidgets)},
 	}
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
