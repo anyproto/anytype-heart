@@ -28,7 +28,7 @@ on:
           - 'true'
           - 'false'
       nightly-base-version:
-        description: 'Nightly builds base version (optional, default is stored in repo variables https://github.com/anyproto/anytype-heart/settings/variables/actions)'
+        description: 'Nightly builds base version (optional, format like "v1.2.3")'
         required: false
   schedule:
     - cron: '0 1 * * *' # every day at 1am (UTC)
@@ -117,10 +117,17 @@ jobs:
         id: nightly_info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
+          INPUT_BASE: ${{ github.event.inputs.nightly-base-version }}
         run: |
           set -euo pipefail
           DATE=$(date -u +'%Y%m%d')
-          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
+          LATEST_RELEASE=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v '-' | sort -V | tail -1)
+          MAJOR=$(echo $LATEST_RELEASE | cut -d. -f1)
+          MINOR=$(echo $LATEST_RELEASE | cut -d. -f2)
+          PATCH=$(echo $LATEST_RELEASE | cut -d. -f3)
+          NEXT_PATCH=$((PATCH + 1))
+          BASE="${INPUT_BASE:-${MAJOR}.${MINOR}.${NEXT_PATCH}}"
+          PREFIX="${BASE}-nightly.${DATE}"
 
           # Get the number of existing tags for today
           COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
