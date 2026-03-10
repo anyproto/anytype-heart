@@ -745,13 +745,13 @@ func processProfile(info *useCaseInfo, spaceDashboardId string, reporter *report
 	}
 
 	if profile.SpaceDashboardId == "" {
-		profile.SpaceDashboardId = "lastOpened"
+		profile.SpaceDashboardId = "widgets"
 		return profile.Marshal()
 	}
 
-	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened", "graph"}, profile.SpaceDashboardId) {
-		reporter.addMsg("profile", fmt.Sprintf("spaceDashboardId '%s' not found, so setting 'lastOpened' value", profile.SpaceDashboardId))
-		profile.SpaceDashboardId = "lastOpened"
+	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened", "widgets", "graph"}, profile.SpaceDashboardId) {
+		reporter.addMsg("profile", fmt.Sprintf("spaceDashboardId '%s' not found, so setting 'widgets' value", profile.SpaceDashboardId))
+		profile.SpaceDashboardId = "widgets"
 	}
 	return profile.Marshal()
 }

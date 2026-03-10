@@ -72,6 +72,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	if err != nil {
 		return err
 	}
+	s.unsetDashboardIdIfNeeded(id, spc)
 	s.sendOnRemoveEvent(id.SpaceID, id.ObjectID)
 	// Remove from cache
 	err = spc.Remove(context.Background(), id.ObjectID)
@@ -192,6 +193,21 @@ func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) e
 	}
 
 	return nil
+}
+
+func (s *Service) unsetDashboardIdIfNeeded(id domain.FullID, spc clientspace.Space) {
+	workspaceId := spc.DerivedIDs().Workspace
+	details, err := s.objectStore.SpaceIndex(id.SpaceID).GetDetails(workspaceId)
+	if err != nil {
+		log.With("objectId", id.ObjectID).Warnf("failed to get workspace details for dashboard check: %v", err)
+		return
+	}
+	dashboardId := details.GetString(bundle.RelationKeySpaceDashboardId)
+	if dashboardId == id.ObjectID {
+		if _, err := s.detailsService.SetWorkspaceDashboardId(nil, workspaceId, ""); err != nil {
+			log.With("objectId", id.ObjectID).Warnf("failed to unset dashboard id: %v", err)
+		}
+	}
 }
 
 func (s *Service) sendOnRemoveEvent(spaceId string, id string) {

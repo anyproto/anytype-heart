@@ -142,7 +142,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyName.String():             pbtypes.String(s.sanitizedString(*request.Name)),
 				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(iconOption.Int64())),
-				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
+				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("widgets"),
 				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_Data)),
 			},
 		},

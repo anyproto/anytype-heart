@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -54,7 +53,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 				return errors.New("space ux type cannot be None")
 			}
 		}
-		if spaceUxType == model.SpaceUxType_Chat || spaceUxType == model.SpaceUxType_OneToOne {
+		if spaceUxType == model.SpaceUxType_OneToOne {
 			// TODO: make it async in space init
 			err = bs.SpaceInitChat(cctx, spaceId, true)
 			if err != nil {
@@ -118,18 +117,15 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
-		var shareableStatus spaceinfo.ShareableStatus
 		var spaceUxType model.SpaceUxType
 		err = cache.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
 			spaceUxType = sv.GetSpaceDescription().SpaceUxType
-			localInfo := sv.GetLocalInfo()
-			shareableStatus = localInfo.GetShareableStatus()
 			return sv.UpdateLastOpenedDate()
 		})
 		if err != nil {
 			return err
 		}
-		if shareableStatus == spaceinfo.ShareableStatusShareable || spaceUxType == model.SpaceUxType_OneToOne {
+		if spaceUxType == model.SpaceUxType_OneToOne {
 			// migration for existing users
 			err = bs.SpaceInitChat(cctx, req.SpaceId, false)
 			if err != nil {
