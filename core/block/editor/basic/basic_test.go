@@ -648,11 +648,11 @@ func TestBasic_MoveOutdent(t *testing.T) {
 }
 
 func TestBasic_MoveIndent(t *testing.T) {
-	t.Run("basic indent with children - children stay at original level", func(t *testing.T) {
+	t.Run("basic indent with children - children become siblings under new parent", func(t *testing.T) {
 		// given
 		// root → [A, B, C]
 		// B → [b1, b2]
-		// Tab on B: indent B into A, children b1, b2 stay at root level
+		// Tab on B: indent B into A, children b1, b2 follow B under A
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
 			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C"}})).
@@ -672,8 +672,8 @@ func TestBasic_MoveIndent(t *testing.T) {
 		require.NoError(t, sb.Apply(st))
 
 		newState := sb.NewState()
-		assert.Equal(t, []string{"A", "b1", "b2", "C"}, newState.Pick("parent").Model().ChildrenIds, "b1 and b2 should replace B at original level")
-		assert.Equal(t, []string{"B"}, newState.Pick("A").Model().ChildrenIds, "B should be child of A")
+		assert.Equal(t, []string{"A", "C"}, newState.Pick("parent").Model().ChildrenIds, "only A and C remain at parent level")
+		assert.Equal(t, []string{"B", "b1", "b2"}, newState.Pick("A").Model().ChildrenIds, "B and its former children should be under A")
 		assert.Empty(t, newState.Pick("B").Model().ChildrenIds, "B should have no children after indent")
 	})
 
@@ -699,7 +699,7 @@ func TestBasic_MoveIndent(t *testing.T) {
 		assert.Equal(t, []string{"B"}, newState.Pick("A").Model().ChildrenIds, "B should be child of A")
 	})
 
-	t.Run("indent last block with children - children go to end of parent", func(t *testing.T) {
+	t.Run("indent last block with children - children follow block under new parent", func(t *testing.T) {
 		// given
 		// parent → [A, B]
 		// B → [b1, b2]
@@ -722,8 +722,8 @@ func TestBasic_MoveIndent(t *testing.T) {
 		require.NoError(t, sb.Apply(st))
 
 		newState := sb.NewState()
-		assert.Equal(t, []string{"A", "b1", "b2"}, newState.Pick("parent").Model().ChildrenIds, "b1, b2 should be at parent level")
-		assert.Equal(t, []string{"B"}, newState.Pick("A").Model().ChildrenIds, "B should be child of A")
+		assert.Equal(t, []string{"A"}, newState.Pick("parent").Model().ChildrenIds, "only A remains at parent level")
+		assert.Equal(t, []string{"B", "b1", "b2"}, newState.Pick("A").Model().ChildrenIds, "B and its former children should be under A")
 		assert.Empty(t, newState.Pick("B").Model().ChildrenIds, "B should have no children")
 	})
 
@@ -805,8 +805,8 @@ func TestBasic_MoveIndent(t *testing.T) {
 		require.NoError(t, sb.Apply(st2))
 
 		newState := sb.NewState()
-		assert.Equal(t, []string{"A", "b1", "b2", "C"}, newState.Pick("parent").Model().ChildrenIds, "b1 and b2 should be at parent level")
-		assert.Equal(t, []string{"B"}, newState.Pick("A").Model().ChildrenIds, "B should be child of A")
+		assert.Equal(t, []string{"A", "C"}, newState.Pick("parent").Model().ChildrenIds, "only A and C remain at parent level")
+		assert.Equal(t, []string{"B", "b1", "b2"}, newState.Pick("A").Model().ChildrenIds, "B and its former children should be under A")
 		assert.Empty(t, newState.Pick("B").Model().ChildrenIds, "B should have no children after indent")
 	})
 }

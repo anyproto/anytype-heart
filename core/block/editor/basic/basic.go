@@ -104,9 +104,8 @@ type outdentOpContext struct {
 }
 
 type indentOpContext struct {
+	blockId     string   // the block being indented
 	childrenIds []string // copy of block's children before the move
-	nextSibling string   // sibling after the block in original parent, or empty
-	parentId    string   // original parent id
 }
 
 func NewBasic(
@@ -426,19 +425,12 @@ func collectIndentContext(srcState *state.State, block simple.Block, targetBlock
 		return nil
 	}
 
-	pos := slice.FindPos(parent.Model().ChildrenIds, blockId)
-	var nextSibling string
-	if pos != -1 && pos < len(parent.Model().ChildrenIds)-1 {
-		nextSibling = parent.Model().ChildrenIds[pos+1]
-	}
-
 	copiedChildren := make([]string, len(childrenIds))
 	copy(copiedChildren, childrenIds)
 
 	return &indentOpContext{
+		blockId:     blockId,
 		childrenIds: copiedChildren,
-		nextSibling: nextSibling,
-		parentId:    parent.Model().Id,
 	}
 }
 
@@ -452,15 +444,9 @@ func processIndentOperation(opCtx *indentOpContext, srcState *state.State) error
 		srcState.Unlink(childId)
 	}
 
-	// Insert children at the block's original position in the parent
-	if opCtx.nextSibling != "" {
-		if err := srcState.InsertTo(opCtx.nextSibling, model.Block_Top, opCtx.childrenIds...); err != nil {
-			return fmt.Errorf("move children during indent: %w", err)
-		}
-	} else {
-		if err := srcState.InsertTo(opCtx.parentId, model.Block_Inner, opCtx.childrenIds...); err != nil {
-			return fmt.Errorf("move children during indent: %w", err)
-		}
+	// Insert children as siblings after the indented block in its new parent
+	if err := srcState.InsertTo(opCtx.blockId, model.Block_Bottom, opCtx.childrenIds...); err != nil {
+		return fmt.Errorf("move children during indent: %w", err)
 	}
 
 	return nil
