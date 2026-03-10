@@ -224,5 +224,4 @@ func (m *spaceUsageManager) close() {
 	if m.ctxCancel != nil {
 		m.ctxCancel()
 	}
-	close(m.updateCh)
 }
