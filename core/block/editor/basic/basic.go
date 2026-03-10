@@ -298,8 +298,9 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 				opCtx = collectOutdentContext(srcState, id)
 			}
 
-			// Capture indent context before unlinking (single-block moves only)
-			if len(blockIds) == 1 && targetBlockId != "" {
+			// Capture indent context before unlinking (single-block inner moves only)
+			isInnerMove := position == model.Block_Inner || position == model.Block_InnerFirst
+			if len(blockIds) == 1 && targetBlockId != "" && isInnerMove {
 				indCtx = collectIndentContext(srcState, b, targetBlockId)
 			}
 
@@ -350,7 +351,7 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		}
 	}
 	if indCtx != nil {
-		if err := processIndentOperation(indCtx, srcState, position); err != nil {
+		if err := processIndentOperation(indCtx, srcState); err != nil {
 			return err
 		}
 	}
@@ -441,13 +442,8 @@ func collectIndentContext(srcState *state.State, block simple.Block, targetBlock
 	}
 }
 
-func processIndentOperation(opCtx *indentOpContext, srcState *state.State, pos model.BlockPosition) error {
+func processIndentOperation(opCtx *indentOpContext, srcState *state.State) error {
 	if opCtx == nil || len(opCtx.childrenIds) == 0 {
-		return nil
-	}
-
-	// Only apply for Inner position (indent)
-	if pos != model.Block_Inner && pos != model.Block_InnerFirst {
 		return nil
 	}
 
