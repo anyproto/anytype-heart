@@ -645,6 +645,9 @@ func (t *Text) normalizeMarksPure(marks []*model.BlockContentTextMark) (outputMa
 		m := outputMarks[i]
 		sm := outputMarks[i+1]
 		if m.Type == sm.Type && m.Param == sm.Param && m.Range.To >= sm.Range.From {
+			if m.Type == model.BlockContentTextMark_Emoji {
+				continue
+			}
 			m.Range.To = sm.Range.To
 			outputMarks[i+1] = nil
 			outputMarks = append(outputMarks[:i+1], outputMarks[i+2:]...)
