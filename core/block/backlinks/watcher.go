@@ -16,7 +16,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -290,14 +289,11 @@ func (w *watcher) updateBackLinksInObject(id domain.FullID, backlinksUpdate *bac
 	if !errors.Is(err, ocache.ErrExists) {
 		log.Warn("failed to update backlinks for not cached object", zap.String("objectId", id.ObjectID), zap.Error(err))
 	}
+	// do no do apply, stateAppend send the event and run the index
 	if err = spc.Do(id.ObjectID, func(b smartblock.SmartBlock) error {
-		if cr, ok := b.(source.ChangeReceiver); ok {
-			return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
-				return d.NewState(), nil, nil
-			})
-		}
-		// do no do apply, stateAppend send the event and run the index
-		return nil
+		return b.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
+			return d.NewState(), nil, nil
+		})
 	}); err != nil {
 		return fmt.Errorf("failed to update backlinks: %w", err)
 	}
