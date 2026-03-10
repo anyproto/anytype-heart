@@ -71,10 +71,9 @@ func (s *service) SolveChallenge(challengeId string, challengeSolution string, s
 	}
 
 	if challenge.value != challengeSolution {
-		s.lock.Unlock()
-
 		challenge.tries++
 		s.challenges[challengeId] = challenge
+		s.lock.Unlock()
 		return clientInfo, "", 0, ErrChallengeSolutionWrong
 	}
 
