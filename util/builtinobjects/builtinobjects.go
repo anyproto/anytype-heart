@@ -51,7 +51,7 @@ const (
 	CName            = "builtinobjects"
 	injectionTimeout = 30 * time.Second
 
-	defaultDashboardId = "lastOpened"
+	defaultDashboardId = "widgets"
 
 	contentLengthHeader        = "Content-Length"
 	archiveDownloadingPercents = 30

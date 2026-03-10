@@ -98,7 +98,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
 		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
 		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(inviteSentStatus))},
-		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("lastOpened")},
+		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("widgets")},
 	}
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
