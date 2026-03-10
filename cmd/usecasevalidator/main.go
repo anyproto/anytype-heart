@@ -20,6 +20,7 @@ import (
 	"golang.org/x/net/context"
 	"gopkg.in/yaml.v3"
 
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -745,13 +746,13 @@ func processProfile(info *useCaseInfo, spaceDashboardId string, reporter *report
 	}
 
 	if profile.SpaceDashboardId == "" {
-		profile.SpaceDashboardId = "widgets"
+		profile.SpaceDashboardId = editor.HomepageWidgets
 		return profile.Marshal()
 	}
 
-	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened", "widgets", "graph"}, profile.SpaceDashboardId) {
+	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened", editor.HomepageWidgets, "graph"}, profile.SpaceDashboardId) {
 		reporter.addMsg("profile", fmt.Sprintf("spaceDashboardId '%s' not found, so setting 'widgets' value", profile.SpaceDashboardId))
-		profile.SpaceDashboardId = "widgets"
+		profile.SpaceDashboardId = editor.HomepageWidgets
 	}
 	return profile.Marshal()
 }

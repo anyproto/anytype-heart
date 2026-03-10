@@ -10,6 +10,7 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -142,7 +143,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyName.String():             pbtypes.String(s.sanitizedString(*request.Name)),
 				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(iconOption.Int64())),
-				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("widgets"),
+				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String(editor.HomepageWidgets),
 				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_Data)),
 			},
 		},
