@@ -57,6 +57,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -432,6 +433,14 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		spaceId = sb.SpaceID()
 		mentions, _ = message.MentionIdentities(ctx, sb)
 		chatName = sb.Details().GetString(bundle.RelationKeyName)
+		if sb.Type() == smartblock.SmartBlockTypeDiscussionObject {
+			if parentId := sb.Tree().Root().ParentId; parentId != "" {
+				parentDetails, detailsErr := s.objectStore.SpaceIndex(sb.SpaceID()).GetDetails(parentId)
+				if detailsErr == nil {
+					chatName = parentDetails.GetString(bundle.RelationKeyName)
+				}
+			}
+		}
 		return err
 	})
 	if err == nil {
