@@ -54,6 +54,7 @@ enum SmartBlockType {
     ChatObjectDeprecated = 0x219; // DEPRECATED Container for any-store based chats
     ChatDerivedObject = 0x220; // Any-store based object for chat
     AccountObject = 0x221; // Container for account data in tech space
+    DiscussionObject = 0x222; // Any-store based object for discussion
 }
 
 message Search {
@@ -859,6 +860,7 @@ message ObjectType {
         notification = 24;
         missingObject = 25;
         devices = 26;
+        discussion = 27;
     }
 }
 

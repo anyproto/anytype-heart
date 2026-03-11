@@ -510,5 +510,21 @@
       "tag"
     ],
     "revision": 7
+  },
+  {
+    "id": "discussion",
+    "name": "Discussion",
+    "pluralName": "Discussions",
+    "types": [
+      "DiscussionObject"
+    ],
+    "iconColor": 7,
+    "iconName": "discussion",
+    "hidden": false,
+    "layout": "discussion",
+    "relations": [
+      "tag"
+    ],
+    "revision": 1
   }
 ]

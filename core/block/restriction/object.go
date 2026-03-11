@@ -66,6 +66,7 @@ var (
 		smartblock.SmartBlockTypeNotificationObject:   objRestrictAll, // new
 		smartblock.SmartBlockTypeDevicesObject:        objRestrictAll, // new
 		smartblock.SmartBlockTypeChatDerivedObject:    objRestrictEditAndDuplicate,
+		smartblock.SmartBlockTypeDiscussionObject:     objRestrictEditAndDuplicate,
 		smartblock.SmartBlockTypeChatObjectDeprecated: objRestrictEditAndDuplicate,
 		smartblock.SmartBlockTypeFileObject:           objRestrictEditAndDuplicate,
 		smartblock.SmartBlockTypeSubObject:            objRestrictEditAndTemplate,

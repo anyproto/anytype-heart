@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "0c111399adb4bd83c03846bf38a73c8460681e0404cdef75ba5e9bfd86eb0429"
+const TypeChecksum = "28e6ff3d55b4f8233999f6588ed454127231ed613017fb0e8b1dbcbd88a0bd99"
 const (
 	TypePrefix = "_ot"
 )
@@ -42,6 +42,7 @@ const (
 	TypeKeyFile           domain.TypeKey = "file"
 	TypeKeyProject        domain.TypeKey = "project"
 	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
+	TypeKeyDiscussion     domain.TypeKey = "discussion"
 )
 
 var (
@@ -171,6 +172,20 @@ var (
 			Revision:      3,
 			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:           TypePrefix + "diaryEntry",
+		},
+		TypeKeyDiscussion: {
+
+			Description:   "",
+			IconColor:     7,
+			IconName:      "discussion",
+			Layout:        model.ObjectType_discussion,
+			Name:          "Discussion",
+			PluralName:    "Discussions",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Revision:      1,
+			Types:         []model.SmartBlockType{model.SmartBlockType_DiscussionObject},
+			Url:           TypePrefix + "discussion",
 		},
 		TypeKeyFile: {
 

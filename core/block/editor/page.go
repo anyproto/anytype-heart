@@ -234,7 +234,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithLayout(layout),
 				)
-			case model.ObjectType_chatDerived:
+			case model.ObjectType_chatDerived, model.ObjectType_discussion:
 				templates = append(templates,
 					template.WithLayout(layout),
 				)

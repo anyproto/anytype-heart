@@ -35862,6 +35862,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | notification | 24 |  |
 | missingObject | 25 |  |
 | devices | 26 |  |
+| discussion | 27 |  |
 
 
 
@@ -36044,6 +36045,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ChatObjectDeprecated | 537 | DEPRECATED Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
+| DiscussionObject | 546 | Any-store based object for discussion |
 
 
 
