@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "28e6ff3d55b4f8233999f6588ed454127231ed613017fb0e8b1dbcbd88a0bd99"
+const TypeChecksum = "b7239c088635742d89a6c58a20a19eb9fd757d172f7efafc15b2eebc8ef8f4c5"
 const (
 	TypePrefix = "_ot"
 )
@@ -176,6 +176,7 @@ var (
 		TypeKeyDiscussion: {
 
 			Description:   "",
+			Hidden:        true,
 			IconColor:     7,
 			IconName:      "discussion",
 			Layout:        model.ObjectType_discussion,

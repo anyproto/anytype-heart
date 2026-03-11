@@ -520,7 +520,7 @@
     ],
     "iconColor": 7,
     "iconName": "discussion",
-    "hidden": false,
+    "hidden": true,
     "layout": "discussion",
     "relations": [
       "tag"
