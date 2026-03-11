@@ -49,8 +49,8 @@ type CommonOperations interface {
 
 	SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationAddRequest) error
-	FeaturedRelationAdd(ctx session.Context, relations ...string) error
-	FeaturedRelationRemove(ctx session.Context, relations ...string) error
+	DescriptionShow(ctx session.Context) error
+	DescriptionHide(ctx session.Context) error
 
 	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc templateSvc.Service, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
@@ -571,53 +571,41 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationA
 	return bs.Apply(s)
 }
 
-func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (err error) {
+func (bs *basic) DescriptionShow(ctx session.Context) error {
 	s := bs.NewStateCtx(ctx)
+
 	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-	frc := make([]string, len(fr))
-	copy(frc, fr)
-	for _, r := range relations {
-		if slice.FindPos(frc, r) == -1 {
-			// special case
-			if r == bundle.RelationKeyDescription.String() {
-				// todo: looks like it's not ok to use templates here but it has a lot of logic inside
-				template.WithForcedDescription(s)
-			}
-			frc = append(frc, r)
-			key := domain.RelationKey(r)
-			if !s.HasRelation(key) {
-				// TODO: GO-4284 remove
-				err = bs.addRelationLink(s, key)
-				if err != nil {
-					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %w", r, err)
-				}
-			}
+	descKey := bundle.RelationKeyDescription.String()
+	if slice.FindPos(fr, descKey) != -1 {
+		return nil // noop
+	}
+
+	template.WithForcedDescription(s)
+
+	if !s.HasRelation(bundle.RelationKeyDescription) {
+		// TODO: GO-4284 remove
+		if err := bs.addRelationLink(s, bundle.RelationKeyDescription); err != nil {
+			return fmt.Errorf("add description relation link: %w", err)
 		}
 	}
-	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
-	}
+
+	s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(append(fr, descKey)))
+	s.SetChangeType(domain.ChangeTypeDescriptionToggle)
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
-func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string) (err error) {
+func (bs *basic) DescriptionHide(ctx session.Context) error {
 	s := bs.NewStateCtx(ctx)
+
 	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-	frc := make([]string, len(fr))
-	copy(frc, fr)
-	for _, r := range relations {
-		if slice.FindPos(frc, r) != -1 {
-			// special cases
-			switch r {
-			case bundle.RelationKeyDescription.String():
-				s.Unlink(state.DescriptionBlockID)
-			}
-			frc = slice.RemoveMut(frc, r)
-		}
+	descKey := bundle.RelationKeyDescription.String()
+	if slice.FindPos(fr, descKey) == -1 {
+		return nil // noop
 	}
-	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
-	}
+
+	s.Unlink(state.DescriptionBlockID)
+	s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(slice.RemoveMut(append([]string{}, fr...), descKey)))
+	s.SetChangeType(domain.ChangeTypeDescriptionToggle)
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
