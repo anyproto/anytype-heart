@@ -2,7 +2,6 @@ package text
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -254,9 +253,7 @@ func (t *Text) SetText(text string, marks *model.BlockContentTextMarks) {
 			}
 		}
 	}
-	t.content.Marks = marks
-
-	t.normalizeMarks()
+	t.content.Marks.Marks = mergeAdjacentMarks(marks.Marks)
 	return
 }
 
@@ -358,7 +355,7 @@ func (t *Text) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model
 	runesLast := contentText[rangeTo:]
 
 	combinedMarks := t.SplitMarks(&model.Range{From: rangeFrom, To: rangeTo}, copiedText.Marks.Marks, textutil.UTF16ToStr(runesMiddle))
-	t.content.Marks.Marks = t.normalizeMarksPure(combinedMarks)
+	t.content.Marks.Marks = mergeAdjacentMarks(combinedMarks)
 
 	t.content.Text = textutil.UTF16ToStr(runesFirst) + textutil.UTF16ToStr(runesMiddle) + textutil.UTF16ToStr(runesLast)
 
@@ -420,8 +417,8 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 	oldMarks := &model.BlockContentTextMarks{}
 	r := model.Range{From: from, To: to}
 	oldMarks.Marks, newMarks.Marks = t.splitMarks(t.content.Marks.Marks, &r, 0)
-	oldMarks.Marks = t.normalizeMarksPure(oldMarks.Marks)
-	newMarks.Marks = t.normalizeMarksPure(newMarks.Marks)
+	oldMarks.Marks = mergeAdjacentMarks(oldMarks.Marks)
+	newMarks.Marks = mergeAdjacentMarks(newMarks.Marks)
 
 	for _, m := range newMarks.Marks {
 		m.Range.From = m.Range.From - r.From
@@ -627,35 +624,8 @@ func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
 			Param: m.Param,
 		})
 	}
-	t.normalizeMarks()
+	t.content.Marks.Marks = mergeAdjacentMarks(t.content.Marks.Marks)
 	return nil
-}
-
-func (t *Text) normalizeMarks() {
-	t.content.Marks.Marks = t.normalizeMarksPure(t.content.Marks.Marks)
-}
-
-func (t *Text) normalizeMarksPure(marks []*model.BlockContentTextMark) (outputMarks []*model.BlockContentTextMark) {
-	outputMarks = marks
-	sort.Sort(sortedMarks(outputMarks))
-	for i := 0; i < len(outputMarks); i++ {
-		if i+1 == len(outputMarks) {
-			break
-		}
-		m := outputMarks[i]
-		sm := outputMarks[i+1]
-		if m.Type == sm.Type && m.Param == sm.Param && m.Range.To >= sm.Range.From {
-			if m.Type == model.BlockContentTextMark_Emoji {
-				continue
-			}
-			m.Range.To = sm.Range.To
-			outputMarks[i+1] = nil
-			outputMarks = append(outputMarks[:i+1], outputMarks[i+2:]...)
-			i = -1
-		}
-	}
-
-	return outputMarks
 }
 
 func (t *Text) String() string {
