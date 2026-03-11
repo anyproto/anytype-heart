@@ -98,13 +98,15 @@ func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, gr
 }
 
 func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
-	anySlot = req.Blocks
 	textSlot = ""
 	htmlSlot = ""
 
 	if len(req.Blocks) == 0 {
 		return textSlot, htmlSlot, anySlot, fmt.Errorf("copy: no blocks")
 	}
+
+	req.Blocks = cb.reorderBlocksByDocumentOrder(req.Blocks)
+	anySlot = req.Blocks
 
 	s := cb.blocksToState(req.Blocks)
 
@@ -165,6 +167,8 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	if err != nil {
 		return textSlot, htmlSlot, anySlot, err
 	}
+
+	req.Blocks = cb.reorderBlocksByDocumentOrder(req.Blocks)
 
 	var firstTextBlock, lastTextBlock *model.Block
 	for _, b := range req.Blocks {
@@ -471,6 +475,45 @@ func (cb *clipboard) pasteAny(
 	blockIds = ctrl.blockIds
 
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
+}
+
+// reorderBlocksByDocumentOrder reorders the given blocks to match their position
+// in the document tree. This ensures correct block ordering when the client sends
+// blocks in an order that doesn't match the document structure.
+func (cb *clipboard) reorderBlocksByDocumentOrder(blocks []*model.Block) []*model.Block {
+	if len(blocks) <= 1 {
+		return blocks
+	}
+
+	blockByID := make(map[string]*model.Block, len(blocks))
+	for _, b := range blocks {
+		blockByID[b.Id] = b
+	}
+
+	var ordered []*model.Block
+	// DFS pre-order traversal of the document tree to get top-to-bottom document order
+	var walk func(id string)
+	walk = func(id string) {
+		if b, ok := blockByID[id]; ok {
+			ordered = append(ordered, b)
+			delete(blockByID, id)
+		}
+		if block := cb.Pick(id); block != nil {
+			for _, childID := range block.Model().ChildrenIds {
+				walk(childID)
+			}
+		}
+	}
+	walk(cb.RootId())
+
+	// Append any blocks not found in the document tree, preserving their original order
+	for _, b := range blocks {
+		if _, ok := blockByID[b.Id]; ok {
+			ordered = append(ordered, b)
+		}
+	}
+
+	return ordered
 }
 
 func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {

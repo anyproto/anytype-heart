@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -1059,9 +1060,10 @@ func TestClipboard_TitleOps(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, result, textSlot)
 		assert.Len(t, anySlot, 3)
+		// Blocks are reordered to document order: firstText, lastText, bookmark
 		assert.Equal(t, firstTextBlockId, anySlot[0].Id)
-		assert.Equal(t, bookmarkId, anySlot[1].Id)
-		assert.Equal(t, lastTextBlockId, anySlot[2].Id)
+		assert.Equal(t, lastTextBlockId, anySlot[1].Id)
+		assert.Equal(t, bookmarkId, anySlot[2].Id)
 		assert.Contains(t, htmlSlot, firstText)
 		assert.Contains(t, htmlSlot, url)
 		assert.Contains(t, htmlSlot, secondText)
@@ -2024,6 +2026,130 @@ func TestProcessFileBlock(t *testing.T) {
 
 		// then
 		assert.Nil(t, fb.File)
+	})
+}
+
+func TestCopy_BlockOrdering(t *testing.T) {
+	t.Run("copy reorders blocks to match document order", func(t *testing.T) {
+		// given: document with blocks in order: text1, file, text2
+		sb := smarttest.New("test")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("test"),
+			blockbuilder.Children(
+				blockbuilder.Text("first paragraph",
+					blockbuilder.ID("text1"),
+				),
+				blockbuilder.File("img1",
+					blockbuilder.ID("file1"),
+					blockbuilder.FileType(model.BlockContentFile_Image),
+				),
+				blockbuilder.Text("second paragraph",
+					blockbuilder.ID("text2"),
+				),
+			),
+		))
+
+		cb := newFixture(t, sb)
+
+		// when: copy with blocks in wrong order (file first)
+		_, htmlSlot, anySlot, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks: []*model.Block{
+				sb.Pick("file1").Model(),
+				sb.Pick("text1").Model(),
+				sb.Pick("text2").Model(),
+			},
+		})
+
+		// then: anySlot should be reordered to document order
+		require.NoError(t, err)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "text1", anySlot[0].Id)
+		assert.Equal(t, "file1", anySlot[1].Id)
+		assert.Equal(t, "text2", anySlot[2].Id)
+
+		// HTML should contain text1 before text2
+		text1Pos := strings.Index(htmlSlot, "first paragraph")
+		text2Pos := strings.Index(htmlSlot, "second paragraph")
+		assert.Greater(t, text1Pos, -1, "first paragraph should be in HTML")
+		assert.Greater(t, text2Pos, -1, "second paragraph should be in HTML")
+		assert.Less(t, text1Pos, text2Pos, "first paragraph should appear before second paragraph in HTML")
+	})
+
+	t.Run("cut reorders blocks to match document order", func(t *testing.T) {
+		// given: document with blocks in order: text1, file, text2
+		sb := smarttest.New("test")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("test"),
+			blockbuilder.Children(
+				blockbuilder.Text("first paragraph",
+					blockbuilder.ID("text1"),
+				),
+				blockbuilder.File("img1",
+					blockbuilder.ID("file1"),
+					blockbuilder.FileType(model.BlockContentFile_Image),
+				),
+				blockbuilder.Text("second paragraph",
+					blockbuilder.ID("text2"),
+				),
+			),
+		))
+
+		cb := newFixture(t, sb)
+
+		// when: cut with blocks in wrong order (file first)
+		_, htmlSlot, anySlot, err := cb.Cut(session.NewContext(), pb.RpcBlockCutRequest{
+			SelectedTextRange: &model.Range{},
+			Blocks: []*model.Block{
+				sb.Pick("file1").Model(),
+				sb.Pick("text1").Model(),
+				sb.Pick("text2").Model(),
+			},
+		})
+
+		// then: anySlot should be reordered to document order
+		require.NoError(t, err)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "text1", anySlot[0].Id)
+		assert.Equal(t, "file1", anySlot[1].Id)
+		assert.Equal(t, "text2", anySlot[2].Id)
+
+		// HTML should contain text1 before text2
+		text1Pos := strings.Index(htmlSlot, "first paragraph")
+		text2Pos := strings.Index(htmlSlot, "second paragraph")
+		assert.Greater(t, text1Pos, -1)
+		assert.Greater(t, text2Pos, -1)
+		assert.Less(t, text1Pos, text2Pos)
+	})
+
+	t.Run("already correctly ordered blocks remain unchanged", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+			blockbuilder.ID("test"),
+			blockbuilder.Children(
+				blockbuilder.Text("aaa", blockbuilder.ID("a")),
+				blockbuilder.Text("bbb", blockbuilder.ID("b")),
+				blockbuilder.Text("ccc", blockbuilder.ID("c")),
+			),
+		))
+
+		cb := newFixture(t, sb)
+
+		// when: copy with blocks already in correct order
+		_, _, anySlot, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks: []*model.Block{
+				sb.Pick("a").Model(),
+				sb.Pick("b").Model(),
+				sb.Pick("c").Model(),
+			},
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "a", anySlot[0].Id)
+		assert.Equal(t, "b", anySlot[1].Id)
+		assert.Equal(t, "c", anySlot[2].Id)
 	})
 }
 
