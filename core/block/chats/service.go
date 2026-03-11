@@ -445,8 +445,9 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 	})
 	if err == nil {
 		// Update file attachments' CreatedInContextRef to the message ID
-		if len(message.Attachments) > 0 {
-			go s.updateAttachmentsContext(spaceId, chatObjectId, messageId, message.Attachments)
+		linkTargets := message.LinkBlockTargetIds()
+		if len(message.Attachments) > 0 || len(linkTargets) > 0 {
+			go s.updateAttachmentsContext(spaceId, chatObjectId, messageId, message.Attachments, linkTargets)
 		}
 
 		pushErr := s.sendPushNotification(ctx, pushNotificationRequest{
@@ -464,14 +465,14 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 	return messageId, err
 }
 
-func (s *service) updateAttachmentsContext(spaceId, chatObjectId, messageId string, attachments []*model.ChatMessageAttachment) {
-	// Filter attachments
+func (s *service) updateAttachmentsContext(spaceId, chatObjectId, messageId string, attachments []*model.ChatMessageAttachment, linkTargets []string) {
 	var objectIds []string
 	for _, attachment := range attachments {
 		if attachment.Target != "" {
 			objectIds = append(objectIds, attachment.Target)
 		}
 	}
+	objectIds = append(objectIds, linkTargets...)
 
 	if len(objectIds) == 0 {
 		return
@@ -545,6 +546,14 @@ func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Paylo
 	}
 
 	text := applyEmojiMarks(req.message.Message.Text, req.message.Message.Marks)
+	if blocksText := req.message.BlocksText(); blocksText != "" {
+		if text != "" {
+			text += "\n"
+		}
+		text += blocksText
+	}
+
+	hasAttachments := len(req.message.Attachments) > 0 || len(req.message.LinkBlockTargetIds()) > 0
 
 	return &chatpush.Payload{
 		SpaceId:     req.spaceId,
@@ -558,7 +567,7 @@ func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Paylo
 			ChatName:       req.chatName,
 			SenderName:     senderName,
 			Text:           textUtil.Truncate(text, 1024, "..."),
-			HasAttachments: len(req.message.Attachments) > 0,
+			HasAttachments: hasAttachments,
 			Attachments:    attachments,
 		},
 	}, nil
@@ -598,25 +607,27 @@ func (s *service) sendPushNotification(ctx context.Context, req pushNotification
 }
 
 func (s *service) collectAttachmentPayloads(message *chatmodel.Message, spaceId string) ([]*chatpush.Attachment, error) {
-	if len(message.Attachments) > 0 {
-		attachmentIds := make([]string, 0, len(message.Attachments))
-		for _, attachment := range message.Attachments {
-			attachmentIds = append(attachmentIds, attachment.Target)
-		}
-
-		attachmentDetails, err := s.objectStore.SpaceIndex(spaceId).QueryByIds(attachmentIds)
-		if err != nil {
-			return nil, fmt.Errorf("query attachments: %w", err)
-		}
-		attachments := make([]*chatpush.Attachment, 0, len(message.Attachments))
-		for _, att := range attachmentDetails {
-			attachments = append(attachments, &chatpush.Attachment{
-				Layout: int(att.Details.GetInt64(bundle.RelationKeyResolvedLayout)),
-			})
-		}
-		return attachments, nil
+	attachmentIds := make([]string, 0, len(message.Attachments))
+	for _, attachment := range message.Attachments {
+		attachmentIds = append(attachmentIds, attachment.Target)
 	}
-	return nil, nil
+	attachmentIds = append(attachmentIds, message.LinkBlockTargetIds()...)
+
+	if len(attachmentIds) == 0 {
+		return nil, nil
+	}
+
+	attachmentDetails, err := s.objectStore.SpaceIndex(spaceId).QueryByIds(attachmentIds)
+	if err != nil {
+		return nil, fmt.Errorf("query attachments: %w", err)
+	}
+	attachments := make([]*chatpush.Attachment, 0, len(attachmentIds))
+	for _, att := range attachmentDetails {
+		attachments = append(attachments, &chatpush.Attachment{
+			Layout: int(att.Details.GetInt64(bundle.RelationKeyResolvedLayout)),
+		})
+	}
+	return attachments, nil
 }
 
 func applyEmojiMarks(text string, marks []*model.BlockContentTextMark) string {
@@ -667,14 +678,16 @@ func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string
 
 func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error {
 	var (
-		spaceId     string
-		attachments []*model.ChatMessageAttachment
+		spaceId      string
+		attachments  []*model.ChatMessageAttachment
+		linkTargetIds []string
 	)
 
 	// First get the message to extract attachments before deletion
 	messages, err := s.GetMessagesByIds(ctx, chatObjectId, []string{messageId})
 	if err == nil && len(messages) > 0 && messages[0] != nil {
 		attachments = messages[0].Attachments
+		linkTargetIds = messages[0].LinkBlockTargetIds()
 	}
 
 	err = s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
@@ -683,14 +696,15 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 	})
 
 	// If deletion was successful and there were attachments, run file GC
-	if err == nil && len(attachments) > 0 {
-		// Get file IDs from attachments
-		fileIds := make([]string, 0, len(attachments))
+	if err == nil && (len(attachments) > 0 || len(linkTargetIds) > 0) {
+		// Get file IDs from attachments and link blocks
+		fileIds := make([]string, 0, len(attachments)+len(linkTargetIds))
 		for _, attachment := range attachments {
 			// do not filter by attachment type, because of bug on anytype-ts
 			// we filter out files by layouts later in CheckFilesOnLinksRemoval
 			fileIds = append(fileIds, attachment.Target)
 		}
+		fileIds = append(fileIds, linkTargetIds...)
 
 		if len(fileIds) > 0 {
 			// Run file GC asynchronously with skipBin=true to permanently delete orphaned files

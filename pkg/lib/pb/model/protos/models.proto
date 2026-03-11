@@ -1640,6 +1640,8 @@ message ChatMessage {
     bool synced = 13;
     bool pinned = 15;
     bool unreadReaction = 16;
+    repeated MessageBlock blocks = 17;  // Ordered list of content blocks
+
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
@@ -1662,6 +1664,31 @@ message ChatMessage {
 
         message IdentityList {
             repeated string ids = 1; // List of user IDs
+        }
+    }
+
+    message MessageBlock {
+        oneof content {
+            MessageBlockText text = 1;
+            MessageBlockLink link = 2;
+        }
+    }
+
+    message MessageBlockText {
+        string text = 1;
+        Block.Content.Text.Style style = 2;
+        repeated Block.Content.Text.Mark marks = 3;
+    }
+
+    message MessageBlockLink {
+        string targetObjectId = 1;
+        LinkType type = 2;
+
+        enum LinkType {
+            Object = 0;
+            File = 1;
+            Image = 2;
+            Bookmark = 3;
         }
     }
 }

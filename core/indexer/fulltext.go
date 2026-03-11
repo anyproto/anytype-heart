@@ -423,10 +423,17 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	}
 
 	for _, msg := range msgs {
+		text := msg.Message.Text
+		if blocksText := msg.BlocksText(); blocksText != "" {
+			if text != "" {
+				text += "\n"
+			}
+			text += blocksText
+		}
 		docs = append(docs, ftsearch.SearchDoc{
 			Id:        domain.NewObjectPathWithMessage(object.ObjectId, msg.Id).String(),
 			SpaceId:   object.SpaceId,
-			Text:      msg.Message.Text,
+			Text:      text,
 			Author:    msg.Creator,
 			OrderId:   msg.OrderId,
 			MessageId: msg.Id,

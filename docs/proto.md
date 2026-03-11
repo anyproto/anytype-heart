@@ -2131,6 +2131,9 @@
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [ChatMessage](#anytype-model-ChatMessage)
     - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
+    - [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock)
+    - [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink)
+    - [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
     - [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList)
@@ -2236,6 +2239,7 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [ChatMessage.Attachment.AttachmentType](#anytype-model-ChatMessage-Attachment-AttachmentType)
+    - [ChatMessage.MessageBlockLink.LinkType](#anytype-model-ChatMessage-MessageBlockLink-LinkType)
     - [DeviceNetworkType](#anytype-model-DeviceNetworkType)
     - [Export.Format](#anytype-model-Export-Format)
     - [FileIndexingStatus](#anytype-model-FileIndexingStatus)
@@ -33749,6 +33753,7 @@ Used to decode block meta only, without the content itself
 | synced | [bool](#bool) |  |  |
 | pinned | [bool](#bool) |  |  |
 | unreadReaction | [bool](#bool) |  |  |
+| blocks | [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock) | repeated | Ordered list of content blocks |
 
 
 
@@ -33765,6 +33770,55 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | target | [string](#string) |  | Identifier for the attachment object |
 | type | [ChatMessage.Attachment.AttachmentType](#anytype-model-ChatMessage-Attachment-AttachmentType) |  | Type of attachment |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlock"></a>
+
+### ChatMessage.MessageBlock
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  |  |
+| link | [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockLink"></a>
+
+### ChatMessage.MessageBlockLink
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| targetObjectId | [string](#string) |  |  |
+| type | [ChatMessage.MessageBlockLink.LinkType](#anytype-model-ChatMessage-MessageBlockLink-LinkType) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockText"></a>
+
+### ChatMessage.MessageBlockText
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
+| style | [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style) |  |  |
+| marks | [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark) | repeated |  |
 
 
 
@@ -35574,6 +35628,20 @@ stored |
 | FILE | 0 | File attachment |
 | IMAGE | 1 | Image attachment |
 | LINK | 2 | Link attachment |
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockLink-LinkType"></a>
+
+### ChatMessage.MessageBlockLink.LinkType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Object | 0 |  |
+| File | 1 |  |
+| Image | 2 |  |
+| Bookmark | 3 |  |
 
 
 
