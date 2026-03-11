@@ -21,7 +21,8 @@ type eventKey int
 const eventCreate eventKey = 0
 
 type CreateOptions struct {
-	payload *treestorage.TreeStorageCreatePayload
+	payload  *treestorage.TreeStorageCreatePayload
+	parentId string
 }
 
 type CreateOption func(opts *CreateOptions)
@@ -29,6 +30,12 @@ type CreateOption func(opts *CreateOptions)
 func WithPayload(payload *treestorage.TreeStorageCreatePayload) CreateOption {
 	return func(opts *CreateOptions) {
 		opts.payload = payload
+	}
+}
+
+func WithParentId(parentId string) CreateOption {
+	return func(opts *CreateOptions) {
+		opts.parentId = parentId
 	}
 }
 
@@ -122,6 +129,11 @@ func objectTypeKeysToSmartBlockType(typeKeys []domain.TypeKey) coresb.SmartBlock
 func createSmartBlock(
 	ctx context.Context, spc clientspace.Space, initFunc objectcache.InitFunc, st *state.State, sbType coresb.SmartBlockType, opts ...CreateOption,
 ) (smartblock.SmartBlock, error) {
+	createOpts := &CreateOptions{}
+	for _, opt := range opts {
+		opt(createOpts)
+	}
+
 	if uKey := st.UniqueKeyInternal(); uKey != "" {
 		uk, err := domain.NewUniqueKey(sbType, uKey)
 		if err != nil {
@@ -131,18 +143,15 @@ func createSmartBlock(
 			return spc.DeriveTreeObjectWithAccountSignature(ctx, objectcache.TreeDerivationParams{
 				Key:      uk,
 				InitFunc: initFunc,
+				ParentId: createOpts.parentId,
 			})
 		} else {
 			return spc.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
 				Key:      uk,
 				InitFunc: initFunc,
+				ParentId: createOpts.parentId,
 			})
 		}
-	}
-
-	createOpts := &CreateOptions{}
-	for _, opt := range opts {
-		opt(createOpts)
 	}
 	if createOpts.payload != nil {
 		return spc.CreateTreeObjectWithPayload(ctx, *createOpts.payload, initFunc)

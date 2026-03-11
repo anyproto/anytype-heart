@@ -474,6 +474,18 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalytic
 	return nil
 }
 
+func (s *Service) ObjectAddDiscussion(ctx context.Context, objectId string) (discussionId string, err error) {
+	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return "", fmt.Errorf("resolve space: %w", err)
+	}
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("get space: %w", err)
+	}
+	return s.objectCreator.AddDiscussionDerivedObject(ctx, spc, objectId)
+}
+
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	panic("should be removed")
 }

@@ -999,6 +999,10 @@
     - [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request)
     - [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response)
     - [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error)
+    - [Rpc.Object.DiscussionAdd](#anytype-Rpc-Object-DiscussionAdd)
+    - [Rpc.Object.DiscussionAdd.Request](#anytype-Rpc-Object-DiscussionAdd-Request)
+    - [Rpc.Object.DiscussionAdd.Response](#anytype-Rpc-Object-DiscussionAdd-Response)
+    - [Rpc.Object.DiscussionAdd.Response.Error](#anytype-Rpc-Object-DiscussionAdd-Response-Error)
     - [Rpc.Object.Duplicate](#anytype-Rpc-Object-Duplicate)
     - [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request)
     - [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response)
@@ -1715,6 +1719,7 @@
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
+    - [Rpc.Object.DiscussionAdd.Response.Error.Code](#anytype-Rpc-Object-DiscussionAdd-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Export.Response.Error.Code](#anytype-Rpc-Object-Export-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
@@ -2608,6 +2613,7 @@
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ChatUnsubscribeFromMessagePreviews | [Rpc.Chat.UnsubscribeFromMessagePreviews.Request](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request) | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| ObjectAddDiscussion | [Rpc.Object.DiscussionAdd.Request](#anytype-Rpc-Object-DiscussionAdd-Request) | [Rpc.Object.DiscussionAdd.Response](#anytype-Rpc-Object-DiscussionAdd-Response) |  |
 | ChatReadAll | [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request) | [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response) |  |
 | ChatReadReactions | [Rpc.Chat.ReadReactions.Request](#anytype-Rpc-Chat-ReadReactions-Request) | [Rpc.Chat.ReadReactions.Response](#anytype-Rpc-Chat-ReadReactions-Response) |  |
 | ChatSearch | [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request) | [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response) |  |
@@ -17077,6 +17083,63 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-DiscussionAdd"></a>
+
+### Rpc.Object.DiscussionAdd
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DiscussionAdd-Request"></a>
+
+### Rpc.Object.DiscussionAdd.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DiscussionAdd-Response"></a>
+
+### Rpc.Object.DiscussionAdd.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.DiscussionAdd.Response.Error](#anytype-Rpc-Object-DiscussionAdd-Response-Error) |  |  |
+| discussionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DiscussionAdd-Response-Error"></a>
+
+### Rpc.Object.DiscussionAdd.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.DiscussionAdd.Response.Error.Code](#anytype-Rpc-Object-DiscussionAdd-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Duplicate"></a>
 
 ### Rpc.Object.Duplicate
@@ -27365,6 +27428,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-DiscussionAdd-Response-Error-Code"></a>
+
+### Rpc.Object.DiscussionAdd.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 

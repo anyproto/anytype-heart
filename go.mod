@@ -7,10 +7,9 @@ toolchain go1.24.9
 require (
 	github.com/JohannesKaufmann/html-to-markdown v1.4.0
 	github.com/PuerkitoBio/goquery v1.10.2
-	github.com/VividCortex/ewma v1.2.0
 	github.com/ahmetb/govvv v0.3.0
-	github.com/anyproto/any-store v0.4.4
-	github.com/anyproto/any-sync v0.11.14
+	github.com/anyproto/any-store v0.4.6
+	github.com/anyproto/any-sync v0.11.15-0.20260310170732-10680bf0cd67
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
@@ -106,16 +105,15 @@ require (
 	go.abhg.dev/goldmark/wikilink v0.6.0
 	go.uber.org/atomic v1.11.0
 	go.uber.org/mock v0.6.0
-	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	golang.org/x/image v0.27.0
 	golang.org/x/mobile v0.0.0-20250218173827-cd096645fcd3
-	golang.org/x/net v0.49.0
+	golang.org/x/net v0.50.0
 	golang.org/x/oauth2 v0.32.0
 	golang.org/x/sync v0.19.0
-	golang.org/x/sys v0.40.0
-	golang.org/x/text v0.33.0
+	golang.org/x/sys v0.41.0
+	golang.org/x/text v0.34.0
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
@@ -284,13 +282,14 @@ require (
 	go.opentelemetry.io/otel v1.38.0 // indirect
 	go.opentelemetry.io/otel/metric v1.38.0 // indirect
 	go.opentelemetry.io/otel/trace v1.38.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.3 // indirect
 	golang.org/x/arch v0.8.0 // indirect
-	golang.org/x/crypto v0.47.0 // indirect
-	golang.org/x/mod v0.32.0 // indirect
-	golang.org/x/term v0.39.0 // indirect
+	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/mod v0.33.0 // indirect
+	golang.org/x/term v0.40.0 // indirect
 	golang.org/x/time v0.14.0 // indirect
-	golang.org/x/tools v0.41.0 // indirect
+	golang.org/x/tools v0.42.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250825161204-c5933d9347a5 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250825161204-c5933d9347a5 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

@@ -89,6 +89,64 @@ func (_c *MockService_AddChatDerivedObject_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// AddDiscussionDerivedObject provides a mock function with given fields: ctx, space, parentObjectId
+func (_m *MockService) AddDiscussionDerivedObject(ctx context.Context, space clientspace.Space, parentObjectId string) (string, error) {
+	ret := _m.Called(ctx, space, parentObjectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddDiscussionDerivedObject")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) (string, error)); ok {
+		return rf(ctx, space, parentObjectId)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, clientspace.Space, string) string); ok {
+		r0 = rf(ctx, space, parentObjectId)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, clientspace.Space, string) error); ok {
+		r1 = rf(ctx, space, parentObjectId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_AddDiscussionDerivedObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddDiscussionDerivedObject'
+type MockService_AddDiscussionDerivedObject_Call struct {
+	*mock.Call
+}
+
+// AddDiscussionDerivedObject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - space clientspace.Space
+//   - parentObjectId string
+func (_e *MockService_Expecter) AddDiscussionDerivedObject(ctx interface{}, space interface{}, parentObjectId interface{}) *MockService_AddDiscussionDerivedObject_Call {
+	return &MockService_AddDiscussionDerivedObject_Call{Call: _e.mock.On("AddDiscussionDerivedObject", ctx, space, parentObjectId)}
+}
+
+func (_c *MockService_AddDiscussionDerivedObject_Call) Run(run func(ctx context.Context, space clientspace.Space, parentObjectId string)) *MockService_AddDiscussionDerivedObject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(clientspace.Space), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_AddDiscussionDerivedObject_Call) Return(discussionId string, err error) *MockService_AddDiscussionDerivedObject_Call {
+	_c.Call.Return(discussionId, err)
+	return _c
+}
+
+func (_c *MockService_AddDiscussionDerivedObject_Call) RunAndReturn(run func(context.Context, clientspace.Space, string) (string, error)) *MockService_AddDiscussionDerivedObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateObject provides a mock function with given fields: ctx, spaceID, req
 func (_m *MockService) CreateObject(ctx context.Context, spaceID string, req objectcreator.CreateObjectRequest) (string, *domain.Details, error) {
 	ret := _m.Called(ctx, spaceID, req)

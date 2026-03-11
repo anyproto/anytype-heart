@@ -27,12 +27,13 @@ func createChangePayload(sbType coresb.SmartBlockType, key domain.UniqueKey) (da
 	return payload.Marshal()
 }
 
-func derivePayload(spaceId string, changePayload []byte) objecttree.ObjectTreeDerivePayload {
+func derivePayload(spaceId string, changePayload []byte, parentId string) objecttree.ObjectTreeDerivePayload {
 	return objecttree.ObjectTreeDerivePayload{
 		ChangeType:    spacedomain.ChangeType,
 		ChangePayload: changePayload,
 		SpaceId:       spaceId,
 		IsEncrypted:   true,
+		ParentId:      parentId,
 	}
 }
 

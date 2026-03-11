@@ -17,6 +17,9 @@ type PayloadDerivationParams struct {
 	// Derive object id using account private key.
 	// It will activate anytype-heart's derivation mechanism, opposed to logic from any-sync
 	UseAccountSignature bool
+
+	// ParentId links derived object to parent for cascading deletion
+	ParentId string
 }
 
 // PayloadCreationParams is a struct for creating a payload
