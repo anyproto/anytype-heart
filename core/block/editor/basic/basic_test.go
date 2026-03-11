@@ -941,36 +941,65 @@ func TestBasic_SetRelationKey(t *testing.T) {
 	})
 }
 
-func TestBasic_FeaturedRelationAdd(t *testing.T) {
-	sb := smarttest.New("test")
-	s := sb.NewState()
-	template.WithTitle(s)
-	s.AddBundledRelationLinks(bundle.RelationKeyName)
-	s.AddBundledRelationLinks(bundle.RelationKeyDescription)
-	require.NoError(t, sb.Apply(s))
+func TestBasic_DescriptionShow(t *testing.T) {
+	t.Run("show description adds to featured", func(t *testing.T) {
+		sb := smarttest.New("test")
+		s := sb.NewState()
+		template.WithTitle(s)
+		s.AddBundledRelationLinks(bundle.RelationKeyDescription)
+		require.NoError(t, sb.Apply(s))
 
-	store := objectstore.NewStoreFixture(t)
+		store := objectstore.NewStoreFixture(t)
 
-	b := NewBasic(sb, store.SpaceIndex("spc"), converter.NewLayoutConverter(), nil)
-	newRel := []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}
-	require.NoError(t, b.FeaturedRelationAdd(nil, newRel...))
+		b := NewBasic(sb, store.SpaceIndex("spc"), converter.NewLayoutConverter(), nil)
+		require.NoError(t, b.DescriptionShow(nil))
 
-	res := sb.NewState()
-	assert.Equal(t, newRel, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
-	assert.NotNil(t, res.Pick(template.DescriptionBlockId))
+		res := sb.NewState()
+		assert.Equal(t, []string{bundle.RelationKeyDescription.String()}, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+		assert.NotNil(t, res.Pick(template.DescriptionBlockId))
+	})
+
+	t.Run("show description when already shown is no-op", func(t *testing.T) {
+		sb := smarttest.New("test")
+		s := sb.NewState()
+		template.WithTitle(s)
+		s.AddBundledRelationLinks(bundle.RelationKeyDescription)
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyDescription.String()}))
+		require.NoError(t, sb.Apply(s))
+
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		require.NoError(t, b.DescriptionShow(nil))
+
+		res := sb.NewState()
+		assert.Equal(t, []string{bundle.RelationKeyDescription.String()}, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+	})
 }
 
-func TestBasic_FeaturedRelationRemove(t *testing.T) {
-	sb := smarttest.New("test")
-	s := sb.NewState()
-	s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}))
-	template.WithDescription(s)
-	require.NoError(t, sb.Apply(s))
+func TestBasic_DescriptionHide(t *testing.T) {
+	t.Run("hide description removes from featured", func(t *testing.T) {
+		sb := smarttest.New("test")
+		s := sb.NewState()
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyDescription.String()}))
+		template.WithDescription(s)
+		require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
-	require.NoError(t, b.FeaturedRelationRemove(nil, bundle.RelationKeyDescription.String()))
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		require.NoError(t, b.DescriptionHide(nil))
 
-	res := sb.NewState()
-	assert.Equal(t, []string{bundle.RelationKeyName.String()}, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
-	assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
+		res := sb.NewState()
+		assert.Empty(t, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+		assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
+	})
+
+	t.Run("hide description when already hidden is no-op", func(t *testing.T) {
+		sb := smarttest.New("test")
+		s := sb.NewState()
+		require.NoError(t, sb.Apply(s))
+
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		require.NoError(t, b.DescriptionHide(nil))
+
+		res := sb.NewState()
+		assert.Empty(t, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+	})
 }
