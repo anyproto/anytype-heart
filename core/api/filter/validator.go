@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // getTopLevelAttributeAsProperty returns a synthetic property for top-level attributes
@@ -18,6 +19,12 @@ func getTopLevelAttributeAsProperty(key string) *apimodel.Property {
 			RelationKey: key,
 			Format:      apimodel.PropertyFormatText,
 		}
+	case bundle.RelationKeyType.String():
+		return &apimodel.Property{
+			Key:         key,
+			RelationKey: key,
+			Format:      apimodel.PropertyFormatObjects,
+		}
 	default:
 		return nil
 	}
@@ -25,6 +32,7 @@ func getTopLevelAttributeAsProperty(key string) *apimodel.Property {
 
 type ApiService interface {
 	GetCachedProperties(spaceId string) map[string]*apimodel.Property
+	GetCachedTypes(spaceId string) map[string]*apimodel.Type
 	ResolvePropertyApiKey(properties map[string]*apimodel.Property, key string) (string, bool)
 	SanitizeAndValidatePropertyValue(spaceId string, key string, value interface{}, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error)
 }
@@ -65,7 +73,16 @@ func (v *Validator) validateFilter(spaceId string, filter *Filter, propertyMap m
 	}
 
 	// Check if condition is valid for property type
-	if !isValidConditionForType(property.Format, filter.Condition) {
+	// Type filter supports equality and array conditions
+	isTypeFilter := property.RelationKey == bundle.RelationKeyType.String()
+	if isTypeFilter {
+		if !isValidConditionForType(property.Format, filter.Condition) &&
+			filter.Condition != model.BlockContentDataviewFilter_Equal &&
+			filter.Condition != model.BlockContentDataviewFilter_NotEqual {
+			apiCondition, _ := ToApiCondition(filter.Condition)
+			return util.ErrBadInput(fmt.Sprintf("condition %q is not valid for type filter", apiCondition))
+		}
+	} else if !isValidConditionForType(property.Format, filter.Condition) {
 		apiCondition, _ := ToApiCondition(filter.Condition)
 		return util.ErrBadInput(fmt.Sprintf("condition %q is not valid for property type %q", apiCondition, property.Format))
 	}
@@ -100,6 +117,47 @@ func (v *Validator) resolveProperty(spaceId string, propertyKey string, property
 	return prop, nil
 }
 
+// resolveTypeValue resolves a type API key or ID to the type's object ID
+func (v *Validator) resolveTypeValue(spaceId string, value string) (string, error) {
+	typeMap := v.apiService.GetCachedTypes(spaceId)
+	if t, exists := typeMap[value]; exists {
+		return t.Id, nil
+	}
+	return "", util.ErrBadInput(fmt.Sprintf("type %q not found", value))
+}
+
+// buildTypeFilter builds a dataview filter for type filtering, resolving the value through the type cache
+func (v *Validator) buildTypeFilter(spaceId string, relationKey string, condition model.BlockContentDataviewFilterCondition, value interface{}) (*model.BlockContentDataviewFilter, error) {
+	switch val := value.(type) {
+	case string:
+		resolved, err := v.resolveTypeValue(spaceId, val)
+		if err != nil {
+			return nil, err
+		}
+		return &model.BlockContentDataviewFilter{
+			RelationKey: relationKey,
+			Condition:   condition,
+			Value:       pbtypes.ToValue(resolved),
+		}, nil
+	case []string:
+		resolved := make([]string, 0, len(val))
+		for _, item := range val {
+			id, err := v.resolveTypeValue(spaceId, item)
+			if err != nil {
+				return nil, err
+			}
+			resolved = append(resolved, id)
+		}
+		return &model.BlockContentDataviewFilter{
+			RelationKey: relationKey,
+			Condition:   condition,
+			Value:       pbtypes.ToValue(resolved),
+		}, nil
+	default:
+		return nil, util.ErrBadInput(fmt.Sprintf("invalid type filter value: expected string, got %T", value))
+	}
+}
+
 // convertAndValidateValue converts and validates the filter value based on property type
 func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, property *apimodel.Property, propertyMap map[string]*apimodel.Property) (interface{}, error) {
 	switch filter.Condition {
@@ -108,6 +166,26 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 			return boolVal, nil
 		}
 		return true, nil
+	}
+
+	// Special handling for type filter: resolve type API key to type object ID
+	if property.RelationKey == bundle.RelationKeyType.String() {
+		switch val := filter.Value.(type) {
+		case string:
+			return v.resolveTypeValue(spaceId, val)
+		case []string:
+			resolved := make([]string, 0, len(val))
+			for _, item := range val {
+				id, err := v.resolveTypeValue(spaceId, item)
+				if err != nil {
+					return nil, err
+				}
+				resolved = append(resolved, id)
+			}
+			return resolved, nil
+		default:
+			return nil, util.ErrBadInput(fmt.Sprintf("invalid type filter value: expected string, got %T", filter.Value))
+		}
 	}
 
 	value := filter.Value

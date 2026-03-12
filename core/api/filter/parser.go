@@ -20,6 +20,7 @@ const (
 	TopLevelAttrName       = "name"
 	TopLevelAttrGlobalName = "global_name"
 	TopLevelAttrSnippet    = "snippet"
+	TopLevelAttrType       = "type"
 )
 
 // topLevelAttributes maps JSON field names to internal relation keys
@@ -28,6 +29,7 @@ var topLevelAttributes = map[string]string{
 	TopLevelAttrName:       bundle.RelationKeyName.String(),
 	TopLevelAttrGlobalName: bundle.RelationKeyGlobalName.String(),
 	TopLevelAttrSnippet:    bundle.RelationKeySnippet.String(),
+	TopLevelAttrType:       bundle.RelationKeyType.String(),
 }
 
 type Parser struct {
@@ -113,7 +115,10 @@ func (p *Parser) parseFilterKey(key string, spaceId string) (relationKey string,
 
 // getDefaultCondition returns the default condition for a property
 func (p *Parser) getDefaultCondition(propertyKey string, spaceId string) model.BlockContentDataviewFilterCondition {
-	// Top-level attributes default to Contains
+	// Top-level attributes default to Contains, except type which defaults to Equal
+	if propertyKey == TopLevelAttrType {
+		return model.BlockContentDataviewFilter_Equal
+	}
 	if _, isTopLevel := topLevelAttributes[propertyKey]; isTopLevel {
 		return model.BlockContentDataviewFilter_Like // Contains
 	}

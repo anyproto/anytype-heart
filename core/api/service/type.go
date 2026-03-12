@@ -375,6 +375,11 @@ func (s *Service) buildRelationIds(ctx context.Context, spaceId string, props []
 	return relationIds, nil
 }
 
+// GetCachedTypes returns the cached types for a space
+func (s *Service) GetCachedTypes(spaceId string) map[string]*apimodel.Type {
+	return s.cache.getTypes(spaceId)
+}
+
 // ResolveTypeApiKey resolves an API type key to its internal unique key
 // by looking it up in the type cache. This is necessary because users can
 // define custom API keys via the apiObjectKey field.
