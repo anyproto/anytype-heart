@@ -2132,6 +2132,7 @@
     - [ChatMessage](#anytype-model-ChatMessage)
     - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
     - [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock)
+    - [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed)
     - [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink)
     - [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
@@ -33786,6 +33787,23 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | text | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  |  |
 | link | [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink) |  |  |
+| embed | [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockEmbed"></a>
+
+### ChatMessage.MessageBlockEmbed
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
+| processor | [Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
 
 
 

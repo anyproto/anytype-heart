@@ -282,6 +282,12 @@ func TestBlocksRoundTrip(t *testing.T) {
 							Type:           model.ChatMessageMessageBlockLink_Image,
 						},
 					}},
+					{Content: &model.ChatMessageMessageBlockContentOfEmbed{
+						Embed: &model.ChatMessageMessageBlockEmbed{
+							Text:      "graph TD; A-->B;",
+							Processor: model.BlockContentLatex_Mermaid,
+						},
+					}},
 				},
 			},
 		}
@@ -295,7 +301,7 @@ func TestBlocksRoundTrip(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		require.Len(t, got.ChatMessage.Blocks, 4)
+		require.Len(t, got.ChatMessage.Blocks, 5)
 
 		// Text block 0
 		tb0 := got.ChatMessage.Blocks[0].GetText()
@@ -325,6 +331,12 @@ func TestBlocksRoundTrip(t *testing.T) {
 		require.NotNil(t, lb3)
 		assert.Equal(t, "imgObj1", lb3.TargetObjectId)
 		assert.Equal(t, model.ChatMessageMessageBlockLink_Image, lb3.Type)
+
+		// Embed block 4
+		eb4 := got.ChatMessage.Blocks[4].GetEmbed()
+		require.NotNil(t, eb4)
+		assert.Equal(t, "graph TD; A-->B;", eb4.Text)
+		assert.Equal(t, model.BlockContentLatex_Mermaid, eb4.Processor)
 	})
 
 	t.Run("empty blocks round-trip", func(t *testing.T) {

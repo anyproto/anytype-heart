@@ -1671,6 +1671,7 @@ message ChatMessage {
         oneof content {
             MessageBlockText text = 1;
             MessageBlockLink link = 2;
+            MessageBlockEmbed embed = 3;
         }
     }
 
@@ -1690,6 +1691,11 @@ message ChatMessage {
             Image = 2;
             Bookmark = 3;
         }
+    }
+
+    message MessageBlockEmbed {
+        string text = 1;
+        Block.Content.Latex.Processor processor = 2;
     }
 }
 

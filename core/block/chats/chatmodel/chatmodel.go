@@ -290,6 +290,8 @@ func (m *Message) Validate() error {
 			if lb.TargetObjectId == "" {
 				return fmt.Errorf("link block targetObjectId is empty")
 			}
+		case block.GetEmbed() != nil:
+			// embed block is valid as-is
 		default:
 			return fmt.Errorf("block content is nil")
 		}
@@ -447,6 +449,11 @@ func marshalBlocks(arena *anyenc.Arena, inBlocks []*model.ChatMessageMessageBloc
 			linkObj.Set("targetObjectId", arena.NewString(lb.TargetObjectId))
 			linkObj.Set("type", arena.NewNumberInt(int(lb.Type)))
 			block.Set("link", linkObj)
+		} else if eb := inBlock.GetEmbed(); eb != nil {
+			embedObj := arena.NewObject()
+			embedObj.Set("text", arena.NewString(eb.Text))
+			embedObj.Set("processor", arena.NewNumberInt(int(eb.Processor)))
+			block.Set("embed", embedObj)
 		}
 		blocks.SetArrayItem(i, block)
 	}
@@ -556,6 +563,13 @@ func (m *messageUnmarshaller) blocksToModel() []*model.ChatMessageMessageBlock {
 				Link: &model.ChatMessageMessageBlockLink{
 					TargetObjectId: string(linkVal.GetStringBytes("targetObjectId")),
 					Type:           model.ChatMessageMessageBlockLinkLinkType(linkVal.GetInt("type")),
+				},
+			}
+		} else if embedVal := inBlock.Get("embed"); embedVal != nil {
+			block.Content = &model.ChatMessageMessageBlockContentOfEmbed{
+				Embed: &model.ChatMessageMessageBlockEmbed{
+					Text:      string(embedVal.GetStringBytes("text")),
+					Processor: model.BlockContentLatexProcessor(embedVal.GetInt("processor")),
 				},
 			}
 		}
