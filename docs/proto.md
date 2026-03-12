@@ -33837,6 +33837,8 @@ Used to decode block meta only, without the content itself
 | text | [string](#string) |  |  |
 | style | [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style) |  |  |
 | marks | [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark) | repeated |  |
+| checked | [bool](#bool) |  |  |
+| lang | [string](#string) |  |  |
 
 
 

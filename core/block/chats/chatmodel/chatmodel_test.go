@@ -263,6 +263,8 @@ func TestBlocksRoundTrip(t *testing.T) {
 									Range: &model.Range{From: 6, To: 11},
 								},
 							},
+							Checked: true,
+							Lang:    "go",
 						},
 					}},
 					{Content: &model.ChatMessageMessageBlockContentOfLink{
@@ -314,6 +316,8 @@ func TestBlocksRoundTrip(t *testing.T) {
 		assert.Equal(t, int32(5), tb0.Marks[0].Range.To)
 		assert.Equal(t, model.BlockContentTextMark_Mention, tb0.Marks[1].Type)
 		assert.Equal(t, "participant_abc", tb0.Marks[1].Param)
+		assert.True(t, tb0.Checked)
+		assert.Equal(t, "go", tb0.Lang)
 
 		// Link block 1
 		lb1 := got.ChatMessage.Blocks[1].GetLink()
@@ -355,6 +359,45 @@ func TestBlocksRoundTrip(t *testing.T) {
 		require.NoError(t, err)
 		assert.Nil(t, got.ChatMessage.Blocks)
 		assert.Equal(t, "just text", got.Message.Text)
+	})
+
+	t.Run("zero-value checked and lang are omitted from encoding", func(t *testing.T) {
+		// given
+		original := &Message{
+			ChatMessage: &model.ChatMessage{
+				Id: "msg3",
+				Message: &model.ChatMessageMessageContent{Text: "t"},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfText{
+						Text: &model.ChatMessageMessageBlockText{
+							Text:    "plain",
+							Checked: false,
+							Lang:    "",
+						},
+					}},
+				},
+			},
+		}
+
+		arena := &anyenc.Arena{}
+		val := arena.NewObject()
+
+		// when
+		original.MarshalAnyenc(val, arena)
+
+		// then — raw encoding must not contain "checked" or "lang" keys
+		raw := val.String()
+		assert.NotContains(t, raw, "checked")
+		assert.NotContains(t, raw, "lang")
+
+		// unmarshal and verify defaults
+		got, err := UnmarshalMessage(val)
+		require.NoError(t, err)
+		require.Len(t, got.ChatMessage.Blocks, 1)
+		tb := got.ChatMessage.Blocks[0].GetText()
+		require.NotNil(t, tb)
+		assert.False(t, tb.Checked)
+		assert.Empty(t, tb.Lang)
 	})
 }
 

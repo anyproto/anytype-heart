@@ -443,6 +443,12 @@ func marshalBlocks(arena *anyenc.Arena, inBlocks []*model.ChatMessageMessageBloc
 				marshalMark(arena, textMarks, j, inMark)
 			}
 			textObj.Set("marks", textMarks)
+			if tb.Checked {
+				textObj.Set("checked", arena.NewTrue())
+			}
+			if tb.Lang != "" {
+				textObj.Set("lang", arena.NewString(tb.Lang))
+			}
 			block.Set("text", textObj)
 		} else if lb := inBlock.GetLink(); lb != nil {
 			linkObj := arena.NewObject()
@@ -553,9 +559,11 @@ func (m *messageUnmarshaller) blocksToModel() []*model.ChatMessageMessageBlock {
 		if textVal := inBlock.Get("text"); textVal != nil {
 			block.Content = &model.ChatMessageMessageBlockContentOfText{
 				Text: &model.ChatMessageMessageBlockText{
-					Text:  string(textVal.GetStringBytes("text")),
-					Style: model.BlockContentTextStyle(textVal.GetInt("style")),
-					Marks: unmarshalMarks(textVal.GetArray("marks")),
+					Text:    string(textVal.GetStringBytes("text")),
+					Style:   model.BlockContentTextStyle(textVal.GetInt("style")),
+					Marks:   unmarshalMarks(textVal.GetArray("marks")),
+					Checked: textVal.GetBool("checked"),
+					Lang:    string(textVal.GetStringBytes("lang")),
 				},
 			}
 		} else if linkVal := inBlock.Get("link"); linkVal != nil {

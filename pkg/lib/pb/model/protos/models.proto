@@ -1679,6 +1679,8 @@ message ChatMessage {
         string text = 1;
         Block.Content.Text.Style style = 2;
         repeated Block.Content.Text.Mark marks = 3;
+        bool checked = 4;
+        string lang = 5;
     }
 
     message MessageBlockLink {
