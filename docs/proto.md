@@ -36104,7 +36104,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | None | 0 | old value for chat, deprecated |
 | Data | 1 | objects-first UX |
 | Stream | 2 | stream UX (chat with limited amount of owners) |
-| Chat | 3 | chat UX |
+| Chat | 3 | chat UX, deprecated |
 | OneToOne | 4 | onetoone UX (space with chat and immutable ACL between two participants) |
 
 

@@ -41,26 +41,24 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		if err != nil {
 			return
 		}
-		var spaceUxType model.SpaceUxType
-		hasUxType := pbtypes.HasField(req.GetDetails(), bundle.RelationKeySpaceUxType.String())
-		if !hasUxType {
-			spaceUxType = model.SpaceUxType_Data
-		} else {
-			spaceUxType = model.SpaceUxType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceUxType.String()))
-			if spaceUxType.String() == "" {
-				return errors.New("unknown space ux type")
-			} else if spaceUxType == model.SpaceUxType_None {
-				return errors.New("space ux type cannot be None")
-			}
-		}
-		if spaceUxType == model.SpaceUxType_OneToOne {
+		spaceUxType := model.SpaceUxType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceUxType.String()))
+		switch spaceUxType {
+		case model.SpaceUxType_None:
+			return errors.New("space ux type cannot be None")
+		case model.SpaceUxType_Data, model.SpaceUxType_Stream:
+			return nil
+		case model.SpaceUxType_Chat:
+			return errors.New("space ux type Chat is deprecated")
+		case model.SpaceUxType_OneToOne:
 			// TODO: make it async in space init
 			err = bs.SpaceInitChat(cctx, spaceId, true)
 			if err != nil {
 				log.With("error", err).Warn("failed to init space level chat")
 			}
+			return nil
+		default:
+			return errors.New("unknown space ux type")
 		}
-		return
 	})
 	if err != nil {
 		return response("", "", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
