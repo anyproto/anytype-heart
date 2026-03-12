@@ -69,6 +69,54 @@ func (_c *MockApiService_GetCachedProperties_Call) RunAndReturn(run func(string)
 	return _c
 }
 
+// GetCachedTypes provides a mock function with given fields: spaceId
+func (_m *MockApiService) GetCachedTypes(spaceId string) map[string]*apimodel.Type {
+	ret := _m.Called(spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetCachedTypes")
+	}
+
+	var r0 map[string]*apimodel.Type
+	if rf, ok := ret.Get(0).(func(string) map[string]*apimodel.Type); ok {
+		r0 = rf(spaceId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(map[string]*apimodel.Type)
+		}
+	}
+
+	return r0
+}
+
+// MockApiService_GetCachedTypes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetCachedTypes'
+type MockApiService_GetCachedTypes_Call struct {
+	*mock.Call
+}
+
+// GetCachedTypes is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockApiService_Expecter) GetCachedTypes(spaceId interface{}) *MockApiService_GetCachedTypes_Call {
+	return &MockApiService_GetCachedTypes_Call{Call: _e.mock.On("GetCachedTypes", spaceId)}
+}
+
+func (_c *MockApiService_GetCachedTypes_Call) Run(run func(spaceId string)) *MockApiService_GetCachedTypes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockApiService_GetCachedTypes_Call) Return(_a0 map[string]*apimodel.Type) *MockApiService_GetCachedTypes_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockApiService_GetCachedTypes_Call) RunAndReturn(run func(string) map[string]*apimodel.Type) *MockApiService_GetCachedTypes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ResolvePropertyApiKey provides a mock function with given fields: properties, key
 func (_m *MockApiService) ResolvePropertyApiKey(properties map[string]*apimodel.Property, key string) (string, bool) {
 	ret := _m.Called(properties, key)

@@ -120,6 +120,7 @@ func CreateTestParser(t *testing.T) *Parser {
 	propertyMap := GetTestPropertyMap()
 
 	mockService.On("GetCachedProperties", mock.Anything).Return(propertyMap).Maybe()
+	mockService.On("GetCachedTypes", mock.Anything).Return(map[string]*apimodel.Type{}).Maybe()
 	mockService.On("ResolvePropertyApiKey", mock.Anything, mock.Anything).Return(
 		func(properties map[string]*apimodel.Property, key string) string {
 			if prop, exists := properties[key]; exists {
@@ -578,6 +579,39 @@ func TestParser_ParseQueryParams(t *testing.T) {
 					PropertyKey: "due_date",
 					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       "2024-12-31",
+				},
+			},
+		},
+		{
+			name:        "type filter without explicit condition defaults to equal",
+			queryString: "type=page",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "type",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "page",
+				},
+			},
+		},
+		{
+			name:        "type filter with explicit equal condition",
+			queryString: "type[eq]=note",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "type",
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       "note",
+				},
+			},
+		},
+		{
+			name:        "type filter with in condition",
+			queryString: "type[in]=page,note",
+			expectedFilters: []Filter{
+				{
+					PropertyKey: "type",
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       []string{"page", "note"},
 				},
 			},
 		},
