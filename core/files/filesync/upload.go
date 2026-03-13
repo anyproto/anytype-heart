@@ -162,6 +162,11 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 
 		it, err = s.handleLimitReached(ctx, it)
 		if err != nil {
+			if isObjectDeletedError(err) {
+				it.State = FileStatePendingDeletion
+				it.ScheduledAt = time.Now()
+				return it, nil
+			}
 			return it, fmt.Errorf("handle limit reached: %w", err)
 		}
 		return it, nil
@@ -170,6 +175,11 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 	it, err = s.upload(ctx, it, blocksAvailability)
 	if err != nil {
 		spaceLimits.deallocateFile(it.Key())
+		if isObjectDeletedError(err) {
+			it.State = FileStatePendingDeletion
+			it.ScheduledAt = time.Now()
+			return it, nil
+		}
 		it = it.Reschedule()
 		return it, err
 	}
@@ -214,11 +224,6 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 	// Means that we only had to bind blocks
 	if totalBytesToUpload == 0 {
 		err = s.updateStatus(it, filesyncstatus.Synced)
-		if isObjectDeletedError(err) {
-			it.State = FileStatePendingDeletion
-			it.ScheduledAt = time.Now()
-			return it, nil
-		}
 		if err != nil {
 			return it, fmt.Errorf("add to status update queue: %w", err)
 		}
@@ -228,11 +233,6 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 
 	if it.ObjectId != "" && it.State != FileStateLimited {
 		err = s.updateStatus(it, filesyncstatus.Syncing)
-		if isObjectDeletedError(err) {
-			it.State = FileStatePendingDeletion
-			it.ScheduledAt = time.Now()
-			return it, nil
-		}
 		if err != nil {
 			return it, fmt.Errorf("update status: %w", err)
 		}
@@ -390,11 +390,6 @@ func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) (FileInf
 	}()
 
 	updateErr := s.updateStatus(it, filesyncstatus.Limited)
-	if isObjectDeletedError(updateErr) {
-		it.State = FileStatePendingDeletion
-		it.ScheduledAt = time.Now()
-		return it, nil
-	}
 	if updateErr != nil {
 		return it, fmt.Errorf("enqueue status update: %w", updateErr)
 	}

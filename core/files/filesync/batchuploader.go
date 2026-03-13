@@ -42,10 +42,16 @@ func (s *fileSync) addToLimitedQueue(objectId string) error {
 
 		info, err := s.handleLimitReached(s.loopCtx, info)
 		if err != nil {
+			if isObjectDeletedError(err) {
+				info.State = FileStatePendingDeletion
+				info.ScheduledAt = time.Now()
+				return info, true, nil
+			}
 			info.State = FileStatePendingUpload
 			info = info.Reschedule()
 			return info, true, err
 		}
+		info.State = FileStateLimited
 		return info, true, nil
 	})
 }
@@ -61,11 +67,6 @@ func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileI
 		}
 
 		err = s.updateStatus(it, filesyncstatus.Synced)
-		if isObjectDeletedError(err) {
-			it.State = FileStatePendingDeletion
-			it.ScheduledAt = time.Now()
-			return it, nil
-		}
 		if err != nil {
 			return it, err
 		}
@@ -114,6 +115,11 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) error {
 			delete(info.CidsToUpload, c)
 		}
 		next, err := s.processFileUploading(s.loopCtx, info)
+		if isObjectDeletedError(err) {
+			next.State = FileStatePendingDeletion
+			next.ScheduledAt = time.Now()
+			return next, true, nil
+		}
 		return next, true, err
 	})
 }
