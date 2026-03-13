@@ -117,10 +117,9 @@ func TestHandleLimitReached(t *testing.T) {
 				State:    FileStateLimited,
 			}
 
-			got, err := s.handleLimitReached(context.Background(), it)
+			err := s.handleLimitReached(context.Background(), it)
 			require.Error(t, err)
 			assert.True(t, isObjectDeletedError(err))
-			assert.Equal(t, FileStateLimited, got.State, "state unchanged, caller handles it")
 		})
 	})
 
@@ -149,9 +148,8 @@ func TestHandleLimitReached(t *testing.T) {
 				AddedByUser: true,
 			}
 
-			got, err := s.handleLimitReached(context.Background(), it)
+			err := s.handleLimitReached(context.Background(), it)
 			require.NoError(t, err)
-			assert.Equal(t, FileStateLimited, got.State)
 		})
 	})
 
@@ -176,9 +174,8 @@ func TestHandleLimitReached(t *testing.T) {
 				Imported: true,
 			}
 
-			got, err := s.handleLimitReached(context.Background(), it)
+			err := s.handleLimitReached(context.Background(), it)
 			require.NoError(t, err)
-			assert.Equal(t, FileStateLimited, got.State)
 			require.Len(t, s.importEvents, 1)
 		})
 	})
@@ -204,7 +201,7 @@ func TestHandleLimitReached(t *testing.T) {
 				State:    FileStateLimited,
 			}
 
-			_, err := s.handleLimitReached(context.Background(), it)
+			err := s.handleLimitReached(context.Background(), it)
 			require.Error(t, err)
 			assert.ErrorIs(t, err, wantErr)
 		})

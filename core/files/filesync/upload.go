@@ -160,7 +160,7 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		it.State = FileStateLimited
 		it = it.Reschedule()
 
-		it, err = s.handleLimitReached(ctx, it)
+		err = s.handleLimitReached(ctx, it)
 		if err != nil {
 			if isObjectDeletedError(err) {
 				it.State = FileStatePendingDeletion
@@ -209,7 +209,7 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		if isNodeLimitReachedError(err) {
 			it.State = FileStateLimited
 
-			it, err = s.handleLimitReached(ctx, it)
+			err = s.handleLimitReached(ctx, it)
 			if err != nil {
 				return it, fmt.Errorf("handle limit reached: %w", err)
 			}
@@ -380,7 +380,7 @@ func isNodeLimitReachedError(err error) bool {
 	return strings.Contains(err.Error(), fileprotoerr.ErrSpaceLimitExceeded.Error())
 }
 
-func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) (FileInfo, error) {
+func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) error {
 	// Unbind file just in case
 	go func() {
 		err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
@@ -391,7 +391,7 @@ func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) (FileInf
 
 	updateErr := s.updateStatus(it, filesyncstatus.Limited)
 	if updateErr != nil {
-		return it, fmt.Errorf("enqueue status update: %w", updateErr)
+		return fmt.Errorf("enqueue status update: %w", updateErr)
 	}
 
 	if it.AddedByUser && !it.Imported {
@@ -400,5 +400,5 @@ func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) (FileInf
 	if it.Imported {
 		s.addImportEvent(it.SpaceId)
 	}
-	return it, nil
+	return nil
 }

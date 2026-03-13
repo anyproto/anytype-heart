@@ -40,7 +40,7 @@ func (s *fileSync) addToLimitedQueue(objectId string) error {
 			space.deallocateFile(info.Key())
 		}
 
-		info, err := s.handleLimitReached(s.loopCtx, info)
+		err := s.handleLimitReached(s.loopCtx, info)
 		if err != nil {
 			if isObjectDeletedError(err) {
 				info.State = FileStatePendingDeletion
