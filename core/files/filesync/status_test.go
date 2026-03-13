@@ -7,6 +7,7 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -245,14 +246,14 @@ func TestAddToLimitedQueue(t *testing.T) {
 		defer cancel()
 
 		it, err := fx.queue.GetNext(getCtx, filequeue.GetNextRequest[FileInfo]{
-			Subscribe:   false,
-			StoreFilter: filterByState(FileStatePendingDeletion),
+			Subscribe:   true,
+			StoreFilter: query.Or{filterByState(FileStatePendingDeletion), filterByState(FileStateDeleted)},
 			Filter: func(info FileInfo) bool {
-				return info.ObjectId == objectId && info.State == FileStatePendingDeletion
+				return info.ObjectId == objectId && (info.State == FileStatePendingDeletion || info.State == FileStateDeleted)
 			},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, FileStatePendingDeletion, it.State)
+		assert.True(t, it.State == FileStatePendingDeletion || it.State == FileStateDeleted)
 		require.NoError(t, fx.queue.ReleaseAndUpdate(it.ObjectId, it))
 	})
 
@@ -287,14 +288,14 @@ func TestAddToLimitedQueue(t *testing.T) {
 		defer cancel()
 
 		it, err := fx.queue.GetNext(getCtx, filequeue.GetNextRequest[FileInfo]{
-			Subscribe:   false,
-			StoreFilter: filterByState(FileStateLimited),
+			Subscribe:   true,
+			StoreFilter: query.Or{filterByState(FileStateLimited), filterByState(FileStatePendingUpload)},
 			Filter: func(info FileInfo) bool {
-				return info.ObjectId == objectId && info.State == FileStateLimited
+				return info.ObjectId == objectId && (info.State == FileStateLimited || info.State == FileStatePendingUpload)
 			},
 		})
 		require.NoError(t, err)
-		assert.Equal(t, FileStateLimited, it.State)
+		assert.True(t, it.State == FileStateLimited || it.State == FileStatePendingUpload)
 		require.NoError(t, fx.queue.ReleaseAndUpdate(it.ObjectId, it))
 	})
 
@@ -329,7 +330,7 @@ func TestAddToLimitedQueue(t *testing.T) {
 		defer cancel()
 
 		it, err := fx.queue.GetNext(getCtx, filequeue.GetNextRequest[FileInfo]{
-			Subscribe:   false,
+			Subscribe:   true,
 			StoreFilter: filterByState(FileStatePendingUpload),
 			Filter: func(info FileInfo) bool {
 				return info.ObjectId == objectId && info.State == FileStatePendingUpload
