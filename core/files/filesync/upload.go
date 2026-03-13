@@ -213,7 +213,7 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 
 	// Means that we only had to bind blocks
 	if totalBytesToUpload == 0 {
-		err = s.updateStatus(it,filesyncstatus.Synced)
+		err = s.updateStatus(it, filesyncstatus.Synced)
 		if isObjectDeletedError(err) {
 			it.State = FileStatePendingDeletion
 			it.ScheduledAt = time.Now()
@@ -227,7 +227,7 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 	}
 
 	if it.ObjectId != "" && it.State != FileStateLimited {
-		err = s.updateStatus(it,filesyncstatus.Syncing)
+		err = s.updateStatus(it, filesyncstatus.Syncing)
 		if isObjectDeletedError(err) {
 			it.State = FileStatePendingDeletion
 			it.ScheduledAt = time.Now()
@@ -382,12 +382,14 @@ func isNodeLimitReachedError(err error) bool {
 
 func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) (FileInfo, error) {
 	// Unbind file just in case
-	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
-	if err != nil {
-		log.Error("calculate limits: unbind off-limit file", zap.String("fileId", it.FileId.String()), zap.Error(err))
-	}
+	go func() {
+		err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
+		if err != nil {
+			log.Error("calculate limits: unbind off-limit file", zap.String("fileId", it.FileId.String()), zap.Error(err))
+		}
+	}()
 
-	updateErr := s.updateStatus(it,filesyncstatus.Limited)
+	updateErr := s.updateStatus(it, filesyncstatus.Limited)
 	if isObjectDeletedError(updateErr) {
 		it.State = FileStatePendingDeletion
 		it.ScheduledAt = time.Now()
