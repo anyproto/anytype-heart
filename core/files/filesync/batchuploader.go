@@ -2,6 +2,7 @@ package filesync
 
 import (
 	"context"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
@@ -39,13 +40,12 @@ func (s *fileSync) addToLimitedQueue(objectId string) error {
 			space.deallocateFile(info.Key())
 		}
 
-		err := s.handleLimitReached(s.loopCtx, info)
+		info, err := s.handleLimitReached(s.loopCtx, info)
 		if err != nil {
 			info.State = FileStatePendingUpload
 			info = info.Reschedule()
 			return info, true, err
 		}
-		info.State = FileStateLimited
 		return info, true, nil
 	})
 }
@@ -61,6 +61,11 @@ func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileI
 		}
 
 		err = s.updateStatus(it, filesyncstatus.Synced)
+		if isObjectDeletedError(err) {
+			it.State = FileStatePendingDeletion
+			it.ScheduledAt = time.Now()
+			return it, nil
+		}
 		if err != nil {
 			return it, err
 		}
