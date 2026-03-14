@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/samber/lo"
 	"go.uber.org/zap"
+	"golang.org/x/sync/semaphore"
 )
 
 var log = logger.NewNamed(treemanager.CName)
@@ -69,6 +70,12 @@ type SyncDetailsUpdater interface {
 	UpdateSpaceDetails(existing, missing []string, spaceId string)
 }
 
+var (
+	buildSemCapacity = int64(3)
+	slowSemCapacity  = int64(1)
+	slowThreshold    = 10 * time.Second
+)
+
 type treeSyncer struct {
 	sync.Mutex
 	mainCtx            context.Context
@@ -87,6 +94,9 @@ type treeSyncer struct {
 	peerManager        peermanager.PeerManager
 	syncedTreeRemover  SyncedTreeRemover
 	syncDetailsUpdater SyncDetailsUpdater
+	buildSem           *semaphore.Weighted
+	slowSem            *semaphore.Weighted
+	slowObjects        sync.Map // objectId -> struct{}
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -99,6 +109,8 @@ func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
 		timeout:      time.Second * 30,
 		requestPools: map[string]*executor{},
 		headPools:    map[string]*executor{},
+		buildSem:     semaphore.NewWeighted(buildSemCapacity),
+		slowSem:      semaphore.NewWeighted(slowSemCapacity),
 	}
 }
 
@@ -268,13 +280,41 @@ func (t *treeSyncer) RefreshTrees(ids []string) error {
 	return nil
 }
 
+func (t *treeSyncer) acquireBuildSlot(ctx context.Context, id string) error {
+	if _, ok := t.slowObjects.Load(id); ok {
+		return t.slowSem.Acquire(ctx, 1)
+	}
+	return t.buildSem.Acquire(ctx, 1)
+}
+
+func (t *treeSyncer) releaseBuildSlot(id string) {
+	if _, ok := t.slowObjects.Load(id); ok {
+		t.slowSem.Release(1)
+		return
+	}
+	t.buildSem.Release(1)
+}
+
 func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 	log := log.With(zap.String("treeId", id))
 	peerId := p.Id()
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	ctx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
+	if err := t.acquireBuildSlot(ctx, id); err != nil {
+		log.Debug("build slot acquisition failed", zap.Error(err))
+		return
+	}
+	start := time.Now()
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
+	if dur := time.Since(start); dur > slowThreshold {
+		if _, alreadySlow := t.slowObjects.LoadOrStore(id, struct{}{}); !alreadySlow {
+			log.Warn("tree build exceeded slow threshold, routing to slow lane",
+				zap.Duration("duration", dur),
+				zap.String("spaceId", t.spaceId))
+		}
+	}
+	t.releaseBuildSlot(id)
 	if err != nil {
 		log.Warn("can't load missing tree", zap.Error(err))
 		return
@@ -294,7 +334,21 @@ func (t *treeSyncer) updateTree(p peer.Peer, id string) {
 	log := log.With(zap.String("treeId", id), zap.String("spaceId", t.spaceId))
 	peerId := p.Id()
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
+	ctx, cancel := context.WithTimeout(ctx, t.timeout)
+	defer cancel()
+	if err := t.acquireBuildSlot(ctx, id); err != nil {
+		log.Debug("build slot acquisition failed", zap.Error(err))
+		return
+	}
+	start := time.Now()
 	tr, err := t.treeManager.GetTree(ctx, t.spaceId, id)
+	if dur := time.Since(start); dur > slowThreshold {
+		if _, alreadySlow := t.slowObjects.LoadOrStore(id, struct{}{}); !alreadySlow {
+			log.Warn("tree build exceeded slow threshold, routing to slow lane",
+				zap.Duration("duration", dur))
+		}
+	}
+	t.releaseBuildSlot(id)
 	if err != nil {
 		log.Warn("can't load existing tree", zap.Error(err))
 		return

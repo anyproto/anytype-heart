@@ -104,6 +104,8 @@ type Service interface {
 	SpaceViewId(spaceId string) (spaceViewId string, err error)
 	AccountMetadataSymKey() crypto.SymKey
 	AccountMetadataPayload() []byte
+	SetActiveSpace(ctx context.Context, spaceId string) error
+	StartDeferredSync()
 	app.ComponentRunnable
 }
 
@@ -153,6 +155,10 @@ type service struct {
 	isClosing atomic.Bool
 
 	firstCreatedSpaceId string
+
+	deferredMu         sync.Mutex
+	activeSpaceId      string
+	deferredSyncSpaces map[string]func()
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
@@ -206,6 +212,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
 	s.watcher = newSpaceWatcher(s.techSpaceId, subService, s)
+	s.deferredSyncSpaces = make(map[string]func())
 
 	return err
 }
@@ -217,11 +224,17 @@ func (s *service) Name() (name string) {
 func (s *service) Run(ctx context.Context) (err error) {
 	defer s.updater.UpdateCoordinatorStatus()
 	if s.newAccount {
-		return s.createAccount(ctx)
+		err = s.createAccount(ctx)
 	} else {
 		s.tryToJoinSpaceStream()
+		err = s.initAccount(ctx)
 	}
-	return s.initAccount(ctx)
+	if err != nil {
+		return err
+	}
+	// Default: treat personal space as active so it syncs first
+	_ = s.SetActiveSpace(s.ctx, s.personalSpaceId)
+	return nil
 }
 
 func (s *service) createTechSpaceForOldAccounts(ctx context.Context) (err error) {
@@ -481,6 +494,12 @@ func (s *service) Close(ctx context.Context) error {
 		s.ctxCancel()
 	}
 	s.isClosing.Store(true)
+	// Clear deferred sync callbacks — context cancellation above ensures
+	// the timeout goroutine from SetActiveSpace will also exit.
+	s.deferredMu.Lock()
+	s.deferredSyncSpaces = make(map[string]func())
+	s.deferredMu.Unlock()
+
 	s.mu.Lock()
 	ctrls := make([]spacecontroller.SpaceController, 0, len(s.spaceControllers))
 	for _, ctrl := range s.spaceControllers {
@@ -505,6 +524,57 @@ func (s *service) Close(ctx context.Context) error {
 		log.Error("close tech space", zap.Error(err))
 	}
 	return s.watcher.Close()
+}
+
+var deferredSyncTimeout = 30 * time.Second
+
+func (s *service) SetActiveSpace(ctx context.Context, spaceId string) error {
+	s.deferredMu.Lock()
+	defer s.deferredMu.Unlock()
+
+	s.activeSpaceId = spaceId
+
+	// If this space was deferred, start it now
+	if startSync, ok := s.deferredSyncSpaces[spaceId]; ok {
+		startSync()
+		delete(s.deferredSyncSpaces, spaceId)
+	}
+
+	// Start all other deferred syncs after delay
+	go func() {
+		select {
+		case <-time.After(deferredSyncTimeout):
+			s.StartDeferredSync()
+		case <-s.ctx.Done():
+		}
+	}()
+
+	return nil
+}
+
+func (s *service) StartDeferredSync() {
+	s.deferredMu.Lock()
+	defer s.deferredMu.Unlock()
+	for id, startSync := range s.deferredSyncSpaces {
+		startSync()
+		delete(s.deferredSyncSpaces, id)
+	}
+}
+
+func (s *service) ShouldDeferSync(spaceId string) bool {
+	s.deferredMu.Lock()
+	defer s.deferredMu.Unlock()
+	if s.activeSpaceId == "" {
+		// No active space set yet — defer all non-personal spaces
+		return spaceId != s.personalSpaceId
+	}
+	return spaceId != s.activeSpaceId
+}
+
+func (s *service) DeferSync(spaceId string, startSync func()) {
+	s.deferredMu.Lock()
+	defer s.deferredMu.Unlock()
+	s.deferredSyncSpaces[spaceId] = startSync
 }
 
 func (s *service) AllSpaceIds() (ids []string) {

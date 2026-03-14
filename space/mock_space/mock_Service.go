@@ -929,6 +929,53 @@ func (_c *MockService_Run_Call) RunAndReturn(run func(context.Context) error) *M
 	return _c
 }
 
+// SetActiveSpace provides a mock function with given fields: ctx, spaceId
+func (_m *MockService) SetActiveSpace(ctx context.Context, spaceId string) error {
+	ret := _m.Called(ctx, spaceId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetActiveSpace")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, spaceId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_SetActiveSpace_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetActiveSpace'
+type MockService_SetActiveSpace_Call struct {
+	*mock.Call
+}
+
+// SetActiveSpace is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+func (_e *MockService_Expecter) SetActiveSpace(ctx interface{}, spaceId interface{}) *MockService_SetActiveSpace_Call {
+	return &MockService_SetActiveSpace_Call{Call: _e.mock.On("SetActiveSpace", ctx, spaceId)}
+}
+
+func (_c *MockService_SetActiveSpace_Call) Run(run func(ctx context.Context, spaceId string)) *MockService_SetActiveSpace_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_SetActiveSpace_Call) Return(err error) *MockService_SetActiveSpace_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_SetActiveSpace_Call) RunAndReturn(run func(context.Context, string) error) *MockService_SetActiveSpace_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SpaceViewId provides a mock function with given fields: spaceId
 func (_m *MockService) SpaceViewId(spaceId string) (string, error) {
 	ret := _m.Called(spaceId)
@@ -981,6 +1028,38 @@ func (_c *MockService_SpaceViewId_Call) Return(spaceViewId string, err error) *M
 }
 
 func (_c *MockService_SpaceViewId_Call) RunAndReturn(run func(string) (string, error)) *MockService_SpaceViewId_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StartDeferredSync provides a mock function with given fields:
+func (_m *MockService) StartDeferredSync() {
+	_m.Called()
+}
+
+// MockService_StartDeferredSync_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StartDeferredSync'
+type MockService_StartDeferredSync_Call struct {
+	*mock.Call
+}
+
+// StartDeferredSync is a helper method to define mock.On call
+func (_e *MockService_Expecter) StartDeferredSync() *MockService_StartDeferredSync_Call {
+	return &MockService_StartDeferredSync_Call{Call: _e.mock.On("StartDeferredSync")}
+}
+
+func (_c *MockService_StartDeferredSync_Call) Run(run func()) *MockService_StartDeferredSync_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockService_StartDeferredSync_Call) Return() *MockService_StartDeferredSync_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockService_StartDeferredSync_Call) RunAndReturn(run func()) *MockService_StartDeferredSync_Call {
 	_c.Call.Return(run)
 	return _c
 }

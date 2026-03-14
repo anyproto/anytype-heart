@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -141,6 +142,10 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 
 	if err != nil {
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)
+	}
+
+	if spaceService, svcErr := getService[space.Service](mw); svcErr == nil {
+		_ = spaceService.SetActiveSpace(cctx, req.SpaceId)
 	}
 
 	return response(info, pb.RpcWorkspaceOpenResponseError_NULL, nil)

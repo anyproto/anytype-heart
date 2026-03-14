@@ -108,6 +108,9 @@ type space struct {
 
 	loadMissingBundledObjectsCtx       context.Context
 	loadMissingBundledObjectsCtxCancel context.CancelFunc
+
+	shouldDeferSync func(spaceId string) bool
+	deferSync       func(spaceId string, startSync func())
 }
 
 type SpaceDeps struct {
@@ -123,6 +126,8 @@ type SpaceDeps struct {
 	LoadCtx           context.Context
 	DisableRemoteLoad bool
 	MigrationService  migrationService
+	ShouldDeferSync   func(spaceId string) bool
+	DeferSync         func(spaceId string, startSync func())
 }
 
 func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
@@ -135,6 +140,8 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		aclIdentity:            deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
 		migrationService:       deps.MigrationService,
+		shouldDeferSync:        deps.ShouldDeferSync,
+		deferSync:              deps.DeferSync,
 	}
 
 	if res, ok := ctx.Value(spacecore.OptsKey).(spacecore.Opts); ok && res.SignKey != nil {
@@ -230,7 +237,11 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	}
 
 	if !disableRemoteLoad {
-		s.common.TreeSyncer().StartSync()
+		if s.shouldDeferSync != nil && s.shouldDeferSync(s.Id()) {
+			s.deferSync(s.Id(), s.common.TreeSyncer().StartSync)
+		} else {
+			s.common.TreeSyncer().StartSync()
+		}
 	}
 }
 

@@ -566,3 +566,155 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 	})
 }
+
+func TestSyncDeferral(t *testing.T) {
+	newDeferralService := func() *service {
+		svcCtx, cancel := context.WithCancel(context.Background())
+		s := &service{
+			personalSpaceId:    "personal-space",
+			deferredSyncSpaces: make(map[string]func()),
+			ctx:                svcCtx,
+			ctxCancel:          cancel,
+		}
+		return s
+	}
+
+	t.Run("ShouldDeferSync defers non-personal when no active space", func(t *testing.T) {
+		s := newDeferralService()
+		defer s.ctxCancel()
+
+		assert.False(t, s.ShouldDeferSync("personal-space"))
+		assert.True(t, s.ShouldDeferSync("other-space"))
+	})
+
+	t.Run("ShouldDeferSync defers non-active spaces", func(t *testing.T) {
+		s := newDeferralService()
+		defer s.ctxCancel()
+
+		s.activeSpaceId = "space-a"
+		assert.False(t, s.ShouldDeferSync("space-a"))
+		assert.True(t, s.ShouldDeferSync("space-b"))
+		assert.True(t, s.ShouldDeferSync("personal-space"))
+	})
+
+	t.Run("SetActiveSpace starts deferred space sync", func(t *testing.T) {
+		s := newDeferralService()
+		defer s.ctxCancel()
+
+		started := false
+		s.DeferSync("space-a", func() { started = true })
+
+		err := s.SetActiveSpace(context.Background(), "space-a")
+		require.NoError(t, err)
+		assert.True(t, started)
+		assert.Empty(t, s.deferredSyncSpaces)
+	})
+
+	t.Run("SetActiveSpace does not start other deferred spaces immediately", func(t *testing.T) {
+		s := newDeferralService()
+		defer s.ctxCancel()
+
+		otherStarted := false
+		s.DeferSync("space-b", func() { otherStarted = true })
+
+		err := s.SetActiveSpace(context.Background(), "space-a")
+		require.NoError(t, err)
+		assert.False(t, otherStarted)
+		assert.Len(t, s.deferredSyncSpaces, 1)
+	})
+
+	t.Run("StartDeferredSync starts all remaining deferred syncs", func(t *testing.T) {
+		s := newDeferralService()
+		defer s.ctxCancel()
+
+		var started []string
+		s.DeferSync("space-b", func() { started = append(started, "b") })
+		s.DeferSync("space-c", func() { started = append(started, "c") })
+
+		s.StartDeferredSync()
+		assert.Len(t, started, 2)
+		assert.Contains(t, started, "b")
+		assert.Contains(t, started, "c")
+		assert.Empty(t, s.deferredSyncSpaces)
+	})
+
+	t.Run("StartDeferredSync is idempotent", func(t *testing.T) {
+		s := newDeferralService()
+		defer s.ctxCancel()
+
+		callCount := 0
+		s.DeferSync("space-b", func() { callCount++ })
+
+		s.StartDeferredSync()
+		s.StartDeferredSync()
+		assert.Equal(t, 1, callCount)
+	})
+
+	t.Run("timeout triggers StartDeferredSync", func(t *testing.T) {
+		origTimeout := deferredSyncTimeout
+		deferredSyncTimeout = 50 * time.Millisecond
+		defer func() { deferredSyncTimeout = origTimeout }()
+
+		s := newDeferralService()
+		defer s.ctxCancel()
+
+		started := make(chan struct{})
+		s.DeferSync("space-b", func() { close(started) })
+
+		err := s.SetActiveSpace(context.Background(), "space-a")
+		require.NoError(t, err)
+
+		select {
+		case <-started:
+			// ok
+		case <-time.After(2 * time.Second):
+			t.Fatal("deferred sync did not start after timeout")
+		}
+	})
+
+	t.Run("rapid SetActiveSpace calls", func(t *testing.T) {
+		origTimeout := deferredSyncTimeout
+		deferredSyncTimeout = 100 * time.Millisecond
+		defer func() { deferredSyncTimeout = origTimeout }()
+
+		s := newDeferralService()
+		defer s.ctxCancel()
+
+		aStarted := false
+		bStarted := false
+		s.DeferSync("space-a", func() { aStarted = true })
+		s.DeferSync("space-b", func() { bStarted = true })
+
+		// Switch to space-a
+		err := s.SetActiveSpace(context.Background(), "space-a")
+		require.NoError(t, err)
+		assert.True(t, aStarted)
+		assert.False(t, bStarted)
+
+		// Switch to space-b (within timeout)
+		err = s.SetActiveSpace(context.Background(), "space-b")
+		require.NoError(t, err)
+		assert.True(t, bStarted)
+	})
+
+	t.Run("context cancellation stops timeout goroutine", func(t *testing.T) {
+		origTimeout := deferredSyncTimeout
+		deferredSyncTimeout = 50 * time.Millisecond
+		defer func() { deferredSyncTimeout = origTimeout }()
+
+		s := newDeferralService()
+
+		started := false
+		s.DeferSync("space-b", func() { started = true })
+
+		err := s.SetActiveSpace(context.Background(), "space-a")
+		require.NoError(t, err)
+
+		// Cancel context before timeout fires
+		s.ctxCancel()
+		time.Sleep(100 * time.Millisecond)
+
+		// Deferred sync should NOT have started because ctx was cancelled
+		assert.False(t, started)
+	})
+}

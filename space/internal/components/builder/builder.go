@@ -54,6 +54,7 @@ type spaceBuilder struct {
 	customAccountKey crypto.PrivKey
 	status           spacestatus.SpaceStatus
 	migrationService dependencies2.MigrationService
+	syncDeferrer     dependencies2.SyncDeferrer
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -69,6 +70,7 @@ func (b *spaceBuilder) Init(a *app.App) (err error) {
 	b.objectFactory = app.MustComponent[objectcache.ObjectFactory](a)
 	b.storageService = app.MustComponent[storage.ClientStorage](a)
 	b.migrationService = app.MustComponent[dependencies2.MigrationService](a)
+	b.syncDeferrer, _ = app.GetComponent[dependencies2.SyncDeferrer](a)
 	b.personalSpaceId, err = b.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
 	return
 }
@@ -119,6 +121,10 @@ func (b *spaceBuilder) BuildSpace(ctx context.Context, disableRemoteLoad bool) (
 		LoadCtx:          b.ctx,
 		KeyValueObserver: coreSpace.KeyValueObserver(),
 		MigrationService: b.migrationService,
+	}
+	if b.syncDeferrer != nil {
+		deps.ShouldDeferSync = b.syncDeferrer.ShouldDeferSync
+		deps.DeferSync = b.syncDeferrer.DeferSync
 	}
 	space, err := clientspace.BuildSpace(ctx, deps)
 	if err != nil {
