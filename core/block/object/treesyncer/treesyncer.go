@@ -280,15 +280,17 @@ func (t *treeSyncer) RefreshTrees(ids []string) error {
 	return nil
 }
 
-func (t *treeSyncer) acquireBuildSlot(ctx context.Context, id string) error {
+// acquireBuildSlot acquires a build semaphore slot. Returns whether the slow
+// semaphore was used so the caller can release the correct one.
+func (t *treeSyncer) acquireBuildSlot(ctx context.Context, id string) (slow bool, err error) {
 	if _, ok := t.slowObjects.Load(id); ok {
-		return t.slowSem.Acquire(ctx, 1)
+		return true, t.slowSem.Acquire(ctx, 1)
 	}
-	return t.buildSem.Acquire(ctx, 1)
+	return false, t.buildSem.Acquire(ctx, 1)
 }
 
-func (t *treeSyncer) releaseBuildSlot(id string) {
-	if _, ok := t.slowObjects.Load(id); ok {
+func (t *treeSyncer) releaseBuildSlot(slow bool) {
+	if slow {
 		t.slowSem.Release(1)
 		return
 	}
@@ -301,8 +303,9 @@ func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	ctx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
-	if err := t.acquireBuildSlot(ctx, id); err != nil {
-		log.Debug("build slot acquisition failed", zap.Error(err))
+	slow, acqErr := t.acquireBuildSlot(ctx, id)
+	if acqErr != nil {
+		log.Debug("build slot acquisition failed", zap.Error(acqErr))
 		return
 	}
 	start := time.Now()
@@ -314,7 +317,7 @@ func (t *treeSyncer) requestTree(p peer.Peer, id string) {
 				zap.String("spaceId", t.spaceId))
 		}
 	}
-	t.releaseBuildSlot(id)
+	t.releaseBuildSlot(slow)
 	if err != nil {
 		log.Warn("can't load missing tree", zap.Error(err))
 		return
@@ -336,8 +339,9 @@ func (t *treeSyncer) updateTree(p peer.Peer, id string) {
 	ctx := peer.CtxWithPeerId(t.mainCtx, peerId)
 	ctx, cancel := context.WithTimeout(ctx, t.timeout)
 	defer cancel()
-	if err := t.acquireBuildSlot(ctx, id); err != nil {
-		log.Debug("build slot acquisition failed", zap.Error(err))
+	slow, acqErr := t.acquireBuildSlot(ctx, id)
+	if acqErr != nil {
+		log.Debug("build slot acquisition failed", zap.Error(acqErr))
 		return
 	}
 	start := time.Now()
@@ -348,7 +352,7 @@ func (t *treeSyncer) updateTree(p peer.Peer, id string) {
 				zap.Duration("duration", dur))
 		}
 	}
-	t.releaseBuildSlot(id)
+	t.releaseBuildSlot(slow)
 	if err != nil {
 		log.Warn("can't load existing tree", zap.Error(err))
 		return

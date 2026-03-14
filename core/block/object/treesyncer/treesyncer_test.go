@@ -410,7 +410,7 @@ func TestBuildSemaphore(t *testing.T) {
 		// Try to acquire with a short timeout — should fail
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 		defer cancel()
-		err := fx.acquireBuildSlot(ctx, "blocked-id")
+		_, err := fx.acquireBuildSlot(ctx, "blocked-id")
 		require.Error(t, err)
 
 		// Release all
