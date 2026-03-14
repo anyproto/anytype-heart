@@ -505,6 +505,7 @@ func (s *treeSource) getFileHashesForSnapshot(changeHashes []string) []*pb.Chang
 		if len(model.FileKeys) > 0 {
 			processFileKeys(model.FileKeys)
 		}
+		c.Model = nil
 		return true
 	})
 	if err != nil {
@@ -629,6 +630,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 				} else {
 					st = st.NewState()
 				}
+				change.Model = nil
 				return true
 			}
 			if model.Snapshot != nil {
@@ -642,6 +644,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			st.SetChangeId(change.Id)
 			st.ApplyChangeIgnoreErr(model.Content...)
 			st.AddFileKeys(model.FileKeys...)
+			change.Model = nil
 
 			return true
 		})
