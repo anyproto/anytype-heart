@@ -220,6 +220,7 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 	defer s.configMu.Unlock()
 
 	return &anystore.Config{
+		UseGlobalPageBuffer: true,
 		Durability: anystore.DurabilityConfig{
 			AutoFlush: true,
 			IdleAfter: time.Second * 20,

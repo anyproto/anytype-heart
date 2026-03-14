@@ -313,6 +313,7 @@ func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 
 func (s *provider) getAnyStoreConfig() *anystore.Config {
 	return &anystore.Config{
+		UseGlobalPageBuffer: true,
 		SyncPoolElementMaxSize: s.anyStoreConfig.SyncPoolElementMaxSize,
 		Durability: anystore.DurabilityConfig{
 			AutoFlush: true,
