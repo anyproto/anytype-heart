@@ -2,6 +2,7 @@ package logging
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"expvar"
 	"fmt"
@@ -29,8 +30,23 @@ var (
 	loggerGraylogMBSkipped = expvar.NewInt("logger_graylog_mb_skipped")
 )
 
+// gelfEntry is a lightweight queue item — just the log bytes and timestamp.
+// The full gelf.Message is constructed in the consumer goroutine to avoid
+// copying a large struct through the mb queue on every log line.
+type gelfEntry struct {
+	data     []byte
+	timeUnix float64
+}
+
+var gelfEntryPool = sync.Pool{
+	New: func() interface{} {
+		return &gelfEntry{data: make([]byte, 0, 512)}
+	},
+}
+
 func registerGelfSink(config *logger.Config) {
-	gelfSinkWrapper.batch = mb.New[gelf.Message](1000)
+	gelfSinkWrapper.rawExtraDirty = true
+	gelfSinkWrapper.batch = mb.New[*gelfEntry](1000)
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
 		fmt.Printf("failed to init gelf tls: %s", err)
@@ -50,12 +66,14 @@ func registerGelfSink(config *logger.Config) {
 
 type gelfSink struct {
 	sync.RWMutex
-	batch       *mb.MB[gelf.Message]
-	gelfWriter  gelf.Writer
-	version     string
-	account     string
-	host        string
-	lastErrorAt time.Time
+	batch         *mb.MB[*gelfEntry]
+	gelfWriter    gelf.Writer
+	version       string
+	account       string
+	host          string
+	lastErrorAt   time.Time
+	rawExtraBuf   []byte // pre-serialized JSON for Extra fields
+	rawExtraDirty bool
 }
 
 func (gs *gelfSink) Run() {
@@ -67,26 +85,55 @@ func (gs *gelfSink) Run() {
 			continue
 		}
 
-		msgs, err := gs.batch.NewCond().WithMax(1).Wait(context.Background())
+		entries, err := gs.batch.NewCond().WithMax(1).Wait(context.Background())
 		if err != nil {
 			return
 		}
-		if len(msgs) == 0 {
+		if len(entries) == 0 {
 			return
 		}
 
-		for _, msg := range msgs {
+		gs.RLock()
+		host := gs.host
+		rawExtra := gs.rawExtraBuf
+		gs.RUnlock()
+
+		for _, entry := range entries {
+			msg := gelf.Message{
+				Version:  "1.1",
+				Host:     host,
+				Short:    string(entry.data),
+				TimeUnix: entry.timeUnix,
+				Level:    0,
+				RawExtra: rawExtra,
+			}
+			// Return entry to pool
+			entry.data = entry.data[:0]
+			gelfEntryPool.Put(entry)
+
 			err := gs.gelfWriter.WriteMessage(&msg)
 			if err != nil {
 				if gs.lastErrorAt.IsZero() || gs.lastErrorAt.Add(printErrorThreshold).Before(time.Now()) {
 					fmt.Fprintf(os.Stderr, "failed to write to gelf: %v\n", err)
 				}
 				gs.lastErrorAt = time.Now()
-				_ = gs.batch.TryAdd(msg)
-				// batch can be overflowed, let's do our best and ignore errors
+				// Don't re-enqueue on error — the entry is already returned to pool
 			}
 		}
 	}
+}
+
+// rebuildRawExtra pre-serializes the Extra JSON so Write doesn't allocate a map per call.
+// Must be called with gs.Lock held.
+func (gs *gelfSink) rebuildRawExtra() {
+	if !gs.rawExtraDirty {
+		return
+	}
+	gs.rawExtraBuf, _ = json.Marshal(map[string]interface{}{
+		"_mwver":   gs.version,
+		"_account": gs.account,
+	})
+	gs.rawExtraDirty = false
 }
 
 func (gs *gelfSink) Write(b []byte) (int, error) {
@@ -96,22 +143,22 @@ func (gs *gelfSink) Write(b []byte) (int, error) {
 		return 0, fmt.Errorf("gelfWriter is nil")
 	}
 
-	msg := gelf.Message{
-		Version:  "1.1",
-		Host:     gs.host,
-		Short:    string(b),
-		TimeUnix: float64(time.Now().UnixNano()) / float64(time.Second),
-		Level:    0,
-		Extra:    map[string]interface{}{"_mwver": gs.version, "_account": gs.account},
-	}
+	gs.rebuildRawExtra()
 
-	err := gs.batch.TryAdd(msg)
+	entry := gelfEntryPool.Get().(*gelfEntry)
+	entry.data = append(entry.data, b...)
+	entry.timeUnix = float64(time.Now().UnixNano()) / float64(time.Second)
+
+	err := gs.batch.TryAdd(entry)
 	if errors.Is(err, mb.ErrOverflowed) {
 		// batch is overflowed, probably machine has some internet problems
-		// we don't want to spam with mb overflowed errors, so let's just ignore it and return as success
+		entry.data = entry.data[:0]
+		gelfEntryPool.Put(entry)
 		loggerGraylogMBSkipped.Add(1)
 		return len(b), nil
 	} else if err != nil {
+		entry.data = entry.data[:0]
+		gelfEntryPool.Put(entry)
 		return 0, err
 	}
 
@@ -146,12 +193,14 @@ func (gs *gelfSink) SetVersion(version string) {
 	gs.Lock()
 	defer gs.Unlock()
 	gs.version = version
+	gs.rawExtraDirty = true
 }
 
 func (gs *gelfSink) SetAccount(account string) {
 	gs.Lock()
 	defer gs.Unlock()
 	gs.account = account
+	gs.rawExtraDirty = true
 }
 
 func SetVersion(version string) {
