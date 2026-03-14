@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
@@ -158,6 +159,7 @@ func BootstrapWallet(rootPath string, derivationResult crypto.DerivationResult, 
 }
 
 func StartNewApp(ctx context.Context, clientWithVersion string, components ...app.Component) (a *app.App, err error) {
+	anystore.InitPageBuffer(4096, 65536)
 	a = new(app.App)
 	complexAppVersion := appVersion(a, clientWithVersion)
 	a.SetVersionName(complexAppVersion)
