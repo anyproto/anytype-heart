@@ -327,4 +327,4 @@ replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/
 
 replace github.com/anyproto/any-store => ../any-store
 
-replace github.com/anyproto/any-sync => ../any-sync
+replace github.com/anyproto/any-sync => github.com/anyproto/any-sync v0.11.15-0.20260315224506-637478fac611
