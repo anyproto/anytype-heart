@@ -8,8 +8,8 @@ import (
 	"net"
 	"os"
 
-	gnet "github.com/shirou/gopsutil/v3/net"
-	gproc "github.com/shirou/gopsutil/v3/process"
+	gnet "github.com/shirou/gopsutil/v4/net"
+	gproc "github.com/shirou/gopsutil/v4/process"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/peer"
 )
