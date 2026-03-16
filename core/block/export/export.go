@@ -1244,12 +1244,11 @@ func (e *exportContext) writeDoc(ctx context.Context, wr writer, docId string, d
 		case model.Export_Markdown:
 			// Create a lazy object resolver for markdown export
 			resolver := newLazyObjectResolver(e.objectStore, e.spaceId)
-
+			opts := []md.Option{md.WithResolver(resolver)}
 			if e.mdIncludePropertiesAndSchema {
-				conv = md.NewMDConverterWithResolver(st, wr.Namer(), true, true, resolver)
-			} else {
-				conv = md.NewMDConverterWithResolver(st, wr.Namer(), false, false, resolver)
+				opts = append(opts, md.WithRelations(), md.WithSchema(), md.WithLocalDetails(), md.WithHiddenDetails())
 			}
+			conv = md.NewConverter(st, wr.Namer(), opts...)
 		case model.Export_Protobuf:
 			conv = pbc.NewConverter(st, e.isJson)
 		case model.Export_JSON:

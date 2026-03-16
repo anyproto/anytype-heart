@@ -86,7 +86,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		)
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "# Header 1   \n## Header 2   \n --- \n### Header 3   \nUsual text   \n#### Header 4   \n"
 		assert.Equal(t, exp, string(res))
@@ -135,7 +135,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "***[some](http://golang.org)*** [t](http://golang.org) [e](http://golang.org)xt **wi~~th m~~**~~ar~~ks @mention   \n"
 		assert.Equal(t, exp, string(res))
@@ -152,7 +152,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "Test 😝   \n"
 		assert.Equal(t, exp, string(res))
@@ -174,7 +174,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "Test ⛰️   \n"
 		assert.Equal(t, exp, string(res))
@@ -189,7 +189,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "```\nfunction hello() {\n  console.log('Hello World');\n}\n```\n"
 		assert.Equal(t, exp, string(res))
@@ -224,7 +224,7 @@ func TestMD_Convert(t *testing.T) {
 		}
 		s := state.NewDoc("root", blocks).(*state.State)
 
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 
 		// Expected: list item followed by indented code block
@@ -272,7 +272,7 @@ func TestMD_Convert(t *testing.T) {
 		}
 		s := state.NewDoc("root", blocks).(*state.State)
 
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 
 		// Expected: numbered list with nested bullet list and deeply indented code block
@@ -289,7 +289,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 
 		// Backticks in code should be escaped
@@ -325,7 +325,7 @@ func TestMD_Convert(t *testing.T) {
 		}
 		s := state.NewDoc("root", blocks).(*state.State)
 
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 
 		// Code block under header should be indented with 4 spaces
@@ -342,7 +342,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "```\n\n```\n"
 		assert.Equal(t, exp, string(res))
@@ -357,7 +357,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "```\n\n\n\n\n```\n"
 		assert.Equal(t, exp, string(res))
@@ -372,7 +372,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "# Toggle Header 1   \n"
 		assert.Equal(t, exp, string(res))
@@ -387,7 +387,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "## Toggle Header 2   \n"
 		assert.Equal(t, exp, string(res))
@@ -402,7 +402,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "### Toggle Header 3   \n"
 		assert.Equal(t, exp, string(res))
@@ -436,7 +436,7 @@ func TestMD_Convert(t *testing.T) {
 		}
 		s := state.NewDoc("root", blocks).(*state.State)
 
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 
 		// Toggle header renders as h1 with child indented
@@ -471,7 +471,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		)
-		c := NewMDConverter(s, nil, false)
+		c := NewConverter(s, nil)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "# Toggle H1   \n## Toggle H2   \n### Toggle H3   \n"
 		assert.Equal(t, exp, string(res))
@@ -596,7 +596,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 		})
 
 		// Create converter
-		conv := NewMDConverterWithSchema(st, &mockFileNamer{}, true, true).(*MD)
+		conv := NewConverter(st, &mockFileNamer{}, WithRelations(), WithSchema()).(*md)
 		conv.SetKnownDocs(knownDocs)
 
 		// Generate schema
@@ -741,7 +741,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 			}),
 		}
 
-		conv := NewMDConverterWithSchema(st, &mockFileNamer{}, true, true).(*MD)
+		conv := NewConverter(st, &mockFileNamer{}, WithRelations(), WithSchema()).(*md)
 		conv.SetKnownDocs(knownDocs)
 
 		schemaBytes, err := conv.GenerateJSONSchema()
@@ -786,7 +786,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 		}
 
 		// Create converter
-		conv := NewMDConverterWithSchema(st, &mockFileNamer{}, true, true).(*MD)
+		conv := NewConverter(st, &mockFileNamer{}, WithRelations(), WithSchema()).(*md)
 		conv.SetKnownDocs(knownDocs)
 
 		// Generate schema
@@ -830,7 +830,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 		}
 
 		// Create converter
-		conv := NewMDConverterWithSchema(st, &mockFileNamer{}, true, true).(*MD)
+		conv := NewConverter(st, &mockFileNamer{}, WithRelations(), WithSchema()).(*md)
 		conv.SetKnownDocs(knownDocs)
 
 		// Generate schema
@@ -869,7 +869,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 		}
 
 		// Create converter
-		conv := NewMDConverterWithSchema(st, &mockFileNamer{}, true, true).(*MD)
+		conv := NewConverter(st, &mockFileNamer{}, WithRelations(), WithSchema()).(*md)
 		conv.SetKnownDocs(knownDocs)
 
 		// Generate schema
@@ -928,7 +928,7 @@ func TestMDConverter_GenerateJSONSchema(t *testing.T) {
 		}
 
 		// Create converter with schema enabled
-		conv := NewMDConverterWithSchema(st, &mockFileNamer{}, true, true).(*MD)
+		conv := NewConverter(st, &mockFileNamer{}, WithRelations(), WithSchema()).(*md)
 		conv.SetKnownDocs(knownDocs)
 
 		// Convert to markdown
@@ -1039,7 +1039,7 @@ func TestMD_FileFormatRelations(t *testing.T) {
 		}
 
 		// Create converter
-		conv := NewMDConverter(st, &mockFileNamer{}, true).(*MD)
+		conv := NewConverter(st, &mockFileNamer{}, WithRelations()).(*md)
 		conv.SetKnownDocs(knownDocs)
 
 		// Convert to markdown
@@ -1131,7 +1131,7 @@ func TestMD_RenderCollection(t *testing.T) {
 	}
 
 	// Create converter with resolver
-	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, false, resolver)
+	conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithResolver(resolver))
 	// Set known docs to simulate only task1 and task2 are in export
 	conv.SetKnownDocs(map[string]*domain.Details{
 		"task1": resolver.objects["task1"],
@@ -1210,7 +1210,7 @@ func TestMD_RenderCollection_EmptyCollection(t *testing.T) {
 	}
 
 	// Create converter
-	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, false, resolver)
+	conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithResolver(resolver))
 
 	// Convert to markdown
 	result := conv.Convert(model.SmartBlockType_Page)
@@ -1282,7 +1282,7 @@ func TestMD_RenderCollection_WithSchema(t *testing.T) {
 	}
 
 	// Create converter with schema enabled
-	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver)
+	conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithSchema(), WithResolver(resolver))
 
 	// Convert to markdown
 	result := conv.Convert(model.SmartBlockType_Page)
@@ -1343,7 +1343,7 @@ func TestMD_RenderCollection_UnknownObjects(t *testing.T) {
 	}
 
 	// Create converter
-	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, false, resolver)
+	conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithResolver(resolver))
 
 	// Convert to markdown
 	result := conv.Convert(model.SmartBlockType_Page)
@@ -1418,7 +1418,7 @@ func TestMD_RenderObjectRelation_FileFieldOnlyForExportedObjects(t *testing.T) {
 	fileNamer := &testFileNamer{}
 
 	// Create converter with known docs (only obj1 and obj2 are in export)
-	conv := NewMDConverterWithResolver(st, fileNamer, true, false, resolver)
+	conv := NewConverter(st, fileNamer, WithRelations(), WithResolver(resolver))
 	conv.SetKnownDocs(map[string]*domain.Details{
 		"obj1": resolver.objects["obj1"],
 		"obj2": resolver.objects["obj2"],
@@ -1494,7 +1494,7 @@ func TestMD_RenderObjectRelation_ShortFormatUnaffected(t *testing.T) {
 	fileNamer := &testFileNamer{}
 
 	// Create converter with only obj1 in known docs
-	conv := NewMDConverterWithResolver(st, fileNamer, true, false, resolver)
+	conv := NewConverter(st, fileNamer, WithRelations(), WithResolver(resolver))
 	conv.SetKnownDocs(map[string]*domain.Details{
 		"obj1": resolver.objects["obj1"],
 		// obj2 is NOT in knownDocs
@@ -1594,7 +1594,7 @@ func TestMD_GenerateJSONSchema_WithEnhancements(t *testing.T) {
 	}
 
 	// Create converter
-	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver).(*MD)
+	conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithSchema(), WithResolver(resolver)).(*md)
 
 	// Generate schema
 	schemaBytes, err := conv.GenerateJSONSchema()
@@ -1696,7 +1696,7 @@ func TestMD_RenderProperties_WithID(t *testing.T) {
 	}
 
 	// Create converter with schema
-	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver)
+	conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithSchema(), WithResolver(resolver))
 
 	// Convert to markdown
 	result := conv.Convert(model.SmartBlockType_Page)
@@ -1786,7 +1786,7 @@ func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 	}
 
 	// Create converter
-	conv := NewMDConverterWithResolver(st, &testFileNamer{}, true, true, resolver).(*MD)
+	conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithSchema(), WithResolver(resolver)).(*md)
 
 	// Generate schema
 	schemaBytes, err := conv.GenerateJSONSchema()
@@ -1848,4 +1848,217 @@ func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 			assert.Equal(t, "prop5", xKey)
 		}
 	}
+}
+
+func TestMD_IncludeLocalDetails(t *testing.T) {
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Test content",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("obj-1"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(domain.RelationKey("custom_name"), domain.String("My Object"))
+	// Extra detail present on the object but not in recommended relations of the type
+	st.SetDetail(domain.RelationKey("extra_field"), domain.String("extra value"))
+
+	resolver := &testResolver{
+		types: map[string]*domain.Details{
+			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:                           domain.String("test-type"),
+				bundle.RelationKeyName:                         domain.String("Test"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-name"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-name"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_name"),
+				bundle.RelationKeyName:           domain.String("Name"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+			"rel-extra": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-extra"),
+				bundle.RelationKeyRelationKey:    domain.String("extra_field"),
+				bundle.RelationKeyName:           domain.String("Extra Field"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+				bundle.RelationKeyIsHidden:       domain.Bool(false),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		"custom_name": "rel-name",
+		"extra_field": "rel-extra",
+	}
+
+	t.Run("non-recommended detail included when WithLocalDetails is set", func(t *testing.T) {
+		conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithLocalDetails(), WithResolver(resolver))
+		result := conv.Convert(model.SmartBlockType_Page)
+		resultStr := string(result)
+
+		assert.Contains(t, resultStr, "Name: My Object")
+		assert.Contains(t, resultStr, "Extra Field: extra value")
+	})
+
+	t.Run("non-recommended detail excluded by default", func(t *testing.T) {
+		conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithResolver(resolver))
+		result := conv.Convert(model.SmartBlockType_Page)
+		resultStr := string(result)
+
+		assert.Contains(t, resultStr, "Name: My Object")
+		assert.NotContains(t, resultStr, "Extra Field")
+	})
+}
+
+func TestMD_IncludeHiddenDetails(t *testing.T) {
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Test content",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("obj-1"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(domain.RelationKey("custom_name"), domain.String("My Object"))
+	// Value for the hidden relation
+	st.SetDetail(domain.RelationKey("hidden_field"), domain.String("secret"))
+
+	resolver := &testResolver{
+		types: map[string]*domain.Details{
+			// hidden_field relation ID is listed in RecommendedHiddenRelations
+			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:                           domain.String("test-type"),
+				bundle.RelationKeyName:                         domain.String("Test"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-name"}),
+				bundle.RelationKeyRecommendedHiddenRelations:   domain.StringList([]string{"rel-hidden"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-name"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_name"),
+				bundle.RelationKeyName:           domain.String("Name"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+			"rel-hidden": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-hidden"),
+				bundle.RelationKeyRelationKey:    domain.String("hidden_field"),
+				bundle.RelationKeyName:           domain.String("Hidden Field"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+		},
+	}
+
+	t.Run("recommendedHiddenRelations included when WithHiddenDetails is set", func(t *testing.T) {
+		conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithHiddenDetails(), WithResolver(resolver))
+		result := conv.Convert(model.SmartBlockType_Page)
+		resultStr := string(result)
+
+		assert.Contains(t, resultStr, "Name: My Object")
+		assert.Contains(t, resultStr, "Hidden Field: secret")
+	})
+
+	t.Run("recommendedHiddenRelations excluded by default", func(t *testing.T) {
+		conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithResolver(resolver))
+		result := conv.Convert(model.SmartBlockType_Page)
+		resultStr := string(result)
+
+		assert.Contains(t, resultStr, "Name: My Object")
+		assert.NotContains(t, resultStr, "Hidden Field")
+	})
+}
+
+func TestMD_LocalDetailsExcludesHidden(t *testing.T) {
+	rootBlock := &model.Block{
+		Id:          "root",
+		ChildrenIds: []string{"text1"},
+	}
+	textBlock := &model.Block{
+		Id: "text1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "Test content",
+			},
+		},
+	}
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root":  simple.New(rootBlock),
+		"text1": simple.New(textBlock),
+	}).NewState()
+
+	st.SetDetailAndBundledRelation(bundle.RelationKeyId, domain.String("obj-1"))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyType, domain.String("test-type"))
+	st.SetDetail(domain.RelationKey("custom_name"), domain.String("My Object"))
+	st.SetDetail(domain.RelationKey("extra_field"), domain.String("extra value"))
+	// This detail's relation has IsHidden=true, so addLocalDetails must skip it
+	st.SetDetail(domain.RelationKey("hidden_field"), domain.String("secret"))
+
+	resolver := &testResolver{
+		types: map[string]*domain.Details{
+			"test-type": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:                           domain.String("test-type"),
+				bundle.RelationKeyName:                         domain.String("Test"),
+				bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-name"}),
+			}),
+		},
+		relations: map[string]*domain.Details{
+			"rel-name": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-name"),
+				bundle.RelationKeyRelationKey:    domain.String("custom_name"),
+				bundle.RelationKeyName:           domain.String("Name"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+			}),
+			"rel-extra": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-extra"),
+				bundle.RelationKeyRelationKey:    domain.String("extra_field"),
+				bundle.RelationKeyName:           domain.String("Extra Field"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+				bundle.RelationKeyIsHidden:       domain.Bool(false),
+			}),
+			"rel-hidden": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:             domain.String("rel-hidden"),
+				bundle.RelationKeyRelationKey:    domain.String("hidden_field"),
+				bundle.RelationKeyName:           domain.String("Hidden Field"),
+				bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+				bundle.RelationKeyIsHidden:       domain.Bool(true),
+			}),
+		},
+	}
+	resolver.keyMapping = map[string]string{
+		"custom_name":  "rel-name",
+		"extra_field":  "rel-extra",
+		"hidden_field": "rel-hidden",
+	}
+
+	// WithLocalDetails adds non-recommended details, but must skip those with IsHidden=true
+	conv := NewConverter(st, &testFileNamer{}, WithRelations(), WithLocalDetails(), WithResolver(resolver))
+	result := conv.Convert(model.SmartBlockType_Page)
+	resultStr := string(result)
+
+	assert.Contains(t, resultStr, "Name: My Object")
+	assert.Contains(t, resultStr, "Extra Field: extra value")
+	assert.NotContains(t, resultStr, "Hidden Field", "addLocalDetails must skip relations with IsHidden=true")
 }
