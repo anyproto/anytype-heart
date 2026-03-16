@@ -41,7 +41,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		if err != nil {
 			return
 		}
-		spaceType := model.SpaceType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceType.String()))
+		spaceType := model.SpaceType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceType.String())) // nolint:gosec
 		switch spaceType {
 		case model.SpaceType_SpaceTypeUnknown:
 			return errors.New("space ux type cannot be Unknown")

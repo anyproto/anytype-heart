@@ -111,8 +111,8 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 		SpaceId:         invitePayload.SpaceId,
 		SpaceName:       invitePayload.SpaceName,
 		SpaceIconCid:    invitePayload.SpaceIconCid,
-		SpaceUxType:     model.SpaceUxType(invitePayload.SpaceUxType),
-		SpaceType:       model.SpaceType(invitePayload.SpaceType),
+		SpaceUxType:     model.SpaceUxType(invitePayload.SpaceUxType), // nolint:gosec
+		SpaceType:       model.SpaceType(invitePayload.SpaceType),     // nolint:gosec
 		SpaceIconOption: int(invitePayload.SpaceIconOption),
 		CreatorName:     invitePayload.CreatorName,
 		CreatorIconCid:  invitePayload.CreatorIconCid,
@@ -385,8 +385,8 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateI
 		return nil, fmt.Errorf("get space description: %w", err)
 	}
 	invitePayload.SpaceIconOption = uint32(description.IconOption)
-	invitePayload.SpaceUxType = uint32(description.SpaceUxType)
-	invitePayload.SpaceType = uint32(description.SpaceType)
+	invitePayload.SpaceUxType = uint32(description.SpaceUxType) // nolint:gosec
+	invitePayload.SpaceType = uint32(description.SpaceType)     // nolint:gosec
 	if description.IconImage != "" {
 		iconCid, iconEncryptionKeys, err := i.fileAcl.GetInfoForFileSharing(description.IconImage)
 		if err == nil {
