@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a44309a103773f403e2cb14c85ff84a2ae8abb5c65ffd74b3a7a51110a960a1a"
+const RelationChecksum = "dfffd3e1dafff6a43fe988d2c93f1721a7779dde224c058de044c558af5a8d0d"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -150,7 +150,6 @@ const (
 	RelationKeySyncError                            domain.RelationKey = "syncError"
 	RelationKeyHasChat                              domain.RelationKey = "hasChat"
 	RelationKeyChatId                               domain.RelationKey = "chatId"
-	RelationKeyDiscussionId                         domain.RelationKey = "discussionId"
 	RelationKeyMentions                             domain.RelationKey = "mentions"
 	RelationKeyTimestamp                            domain.RelationKey = "timestamp"
 	RelationKeyLayoutWidth                          domain.RelationKey = "layoutWidth"
@@ -196,6 +195,8 @@ const (
 	RelationKey_score                               domain.RelationKey = "_score"
 	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
 	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
+	RelationKeySpaceType                            domain.RelationKey = "spaceType"
+	RelationKeyHomepage                             domain.RelationKey = "homepage"
 )
 
 var (
@@ -625,20 +626,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyDiscussionId: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Discussion id",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
-			Id:               "_brdiscussionId",
-			Key:              "discussionId",
-			MaxCount:         1,
-			Name:             "Discussion id",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyDone: {
 
 			DataSource:       model.Relation_details,
@@ -998,6 +985,20 @@ var (
 			Key:              "heightInPixels",
 			MaxCount:         1,
 			Name:             "Height",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHomepage: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Homepage of regular spaces. Could handle either object id or special constant",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brhomepage",
+			Key:              "homepage",
+			MaxCount:         1,
+			Name:             "Home page",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2415,6 +2416,20 @@ var (
 			Key:              "spaceShareableStatus",
 			MaxCount:         1,
 			Name:             "Space shareable status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceType: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space type derived from space header, see spacedomain.SpaceType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceType",
+			Key:              "spaceType",
+			MaxCount:         1,
+			Name:             "Space type",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -328,8 +328,10 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyName,
 	bundle.RelationKeyIconImage,
 	bundle.RelationKeyIconOption,
-	bundle.RelationKeySpaceDashboardId,
-	bundle.RelationKeySpaceUxType,
+	bundle.RelationKeySpaceDashboardId, // TODO: remove
+	bundle.RelationKeySpaceUxType,      // TODO: remove
+	bundle.RelationKeyHomepage,
+	bundle.RelationKeySpaceType,
 	bundle.RelationKeyCreatedDate,
 	bundle.RelationKeyChatId,
 	bundle.RelationKeyDescription,

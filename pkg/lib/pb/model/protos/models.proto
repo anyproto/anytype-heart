@@ -1098,6 +1098,14 @@ enum SpaceUxType {
     OneToOne = 4; // onetoone UX (space with chat and immutable ACL between two participants)
 }
 
+enum SpaceType {
+    SpaceTypeUnknown  = 0;
+    SpaceTypeRegular  = 1;
+    SpaceTypeTech     = 2;
+    SpaceTypeChat     = 3;
+    SpaceTypeOneToOne = 4;
+}
+
 message Metadata {
     oneof payload {
         Payload.IdentityPayload identity = 1;
@@ -1276,7 +1284,7 @@ message InvitePayload {
     string spaceName = 5;
     string spaceIconCid = 6;
     uint32 spaceIconOption = 10;
-    uint32 spaceUxType = 11;
+    uint32 spaceUxType = 11; // TODO: substitute it with spaceType
     repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
 
 

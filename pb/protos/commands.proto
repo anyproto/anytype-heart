@@ -1425,7 +1425,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1; // object details
                 anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
-                bool withChat = 3; // deprecated, use spaceUxType
+                bool withChat = 3; // deprecated, use spaceType
             }
 
             message Response {
