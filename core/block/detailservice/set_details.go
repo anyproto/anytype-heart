@@ -25,7 +25,7 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	workspaceId := spc.DerivedIDs().Workspace
 
 	setDetails := make([]domain.Detail, 0, details.Len())
-	// TODO: add details validation
+	// TODO: GO-6752 add details validation
 	for k, v := range details.Iterate() {
 		setDetails = append(setDetails, domain.Detail{
 			Key:   k,

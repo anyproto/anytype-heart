@@ -39,7 +39,7 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceAccountStatus,
 	bundle.RelationKeySpaceShareableStatus,
 	bundle.RelationKeySpaceAccessType,
-	bundle.RelationKeySpaceUxType, // TODO: remove
+	bundle.RelationKeySpaceUxType, // TODO: GO-6752 remove when marked outdated
 	bundle.RelationKeySpaceType,
 	bundle.RelationKeyLatestAclHeadId,
 	bundle.RelationKeyChatId,
@@ -329,7 +329,7 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyName,
 	bundle.RelationKeyIconImage,
 	bundle.RelationKeyIconOption,
-	bundle.RelationKeySpaceUxType, // TODO: remove
+	bundle.RelationKeySpaceUxType, // TODO: GO-6752 remove
 	bundle.RelationKeyHomepage,
 	bundle.RelationKeySpaceType,
 	bundle.RelationKeyCreatedDate,

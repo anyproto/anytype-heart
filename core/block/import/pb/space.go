@@ -106,7 +106,7 @@ func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldT
 	return objectTypesToImport, objectsInWidget, nil
 }
 
-// TODO: add home object and validation to constant values like 'lastOpened' and 'widgets'
+// TODO: GO-6752 add home object and validation to constant values like 'lastOpened' and 'widgets'
 func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags, objectsNotInWidget []*common.Snapshot) []string {
 	var rootObjects []string
 	for _, snapshot := range objectsNotInWidget {

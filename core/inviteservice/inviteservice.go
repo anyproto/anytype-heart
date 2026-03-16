@@ -384,6 +384,7 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateI
 	}
 	invitePayload.SpaceIconOption = uint32(description.IconOption)
 	invitePayload.SpaceUxType = uint32(description.SpaceUxType)
+	// TODO: GO-6752 add spaceType to payload
 	if description.IconImage != "" {
 		iconCid, iconEncryptionKeys, err := i.fileAcl.GetInfoForFileSharing(description.IconImage)
 		if err == nil {
@@ -416,6 +417,7 @@ func (i *inviteService) GetExistingGuestUserInvite(ctx context.Context, spaceId 
 	if err != nil {
 		return domain.InviteInfo{}, getInviteError("get space type", err)
 	}
+	// TODO: GO-6752 handle Streams
 	if spaceType != model.SpaceUxType_Stream {
 		return domain.InviteInfo{}, ErrInvalidSpaceType
 	}
