@@ -855,64 +855,6 @@ func (_c *MockService_SetSpaceInfo_Call) RunAndReturn(run func(string, *domain.D
 	return _c
 }
 
-// SetWorkspaceDashboardId provides a mock function with given fields: ctx, workspaceId, id
-func (_m *MockService) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (string, error) {
-	ret := _m.Called(ctx, workspaceId, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetWorkspaceDashboardId")
-	}
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, string) (string, error)); ok {
-		return rf(ctx, workspaceId, id)
-	}
-	if rf, ok := ret.Get(0).(func(session.Context, string, string) string); ok {
-		r0 = rf(ctx, workspaceId, id)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(session.Context, string, string) error); ok {
-		r1 = rf(ctx, workspaceId, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_SetWorkspaceDashboardId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetWorkspaceDashboardId'
-type MockService_SetWorkspaceDashboardId_Call struct {
-	*mock.Call
-}
-
-// SetWorkspaceDashboardId is a helper method to define mock.On call
-//   - ctx session.Context
-//   - workspaceId string
-//   - id string
-func (_e *MockService_Expecter) SetWorkspaceDashboardId(ctx interface{}, workspaceId interface{}, id interface{}) *MockService_SetWorkspaceDashboardId_Call {
-	return &MockService_SetWorkspaceDashboardId_Call{Call: _e.mock.On("SetWorkspaceDashboardId", ctx, workspaceId, id)}
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) Run(run func(ctx session.Context, workspaceId string, id string)) *MockService_SetWorkspaceDashboardId_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) Return(setId string, err error) *MockService_SetWorkspaceDashboardId_Call {
-	_c.Call.Return(setId, err)
-	return _c
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) RunAndReturn(run func(session.Context, string, string) (string, error)) *MockService_SetWorkspaceDashboardId_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // NewMockService creates a new instance of MockService. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMockService(t interface {
