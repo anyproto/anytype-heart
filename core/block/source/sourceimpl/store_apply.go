@@ -42,7 +42,6 @@ func (a *storeApply) Apply() error {
 		if lastErr != nil {
 			return false
 		}
-		change.Model = nil
 
 		return true
 	})
