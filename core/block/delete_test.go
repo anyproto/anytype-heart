@@ -3,7 +3,9 @@ package block
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -20,11 +22,12 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		objectId    = "deletedObj"
 	)
 
-	t.Run("deleting object that is current dashboard resets spaceDashboardId", func(t *testing.T) {
+	t.Run("deleting object that is current dashboard resets homepage", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		detailsSvc := mock_detailservice.NewMockService(t)
 		spc := mock_clientspace.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId)
 
 		s := &Service{
 			objectStore:    store,
@@ -33,8 +36,8 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 
 		store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:               domain.String(workspaceId),
-				bundle.RelationKeySpaceDashboardId: domain.String(objectId),
+				bundle.RelationKeyId:       domain.String(workspaceId),
+				bundle.RelationKeyHomepage: domain.String(objectId),
 			},
 		})
 
@@ -42,16 +45,19 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 			Workspace: workspaceId,
 		})
 
-		detailsSvc.EXPECT().SetWorkspaceDashboardId(nil, workspaceId, "").Return("", nil)
+		detailsSvc.EXPECT().SetSpaceInfo(mock.Anything, mock.Anything).RunAndReturn(func(spcId string, details *domain.Details) error {
+			assert.Equal(t, spaceId, spcId)
+			require.NotNil(t, details)
+			require.NotEmpty(t, details)
+			assert.Empty(t, details.GetString(bundle.RelationKeyHomepage))
+			return nil
+		})
 
 		// when
 		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
-
-		// then
-		detailsSvc.AssertCalled(t, "SetWorkspaceDashboardId", nil, workspaceId, "")
 	})
 
-	t.Run("deleting object that is NOT the dashboard leaves spaceDashboardId unchanged", func(t *testing.T) {
+	t.Run("deleting object that is NOT the homepage leaves homepage setting unchanged", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		detailsSvc := mock_detailservice.NewMockService(t)
@@ -65,8 +71,8 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		otherDashboardId := "someOtherObject"
 		store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:               domain.String(workspaceId),
-				bundle.RelationKeySpaceDashboardId: domain.String(otherDashboardId),
+				bundle.RelationKeyId:       domain.String(workspaceId),
+				bundle.RelationKeyHomepage: domain.String(otherDashboardId),
 			},
 		})
 
@@ -78,10 +84,10 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
 
 		// then
-		detailsSvc.AssertNotCalled(t, "SetWorkspaceDashboardId", mock.Anything, mock.Anything, mock.Anything)
+		detailsSvc.AssertNotCalled(t, "SetSpaceInfo", mock.Anything, mock.Anything)
 	})
 
-	t.Run("empty dashboard id does not trigger unset", func(t *testing.T) {
+	t.Run("empty homepage does not trigger unset", func(t *testing.T) {
 		// given
 		store := objectstore.NewStoreFixture(t)
 		detailsSvc := mock_detailservice.NewMockService(t)
@@ -94,8 +100,8 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 
 		store.AddObjects(t, spaceId, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:               domain.String(workspaceId),
-				bundle.RelationKeySpaceDashboardId: domain.String(""),
+				bundle.RelationKeyId:       domain.String(workspaceId),
+				bundle.RelationKeyHomepage: domain.String(""),
 			},
 		})
 
@@ -107,6 +113,6 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
 
 		// then
-		detailsSvc.AssertNotCalled(t, "SetWorkspaceDashboardId", mock.Anything, mock.Anything, mock.Anything)
+		detailsSvc.AssertNotCalled(t, "SetSpaceInfo", mock.Anything, mock.Anything)
 	})
 }
