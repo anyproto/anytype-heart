@@ -39,7 +39,8 @@ var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceAccountStatus,
 	bundle.RelationKeySpaceShareableStatus,
 	bundle.RelationKeySpaceAccessType,
-	bundle.RelationKeySpaceUxType,
+	bundle.RelationKeySpaceUxType, // TODO: remove
+	bundle.RelationKeySpaceType,
 	bundle.RelationKeyLatestAclHeadId,
 	bundle.RelationKeyChatId,
 	bundle.RelationKeyReadersLimit,
@@ -328,8 +329,7 @@ var workspaceKeysToCopy = []domain.RelationKey{
 	bundle.RelationKeyName,
 	bundle.RelationKeyIconImage,
 	bundle.RelationKeyIconOption,
-	bundle.RelationKeySpaceDashboardId, // TODO: remove
-	bundle.RelationKeySpaceUxType,      // TODO: remove
+	bundle.RelationKeySpaceUxType, // TODO: remove
 	bundle.RelationKeyHomepage,
 	bundle.RelationKeySpaceType,
 	bundle.RelationKeyCreatedDate,

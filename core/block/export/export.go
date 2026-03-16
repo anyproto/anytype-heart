@@ -1331,6 +1331,7 @@ func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 		return fmt.Errorf("get workspace: %w", err)
 	}
 	profile := &pb.Profile{
+		// TODO: add home object to profile
 		SpaceDashboardId: spaceDashBoardID,
 		Address:          pr.AccountId,
 		Name:             pr.Name,

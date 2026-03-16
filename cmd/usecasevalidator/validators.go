@@ -10,7 +10,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -24,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -129,7 +129,7 @@ func validateDetails(s *common.SnapshotModel, info *useCaseInfo, fixConfig FixCo
 				}
 			}
 
-			if k == bundle.RelationKeySpaceDashboardId && (val == "lastOpened" || val == editor.HomepageWidgets) {
+			if k == bundle.RelationKeySpaceDashboardId && (val == constant.HomepageLastOpened) {
 				continue
 			}
 

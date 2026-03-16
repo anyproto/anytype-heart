@@ -6,6 +6,11 @@ const ProfileFile = "profile"
 
 const SvgExt = ".svg"
 
+const (
+	HomepageWidgets    = "widgets"
+	HomepageLastOpened = "lastOpened" // deprecated
+)
+
 type OptionColor string
 
 func (c OptionColor) String() string {

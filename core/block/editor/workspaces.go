@@ -18,8 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const HomepageWidgets = "widgets"
-
 var workspaceRequiredRelations = []domain.RelationKey{
 	// SpaceInviteFileCid and SpaceInviteFileKey are added only when creating invite
 }
@@ -225,7 +223,7 @@ func (w *Workspaces) GetExistingGuestInviteInfo() (fileCid string, fileKey strin
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{{
 		Version: 2,
-		Proc: func(s *state.State) {
+		Proc: func(s *state.State) { // TODO: make this migration no-op
 			spaceUxType, ok := s.Details().TryInt64(bundle.RelationKeySpaceUxType)
 			if !ok {
 				spaceUxType = int64(model.SpaceUxType_Data)
@@ -244,6 +242,7 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 	return nil
 }
 
+// TODO: rewrite this func. Check either ACL or space for space type
 func (w *Workspaces) isOneToOne(state *state.State) bool {
 	spaceUxType := model.SpaceUxType(state.Details().GetInt64(bundle.RelationKeySpaceUxType)) //nolint:gosec
 	return spaceUxType == model.SpaceUxType_OneToOne

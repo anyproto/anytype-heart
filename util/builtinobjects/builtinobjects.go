@@ -21,7 +21,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
@@ -257,9 +256,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceId
 			if len(records) > 0 {
 				id := records[0].Details.GetString(bundle.RelationKeyId)
 				if err = b.detailsService.SetSpaceInfo(spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeySpaceDashboardId: domain.String(id),
+					bundle.RelationKeyHomepage: domain.String(id),
 				})); err != nil {
-					log.Errorf("failed to set spaceDashboardId to workspace: %v", err)
+					log.Errorf("failed to set homepage to workspace: %v", err)
 				}
 				widgets := []*pb.WidgetBlock{{
 					Layout:         model.BlockContentWidget_Link,
@@ -533,25 +532,26 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 	return profile.Widgets
 }
 
-func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (dashboardId string) {
-	newId, oldId := editor.HomepageWidgets, editor.HomepageWidgets
+func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (homepage string) {
+	newId, oldId := constant.HomepageWidgets, constant.HomepageWidgets
+	// TODO: replace SpaceDashboard with Homepage in Profile proto model
 	if profile != nil && profile.SpaceDashboardId != "" {
 		oldId = profile.SpaceDashboardId
 	}
 
-	if oldId != editor.HomepageWidgets {
+	if oldId != constant.HomepageWidgets {
 		var err error
 		newId, err = b.getNewObjectId(spaceId, oldId)
 		if err != nil {
 			log.Errorf("failed to get new id of home page object: %v", err)
 		} else {
-			newId = editor.HomepageWidgets
+			newId = constant.HomepageWidgets
 		}
 	}
-	dashboardId = newId
+	homepage = newId
 
 	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeySpaceDashboardId: domain.String(dashboardId),
+		bundle.RelationKeyHomepage: domain.String(homepage),
 	})
 
 	if profile != nil && isBundle {
@@ -570,9 +570,9 @@ func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId strin
 		}
 	}
 	if err := b.detailsService.SetSpaceInfo(spaceId, details); err != nil {
-		log.Errorf("failed to set spaceDashboardId to workspace: %v", err)
+		log.Errorf("failed to set space info to workspace: %v", err)
 	}
-	return
+	return homepage
 }
 
 func (b *builtinObjects) getProfile(path string) (profile *pb.Profile, err error) {

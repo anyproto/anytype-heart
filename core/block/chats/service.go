@@ -538,7 +538,8 @@ func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Paylo
 	text := applyEmojiMarks(req.message.Message.Text, req.message.Message.Marks)
 
 	return &chatpush.Payload{
-		SpaceId:     req.spaceId,
+		SpaceId: req.spaceId,
+		// TODO: add SpaceType
 		SpaceUxType: int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceUxType)),
 		SenderId:    accountId,
 		Type:        chatpush.ChatMessage,

@@ -679,18 +679,14 @@ func (s *service) CanDeleteFile(ctx context.Context, objectId string) error {
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	workspaceDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(spc.DerivedIDs().Workspace)
-	if err != nil {
-		return fmt.Errorf("get workspace details: %w", err)
-	}
-
-	if workspaceDetails.GetInt64(bundle.RelationKeySpaceUxType) == int64(model.SpaceUxType_OneToOne) {
+	if spc.IsOneToOne() {
 		myParticipantId := s.accountService.MyParticipantId(spaceId)
 
 		if details.GetString(bundle.RelationKeyCreator) != myParticipantId {
 			return fmt.Errorf("can't delete other's file")
 		}
 	}
+
 	return nil
 }
 

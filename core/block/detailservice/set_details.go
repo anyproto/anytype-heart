@@ -8,29 +8,24 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/session"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-var ErrUnexpectedBlockType = errors.New("unexpected block type")
-
 func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
-	ctx := context.TODO()
-	spc, err := s.spaceService.Get(ctx, spaceId)
+	spc, err := s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return err
 	}
 	workspaceId := spc.DerivedIDs().Workspace
 
 	setDetails := make([]domain.Detail, 0, details.Len())
+	// TODO: add details validation
 	for k, v := range details.Iterate() {
 		setDetails = append(setDetails, domain.Detail{
 			Key:   k,
@@ -38,24 +33,6 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 		})
 	}
 	return s.SetDetails(nil, workspaceId, setDetails)
-}
-
-func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
-	err = cache.Do(s.objectGetter, workspaceId, func(ws *editor.Workspaces) error {
-		if ws.Type() != coresb.SmartBlockTypeWorkspace {
-			return ErrUnexpectedBlockType
-		}
-		if err = ws.SetDetails(ctx, []domain.Detail{
-			{
-				Key:   bundle.RelationKeySpaceDashboardId,
-				Value: domain.StringList([]string{id}),
-			},
-		}, false); err != nil {
-			return err
-		}
-		return nil
-	})
-	return id, err
 }
 
 func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {

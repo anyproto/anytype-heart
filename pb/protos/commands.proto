@@ -1568,6 +1568,28 @@ message Rpc {
             }
         }
 
+        message SetHomepage {
+            message Request {
+                string spaceId = 1;
+                string homepage = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
         message Select {
             message Request {
                 string workspaceId = 1;
@@ -2597,31 +2619,6 @@ message Rpc {
             message Response {
                 Error error = 1;
                 ResponseEvent event = 4;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                    }
-                }
-            }
-        }
-
-        message WorkspaceSetDashboard {
-
-            message Request {
-                string contextId = 1;
-                string objectId = 2;
-            }
-
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-                string objectId = 3;
 
                 message Error {
                     Code code = 1;
