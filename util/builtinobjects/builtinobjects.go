@@ -534,7 +534,7 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 
 func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (homepage string) {
 	newId, oldId := constant.HomepageWidgets, constant.HomepageWidgets
-	// TODO: replace SpaceDashboard with Homepage in Profile proto model
+	// TODO: GO-6752 replace SpaceDashboard with Homepage in Profile proto model
 	if profile != nil && profile.SpaceDashboardId != "" {
 		oldId = profile.SpaceDashboardId
 	}

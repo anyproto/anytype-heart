@@ -749,7 +749,7 @@ func processProfile(info *useCaseInfo, spaceDashboardId string, reporter *report
 		return profile.Marshal()
 	}
 
-	// TODO: use Homepage setting instead of spaceDashboardId
+	// TODO: GO-6752 use Homepage setting instead of spaceDashboardId
 	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{constant.HomepageLastOpened, constant.HomepageWidgets, "graph"}, profile.SpaceDashboardId) {
 		reporter.addMsg("profile", fmt.Sprintf("spaceDashboardId '%s' not found, so setting 'widgets' value", profile.SpaceDashboardId))
 		profile.SpaceDashboardId = constant.HomepageWidgets

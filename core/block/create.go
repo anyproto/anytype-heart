@@ -71,7 +71,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		Name:                       identityProfileWithKey.IdentityProfile.Name,
 		IconImage:                  identityProfileWithKey.IdentityProfile.IconCid,
 		SpaceUxType:                model.SpaceUxType_OneToOne,
-		SpaceType:                  model.SpaceType_SpaceTypeOneToOne,
+		SpaceType:                  model.SpaceType_SpaceTypeOneToOne, // TODO: GO-6752 remove when this field is marked outdated
 		OneToOneIdentity:           identityProfileWithKey.IdentityProfile.Identity,
 		OneToOneRequestMetadataKey: requestMetadataKeyStr,
 		OneToOneInboxSentStatus:    inviteSentStatus,
@@ -81,7 +81,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 	if err != nil {
 		return "", "", fmt.Errorf("createOneToOneFromInbox: %w", err)
 	}
-	// TODO: do we need this call? We already set these details on CreateOneToOne
+	// TODO: GO-6752 do we need this call? We already set these details on CreateOneToOne
 	err = s.spaceService.TechSpace().SpaceViewSetData(ctx, newSpace.Id(),
 		domain.NewDetails().
 			SetString(bundle.RelationKeyName, identityProfileWithKey.IdentityProfile.Name).

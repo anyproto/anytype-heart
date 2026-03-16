@@ -74,7 +74,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	w.onWorkspaceChanged(ctx.State)
 	w.AddHook(w.onApply, smartblock.HookAfterApply)
 
-	if w.isOneToOne(ctx.State) {
+	if w.isOneToOne() {
 		w.subscribeForOneToOneProfile(ctx.State)
 	}
 	return nil
@@ -223,7 +223,7 @@ func (w *Workspaces) GetExistingGuestInviteInfo() (fileCid string, fileKey strin
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{{
 		Version: 2,
-		Proc: func(s *state.State) { // TODO: make this migration no-op
+		Proc: func(s *state.State) { // TODO: GO-6752 make this migration no-op
 			spaceUxType, ok := s.Details().TryInt64(bundle.RelationKeySpaceUxType)
 			if !ok {
 				spaceUxType = int64(model.SpaceUxType_Data)
@@ -242,15 +242,13 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 	return nil
 }
 
-// TODO: rewrite this func. Check either ACL or space for space type
-func (w *Workspaces) isOneToOne(state *state.State) bool {
-	spaceUxType := model.SpaceUxType(state.Details().GetInt64(bundle.RelationKeySpaceUxType)) //nolint:gosec
-	return spaceUxType == model.SpaceUxType_OneToOne
+func (w *Workspaces) isOneToOne() bool {
+	return w.Space().IsOneToOne()
 }
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
 	details := state.CombinedDetails().Copy()
-	if w.isOneToOne(state) {
+	if w.isOneToOne() {
 		w.subscribeForOneToOneProfile(state)
 		return
 	}
