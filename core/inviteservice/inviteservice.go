@@ -112,6 +112,7 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 		SpaceName:       invitePayload.SpaceName,
 		SpaceIconCid:    invitePayload.SpaceIconCid,
 		SpaceUxType:     model.SpaceUxType(invitePayload.SpaceUxType),
+		SpaceType:       model.SpaceType(invitePayload.SpaceType),
 		SpaceIconOption: int(invitePayload.SpaceIconOption),
 		CreatorName:     invitePayload.CreatorName,
 		CreatorIconCid:  invitePayload.CreatorIconCid,
@@ -287,6 +288,7 @@ func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string,
 	return inviteInfo, err
 }
 
+// TODO: GO-6752 maybe we should derive spaceType from spaceUXType and vice versa
 func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (md *model.InvitePayload, err error) {
 	invite, err := i.inviteStore.GetInvite(ctx, inviteCid, inviteFileKey)
 	if err != nil {
@@ -384,7 +386,7 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateI
 	}
 	invitePayload.SpaceIconOption = uint32(description.IconOption)
 	invitePayload.SpaceUxType = uint32(description.SpaceUxType)
-	// TODO: GO-6752 add spaceType to payload
+	invitePayload.SpaceType = uint32(description.SpaceType)
 	if description.IconImage != "" {
 		iconCid, iconEncryptionKeys, err := i.fileAcl.GetInfoForFileSharing(description.IconImage)
 		if err == nil {

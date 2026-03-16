@@ -34116,7 +34116,8 @@ Used to decode block meta only, without the content itself
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | spaceIconOption | [uint32](#uint32) |  |  |
-| spaceUxType | [uint32](#uint32) |  | TODO: substitute it with spaceType |
+| spaceUxType | [uint32](#uint32) |  | deprecated |
+| spaceType | [uint32](#uint32) |  |  |
 | spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | inviteType | [InviteType](#anytype-model-InviteType) |  |  |
 | guestKey | [bytes](#bytes) |  |  |

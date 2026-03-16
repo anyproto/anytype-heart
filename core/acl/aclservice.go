@@ -513,7 +513,8 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
 				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid).
 				SetInt64(bundle.RelationKeyIconOption, int64(invitePayload.SpaceIconOption)).
-				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType))) // TODO: GO-6752  add SpaceType
+				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)). // TODO: GO-6752 remove
+				SetInt64(bundle.RelationKeySpaceType, int64(invitePayload.SpaceType)))
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
 		}
@@ -545,7 +546,8 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
 				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid).
 				SetInt64(bundle.RelationKeyIconOption, int64(invitePayload.SpaceIconOption)).
-				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType))) // TODO: GO-6752 add SpaceType
+				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)). // TODO: GO-6752 remove
+				SetInt64(bundle.RelationKeySpaceType, int64(invitePayload.SpaceType)))
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
 		}
@@ -566,6 +568,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 			SpaceIconCid:    res.SpaceIconCid,
 			SpaceIconOption: res.SpaceIconOption,
 			SpaceUxType:     res.SpaceUxType,
+			SpaceType:       res.SpaceType,
 			CreatorName:     res.CreatorName,
 			CreatorIconCid:  res.CreatorIconCid,
 		}, nil
