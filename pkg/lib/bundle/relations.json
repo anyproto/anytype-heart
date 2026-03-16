@@ -1886,5 +1886,25 @@
     "name": "Template name prefill type",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Space type derived from space header, see spacedomain.SpaceType",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceType",
+    "maxCount": 1,
+    "name": "Space type",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Homepage of regular spaces. Could handle either object id or special constant",
+    "format": "longtext",
+    "hidden": true,
+    "key": "homepage",
+    "maxCount": 1,
+    "name": "Home page",
+    "readonly": false,
+    "source": "details"
   }
 ]

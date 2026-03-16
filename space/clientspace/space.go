@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 type Space interface {
@@ -57,6 +58,7 @@ type Space interface {
 	IsReadOnly() bool
 	IsPersonal() bool
 	IsOneToOne() bool
+	SpaceType() spacedomain.SpaceType
 	GetAclIdentity() crypto.PubKey
 
 	KeyValueService() keyvalueservice.Service
@@ -99,6 +101,7 @@ type space struct {
 	keyValueService  keyvalueservice.Service
 	personalSpaceId  string
 	migrationService migrationService
+	spaceType        spacedomain.SpaceType
 
 	aclIdentity crypto.PubKey
 	common      commonspace.Space
@@ -143,10 +146,18 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		// todo: fixme we pass the real account service in case of streamable space to the objectcache
 	}
 
+	spaceState, err := deps.CommonSpace.Storage().StateStorage().GetState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get space state: %w", err)
+	}
+	sp.spaceType, err = spacedomain.ReadSpaceTypeFromHeader(spaceState.SpaceHeader)
+	if err != nil {
+		return nil, fmt.Errorf("read space type from header: %w", err)
+	}
+
 	sp.loadMissingBundledObjectsCtx, sp.loadMissingBundledObjectsCtxCancel = context.WithCancel(context.Background())
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
 	sp.ObjectProvider = objectprovider.NewObjectProvider(deps.CommonSpace.Id(), deps.PersonalSpaceId, sp.Cache)
-	var err error
 	sp.derivedIDs, err = sp.ObjectProvider.DeriveObjectIDs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("derive object ids: %w", err)
@@ -448,6 +459,10 @@ func (s *space) RefreshObjects(objectIds []string) (err error) {
 		return fmt.Errorf("space %s does not support client syncer", s.Id())
 	}
 	return syncer.RefreshTrees(objectIds)
+}
+
+func (s *space) SpaceType() spacedomain.SpaceType {
+	return s.spaceType
 }
 
 func (s *space) IsReadOnly() bool {

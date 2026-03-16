@@ -42,6 +42,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -133,6 +134,7 @@ type Space interface {
 
 	IsPersonal() bool
 	IsOneToOne() bool
+	SpaceType() spacedomain.SpaceType
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism

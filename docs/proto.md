@@ -2267,6 +2267,7 @@
     - [SpaceAccessType](#anytype-model-SpaceAccessType)
     - [SpaceShareableStatus](#anytype-model-SpaceShareableStatus)
     - [SpaceStatus](#anytype-model-SpaceStatus)
+    - [SpaceType](#anytype-model-SpaceType)
     - [SpaceUxType](#anytype-model-SpaceUxType)
     - [SyncError](#anytype-model-SyncError)
     - [SyncStatus](#anytype-model-SyncStatus)
@@ -23463,7 +23464,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
-| withChat | [bool](#bool) |  | deprecated, use spaceUxType |
+| withChat | [bool](#bool) |  | deprecated, use spaceType |
 
 
 
@@ -33964,7 +33965,7 @@ Used to decode block meta only, without the content itself
 | spaceName | [string](#string) |  |  |
 | spaceIconCid | [string](#string) |  |  |
 | spaceIconOption | [uint32](#uint32) |  |  |
-| spaceUxType | [uint32](#uint32) |  |  |
+| spaceUxType | [uint32](#uint32) |  | TODO: substitute it with spaceType |
 | spaceIconEncryptionKeys | [FileEncryptionKey](#anytype-model-FileEncryptionKey) | repeated |  |
 | inviteType | [InviteType](#anytype-model-InviteType) |  |  |
 | guestKey | [bytes](#bytes) |  |  |
@@ -36091,6 +36092,21 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | SpaceActive | 8 | SpaceActive - the space is active in the network |
 | SpaceJoining | 9 | SpaceJoining - the account is joining the space |
 | SpaceRemoving | 10 | SpaceRemoving - the account is removing from space or the space is removed from network |
+
+
+
+<a name="anytype-model-SpaceType"></a>
+
+### SpaceType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| SpaceTypeUnknown | 0 |  |
+| SpaceTypeRegular | 1 |  |
+| SpaceTypeTech | 2 |  |
+| SpaceTypeChat | 3 |  |
+| SpaceTypeOneToOne | 4 |  |
 
 
 

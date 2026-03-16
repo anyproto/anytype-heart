@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
 	"github.com/anyproto/anytype-heart/space/spacecore/keyvalueobserver"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
@@ -41,6 +42,7 @@ func NewTechSpace(deps TechSpaceDeps) (*TechSpace, error) {
 			loadMandatoryObjectsCh: make(chan struct{}),
 			personalSpaceId:        deps.PersonalSpaceId,
 			aclIdentity:            deps.AccountService.Account().SignKey.GetPublic(),
+			spaceType:              spacedomain.SpaceTypeTech,
 		},
 		TechSpace: deps.TechSpace,
 	}

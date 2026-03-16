@@ -41,15 +41,17 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		if err != nil {
 			return
 		}
-		spaceUxType := model.SpaceUxType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceUxType.String()))
-		switch spaceUxType {
-		case model.SpaceUxType_None:
-			return errors.New("space ux type cannot be None")
-		case model.SpaceUxType_Data, model.SpaceUxType_Stream:
+		spaceType := model.SpaceType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceType.String()))
+		switch spaceType {
+		case model.SpaceType_SpaceTypeUnknown:
+			return errors.New("space ux type cannot be Unknown")
+		case model.SpaceType_SpaceTypeRegular:
 			return nil
-		case model.SpaceUxType_Chat:
-			return errors.New("space ux type Chat is deprecated")
-		case model.SpaceUxType_OneToOne:
+		case model.SpaceType_SpaceTypeTech:
+			return errors.New("creation of technical space via command is restricted")
+		case model.SpaceType_SpaceTypeChat:
+			return errors.New("creation of chat space via command is restricted")
+		case model.SpaceType_SpaceTypeOneToOne:
 			// TODO: make it async in space init
 			err = bs.SpaceInitChat(cctx, spaceId, true)
 			if err != nil {
@@ -57,7 +59,7 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 			}
 			return nil
 		default:
-			return errors.New("unknown space ux type")
+			return errors.New("unknown space type")
 		}
 	})
 	if err != nil {
@@ -115,15 +117,15 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
-		var spaceUxType model.SpaceUxType
+		var spaceType model.SpaceType
 		err = cache.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
-			spaceUxType = sv.GetSpaceDescription().SpaceUxType
+			spaceType = sv.GetSpaceDescription().SpaceType
 			return sv.UpdateLastOpenedDate()
 		})
 		if err != nil {
 			return err
 		}
-		if spaceUxType == model.SpaceUxType_OneToOne {
+		if spaceType == model.SpaceType_SpaceTypeOneToOne {
 			// migration for existing users
 			err = bs.SpaceInitChat(cctx, req.SpaceId, false)
 			if err != nil {
