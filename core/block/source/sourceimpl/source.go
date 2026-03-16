@@ -36,6 +36,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/reflection"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -360,8 +361,8 @@ func (s *treeSource) migrateHomepage(st *state.State) {
 		}
 	case model.SpaceUxType_Data:
 		homepage = st.Details().GetString(bundle.RelationKeySpaceDashboardId)
-		if homepage == "lastOpened" {
-			homepage = "widgets"
+		if homepage == constant.HomepageLastOpened {
+			homepage = constant.HomepageWidgets
 		}
 	}
 

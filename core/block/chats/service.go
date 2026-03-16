@@ -556,7 +556,8 @@ func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Paylo
 	hasAttachments := len(req.message.Attachments) > 0 || len(req.message.LinkBlockTargetIds()) > 0
 
 	return &chatpush.Payload{
-		SpaceId:     req.spaceId,
+		SpaceId: req.spaceId,
+		// TODO: add SpaceType
 		SpaceUxType: int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceUxType)),
 		SenderId:    accountId,
 		Type:        chatpush.ChatMessage,

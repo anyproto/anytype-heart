@@ -45,7 +45,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		detailsSvc.EXPECT().SetWorkspaceDashboardId(nil, workspaceId, "").Return("", nil)
 
 		// when
-		s.unsetDashboardIdIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
+		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
 
 		// then
 		detailsSvc.AssertCalled(t, "SetWorkspaceDashboardId", nil, workspaceId, "")
@@ -75,7 +75,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		})
 
 		// when
-		s.unsetDashboardIdIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
+		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
 
 		// then
 		detailsSvc.AssertNotCalled(t, "SetWorkspaceDashboardId", mock.Anything, mock.Anything, mock.Anything)
@@ -104,7 +104,7 @@ func TestService_unsetDashboardIdIfNeeded(t *testing.T) {
 		})
 
 		// when
-		s.unsetDashboardIdIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
+		s.unsetHomepageIfNeeded(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, spc)
 
 		// then
 		detailsSvc.AssertNotCalled(t, "SetWorkspaceDashboardId", mock.Anything, mock.Anything, mock.Anything)

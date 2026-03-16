@@ -81,6 +81,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 	if err != nil {
 		return "", "", fmt.Errorf("createOneToOneFromInbox: %w", err)
 	}
+	// TODO: do we need this call? We already set these details on CreateOneToOne
 	err = s.spaceService.TechSpace().SpaceViewSetData(ctx, newSpace.Id(),
 		domain.NewDetails().
 			SetString(bundle.RelationKeyName, identityProfileWithKey.IdentityProfile.Name).
@@ -102,7 +103,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 	}
 
 	details := []domain.Detail{
-		{Key: bundle.RelationKeySpaceUxType, Value: domain.Float64(float64(model.SpaceUxType_OneToOne))},
+		{Key: bundle.RelationKeySpaceUxType, Value: domain.Float64(float64(model.SpaceUxType_OneToOne))}, // TODO: remove
 		{Key: bundle.RelationKeyName, Value: domain.String(identityProfileWithKey.IdentityProfile.Name)},
 		{Key: bundle.RelationKeyIconImage, Value: domain.String(identityProfileWithKey.IdentityProfile.IconCid)},
 		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},

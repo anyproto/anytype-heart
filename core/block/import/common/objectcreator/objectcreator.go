@@ -322,6 +322,7 @@ func (oc *ObjectCreator) deleteFile(spaceId string, hash string) {
 	}
 }
 
+// TODO: set home page to workspace
 func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []domain.Detail

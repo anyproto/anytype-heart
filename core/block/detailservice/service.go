@@ -57,7 +57,6 @@ type Service interface {
 	ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 
 	SetSpaceInfo(spaceId string, details *domain.Details) error
-	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
 
 	SetIsFavorite(objectId string, isFavorite bool) error
 	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error

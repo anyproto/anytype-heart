@@ -10,10 +10,10 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -141,10 +141,11 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 	resp := s.mw.WorkspaceCreate(ctx, &pb.RpcWorkspaceCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():             pbtypes.String(s.sanitizedString(*request.Name)),
-				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(iconOption.Int64())),
-				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String(editor.HomepageWidgets),
-				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_Data)),
+				bundle.RelationKeyName.String():        pbtypes.String(s.sanitizedString(*request.Name)),
+				bundle.RelationKeyIconOption.String():  pbtypes.Float64(float64(iconOption.Int64())),
+				bundle.RelationKeyHomepage.String():    pbtypes.String(constant.HomepageWidgets),
+				bundle.RelationKeySpaceUxType.String(): pbtypes.Float64(float64(model.SpaceUxType_Data)), // TODO: remove
+				bundle.RelationKeySpaceType.String():   pbtypes.Float64(float64(model.SpaceType_SpaceTypeRegular)),
 			},
 		},
 	})
@@ -231,7 +232,7 @@ func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimo
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return apimodel.Space{
-		Object:      spaceUxType,
+		Object:      spaceUxType, // TODO: use spaceType to calculate "space" or "chat" value
 		Id:          spaceId,
 		Name:        name,
 		Icon:        icon,
