@@ -324,8 +324,8 @@ func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, invit
 	}
 
 	// Backward compatibility: derive spaceType from spaceUxType for old invites
-	if model.SpaceType(invitePayload.SpaceType) == model.SpaceType_SpaceTypeUnknown {
-		switch model.SpaceUxType(invitePayload.SpaceUxType) {
+	if model.SpaceType(invitePayload.SpaceType) == model.SpaceType_SpaceTypeUnknown { // nolint:gosec
+		switch model.SpaceUxType(invitePayload.SpaceUxType) { // nolint:gosec
 		case model.SpaceUxType_Chat, model.SpaceUxType_Data:
 			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeRegular)
 		case model.SpaceUxType_Stream:
