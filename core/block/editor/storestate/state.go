@@ -250,9 +250,19 @@ func (ss *StoreState) applyModify(ctx context.Context, ch Change) (err error) {
 		exec = coll.UpdateId
 	}
 
-	// TODO: check result?
-	_, err = exec(ctx, modify.DocumentId, mod)
-	return
+	_, err = exec(ctx, modify.DocumentId, wrapModifierErrors(mod))
+	if err != nil {
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			return nil
+		}
+		// An error from the modifier
+		if errors.Is(err, errModifier) {
+			return err
+		}
+		// An error from any-store
+		return fmt.Errorf("modify document: %w", errors.Join(ErrCritical, err))
+	}
+	return nil
 }
 
 func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {

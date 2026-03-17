@@ -207,6 +207,25 @@ func TestApplyChangeSetErrorHandling(t *testing.T) {
 		require.NoError(t, tx.Commit())
 	})
 
+	t.Run("modify on non-existent document is skipped", func(t *testing.T) {
+		handler := DefaultHandler{Name: "testColl"}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+
+		build := &Builder{}
+		// Modify a document that doesn't exist
+		assert.NoError(t, build.Modify("testColl", "nonexistent", nil, pb.ModifyOp_Set, nil))
+
+		err = tx.ApplyChangeSet(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.NoError(t, err)
+		require.NoError(t, tx.Commit())
+	})
+
 	t.Run("ErrValidation is logged and skipped", func(t *testing.T) {
 		handler := &errorHandler{
 			Name:      "testColl",
