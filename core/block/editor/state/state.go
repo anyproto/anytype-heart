@@ -1199,6 +1199,10 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 		return false
 	}
 
+	if s.Details().GetString(bundle.RelationKeyDiscussionId) != "" {
+		return false
+	}
+
 	if root := s.Pick(s.RootId()); root != nil {
 		for _, chId := range root.Model().ChildrenIds {
 			if chId == HeaderLayoutID ||
