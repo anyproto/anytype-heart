@@ -197,7 +197,6 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 			},
 		}
 	}
-	// TODO: GO-6752 add SpaceType to response
 	return &pb.RpcSpaceInviteViewResponse{
 		CreatorName:       inviteView.CreatorName,
 		CreatorIconCid:    inviteView.CreatorIconCid,
@@ -206,6 +205,7 @@ func (mw *Middleware) SpaceInviteView(cctx context.Context, req *pb.RpcSpaceInvi
 		SpaceIconCid:      inviteView.SpaceIconCid,
 		SpaceIconOption:   uint32(inviteView.SpaceIconOption),
 		SpaceUxType:       uint32(inviteView.SpaceUxType),
+		SpaceType:         inviteView.SpaceType,
 		IsGuestUserInvite: inviteView.IsGuestUserInvite(),
 		// nolint: gosec
 		InviteType: model.InviteType(inviteView.InviteType),

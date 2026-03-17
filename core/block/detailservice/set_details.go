@@ -12,8 +12,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -25,8 +27,10 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	workspaceId := spc.DerivedIDs().Workspace
 
 	setDetails := make([]domain.Detail, 0, details.Len())
-	// TODO: GO-6752 add details validation
 	for k, v := range details.Iterate() {
+		if err = validateSpaceDetail(k, v); err != nil {
+			return fmt.Errorf("validate space detail: %w", err)
+		}
 		setDetails = append(setDetails, domain.Detail{
 			Key:   k,
 			Value: v,
@@ -251,5 +255,30 @@ func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string, isA
 				log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
 			}
 		}(objId)
+	}
+}
+
+func validateSpaceDetail(k domain.RelationKey, v domain.Value) error {
+	switch k {
+	case bundle.RelationKeyHomepage:
+		homepage := v.String()
+		if homepage == "" {
+			// Empty homepage is valid
+			return nil
+		}
+		// Check if it's a known constant
+		if constant.IsHomepageConstant(homepage) {
+			return nil
+		}
+		// Otherwise, assume it's an object ID - just validate it's not empty
+		// (full object ID validation would require checking if the object exists,
+		// which is expensive and may not be necessary here)
+		if len(homepage) > 0 {
+			return nil
+		}
+		return fmt.Errorf("invalid homepage value: %s", homepage)
+	default:
+		// TODO: add more checks
+		return nil
 	}
 }

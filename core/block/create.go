@@ -21,6 +21,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/util/constant"
 
 	"go.uber.org/zap"
 )
@@ -81,7 +82,6 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 	if err != nil {
 		return "", "", fmt.Errorf("createOneToOneFromInbox: %w", err)
 	}
-	// TODO: GO-6752 do we need this call? We already set these details on CreateOneToOne
 	err = s.spaceService.TechSpace().SpaceViewSetData(ctx, newSpace.Id(),
 		domain.NewDetails().
 			SetString(bundle.RelationKeyName, identityProfileWithKey.IdentityProfile.Name).
@@ -169,16 +169,27 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]domain.Detail, 0, len(req.Details.GetFields()))
+		hasHomepage := false
 		for k, v := range req.Details.GetFields() {
 			details = append(details, domain.Detail{
 				Key:   domain.RelationKey(k),
 				Value: domain.ValueFromProto(v),
 			})
+			if k == bundle.RelationKeyHomepage.String() {
+				hasHomepage = true
+			}
 		}
 		details = append(details, domain.Detail{
 			Key:   bundle.RelationKeyAnalyticsSpaceId,
 			Value: domain.String(metrics.GenerateAnalyticsId()),
 		})
+		// Set the default homepage for regular spaces if not provided
+		if !hasHomepage && spaceDescription.SpaceType == model.SpaceType_SpaceTypeRegular {
+			details = append(details, domain.Detail{
+				Key:   bundle.RelationKeyHomepage,
+				Value: domain.String(constant.HomepageWidgets),
+			})
+		}
 		return b.SetDetails(nil, details, true)
 	})
 	if err != nil {

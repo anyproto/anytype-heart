@@ -22089,6 +22089,7 @@ Available undo/redo operations
 | creatorIconCid | [string](#string) |  |  |
 | spaceIconOption | [uint32](#uint32) |  |  |
 | spaceUxType | [uint32](#uint32) |  |  |
+| spaceType | [model.SpaceType](#anytype-model-SpaceType) |  |  |
 | isGuestUserInvite | [bool](#bool) |  | deprecated, use inviteType |
 | inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 
@@ -32681,7 +32682,7 @@ scenario: Precondition: user A and user B opened the same block
 | name | [string](#string) |  |  |
 | avatar | [string](#string) |  |  |
 | address | [string](#string) |  |  |
-| spaceDashboardId | [string](#string) |  |  |
+| spaceDashboardId | [string](#string) |  | aka homepage |
 | profileId | [string](#string) |  |  |
 | analyticsId | [string](#string) |  |  |
 | startingPage | [string](#string) |  | deprecated |

@@ -125,6 +125,11 @@ func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags
 			rootObjects = append(rootObjects, snapshot.Id)
 			continue
 		}
+		// Check homepage first (new exports), then fallback to spaceDashboardId (old exports)
+		if homepage := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyHomepage); homepage != "" {
+			rootObjects = append(rootObjects, homepage)
+			continue
+		}
 		if ids := snapshot.Snapshot.Data.Details.GetStringList(bundle.RelationKeySpaceDashboardId); len(ids) > 0 {
 			rootObjects = append(rootObjects, ids...)
 			continue
