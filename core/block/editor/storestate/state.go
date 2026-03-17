@@ -206,14 +206,14 @@ func (ss *StoreState) applyCreate(ctx context.Context, ch Change) (err error) {
 	// insert
 	coll, err := ss.Collection(ctx, create.Collection)
 	if err != nil {
-		return fmt.Errorf("get collection: %w", errors.Join(ErrCritical, err))
+		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
 
 	if err = coll.Insert(ctx, value); err != nil {
 		if errors.Is(err, anystore.ErrDocExists) {
 			return ErrIgnore
 		}
-		return fmt.Errorf("insert document: %w", errors.Join(ErrCritical, err))
+		return errors.Join(ErrCritical, fmt.Errorf("insert document: %w", err))
 	}
 	return
 }
@@ -240,7 +240,7 @@ func (ss *StoreState) applyModify(ctx context.Context, ch Change) (err error) {
 
 	coll, err := ss.Collection(ctx, modify.Collection)
 	if err != nil {
-		return fmt.Errorf("get collection: %w", errors.Join(ErrCritical, err))
+		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
 
 	var exec func(ctx context.Context, id any, m query.Modifier) (anystore.ModifyResult, error)
@@ -260,7 +260,7 @@ func (ss *StoreState) applyModify(ctx context.Context, ch Change) (err error) {
 			return err
 		}
 		// An error from any-store
-		return fmt.Errorf("modify document: %w", errors.Join(ErrCritical, err))
+		return errors.Join(ErrCritical, fmt.Errorf("modify document: %w", err))
 	}
 	return nil
 }
@@ -280,14 +280,14 @@ func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
 
 	coll, err := ss.Collection(ctx, del.Collection)
 	if err != nil {
-		return fmt.Errorf("get collection: %w", errors.Join(ErrCritical, err))
+		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
 	switch mode {
 	case DeleteModeMark:
 		payload := ss.newDeleteMark(del.DocumentId)
 		fillRootOrder(ss.arena, payload, ch.Order)
 		if err = coll.UpdateOne(ctx, payload); err != nil {
-			return fmt.Errorf("update document: %w", errors.Join(ErrCritical, err))
+			return errors.Join(ErrCritical, fmt.Errorf("update document: %w", err))
 		}
 		return nil
 	case DeleteModeDelete:
@@ -296,7 +296,7 @@ func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
 			return nil
 		}
 		if err != nil {
-			return fmt.Errorf("delete document: %w", errors.Join(ErrCritical, err))
+			return errors.Join(ErrCritical, fmt.Errorf("delete document: %w", err))
 		}
 		return nil
 	}
