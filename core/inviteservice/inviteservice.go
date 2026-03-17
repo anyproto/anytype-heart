@@ -323,6 +323,21 @@ func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, invit
 			return nil, getInviteError("store creator icon encryption keys", err)
 		}
 	}
+
+	// Backward compatibility: derive spaceType from spaceUxType for old invites
+	if model.SpaceType(invitePayload.SpaceType) == model.SpaceType_SpaceTypeUnknown {
+		switch model.SpaceUxType(invitePayload.SpaceUxType) {
+		case model.SpaceUxType_Chat, model.SpaceUxType_Data:
+			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeRegular)
+		case model.SpaceUxType_Stream:
+			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeChat)
+		case model.SpaceUxType_OneToOne:
+			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeOneToOne)
+		default:
+			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeRegular)
+		}
+	}
+
 	return &invitePayload, nil
 }
 
@@ -411,16 +426,21 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateI
 
 func (i *inviteService) GetExistingGuestUserInvite(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
 	var fileCid, fileKey string
-	var spaceType model.SpaceUxType
+	var spaceType model.SpaceType
+	var spaceUxType model.SpaceUxType
 	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		spaceType = spaceView.GetSpaceDescription().SpaceUxType
+		desc := spaceView.GetSpaceDescription()
+		spaceType = desc.SpaceType
+		spaceUxType = desc.SpaceUxType
 		return nil
 	})
 	if err != nil {
 		return domain.InviteInfo{}, getInviteError("get space type", err)
 	}
-	// TODO: GO-6752 handle Streams
-	if spaceType != model.SpaceUxType_Stream {
+	// Check if this is a chat space (Stream in old UX type, Chat in new SpaceType)
+	isChat := spaceType == model.SpaceType_SpaceTypeChat ||
+		(spaceType == model.SpaceType_SpaceTypeUnknown && spaceUxType == model.SpaceUxType_Stream)
+	if !isChat {
 		return domain.InviteInfo{}, ErrInvalidSpaceType
 	}
 	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {

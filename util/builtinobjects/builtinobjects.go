@@ -533,22 +533,24 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 }
 
 func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (homepage string) {
-	newId, oldId := constant.HomepageWidgets, constant.HomepageWidgets
-	// TODO: GO-6752 replace SpaceDashboard with Homepage in Profile proto model
+	oldId := constant.HomepageWidgets
 	if profile != nil && profile.SpaceDashboardId != "" {
 		oldId = profile.SpaceDashboardId
 	}
 
-	if oldId != constant.HomepageWidgets {
+	switch oldId {
+	case constant.HomepageWidgets, constant.HomepageLastOpened:
+		homepage = constant.HomepageWidgets
+	case constant.HomepageGraph:
+		homepage = constant.HomepageGraph
+	default:
 		var err error
-		newId, err = b.getNewObjectId(spaceId, oldId)
+		homepage, err = b.getNewObjectId(spaceId, oldId)
 		if err != nil {
 			log.Errorf("failed to get new id of home page object: %v", err)
-		} else {
-			newId = constant.HomepageWidgets
+			homepage = constant.HomepageWidgets
 		}
 	}
-	homepage = newId
 
 	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyHomepage: domain.String(homepage),
@@ -560,8 +562,7 @@ func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId strin
 		}
 
 		if profile.Avatar != "" {
-			var err error
-			newId, err = b.getNewAvatarId(spaceId, profile.Avatar)
+			newId, err := b.getNewAvatarId(spaceId, profile.Avatar)
 			if err != nil {
 				log.Errorf("failed to get new id of workspace icon object: %v", err)
 			} else {

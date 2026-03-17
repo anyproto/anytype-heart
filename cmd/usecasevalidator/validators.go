@@ -129,7 +129,7 @@ func validateDetails(s *common.SnapshotModel, info *useCaseInfo, fixConfig FixCo
 				}
 			}
 
-			if k == bundle.RelationKeySpaceDashboardId && (val == constant.HomepageLastOpened) {
+			if k == bundle.RelationKeySpaceDashboardId && constant.IsHomepageConstant(val) {
 				continue
 			}
 
