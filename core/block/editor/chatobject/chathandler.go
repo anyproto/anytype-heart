@@ -207,7 +207,7 @@ func (d *ChatHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.KeyModi
 			case chatmodel.PinnedKey:
 				d.subscription.UpdatePinned(msg)
 			default:
-				return nil, false, fmt.Errorf("invalid key path %s", key.KeyPath)
+				// Forward compatibility: unknown key path, skip side effects
 			}
 		}
 

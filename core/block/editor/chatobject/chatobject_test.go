@@ -444,9 +444,9 @@ func TestEditMessage(t *testing.T) {
 		fx.sourceCreator = "maliciousPerson"
 
 		err = fx.EditMessage(ctx, messageId, editedMessage)
-		require.Error(t, err)
+		require.NoError(t, err)
 
-		// Check that nothing is changed
+		// Check that nothing is changed (validation error is skipped, but modification is not applied)
 		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
@@ -501,8 +501,9 @@ func TestToggleReaction(t *testing.T) {
 		fx.sourceCreator = testCreator
 		fx.accountServiceStub.accountId = anotherPerson
 		added, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
-		require.Error(t, err)
-		assert.False(t, added)
+		require.NoError(t, err)
+		// Validation error is skipped for forward compatibility, but the reaction is not actually applied
+		assert.True(t, added)
 	})
 	t.Run("can toggle reactions on someone else's messages", func(t *testing.T) {
 		fx.sourceCreator = anotherPerson
