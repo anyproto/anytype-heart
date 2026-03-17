@@ -22,7 +22,8 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		a.DefaultTemplateId == b.DefaultTemplateId &&
 		a.DefaultObjectTypeId == b.DefaultObjectTypeId &&
 		a.WrapContent == b.WrapContent &&
-		a.ListSize == b.ListSize
+		a.ListSize == b.ListSize &&
+		a.AlternateRows == b.AlternateRows
 
 	if isEqual {
 		return nil
@@ -42,6 +43,7 @@ func diffViewFields(a, b *model.BlockContentDataviewView) *pb.EventBlockDataview
 		EndRelationKey:        b.EndRelationKey,
 		WrapContent:           b.WrapContent,
 		ListSize:              b.ListSize,
+		AlternateRows:         b.AlternateRows,
 	}
 }
 
@@ -246,6 +248,7 @@ func (d *Dataview) ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate) {
 		view.EndRelationKey = f.EndRelationKey
 		view.WrapContent = f.WrapContent
 		view.ListSize = f.ListSize
+		view.AlternateRows = f.AlternateRows
 	}
 
 	{
