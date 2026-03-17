@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/util/constant"
 )
 
 type SpaceImport struct {
@@ -106,7 +107,6 @@ func (s *SpaceImport) getObjectsFromWidget(widgetSnapshot *common.Snapshot, oldT
 	return objectTypesToImport, objectsInWidget, nil
 }
 
-// TODO: GO-6752 add home object and validation to constant values like 'lastOpened' and 'widgets'
 func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags, objectsNotInWidget []*common.Snapshot) []string {
 	var rootObjects []string
 	for _, snapshot := range objectsNotInWidget {
@@ -127,7 +127,9 @@ func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags
 		}
 		// Check homepage first (new exports), then fallback to spaceDashboardId (old exports)
 		if homepage := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyHomepage); homepage != "" {
-			rootObjects = append(rootObjects, homepage)
+			if !constant.IsHomepageConstant(homepage) {
+				rootObjects = append(rootObjects, homepage)
+			}
 			continue
 		}
 		if ids := snapshot.Snapshot.Data.Details.GetStringList(bundle.RelationKeySpaceDashboardId); len(ids) > 0 {

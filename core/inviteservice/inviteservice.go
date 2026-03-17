@@ -288,7 +288,6 @@ func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string,
 	return inviteInfo, err
 }
 
-// TODO: GO-6752 maybe we should derive spaceType from spaceUXType and vice versa
 func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (md *model.InvitePayload, err error) {
 	invite, err := i.inviteStore.GetInvite(ctx, inviteCid, inviteFileKey)
 	if err != nil {
