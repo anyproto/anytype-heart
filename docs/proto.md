@@ -32969,6 +32969,7 @@ scenario: Precondition: user A and user B opened the same block
 | reindexChats | [int32](#int32) |  |  |
 | reindexFulltextChatMessages | [int32](#int32) |  |  |
 | invalidateObjectsIndex | [int32](#int32) |  |  |
+| reindexDiscussions | [int32](#int32) |  |  |
 
 
 
