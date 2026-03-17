@@ -211,6 +211,41 @@ func TestTextImpl_Merge(t *testing.T) {
 		assert.Equal(t, []string{"ch1", "ch2"}, r.Pick("1").Model().ChildrenIds)
 	})
 
+	t.Run("should keep children indentation when first is deeper than second", func(t *testing.T) {
+		// Structure:
+		//   root
+		//   ├── A
+		//   │   └── SubA (first - visually above B)
+		//   └── B (second - being merged into SubA)
+		//       ├── Ch1
+		//       └── Ch2
+		//
+		// After merge B into SubA, Ch1 and Ch2 should become children of A
+		// (B's previous sibling) to retain their indentation level.
+		sb := smarttest.New("test")
+		subA := newTextBlock("subA", "sub")
+		b := newTextBlock("B", "two")
+		b.Model().ChildrenIds = []string{"ch1", "ch2"}
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"A", "B"}})).
+			AddBlock(simple.New(&model.Block{Id: "A", ChildrenIds: []string{"subA"}})).
+			AddBlock(subA).
+			AddBlock(b).
+			AddBlock(newTextBlock("ch1", "child1")).
+			AddBlock(newTextBlock("ch2", "child2"))
+		sender := mock_event.NewMockSender(t)
+		tb := NewText(sb, nil, sender)
+
+		err := tb.Merge(nil, "subA", "B")
+		require.NoError(t, err)
+
+		r := sb.NewState()
+		assert.False(t, r.Exists("B"))
+		assert.Equal(t, "subtwo", r.Pick("subA").Model().GetText().Text)
+		// Ch1 and Ch2 should be children of A (B's previous sibling), not subA
+		assert.Equal(t, []string{"subA", "ch1", "ch2"}, r.Pick("A").Model().ChildrenIds)
+		assert.Empty(t, r.Pick("subA").Model().ChildrenIds)
+	})
+
 	t.Run("shouldn't merge blocks inside header block", func(t *testing.T) {
 		sb := smarttest.New("test")
 		tb1 := newTextBlock("1", "one")
