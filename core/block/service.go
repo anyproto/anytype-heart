@@ -370,7 +370,8 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
-		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
+		hasDiscussion := s.Details().GetString(bundle.RelationKeyDiscussionId) != ""
+		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty) && !hasDiscussion
 		return nil
 	})
 	if err != nil {
