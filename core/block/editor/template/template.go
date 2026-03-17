@@ -604,25 +604,4 @@ var WithBookmarkBlocks = func(s *state.State) {
 			s.AddBundledRelationLinks(domain.RelationKey(k))
 		}
 	}
-
-	for _, rk := range bookmarkRelationKeys {
-		if b := s.Pick(rk); b != nil {
-			if ok := s.Unlink(b.Model().Id); !ok {
-				log.Errorf("can't unlink block %s", b.Model().Id)
-				return
-			}
-			continue
-		}
-
-		ok := s.Add(simple.New(makeRelationBlock(rk)))
-		if !ok {
-			log.Errorf("can't add block %s", rk)
-			return
-		}
-	}
-
-	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeys...); err != nil {
-		log.Errorf("insert relation blocks: %v", err)
-		return
-	}
 }

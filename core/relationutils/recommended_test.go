@@ -193,6 +193,30 @@ func TestFillRecommendedRelations(t *testing.T) {
 		assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
 		assert.Len(t, keys, 3+4+3) // 3 featured + 4 sidebar + 3 hidden
 	})
+
+	t.Run("recommendedRelations relations of Bookmark", func(t *testing.T) {
+		// given
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyRecommendedRelations: domain.StringList([]string{
+				bundle.RelationKeyType.BundledURL(),
+				bundle.RelationKeyTag.BundledURL(),
+				bundle.RelationKeyCreatedDate.BundledURL(),
+			}),
+		})
+
+		// when
+		keys, isAlreadyFilled, err := FillRecommendedRelations(nil, &mockDeriver{}, details, bundle.TypeKeyBookmark)
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, isAlreadyFilled)
+		assert.Equal(t, buildRelationIds(defaultRecommendedRelationKeys), details.GetStringList(bundle.RelationKeyRecommendedRelations))
+		assert.Equal(t, buildRelationIds(defaultBookmarkFeaturedRelationKeys), details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+		assert.Equal(t, defaultRecHiddenRelIds, details.GetStringList(bundle.RelationKeyRecommendedHiddenRelations))
+		assert.Len(t, keys, 4+3+3) // 4 featured + 3 sidebar + 3 hidden
+
+		assert.Equal(t, int64(1), details.GetInt64(bundle.RelationKeyHeaderRelationsLayout))
+	})
 }
 
 func buildRelationIds(keys []domain.RelationKey) []string {
