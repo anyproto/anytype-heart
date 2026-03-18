@@ -36,6 +36,10 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		spaceId        string
 		startingPageId string
 	)
+
+	// TODO: GO-6752 remove this hack when clients transfer from UXType to SpaceType
+	deriveSpaceTypeIfNeeded(req.Details)
+
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		spaceId, startingPageId, err = bs.CreateWorkspace(cctx, req)
 		if err != nil {
@@ -67,6 +71,20 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 	}
 
 	return response(spaceId, startingPageId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
+}
+
+func deriveSpaceTypeIfNeeded(details *types.Struct) {
+	spaceType := model.SpaceType(pbtypes.GetInt64(details, bundle.RelationKeySpaceType.String())) // nolint:gosec
+	if spaceType == model.SpaceType_SpaceTypeUnknown {
+		uxType := model.SpaceUxType(pbtypes.GetInt64(details, bundle.RelationKeySpaceUxType.String())) // nolint:gosec
+		switch uxType {
+		case model.SpaceUxType_OneToOne:
+			spaceType = model.SpaceType_SpaceTypeOneToOne
+		default:
+			spaceType = model.SpaceType_SpaceTypeRegular
+		}
+		details.Fields[bundle.RelationKeySpaceType.String()] = pbtypes.Int64(int64(spaceType))
+	}
 }
 
 func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {

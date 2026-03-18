@@ -1,6 +1,8 @@
 package spacedomain
 
 import (
+	"errors"
+
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -27,6 +29,25 @@ func (t SpaceType) ToModel() model.SpaceType {
 		return model.SpaceType_SpaceTypeOneToOne
 	default:
 		return model.SpaceType_SpaceTypeUnknown
+	}
+}
+
+func (t SpaceType) String() string {
+	return string(t)
+}
+
+func SpaceTypeFromModel(spaceType model.SpaceType) (SpaceType, error) {
+	switch spaceType {
+	case model.SpaceType_SpaceTypeRegular:
+		return SpaceTypeRegular, nil
+	case model.SpaceType_SpaceTypeTech:
+		return SpaceTypeTech, nil
+	case model.SpaceType_SpaceTypeChat:
+		return SpaceTypeChat, nil
+	case model.SpaceType_SpaceTypeOneToOne:
+		return SpaceTypeOneToOne, nil
+	default:
+		return "", errors.New("invalid SpaceType")
 	}
 }
 

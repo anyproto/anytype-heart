@@ -170,6 +170,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
 		details := make([]domain.Detail, 0, len(req.Details.GetFields()))
 		hasHomepage := false
+		hasUxType := false
 		for k, v := range req.Details.GetFields() {
 			details = append(details, domain.Detail{
 				Key:   domain.RelationKey(k),
@@ -177,6 +178,9 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 			})
 			if k == bundle.RelationKeyHomepage.String() {
 				hasHomepage = true
+			}
+			if k == bundle.RelationKeySpaceUxType.String() {
+				hasUxType = true
 			}
 		}
 		details = append(details, domain.Detail{
@@ -188,6 +192,17 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 			details = append(details, domain.Detail{
 				Key:   bundle.RelationKeyHomepage,
 				Value: domain.String(constant.HomepageWidgets),
+			})
+		}
+		// TODO: GO-6752 remove this code when backward compatibility will be unnecessary
+		if !hasUxType {
+			spaceUxType := model.SpaceUxType_Data
+			if spaceDescription.SpaceType == model.SpaceType_SpaceTypeOneToOne {
+				spaceUxType = model.SpaceUxType_OneToOne
+			}
+			details = append(details, domain.Detail{
+				Key:   bundle.RelationKeySpaceUxType,
+				Value: domain.Int64(spaceUxType),
 			})
 		}
 		return b.SetDetails(nil, details, true)
