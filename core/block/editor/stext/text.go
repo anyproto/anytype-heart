@@ -185,8 +185,33 @@ func (t *textImpl) Merge(ctx session.Context, firstId, secondId string) (err err
 	if err = first.Merge(second, mergeOpts...); err != nil {
 		return
 	}
+	// Before unlinking, find second's previous sibling in its parent so we can
+	// re-parent its children at the correct indentation level (GO-6828)
+	secondChildren := second.Model().ChildrenIds
+	secondParent := s.GetParentOf(secondId)
+	var prevSiblingId string
+	if secondParent != nil {
+		secondPos := slice.FindPos(secondParent.Model().ChildrenIds, secondId)
+		if secondPos > 0 {
+			prevSiblingId = secondParent.Model().ChildrenIds[secondPos-1]
+		}
+	}
+
 	s.Unlink(second.Model().Id)
-	first.Model().ChildrenIds = append(first.Model().ChildrenIds, second.Model().ChildrenIds...)
+
+	// Append second's children to its previous sibling so they maintain
+	// their indentation level. If there is no previous sibling, fall back
+	// to appending to the first (target) block.
+	if len(secondChildren) > 0 {
+		if prevSiblingId != "" {
+			prevSibling := s.Get(prevSiblingId)
+			if prevSibling != nil {
+				prevSibling.Model().ChildrenIds = append(prevSibling.Model().ChildrenIds, secondChildren...)
+			}
+		} else {
+			first.Model().ChildrenIds = append(first.Model().ChildrenIds, secondChildren...)
+		}
+	}
 	if err = t.Apply(s); err != nil {
 		return
 	}
