@@ -555,10 +555,9 @@ func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Paylo
 
 	hasAttachments := len(req.message.Attachments) > 0 || len(req.message.LinkBlockTargetIds()) > 0
 
-	// TODO: GO-6752 we add new field to JSON payload. We need to handle it at receiver
 	return &chatpush.Payload{
 		SpaceId:     req.spaceId,
-		SpaceUxType: int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceUxType)),
+		SpaceUxType: int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceUxType)), // TODO: GO-6752 remove
 		SpaceType:   int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceType)),
 		SenderId:    accountId,
 		Type:        chatpush.ChatMessage,
