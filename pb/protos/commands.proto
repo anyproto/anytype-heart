@@ -1426,6 +1426,7 @@ message Rpc {
                 google.protobuf.Struct details = 1; // object details
                 anytype.Rpc.Object.ImportUseCase.Request.UseCase useCase = 2; // use case
                 bool withChat = 3; // deprecated, use spaceUxType
+                bool deleteRestricted = 4; // when true, only owner/admins/original author can delete objects
             }
 
             message Response {

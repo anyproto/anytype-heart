@@ -23464,6 +23464,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | useCase | [Rpc.Object.ImportUseCase.Request.UseCase](#anytype-Rpc-Object-ImportUseCase-Request-UseCase) |  | use case |
 | withChat | [bool](#bool) |  | deprecated, use spaceUxType |
+| deleteRestricted | [bool](#bool) |  | when true, only owner/admins/original author can delete objects |
 
 
 

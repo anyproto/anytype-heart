@@ -155,6 +155,7 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
 	spaceDetails := domain.NewDetailsFromProto(req.Details)
 	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
+	spaceDescription.DeleteRestricted = req.DeleteRestricted
 
 	// when RequestMetadataKey is passed it means we create from a deeplink / QR code
 	if spaceDescription.OneToOneRequestMetadataKey != "" {

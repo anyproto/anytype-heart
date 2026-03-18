@@ -6,6 +6,7 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -105,7 +106,11 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 
 func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
 	var spaceType = spacedomain.SpaceTypeRegular
-	coreSpace, err := s.spaceCore.Create(ctx, spaceType, s.repKey, s.AccountMetadataPayload())
+	var options *aclrecordproto.AclSpaceOptions
+	if description != nil && description.DeleteRestricted {
+		options = &aclrecordproto.AclSpaceOptions{DeleteRestricted: true}
+	}
+	coreSpace, err := s.spaceCore.Create(ctx, spaceType, s.repKey, s.AccountMetadataPayload(), options)
 	if err != nil {
 		return nil, err
 	}

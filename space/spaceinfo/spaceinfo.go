@@ -140,6 +140,7 @@ type SpaceDescription struct {
 	OneToOneIdentity           string
 	OneToOneRequestMetadataKey string
 	OneToOneInboxSentStatus    OneToOneInboxSentStatus
+	DeleteRestricted           bool
 }
 
 func NewSpaceDescriptionFromDetails(details *domain.Details) SpaceDescription {

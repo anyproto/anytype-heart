@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/app/ocache"
 	"github.com/anyproto/any-sync/commonspace"
+	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/spacepayloads"
 	"go.uber.org/zap"
 
@@ -68,7 +69,7 @@ type PoolManager interface {
 }
 
 type SpaceCoreService interface {
-	Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (*AnySpace, error)
+	Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte, options *aclrecordproto.AclSpaceOptions) (*AnySpace, error)
 	Derive(ctx context.Context, spaceType spacedomain.SpaceType) (space *AnySpace, err error)
 	DeriveID(ctx context.Context, spaceType spacedomain.SpaceType) (id string, err error)
 	CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (space *AnySpace, err error)
@@ -182,7 +183,7 @@ func (s *service) DeriveID(ctx context.Context, spaceType spacedomain.SpaceType)
 	return s.commonSpace.DeriveId(ctx, payload)
 }
 
-func (s *service) Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte) (container *AnySpace, err error) {
+func (s *service) Create(ctx context.Context, spaceType spacedomain.SpaceType, replicationKey uint64, metadataPayload []byte, options *aclrecordproto.AclSpaceOptions) (container *AnySpace, err error) {
 	metadataPrivKey, _, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return nil, fmt.Errorf("generate metadata key: %w", err)
@@ -195,6 +196,7 @@ func (s *service) Create(ctx context.Context, spaceType spacedomain.SpaceType, r
 		SpaceType:      string(spaceType),
 		ReplicationKey: replicationKey,
 		Metadata:       metadataPayload,
+		Options:        options,
 	}
 	id, err := s.commonSpace.CreateSpace(ctx, payload)
 	if err != nil {
