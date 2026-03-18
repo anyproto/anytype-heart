@@ -24,11 +24,12 @@ jobs:
     runs-on: ${{ vars.RUNNER_TEST }}
     env:
       GOPRIVATE: github.com/anyproto
+      GOTOOLCHAIN: local
     steps:
       - name: Install Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           cache: false
           check-latest: true
       - name: git config
