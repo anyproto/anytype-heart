@@ -246,6 +246,53 @@ func TestApplyChangeSetErrorHandling(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, tx.Commit())
 	})
+
+	t.Run("ApplyChangeSetReturnAllErrors returns validation error", func(t *testing.T) {
+		handler := &errorHandler{
+			Name:      "testColl",
+			createErr: fmt.Errorf("validation failed: %w", ErrValidation),
+		}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+
+		build := &Builder{}
+		assert.NoError(t, build.Create("testColl", "1", `{"key":"value1"}`))
+
+		err = tx.ApplyChangeSetReturnAllErrors(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrValidation)
+	})
+
+	t.Run("ApplyChangeSetReturnAllErrors returns unknown handler error", func(t *testing.T) {
+		handler := &errorHandler{
+			Name:      "testColl",
+			createErr: fmt.Errorf("some unknown error from handler"),
+		}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+
+		build := &Builder{}
+		assert.NoError(t, build.Create("testColl", "1", `{"key":"value1"}`))
+
+		err = tx.ApplyChangeSetReturnAllErrors(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.Error(t, err)
+	})
 }
 
 // errorHandler is a test handler that returns configurable errors

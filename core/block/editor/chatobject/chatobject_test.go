@@ -444,9 +444,9 @@ func TestEditMessage(t *testing.T) {
 		fx.sourceCreator = "maliciousPerson"
 
 		err = fx.EditMessage(ctx, messageId, editedMessage)
-		require.NoError(t, err)
+		require.Error(t, err)
 
-		// Check that nothing is changed (validation error is skipped, but modification is not applied)
+		// Check that nothing is changed
 		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
 		require.NoError(t, err)
 		require.Len(t, messagesResp.Messages, 1)
@@ -500,10 +500,8 @@ func TestToggleReaction(t *testing.T) {
 	t.Run("can't toggle someone else's reactions", func(t *testing.T) {
 		fx.sourceCreator = testCreator
 		fx.accountServiceStub.accountId = anotherPerson
-		added, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
-		require.NoError(t, err)
-		// Validation error is skipped for forward compatibility, but the reaction is not actually applied
-		assert.True(t, added)
+		_, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
+		require.Error(t, err)
 	})
 	t.Run("can toggle reactions on someone else's messages", func(t *testing.T) {
 		fx.sourceCreator = anotherPerson
@@ -565,7 +563,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		_ = tx.Rollback()
 	}()
 	order := fx.generateOrderId(tx)
-	err = tx.ApplyChangeSet(storestate.ChangeSet{
+	err = tx.ApplyChangeSetReturnAllErrors(storestate.ChangeSet{
 		Id:        changeId,
 		Order:     order,
 		Changes:   params.Changes,

@@ -136,7 +136,7 @@ func (ss *StoreState) Collection(ctx context.Context, name string) (anystore.Col
 	return ss.db.Collection(ctx, ss.id+name)
 }
 
-func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet) (err error) {
+func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet, returnAllErrors bool) (err error) {
 	for _, ch := range set.Changes {
 		applyErr := ss.applyChange(ctx, Change{
 			Id:        set.Id,
@@ -149,6 +149,10 @@ func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet) (err er
 			continue
 		}
 		if errors.Is(applyErr, ErrCritical) {
+			err = applyErr
+			break
+		}
+		if returnAllErrors {
 			err = applyErr
 			break
 		}
