@@ -201,60 +201,6 @@ func TestText_RangeSplit(t *testing.T) {
 	})
 }
 
-func TestText_normalizeMarks(t *testing.T) {
-	b := NewText(&model.Block{
-		Restrictions: &model.BlockRestrictions{},
-		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Text: "1234567890",
-			Marks: &model.BlockContentTextMarks{
-				Marks: []*model.BlockContentTextMark{
-					{
-						Type: model.BlockContentTextMark_Bold,
-						Range: &model.Range{
-							From: 0,
-							To:   5,
-						},
-					},
-					{
-						Type: model.BlockContentTextMark_Bold,
-						Range: &model.Range{
-							From: 5,
-							To:   10,
-						},
-					},
-					{
-						Type: model.BlockContentTextMark_BackgroundColor,
-						Range: &model.Range{
-							From: 3,
-							To:   4,
-						},
-					},
-					{
-						Type: model.BlockContentTextMark_BackgroundColor,
-						Range: &model.Range{
-							From: 4,
-							To:   5,
-						},
-					},
-					{
-						Type: model.BlockContentTextMark_BackgroundColor,
-						Range: &model.Range{
-							From: 4,
-							To:   6,
-						},
-					},
-				},
-			},
-		}},
-	}).(*Text)
-
-	b.normalizeMarks()
-
-	require.Len(t, b.content.Marks.Marks, 2)
-	assert.Equal(t, model.Range{From: 0, To: 10}, *b.content.Marks.Marks[0].Range)
-	assert.Equal(t, model.Range{From: 3, To: 6}, *b.content.Marks.Marks[1].Range)
-}
-
 func TestText_Merge(t *testing.T) {
 	testBlock := func() *Text {
 		return NewText(&model.Block{

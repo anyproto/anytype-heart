@@ -62,3 +62,26 @@ func markEq(m1, m2 *model.BlockContentTextMark) bool {
 	}
 	return true
 }
+
+func mergeAdjacentMarks(marks []*model.BlockContentTextMark) []*model.BlockContentTextMark {
+	sort.Sort(sortedMarks(marks))
+	for i := 0; i < len(marks); i++ {
+		if i+1 == len(marks) {
+			break
+		}
+		m := marks[i]
+		sm := marks[i+1]
+		if m.Type == sm.Type && m.Param == sm.Param && m.Range.To >= sm.Range.From && isMergeableMarkType(m.Type) {
+			m.Range.To = sm.Range.To
+			marks[i+1] = nil
+			marks = append(marks[:i+1], marks[i+2:]...)
+			i = -1
+		}
+	}
+
+	return marks
+}
+
+func isMergeableMarkType(markType model.BlockContentTextMarkType) bool {
+	return markType != model.BlockContentTextMark_Emoji
+}
