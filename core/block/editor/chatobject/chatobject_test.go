@@ -461,6 +461,44 @@ func TestEditMessage(t *testing.T) {
 
 }
 
+func TestDeleteMessage(t *testing.T) {
+	t.Run("delete own message", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		inputMessage := givenComplexMessage()
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.NoError(t, err)
+
+		err = fx.DeleteMessage(ctx, messageId)
+		require.NoError(t, err)
+
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
+		require.NoError(t, err)
+		require.Len(t, messagesResp.Messages, 0)
+	})
+
+	t.Run("delete other's message", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		inputMessage := givenComplexMessage()
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.NoError(t, err)
+
+		fx.sourceCreator = "maliciousPerson"
+
+		err = fx.DeleteMessage(ctx, messageId)
+		require.Error(t, err)
+
+		// Check that message is not deleted
+		fx.sourceCreator = testCreator
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
+		require.NoError(t, err)
+		require.Len(t, messagesResp.Messages, 1)
+	})
+}
+
 func TestToggleReaction(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)
