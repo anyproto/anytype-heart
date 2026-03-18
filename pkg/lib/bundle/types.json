@@ -519,12 +519,12 @@
       "DiscussionObject"
     ],
     "iconColor": 7,
-    "iconName": "discussion",
+    "iconName": "chatbox-ellipses",
     "hidden": true,
     "layout": "discussion",
     "relations": [
       "tag"
     ],
-    "revision": 1
+    "revision": 2
   }
 ]

@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const TypeChecksum = "b7239c088635742d89a6c58a20a19eb9fd757d172f7efafc15b2eebc8ef8f4c5"
+const TypeChecksum = "e8960524577bd1c93cc4c622b7fd2287eef37db55501400e0c3e00cae7041cf0"
 const (
 	TypePrefix = "_ot"
 )
@@ -178,13 +178,13 @@ var (
 			Description:   "",
 			Hidden:        true,
 			IconColor:     7,
-			IconName:      "discussion",
+			IconName:      "chatbox-ellipses",
 			Layout:        model.ObjectType_discussion,
 			Name:          "Discussion",
 			PluralName:    "Discussions",
 			Readonly:      true,
 			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
-			Revision:      1,
+			Revision:      2,
 			Types:         []model.SmartBlockType{model.SmartBlockType_DiscussionObject},
 			Url:           TypePrefix + "discussion",
 		},
