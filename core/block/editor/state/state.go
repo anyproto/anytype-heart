@@ -361,7 +361,7 @@ func (s *State) UnlinkAll(ids []string) {
 	// Stop early once all ids have been accounted for.
 	remaining := len(removeSet)
 	var parentIds []string
-	s.Iterate(func(b simple.Block) bool {
+	_ = s.Iterate(func(b simple.Block) bool {
 		found := 0
 		for _, cid := range b.Model().ChildrenIds {
 			if _, ok := removeSet[cid]; ok {
@@ -383,14 +383,9 @@ func (s *State) UnlinkAll(ids []string) {
 			continue
 		}
 		pm := parent.Model()
-		n := 0
-		for _, cid := range pm.ChildrenIds {
-			if _, ok := removeSet[cid]; !ok {
-				pm.ChildrenIds[n] = cid
-				n++
-			}
+		for _, id := range ids {
+			pm.ChildrenIds = slice.RemoveMut(pm.ChildrenIds, id)
 		}
-		pm.ChildrenIds = pm.ChildrenIds[:n]
 	}
 }
 
