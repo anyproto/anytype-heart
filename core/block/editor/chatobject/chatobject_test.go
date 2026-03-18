@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -151,7 +152,7 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 	db, err := provider.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
-	object := New(sb, accountService, db, repo, subscriptions, nil, objectStore, nil, nil, debugstat.NewNoOp())
+	object := New(sb, accountService, db, repo, subscriptions, nil, objectStore, nil, nil, debugstat.NewNoOp(), bundle.TypeKeyChatDerived, model.ObjectType_chatDerived)
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{

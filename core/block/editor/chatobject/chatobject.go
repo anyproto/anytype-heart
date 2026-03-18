@@ -100,6 +100,9 @@ type storeObject struct {
 
 	reactionsCounterEpoch int64
 
+	typeKey domain.TypeKey
+	layout  model.ObjectTypeLayout
+
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -162,6 +165,8 @@ func New(
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	statService debugstat.StatService,
+	typeKey domain.TypeKey,
+	layout model.ObjectTypeLayout,
 ) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	bs := basic.NewBasic(sb, spaceIndex, layoutConverter, fileObjectService)
@@ -180,6 +185,8 @@ func New(
 		chatSubscriptionService: chatSubscriptionService,
 		DetailsSettable:         bs,
 		DetailsUpdatable:        bs,
+		typeKey:                 typeKey,
+		layout:                  layout,
 	}
 }
 
@@ -191,8 +198,8 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	// Set object type and layout details for this fake state
 	st := ctx.Doc.(*state.State)
-	st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
-	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
+	st.SetObjectTypeKey(s.typeKey)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(s.layout)))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
 
 	var err error

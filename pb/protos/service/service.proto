@@ -430,6 +430,7 @@ service ClientCommands {
     rpc ChatSubscribeToMessagePreviews (anytype.Rpc.Chat.SubscribeToMessagePreviews.Request) returns (anytype.Rpc.Chat.SubscribeToMessagePreviews.Response);
     rpc ChatUnsubscribeFromMessagePreviews (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Request) returns (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
+    rpc ObjectAddDiscussion (anytype.Rpc.Object.DiscussionAdd.Request) returns (anytype.Rpc.Object.DiscussionAdd.Response);
     rpc ChatReadAll (anytype.Rpc.Chat.ReadAll.Request) returns (anytype.Rpc.Chat.ReadAll.Response);
     rpc ChatReadReactions (anytype.Rpc.Chat.ReadReactions.Request) returns (anytype.Rpc.Chat.ReadReactions.Response);
     rpc ChatSearch (anytype.Rpc.Chat.Search.Request) returns (anytype.Rpc.Chat.Search.Response);

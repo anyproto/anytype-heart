@@ -17,6 +17,7 @@ import (
 type TreeDerivationParams struct {
 	Key      domain.UniqueKey
 	InitFunc InitFunc
+	ParentId string
 }
 
 // TreeCreationParams is a struct for creating a tree
@@ -86,7 +87,7 @@ func (c *objectCache) DeriveTreePayload(ctx context.Context, params payloadcreat
 		}
 		return create, err
 	}
-	treePayload := derivePayload(c.space.Id(), changePayload)
+	treePayload := derivePayload(c.space.Id(), changePayload, params.ParentId)
 	create, err := c.space.TreeBuilder().DeriveTree(context.Background(), treePayload)
 	if err != nil {
 		return storagePayload, err
@@ -97,7 +98,8 @@ func (c *objectCache) DeriveTreePayload(ctx context.Context, params payloadcreat
 // DeriveTreeObject derives a tree object for a given space and smart block type
 func (c *objectCache) DeriveTreeObject(ctx context.Context, params TreeDerivationParams) (sb smartblock.SmartBlock, err error) {
 	payload, err := c.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
-		Key: params.Key,
+		Key:      params.Key,
+		ParentId: params.ParentId,
 	})
 	if err != nil {
 		return nil, err
@@ -111,6 +113,7 @@ func (c *objectCache) DeriveTreeObjectWithAccountSignature(ctx context.Context, 
 	payload, err := c.DeriveTreePayload(ctx, payloadcreator.PayloadDerivationParams{
 		Key:                 params.Key,
 		UseAccountSignature: true,
+		ParentId:            params.ParentId,
 	})
 	if err != nil {
 		return nil, err

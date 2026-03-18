@@ -191,7 +191,7 @@ func collectRelationLinksFromViews(existingRelLinks []*model.RelationLink, views
 
 func buildSorts(isCollection bool, ot *model.ObjectType, oldSorts []*model.BlockContentDataviewSort) []*model.BlockContentDataviewSort {
 	// Special case for the chat type
-	if ot != nil && ot.Key == bundle.TypeKeyChatDerived.String() {
+	if ot != nil && (ot.Key == bundle.TypeKeyChatDerived.String() || ot.Key == bundle.TypeKeyDiscussion.String()) {
 		return defaultChatSort()
 	}
 

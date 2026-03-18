@@ -84,5 +84,9 @@
     "requiredRelations": [
       "relationOptionColor"
     ]
+  },
+  {
+    "id": "discussion",
+    "name": "Discussion"
   }
 ]

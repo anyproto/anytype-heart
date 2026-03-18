@@ -245,7 +245,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			}
 
 			// Force updating via cache
-			if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_chatDerived) {
+			if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_chatDerived) || details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_discussion) {
 				return nil, false, ocache.ErrExists
 			}
 
@@ -340,6 +340,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_chatDeprecated: {},
 	model.ObjectType_spaceView:      {},
 	model.ObjectType_chatDerived:    {},
+	model.ObjectType_discussion:    {},
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {

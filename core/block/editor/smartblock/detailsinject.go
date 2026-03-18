@@ -25,6 +25,7 @@ var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayo
 	smartblock.SmartBlockTypeFile:                 model.ObjectType_file, // deprecated
 	smartblock.SmartBlockTypeDate:                 model.ObjectType_date,
 	smartblock.SmartBlockTypeChatDerivedObject:    model.ObjectType_chatDerived,
+	smartblock.SmartBlockTypeDiscussionObject:     model.ObjectType_discussion,
 	smartblock.SmartBlockTypeChatObjectDeprecated: model.ObjectType_chatDeprecated, // deprecated
 	smartblock.SmartBlockTypeWidget:               model.ObjectType_dashboard,
 	smartblock.SmartBlockTypeWorkspace:            model.ObjectType_dashboard,

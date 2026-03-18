@@ -55,6 +55,7 @@ const (
 	ForceReindexParticipantsCounter  int32 = 1
 	ForceReindexChatsCounter         int32 = 7
 	ForceReindexChatsFulltextCounter int32 = 1
+	ForceReindexDiscussionsCounter   int32 = 1
 
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
 	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
@@ -92,6 +93,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			ReindexDeletedObjects:       0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
 			ReindexParticipants:         ForceReindexParticipantsCounter,
 			ReindexChats:                ForceReindexChatsCounter,
+			ReindexDiscussions:          ForceReindexDiscussionsCounter,
 			ReindexFulltextChatMessages: ForceReindexChatsFulltextCounter,
 			InvalidateObjectsIndex:      ForceInvalidateObjectsIndexCounter,
 		}
@@ -136,6 +138,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.ReindexChats != ForceReindexChatsCounter {
 		flags.chats = true
+	}
+	if checksums.ReindexDiscussions != ForceReindexDiscussionsCounter {
+		flags.discussions = true
 	}
 	if checksums.ReindexFulltextChatMessages != ForceReindexChatsFulltextCounter {
 		flags.messagesFulltext = true
@@ -239,6 +244,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		err = i.reindexChats(ctx, space)
 		if err != nil {
 			log.Error("reindex chats", zap.Error(err))
+		}
+	}
+
+	if flags.discussions {
+		err = i.reindexDiscussions(ctx, space)
+		if err != nil {
+			log.Error("reindex discussions", zap.Error(err))
 		}
 	}
 
@@ -347,6 +359,53 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 		err = i.cleanChatCollection(txn.Context(), db, id, storestate.CollChangeOrders)
 		if err != nil {
 			return fmt.Errorf("open collection: %w", err)
+		}
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	i.reindexIdsIgnoreErr(ctx, space, ids...)
+
+	return nil
+}
+
+func (i *indexer) reindexDiscussions(ctx context.Context, space clientspace.Space) error {
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeDiscussionObject)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	db, err := i.dbProvider.GetCrdtDb(space.Id()).Wait()
+	if err != nil {
+		return fmt.Errorf("get crdt db: %w", err)
+	}
+
+	txn, err := db.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("write tx: %w", err)
+	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	for _, id := range ids {
+		err = i.cleanChatCollection(txn.Context(), db, id, chatobject.CollectionName)
+		if err != nil {
+			return fmt.Errorf("clean discussion messages collection: %w", err)
+		}
+		err = i.cleanChatCollection(txn.Context(), db, id, chatobject.EditorCollectionName)
+		if err != nil {
+			return fmt.Errorf("clean discussion editor collection: %w", err)
+		}
+		err = i.cleanChatCollection(txn.Context(), db, id, storestate.CollChangeOrders)
+		if err != nil {
+			return fmt.Errorf("clean discussion orders collection: %w", err)
 		}
 	}
 
@@ -709,6 +768,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
 		ReindexParticipants:              ForceReindexParticipantsCounter,
 		ReindexChats:                     ForceReindexChatsCounter,
+		ReindexDiscussions:               ForceReindexDiscussionsCounter,
 		ReindexFulltextChatMessages:      ForceReindexChatsFulltextCounter,
 		InvalidateObjectsIndex:           ForceInvalidateObjectsIndexCounter,
 	}

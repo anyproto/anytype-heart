@@ -431,6 +431,21 @@ func TestState_IsEmpty(t *testing.T) {
 	})
 }
 
+func TestState_IsEmpty_WithDiscussion(t *testing.T) {
+	s := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"header"},
+		}),
+		"header": simple.New(&model.Block{Id: "header"}),
+	}).(*State)
+
+	assert.True(t, s.IsEmpty(true))
+
+	s.SetDetail(bundle.RelationKeyDiscussionId, domain.String("discussionObjId"))
+	assert.False(t, s.IsEmpty(true))
+}
+
 func TestState_Descendants(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
