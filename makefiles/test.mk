@@ -5,14 +5,20 @@ ifeq ($(UNAME_S),Darwin)
     CGO_LDFLAGS_DARWIN = CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries
 endif
 
+# synctest graduated from experiment in Go 1.26
+GO_MINOR_VERSION := $(shell go version | sed -E 's/.*go1\.([0-9]+).*/\1/')
+ifeq ($(shell [ $(GO_MINOR_VERSION) -lt 26 ] && echo true),true)
+    GOEXPERIMENT_TEST := GOEXPERIMENT=synctest
+endif
+
 test:
 	@echo 'Running tests...'
 
-	@$(CGO_LDFLAGS_DARWIN) GOEXPERIMENT=synctest ANYTYPE_LOG_NOGELF=1 go test github.com/anyproto/anytype-heart/...
+	@$(CGO_LDFLAGS_DARWIN) $(GOEXPERIMENT_TEST) ANYTYPE_LOG_NOGELF=1 go test github.com/anyproto/anytype-heart/...
 
 test-no-cache:
 	@echo 'Running tests...'
-	@$(CGO_LDFLAGS_DARWIN) GOEXPERIMENT=synctest ANYTYPE_LOG_NOGELF=1 go test -count=1 github.com/anyproto/anytype-heart/...
+	@$(CGO_LDFLAGS_DARWIN) $(GOEXPERIMENT_TEST) ANYTYPE_LOG_NOGELF=1 go test -count=1 github.com/anyproto/anytype-heart/...
 
 test-integration:
 	@echo 'Running integration tests...'
@@ -20,7 +26,7 @@ test-integration:
 
 test-race:
 	@echo 'Running tests with race-detector...'
-	@$(CGO_LDFLAGS_DARWIN) GOEXPERIMENT=synctest ANYTYPE_LOG_NOGELF=1 go test -count=1 -race github.com/anyproto/anytype-heart/...
+	@$(CGO_LDFLAGS_DARWIN) $(GOEXPERIMENT_TEST) ANYTYPE_LOG_NOGELF=1 go test -count=1 -race github.com/anyproto/anytype-heart/...
 
 test-deps:
 	@echo 'Generating test mocks...'
@@ -37,7 +43,7 @@ clear-test-deps:
 test-failed:
 	@echo 'Running tests and showing only failures...'
 	@set -o pipefail; \
-	CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries ANYTYPE_LOG_NOGELF=1 GOEXPERIMENT=synctest go test -v github.com/anyproto/anytype-heart/... 2>&1 | \
+	CGO_LDFLAGS=-Wl,-no_warn_duplicate_libraries ANYTYPE_LOG_NOGELF=1 $(GOEXPERIMENT_TEST) go test -v github.com/anyproto/anytype-heart/... 2>&1 | \
 	awk '/^=== RUN|^--- FAIL:|^FAIL|Error:|error:|panic:|\t.*\.go:[0-9]+:/ { \
 		if ($$0 ~ /^=== RUN/) { current_test = $$0 } \
 		else { if (current_test != "") { print current_test; current_test = "" } print $$0 } \

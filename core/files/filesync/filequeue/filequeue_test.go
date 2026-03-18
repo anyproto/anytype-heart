@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"sync"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -60,7 +59,7 @@ func newTestQueue(t *testing.T) *fixture {
 
 func TestGetById(t *testing.T) {
 	t.Run("lock and unlock with update", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 
@@ -86,7 +85,7 @@ func TestGetById(t *testing.T) {
 	})
 
 	t.Run("lock and unlock without update", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 
@@ -139,7 +138,7 @@ func TestQueue(t *testing.T) {
 
 func TestQueueGetNext(t *testing.T) {
 	t.Run("basic get next", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -157,7 +156,7 @@ func TestQueueGetNext(t *testing.T) {
 	})
 
 	t.Run("basic get next: no item, subscription disabled", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -170,7 +169,7 @@ func TestQueueGetNext(t *testing.T) {
 	})
 
 	t.Run("wait for item", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -194,7 +193,7 @@ func TestQueueGetNext(t *testing.T) {
 	})
 
 	t.Run("get next in parallel", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -231,7 +230,7 @@ func TestQueueGetNext(t *testing.T) {
 	})
 
 	t.Run("get next one by one", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -265,7 +264,7 @@ func TestQueueGetNext(t *testing.T) {
 	})
 
 	t.Run("cancel get next", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx, cancel := context.WithCancel(context.Background())
@@ -282,7 +281,7 @@ func TestQueueGetNext(t *testing.T) {
 
 func TestQueueSchedule(t *testing.T) {
 	t.Run("basic schedule", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -300,7 +299,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("basic schedule: no items, no subscription", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -313,7 +312,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("wait for suitable item", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -334,7 +333,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("skip locked", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -361,7 +360,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("schedule in parallel", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -399,7 +398,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("the second object became scheduled for earlier", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -432,7 +431,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("re-schedule when changed in mid time", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -468,7 +467,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("cancel get next scheduled", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx, cancel := context.WithCancel(context.Background())
@@ -484,7 +483,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("cancel scheduled", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx, cancel := context.WithCancel(context.Background())
@@ -506,7 +505,7 @@ func TestQueueSchedule(t *testing.T) {
 	})
 
 	t.Run("wait for an item to be released, release the item without update", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -537,7 +536,7 @@ func TestQueueSchedule(t *testing.T) {
 
 func TestComplex(t *testing.T) {
 	t.Run("get next but item is scheduled", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -566,7 +565,7 @@ func TestComplex(t *testing.T) {
 	})
 
 	t.Run("get next, change item, schedule next", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			q := newTestQueue(t)
 			defer q.close()
 			ctx := context.Background()
@@ -600,7 +599,7 @@ func TestComplex(t *testing.T) {
 }
 
 func TestClose(t *testing.T) {
-	synctest.Run(func() {
+	runSynctest(t, func() {
 		q := newTestQueue(t)
 		ctx := context.Background()
 		var wg sync.WaitGroup

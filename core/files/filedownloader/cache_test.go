@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"testing"
-	"testing/synctest"
 	"time"
 
 	"github.com/stretchr/testify/assert"
@@ -74,7 +73,7 @@ func TestCacheWarmer(t *testing.T) {
 	})
 
 	t.Run("cancel a task", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 

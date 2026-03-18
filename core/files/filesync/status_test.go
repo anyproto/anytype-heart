@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"testing/synctest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -98,7 +97,7 @@ func TestUpdateStatus(t *testing.T) {
 
 func TestHandleLimitReached(t *testing.T) {
 	t.Run("object deleted error is propagated", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			rpcStore := mock_rpcstore.NewMockRpcStore(t)
 			rpcStore.EXPECT().DeleteFiles(mock.Anything, "space1", domain.FileId("file1")).Return(nil)
 
@@ -124,7 +123,7 @@ func TestHandleLimitReached(t *testing.T) {
 	})
 
 	t.Run("success sends limit event for user-added file", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			rpcStore := mock_rpcstore.NewMockRpcStore(t)
 			rpcStore.EXPECT().DeleteFiles(mock.Anything, "space1", domain.FileId("file1")).Return(nil)
 
@@ -154,7 +153,7 @@ func TestHandleLimitReached(t *testing.T) {
 	})
 
 	t.Run("success stores import event for imported file", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			rpcStore := mock_rpcstore.NewMockRpcStore(t)
 			rpcStore.EXPECT().DeleteFiles(mock.Anything, "space1", domain.FileId("file1")).Return(nil)
 
@@ -181,7 +180,7 @@ func TestHandleLimitReached(t *testing.T) {
 	})
 
 	t.Run("updateStatus error is propagated", func(t *testing.T) {
-		synctest.Run(func() {
+		runSynctest(t, func() {
 			rpcStore := mock_rpcstore.NewMockRpcStore(t)
 			rpcStore.EXPECT().DeleteFiles(mock.Anything, "space1", domain.FileId("file1")).Return(nil)
 
