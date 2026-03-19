@@ -43,12 +43,6 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-      - name: Set GOEXPERIMENT flags
-        run: |
-          GO_MINOR=$(go version | sed -E 's/.*go1\.([0-9]+).*/\1/')
-          if [ "$GO_MINOR" -lt 26 ]; then
-            echo "GOEXPERIMENT=rangefunc,synctest" >> $GITHUB_ENV
-          fi
       - name: Setup license repository
         uses: actions/checkout@master
         with:
