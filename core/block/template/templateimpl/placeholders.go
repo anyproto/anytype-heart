@@ -2,6 +2,7 @@ package templateimpl
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/samber/lo"
 
@@ -14,33 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const (
-	placeholderToday       = "_today"
-	placeholderCurrentUser = "_current_user"
-)
-
-func placeholderTypeToString(t model.PlaceholderType) string {
-	switch t {
-	case model.Placeholder_PlaceholderToday:
-		return placeholderToday
-	case model.Placeholder_PlaceholderCurrentUser:
-		return placeholderCurrentUser
-	default:
-		return ""
-	}
-}
-
-func stringToPlaceholderType(s string) model.PlaceholderType {
-	switch s {
-	case placeholderToday:
-		return model.Placeholder_PlaceholderToday
-	case placeholderCurrentUser:
-		return model.Placeholder_PlaceholderCurrentUser
-	default:
-		return model.Placeholder_PlaceholderValue
-	}
-}
-
 func (s *service) GetTemplatePlaceholders(templateId string) ([]*model.Placeholder, error) {
 	var placeholders []*model.Placeholder
 	err := cache.Do(s.picker, templateId, func(sb smartblock.SmartBlock) error {
@@ -51,19 +25,7 @@ func (s *service) GetTemplatePlaceholders(templateId string) ([]*model.Placehold
 		if !ok {
 			return nil
 		}
-		for relKey, val := range mapVal.Iterate() {
-			raw := val.String()
-			pType := stringToPlaceholderType(raw)
-			if pType == model.Placeholder_PlaceholderValue {
-				continue
-			}
-			placeholders = append(placeholders, &model.Placeholder{
-				RelationKey: relKey,
-				Values: []*model.PlaceholderValue{
-					{Type: pType},
-				},
-			})
-		}
+		placeholders = storageToPlaceholders(mapVal)
 		return nil
 	})
 	return placeholders, err
@@ -80,10 +42,10 @@ func (s *service) SetTemplatePlaceholders(ctx session.Context, templateId string
 		}
 
 		for _, p := range placeholders {
-			if len(p.Values) == 0 || p.Values[0].Type == model.Placeholder_PlaceholderValue {
+			if shouldRemovePlaceholder(p.Values) {
 				delete(existing, p.RelationKey)
 			} else {
-				existing[p.RelationKey] = domain.String(placeholderTypeToString(p.Values[0].Type))
+				existing[p.RelationKey] = placeholderValuesToStorage(p.Values)
 			}
 		}
 
@@ -94,4 +56,68 @@ func (s *service) SetTemplatePlaceholders(ctx session.Context, templateId string
 		}
 		return nil
 	})
+}
+
+// shouldRemovePlaceholder returns true if the placeholder entry should be removed:
+// either no values, or only PlaceholderValue entries with nil concrete values.
+func shouldRemovePlaceholder(values []*model.PlaceholderValue) bool {
+	if len(values) == 0 {
+		return true
+	}
+	for _, v := range values {
+		if v.Type != model.Placeholder_PlaceholderValue || v.Value != nil {
+			return false
+		}
+	}
+	return true
+}
+
+// placeholderValuesToStorage converts PlaceholderValue entries to a domain.Value (MapValue).
+// Keys are stringified PlaceholderType numbers, values are:
+//   - For PlaceholderValue (type 0): the concrete value converted via domain.ValueFromProto
+//   - For shortcuts (Today=1, CurrentUser=2): domain.Bool(true) as a marker
+func placeholderValuesToStorage(values []*model.PlaceholderValue) domain.Value {
+	inner := make(map[string]domain.Value, len(values))
+	for _, v := range values {
+		key := strconv.Itoa(int(v.Type))
+		if v.Type == model.Placeholder_PlaceholderValue && v.Value != nil {
+			inner[key] = domain.ValueFromProto(v.Value)
+		} else if v.Type != model.Placeholder_PlaceholderValue {
+			inner[key] = domain.Bool(true)
+		}
+	}
+	return domain.NewValueMap(inner)
+}
+
+// storageToPlaceholders converts a stored MapValue to a list of model.Placeholder.
+// The outer map keys are relation keys, inner maps have stringified PlaceholderType as keys.
+func storageToPlaceholders(mapVal domain.ValueMap) []*model.Placeholder {
+	var result []*model.Placeholder
+	for relKey, val := range mapVal.Iterate() {
+		innerMap, ok := val.TryMapValue()
+		if !ok {
+			continue
+		}
+		var values []*model.PlaceholderValue
+		for typeStr, v := range innerMap.Iterate() {
+			typeNum, err := strconv.Atoi(typeStr)
+			if err != nil {
+				continue
+			}
+			pv := &model.PlaceholderValue{
+				Type: model.PlaceholderType(typeNum),
+			}
+			if pv.Type == model.Placeholder_PlaceholderValue {
+				pv.Value = v.ToProto()
+			}
+			values = append(values, pv)
+		}
+		if len(values) > 0 {
+			result = append(result, &model.Placeholder{
+				RelationKey: relKey,
+				Values:      values,
+			})
+		}
+	}
+	return result
 }
