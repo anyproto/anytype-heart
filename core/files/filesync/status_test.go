@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 	"testing/synctest"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -98,7 +99,7 @@ func TestUpdateStatus(t *testing.T) {
 
 func TestHandleLimitReached(t *testing.T) {
 	t.Run("object deleted error is propagated", func(t *testing.T) {
-		synctest.Test(t, func(_ *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
 			rpcStore := mock_rpcstore.NewMockRpcStore(t)
 			rpcStore.EXPECT().DeleteFiles(mock.Anything, "space1", domain.FileId("file1")).Return(nil)
 
@@ -118,13 +119,14 @@ func TestHandleLimitReached(t *testing.T) {
 			}
 
 			err := s.handleLimitReached(context.Background(), it)
+			time.Sleep(time.Second)
 			require.Error(t, err)
 			assert.True(t, isObjectDeletedError(err))
 		})
 	})
 
 	t.Run("success sends limit event for user-added file", func(t *testing.T) {
-		synctest.Test(t, func(_ *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
 			rpcStore := mock_rpcstore.NewMockRpcStore(t)
 			rpcStore.EXPECT().DeleteFiles(mock.Anything, "space1", domain.FileId("file1")).Return(nil)
 
@@ -149,12 +151,13 @@ func TestHandleLimitReached(t *testing.T) {
 			}
 
 			err := s.handleLimitReached(context.Background(), it)
+			time.Sleep(time.Second)
 			require.NoError(t, err)
 		})
 	})
 
 	t.Run("success stores import event for imported file", func(t *testing.T) {
-		synctest.Test(t, func(_ *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
 			rpcStore := mock_rpcstore.NewMockRpcStore(t)
 			rpcStore.EXPECT().DeleteFiles(mock.Anything, "space1", domain.FileId("file1")).Return(nil)
 
@@ -175,13 +178,14 @@ func TestHandleLimitReached(t *testing.T) {
 			}
 
 			err := s.handleLimitReached(context.Background(), it)
+			time.Sleep(time.Second)
 			require.NoError(t, err)
 			require.Len(t, s.importEvents, 1)
 		})
 	})
 
 	t.Run("updateStatus error is propagated", func(t *testing.T) {
-		synctest.Test(t, func(_ *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
 			rpcStore := mock_rpcstore.NewMockRpcStore(t)
 			rpcStore.EXPECT().DeleteFiles(mock.Anything, "space1", domain.FileId("file1")).Return(nil)
 
@@ -202,6 +206,7 @@ func TestHandleLimitReached(t *testing.T) {
 			}
 
 			err := s.handleLimitReached(context.Background(), it)
+			time.Sleep(time.Second)
 			require.Error(t, err)
 			assert.ErrorIs(t, err, wantErr)
 		})
