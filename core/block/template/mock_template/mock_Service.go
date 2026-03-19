@@ -10,6 +10,10 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	model "github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+
+	session "github.com/anyproto/anytype-heart/core/session"
+
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 
 	state "github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -133,6 +137,64 @@ func (_c *MockService_CreateTemplateStateWithDetails_Call) Return(st *state.Stat
 }
 
 func (_c *MockService_CreateTemplateStateWithDetails_Call) RunAndReturn(run func(template.CreateTemplateRequest) (*state.State, error)) *MockService_CreateTemplateStateWithDetails_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetTemplatePlaceholders provides a mock function with given fields: templateId
+func (_m *MockService) GetTemplatePlaceholders(templateId string) ([]*model.Placeholder, error) {
+	ret := _m.Called(templateId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetTemplatePlaceholders")
+	}
+
+	var r0 []*model.Placeholder
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) ([]*model.Placeholder, error)); ok {
+		return rf(templateId)
+	}
+	if rf, ok := ret.Get(0).(func(string) []*model.Placeholder); ok {
+		r0 = rf(templateId)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*model.Placeholder)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(templateId)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_GetTemplatePlaceholders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetTemplatePlaceholders'
+type MockService_GetTemplatePlaceholders_Call struct {
+	*mock.Call
+}
+
+// GetTemplatePlaceholders is a helper method to define mock.On call
+//   - templateId string
+func (_e *MockService_Expecter) GetTemplatePlaceholders(templateId interface{}) *MockService_GetTemplatePlaceholders_Call {
+	return &MockService_GetTemplatePlaceholders_Call{Call: _e.mock.On("GetTemplatePlaceholders", templateId)}
+}
+
+func (_c *MockService_GetTemplatePlaceholders_Call) Run(run func(templateId string)) *MockService_GetTemplatePlaceholders_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockService_GetTemplatePlaceholders_Call) Return(_a0 []*model.Placeholder, _a1 error) *MockService_GetTemplatePlaceholders_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockService_GetTemplatePlaceholders_Call) RunAndReturn(run func(string) ([]*model.Placeholder, error)) *MockService_GetTemplatePlaceholders_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -271,6 +333,54 @@ func (_c *MockService_ObjectApplyTemplate_Call) Return(_a0 error) *MockService_O
 }
 
 func (_c *MockService_ObjectApplyTemplate_Call) RunAndReturn(run func(string, string) error) *MockService_ObjectApplyTemplate_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetTemplatePlaceholders provides a mock function with given fields: ctx, templateId, placeholders
+func (_m *MockService) SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []*model.Placeholder) error {
+	ret := _m.Called(ctx, templateId, placeholders)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetTemplatePlaceholders")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(session.Context, string, []*model.Placeholder) error); ok {
+		r0 = rf(ctx, templateId, placeholders)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_SetTemplatePlaceholders_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetTemplatePlaceholders'
+type MockService_SetTemplatePlaceholders_Call struct {
+	*mock.Call
+}
+
+// SetTemplatePlaceholders is a helper method to define mock.On call
+//   - ctx session.Context
+//   - templateId string
+//   - placeholders []*model.Placeholder
+func (_e *MockService_Expecter) SetTemplatePlaceholders(ctx interface{}, templateId interface{}, placeholders interface{}) *MockService_SetTemplatePlaceholders_Call {
+	return &MockService_SetTemplatePlaceholders_Call{Call: _e.mock.On("SetTemplatePlaceholders", ctx, templateId, placeholders)}
+}
+
+func (_c *MockService_SetTemplatePlaceholders_Call) Run(run func(ctx session.Context, templateId string, placeholders []*model.Placeholder)) *MockService_SetTemplatePlaceholders_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(session.Context), args[1].(string), args[2].([]*model.Placeholder))
+	})
+	return _c
+}
+
+func (_c *MockService_SetTemplatePlaceholders_Call) Return(_a0 error) *MockService_SetTemplatePlaceholders_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_SetTemplatePlaceholders_Call) RunAndReturn(run func(session.Context, string, []*model.Placeholder) error) *MockService_SetTemplatePlaceholders_Call {
 	_c.Call.Return(run)
 	return _c
 }
