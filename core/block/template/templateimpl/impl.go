@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -506,73 +504,6 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(st)
 	return st, nil
-}
-
-// resolveTemplatePlaceholders reads the templatePlaceholders map from the template state,
-// resolves each placeholder to its actual value, and removes the templatePlaceholders detail.
-// Storage format: {"relKey": {"typeNum": value, ...}, ...}
-// where typeNum is a stringified PlaceholderType (0=value, 1=today, 2=currentUser).
-func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
-	placeholders, ok := st.Details().TryMapValue(bundle.RelationKeyTemplatePlaceholders)
-	if !ok {
-		return
-	}
-
-	for relKey, val := range placeholders.Iterate() {
-		innerMap, ok := val.TryMapValue()
-		if !ok {
-			continue
-		}
-
-		var strings []string
-		var scalar domain.Value
-
-		for typeStr, v := range innerMap.Iterate() {
-			typeNum, err := strconv.Atoi(typeStr)
-			if err != nil {
-				continue
-			}
-			switch model.PlaceholderType(typeNum) {
-			case model.Placeholder_PlaceholderValue:
-				if list := v.WrapToStringList(); len(list) > 0 {
-					strings = append(strings, list...)
-				} else {
-					scalar = v
-				}
-			case model.Placeholder_PlaceholderToday:
-				ts := s.resolveToday(spaceId, domain.RelationKey(relKey))
-				scalar = domain.Float64(float64(ts))
-			case model.Placeholder_PlaceholderCurrentUser:
-				if s.accountService != nil {
-					participantId := domain.NewParticipantId(spaceId, s.accountService.AccountID())
-					strings = append(strings, participantId)
-				}
-			}
-		}
-
-		if len(strings) > 0 {
-			st.SetDetail(domain.RelationKey(relKey), domain.StringList(strings))
-		} else if scalar.Ok() {
-			st.SetDetail(domain.RelationKey(relKey), scalar)
-		}
-	}
-
-	st.RemoveDetail(bundle.RelationKeyTemplatePlaceholders)
-}
-
-func (s *service) resolveToday(spaceId string, relKey domain.RelationKey) int64 {
-	now := time.Now()
-	includeTime := false
-	if spaceId != "" {
-		rel, err := s.store.SpaceIndex(spaceId).FetchRelationByKey(relKey.String())
-		if err == nil {
-			includeTime = rel.GetIncludeTime()
-		}
-	}
-	if !includeTime {
-		now = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
-	}
-	return now.Unix()
 }
 
 func addDetailsToTemplateState(st *state.State, details *domain.Details) {

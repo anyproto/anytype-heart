@@ -1404,9 +1404,12 @@
     - [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request)
     - [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response)
     - [Rpc.Template.ExportAll.Response.Error](#anytype-Rpc-Template-ExportAll-Response-Error)
+    - [Rpc.Template.GetPlaceholders](#anytype-Rpc-Template-GetPlaceholders)
+    - [Rpc.Template.GetPlaceholders.Request](#anytype-Rpc-Template-GetPlaceholders-Request)
+    - [Rpc.Template.GetPlaceholders.Response](#anytype-Rpc-Template-GetPlaceholders-Response)
+    - [Rpc.Template.GetPlaceholders.Response.Error](#anytype-Rpc-Template-GetPlaceholders-Response-Error)
     - [Rpc.Template.SetPlaceholders](#anytype-Rpc-Template-SetPlaceholders)
     - [Rpc.Template.SetPlaceholders.Request](#anytype-Rpc-Template-SetPlaceholders-Request)
-    - [Rpc.Template.SetPlaceholders.Request.Placeholder](#anytype-Rpc-Template-SetPlaceholders-Request-Placeholder)
     - [Rpc.Template.SetPlaceholders.Response](#anytype-Rpc-Template-SetPlaceholders-Response)
     - [Rpc.Template.SetPlaceholders.Response.Error](#anytype-Rpc-Template-SetPlaceholders-Response-Error)
     - [Rpc.Unsplash](#anytype-Rpc-Unsplash)
@@ -1827,6 +1830,7 @@
     - [Rpc.Template.Clone.Response.Error.Code](#anytype-Rpc-Template-Clone-Response-Error-Code)
     - [Rpc.Template.CreateFromObject.Response.Error.Code](#anytype-Rpc-Template-CreateFromObject-Response-Error-Code)
     - [Rpc.Template.ExportAll.Response.Error.Code](#anytype-Rpc-Template-ExportAll-Response-Error-Code)
+    - [Rpc.Template.GetPlaceholders.Response.Error.Code](#anytype-Rpc-Template-GetPlaceholders-Response-Error-Code)
     - [Rpc.Template.SetPlaceholders.Response.Error.Code](#anytype-Rpc-Template-SetPlaceholders-Response-Error-Code)
     - [Rpc.Unsplash.Download.Response.Error.Code](#anytype-Rpc-Unsplash-Download-Response-Error-Code)
     - [Rpc.Unsplash.Search.Response.Error.Code](#anytype-Rpc-Unsplash-Search-Response-Error-Code)
@@ -2197,6 +2201,8 @@
     - [ObjectView.HistorySize](#anytype-model-ObjectView-HistorySize)
     - [ObjectView.RelationWithValuePerObject](#anytype-model-ObjectView-RelationWithValuePerObject)
     - [ParticipantPermissionChange](#anytype-model-ParticipantPermissionChange)
+    - [Placeholder](#anytype-model-Placeholder)
+    - [Placeholder.Value](#anytype-model-Placeholder-Value)
     - [Range](#anytype-model-Range)
     - [Relation](#anytype-model-Relation)
     - [Relation.Option](#anytype-model-Relation-Option)
@@ -2272,6 +2278,7 @@
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [ParticipantPermissions](#anytype-model-ParticipantPermissions)
     - [ParticipantStatus](#anytype-model-ParticipantStatus)
+    - [Placeholder.Type](#anytype-model-Placeholder-Type)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
     - [Relation.Scope](#anytype-model-Relation-Scope)
     - [RelationFormat](#anytype-model-RelationFormat)
@@ -2288,7 +2295,6 @@
     - [SyncError](#anytype-model-SyncError)
     - [SyncStatus](#anytype-model-SyncStatus)
     - [TemplateNamePrefillType](#anytype-model-TemplateNamePrefillType)
-    - [TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType)
   
 - [Scalar Value Types](#scalar-value-types)
 
@@ -2469,6 +2475,7 @@
 | TemplateClone | [Rpc.Template.Clone.Request](#anytype-Rpc-Template-Clone-Request) | [Rpc.Template.Clone.Response](#anytype-Rpc-Template-Clone-Response) |  |
 | TemplateExportAll | [Rpc.Template.ExportAll.Request](#anytype-Rpc-Template-ExportAll-Request) | [Rpc.Template.ExportAll.Response](#anytype-Rpc-Template-ExportAll-Response) |  |
 | TemplateSetPlaceholders | [Rpc.Template.SetPlaceholders.Request](#anytype-Rpc-Template-SetPlaceholders-Request) | [Rpc.Template.SetPlaceholders.Response](#anytype-Rpc-Template-SetPlaceholders-Response) |  |
+| TemplateGetPlaceholders | [Rpc.Template.GetPlaceholders.Request](#anytype-Rpc-Template-GetPlaceholders-Request) | [Rpc.Template.GetPlaceholders.Response](#anytype-Rpc-Template-GetPlaceholders-Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype-Rpc-LinkPreview-Request) | [Rpc.LinkPreview.Response](#anytype-Rpc-LinkPreview-Response) |  |
 | UnsplashSearch | [Rpc.Unsplash.Search.Request](#anytype-Rpc-Unsplash-Search-Request) | [Rpc.Unsplash.Search.Response](#anytype-Rpc-Unsplash-Search-Response) |  |
 | UnsplashDownload | [Rpc.Unsplash.Download.Request](#anytype-Rpc-Unsplash-Download-Request) | [Rpc.Unsplash.Download.Response](#anytype-Rpc-Unsplash-Download-Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
@@ -23000,6 +23007,63 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Template-GetPlaceholders"></a>
+
+### Rpc.Template.GetPlaceholders
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Template-GetPlaceholders-Request"></a>
+
+### Rpc.Template.GetPlaceholders.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| templateId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Template-GetPlaceholders-Response"></a>
+
+### Rpc.Template.GetPlaceholders.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Template.GetPlaceholders.Response.Error](#anytype-Rpc-Template-GetPlaceholders-Response-Error) |  |  |
+| placeholders | [model.Placeholder](#anytype-model-Placeholder) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Template-GetPlaceholders-Response-Error"></a>
+
+### Rpc.Template.GetPlaceholders.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Template.GetPlaceholders.Response.Error.Code](#anytype-Rpc-Template-GetPlaceholders-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Template-SetPlaceholders"></a>
 
 ### Rpc.Template.SetPlaceholders
@@ -23019,23 +23083,7 @@ Available undo/redo operations
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | templateId | [string](#string) |  |  |
-| placeholders | [Rpc.Template.SetPlaceholders.Request.Placeholder](#anytype-Rpc-Template-SetPlaceholders-Request-Placeholder) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-Template-SetPlaceholders-Request-Placeholder"></a>
-
-### Rpc.Template.SetPlaceholders.Request.Placeholder
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relationKey | [string](#string) |  |  |
-| type | [model.TemplatePlaceholderType](#anytype-model-TemplatePlaceholderType) |  |  |
+| placeholders | [model.Placeholder](#anytype-model-Placeholder) | repeated |  |
 
 
 
@@ -28974,6 +29022,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Template-GetPlaceholders-Response-Error-Code"></a>
+
+### Rpc.Template.GetPlaceholders.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -34944,6 +35005,38 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 
 
+<a name="anytype-model-Placeholder"></a>
+
+### Placeholder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+| values | [Placeholder.Value](#anytype-model-Placeholder-Value) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Placeholder-Value"></a>
+
+### Placeholder.Value
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| type | [Placeholder.Type](#anytype-model-Placeholder-Type) |  |  |
+| value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Range"></a>
 
 ### Range
@@ -36159,6 +36252,19 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 
 
+<a name="anytype-model-Placeholder-Type"></a>
+
+### Placeholder.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| PlaceholderValue | 0 |  |
+| PlaceholderToday | 1 |  |
+| PlaceholderCurrentUser | 2 |  |
+
+
+
 <a name="anytype-model-Relation-DataSource"></a>
 
 ### Relation.DataSource
@@ -36427,19 +36533,6 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ---- | ------ | ----------- |
 | Empty | 0 |  |
 | FromTemplateName | 1 |  |
-
-
-
-<a name="anytype-model-TemplatePlaceholderType"></a>
-
-### TemplatePlaceholderType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| TemplatePlaceholderNone | 0 |  |
-| TemplatePlaceholderToday | 1 |  |
-| TemplatePlaceholderCurrentUser | 2 |  |
 
 
  

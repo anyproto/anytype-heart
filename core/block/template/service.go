@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
@@ -37,6 +38,9 @@ type Service interface {
 	TemplateClone(spaceId string, id string) (templateId string, err error)
 
 	TemplateExportAll(ctx context.Context, path string) (string, error)
+
+	GetTemplatePlaceholders(templateId string) ([]*model.Placeholder, error)
+	SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []*model.Placeholder) error
 
 	app.Component
 }
