@@ -50,7 +50,6 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
-	"github.com/anyproto/any-sync/commonfile/fileservice"
 	ipld "github.com/ipfs/go-ipld-format"
 	"go.uber.org/zap"
 
@@ -58,6 +57,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/filehelper"
+	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -147,7 +147,7 @@ func New() FileSync {
 func (s *fileSync) Init(a *app.App) (err error) {
 	s.loopCtx, s.loopCancel = context.WithCancel(context.Background())
 	s.rpcStore = app.MustComponent[rpcstore2.Service](a).NewStore()
-	s.dagService = app.MustComponent[fileservice.FileService](a).DAGService()
+	s.dagService = app.MustComponent[filestorage.FileStorage](a).LocalDAGService()
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
 	techSpaceId := app.MustComponent[spaceService](a).TechSpaceId()
