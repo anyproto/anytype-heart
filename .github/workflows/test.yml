@@ -16,12 +16,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  wait_for_perftest:
-    uses: ./.github/workflows/reusable_wait_for_perftest.yml
-
   unit-test:
-    needs: wait_for_perftest
-    runs-on: ${{ vars.RUNNER_TEST }}
+    runs-on: macos-15
     env:
       GOPRIVATE: github.com/anyproto
       GOTOOLCHAIN: local

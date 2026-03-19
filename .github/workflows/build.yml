@@ -12,7 +12,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'mac-mini-org-heart'
+        default: 'macos-15'
 
 
 permissions:
@@ -22,22 +22,10 @@ permissions:
 
 
 jobs:
-  wait_for_perftest:
-    uses: ./.github/workflows/reusable_wait_for_perftest.yml
-
   build:
-    needs: wait_for_perftest
-    runs-on: ${{ github.event_name == 'push' && 'mac-mini-org-heart' || (github.event.inputs.run-on-runner || 'mac-mini-org-heart') }}
+    runs-on: ${{ github.event_name == 'push' && 'macos-15' || (github.event.inputs.run-on-runner || 'macos-15') }}
     steps:
-      - name: validate agent
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "mac-mini-org-heart" ]]; then
-            echo "Invalid runner"
-            exit 1
-          fi
-
       - name: Install Go
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         uses: actions/setup-go@v4
         with:
           go-version: '1.25'
@@ -59,7 +47,6 @@ jobs:
           fetch-depth: 0
 
       - name: Install brew and node deps
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         run: make install-brew-and-node-deps
 
       - name: Setup Xcode
