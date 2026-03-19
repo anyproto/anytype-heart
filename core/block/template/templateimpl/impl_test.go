@@ -3,6 +3,7 @@ package templateimpl
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"testing"
 	"time"
 
@@ -648,6 +649,13 @@ type accountServiceStub struct {
 
 func (a accountServiceStub) AccountID() string { return a.accountId }
 
+// storageShortcut creates a placeholder storage entry for a shortcut type (Today, CurrentUser).
+func storageShortcut(t model.PlaceholderType) domain.Value {
+	return domain.NewValueMap(map[string]domain.Value{
+		strconv.Itoa(int(t)): domain.Bool(true),
+	})
+}
+
 func newTemplateTestWithPlaceholders(templateName, typeKey string, placeholders map[string]domain.Value) smartblock.SmartBlock {
 	sb := newTemplateTest(templateName, typeKey).(*smarttest.SmartTest)
 	_ = sb.SetDetails(nil, []domain.Detail{
@@ -666,7 +674,7 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 	t.Run("template with _today placeholder resolves to current date", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"dueDate": domain.String(placeholderToday),
+			"dueDate": storageShortcut(model.Placeholder_PlaceholderToday),
 		})
 		s := service{
 			picker:         &testPicker{sb: tmpl},
@@ -690,7 +698,7 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 	t.Run("template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"assignee": domain.String(placeholderCurrentUser),
+			"assignee": storageShortcut(model.Placeholder_PlaceholderCurrentUser),
 		})
 		s := service{
 			picker:         &testPicker{sb: tmpl},
@@ -733,10 +741,65 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
 	})
 
+	t.Run("concrete value placeholder resolves to that value", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
+			"priority": domain.NewValueMap(map[string]domain.Value{
+				"0": domain.Float64(42),
+			}),
+		})
+		s := service{
+			picker:         &testPicker{sb: tmpl},
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, float64(42), st.Details().GetFloat64(domain.RelationKey("priority")))
+		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+	})
+
+	t.Run("combined concrete and shortcut placeholder merges into string list", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
+			"assignee": domain.NewValueMap(map[string]domain.Value{
+				"0": domain.StringList([]string{"obj1"}),
+				"2": domain.Bool(true),
+			}),
+		})
+		s := service{
+			picker:         &testPicker{sb: tmpl},
+			store:          objectstore.NewStoreFixture(t),
+			accountService: accountServiceStub{accountId: testAccount},
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+		})
+
+		// then
+		require.NoError(t, err)
+		assigneeList := st.Details().GetStringList(domain.RelationKey("assignee"))
+		expectedParticipantId := domain.NewParticipantId(testSpaceId, testAccount)
+		require.Len(t, assigneeList, 2)
+		assert.Contains(t, assigneeList, "obj1")
+		assert.Contains(t, assigneeList, expectedParticipantId)
+		assert.False(t, st.Details().Has(bundle.RelationKeyTemplatePlaceholders))
+	})
+
 	t.Run("CreateTemplateStateFromSmartBlock also resolves placeholders", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"assignee": domain.String(placeholderCurrentUser),
+			"assignee": storageShortcut(model.Placeholder_PlaceholderCurrentUser),
 		})
 		s := service{
 			store:          objectstore.NewStoreFixture(t),
@@ -787,7 +850,7 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 	t.Run("applying template with _today placeholder resolves it on the target object", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"dueDate": domain.String(placeholderToday),
+			"dueDate": storageShortcut(model.Placeholder_PlaceholderToday),
 		})
 
 		targetObj := smarttest.New(objectId)
@@ -824,7 +887,7 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 	t.Run("applying template with _current_user placeholder resolves to participant ID", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"assignee": domain.String(placeholderCurrentUser),
+			"assignee": storageShortcut(model.Placeholder_PlaceholderCurrentUser),
 		})
 
 		targetObj := smarttest.New(objectId)
@@ -862,8 +925,8 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 	t.Run("applying template with multiple placeholders resolves all of them", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateId, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"dueDate":  domain.String(placeholderToday),
-			"assignee": domain.String(placeholderCurrentUser),
+			"dueDate":  storageShortcut(model.Placeholder_PlaceholderToday),
+			"assignee": storageShortcut(model.Placeholder_PlaceholderCurrentUser),
 		})
 
 		targetObj := smarttest.New(objectId)
