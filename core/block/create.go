@@ -37,6 +37,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		}
 		st = b.NewState().Copy()
 		st.SetLocalDetails(nil)
+		st.RemoveDetail(bundle.RelationKeyDiscussionId)
 		st.SetDetail(bundle.RelationKeySourceObject, domain.String(id))
 		return nil
 	}); err != nil {

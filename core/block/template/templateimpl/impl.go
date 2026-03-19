@@ -220,6 +220,7 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
 		bundle.RelationKeyFeaturedRelations,
+		bundle.RelationKeyDiscussionId,
 	}
 
 	// Only remove template name if prefill type is Empty (default)
@@ -488,6 +489,8 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 			st.RemoveDetail(domain.RelationKey(rel.Key))
 		}
 	}
+	// Discussion-related details are hidden but should not be inherited by templates
+	st.RemoveDetail(bundle.RelationKeyDiscussionId)
 	flags := internalflag.NewFromState(st)
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(st)
