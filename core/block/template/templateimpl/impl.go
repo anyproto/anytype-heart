@@ -515,10 +515,10 @@ func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
 	for relKey, placeholderType := range placeholders.Iterate() {
 		rawPlaceholder := placeholderType.String()
 		switch rawPlaceholder {
-		case domain.PlaceholderToday:
+		case placeholderToday:
 			ts := s.resolveToday(spaceId, domain.RelationKey(relKey))
 			st.SetDetail(domain.RelationKey(relKey), domain.Float64(float64(ts)))
-		case domain.PlaceholderCurrentUser:
+		case placeholderCurrentUser:
 			if s.accountService != nil {
 				participantId := domain.NewParticipantId(spaceId, s.accountService.AccountID())
 				st.SetDetail(domain.RelationKey(relKey), domain.StringList([]string{participantId}))

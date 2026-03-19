@@ -6,8 +6,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/samber/lo"
-
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -415,31 +413,3 @@ func removeInternalFlags(s *state.State) {
 	flags.AddToState(s)
 }
 
-func (bs *basic) SetTemplatePlaceholders(ctx session.Context, placeholders []domain.TemplatePlaceholder) error {
-	if !lo.Contains(bs.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
-		return fmt.Errorf("object is not a template")
-	}
-
-	return bs.UpdateDetails(ctx, func(current *domain.Details) (*domain.Details, error) {
-		existing := current.GetMapValue(bundle.RelationKeyTemplatePlaceholders).ToMap()
-		if existing == nil {
-			existing = make(map[string]domain.Value, len(placeholders))
-		}
-
-		for _, p := range placeholders {
-			key := p.RelationKey.String()
-			if p.Type == model.TemplatePlaceholderType_TemplatePlaceholderNone {
-				delete(existing, key)
-			} else {
-				existing[key] = domain.String(domain.PlaceholderTypeToString(p.Type))
-			}
-		}
-
-		if len(existing) == 0 {
-			current.Delete(bundle.RelationKeyTemplatePlaceholders)
-		} else {
-			current.Set(bundle.RelationKeyTemplatePlaceholders, domain.NewValueMap(existing))
-		}
-		return current, nil
-	})
-}
