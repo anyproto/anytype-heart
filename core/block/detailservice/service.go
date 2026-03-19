@@ -57,7 +57,6 @@ type Service interface {
 	ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 
 	SetSpaceInfo(spaceId string, details *domain.Details) error
-	SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []domain.TemplatePlaceholder) error
 
 	SetIsFavorite(objectId string, isFavorite bool) error
 	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
@@ -115,12 +114,6 @@ func (s *service) Close(ctx context.Context) error {
 func (s *service) SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error) {
 	return cache.Do(s.objectGetter, objectId, func(b basic.DetailsSettable) error {
 		return b.SetDetails(ctx, details, true)
-	})
-}
-
-func (s *service) SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []domain.TemplatePlaceholder) error {
-	return cache.Do(s.objectGetter, templateId, func(b basic.TemplatePlaceholdersSetter) error {
-		return b.SetTemplatePlaceholders(ctx, placeholders)
 	})
 }
 
