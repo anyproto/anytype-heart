@@ -207,6 +207,7 @@ service ClientCommands {
     rpc TemplateClone (anytype.Rpc.Template.Clone.Request) returns (anytype.Rpc.Template.Clone.Response);
     rpc TemplateExportAll (anytype.Rpc.Template.ExportAll.Request) returns (anytype.Rpc.Template.ExportAll.Response);
     rpc TemplateSetPlaceholders (anytype.Rpc.Template.SetPlaceholders.Request) returns (anytype.Rpc.Template.SetPlaceholders.Response);
+    rpc TemplateGetPlaceholders (anytype.Rpc.Template.GetPlaceholders.Request) returns (anytype.Rpc.Template.GetPlaceholders.Response);
 
     rpc LinkPreview (anytype.Rpc.LinkPreview.Request) returns (anytype.Rpc.LinkPreview.Response);
 

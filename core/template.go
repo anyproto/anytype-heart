@@ -3,10 +3,9 @@ package core
 import (
 	"context"
 
-	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/template"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) TemplateCreateFromObject(ctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
@@ -88,17 +87,29 @@ func (mw *Middleware) TemplateSetPlaceholders(cctx context.Context, req *pb.RpcT
 		return m
 	}
 
-	placeholders := make([]domain.TemplatePlaceholder, 0, len(req.Placeholders))
-	for _, p := range req.Placeholders {
-		placeholders = append(placeholders, domain.TemplatePlaceholder{
-			RelationKey: domain.RelationKey(p.RelationKey),
-			Type:        p.Type,
-		})
-	}
-
-	err := mustService[detailservice.Service](mw).SetTemplatePlaceholders(ctx, req.TemplateId, placeholders)
+	err := mustService[template.Service](mw).SetTemplatePlaceholders(ctx, req.TemplateId, req.Placeholders)
 	if err != nil {
 		return response(pb.RpcTemplateSetPlaceholdersResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcTemplateSetPlaceholdersResponseError_NULL, nil)
+}
+
+func (mw *Middleware) TemplateGetPlaceholders(ctx context.Context, req *pb.RpcTemplateGetPlaceholdersRequest) *pb.RpcTemplateGetPlaceholdersResponse {
+	response := func(placeholders []*model.Placeholder, err error) *pb.RpcTemplateGetPlaceholdersResponse {
+		m := &pb.RpcTemplateGetPlaceholdersResponse{
+			Error:        &pb.RpcTemplateGetPlaceholdersResponseError{Code: pb.RpcTemplateGetPlaceholdersResponseError_NULL},
+			Placeholders: placeholders,
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcTemplateGetPlaceholdersResponseError_UNKNOWN_ERROR
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	placeholders, err := mustService[template.Service](mw).GetTemplatePlaceholders(req.TemplateId)
+	if err != nil {
+		return response(nil, err)
+	}
+	return response(placeholders, nil)
 }

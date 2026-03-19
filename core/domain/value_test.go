@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCompareMaps(t *testing.T) {
@@ -91,6 +92,9 @@ func TestValue_Match(t *testing.T) {
 			MapValue: func(valueMap ValueMap) {
 				*matches = append(*matches, "map")
 			},
+			MapList: func(v []ValueMap) {
+				*matches = append(*matches, "[]map")
+			},
 		}
 	}
 
@@ -137,6 +141,12 @@ func TestValue_Match(t *testing.T) {
 		{
 			value: NewValueMap(nil),
 			want:  []string{"map"},
+		},
+		{
+			value: MapList([]ValueMap{
+				&GenericMap[string]{data: map[string]Value{"a": Int64(1)}},
+			}),
+			want: []string{"[]map"},
 		},
 	} {
 		var matches []string
@@ -241,6 +251,20 @@ func TestValue_Empty(t *testing.T) {
 			}),
 			want: false,
 		},
+		{
+			value: MapList(nil),
+			want:  true,
+		},
+		{
+			value: MapList([]ValueMap{}),
+			want:  true,
+		},
+		{
+			value: MapList([]ValueMap{
+				&GenericMap[string]{data: map[string]Value{"a": Int64(1)}},
+			}),
+			want: false,
+		},
 	} {
 		assert.Equal(t, tc.want, tc.value.IsEmpty())
 	}
@@ -293,4 +317,114 @@ func TestValue_ToAnyEnc(t *testing.T) {
 	list.Set("1", a.NewString("banana"))
 	assert.Equal(t, list, StringList([]string{"apple", "banana"}).ToAnyEnc(a))
 	assert.Equal(t, a.NewNumberInt(42), Int64(42).ToAnyEnc(a))
+}
+
+func TestMapList(t *testing.T) {
+	m1 := &GenericMap[string]{data: map[string]Value{"type": Float64(1)}}
+	m2 := &GenericMap[string]{data: map[string]Value{"type": Float64(0), "value": String("obj1")}}
+
+	t.Run("constructor and accessors", func(t *testing.T) {
+		v := MapList([]ValueMap{m1, m2})
+
+		assert.True(t, v.Ok())
+		assert.True(t, v.IsMapList())
+		assert.False(t, v.IsMapValue())
+		assert.False(t, v.IsStringList())
+		assert.Equal(t, ValueType(ValueTypeMapList), v.Type())
+
+		got, ok := v.TryMapList()
+		require.True(t, ok)
+		require.Len(t, got, 2)
+		assert.True(t, got[0].Equal(m1))
+		assert.True(t, got[1].Equal(m2))
+
+		assert.Equal(t, got, v.MapListValue())
+	})
+
+	t.Run("nil and empty", func(t *testing.T) {
+		assert.True(t, MapList(nil).IsEmpty())
+		assert.True(t, MapList([]ValueMap{}).IsEmpty())
+		assert.False(t, MapList([]ValueMap{m1}).IsEmpty())
+	})
+
+	t.Run("invalid value returns nil", func(t *testing.T) {
+		v := Invalid()
+		assert.False(t, v.IsMapList())
+		assert.Nil(t, v.MapListValue())
+		_, ok := v.TryMapList()
+		assert.False(t, ok)
+	})
+
+	t.Run("proto roundtrip", func(t *testing.T) {
+		v := MapList([]ValueMap{m1, m2})
+		proto := v.ToProto()
+		restored := ValueFromProto(proto)
+
+		assert.True(t, restored.IsMapList())
+		got, ok := restored.TryMapList()
+		require.True(t, ok)
+		require.Len(t, got, 2)
+		assert.True(t, got[0].Equal(m1))
+		assert.True(t, got[1].Equal(m2))
+	})
+
+	t.Run("equal", func(t *testing.T) {
+		a := MapList([]ValueMap{m1, m2})
+		b := MapList([]ValueMap{m1, m2})
+		assert.True(t, a.Equal(b))
+
+		c := MapList([]ValueMap{m2, m1})
+		assert.False(t, a.Equal(c))
+
+		d := MapList([]ValueMap{m1})
+		assert.False(t, a.Equal(d))
+	})
+
+	t.Run("compare", func(t *testing.T) {
+		a := MapList([]ValueMap{m1})
+		b := MapList([]ValueMap{m1, m2})
+		assert.Equal(t, -1, a.Compare(b))
+		assert.Equal(t, 1, b.Compare(a))
+		assert.Equal(t, 0, a.Compare(a))
+	})
+
+	t.Run("TryListValues", func(t *testing.T) {
+		v := MapList([]ValueMap{m1, m2})
+		list, ok := v.TryListValues()
+		require.True(t, ok)
+		require.Len(t, list, 2)
+		assert.True(t, list[0].IsMapValue())
+		assert.True(t, list[1].IsMapValue())
+	})
+}
+
+func TestValueList(t *testing.T) {
+	t.Run("strings produce StringList", func(t *testing.T) {
+		v := ValueList([]Value{String("a"), String("b")})
+		assert.True(t, v.IsStringList())
+		assert.Equal(t, []string{"a", "b"}, v.StringList())
+	})
+
+	t.Run("floats produce Float64List", func(t *testing.T) {
+		v := ValueList([]Value{Float64(1), Float64(2)})
+		assert.True(t, v.IsFloat64List())
+		assert.Equal(t, []float64{1, 2}, v.Float64List())
+	})
+
+	t.Run("maps produce MapList", func(t *testing.T) {
+		m1 := NewValueMap(map[string]Value{"k": Int64(1)})
+		m2 := NewValueMap(map[string]Value{"k": Int64(2)})
+		v := ValueList([]Value{m1, m2})
+		assert.True(t, v.IsMapList())
+		got := v.MapListValue()
+		require.Len(t, got, 2)
+		assert.Equal(t, int64(1), got[0].GetInt64("k"))
+		assert.Equal(t, int64(2), got[1].GetInt64("k"))
+	})
+
+	t.Run("empty produces empty StringList", func(t *testing.T) {
+		v := ValueList([]Value{})
+		assert.True(t, v.IsStringList())
+		assert.Nil(t, v.StringList())
+	})
 }

@@ -61,7 +61,8 @@ func TestService_GetTemplatePlaceholders(t *testing.T) {
 		_ = tmpl.SetDetails(nil, []domain.Detail{
 			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(map[string]domain.Value{
 				"priority": domain.NewValueMap(map[string]domain.Value{
-					"0": domain.Float64(42),
+					"type":  domain.Float64(float64(model.Placeholder_PlaceholderValue)),
+					"value": domain.Float64(42),
 				}),
 			})},
 		}, false)
@@ -83,14 +84,19 @@ func TestService_GetTemplatePlaceholders(t *testing.T) {
 		assert.Equal(t, float64(42), placeholders[0].Values[0].Value.GetNumberValue())
 	})
 
-	t.Run("returns combined concrete and shortcut placeholder", func(t *testing.T) {
-		// given
+	t.Run("returns combined concrete and shortcut placeholder from MapList", func(t *testing.T) {
+		// given — stored as [{"type":0,"value":"obj1"},{"type":2}]
 		tmpl := newTemplateTest(templateId, bundle.TypeKeyTask.String()).(*smarttest.SmartTest)
 		_ = tmpl.SetDetails(nil, []domain.Detail{
 			{Key: bundle.RelationKeyTemplatePlaceholders, Value: domain.NewValueMap(map[string]domain.Value{
-				"assignee": domain.NewValueMap(map[string]domain.Value{
-					"0": domain.StringList([]string{"obj1"}),
-					"2": domain.Bool(true),
+				"assignee": domain.MapList([]domain.ValueMap{
+					domain.NewValueMap(map[string]domain.Value{
+						"type":  domain.Float64(float64(model.Placeholder_PlaceholderValue)),
+						"value": domain.String("obj1"),
+					}).MapValue(),
+					domain.NewValueMap(map[string]domain.Value{
+						"type": domain.Float64(float64(model.Placeholder_PlaceholderCurrentUser)),
+					}).MapValue(),
 				}),
 			})},
 		}, false)
@@ -108,16 +114,9 @@ func TestService_GetTemplatePlaceholders(t *testing.T) {
 		require.Len(t, placeholders, 1)
 		assert.Equal(t, "assignee", placeholders[0].RelationKey)
 		require.Len(t, placeholders[0].Values, 2)
-
-		byType := make(map[model.PlaceholderType]*model.PlaceholderValue)
-		for _, v := range placeholders[0].Values {
-			byType[v.Type] = v
-		}
-
-		require.Contains(t, byType, model.Placeholder_PlaceholderValue)
-		assert.Equal(t, pbtypes.StringList([]string{"obj1"}), byType[model.Placeholder_PlaceholderValue].Value)
-
-		require.Contains(t, byType, model.Placeholder_PlaceholderCurrentUser)
+		assert.Equal(t, model.Placeholder_PlaceholderValue, placeholders[0].Values[0].Type)
+		assert.Equal(t, "obj1", placeholders[0].Values[0].Value.GetStringValue())
+		assert.Equal(t, model.Placeholder_PlaceholderCurrentUser, placeholders[0].Values[1].Type)
 	})
 
 	t.Run("returns nil when no placeholders", func(t *testing.T) {
@@ -175,7 +174,7 @@ func TestService_SetTemplatePlaceholders(t *testing.T) {
 		m := tmpl.NewState().Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders)
 		inner, ok := m.TryMapValue("dueDate")
 		require.True(t, ok)
-		assert.True(t, inner.Has("1"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderToday), inner.GetFloat64("type"))
 	})
 
 	t.Run("sets concrete value placeholder", func(t *testing.T) {
@@ -198,10 +197,11 @@ func TestService_SetTemplatePlaceholders(t *testing.T) {
 		m := tmpl.NewState().Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders)
 		inner, ok := m.TryMapValue("assignee")
 		require.True(t, ok)
-		assert.Equal(t, []string{"user1", "user2"}, inner.GetStringList("0"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderValue), inner.GetFloat64("type"))
+		assert.Equal(t, []string{"user1", "user2"}, inner.GetStringList("value"))
 	})
 
-	t.Run("sets combined concrete and shortcut placeholders", func(t *testing.T) {
+	t.Run("sets combined concrete and shortcut as MapList", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTest(templateId, bundle.TypeKeyTask.String()).(*smarttest.SmartTest)
 		s := service{
@@ -220,10 +220,14 @@ func TestService_SetTemplatePlaceholders(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		m := tmpl.NewState().Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders)
-		inner, ok := m.TryMapValue("assignee")
-		require.True(t, ok)
-		assert.Equal(t, []string{"obj1"}, inner.GetStringList("0"))
-		assert.True(t, inner.Has("2"))
+
+		val := m.Get("assignee")
+		maps, ok := val.TryMapList()
+		require.True(t, ok, "combined entries should be stored as MapList")
+		require.Len(t, maps, 2)
+		assert.Equal(t, float64(model.Placeholder_PlaceholderValue), maps[0].GetFloat64("type"))
+		assert.Equal(t, []string{"obj1"}, maps[0].GetStringList("value"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderCurrentUser), maps[1].GetFloat64("type"))
 	})
 
 	t.Run("sets multiple relation placeholders", func(t *testing.T) {
@@ -243,13 +247,14 @@ func TestService_SetTemplatePlaceholders(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		m := tmpl.NewState().Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders)
+
 		dueDateInner, ok := m.TryMapValue("dueDate")
 		require.True(t, ok)
-		assert.True(t, dueDateInner.Has("1"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderToday), dueDateInner.GetFloat64("type"))
 
 		assigneeInner, ok := m.TryMapValue("assignee")
 		require.True(t, ok)
-		assert.True(t, assigneeInner.Has("2"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderCurrentUser), assigneeInner.GetFloat64("type"))
 	})
 
 	t.Run("removing placeholder with PlaceholderValue type", func(t *testing.T) {
@@ -278,7 +283,7 @@ func TestService_SetTemplatePlaceholders(t *testing.T) {
 
 		assigneeInner, ok := m.TryMapValue("assignee")
 		require.True(t, ok)
-		assert.True(t, assigneeInner.Has("2"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderCurrentUser), assigneeInner.GetFloat64("type"))
 	})
 
 	t.Run("removing last placeholder removes the detail entirely", func(t *testing.T) {
@@ -371,15 +376,13 @@ func TestService_SetTemplatePlaceholders(t *testing.T) {
 
 		dueDateInner, ok := m.TryMapValue("dueDate")
 		require.True(t, ok)
-		assert.True(t, dueDateInner.Has("2"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderCurrentUser), dueDateInner.GetFloat64("type"))
 
 		assigneeInner, ok := m.TryMapValue("assignee")
 		require.True(t, ok)
-		assert.True(t, assigneeInner.Has("2"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderCurrentUser), assigneeInner.GetFloat64("type"))
 	})
 }
-
-// storageShortcut helper is defined in impl_test.go
 
 func TestShouldRemovePlaceholder(t *testing.T) {
 	t.Run("empty values means remove", func(t *testing.T) {
@@ -441,7 +444,6 @@ func TestPlaceholderStorageRoundTrip(t *testing.T) {
 		require.Len(t, restored, 1)
 		require.Len(t, restored[0].Values, 1)
 		assert.Equal(t, model.Placeholder_PlaceholderValue, restored[0].Values[0].Type)
-		// The roundtrip through domain.Value converts StringList
 		restoredStrings := domain.ValueFromProto(restored[0].Values[0].Value).StringList()
 		assert.Equal(t, []string{"obj1", "obj2"}, restoredStrings)
 	})
@@ -449,7 +451,7 @@ func TestPlaceholderStorageRoundTrip(t *testing.T) {
 	t.Run("combined concrete and shortcut roundtrip", func(t *testing.T) {
 		// given
 		values := []*model.PlaceholderValue{
-			{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.StringList([]string{"obj1"})},
+			{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("obj1")},
 			{Type: model.Placeholder_PlaceholderCurrentUser},
 		}
 
@@ -461,13 +463,63 @@ func TestPlaceholderStorageRoundTrip(t *testing.T) {
 		// then
 		require.Len(t, restored, 1)
 		require.Len(t, restored[0].Values, 2)
+		// Order is preserved: concrete first, shortcut second
+		assert.Equal(t, model.Placeholder_PlaceholderValue, restored[0].Values[0].Type)
+		assert.Equal(t, "obj1", restored[0].Values[0].Value.GetStringValue())
+		assert.Equal(t, model.Placeholder_PlaceholderCurrentUser, restored[0].Values[1].Type)
+	})
 
-		byType := make(map[model.PlaceholderType]*model.PlaceholderValue)
-		for _, v := range restored[0].Values {
-			byType[v.Type] = v
+	t.Run("single entry stored as MapValue", func(t *testing.T) {
+		// given
+		values := []*model.PlaceholderValue{{Type: model.Placeholder_PlaceholderToday}}
+
+		// when
+		stored := placeholderValuesToStorage(values)
+
+		// then — single entry is a MapValue, not a MapList
+		assert.True(t, stored.IsMapValue())
+		inner := stored.MapValue()
+		assert.Equal(t, float64(model.Placeholder_PlaceholderToday), inner.GetFloat64("type"))
+	})
+
+	t.Run("multiple entries stored as MapList", func(t *testing.T) {
+		// given
+		values := []*model.PlaceholderValue{
+			{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("obj1")},
+			{Type: model.Placeholder_PlaceholderCurrentUser},
 		}
 
-		require.Contains(t, byType, model.Placeholder_PlaceholderValue)
-		require.Contains(t, byType, model.Placeholder_PlaceholderCurrentUser)
+		// when
+		stored := placeholderValuesToStorage(values)
+
+		// then — multiple entries are stored as MapList
+		assert.True(t, stored.IsMapList())
+		maps := stored.MapListValue()
+		require.Len(t, maps, 2)
+		assert.Equal(t, float64(model.Placeholder_PlaceholderValue), maps[0].GetFloat64("type"))
+		assert.Equal(t, "obj1", maps[0].GetString("value"))
+		assert.Equal(t, float64(model.Placeholder_PlaceholderCurrentUser), maps[1].GetFloat64("type"))
+	})
+
+	t.Run("proto roundtrip preserves list-of-structs format", func(t *testing.T) {
+		// given — simulate full proto roundtrip (store -> proto -> restore)
+		values := []*model.PlaceholderValue{
+			{Type: model.Placeholder_PlaceholderValue, Value: pbtypes.String("obj1")},
+			{Type: model.Placeholder_PlaceholderCurrentUser},
+		}
+		stored := placeholderValuesToStorage(values)
+		outerMap := domain.NewValueMap(map[string]domain.Value{"assignee": stored}).MapValue()
+
+		// when — convert to proto and back (simulates persistence)
+		protoStruct := outerMap.ToProto()
+		restoredOuter := domain.ValueFromProto(pbtypes.Struct(protoStruct)).MapValue()
+		restored := storageToPlaceholders(restoredOuter)
+
+		// then
+		require.Len(t, restored, 1)
+		require.Len(t, restored[0].Values, 2)
+		assert.Equal(t, model.Placeholder_PlaceholderValue, restored[0].Values[0].Type)
+		assert.Equal(t, "obj1", restored[0].Values[0].Value.GetStringValue())
+		assert.Equal(t, model.Placeholder_PlaceholderCurrentUser, restored[0].Values[1].Type)
 	})
 }

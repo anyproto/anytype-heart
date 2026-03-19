@@ -3,7 +3,6 @@ package templateimpl
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"testing"
 	"time"
 
@@ -609,7 +608,7 @@ func (a accountServiceStub) AccountID() string { return a.accountId }
 // storageShortcut creates a placeholder storage entry for a shortcut type (Today, CurrentUser).
 func storageShortcut(t model.PlaceholderType) domain.Value {
 	return domain.NewValueMap(map[string]domain.Value{
-		strconv.Itoa(int(t)): domain.Bool(true),
+		"type": domain.Float64(float64(t)),
 	})
 }
 
@@ -702,7 +701,8 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
 			"priority": domain.NewValueMap(map[string]domain.Value{
-				"0": domain.Float64(42),
+				"type":  domain.Float64(float64(model.Placeholder_PlaceholderValue)),
+				"value": domain.Float64(42),
 			}),
 		})
 		s := service{
@@ -726,9 +726,14 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 	t.Run("combined concrete and shortcut placeholder merges into string list", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"assignee": domain.NewValueMap(map[string]domain.Value{
-				"0": domain.StringList([]string{"obj1"}),
-				"2": domain.Bool(true),
+			"assignee": domain.MapList([]domain.ValueMap{
+				domain.NewValueMap(map[string]domain.Value{
+					"type":  domain.Float64(float64(model.Placeholder_PlaceholderValue)),
+					"value": domain.String("obj1"),
+				}).MapValue(),
+				domain.NewValueMap(map[string]domain.Value{
+					"type": domain.Float64(float64(model.Placeholder_PlaceholderCurrentUser)),
+				}).MapValue(),
 			}),
 		})
 		s := service{
