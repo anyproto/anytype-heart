@@ -6,10 +6,10 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'mac-mini-org-heart'
+        default: 'macos-15'
         type: choice
         options:
-          - mac-mini-org-heart
+          - macos-15
           - macos-14
       build-tag-network:
         description: 'Network config to use'
@@ -70,22 +70,17 @@ jobs:
         run: |
           echo "changed: ${{ steps.diff_check.outputs.changed }}"
 
-  wait_for_perftest:
-    uses: ./.github/workflows/reusable_wait_for_perftest.yml
-
   build:
     needs:
       - diff-check
-      - wait_for_perftest
     if: needs.diff-check.outputs.changed == 'true' # run only if there is a diff
-    runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
+    runs-on: ${{ github.event.inputs.run-on-runner || 'macos-15' }}
     outputs:
       body: ${{ steps.release_info.outputs.body }}
       html_url: ${{ steps.release_info.outputs.html_url }}
       tag_name: ${{ steps.release_info.outputs.tag_name }}
     steps:
       - name: Install Go
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
@@ -102,10 +97,9 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install brew and node deps
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         run: make install-brew-and-node-deps
 
       - name: Setup Xcode
