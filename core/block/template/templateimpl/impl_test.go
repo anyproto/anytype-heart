@@ -345,7 +345,10 @@ func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLa
 			}
 			return true
 		})
-		assert.True(t, foundDescription && foundTag && foundSource)
+		// Source and Tag are now featured relations, not content blocks (GO-7018)
+		assert.True(t, foundDescription)
+		assert.False(t, foundTag)
+		assert.False(t, foundSource)
 	case model.ObjectType_note:
 		foundTitle, foundDescription := false, false
 		st.Iterate(func(b simple.Block) (isContinue bool) {
