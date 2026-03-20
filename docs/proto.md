@@ -29604,6 +29604,7 @@ sent when the view have been changed or added
 
 Wrap content in view |
 | listSize | [model.Block.Content.Dataview.View.ListSize](#anytype-model-Block-Content-Dataview-View-ListSize) |  | List view size setting |
+| alternateRows | [bool](#bool) |  | Alternate row background colors in grid view |
 
 
 
@@ -33415,6 +33416,7 @@ deprecated |
 | endRelationKey | [string](#string) |  | Group view by this relationKey |
 | wrapContent | [bool](#bool) |  | Wrap content in view |
 | listSize | [Block.Content.Dataview.View.ListSize](#anytype-model-Block-Content-Dataview-View-ListSize) |  | List view size setting |
+| alternateRows | [bool](#bool) |  | Alternate row background colors in grid view |
 
 
 
