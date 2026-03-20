@@ -53,6 +53,8 @@ jobs:
           license_finder inherited_decisions add open/decisions.yml
           license_finder --enabled-package-managers gomodules
           rm -rf open
+      - name: Install protobuf compiler
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install protobuf
       - name: Generate mocks
         run: |
           make download-tantivy-all
