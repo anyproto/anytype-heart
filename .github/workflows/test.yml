@@ -16,12 +16,8 @@ permissions:
   pull-requests: write
 
 jobs:
-  wait_for_perftest:
-    uses: ./.github/workflows/reusable_wait_for_perftest.yml
-
   unit-test:
-    needs: wait_for_perftest
-    runs-on: ${{ vars.RUNNER_TEST }}
+    runs-on: macos-15
     env:
       GOPRIVATE: github.com/anyproto
       GOTOOLCHAIN: local
@@ -30,7 +26,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.25'
-          cache: false
           check-latest: true
       - name: git config
         run: git config --global url.https://${{ secrets.ANYTYPE_PAT }}@github.com/.insteadOf https://github.com/
@@ -58,6 +53,8 @@ jobs:
           license_finder inherited_decisions add open/decisions.yml
           license_finder --enabled-package-managers gomodules
           rm -rf open
+      - name: Install protobuf compiler
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install protobuf
       - name: Generate mocks
         run: |
           make download-tantivy-all

@@ -371,10 +371,19 @@ func TestAclUpdater_Run(t *testing.T) {
 	})
 }
 
+func waitDone(t *testing.T, ch <-chan struct{}, msg string) {
+	t.Helper()
+	select {
+	case <-ch:
+	case <-time.After(10 * time.Second):
+		t.Fatal(msg)
+	}
+}
+
 func TestAclUpdater_SelfRemove(t *testing.T) {
 	t.Run("triggers self removal when space is deleted for non-creator", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		spaceId := fx.spaceIds[0]
@@ -403,12 +412,12 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 			},
 		})
 
-		<-done
+		waitDone(t, done, "timed out waiting for Leave")
 	})
 
 	t.Run("does not trigger for spaces we created", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		spaceId := fx.spaceIds[0]
@@ -437,7 +446,7 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 
 	t.Run("does not trigger if already removing", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		spaceId := fx.spaceIds[0]
@@ -466,7 +475,7 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 
 	t.Run("does not trigger if space is not deleted", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		spaceId := fx.spaceIds[0]
@@ -495,7 +504,7 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 
 	t.Run("handles status change to deleted", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		spaceId := fx.spaceIds[0]
@@ -539,12 +548,12 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 			},
 		})
 
-		<-done
+		waitDone(t, done, "timed out waiting for Leave")
 	})
 
 	t.Run("handles multiple deleted spaces", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		spaceId1 := fx.spaceIds[0]
@@ -587,13 +596,13 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 			},
 		})
 
-		<-done1
-		<-done2
+		waitDone(t, done1, "timed out waiting for Leave on space1")
+		waitDone(t, done2, "timed out waiting for Leave on space2")
 	})
 
 	t.Run("stops triggering when participant status changes to removed", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		spaceId := fx.spaceIds[0]
@@ -622,7 +631,7 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 			},
 		})
 
-		<-done
+		waitDone(t, done, "timed out waiting for Leave")
 
 		// Update participant status to Removed - should no longer match subscription filters
 		fx.objectStore.AddObjects(t, fx.techSpaceId, []objectstore.TestObject{
@@ -643,7 +652,7 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 
 	t.Run("retries on leave failure and succeeds", func(t *testing.T) {
 		fx := newAclUpdaterFixture(t)
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
 		spaceId := fx.spaceIds[0]
@@ -674,7 +683,7 @@ func TestAclUpdater_SelfRemove(t *testing.T) {
 			},
 		})
 
-		<-retryDone
+		waitDone(t, retryDone, "timed out waiting for Leave retry")
 	})
 }
 
