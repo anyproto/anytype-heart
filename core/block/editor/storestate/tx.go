@@ -72,10 +72,18 @@ func (stx *StoreStateTx) checkMaxOrder(order string) {
 }
 
 func (stx *StoreStateTx) ApplyChangeSet(ch ChangeSet) (err error) {
+	return stx.applyChangeSet(ch, false)
+}
+
+func (stx *StoreStateTx) ApplyChangeSetReturnAllErrors(ch ChangeSet) (err error) {
+	return stx.applyChangeSet(ch, true)
+}
+
+func (stx *StoreStateTx) applyChangeSet(ch ChangeSet, returnAllErrors bool) (err error) {
 	if err = stx.SetOrder(ch.Id, ch.Order); err != nil && !errors.Is(err, anystore.ErrDocExists) {
 		return
 	}
-	err = stx.state.applyChangeSet(stx.ctx, ch)
+	err = stx.state.applyChangeSet(stx.ctx, ch, returnAllErrors)
 	return err
 }
 

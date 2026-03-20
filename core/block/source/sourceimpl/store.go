@@ -268,7 +268,7 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		DataType:          dataType,
 		Timestamp:         params.Time.Unix(),
 	}, func(change objecttree.StorageChange) error {
-		err = tx.ApplyChangeSet(storestate.ChangeSet{
+		err = tx.ApplyChangeSetReturnAllErrors(storestate.ChangeSet{
 			Id:        change.Id,
 			Order:     change.OrderId,
 			Changes:   params.Changes,

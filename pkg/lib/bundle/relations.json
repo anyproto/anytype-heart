@@ -1437,6 +1437,16 @@
     "source": "derived"
   },
   {
+    "description": "Discussion id",
+    "format": "object",
+    "hidden": true,
+    "key": "discussionId",
+    "maxCount": 1,
+    "name": "Discussion id",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Objects that are mentioned in blocks of this object",
     "format": "object",
     "hidden": true,

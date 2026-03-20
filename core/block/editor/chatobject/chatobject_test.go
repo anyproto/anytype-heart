@@ -32,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -151,7 +152,7 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 	db, err := provider.GetCrdtDb(testSpaceId).Wait()
 	require.NoError(t, err)
 
-	object := New(sb, accountService, db, repo, subscriptions, nil, objectStore, nil, nil, debugstat.NewNoOp())
+	object := New(sb, accountService, db, repo, subscriptions, nil, objectStore, nil, nil, debugstat.NewNoOp(), bundle.TypeKeyChatDerived, model.ObjectType_chatDerived)
 	rawObject := object.(*storeObject)
 
 	fx := &fixture{
@@ -461,6 +462,44 @@ func TestEditMessage(t *testing.T) {
 
 }
 
+func TestDeleteMessage(t *testing.T) {
+	t.Run("delete own message", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		inputMessage := givenComplexMessage()
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.NoError(t, err)
+
+		err = fx.DeleteMessage(ctx, messageId)
+		require.NoError(t, err)
+
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
+		require.NoError(t, err)
+		require.Len(t, messagesResp.Messages, 0)
+	})
+
+	t.Run("delete other's message", func(t *testing.T) {
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		inputMessage := givenComplexMessage()
+		messageId, err := fx.AddMessage(ctx, nil, inputMessage)
+		require.NoError(t, err)
+
+		fx.sourceCreator = "maliciousPerson"
+
+		err = fx.DeleteMessage(ctx, messageId)
+		require.Error(t, err)
+
+		// Check that message is not deleted
+		fx.sourceCreator = testCreator
+		messagesResp, err := fx.GetMessages(ctx, chatrepository.GetMessagesRequest{})
+		require.NoError(t, err)
+		require.Len(t, messagesResp.Messages, 1)
+	})
+}
+
 func TestToggleReaction(t *testing.T) {
 	ctx := context.Background()
 	fx := newFixture(t)
@@ -500,9 +539,8 @@ func TestToggleReaction(t *testing.T) {
 	t.Run("can't toggle someone else's reactions", func(t *testing.T) {
 		fx.sourceCreator = testCreator
 		fx.accountServiceStub.accountId = anotherPerson
-		added, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
+		_, err := fx.ToggleMessageReaction(ctx, messageId, "🐻")
 		require.Error(t, err)
-		assert.False(t, added)
 	})
 	t.Run("can toggle reactions on someone else's messages", func(t *testing.T) {
 		fx.sourceCreator = anotherPerson
@@ -564,7 +602,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		_ = tx.Rollback()
 	}()
 	order := fx.generateOrderId(tx)
-	err = tx.ApplyChangeSet(storestate.ChangeSet{
+	err = tx.ApplyChangeSetReturnAllErrors(storestate.ChangeSet{
 		Id:        changeId,
 		Order:     order,
 		Changes:   params.Changes,

@@ -13,6 +13,18 @@ import (
 
 const ordersKey = "_o"
 
+// wrapModifierErrors wraps a modifier so that any error it returns is tagged with errModifier.
+// This allows callers to distinguish modifier errors (from handler logic) from DB-level errors.
+func wrapModifierErrors(mod query.Modifier) query.Modifier {
+	return query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
+		result, modified, err = mod.Modify(a, v)
+		if err != nil {
+			err = fmt.Errorf("%w: %w", errModifier, err)
+		}
+		return
+	})
+}
+
 func makeModifier(ch ChangeOp, h Handler) (modifier query.Modifier, err error) {
 	m := ch.Change.Change.GetModify()
 	chain := make(query.ModifierChain, 0, len(m.Keys))

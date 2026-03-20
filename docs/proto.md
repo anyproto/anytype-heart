@@ -999,6 +999,10 @@
     - [Rpc.Object.DateByTimestamp.Request](#anytype-Rpc-Object-DateByTimestamp-Request)
     - [Rpc.Object.DateByTimestamp.Response](#anytype-Rpc-Object-DateByTimestamp-Response)
     - [Rpc.Object.DateByTimestamp.Response.Error](#anytype-Rpc-Object-DateByTimestamp-Response-Error)
+    - [Rpc.Object.DiscussionAdd](#anytype-Rpc-Object-DiscussionAdd)
+    - [Rpc.Object.DiscussionAdd.Request](#anytype-Rpc-Object-DiscussionAdd-Request)
+    - [Rpc.Object.DiscussionAdd.Response](#anytype-Rpc-Object-DiscussionAdd-Response)
+    - [Rpc.Object.DiscussionAdd.Response.Error](#anytype-Rpc-Object-DiscussionAdd-Response-Error)
     - [Rpc.Object.Duplicate](#anytype-Rpc-Object-Duplicate)
     - [Rpc.Object.Duplicate.Request](#anytype-Rpc-Object-Duplicate-Request)
     - [Rpc.Object.Duplicate.Response](#anytype-Rpc-Object-Duplicate-Response)
@@ -1715,6 +1719,7 @@
     - [Rpc.Object.CrossSpaceSearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchSubscribe-Response-Error-Code)
     - [Rpc.Object.CrossSpaceSearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-CrossSpaceSearchUnsubscribe-Response-Error-Code)
     - [Rpc.Object.DateByTimestamp.Response.Error.Code](#anytype-Rpc-Object-DateByTimestamp-Response-Error-Code)
+    - [Rpc.Object.DiscussionAdd.Response.Error.Code](#anytype-Rpc-Object-DiscussionAdd-Response-Error-Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype-Rpc-Object-Duplicate-Response-Error-Code)
     - [Rpc.Object.Export.Response.Error.Code](#anytype-Rpc-Object-Export-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
@@ -2126,6 +2131,10 @@
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
     - [ChatMessage](#anytype-model-ChatMessage)
     - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
+    - [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock)
+    - [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed)
+    - [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink)
+    - [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
     - [ChatMessage.Reactions.IdentityList](#anytype-model-ChatMessage-Reactions-IdentityList)
@@ -2231,6 +2240,7 @@
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [ChatMessage.Attachment.AttachmentType](#anytype-model-ChatMessage-Attachment-AttachmentType)
+    - [ChatMessage.MessageBlockLink.LinkType](#anytype-model-ChatMessage-MessageBlockLink-LinkType)
     - [DeviceNetworkType](#anytype-model-DeviceNetworkType)
     - [Export.Format](#anytype-model-Export-Format)
     - [FileIndexingStatus](#anytype-model-FileIndexingStatus)
@@ -2608,6 +2618,7 @@
 | ChatSubscribeToMessagePreviews | [Rpc.Chat.SubscribeToMessagePreviews.Request](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Request) | [Rpc.Chat.SubscribeToMessagePreviews.Response](#anytype-Rpc-Chat-SubscribeToMessagePreviews-Response) |  |
 | ChatUnsubscribeFromMessagePreviews | [Rpc.Chat.UnsubscribeFromMessagePreviews.Request](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Request) | [Rpc.Chat.UnsubscribeFromMessagePreviews.Response](#anytype-Rpc-Chat-UnsubscribeFromMessagePreviews-Response) |  |
 | ObjectChatAdd | [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request) | [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response) |  |
+| ObjectAddDiscussion | [Rpc.Object.DiscussionAdd.Request](#anytype-Rpc-Object-DiscussionAdd-Request) | [Rpc.Object.DiscussionAdd.Response](#anytype-Rpc-Object-DiscussionAdd-Response) |  |
 | ChatReadAll | [Rpc.Chat.ReadAll.Request](#anytype-Rpc-Chat-ReadAll-Request) | [Rpc.Chat.ReadAll.Response](#anytype-Rpc-Chat-ReadAll-Response) |  |
 | ChatReadReactions | [Rpc.Chat.ReadReactions.Request](#anytype-Rpc-Chat-ReadReactions-Request) | [Rpc.Chat.ReadReactions.Response](#anytype-Rpc-Chat-ReadReactions-Response) |  |
 | ChatSearch | [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request) | [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response) |  |
@@ -17077,6 +17088,63 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-DiscussionAdd"></a>
+
+### Rpc.Object.DiscussionAdd
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DiscussionAdd-Request"></a>
+
+### Rpc.Object.DiscussionAdd.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DiscussionAdd-Response"></a>
+
+### Rpc.Object.DiscussionAdd.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.DiscussionAdd.Response.Error](#anytype-Rpc-Object-DiscussionAdd-Response-Error) |  |  |
+| discussionId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-DiscussionAdd-Response-Error"></a>
+
+### Rpc.Object.DiscussionAdd.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.DiscussionAdd.Response.Error.Code](#anytype-Rpc-Object-DiscussionAdd-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Duplicate"></a>
 
 ### Rpc.Object.Duplicate
@@ -27368,6 +27436,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-DiscussionAdd-Response-Error-Code"></a>
+
+### Rpc.Object.DiscussionAdd.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Object-Duplicate-Response-Error-Code"></a>
 
 ### Rpc.Object.Duplicate.Response.Error.Code
@@ -32889,6 +32970,7 @@ scenario: Precondition: user A and user B opened the same block
 | reindexChats | [int32](#int32) |  |  |
 | reindexFulltextChatMessages | [int32](#int32) |  |  |
 | invalidateObjectsIndex | [int32](#int32) |  |  |
+| reindexDiscussions | [int32](#int32) |  |  |
 
 
 
@@ -33675,6 +33757,7 @@ Used to decode block meta only, without the content itself
 | synced | [bool](#bool) |  |  |
 | pinned | [bool](#bool) |  |  |
 | unreadReaction | [bool](#bool) |  |  |
+| blocks | [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock) | repeated | Ordered list of content blocks |
 
 
 
@@ -33691,6 +33774,74 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | target | [string](#string) |  | Identifier for the attachment object |
 | type | [ChatMessage.Attachment.AttachmentType](#anytype-model-ChatMessage-Attachment-AttachmentType) |  | Type of attachment |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlock"></a>
+
+### ChatMessage.MessageBlock
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  |  |
+| link | [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink) |  |  |
+| embed | [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockEmbed"></a>
+
+### ChatMessage.MessageBlockEmbed
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
+| processor | [Block.Content.Latex.Processor](#anytype-model-Block-Content-Latex-Processor) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockLink"></a>
+
+### ChatMessage.MessageBlockLink
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| targetObjectId | [string](#string) |  |  |
+| type | [ChatMessage.MessageBlockLink.LinkType](#anytype-model-ChatMessage-MessageBlockLink-LinkType) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockText"></a>
+
+### ChatMessage.MessageBlockText
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
+| style | [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style) |  |  |
+| marks | [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark) | repeated |  |
+| checked | [bool](#bool) |  |  |
+| lang | [string](#string) |  |  |
 
 
 
@@ -35503,6 +35654,20 @@ stored |
 
 
 
+<a name="anytype-model-ChatMessage-MessageBlockLink-LinkType"></a>
+
+### ChatMessage.MessageBlockLink.LinkType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Object | 0 |  |
+| File | 1 |  |
+| Image | 2 |  |
+| Bookmark | 3 |  |
+
+
+
 <a name="anytype-model-DeviceNetworkType"></a>
 
 ### DeviceNetworkType
@@ -35864,6 +36029,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | notification | 24 |  |
 | missingObject | 25 |  |
 | devices | 26 |  |
+| discussion | 27 |  |
 
 
 
@@ -36046,6 +36212,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ChatObjectDeprecated | 537 | DEPRECATED Container for any-store based chats |
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
+| DiscussionObject | 546 | Any-store based object for discussion |
 
 
 

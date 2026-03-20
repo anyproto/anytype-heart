@@ -92,7 +92,8 @@ func (h *MD) Convert(sbType model.SmartBlockType) (result []byte) {
 		model.SmartBlockType_Participant,
 		model.SmartBlockType_SpaceView,
 		model.SmartBlockType_ChatObjectDeprecated,
-		model.SmartBlockType_ChatDerivedObject:
+		model.SmartBlockType_ChatDerivedObject,
+		model.SmartBlockType_DiscussionObject:
 		return nil
 	}
 	buf := bytes.NewBuffer(nil)

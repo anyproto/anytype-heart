@@ -370,7 +370,8 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
-		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
+		hasDiscussion := s.Details().GetString(bundle.RelationKeyDiscussionId) != ""
+		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty) && !hasDiscussion
 		return nil
 	})
 	if err != nil {
@@ -472,6 +473,31 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalytic
 		return fmt.Errorf("apply chatId to workspace: %w", err)
 	}
 	return nil
+}
+
+func (s *Service) ObjectAddDiscussion(ctx context.Context, objectId string) (discussionId string, err error) {
+	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return "", fmt.Errorf("resolve space: %w", err)
+	}
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("get space: %w", err)
+	}
+	discussionId, err = s.objectCreator.AddDiscussionDerivedObject(ctx, spc, objectId)
+	if err != nil {
+		return "", fmt.Errorf("add discussion derived object: %w", err)
+	}
+
+	err = spc.DoCtx(ctx, objectId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetDetail(bundle.RelationKeyDiscussionId, domain.String(discussionId))
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags)
+	})
+	if err != nil {
+		return "", fmt.Errorf("set discussionId on parent object: %w", err)
+	}
+	return discussionId, nil
 }
 
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
@@ -628,7 +654,6 @@ func (s *Service) Close(_ context.Context) (err error) {
 	}
 	return nil
 }
-
 
 func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 	return cache.Do(s, pageID, func(sb smartblock.SmartBlock) error {
