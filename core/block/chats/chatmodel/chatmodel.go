@@ -250,14 +250,24 @@ func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([
 }
 
 func (m *Message) Validate() error {
-	utf16text := textUtil.StrToUTF16(m.Message.Text)
+	var utf16text []uint16
+	if m.Message != nil {
+		utf16text = textUtil.StrToUTF16(m.Message.Text)
 
-	if len(utf16text) > MaxMessageLength {
-		return fmt.Errorf("message text exceeds maximum length of %d characters", MaxMessageLength)
+		if len(utf16text) > MaxMessageLength {
+			return fmt.Errorf("message text exceeds maximum length of %d characters", MaxMessageLength)
+		}
+
+		if err := validateMarks(m.Message.Marks, utf16text); err != nil {
+			return err
+		}
 	}
 
-	if err := validateMarks(m.Message.Marks, utf16text); err != nil {
-		return err
+	hasText := len(utf16text) > 0
+	hasAttachments := len(m.Attachments) > 0
+	hasBlocks := len(m.ChatMessage.Blocks) > 0
+	if !hasText && !hasAttachments && !hasBlocks {
+		return fmt.Errorf("message must have at least one of: text, attachments, or blocks")
 	}
 
 	for _, att := range m.Attachments {
@@ -302,6 +312,9 @@ func (m *Message) Validate() error {
 
 func validateMarks(marks []*model.BlockContentTextMark, utf16text []uint16) error {
 	for _, mark := range marks {
+		if mark.Range == nil {
+			return fmt.Errorf("mark range is nil")
+		}
 		if mark.Range.From < 0 {
 			return fmt.Errorf("invalid range.from")
 		}
