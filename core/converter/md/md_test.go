@@ -1060,11 +1060,6 @@ func TestMD_FileFormatRelations(t *testing.T) {
 		assert.Contains(t, resultStr, "- files/file789_data.xlsx")
 		assert.Contains(t, resultStr, "- files/pdf012_manual.pdf")
 
-		// Check that file hashes were recorded
-		assert.Contains(t, conv.fileHashes, "file123")
-		assert.Contains(t, conv.fileHashes, "file789")
-		assert.Contains(t, conv.fileHashes, "pdf012")
-		assert.Contains(t, conv.imageHashes, "image456")
 	})
 }
 

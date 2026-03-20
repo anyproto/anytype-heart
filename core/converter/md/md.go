@@ -60,9 +60,6 @@ func NewMDConverterWithResolver(s *state.State, fn FileNamer, includeRelations b
 type MD struct {
 	s *state.State
 
-	fileHashes  []string
-	imageHashes []string
-
 	knownDocs map[string]*domain.Details
 	resolver  ObjectResolver
 
@@ -271,13 +268,6 @@ func (h *MD) processFileId(fileId string) string {
 	_, filename, _ := h.getLinkInfo(fileId)
 	if filename == "" {
 		return ""
-	}
-
-	// Track file hashes
-	if layout == int64(model.ObjectType_image) {
-		h.imageHashes = append(h.imageHashes, fileId)
-	} else {
-		h.fileHashes = append(h.fileHashes, fileId)
 	}
 
 	return filename
@@ -636,10 +626,8 @@ func (h *MD) renderFile(buf writer, in *renderState, b *model.Block) {
 	buf.WriteString(in.indent)
 	if file.Type != model.BlockContentFile_Image {
 		fmt.Fprintf(buf, "[%s](%s)    \n", title, filename)
-		h.fileHashes = append(h.fileHashes, file.TargetObjectId)
 	} else {
 		fmt.Fprintf(buf, "![%s](%s)    \n", title, filename)
-		h.imageHashes = append(h.imageHashes, file.TargetObjectId)
 	}
 }
 
@@ -779,14 +767,6 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 	if err != nil {
 		fmt.Fprintf(buf, "error while rendering table: %s", err)
 	}
-}
-
-func (h *MD) FileHashes() []string {
-	return h.fileHashes
-}
-
-func (h *MD) ImageHashes() []string {
-	return h.imageHashes
 }
 
 func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
