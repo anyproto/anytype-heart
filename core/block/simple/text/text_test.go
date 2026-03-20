@@ -199,6 +199,68 @@ func TestText_RangeSplit(t *testing.T) {
 		_, err := b.RangeSplit(0, 11, false)
 		require.Equal(t, ErrOutOfRange, err)
 	})
+	t.Run("checked checkbox split at position 0 bottom preserves checked state", func(t *testing.T) {
+		b := NewText(&model.Block{
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:    "checkbox text",
+				Style:   model.BlockContentText_Checkbox,
+				Checked: true,
+			}},
+		}).(*Text)
+		newBlock, err := b.RangeSplit(0, 0, false)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.Equal(t, "checkbox text", nb.content.Text)
+		assert.True(t, nb.content.Checked, "new block should preserve checked state")
+		assert.Equal(t, "", b.content.Text)
+		assert.True(t, b.content.Checked, "original block should preserve checked state")
+	})
+	t.Run("checked checkbox split at position 0 top preserves checked state", func(t *testing.T) {
+		b := NewText(&model.Block{
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:    "checkbox text",
+				Style:   model.BlockContentText_Checkbox,
+				Checked: true,
+			}},
+		}).(*Text)
+		newBlock, err := b.RangeSplit(0, 0, true)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.Equal(t, "", nb.content.Text)
+		assert.True(t, nb.content.Checked, "new top block should preserve checked state")
+		assert.Equal(t, "checkbox text", b.content.Text)
+		assert.True(t, b.content.Checked, "original block should preserve checked state")
+	})
+	t.Run("checked checkbox mid-text split preserves checked state", func(t *testing.T) {
+		b := NewText(&model.Block{
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:    "checkbox text",
+				Style:   model.BlockContentText_Checkbox,
+				Checked: true,
+			}},
+		}).(*Text)
+		newBlock, err := b.RangeSplit(8, 8, false)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.Equal(t, " text", nb.content.Text)
+		assert.True(t, nb.content.Checked, "new block should preserve checked state")
+		assert.Equal(t, "checkbox", b.content.Text)
+		assert.True(t, b.content.Checked, "original block should preserve checked state")
+	})
+	t.Run("unchecked checkbox split does not set checked", func(t *testing.T) {
+		b := NewText(&model.Block{
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:    "unchecked",
+				Style:   model.BlockContentText_Checkbox,
+				Checked: false,
+			}},
+		}).(*Text)
+		newBlock, err := b.RangeSplit(0, 0, false)
+		require.NoError(t, err)
+		nb := newBlock.(*Text)
+		assert.False(t, nb.content.Checked)
+		assert.False(t, b.content.Checked)
+	})
 }
 
 func TestText_Merge(t *testing.T) {

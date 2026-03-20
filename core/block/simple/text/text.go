@@ -432,10 +432,11 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 	if top {
 		newBlock = simple.New(&model.Block{
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-				Text:  textutil.UTF16ToStr(runes[:from]),
-				Style: t.content.Style,
-				Marks: oldMarks,
-				Color: t.content.Color,
+				Text:    textutil.UTF16ToStr(runes[:from]),
+				Style:   t.content.Style,
+				Marks:   oldMarks,
+				Checked: t.content.Checked,
+				Color:   t.content.Color,
 			}},
 			BackgroundColor: tBackgroundColor,
 			Align:           t.Align,
@@ -443,14 +444,13 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 
 		t.content.Text = textutil.UTF16ToStr(runes[to:])
 		t.content.Marks = newMarks
-		t.content.Checked = false
 	} else {
 		newBlock = simple.New(&model.Block{
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 				Text:    textutil.UTF16ToStr(runes[to:]),
 				Style:   t.content.Style,
 				Marks:   newMarks,
-				Checked: false,
+				Checked: t.content.Checked,
 				Color:   t.content.Color,
 			}},
 			BackgroundColor: tBackgroundColor,
