@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "db6b3df3315ef72a54c36bddfa3bc8381da8f457dc679376c357c363d48c58d6"
+const RelationChecksum = "760c5d3ce68638fb3dbf6884ce6ab9362aab474846fe945b9e373924769e86c0"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -150,6 +150,7 @@ const (
 	RelationKeySyncError                            domain.RelationKey = "syncError"
 	RelationKeyHasChat                              domain.RelationKey = "hasChat"
 	RelationKeyChatId                               domain.RelationKey = "chatId"
+	RelationKeyDiscussionId                         domain.RelationKey = "discussionId"
 	RelationKeyMentions                             domain.RelationKey = "mentions"
 	RelationKeyTimestamp                            domain.RelationKey = "timestamp"
 	RelationKeyLayoutWidth                          domain.RelationKey = "layoutWidth"
@@ -622,6 +623,20 @@ var (
 			MaxCount:         1,
 			Name:             "Description",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDiscussionId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Discussion id",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdiscussionId",
+			Key:              "discussionId",
+			MaxCount:         1,
+			Name:             "Discussion id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1562,8 +1577,8 @@ var (
 		},
 		RelationKeyOneToOneIdentity: {
 
-			DataSource:       model.Relation_details,
-			Description:      "OneToOne (second) participant identity",
+			DataSource:       model.Relation_local,
+			Description:      "OneToOne other participant identity",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_broneToOneIdentity",
