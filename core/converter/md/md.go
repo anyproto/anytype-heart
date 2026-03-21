@@ -719,8 +719,11 @@ func (h *MD) renderTable(buf writer, in *renderState, b *model.Block) {
 				h.render(cellBuf, in, b.Model())
 			}
 			content := cellBuf.String()
-			content = strings.ReplaceAll(content, "\r\n", " ")
-			content = strings.ReplaceAll(content, "\n", " ")
+			// Convert newlines to <br> tags for GFM compatibility
+			// GFM tables don't support markdown soft breaks inside cells
+			// HTML <br> tags are the standard way to represent line breaks in table cells
+			content = strings.ReplaceAll(content, "\r\n", "<br>")
+			content = strings.ReplaceAll(content, "\n", "<br>")
 			content = strings.TrimSpace(content)
 			if content == "" {
 				content = " "

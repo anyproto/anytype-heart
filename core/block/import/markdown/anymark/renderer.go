@@ -416,6 +416,10 @@ func (r *Renderer) renderRawHTML(_ util.BufWriter,
 					Type:  tag,
 				})
 			}
+		case "<br>", "<br/>", "<br />":
+			if entering {
+				r.AddTextToBuffer("\n")
+			}
 		default:
 			return ast.WalkSkipChildren, nil
 		}
