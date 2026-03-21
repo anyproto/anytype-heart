@@ -11,8 +11,6 @@ import (
 type Converter interface {
 	Convert(sbType model.SmartBlockType) (result []byte)
 	SetKnownDocs(docs map[string]*domain.Details) Converter
-	FileHashes() []string
-	ImageHashes() []string
 	Ext() string
 }
 

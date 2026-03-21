@@ -48,8 +48,6 @@ type dot struct {
 	graph        *cgraph.Graph
 	graphviz     *graphviz.Graphviz
 	knownDocs    map[string]*domain.Details
-	fileHashes   []string
-	imageHashes  []string
 	exportFormat graphviz.Format
 	nodes        map[string]*cgraph.Node
 	linksByNode  map[string][]linkInfo
@@ -84,14 +82,6 @@ func NewMultiConverter(
 func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	d.knownDocs = docs
 	return d
-}
-
-func (d *dot) FileHashes() []string {
-	return d.fileHashes
-}
-
-func (d *dot) ImageHashes() []string {
-	return d.imageHashes
 }
 
 func (d *dot) Add(space smartblock.Space, st *state.State, fetcher relationutils.RelationFormatFetcher) error {
