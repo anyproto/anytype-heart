@@ -412,4 +412,3 @@ func removeInternalFlags(s *state.State) {
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(s)
 }
-
