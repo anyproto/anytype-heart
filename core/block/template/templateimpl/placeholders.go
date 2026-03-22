@@ -137,7 +137,7 @@ func storageToPlaceholders(mapVal domain.ValueMap) []*model.Placeholder {
 
 func mapToPlaceholderValue(m domain.ValueMap) *model.PlaceholderValue {
 	pv := &model.PlaceholderValue{
-		Type: model.PlaceholderType(m.GetInt64(keyType)),
+		Type: model.PlaceholderType(m.GetInt64(keyType)), // nolint:gosec
 	}
 	if concreteVal, has := m.TryGet(keyValue); has && concreteVal.Ok() {
 		pv.Value = concreteVal.ToProto()
@@ -168,7 +168,7 @@ func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
 		var scalar domain.Value
 
 		for _, entry := range entries {
-			placeholderType := model.PlaceholderType(entry.GetInt64(keyType))
+			placeholderType := model.PlaceholderType(entry.GetInt64(keyType)) // nolint:gosec
 
 			switch placeholderType {
 			case model.Placeholder_PlaceholderValue:
