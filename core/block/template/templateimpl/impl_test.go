@@ -183,6 +183,22 @@ func TestService_CreateTemplateStateWithDetails(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("discussionId is removed from template state", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTest(templateName, "")
+		_ = tmpl.(*smarttest.SmartTest).SetDetails(nil, []domain.Detail{
+			{Key: bundle.RelationKeyDiscussionId, Value: domain.String("disc1")},
+		}, false)
+		s := service{picker: &testPicker{sb: tmpl}}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{TemplateId: templateName})
+
+		// then
+		assert.NoError(t, err)
+		assert.False(t, st.Details().Has(bundle.RelationKeyDiscussionId))
+	})
+
 	t.Run("template typeKey is removed", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTest(templateName, bundle.TypeKeyGoal.String())
@@ -381,6 +397,33 @@ func assertLayoutBlocks(t *testing.T, st *state.State, layout model.ObjectTypeLa
 }
 
 func TestBuildTemplateStateFromObject(t *testing.T) {
+	t.Run("discussionId is removed from template state built from object", func(t *testing.T) {
+		// given
+		obj := smarttest.New("object")
+		err := obj.SetDetails(nil, []domain.Detail{
+			{Key: bundle.RelationKeyDiscussionId, Value: domain.String("disc1")},
+		}, false)
+		assert.NoError(t, err)
+
+		obj.SetObjectTypes([]domain.TypeKey{bundle.TypeKeyNote})
+
+		sp := mock_clientspace.NewMockSpace(t)
+		sp.EXPECT().GetTypeIdByKey(mock.Anything, mock.Anything).Times(1).Return(bundle.TypeKeyNote.String(), nil)
+		obj.SetSpace(sp)
+		obj.SetSpaceId("space1")
+
+		s := service{
+			store: objectstore.NewStoreFixture(t),
+		}
+
+		// when
+		st, err := s.buildTemplateStateFromObject(obj)
+
+		// then
+		assert.NoError(t, err)
+		assert.Empty(t, st.Details().GetString(bundle.RelationKeyDiscussionId))
+	})
+
 	t.Run("building state for new template", func(t *testing.T) {
 		// given
 		obj := smarttest.New("object")
