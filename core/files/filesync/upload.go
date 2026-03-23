@@ -73,6 +73,16 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 	})
 }
 
+func (s *fileSync) MarkUploaded(objectId string) error {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
+		if !exists {
+			return info, false, nil
+		}
+		info.State = FileStateDone
+		return info, true, nil
+	})
+}
+
 func (s *fileSync) SendImportEvents() {
 	s.importEventsMutex.Lock()
 	defer s.importEventsMutex.Unlock()
