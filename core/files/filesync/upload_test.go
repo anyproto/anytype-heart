@@ -257,6 +257,38 @@ func TestFileSync_MarkUploaded(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("marks missing-blocks file as done", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+		objectId := "objectId1"
+		spaceId := "space1"
+
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		}))
+
+		// Simulate missing blocks by deleting root and processing
+		err := fx.localFileStorage.Delete(ctx, fileNode.Cid())
+		require.NoError(t, err)
+
+		it, err := fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		it.State = FileStateMissingBlocks
+		require.NoError(t, fx.queue.ReleaseAndUpdate(objectId, it))
+
+		require.NoError(t, fx.MarkUploaded(objectId))
+
+		it, err = fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		assert.Equal(t, FileStateDone, it.State)
+
+		err = fx.queue.Release(objectId)
+		require.NoError(t, err)
+	})
+
 	t.Run("no error when file not in queue", func(t *testing.T) {
 		fx := newFixture(t, 1024*1024*1024)
 		defer fx.Finish(t)
