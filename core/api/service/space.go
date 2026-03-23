@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
-	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -145,7 +144,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyName.String():       pbtypes.String(s.sanitizedString(*request.Name)),
 				bundle.RelationKeyIconOption.String(): pbtypes.Float64(float64(iconOption.Int64())),
-				bundle.RelationKeyHomepage.String():   pbtypes.String(constant.HomepageWidgets),
+				bundle.RelationKeyHomepage.String():   pbtypes.String(domain.HomepageWidgets),
 				bundle.RelationKeySpaceType.String():  pbtypes.Float64(float64(model.SpaceType_SpaceTypeRegular)),
 			},
 		},

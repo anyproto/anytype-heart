@@ -41,7 +41,7 @@ const CName = "details.service"
 var log = logger.NewNamed(CName)
 
 type Service interface {
-	app.Component
+	app.ComponentRunnable
 
 	SetDetails(ctx session.Context, objectId string, details []domain.Detail) error
 	SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) error
@@ -79,6 +79,9 @@ type service struct {
 	store        objectstore.ObjectStore
 	fileService  fileService
 	fileGC       filegc.FileGC
+
+	componentCtx    context.Context
+	componentCancel context.CancelFunc
 }
 
 func (s *service) Init(a *app.App) error {
@@ -88,11 +91,24 @@ func (s *service) Init(a *app.App) error {
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileService = app.MustComponent[fileService](a)
 	s.fileGC = app.MustComponent[filegc.FileGC](a)
+
+	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
 	return nil
 }
 
 func (s *service) Name() string {
 	return CName
+}
+
+func (s *service) Run(ctx context.Context) error {
+	return nil
+}
+
+func (s *service) Close(ctx context.Context) error {
+	if s.componentCancel != nil {
+		s.componentCancel()
+	}
+	return nil
 }
 
 func (s *service) SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error) {

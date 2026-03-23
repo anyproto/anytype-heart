@@ -7,6 +7,9 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/gogo/protobuf/types"
+
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -21,9 +24,7 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/constant"
-
-	"go.uber.org/zap"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -153,8 +154,15 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 
 }
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
+	// TODO: GO-6752 remove this hack when clients transfer from UXType to SpaceType
+	deriveSpaceTypeIfNeeded(req.Details)
+
 	spaceDetails := domain.NewDetailsFromProto(req.Details)
 	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
+
+	if err = validateSpaceType(spaceDescription.SpaceType); err != nil {
+		return "", "", err
+	}
 
 	// when RequestMetadataKey is passed it means we create from a deeplink / QR code
 	if spaceDescription.OneToOneRequestMetadataKey != "" {
@@ -191,7 +199,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		if !hasHomepage && spaceDescription.SpaceType == model.SpaceType_SpaceTypeRegular {
 			details = append(details, domain.Detail{
 				Key:   bundle.RelationKeyHomepage,
-				Value: domain.String(constant.HomepageWidgets),
+				Value: domain.String(domain.HomepageWidgets),
 			})
 		}
 		// TODO: GO-6752 remove this code when backward compatibility will be unnecessary
@@ -227,9 +235,44 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 			return "", "", err
 		}
 		startingPageId = chatId
+
+		// TODO: make it async in space init
+		chatInitErr := s.SpaceInitChat(ctx, newSpace.Id(), true)
+		if chatInitErr != nil {
+			log.With("error", chatInitErr).Warn("failed to init space level chat")
+		}
 	}
 
 	return newSpace.Id(), startingPageId, err
+}
+
+func deriveSpaceTypeIfNeeded(details *types.Struct) {
+	spaceType := model.SpaceType(pbtypes.GetInt64(details, bundle.RelationKeySpaceType.String())) // nolint:gosec
+	if spaceType == model.SpaceType_SpaceTypeUnknown {
+		uxType := model.SpaceUxType(pbtypes.GetInt64(details, bundle.RelationKeySpaceUxType.String())) // nolint:gosec
+		switch uxType {
+		case model.SpaceUxType_OneToOne:
+			spaceType = model.SpaceType_SpaceTypeOneToOne
+		default:
+			spaceType = model.SpaceType_SpaceTypeRegular
+		}
+		details.Fields[bundle.RelationKeySpaceType.String()] = pbtypes.Int64(int64(spaceType))
+	}
+}
+
+func validateSpaceType(spaceType model.SpaceType) error {
+	switch spaceType {
+	case model.SpaceType_SpaceTypeUnknown:
+		return errors.New("space ux type cannot be Unknown")
+	case model.SpaceType_SpaceTypeRegular, model.SpaceType_SpaceTypeOneToOne:
+		return nil
+	case model.SpaceType_SpaceTypeTech:
+		return errors.New("creation of technical space via command is restricted")
+	case model.SpaceType_SpaceTypeChat:
+		return errors.New("creation of chat space via command is restricted")
+	default:
+		return errors.New("unknown space type")
+	}
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block

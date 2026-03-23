@@ -533,22 +533,22 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 }
 
 func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (homepage string) {
-	oldId := constant.HomepageWidgets
+	oldId := domain.HomepageWidgets
 	if profile != nil && profile.SpaceDashboardId != "" {
 		oldId = profile.SpaceDashboardId
 	}
 
 	switch oldId {
-	case constant.HomepageWidgets, constant.HomepageLastOpened:
-		homepage = constant.HomepageWidgets
-	case constant.HomepageGraph:
-		homepage = constant.HomepageGraph
+	case domain.HomepageWidgets, domain.HomepageLastOpened:
+		homepage = domain.HomepageWidgets
+	case domain.HomepageGraph:
+		homepage = domain.HomepageGraph
 	default:
 		var err error
 		homepage, err = b.getNewObjectId(spaceId, oldId)
 		if err != nil {
 			log.Errorf("failed to get new id of home page object: %v", err)
-			homepage = constant.HomepageWidgets
+			homepage = domain.HomepageWidgets
 		}
 	}
 

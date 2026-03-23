@@ -17,7 +17,7 @@ const (
 	SpaceTypeOneToOne SpaceType = "anytype.onetoone"
 )
 
-func (t SpaceType) ToModel() model.SpaceType {
+func (t SpaceType) ToEnum() model.SpaceType {
 	switch t {
 	case SpaceTypeRegular:
 		return model.SpaceType_SpaceTypeRegular

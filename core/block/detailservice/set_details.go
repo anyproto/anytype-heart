@@ -15,12 +15,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
-	spc, err := s.spaceService.Get(context.Background(), spaceId)
+	spc, err := s.spaceService.Get(s.componentCtx, spaceId)
 	if err != nil {
 		return err
 	}
@@ -267,7 +266,7 @@ func validateSpaceDetail(k domain.RelationKey, v domain.Value) error {
 			return nil
 		}
 		// Check if it's a known constant
-		if constant.IsHomepageConstant(homepage) {
+		if domain.IsHomepageConstant(homepage) {
 			return nil
 		}
 		// Otherwise, assume it's an object ID - just validate it's not empty

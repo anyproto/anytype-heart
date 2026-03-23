@@ -23,7 +23,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/constant"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -129,7 +128,7 @@ func validateDetails(s *common.SnapshotModel, info *useCaseInfo, fixConfig FixCo
 				}
 			}
 
-			if k == bundle.RelationKeySpaceDashboardId && constant.IsHomepageConstant(val) {
+			if k == bundle.RelationKeySpaceDashboardId && domain.IsHomepageConstant(val) {
 				continue
 			}
 

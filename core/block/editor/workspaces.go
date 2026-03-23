@@ -82,7 +82,7 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 func (w *Workspaces) deriveSpaceType(s *state.State) {
 	spaceType := w.Space().SpaceType()
-	s.SetDetail(bundle.RelationKeySpaceType, domain.Int64(spaceType.ToModel()))
+	s.SetDetail(bundle.RelationKeySpaceType, domain.Int64(spaceType.ToEnum()))
 }
 
 func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {

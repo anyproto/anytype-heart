@@ -10,10 +10,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/util/constant"
 )
 
 type SpaceImport struct {
@@ -127,7 +127,7 @@ func (s *SpaceImport) filterObjects(objectTypesToImport widget.ImportWidgetFlags
 		}
 		// Check homepage first (new exports), then fallback to spaceDashboardId (old exports)
 		if homepage := snapshot.Snapshot.Data.Details.GetString(bundle.RelationKeyHomepage); homepage != "" {
-			if !constant.IsHomepageConstant(homepage) {
+			if !domain.IsHomepageConstant(homepage) {
 				rootObjects = append(rootObjects, homepage)
 			}
 			continue

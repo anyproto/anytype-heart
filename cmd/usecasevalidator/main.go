@@ -745,13 +745,13 @@ func processProfile(info *useCaseInfo, homepage string, reporter *reporter) ([]b
 	}
 
 	if profile.SpaceDashboardId == "" {
-		profile.SpaceDashboardId = constant.HomepageWidgets
+		profile.SpaceDashboardId = domain.HomepageWidgets
 		return profile.Marshal()
 	}
 
-	if _, found := info.objects[profile.SpaceDashboardId]; !found && !constant.IsHomepageConstant(profile.SpaceDashboardId) {
+	if _, found := info.objects[profile.SpaceDashboardId]; !found && !domain.IsHomepageConstant(profile.SpaceDashboardId) {
 		reporter.addMsg("profile", fmt.Sprintf("homepage '%s' not found, so setting 'widgets' value", profile.SpaceDashboardId))
-		profile.SpaceDashboardId = constant.HomepageWidgets
+		profile.SpaceDashboardId = domain.HomepageWidgets
 	}
 	return profile.Marshal()
 }

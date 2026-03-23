@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
@@ -37,54 +36,15 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		startingPageId string
 	)
 
-	// TODO: GO-6752 remove this hack when clients transfer from UXType to SpaceType
-	deriveSpaceTypeIfNeeded(req.Details)
-
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		spaceId, startingPageId, err = bs.CreateWorkspace(cctx, req)
-		if err != nil {
-			return
-		}
-		spaceType := model.SpaceType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceType.String())) // nolint:gosec
-		switch spaceType {
-		case model.SpaceType_SpaceTypeUnknown:
-			return errors.New("space ux type cannot be Unknown")
-		case model.SpaceType_SpaceTypeRegular:
-			return nil
-		case model.SpaceType_SpaceTypeTech:
-			return errors.New("creation of technical space via command is restricted")
-		case model.SpaceType_SpaceTypeChat:
-			return errors.New("creation of chat space via command is restricted")
-		case model.SpaceType_SpaceTypeOneToOne:
-			// TODO: make it async in space init
-			err = bs.SpaceInitChat(cctx, spaceId, true)
-			if err != nil {
-				log.With("error", err).Warn("failed to init space level chat")
-			}
-			return nil
-		default:
-			return errors.New("unknown space type")
-		}
+		return err
 	})
 	if err != nil {
 		return response("", "", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
 	return response(spaceId, startingPageId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
-}
-
-func deriveSpaceTypeIfNeeded(details *types.Struct) {
-	spaceType := model.SpaceType(pbtypes.GetInt64(details, bundle.RelationKeySpaceType.String())) // nolint:gosec
-	if spaceType == model.SpaceType_SpaceTypeUnknown {
-		uxType := model.SpaceUxType(pbtypes.GetInt64(details, bundle.RelationKeySpaceUxType.String())) // nolint:gosec
-		switch uxType {
-		case model.SpaceUxType_OneToOne:
-			spaceType = model.SpaceType_SpaceTypeOneToOne
-		default:
-			spaceType = model.SpaceType_SpaceTypeRegular
-		}
-		details.Fields[bundle.RelationKeySpaceType.String()] = pbtypes.Int64(int64(spaceType))
-	}
 }
 
 func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
