@@ -116,6 +116,7 @@ type fileSync struct {
 	loopCtx         context.Context
 	loopCancel      context.CancelFunc
 	dagService      ipld.DAGService
+	fileStorage     filestorage.FileStorage
 	eventSender     event.Sender
 	onStatusUpdated []StatusCallback
 
@@ -147,7 +148,7 @@ func New() FileSync {
 func (s *fileSync) Init(a *app.App) (err error) {
 	s.loopCtx, s.loopCancel = context.WithCancel(context.Background())
 	s.rpcStore = app.MustComponent[rpcstore2.Service](a).NewStore()
-	s.dagService = app.MustComponent[filestorage.FileStorage](a).LocalDAGService()
+	s.fileStorage = app.MustComponent[filestorage.FileStorage](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.cfg = app.MustComponent[*config.Config](a)
 	techSpaceId := app.MustComponent[spaceService](a).TechSpaceId()
@@ -194,6 +195,8 @@ func (s *fileSync) Name() (name string) {
 }
 
 func (s *fileSync) Run(ctx context.Context) error {
+	s.dagService = s.fileStorage.LocalDAGService()
+
 	if s.cfg.IsLocalOnlyMode() {
 		return nil
 	}
