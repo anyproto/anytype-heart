@@ -114,21 +114,37 @@ jobs:
           INPUT_BASE: ${{ github.event.inputs.nightly-base-version }}
         run: |
           set -euo pipefail
+          set -x
+          trap 'rc=$?; echo "ERROR on line $LINENO, command: $BASH_COMMAND, exit code: $rc"; exit $rc' ERR
+
           DATE=$(date -u +'%Y%m%d')
+          echo "DATE=$DATE"
+
           LATEST_RELEASE=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v '-' | sort -V | tail -1)
-          MAJOR=$(echo $LATEST_RELEASE | cut -d. -f1)
-          MINOR=$(echo $LATEST_RELEASE | cut -d. -f2)
-          PATCH=$(echo $LATEST_RELEASE | cut -d. -f3)
+          echo "LATEST_RELEASE=$LATEST_RELEASE"
+
+          MAJOR=$(echo "$LATEST_RELEASE" | cut -d. -f1)
+          MINOR=$(echo "$LATEST_RELEASE" | cut -d. -f2)
+          PATCH=$(echo "$LATEST_RELEASE" | cut -d. -f3)
+          echo "MAJOR=$MAJOR"
+          echo "MINOR=$MINOR"
+          echo "PATCH=$PATCH"
+
           NEXT_PATCH=$((PATCH + 1))
           BASE="${INPUT_BASE:-${MAJOR}.${MINOR}.${NEXT_PATCH}}"
           PREFIX="${BASE}-nightly.${DATE}"
+          echo "BASE=$BASE"
+          echo "PREFIX=$PREFIX"
 
           # Get the number of existing tags for today
-          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
-          N=$((COUNT + 1))
+          COUNT=$(gh api "/repos/anyproto/anytype-heart/git/matching-refs/tags/$PREFIX" --jq 'length')
+          echo "COUNT=$COUNT"
 
           # Build the final version string
+          N=$((COUNT + 1))
           VERSION="${PREFIX}.${N}"
+          echo "VERSION=$VERSION"
+
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Set env vars
