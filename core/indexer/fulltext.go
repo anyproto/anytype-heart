@@ -306,28 +306,31 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 
 		for _, key := range sb.AllRelationKeys() {
 			format, err := i.formatFetcher.GetRelationFormatByKey(object.SpaceId, key)
-			if err == nil && format != model.RelationFormat_shorttext && format != model.RelationFormat_longtext {
+			if err == nil && !isIndexableFormat(format) {
 				continue
 			}
-			val := sb.Details().GetString(key)
-			if val == "" {
-				val = sb.LocalDetails().GetString(key)
+			var val string
+			if format == model.RelationFormat_number {
+				if f, ok := sb.Details().TryFloat64(key); ok {
+					val = strconv.FormatFloat(f, 'f', -1, 64)
+				} else if f, ok := sb.LocalDetails().TryFloat64(key); ok {
+					val = strconv.FormatFloat(f, 'f', -1, 64)
+				}
+			} else {
+				val = sb.Details().GetString(key)
 				if val == "" {
-					continue
+					val = sb.LocalDetails().GetString(key)
 				}
 			}
-			// skip readonly and hidden system relations
+			if val == "" {
+				continue
+			}
+			// skip hidden system relations
 			if bundledRel, err := bundle.PickRelation(key); err == nil {
-				layout, _ := sb.Layout()
-				skip := bundledRel.ReadOnly || bundledRel.Hidden
+				skip := bundledRel.Hidden
 				if isName(key) {
 					skip = false
 				}
-				if layout == model.ObjectType_note && key == bundle.RelationKeySnippet {
-					// index snippet only for notes, so we will be able to do fast prefix queries
-					skip = false
-				}
-
 				if skip {
 					continue
 				}
@@ -446,6 +449,17 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 
 func isName(key domain.RelationKey) bool {
 	return key == bundle.RelationKeyName || key == bundle.RelationKeyPluralName
+}
+
+func isIndexableFormat(format model.RelationFormat) bool {
+	switch format {
+	case model.RelationFormat_shorttext, model.RelationFormat_longtext,
+		model.RelationFormat_number, model.RelationFormat_url,
+		model.RelationFormat_email, model.RelationFormat_phone:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i *indexer) ftInit() error {
