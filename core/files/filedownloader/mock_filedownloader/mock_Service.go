@@ -55,7 +55,7 @@ func (_c *MockService_CacheFile_Call) Return() *MockService_CacheFile_Call {
 }
 
 func (_c *MockService_CacheFile_Call) RunAndReturn(run func(string, domain.FileId)) *MockService_CacheFile_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -88,7 +88,7 @@ func (_c *MockService_CancelFileCaching_Call) Return() *MockService_CancelFileCa
 }
 
 func (_c *MockService_CancelFileCaching_Call) RunAndReturn(run func(domain.FileId)) *MockService_CancelFileCaching_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -233,7 +233,7 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 

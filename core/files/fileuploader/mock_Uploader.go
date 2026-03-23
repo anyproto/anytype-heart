@@ -194,7 +194,7 @@ func (_c *MockUploader_Preload_Call) RunAndReturn(run func(context.Context) (str
 }
 
 // SetAdditionalDetails provides a mock function with given fields: details
-func (_m *MockUploader) SetAdditionalDetails(details *domain.Details) Uploader {
+func (_m *MockUploader) SetAdditionalDetails(details *domain.GenericMap[domain.RelationKey]) Uploader {
 	ret := _m.Called(details)
 
 	if len(ret) == 0 {
@@ -202,7 +202,7 @@ func (_m *MockUploader) SetAdditionalDetails(details *domain.Details) Uploader {
 	}
 
 	var r0 Uploader
-	if rf, ok := ret.Get(0).(func(*domain.Details) Uploader); ok {
+	if rf, ok := ret.Get(0).(func(*domain.GenericMap[domain.RelationKey]) Uploader); ok {
 		r0 = rf(details)
 	} else {
 		if ret.Get(0) != nil {
@@ -219,14 +219,14 @@ type MockUploader_SetAdditionalDetails_Call struct {
 }
 
 // SetAdditionalDetails is a helper method to define mock.On call
-//   - details *domain.Details
+//   - details *domain.GenericMap[domain.RelationKey]
 func (_e *MockUploader_Expecter) SetAdditionalDetails(details interface{}) *MockUploader_SetAdditionalDetails_Call {
 	return &MockUploader_SetAdditionalDetails_Call{Call: _e.mock.On("SetAdditionalDetails", details)}
 }
 
-func (_c *MockUploader_SetAdditionalDetails_Call) Run(run func(details *domain.Details)) *MockUploader_SetAdditionalDetails_Call {
+func (_c *MockUploader_SetAdditionalDetails_Call) Run(run func(details *domain.GenericMap[domain.RelationKey])) *MockUploader_SetAdditionalDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*domain.Details))
+		run(args[0].(*domain.GenericMap[domain.RelationKey]))
 	})
 	return _c
 }
@@ -236,7 +236,7 @@ func (_c *MockUploader_SetAdditionalDetails_Call) Return(_a0 Uploader) *MockUplo
 	return _c
 }
 
-func (_c *MockUploader_SetAdditionalDetails_Call) RunAndReturn(run func(*domain.Details) Uploader) *MockUploader_SetAdditionalDetails_Call {
+func (_c *MockUploader_SetAdditionalDetails_Call) RunAndReturn(run func(*domain.GenericMap[domain.RelationKey]) Uploader) *MockUploader_SetAdditionalDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -625,7 +625,7 @@ func (_c *MockUploader_SetImageKind_Call) RunAndReturn(run func(model.ImageKind)
 	return _c
 }
 
-// SetLastModifiedDate provides a mock function with given fields:
+// SetLastModifiedDate provides a mock function with no fields
 func (_m *MockUploader) SetLastModifiedDate() Uploader {
 	ret := _m.Called()
 

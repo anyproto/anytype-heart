@@ -464,7 +464,7 @@ func (_c *MockInviteService_Init_Call) RunAndReturn(run func(*app.App) error) *M
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockInviteService) Name() string {
 	ret := _m.Called()
 

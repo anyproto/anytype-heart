@@ -74,7 +74,7 @@ func (_c *MockIndexer_Close_Call) RunAndReturn(run func(context.Context) error) 
 	return _c
 }
 
-// ForceFTIndex provides a mock function with given fields:
+// ForceFTIndex provides a mock function with no fields
 func (_m *MockIndexer) ForceFTIndex() {
 	_m.Called()
 }
@@ -102,7 +102,7 @@ func (_c *MockIndexer_ForceFTIndex_Call) Return() *MockIndexer_ForceFTIndex_Call
 }
 
 func (_c *MockIndexer_ForceFTIndex_Call) RunAndReturn(run func()) *MockIndexer_ForceFTIndex_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -259,7 +259,7 @@ func (_c *MockIndexer_Init_Call) RunAndReturn(run func(*app.App) error) *MockInd
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockIndexer) Name() string {
 	ret := _m.Called()
 
@@ -488,7 +488,7 @@ func (_c *MockIndexer_Run_Call) RunAndReturn(run func(context.Context) error) *M
 	return _c
 }
 
-// StartFullTextIndex provides a mock function with given fields:
+// StartFullTextIndex provides a mock function with no fields
 func (_m *MockIndexer) StartFullTextIndex() error {
 	ret := _m.Called()
 
