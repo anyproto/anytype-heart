@@ -98,6 +98,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install brew and node deps
         run: make install-brew-and-node-deps
