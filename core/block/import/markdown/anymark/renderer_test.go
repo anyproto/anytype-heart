@@ -223,3 +223,90 @@ type expectedBlock struct {
 	IsImage bool
 	Marks   []*model.BlockContentTextMark
 }
+
+func TestBrTagHandling(t *testing.T) {
+	tests := []struct {
+		name     string
+		markdown string
+		expected []expectedBlock
+	}{
+		{
+			name:     "br tag in text",
+			markdown: "Line 1<br>Line 2",
+			expected: []expectedBlock{
+				{
+					Type: model.BlockContentText_Paragraph,
+					Text: "Line 1\nLine 2",
+				},
+			},
+		},
+		{
+			name:     "br tag with slash",
+			markdown: "Line 1<br/>Line 2",
+			expected: []expectedBlock{
+				{
+					Type: model.BlockContentText_Paragraph,
+					Text: "Line 1\nLine 2",
+				},
+			},
+		},
+		{
+			name:     "br tag with space and slash",
+			markdown: "Line 1<br />Line 2",
+			expected: []expectedBlock{
+				{
+					Type: model.BlockContentText_Paragraph,
+					Text: "Line 1\nLine 2",
+				},
+			},
+		},
+		{
+			name:     "multiple br tags",
+			markdown: "Line 1<br>Line 2<br>Line 3",
+			expected: []expectedBlock{
+				{
+					Type: model.BlockContentText_Paragraph,
+					Text: "Line 1\nLine 2\nLine 3",
+				},
+			},
+		},
+		{
+			name:     "br tag in table cell",
+			markdown: "| Header |\n|--------|\n| Line 1<br>Line 2 |",
+			expected: []expectedBlock{
+				{
+					Type: model.BlockContentText_Paragraph,
+					Text: "Header",
+				},
+				{
+					Type: model.BlockContentText_Paragraph,
+					Text: "Line 1\nLine 2",
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			blocks, _, err := MarkdownToBlocks([]byte(tt.markdown), "", nil)
+			require.NoError(t, err)
+
+			// Filter out document blocks
+			var textBlocks []*model.Block
+			for _, block := range blocks {
+				if block.GetText() != nil {
+					textBlocks = append(textBlocks, block)
+				}
+			}
+
+			require.Equal(t, len(tt.expected), len(textBlocks), "Number of blocks mismatch")
+
+			for i, expectedBlock := range tt.expected {
+				block := textBlocks[i]
+				require.NotNil(t, block.GetText())
+				assert.Equal(t, expectedBlock.Text, block.GetText().GetText(), "Text content mismatch for block %d", i)
+				assert.Equal(t, expectedBlock.Type, block.GetText().GetStyle(), "Block style mismatch for block %d", i)
+			}
+		})
+	}
+}
