@@ -27,8 +27,10 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 
 	setDetails := make([]domain.Detail, 0, details.Len())
 	for k, v := range details.Iterate() {
-		if err = validateSpaceDetail(k, v); err != nil {
-			return fmt.Errorf("validate space detail: %w", err)
+		if k == bundle.RelationKeyHomepage {
+			if err = s.validateHomepage(spaceId, v); err != nil {
+				return fmt.Errorf("validate homepage: %w", err)
+			}
 		}
 		setDetails = append(setDetails, domain.Detail{
 			Key:   k,
@@ -257,27 +259,20 @@ func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string, isA
 	}
 }
 
-func validateSpaceDetail(k domain.RelationKey, v domain.Value) error {
-	switch k {
-	case bundle.RelationKeyHomepage:
-		homepage := v.String()
-		if homepage == "" {
-			// Empty homepage is valid
-			return nil
-		}
-		// Check if it's a known constant
-		if domain.IsHomepageConstant(homepage) {
-			return nil
-		}
-		// Otherwise, assume it's an object ID - just validate it's not empty
-		// (full object ID validation would require checking if the object exists,
-		// which is expensive and may not be necessary here)
-		if len(homepage) > 0 {
-			return nil
-		}
-		return fmt.Errorf("invalid homepage value: %s", homepage)
-	default:
-		// TODO: add more checks
+func (s *service) validateHomepage(spaceId string, homepageValue domain.Value) error {
+	if !homepageValue.IsString() {
+		return fmt.Errorf("invalid homepage value type: %s", homepageValue.Type().String())
+	}
+	homepage := homepageValue.String()
+	if domain.IsHomepageConstant(homepage) {
 		return nil
 	}
+	exists, err := s.store.SpaceIndex(spaceId).HasIds([]string{homepage})
+	if err != nil {
+		return fmt.Errorf("check homepage object existence: %w", err)
+	}
+	if len(exists) == 0 {
+		return fmt.Errorf("homepage object %s not found in space %s", homepage, spaceId)
+	}
+	return nil
 }

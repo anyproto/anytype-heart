@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
@@ -147,9 +148,9 @@ func (mw *Middleware) WorkspaceSetHomepage(cctx context.Context, req *pb.RpcWork
 		return m
 	}
 
-	err := mw.doBlockService(func(bs *block.Service) error {
-		return bs.SpaceSetHomepage(req.SpaceId, req.Homepage)
-	})
+	err := mustService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyHomepage: domain.String(req.Homepage),
+	}))
 	if err != nil {
 		return response(pb.RpcWorkspaceSetHomepageResponseError_UNKNOWN_ERROR, err)
 	}

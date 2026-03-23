@@ -7,8 +7,6 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/gogo/protobuf/types"
-
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -24,7 +22,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -154,11 +151,11 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 
 }
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
-	// TODO: GO-6752 remove this hack when clients transfer from UXType to SpaceType
-	deriveSpaceTypeIfNeeded(req.Details)
-
 	spaceDetails := domain.NewDetailsFromProto(req.Details)
 	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
+
+	// TODO: GO-6752 remove this hack when clients transfer from UXType to SpaceType
+	deriveSpaceTypeIfNeeded(spaceDetails)
 
 	if err = validateSpaceType(spaceDescription.SpaceType); err != nil {
 		return "", "", err
@@ -176,21 +173,15 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
-		details := make([]domain.Detail, 0, len(req.Details.GetFields()))
+		details := make([]domain.Detail, 0, spaceDetails.Len())
 		hasHomepage := false
 		hasUxType := false
-		for k, v := range req.Details.GetFields() {
-			details = append(details, domain.Detail{
-				Key:   domain.RelationKey(k),
-				Value: domain.ValueFromProto(v),
-			})
-			if k == bundle.RelationKeyHomepage.String() {
-				if s.validateHomepage(newSpace.Id(), v.GetStringValue()) == nil {
-					// in case a homepage is valid, leave it
-					hasHomepage = true
-				}
+		for k, v := range spaceDetails.Iterate() {
+			details = append(details, domain.Detail{Key: k, Value: v})
+			if k == bundle.RelationKeyHomepage && v.String() != "" {
+				hasHomepage = true
 			}
-			if k == bundle.RelationKeySpaceUxType.String() {
+			if k == bundle.RelationKeySpaceUxType {
 				hasUxType = true
 			}
 		}
@@ -249,17 +240,17 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	return newSpace.Id(), startingPageId, err
 }
 
-func deriveSpaceTypeIfNeeded(details *types.Struct) {
-	spaceType := model.SpaceType(pbtypes.GetInt64(details, bundle.RelationKeySpaceType.String())) // nolint:gosec
+func deriveSpaceTypeIfNeeded(details *domain.Details) {
+	spaceType := model.SpaceType(details.GetInt64(bundle.RelationKeySpaceType)) // nolint:gosec
 	if spaceType == model.SpaceType_SpaceTypeUnknown {
-		uxType := model.SpaceUxType(pbtypes.GetInt64(details, bundle.RelationKeySpaceUxType.String())) // nolint:gosec
+		uxType := model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)) // nolint:gosec
 		switch uxType {
 		case model.SpaceUxType_OneToOne:
 			spaceType = model.SpaceType_SpaceTypeOneToOne
 		default:
 			spaceType = model.SpaceType_SpaceTypeRegular
 		}
-		details.Fields[bundle.RelationKeySpaceType.String()] = pbtypes.Int64(int64(spaceType))
+		details.SetInt64(bundle.RelationKeySpaceType, int64(spaceType))
 	}
 }
 
