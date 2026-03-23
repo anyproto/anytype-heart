@@ -235,6 +235,68 @@ func TestValidate(t *testing.T) {
 
 		assert.Error(t, msg.Validate())
 	})
+
+	t.Run("nil message field with attachments is valid", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Attachments: []*model.ChatMessageAttachment{
+					{Target: "file1", Type: model.ChatMessageAttachment_FILE},
+				},
+			},
+		}
+
+		assert.NoError(t, msg.Validate())
+	})
+
+	t.Run("nil message field with blocks is valid", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfText{
+						Text: &model.ChatMessageMessageBlockText{Text: "hello"},
+					}},
+				},
+			},
+		}
+
+		assert.NoError(t, msg.Validate())
+	})
+
+	t.Run("no content at all is invalid", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("empty message with no attachments or blocks is invalid", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("mark with nil range is invalid", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{
+					Text: "hello",
+					Marks: []*model.BlockContentTextMark{
+						{
+							Type:  model.BlockContentTextMark_Bold,
+							Range: nil,
+						},
+					},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
 }
 
 func TestBlocksRoundTrip(t *testing.T) {
