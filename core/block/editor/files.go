@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -100,6 +101,12 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	myParticipantId := f.accountService.MyParticipantId(f.SpaceID())
 
 	if !ctx.IsNewObject && creator == myParticipantId {
+		f.SmartBlock.AddHook(func(applyInfo smartblock.ApplyInfo) error {
+			if applyInfo.State.Details().GetInt64(bundle.RelationKeyFileBackupStatus) == int64(filesyncstatus.Synced) {
+				return f.fileObjectService.MarkFileUploaded(fullId.ObjectID)
+			}
+			return nil
+		}, smartblock.HookAfterApply)
 		// Run in a goroutine to prevent deadlocks when filesync updates file status before file is loaded into cache
 		go func() {
 			err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())

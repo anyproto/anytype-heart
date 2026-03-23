@@ -233,6 +233,38 @@ func TestFileSync_AddFile_SkipWhenNotLocal(t *testing.T) {
 	assert.Error(t, err, "file without local blocks should not be queued")
 }
 
+func TestFileSync_MarkUploaded(t *testing.T) {
+	t.Run("marks pending file as done", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		fileId, _ := fx.givenFileAddedToDAG(t, 1024)
+		objectId := "objectId1"
+		spaceId := "space1"
+
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		}))
+
+		require.NoError(t, fx.MarkUploaded(objectId))
+
+		it, err := fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		assert.Equal(t, FileStateDone, it.State)
+
+		err = fx.queue.Release(objectId)
+		require.NoError(t, err)
+	})
+
+	t.Run("no error when file not in queue", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		require.NoError(t, fx.MarkUploaded("nonExistentObject"))
+	})
+}
+
 func TestFileSync_UploadTransitionsToMissingBlocks(t *testing.T) {
 	fx := newFixture(t, 1024*1024*1024)
 	defer fx.Finish(t)

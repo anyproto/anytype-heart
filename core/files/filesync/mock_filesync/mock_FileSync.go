@@ -75,7 +75,7 @@ func (_c *MockFileSync_AddFile_Call) RunAndReturn(run func(filesync.AddFileReque
 	return _c
 }
 
-// ClearImportEvents provides a mock function with given fields:
+// ClearImportEvents provides a mock function with no fields
 func (_m *MockFileSync) ClearImportEvents() {
 	_m.Called()
 }
@@ -103,7 +103,7 @@ func (_c *MockFileSync_ClearImportEvents_Call) Return() *MockFileSync_ClearImpor
 }
 
 func (_c *MockFileSync_ClearImportEvents_Call) RunAndReturn(run func()) *MockFileSync_ClearImportEvents_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -304,7 +304,53 @@ func (_c *MockFileSync_Init_Call) RunAndReturn(run func(*app.App) error) *MockFi
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// MarkUploaded provides a mock function with given fields: objectId
+func (_m *MockFileSync) MarkUploaded(objectId string) error {
+	ret := _m.Called(objectId)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkUploaded")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(objectId)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockFileSync_MarkUploaded_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkUploaded'
+type MockFileSync_MarkUploaded_Call struct {
+	*mock.Call
+}
+
+// MarkUploaded is a helper method to define mock.On call
+//   - objectId string
+func (_e *MockFileSync_Expecter) MarkUploaded(objectId interface{}) *MockFileSync_MarkUploaded_Call {
+	return &MockFileSync_MarkUploaded_Call{Call: _e.mock.On("MarkUploaded", objectId)}
+}
+
+func (_c *MockFileSync_MarkUploaded_Call) Run(run func(objectId string)) *MockFileSync_MarkUploaded_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockFileSync_MarkUploaded_Call) Return(_a0 error) *MockFileSync_MarkUploaded_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockFileSync_MarkUploaded_Call) RunAndReturn(run func(string) error) *MockFileSync_MarkUploaded_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Name provides a mock function with no fields
 func (_m *MockFileSync) Name() string {
 	ret := _m.Called()
 
@@ -434,7 +480,7 @@ func (_c *MockFileSync_OnStatusUpdated_Call) Return() *MockFileSync_OnStatusUpda
 }
 
 func (_c *MockFileSync_OnStatusUpdated_Call) RunAndReturn(run func(filesync.StatusCallback)) *MockFileSync_OnStatusUpdated_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -484,7 +530,7 @@ func (_c *MockFileSync_Run_Call) RunAndReturn(run func(context.Context) error) *
 	return _c
 }
 
-// SendImportEvents provides a mock function with given fields:
+// SendImportEvents provides a mock function with no fields
 func (_m *MockFileSync) SendImportEvents() {
 	_m.Called()
 }
@@ -512,7 +558,7 @@ func (_c *MockFileSync_SendImportEvents_Call) Return() *MockFileSync_SendImportE
 }
 
 func (_c *MockFileSync_SendImportEvents_Call) RunAndReturn(run func()) *MockFileSync_SendImportEvents_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
