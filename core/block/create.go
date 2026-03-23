@@ -185,7 +185,10 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 				Value: domain.ValueFromProto(v),
 			})
 			if k == bundle.RelationKeyHomepage.String() {
-				hasHomepage = true
+				if s.validateHomepage(newSpace.Id(), v.GetStringValue()) == nil {
+					// in case a homepage is valid, leave it
+					hasHomepage = true
+				}
 			}
 			if k == bundle.RelationKeySpaceUxType.String() {
 				hasUxType = true
