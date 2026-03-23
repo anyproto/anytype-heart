@@ -101,12 +101,7 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	myParticipantId := f.accountService.MyParticipantId(f.SpaceID())
 
 	if !ctx.IsNewObject && creator == myParticipantId {
-		f.SmartBlock.AddHook(func(applyInfo smartblock.ApplyInfo) error {
-			if applyInfo.State.Details().GetInt64(bundle.RelationKeyFileBackupStatus) == int64(filesyncstatus.Synced) {
-				return f.fileObjectService.MarkFileUploaded(fullId.ObjectID)
-			}
-			return nil
-		}, smartblock.HookAfterApply)
+		f.SmartBlock.AddHook(f.markUploadedHook, smartblock.HookAfterApply)
 		// Run in a goroutine to prevent deadlocks when filesync updates file status before file is loaded into cache
 		go func() {
 			err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
@@ -146,6 +141,18 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		}
 	}
 
+	return nil
+}
+
+func (f *File) markUploadedHook(applyInfo smartblock.ApplyInfo) error {
+	for _, ch := range applyInfo.Changes {
+		if ds := ch.GetDetailsSet(); ds != nil && ds.Key == bundle.RelationKeyFileBackupStatus.String() {
+			if applyInfo.State.Details().GetInt64(bundle.RelationKeyFileBackupStatus) == int64(filesyncstatus.Synced) {
+				return f.fileObjectService.MarkFileUploaded(f.Id())
+			}
+			return nil
+		}
+	}
 	return nil
 }
 
