@@ -46,7 +46,7 @@ func (_c *MockPeerToPeerStatus_RegisterSpace_Call) Return() *MockPeerToPeerStatu
 }
 
 func (_c *MockPeerToPeerStatus_RegisterSpace_Call) RunAndReturn(run func(string)) *MockPeerToPeerStatus_RegisterSpace_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -79,7 +79,7 @@ func (_c *MockPeerToPeerStatus_UnregisterSpace_Call) Return() *MockPeerToPeerSta
 }
 
 func (_c *MockPeerToPeerStatus_UnregisterSpace_Call) RunAndReturn(run func(string)) *MockPeerToPeerStatus_UnregisterSpace_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

@@ -60,7 +60,7 @@ func (_c *MockAclNotification_AddRecords_Call) Return() *MockAclNotification_Add
 }
 
 func (_c *MockAclNotification_AddRecords_Call) RunAndReturn(run func(list.AclList, list.AclPermissions, string, spaceinfo.AccountStatus, spaceinfo.LocalStatus)) *MockAclNotification_AddRecords_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -97,7 +97,7 @@ func (_c *MockAclNotification_AddSingleRecord_Call) Return() *MockAclNotificatio
 }
 
 func (_c *MockAclNotification_AddSingleRecord_Call) RunAndReturn(run func(string, *list.AclRecord, list.AclPermissions, string, spaceinfo.AccountStatus)) *MockAclNotification_AddSingleRecord_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -193,7 +193,7 @@ func (_c *MockAclNotification_Init_Call) RunAndReturn(run func(*app.App) error) 
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockAclNotification) Name() string {
 	ret := _m.Called()
 

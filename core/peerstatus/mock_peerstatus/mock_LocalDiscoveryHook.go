@@ -67,7 +67,7 @@ func (_c *MockLocalDiscoveryHook_Init_Call) RunAndReturn(run func(*app.App) erro
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockLocalDiscoveryHook) Name() string {
 	ret := _m.Called()
 
@@ -141,7 +141,7 @@ func (_c *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call) Return()
 }
 
 func (_c *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call) RunAndReturn(run func(func(localdiscovery.DiscoveryPossibility))) *MockLocalDiscoveryHook_RegisterDiscoveryPossibilityHook_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

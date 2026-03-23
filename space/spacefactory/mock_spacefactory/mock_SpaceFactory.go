@@ -611,7 +611,7 @@ func (_c *MockSpaceFactory_LoadAndSetTechSpace_Call) RunAndReturn(run func(conte
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSpaceFactory) Name() string {
 	ret := _m.Called()
 

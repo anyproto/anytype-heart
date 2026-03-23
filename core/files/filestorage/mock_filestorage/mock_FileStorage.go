@@ -80,23 +80,23 @@ func (_c *MockFileStorage_Add_Call) RunAndReturn(run func(context.Context, []blo
 }
 
 // Batch provides a mock function with given fields: ctx
-func (_m *MockFileStorage) Batch(ctx context.Context) (filestorage.Batch, error) {
+func (_m *MockFileStorage) Batch(ctx context.Context) (filestorage.BlockStoreBatch, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Batch")
 	}
 
-	var r0 filestorage.Batch
+	var r0 filestorage.BlockStoreBatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context) (filestorage.Batch, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) (filestorage.BlockStoreBatch, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) filestorage.Batch); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) filestorage.BlockStoreBatch); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(filestorage.Batch)
+			r0 = ret.Get(0).(filestorage.BlockStoreBatch)
 		}
 	}
 
@@ -127,12 +127,12 @@ func (_c *MockFileStorage_Batch_Call) Run(run func(ctx context.Context)) *MockFi
 	return _c
 }
 
-func (_c *MockFileStorage_Batch_Call) Return(_a0 filestorage.Batch, _a1 error) *MockFileStorage_Batch_Call {
+func (_c *MockFileStorage_Batch_Call) Return(_a0 filestorage.BlockStoreBatch, _a1 error) *MockFileStorage_Batch_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockFileStorage_Batch_Call) RunAndReturn(run func(context.Context) (filestorage.Batch, error)) *MockFileStorage_Batch_Call {
+func (_c *MockFileStorage_Batch_Call) RunAndReturn(run func(context.Context) (filestorage.BlockStoreBatch, error)) *MockFileStorage_Batch_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -490,7 +490,7 @@ func (_c *MockFileStorage_IterateFiles_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-// LocalDAGService provides a mock function with given fields:
+// LocalDAGService provides a mock function with no fields
 func (_m *MockFileStorage) LocalDAGService() format.DAGService {
 	ret := _m.Called()
 
@@ -593,7 +593,7 @@ func (_c *MockFileStorage_LocalDiskUsage_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockFileStorage) Name() string {
 	ret := _m.Called()
 
@@ -638,7 +638,7 @@ func (_c *MockFileStorage_Name_Call) RunAndReturn(run func() string) *MockFileSt
 	return _c
 }
 
-// NewLocalStoreGarbageCollector provides a mock function with given fields:
+// NewLocalStoreGarbageCollector provides a mock function with no fields
 func (_m *MockFileStorage) NewLocalStoreGarbageCollector() filestorage.LocalStoreGarbageCollector {
 	ret := _m.Called()
 

@@ -86,7 +86,7 @@ func (_c *MockAccountObject_AddHook_Call) Return() *MockAccountObject_AddHook_Ca
 }
 
 func (_c *MockAccountObject_AddHook_Call) RunAndReturn(run func(smartblock.HookCallback, ...smartblock.Hook)) *MockAccountObject_AddHook_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -135,7 +135,7 @@ func (_c *MockAccountObject_AddHookOnce_Call) Return() *MockAccountObject_AddHoo
 }
 
 func (_c *MockAccountObject_AddHookOnce_Call) RunAndReturn(run func(string, smartblock.HookCallback, ...smartblock.Hook)) *MockAccountObject_AddHookOnce_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -200,7 +200,7 @@ func (_c *MockAccountObject_AddRelationLinksToState_Call) RunAndReturn(run func(
 	return _c
 }
 
-// AllRelationKeys provides a mock function with given fields:
+// AllRelationKeys provides a mock function with no fields
 func (_m *MockAccountObject) AllRelationKeys() []domain.RelationKey {
 	ret := _m.Called()
 
@@ -308,7 +308,7 @@ func (_c *MockAccountObject_Apply_Call) RunAndReturn(run func(*state.State, ...s
 	return _c
 }
 
-// Blocks provides a mock function with given fields:
+// Blocks provides a mock function with no fields
 func (_m *MockAccountObject) Blocks() []*model.Block {
 	ret := _m.Called()
 
@@ -384,11 +384,11 @@ func (_c *MockAccountObject_BlocksInit_Call) Return() *MockAccountObject_BlocksI
 }
 
 func (_c *MockAccountObject_BlocksInit_Call) RunAndReturn(run func(simple.DetailsService)) *MockAccountObject_BlocksInit_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// ChangeId provides a mock function with given fields:
+// ChangeId provides a mock function with no fields
 func (_m *MockAccountObject) ChangeId() string {
 	ret := _m.Called()
 
@@ -433,7 +433,7 @@ func (_c *MockAccountObject_ChangeId_Call) RunAndReturn(run func() string) *Mock
 	return _c
 }
 
-// CheckSubscriptions provides a mock function with given fields:
+// CheckSubscriptions provides a mock function with no fields
 func (_m *MockAccountObject) CheckSubscriptions() bool {
 	ret := _m.Called()
 
@@ -478,7 +478,7 @@ func (_c *MockAccountObject_CheckSubscriptions_Call) RunAndReturn(run func() boo
 	return _c
 }
 
-// Close provides a mock function with given fields:
+// Close provides a mock function with no fields
 func (_m *MockAccountObject) Close() error {
 	ret := _m.Called()
 
@@ -523,20 +523,20 @@ func (_c *MockAccountObject_Close_Call) RunAndReturn(run func() error) *MockAcco
 	return _c
 }
 
-// CombinedDetails provides a mock function with given fields:
-func (_m *MockAccountObject) CombinedDetails() *domain.Details {
+// CombinedDetails provides a mock function with no fields
+func (_m *MockAccountObject) CombinedDetails() *domain.GenericMap[domain.RelationKey] {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for CombinedDetails")
 	}
 
-	var r0 *domain.Details
-	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
+	var r0 *domain.GenericMap[domain.RelationKey]
+	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.Details)
+			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -560,30 +560,30 @@ func (_c *MockAccountObject_CombinedDetails_Call) Run(run func()) *MockAccountOb
 	return _c
 }
 
-func (_c *MockAccountObject_CombinedDetails_Call) Return(_a0 *domain.Details) *MockAccountObject_CombinedDetails_Call {
+func (_c *MockAccountObject_CombinedDetails_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockAccountObject_CombinedDetails_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_CombinedDetails_Call {
+func (_c *MockAccountObject_CombinedDetails_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockAccountObject_CombinedDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Details provides a mock function with given fields:
-func (_m *MockAccountObject) Details() *domain.Details {
+// Details provides a mock function with no fields
+func (_m *MockAccountObject) Details() *domain.GenericMap[domain.RelationKey] {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Details")
 	}
 
-	var r0 *domain.Details
-	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
+	var r0 *domain.GenericMap[domain.RelationKey]
+	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.Details)
+			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -607,17 +607,17 @@ func (_c *MockAccountObject_Details_Call) Run(run func()) *MockAccountObject_Det
 	return _c
 }
 
-func (_c *MockAccountObject_Details_Call) Return(_a0 *domain.Details) *MockAccountObject_Details_Call {
+func (_c *MockAccountObject_Details_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockAccountObject_Details_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_Details_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_Details_Call {
+func (_c *MockAccountObject_Details_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockAccountObject_Details_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// EnableLayouts provides a mock function with given fields:
+// EnableLayouts provides a mock function with no fields
 func (_m *MockAccountObject) EnableLayouts() {
 	_m.Called()
 }
@@ -645,11 +645,11 @@ func (_c *MockAccountObject_EnableLayouts_Call) Return() *MockAccountObject_Enab
 }
 
 func (_c *MockAccountObject_EnableLayouts_Call) RunAndReturn(run func()) *MockAccountObject_EnableLayouts_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// EnabledRelationAsDependentObjects provides a mock function with given fields:
+// EnabledRelationAsDependentObjects provides a mock function with no fields
 func (_m *MockAccountObject) EnabledRelationAsDependentObjects() {
 	_m.Called()
 }
@@ -677,11 +677,11 @@ func (_c *MockAccountObject_EnabledRelationAsDependentObjects_Call) Return() *Mo
 }
 
 func (_c *MockAccountObject_EnabledRelationAsDependentObjects_Call) RunAndReturn(run func()) *MockAccountObject_EnabledRelationAsDependentObjects_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// GetAnalyticsId provides a mock function with given fields:
+// GetAnalyticsId provides a mock function with no fields
 func (_m *MockAccountObject) GetAnalyticsId() (string, error) {
 	ret := _m.Called()
 
@@ -736,7 +736,7 @@ func (_c *MockAccountObject_GetAnalyticsId_Call) RunAndReturn(run func() (string
 	return _c
 }
 
-// GetAndUnsetFileKeys provides a mock function with given fields:
+// GetAndUnsetFileKeys provides a mock function with no fields
 func (_m *MockAccountObject) GetAndUnsetFileKeys() []pb.ChangeFileKeys {
 	ret := _m.Called()
 
@@ -783,7 +783,7 @@ func (_c *MockAccountObject_GetAndUnsetFileKeys_Call) RunAndReturn(run func() []
 	return _c
 }
 
-// GetDocInfo provides a mock function with given fields:
+// GetDocInfo provides a mock function with no fields
 func (_m *MockAccountObject) GetDocInfo() smartblock.DocInfo {
 	ret := _m.Called()
 
@@ -828,7 +828,7 @@ func (_c *MockAccountObject_GetDocInfo_Call) RunAndReturn(run func() smartblock.
 	return _c
 }
 
-// GetInboxOffset provides a mock function with given fields:
+// GetInboxOffset provides a mock function with no fields
 func (_m *MockAccountObject) GetInboxOffset() (string, error) {
 	ret := _m.Called()
 
@@ -883,7 +883,7 @@ func (_c *MockAccountObject_GetInboxOffset_Call) RunAndReturn(run func() (string
 	return _c
 }
 
-// History provides a mock function with given fields:
+// History provides a mock function with no fields
 func (_m *MockAccountObject) History() undo.History {
 	ret := _m.Called()
 
@@ -930,7 +930,7 @@ func (_c *MockAccountObject_History_Call) RunAndReturn(run func() undo.History) 
 	return _c
 }
 
-// Id provides a mock function with given fields:
+// Id provides a mock function with no fields
 func (_m *MockAccountObject) Id() string {
 	ret := _m.Called()
 
@@ -1021,7 +1021,7 @@ func (_c *MockAccountObject_Init_Call) RunAndReturn(run func(*smartblock.InitCon
 	return _c
 }
 
-// IsDeleted provides a mock function with given fields:
+// IsDeleted provides a mock function with no fields
 func (_m *MockAccountObject) IsDeleted() bool {
 	ret := _m.Called()
 
@@ -1066,7 +1066,7 @@ func (_c *MockAccountObject_IsDeleted_Call) RunAndReturn(run func() bool) *MockA
 	return _c
 }
 
-// IsIconMigrated provides a mock function with given fields:
+// IsIconMigrated provides a mock function with no fields
 func (_m *MockAccountObject) IsIconMigrated() (bool, error) {
 	ret := _m.Called()
 
@@ -1121,7 +1121,7 @@ func (_c *MockAccountObject_IsIconMigrated_Call) RunAndReturn(run func() (bool, 
 	return _c
 }
 
-// IsLocked provides a mock function with given fields:
+// IsLocked provides a mock function with no fields
 func (_m *MockAccountObject) IsLocked() bool {
 	ret := _m.Called()
 
@@ -1212,7 +1212,7 @@ func (_c *MockAccountObject_Iterate_Call) RunAndReturn(run func(func(simple.Bloc
 	return _c
 }
 
-// Layout provides a mock function with given fields:
+// Layout provides a mock function with no fields
 func (_m *MockAccountObject) Layout() (model.ObjectTypeLayout, bool) {
 	ret := _m.Called()
 
@@ -1267,20 +1267,20 @@ func (_c *MockAccountObject_Layout_Call) RunAndReturn(run func() (model.ObjectTy
 	return _c
 }
 
-// LocalDetails provides a mock function with given fields:
-func (_m *MockAccountObject) LocalDetails() *domain.Details {
+// LocalDetails provides a mock function with no fields
+func (_m *MockAccountObject) LocalDetails() *domain.GenericMap[domain.RelationKey] {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for LocalDetails")
 	}
 
-	var r0 *domain.Details
-	if rf, ok := ret.Get(0).(func() *domain.Details); ok {
+	var r0 *domain.GenericMap[domain.RelationKey]
+	if rf, ok := ret.Get(0).(func() *domain.GenericMap[domain.RelationKey]); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.Details)
+			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -1304,17 +1304,17 @@ func (_c *MockAccountObject_LocalDetails_Call) Run(run func()) *MockAccountObjec
 	return _c
 }
 
-func (_c *MockAccountObject_LocalDetails_Call) Return(_a0 *domain.Details) *MockAccountObject_LocalDetails_Call {
+func (_c *MockAccountObject_LocalDetails_Call) Return(_a0 *domain.GenericMap[domain.RelationKey]) *MockAccountObject_LocalDetails_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockAccountObject_LocalDetails_Call) RunAndReturn(run func() *domain.Details) *MockAccountObject_LocalDetails_Call {
+func (_c *MockAccountObject_LocalDetails_Call) RunAndReturn(run func() *domain.GenericMap[domain.RelationKey]) *MockAccountObject_LocalDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Lock provides a mock function with given fields:
+// Lock provides a mock function with no fields
 func (_m *MockAccountObject) Lock() {
 	_m.Called()
 }
@@ -1342,7 +1342,7 @@ func (_c *MockAccountObject_Lock_Call) Return() *MockAccountObject_Lock_Call {
 }
 
 func (_c *MockAccountObject_Lock_Call) RunAndReturn(run func()) *MockAccountObject_Lock_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -1392,7 +1392,7 @@ func (_c *MockAccountObject_MigrateIconImage_Call) RunAndReturn(run func(string)
 	return _c
 }
 
-// NewState provides a mock function with given fields:
+// NewState provides a mock function with no fields
 func (_m *MockAccountObject) NewState() *state.State {
 	ret := _m.Called()
 
@@ -1516,11 +1516,11 @@ func (_c *MockAccountObject_ObjectClose_Call) Return() *MockAccountObject_Object
 }
 
 func (_c *MockAccountObject_ObjectClose_Call) RunAndReturn(run func(session.Context)) *MockAccountObject_ObjectClose_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// ObjectCloseAllSessions provides a mock function with given fields:
+// ObjectCloseAllSessions provides a mock function with no fields
 func (_m *MockAccountObject) ObjectCloseAllSessions() {
 	_m.Called()
 }
@@ -1548,11 +1548,11 @@ func (_c *MockAccountObject_ObjectCloseAllSessions_Call) Return() *MockAccountOb
 }
 
 func (_c *MockAccountObject_ObjectCloseAllSessions_Call) RunAndReturn(run func()) *MockAccountObject_ObjectCloseAllSessions_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// ObjectTypeKey provides a mock function with given fields:
+// ObjectTypeKey provides a mock function with no fields
 func (_m *MockAccountObject) ObjectTypeKey() domain.TypeKey {
 	ret := _m.Called()
 
@@ -1597,7 +1597,7 @@ func (_c *MockAccountObject_ObjectTypeKey_Call) RunAndReturn(run func() domain.T
 	return _c
 }
 
-// ObjectTypeKeys provides a mock function with given fields:
+// ObjectTypeKeys provides a mock function with no fields
 func (_m *MockAccountObject) ObjectTypeKeys() []domain.TypeKey {
 	ret := _m.Called()
 
@@ -1721,7 +1721,7 @@ func (_c *MockAccountObject_RegisterSession_Call) Return() *MockAccountObject_Re
 }
 
 func (_c *MockAccountObject_RegisterSession_Call) RunAndReturn(run func(session.Context)) *MockAccountObject_RegisterSession_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -1818,7 +1818,7 @@ func (_c *MockAccountObject_ResetToVersion_Call) RunAndReturn(run func(*state.St
 	return _c
 }
 
-// Restrictions provides a mock function with given fields:
+// Restrictions provides a mock function with no fields
 func (_m *MockAccountObject) Restrictions() restriction.Restrictions {
 	ret := _m.Called()
 
@@ -1863,7 +1863,7 @@ func (_c *MockAccountObject_Restrictions_Call) RunAndReturn(run func() restricti
 	return _c
 }
 
-// RootId provides a mock function with given fields:
+// RootId provides a mock function with no fields
 func (_m *MockAccountObject) RootId() string {
 	ret := _m.Called()
 
@@ -1908,7 +1908,7 @@ func (_c *MockAccountObject_RootId_Call) RunAndReturn(run func() string) *MockAc
 	return _c
 }
 
-// SearchText provides a mock function with given fields:
+// SearchText provides a mock function with no fields
 func (_m *MockAccountObject) SearchText() string {
 	ret := _m.Called()
 
@@ -1982,7 +1982,7 @@ func (_c *MockAccountObject_SendEvent_Call) Return() *MockAccountObject_SendEven
 }
 
 func (_c *MockAccountObject_SendEvent_Call) RunAndReturn(run func([]*pb.EventMessage)) *MockAccountObject_SendEvent_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -2078,7 +2078,7 @@ func (_c *MockAccountObject_SetInboxOffset_Call) RunAndReturn(run func(string) e
 	return _c
 }
 
-// SetIsDeleted provides a mock function with given fields:
+// SetIsDeleted provides a mock function with no fields
 func (_m *MockAccountObject) SetIsDeleted() {
 	_m.Called()
 }
@@ -2106,7 +2106,7 @@ func (_c *MockAccountObject_SetIsDeleted_Call) Return() *MockAccountObject_SetIs
 }
 
 func (_c *MockAccountObject_SetIsDeleted_Call) RunAndReturn(run func()) *MockAccountObject_SetIsDeleted_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -2139,12 +2139,12 @@ func (_c *MockAccountObject_SetLocker_Call) Return() *MockAccountObject_SetLocke
 }
 
 func (_c *MockAccountObject_SetLocker_Call) RunAndReturn(run func(smartblock.Locker)) *MockAccountObject_SetLocker_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
 // SetProfileDetails provides a mock function with given fields: details
-func (_m *MockAccountObject) SetProfileDetails(details *domain.Details) error {
+func (_m *MockAccountObject) SetProfileDetails(details *domain.GenericMap[domain.RelationKey]) error {
 	ret := _m.Called(details)
 
 	if len(ret) == 0 {
@@ -2152,7 +2152,7 @@ func (_m *MockAccountObject) SetProfileDetails(details *domain.Details) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*domain.Details) error); ok {
+	if rf, ok := ret.Get(0).(func(*domain.GenericMap[domain.RelationKey]) error); ok {
 		r0 = rf(details)
 	} else {
 		r0 = ret.Error(0)
@@ -2167,14 +2167,14 @@ type MockAccountObject_SetProfileDetails_Call struct {
 }
 
 // SetProfileDetails is a helper method to define mock.On call
-//   - details *domain.Details
+//   - details *domain.GenericMap[domain.RelationKey]
 func (_e *MockAccountObject_Expecter) SetProfileDetails(details interface{}) *MockAccountObject_SetProfileDetails_Call {
 	return &MockAccountObject_SetProfileDetails_Call{Call: _e.mock.On("SetProfileDetails", details)}
 }
 
-func (_c *MockAccountObject_SetProfileDetails_Call) Run(run func(details *domain.Details)) *MockAccountObject_SetProfileDetails_Call {
+func (_c *MockAccountObject_SetProfileDetails_Call) Run(run func(details *domain.GenericMap[domain.RelationKey])) *MockAccountObject_SetProfileDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*domain.Details))
+		run(args[0].(*domain.GenericMap[domain.RelationKey]))
 	})
 	return _c
 }
@@ -2184,7 +2184,7 @@ func (_c *MockAccountObject_SetProfileDetails_Call) Return(err error) *MockAccou
 	return _c
 }
 
-func (_c *MockAccountObject_SetProfileDetails_Call) RunAndReturn(run func(*domain.Details) error) *MockAccountObject_SetProfileDetails_Call {
+func (_c *MockAccountObject_SetProfileDetails_Call) RunAndReturn(run func(*domain.GenericMap[domain.RelationKey]) error) *MockAccountObject_SetProfileDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2297,7 +2297,7 @@ func (_c *MockAccountObject_SetVerticalAlign_Call) RunAndReturn(run func(session
 	return _c
 }
 
-// Show provides a mock function with given fields:
+// Show provides a mock function with no fields
 func (_m *MockAccountObject) Show() (*model.ObjectView, error) {
 	ret := _m.Called()
 
@@ -2354,7 +2354,7 @@ func (_c *MockAccountObject_Show_Call) RunAndReturn(run func() (*model.ObjectVie
 	return _c
 }
 
-// Snippet provides a mock function with given fields:
+// Snippet provides a mock function with no fields
 func (_m *MockAccountObject) Snippet() string {
 	ret := _m.Called()
 
@@ -2399,7 +2399,7 @@ func (_c *MockAccountObject_Snippet_Call) RunAndReturn(run func() string) *MockA
 	return _c
 }
 
-// Space provides a mock function with given fields:
+// Space provides a mock function with no fields
 func (_m *MockAccountObject) Space() smartblock.Space {
 	ret := _m.Called()
 
@@ -2446,7 +2446,7 @@ func (_c *MockAccountObject_Space_Call) RunAndReturn(run func() smartblock.Space
 	return _c
 }
 
-// SpaceID provides a mock function with given fields:
+// SpaceID provides a mock function with no fields
 func (_m *MockAccountObject) SpaceID() string {
 	ret := _m.Called()
 
@@ -2583,7 +2583,7 @@ func (_c *MockAccountObject_StateRebuild_Call) RunAndReturn(run func(state.Doc) 
 	return _c
 }
 
-// Tree provides a mock function with given fields:
+// Tree provides a mock function with no fields
 func (_m *MockAccountObject) Tree() objecttree.ObjectTree {
 	ret := _m.Called()
 
@@ -2686,7 +2686,7 @@ func (_c *MockAccountObject_TryClose_Call) RunAndReturn(run func(time.Duration) 
 	return _c
 }
 
-// Type provides a mock function with given fields:
+// Type provides a mock function with no fields
 func (_m *MockAccountObject) Type() coresmartblock.SmartBlockType {
 	ret := _m.Called()
 
@@ -2731,7 +2731,7 @@ func (_c *MockAccountObject_Type_Call) RunAndReturn(run func() coresmartblock.Sm
 	return _c
 }
 
-// UniqueKey provides a mock function with given fields:
+// UniqueKey provides a mock function with no fields
 func (_m *MockAccountObject) UniqueKey() domain.UniqueKey {
 	ret := _m.Called()
 
@@ -2778,7 +2778,7 @@ func (_c *MockAccountObject_UniqueKey_Call) RunAndReturn(run func() domain.Uniqu
 	return _c
 }
 
-// UniqueKeyInternal provides a mock function with given fields:
+// UniqueKeyInternal provides a mock function with no fields
 func (_m *MockAccountObject) UniqueKeyInternal() string {
 	ret := _m.Called()
 
@@ -2823,7 +2823,7 @@ func (_c *MockAccountObject_UniqueKeyInternal_Call) RunAndReturn(run func() stri
 	return _c
 }
 
-// Unlock provides a mock function with given fields:
+// Unlock provides a mock function with no fields
 func (_m *MockAccountObject) Unlock() {
 	_m.Called()
 }
@@ -2851,7 +2851,7 @@ func (_c *MockAccountObject_Unlock_Call) Return() *MockAccountObject_Unlock_Call
 }
 
 func (_c *MockAccountObject_Unlock_Call) RunAndReturn(run func()) *MockAccountObject_Unlock_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

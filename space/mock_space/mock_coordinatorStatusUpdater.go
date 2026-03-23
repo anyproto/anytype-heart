@@ -66,7 +66,7 @@ func (_c *MockcoordinatorStatusUpdater_Init_Call) RunAndReturn(run func(*app.App
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockcoordinatorStatusUpdater) Name() string {
 	ret := _m.Called()
 
@@ -111,7 +111,7 @@ func (_c *MockcoordinatorStatusUpdater_Name_Call) RunAndReturn(run func() string
 	return _c
 }
 
-// UpdateCoordinatorStatus provides a mock function with given fields:
+// UpdateCoordinatorStatus provides a mock function with no fields
 func (_m *MockcoordinatorStatusUpdater) UpdateCoordinatorStatus() {
 	_m.Called()
 }
@@ -139,7 +139,7 @@ func (_c *MockcoordinatorStatusUpdater_UpdateCoordinatorStatus_Call) Return() *M
 }
 
 func (_c *MockcoordinatorStatusUpdater_UpdateCoordinatorStatus_Call) RunAndReturn(run func()) *MockcoordinatorStatusUpdater_UpdateCoordinatorStatus_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

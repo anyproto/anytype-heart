@@ -114,7 +114,7 @@ func (_c *MockNodeStatus_Init_Call) RunAndReturn(run func(*app.App) error) *Mock
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockNodeStatus) Name() string {
 	ret := _m.Called()
 
@@ -189,7 +189,7 @@ func (_c *MockNodeStatus_SetNodesStatus_Call) Return() *MockNodeStatus_SetNodesS
 }
 
 func (_c *MockNodeStatus_SetNodesStatus_Call) RunAndReturn(run func(string, nodestatus.ConnectionStatus)) *MockNodeStatus_SetNodesStatus_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
