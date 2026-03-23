@@ -148,6 +148,10 @@ func (s *fileSync) processNextPendingUploadItem(ctx context.Context, state FileS
 func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (FileInfo, error) {
 	blocksAvailability, err := s.checkBlocksAvailability(ctx, it)
 	if err != nil {
+		if errors.Is(err, errBlockNotFound) {
+			it.State = FileStateMissingBlocks
+			return it, nil
+		}
 		it = it.Reschedule()
 		return it, fmt.Errorf("check blocks availability: %w", err)
 	}
