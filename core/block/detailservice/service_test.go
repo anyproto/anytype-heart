@@ -547,4 +547,28 @@ func TestService_SetListIsArchived(t *testing.T) {
 		// then
 		assert.Error(t, err)
 	})
+
+	t.Run("error on archiving restricted objects", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		sb := smarttest.New(binId)
+		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		fx.store.AddObjects(t, spaceId, objects)
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			if objectId == binId {
+				return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
+			}
+			restrictedSb := smarttest.New(objectId)
+			restrictedSb.SetType(coresb.SmartBlockTypeParticipant)
+			return restrictedSb, nil
+		})
+
+		// when
+		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+
+		// then
+		assert.Error(t, err)
+		assert.Len(t, sb.Blocks(), 1) // nothing was archived
+	})
 }

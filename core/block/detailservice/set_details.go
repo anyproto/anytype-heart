@@ -221,14 +221,11 @@ func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, o
 			return err
 		}
 
+		archiveId := spc.DerivedIDs().Archive
 		ids = slice.Filter(ids, func(id string) bool {
-			for _, objId := range spc.DerivedIDs().IDsWithSystemTypesAndRelations() {
-				if id == objId {
-					// avoid archive system objects including archive itself
-					return false
-				}
-			}
-			return true
+			// Skip the archive object itself to prevent deadlock:
+			// we're already inside cache.Do for this object
+			return id != archiveId
 		})
 		anySucceed, err := s.modifyArchiveLinks(ctx, archive, isArchived, ids...)
 
