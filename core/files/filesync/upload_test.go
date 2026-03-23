@@ -233,6 +233,33 @@ func TestFileSync_AddFile_SkipWhenNotLocal(t *testing.T) {
 	assert.Error(t, err, "file without local blocks should not be queued")
 }
 
+func TestFileSync_UploadTransitionsToMissingBlocks(t *testing.T) {
+	fx := newFixture(t, 1024*1024*1024)
+	defer fx.Finish(t)
+
+	spaceId := "space1"
+	fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+
+	// Delete root block from local storage so walkDAG fails with errBlockNotFound
+	err := fx.localFileStorage.Delete(ctx, fileNode.Cid())
+	require.NoError(t, err)
+
+	it := FileInfo{
+		FileId:       fileId,
+		SpaceId:      spaceId,
+		ObjectId:     "objectId1",
+		State:        FileStatePendingUpload,
+		ScheduledAt:  time.Now(),
+		CidsToUpload: map[cid.Cid]struct{}{},
+		CidsToBind:   map[cid.Cid]struct{}{},
+	}
+
+	result, err := fx.processFilePendingUpload(ctx, it)
+	require.NoError(t, err)
+	assert.Equal(t, FileStateMissingBlocks, result.State)
+	assert.Equal(t, fileId, result.FileId)
+}
+
 func TestFileSync_NoSyncingStatusWhenLimitReached(t *testing.T) {
 	fx := newFixtureNotStarted(t, 1024)
 	spaceId := "space1"
