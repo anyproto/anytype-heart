@@ -40,6 +40,19 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 		return fmt.Errorf("invalid file id: %q", req.FileId)
 	}
 
+	fileCid, err := req.FileId.FileId.Cid()
+	if err != nil {
+		return fmt.Errorf("parse file CID: %w", err)
+	}
+	existingCids, err := s.fileStorage.ExistsCids(context.Background(), []cid.Cid{fileCid})
+	if err != nil {
+		return fmt.Errorf("check local block existence: %w", err)
+	}
+	// Skip upload: root block not found locally
+	if len(existingCids) == 0 {
+		return nil
+	}
+
 	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
 		if exists && info.State.IsUploadingState() {
 			return info, false, nil

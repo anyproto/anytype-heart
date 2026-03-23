@@ -210,6 +210,29 @@ func TestFileSync_AddFile(t *testing.T) {
 	})
 }
 
+func TestFileSync_AddFile_SkipWhenNotLocal(t *testing.T) {
+	fx := newFixture(t, 1024*1024*1024)
+	defer fx.Finish(t)
+
+	nonExistentFileId := domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
+	req := AddFileRequest{
+		FileObjectId:   "objectId1",
+		FileId:         domain.FullFileId{SpaceId: "space1", FileId: nonExistentFileId},
+		UploadedByUser: true,
+	}
+	err := fx.AddFile(req)
+	require.NoError(t, err)
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err = fx.queue.GetNext(timeoutCtx, filequeue.GetNextRequest[FileInfo]{
+		Subscribe:   true,
+		StoreFilter: filterByState(FileStatePendingUpload),
+		Filter:      func(info FileInfo) bool { return info.FileId == nonExistentFileId },
+	})
+	assert.Error(t, err, "file without local blocks should not be queued")
+}
+
 func TestFileSync_NoSyncingStatusWhenLimitReached(t *testing.T) {
 	fx := newFixtureNotStarted(t, 1024)
 	spaceId := "space1"
