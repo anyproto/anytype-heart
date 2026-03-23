@@ -251,6 +251,19 @@ func (r *Renderer) renderAutoLink(_ util.BufWriter, source []byte, node ast.Node
 	return ast.WalkContinue, nil
 }
 
+// extractAnytypeObjectID extracts the objectId from an anytype://object?objectId=... URL.
+// Returns empty string if the URL is not an anytype object link.
+func extractAnytypeObjectID(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return ""
+	}
+	if u.Scheme == "anytype" && u.Host == "object" {
+		return u.Query().Get("objectId")
+	}
+	return ""
+}
+
 func IsUrl(raw string) bool {
 	colon := strings.IndexByte(raw, ':')
 
@@ -365,10 +378,17 @@ func (r *Renderer) renderLink(_ util.BufWriter,
 
 		to := int32(text.UTF16RuneCountString(r.GetText()))
 
+		markType := model.BlockContentTextMark_Link
+		markParam := linkPath
+		if objectID := extractAnytypeObjectID(linkPath); objectID != "" {
+			markType = model.BlockContentTextMark_Mention
+			markParam = objectID
+		}
+
 		r.AddMark(model.BlockContentTextMark{
 			Range: &model.Range{From: int32(r.GetMarkStart()), To: to},
-			Type:  model.BlockContentTextMark_Link,
-			Param: linkPath,
+			Type:  markType,
+			Param: markParam,
 		})
 	}
 	return ast.WalkContinue, nil
