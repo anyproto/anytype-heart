@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "dfffd3e1dafff6a43fe988d2c93f1721a7779dde224c058de044c558af5a8d0d"
+const RelationChecksum = "33b752b3618688fb548408b767bccf5376a33033d855edf5642cdf8dc3496a91"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -150,6 +150,7 @@ const (
 	RelationKeySyncError                            domain.RelationKey = "syncError"
 	RelationKeyHasChat                              domain.RelationKey = "hasChat"
 	RelationKeyChatId                               domain.RelationKey = "chatId"
+	RelationKeyDiscussionId                         domain.RelationKey = "discussionId"
 	RelationKeyMentions                             domain.RelationKey = "mentions"
 	RelationKeyTimestamp                            domain.RelationKey = "timestamp"
 	RelationKeyLayoutWidth                          domain.RelationKey = "layoutWidth"
@@ -623,6 +624,20 @@ var (
 			MaxCount:         1,
 			Name:             "Description",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDiscussionId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Discussion id",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdiscussionId",
+			Key:              "discussionId",
+			MaxCount:         1,
+			Name:             "Discussion id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
