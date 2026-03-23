@@ -75,7 +75,7 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 
 func (s *fileSync) MarkUploaded(objectId string) error {
 	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
-		if !exists {
+		if !exists || !info.State.IsUploadingState() {
 			return info, false, nil
 		}
 		info.State = FileStateDone
