@@ -1116,3 +1116,43 @@ func TestMakeObjectTypesChanges(t *testing.T) {
 		assert.Equal(t, domain.TypeKey("ot-note").URL(), remove.ObjectTypeRemove.Url)
 	})
 }
+
+func TestState_ChangeBlockMove_BatchWithParentAndChildren(t *testing.T) {
+	t.Run("parent and children moved together - no duplication", func(t *testing.T) {
+		// Reproduces GO-7041: indent on iOS generates a single Move change
+		// containing [B, B1, B2] where B was parent of B1, B2
+		d := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"A", "B"}}),
+			"A":    simple.New(&model.Block{Id: "A"}),
+			"B":    simple.New(&model.Block{Id: "B", ChildrenIds: []string{"B1", "B2"}}),
+			"B1":   simple.New(&model.Block{Id: "B1"}),
+			"B2":   simple.New(&model.Block{Id: "B2"}),
+		})
+		s := d.NewState()
+
+		err := s.ApplyChange(newMoveChange("A", model.Block_Inner, "B", "B1", "B2"))
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"B", "B1", "B2"}, s.Pick("A").Model().ChildrenIds)
+		assert.Empty(t, s.Pick("B").Model().ChildrenIds)
+		assert.Equal(t, []string{"A"}, s.Pick("root").Model().ChildrenIds)
+		require.NoError(t, s.Validate())
+	})
+
+	t.Run("siblings moved together - no regression", func(t *testing.T) {
+		d := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"A", "B", "C"}}),
+			"A":    simple.New(&model.Block{Id: "A"}),
+			"B":    simple.New(&model.Block{Id: "B"}),
+			"C":    simple.New(&model.Block{Id: "C"}),
+		})
+		s := d.NewState()
+
+		err := s.ApplyChange(newMoveChange("A", model.Block_Inner, "B", "C"))
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"B", "C"}, s.Pick("A").Model().ChildrenIds)
+		assert.Equal(t, []string{"A"}, s.Pick("root").Model().ChildrenIds)
+		require.NoError(t, s.Validate())
+	})
+}

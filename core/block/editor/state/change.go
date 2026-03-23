@@ -382,9 +382,32 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
 	for _, id := range move.Ids {
-		s.Unlink(id)
+		if !s.Unlink(id) {
+			// The block's parent may have been unlinked earlier in this batch,
+			// making the block unreachable from root. Search among co-moved
+			// blocks for the actual parent and remove the child reference.
+			s.unlinkFromCoMovedBlocks(id, move.Ids)
+		}
 	}
 	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
+}
+
+// unlinkFromCoMovedBlocks removes id from the ChildrenIds of any block in batchIds.
+// This handles the case where a block's parent was unlinked earlier in the same
+// batch move operation, making the block unreachable via root traversal.
+func (s *State) unlinkFromCoMovedBlocks(id string, batchIds []string) {
+	for _, otherId := range batchIds {
+		if otherId == id {
+			continue
+		}
+		if b := s.Pick(otherId); b != nil {
+			if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
+				parent := s.Get(otherId)
+				s.removeChildren(parent.Model(), id)
+				return
+			}
+		}
+	}
 }
 
 func (s *State) changeStoreKeySet(set *pb.ChangeStoreKeySet) error {
