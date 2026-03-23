@@ -136,7 +136,7 @@ type SpaceDescription struct {
 	Name                       string
 	IconImage                  string
 	IconOption                 int
-	SpaceUxType                model.SpaceUxType // TODO: GO-6752 remove
+	SpaceUxType                model.SpaceUxType // TODO: GO-7030 remove
 	SpaceType                  model.SpaceType
 	OneToOneIdentity           string
 	OneToOneRequestMetadataKey string

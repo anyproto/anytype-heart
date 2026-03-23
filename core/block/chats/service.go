@@ -557,7 +557,7 @@ func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Paylo
 
 	return &chatpush.Payload{
 		SpaceId:     req.spaceId,
-		SpaceUxType: int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceUxType)), // TODO: GO-6752 remove
+		SpaceUxType: int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceUxType)), // TODO: GO-7030 remove
 		SpaceType:   int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceType)),
 		SenderId:    accountId,
 		Type:        chatpush.ChatMessage,
@@ -679,8 +679,8 @@ func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string
 
 func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error {
 	var (
-		spaceId      string
-		attachments  []*model.ChatMessageAttachment
+		spaceId       string
+		attachments   []*model.ChatMessageAttachment
 		linkTargetIds []string
 	)
 

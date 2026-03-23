@@ -223,7 +223,7 @@ func (w *Workspaces) GetExistingGuestInviteInfo() (fileCid string, fileKey strin
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{{
 		Version: 2,
-		Proc: func(s *state.State) { // TODO: GO-6752 make this migration no-op
+		Proc: func(s *state.State) { // TODO: GO-7030 make this migration no-op
 			spaceUxType, ok := s.Details().TryInt64(bundle.RelationKeySpaceUxType)
 			if !ok {
 				spaceUxType = int64(model.SpaceUxType_Data)
