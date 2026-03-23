@@ -75,6 +75,9 @@ jobs:
           make setup-go
           make setup-gomobile
           which gomobile
+      - name: install grpcurl
+        run: |
+          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.9.3
       - name: run perf tests
         run: |
           echo "Running perf tests"
