@@ -81,8 +81,8 @@ jobs:
 
           run_perf_tests() {
             echo "$1" > config.json
-            CGO_ENABLED="1" go run cmd/perfstand/account_create/main.go $PERF_CONFIG $RUN_COUNT
-            CGO_ENABLED="1" go run cmd/perfstand/account_select/main.go  $PERF_CONFIG $RUN_COUNT
+            (cd cmd/perfstand/account_create && CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT)
+            (cd cmd/perfstand/account_select  && CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT)
           }
 
           run_perf_tests "$PERF_CONFIG_STAGING"
