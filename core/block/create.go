@@ -219,24 +219,25 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 		if err != nil {
 			return "", "", fmt.Errorf("import use-case: %w", err)
 		}
-	} else {
-		workspaceId := newSpace.DerivedIDs().Workspace
-		chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
-		if err != nil {
-			return "", "", err
-		}
+		return newSpace.Id(), startingPageId, err
+	}
 
-		chatId, err := newSpace.DeriveObjectID(context.Background(), chatUk)
-		if err != nil {
-			return "", "", err
-		}
-		startingPageId = chatId
+	workspaceId := newSpace.DerivedIDs().Workspace
+	chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
+	if err != nil {
+		return "", "", err
+	}
 
-		// TODO: make it async in space init
-		chatInitErr := s.SpaceInitChat(ctx, newSpace.Id(), true)
-		if chatInitErr != nil {
-			log.With("error", chatInitErr).Warn("failed to init space level chat")
-		}
+	chatId, err := newSpace.DeriveObjectID(context.Background(), chatUk)
+	if err != nil {
+		return "", "", err
+	}
+	startingPageId = chatId
+
+	// TODO: make it async in space init
+	chatInitErr := s.SpaceInitChat(ctx, newSpace.Id(), true)
+	if chatInitErr != nil {
+		log.With("error", chatInitErr).Warn("failed to init space level chat")
 	}
 
 	return newSpace.Id(), startingPageId, err
