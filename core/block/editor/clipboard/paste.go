@@ -135,7 +135,8 @@ func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 		}
 
 		selectedText := p.getFirstSelectedText()
-		p.mode.intoBlockCopyStyle = !(isSpecificStyle(p.getFirstPasteText()) || isRequiredBlock(selectedText))
+		targetIsStyled := selectedText != nil && selectedText.Model().GetText().Style != model.BlockContentText_Paragraph
+		p.mode.intoBlockCopyStyle = !(isSpecificStyle(p.getFirstPasteText()) || isRequiredBlock(selectedText) || targetIsStyled)
 
 		if selectedText != nil && textCount == 1 && nonTextCount == 0 && req.IsPartOfBlock {
 			p.mode.intoBlock = true
@@ -266,8 +267,13 @@ func (p *pasteCtrl) singleRange() (err error) {
 	}
 	if selText.GetText() == "" {
 		p.mode.removeSelection = true
-		if wasEmpty && firstPasteText != nil {
+		targetIsStyled := selText.Model().GetText().Style != model.BlockContentText_Paragraph
+		if (wasEmpty || targetIsStyled) && firstPasteText != nil {
 			p.mode.removeSelection = false
+			if targetIsStyled && !wasEmpty {
+				selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
+				p.ps.Unlink(firstPasteText.Model().Id)
+			}
 		}
 	}
 	return

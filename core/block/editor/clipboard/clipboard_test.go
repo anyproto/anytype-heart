@@ -1272,6 +1272,90 @@ func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 	}
 }
 
+func TestPasteIntoNonEmptyStyledBlock(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		style       model.BlockContentTextStyle
+		pasteBlocks []*model.Block
+		wantText    string
+	}{
+		{
+			name:  "single header paste into callout with all text selected",
+			style: model.BlockContentText_Callout,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Pasted Heading", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+			},
+			wantText: "Pasted Heading",
+		},
+		{
+			name:  "single paragraph paste into toggle with all text selected",
+			style: model.BlockContentText_Toggle,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Pasted Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+			wantText: "Pasted Text",
+		},
+		{
+			name:  "single header paste into checkbox with all text selected",
+			style: model.BlockContentText_Checkbox,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Pasted Heading", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+			},
+			wantText: "Pasted Heading",
+		},
+		{
+			name:  "multi-block paste into callout with all text selected",
+			style: model.BlockContentText_Callout,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("First Line", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				blockbuilder.Text("Second Line", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+			wantText: "First Line",
+		},
+		{
+			name:  "multi-block paste into toggle with all text selected",
+			style: model.BlockContentText_Toggle,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("First Line", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				blockbuilder.Text("Second Line", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+			wantText: "First Line",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			existingText := "Existing content"
+			sb := smarttest.New("test")
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text(
+						existingText,
+						blockbuilder.ID("1"),
+						blockbuilder.TextStyle(tc.style),
+					),
+				)))
+
+			textLen := int32(textutil.UTF16RuneCountString(existingText))
+
+			// when
+			cb := newFixture(t, sb)
+			_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "1",
+				SelectedTextRange: &model.Range{From: 0, To: textLen},
+				AnySlot:           tc.pasteBlocks,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			targetBlock := sb.Doc.Pick("1")
+			require.NotNil(t, targetBlock, "target block should not be deleted")
+			assert.Equal(t, tc.style, targetBlock.Model().GetText().Style, "target block style should be preserved")
+			assert.Equal(t, tc.wantText, targetBlock.Model().GetText().Text, "target block text should match pasted content")
+		})
+	}
+}
+
 func Test_PasteText(t *testing.T) {
 
 	t.Run("paste", func(t *testing.T) {
