@@ -11,7 +11,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 )
 
@@ -28,13 +27,11 @@ type AnystoreDebug interface {
 
 type debugComponent struct {
 	smartblock.SmartBlock
-	store *storestate.StoreState
 }
 
-func New(sb smartblock.SmartBlock, store *storestate.StoreState) AnystoreDebug {
+func New(sb smartblock.SmartBlock) AnystoreDebug {
 	return &debugComponent{
 		SmartBlock: sb,
-		store:      store,
 	}
 }
 
@@ -47,22 +44,9 @@ func (s *debugComponent) DebugChanges(ctx context.Context) ([]*DebugChange, erro
 		return nil, fmt.Errorf("build history tree: %w", err)
 	}
 
-	tx, err := s.store.NewTx(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("new tx: %w", err)
-	}
-	// todo: replace with readonly tx
-	defer tx.Rollback()
-
 	var result []*DebugChange
 	err = historyTree.IterateFrom(historyTree.Root().Id, sourceimpl.UnmarshalStoreChange, func(change *objecttree.Change) bool {
-		orderId, err := tx.GetOrder(change.Id)
-		if err != nil {
-			result = append(result, &DebugChange{
-				ChangeId: change.Id,
-				Error:    fmt.Errorf("get order: %w", err),
-			})
-		}
+		orderId := change.OrderId
 
 		raw, err := json.Marshal(change.Model)
 		if err != nil {
