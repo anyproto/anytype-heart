@@ -70,7 +70,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		Name:                       identityProfileWithKey.IdentityProfile.Name,
 		IconImage:                  identityProfileWithKey.IdentityProfile.IconCid,
 		SpaceUxType:                model.SpaceUxType_OneToOne,
-		SpaceType:                  model.SpaceType_SpaceTypeOneToOne, // TODO: GO-7030 remove when this field is marked outdated
+		SpaceType:                  model.SpaceType_SpaceTypeOneToOne, // TODO: GO-7102 remove when this field is marked outdated
 		OneToOneIdentity:           identityProfileWithKey.IdentityProfile.Identity,
 		OneToOneRequestMetadataKey: requestMetadataKeyStr,
 		OneToOneInboxSentStatus:    inviteSentStatus,
@@ -154,7 +154,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	spaceDetails := domain.NewDetailsFromProto(req.Details)
 	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
 
-	// TODO: GO-7030 remove this hack when clients transfer from UXType to SpaceType
+	// TODO: GO-7102 remove this hack when clients transfer from UXType to SpaceType
 	deriveSpaceTypeIfNeeded(spaceDetails)
 
 	if err = validateSpaceType(spaceDescription.SpaceType); err != nil {
@@ -196,7 +196,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 				Value: domain.String(domain.HomepageWidgets),
 			})
 		}
-		// TODO: GO-7030 remove this code when backward compatibility will be unnecessary
+		// TODO: GO-7102 remove this code when backward compatibility will be unnecessary
 		if !hasUxType {
 			spaceUxType := model.SpaceUxType_Data
 			if spaceDescription.SpaceType == model.SpaceType_SpaceTypeOneToOne {

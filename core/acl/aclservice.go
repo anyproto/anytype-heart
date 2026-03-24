@@ -513,7 +513,7 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
 				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid).
 				SetInt64(bundle.RelationKeyIconOption, int64(invitePayload.SpaceIconOption)).
-				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)). // TODO: GO-7030 remove
+				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)). // TODO: GO-7102 remove
 				SetInt64(bundle.RelationKeySpaceType, int64(invitePayload.SpaceType)))
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
@@ -546,7 +546,7 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
 				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid).
 				SetInt64(bundle.RelationKeyIconOption, int64(invitePayload.SpaceIconOption)).
-				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)). // TODO: GO-7030 remove
+				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)). // TODO: GO-7102 remove
 				SetInt64(bundle.RelationKeySpaceType, int64(invitePayload.SpaceType)))
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
