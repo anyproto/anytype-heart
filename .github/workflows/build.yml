@@ -74,6 +74,12 @@ jobs:
           echo BUILD_TAG_NETWORK=envproduction >> $GITHUB_ENV
           echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
+          NDK28=$(ls -d ${ANDROID_HOME}/ndk/28.* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$NDK28" ]; then echo "ERROR: NDK 28.x not found"; ls ${ANDROID_HOME}/ndk/; exit 1; fi
+          echo "Using NDK: $NDK28"
+          echo ANDROID_NDK=$NDK28 >> $GITHUB_ENV
+          echo ANDROID_NDK_HOME=$NDK28 >> $GITHUB_ENV
+          echo ANDROID_NDK_ROOT=$NDK28 >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
           echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
