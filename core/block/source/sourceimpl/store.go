@@ -188,6 +188,7 @@ func (s *store) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, emp
 		return
 	}
 	setter.SetListener(s)
+	setter.SetDeferredUpdater(true)
 
 	// Fake state, this kind of objects not support state operations.
 	// Object type and layout details are set in the corresponding smartblock Init methods.
