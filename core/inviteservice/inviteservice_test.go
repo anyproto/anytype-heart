@@ -350,6 +350,7 @@ func TestInviteService_InviteView(t *testing.T) {
 			AclKey:          rawKey,
 			SpaceId:         "spaceId",
 			SpaceIconCid:    "spaceIconCid",
+			SpaceUxType:     uint32(model.SpaceUxType_Data),
 			InviteType:      model.InviteType_WithoutApprove,
 		}
 		expectedView := domain.InviteView{
@@ -357,6 +358,8 @@ func TestInviteService_InviteView(t *testing.T) {
 			SpaceId:      "spaceId",
 			SpaceName:    "spaceName",
 			SpaceIconCid: "spaceIconCid",
+			SpaceUxType:  model.SpaceUxType_Data,
+			SpaceType:    model.SpaceType_SpaceTypeRegular,
 			CreatorName:  "Misha",
 			AclKey:       rawKey,
 		}

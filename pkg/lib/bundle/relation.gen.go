@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a44309a103773f403e2cb14c85ff84a2ae8abb5c65ffd74b3a7a51110a960a1a"
+const RelationChecksum = "33b752b3618688fb548408b767bccf5376a33033d855edf5642cdf8dc3496a91"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -196,6 +196,8 @@ const (
 	RelationKey_score                               domain.RelationKey = "_score"
 	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
 	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
+	RelationKeySpaceType                            domain.RelationKey = "spaceType"
+	RelationKeyHomepage                             domain.RelationKey = "homepage"
 )
 
 var (
@@ -998,6 +1000,20 @@ var (
 			Key:              "heightInPixels",
 			MaxCount:         1,
 			Name:             "Height",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHomepage: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Homepage of regular spaces. Could handle either object id or special constant",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brhomepage",
+			Key:              "homepage",
+			MaxCount:         1,
+			Name:             "Home page",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2415,6 +2431,20 @@ var (
 			Key:              "spaceShareableStatus",
 			MaxCount:         1,
 			Name:             "Space shareable status",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceType: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space type derived from space header, see spacedomain.SpaceType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceType",
+			Key:              "spaceType",
+			MaxCount:         1,
+			Name:             "Space type",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

@@ -29,6 +29,52 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
+// Close provides a mock function with given fields: ctx
+func (_m *MockService) Close(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
+type MockService_Close_Call struct {
+	*mock.Call
+}
+
+// Close is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) Close(ctx interface{}) *MockService_Close_Call {
+	return &MockService_Close_Call{Call: _e.mock.On("Close", ctx)}
+}
+
+func (_c *MockService_Close_Call) Run(run func(ctx context.Context)) *MockService_Close_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_Close_Call) Return(err error) *MockService_Close_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) *MockService_Close_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: a
 func (_m *MockService) Init(a *app.App) error {
 	ret := _m.Called(a)
@@ -135,7 +181,7 @@ func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string,
 }
 
 // ModifyDetails provides a mock function with given fields: ctx, objectId, modifier
-func (_m *MockService) ModifyDetails(ctx session.Context, objectId string, modifier func(*domain.Details) (*domain.Details, error)) error {
+func (_m *MockService) ModifyDetails(ctx session.Context, objectId string, modifier func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error {
 	ret := _m.Called(ctx, objectId, modifier)
 
 	if len(ret) == 0 {
@@ -143,7 +189,7 @@ func (_m *MockService) ModifyDetails(ctx session.Context, objectId string, modif
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, func(*domain.Details) (*domain.Details, error)) error); ok {
+	if rf, ok := ret.Get(0).(func(session.Context, string, func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error); ok {
 		r0 = rf(ctx, objectId, modifier)
 	} else {
 		r0 = ret.Error(0)
@@ -160,14 +206,14 @@ type MockService_ModifyDetails_Call struct {
 // ModifyDetails is a helper method to define mock.On call
 //   - ctx session.Context
 //   - objectId string
-//   - modifier func(*domain.Details)(*domain.Details , error)
+//   - modifier func(*domain.GenericMap[domain.RelationKey])(*domain.GenericMap[domain.RelationKey] , error)
 func (_e *MockService_Expecter) ModifyDetails(ctx interface{}, objectId interface{}, modifier interface{}) *MockService_ModifyDetails_Call {
 	return &MockService_ModifyDetails_Call{Call: _e.mock.On("ModifyDetails", ctx, objectId, modifier)}
 }
 
-func (_c *MockService_ModifyDetails_Call) Run(run func(ctx session.Context, objectId string, modifier func(*domain.Details) (*domain.Details, error))) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) Run(run func(ctx session.Context, objectId string, modifier func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error))) *MockService_ModifyDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].(func(*domain.Details) (*domain.Details, error)))
+		run(args[0].(session.Context), args[1].(string), args[2].(func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)))
 	})
 	return _c
 }
@@ -177,7 +223,7 @@ func (_c *MockService_ModifyDetails_Call) Return(_a0 error) *MockService_ModifyD
 	return _c
 }
 
-func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(session.Context, string, func(*domain.Details) (*domain.Details, error)) error) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(session.Context, string, func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error) *MockService_ModifyDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -228,7 +274,7 @@ func (_c *MockService_ModifyDetailsList_Call) RunAndReturn(run func(*pb.RpcObjec
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 
@@ -522,6 +568,52 @@ func (_c *MockService_ObjectTypeSetRelations_Call) RunAndReturn(run func(string,
 	return _c
 }
 
+// Run provides a mock function with given fields: ctx
+func (_m *MockService) Run(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Run")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_Run_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Run'
+type MockService_Run_Call struct {
+	*mock.Call
+}
+
+// Run is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) Run(ctx interface{}) *MockService_Run_Call {
+	return &MockService_Run_Call{Call: _e.mock.On("Run", ctx)}
+}
+
+func (_c *MockService_Run_Call) Run(run func(ctx context.Context)) *MockService_Run_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_Run_Call) Return(err error) *MockService_Run_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_Run_Call) RunAndReturn(run func(context.Context) error) *MockService_Run_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetDetails provides a mock function with given fields: ctx, objectId, details
 func (_m *MockService) SetDetails(ctx session.Context, objectId string, details []domain.Detail) error {
 	ret := _m.Called(ctx, objectId, details)
@@ -809,7 +901,7 @@ func (_c *MockService_SetListIsFavorite_Call) RunAndReturn(run func([]string, bo
 }
 
 // SetSpaceInfo provides a mock function with given fields: spaceId, details
-func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.Details) error {
+func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.GenericMap[domain.RelationKey]) error {
 	ret := _m.Called(spaceId, details)
 
 	if len(ret) == 0 {
@@ -817,7 +909,7 @@ func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.Details) err
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, *domain.Details) error); ok {
+	if rf, ok := ret.Get(0).(func(string, *domain.GenericMap[domain.RelationKey]) error); ok {
 		r0 = rf(spaceId, details)
 	} else {
 		r0 = ret.Error(0)
@@ -833,14 +925,14 @@ type MockService_SetSpaceInfo_Call struct {
 
 // SetSpaceInfo is a helper method to define mock.On call
 //   - spaceId string
-//   - details *domain.Details
+//   - details *domain.GenericMap[domain.RelationKey]
 func (_e *MockService_Expecter) SetSpaceInfo(spaceId interface{}, details interface{}) *MockService_SetSpaceInfo_Call {
 	return &MockService_SetSpaceInfo_Call{Call: _e.mock.On("SetSpaceInfo", spaceId, details)}
 }
 
-func (_c *MockService_SetSpaceInfo_Call) Run(run func(spaceId string, details *domain.Details)) *MockService_SetSpaceInfo_Call {
+func (_c *MockService_SetSpaceInfo_Call) Run(run func(spaceId string, details *domain.GenericMap[domain.RelationKey])) *MockService_SetSpaceInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(*domain.Details))
+		run(args[0].(string), args[1].(*domain.GenericMap[domain.RelationKey]))
 	})
 	return _c
 }
@@ -850,65 +942,7 @@ func (_c *MockService_SetSpaceInfo_Call) Return(_a0 error) *MockService_SetSpace
 	return _c
 }
 
-func (_c *MockService_SetSpaceInfo_Call) RunAndReturn(run func(string, *domain.Details) error) *MockService_SetSpaceInfo_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetWorkspaceDashboardId provides a mock function with given fields: ctx, workspaceId, id
-func (_m *MockService) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (string, error) {
-	ret := _m.Called(ctx, workspaceId, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetWorkspaceDashboardId")
-	}
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, string) (string, error)); ok {
-		return rf(ctx, workspaceId, id)
-	}
-	if rf, ok := ret.Get(0).(func(session.Context, string, string) string); ok {
-		r0 = rf(ctx, workspaceId, id)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(session.Context, string, string) error); ok {
-		r1 = rf(ctx, workspaceId, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_SetWorkspaceDashboardId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetWorkspaceDashboardId'
-type MockService_SetWorkspaceDashboardId_Call struct {
-	*mock.Call
-}
-
-// SetWorkspaceDashboardId is a helper method to define mock.On call
-//   - ctx session.Context
-//   - workspaceId string
-//   - id string
-func (_e *MockService_Expecter) SetWorkspaceDashboardId(ctx interface{}, workspaceId interface{}, id interface{}) *MockService_SetWorkspaceDashboardId_Call {
-	return &MockService_SetWorkspaceDashboardId_Call{Call: _e.mock.On("SetWorkspaceDashboardId", ctx, workspaceId, id)}
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) Run(run func(ctx session.Context, workspaceId string, id string)) *MockService_SetWorkspaceDashboardId_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) Return(setId string, err error) *MockService_SetWorkspaceDashboardId_Call {
-	_c.Call.Return(setId, err)
-	return _c
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) RunAndReturn(run func(session.Context, string, string) (string, error)) *MockService_SetWorkspaceDashboardId_Call {
+func (_c *MockService_SetSpaceInfo_Call) RunAndReturn(run func(string, *domain.GenericMap[domain.RelationKey]) error) *MockService_SetSpaceInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

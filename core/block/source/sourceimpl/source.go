@@ -323,6 +323,10 @@ func (s *treeSource) buildState() (doc state.Doc, err error) {
 		s.fileObjectMigrator.MigrateFileIdsInDetails(st, s.space)
 	}
 
+	if s.Type() == smartblock.SmartBlockTypeWorkspace {
+		s.migrateHomepage(st)
+	}
+
 	s.changesSinceSnapshot = changesAppliedSinceSnapshot
 	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
@@ -334,6 +338,34 @@ func (s *treeSource) buildState() (doc state.Doc, err error) {
 		return
 	}
 	return st, nil
+}
+
+func (s *treeSource) migrateHomepage(st *state.State) {
+	// do no migration if homepage is already set
+	if st.Details().Has(bundle.RelationKeyHomepage) {
+		return
+	}
+
+	homepage := ""
+	spaceUxType := model.SpaceUxType(st.Details().GetInt64(bundle.RelationKeySpaceUxType)) // nolint:gosec
+
+	switch spaceUxType {
+	case model.SpaceUxType_Chat, model.SpaceUxType_OneToOne:
+		chatUk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeChatDerivedObject, s.Id())
+		if err == nil {
+			chatId, err := s.space.DeriveObjectID(context.Background(), chatUk)
+			if err == nil && chatId != "" {
+				homepage = chatId
+			}
+		}
+	case model.SpaceUxType_Data:
+		homepage = st.Details().GetString(bundle.RelationKeySpaceDashboardId)
+		if homepage == domain.HomepageLastOpened {
+			homepage = domain.HomepageWidgets
+		}
+	}
+
+	st.SetDetail(bundle.RelationKeyHomepage, domain.String(homepage))
 }
 
 func (s *treeSource) GetCreationInfo() (creatorObjectId string, createdDate int64, err error) {

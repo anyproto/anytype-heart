@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 func New(id string) *SmartTest {
@@ -125,6 +126,10 @@ func (s *stubSpace) IsPersonal() bool {
 
 func (s *stubSpace) IsOneToOne() bool {
 	return false
+}
+
+func (s *stubSpace) SpaceType() spacedomain.SpaceType {
+	return spacedomain.SpaceTypeRegular
 }
 
 func (s *stubSpace) StoredIds() []string {
