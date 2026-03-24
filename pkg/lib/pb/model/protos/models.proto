@@ -54,6 +54,7 @@ enum SmartBlockType {
     ChatObjectDeprecated = 0x219; // DEPRECATED Container for any-store based chats
     ChatDerivedObject = 0x220; // Any-store based object for chat
     AccountObject = 0x221; // Container for account data in tech space
+    DiscussionObject = 0x222; // Any-store based object for discussion
 }
 
 message Search {
@@ -70,6 +71,35 @@ message Search {
         string relationKey = 4; // relation key of the block where the highlight has been found
         google.protobuf.Struct relationDetails = 5; // contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails
     }
+
+    message Message {
+        message Sort {
+            Key key = 1;
+            Type type = 2;
+
+            enum Key {
+                ORDER_ID = 0;
+                SCORE = 1;
+                CREATED_AT = 2;
+                MODIFIED_AT = 3;
+            }
+
+            enum Type {
+                Asc = 0;
+                Desc = 1;
+            }
+        }
+
+        message Result {
+            string chatId = 1;
+            string messageId = 2;
+            int64 score = 3;
+            string highlight = 4; // truncated text with highlights
+            repeated Range highlightRanges = 5; // ranges of the highlight in the text (using utf-16 runes)
+            ChatMessage message = 6;
+        }
+    }
+
 }
 
 message Block {
@@ -293,7 +323,9 @@ message Block {
                 Toggle = 11;
                 Description = 12; // currently only one block of this style can exists on a page
                 Callout = 13;
-
+                ToggleHeader1 = 14;
+                ToggleHeader2 = 15;
+                ToggleHeader3 = 16;
             }
         }
 
@@ -365,6 +397,8 @@ message Block {
                 string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
                 string endRelationKey = 16; // Group view by this relationKey
                 bool wrapContent = 17; // Wrap content in view
+                ListSize listSize = 18; // List view size setting
+                bool alternateRows = 19; // Alternate row background colors in grid view
 
                 enum Type {
                     Table = 0;
@@ -379,6 +413,11 @@ message Block {
                     Small = 0;
                     Medium = 1;
                     Large = 2;
+                }
+
+                enum ListSize {
+                    Compact = 0;  // Single-line display (default)
+                    Regular = 1;  // Two-line display with description
                 }
             }
 
@@ -822,6 +861,7 @@ message ObjectType {
         notification = 24;
         missingObject = 25;
         devices = 26;
+        discussion = 27;
     }
 }
 
@@ -1423,6 +1463,14 @@ message MembershipV2 {
         int64 amountCents = 2;
     }
 
+    enum Platform {
+        Unknown = 0;
+        Desktop = 1;
+        MobileIOS = 2;
+        MobileAndroid = 3;
+        Web = 4;
+    }
+
     enum PaymentProvider {
         None = 0;
         Stripe = 1;
@@ -1570,6 +1618,7 @@ message ChatState {
     UnreadState mentions = 2; // unread mentions
     string lastStateId = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
     int64 order = 4; // Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order
+    string unreadReactionOrderId = 5; // order id of the newest message with any unread reactions
 }
 
 message ChatMessage {
@@ -1590,6 +1639,10 @@ message ChatMessage {
     bool mentionRead = 12;
     bool hasMention = 14;
     bool synced = 13;
+    bool pinned = 15;
+    bool unreadReaction = 16;
+    repeated MessageBlock blocks = 17;  // Ordered list of content blocks
+
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
@@ -1614,6 +1667,39 @@ message ChatMessage {
             repeated string ids = 1; // List of user IDs
         }
     }
+
+    message MessageBlock {
+        oneof content {
+            MessageBlockText text = 1;
+            MessageBlockLink link = 2;
+            MessageBlockEmbed embed = 3;
+        }
+    }
+
+    message MessageBlockText {
+        string text = 1;
+        Block.Content.Text.Style style = 2;
+        repeated Block.Content.Text.Mark marks = 3;
+        bool checked = 4;
+        string lang = 5;
+    }
+
+    message MessageBlockLink {
+        string targetObjectId = 1;
+        LinkType type = 2;
+
+        enum LinkType {
+            Object = 0;
+            File = 1;
+            Image = 2;
+            Bookmark = 3;
+        }
+    }
+
+    message MessageBlockEmbed {
+        string text = 1;
+        Block.Content.Latex.Processor processor = 2;
+    }
 }
 
 enum SyncStatus {
@@ -1628,4 +1714,9 @@ enum SyncError {
     SyncErrorIncompatibleVersion = 2;
     SyncErrorNetworkError        = 3;
     SyncErrorOversized           = 4;
+}
+
+enum TemplateNamePrefillType {
+    Empty = 0;
+    FromTemplateName = 1;
 }

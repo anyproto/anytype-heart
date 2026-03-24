@@ -95,10 +95,10 @@ func (c *layoutConverter) Convert(st *state.State, fromLayout, toLayout model.Ob
 		return fmt.Errorf("layout conversion from %s to %s is not allowed", model.ObjectTypeLayout_name[int32(fromLayout)], model.ObjectTypeLayout_name[int32(toLayout)])
 	}
 
-	if fromLayout == model.ObjectType_chatDeprecated || fromLayout == model.ObjectType_chatDerived {
+	if fromLayout == model.ObjectType_chatDeprecated || fromLayout == model.ObjectType_chatDerived || fromLayout == model.ObjectType_discussion {
 		return fmt.Errorf("can't convert from chat")
 	}
-	if toLayout == model.ObjectType_chatDeprecated || toLayout == model.ObjectType_chatDerived {
+	if toLayout == model.ObjectType_chatDeprecated || toLayout == model.ObjectType_chatDerived || toLayout == model.ObjectType_discussion {
 		return fmt.Errorf("can't convert to chat")
 	}
 
@@ -291,7 +291,11 @@ func (c *layoutConverter) fromAnyToCollection(st *state.State) error {
 }
 
 func (c *layoutConverter) fromNoteToAny(st *state.State) error {
-	template.InitTemplate(st, template.WithNameFromFirstBlock)
+	templates := []template.StateTransformer{template.WithNameFromFirstBlock}
+	if st.Details().GetString(bundle.RelationKeyDescription) != "" {
+		templates = append(templates, template.WithDescription)
+	}
+	template.InitTemplate(st, templates...)
 	return nil
 }
 

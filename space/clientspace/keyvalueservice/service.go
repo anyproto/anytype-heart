@@ -1,5 +1,23 @@
 package keyvalueservice
 
+/*
+AI generated
+
+Name: Private Key-Value Store Wrapper
+Scope: space
+
+## Responsibility
+- Provides privacy layer over per-space key-value storage by hashing keys
+- Manages subscriptions for key change notifications
+
+## Documentation
+Key Privacy Scheme:
+1. Salt is derived from the first ACL record's read key (lazy-initialized)
+2. Client keys are hashed as: SHA256(salt + key) -> derived key
+3. Original key is stored inside encrypted value: derived_key -> (original_key, value)
+4. Max key length: 65535 bytes
+*/
+
 import (
 	"context"
 	"crypto/sha256"

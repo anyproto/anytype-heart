@@ -236,6 +236,9 @@ func (q *Queue[T]) checkGetNextWaiters(item T, responded bool) bool {
 	for i, waiter := range q.getNextWaiters {
 		if waiter.filter(item) {
 			q.getNextWaiters = slices.Delete(q.getNextWaiters, i, i+1)
+			if waiter.done != nil {
+				close(waiter.done)
+			}
 
 			q.itemLocked[q.getId(item)] = struct{}{}
 			waiter.responseCh <- itemResponse[T]{item: item}
@@ -254,6 +257,9 @@ func (q *Queue[T]) checkNextScheduledWaiters(item T, responded bool) bool {
 	for i, waiter := range q.getNextScheduledWaiters {
 		if waiter.filter(item) && !q.isScheduled(item) {
 			q.getNextScheduledWaiters = slices.Delete(q.getNextScheduledWaiters, i, i+1)
+			if waiter.done != nil {
+				close(waiter.done)
+			}
 
 			// Respond immediately
 			if waiter.scheduledAt(item).Before(time.Now()) {
@@ -385,6 +391,9 @@ func (q *Queue[T]) handleCancelRequest(id string) {
 				w.responseCh <- itemResponse[T]{
 					err: context.Canceled,
 				}
+				if w.done != nil {
+					close(w.done)
+				}
 				waiters = slices.Delete(waiters, i, i+1)
 				return waiters
 			}
@@ -440,12 +449,15 @@ func (q *Queue[T]) handleGetNextScheduled(req getNextRequest[T]) {
 	})
 	if errors.Is(err, ErrNoRows) {
 		if req.subscribe {
+			req.done = make(chan struct{})
 			q.getNextScheduledWaiters = append(q.getNextScheduledWaiters, req)
 			go func() {
 				select {
 				case <-req.ctx.Done():
 					q.cancelRequest(req.id)
 				case <-q.ctx.Done():
+					return
+				case <-req.done:
 					return
 				}
 			}()
@@ -477,12 +489,15 @@ func (q *Queue[T]) handleGetNext(req getNextRequest[T]) {
 	})
 	if errors.Is(err, ErrNoRows) {
 		if req.subscribe {
+			req.done = make(chan struct{})
 			q.getNextWaiters = append(q.getNextWaiters, req)
 			go func() {
 				select {
 				case <-req.ctx.Done():
 					q.cancelRequest(req.id)
 				case <-q.ctx.Done():
+					return
+				case <-req.done:
 					return
 				}
 			}()
@@ -731,6 +746,7 @@ type getNextRequest[T any] struct {
 	scheduledAt func(T) time.Time
 
 	responseCh chan itemResponse[T]
+	done       chan struct{} // closed when waiter is fulfilled, to stop the monitoring goroutine
 }
 
 type scheduledItem[T any] struct {

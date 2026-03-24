@@ -1,5 +1,29 @@
 package space
 
+/*
+AI generated
+
+Name: Space Lifecycle Manager
+Scope: global
+
+## Responsibility
+- Manages lifecycle of all space types (personal, shareable, streamable, one-to-one)
+- Orchestrates space creation, loading, joining, and deletion
+- Maintains registry of active space controllers
+- Handles account initialization (new vs existing accounts, tech space creation)
+
+## Background Tasks
+- spaceWatcher: subscribes to space view changes in tech space, triggers controller updates (onSpaceStatusUpdated)
+- tryToJoinSpaceStream: retries joining stream space with exponential backoff when autoJoinStreamSpace is configured
+
+## Documentation
+Space startup flow:
+1. Init: derive personal/tech space IDs, setup watcher
+2. Run: init marketplace space, then either createAccount (new) or initAccount (existing)
+3. Tech space must be ready (channel closed) before regular spaces can be loaded
+4. SpaceView changes in tech space trigger controller starts/updates via watcher subscription
+*/
+
 import (
 	"context"
 	"errors"
@@ -395,6 +419,14 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		if err != nil {
 			log.Warn("ctrl.Update error", zap.Error(err))
 			return
+		}
+	}()
+}
+
+func (s *service) SpaceViewSetOneToOneIdentity(spaceId string, identity string) {
+	go func() {
+		if err := s.techSpace.SpaceViewSetOneToOneIdentity(s.ctx, spaceId, identity); err != nil {
+			log.Warn("SpaceViewSetOneToOneIdentity error", zap.Error(err))
 		}
 	}()
 }

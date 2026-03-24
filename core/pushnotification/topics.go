@@ -62,12 +62,16 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 	pubKey, _ := status.spaceKey.GetPublic().Raw()
 
 	needCreate := false
-	if isOwner := strings.HasSuffix(status.creator, c.identity); isOwner {
+	isOwner := strings.HasSuffix(status.creator, c.identity)
+	isOneToOne := status.uxType == model.SpaceUxType_OneToOne
+	if isOwner || isOneToOne {
 		needCreate = true
-		for _, remoteTopic := range c.remoteTopics {
-			if bytes.Equal(remoteTopic.SpaceKey, pubKey) {
-				needCreate = false
-				break
+		if !isOneToOne {
+			for _, remoteTopic := range c.remoteTopics {
+				if bytes.Equal(remoteTopic.SpaceKey, pubKey) {
+					needCreate = false
+					break
+				}
 			}
 		}
 	}
@@ -129,9 +133,6 @@ func (c *spaceTopicsCollection) deleteSpace(status spaceViewStatus) {
 		log.Error("get raw space key", zap.Error(err))
 		return
 	}
-	c.remoteTopics = slices.DeleteFunc(c.remoteTopics, func(topic *pushapi.Topic) bool {
-		return bytes.Equal(topic.SpaceKey, rawSpaceKey)
-	})
 	c.localTopics = slices.DeleteFunc(c.localTopics, func(topic *pushapi.Topic) bool {
 		return bytes.Equal(topic.SpaceKey, rawSpaceKey)
 	})

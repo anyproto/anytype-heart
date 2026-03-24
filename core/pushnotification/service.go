@@ -1,5 +1,31 @@
 package pushnotification
 
+/*
+AI generated
+
+Name: Push Notification Topic Sync
+Scope: global
+
+## Responsibility
+- Syncs push notification topic subscriptions with remote push server
+- Sends encrypted push notifications via queued delivery with retry
+- Monitors space views and chats to determine subscription topics
+- Registers/revokes device tokens with push server
+
+## Background Tasks
+- subscriptionSync: registers tokens, syncs topic subscriptions every 5 min or on changes (run)
+- notificationSender: dequeues and sends notifications with retry (sendNotificationsLoop)
+- chatMonitor: tracks chat additions/removals across spaces (monitorChatIds)
+
+## Documentation
+Topic subscription flow:
+1. Load existing subscriptions from remote server
+2. Subscribe to spaceView objects to track notification settings per space
+3. Subscribe to chat objects cross-space to track chat IDs
+4. On any change (or every 5 min): rebuild local topic list from space settings
+5. If local differs from remote: create missing spaces, then sync all subscriptions
+*/
+
 import (
 	"context"
 	"errors"
@@ -324,8 +350,8 @@ func (s *service) runChatIdsSubscription() (err error) {
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(int64(model.ObjectType_chatDerived)),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List([]model.ObjectTypeLayout{model.ObjectType_chatDerived, model.ObjectType_discussion}),
 			},
 		},
 	}, func(d *domain.Details) bool {

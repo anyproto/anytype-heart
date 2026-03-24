@@ -249,6 +249,9 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 }
 
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
+	if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(set.Key)) {
+		return nil
+	}
 	det := s.Details()
 	if det == nil {
 		det = domain.NewDetails()
@@ -258,11 +261,7 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 	if s.details == nil {
 		s.details = det.Copy()
 	}
-	if set.Value != nil {
-		s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
-	} else {
-		s.details.Delete(domain.RelationKey(set.Key))
-	}
+	s.details.SetProtoValue(domain.RelationKey(set.Key), set.Value)
 	return nil
 }
 
@@ -364,8 +363,8 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 }
 
 func (s *State) changeBlockRemove(remove *pb.ChangeBlockRemove) error {
+	s.UnlinkAll(remove.Ids)
 	for _, id := range remove.Ids {
-		s.Unlink(id)
 		s.CleanupBlock(id)
 	}
 	return nil
@@ -382,9 +381,7 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
-	for _, id := range move.Ids {
-		s.Unlink(id)
-	}
+	s.UnlinkAll(move.Ids)
 	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
 }
 
@@ -784,6 +781,9 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 	}
 
 	var prevMap = make(map[domain.TypeKey]struct{}, len(prev))
+	for _, v := range prev {
+		prevMap[v] = struct{}{}
+	}
 	var curMap = make(map[domain.TypeKey]struct{}, len(s.objectTypeKeys))
 
 	for _, v := range s.objectTypeKeys {

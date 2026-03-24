@@ -1,5 +1,26 @@
 package importer
 
+/*
+AI generated
+
+Name: Multi-Format Object Importer
+Scope: global
+
+## Responsibility
+- Orchestrate import from multiple formats (Markdown, Notion, HTML, CSV, TXT, Protobuf, Web)
+- Convert external data into snapshots via format-specific converters
+- Create Anytype objects from snapshots using worker pool parallelization
+- Assign IDs and payloads to imported objects, handle ID remapping
+
+## Documentation
+Import flow:
+1. Request received (sync or async via goroutine)
+2. Converter.GetSnapshots() produces snapshots from source format
+3. IdProvider assigns new IDs and payloads to all snapshots
+4. Worker pool (10 workers) creates objects in parallel via objectcreator.Service
+5. Post-processing: file sync events, root collection widget, notifications
+*/
+
 import (
 	"context"
 

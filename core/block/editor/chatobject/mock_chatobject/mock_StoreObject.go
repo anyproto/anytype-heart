@@ -1112,6 +1112,64 @@ func (_c *MockStoreObject_GetMessagesByIds_Call) RunAndReturn(run func(context.C
 	return _c
 }
 
+// GetPinnedMessages provides a mock function with given fields: ctx
+func (_m *MockStoreObject) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetPinnedMessages")
+	}
+
+	var r0 []*chatmodel.Message
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]*chatmodel.Message, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []*chatmodel.Message); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*chatmodel.Message)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStoreObject_GetPinnedMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetPinnedMessages'
+type MockStoreObject_GetPinnedMessages_Call struct {
+	*mock.Call
+}
+
+// GetPinnedMessages is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockStoreObject_Expecter) GetPinnedMessages(ctx interface{}) *MockStoreObject_GetPinnedMessages_Call {
+	return &MockStoreObject_GetPinnedMessages_Call{Call: _e.mock.On("GetPinnedMessages", ctx)}
+}
+
+func (_c *MockStoreObject_GetPinnedMessages_Call) Run(run func(ctx context.Context)) *MockStoreObject_GetPinnedMessages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_GetPinnedMessages_Call) Return(_a0 []*chatmodel.Message, _a1 error) *MockStoreObject_GetPinnedMessages_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStoreObject_GetPinnedMessages_Call) RunAndReturn(run func(context.Context) ([]*chatmodel.Message, error)) *MockStoreObject_GetPinnedMessages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // HandleSyncStatusUpdate provides a mock function with given fields: heads, status, syncError
 func (_m *MockStoreObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
 	_m.Called(heads, status, syncError)
@@ -1656,6 +1714,52 @@ func (_c *MockStoreObject_MarkReadMessages_Call) Return(markedCount int, err err
 }
 
 func (_c *MockStoreObject_MarkReadMessages_Call) RunAndReturn(run func(context.Context, chatobject.ReadMessagesRequest) (int, error)) *MockStoreObject_MarkReadMessages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// MarkReadReactions provides a mock function with given fields: ctx
+func (_m *MockStoreObject) MarkReadReactions(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for MarkReadReactions")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_MarkReadReactions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MarkReadReactions'
+type MockStoreObject_MarkReadReactions_Call struct {
+	*mock.Call
+}
+
+// MarkReadReactions is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockStoreObject_Expecter) MarkReadReactions(ctx interface{}) *MockStoreObject_MarkReadReactions_Call {
+	return &MockStoreObject_MarkReadReactions_Call{Call: _e.mock.On("MarkReadReactions", ctx)}
+}
+
+func (_c *MockStoreObject_MarkReadReactions_Call) Run(run func(ctx context.Context)) *MockStoreObject_MarkReadReactions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_MarkReadReactions_Call) Return(_a0 error) *MockStoreObject_MarkReadReactions_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_MarkReadReactions_Call) RunAndReturn(run func(context.Context) error) *MockStoreObject_MarkReadReactions_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2367,6 +2471,54 @@ func (_c *MockStoreObject_SetLocker_Call) RunAndReturn(run func(smartblock.Locke
 	return _c
 }
 
+// SetMessagePinned provides a mock function with given fields: ctx, messageId, pinned
+func (_m *MockStoreObject) SetMessagePinned(ctx context.Context, messageId string, pinned bool) error {
+	ret := _m.Called(ctx, messageId, pinned)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetMessagePinned")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, bool) error); ok {
+		r0 = rf(ctx, messageId, pinned)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_SetMessagePinned_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetMessagePinned'
+type MockStoreObject_SetMessagePinned_Call struct {
+	*mock.Call
+}
+
+// SetMessagePinned is a helper method to define mock.On call
+//   - ctx context.Context
+//   - messageId string
+//   - pinned bool
+func (_e *MockStoreObject_Expecter) SetMessagePinned(ctx interface{}, messageId interface{}, pinned interface{}) *MockStoreObject_SetMessagePinned_Call {
+	return &MockStoreObject_SetMessagePinned_Call{Call: _e.mock.On("SetMessagePinned", ctx, messageId, pinned)}
+}
+
+func (_c *MockStoreObject_SetMessagePinned_Call) Run(run func(ctx context.Context, messageId string, pinned bool)) *MockStoreObject_SetMessagePinned_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(bool))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_SetMessagePinned_Call) Return(_a0 error) *MockStoreObject_SetMessagePinned_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_SetMessagePinned_Call) RunAndReturn(run func(context.Context, string, bool) error) *MockStoreObject_SetMessagePinned_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetVerticalAlign provides a mock function with given fields: ctx, align, ids
 func (_m *MockStoreObject) SetVerticalAlign(ctx session.Context, align model.BlockVerticalAlign, ids ...string) error {
 	_va := make([]interface{}, len(ids))
@@ -2619,6 +2771,98 @@ func (_c *MockStoreObject_SpaceID_Call) Return(_a0 string) *MockStoreObject_Spac
 }
 
 func (_c *MockStoreObject_SpaceID_Call) RunAndReturn(run func() string) *MockStoreObject_SpaceID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StateAppend provides a mock function with given fields: _a0
+func (_m *MockStoreObject) StateAppend(_a0 func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error {
+	ret := _m.Called(_a0)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StateAppend")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_StateAppend_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StateAppend'
+type MockStoreObject_StateAppend_Call struct {
+	*mock.Call
+}
+
+// StateAppend is a helper method to define mock.On call
+//   - _a0 func(state.Doc)(*state.State , []*pb.ChangeContent , error)
+func (_e *MockStoreObject_Expecter) StateAppend(_a0 interface{}) *MockStoreObject_StateAppend_Call {
+	return &MockStoreObject_StateAppend_Call{Call: _e.mock.On("StateAppend", _a0)}
+}
+
+func (_c *MockStoreObject_StateAppend_Call) Run(run func(_a0 func(state.Doc) (*state.State, []*pb.ChangeContent, error))) *MockStoreObject_StateAppend_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(func(state.Doc) (*state.State, []*pb.ChangeContent, error)))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_StateAppend_Call) Return(_a0 error) *MockStoreObject_StateAppend_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_StateAppend_Call) RunAndReturn(run func(func(state.Doc) (*state.State, []*pb.ChangeContent, error)) error) *MockStoreObject_StateAppend_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StateRebuild provides a mock function with given fields: d
+func (_m *MockStoreObject) StateRebuild(d state.Doc) error {
+	ret := _m.Called(d)
+
+	if len(ret) == 0 {
+		panic("no return value specified for StateRebuild")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(state.Doc) error); ok {
+		r0 = rf(d)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_StateRebuild_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'StateRebuild'
+type MockStoreObject_StateRebuild_Call struct {
+	*mock.Call
+}
+
+// StateRebuild is a helper method to define mock.On call
+//   - d state.Doc
+func (_e *MockStoreObject_Expecter) StateRebuild(d interface{}) *MockStoreObject_StateRebuild_Call {
+	return &MockStoreObject_StateRebuild_Call{Call: _e.mock.On("StateRebuild", d)}
+}
+
+func (_c *MockStoreObject_StateRebuild_Call) Run(run func(d state.Doc)) *MockStoreObject_StateRebuild_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(state.Doc))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_StateRebuild_Call) Return(err error) *MockStoreObject_StateRebuild_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockStoreObject_StateRebuild_Call) RunAndReturn(run func(state.Doc) error) *MockStoreObject_StateRebuild_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -3,6 +3,7 @@ package filesync
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -15,6 +16,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+var errSpaceDeleted = fmt.Errorf("space is deleted")
 
 type updateMessage struct {
 	spaceId string
@@ -35,11 +38,14 @@ type spaceUsageManager struct {
 	ctxCancel context.CancelFunc
 
 	techSpaceId         string
+	techSpaceLock       sync.Mutex
+	techSpaceUsage      *spaceUsage
 	subscriptionService subscription.Service
 	rpcStore            rpcstore.RpcStore
 
-	spaceViews *objectsubscription.ObjectSubscription[*spaceUsage]
-	updateCh   chan updateMessage
+	spaceViews        *objectsubscription.ObjectSubscription[*spaceUsage]
+	deletedSpaceViews *objectsubscription.ObjectSubscription[struct{}]
+	updateCh          chan updateMessage
 }
 
 func newSpaceUsageManager(subscriptionService subscription.Service, rpcStore rpcstore.RpcStore, techSpaceId string) *spaceUsageManager {
@@ -56,7 +62,52 @@ func newSpaceUsageManager(subscriptionService subscription.Service, rpcStore rpc
 	}
 }
 
+func (m *spaceUsageManager) createDeletedSpacesSub() error {
+	sub := objectsubscription.New[struct{}](m.subscriptionService, subscription.SubscribeRequest{
+		SpaceId: m.techSpaceId,
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyTargetSpaceId.String(),
+		},
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_spaceView)),
+			},
+			{
+				RelationKey: bundle.RelationKeySpaceAccountStatus,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List([]model.SpaceStatus{model.SpaceStatus_SpaceDeleted, model.SpaceStatus_SpaceRemoving}),
+			},
+		},
+	}, objectsubscription.SubscriptionParams[struct{}]{
+		SetDetails: func(details *domain.Details) (id string, entry struct{}) {
+			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
+			return spaceId, struct{}{}
+		},
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry struct{}) (updatedEntry struct{}) {
+			return curEntry
+		},
+		RemoveKeys: func(keys []string, curEntry struct{}) (updatedEntry struct{}) {
+			return curEntry
+		},
+	})
+
+	err := sub.Run()
+	if err != nil {
+		return fmt.Errorf("run: %w", err)
+	}
+	m.deletedSpaceViews = sub
+	return nil
+}
+
 func (m *spaceUsageManager) init() error {
+	err := m.createDeletedSpacesSub()
+	if err != nil {
+		return fmt.Errorf("create deleted spaces sub: %w", err)
+	}
+
 	sub := objectsubscription.New[*spaceUsage](m.subscriptionService, subscription.SubscribeRequest{
 		SpaceId: m.techSpaceId,
 		Keys: []string{
@@ -78,25 +129,7 @@ func (m *spaceUsageManager) init() error {
 	}, objectsubscription.SubscriptionParams[*spaceUsage]{
 		SetDetails: func(details *domain.Details) (id string, entry *spaceUsage) {
 			spaceId := details.GetString(bundle.RelationKeyTargetSpaceId)
-
-			// Fan-in updates from per-space channels. It guarantees receiving an update for each space.
-			// Remember, that updates for one space is throttled, so if we use single channel for updates
-			// we will lose some updates.
-			updateCh := make(chan updateMessage, 1)
-			go func() {
-				for {
-					select {
-					case <-m.ctx.Done():
-						return
-					case update := <-updateCh:
-						select {
-						case <-m.ctx.Done():
-							return
-						case m.updateCh <- update:
-						}
-					}
-				}
-			}()
+			updateCh := m.setupUpdateCh()
 			usage := newSpaceUsage(m.ctx, spaceId, m.rpcStore, updateCh)
 			return spaceId, usage
 		},
@@ -108,7 +141,7 @@ func (m *spaceUsageManager) init() error {
 		},
 	})
 
-	err := sub.Run()
+	err = sub.Run()
 	if err != nil {
 		return fmt.Errorf("run: %w", err)
 	}
@@ -137,17 +170,58 @@ func (m *spaceUsageManager) init() error {
 	return nil
 }
 
-func (m *spaceUsageManager) getSpace(ctx context.Context, spaceId string) (*spaceUsage, error) {
-	spc, ok := m.spaceViews.GetByKey(spaceId)
-	if !ok {
-		return nil, fmt.Errorf("spaceView not found")
+func (m *spaceUsageManager) setupUpdateCh() chan updateMessage {
+	// Fan-in updates from per-space channels. It guarantees receiving an update for each space.
+	// Remember, that updates for one space is throttled, so if we use single channel for updates
+	// we will lose some updates.
+	updateCh := make(chan updateMessage, 1)
+	go func() {
+		for {
+			select {
+			case <-m.ctx.Done():
+				return
+			case update := <-updateCh:
+				select {
+				case <-m.ctx.Done():
+					return
+				case m.updateCh <- update:
+				}
+			}
+		}
+	}()
+	return updateCh
+}
+
+func (m *spaceUsageManager) getSpace(spaceId string) (*spaceUsage, error) {
+	if spaceId == m.techSpaceId {
+		return m.getTechSpace(), nil
 	}
-	return spc, nil
+	spc, ok := m.spaceViews.GetByKey(spaceId)
+	if ok {
+		return spc, nil
+	}
+	_, ok = m.deletedSpaceViews.GetByKey(spaceId)
+	if ok {
+		return nil, errSpaceDeleted
+	}
+	return nil, fmt.Errorf("spaceView not found")
+}
+
+func (m *spaceUsageManager) getTechSpace() *spaceUsage {
+	m.techSpaceLock.Lock()
+	defer m.techSpaceLock.Unlock()
+
+	if m.techSpaceUsage != nil {
+		return m.techSpaceUsage
+	}
+
+	updateCh := m.setupUpdateCh()
+	m.techSpaceUsage = newSpaceUsage(m.ctx, m.techSpaceId, m.rpcStore, updateCh)
+	return m.techSpaceUsage
 }
 
 func (m *spaceUsageManager) close() {
 	if m.ctxCancel != nil {
 		m.ctxCancel()
 	}
-	close(m.updateCh)
 }

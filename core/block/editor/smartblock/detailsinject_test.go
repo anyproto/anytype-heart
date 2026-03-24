@@ -280,6 +280,71 @@ func TestInjectDerivedDetails(t *testing.T) {
 	})
 }
 
+func TestInjectLinksDetails_filterOutRelations(t *testing.T) {
+	const id = "id"
+
+	t.Run("string relation value is filtered out from links", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, map[string]simple.Block{
+			id:      simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
+			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "iconImageId"}}}),
+		}).NewState()
+		st.SetDetail(bundle.RelationKeyIconImage, domain.String("iconImageId"))
+
+		// when
+		fx.injectLinksDetails(st)
+
+		// then
+		links := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		assert.Contains(t, links, "obj1")
+		assert.NotContains(t, links, "iconImageId")
+	})
+
+	t.Run("string list relation value is filtered out from links", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, map[string]simple.Block{
+			id:      simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
+			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "pictureId"}}}),
+		}).NewState()
+		st.SetDetail(bundle.RelationKeyPicture, domain.StringList([]string{"pictureId", "otherPic"}))
+
+		// when
+		fx.injectLinksDetails(st)
+
+		// then
+		links := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		assert.Contains(t, links, "obj1")
+		assert.NotContains(t, links, "pictureId")
+	})
+
+	t.Run("links are preserved when filter relations are set but do not match", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc(id, map[string]simple.Block{
+			id:      simple.New(&model.Block{Id: id, ChildrenIds: []string{"link1", "link2"}}),
+			"link1": simple.New(&model.Block{Id: "link1", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj1"}}}),
+			"link2": simple.New(&model.Block{Id: "link2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "obj2"}}}),
+		}).NewState()
+		st.SetDetail(bundle.RelationKeyIconImage, domain.String("someImage"))
+		st.SetDetail(bundle.RelationKeyCoverId, domain.String("someCover"))
+
+		// when
+		fx.injectLinksDetails(st)
+
+		// then
+		links := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		assert.Contains(t, links, "obj1")
+		assert.Contains(t, links, "obj2")
+	})
+}
+
 func TestResolveLayout(t *testing.T) {
 	const id = "id"
 	t.Run("resolved layout is injected from layout detail", func(t *testing.T) {
@@ -406,6 +471,34 @@ func TestResolveLayout(t *testing.T) {
 		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
 		assert.NotNil(t, st.Pick(state.TitleBlockID))
+	})
+	t.Run("conversion from note adds Description if it is not empty", func(t *testing.T) {
+		// given
+		fx := newFixture(id, t)
+
+		st := state.NewDoc("id", map[string]simple.Block{
+			"id":   simple.New(&model.Block{Id: id, ChildrenIds: []string{state.HeaderLayoutID, "text"}}),
+			"text": simple.New(&model.Block{Id: "text", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "First note block"}}}),
+		}).NewState()
+		st.SetLocalDetail(bundle.RelationKeyType, domain.String(bundle.TypeKeyTask.URL()))
+		st.SetLocalDetail(bundle.RelationKeyResolvedLayout, domain.Int64(model.ObjectType_note))
+		st.SetDetail(bundle.RelationKeyDescription, domain.String("description"))
+
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                domain.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
+		}})
+
+		// when
+		fx.resolveLayout(st)
+
+		// then
+		assert.Equal(t, int64(model.ObjectType_todo), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+		assert.Equal(t, "First note block", st.Details().GetString(bundle.RelationKeyName))
+		assert.NotNil(t, st.Pick(state.TitleBlockID))
+		assert.NotNil(t, st.Pick(state.DescriptionBlockID))
+		require.True(t, st.Details().Has(bundle.RelationKeyFeaturedRelations))
+		assert.Contains(t, st.Details().GetStringList(bundle.RelationKeyFeaturedRelations), "description")
 	})
 	t.Run("conversion from note works on sb.Init", func(t *testing.T) {
 		// given

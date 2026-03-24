@@ -74,6 +74,7 @@ func (s *service) SolveChallenge(challengeId string, challengeSolution string, s
 		s.lock.Unlock()
 
 		challenge.tries++
+		s.challenges[challengeId] = challenge
 		return clientInfo, "", 0, ErrChallengeSolutionWrong
 	}
 

@@ -1,6 +1,7 @@
 package spaceindex
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 
@@ -99,6 +100,16 @@ func (s *dsObjectStore) closeAndRemoveSubscription(subscription database.Subscri
 
 func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links []string) error {
 	added, removed, err := s.updateObjectLinks(ctx, id, links)
+	if err != nil {
+		return err
+	}
+
+	s.subManager.updateObjectLinks(domain.FullID{SpaceID: s.SpaceId(), ObjectID: id}, added, removed)
+
+	return nil
+}
+func (s *dsObjectStore) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
+	added, removed, err := s.updateObjectLinksDetailed(ctx, id, outgoingLinks)
 	if err != nil {
 		return err
 	}
@@ -242,4 +253,64 @@ func anyEncArrayToStrings(arr []*anyenc.Value) []string {
 		res = append(res, string(v.GetStringBytes()))
 	}
 	return res
+}
+
+func (s *dsObjectStore) updateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) (added []string, removed []string, err error) {
+	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		// Get previous simple links for diff calculation
+		prev := anyEncArrayToStrings(val.GetArray(linkOutboundField))
+
+		// Create target ID list for diff (deduplicated for backward compatibility with simple links)
+		current := make([]string, 0, len(outgoingLinks))
+		seen := make(map[string]struct{})
+		for _, link := range outgoingLinks {
+			if _, ok := seen[link.TargetID]; !ok {
+				current = append(current, link.TargetID)
+				seen[link.TargetID] = struct{}{}
+			}
+		}
+
+		removed, added = slice.DifferenceRemovedAdded(prev, current)
+		detailedChanged := len(added)+len(removed) == 0 && isDetailedLinksChanged(val.GetArray(linkDetailedField), outgoingLinks)
+
+		// Store simple links for backward compatibility
+		val.Set(linkOutboundField, stringsToJsonArray(arena, current))
+
+		// Store detailed link information
+		detailedLinks := arena.NewArray()
+		for i, link := range outgoingLinks {
+			linkObj := arena.NewObject()
+			linkObj.Set(linkTargetField, arena.NewString(link.TargetID))
+			if link.BlockID != "" {
+				linkObj.Set(linkBlockField, arena.NewString(link.BlockID))
+			}
+			if link.RelationKey != "" {
+				linkObj.Set(linkRelationField, arena.NewString(link.RelationKey))
+			}
+			detailedLinks.SetArrayItem(i, linkObj)
+		}
+		val.Set(linkDetailedField, detailedLinks)
+
+		return val, len(added)+len(removed) > 0 || detailedChanged, nil
+	}))
+	return
+}
+
+func isDetailedLinksChanged(prevArr []*anyenc.Value, current []OutgoingLink) bool {
+	if len(prevArr) != len(current) {
+		return true
+	}
+	for i, link := range current {
+		prev := prevArr[i]
+		if !bytes.Equal(prev.GetStringBytes(linkTargetField), []byte(link.TargetID)) {
+			return true
+		}
+		if !bytes.Equal(prev.GetStringBytes(linkBlockField), []byte(link.BlockID)) {
+			return true
+		}
+		if !bytes.Equal(prev.GetStringBytes(linkRelationField), []byte(link.RelationKey)) {
+			return true
+		}
+	}
+	return false
 }

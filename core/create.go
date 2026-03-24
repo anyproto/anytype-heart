@@ -52,6 +52,26 @@ func (mw *Middleware) ObjectChatAdd(cctx context.Context, req *pb.RpcObjectChatA
 	}
 }
 
+func (mw *Middleware) ObjectAddDiscussion(cctx context.Context, req *pb.RpcObjectDiscussionAddRequest) *pb.RpcObjectDiscussionAddResponse {
+	response := func(code pb.RpcObjectDiscussionAddResponseErrorCode, discussionId string, err error) *pb.RpcObjectDiscussionAddResponse {
+		m := &pb.RpcObjectDiscussionAddResponse{
+			Error:        &pb.RpcObjectDiscussionAddResponseError{Code: code},
+			DiscussionId: discussionId,
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	bs := mustService[*block.Service](mw)
+	discussionId, err := bs.ObjectAddDiscussion(cctx, req.ObjectId)
+	if err != nil {
+		return response(pb.RpcObjectDiscussionAddResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectDiscussionAddResponseError_NULL, discussionId, nil)
+}
+
 func (mw *Middleware) ObjectCreateSet(cctx context.Context, req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, newDetails *types.Struct, err error) *pb.RpcObjectCreateSetResponse {

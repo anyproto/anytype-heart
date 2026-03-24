@@ -282,6 +282,102 @@ func TestUpdateObjectLinks(t *testing.T) {
 	})
 }
 
+func TestUpdateObjectLinksDetailed(t *testing.T) {
+	t.Run("detailed info is stored and retrieved", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		ctx := context.Background()
+
+		err := s.UpdateObjectLinksDetailed(ctx, "obj1", []OutgoingLink{
+			{TargetID: "file1", BlockID: "block1"},
+			{TargetID: "obj2", RelationKey: "assignee"},
+		})
+		require.NoError(t, err)
+
+		// Check outbound detailed
+		out, err := s.GetOutboundLinksDetailedById("obj1")
+		require.NoError(t, err)
+		require.Len(t, out, 2)
+		assert.Equal(t, OutgoingLink{TargetID: "file1", BlockID: "block1"}, out[0])
+		assert.Equal(t, OutgoingLink{TargetID: "obj2", RelationKey: "assignee"}, out[1])
+
+		// Check inbound detailed
+		in, err := s.GetInboundLinksDetailedById("file1")
+		require.NoError(t, err)
+		require.Len(t, in, 1)
+		assert.Equal(t, IncomingLink{SourceID: "obj1", BlockID: "block1"}, in[0])
+
+		in, err = s.GetInboundLinksDetailedById("obj2")
+		require.NoError(t, err)
+		require.Len(t, in, 1)
+		assert.Equal(t, IncomingLink{SourceID: "obj1", RelationKey: "assignee"}, in[0])
+	})
+
+	t.Run("block id updated when targets stay the same", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		ctx := context.Background()
+
+		// Initial index: file1 linked from block1
+		err := s.UpdateObjectLinksDetailed(ctx, "obj1", []OutgoingLink{
+			{TargetID: "file1", BlockID: "block1"},
+		})
+		require.NoError(t, err)
+
+		// Re-index: same target, but block changed (block was replaced)
+		err = s.UpdateObjectLinksDetailed(ctx, "obj1", []OutgoingLink{
+			{TargetID: "file1", BlockID: "block2"},
+		})
+		require.NoError(t, err)
+
+		// Block ID must reflect the new value
+		in, err := s.GetInboundLinksDetailedById("file1")
+		require.NoError(t, err)
+		require.Len(t, in, 1)
+		assert.Equal(t, "block2", in[0].BlockID)
+	})
+
+	t.Run("relation key updated when targets stay the same", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		ctx := context.Background()
+
+		// Initial index: obj2 linked via "assignee" relation
+		err := s.UpdateObjectLinksDetailed(ctx, "obj1", []OutgoingLink{
+			{TargetID: "obj2", RelationKey: "assignee"},
+		})
+		require.NoError(t, err)
+
+		// Re-index: same target, but relation changed
+		err = s.UpdateObjectLinksDetailed(ctx, "obj1", []OutgoingLink{
+			{TargetID: "obj2", RelationKey: "creator"},
+		})
+		require.NoError(t, err)
+
+		in, err := s.GetInboundLinksDetailedById("obj2")
+		require.NoError(t, err)
+		require.Len(t, in, 1)
+		assert.Equal(t, "creator", in[0].RelationKey)
+	})
+
+	t.Run("upgrade from simple to detailed links", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		ctx := context.Background()
+
+		// Simulate old-style indexing (no detailed info)
+		err := s.UpdateObjectLinks(ctx, "obj1", []string{"file1"})
+		require.NoError(t, err)
+
+		// Now re-index with detailed info, same targets
+		err = s.UpdateObjectLinksDetailed(ctx, "obj1", []OutgoingLink{
+			{TargetID: "file1", BlockID: "block1"},
+		})
+		require.NoError(t, err)
+
+		in, err := s.GetInboundLinksDetailedById("file1")
+		require.NoError(t, err)
+		require.Len(t, in, 1)
+		assert.Equal(t, "block1", in[0].BlockID)
+	})
+}
+
 func (fx *StoreFixture) assertInboundLinks(t *testing.T, id string, links []string) {
 	in, err := fx.GetInboundLinksById(id)
 	assert.NoError(t, err)

@@ -1,5 +1,27 @@
 package emailcollector
 
+/*
+AI generated
+
+Name: Offline Email Verification Queue
+Scope: global
+
+## Responsibility
+- Persists email verification requests for offline support
+- Retries sending to payment service when online
+- Signs requests with account private key
+
+## Background Tasks
+- periodicUpdateEmail: sends pending email to payment service (60s interval)
+
+## External State
+- Key-value store: "payments/emailcollector/email" in common DB
+
+## Documentation
+Only runs on default network mode (skips custom networks and local-only).
+Queue flow: SetRequest persists -> periodic task sends -> clears on success.
+*/
+
 import (
 	"context"
 	"errors"

@@ -8,6 +8,7 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
@@ -15,7 +16,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -68,10 +71,26 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 }
 
 func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOpenRequest) *pb.RpcWorkspaceOpenResponse {
+	// Helper to get backup paths for this space - always called, even on errors
+	getBackupPaths := func() []string {
+		storageService, err := getService[storage.ClientStorage](mw)
+		if err != nil {
+			return nil
+		}
+		var paths []string
+		for _, b := range storageService.ListCorruptedBackups() {
+			if b.SpaceId == req.SpaceId {
+				paths = append(paths, b.BackupPath)
+			}
+		}
+		return paths
+	}
+
 	response := func(info *model.AccountInfo, code pb.RpcWorkspaceOpenResponseErrorCode, err error) *pb.RpcWorkspaceOpenResponse {
 		m := &pb.RpcWorkspaceOpenResponse{
-			Info:  info,
-			Error: &pb.RpcWorkspaceOpenResponseError{Code: code},
+			Info:                 info,
+			CorruptedBackupPaths: getBackupPaths(), // Always included, even on error
+			Error:                &pb.RpcWorkspaceOpenResponseError{Code: code},
 		}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
@@ -79,11 +98,20 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 		return m
 	}
 
+	techSpaceId := mustService[objectstore.TechSpaceIdProvider](mw).TechSpaceId()
+	if req.SpaceId == techSpaceId {
+		return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("cannot open tech space"))
+	}
+
 	ctx, cancel := context.WithTimeout(cctx, time.Second*10)
 	defer cancel()
 	info, err := mustService[account.Service](mw).GetSpaceInfo(ctx, req.SpaceId)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
+			cfg := mustService[*config.Config](mw)
+			if cfg.IsLocalOnlyMode() {
+				return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("space is not ready: please try again later"))
+			}
 			return response(nil, pb.RpcWorkspaceOpenResponseError_FAILED_TO_LOAD, errors.New("space is not ready: check your internet connection and try again later"))
 		}
 		return response(info, pb.RpcWorkspaceOpenResponseError_UNKNOWN_ERROR, err)

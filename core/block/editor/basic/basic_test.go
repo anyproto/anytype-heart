@@ -42,6 +42,18 @@ func newTextBlock(id, contentText string, childrenIds []string) simple.Block {
 	})
 }
 
+func newTextBlockWithStyle(id, contentText string, style model.BlockContentTextStyle) simple.Block {
+	return text.NewText(&model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  contentText,
+				Style: style,
+			},
+		},
+	})
+}
+
 func TestBasic_Create(t *testing.T) {
 	t.Run("generic", func(t *testing.T) {
 		sb := smarttest.New("test")
@@ -126,9 +138,9 @@ func TestBasic_Duplicate(t *testing.T) {
 			fos: func() fileobject.Service {
 				fos := mock_fileobject.NewMockService(t)
 				fos.EXPECT().GetFileIdFromObject("file1_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file1"}, nil)
-				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file1"}, mock.Anything).Return("file1_space2", nil)
+				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file1"}, mock.Anything, mock.Anything).Return("file1_space2", nil)
 				fos.EXPECT().GetFileIdFromObject("file2_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file2"}, nil)
-				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file2"}, mock.Anything).Return("file2_space2", nil)
+				fos.EXPECT().CreateFromImport(domain.FullFileId{SpaceId: "space2", FileId: "file2"}, mock.Anything, mock.Anything).Return("file2_space2", nil)
 				return fos
 			},
 			spaceIds: []string{"space1", "space2"},
@@ -150,7 +162,7 @@ func TestBasic_Duplicate(t *testing.T) {
 				fos := mock_fileobject.NewMockService(t)
 				fos.EXPECT().GetFileIdFromObject("file1_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file1"}, nil)
 				fos.EXPECT().GetFileIdFromObject("file2_space1").Return(domain.FullFileId{SpaceId: "space1", FileId: "file2"}, nil)
-				fos.EXPECT().CreateFromImport(mock.Anything, mock.Anything).Return("", errors.New("creation failure"))
+				fos.EXPECT().CreateFromImport(mock.Anything, mock.Anything, mock.Anything).Return("", errors.New("creation failure"))
 				return fos
 			},
 			spaceIds: []string{"space1", "space2"},
@@ -367,6 +379,435 @@ func TestBasic_Move(t *testing.T) {
 		st := sb.NewState()
 		err := b.Move(st, nil, "2", model.Block_InnerFirst, []string{"1"})
 		require.Error(t, err)
+	})
+	t.Run("moving blocks inside text block that cannot have children is prohibited", func(t *testing.T) {
+		testCases := []struct {
+			style       model.BlockContentTextStyle
+			name        string
+			shouldAllow bool
+		}{
+			{model.BlockContentText_Paragraph, "paragraph", true},
+			{model.BlockContentText_Header1, "header1", false},
+			{model.BlockContentText_Header2, "header2", false},
+			{model.BlockContentText_Header3, "header3", false},
+			{model.BlockContentText_Header4, "header4", false},
+			{model.BlockContentText_Quote, "quote", true},
+			{model.BlockContentText_Code, "code", false},
+			{model.BlockContentText_Title, "title", false},
+			{model.BlockContentText_Checkbox, "checkbox", true},
+			{model.BlockContentText_Marked, "marked/bulleted", true},
+			{model.BlockContentText_Numbered, "numbered", true},
+			{model.BlockContentText_Toggle, "toggle", true},
+			{model.BlockContentText_Callout, "callout", true},
+			{model.BlockContentText_ToggleHeader1, "toggle header 1", true},
+			{model.BlockContentText_ToggleHeader2, "toggle header 2", true},
+			{model.BlockContentText_ToggleHeader3, "toggle header 3", true},
+		}
+
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				sb := smarttest.New("test")
+				sb.AddBlock(newTextBlockWithStyle("target", "target", tc.style))
+				sb.AddBlock(newTextBlock("butt", "butterfly", nil))
+				sb.AddBlock(newTextBlock("frog", "froggy", nil))
+
+				b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+				st := sb.NewState()
+
+				err := b.Move(st, nil, "target", model.Block_InnerFirst, []string{"butt", "frog"})
+
+				if tc.shouldAllow {
+					require.NoError(t, err, "style %s should allow children", tc.name)
+				} else {
+					require.Error(t, err, "style %s should NOT allow children", tc.name)
+					require.Contains(t, err.Error(), "cannot move to block that cannot have children")
+				}
+			})
+		}
+	})
+}
+
+func TestBasic_MoveOutdent(t *testing.T) {
+	t.Run("basic outdent with siblings - siblings become children", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(simple.New(&model.Block{Id: "B"})).
+			AddBlock(simple.New(&model.Block{Id: "C"}))
+
+		// when - move A to be sibling after parent (outdent)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "parent", model.Block_Bottom, []string{"A"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"parent", "A"}, newState.Pick("test").Model().ChildrenIds, "A should be sibling of parent")
+		assert.Equal(t, []string{"B", "C"}, newState.Pick("A").Model().ChildrenIds, "B and C should be children of A")
+		assert.Empty(t, newState.Pick("parent").Model().ChildrenIds, "parent should have no children")
+	})
+
+	t.Run("outdent last block - no siblings to capture", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(simple.New(&model.Block{Id: "B"}))
+
+		// when - move B to be sibling after parent (outdent)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "parent", model.Block_Bottom, []string{"B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"parent", "B"}, newState.Pick("test").Model().ChildrenIds, "B should be sibling of parent")
+		assert.Empty(t, newState.Pick("B").Model().ChildrenIds, "B should have no children")
+		assert.Equal(t, []string{"A"}, newState.Pick("parent").Model().ChildrenIds, "parent should still have A")
+	})
+
+	t.Run("regular move within same parent - not outdent", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(simple.New(&model.Block{Id: "B"})).
+			AddBlock(simple.New(&model.Block{Id: "C"}))
+
+		// when - move B to top position within same parent
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "parent", model.Block_InnerFirst, []string{"B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"B", "A", "C"}, newState.Pick("parent").Model().ChildrenIds, "B should be first, A and C still siblings")
+		assert.Empty(t, newState.Pick("B").Model().ChildrenIds, "B should NOT capture siblings")
+	})
+
+	t.Run("outdent block that cannot have children - header block", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C"}})).
+			AddBlock(newTextBlockWithStyle("A", "block A", model.BlockContentText_Header1)).
+			AddBlock(simple.New(&model.Block{Id: "B"})).
+			AddBlock(simple.New(&model.Block{Id: "C"}))
+
+		// when - move A to be sibling after parent (outdent)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "parent", model.Block_Bottom, []string{"A"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"parent", "A"}, newState.Pick("test").Model().ChildrenIds, "A should be sibling of parent")
+		assert.Empty(t, newState.Pick("A").Model().ChildrenIds, "A should NOT capture siblings (cannot have children)")
+		assert.Equal(t, []string{"B", "C"}, newState.Pick("parent").Model().ChildrenIds, "B and C should remain with parent")
+	})
+
+	t.Run("outdent with Top position", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(simple.New(&model.Block{Id: "B"}))
+
+		// when - move A to be sibling before parent (outdent with Top)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "parent", model.Block_Top, []string{"A"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"A", "parent"}, newState.Pick("test").Model().ChildrenIds, "A should be before parent")
+		assert.Equal(t, []string{"B"}, newState.Pick("A").Model().ChildrenIds, "B should be child of A")
+		assert.Empty(t, newState.Pick("parent").Model().ChildrenIds, "parent should have no children")
+	})
+
+	t.Run("outdent with numbered list items", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(newTextBlockWithStyle("parent", "parent", model.BlockContentText_Numbered)).
+			AddBlock(newTextBlockWithStyle("A", "block A", model.BlockContentText_Numbered)).
+			AddBlock(newTextBlockWithStyle("B", "block B", model.BlockContentText_Numbered)).
+			AddBlock(newTextBlockWithStyle("C", "block C", model.BlockContentText_Numbered))
+
+		st := sb.NewState()
+		st.Get("parent").Model().ChildrenIds = []string{"A", "B", "C"}
+
+		require.NoError(t, sb.Apply(st))
+
+		// when - move A to be sibling after parent (outdent)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st2 := sb.NewState()
+		err := b.Move(st2, st2, "parent", model.Block_Bottom, []string{"A"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st2))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"parent", "A"}, newState.Pick("test").Model().ChildrenIds, "A should be sibling of parent")
+		assert.Equal(t, []string{"B", "C"}, newState.Pick("A").Model().ChildrenIds, "B and C should be children of A")
+	})
+
+	t.Run("outdent middle block with siblings before and after", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C", "D"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(simple.New(&model.Block{Id: "B"})).
+			AddBlock(simple.New(&model.Block{Id: "C"})).
+			AddBlock(simple.New(&model.Block{Id: "D"}))
+
+		// when - outdent B to be sibling after parent
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "parent", model.Block_Bottom, []string{"B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"parent", "B"}, newState.Pick("test").Model().ChildrenIds, "B should be sibling of parent")
+		assert.Equal(t, []string{"C", "D"}, newState.Pick("B").Model().ChildrenIds, "only C and D (after B) should be children of B")
+		assert.Equal(t, []string{"A"}, newState.Pick("parent").Model().ChildrenIds, "A (before B) should remain with parent")
+	})
+
+	t.Run("move to Inner position - not outdent", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent", "target"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(simple.New(&model.Block{Id: "B"})).
+			AddBlock(simple.New(&model.Block{Id: "target"}))
+
+		// when - move A to Inner of target (not grandparent)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "target", model.Block_Inner, []string{"A"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"A"}, newState.Pick("target").Model().ChildrenIds, "A should be child of target")
+		assert.Empty(t, newState.Pick("A").Model().ChildrenIds, "A should NOT capture siblings (Inner position)")
+	})
+
+	t.Run("multiple blocks moving - only last captures siblings", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C", "D"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(simple.New(&model.Block{Id: "B"})).
+			AddBlock(simple.New(&model.Block{Id: "C"})).
+			AddBlock(simple.New(&model.Block{Id: "D"}))
+
+		// when - move both A and B together to be siblings after parent
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "parent", model.Block_Bottom, []string{"A", "B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"parent", "A", "B"}, newState.Pick("test").Model().ChildrenIds, "A and B should be siblings of parent")
+		assert.Empty(t, newState.Pick("A").Model().ChildrenIds, "A should NOT capture siblings (not last in selection)")
+		assert.Equal(t, []string{"C", "D"}, newState.Pick("B").Model().ChildrenIds, "B (last in selection) should capture C and D")
+	})
+}
+
+func TestBasic_MoveIndent(t *testing.T) {
+	t.Run("basic indent with children - children become siblings under new parent", func(t *testing.T) {
+		// given
+		// root → [A, B, C]
+		// B → [b1, b2]
+		// Tab on B: indent B into A, children b1, b2 follow B under A
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(newTextBlock("B", "block B", []string{"b1", "b2"})).
+			AddBlock(simple.New(&model.Block{Id: "b1"})).
+			AddBlock(simple.New(&model.Block{Id: "b2"})).
+			AddBlock(simple.New(&model.Block{Id: "C"}))
+
+		// when - indent B into A (move to Inner of previous sibling)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "A", model.Block_Inner, []string{"B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"A", "C"}, newState.Pick("parent").Model().ChildrenIds, "only A and C remain at parent level")
+		assert.Equal(t, []string{"B", "b1", "b2"}, newState.Pick("A").Model().ChildrenIds, "B and its former children should be under A")
+		assert.Empty(t, newState.Pick("B").Model().ChildrenIds, "B should have no children after indent")
+	})
+
+	t.Run("indent without children - no special behavior", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(simple.New(&model.Block{Id: "B"}))
+
+		// when - indent B into A (no children to handle)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "A", model.Block_Inner, []string{"B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"A"}, newState.Pick("parent").Model().ChildrenIds, "only A remains in parent")
+		assert.Equal(t, []string{"B"}, newState.Pick("A").Model().ChildrenIds, "B should be child of A")
+	})
+
+	t.Run("indent last block with children - children follow block under new parent", func(t *testing.T) {
+		// given
+		// parent → [A, B]
+		// B → [b1, b2]
+		// B is last child, indent into A
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(newTextBlock("B", "block B", []string{"b1", "b2"})).
+			AddBlock(simple.New(&model.Block{Id: "b1"})).
+			AddBlock(simple.New(&model.Block{Id: "b2"}))
+
+		// when
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "A", model.Block_Inner, []string{"B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"A"}, newState.Pick("parent").Model().ChildrenIds, "only A remains at parent level")
+		assert.Equal(t, []string{"B", "b1", "b2"}, newState.Pick("A").Model().ChildrenIds, "B and its former children should be under A")
+		assert.Empty(t, newState.Pick("B").Model().ChildrenIds, "B should have no children")
+	})
+
+	t.Run("move to Inner of non-sibling - children stay with block", func(t *testing.T) {
+		// given - target is NOT a sibling of the block being moved
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent", "target"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"B"}})).
+			AddBlock(newTextBlock("B", "block B", []string{"b1", "b2"})).
+			AddBlock(simple.New(&model.Block{Id: "b1"})).
+			AddBlock(simple.New(&model.Block{Id: "b2"})).
+			AddBlock(simple.New(&model.Block{Id: "target"}))
+
+		// when - move B to Inner of target (not a sibling)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "target", model.Block_Inner, []string{"B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"B"}, newState.Pick("target").Model().ChildrenIds, "B should be child of target")
+		assert.Equal(t, []string{"b1", "b2"}, newState.Pick("B").Model().ChildrenIds, "children should stay with B (not a sibling indent)")
+	})
+
+	t.Run("multiple blocks - no indent children handling", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C"}})).
+			AddBlock(simple.New(&model.Block{Id: "A"})).
+			AddBlock(newTextBlock("B", "block B", []string{"b1"})).
+			AddBlock(simple.New(&model.Block{Id: "b1"})).
+			AddBlock(simple.New(&model.Block{Id: "C"}))
+
+		// when - move both B and C to Inner of A (multi-block, no indent logic)
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st := sb.NewState()
+		err := b.Move(st, st, "A", model.Block_Inner, []string{"B", "C"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"B", "C"}, newState.Pick("A").Model().ChildrenIds, "B and C should be children of A")
+		assert.Equal(t, []string{"b1"}, newState.Pick("B").Model().ChildrenIds, "b1 should stay with B (multi-block move)")
+	})
+
+	t.Run("indent with numbered list items", func(t *testing.T) {
+		// given
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"parent"}})).
+			AddBlock(simple.New(&model.Block{Id: "parent", ChildrenIds: []string{"A", "B", "C"}})).
+			AddBlock(newTextBlockWithStyle("A", "item A", model.BlockContentText_Numbered)).
+			AddBlock(newTextBlock("B", "item B", []string{"b1", "b2"})).
+			AddBlock(newTextBlockWithStyle("b1", "sub-item 1", model.BlockContentText_Numbered)).
+			AddBlock(newTextBlockWithStyle("b2", "sub-item 2", model.BlockContentText_Numbered)).
+			AddBlock(newTextBlockWithStyle("C", "item C", model.BlockContentText_Numbered))
+
+		st := sb.NewState()
+		st.Get("B").Model().Content = &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  "item B",
+				Style: model.BlockContentText_Numbered,
+			},
+		}
+		require.NoError(t, sb.Apply(st))
+
+		// when - indent B into A
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		st2 := sb.NewState()
+		err := b.Move(st2, st2, "A", model.Block_Inner, []string{"B"})
+
+		// then
+		require.NoError(t, err)
+		require.NoError(t, sb.Apply(st2))
+
+		newState := sb.NewState()
+		assert.Equal(t, []string{"A", "C"}, newState.Pick("parent").Model().ChildrenIds, "only A and C remain at parent level")
+		assert.Equal(t, []string{"B", "b1", "b2"}, newState.Pick("A").Model().ChildrenIds, "B and its former children should be under A")
+		assert.Empty(t, newState.Pick("B").Model().ChildrenIds, "B should have no children after indent")
 	})
 }
 
@@ -664,36 +1105,65 @@ func TestBasic_SetRelationKey(t *testing.T) {
 	})
 }
 
-func TestBasic_FeaturedRelationAdd(t *testing.T) {
-	sb := smarttest.New("test")
-	s := sb.NewState()
-	template.WithTitle(s)
-	s.AddBundledRelationLinks(bundle.RelationKeyName)
-	s.AddBundledRelationLinks(bundle.RelationKeyDescription)
-	require.NoError(t, sb.Apply(s))
+func TestBasic_DescriptionShow(t *testing.T) {
+	t.Run("show description adds to featured", func(t *testing.T) {
+		sb := smarttest.New("test")
+		s := sb.NewState()
+		template.WithTitle(s)
+		s.AddBundledRelationLinks(bundle.RelationKeyDescription)
+		require.NoError(t, sb.Apply(s))
 
-	store := objectstore.NewStoreFixture(t)
+		store := objectstore.NewStoreFixture(t)
 
-	b := NewBasic(sb, store.SpaceIndex("spc"), converter.NewLayoutConverter(), nil)
-	newRel := []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}
-	require.NoError(t, b.FeaturedRelationAdd(nil, newRel...))
+		b := NewBasic(sb, store.SpaceIndex("spc"), converter.NewLayoutConverter(), nil)
+		require.NoError(t, b.DescriptionShow(nil))
 
-	res := sb.NewState()
-	assert.Equal(t, newRel, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
-	assert.NotNil(t, res.Pick(template.DescriptionBlockId))
+		res := sb.NewState()
+		assert.Equal(t, []string{bundle.RelationKeyDescription.String()}, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+		assert.NotNil(t, res.Pick(template.DescriptionBlockId))
+	})
+
+	t.Run("show description when already shown is no-op", func(t *testing.T) {
+		sb := smarttest.New("test")
+		s := sb.NewState()
+		template.WithTitle(s)
+		s.AddBundledRelationLinks(bundle.RelationKeyDescription)
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyDescription.String()}))
+		require.NoError(t, sb.Apply(s))
+
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		require.NoError(t, b.DescriptionShow(nil))
+
+		res := sb.NewState()
+		assert.Equal(t, []string{bundle.RelationKeyDescription.String()}, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+	})
 }
 
-func TestBasic_FeaturedRelationRemove(t *testing.T) {
-	sb := smarttest.New("test")
-	s := sb.NewState()
-	s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}))
-	template.WithDescription(s)
-	require.NoError(t, sb.Apply(s))
+func TestBasic_DescriptionHide(t *testing.T) {
+	t.Run("hide description removes from featured", func(t *testing.T) {
+		sb := smarttest.New("test")
+		s := sb.NewState()
+		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList([]string{bundle.RelationKeyDescription.String()}))
+		template.WithDescription(s)
+		require.NoError(t, sb.Apply(s))
 
-	b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
-	require.NoError(t, b.FeaturedRelationRemove(nil, bundle.RelationKeyDescription.String()))
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		require.NoError(t, b.DescriptionHide(nil))
 
-	res := sb.NewState()
-	assert.Equal(t, []string{bundle.RelationKeyName.String()}, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
-	assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
+		res := sb.NewState()
+		assert.Empty(t, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+		assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
+	})
+
+	t.Run("hide description when already hidden is no-op", func(t *testing.T) {
+		sb := smarttest.New("test")
+		s := sb.NewState()
+		require.NoError(t, sb.Apply(s))
+
+		b := NewBasic(sb, nil, converter.NewLayoutConverter(), nil)
+		require.NoError(t, b.DescriptionHide(nil))
+
+		res := sb.NewState()
+		assert.Empty(t, res.Details().GetStringList(bundle.RelationKeyFeaturedRelations))
+	})
 }

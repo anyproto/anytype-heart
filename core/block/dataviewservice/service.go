@@ -1,5 +1,18 @@
 package dataviewservice
 
+/*
+AI generated
+
+Name: Dataview Block Operations
+Scope: global
+
+## Responsibility
+- CRUD operations for dataview views, filters, sorts, and view relations
+- Manage dataview relation links and data sources
+- Copy dataview configuration between objects
+- Sync view relations with relation links (ensures new relation links appear in views)
+*/
+
 import (
 	"fmt"
 
@@ -26,9 +39,9 @@ var log = logger.NewNamed(CName)
 
 type Service interface {
 	app.Component
-	AddDataviewFilter(ctx session.Context, objectId, blockId, viewId string, filter *model.BlockContentDataviewFilter) error
+	AddDataviewFilter(ctx session.Context, objectId, blockId, viewId string, filter *model.BlockContentDataviewFilter) (filterId string, err error)
 	RemoveDataviewFilters(ctx session.Context, objectId, blockId, viewId string, filterIDs []string) error
-	ReplaceDataviewFilter(ctx session.Context, objectId, blockId, viewId, filterID string, filter *model.BlockContentDataviewFilter) error
+	ReplaceDataviewFilter(ctx session.Context, objectId, blockId, viewId, filterID string, filter *model.BlockContentDataviewFilter) (filterId string, err error)
 	ReorderDataviewFilters(ctx session.Context, objectId, blockId, viewId string, filterIDs []string) error
 
 	AddDataviewSort(ctx session.Context, objectId, blockId, viewId string, sort *model.BlockContentDataviewSort) error
@@ -85,15 +98,17 @@ func (s *service) AddDataviewFilter(
 	ctx session.Context,
 	objectId, blockId, viewId string,
 	filter *model.BlockContentDataviewFilter,
-) (err error) {
-	return cache.DoStateCtx(s.getter, ctx, objectId, func(s *state.State, d dataview.Dataview) error {
-		dv, err := d.GetDataviewBlock(s, blockId)
-		if err != nil {
-			return err
+) (filterId string, err error) {
+	err = cache.DoStateCtx(s.getter, ctx, objectId, func(s *state.State, d dataview.Dataview) error {
+		dv, err2 := d.GetDataviewBlock(s, blockId)
+		if err2 != nil {
+			return err2
 		}
 
-		return dv.AddFilter(viewId, filter)
+		filterId, err2 = dv.AddFilter(viewId, filter)
+		return err2
 	})
+	return filterId, err
 }
 
 func (s *service) RemoveDataviewFilters(
@@ -116,15 +131,17 @@ func (s *service) ReplaceDataviewFilter(
 	objectId, blockId, viewId string,
 	filterID string,
 	filter *model.BlockContentDataviewFilter,
-) (err error) {
-	return cache.DoStateCtx(s.getter, ctx, objectId, func(s *state.State, d dataview.Dataview) error {
-		dv, err := d.GetDataviewBlock(s, blockId)
-		if err != nil {
-			return err
+) (filterId string, err error) {
+	err = cache.DoStateCtx(s.getter, ctx, objectId, func(s *state.State, d dataview.Dataview) error {
+		dv, err2 := d.GetDataviewBlock(s, blockId)
+		if err2 != nil {
+			return err2
 		}
 
-		return dv.ReplaceFilter(viewId, filterID, filter)
+		filterId, err2 = dv.ReplaceFilter(viewId, filterID, filter)
+		return err2
 	})
+	return filterId, err
 }
 
 func (s *service) ReorderDataviewFilters(

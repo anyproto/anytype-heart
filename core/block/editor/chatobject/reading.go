@@ -54,17 +54,7 @@ func (s *storeObject) MarkReadMessages(ctx context.Context, req ReadMessagesRequ
 }
 
 func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error {
-	txn, err := s.repository.WriteTx(ctx)
-	if err != nil {
-		return fmt.Errorf("create tx: %w", err)
-	}
-	var commited bool
-	defer func() {
-		if !commited {
-			_ = txn.Rollback()
-		}
-	}()
-	messageIds, err := s.repository.GetReadMessagesAfter(txn.Context(), afterOrderId, counterType)
+	messageIds, err := s.repository.GetReadMessagesAfter(ctx, afterOrderId, counterType)
 	if err != nil {
 		return fmt.Errorf("get read messages: %w", err)
 	}
@@ -73,17 +63,20 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 		return nil
 	}
 
-	idsModified := s.repository.SetReadFlag(txn.Context(), s.Id(), messageIds, counterType, false)
+	idsModified, err := s.repository.SetReadFlag(ctx, s.Id(), messageIds, counterType, false)
+	if err != nil {
+		return fmt.Errorf("set read flag: %w", err)
+	}
 	if len(idsModified) == 0 {
 		return nil
 	}
 
-	newOldestOrderId, err := s.repository.GetOldestOrderId(txn.Context(), counterType)
+	newOldestOrderId, err := s.repository.GetOldestOrderId(ctx, counterType)
 	if err != nil {
 		return fmt.Errorf("get oldest order id: %w", err)
 	}
 
-	lastAdded, err := s.repository.GetLastStateId(txn.Context())
+	lastAdded, err := s.repository.GetLastStateId(ctx)
 	if err != nil {
 		return fmt.Errorf("get last added date: %w", err)
 	}
@@ -91,7 +84,7 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 	s.subscription.UnreadMessages(newOldestOrderId, lastAdded, idsModified, counterType)
-	s.subscription.Flush()
+	s.subscription.Flush(false)
 
 	seenHeads, err := s.seenHeadsCollector.collectSeenHeads(ctx, afterOrderId)
 	if err != nil {
@@ -101,13 +94,12 @@ func (s *storeObject) MarkMessagesAsUnread(ctx context.Context, afterOrderId str
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
 	}
-	err = s.storeSource.StoreSeenHeads(txn.Context(), diffManagerMessages)
+	err = s.storeSource.StoreSeenHeads(ctx, diffManagerMessages)
 	if err != nil {
 		return fmt.Errorf("store seen heads: %w", err)
 	}
 
-	commited = true
-	return txn.Commit()
+	return nil
 }
 
 func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel.CounterType) error {
@@ -115,37 +107,67 @@ func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel
 		return nil
 	}
 
-	txn, err := s.repository.WriteTx(s.componentCtx)
+	idsModified, err := s.repository.SetReadFlag(s.componentCtx, s.Id(), changeIds, counterType, true)
 	if err != nil {
-		return fmt.Errorf("start write tx: %w", err)
+		return fmt.Errorf("set read flag: %w", err)
 	}
-	var commited bool
-	defer func() {
-		if !commited {
-			txn.Rollback()
-		}
-	}()
-
-	idsModified := s.repository.SetReadFlag(txn.Context(), s.Id(), changeIds, counterType, true)
 
 	if len(idsModified) > 0 {
-		newOldestOrderId, err := s.repository.GetOldestOrderId(txn.Context(), counterType)
+		newOldestOrderId, err := s.repository.GetOldestOrderId(s.componentCtx, counterType)
 		if err != nil {
 			return fmt.Errorf("get oldest order id: %w", err)
-		}
-
-		commited = true
-		err = txn.Commit()
-		if err != nil {
-			return fmt.Errorf("commit: %w", err)
 		}
 
 		s.subscription.Lock()
 		defer s.subscription.Unlock()
 		s.subscription.ReadMessages(newOldestOrderId, idsModified, counterType)
-		s.subscription.Flush()
+		s.subscription.Flush(false)
 	}
 	return nil
+}
+
+func (s *storeObject) markReadReactions(changeIds []string) error {
+	if len(changeIds) == 0 {
+		return nil
+	}
+
+	var maxOrderId string
+	for _, chId := range changeIds {
+		ch, err := s.Tree().GetChange(chId)
+		if err != nil {
+			continue
+		}
+		if ch.OrderId > maxOrderId {
+			maxOrderId = ch.OrderId
+		}
+	}
+
+	idsModified, err := s.repository.ClearUnreadReactions(s.componentCtx, maxOrderId)
+	if err != nil {
+		return fmt.Errorf("clear unread reactions: %w", err)
+	}
+	if len(idsModified) > 0 {
+		newOrderId, err := s.repository.GetNewestUnreadReactionOrderId(s.componentCtx)
+		if err != nil {
+			return fmt.Errorf("get newest unread reaction order id: %w", err)
+		}
+		s.subscription.Lock()
+		defer s.subscription.Unlock()
+		s.subscription.ReadReactions(newOrderId, idsModified)
+		s.subscription.Flush(false)
+	}
+	return nil
+}
+
+func (s *storeObject) MarkReadReactions(ctx context.Context) error {
+	changeIds, err := s.repository.GetAllUnreadReactionChangeIds(ctx)
+	if err != nil {
+		return fmt.Errorf("get unread reaction change ids: %w", err)
+	}
+	if len(changeIds) == 0 {
+		return nil
+	}
+	return s.storeSource.MarkSeenHeads(ctx, diffManagerReactions, changeIds)
 }
 
 type readStoreTreeHook struct {
@@ -198,6 +220,10 @@ func (h *readStoreTreeHook) AfterDiffManagersInit(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("mark read mentions: %w", err)
 	}
+	err = h.source.MarkSeenHeads(ctx, diffManagerReactions, h.headsBeforeJoin)
+	if err != nil {
+		return fmt.Errorf("mark read reactions: %w", err)
+	}
 	return nil
 }
 
@@ -206,24 +232,16 @@ func (s *storeObject) setMessagesSyncStatus(changeIds []string) error {
 		return nil
 	}
 
-	txn, err := s.repository.WriteTx(s.componentCtx)
+	idsModified, err := s.repository.SetSyncedFlag(s.componentCtx, s.Id(), changeIds, true)
 	if err != nil {
-		return fmt.Errorf("start write tx: %w", err)
+		return fmt.Errorf("set synced flag: %w", err)
 	}
-	defer txn.Rollback()
-
-	idsModified := s.repository.SetSyncedFlag(txn.Context(), s.Id(), changeIds, true)
 
 	if len(idsModified) > 0 {
-		err = txn.Commit()
-		if err != nil {
-			return fmt.Errorf("commit: %w", err)
-		}
-
 		s.subscription.Lock()
 		defer s.subscription.Unlock()
 		s.subscription.UpdateSyncStatus(idsModified, true)
-		s.subscription.Flush()
+		s.subscription.Flush(false)
 	}
 	return nil
 }

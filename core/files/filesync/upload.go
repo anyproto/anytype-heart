@@ -143,7 +143,13 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 	it.CidsToBind = blocksAvailability.cidsToBind
 	it.CidsToUpload = blocksAvailability.cidsToUpload
 
-	spaceLimits, err := s.limitManager.getSpace(ctx, it.SpaceId)
+	spaceLimits, err := s.limitManager.getSpace(it.SpaceId)
+	// If space is deleted, move file to deletion queue. It'll help to reclaim space if file is partially uploaded
+	if errors.Is(err, errSpaceDeleted) {
+		it.State = FileStatePendingDeletion
+
+		return it, nil
+	}
 	if err != nil {
 		it = it.Reschedule()
 		return it, fmt.Errorf("get space limits: %w", err)
@@ -156,6 +162,11 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 
 		err = s.handleLimitReached(ctx, it)
 		if err != nil {
+			if isObjectDeletedError(err) {
+				it.State = FileStatePendingDeletion
+				it.ScheduledAt = time.Now()
+				return it, nil
+			}
 			return it, fmt.Errorf("handle limit reached: %w", err)
 		}
 		return it, nil
@@ -164,24 +175,27 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 	it, err = s.upload(ctx, it, blocksAvailability)
 	if err != nil {
 		spaceLimits.deallocateFile(it.Key())
+		if isObjectDeletedError(err) {
+			it.State = FileStatePendingDeletion
+			it.ScheduledAt = time.Now()
+			return it, nil
+		}
 		it = it.Reschedule()
 		return it, err
 	}
+
+	switch it.State {
+	case FileStateLimited, FileStatePendingDeletion:
+		spaceLimits.deallocateFile(it.Key())
+	case FileStateDone:
+		spaceLimits.markFileUploaded(it.Key())
+	default:
+	}
+
 	return it, nil
 }
 
 func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *blocksAvailabilityResponse) (FileInfo, error) {
-	if it.ObjectId != "" {
-		err := s.updateStatus(it, filesyncstatus.Syncing)
-		if isObjectDeletedError(err) {
-			it.State = FileStatePendingDeletion
-			return it, nil
-		}
-		if err != nil {
-			return it, fmt.Errorf("update status: %w", err)
-		}
-	}
-
 	var totalBytesToUpload int
 	err := s.walkFileBlocks(ctx, it.SpaceId, it.FileId, it.Variants, func(fileBlocks []blocks.Block) error {
 		bytesToUpload, err := s.uploadOrBindBlocks(ctx, it, fileBlocks, blocksAvailability.cidsToBind)
@@ -191,10 +205,6 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		totalBytesToUpload += bytesToUpload
 		return nil
 	})
-
-	// All cids should be bind at this time
-	it.CidsToBind = nil
-
 	if err != nil {
 		if isNodeLimitReachedError(err) {
 			it.State = FileStateLimited
@@ -208,14 +218,24 @@ func (s *fileSync) upload(ctx context.Context, it FileInfo, blocksAvailability *
 		return it, fmt.Errorf("walk file blocks: %w", err)
 	}
 
+	// All cids should be bind at this time
+	it.CidsToBind = nil
+
 	// Means that we only had to bind blocks
 	if totalBytesToUpload == 0 {
-		err := s.updateStatus(it, filesyncstatus.Synced)
+		err = s.updateStatus(it, filesyncstatus.Synced)
 		if err != nil {
 			return it, fmt.Errorf("add to status update queue: %w", err)
 		}
 		it.State = FileStateDone
 		return it, nil
+	}
+
+	if it.ObjectId != "" && it.State != FileStateLimited {
+		err = s.updateStatus(it, filesyncstatus.Syncing)
+		if err != nil {
+			return it, fmt.Errorf("update status: %w", err)
+		}
 	}
 
 	it.State = FileStateUploading
@@ -362,10 +382,12 @@ func isNodeLimitReachedError(err error) bool {
 
 func (s *fileSync) handleLimitReached(ctx context.Context, it FileInfo) error {
 	// Unbind file just in case
-	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
-	if err != nil {
-		log.Error("calculate limits: unbind off-limit file", zap.String("fileId", it.FileId.String()), zap.Error(err))
-	}
+	go func() {
+		err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
+		if err != nil {
+			log.Error("calculate limits: unbind off-limit file", zap.String("fileId", it.FileId.String()), zap.Error(err))
+		}
+	}()
 
 	updateErr := s.updateStatus(it, filesyncstatus.Limited)
 	if updateErr != nil {

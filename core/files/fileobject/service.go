@@ -1,5 +1,41 @@
 package fileobject
 
+/*
+AI generated
+
+Name: File Object Lifecycle Manager
+Scope: global
+
+## Responsibility
+- Create file objects from raw IPFS file data with encryption keys
+- Index file metadata (mime type, dimensions, etc.) into object details
+- Migrate legacy file IDs to file object IDs in blocks and details
+- Manage file sync queue integration for upload/download
+- Delete file data when object is removed (if no other objects reference it)
+
+## Background Tasks
+- runIndexingProvider: Polls objectStore every 60s for non-indexed files, adds to queue
+- runIndexingWorker: Processes index queue, extracts metadata from file variants
+- indexMigrationWorker: Migrates files without variant IDs by touching objects
+- migrationQueue: Persistent queue for migrating legacy files to file objects
+- Startup goroutine: Cleans migrated files in non-personal spaces, ensures sync queue
+
+## External State
+- queue/file_migration in common anystore DB (persistent migration queue)
+
+## Documentation
+Indexing Pipeline:
+1. File created with AsyncMetadataIndexing=true or legacy file detected
+2. runIndexingProvider adds to in-memory indexQueue (deduped by FullID)
+3. runIndexingWorker fetches file variants, extracts metadata, updates object state
+4. FileIndexingStatus set to Indexed when complete
+
+Migration Flow (legacy files):
+1. MigrateFiles called during object open with ChangeFileKeys
+2. Items added to persistent migrationQueue with derived object ID
+3. migrationQueueHandler creates file objects and adds to sync queue
+*/
+
 import (
 	"context"
 	"errors"
@@ -55,7 +91,7 @@ type Service interface {
 	CanDeleteFile(ctx context.Context, objectId string) error
 	DeleteFileData(spaceId string, objectId string) error
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
-	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
+	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 
 	DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error
@@ -457,7 +493,7 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 }
 
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
-func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
+func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details) (string, error) {
 	// Check that fileId is not a file object id
 	recs, _, err := s.objectStore.SpaceIndex(fileId.SpaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
@@ -489,6 +525,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 		FileId:                fileId.FileId,
 		EncryptionKeys:        keys,
 		ObjectOrigin:          origin,
+		AdditionalDetails:     additionalDetails,
 		AsyncMetadataIndexing: true,
 	})
 	if err != nil {

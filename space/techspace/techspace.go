@@ -1,5 +1,18 @@
 package techspace
 
+/*
+AI generated
+
+Name: Space Metadata Storage
+Scope: global
+
+## Responsibility
+- Creates and manages SpaceView objects (one per user space) containing space metadata
+- Creates and manages a single AccountObject for account-level settings
+- Provides locked access to SpaceView/AccountObject via Do* methods for safe concurrent modification
+- Derives deterministic object IDs from space IDs using unique keys
+*/
+
 import (
 	"context"
 	"errors"
@@ -69,6 +82,7 @@ type TechSpace interface {
 	SetLocalInfo(ctx context.Context, info spaceinfo.SpaceLocalInfo) (err error)
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) (err error)
 	SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) (err error)
+	SpaceViewSetOneToOneIdentity(ctx context.Context, spaceId string, identity string) (err error)
 	SpaceViewId(id string) (string, error)
 	AccountObjectId() (string, error)
 }
@@ -88,6 +102,7 @@ type SpaceView interface {
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
 	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error)
+	SetOneToOneIdentity(identity string) error
 	SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error)
 	SetPushNotificationForceModeIds(ctx session.Context, chatIds []string, mode pb.RpcPushNotificationMode) (err error)
 	ResetPushNotificationIds(ctx session.Context, allIds []string) error
@@ -216,6 +231,12 @@ func (s *techSpace) GetSpaceView(ctx context.Context, spaceId string) (SpaceView
 func (s *techSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) (err error) {
 	return s.DoSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
 		return spaceView.SetSpaceData(details)
+	})
+}
+
+func (s *techSpace) SpaceViewSetOneToOneIdentity(ctx context.Context, spaceId string, identity string) (err error) {
+	return s.DoSpaceView(ctx, spaceId, func(spaceView SpaceView) error {
+		return spaceView.SetOneToOneIdentity(identity)
 	})
 }
 

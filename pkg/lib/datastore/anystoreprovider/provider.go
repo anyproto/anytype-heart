@@ -1,5 +1,22 @@
 package anystoreprovider
 
+/*
+AI generated
+
+Name: Anystore Database Provider
+Scope: global
+
+## Responsibility
+- Provides common anystore database shared across all spaces
+- Provides per-space index and CRDT databases with lazy initialization
+- Auto-reinitializes corrupted databases by removing and recreating files
+
+## External State
+- objectstore/objects.db - common database with system collection
+- objectstore/{spaceId}/objects.db - per-space index databases
+- objectstore/{spaceId}/crdt.db - per-space CRDT databases
+*/
+
 import (
 	"context"
 	"errors"
@@ -215,7 +232,9 @@ func (s *provider) setDefaultConfig() {
 		s.anyStoreConfig.SQLiteConnectionOptions = map[string]string{}
 	}
 	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
-	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "off"
+	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "normal"
+	s.anyStoreConfig.SQLiteConnectionOptions["wal_autocheckpoint"] = "10000"
+
 }
 
 func (s *provider) GetCommonDb() anystore.DB {

@@ -18,11 +18,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/clientspace/keyvalueservice"
@@ -192,24 +189,9 @@ func (s *store) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, emp
 	}
 	setter.SetListener(s)
 
-	// Fake state, this kind of objects not support state operations
-
-	st := state.NewDoc(s.id, nil).(*state.State)
-	// Set object type here in order to derive value of Type relation in smartblock.Init
-	switch s.sbType {
-	case smartblock.SmartBlockTypeChatDerivedObject:
-		st.SetObjectTypeKey(bundle.TypeKeyChatDerived)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_chatDerived)))
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
-	case smartblock.SmartBlockTypeAccountObject:
-		st.SetObjectTypeKey(bundle.TypeKeyProfile)
-		st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_profile)))
-		st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(true))
-	default:
-		return nil, fmt.Errorf("unsupported smartblock type: %v", s.sbType)
-	}
-
-	return st, nil
+	// Fake state, this kind of objects not support state operations.
+	// Object type and layout details are set in the corresponding smartblock Init methods.
+	return state.NewDoc(s.id, nil), nil
 }
 
 func (s *store) PushChange(params source.PushChangeParams) (id string, err error) {
@@ -286,7 +268,7 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		DataType:          dataType,
 		Timestamp:         params.Time.Unix(),
 	}, func(change objecttree.StorageChange) error {
-		err = tx.ApplyChangeSet(storestate.ChangeSet{
+		err = tx.ApplyChangeSetReturnAllErrors(storestate.ChangeSet{
 			Id:        change.Id,
 			Order:     change.OrderId,
 			Changes:   params.Changes,

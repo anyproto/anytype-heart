@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -29,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -40,6 +42,7 @@ const (
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
 	diffManagerSyncStatus = "syncStatus"
+	diffManagerReactions  = "reactions"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -59,7 +62,10 @@ type StoreObject interface {
 	ToggleMessageReaction(ctx context.Context, messageId string, emoji string) (bool, error)
 	DeleteMessage(ctx context.Context, messageId string) error
 	MarkReadMessages(ctx context.Context, req ReadMessagesRequest) (markedCount int, err error)
+	MarkReadReactions(ctx context.Context) error
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
+	SetMessagePinned(ctx context.Context, messageId string, pinned bool) error
+	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
 }
 
 type AccountService interface {
@@ -90,7 +96,12 @@ type storeObject struct {
 	repository              chatrepository.Repository
 	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
-	spaceIndex              spaceindex.Store
+	indexerStore            objectstore.IndexerStore
+
+	reactionsCounterEpoch int64
+
+	typeKey domain.TypeKey
+	layout  model.ObjectTypeLayout
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -150,9 +161,12 @@ func New(
 	repositoryService chatrepository.Service,
 	chatSubscriptionService chatsubscription.Service,
 	spaceIndex spaceindex.Store,
+	indexerStore objectstore.IndexerStore,
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	statService debugstat.StatService,
+	typeKey domain.TypeKey,
+	layout model.ObjectTypeLayout,
 ) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	bs := basic.NewBasic(sb, spaceIndex, layoutConverter, fileObjectService)
@@ -164,11 +178,15 @@ func New(
 		arenaPool:               &anyenc.ArenaPool{},
 		crdtDb:                  crdtDb,
 		repositoryService:       repositoryService,
+		indexerStore:            indexerStore,
+		reactionsCounterEpoch:   time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC).Unix(),
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
 		DetailsSettable:         bs,
 		DetailsUpdatable:        bs,
+		typeKey:                 typeKey,
+		layout:                  layout,
 	}
 }
 
@@ -178,8 +196,14 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("source is not a store")
 	}
 
+	// Set object type and layout details for this fake state
+	st := ctx.Doc.(*state.State)
+	st.SetObjectTypeKey(s.typeKey)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(s.layout)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
+
 	var err error
-	s.repository, err = s.repositoryService.Repository(storeSource.Id())
+	s.repository, err = s.repositoryService.Repository(ctx.Source.SpaceID(), storeSource.Id())
 	if err != nil {
 		return fmt.Errorf("get repository: %w", err)
 	}
@@ -200,6 +224,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 			log.Error("mark read mentions", zap.Error(markErr))
 		}
 	})
+	storeSource.RegisterDiffManager(diffManagerReactions, func(removed []string) {
+		markErr := s.markReadReactions(removed)
+		if markErr != nil {
+			log.Error("mark read reactions", zap.Error(markErr))
+		}
+	})
 	storeSource.RegisterDiffManager(diffManagerSyncStatus, func(removed []string) {
 		updateErr := s.setMessagesSyncStatus(removed)
 		if updateErr != nil {
@@ -218,10 +248,13 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.chatHandler = &ChatHandler{
-		repository:      s.repository,
-		subscription:    s.subscription,
-		currentIdentity: s.accountService.AccountID(),
-		myParticipantId: myParticipantId,
+		repository:            s.repository,
+		subscription:          s.subscription,
+		indexerStore:          s.indexerStore,
+		chatFullId:            domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
+		currentIdentity:       s.accountService.AccountID(),
+		myParticipantId:       myParticipantId,
+		reactionsCounterEpoch: s.reactionsCounterEpoch,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
@@ -246,7 +279,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		collectionName:     EditorCollectionName,
 		storeSource:        storeSource,
 		storeState:         stateStore,
-		spaceIndex:         s.spaceIndex,
 		sb:                 s.SmartBlock,
 		deniedRelationKeys: []domain.RelationKey{bundle.RelationKeyInternalFlags},
 	}
@@ -272,7 +304,26 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
 
+	s.onInit(ctx)
+
 	return nil
+}
+
+func (s *storeObject) onInit(ctx *smartblock.InitContext) {
+	s.subscription.Lock()
+	defer s.subscription.Unlock()
+
+	// It's important to flush updates to subscriptions after reading a store document, or we can lose some important
+	// updates such as unread counters state
+	s.subscription.Flush(true)
+
+	last, ok, err := s.subscription.GetLastMessage()
+	if err != nil {
+		log.Error("onInit: get last message", zap.Error(err))
+	}
+	if ok && last != nil {
+		ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
+	}
 }
 
 func (s *storeObject) onUpdate() {
@@ -284,20 +335,13 @@ func (s *storeObject) onUpdate() {
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 
-	s.subscription.Flush()
+	s.subscription.Flush(true)
 
-	last, ok := s.subscription.GetLastMessage()
-	if !ok {
-		msgs, err := s.repository.GetLastMessages(s.componentCtx, 1)
-		if err != nil {
-			log.Error("onUpdate: get last message", zap.Error(err))
-		}
-		if len(msgs) > 0 {
-			last = msgs[0].ChatMessage
-		}
+	last, ok, err := s.subscription.GetLastMessage()
+	if err != nil {
+		log.Error("onUpdate: get last message", zap.Error(err))
 	}
-
-	if last != nil {
+	if ok && last != nil {
 		st := s.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 		err = s.Apply(st, smartblock.NotPushChanges)
@@ -332,9 +376,12 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	if err != nil {
 		return nil, err
 	}
+	s.subscription.Lock()
+	state := s.subscription.GetChatState()
+	s.subscription.Unlock()
 	return &GetMessagesResponse{
 		Messages:  msgs,
-		ChatState: s.subscription.GetChatState(),
+		ChatState: state,
 	}, nil
 }
 
@@ -358,6 +405,7 @@ func (s *storeObject) AddMessage(ctx context.Context, sessionCtx session.Context
 	obj.Del(chatmodel.ReadKey)
 	obj.Del(chatmodel.MentionReadKey)
 	obj.Del(chatmodel.SyncedKey)
+	obj.Del(chatmodel.ReactionUnreadChangeIdsKey)
 
 	builder := storestate.Builder{}
 	err = builder.Create(CollectionName, storestate.IdFromChange, obj)
@@ -505,6 +553,34 @@ func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.Objec
 			log.Error("mark sync status heads", zap.Error(err))
 		}
 	}
+}
+
+func (s *storeObject) SetMessagePinned(ctx context.Context, messageId string, pinned bool) error {
+	arena := s.arenaPool.Get()
+	defer func() {
+		arena.Reset()
+		s.arenaPool.Put(arena)
+	}()
+
+	builder := storestate.Builder{}
+	err := builder.Modify(CollectionName, messageId, []string{chatmodel.PinnedKey}, pb.ModifyOp_Set, arena.NewBool(pinned))
+	if err != nil {
+		return fmt.Errorf("modify content: %w", err)
+	}
+
+	_, err = s.storeSource.PushStoreChange(ctx, source.PushStoreChangeParams{
+		Changes: builder.ChangeSet,
+		State:   s.store,
+		Time:    time.Now(),
+	})
+	if err != nil {
+		return fmt.Errorf("push change: %w", err)
+	}
+	return nil
+}
+
+func (s *storeObject) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	return s.repository.GetPinnedMessages(ctx)
 }
 
 type treeSeenHeadsCollector struct {

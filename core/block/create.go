@@ -37,6 +37,7 @@ func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID stri
 		}
 		st = b.NewState().Copy()
 		st.SetLocalDetails(nil)
+		st.RemoveDetail(bundle.RelationKeyDiscussionId)
 		st.SetDetail(bundle.RelationKeySourceObject, domain.String(id))
 		return nil
 	}); err != nil {
@@ -96,7 +97,6 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		{Key: bundle.RelationKeyName, Value: domain.String(identityProfileWithKey.IdentityProfile.Name)},
 		{Key: bundle.RelationKeyIconImage, Value: domain.String(identityProfileWithKey.IdentityProfile.IconCid)},
 		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
-		{Key: bundle.RelationKeyOneToOneIdentity, Value: domain.String(identityProfileWithKey.IdentityProfile.Identity)},
 		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
 		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(inviteSentStatus))},
 		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("lastOpened")},

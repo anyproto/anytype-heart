@@ -74,7 +74,7 @@ func TestCacheWarmer(t *testing.T) {
 	})
 
 	t.Run("cancel a task", func(t *testing.T) {
-		synctest.Run(func() {
+		synctest.Test(t, func(_ *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 

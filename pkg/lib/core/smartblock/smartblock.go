@@ -30,6 +30,7 @@ const (
 	SmartBlockTypeChatObjectDeprecated = SmartBlockType(model.SmartBlockType_ChatObjectDeprecated) // deprecated. Container for any-store based chats
 	SmartBlockTypeChatDerivedObject    = SmartBlockType(model.SmartBlockType_ChatDerivedObject)    // Any-store based object for chat
 	SmartBlockTypeAccountObject        = SmartBlockType(model.SmartBlockType_AccountObject)
+	SmartBlockTypeDiscussionObject     = SmartBlockType(model.SmartBlockType_DiscussionObject)   // Any-store based object for discussion
 
 	SmartBlockTypeWorkspace      = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget         = SmartBlockType(model.SmartBlockType_Widget)
@@ -79,8 +80,12 @@ func (sbt SmartBlockType) Indexable() (fulltext, details, outgoingLinks bool) {
 	case SmartBlockTypeWorkspace,
 		SmartBlockTypeAccountObject,
 		SmartBlockTypeChatObjectDeprecated,
+		SmartBlockTypeChatDerivedObject,
+		SmartBlockTypeDiscussionObject,
 		SmartBlockTypeSpaceView:
 		return false, true, true
+	case SmartBlockTypeMissingObject:
+		return false, false, false
 	default:
 		return true, true, true
 	}

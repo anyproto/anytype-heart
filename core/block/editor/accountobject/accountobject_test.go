@@ -69,6 +69,7 @@ func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB))
 	err = object.Init(&smartblock.InitContext{
 		Ctx:    ctx,
 		Source: source,
+		Doc:    state.NewDoc("accountId1", nil),
 	})
 	require.NoError(t, err)
 

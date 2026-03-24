@@ -40,9 +40,15 @@ var ctx = context.Background()
 var timeNow time.Time = time.Now().UTC()
 var subsExpire time.Time = timeNow.Add(365 * 24 * time.Hour)
 
-type mockGlobalNamesUpdater struct{}
+type mockGlobalNamesUpdater struct {
+	lastGlobalName string
+	callCount      int
+}
 
-func (u *mockGlobalNamesUpdater) UpdateOwnGlobalName(string) {}
+func (u *mockGlobalNamesUpdater) UpdateOwnGlobalName(name string) {
+	u.lastGlobalName = name
+	u.callCount++
+}
 
 func (u *mockGlobalNamesUpdater) Init(*app.App) (err error) {
 	return nil
@@ -71,9 +77,10 @@ type fixture struct {
 
 func newFixture(t *testing.T) *fixture {
 	fx := &fixture{
-		a:       new(app.App),
-		ctrl:    gomock.NewController(t),
-		service: New().(*service),
+		a:                 new(app.App),
+		ctrl:              gomock.NewController(t),
+		service:           New().(*service),
+		identitiesUpdater: &mockGlobalNamesUpdater{},
 	}
 
 	fx.cache = mock_cache.NewMockCacheService(t)
@@ -716,6 +723,68 @@ func TestCodeGetInfo(t *testing.T) {
 		// Then
 		require.Equal(t, psp.ErrCodeNotFound, err)
 		require.Nil(t, resp)
+	})
+}
+
+func TestCodeRedeemUpdatesGlobalNameOnlyWhenNsNameProvided(t *testing.T) {
+	t.Run("updates global name when nsName is provided", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		code := "TEST-CODE-123"
+		nsName := "alice"
+
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		fx.ppclient.EXPECT().CodeRedeem(gomock.Any(), gomock.Any()).Return(&psp.CodeRedeemResponse{
+			Success: true,
+		}, nil)
+
+		// background forceRefresh started by CodeRedeem
+		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+
+		// no extra expectations on cache/ppclient for background refresh; those calls are guarded by goroutines
+
+		resp, err := fx.CodeRedeem(ctx, &pb.RpcMembershipCodeRedeemRequest{
+			Code:       code,
+			NsName:     nsName,
+			NsNameType: model.NameserviceNameType_AnyName,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		time.Sleep(50 * time.Millisecond)
+		assert.Equal(t, 1, fx.identitiesUpdater.callCount)
+		assert.NotEmpty(t, fx.identitiesUpdater.lastGlobalName)
+	})
+
+	t.Run("does not update global name when nsName is empty", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+
+		code := "TEST-CODE-123"
+
+		fx.wallet.EXPECT().GetAccountEthAddress().Return(common.HexToAddress("0x55DCad916750C19C4Ec69D65Ff0317767B36cE90"))
+		fx.ppclient.EXPECT().CodeRedeem(gomock.Any(), gomock.Any()).Return(&psp.CodeRedeemResponse{
+			Success: true,
+		}, nil)
+
+		// background forceRefresh started by CodeRedeem
+		fx.cache.EXPECT().CacheGet().Return(&model.Membership{}, []*model.MembershipTierData{{}}, time.Now().Add(time.Hour), nil)
+		fx.ppclient.EXPECT().GetAllTiers(gomock.Any(), gomock.Any()).Return(&psp.GetTiersResponse{Tiers: []*psp.TierData{{}}}, nil)
+		fx.ppclient.EXPECT().GetSubscriptionStatus(gomock.Any(), gomock.Any()).Return(&psp.GetSubscriptionResponse{PaymentMethod: psp.PaymentMethod_MethodNone}, nil)
+
+		resp, err := fx.CodeRedeem(ctx, &pb.RpcMembershipCodeRedeemRequest{
+			Code:       code,
+			NsName:     "",
+			NsNameType: model.NameserviceNameType_AnyName,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		time.Sleep(50 * time.Millisecond)
+		assert.Equal(t, 0, fx.identitiesUpdater.callCount)
 	})
 }
 

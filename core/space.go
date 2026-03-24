@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/util/encode"
 )
@@ -409,6 +410,46 @@ func (mw *Middleware) SpaceUnsetOrder(_ context.Context, request *pb.RpcSpaceUns
 	return response(pb.RpcSpaceUnsetOrderResponseError_NULL, nil)
 }
 
+func (mw *Middleware) SpaceChangeOwnership(cctx context.Context, request *pb.RpcSpaceChangeOwnershipRequest) *pb.RpcSpaceChangeOwnershipResponse {
+	aclService := mw.applicationService.GetApp().MustComponent(acl.CName).(acl.AclService)
+	err := ownershipChange(cctx, request.SpaceId, request.NewOwnerIdentity, request.OldOwnerPermissions, aclService)
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceChangeOwnershipResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceChangeOwnershipResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceChangeOwnershipResponseError_REQUEST_FAILED),
+		errToCode(acl.ErrNoSuchAccount, pb.RpcSpaceChangeOwnershipResponseError_PARTICIPANT_NOT_FOUND),
+		errToCode(acl.ErrIncorrectPermissions, pb.RpcSpaceChangeOwnershipResponseError_INCORRECT_PERMISSIONS),
+	)
+	return &pb.RpcSpaceChangeOwnershipResponse{
+		Error: &pb.RpcSpaceChangeOwnershipResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) SpaceDeleteCorruptedBackup(_ context.Context, req *pb.RpcSpaceDeleteCorruptedBackupRequest) *pb.RpcSpaceDeleteCorruptedBackupResponse {
+	response := func(code pb.RpcSpaceDeleteCorruptedBackupResponseErrorCode, err error) *pb.RpcSpaceDeleteCorruptedBackupResponse {
+		m := &pb.RpcSpaceDeleteCorruptedBackupResponse{
+			Error: &pb.RpcSpaceDeleteCorruptedBackupResponseError{Code: code},
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	if req.BackupPath == "" {
+		return response(pb.RpcSpaceDeleteCorruptedBackupResponseError_BAD_INPUT, fmt.Errorf("backup path is required"))
+	}
+
+	storageService := mustService[storage.ClientStorage](mw)
+	if err := storageService.DeleteBackup(req.BackupPath); err != nil {
+		return response(pb.RpcSpaceDeleteCorruptedBackupResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcSpaceDeleteCorruptedBackupResponseError_NULL, nil)
+}
+
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
 	inviteFileKey, err := encode.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
@@ -474,4 +515,12 @@ func permissionsChange(ctx context.Context, spaceId string, changes []*model.Par
 		})
 	}
 	return aclService.ChangePermissions(ctx, spaceId, accPermissions)
+}
+
+func ownershipChange(ctx context.Context, spaceId string, newOwnerIdentity string, oldOwnerPermissions model.ParticipantPermissions, aclService acl.AclService) error {
+	newOwnerKey, err := crypto.DecodeAccountAddress(newOwnerIdentity)
+	if err != nil {
+		return err
+	}
+	return aclService.OwnershipChange(ctx, spaceId, newOwnerKey, oldOwnerPermissions)
 }

@@ -9,8 +9,9 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/adrium/goheif"
-	"github.com/adrium/goheif/heif"
+	"github.com/anyproto/goheif"
+	"github.com/anyproto/goheif/heif"
+
 	"github.com/kovidgoyal/imaging"
 )
 
@@ -74,7 +75,6 @@ func getHEICOrientation(r io.ReadSeeker) (int, error) {
 			return 0, fmt.Errorf("read heic: %w", err)
 		}
 		ra = bytes.NewReader(data)
-		r = bytes.NewReader(data)
 	}
 
 	hf := heif.Open(ra)

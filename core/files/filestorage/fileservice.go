@@ -1,5 +1,27 @@
 package filestorage
 
+/*
+AI generated
+
+Name: Local File Block Storage
+Scope: global
+
+## Responsibility
+- Stores IPFS-compatible file blocks locally using flatfs sharding
+- Proxies reads: local first, then remote (with automatic local caching)
+- Provides transactional batch writes with temp directory staging
+- Exposes local garbage collector for cleaning orphaned blocks
+- Serves file blocks to peers via DRPC handler (read-only)
+
+## External State
+- flatfs/ directory: sharded IPFS block storage using IPFS_DEF_SHARD
+
+## Documentation
+Batching mechanism: Batch() creates a temp directory for writes. Reads check temp first,
+then main storage. Commit() atomically moves temp to main. Discard() cleans up temp.
+This ensures incomplete file uploads don't leave partial data in main storage.
+*/
+
 import (
 	"context"
 	"fmt"
@@ -65,10 +87,7 @@ var _ fileblockstore.BlockStoreLocal = &fileStorage{}
 func (f *fileStorage) Init(a *app.App) (err error) {
 	cfg := app.MustComponent[*config.Config](a)
 	f.cfg = cfg
-	fileCfg, err := cfg.FSConfig()
-	if err != nil {
-		return fmt.Errorf("fail to get file config: %w", err)
-	}
+	fileCfg := cfg.FSConfig()
 
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)

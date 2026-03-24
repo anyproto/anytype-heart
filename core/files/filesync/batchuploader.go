@@ -2,7 +2,7 @@ package filesync
 
 import (
 	"context"
-	"fmt"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
@@ -35,8 +35,18 @@ func (s *fileSync) addToLimitedQueue(objectId string) error {
 			return FileInfo{}, false, nil
 		}
 
+		space, spaceErr := s.limitManager.getSpace(info.SpaceId)
+		if spaceErr == nil {
+			space.deallocateFile(info.Key())
+		}
+
 		err := s.handleLimitReached(s.loopCtx, info)
 		if err != nil {
+			if isObjectDeletedError(err) {
+				info.State = FileStatePendingDeletion
+				info.ScheduledAt = time.Now()
+				return info, true, nil
+			}
 			info.State = FileStatePendingUpload
 			info = info.Reschedule()
 			return info, true, err
@@ -48,11 +58,13 @@ func (s *fileSync) addToLimitedQueue(objectId string) error {
 
 func (s *fileSync) processFileUploading(ctx context.Context, it FileInfo) (FileInfo, error) {
 	if len(it.CidsToUpload) == 0 {
-		space, err := s.limitManager.getSpace(ctx, it.SpaceId)
-		if err != nil {
-			return it, fmt.Errorf("get space limits: %w", err)
+		space, err := s.limitManager.getSpace(it.SpaceId)
+		// Now it doesn't matter whether we can't get space from the manager, as we are already uploaded the file
+		if err == nil {
+			space.markFileUploaded(it.Key())
+		} else {
+			log.Warn("process file uploading: get space", zap.Error(err))
 		}
-		space.markFileUploaded(it.Key())
 
 		err = s.updateStatus(it, filesyncstatus.Synced)
 		if err != nil {
@@ -103,6 +115,11 @@ func (s *fileSync) updateUploadedCids(objectId string, cids []cid.Cid) error {
 			delete(info.CidsToUpload, c)
 		}
 		next, err := s.processFileUploading(s.loopCtx, info)
+		if isObjectDeletedError(err) {
+			next.State = FileStatePendingDeletion
+			next.ScheduledAt = time.Now()
+			return next, true, nil
+		}
 		return next, true, err
 	})
 }

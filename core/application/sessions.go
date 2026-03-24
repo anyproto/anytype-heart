@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/any-sync/util/crypto"
 
+	"github.com/anyproto/anytype-heart/core/api"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
@@ -207,10 +208,12 @@ func (s *Service) LinkLocalRevokeApp(req *pb.RpcAccountLocalLinkRevokeAppRequest
 		delete(s.sessionsByAppHash, req.AppHash)
 		closeErr := s.sessions.CloseSession(token)
 		if closeErr != nil {
-			log.Errorf("error while closing session: %v", err)
+			log.Errorf("error while closing session: %v", closeErr)
+		}
+		if apiService, ok := s.app.Component(api.CName).(api.Service); ok {
+			apiService.RevokeToken(token)
 		}
 	}
 
 	return err
-
 }
