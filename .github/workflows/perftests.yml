@@ -7,7 +7,7 @@ on:
       run-on-runner-mac:
         description: 'Specify the runner to use on MacOS'
         required: true
-        default: 'mac-mini-org-heart'
+        default: 'macos-15'
       # run-on-runner-win:
       #   description: 'Specify the runner to use on Windows'
       #   required: true
@@ -24,14 +24,16 @@ permissions:
   contents: 'write'
 
 jobs:
-  wait_for_self_hosted_mac_mini:
-    uses: ./.github/workflows/reusable_wait_for_self_hosted_mac_mini.yml
-
   perftests-macos:
-    needs: wait_for_self_hosted_mac_mini
     timeout-minutes: 60
-    runs-on: 'mac-mini-org-heart'
+    runs-on: ${{ github.event.inputs.run-on-runner-mac || 'macos-15' }}
     steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+          check-latest: true
       - name: Setup GO
         run: |
           go version
@@ -39,7 +41,7 @@ jobs:
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Set env vars
         env:
           UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
@@ -73,6 +75,19 @@ jobs:
           make setup-go
           make setup-gomobile
           which gomobile
+      - name: install grpcurl
+        run: |
+          go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.9.3
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCS_SERVICE_PERFTEST_ACCOUNT_KEY }}
+      - name: Download account data from GCS
+        run: |
+          ACCOUNT_DATA_PATH="/Users/runner/account30000/"
+          mkdir -p "$ACCOUNT_DATA_PATH"
+          gcloud storage cp "gs://anytype-perftest-account/A6iqZ6CfXjnk8F1kVjqnLpxkG5AdXYoHrW2YcyVkGrxpz6EX.zip" "$ACCOUNT_DATA_PATH/"
+          echo "ACCOUNT_DATA_PATH=$ACCOUNT_DATA_PATH" >> $GITHUB_ENV
       - name: run perf tests
         run: |
           echo "Running perf tests"
