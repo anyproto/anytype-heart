@@ -304,23 +304,15 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 			return nil
 		}
 
-		for _, key := range sb.AllRelationKeys() {
+		for key, value := range sb.CombinedDetails().Iterate() {
 			format, err := i.formatFetcher.GetRelationFormatByKey(object.SpaceId, key)
 			if err == nil && !isIndexableFormat(format) {
 				continue
 			}
-			var val string
+			val := value.String()
 			if format == model.RelationFormat_number {
-				if f, ok := sb.Details().TryFloat64(key); ok {
-					val = strconv.FormatFloat(f, 'f', -1, 64)
-				} else if f, ok := sb.LocalDetails().TryFloat64(key); ok {
-					val = strconv.FormatFloat(f, 'f', -1, 64)
-				}
-			} else {
-				val = sb.Details().GetString(key)
-				if val == "" {
-					val = sb.LocalDetails().GetString(key)
-				}
+				f := value.Float64()
+				val = strconv.FormatFloat(f, 'f', -1, 64)
 			}
 			if val == "" {
 				continue
@@ -329,6 +321,11 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 			if bundledRel, err := bundle.PickRelation(key); err == nil {
 				skip := bundledRel.Hidden
 				if isName(key) {
+					skip = false
+				}
+				layout, _ := sb.Layout()
+				if layout == model.ObjectType_note && key == bundle.RelationKeySnippet {
+					// index snippet only for notes, so we will be able to do fast prefix queries
 					skip = false
 				}
 				if skip {
