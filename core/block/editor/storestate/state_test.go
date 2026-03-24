@@ -18,34 +18,37 @@ import (
 
 var ctx = context.Background()
 
-func TestStoreStateTx_GetOrder(t *testing.T) {
-	t.Run("empty", func(t *testing.T) {
+func TestStoreStateTx_AddSeq(t *testing.T) {
+	t.Run("empty returns zero", func(t *testing.T) {
 		fx := newFixture(t, "test", DefaultHandler{Name: "tcoll"})
 		tx, err := fx.NewTx(ctx)
 		require.NoError(t, err)
 		defer func() {
 			require.NoError(t, tx.Commit())
 		}()
-		order, err := tx.GetOrder("changeId")
-		assert.ErrorIs(t, err, ErrOrderNotFound)
-		assert.Empty(t, order)
+		assert.Equal(t, uint64(0), tx.GetMaxAddSeq())
 	})
-	t.Run("set-get", func(t *testing.T) {
+	t.Run("update and persist", func(t *testing.T) {
 		fx := newFixture(t, "test", DefaultHandler{Name: "tcoll"})
 		tx, err := fx.NewTx(ctx)
 		require.NoError(t, err)
-		require.NoError(t, tx.SetOrder("changeId", "1"))
-		order, err := tx.GetOrder("changeId")
-		require.NoError(t, err)
-		assert.Equal(t, "1", order)
-		assert.Equal(t, "1", tx.GetMaxOrder())
+		tx.UpdateMaxAddSeq(5)
+		assert.Equal(t, uint64(5), tx.GetMaxAddSeq())
 		require.NoError(t, tx.Commit())
 
 		tx, err = fx.NewTx(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, "1", tx.GetMaxOrder())
-		require.NoError(t, tx.SetOrder("changeId2", "2"))
-		assert.Equal(t, "2", tx.GetMaxOrder())
+		assert.Equal(t, uint64(5), tx.GetMaxAddSeq())
+		tx.UpdateMaxAddSeq(10)
+		assert.Equal(t, uint64(10), tx.GetMaxAddSeq())
+		// smaller value should not update
+		tx.UpdateMaxAddSeq(3)
+		assert.Equal(t, uint64(10), tx.GetMaxAddSeq())
+		require.NoError(t, tx.Commit())
+
+		tx, err = fx.NewTx(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, uint64(10), tx.GetMaxAddSeq())
 		require.NoError(t, tx.Commit())
 	})
 }

@@ -212,18 +212,12 @@ func (s *store) ReadStoreDoc(ctx context.Context, storeState *storestate.StoreSt
 	defer func() {
 		_ = tx.Rollback()
 	}()
-	// checking if we have any data in the store regarding the tree (i.e. if tree is first arrived or created)
-	allIsNew := false
-	if _, err := tx.GetOrder(s.id); err != nil {
-		allIsNew = true
-	}
 	applier := &storeApply{
-		tx:       tx,
-		allIsNew: allIsNew,
-		ot:       s.ObjectTree,
-		hook:     params.ReadStoreTreeHook,
+		tx:   tx,
+		ot:   s.ObjectTree,
+		hook: params.ReadStoreTreeHook,
 	}
-	if err = applier.Apply(); err != nil {
+	if err = applier.Apply(ctx); err != nil {
 		return err
 	}
 	err = tx.Commit()
@@ -288,6 +282,7 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		return "", fmt.Errorf("add changes list is empty")
 	}
 	changeId = addResult.Added[0].Id
+	tx.UpdateMaxAddSeq(addResult.Added[0].AddSeq)
 	err = tx.Commit()
 	if err == nil {
 		s.onUpdateHook()
@@ -319,11 +314,10 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 		return err
 	}
 	applier := &storeApply{
-		tx:                   tx,
-		ot:                   tree,
-		needFetchPrevOrderId: true,
+		tx: tx,
+		ot: tree,
 	}
-	if err = applier.Apply(); err != nil {
+	if err = applier.Apply(ctx); err != nil {
 		return errors.Join(tx.Rollback(), err)
 	}
 	err = tx.Commit()
