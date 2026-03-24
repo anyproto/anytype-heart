@@ -385,7 +385,7 @@ func (i *indexer) prepareRelationSearchDocs(fullId domain.FullID, sb smartblock.
 			continue
 		}
 		// skip hidden relations
-		bundledRel, _ := bundle.PickRelation(key)
+		bundledRel, _ := bundle.PickRelation(key) // nolint:errcheck
 		if !isName(key) && bundledRel != nil && bundledRel.Hidden {
 			continue
 		}
@@ -418,7 +418,7 @@ func (i *indexer) prepareRelationSearchDocs(fullId domain.FullID, sb smartblock.
 }
 
 func prepareBlockSearchDocs(ctx context.Context, sb smartblock.SmartBlock) (docs []ftsearch.SearchDoc) {
-	// nolint:gosec
+	// nolint:errcheck
 	_ = sb.Iterate(func(b simple.Block) (isContinue bool) {
 		if ctx.Err() != nil {
 			return false

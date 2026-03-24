@@ -209,20 +209,23 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 
 func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	indexerFx := newFixture(t)
+	key := domain.RelationKey("shortName")
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_shorttext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyName: domain.String("Title Text"),
+		key: domain.String("Title Text"),
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
+
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		return model.RelationFormat_shorttext, nil
+	})
+	indexerFx.formatFetcher = fetcher
 
 	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
-	assert.Equal(t, "objectId1/r/name", docs[0].Id)
+	assert.Equal(t, "objectId1/r/shortName", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
 	assert.Equal(t, "", docs[0].Title)
 }
@@ -253,20 +256,23 @@ func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
 
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	indexerFx := newFixture(t)
+	key := domain.RelationKey("longName")
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyName: domain.String("Title Text"),
+		key: domain.String("Title Text"),
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
+
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		return model.RelationFormat_longtext, nil
+	})
+	indexerFx.formatFetcher = fetcher
 
 	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
-	assert.Equal(t, "objectId1/r/name", docs[0].Id)
+	assert.Equal(t, "objectId1/r/longName", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
 	assert.Equal(t, "", docs[0].Title)
 }
