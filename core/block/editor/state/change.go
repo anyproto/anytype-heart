@@ -381,9 +381,7 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
-	for _, id := range move.Ids {
-		s.Unlink(id)
-	}
+	s.UnlinkAll(move.Ids)
 	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
 }
 
