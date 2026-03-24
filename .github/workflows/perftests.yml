@@ -82,6 +82,8 @@ jobs:
         uses: google-github-actions/auth@v3
         with:
           credentials_json: ${{ secrets.GCS_SERVICE_PERFTEST_ACCOUNT_KEY }}
+      - name: set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
       - name: Download account data from GCS
         run: |
           ACCOUNT_DATA_PATH="/Users/runner/account30000/"
