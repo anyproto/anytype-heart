@@ -146,8 +146,9 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 
 	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
 		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
-			Heads:   heads,
-			Include: true,
+			Heads:          heads,
+			Include:        true,
+			BuildEmptyData: true,
 		})
 	}
 	onRemove := func(removed []string) {
