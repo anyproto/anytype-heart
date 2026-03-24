@@ -29,6 +29,9 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
 		}
+		if b.NewState().Details().GetString(bundle.RelationKeyDiscussionId) != "" {
+			return fmt.Errorf("cannot delete object with discussion")
+		}
 		sbType = b.Type()
 		return nil
 	})
