@@ -153,10 +153,11 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 }
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
 	spaceDetails := domain.NewDetailsFromProto(req.Details)
-	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
 
 	// TODO: GO-7102 remove this hack when clients transfer from UXType to SpaceType
 	deriveSpaceTypeIfNeeded(spaceDetails)
+
+	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
 
 	if err = validateSpaceType(spaceDescription.SpaceType); err != nil {
 		return "", "", err

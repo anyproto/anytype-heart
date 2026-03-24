@@ -358,7 +358,7 @@ func (s *treeSource) migrateHomepage(st *state.State) {
 				homepage = chatId
 			}
 		}
-	case model.SpaceUxType_Data:
+	case model.SpaceUxType_Data, model.SpaceUxType_None:
 		homepage = st.Details().GetString(bundle.RelationKeySpaceDashboardId)
 		if homepage == domain.HomepageLastOpened {
 			homepage = domain.HomepageWidgets
