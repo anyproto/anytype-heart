@@ -974,11 +974,70 @@ func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filte
 	}
 
 	for _, relKey := range relKeys {
-		relTypeFilter = append(relTypeFilter, database.FilterExists{
+		existsFilter := database.FilterExists{
 			Key: domain.RelationKey(relKey),
-		})
+		}
+
+		typeUKs, err := s.typesRecommendingRelation(relKey)
+		if err != nil || len(typeUKs) == 0 {
+			relTypeFilter = append(relTypeFilter, existsFilter)
+			continue
+		}
+
+		nestedTypeFilter, err := database.MakeFilter("", database.FilterRequest{
+			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.StringList(typeUKs),
+		}, s.objectStore)
+		if err != nil {
+			relTypeFilter = append(relTypeFilter, existsFilter)
+			continue
+		}
+
+		relTypeFilter = append(relTypeFilter, database.FiltersOr{existsFilter, nestedTypeFilter})
 	}
 	return relTypeFilter, nil
+}
+
+func (s *spaceSubscriptions) typesRecommendingRelation(relKey string) ([]string, error) {
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relKey)
+	if err != nil {
+		return nil, fmt.Errorf("create relation unique key: %w", err)
+	}
+	relDetails, err := s.objectStore.GetObjectByUniqueKey(uk)
+	if err != nil {
+		return nil, fmt.Errorf("get relation object: %w", err)
+	}
+	relId := relDetails.GetString(bundle.RelationKeyId)
+	if relId == "" {
+		return nil, fmt.Errorf("relation object has no id")
+	}
+
+	records, err := s.objectStore.QueryRaw(&database.Filters{
+		FilterObj: database.FiltersAnd{
+			database.FilterEq{
+				Key:   bundle.RelationKeyResolvedLayout,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			database.FiltersOr{
+				database.FilterAllIn{Key: bundle.RelationKeyRecommendedRelations, Strings: []string{relId}},
+				database.FilterAllIn{Key: bundle.RelationKeyRecommendedFeaturedRelations, Strings: []string{relId}},
+				database.FilterAllIn{Key: bundle.RelationKeyRecommendedHiddenRelations, Strings: []string{relId}},
+			},
+		},
+	}, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("query types recommending relation: %w", err)
+	}
+
+	var typeUniqueKeys []string
+	for _, rec := range records {
+		if uk := rec.Details.GetString(bundle.RelationKeyUniqueKey); uk != "" {
+			typeUniqueKeys = append(typeUniqueKeys, uk)
+		}
+	}
+	return typeUniqueKeys, nil
 }
 
 func (s *spaceSubscriptions) depIdsFromFilter(filters []database.FilterRequest) (depIds []string) {
