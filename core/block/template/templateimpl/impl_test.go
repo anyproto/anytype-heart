@@ -606,9 +606,12 @@ type accountServiceStub struct {
 func (a accountServiceStub) AccountID() string { return a.accountId }
 
 // storageShortcut creates a placeholder storage entry for a shortcut type (Today, CurrentUser).
+// Stored as a MapList with a single entry, matching the current storage format.
 func storageShortcut(t model.PlaceholderType) domain.Value {
-	return domain.NewValueMap(map[string]domain.Value{
-		"type": domain.Float64(float64(t)),
+	return domain.MapList([]domain.ValueMap{
+		domain.NewValueMap(map[string]domain.Value{
+			"type": domain.Float64(float64(t)),
+		}).MapValue(),
 	})
 }
 
@@ -636,6 +639,7 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 			picker:         &testPicker{sb: tmpl},
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, map[string]model.RelationFormat{"dueDate": model.RelationFormat_date}),
 		}
 
 		// when
@@ -660,6 +664,7 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 			picker:         &testPicker{sb: tmpl},
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, map[string]model.RelationFormat{"assignee": model.RelationFormat_object}),
 		}
 
 		// when
@@ -684,6 +689,7 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 			picker:         &testPicker{sb: tmpl},
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, nil),
 		}
 
 		// when
@@ -700,15 +706,18 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 	t.Run("concrete value placeholder resolves to that value", func(t *testing.T) {
 		// given
 		tmpl := newTemplateTestWithPlaceholders(templateName, bundle.TypeKeyTask.String(), map[string]domain.Value{
-			"priority": domain.NewValueMap(map[string]domain.Value{
-				"type":  domain.Float64(float64(model.Placeholder_PlaceholderValue)),
-				"value": domain.Float64(42),
+			"priority": domain.MapList([]domain.ValueMap{
+				domain.NewValueMap(map[string]domain.Value{
+					"type":  domain.Float64(float64(model.Placeholder_PlaceholderValue)),
+					"value": domain.Float64(42),
+				}).MapValue(),
 			}),
 		})
 		s := service{
 			picker:         &testPicker{sb: tmpl},
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, map[string]model.RelationFormat{"priority": model.RelationFormat_number}),
 		}
 
 		// when
@@ -740,6 +749,7 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 			picker:         &testPicker{sb: tmpl},
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, map[string]model.RelationFormat{"assignee": model.RelationFormat_object}),
 		}
 
 		// when
@@ -766,6 +776,7 @@ func TestService_ResolveTemplatePlaceholders(t *testing.T) {
 		s := service{
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, map[string]model.RelationFormat{"assignee": model.RelationFormat_object}),
 		}
 
 		// when
@@ -833,6 +844,7 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 			picker:         picker,
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, map[string]model.RelationFormat{"dueDate": model.RelationFormat_date}),
 		}
 
 		// when
@@ -870,6 +882,7 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 			picker:         picker,
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, map[string]model.RelationFormat{"assignee": model.RelationFormat_object}),
 		}
 
 		// when
@@ -909,6 +922,10 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 			picker:         picker,
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher: newFormatFetcher(t, map[string]model.RelationFormat{
+				"dueDate":  model.RelationFormat_date,
+				"assignee": model.RelationFormat_object,
+			}),
 		}
 
 		// when
@@ -951,6 +968,7 @@ func TestService_ObjectApplyTemplate(t *testing.T) {
 			picker:         picker,
 			store:          objectstore.NewStoreFixture(t),
 			accountService: accountServiceStub{accountId: testAccount},
+			formatFetcher:  newFormatFetcher(t, nil),
 		}
 
 		// when
