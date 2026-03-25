@@ -37,7 +37,7 @@ func (s *fileSync) walkFileBlocks(ctx context.Context, spaceId string, fileId do
 		return nil
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "could not find") || errors.Is(err, fileprotoerr.ErrCIDNotFound) {
+		if ipld.IsNotFound(err) || strings.Contains(err.Error(), "failed to fetch all nodes") || errors.Is(err, fileprotoerr.ErrCIDNotFound) {
 			return errors.Join(err, errBlockNotFound)
 		}
 		return fmt.Errorf("walk DAG: %w", err)
