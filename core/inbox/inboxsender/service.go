@@ -1,28 +1,8 @@
-package onetoone
-
-/*
-AI generated
-
-Name: One-to-One Invite Manager
-Scope: global
-
-## Responsibility
-- Sends one-to-one chat invites to other users via coordinator inbox
-- Processes received one-to-one invites by creating 1-1 spaces and initializing chats
-- Retries failed invite sends periodically
-
-## Background Tasks
-- Periodic retry: checks for unsent invites (status=ToSend) and resends them every 30s (inboxResend)
-
-## Documentation
-Invite status flow:
-- ToSend: initial state when 1-1 space created, invite not yet sent
-- Sent: invite successfully sent via inbox
-- Received: set when processing incoming invite from another user
-*/
+package inboxsender
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -33,9 +13,11 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/anyproto/any-sync/util/periodicsync"
+	"github.com/gogo/protobuf/proto"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/inboxclient"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxclient"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -43,98 +25,110 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
-
-	"github.com/gogo/protobuf/proto"
-	"go.uber.org/zap"
 )
 
-const CName = "heart.onetoone"
+const CName = "heart.inboxsender"
 
 var log = logger.NewNamed(CName)
 
-var (
-	ErrSomeError = errors.New("some error")
-)
+var ErrSendPayloadInvite = errors.New("failed to send inbox payload")
+
+// inboxPayloadTypeRegularInvite is a temporary payload type for space invites
+// until any-sync is updated with the official enum value.
+// TODO: remove this constant
+const inboxPayloadTypeRegularInvite = coordinatorproto.InboxPayloadType(1)
 
 const (
 	sendInviteIntervalSec = 30
 	sendInviteTimeout     = 30 * time.Second
 )
 
-type SpaceService interface {
-	TechSpace() *clientspace.TechSpace
+// TODO: rewrite payload
+type SpaceInvitePayload struct {
+	SpaceId      string `json:"spaceId"`
+	SpaceName    string `json:"spaceName"`
+	SpaceIconCid string `json:"spaceIconCid,omitempty"`
+	IconOption   int64  `json:"iconOption,omitempty"`
 }
 
-type IdentityService interface {
-	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
-	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
-}
-
-func New() Service {
-	return new(onetoone)
-}
-
-type Service interface {
-	app.ComponentRunnable
-	SendOneToOneInvite(ctx context.Context, receiverIdentity string) (err error)
-	ResendFailedOneToOneInvites(ctx context.Context) error
-}
-
-type BlockService interface {
+type blockService interface {
 	SpaceInitChat(ctx context.Context, spaceId string, addAnalyticsId bool) error
 	CreateOneToOneFromInbox(ctx context.Context, bobProfile *model.IdentityProfileWithKey, inviteSentStatus spaceinfo.OneToOneInboxSentStatus) (spaceID string, startingPageId string, err error)
 }
 
-type onetoone struct {
-	inboxClient        inboxclient.InboxClient
-	spaceService       SpaceService
-	accountService     accountservice.Service
-	objectStore        objectstore.ObjectStore
-	identityService    IdentityService
+type spaceService interface {
+	TechSpace() *clientspace.TechSpace
+}
+
+type identityService interface {
+	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
+	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
+}
+
+func New() Sender {
+	return new(inboxSender)
+}
+
+type Sender interface {
+	app.ComponentRunnable
+	SendRegularSpaceInvites(ctx context.Context, spaceId string, receiverIdentities ...string) error
+	ResendFailedOneToOneInvites(ctx context.Context) error
+}
+
+type inboxSender struct {
+	inboxClient     inboxclient.InboxClient
+	spaceService    spaceService
+	blockService    blockService
+	identityService identityService
+	accountService  accountservice.Service
+	objectStore     objectstore.ObjectStore
+
 	techSpace          techspace.TechSpace
-	blockService       BlockService
 	periodicInboxRetry periodicsync.PeriodicSync
 }
 
-func (s *onetoone) Init(a *app.App) (err error) {
-	s.blockService = app.MustComponent[BlockService](a)
-	s.spaceService = app.MustComponent[SpaceService](a)
+func (s *inboxSender) Init(a *app.App) (err error) {
+	s.inboxClient = app.MustComponent[inboxclient.InboxClient](a)
+	s.spaceService = app.MustComponent[spaceService](a)
+	s.blockService = app.MustComponent[blockService](a)
+	s.identityService = app.MustComponent[identityService](a)
 	s.accountService = app.MustComponent[accountservice.Service](a)
 	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
-	s.identityService = app.MustComponent[IdentityService](a)
-	s.inboxClient = app.MustComponent[inboxclient.InboxClient](a)
+
 	s.periodicInboxRetry = periodicsync.NewPeriodicSync(sendInviteIntervalSec, sendInviteTimeout, s.inboxResend, log)
+	err = s.inboxClient.SetReceiverByType(inboxPayloadTypeRegularInvite, s.processRegularSpaceInvite)
+	if err != nil {
+		return fmt.Errorf("register inbox receiver: %w", err)
+	}
 	err = s.inboxClient.SetReceiverByType(coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite, s.processOneToOneInvite)
 	if err != nil {
 		log.Error("failed to init inbox receiver", zap.Error(err))
 		return err
 	}
-
-	return
+	return nil
 }
 
-func (s *onetoone) Name() (name string) {
+func (s *inboxSender) Name() (name string) {
 	return CName
 }
 
-func (s *onetoone) Run(ctx context.Context) error {
+func (s *inboxSender) Run(ctx context.Context) error {
 	s.techSpace = s.spaceService.TechSpace()
 	if s.techSpace == nil {
-		return fmt.Errorf("inboxclient: techspace is nil")
+		return fmt.Errorf("inboxsender: techspace is nil")
 	}
 	s.periodicInboxRetry.Run()
 	return nil
 }
 
-func (s *onetoone) Close(_ context.Context) (err error) {
+func (s *inboxSender) Close(_ context.Context) (err error) {
 	if s.periodicInboxRetry != nil {
 		s.periodicInboxRetry.Close()
 	}
-
 	return nil
 }
 
-func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (err error) {
+func (s *inboxSender) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (err error) {
 	inboxBody := packet.Payload.Body
 
 	if inboxBody == nil {
@@ -160,7 +154,59 @@ func (s *onetoone) processOneToOneInvite(packet *coordinatorproto.InboxPacket) (
 	return err
 }
 
-func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity string) (err error) {
+func (s *inboxSender) processRegularSpaceInvite(packet *coordinatorproto.InboxPacket) error {
+	if packet.Payload == nil || packet.Payload.Body == nil {
+		return fmt.Errorf("processRegularSpaceInvite: got nil payload body")
+	}
+
+	var payload SpaceInvitePayload
+	if err := json.Unmarshal(packet.Payload.Body, &payload); err != nil {
+		return fmt.Errorf("unmarshal space invite payload: %w", err)
+	}
+
+	// TODO: trigger space join flow once any-sync API is updated
+	return nil
+}
+
+func (s *inboxSender) SendRegularSpaceInvites(ctx context.Context, spaceId string, receiverIdentities ...string) error {
+	description, err := s.getSpaceDescription(ctx, spaceId)
+	if err != nil {
+		return fmt.Errorf("get space description: %w", err)
+	}
+
+	payload := SpaceInvitePayload{
+		SpaceId:      spaceId,
+		SpaceName:    description.Name,
+		SpaceIconCid: description.IconImage,
+		IconOption:   int64(description.IconOption),
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal space invite payload: %w", err)
+	}
+
+	for _, identity := range receiverIdentities {
+		if err = s.buildAndSendInvite(ctx, identity, inboxPayloadTypeRegularInvite, body); err != nil {
+			return errors.Join(ErrSendPayloadInvite, err)
+		}
+	}
+
+	return nil
+}
+
+func (s *inboxSender) getSpaceDescription(ctx context.Context, spaceId string) (spaceinfo.SpaceDescription, error) {
+	var description spaceinfo.SpaceDescription
+	err := s.techSpace.DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+		description = spaceView.GetSpaceDescription()
+		return nil
+	})
+	if err != nil {
+		return spaceinfo.SpaceDescription{}, err
+	}
+	return description, nil
+}
+
+func (s *inboxSender) sendOneToOneInvite(ctx context.Context, receiverIdentity string) (err error) {
 	myIdentity := s.accountService.Account().SignKey.GetPublic().Account()
 	myProfile, err := s.identityService.WaitProfileWithKey(ctx, myIdentity)
 	if err != nil {
@@ -172,6 +218,10 @@ func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity stri
 		return
 	}
 
+	return s.buildAndSendInvite(ctx, receiverIdentity, coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite, body)
+}
+
+func (s *inboxSender) buildAndSendInvite(ctx context.Context, receiverIdentity string, payloadType coordinatorproto.InboxPayloadType, body []byte) error {
 	msg := &coordinatorproto.InboxMessage{
 		PacketType: coordinatorproto.InboxPacketType_Default,
 		Packet: &coordinatorproto.InboxPacket{
@@ -179,14 +229,14 @@ func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity stri
 			ReceiverIdentity: receiverIdentity,
 			Payload: &coordinatorproto.InboxPayload{
 				Body:        body,
-				PayloadType: coordinatorproto.InboxPayloadType_InboxPayloadOneToOneInvite,
+				PayloadType: payloadType,
 			},
 		},
 	}
 
 	receiverPubKey, err := crypto.DecodeAccountAddress(receiverIdentity)
 	if err != nil {
-		return
+		return fmt.Errorf("decode receiver identity: %w", err)
 	}
 
 	return s.inboxClient.InboxAddMessage(ctx, receiverPubKey, msg)
@@ -194,7 +244,7 @@ func (s *onetoone) SendOneToOneInvite(ctx context.Context, receiverIdentity stri
 
 // ResendFailedOneToOneInvites interrupts periodicInboxRetry, calls inboxResend
 // and resets sendInviteInterval.
-func (s *onetoone) ResendFailedOneToOneInvites(ctx context.Context) error {
+func (s *inboxSender) ResendFailedOneToOneInvites(ctx context.Context) error {
 	return s.periodicInboxRetry.Reset(ctx)
 }
 
@@ -203,7 +253,7 @@ func (s *onetoone) ResendFailedOneToOneInvites(ctx context.Context) error {
 // and resend them.
 //
 // In case of success it sets space view inbox status to success.
-func (s *onetoone) inboxResend(ctx context.Context) (err error) {
+func (s *inboxSender) inboxResend(ctx context.Context) (err error) {
 	records, err := s.objectStore.SpaceIndex(s.techSpace.TechSpaceId()).Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -219,17 +269,17 @@ func (s *onetoone) inboxResend(ctx context.Context) (err error) {
 		},
 	})
 	if err != nil {
-		log.Error("onetoone: inboxResend: failed to query type object", zap.Error(err))
+		log.Error("inboxResend: failed to query type object", zap.Error(err))
 		return
 	}
 	if len(records) == 0 {
-		log.Info("onetoone: inboxResend: no inbox invites to send, return")
+		log.Info("inboxResend: no inbox invites to send, return")
 		return
 	}
 
 	for _, record := range records {
 		bobIdentity := record.Details.GetString(bundle.RelationKeyOneToOneIdentity)
-		err := s.SendOneToOneInvite(ctx, bobIdentity)
+		err := s.sendOneToOneInvite(ctx, bobIdentity)
 		if err != nil {
 			log.Error("inboxResend: error (re)sending inbox invite", zap.String("identity", bobIdentity), zap.Error(err))
 		} else {

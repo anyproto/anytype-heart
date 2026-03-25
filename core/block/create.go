@@ -145,7 +145,7 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 		return "", "", fmt.Errorf("createWorkspace: failed to CreateOneToOneFromInbox: %w", err)
 	}
 
-	err = s.onetoone.ResendFailedOneToOneInvites(ctx)
+	err = s.inboxSender.ResendFailedOneToOneInvites(ctx)
 	if err != nil {
 		log.Error("failed to reschedule onetoone inbox resend", zap.Error(err))
 	}

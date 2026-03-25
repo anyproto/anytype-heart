@@ -5,12 +5,14 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxsender"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/pb"
@@ -450,6 +452,26 @@ func (mw *Middleware) SpaceDeleteCorruptedBackup(_ context.Context, req *pb.RpcS
 	return response(pb.RpcSpaceDeleteCorruptedBackupResponseError_NULL, nil)
 }
 
+func (mw *Middleware) SpaceParticipantsAddList(cctx context.Context, req *pb.RpcSpaceParticipantsAddListRequest) *pb.RpcSpaceParticipantsAddListResponse {
+	aclService := mustService[acl.AclService](mw)
+	inboxSender := mustService[inboxsender.Sender](mw)
+	err := addMembers(cctx, req.SpaceId, req.Identities, aclService, inboxSender)
+	code := mapErrorCode(err,
+		errToCode(inboxsender.ErrSendPayloadInvite, pb.RpcSpaceParticipantsAddListResponseError_SEND_INVITE_FAILED),
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceParticipantsAddListResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceParticipantsAddListResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceParticipantsAddListResponseError_REQUEST_FAILED),
+		errToCode(acl.ErrLimitReached, pb.RpcSpaceParticipantsAddListResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceParticipantsAddListResponseError_NOT_SHAREABLE),
+	)
+	return &pb.RpcSpaceParticipantsAddListResponse{
+		Error: &pb.RpcSpaceParticipantsAddListResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
 	inviteFileKey, err := encode.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
@@ -523,4 +545,20 @@ func ownershipChange(ctx context.Context, spaceId string, newOwnerIdentity strin
 		return err
 	}
 	return aclService.OwnershipChange(ctx, spaceId, newOwnerKey, oldOwnerPermissions)
+}
+
+func addMembers(ctx context.Context, spaceId string, identities []string, aclService acl.AclService, inboxSender inboxsender.Sender) error {
+	if len(identities) == 0 {
+		return fmt.Errorf("no identities provided")
+	}
+	for _, identity := range identities {
+		pubKey, err := crypto.DecodeAccountAddress(identity)
+		if err != nil {
+			return fmt.Errorf("decode identity %s: %w", identity, err)
+		}
+		if err := aclService.AddAccount(ctx, spaceId, pubKey, nil, list.AclPermissionsWriter); err != nil {
+			return fmt.Errorf("add account %s: %w", identity, err)
+		}
+	}
+	return inboxSender.SendRegularSpaceInvites(ctx, spaceId, identities...)
 }

@@ -239,6 +239,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	collService := &dummyCollectionService{}
 	subscriptionService := subscription.New()
 	identityService := testutil.PrepareMock(ctx, fx.a, mock_dependencies.NewMockIdentityService(t))
+	// TODO: use other mock
 	onetooneServiceMock := mock_onetoone.NewMockService(t)
 	onetooneServiceMock.EXPECT().Run(mock.Anything).Return(nil).Maybe()
 	onetooneServiceMock.EXPECT().Close(mock.Anything).Return(nil).Maybe()

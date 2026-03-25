@@ -82,7 +82,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
-	"github.com/anyproto/anytype-heart/core/inboxclient"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxclient"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxsender"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore"
@@ -90,7 +91,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/migration"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
-	"github.com/anyproto/anytype-heart/core/onetoone"
 	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
@@ -348,7 +348,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscribeclient.New()).
 		Register(anysyncinboxclient.New()).
 		Register(inboxclient.New()).
-		Register(onetoone.New()).
+		Register(inboxsender.New()).
 		Register(durability.New()) // leave it the last one
 }
 
