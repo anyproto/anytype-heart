@@ -175,31 +175,23 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
-		details := make([]domain.Detail, 0, spaceDetails.Len())
-		hasHomepage := false
-		hasUxType := false
+		details := make([]domain.Detail, 0, spaceDetails.Len()+1)
 		for k, v := range spaceDetails.Iterate() {
 			details = append(details, domain.Detail{Key: k, Value: v})
-			if k == bundle.RelationKeyHomepage && v.String() != "" {
-				hasHomepage = true
-			}
-			if k == bundle.RelationKeySpaceUxType {
-				hasUxType = true
-			}
 		}
 		details = append(details, domain.Detail{
 			Key:   bundle.RelationKeyAnalyticsSpaceId,
 			Value: domain.String(metrics.GenerateAnalyticsId()),
 		})
 		// Set the default homepage for regular spaces if not provided
-		if !hasHomepage && spaceDescription.SpaceType == model.SpaceType_SpaceTypeRegular {
+		if !spaceDetails.Has(bundle.RelationKeyHomepage) && spaceDescription.SpaceType == model.SpaceType_SpaceTypeRegular {
 			details = append(details, domain.Detail{
 				Key:   bundle.RelationKeyHomepage,
 				Value: domain.String(domain.HomepageWidgets),
 			})
 		}
 		// TODO: GO-7102 remove this code when backward compatibility will be unnecessary
-		if !hasUxType {
+		if !spaceDetails.Has(bundle.RelationKeySpaceUxType) {
 			spaceUxType := model.SpaceUxType_Data
 			if spaceDescription.SpaceType == model.SpaceType_SpaceTypeOneToOne {
 				spaceUxType = model.SpaceUxType_OneToOne
@@ -259,8 +251,6 @@ func deriveSpaceTypeIfNeeded(details *domain.Details) {
 
 func validateSpaceType(spaceType model.SpaceType) error {
 	switch spaceType {
-	case model.SpaceType_SpaceTypeUnknown:
-		return errors.New("space ux type cannot be Unknown")
 	case model.SpaceType_SpaceTypeRegular, model.SpaceType_SpaceTypeOneToOne:
 		return nil
 	case model.SpaceType_SpaceTypeTech:

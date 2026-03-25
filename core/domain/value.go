@@ -50,7 +50,7 @@ func (t ValueType) String() string {
 	case ValueTypeMap:
 		return "map"
 	default:
-		return "unknown"
+		return "invalid"
 	}
 }
 
