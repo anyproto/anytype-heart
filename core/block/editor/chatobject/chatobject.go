@@ -41,8 +41,7 @@ const (
 	EditorCollectionName  = "editor"
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
-	diffManagerSyncStatus = "syncStatus"
-	diffManagerReactions  = "reactions"
+	diffManagerReactions = "reactions"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -228,12 +227,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		markErr := s.markReadReactions(removed)
 		if markErr != nil {
 			log.Error("mark read reactions", zap.Error(markErr))
-		}
-	})
-	storeSource.RegisterDiffManager(diffManagerSyncStatus, func(removed []string) {
-		updateErr := s.setMessagesSyncStatus(removed)
-		if updateErr != nil {
-			log.Error("set sync status", zap.Error(updateErr))
 		}
 	})
 	err = s.SmartBlock.Init(ctx)
@@ -547,11 +540,35 @@ func (s *storeObject) Close() error {
 }
 
 func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
-	if status == (domain.ObjectSyncStatusSynced) {
-		err := s.storeSource.MarkSeenHeads(s.componentCtx, diffManagerSyncStatus, heads)
+	if status != domain.ObjectSyncStatusSynced {
+		return
+	}
+
+	var maxOrderId string
+	for _, head := range heads {
+		ch, err := s.Tree().GetChange(head)
 		if err != nil {
-			log.Error("mark sync status heads", zap.Error(err))
+			continue
 		}
+		if ch.OrderId > maxOrderId {
+			maxOrderId = ch.OrderId
+		}
+	}
+	if maxOrderId == "" {
+		return
+	}
+
+	idsModified, err := s.repository.SetSyncedByMaxOrderId(s.componentCtx, maxOrderId)
+	if err != nil {
+		log.Error("set synced by max order id", zap.Error(err))
+		return
+	}
+
+	if len(idsModified) > 0 {
+		s.subscription.Lock()
+		defer s.subscription.Unlock()
+		s.subscription.UpdateSyncStatus(idsModified, true)
+		s.subscription.Flush(false)
 	}
 }
 
