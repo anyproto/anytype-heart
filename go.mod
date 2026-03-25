@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-store v0.4.6
-	github.com/anyproto/any-sync v0.11.21-0.20260325142040-e1a564d05e2e
+	github.com/anyproto/any-sync v0.11.21
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
