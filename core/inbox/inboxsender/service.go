@@ -58,6 +58,7 @@ type blockService interface {
 
 type spaceService interface {
 	TechSpace() *clientspace.TechSpace
+	InviteJoin(ctx context.Context, id, aclHeadId string) error
 }
 
 type identityService interface {
@@ -85,6 +86,9 @@ type inboxSender struct {
 
 	techSpace          techspace.TechSpace
 	periodicInboxRetry periodicsync.PeriodicSync
+
+	componentCtx    context.Context
+	componentCancel context.CancelFunc
 }
 
 func (s *inboxSender) Init(a *app.App) (err error) {
@@ -105,6 +109,8 @@ func (s *inboxSender) Init(a *app.App) (err error) {
 		log.Error("failed to init inbox receiver", zap.Error(err))
 		return err
 	}
+
+	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
 	return nil
 }
 
@@ -125,6 +131,9 @@ func (s *inboxSender) Close(_ context.Context) (err error) {
 	if s.periodicInboxRetry != nil {
 		s.periodicInboxRetry.Close()
 	}
+	if s.componentCancel != nil {
+		s.componentCancel()
+	}
 	return nil
 }
 
@@ -141,12 +150,12 @@ func (s *inboxSender) processOneToOneInvite(packet *coordinatorproto.InboxPacket
 		return
 	}
 
-	spaceId, _, err := s.blockService.CreateOneToOneFromInbox(context.Background(), &identityProfileWithKey, spaceinfo.OneToOneInboxSentStatusReceived)
+	spaceId, _, err := s.blockService.CreateOneToOneFromInbox(s.componentCtx, &identityProfileWithKey, spaceinfo.OneToOneInboxSentStatusReceived)
 	if err != nil {
 		log.Error("create onetoone space from inbox", zap.Error(err))
 		return fmt.Errorf("processOneToOneInvite error: %s", err.Error())
 	}
-	err = s.blockService.SpaceInitChat(context.Background(), spaceId, true)
+	err = s.blockService.SpaceInitChat(s.componentCtx, spaceId, true)
 	if err != nil {
 		log.Error("create onetoone space from inbox, SpaceInitChat", zap.String("spaceId", spaceId), zap.Error(err))
 	}
@@ -164,7 +173,19 @@ func (s *inboxSender) processRegularSpaceInvite(packet *coordinatorproto.InboxPa
 		return fmt.Errorf("unmarshal space invite payload: %w", err)
 	}
 
-	// TODO: trigger space join flow once any-sync API is updated
+	if err := s.spaceService.InviteJoin(s.componentCtx, payload.SpaceId, ""); err != nil {
+		log.Error("join regular space from inbox", zap.String("spaceId", payload.SpaceId), zap.Error(err))
+		return fmt.Errorf("invite join space %s: %w", payload.SpaceId, err)
+	}
+	err := s.techSpace.SpaceViewSetData(s.componentCtx, payload.SpaceId,
+		domain.NewDetails().
+			SetString(bundle.RelationKeyName, payload.SpaceName).
+			SetString(bundle.RelationKeyIconImage, payload.SpaceIconCid).
+			SetInt64(bundle.RelationKeyIconOption, payload.IconOption))
+	if err != nil {
+		log.Error("set space view details", zap.Error(err))
+		return fmt.Errorf("set space view data: %w", err)
+	}
 	return nil
 }
 

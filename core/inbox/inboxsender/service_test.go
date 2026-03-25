@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
@@ -20,23 +21,40 @@ import (
 
 type fixture struct {
 	*inboxSender
-	mockInboxClient *mockInboxClientImpl
-	mockTechSpace   *mock_techspace.MockTechSpace
+	mockInboxClient  *mockInboxClientImpl
+	mockTechSpace    *mock_techspace.MockTechSpace
+	mockSpaceService *mockSpaceServiceImpl
 }
 
 func newFixture(t *testing.T) *fixture {
 	mockInbox := &mockInboxClientImpl{}
 	mockTS := mock_techspace.NewMockTechSpace(t)
+	mockSS := &mockSpaceServiceImpl{}
 
 	s := &inboxSender{
-		inboxClient: mockInbox,
-		techSpace:   mockTS,
+		inboxClient:  mockInbox,
+		spaceService: mockSS,
+		techSpace:    mockTS,
 	}
 	return &fixture{
-		inboxSender:     s,
-		mockInboxClient: mockInbox,
-		mockTechSpace:   mockTS,
+		inboxSender:      s,
+		mockInboxClient:  mockInbox,
+		mockTechSpace:    mockTS,
+		mockSpaceService: mockSS,
 	}
+}
+
+type mockSpaceServiceImpl struct {
+	mock.Mock
+}
+
+func (m *mockSpaceServiceImpl) TechSpace() *clientspace.TechSpace {
+	return nil
+}
+
+func (m *mockSpaceServiceImpl) InviteJoin(ctx context.Context, id, aclHeadId string) error {
+	args := m.Called(ctx, id, aclHeadId)
+	return args.Error(0)
 }
 
 // mockInboxClientImpl implements inboxclient.InboxClient for testing
@@ -135,12 +153,16 @@ func TestProcessSpaceInvite(t *testing.T) {
 	t.Run("processes valid space invite", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
+		spaceId := "invited-space"
 		payload := SpaceInvitePayload{
-			SpaceId:   "invited-space",
+			SpaceId:   spaceId,
 			SpaceName: "My Space",
 		}
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
+
+		fx.mockSpaceService.On("InviteJoin", mock.Anything, spaceId, "").Return(nil)
+		fx.mockTechSpace.EXPECT().SpaceViewSetData(mock.Anything, spaceId, mock.Anything).Return(nil)
 
 		packet := &coordinatorproto.InboxPacket{
 			SenderIdentity: "sender-identity",
@@ -155,6 +177,7 @@ func TestProcessSpaceInvite(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
+		fx.mockSpaceService.AssertCalled(t, "InviteJoin", mock.Anything, spaceId, "")
 	})
 
 	t.Run("returns error for nil payload body", func(t *testing.T) {
