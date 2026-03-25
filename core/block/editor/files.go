@@ -148,7 +148,14 @@ func (f *File) markUploadedHook(applyInfo smartblock.ApplyInfo) error {
 	for _, ch := range applyInfo.Changes {
 		if ds := ch.GetDetailsSet(); ds != nil && ds.Key == bundle.RelationKeyFileBackupStatus.String() {
 			if applyInfo.State.Details().GetInt64(bundle.RelationKeyFileBackupStatus) == int64(filesyncstatus.Synced) {
-				return f.fileObjectService.MarkFileUploaded(f.Id())
+				// Run async to avoid deadlock: this hook fires inside process() which holds the
+				// file queue item, and MarkUploaded calls process() for the same item.
+				objectId := f.Id()
+				go func() {
+					if err := f.fileObjectService.MarkFileUploaded(objectId); err != nil {
+						log.Errorf("mark file uploaded: %v", err)
+					}
+				}()
 			}
 			return nil
 		}
