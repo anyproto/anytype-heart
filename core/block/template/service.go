@@ -41,6 +41,7 @@ type Service interface {
 
 	GetTemplatePlaceholders(templateId string) ([]*model.Placeholder, error)
 	SetTemplatePlaceholders(ctx session.Context, templateId string, placeholders []*model.Placeholder) error
+	DeleteTemplatePlaceholders(ctx session.Context, templateId string, relationKeys []string) error
 
 	app.Component
 }
