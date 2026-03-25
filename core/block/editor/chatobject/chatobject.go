@@ -299,7 +299,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	storeSource.SetPushChangeHook(s.detailsComponent.onPushOrdinaryChange)
 
-	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)
+	s.AnystoreDebug = anystoredebug.New(s.SmartBlock)
 
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
