@@ -8,7 +8,6 @@ import (
 
 	"anyproto/anytype-agent-runtime/anyruntime"
 	agentrt "anyproto/anytype-agent-runtime/runtime"
-	"anyproto/anytype-agent-runtime/runtime/hostfn"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/anytype-heart/core/block/chats"
@@ -123,11 +122,10 @@ export function main() {
 			if reply, ok := res.Result.(string); ok && reply != "" {
 				todoCtx := session.NewContext()
 				fmt.Printf("-- replying to chat: %s\n", chatId)
+				content := markdownToChatContent(reply)
 				_, err = chatService.AddMessage(ctx, todoCtx, chatId, &chatmodel.Message{
 					ChatMessage: &model.ChatMessage{
-						Message: &model.ChatMessageMessageContent{
-							Text: reply,
-						},
+						Message: content,
 					},
 				})
 				if err != nil {
@@ -139,63 +137,81 @@ export function main() {
 	}
 }
 
-// createMessageRuntime creates a new anytype-agent-runtime for a single message,
-// following the same pattern as anyruntime.CreateAnytypeJSRuntime but with:
-// - chatReply wired to send messages to chat via chatService
-// - per-message space ID
-// - API URL pointing to our local API server
+// createMessageRuntime creates a runtime for a single message.
+// createMessageRuntime sets up a runtime for a single message using the standard
+// Anytype runtime base, then overrides chatReply to deliver messages to the chat.
 func createMessageRuntime(ctx context.Context, chatService chats.Service, chatId string, spaceId string, apiBaseUrl string, privateSpaceId string, claudeKey string) (agentrt.Runtime, error) {
 	rt, err := agentrt.NewSobekRuntime()
 	if err != nil {
 		return nil, fmt.Errorf("create sobek runtime: %w", err)
 	}
 
-	rt.SetEffectResolver("fetch", hostfn.Fetch)
-	rt.SetEffectResolver("sleep", hostfn.Sleep)
-
-	// Wire chatReply to actually send messages to the chat
-	rt.SetEffectResolver("chatReply", newChatReplyEffect(ctx, chatService, chatId))
-
-	rt.EnableConsole()
-	rt.EnableJSEval()
-
-	rt.SetGlobal("env", map[string]any{
-		"ANYTYPE_API_URL":          apiBaseUrl,
-		"ANYTYPE_API_KEY":          "", // auth disabled via ANYTYPE_API_DISABLE_AUTH=1
-		"ANYTYPE_SPACE_ID":         spaceId,
-		"ANYTYPE_PRIVATE_SPACE_ID": privateSpaceId,
-		"CLAUDE_API_KEY":           claudeKey,
-	})
-
-	loader := anyruntime.NewAnytypeLoader(anyruntime.AnytypeLoaderConfig{
-		BaseURL:        apiBaseUrl,
+	anyruntime.SetupAnytypeRuntime(rt, anyruntime.AnytypeRuntimeConfig{
+		APIBaseURL:     apiBaseUrl,
+		APIKey:         "", // auth disabled via ANYTYPE_API_DISABLE_AUTH=1
 		SpaceID:        spaceId,
 		PrivateSpaceID: privateSpaceId,
-		APIKey:         "", // auth disabled
+		ClaudeKey:      claudeKey,
 	})
-	rt.SetModuleResolver(loader)
+
+	rt.SetEffectResolver("chatReply", newChatReplyEffect(ctx, chatService, chatId))
 
 	return rt, nil
 }
 
+// parseChatReplyArgs extracts text and attachment IDs from the chatReply arguments.
+// Accepts either a plain string (markdown) or an object {text: string, attachments: []string}.
+func parseChatReplyArgs(arg any) (text string, attachmentIDs []string) {
+	switch v := arg.(type) {
+	case string:
+		return v, nil
+	case map[string]any:
+		if t, ok := v["text"].(string); ok {
+			text = t
+		}
+		if atts, ok := v["attachments"].([]any); ok {
+			for _, a := range atts {
+				if id, ok := a.(string); ok {
+					attachmentIDs = append(attachmentIDs, id)
+				}
+			}
+		}
+		return text, attachmentIDs
+	default:
+		return fmt.Sprintf("%v", arg), nil
+	}
+}
+
 // newChatReplyEffect returns a chatReply effect handler that sends messages
 // to the given chat via chatService.AddMessage.
+// The handler accepts either a markdown string or {text: string, attachments: []string}.
+// Markdown is converted to Anytype marks; attachments are linked objects from the space.
 func newChatReplyEffect(ctx context.Context, chatService chats.Service, chatId string) func(tr *agentrt.TraceRecord, args ...any) any {
 	return func(tr *agentrt.TraceRecord, args ...any) any {
 		if len(args) == 0 {
 			return nil
 		}
-		msg := fmt.Sprintf("%v", args[0])
-		tr.SetInput(msg)
 
-		fmt.Printf("-- chatReply to %s: %s\n", chatId, msg)
+		text, attachmentIDs := parseChatReplyArgs(args[0])
+		tr.SetInput(text)
+
+		fmt.Printf("-- chatReply to %s: %s (attachments: %v)\n", chatId, text, attachmentIDs)
+
+		content := markdownToChatContent(text)
+
+		var attachments []*model.ChatMessageAttachment
+		for _, id := range attachmentIDs {
+			attachments = append(attachments, &model.ChatMessageAttachment{
+				Target: id,
+				Type:   model.ChatMessageAttachment_LINK,
+			})
+		}
 
 		todoCtx := session.NewContext()
 		_, err := chatService.AddMessage(ctx, todoCtx, chatId, &chatmodel.Message{
 			ChatMessage: &model.ChatMessage{
-				Message: &model.ChatMessageMessageContent{
-					Text: msg,
-				},
+				Message:     content,
+				Attachments: attachments,
 			},
 		})
 		if err != nil {
