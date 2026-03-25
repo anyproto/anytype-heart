@@ -45,12 +45,17 @@ func (s *service) SetTemplatePlaceholders(ctx session.Context, templateId string
 		if existing == nil {
 			existing = make(map[string]domain.Value, len(placeholders))
 		}
+		spaceId := sb.SpaceID()
 
 		for _, p := range placeholders {
 			if len(p.Values) == 0 {
 				continue
 			}
-			existing[p.RelationKey] = placeholderValuesToStorage(p.Values)
+			value, err := s.buildStorageValue(p.RelationKey, spaceId, p.Values)
+			if err != nil {
+				return fmt.Errorf("invalid placeholder value: %w", err)
+			}
+			existing[p.RelationKey] = value
 		}
 
 		if len(existing) != 0 {
@@ -83,69 +88,88 @@ func (s *service) DeleteTemplatePlaceholders(ctx session.Context, templateId str
 	})
 }
 
-// shouldRemovePlaceholder returns true if the placeholder entry should be removed:
-// either no values, or only PlaceholderValue entries with nil concrete values.
-func shouldRemovePlaceholder(values []*model.PlaceholderValue) bool {
-	if len(values) == 0 {
-		return true
-	}
-	for _, v := range values {
-		if v.Type != model.Placeholder_PlaceholderValue || v.Value != nil {
-			return false
-		}
-	}
-	return true
-}
-
-// TODO: we should store MapList all the time
-// placeholderValuesToStorage converts PlaceholderValue entries to domain.Value.
-//
-// Storage format per relation key:
-//   - Single entry:   {"type": <PlaceholderType>}  or  {"type": 0, "value": <val>}
-//   - Multiple entries: [{"type": 0, "value": "obj1"}, {"type": 2}]
-//
+// buildStorageValue converts PlaceholderValue entries to domain.Value and validates each entry.
+// Storage format per relation key is a MapList: [{"type": 0, "value": "obj1"}, {"type": 2}]
 // Each PlaceholderValue maps 1:1 to a struct with "type" and optional "value" keys.
-func placeholderValuesToStorage(values []*model.PlaceholderValue) domain.Value {
-	if len(values) == 1 {
-		return placeholderValueToMap(values[0])
+func (s *service) buildStorageValue(relationKey, spaceId string, values []*model.PlaceholderValue) (domain.Value, error) {
+	format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, domain.RelationKey(relationKey))
+	if err != nil {
+		log.Warnf("failed to get relation format for key %s: %v", relationKey, err)
 	}
+
+	if len(values) > 1 && !isObjectFormat(format) {
+		return domain.Value{}, fmt.Errorf("relation of format %s cannot handle multiple values", format.String())
+	}
+
 	maps := make([]domain.ValueMap, 0, len(values))
 	for _, v := range values {
-		maps = append(maps, placeholderValueToMap(v).MapValue())
+		mapValue, err := placeholderValueToMap(v, format)
+		if err != nil {
+			return domain.Value{}, err
+		}
+		maps = append(maps, mapValue.MapValue())
 	}
-	return domain.MapList(maps)
+	return domain.MapList(maps), nil
 }
 
-func placeholderValueToMap(v *model.PlaceholderValue) domain.Value {
+func placeholderValueToMap(v *model.PlaceholderValue, format model.RelationFormat) (domain.Value, error) {
 	inner := make(map[string]domain.Value, 2)
+
+	if v.Type == model.Placeholder_PlaceholderToday && format != model.RelationFormat_date {
+		return domain.Value{}, fmt.Errorf("cannot use 'today' placeholder for detail of %s format: date is expected", format.String())
+	}
+
+	if v.Type == model.Placeholder_PlaceholderCurrentUser && format != model.RelationFormat_object {
+		return domain.Value{}, fmt.Errorf("cannot use 'current user' placeholder for detail of %s format: object is expected", format.String())
+	}
+
 	inner[keyType] = domain.Int64(int64(v.Type))
 	if v.Value != nil {
-		inner[keyValue] = domain.ValueFromProto(v.Value)
+		inner[keyType] = domain.Int64(int64(0))
+		value := domain.ValueFromProto(v.Value)
+		switch format {
+		case model.RelationFormat_object, model.RelationFormat_status, model.RelationFormat_tag,
+			model.RelationFormat_file, model.RelationFormat_shorttext, model.RelationFormat_longtext,
+			model.RelationFormat_url, model.RelationFormat_phone, model.RelationFormat_email, model.RelationFormat_emoji:
+			if !value.IsString() {
+				return domain.Value{}, fmt.Errorf("detail of format %s should be string", format.String())
+			}
+		case model.RelationFormat_number, model.RelationFormat_date:
+			if !value.IsFloat64() {
+				return domain.Value{}, fmt.Errorf("detail of format %s should be number", format.String())
+			}
+		case model.RelationFormat_checkbox:
+			if !value.IsBool() {
+				return domain.Value{}, fmt.Errorf("detail of format %s should be boolean", format.String())
+			}
+		default:
+			return domain.Value{}, fmt.Errorf("relation format %s is not supported for placeholders", format.String())
+		}
+		inner[keyValue] = value
 	}
-	return domain.NewValueMap(inner)
+	return domain.NewValueMap(inner), nil
 }
 
-// storageToPlaceholders converts a stored MapValue to a list of model.Placeholder.
-// Each relation key maps to either:
-//   - a MapValue (single entry with "type" and optional "value")
-//   - a MapList (list of such entries)
-func storageToPlaceholders(mapVal domain.ValueMap) []*model.Placeholder {
-	var result []*model.Placeholder
-	for relKey, val := range mapVal.Iterate() {
-		var values []*model.PlaceholderValue
+func isObjectFormat(format model.RelationFormat) bool {
+	switch format {
+	case model.RelationFormat_object, model.RelationFormat_status, model.RelationFormat_tag, model.RelationFormat_file:
+		return true
+	}
+	return false
+}
 
-		if maps, ok := val.TryMapList(); ok {
-			for _, m := range maps {
-				if pv := mapToPlaceholderValue(m); pv != nil {
-					values = append(values, pv)
-				}
-			}
-		} else if m, ok := val.TryMapValue(); ok {
+// storageToPlaceholders converts a stored MapList to a list of model.Placeholder
+// Each relation key maps to a MapList of entries with "type" and optional "value"
+func storageToPlaceholders(mapVal domain.ValueMap) []*model.Placeholder {
+	result := make([]*model.Placeholder, 0, mapVal.Len())
+	for relKey, val := range mapVal.Iterate() {
+		entries := val.MapListValue()
+		values := make([]*model.PlaceholderValue, 0, len(entries))
+		for _, m := range entries {
 			if pv := mapToPlaceholderValue(m); pv != nil {
 				values = append(values, pv)
 			}
 		}
-
 		if len(values) > 0 {
 			result = append(result, &model.Placeholder{
 				RelationKey: relKey,
@@ -167,8 +191,7 @@ func mapToPlaceholderValue(m domain.ValueMap) *model.PlaceholderValue {
 }
 
 // resolveTemplatePlaceholders reads the templatePlaceholders map from the template state,
-// resolves each placeholder to its actual value, and removes the templatePlaceholders detail.
-// Storage format per relation: {"type": <PlaceholderType>, "value": <concrete_value>}
+// resolves each placeholder to its actual value, and removes the templatePlaceholders detail
 func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
 	placeholders, ok := st.Details().TryMapValue(bundle.RelationKeyTemplatePlaceholders)
 	if !ok {
@@ -176,33 +199,32 @@ func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
 	}
 
 	for relKey, val := range placeholders.Iterate() {
-		var entries []domain.ValueMap
-		if maps, ok := val.TryMapList(); ok {
-			entries = maps
-		} else if m, ok := val.TryMapValue(); ok {
-			entries = []domain.ValueMap{m}
-		} else {
-			continue
+		format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, domain.RelationKey(relKey))
+		if err != nil {
+			log.Warnf("failed to get relation format for key %s: %v", relKey, err)
 		}
 
-		var strings []string
-		var scalar domain.Value
+		var (
+			mapList = val.MapListValue()
+			strings = make([]string, 0, len(mapList))
+			value   = domain.Null() // fallback
+			isList  = isObjectFormat(format)
+		)
 
-		for _, entry := range entries {
+		for _, entry := range val.MapListValue() {
 			placeholderType := model.PlaceholderType(entry.GetInt64(keyType)) // nolint:gosec
 
 			switch placeholderType {
 			case model.Placeholder_PlaceholderValue:
-				if concreteVal, has := entry.TryGet(keyValue); has && concreteVal.Ok() {
-					if list := concreteVal.WrapToStringList(); len(list) > 0 {
-						strings = append(strings, list...)
-					} else {
-						scalar = concreteVal
+				if value = entry.Get(keyValue); value.Ok() {
+					if isList {
+						// placeholders support only string lists
+						strings = append(strings, value.String())
 					}
 				}
 			case model.Placeholder_PlaceholderToday:
 				ts := s.resolveToday(spaceId, domain.RelationKey(relKey))
-				scalar = domain.Float64(float64(ts))
+				value = domain.Float64(float64(ts))
 			case model.Placeholder_PlaceholderCurrentUser:
 				if s.accountService != nil {
 					participantId := domain.NewParticipantId(spaceId, s.accountService.AccountID())
@@ -212,10 +234,9 @@ func (s *service) resolveTemplatePlaceholders(st *state.State, spaceId string) {
 		}
 
 		if len(strings) > 0 {
-			st.SetDetail(domain.RelationKey(relKey), domain.StringList(strings))
-		} else if scalar.Ok() {
-			st.SetDetail(domain.RelationKey(relKey), scalar)
+			value = domain.StringList(strings)
 		}
+		st.SetDetail(domain.RelationKey(relKey), value)
 	}
 
 	st.RemoveDetail(bundle.RelationKeyTemplatePlaceholders)

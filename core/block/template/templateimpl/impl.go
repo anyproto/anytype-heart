@@ -21,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -63,6 +64,7 @@ type service struct {
 	exporter       export.Export
 	converter      converter.LayoutConverter
 	accountService accountIdProvider
+	formatFetcher  relationutils.RelationFormatFetcher
 }
 
 func New() templateSvc.Service {
@@ -82,6 +84,7 @@ func (s *service) Init(a *app.App) error {
 	s.exporter = a.MustComponent(export.CName).(export.Export)
 	s.converter = app.MustComponent[converter.LayoutConverter](a)
 	s.accountService = app.MustComponent[account.Service](a)
+	s.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return nil
 }
 
