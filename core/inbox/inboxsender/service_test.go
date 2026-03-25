@@ -90,7 +90,7 @@ func TestSendSpaceInvite(t *testing.T) {
 			Return(nil)
 
 		// when
-		err = fx.SendSpaceInvite(ctx, spaceId, receiverIdentity)
+		err = fx.SendRegularSpaceInvites(ctx, spaceId, receiverIdentity)
 
 		// then
 		require.NoError(t, err)
@@ -98,7 +98,7 @@ func TestSendSpaceInvite(t *testing.T) {
 
 		call := fx.mockInboxClient.Calls[0]
 		msg := call.Arguments[2].(*coordinatorproto.InboxMessage)
-		assert.Equal(t, InboxPayloadTypeSpaceInvite, msg.Packet.Payload.PayloadType)
+		assert.Equal(t, inboxPayloadTypeRegularInvite, msg.Packet.Payload.PayloadType)
 		assert.Equal(t, receiverIdentity, msg.Packet.ReceiverIdentity)
 
 		var gotPayload SpaceInvitePayload
@@ -123,7 +123,7 @@ func TestSendSpaceInvite(t *testing.T) {
 			})
 
 		// when
-		err := fx.SendSpaceInvite(ctx, spaceId, "invalid-identity")
+		err := fx.SendRegularSpaceInvites(ctx, spaceId, "invalid-identity")
 
 		// then
 		require.Error(t, err)
@@ -146,7 +146,7 @@ func TestProcessSpaceInvite(t *testing.T) {
 			SenderIdentity: "sender-identity",
 			Payload: &coordinatorproto.InboxPayload{
 				Body:        body,
-				PayloadType: InboxPayloadTypeSpaceInvite,
+				PayloadType: inboxPayloadTypeRegularInvite,
 			},
 		}
 

@@ -25,9 +25,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxsender/mock_inboxsender"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
-	"github.com/anyproto/anytype-heart/core/onetoone/mock_onetoone"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -239,11 +239,10 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	collService := &dummyCollectionService{}
 	subscriptionService := subscription.New()
 	identityService := testutil.PrepareMock(ctx, fx.a, mock_dependencies.NewMockIdentityService(t))
-	// TODO: use other mock
-	onetooneServiceMock := mock_onetoone.NewMockService(t)
-	onetooneServiceMock.EXPECT().Run(mock.Anything).Return(nil).Maybe()
-	onetooneServiceMock.EXPECT().Close(mock.Anything).Return(nil).Maybe()
-	onetooneService := testutil.PrepareMock(ctx, fx.a, onetooneServiceMock)
+	inboxSenderMock := mock_inboxsender.NewMockSender(t)
+	inboxSenderMock.EXPECT().Run(mock.Anything).Return(nil).Maybe()
+	inboxSenderMock.EXPECT().Close(mock.Anything).Return(nil).Maybe()
+	inboxSenderService := testutil.PrepareMock(ctx, fx.a, inboxSenderMock)
 	fx.a.
 		Register(testutil.PrepareMock(ctx, fx.a, wallet)).
 		Register(fx.config).
@@ -260,7 +259,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 		Register(testutil.PrepareMock(ctx, fx.a, fx.factory)).
 		Register(testutil.PrepareMock(ctx, fx.a, mock_notifications.NewMockNotifications(t))).
 		Register(identityService).
-		Register(onetooneService).
+		Register(inboxSenderService).
 		Register(&testSpaceLoaderListener{}).
 		Register(fx.service)
 	fx.expectRun(t, expectOldAccount)
