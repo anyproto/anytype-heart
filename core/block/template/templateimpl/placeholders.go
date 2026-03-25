@@ -47,11 +47,31 @@ func (s *service) SetTemplatePlaceholders(ctx session.Context, templateId string
 		}
 
 		for _, p := range placeholders {
-			if shouldRemovePlaceholder(p.Values) {
-				delete(existing, p.RelationKey)
-			} else {
-				existing[p.RelationKey] = placeholderValuesToStorage(p.Values)
+			if len(p.Values) == 0 {
+				continue
 			}
+			existing[p.RelationKey] = placeholderValuesToStorage(p.Values)
+		}
+
+		if len(existing) != 0 {
+			st.SetDetail(bundle.RelationKeyTemplatePlaceholders, domain.NewValueMap(existing))
+		}
+		return nil
+	})
+}
+
+func (s *service) DeleteTemplatePlaceholders(ctx session.Context, templateId string, relationKeys []string) error {
+	return cache.DoStateCtx(s.picker, ctx, templateId, func(st *state.State, sb smartblock.SmartBlock) error {
+		if !lo.Contains(sb.ObjectTypeKeys(), bundle.TypeKeyTemplate) {
+			return fmt.Errorf("object is not a template")
+		}
+		existing := st.Details().GetMapValue(bundle.RelationKeyTemplatePlaceholders).Copy().ToMap()
+		if existing == nil {
+			return nil
+		}
+
+		for _, key := range relationKeys {
+			delete(existing, key)
 		}
 
 		if len(existing) == 0 {
@@ -77,6 +97,7 @@ func shouldRemovePlaceholder(values []*model.PlaceholderValue) bool {
 	return true
 }
 
+// TODO: we should store MapList all the time
 // placeholderValuesToStorage converts PlaceholderValue entries to domain.Value.
 //
 // Storage format per relation key:
@@ -97,7 +118,7 @@ func placeholderValuesToStorage(values []*model.PlaceholderValue) domain.Value {
 
 func placeholderValueToMap(v *model.PlaceholderValue) domain.Value {
 	inner := make(map[string]domain.Value, 2)
-	inner[keyType] = domain.Float64(float64(v.Type))
+	inner[keyType] = domain.Int64(int64(v.Type))
 	if v.Value != nil {
 		inner[keyValue] = domain.ValueFromProto(v.Value)
 	}

@@ -5,7 +5,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func (mw *Middleware) TemplateCreateFromObject(ctx context.Context, req *pb.RpcTemplateCreateFromObjectRequest) *pb.RpcTemplateCreateFromObjectResponse {
@@ -77,39 +76,47 @@ func (mw *Middleware) TemplateExportAll(ctx context.Context, req *pb.RpcTemplate
 
 func (mw *Middleware) TemplateSetPlaceholders(cctx context.Context, req *pb.RpcTemplateSetPlaceholdersRequest) *pb.RpcTemplateSetPlaceholdersResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcTemplateSetPlaceholdersResponseErrorCode, err error) *pb.RpcTemplateSetPlaceholdersResponse {
-		m := &pb.RpcTemplateSetPlaceholdersResponse{Error: &pb.RpcTemplateSetPlaceholdersResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
-
+	code := pb.RpcTemplateSetPlaceholdersResponseError_NULL
 	err := mustService[template.Service](mw).SetTemplatePlaceholders(ctx, req.TemplateId, req.Placeholders)
 	if err != nil {
-		return response(pb.RpcTemplateSetPlaceholdersResponseError_UNKNOWN_ERROR, err)
+		code = pb.RpcTemplateSetPlaceholdersResponseError_UNKNOWN_ERROR
 	}
-	return response(pb.RpcTemplateSetPlaceholdersResponseError_NULL, nil)
+	return &pb.RpcTemplateSetPlaceholdersResponse{
+		Event: mw.getResponseEvent(ctx),
+		Error: &pb.RpcTemplateSetPlaceholdersResponseError{
+			Description: getErrorDescription(err),
+			Code:        code,
+		},
+	}
 }
 
 func (mw *Middleware) TemplateGetPlaceholders(ctx context.Context, req *pb.RpcTemplateGetPlaceholdersRequest) *pb.RpcTemplateGetPlaceholdersResponse {
-	response := func(placeholders []*model.Placeholder, err error) *pb.RpcTemplateGetPlaceholdersResponse {
-		m := &pb.RpcTemplateGetPlaceholdersResponse{
-			Error:        &pb.RpcTemplateGetPlaceholdersResponseError{Code: pb.RpcTemplateGetPlaceholdersResponseError_NULL},
-			Placeholders: placeholders,
-		}
-		if err != nil {
-			m.Error.Code = pb.RpcTemplateGetPlaceholdersResponseError_UNKNOWN_ERROR
-			m.Error.Description = getErrorDescription(err)
-		}
-		return m
-	}
-
 	placeholders, err := mustService[template.Service](mw).GetTemplatePlaceholders(req.TemplateId)
+	code := pb.RpcTemplateGetPlaceholdersResponseError_NULL
 	if err != nil {
-		return response(nil, err)
+		code = pb.RpcTemplateGetPlaceholdersResponseError_UNKNOWN_ERROR
 	}
-	return response(placeholders, nil)
+	return &pb.RpcTemplateGetPlaceholdersResponse{
+		Placeholders: placeholders,
+		Error: &pb.RpcTemplateGetPlaceholdersResponseError{
+			Description: getErrorDescription(err),
+			Code:        code,
+		},
+	}
+}
+
+func (mw *Middleware) TemplateDeletePlaceholders(cctx context.Context, req *pb.RpcTemplateDeletePlaceholdersRequest) *pb.RpcTemplateDeletePlaceholdersResponse {
+	ctx := mw.newContext(cctx)
+	code := pb.RpcTemplateDeletePlaceholdersResponseError_NULL
+	err := mustService[template.Service](mw).DeleteTemplatePlaceholders(ctx, req.TemplateId, req.RelationKeys)
+	if err != nil {
+		code = pb.RpcTemplateDeletePlaceholdersResponseError_UNKNOWN_ERROR
+	}
+	return &pb.RpcTemplateDeletePlaceholdersResponse{
+		Event: mw.getResponseEvent(ctx),
+		Error: &pb.RpcTemplateDeletePlaceholdersResponseError{
+			Description: getErrorDescription(err),
+			Code:        code,
+		},
+	}
 }
