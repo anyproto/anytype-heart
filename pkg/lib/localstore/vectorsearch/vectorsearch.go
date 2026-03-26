@@ -15,9 +15,19 @@ const CName = "vectorsearch"
 
 var log = logging.Logger("anytype-vectorsearch")
 
+const minSimilarityScore float32 = 0.3
+
+type ObjectScore struct {
+	ObjectID   string
+	Score      float32
+	ChunkTitle string
+	ChunkText  string
+}
+
 type VectorSearch interface {
 	app.ComponentRunnable
 	TryEnqueue(task SemanticTask)
+	Search(ctx context.Context, spaceId string, query string, limit int) ([]ObjectScore, error)
 }
 
 type vectorSearch struct {
@@ -86,6 +96,75 @@ func (v *vectorSearch) TryEnqueue(task SemanticTask) {
 	log.Warnf("[vectorsearch] enqueue object=%s space=%s title=%q blocks=%d",
 		task.ObjectID, task.SpaceID, task.ObjectTitle, len(task.Blocks))
 	_ = v.queue.TryAdd(task) //nolint:errcheck
+}
+
+func (v *vectorSearch) Search(ctx context.Context, spaceId string, query string, limit int) ([]ObjectScore, error) {
+	if v.embedder == nil || v.qdrant == nil {
+		return nil, nil // disabled
+	}
+
+	vectors, err := v.embedder.Embed(ctx, []string{query})
+	if err != nil {
+		return nil, fmt.Errorf("embed query: %w", err)
+	}
+	if len(vectors) == 0 || len(vectors[0]) == 0 {
+		return nil, nil
+	}
+
+	collection := collectionName(spaceId)
+	results, err := v.qdrant.SearchPoints(ctx, collection, vectors[0], limit*3)
+	if err != nil {
+		return nil, fmt.Errorf("search qdrant: %w", err)
+	}
+
+	// Group by object_id, keep best score per object
+	type bestMatch struct {
+		score float32
+		title string
+		text  string
+	}
+	byObject := make(map[string]*bestMatch)
+
+	for _, r := range results {
+		if r.Score < minSimilarityScore {
+			continue
+		}
+		objectID, _ := r.Payload["object_id"].(string)
+		if objectID == "" {
+			continue
+		}
+		title, _ := r.Payload["title"].(string)
+		text, _ := r.Payload["text"].(string)
+
+		if existing, ok := byObject[objectID]; !ok || r.Score > existing.score {
+			byObject[objectID] = &bestMatch{score: r.Score, title: title, text: text}
+		}
+	}
+
+	scores := make([]ObjectScore, 0, len(byObject))
+	for objID, m := range byObject {
+		scores = append(scores, ObjectScore{
+			ObjectID:   objID,
+			Score:      m.score,
+			ChunkTitle: m.title,
+			ChunkText:  m.text,
+		})
+	}
+
+	// Sort by score descending
+	for i := range scores {
+		for j := i + 1; j < len(scores); j++ {
+			if scores[j].Score > scores[i].Score {
+				scores[i], scores[j] = scores[j], scores[i]
+			}
+		}
+	}
+
+	if len(scores) > limit {
+		scores = scores[:limit]
+	}
+
+	return scores, nil
 }
 
 func (v *vectorSearch) processLoop() {

@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -49,6 +50,7 @@ type apiService struct {
 	accountService       apicore.AccountService
 	eventService         apicore.EventService
 	crossSpaceSubService apicore.CrossSpaceSubscriptionService
+	vectorSearch         vectorsearch.VectorSearch
 
 	listenAddr string
 
@@ -86,6 +88,7 @@ func (s *apiService) Init(a *app.App) error {
 	s.accountService = a.MustComponent(account.CName).(account.Service)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	s.crossSpaceSubService = a.MustComponent(crossspacesub.CName).(apicore.CrossSpaceSubscriptionService)
+	s.vectorSearch = app.MustComponent[vectorsearch.VectorSearch](a)
 	return nil
 }
 
@@ -118,6 +121,7 @@ func (s *apiService) startServer() error {
 		s.accountService,
 		s.eventService,
 		s.crossSpaceSubService,
+		s.vectorSearch,
 		openapiYAML,
 		openapiJSON,
 	)

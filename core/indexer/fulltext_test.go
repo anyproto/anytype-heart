@@ -48,6 +48,9 @@ func (n *noopVectorSearch) Name() string                   { return vectorsearch
 func (n *noopVectorSearch) Run(_ context.Context) error    { return nil }
 func (n *noopVectorSearch) Close(_ context.Context) error  { return nil }
 func (n *noopVectorSearch) TryEnqueue(_ vectorsearch.SemanticTask) {}
+func (n *noopVectorSearch) Search(_ context.Context, _ string, _ string, _ int) ([]vectorsearch.ObjectScore, error) {
+	return nil, nil
+}
 
 type fixture struct {
 	*indexer

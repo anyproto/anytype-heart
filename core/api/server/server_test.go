@@ -37,7 +37,7 @@ func newFixture(t *testing.T) *fixture {
 		TechSpaceId: mockedTechSpaceId,
 	}, nil).Once()
 
-	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, []byte{}, []byte{})
+	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, nil, []byte{}, []byte{})
 
 	return &fixture{
 		Server:               server,

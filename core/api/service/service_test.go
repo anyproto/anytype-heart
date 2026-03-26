@@ -38,7 +38,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
-	service := NewService(mwMock, gatewayUrl, techSpaceId, crossSpaceSubService)
+	service := NewService(mwMock, gatewayUrl, techSpaceId, crossSpaceSubService, nil)
 
 	return &fixture{
 		service:              service,

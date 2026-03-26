@@ -14,6 +14,13 @@ type QdrantClient interface {
 	EnsureCollection(ctx context.Context, name string, dimension int) error
 	UpsertPoints(ctx context.Context, collection string, points []QdrantPoint) error
 	DeletePointsByObjectID(ctx context.Context, collection string, objectID string) error
+	SearchPoints(ctx context.Context, collection string, vector []float32, limit int) ([]SearchResult, error)
+}
+
+type SearchResult struct {
+	ID      string         `json:"id"`
+	Score   float32        `json:"score"`
+	Payload map[string]any `json:"payload"`
 }
 
 type QdrantPoint struct {
@@ -104,6 +111,38 @@ func (c *qdrantClient) DeletePointsByObjectID(ctx context.Context, collection st
 		return fmt.Errorf("delete points returned %d: %s", resp.StatusCode, string(respBody))
 	}
 	return nil
+}
+
+func (c *qdrantClient) SearchPoints(ctx context.Context, collection string, vector []float32, limit int) ([]SearchResult, error) {
+	body := map[string]any{
+		"vector":       vector,
+		"limit":        limit,
+		"with_payload": true,
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodPost, fmt.Sprintf("/collections/%s/points/search", collection), body)
+	if err != nil {
+		return nil, fmt.Errorf("search points: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read search response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("search points returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var searchResp struct {
+		Result []SearchResult `json:"result"`
+	}
+	if err := json.Unmarshal(respBody, &searchResp); err != nil {
+		return nil, fmt.Errorf("unmarshal search response: %w", err)
+	}
+
+	return searchResp.Result, nil
 }
 
 func (c *qdrantClient) doRequest(ctx context.Context, method, path string, body any) (*http.Response, error) {

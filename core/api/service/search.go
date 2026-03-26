@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -106,6 +107,7 @@ func (s *Service) GlobalSearch(ctx context.Context, request apimodel.SearchReque
 }
 
 // Search retrieves a paginated list of objects from a specific space that match the search parameters.
+// When vector search is available and a query is provided, results are ranked using hybrid RRF reranking.
 func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.SearchRequest, offset int, limit int) (objects []apimodel.Object, total int, hasMore bool, err error) {
 	baseFilters := s.prepareBaseFilters()
 	templateFilter := s.prepareTemplateFilter()
@@ -143,12 +145,85 @@ func (s *Service) Search(ctx context.Context, spaceId string, request apimodel.S
 		return nil, 0, false, ErrFailedSearchObjects
 	}
 
+	// Try hybrid reranking if vector search is available and query is provided
+	vecScores := s.getVectorScores(ctx, spaceId, request.Query)
+
+	if len(vecScores) > 0 {
+		return s.hybridResults(resp.Records, vecScores, offset, limit)
+	}
+
+	// Fallback: FTS-only results
 	total = len(resp.Records)
 	paginatedRecords, hasMore := pagination.Paginate(resp.Records, offset, limit)
 
 	results := make([]apimodel.Object, 0, len(paginatedRecords))
 	for _, record := range paginatedRecords {
 		results = append(results, s.getObjectFromStruct(record))
+	}
+
+	return results, total, hasMore, nil
+}
+
+// getVectorScores queries the vector search service, returning nil if unavailable or query is empty.
+func (s *Service) getVectorScores(ctx context.Context, spaceId string, query string) []vectorsearch.ObjectScore {
+	if s.vectorSearch == nil || query == "" {
+		return nil
+	}
+	scores, err := s.vectorSearch.Search(ctx, spaceId, query, 100)
+	if err != nil {
+		log.With("spaceId", spaceId).Warnf("vector search failed, falling back to FTS-only: %v", err)
+		return nil
+	}
+	return scores
+}
+
+// hybridResults reranks FTS records with vector scores using RRF, attaches MatchedChunk, and paginates.
+func (s *Service) hybridResults(ftsRecords []*types.Struct, vecScores []vectorsearch.ObjectScore, offset int, limit int) ([]apimodel.Object, int, bool, error) {
+	// Build FTS object ID list (preserving order)
+	ftsIds := make([]string, 0, len(ftsRecords))
+	ftsById := make(map[string]*types.Struct, len(ftsRecords))
+	for _, rec := range ftsRecords {
+		id := rec.Fields[bundle.RelationKeyId.String()].GetStringValue()
+		if id != "" {
+			ftsIds = append(ftsIds, id)
+			ftsById[id] = rec
+		}
+	}
+
+	// Build vector object ID list and chunk map
+	vecIds := make([]string, 0, len(vecScores))
+	vecChunks := make(map[string]*apimodel.MatchedChunk, len(vecScores))
+	for _, vs := range vecScores {
+		vecIds = append(vecIds, vs.ObjectID)
+		vecChunks[vs.ObjectID] = &apimodel.MatchedChunk{
+			Title: vs.ChunkTitle,
+			Text:  vs.ChunkText,
+			Score: vs.Score,
+		}
+	}
+
+	// RRF rerank
+	ranked := rrfRerank(ftsIds, vecIds)
+
+	total := len(ranked)
+	paginatedIds, hasMore := pagination.Paginate(ranked, offset, limit)
+
+	results := make([]apimodel.Object, 0, len(paginatedIds))
+	for _, id := range paginatedIds {
+		var obj apimodel.Object
+		if rec, ok := ftsById[id]; ok {
+			obj = s.getObjectFromStruct(rec)
+		} else {
+			// Vector-only result: minimal object with just ID and space
+			obj = apimodel.Object{
+				Object: "object",
+				Id:     id,
+			}
+		}
+		if chunk, ok := vecChunks[id]; ok {
+			obj.MatchedChunk = chunk
+		}
+		results = append(results, obj)
 	}
 
 	return results, total, hasMore, nil

@@ -8,6 +8,7 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/service"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 )
 
 type ApiSessionEntry struct {
@@ -27,13 +28,13 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, openapiYAML []byte, openapiJSON []byte) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, vs vectorsearch.VectorSearch, openapiYAML []byte, openapiJSON []byte) *Server {
 	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
 	if err != nil {
 		panic(err)
 	}
 
-	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService)}
+	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService, vs)}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 
