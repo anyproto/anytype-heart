@@ -65,6 +65,11 @@ import (
 
 const CName = "client.space"
 
+// ForceWorkspaceLoadVersion is incremented when a new release ships changes
+// to Workspace object details (applied during mandatoryObjectsLoad / ReindexSpace).
+// If the stored version differs, initAccount blocks until all spaces finish loading.
+const ForceWorkspaceLoadVersion int32 = 1
+
 var log = logger.NewNamed(CName)
 
 var (
@@ -147,6 +152,11 @@ type service struct {
 	spaceLoaderListener    aclobjectmanager.SpaceLoaderListener
 	watcher                *spaceWatcher
 
+	versionStore           WorkspaceLoadVersionStore
+	initialSpacesDone      chan struct{} // closed when all initial spaces loaded; nil if no sync needed
+	initialSpacesMu        sync.Mutex
+	initialSpacesRemaining atomic.Int32
+
 	mu        sync.Mutex
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
 	ctxCancel context.CancelFunc
@@ -205,7 +215,8 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.repKey, err = getRepKey(s.personalSpaceId)
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
-	s.watcher = newSpaceWatcher(s.techSpaceId, subService, s)
+	s.versionStore = newStubVersionStore()
+	s.watcher = newSpaceWatcher(s.techSpaceId, subService, s, s.onInitialSpacesCount)
 
 	return err
 }
@@ -286,11 +297,33 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 			return fmt.Errorf("create tech space for old accounts: %w", err)
 		}
 	}
+	needsSyncLoad := false
+	storedVersion, vErr := s.versionStore.GetWorkspaceLoadVersion()
+	if vErr != nil {
+		log.Warn("get workspace load version", zap.Error(vErr))
+	}
+	if storedVersion != ForceWorkspaceLoadVersion {
+		needsSyncLoad = true
+		s.initialSpacesDone = make(chan struct{})
+	}
+
 	err = s.watcher.Run()
 	if err != nil {
 		return fmt.Errorf("run watcher: %w", err)
 	}
 	s.techSpace.StartSync()
+
+	if needsSyncLoad {
+		select {
+		case <-s.initialSpacesDone:
+			if saveErr := s.versionStore.SaveWorkspaceLoadVersion(ForceWorkspaceLoadVersion); saveErr != nil {
+				log.Error("save workspace load version", zap.Error(saveErr))
+			}
+		case <-ctx.Done():
+			log.Error("version gate: context cancelled while waiting for spaces")
+		}
+	}
+
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
 	if err != nil {
@@ -395,6 +428,7 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 		// we want the updates for each space view to be synchronous
 		spaceStatus.mx.Lock()
 		defer spaceStatus.mx.Unlock()
+		gateActive := s.isInitialSpaceGateActive()
 		if spaceStatus.remoteStatus == spaceinfo.RemoteStatusDeleted && spaceStatus.accountStatus != spaceinfo.AccountStatusDeleted {
 			if spaceStatus.localStatus == spaceinfo.LocalStatusOk {
 				s.sendNotification(spaceStatus.spaceId)
@@ -407,20 +441,86 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 			if err != nil {
 				log.Warn("failed to update space view", zap.Error(err))
 			}
+			if gateActive {
+				s.markInitialSpaceCompleted()
+			}
 			return
 		}
 		info := statusToInfo(spaceStatus)
 		ctrl, err := s.startStatus(s.ctx, info)
 		if err != nil && !errors.Is(err, ErrSpaceDeleted) {
 			log.Warn("startStatus error", zap.Error(err))
+			if gateActive {
+				s.markInitialSpaceCompleted()
+			}
 			return
 		}
 		err = ctrl.Update()
 		if err != nil {
 			log.Warn("ctrl.Update error", zap.Error(err))
+			if gateActive {
+				s.markInitialSpaceCompleted()
+			}
 			return
 		}
+		if gateActive {
+			_, loadErr := s.waitLoad(s.ctx, ctrl)
+			if loadErr != nil {
+				log.Warn("version gate: waitLoad error", zap.Error(loadErr), zap.String("spaceId", spaceStatus.spaceId))
+			}
+			s.markInitialSpaceCompleted()
+		}
 	}()
+}
+
+func (s *service) onInitialSpacesCount(count int32) {
+	if s.initialSpacesDone == nil {
+		return
+	}
+	if count == 0 {
+		s.closeInitialSpacesDone()
+		return
+	}
+	s.initialSpacesRemaining.Store(count)
+}
+
+func (s *service) markInitialSpaceCompleted() {
+	if s.initialSpacesDone == nil {
+		return
+	}
+	select {
+	case <-s.initialSpacesDone:
+		return // gate already passed
+	default:
+	}
+	if s.initialSpacesRemaining.Add(-1) <= 0 {
+		s.closeInitialSpacesDone()
+	}
+}
+
+func (s *service) closeInitialSpacesDone() {
+	s.initialSpacesMu.Lock()
+	defer s.initialSpacesMu.Unlock()
+	select {
+	case <-s.initialSpacesDone:
+		return // already closed
+	default:
+		close(s.initialSpacesDone)
+	}
+}
+
+// isInitialSpaceGateActive returns true if the version gate is in progress
+// (channel exists and is not yet closed).
+func (s *service) isInitialSpaceGateActive() bool {
+	if s.initialSpacesDone == nil {
+		return false
+	}
+	select {
+	case <-s.initialSpacesDone:
+		return false
+	default:
+		return true
+	}
 }
 
 func (s *service) SpaceViewSetOneToOneIdentity(spaceId string, identity string) {

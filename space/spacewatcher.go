@@ -15,18 +15,23 @@ type spaceWatcher struct {
 	queue *dedupqueue.DedupQueue
 }
 
-func newSpaceWatcher(techSpaceId string, service subscription.Service, updater spaceViewUpdater) *spaceWatcher {
+func newSpaceWatcher(techSpaceId string, service subscription.Service, updater spaceViewUpdater, onInitialSpacesCount func(count int32)) *spaceWatcher {
 	dedupQueue := dedupqueue.New(0)
 	spaceSub := newSpaceSubscription(
 		service,
 		techSpaceId,
 		func(sub *spaceViewObjectSubscription) {
+			var count int32
 			sub.Iterate(func(id string, status spaceViewStatus) bool {
+				count++
 				dedupQueue.Replace(id, func() {
 					updater.onSpaceStatusUpdated(status)
 				})
 				return true
 			})
+			if onInitialSpacesCount != nil {
+				onInitialSpacesCount(count)
+			}
 		},
 		func(status spaceViewStatus) {
 			dedupQueue.Replace(status.spaceId, func() {
