@@ -183,13 +183,6 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 			Key:   bundle.RelationKeyAnalyticsSpaceId,
 			Value: domain.String(metrics.GenerateAnalyticsId()),
 		})
-		// Set the default homepage for regular spaces if not provided
-		if !spaceDetails.Has(bundle.RelationKeyHomepage) && spaceDescription.SpaceType == model.SpaceType_SpaceTypeRegular {
-			details = append(details, domain.Detail{
-				Key:   bundle.RelationKeyHomepage,
-				Value: domain.String(domain.HomepageWidgets),
-			})
-		}
 		// TODO: GO-7102 remove this code when backward compatibility will be unnecessary
 		if !spaceDetails.Has(bundle.RelationKeySpaceUxType) {
 			spaceUxType := model.SpaceUxType_Data
