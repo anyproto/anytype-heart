@@ -6,23 +6,12 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
-
-var participantRequiredRelations = []domain.RelationKey{
-	bundle.RelationKeyGlobalName,
-	bundle.RelationKeyIdentity,
-	bundle.RelationKeyBacklinks,
-	bundle.RelationKeyParticipantPermissions,
-	bundle.RelationKeyParticipantStatus,
-	bundle.RelationKeyIdentityProfileLink,
-	bundle.RelationKeyIsHiddenDiscovery,
-}
 
 type participant struct {
 	smartblock.SmartBlock
@@ -42,34 +31,13 @@ func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock,
 }
 
 func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
-	// Details come from aclobjectmanager, see buildParticipantDetails
-	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, participantRequiredRelations...)
-
+	// Details, template blocks, and relation links are set up by participantSource.ReadDoc.
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, domain.Bool(false))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
-	ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
-
-	records, err := p.objectStore.QueryByIds([]string{p.Id()})
-	if err != nil {
-		return err
-	}
-	if len(records) > 0 {
-		ctx.State.SetDetails(records[0].Details)
-	}
-	template.InitTemplate(ctx.State,
-		template.WithEmpty,
-		template.WithTitle,
-		template.WithDescription,
-		template.WithFeaturedRelationsBlock,
-		template.WithLayout(model.ObjectType_participant),
-	)
 	return nil
 }
+
 
 func (p *participant) ModifyProfileDetails(profileDetails *domain.Details) (err error) {
 	details := profileDetails.CopyOnlyKeys(

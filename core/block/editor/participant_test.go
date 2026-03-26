@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -107,7 +108,6 @@ func TestParticipant_ModifyIdentityDetails(t *testing.T) {
 func TestParticipant_Init(t *testing.T) {
 	t.Run("title block not empty, because name detail is in store", func(t *testing.T) {
 		// given
-		sb := smarttest.New("root")
 		store := newStoreFixture(t)
 		store.AddObjects(t, []objectstore.TestObject{{
 			bundle.RelationKeySpaceId: domain.String("spaceId"),
@@ -115,23 +115,8 @@ func TestParticipant_Init(t *testing.T) {
 			bundle.RelationKeyName:    domain.String("test"),
 		}})
 
-		basicComponent := basic.NewBasic(sb, store, nil, nil)
-		p := &participant{
-			SmartBlock:       sb,
-			DetailsUpdatable: basicComponent,
-			objectStore:      store,
-		}
-
-		initCtx := &smartblock.InitContext{
-			IsNewObject: true,
-		}
-
-		// when
-		err := p.Init(initCtx)
-		assert.NoError(t, err)
-		migration.RunMigrations(p, initCtx)
-		err = p.Apply(initCtx.State)
-		assert.NoError(t, err)
+		p, err := newParticipantTestWithStore(t, store)
+		require.NoError(t, err)
 
 		// then
 		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
@@ -139,26 +124,8 @@ func TestParticipant_Init(t *testing.T) {
 	})
 	t.Run("title block is empty", func(t *testing.T) {
 		// given
-		sb := smarttest.New("root")
-		store := newStoreFixture(t)
-
-		basicComponent := basic.NewBasic(sb, store, nil, nil)
-		p := &participant{
-			SmartBlock:       sb,
-			DetailsUpdatable: basicComponent,
-			objectStore:      store,
-		}
-
-		initCtx := &smartblock.InitContext{
-			IsNewObject: true,
-		}
-
-		// when
-		err := p.Init(initCtx)
-		assert.NoError(t, err)
-		migration.RunMigrations(p, initCtx)
-		err = p.Apply(initCtx.State)
-		assert.NoError(t, err)
+		p, err := newParticipantTest(t)
+		require.NoError(t, err)
 
 		// then
 		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
@@ -211,8 +178,11 @@ func (a accountServiceStub) GetAccountObjectId() (string, error) {
 }
 
 func newParticipantTest(t *testing.T) (*participant, error) {
+	return newParticipantTestWithStore(t, newStoreFixture(t))
+}
+
+func newParticipantTestWithStore(t *testing.T, store spaceindex.Store) (*participant, error) {
 	sb := smarttest.New("root")
-	store := newStoreFixture(t)
 	basicComponent := basic.NewBasic(sb, store, nil, nil)
 	p := &participant{
 		SmartBlock:       sb,
@@ -224,6 +194,10 @@ func newParticipantTest(t *testing.T) (*participant, error) {
 	initCtx := &smartblock.InitContext{
 		IsNewObject: true,
 	}
+
+	// Simulate what participantSource.ReadDoc does: load store details + apply template
+	initParticipantDoc(sb.Doc.(*state.State), store, "root")
+
 	if err := p.Init(initCtx); err != nil {
 		return nil, err
 	}
@@ -232,6 +206,26 @@ func newParticipantTest(t *testing.T) (*participant, error) {
 		return nil, err
 	}
 	return p, nil
+}
+
+// initParticipantDoc mirrors participantSource.ReadDoc: loads stored details and applies template.
+func initParticipantDoc(s *state.State, store spaceindex.Store, id string) {
+	s.SetObjectTypeKey(bundle.TypeKeyParticipant)
+	records, err := store.QueryByIds([]string{id})
+	if err == nil && len(records) > 0 {
+		s.SetDetails(records[0].Details)
+	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, domain.Bool(false))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
+	template.InitTemplate(s,
+		template.WithEmpty,
+		template.WithTitle,
+		template.WithDescription,
+		template.WithFeaturedRelationsBlock,
+		template.WithLayout(model.ObjectType_participant),
+	)
 }
 
 type participantFixture struct {
