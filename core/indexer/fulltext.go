@@ -25,6 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -138,7 +139,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				return nil, 0, ctx.Err()
 			default:
 			}
-			objDocs, isChat, err := i.prepareSearchDocs(ctx, object)
+			objDocs, isChat, semTask, err := i.prepareSearchDocs(ctx, object)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
 					return nil, 0, err
@@ -153,6 +154,10 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 					log.With("id", object.FullId()).Errorf("prepare document for full-text indexing: %s", err)
 					continue
 				}
+			}
+
+			if semTask != nil {
+				i.vectorSearch.TryEnqueue(*semTask)
 			}
 
 			removedDocIds := make([]string, len(object.DeletedMsgIds))
@@ -272,7 +277,7 @@ var filesLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_pdf:   {},
 }
 
-func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, isChat bool, err error) {
+func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, isChat bool, semanticTask *vectorsearch.SemanticTask, err error) {
 	// shortcut for deleted objects via objectstore
 	// otherwise we can have race condition when object is marked as deleted but the tree is not yet deleted
 	details, err := i.store.SpaceIndex(object.SpaceId).GetDetails(object.ObjectId)
@@ -280,7 +285,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 		log.With("id", object.FullId()).Errorf("prepareSearchDocs: get details: %v", err)
 	} else if details.GetBool(bundle.RelationKeyIsDeleted) {
 		// object is deleted, no need to index it
-		return
+		return nil, false, nil, nil
 	}
 
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
@@ -288,9 +293,9 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 	if object.MsgOrderId != "" || len(object.DeletedMsgIds) > 0 {
 		docs, err = i.prepareChatSearchDocs(ctx, object)
 		if err != nil {
-			return nil, true, err
+			return nil, true, nil, err
 		}
-		return docs, true, nil
+		return docs, true, nil, nil
 	}
 
 	var fulltextSkipped bool
@@ -380,6 +385,14 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 			return true
 		})
 
+		// Collect blocks for semantic (vector) search indexing
+		semanticTask = &vectorsearch.SemanticTask{
+			ObjectID:    object.ObjectId,
+			SpaceID:     sb.SpaceID(),
+			ObjectTitle: sb.Details().GetString(bundle.RelationKeyName),
+			Blocks:      sb.Blocks(),
+		}
+
 		return nil
 	})
 
@@ -387,10 +400,10 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 		// todo: this should be removed. objects which is not supposed to be added to fulltext index should not be added to the queue
 		// but now it happens in the ftInit that some objects still can be added to the queue
 		// we need to avoid TryRemoveFromCache in this case
-		return docs, isChat, nil
+		return docs, isChat, nil, nil
 	}
 	if err != nil {
-		return nil, isChat, err
+		return nil, isChat, nil, err
 	}
 	_, cacheErr := i.picker.TryRemoveFromCache(ctx, object.ObjectId)
 	if cacheErr != nil &&
@@ -398,7 +411,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 		log.With("objectId", object.FullId()).Errorf("object cache remove: %v", err)
 	}
 
-	return docs, isChat, nil
+	return docs, isChat, semanticTask, nil
 }
 
 func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {

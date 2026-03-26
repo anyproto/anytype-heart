@@ -116,6 +116,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/gateway"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/coordinatorclient"
@@ -305,6 +306,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(filegc.New()).
 		Register(dataviewservice.New()).
 		Register(migration.New()).
+		Register(vectorsearch.New()).
 		Register(indexer.New()).
 		Register(detailsupdater.New()).
 		Register(session.NewHookRunner()).

@@ -24,6 +24,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -63,6 +64,7 @@ type indexer struct {
 	chatRepository       chatrepository.Service
 	ftsearch             ftsearch.FTSearch
 	ftsearchLastIndexSeq uint64
+	vectorSearch         vectorsearch.VectorSearch
 
 	runCtx          context.Context
 	runCtxCancel    context.CancelFunc
@@ -98,6 +100,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	i.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	i.chatRepository = app.MustComponent[chatrepository.Service](a)
+	i.vectorSearch = app.MustComponent[vectorsearch.VectorSearch](a)
 	return
 }
 

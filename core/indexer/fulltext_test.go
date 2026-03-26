@@ -34,11 +34,20 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
+
+type noopVectorSearch struct{}
+
+func (n *noopVectorSearch) Init(_ *app.App) error          { return nil }
+func (n *noopVectorSearch) Name() string                   { return vectorsearch.CName }
+func (n *noopVectorSearch) Run(_ context.Context) error    { return nil }
+func (n *noopVectorSearch) Close(_ context.Context) error  { return nil }
+func (n *noopVectorSearch) TryEnqueue(_ vectorsearch.SemanticTask) {}
 
 type fixture struct {
 	*indexer
@@ -113,6 +122,7 @@ func newFixture(t *testing.T) *fixture {
 		spaceIndexers:       make(map[string]*spaceIndexer),
 		techSpaceIdProvider: techSpaceIdProvider,
 		spaces:              make(map[string]struct{}),
+		vectorSearch:        &noopVectorSearch{},
 	}
 
 	indexerFx := &fixture{
@@ -147,7 +157,7 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, "objectId1").Return(true, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -168,7 +178,7 @@ func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -188,7 +198,7 @@ func TestPrepareSearchDocument_NoIndexableType(t *testing.T) {
 	smartTest.SetType(coresb.SmartBlockTypeDate)
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.Len(t, docs, 0)
 	assert.NoError(t, err)
 }
@@ -202,7 +212,7 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 	))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.Len(t, docs, 0)
 	assert.NoError(t, err)
 }
@@ -219,7 +229,7 @@ func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
@@ -243,7 +253,7 @@ func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
 	smartTest.Doc.Layout()
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/pluralName", docs[0].Id)
@@ -263,7 +273,7 @@ func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/r/name", docs[0].Id)
@@ -284,7 +294,7 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	require.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -302,7 +312,7 @@ func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 0)
 }
@@ -320,7 +330,7 @@ func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -342,7 +352,7 @@ func TestPrepareSearchDocument_BlockText_EqualToMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -364,7 +374,7 @@ func TestPrepareSearchDocument_BlockText_GreaterThanMaxSize(t *testing.T) {
 		)))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 1)
 	assert.Equal(t, "objectId1/b/blockId1", docs[0].Id)
@@ -552,7 +562,7 @@ func TestPrepareSearchDocumentWithDetails(t *testing.T) {
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 	indexerFx.pickerFx.EXPECT().TryRemoveFromCache(mock.Anything, objectId).Return(true, nil)
 
-	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: objectId, SpaceId: "spaceId1"})
+	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: objectId, SpaceId: "spaceId1"})
 	require.NoError(t, err)
 	require.Len(t, docs, 1, "Should prepare 1 document")
 	assert.Equal(t, "testObject1/b/blockId1", docs[0].Id)
@@ -725,7 +735,7 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
+		docs, isChat, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
 			ObjectId:   chatId,
 			SpaceId:    spaceId,
 			MsgOrderId: objectstore.FtAllOrderId,
@@ -763,7 +773,7 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 		}
 
 		// when
-		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
+		docs, isChat, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
 			ObjectId:   chatId,
 			SpaceId:    spaceId,
 			MsgOrderId: "o3",
@@ -795,7 +805,7 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 		indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(chatObject, nil)
 
 		// when
-		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
+		docs, isChat, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
 			ObjectId: chatId,
 			SpaceId:  spaceId,
 		})

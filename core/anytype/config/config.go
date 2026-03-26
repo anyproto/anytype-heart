@@ -81,6 +81,7 @@ type Config struct {
 
 	DS                clientds.Config
 	FS                FSConfig
+	VectorSearch      VectorSearchConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 
 	nodeConf nodeconf.Configuration
@@ -223,6 +224,14 @@ func (c *Config) SetAutoDownloadSizeLimitMb(sizeLimitMb int64) error {
 
 type FSConfig struct {
 	IPFSStorageAddr string
+}
+
+type VectorSearchConfig struct {
+	Enabled             bool   `envconfig:"ANYTYPE_VECTOR_SEARCH_ENABLED" default:"true"`
+	QdrantAddr          string `envconfig:"ANYTYPE_QDRANT_ADDR" default:"http://localhost:6333"`
+	OpenAIAPIKey        string `ignored:"true"` // populated from OPENAI_API_KEY env var
+	EmbeddingModel      string `envconfig:"ANYTYPE_EMBEDDING_MODEL" default:"text-embedding-3-small"`
+	EmbeddingDimensions int    `envconfig:"ANYTYPE_EMBEDDING_DIMENSIONS" default:"1536"`
 }
 
 type DebugAPIConfig struct {
@@ -425,6 +434,8 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 	if err != nil {
 		log.Errorf("failed to read config from env: %v", err)
 	}
+
+	c.VectorSearch.OpenAIAPIKey = os.Getenv("OPENAI_API_KEY")
 
 	c.nodeConf, err = c.GetNodeConfWithError()
 	if err != nil {
