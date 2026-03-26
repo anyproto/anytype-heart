@@ -847,3 +847,29 @@ func removeDescriptionFromRecommended(typeId string, details *domain.Details, sp
 		return nil
 	})
 }
+
+func (s *Service) SpaceSetHomepage(spaceId string, homepage string) error {
+	if err := s.validateHomepage(spaceId, homepage); err != nil {
+		return fmt.Errorf("validate homepage: %w", err)
+	}
+	return s.detailsService.SetSpaceInfo(spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyHomepage: domain.String(homepage),
+	}))
+}
+
+func (s *Service) validateHomepage(spaceId string, homepage string) error {
+	if homepage == "" {
+		return nil
+	}
+	if domain.IsHomepageConstant(homepage) {
+		return nil
+	}
+	exists, err := s.objectStore.SpaceIndex(spaceId).HasIds([]string{homepage})
+	if err != nil {
+		return fmt.Errorf("check homepage object existence: %w", err)
+	}
+	if len(exists) == 0 {
+		return fmt.Errorf("homepage object %s not found in space %s", homepage, spaceId)
+	}
+	return nil
+}

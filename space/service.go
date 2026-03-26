@@ -345,7 +345,7 @@ func (s *service) Create(ctx context.Context, description *spaceinfo.SpaceDescri
 		return nil, ErrSpaceIsClosing
 	}
 
-	if description.SpaceUxType == model.SpaceUxType_OneToOne {
+	if description.SpaceType == model.SpaceType_SpaceTypeOneToOne {
 		return s.CreateOneToOneSendInbox(ctx, description)
 	} else {
 		return s.create(ctx, description)

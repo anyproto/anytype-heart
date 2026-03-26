@@ -8,23 +8,18 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
-	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-var ErrUnexpectedBlockType = errors.New("unexpected block type")
-
 func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
-	ctx := context.TODO()
-	spc, err := s.spaceService.Get(ctx, spaceId)
+	spc, err := s.spaceService.Get(s.componentCtx, spaceId)
 	if err != nil {
 		return err
 	}
@@ -32,30 +27,17 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 
 	setDetails := make([]domain.Detail, 0, details.Len())
 	for k, v := range details.Iterate() {
+		if k == bundle.RelationKeyHomepage {
+			if err = s.validateHomepage(spaceId, v); err != nil {
+				return fmt.Errorf("validate homepage: %w", err)
+			}
+		}
 		setDetails = append(setDetails, domain.Detail{
 			Key:   k,
 			Value: v,
 		})
 	}
 	return s.SetDetails(nil, workspaceId, setDetails)
-}
-
-func (s *service) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error) {
-	err = cache.Do(s.objectGetter, workspaceId, func(ws *editor.Workspaces) error {
-		if ws.Type() != coresb.SmartBlockTypeWorkspace {
-			return ErrUnexpectedBlockType
-		}
-		if err = ws.SetDetails(ctx, []domain.Detail{
-			{
-				Key:   bundle.RelationKeySpaceDashboardId,
-				Value: domain.StringList([]string{id}),
-			},
-		}, false); err != nil {
-			return err
-		}
-		return nil
-	})
-	return id, err
 }
 
 func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
@@ -275,4 +257,22 @@ func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string, isA
 			}
 		}(objId)
 	}
+}
+
+func (s *service) validateHomepage(spaceId string, homepageValue domain.Value) error {
+	if !homepageValue.IsString() {
+		return fmt.Errorf("invalid homepage value type: %s", homepageValue.Type().String())
+	}
+	homepage := homepageValue.String()
+	if domain.IsHomepageConstant(homepage) {
+		return nil
+	}
+	exists, err := s.store.SpaceIndex(spaceId).HasIds([]string{homepage})
+	if err != nil {
+		return fmt.Errorf("check homepage object existence: %w", err)
+	}
+	if len(exists) == 0 {
+		return fmt.Errorf("homepage object %s not found in space %s", homepage, spaceId)
+	}
+	return nil
 }
