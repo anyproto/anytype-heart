@@ -19,23 +19,18 @@ type openaiEmbeddingClient struct {
 	apiURL     string
 	apiKey     string
 	model      string
-	dimensions int
 }
 
-func NewOpenAIEmbeddingClient(apiKey, model string, dimensions int) EmbeddingClient {
+func NewEmbeddingClient(apiURL, apiKey, model string) EmbeddingClient {
 	return &openaiEmbeddingClient{
 		httpClient: &http.Client{Timeout: 60 * time.Second},
-		apiURL:     defaultOpenAIEmbeddingsURL,
+		apiURL:     apiURL,
 		apiKey:     apiKey,
 		model:      model,
-		dimensions: dimensions,
 	}
 }
 
-const (
-	defaultOpenAIEmbeddingsURL = "https://api.openai.com/v1/embeddings"
-	maxBatchSize               = 2048
-)
+const maxBatchSize = 2048
 
 type embeddingRequest struct {
 	Input      []string `json:"input"`
@@ -86,9 +81,10 @@ func (c *openaiEmbeddingClient) Embed(ctx context.Context, texts []string) ([][]
 
 func (c *openaiEmbeddingClient) embedBatch(ctx context.Context, texts []string) ([][]float32, error) {
 	reqBody := embeddingRequest{
-		Input:      texts,
-		Model:      c.model,
-		Dimensions: c.dimensions,
+		Input: texts,
+		Model: c.model,
+		// Dimensions intentionally omitted — Together AI doesn't support it,
+		// and models like intfloat/multilingual-e5-large-instruct have fixed dimensions.
 	}
 
 	body, err := json.Marshal(reqBody)

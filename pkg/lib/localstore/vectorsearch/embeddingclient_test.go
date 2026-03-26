@@ -19,8 +19,8 @@ func TestOpenAIEmbeddingClient_Embed(t *testing.T) {
 
 			var req embeddingRequest
 			require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-			assert.Equal(t, "text-embedding-3-small", req.Model)
-			assert.Equal(t, 1536, req.Dimensions)
+			assert.Equal(t, "test-model", req.Model)
+			assert.Equal(t, 0, req.Dimensions) // dimensions not sent
 			assert.Equal(t, []string{"hello", "world"}, req.Input)
 
 			resp := embeddingResponse{
@@ -38,8 +38,7 @@ func TestOpenAIEmbeddingClient_Embed(t *testing.T) {
 			httpClient: server.Client(),
 			apiURL:     server.URL,
 			apiKey:     "test-key",
-			model:      "text-embedding-3-small",
-			dimensions: 1536,
+			model:      "test-model",
 		}
 
 		result, err := client.Embed(context.Background(), []string{"hello", "world"})
@@ -50,7 +49,7 @@ func TestOpenAIEmbeddingClient_Embed(t *testing.T) {
 	})
 
 	t.Run("empty input returns nil", func(t *testing.T) {
-		client := NewOpenAIEmbeddingClient("key", "model", 1536)
+		client := NewEmbeddingClient("https://unused", "key", "model")
 		result, err := client.Embed(context.Background(), nil)
 		require.NoError(t, err)
 		assert.Nil(t, result)
@@ -68,7 +67,6 @@ func TestOpenAIEmbeddingClient_Embed(t *testing.T) {
 			apiURL:     server.URL,
 			apiKey:     "bad-key",
 			model:      "model",
-			dimensions: 1536,
 		}
 		_, err := client.Embed(context.Background(), []string{"test"})
 		require.Error(t, err)

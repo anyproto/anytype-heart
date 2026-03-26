@@ -15,6 +15,13 @@ type QdrantClient interface {
 	UpsertPoints(ctx context.Context, collection string, points []QdrantPoint) error
 	DeletePointsByObjectID(ctx context.Context, collection string, objectID string) error
 	SearchPoints(ctx context.Context, collection string, vector []float32, limit int) ([]SearchResult, error)
+	ScrollByObjectID(ctx context.Context, collection string, objectID string) ([]ScrollPoint, error)
+}
+
+type ScrollPoint struct {
+	ID      string         `json:"id"`
+	Vector  []float32      `json:"vector"`
+	Payload map[string]any `json:"payload"`
 }
 
 type SearchResult struct {
@@ -111,6 +118,50 @@ func (c *qdrantClient) DeletePointsByObjectID(ctx context.Context, collection st
 		return fmt.Errorf("delete points returned %d: %s", resp.StatusCode, string(respBody))
 	}
 	return nil
+}
+
+func (c *qdrantClient) ScrollByObjectID(ctx context.Context, collection string, objectID string) ([]ScrollPoint, error) {
+	body := map[string]any{
+		"filter": map[string]any{
+			"must": []map[string]any{
+				{
+					"key": "object_id",
+					"match": map[string]any{
+						"value": objectID,
+					},
+				},
+			},
+		},
+		"with_payload": true,
+		"with_vector":  true,
+		"limit":        500,
+	}
+
+	resp, err := c.doRequest(ctx, http.MethodPost, fmt.Sprintf("/collections/%s/points/scroll", collection), body)
+	if err != nil {
+		return nil, fmt.Errorf("scroll points: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read scroll response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("scroll points returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var scrollResp struct {
+		Result struct {
+			Points []ScrollPoint `json:"points"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(respBody, &scrollResp); err != nil {
+		return nil, fmt.Errorf("unmarshal scroll response: %w", err)
+	}
+
+	return scrollResp.Result.Points, nil
 }
 
 func (c *qdrantClient) SearchPoints(ctx context.Context, collection string, vector []float32, limit int) ([]SearchResult, error) {

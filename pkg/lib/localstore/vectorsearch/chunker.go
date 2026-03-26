@@ -8,7 +8,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const maxChunkChars = 2000
+const maxChunkChars = 1000 // ~350 tokens, safely under 512 token limit for multilingual-e5-large-instruct
 
 type TextChunk struct {
 	ID          string

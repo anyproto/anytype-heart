@@ -2,6 +2,8 @@ package vectorsearch
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
@@ -60,13 +62,13 @@ func (v *vectorSearch) Run(ctx context.Context) error {
 		log.Info("vector search is disabled")
 		return nil
 	}
-	if cfg.OpenAIAPIKey == "" {
-		log.Warn("vector search is enabled but OPENAI_API_KEY is not set, disabling")
+	if cfg.EmbeddingApiKey == "" {
+		log.Warn("vector search is enabled but TOGETHER_API_KEY is not set, disabling")
 		return nil
 	}
 
 	v.qdrant = NewQdrantClient(cfg.QdrantAddr)
-	v.embedder = NewOpenAIEmbeddingClient(cfg.OpenAIAPIKey, cfg.EmbeddingModel, cfg.EmbeddingDimensions)
+	v.embedder = NewEmbeddingClient(cfg.EmbeddingApiUrl, cfg.EmbeddingApiKey, cfg.EmbeddingModel)
 	v.runCtx, v.cancel = context.WithCancel(ctx)
 	v.done = make(chan struct{})
 
@@ -190,52 +192,85 @@ func (v *vectorSearch) processTask(ctx context.Context, task SemanticTask) error
 		return nil
 	}
 
-	log.Warnf("[vectorsearch] object=%s chunked into %d chunks", task.ObjectID, len(chunks))
-	for i, chunk := range chunks {
-		log.Warnf("[vectorsearch]   chunk[%d] title=%q text_len=%d", i, chunk.Title, len(chunk.Text))
-	}
-
-	texts := make([]string, len(chunks))
-	for i, chunk := range chunks {
-		// Combine title and text for embedding
-		t := chunk.Text
-		if chunk.Title != "" {
-			t = chunk.Title + "\n" + t
-		}
-		texts[i] = t
-	}
-
-	log.Warnf("[vectorsearch] calling OpenAI embeddings for %d texts...", len(texts))
-	vectors, err := v.embedder.Embed(ctx, texts)
-	if err != nil {
-		return fmt.Errorf("embed chunks: %w", err)
-	}
-	log.Warnf("[vectorsearch] got %d embeddings (dim=%d)", len(vectors), len(vectors[0]))
-
 	collection := collectionName(task.SpaceID)
-	log.Warnf("[vectorsearch] upserting %d points to qdrant collection=%s", len(chunks), collection)
 
 	if err := v.qdrant.EnsureCollection(ctx, collection, v.config.VectorSearch.EmbeddingDimensions); err != nil {
 		return fmt.Errorf("ensure collection: %w", err)
 	}
 
-	// Remove old points for this object before upserting new ones
+	// Fetch existing points for this object to reuse unchanged embeddings
+	existingPoints, _ := v.qdrant.ScrollByObjectID(ctx, collection, task.ObjectID)
+	cachedVectors := make(map[string][]float32) // hash -> vector
+	for _, p := range existingPoints {
+		if h, ok := p.Payload["hash"].(string); ok && len(p.Vector) > 0 {
+			cachedVectors[h] = p.Vector
+		}
+	}
+
+	// Compute hashes for new chunks and figure out which need embedding
+	type chunkWithHash struct {
+		chunk TextChunk
+		text  string // title + text combined for embedding
+		hash  string
+	}
+	items := make([]chunkWithHash, len(chunks))
+	var textsToEmbed []string
+	var embedIndexes []int // maps textsToEmbed index → items index
+
+	for i, chunk := range chunks {
+		t := chunk.Text
+		if chunk.Title != "" {
+			t = chunk.Title + "\n" + t
+		}
+		h := hashText(t)
+		items[i] = chunkWithHash{chunk: chunk, text: t, hash: h}
+
+		if _, cached := cachedVectors[h]; !cached {
+			textsToEmbed = append(textsToEmbed, t)
+			embedIndexes = append(embedIndexes, i)
+		}
+	}
+
+	log.Warnf("[vectorsearch] object=%s chunks=%d cached=%d to_embed=%d",
+		task.ObjectID, len(chunks), len(chunks)-len(textsToEmbed), len(textsToEmbed))
+
+	// Embed only new/changed chunks
+	var newVectors [][]float32
+	if len(textsToEmbed) > 0 {
+		var err error
+		newVectors, err = v.embedder.Embed(ctx, textsToEmbed)
+		if err != nil {
+			return fmt.Errorf("embed chunks: %w", err)
+		}
+	}
+
+	// Delete old points and build new ones
 	if err := v.qdrant.DeletePointsByObjectID(ctx, collection, task.ObjectID); err != nil {
 		return fmt.Errorf("delete old points: %w", err)
 	}
 
-	points := make([]QdrantPoint, len(chunks))
-	for i, chunk := range chunks {
+	// Assign vectors: cached or newly embedded
+	embIdx := 0
+	points := make([]QdrantPoint, len(items))
+	for i, item := range items {
+		var vector []float32
+		if cached, ok := cachedVectors[item.hash]; ok {
+			vector = cached
+		} else {
+			vector = newVectors[embIdx]
+			embIdx++
+		}
 		points[i] = QdrantPoint{
-			ID:     chunk.ID,
-			Vector: vectors[i],
+			ID:     item.chunk.ID,
+			Vector: vector,
 			Payload: map[string]any{
-				"space_id":     chunk.SpaceID,
-				"object_id":    chunk.ObjectID,
-				"position":     chunk.Position,
-				"title":        chunk.Title,
-				"object_title": chunk.ObjectTitle,
-				"text":         chunk.Text,
+				"space_id":     item.chunk.SpaceID,
+				"object_id":    item.chunk.ObjectID,
+				"position":     item.chunk.Position,
+				"title":        item.chunk.Title,
+				"object_title": item.chunk.ObjectTitle,
+				"text":         item.chunk.Text,
+				"hash":         item.hash,
 			},
 		}
 	}
@@ -244,8 +279,14 @@ func (v *vectorSearch) processTask(ctx context.Context, task SemanticTask) error
 		return fmt.Errorf("upsert points: %w", err)
 	}
 
-	log.Warnf("[vectorsearch] SUCCESS object=%s → %d points in collection=%s", task.ObjectID, len(points), collection)
+	log.Warnf("[vectorsearch] SUCCESS object=%s → %d points (%d reused, %d embedded) in collection=%s",
+		task.ObjectID, len(points), len(points)-len(textsToEmbed), len(textsToEmbed), collection)
 	return nil
+}
+
+func hashText(text string) string {
+	h := sha256.Sum256([]byte(text))
+	return hex.EncodeToString(h[:16]) // 128-bit hash is plenty for dedup
 }
 
 func collectionName(spaceID string) string {

@@ -229,9 +229,10 @@ type FSConfig struct {
 type VectorSearchConfig struct {
 	Enabled             bool   `envconfig:"ANYTYPE_VECTOR_SEARCH_ENABLED" default:"true"`
 	QdrantAddr          string `envconfig:"ANYTYPE_QDRANT_ADDR" default:"http://localhost:6333"`
-	OpenAIAPIKey        string `ignored:"true"` // populated from OPENAI_API_KEY env var
-	EmbeddingModel      string `envconfig:"ANYTYPE_EMBEDDING_MODEL" default:"text-embedding-3-small"`
-	EmbeddingDimensions int    `envconfig:"ANYTYPE_EMBEDDING_DIMENSIONS" default:"1536"`
+	EmbeddingApiKey     string `ignored:"true"` // populated from TOGETHER_API_KEY env var
+	EmbeddingApiUrl     string `envconfig:"ANYTYPE_EMBEDDING_API_URL" default:"https://api.together.xyz/v1/embeddings"`
+	EmbeddingModel      string `envconfig:"ANYTYPE_EMBEDDING_MODEL" default:"intfloat/multilingual-e5-large-instruct"`
+	EmbeddingDimensions int    `envconfig:"ANYTYPE_EMBEDDING_DIMENSIONS" default:"1024"`
 }
 
 type DebugAPIConfig struct {
@@ -435,7 +436,7 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 		log.Errorf("failed to read config from env: %v", err)
 	}
 
-	c.VectorSearch.OpenAIAPIKey = os.Getenv("OPENAI_API_KEY")
+	c.VectorSearch.EmbeddingApiKey = os.Getenv("TOGETHER_API_KEY")
 
 	c.nodeConf, err = c.GetNodeConfWithError()
 	if err != nil {
