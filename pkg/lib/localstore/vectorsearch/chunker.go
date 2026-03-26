@@ -24,6 +24,7 @@ type SemanticTask struct {
 	ObjectID    string
 	SpaceID     string
 	ObjectTitle string
+	TypeKey     string
 	Blocks      []*model.Block
 }
 

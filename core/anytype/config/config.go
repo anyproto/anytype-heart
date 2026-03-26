@@ -233,6 +233,7 @@ type VectorSearchConfig struct {
 	EmbeddingApiUrl     string `envconfig:"ANYTYPE_EMBEDDING_API_URL" default:"https://api.together.xyz/v1/embeddings"`
 	EmbeddingModel      string `envconfig:"ANYTYPE_EMBEDDING_MODEL" default:"intfloat/multilingual-e5-large-instruct"`
 	EmbeddingDimensions int    `envconfig:"ANYTYPE_EMBEDDING_DIMENSIONS" default:"1024"`
+	SkipTypeKeys        string `envconfig:"ANYTYPE_VECTOR_SEARCH_SKIP_TYPES"` // comma-separated type keys to skip, e.g. "ot-program,ot-debugLog"
 }
 
 type DebugAPIConfig struct {

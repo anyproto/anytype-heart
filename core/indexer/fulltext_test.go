@@ -51,6 +51,7 @@ func (n *noopVectorSearch) TryEnqueue(_ vectorsearch.SemanticTask) {}
 func (n *noopVectorSearch) Search(_ context.Context, _ string, _ string, _ int) ([]vectorsearch.ObjectScore, error) {
 	return nil, nil
 }
+func (n *noopVectorSearch) IsTypeSkipped(_ string) bool { return false }
 
 type fixture struct {
 	*indexer

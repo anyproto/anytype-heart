@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"strings"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
@@ -32,11 +33,13 @@ type VectorSearch interface {
 	app.ComponentRunnable
 	TryEnqueue(task SemanticTask)
 	Search(ctx context.Context, spaceId string, query string, limit int) ([]ObjectScore, error)
+	IsTypeSkipped(typeKey string) bool
 }
 
 type vectorSearch struct {
-	config   *config.Config
-	queue    *mb.MB[SemanticTask]
+	config       *config.Config
+	skipTypeKeys map[string]struct{}
+	queue        *mb.MB[SemanticTask]
 	qdrant   QdrantClient
 	embedder EmbeddingClient
 	runCtx   context.Context
@@ -51,6 +54,22 @@ func New() VectorSearch {
 func (v *vectorSearch) Init(a *app.App) (err error) {
 	v.config = app.MustComponent[*config.Config](a)
 	v.queue = mb.New[SemanticTask](1000)
+	v.skipTypeKeys = make(map[string]struct{})
+	if raw := v.config.VectorSearch.SkipTypeKeys; raw != "" {
+		for _, key := range strings.Split(raw, ",") {
+			key = strings.TrimSpace(key)
+			if key != "" {
+				v.skipTypeKeys[key] = struct{}{}
+			}
+		}
+	}
+	if len(v.skipTypeKeys) > 0 {
+		keys := make([]string, 0, len(v.skipTypeKeys))
+		for k := range v.skipTypeKeys {
+			keys = append(keys, k)
+		}
+		log.Warnf("[vectorsearch] skip types: %v", keys)
+	}
 	return nil
 }
 
@@ -93,12 +112,17 @@ func (v *vectorSearch) Close(ctx context.Context) error {
 	return nil
 }
 
+func (v *vectorSearch) IsTypeSkipped(typeKey string) bool {
+	_, skipped := v.skipTypeKeys[typeKey]
+	return skipped
+}
+
 func (v *vectorSearch) TryEnqueue(task SemanticTask) {
 	if v.done == nil {
 		return // not running (disabled)
 	}
-	log.Warnf("[vectorsearch] enqueue object=%s space=%s title=%q blocks=%d",
-		task.ObjectID, task.SpaceID, task.ObjectTitle, len(task.Blocks))
+	log.Warnf("[vectorsearch] enqueue object=%s type=%s name=%q blocks=%d",
+		task.ObjectID, task.TypeKey, task.ObjectTitle, len(task.Blocks))
 	_ = v.queue.TryAdd(task) //nolint:errcheck
 }
 
@@ -242,8 +266,8 @@ func (v *vectorSearch) processTask(ctx context.Context, task SemanticTask) error
 		}
 	}
 
-	log.Warnf("[vectorsearch] object=%s chunks=%d cached=%d to_embed=%d",
-		task.ObjectID, len(chunks), len(chunks)-len(textsToEmbed), len(textsToEmbed))
+	log.Warnf("[vectorsearch] object=%s type=%s name=%q chunks=%d cached=%d to_embed=%d",
+		task.ObjectID, task.TypeKey, task.ObjectTitle, len(chunks), len(chunks)-len(textsToEmbed), len(textsToEmbed))
 
 	// Embed only new/changed chunks
 	var newVectors [][]float32

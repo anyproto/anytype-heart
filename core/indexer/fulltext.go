@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+
 	"time"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -385,12 +386,14 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 			return true
 		})
 
-		// Collect blocks for semantic (vector) search indexing — only page-like layouts
-		if layout, ok := sb.Layout(); ok && isPageLikeLayout(layout) {
+		// Collect blocks for semantic (vector) search indexing — only page-like layouts, skip configured types
+		typeApiKey := i.resolveTypeApiKey(sb)
+		if layout, ok := sb.Layout(); ok && isPageLikeLayout(layout) && typeApiKey != "template" && !i.vectorSearch.IsTypeSkipped(typeApiKey) {
 			semanticTask = &vectorsearch.SemanticTask{
 				ObjectID:    object.ObjectId,
 				SpaceID:     sb.SpaceID(),
 				ObjectTitle: sb.Details().GetString(bundle.RelationKeyName),
+				TypeKey:     typeApiKey,
 				Blocks:      sb.Blocks(),
 			}
 		}
@@ -450,6 +453,32 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	}
 	return docs, nil
 
+}
+
+// resolveTypeApiKey returns the user-facing type key (e.g. "page", "anytype_program")
+// by looking up the type object's apiObjectKey or uniqueKey from the space index.
+func (i *indexer) resolveTypeApiKey(sb smartblock.SmartBlock) string {
+	typeKey := sb.ObjectTypeKey()
+	if typeKey == "" {
+		return ""
+	}
+	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, string(typeKey))
+	if err != nil {
+		return string(typeKey)
+	}
+	typeDet, err := i.store.SpaceIndex(sb.SpaceID()).GetObjectByUniqueKey(uk)
+	if err != nil || typeDet.Len() == 0 {
+		return string(typeKey)
+	}
+	// Prefer apiObjectKey (user-set key like "anytype_program")
+	if apiKey := typeDet.GetString(bundle.RelationKeyApiObjectKey); apiKey != "" {
+		return apiKey
+	}
+	// Fall back to uniqueKey with ot- prefix stripped
+	if rawUk := typeDet.GetString(bundle.RelationKeyUniqueKey); rawUk != "" {
+		return strings.TrimPrefix(rawUk, "ot-")
+	}
+	return string(typeKey)
 }
 
 func isPageLikeLayout(layout model.ObjectTypeLayout) bool {
