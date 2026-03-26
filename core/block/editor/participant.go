@@ -38,7 +38,6 @@ func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
-
 func (p *participant) ModifyProfileDetails(profileDetails *domain.Details) (err error) {
 	details := profileDetails.CopyOnlyKeys(
 		bundle.RelationKeyName,
