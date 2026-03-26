@@ -62,9 +62,6 @@ func GenerateFTQueueCounter() uint64 {
 			}
 			newVal = current + 1
 		} else {
-			if currentSeq > 10 {
-				fmt.Printf("### %d ops/sec on fulltext queue detected\n", currentSeq)
-			}
 			newVal = uint64(now) * 10000
 		}
 
