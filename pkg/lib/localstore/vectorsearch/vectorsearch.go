@@ -17,7 +17,9 @@ const CName = "vectorsearch"
 
 var log = logging.Logger("anytype-vectorsearch")
 
-const minSimilarityScore float32 = 0.3
+// minRelativeScoreRatio filters out results scoring below this fraction of the top result.
+// E5 models produce compressed scores (0.7-1.0) so absolute thresholds don't work.
+const minRelativeScoreRatio float32 = 0.97
 
 type ObjectScore struct {
 	ObjectID   string
@@ -105,7 +107,7 @@ func (v *vectorSearch) Search(ctx context.Context, spaceId string, query string,
 		return nil, nil // disabled
 	}
 
-	vectors, err := v.embedder.Embed(ctx, []string{query})
+	vectors, err := v.embedder.Embed(ctx, []string{"query: " + query})
 	if err != nil {
 		return nil, fmt.Errorf("embed query: %w", err)
 	}
@@ -127,8 +129,17 @@ func (v *vectorSearch) Search(ctx context.Context, spaceId string, query string,
 	}
 	byObject := make(map[string]*bestMatch)
 
+	// First pass: find top score
+	var topScore float32
 	for _, r := range results {
-		if r.Score < minSimilarityScore {
+		if r.Score > topScore {
+			topScore = r.Score
+		}
+	}
+	scoreThreshold := topScore * minRelativeScoreRatio
+
+	for _, r := range results {
+		if r.Score < scoreThreshold {
 			continue
 		}
 		objectID, _ := r.Payload["object_id"].(string)
@@ -226,7 +237,7 @@ func (v *vectorSearch) processTask(ctx context.Context, task SemanticTask) error
 		items[i] = chunkWithHash{chunk: chunk, text: t, hash: h}
 
 		if _, cached := cachedVectors[h]; !cached {
-			textsToEmbed = append(textsToEmbed, t)
+			textsToEmbed = append(textsToEmbed, "passage: "+t)
 			embedIndexes = append(embedIndexes, i)
 		}
 	}

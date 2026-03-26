@@ -385,12 +385,14 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 			return true
 		})
 
-		// Collect blocks for semantic (vector) search indexing
-		semanticTask = &vectorsearch.SemanticTask{
-			ObjectID:    object.ObjectId,
-			SpaceID:     sb.SpaceID(),
-			ObjectTitle: sb.Details().GetString(bundle.RelationKeyName),
-			Blocks:      sb.Blocks(),
+		// Collect blocks for semantic (vector) search indexing — only page-like layouts
+		if layout, ok := sb.Layout(); ok && isPageLikeLayout(layout) {
+			semanticTask = &vectorsearch.SemanticTask{
+				ObjectID:    object.ObjectId,
+				SpaceID:     sb.SpaceID(),
+				ObjectTitle: sb.Details().GetString(bundle.RelationKeyName),
+				Blocks:      sb.Blocks(),
+			}
 		}
 
 		return nil
@@ -448,6 +450,17 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	}
 	return docs, nil
 
+}
+
+func isPageLikeLayout(layout model.ObjectTypeLayout) bool {
+	switch layout {
+	case model.ObjectType_basic,
+		model.ObjectType_todo,
+		model.ObjectType_note,
+		model.ObjectType_bookmark:
+		return true
+	}
+	return false
 }
 
 func isName(key domain.RelationKey) bool {
