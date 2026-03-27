@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
-	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -193,10 +192,8 @@ func newParticipantTestWithStore(t *testing.T, store spaceindex.Store) (*partici
 
 	initCtx := &smartblock.InitContext{
 		IsNewObject: true,
+		Doc:         sb.Doc,
 	}
-
-	// Simulate what participantSource.ReadDoc does: load store details + apply template
-	initParticipantDoc(sb.Doc.(*state.State), store, "root")
 
 	if err := p.Init(initCtx); err != nil {
 		return nil, err
@@ -206,26 +203,6 @@ func newParticipantTestWithStore(t *testing.T, store spaceindex.Store) (*partici
 		return nil, err
 	}
 	return p, nil
-}
-
-// initParticipantDoc mirrors participantSource.ReadDoc: loads stored details and applies template.
-func initParticipantDoc(s *state.State, store spaceindex.Store, id string) {
-	s.SetObjectTypeKey(bundle.TypeKeyParticipant)
-	records, err := store.QueryByIds([]string{id})
-	if err == nil && len(records) > 0 {
-		s.SetDetails(records[0].Details)
-	}
-	s.SetDetailAndBundledRelation(bundle.RelationKeyIsReadonly, domain.Bool(true))
-	s.SetDetailAndBundledRelation(bundle.RelationKeyIsArchived, domain.Bool(false))
-	s.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
-	s.SetDetailAndBundledRelation(bundle.RelationKeyLayoutAlign, domain.Int64(model.Block_AlignCenter))
-	template.InitTemplate(s,
-		template.WithEmpty,
-		template.WithTitle,
-		template.WithDescription,
-		template.WithFeaturedRelationsBlock,
-		template.WithLayout(model.ObjectType_participant),
-	)
 }
 
 type participantFixture struct {

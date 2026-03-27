@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -140,7 +141,19 @@ func (s *service) newSource(ctx context.Context, space source.Space, id string, 
 			if spaceId != space.Id() {
 				return nil, fmt.Errorf("invalid space id for participant object")
 			}
-			return newParticipantSource(spaceId, id, s.objectStore.SpaceIndex(spaceId)), nil
+			participantState := state.NewDoc(id, nil).(*state.State)
+			// Set object type here in order to derive value of Type relation in smartblock.Init
+			participantState.SetObjectTypeKey(bundle.TypeKeyParticipant)
+			params := source.StaticSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  spaceId,
+				},
+				State:     participantState,
+				SbType:    smartblock.SmartBlockTypeParticipant,
+				CreatorId: addr.AnytypeProfileId,
+			}
+			return s.NewStaticSource(params), nil
 		}
 	}
 
