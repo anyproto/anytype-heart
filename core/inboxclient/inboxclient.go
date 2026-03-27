@@ -66,10 +66,13 @@ type inboxclient struct {
 	rmu       sync.Mutex
 	receivers map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error
 
-	periodicCheck periodicsync.PeriodicSync
+	componentCtx       context.Context
+	componentCtxCancel context.CancelFunc
+	periodicCheck      periodicsync.PeriodicSync
 }
 
 func (s *inboxclient) Init(a *app.App) (err error) {
+	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
 	s.periodicCheck = periodicsync.NewPeriodicSync(30, 0, s.checkMessages, log)
 	s.spaceService = app.MustComponent[SpaceService](a)
 	s.wallet = app.MustComponent[wallet.Wallet](a)
@@ -110,8 +113,8 @@ func (s *inboxclient) Run(ctx context.Context) error {
 	return nil
 }
 
-func (s *inboxclient) setOffset(offset string) (err error) {
-	err = s.techSpace.DoAccountObject(context.Background(), func(accountObject techspace.AccountObject) error {
+func (s *inboxclient) setOffset(ctx context.Context, offset string) (err error) {
+	err = s.techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
 		err := accountObject.SetInboxOffset(offset)
 		if err != nil {
 			return err
@@ -122,8 +125,8 @@ func (s *inboxclient) setOffset(offset string) (err error) {
 
 }
 
-func (s *inboxclient) getOffset() (offset string, err error) {
-	err = s.techSpace.DoAccountObject(context.Background(), func(accountObject techspace.AccountObject) error {
+func (s *inboxclient) getOffset(ctx context.Context) (offset string, err error) {
+	err = s.techSpace.DoAccountObject(ctx, func(accountObject techspace.AccountObject) error {
 		offset, err = accountObject.GetInboxOffset()
 		if err != nil {
 			return err
@@ -150,20 +153,20 @@ func (s *inboxclient) verifyPacketSignature(packet *coordinatorproto.InboxPacket
 	return nil
 }
 
-func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage, err error) {
+func (s *inboxclient) fetchMessages(ctx context.Context) (messages []*coordinatorproto.InboxMessage, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	messages = make([]*coordinatorproto.InboxMessage, 0)
 
-	offset, err := s.getOffset()
+	offset, err := s.getOffset(ctx)
 	oldOffset := offset
 	if err != nil {
 		return
 	}
 
 	for {
-		batch, hasMore, err := s.inboxClient.InboxFetch(context.Background(), offset)
+		batch, hasMore, err := s.inboxClient.InboxFetch(ctx, offset)
 		if err != nil {
 			offset = oldOffset
 			log.Error("inbox: fetchMessages batch error", zap.Error(err))
@@ -199,7 +202,7 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 	}
 
 	if offset != oldOffset {
-		err = s.setOffset(offset)
+		err = s.setOffset(ctx, offset)
 		if err != nil {
 			log.Error("inbox: error setting offset", zap.Error(err))
 			return
@@ -210,12 +213,16 @@ func (s *inboxclient) fetchMessages() (messages []*coordinatorproto.InboxMessage
 }
 
 func (s *inboxclient) checkMessages(ctx context.Context) (err error) {
-	s.ReceiveNotify(&coordinatorproto.NotifySubscribeEvent{})
+	s.handleMessages(ctx)
 	return nil
 }
 
 func (s *inboxclient) ReceiveNotify(event *coordinatorproto.NotifySubscribeEvent) {
-	messages, err := s.fetchMessages()
+	s.handleMessages(s.componentCtx)
+}
+
+func (s *inboxclient) handleMessages(ctx context.Context) {
+	messages, err := s.fetchMessages(ctx)
 	if err != nil {
 		log.Error("inbox: failed to fetch messages", zap.Error(err))
 		return
@@ -242,6 +249,7 @@ func (s *inboxclient) InboxAddMessage(ctx context.Context, receiverPubKey crypto
 	return s.inboxClient.InboxAddMessage(ctx, receiverPubKey, message)
 }
 func (s *inboxclient) Close(_ context.Context) (err error) {
+	s.componentCtxCancel()
 	if s.periodicCheck != nil {
 		s.periodicCheck.Close()
 	}
