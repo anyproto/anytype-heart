@@ -101,7 +101,7 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	myParticipantId := f.accountService.MyParticipantId(f.SpaceID())
 
 	if !ctx.IsNewObject && creator == myParticipantId {
-		f.SmartBlock.AddHook(f.markUploadedHook, smartblock.HookAfterApply)
+		f.AddHook(f.markUploadedHook, smartblock.HookAfterApply)
 		// Run in a goroutine to prevent deadlocks when filesync updates file status before file is loaded into cache
 		go func() {
 			err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
