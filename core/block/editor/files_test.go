@@ -2,6 +2,7 @@ package editor
 
 import (
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -45,13 +46,20 @@ func TestFile_markUploadedHook(t *testing.T) {
 
 	t.Run("calls MarkFileUploaded when status changes to Synced", func(t *testing.T) {
 		fx := newFileFixture(t, "obj1")
-		fx.fileObjectService.EXPECT().MarkFileUploaded("obj1").Return(nil).Once()
+		called := make(chan struct{})
+		fx.fileObjectService.EXPECT().MarkFileUploaded("obj1").Run(func(string) { close(called) }).Return(nil).Once()
 
 		st := state.NewDoc("obj1", nil).NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyFileBackupStatus, domain.Int64(int64(filesyncstatus.Synced)))
 
 		err := fx.markUploadedHook(makeApplyInfo(st, bundle.RelationKeyFileBackupStatus.String()))
 		require.NoError(t, err)
+
+		select {
+		case <-called:
+		case <-time.After(5 * time.Second):
+			t.Fatal("timed out waiting for MarkFileUploaded to be called")
+		}
 	})
 
 	t.Run("skips when status changes to non-Synced", func(t *testing.T) {
