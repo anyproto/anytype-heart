@@ -48,8 +48,12 @@ func (t ValueType) String() string {
 		return "float"
 	case ValueTypeStringList:
 		return "string list"
+	case ValueTypeFloatList:
+		return "float list"
 	case ValueTypeMap:
 		return "map"
+	case ValueTypeMapList:
+		return "map list"
 	default:
 		return "invalid"
 	}

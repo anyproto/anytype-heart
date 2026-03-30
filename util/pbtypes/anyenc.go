@@ -147,6 +147,9 @@ func compareValue(a *anyenc.Value, b *anyenc.Value) (bool, error) {
 		if ao.Len() != bo.Len() {
 			return false, nil
 		}
+		if ao.Len() == 0 {
+			return true, nil
+		}
 		var (
 			eq       bool
 			stop     bool
