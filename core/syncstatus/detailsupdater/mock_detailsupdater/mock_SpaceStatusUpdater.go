@@ -67,7 +67,7 @@ func (_c *MockSpaceStatusUpdater_Init_Call) RunAndReturn(run func(*app.App) erro
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSpaceStatusUpdater) Name() string {
 	ret := _m.Called()
 
@@ -141,7 +141,7 @@ func (_c *MockSpaceStatusUpdater_Refresh_Call) Return() *MockSpaceStatusUpdater_
 }
 
 func (_c *MockSpaceStatusUpdater_Refresh_Call) RunAndReturn(run func(string)) *MockSpaceStatusUpdater_Refresh_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -175,7 +175,7 @@ func (_c *MockSpaceStatusUpdater_UpdateMissingIds_Call) Return() *MockSpaceStatu
 }
 
 func (_c *MockSpaceStatusUpdater_UpdateMissingIds_Call) RunAndReturn(run func(string, []string)) *MockSpaceStatusUpdater_UpdateMissingIds_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

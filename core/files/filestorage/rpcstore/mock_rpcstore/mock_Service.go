@@ -68,7 +68,7 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 
@@ -113,7 +113,7 @@ func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Na
 	return _c
 }
 
-// NewStore provides a mock function with given fields:
+// NewStore provides a mock function with no fields
 func (_m *MockService) NewStore() rpcstore.RpcStore {
 	ret := _m.Called()
 

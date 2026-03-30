@@ -69,7 +69,7 @@ func (_c *MockopenedObjectRefresher_Init_Call) RunAndReturn(run func(*app.App) e
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockopenedObjectRefresher) Name() string {
 	ret := _m.Called()
 
@@ -143,7 +143,7 @@ func (_c *MockopenedObjectRefresher_RefreshOpenedObjects_Call) Return() *Mockope
 }
 
 func (_c *MockopenedObjectRefresher_RefreshOpenedObjects_Call) RunAndReturn(run func(context.Context)) *MockopenedObjectRefresher_RefreshOpenedObjects_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

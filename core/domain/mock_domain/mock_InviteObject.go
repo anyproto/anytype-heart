@@ -20,7 +20,7 @@ func (_m *MockInviteObject) EXPECT() *MockInviteObject_Expecter {
 	return &MockInviteObject_Expecter{mock: &_m.Mock}
 }
 
-// GetExistingGuestInviteInfo provides a mock function with given fields:
+// GetExistingGuestInviteInfo provides a mock function with no fields
 func (_m *MockInviteObject) GetExistingGuestInviteInfo() (string, string) {
 	ret := _m.Called()
 
@@ -75,7 +75,7 @@ func (_c *MockInviteObject_GetExistingGuestInviteInfo_Call) RunAndReturn(run fun
 	return _c
 }
 
-// GetExistingInviteInfo provides a mock function with given fields:
+// GetExistingInviteInfo provides a mock function with no fields
 func (_m *MockInviteObject) GetExistingInviteInfo() domain.InviteInfo {
 	ret := _m.Called()
 
@@ -120,7 +120,7 @@ func (_c *MockInviteObject_GetExistingInviteInfo_Call) RunAndReturn(run func() d
 	return _c
 }
 
-// RemoveExistingInviteInfo provides a mock function with given fields:
+// RemoveExistingInviteInfo provides a mock function with no fields
 func (_m *MockInviteObject) RemoveExistingInviteInfo() (domain.InviteInfo, error) {
 	ret := _m.Called()
 

@@ -25,7 +25,7 @@ func (_m *MockCacheService) EXPECT() *MockCacheService_Expecter {
 	return &MockCacheService_Expecter{mock: &_m.Mock}
 }
 
-// CacheClear provides a mock function with given fields:
+// CacheClear provides a mock function with no fields
 func (_m *MockCacheService) CacheClear() error {
 	ret := _m.Called()
 
@@ -70,7 +70,7 @@ func (_c *MockCacheService_CacheClear_Call) RunAndReturn(run func() error) *Mock
 	return _c
 }
 
-// CacheGet provides a mock function with given fields:
+// CacheGet provides a mock function with no fields
 func (_m *MockCacheService) CacheGet() (*model.Membership, []*model.MembershipTierData, time.Time, error) {
 	ret := _m.Called()
 
@@ -190,7 +190,7 @@ func (_c *MockCacheService_CacheSet_Call) RunAndReturn(run func(*model.Membershi
 	return _c
 }
 
-// CacheV2Get provides a mock function with given fields:
+// CacheV2Get provides a mock function with no fields
 func (_m *MockCacheService) CacheV2Get() (*model.MembershipV2Data, time.Time, error) {
 	ret := _m.Called()
 
@@ -254,7 +254,7 @@ func (_c *MockCacheService_CacheV2Get_Call) RunAndReturn(run func() (*model.Memb
 	return _c
 }
 
-// CacheV2ProductsGet provides a mock function with given fields:
+// CacheV2ProductsGet provides a mock function with no fields
 func (_m *MockCacheService) CacheV2ProductsGet() ([]*model.MembershipV2Product, time.Time, error) {
 	ret := _m.Called()
 
@@ -456,7 +456,7 @@ func (_c *MockCacheService_Init_Call) RunAndReturn(run func(*app.App) error) *Mo
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockCacheService) Name() string {
 	ret := _m.Called()
 

@@ -33,10 +33,12 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -67,12 +69,14 @@ type FileStorage interface {
 	LocalDiskUsage(ctx context.Context) (uint64, error)
 	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
 	Batch(ctx context.Context) (Batch, error)
+	LocalDAGService() ipld.DAGService
 }
 
 type fileStorage struct {
-	proxy      *proxyStore
-	handler    *rpcHandler
-	localStore *flatStore // Keep reference to the actual flatStore for batch creation
+	proxy           *proxyStore
+	handler         *rpcHandler
+	localStore      *flatStore // Keep reference to the actual flatStore for batch creation
+	localDAGService ipld.DAGService
 
 	cfg        *config.Config
 	flatfsPath string
@@ -117,6 +121,8 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	f.handler.store = localStore
 	f.localStore = localStore // Store reference for batch creation
 
+	f.localDAGService = fileservice.NewFileHandler(localStore).DAGService()
+
 	ps := newProxyStore(localStore, f.rpcStore.NewStore())
 	f.proxy = ps
 	return
@@ -152,6 +158,10 @@ func (f *fileStorage) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []ci
 
 func (f *fileStorage) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	return f.proxy.NotExistsBlocks(ctx, bs)
+}
+
+func (f *fileStorage) LocalDAGService() ipld.DAGService {
+	return f.localDAGService
 }
 
 func (f *fileStorage) NewLocalStoreGarbageCollector() LocalStoreGarbageCollector {

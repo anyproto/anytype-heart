@@ -19,6 +19,7 @@ const (
 	FileStatePendingDeletion
 	FileStateDone
 	FileStateDeleted
+	FileStateMissingBlocks // File's local blocks are missing, upload is paused
 )
 
 // IsUploadingState returns true if a state related to the uploading process, including uploaded (Done) state

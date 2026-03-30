@@ -68,7 +68,7 @@ func (_c *MockDownloader_Init_Call) RunAndReturn(run func(context.Context) error
 	return _c
 }
 
-// ProcessDownloadedFiles provides a mock function with given fields:
+// ProcessDownloadedFiles provides a mock function with no fields
 func (_m *MockDownloader) ProcessDownloadedFiles() {
 	_m.Called()
 }
@@ -96,7 +96,7 @@ func (_c *MockDownloader_ProcessDownloadedFiles_Call) Return() *MockDownloader_P
 }
 
 func (_c *MockDownloader_ProcessDownloadedFiles_Call) RunAndReturn(run func()) *MockDownloader_ProcessDownloadedFiles_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -158,7 +158,7 @@ func (_c *MockDownloader_QueueFileForDownload_Call) RunAndReturn(run func(string
 	return _c
 }
 
-// StopDownload provides a mock function with given fields:
+// StopDownload provides a mock function with no fields
 func (_m *MockDownloader) StopDownload() {
 	_m.Called()
 }
@@ -186,7 +186,7 @@ func (_c *MockDownloader_StopDownload_Call) Return() *MockDownloader_StopDownloa
 }
 
 func (_c *MockDownloader_StopDownload_Call) RunAndReturn(run func()) *MockDownloader_StopDownload_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

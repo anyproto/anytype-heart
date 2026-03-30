@@ -68,7 +68,7 @@ func (_c *MockSpaceIndexer_Init_Call) RunAndReturn(run func(*app.App) error) *Mo
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSpaceIndexer) Name() string {
 	ret := _m.Called()
 
