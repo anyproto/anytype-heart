@@ -905,6 +905,13 @@ func (v Value) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
 			lst.SetArrayItem(i, arena.NewNumberFloat64(it))
 		}
 		return lst
+	case ValueMap:
+		obj := arena.NewObject()
+		for k, val := range v.Iterate() {
+			anyVal := val.ToAnyEnc(arena)
+			obj.Set(k, anyVal)
+		}
+		return obj
 	case []ValueMap:
 		lst := arena.NewArray()
 		for i, m := range v {
