@@ -1,7 +1,9 @@
 package spaceindex
 
 import (
+	"math"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/stretchr/testify/assert"
@@ -1317,5 +1319,108 @@ func TestQueryFromFulltext(t *testing.T) {
 		for _, rec := range recs {
 			assert.NotEqual(t, "obj1", rec.Details.GetString(bundle.RelationKeyId))
 		}
+	})
+}
+
+func TestQueryFromFulltext_FinalScore(t *testing.T) {
+	t.Run("_final_score equals ln(1+score) when dates are zero and no name match", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		obj := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("Test Object"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			// no date fields set, so recency contribution is zero
+		}
+		s.AddObjects(t, []TestObject{obj})
+
+		score := 2.77
+		results := []database.FulltextResult{
+			{
+				Path:  domain.ObjectPath{ObjectId: "obj1", RelationKey: "description"}, // not "name"
+				Score: score,
+			},
+		}
+
+		// when
+		records, err := s.QueryFromFulltext(results, emptyFilters(t, s), 10, 0, "test")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, records, 1)
+		assert.InDelta(t, math.Log1p(score), records[0].Details.GetFloat64(database.RecordFinalScoreField), 1e-9)
+	})
+
+	t.Run("_final_score gets name_boost when match is in name field", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		obj := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("Test Object"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{obj})
+
+		score := 2.77
+		nameResults := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: bundle.RelationKeyName.String()}, Score: score},
+		}
+		otherResults := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "description"}, Score: score},
+		}
+
+		// when
+		nameRecords, err := s.QueryFromFulltext(nameResults, emptyFilters(t, s), 10, 0, "test")
+		require.NoError(t, err)
+		otherRecords, err := s.QueryFromFulltext(otherResults, emptyFilters(t, s), 10, 0, "test")
+		require.NoError(t, err)
+
+		// then
+		require.Len(t, nameRecords, 1)
+		require.Len(t, otherRecords, 1)
+		nameScore := nameRecords[0].Details.GetFloat64(database.RecordFinalScoreField)
+		otherScore := otherRecords[0].Details.GetFloat64(database.RecordFinalScoreField)
+		assert.InDelta(t, otherScore+1.0, nameScore, 1e-9, "name match should add exactly 1.0 to _final_score")
+	})
+
+	t.Run("recently opened object scores higher than stale with same BM25", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		now := time.Now().Unix()
+		sixtyDaysAgo := now - 60*86400
+
+		fresh := TestObject{
+			bundle.RelationKeyId:             domain.String("fresh"),
+			bundle.RelationKeyName:           domain.String("Object"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyLastOpenedDate: domain.Int64(now),
+		}
+		stale := TestObject{
+			bundle.RelationKeyId:             domain.String("stale"),
+			bundle.RelationKeyName:           domain.String("Object"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyLastOpenedDate: domain.Int64(sixtyDaysAgo),
+		}
+		// lastModifiedDate recency signal is verified at the unit level in TestComputeFinalScore
+		s.AddObjects(t, []TestObject{fresh, stale})
+
+		sameScore := 2.77
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "fresh", RelationKey: "description"}, Score: sameScore},
+			{Path: domain.ObjectPath{ObjectId: "stale", RelationKey: "description"}, Score: sameScore},
+		}
+
+		// when
+		records, err := s.QueryFromFulltext(results, emptyFilters(t, s), 10, 0, "query")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, records, 2)
+		byId := map[string]float64{}
+		for _, r := range records {
+			id := r.Details.GetString(bundle.RelationKeyId)
+			byId[id] = r.Details.GetFloat64(database.RecordFinalScoreField)
+		}
+		assert.Greater(t, byId["fresh"], byId["stale"], "fresh object should outscore stale one with same BM25")
 	})
 }

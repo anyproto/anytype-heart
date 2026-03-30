@@ -127,6 +127,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 				}
 				details.SetString(bundle.RelationKeyId, res.Path.ObjectId)
 				details.SetFloat64(database.RecordScoreField, res.Score)
+				details.SetFloat64(database.RecordFinalScoreField, database.ComputeFinalScore(res.Score, details, res.Path.RelationKey == bundle.RelationKeyName.String()))
 				rec := database.Record{Details: details}
 				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
@@ -146,6 +147,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			continue
 		}
 		details.SetFloat64(database.RecordScoreField, res.Score)
+		details.SetFloat64(database.RecordFinalScoreField, database.ComputeFinalScore(res.Score, details, res.Path.RelationKey == bundle.RelationKeyName.String()))
 
 		rec := database.Record{Details: details}
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
@@ -273,6 +275,9 @@ func (s *dsObjectStore) getObjectsWithObjectInRelation(details *domain.Details, 
 		detailsCopy := rec.Details.Copy()
 		// set the same score as original object
 		detailsCopy.SetFloat64(database.RecordScoreField, score)
+		// nameMatch=false: injected objects are found via relation (links/type/priority),
+		// not because their own name matched the query.
+		detailsCopy.SetFloat64(database.RecordFinalScoreField, database.ComputeFinalScore(score, detailsCopy, false))
 		injectedResults = append(injectedResults, database.Record{
 			Details: detailsCopy,
 			Meta:    metaInj,
