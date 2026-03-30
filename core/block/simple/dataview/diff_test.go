@@ -497,6 +497,41 @@ func TestDiff(t *testing.T) {
 			},
 		), diff)
 	})
+	t.Run("view alternate rows changed", func(t *testing.T) {
+		// given
+		b1 := testBlock()
+		b2 := testBlock()
+
+		// when
+		b1.content.Views = []*model.BlockContentDataviewView{
+			{
+				Id:            "1",
+				AlternateRows: false,
+			},
+		}
+		b2.content.Views = []*model.BlockContentDataviewView{
+			{
+				Id:            "1",
+				AlternateRows: true,
+			},
+		}
+		diff, err := b1.Diff("", b2)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, diff, 1)
+
+		assert.Equal(t, test.MakeEvent(
+			&pb.EventMessageValueOfBlockDataviewViewUpdate{
+				BlockDataviewViewUpdate: &pb.EventBlockDataviewViewUpdate{
+					ViewId: "1",
+					Fields: &pb.EventBlockDataviewViewUpdateFields{
+						AlternateRows: true,
+					},
+				},
+			},
+		), diff)
+	})
 	t.Run("view add", func(t *testing.T) {
 		// given
 		b1 := testBlock()
@@ -1369,4 +1404,5 @@ func TestDiff(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, diff, 4)
 	})
+
 }

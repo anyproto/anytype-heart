@@ -583,3 +583,26 @@ func (mw *Middleware) MembershipV2CartUpdate(ctx context.Context, req *pb.RpcMem
 
 	return out
 }
+
+func (mw *Middleware) MembershipV2SubscribeToUpdates(ctx context.Context, req *pb.RpcMembershipV2SubscribeToUpdatesRequest) *pb.RpcMembershipV2SubscribeToUpdatesResponse {
+	ps := mustService[payments.Service](mw)
+	out, err := ps.V2SubscribeToUpdates(ctx, req)
+
+	if err != nil {
+		code := mapErrorCode(err,
+			errToCode(proto.ErrInvalidSignature, pb.RpcMembershipV2SubscribeToUpdatesResponseError_UNKNOWN_ERROR),
+			errToCode(proto.ErrEthAddressEmpty, pb.RpcMembershipV2SubscribeToUpdatesResponseError_BAD_INPUT),
+			errToCode(payments.ErrNoConnection, pb.RpcMembershipV2SubscribeToUpdatesResponseError_CAN_NOT_CONNECT),
+			errToCode(net.ErrUnableToConnect, pb.RpcMembershipV2SubscribeToUpdatesResponseError_CAN_NOT_CONNECT),
+		)
+
+		return &pb.RpcMembershipV2SubscribeToUpdatesResponse{
+			Error: &pb.RpcMembershipV2SubscribeToUpdatesResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+
+	return out
+}

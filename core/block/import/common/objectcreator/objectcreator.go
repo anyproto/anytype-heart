@@ -119,7 +119,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 
 	oc.updateKeys(st, oldIDtoNew, dataObject.relationKeysToFormat)
 	if sn.Snapshot.SbType == coresb.SmartBlockTypeWorkspace {
-		oc.setSpaceDashboardID(spaceID, st)
+		oc.setWorkspaceDetails(spaceID, st)
 		return nil, newID, nil
 	}
 
@@ -128,7 +128,7 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	}
 
 	st.ModifyLinkedFilesInDetails(oc.formatFetcher, func(fileId string) string {
-		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin)
+		newFileId := oc.relationSyncer.Sync(spaceID, fileId, dataObject.newIdsSet, origin, newID)
 		if newFileId != fileId {
 			filesToDelete = append(filesToDelete, fileId)
 		}
@@ -322,18 +322,30 @@ func (oc *ObjectCreator) deleteFile(spaceId string, hash string) {
 	}
 }
 
-func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
+func (oc *ObjectCreator) setWorkspaceDetails(spaceID string, st *state.State) {
 	// hand-pick relation because space is a special case
 	var details []domain.Detail
-	ids := st.CombinedDetails().GetStringList(bundle.RelationKeySpaceDashboardId)
-	if len(ids) > 0 {
+	combinedDetails := st.CombinedDetails()
+
+	// Prefer homepage over spaceDashboardId for new exports
+	homepage := combinedDetails.GetString(bundle.RelationKeyHomepage)
+	if homepage != "" {
 		details = append(details, domain.Detail{
-			Key:   bundle.RelationKeySpaceDashboardId,
-			Value: domain.StringList(ids),
+			Key:   bundle.RelationKeyHomepage,
+			Value: domain.String(homepage),
 		})
+	} else {
+		// Fallback to spaceDashboardId for old exports
+		ids := combinedDetails.GetStringList(bundle.RelationKeySpaceDashboardId)
+		if len(ids) > 0 {
+			details = append(details, domain.Detail{
+				Key:   bundle.RelationKeySpaceDashboardId,
+				Value: domain.StringList(ids),
+			})
+		}
 	}
 
-	spaceName := st.CombinedDetails().GetString(bundle.RelationKeyName)
+	spaceName := combinedDetails.GetString(bundle.RelationKeyName)
 	if spaceName != "" {
 		details = append(details, domain.Detail{
 			Key:   bundle.RelationKeyName,
@@ -341,7 +353,7 @@ func (oc *ObjectCreator) setSpaceDashboardID(spaceID string, st *state.State) {
 		})
 	}
 
-	iconOption := st.CombinedDetails().GetInt64(bundle.RelationKeyIconOption)
+	iconOption := combinedDetails.GetInt64(bundle.RelationKeyIconOption)
 	if iconOption != 0 {
 		details = append(details, domain.Detail{
 			Key:   bundle.RelationKeyIconOption,

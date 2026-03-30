@@ -77,9 +77,9 @@ type Block interface {
 	ApplyViewUpdate(upd *pb.EventBlockDataviewViewUpdate)
 	ApplyObjectOrderUpdate(upd *pb.EventBlockDataviewObjectOrderUpdate)
 
-	AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error
+	AddFilter(viewID string, filter *model.BlockContentDataviewFilter) (filterId string, err error)
 	RemoveFilters(viewID string, filterIDs []string) error
-	ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error
+	ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) (filterId string, err error)
 	ReorderFilters(viewID string, ids []string) error
 
 	AddSort(viewID string, sort *model.BlockContentDataviewSort) error
@@ -191,6 +191,8 @@ func (d *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	v.DefaultObjectTypeId = view.DefaultObjectTypeId
 	v.EndRelationKey = view.EndRelationKey
 	v.WrapContent = view.WrapContent
+	v.ListSize = view.ListSize
+	v.AlternateRows = view.AlternateRows
 
 	return nil
 }
@@ -215,6 +217,8 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 	v.DefaultObjectTypeId = view.DefaultObjectTypeId
 	v.EndRelationKey = view.EndRelationKey
 	v.WrapContent = view.WrapContent
+	v.ListSize = view.ListSize
+	v.AlternateRows = view.AlternateRows
 
 	return nil
 }

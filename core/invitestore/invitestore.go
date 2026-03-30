@@ -1,5 +1,16 @@
 package invitestore
 
+/*
+AI generated
+
+Name: Encrypted Space Invite Storage
+Scope: global
+
+## Responsibility
+- Store, retrieve, and remove encrypted space invite payloads via IPFS
+- Encrypt invites with AES before upload, decrypt on retrieval
+*/
+
 import (
 	"context"
 	"fmt"

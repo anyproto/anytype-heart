@@ -152,6 +152,9 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		rs.Close()
 		h.buf.WriteString(tags.OpenTag)
 		h.writeTextToBuf(text)
+		if tags.ToggleCloseTag != "" {
+			h.buf.WriteString(tags.ToggleCloseTag)
+		}
 		h.renderChildren(b)
 		h.buf.WriteString(tags.CloseTag)
 	}

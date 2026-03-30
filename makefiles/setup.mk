@@ -35,4 +35,9 @@ setup-protoc-js:
 	@echo 'Setting up js protobuf plugins...'
 	@npm -D install
 
+setup-swag:
+	@echo 'Setting up swag...'
+	# -mod=mod allows go to auto-add swag's transitive deps to go.sum (they get stripped by go mod tidy since the main module doesn't import them directly)
+	@GOFLAGS=-mod=mod go build -o deps github.com/swaggo/swag/v2/cmd/swag
+
 setup-protoc: setup-protoc-go

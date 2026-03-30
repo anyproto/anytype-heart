@@ -27,6 +27,7 @@ type spaceViewStatus struct {
 	mentionIds     []string
 	allIds         []string
 	status         model.SpaceStatus
+	spaceType      model.SpaceType
 }
 
 func newSpaceViewSubscription(service subscription.Service, techSpaceId string, wakeUp func()) (*objectsubscription.ObjectSubscription[spaceViewStatus], error) {
@@ -45,6 +46,7 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 			bundle.RelationKeySpacePushNotificationForceMuteIds.String(),
 			bundle.RelationKeySpacePushNotificationForceMentionIds.String(),
 			bundle.RelationKeySpacePushNotificationForceAllIds.String(),
+			bundle.RelationKeySpaceType.String(),
 			bundle.RelationKeyCreator.String(),
 		},
 		Filters: []database.FilterRequest{
@@ -81,9 +83,16 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					spaceKey:       spaceKey,
 					encKeyBase64:   encKeyBase64,
 					encKey:         encKey,
+					allIds:         details.GetStringList(bundle.RelationKeySpacePushNotificationForceAllIds),
+					mentionIds:     details.GetStringList(bundle.RelationKeySpacePushNotificationForceMentionIds),
+					muteIds:        details.GetStringList(bundle.RelationKeySpacePushNotificationForceMuteIds),
 					// nolint: gosec
 					mode:    pb.RpcPushNotificationMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
 					creator: details.GetString(bundle.RelationKeyCreator),
+					// nolint: gosec
+					status: model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus)),
+					// nolint: gosec
+					spaceType: model.SpaceType(details.GetInt64(bundle.RelationKeySpaceType)),
 				}
 			},
 			UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, status spaceViewStatus) spaceViewStatus {
@@ -118,6 +127,9 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					case bundle.RelationKeySpaceAccountStatus:
 						// nolint: gosec
 						status.status = model.SpaceStatus(kv.Value.Int64())
+					case bundle.RelationKeySpaceType:
+						// nolint: gosec
+						status.spaceType = model.SpaceType(kv.Value.Int64())
 					}
 				}
 				return status

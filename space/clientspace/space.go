@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
 
 type Space interface {
@@ -57,6 +58,7 @@ type Space interface {
 	IsReadOnly() bool
 	IsPersonal() bool
 	IsOneToOne() bool
+	SpaceType() spacedomain.SpaceType
 	GetAclIdentity() crypto.PubKey
 
 	KeyValueService() keyvalueservice.Service
@@ -84,16 +86,22 @@ type bundledObjectsInstaller interface {
 var log = logger.NewNamed("client.space")
 var BundledObjectsPeerFindTimeout = time.Second * 30
 
+type migrationService interface {
+	RunMigrationsWhenIdle(spaceId string, derivedIDs threads.DerivedSmartblockIds)
+}
+
 type space struct {
 	objectcache.Cache
 	objectprovider.ObjectProvider
 
-	indexer         spaceIndexer
-	derivedIDs      threads.DerivedSmartblockIds
-	installer       bundledObjectsInstaller
-	spaceCore       spacecore.SpaceCoreService
-	keyValueService keyvalueservice.Service
-	personalSpaceId string
+	indexer          spaceIndexer
+	derivedIDs       threads.DerivedSmartblockIds
+	installer        bundledObjectsInstaller
+	spaceCore        spacecore.SpaceCoreService
+	keyValueService  keyvalueservice.Service
+	personalSpaceId  string
+	migrationService migrationService
+	spaceType        spacedomain.SpaceType
 
 	aclIdentity crypto.PubKey
 	common      commonspace.Space
@@ -117,6 +125,7 @@ type SpaceDeps struct {
 	PersonalSpaceId   string
 	LoadCtx           context.Context
 	DisableRemoteLoad bool
+	MigrationService  migrationService
 }
 
 func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
@@ -128,6 +137,7 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		spaceCore:              deps.SpaceCore,
 		aclIdentity:            deps.AccountService.Account().SignKey.GetPublic(),
 		loadMandatoryObjectsCh: make(chan struct{}),
+		migrationService:       deps.MigrationService,
 	}
 
 	if res, ok := ctx.Value(spacecore.OptsKey).(spacecore.Opts); ok && res.SignKey != nil {
@@ -136,10 +146,18 @@ func BuildSpace(ctx context.Context, deps SpaceDeps) (Space, error) {
 		// todo: fixme we pass the real account service in case of streamable space to the objectcache
 	}
 
+	spaceState, err := deps.CommonSpace.Storage().StateStorage().GetState(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get space state: %w", err)
+	}
+	sp.spaceType, err = spacedomain.ReadSpaceTypeFromHeader(spaceState.SpaceHeader)
+	if err != nil {
+		return nil, fmt.Errorf("read space type from header: %w", err)
+	}
+
 	sp.loadMissingBundledObjectsCtx, sp.loadMissingBundledObjectsCtxCancel = context.WithCancel(context.Background())
 	sp.Cache = objectcache.New(deps.AccountService, deps.ObjectFactory, deps.PersonalSpaceId, sp)
 	sp.ObjectProvider = objectprovider.NewObjectProvider(deps.CommonSpace.Id(), deps.PersonalSpaceId, sp.Cache)
-	var err error
 	sp.derivedIDs, err = sp.ObjectProvider.DeriveObjectIDs(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("derive object ids: %w", err)
@@ -211,10 +229,17 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	}
 	go s.tryLoadBundledAndInstallIfMissing(disableRemoteLoad)
 
-	err := s.migrationProfileObject(ctx)
-	if err != nil {
-		log.Error("failed to migrate profile object", zap.Error(err))
+	if !s.IsReadOnly() {
+		if s.migrationService != nil {
+			// Start migrations after reindexing - they will wait for indexer to become idle
+			go s.migrationService.RunMigrationsWhenIdle(s.Id(), s.derivedIDs)
+		}
+		err := s.migrationProfileObject(ctx)
+		if err != nil {
+			log.Error("failed to migrate profile object", zap.Error(err))
+		}
 	}
+
 	if !disableRemoteLoad {
 		s.common.TreeSyncer().StartSync()
 	}
@@ -434,6 +459,10 @@ func (s *space) RefreshObjects(objectIds []string) (err error) {
 		return fmt.Errorf("space %s does not support client syncer", s.Id())
 	}
 	return syncer.RefreshTrees(objectIds)
+}
+
+func (s *space) SpaceType() spacedomain.SpaceType {
+	return s.spaceType
 }
 
 func (s *space) IsReadOnly() bool {

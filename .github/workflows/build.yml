@@ -12,7 +12,7 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'mac-mini-org-heart'
+        default: 'macos-15'
 
 
 permissions:
@@ -22,25 +22,13 @@ permissions:
 
 
 jobs:
-  wait_for_perftest:
-    uses: ./.github/workflows/reusable_wait_for_perftest.yml
-
   build:
-    needs: wait_for_perftest
-    runs-on: ${{ github.event_name == 'push' && 'mac-mini-org-heart' || (github.event.inputs.run-on-runner || 'mac-mini-org-heart') }}
+    runs-on: ${{ github.event_name == 'push' && 'macos-15' || (github.event.inputs.run-on-runner || 'macos-15') }}
     steps:
-      - name: validate agent
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ github.event.inputs.run-on-runner }}" != "mac-mini-org-heart" ]]; then
-            echo "Invalid runner"
-            exit 1
-          fi
-
       - name: Install Go
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           check-latest: true
 
       - name: Setup GO
@@ -54,12 +42,11 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Install brew and node deps
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         run: make install-brew-and-node-deps
 
       - name: Setup Xcode
@@ -87,6 +74,12 @@ jobs:
           echo BUILD_TAG_NETWORK=envproduction >> $GITHUB_ENV
           echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
+          NDK28=$(ls -d ${ANDROID_HOME}/ndk/28.* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$NDK28" ]; then echo "ERROR: NDK 28.x not found"; ls ${ANDROID_HOME}/ndk/; exit 1; fi
+          echo "Using NDK: $NDK28"
+          echo ANDROID_NDK=$NDK28 >> $GITHUB_ENV
+          echo ANDROID_NDK_HOME=$NDK28 >> $GITHUB_ENV
+          echo ANDROID_NDK_ROOT=$NDK28 >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
           echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
@@ -155,6 +148,15 @@ jobs:
           fail_on_unmatched_files: true
           generate_release_notes: true
           files: '.release/*'
+
+      - name: Trigger integration tests in anytype-suite
+        if: github.event_name == 'push'
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.ANYTYPE_SUITE_TRIGGER_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/anyproto/anytype-suite/dispatches \
+            -d "{\"event_type\": \"test-release\", \"client_payload\": {\"version\": \"${{ env.VERSION }}\"}}"
 
       # # start of notifications in Linear
       # - name: Clone DevOps Utils Repository

@@ -1004,3 +1004,155 @@ func TestTableChanges(t *testing.T) {
 
 	})
 }
+
+func TestChangeBlockDetailsSet_SkipsLocalAndDerivedKeys(t *testing.T) {
+	t.Run("local relation key is skipped", func(t *testing.T) {
+		// given
+		root := NewDoc("root", nil)
+		s := root.NewState()
+
+		// when
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDetailsSet{
+				DetailsSet: &pb.ChangeDetailsSet{
+					Key:   string(bundle.RelationKeySyncStatus),
+					Value: pbtypes.Int64(1),
+				},
+			},
+		}))
+
+		// then
+		assert.False(t, s.Details().Has(bundle.RelationKeySyncStatus))
+	})
+	t.Run("derived relation key is skipped", func(t *testing.T) {
+		// given
+		root := NewDoc("root", nil)
+		s := root.NewState()
+
+		// when
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDetailsSet{
+				DetailsSet: &pb.ChangeDetailsSet{
+					Key:   string(bundle.RelationKeySpaceId),
+					Value: pbtypes.String("space1"),
+				},
+			},
+		}))
+
+		// then
+		assert.False(t, s.Details().Has(bundle.RelationKeySpaceId))
+	})
+	t.Run("regular relation key is applied", func(t *testing.T) {
+		// given
+		root := NewDoc("root", nil)
+		s := root.NewState()
+
+		// when
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfDetailsSet{
+				DetailsSet: &pb.ChangeDetailsSet{
+					Key:   string(bundle.RelationKeyName),
+					Value: pbtypes.String("test"),
+				},
+			},
+		}))
+
+		// then
+		assert.Equal(t, "test", s.Details().GetString(bundle.RelationKeyName))
+	})
+}
+
+func TestMakeObjectTypesChanges(t *testing.T) {
+	t.Run("no changes when types are the same", func(t *testing.T) {
+		// given
+		parent := &State{
+			objectTypeKeys: []domain.TypeKey{"ot-page", "ot-note"},
+		}
+		child := &State{
+			parent:         parent,
+			objectTypeKeys: []domain.TypeKey{"ot-page", "ot-note"},
+		}
+
+		// when
+		ch := child.makeObjectTypesChanges()
+
+		// then
+		assert.Empty(t, ch)
+	})
+	t.Run("add generates only ObjectTypeAdd for new type", func(t *testing.T) {
+		// given
+		parent := &State{
+			objectTypeKeys: []domain.TypeKey{"ot-page"},
+		}
+		child := &State{
+			parent:         parent,
+			objectTypeKeys: []domain.TypeKey{"ot-page", "ot-note"},
+		}
+
+		// when
+		ch := child.makeObjectTypesChanges()
+
+		// then
+		require.Len(t, ch, 1)
+		add := ch[0].GetValue().(*pb.ChangeContentValueOfObjectTypeAdd)
+		assert.Equal(t, domain.TypeKey("ot-note").URL(), add.ObjectTypeAdd.Url)
+	})
+	t.Run("remove generates only ObjectTypeRemove for removed type", func(t *testing.T) {
+		// given
+		parent := &State{
+			objectTypeKeys: []domain.TypeKey{"ot-page", "ot-note"},
+		}
+		child := &State{
+			parent:         parent,
+			objectTypeKeys: []domain.TypeKey{"ot-page"},
+		}
+
+		// when
+		ch := child.makeObjectTypesChanges()
+
+		// then
+		require.Len(t, ch, 1)
+		remove := ch[0].GetValue().(*pb.ChangeContentValueOfObjectTypeRemove)
+		assert.Equal(t, domain.TypeKey("ot-note").URL(), remove.ObjectTypeRemove.Url)
+	})
+}
+
+func TestState_ChangeBlockMove_BatchWithParentAndChildren(t *testing.T) {
+	t.Run("parent and children moved together - no duplication", func(t *testing.T) {
+		// Reproduces GO-7041: indent on iOS generates a single Move change
+		// containing [B, B1, B2] where B was parent of B1, B2
+		d := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"A", "B"}}),
+			"A":    simple.New(&model.Block{Id: "A"}),
+			"B":    simple.New(&model.Block{Id: "B", ChildrenIds: []string{"B1", "B2"}}),
+			"B1":   simple.New(&model.Block{Id: "B1"}),
+			"B2":   simple.New(&model.Block{Id: "B2"}),
+		})
+		s := d.NewState()
+
+		err := s.ApplyChange(newMoveChange("A", model.Block_Inner, "B", "B1", "B2"))
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"B", "B1", "B2"}, s.Pick("A").Model().ChildrenIds)
+		assert.Empty(t, s.Pick("B").Model().ChildrenIds)
+		assert.Equal(t, []string{"A"}, s.Pick("root").Model().ChildrenIds)
+		require.NoError(t, s.Validate())
+	})
+
+	t.Run("siblings moved together - no regression", func(t *testing.T) {
+		d := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"A", "B", "C"}}),
+			"A":    simple.New(&model.Block{Id: "A"}),
+			"B":    simple.New(&model.Block{Id: "B"}),
+			"C":    simple.New(&model.Block{Id: "C"}),
+		})
+		s := d.NewState()
+
+		err := s.ApplyChange(newMoveChange("A", model.Block_Inner, "B", "C"))
+
+		require.NoError(t, err)
+		assert.Equal(t, []string{"B", "C"}, s.Pick("A").Model().ChildrenIds)
+		assert.Equal(t, []string{"A"}, s.Pick("root").Model().ChildrenIds)
+		require.NoError(t, s.Validate())
+	})
+}

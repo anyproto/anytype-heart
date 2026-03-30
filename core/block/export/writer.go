@@ -37,7 +37,7 @@ func newDirWriter(path string, includeFiles bool) (writer, error) {
 		fullPath = filepath.Join(path, "files")
 	}
 	if err := os.MkdirAll(fullPath, 0777); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create export directory: %w", err)
 	}
 	return &dirWriter{
 		path: path,
@@ -67,16 +67,16 @@ func (d *dirWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int
 	dir := filepath.Dir(filename)
 	err = os.MkdirAll(filepath.Join(d.path, dir), 0700)
 	if err != nil {
-		return err
+		return fmt.Errorf("create subdirectory: %w", err)
 	}
 	filename = path.Join(d.path, filename)
 	f, err := os.Create(filename)
 	if err != nil {
-		return
+		return fmt.Errorf("create file: %w", err)
 	}
 	defer f.Close()
 	if _, err = io.Copy(f, r); err != nil {
-		return
+		return fmt.Errorf("copy content to file: %w", err)
 	}
 	if lastModifiedDate == 0 {
 		lastModifiedDate = time.Now().Unix()
@@ -97,7 +97,7 @@ func newZipWriter(path, name string) (writer, error) {
 	fileName := filepath.Join(path, name)
 	f, err := os.Create(fileName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create zip file: %w", err)
 	}
 	return &zipWriter{
 		path: fileName,
@@ -139,17 +139,22 @@ func (d *zipWriter) WriteFile(filename string, r io.Reader, lastModifiedDate int
 		Modified: time.Unix(lastModifiedDate, 0),
 	})
 	if err != nil {
-		return
+		return fmt.Errorf("create zip entry: %w", err)
 	}
-	_, err = io.Copy(zf, r)
-	return
+	if _, err = io.Copy(zf, r); err != nil {
+		return fmt.Errorf("copy content to zip: %w", err)
+	}
+	return nil
 }
 
 func (d *zipWriter) Close() (err error) {
 	if err = d.zw.Close(); err != nil {
-		return
+		return fmt.Errorf("close zip writer: %w", err)
 	}
-	return d.f.Close()
+	if err = d.f.Close(); err != nil {
+		return fmt.Errorf("close zip file: %w", err)
+	}
+	return nil
 }
 
 func getZipName(path string) string {
@@ -178,7 +183,7 @@ func (d *InMemoryWriter) WriteFile(filename string, r io.Reader, lastModifiedDat
 	}
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return
+		return fmt.Errorf("read content: %w", err)
 	}
 	d.data[filename] = b
 	return

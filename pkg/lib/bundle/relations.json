@@ -1344,6 +1344,26 @@
     "source": "details"
   },
   {
+    "description": "Object ID where the object was initially created",
+    "format": "object",
+    "hidden": true,
+    "key": "createdInContext",
+    "maxCount": 1,
+    "name": "Created in context",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "BlockID/RelationKey/MessageId where the object was initially created",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "createdInContextRef",
+    "maxCount": 1,
+    "name": "Created in context inner locator",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Import type, used to create object (notion, md and etc)",
     "format": "number",
     "hidden": false,
@@ -1415,6 +1435,16 @@
     "name": "Chat id",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Discussion id",
+    "format": "object",
+    "hidden": true,
+    "key": "discussionId",
+    "maxCount": 1,
+    "name": "Discussion id",
+    "readonly": true,
+    "source": "details"
   },
   {
     "description": "Objects that are mentioned in blocks of this object",
@@ -1549,14 +1579,14 @@
     "source": "details"
   },
   {
-    "description": "OneToOne (second) participant identity",
+    "description": "OneToOne other participant identity",
     "format": "longtext",
     "hidden": true,
     "key": "oneToOneIdentity",
     "maxCount": 1,
     "name": "oneToOneIdentity",
     "readonly": false,
-    "source": "details"
+    "source": "local"
   },
   {
     "description": "OneToOne Inbox invite sent status",
@@ -1846,5 +1876,45 @@
     "name": "Score",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "description": "Version of file context migration completed for this space",
+    "format": "number",
+    "hidden": true,
+    "key": "migrationObjectContext",
+    "maxCount": 1,
+    "name": "Object Context Migration Version",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Controls whether a template's name should be applied to newly created objects",
+    "format": "number",
+    "hidden": true,
+    "key": "templateNamePrefillType",
+    "maxCount": 1,
+    "name": "Template name prefill type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Space type derived from space header, see spacedomain.SpaceType",
+    "format": "number",
+    "hidden": true,
+    "key": "spaceType",
+    "maxCount": 1,
+    "name": "Space type",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Homepage of regular spaces. Could handle either object id or special constant",
+    "format": "longtext",
+    "hidden": true,
+    "key": "homepage",
+    "maxCount": 1,
+    "name": "Home page",
+    "readonly": false,
+    "source": "details"
   }
 ]

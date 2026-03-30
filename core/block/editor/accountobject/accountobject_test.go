@@ -69,6 +69,7 @@ func newFixture(t *testing.T, isNewAccount bool, prepareDb func(db anystore.DB))
 	err = object.Init(&smartblock.InitContext{
 		Ctx:    ctx,
 		Source: source,
+		Doc:    state.NewDoc("accountId1", nil),
 	})
 	require.NoError(t, err)
 
@@ -81,7 +82,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", fmt.Errorf("new tx: %w", err)
 	}
-	order := tx.NextOrder(tx.GetMaxOrder())
+	order := storestate.LexId.Next("")
 	err = tx.ApplyChangeSet(storestate.ChangeSet{
 		Id:        changeId,
 		Order:     order,

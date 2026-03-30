@@ -1,5 +1,21 @@
 package sourceimpl
 
+/*
+AI generated
+
+Name: Object Source Factory
+Scope: global
+
+## Responsibility
+- Creates Source instances for reading/writing object state from underlying storage
+- Routes to appropriate Source implementation based on object ID or smartblock type:
+  - treeSource: synced objects backed by ObjectTree (CRDT)
+  - store: chat/account objects using StoreState (sequential changes)
+  - static: in-memory read-only objects (participants, bundled templates)
+  - Virtual sources: date, bundledObjectType, bundledRelation, anytypeProfile, missingObject
+- Binds object IDs to space IDs in object store
+*/
+
 import (
 	"context"
 	"fmt"
@@ -84,7 +100,7 @@ func (s *service) NewSource(ctx context.Context, space source.Space, id string, 
 	if err != nil {
 		return nil, err
 	}
-	err = s.objectStore.BindSpaceId(src.SpaceID(), src.Id())
+	err = s.objectStore.BindSpaceId(ctx, src.SpaceID(), src.Id())
 	if err != nil {
 		return nil, fmt.Errorf("store space id for object: %w", err)
 	}
@@ -207,7 +223,7 @@ func (s *service) RegisterStaticSource(src source.Source) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.staticIds[src.Id()] = src
-	err := s.objectStore.BindSpaceId(src.SpaceID(), src.Id())
+	err := s.objectStore.BindSpaceId(context.Background(), src.SpaceID(), src.Id())
 	if err != nil {
 		return fmt.Errorf("store space id for object: %w", err)
 	}

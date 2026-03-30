@@ -342,6 +342,53 @@ func (s *State) Unlink(blockId string) (ok bool) {
 	return
 }
 
+// UnlinkAll removes multiple blocks from their parents' ChildrenIds using a single tree iteration.
+func (s *State) UnlinkAll(ids []string) {
+	if len(ids) == 0 {
+		return
+	}
+	if len(ids) == 1 {
+		s.Unlink(ids[0])
+		return
+	}
+
+	removeSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		removeSet[id] = struct{}{}
+	}
+
+	// Single iterate to find all parents that contain children to remove.
+	// Stop early once all ids have been accounted for.
+	remaining := len(removeSet)
+	var parentIds []string
+	_ = s.Iterate(func(b simple.Block) bool {
+		found := 0
+		for _, cid := range b.Model().ChildrenIds {
+			if _, ok := removeSet[cid]; ok {
+				found++
+			}
+		}
+		if found > 0 {
+			parentIds = append(parentIds, b.Model().Id)
+			remaining -= found
+			return remaining > 0
+		}
+		return true
+	})
+
+	// Apply removals after iteration
+	for _, parentId := range parentIds {
+		parent := s.Get(parentId)
+		if parent == nil {
+			continue
+		}
+		pm := parent.Model()
+		for _, id := range ids {
+			pm.ChildrenIds = slice.RemoveMut(pm.ChildrenIds, id)
+		}
+	}
+}
+
 func (s *State) GetParentOf(id string) (res simple.Block) {
 	if parent := s.PickParentOf(id); parent != nil {
 		return s.Get(parent.Model().Id)
@@ -425,33 +472,64 @@ func (s *State) IterateActive(f func(b simple.Block) (isContinue bool)) {
 }
 
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
-	var iter func(id string) (isContinue bool, err error)
-	var parentIds = s.getStringBuf()
+	type frame struct {
+		children []string
+		idx      int
+	}
+
+	root := s.Pick(s.RootId())
+	if root == nil {
+		return nil
+	}
+	if !f(root) {
+		return nil
+	}
+
+	rootChildren := root.Model().ChildrenIds
+	if len(rootChildren) == 0 {
+		return nil
+	}
+
+	parentIds := s.getStringBuf()
 	defer func() {
 		s.releaseStringBuf(parentIds[:0])
 	}()
+	parentIds = append(parentIds, s.RootId())
 
-	iter = func(id string) (isContinue bool, err error) {
-		if slice.FindPos(parentIds, id) != -1 {
-			return false, fmt.Errorf("cycle reference: %v %s", parentIds, id)
+	var stackBuf [32]frame
+	stack := stackBuf[:0]
+	stack = append(stack, frame{children: rootChildren})
+
+	for len(stack) > 0 {
+		top := &stack[len(stack)-1]
+		if top.idx >= len(top.children) {
+			stack = stack[:len(stack)-1]
+			parentIds = parentIds[:len(parentIds)-1]
+			continue
 		}
-		parentIds = append(parentIds, id)
-		parentSize := len(parentIds)
-		if b := s.Pick(id); b != nil {
-			if isContinue = f(b); !isContinue {
-				return
-			}
-			for _, cid := range b.Model().ChildrenIds {
-				if isContinue, err = iter(cid); !isContinue || err != nil {
-					return
-				}
-				parentIds = parentIds[:parentSize]
-			}
+
+		childId := top.children[top.idx]
+		top.idx++
+
+		if slice.FindPos(parentIds, childId) != -1 {
+			return fmt.Errorf("cycle reference: %v %s", parentIds, childId)
 		}
-		return true, nil
+
+		b := s.Pick(childId)
+		if b == nil {
+			continue
+		}
+		if !f(b) {
+			return nil
+		}
+
+		children := b.Model().ChildrenIds
+		if len(children) > 0 {
+			parentIds = append(parentIds, childId)
+			stack = append(stack, frame{children: children})
+		}
 	}
-	_, err = iter(s.RootId())
-	return
+	return nil
 }
 
 // Exists indicate that block exists in state, including parents
@@ -1199,6 +1277,10 @@ func (s *State) IsEmpty(checkTitle bool) bool {
 		return false
 	}
 
+	if s.Details().GetString(bundle.RelationKeyDiscussionId) != "" {
+		return false
+	}
+
 	if root := s.Pick(s.RootId()); root != nil {
 		for _, chId := range root.Model().ChildrenIds {
 			if chId == HeaderLayoutID ||
@@ -1720,8 +1802,7 @@ func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
 	var links []*model.RelationLink
 	for _, key := range keys {
 		if !existingLinks.Has(key.String()) {
-			rel := bundle.MustGetRelation(key)
-			links = append(links, &model.RelationLink{Format: rel.Format, Key: rel.Key})
+			links = append(links, bundle.MustGetRelationLink(key))
 		}
 	}
 	if len(links) > 0 {

@@ -53,6 +53,10 @@ func (bs *basic) UpdateDetails(ctx session.Context, update func(current *domain.
 		return err
 	}
 
+	if isEmptyValueSet(oldDetails, diff, removedKeys) {
+		return nil // Client tries to set empty value to detail that is not included in state. It is a noop
+	}
+
 	s.SetDetails(newDetails)
 	if err = bs.addRelationLinks(s, newDetails.Keys()...); err != nil {
 		return err
@@ -99,6 +103,20 @@ func applyDetailUpdates(oldDetails *domain.Details, updates []domain.Detail) *do
 		}
 	}
 	return newDetails
+}
+
+func isEmptyValueSet(oldDetails, diff *domain.Details, removedKeys []domain.RelationKey) bool {
+	if len(removedKeys) != 0 {
+		return false
+	}
+
+	for k, v := range diff.Iterate() {
+		if oldDetails.Has(k) || !v.IsString() || !v.IsEmpty() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (bs *basic) validateDetailFormat(key domain.RelationKey, v domain.Value) error {

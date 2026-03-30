@@ -3,13 +3,17 @@ package indexer
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -42,6 +46,7 @@ type Indexer interface {
 	ReindexSpace(space clientspace.Space) error
 	RemoveIndexes(spaceId string) (err error)
 	Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error
+	GetLastIndexTime(spaceId string) time.Time
 	app.ComponentRunnable
 }
 
@@ -55,6 +60,7 @@ type indexer struct {
 	source               source.Service
 	picker               cache.CachedObjectGetter
 	formatFetcher        relationutils.RelationFormatFetcher
+	chatRepository       chatrepository.Service
 	ftsearch             ftsearch.FTSearch
 	ftsearchLastIndexSeq uint64
 
@@ -68,12 +74,14 @@ type indexer struct {
 	forceFt chan struct{}
 
 	// state
-	lock                sync.Mutex
+	lock                sync.RWMutex
 	reindexLogFields    []zap.Field
 	spaceIndexers       map[string]*spaceIndexer
 	techSpaceIdProvider objectstore.TechSpaceIdProvider
 	spaces              map[string]struct{}
 	spacesLock          sync.RWMutex
+
+	ftConsistencyCheckDone atomic.Bool
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -89,6 +97,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
 	i.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	i.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
+	i.chatRepository = app.MustComponent[chatrepository.Service](a)
 	return
 }
 
@@ -112,6 +121,12 @@ func (i *indexer) StartFullTextIndex() (err error) {
 	}
 	i.ftQueueFinished = make(chan struct{})
 	var ftCtx context.Context
+	if os.Getenv("ANYTYPE_DISABLE_FT_INDEXER") == "1" {
+		close(i.ftQueueFinished)
+		log.Warn("FT indexer disabled")
+		return
+	}
+	log.Info("Starting full text indexer")
 	ftCtx, i.ftQueueStop = context.WithCancel(i.runCtx)
 	go i.ftLoopRoutine(ftCtx)
 	return
@@ -181,4 +196,15 @@ func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOpti
 	i.lock.Unlock()
 
 	return spaceInd.Index(info, options...)
+}
+
+// GetLastIndexTime returns the time of the last indexing operation for a space
+func (i *indexer) GetLastIndexTime(spaceId string) time.Time {
+	i.lock.RLock()
+	defer i.lock.RUnlock()
+
+	if spaceInd, ok := i.spaceIndexers[spaceId]; ok {
+		return spaceInd.LastIndex()
+	}
+	return time.Time{}
 }

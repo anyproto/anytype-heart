@@ -527,6 +527,7 @@ func (mw *Middleware) ObjectSetLayout(cctx context.Context, req *pb.RpcObjectSet
 	return response(pb.RpcObjectSetLayoutResponseError_NULL, nil)
 }
 
+// ObjectRelationAddFeatured used to set featuredRelations value, that is now outdated and is used only for storing 'description' value
 func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationAddFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationAddFeaturedResponse {
@@ -538,8 +539,13 @@ func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.Rp
 		}
 		return m
 	}
+	for _, r := range req.Relations {
+		if r != bundle.RelationKeyDescription.String() {
+			return response(pb.RpcObjectRelationAddFeaturedResponseError_UNKNOWN_ERROR, fmt.Errorf("only description relation is supported"))
+		}
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.FeaturedRelationAdd(ctx, req.ContextId, req.Relations...)
+		return bs.DescriptionShow(ctx, req.ContextId)
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationAddFeaturedResponseError_UNKNOWN_ERROR, err)
@@ -547,6 +553,7 @@ func (mw *Middleware) ObjectRelationAddFeatured(cctx context.Context, req *pb.Rp
 	return response(pb.RpcObjectRelationAddFeaturedResponseError_NULL, nil)
 }
 
+// ObjectRelationRemoveFeatured is used only to remove 'description' value. See comment on ObjectRelationRemoveFeatured
 func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse {
 	ctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectRelationRemoveFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationRemoveFeaturedResponse {
@@ -558,8 +565,13 @@ func (mw *Middleware) ObjectRelationRemoveFeatured(cctx context.Context, req *pb
 		}
 		return m
 	}
+	for _, r := range req.Relations {
+		if r != bundle.RelationKeyDescription.String() {
+			return response(pb.RpcObjectRelationRemoveFeaturedResponseError_UNKNOWN_ERROR, fmt.Errorf("only description relation is supported"))
+		}
+	}
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.FeaturedRelationRemove(ctx, req.ContextId, req.Relations...)
+		return bs.DescriptionHide(ctx, req.ContextId)
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationRemoveFeaturedResponseError_UNKNOWN_ERROR, err)

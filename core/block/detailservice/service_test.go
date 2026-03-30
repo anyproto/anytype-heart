@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
@@ -31,6 +31,19 @@ import (
 )
 
 const spaceId = "spaceId"
+
+type fileGCStub struct{}
+
+func (f *fileGCStub) Name() string                    { return "fileGCStub" }
+func (f *fileGCStub) Init(a *app.App) error           { return nil }
+func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
+func (f *fileGCStub) Close(ctx context.Context) error { return nil }
+func (f *fileGCStub) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+	return nil
+}
+func (f *fileGCStub) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
+	return nil
+}
 
 type fixture struct {
 	Service
@@ -59,6 +72,7 @@ func newFixture(t *testing.T) *fixture {
 		spaceService: spaceService,
 		store:        store,
 		fileService:  fileService,
+		fileGC:       &fileGCStub{},
 	}
 
 	return &fixture{
@@ -273,58 +287,6 @@ func TestService_SetSpaceInfo(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
-	})
-}
-
-func TestService_SetWorkspaceDashboardId(t *testing.T) {
-	var (
-		wsObjectId  = "workspace"
-		dashboardId = "homepage"
-	)
-
-	t.Run("no error", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		sb := smarttest.New(wsObjectId)
-		sb.SetType(coresb.SmartBlockTypeWorkspace)
-		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			assert.Equal(t, wsObjectId, objectId)
-			ws := &editor.Workspaces{
-				SmartBlock:    sb,
-				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil),
-			}
-			return ws, nil
-		})
-
-		// when
-		setId, err := fx.SetWorkspaceDashboardId(nil, wsObjectId, dashboardId)
-
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, dashboardId, setId)
-		assert.Equal(t, []string{dashboardId}, sb.NewState().Details().GetStringList(bundle.RelationKeySpaceDashboardId))
-	})
-
-	t.Run("error if wrong smartblock type", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		sb := smarttest.New(wsObjectId)
-		sb.SetType(coresb.SmartBlockTypePage)
-		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			assert.Equal(t, wsObjectId, objectId)
-			ws := &editor.Workspaces{
-				SmartBlock:    sb,
-				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil),
-			}
-			return ws, nil
-		})
-
-		// when
-		_, err := fx.SetWorkspaceDashboardId(nil, wsObjectId, dashboardId)
-
-		// then
-		assert.Error(t, err)
-		assert.ErrorIs(t, ErrUnexpectedBlockType, err)
 	})
 }
 

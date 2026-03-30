@@ -1,5 +1,27 @@
 package chats
 
+/*
+AI generated
+
+Name: Chat API and Cross-Space Tracking
+Scope: global
+
+## Responsibility
+- Provides RPC API for chat message operations: add, edit, delete, toggle reactions, read/unread
+- Tracks all chat objects across spaces via cross-space subscription
+- Manages cross-space message preview subscriptions (last message + state per chat)
+- Sends push notifications on new messages with mentions routing
+
+## Background Tasks
+- monitorMessagePreviews: Processes cross-space subscription events to track chat object additions/removals and update preview subscriptions
+
+## Documentation
+Preview subscriptions work at two levels:
+1. Cross-space subscription tracks all chatDerived objects across all spaces
+2. For each active preview subscription, subscribes to last message of each chat via chatsubscription.Service
+When chats are added/removed, preview subscriptions are automatically updated and events broadcasted.
+*/
+
 import (
 	"context"
 	"crypto/sha256"
@@ -7,7 +29,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,16 +46,20 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -57,7 +85,13 @@ type Service interface {
 	SubscribeToMessagePreviews(ctx context.Context, subId string) (*SubscribeToMessagePreviewsResponse, error)
 	UnsubscribeFromMessagePreviews(subId string) error
 
+	ReadReaction(ctx context.Context, chatObjectId string) error
 	ReadAll(ctx context.Context) error
+
+	Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error)
+
+	PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error
+	GetPinnedMessages(ctx context.Context, chatObjectId string) ([]*chatmodel.Message, error)
 
 	app.ComponentRunnable
 }
@@ -82,6 +116,10 @@ type service struct {
 	objectStore             objectstore.ObjectStore
 	chatSubscriptionService chatsubscription.Service
 	eventSender             event.Sender
+	detailsService          detailservice.Service
+	fileGC                  filegc.FileGC
+	ftSearch                ftsearch.FTSearch
+	chatRepoService         chatrepository.Service
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -118,6 +156,10 @@ func (s *service) Init(a *app.App) error {
 	s.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
+	s.detailsService = app.MustComponent[detailservice.Service](a)
+	s.fileGC = app.MustComponent[filegc.FileGC](a)
+	s.ftSearch = app.MustComponent[ftsearch.FTSearch](a)
+	s.chatRepoService = app.MustComponent[chatrepository.Service](a)
 	return nil
 }
 
@@ -238,7 +280,10 @@ func (s *service) Run(ctx context.Context) error {
 		}
 
 		for _, rec := range resp.Records {
-			s.allChatObjectIds[rec.GetString(bundle.RelationKeyId)] = rec.GetString(bundle.RelationKeySpaceId)
+			spaceId, chatId := rec.GetString(bundle.RelationKeySpaceId), rec.GetString(bundle.RelationKeyId)
+			// todo: GO-6824 remove this hack after we do a proper recover of bind collection.
+			_ = s.objectStore.BindSpaceId(s.componentCtx, spaceId, chatId)
+			s.allChatObjectIds[chatId] = spaceId
 		}
 		go s.monitorMessagePreviews()
 	}()
@@ -252,6 +297,8 @@ func (s *service) monitorMessagePreviews() {
 			s.lock.Lock()
 			defer s.lock.Unlock()
 
+			// todo: GO-6824 remove this hack after we do a proper recover of bind collection.
+			_ = s.objectStore.BindSpaceId(s.componentCtx, spaceId, add.Id)
 			s.allChatObjectIds[add.Id] = spaceId
 
 			if len(s.subscriptionIds) == 0 {
@@ -259,7 +306,7 @@ func (s *service) monitorMessagePreviews() {
 			}
 
 			for subId := range s.subscriptionIds {
-				err := s.onChatAddedAsync(add.Id, subId)
+				err := s.onChatAddedAsync(spaceId, add.Id, subId)
 				if err != nil {
 					log.Error("init last message subscription", zap.Error(err))
 				}
@@ -305,7 +352,7 @@ func (s *service) onChatAdded(chatObjectId string, subId string) (*chatsubscript
 	})
 }
 
-func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
+func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId string) error {
 	resp, err := s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
 		ChatObjectId:     chatObjectId,
 		SubId:            subId,
@@ -315,11 +362,6 @@ func (s *service) onChatAddedAsync(chatObjectId string, subId string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
-	}
-
-	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
-	if err != nil {
-		return fmt.Errorf("resolve space id: %w", err)
 	}
 
 	mngr, err := s.chatSubscriptionService.GetManager(spaceId, chatObjectId)
@@ -382,6 +424,7 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 	var (
 		messageId, spaceId string
 		mentions           []string
+		chatName           string
 	)
 
 	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
@@ -389,49 +432,152 @@ func (s *service) AddMessage(ctx context.Context, sessionCtx session.Context, ch
 		messageId, err = sb.AddMessage(ctx, sessionCtx, message)
 		spaceId = sb.SpaceID()
 		mentions, _ = message.MentionIdentities(ctx, sb)
+		chatName = sb.Details().GetString(bundle.RelationKeyName)
+		if sb.Type() == smartblock.SmartBlockTypeDiscussionObject {
+			if parentId := sb.Tree().Root().ParentId; parentId != "" {
+				parentDetails, detailsErr := s.objectStore.SpaceIndex(sb.SpaceID()).GetDetails(parentId)
+				if detailsErr == nil {
+					chatName = parentDetails.GetString(bundle.RelationKeyName)
+				}
+			}
+		}
 		return err
 	})
 	if err == nil {
-		pushErr := s.sendPushNotification(ctx, spaceId, chatObjectId, messageId, message, mentions)
+		// Update file attachments' CreatedInContextRef to the message ID
+		linkTargets := message.LinkBlockTargetIds()
+		if len(message.Attachments) > 0 || len(linkTargets) > 0 {
+			go s.updateAttachmentsContext(spaceId, chatObjectId, messageId, message.Attachments, linkTargets)
+		}
+
+		pushErr := s.sendPushNotification(ctx, pushNotificationRequest{
+			spaceId:      spaceId,
+			chatObjectId: chatObjectId,
+			chatName:     chatName,
+			messageId:    messageId,
+			message:      message,
+			mentions:     mentions,
+		})
 		if pushErr != nil {
 			log.Error("sendPushNotification: ", zap.Error(pushErr))
 		}
-
 	}
 	return messageId, err
 }
 
-func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectId, messageId string, message *chatmodel.Message, mentions []string) (err error) {
+func (s *service) updateAttachmentsContext(spaceId, chatObjectId, messageId string, attachments []*model.ChatMessageAttachment, linkTargets []string) {
+	var objectIds []string
+	for _, attachment := range attachments {
+		if attachment.Target != "" {
+			objectIds = append(objectIds, attachment.Target)
+		}
+	}
+	objectIds = append(objectIds, linkTargets...)
+
+	if len(objectIds) == 0 {
+		return
+	}
+
+	var details []domain.Detail
+	idx := s.objectStore.SpaceIndex(spaceId)
+	if idx == nil {
+		return
+	}
+	// Update CreatedInContextRef for all file attachments
+	for _, fileId := range objectIds {
+		details = details[:0]
+		rec, err := idx.GetDetails(fileId)
+		if err != nil {
+			continue
+		}
+		current := rec.GetString(bundle.RelationKeyCreatedInContext)
+		if current != chatObjectId {
+			continue
+		}
+		// so we should have CreatedInContext, when creating the file/object in the context of chat
+		// now we need to set the actual messageId
+		if rec.GetString(bundle.RelationKeyCreatedInContextRef) != "" {
+			continue
+		}
+		details = append(details, domain.Detail{
+			Key:   bundle.RelationKeyCreatedInContextRef,
+			Value: domain.String(messageId),
+		})
+		if len(details) == 0 {
+			continue
+		}
+		// Use detail service to update the file object
+		if err := s.detailsService.SetDetails(nil, fileId, details); err != nil {
+			log.Error("failed to update attachment context",
+				zap.String("fileId", fileId),
+				zap.String("messageId", messageId),
+				zap.Error(err))
+		}
+	}
+}
+
+type pushNotificationRequest struct {
+	spaceId      string
+	chatObjectId string
+	chatName     string
+	messageId    string
+	message      *chatmodel.Message
+	mentions     []string
+}
+
+func (s *service) buildPushPayload(req pushNotificationRequest) (*chatpush.Payload, error) {
 	accountId := s.accountService.AccountID()
-	spaceName := s.objectStore.GetSpaceName(spaceId)
-	details, err := s.objectStore.SpaceIndex(spaceId).GetDetails(domain.NewParticipantId(spaceId, accountId))
+	spaceViewDetails, err := s.objectStore.GetSpaceViewDetails(req.spaceId)
+	if err != nil {
+		log.Warn("buildPushPayload: failed to get space view details", zap.Error(err))
+		spaceViewDetails = domain.NewDetails()
+	}
+	details, err := s.objectStore.SpaceIndex(req.spaceId).GetDetails(domain.NewParticipantId(req.spaceId, accountId))
 	var senderName string
 	if err != nil {
-		log.Warn("sendPushNotification: failed to get profile name, details are empty", zap.Error(err))
+		log.Warn("buildPushPayload: failed to get profile name, details are empty", zap.Error(err))
 	} else {
 		senderName = details.GetString(bundle.RelationKeyName)
 	}
 
-	attachments, err := s.collectAttachmentPayloads(message, spaceId)
+	attachments, err := s.collectAttachmentPayloads(req.message, req.spaceId)
 	if err != nil {
-		return fmt.Errorf("collect attachments: %w", err)
+		return nil, fmt.Errorf("collect attachments: %w", err)
 	}
 
-	text := applyEmojiMarks(message.Message.Text, message.Message.Marks)
+	text := applyEmojiMarks(req.message.Message.Text, req.message.Message.Marks)
+	if blocksText := req.message.BlocksText(); blocksText != "" {
+		if text != "" {
+			text += "\n"
+		}
+		text += blocksText
+	}
 
-	payload := &chatpush.Payload{
-		SpaceId:  spaceId,
-		SenderId: accountId,
-		Type:     chatpush.ChatMessage,
+	hasAttachments := len(req.message.Attachments) > 0 || len(req.message.LinkBlockTargetIds()) > 0
+
+	return &chatpush.Payload{
+		SpaceId:     req.spaceId,
+		SpaceUxType: int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceUxType)), // TODO: GO-7102 remove
+		SpaceType:   int(spaceViewDetails.GetInt64(bundle.RelationKeySpaceType)),
+		SenderId:    accountId,
+		Type:        chatpush.ChatMessage,
 		NewMessagePayload: &chatpush.NewMessagePayload{
-			ChatId:         chatObjectId,
-			MsgId:          messageId,
-			SpaceName:      spaceName,
+			ChatId:         req.chatObjectId,
+			MsgId:          req.messageId,
+			SpaceName:      spaceViewDetails.GetString(bundle.RelationKeyName),
+			ChatName:       req.chatName,
 			SenderName:     senderName,
 			Text:           textUtil.Truncate(text, 1024, "..."),
-			HasAttachments: len(message.Attachments) > 0,
+			HasAttachments: hasAttachments,
 			Attachments:    attachments,
 		},
+	}, nil
+}
+
+func (s *service) sendPushNotification(ctx context.Context, req pushNotificationRequest) (err error) {
+	payload, err := s.buildPushPayload(req)
+	if err != nil {
+		return fmt.Errorf("build push payload: %w", err)
 	}
 
 	jsonPayload, err := json.Marshal(payload)
@@ -445,14 +591,14 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 	// 2. chats/sha256(<chatObjectId>)
 	// 3. chats/sha256(<chatObjectId>)/<mentionIdentity>
 	// 4. <mentionIdentity>
-	topics := make([]string, 0, (len(mentions)*2)+2)
+	topics := make([]string, 0, (len(req.mentions)*2)+2)
 	topics = append(topics, chatpush.ChatsTopicName)
-	topics = append(topics, chatpush.ChatsTopicName+"/"+pushGroupId(chatObjectId))
-	for _, mention := range mentions {
+	topics = append(topics, chatpush.ChatsTopicName+"/"+pushGroupId(req.chatObjectId))
+	for _, mention := range req.mentions {
 		topics = append(topics, mention)
-		topics = append(topics, chatpush.ChatsTopicName+"/"+pushGroupId(chatObjectId)+"/"+mention)
+		topics = append(topics, chatpush.ChatsTopicName+"/"+pushGroupId(req.chatObjectId)+"/"+mention)
 	}
-	err = s.pushService.Notify(s.componentCtx, spaceId, pushGroupId(chatObjectId), topics, jsonPayload)
+	err = s.pushService.Notify(s.componentCtx, req.spaceId, pushGroupId(req.chatObjectId), topics, jsonPayload)
 	if err != nil {
 		err = fmt.Errorf("pushService.Notify: %w", err)
 		return
@@ -462,25 +608,27 @@ func (s *service) sendPushNotification(ctx context.Context, spaceId, chatObjectI
 }
 
 func (s *service) collectAttachmentPayloads(message *chatmodel.Message, spaceId string) ([]*chatpush.Attachment, error) {
-	if len(message.Attachments) > 0 {
-		attachmentIds := make([]string, 0, len(message.Attachments))
-		for _, attachment := range message.Attachments {
-			attachmentIds = append(attachmentIds, attachment.Target)
-		}
-
-		attachmentDetails, err := s.objectStore.SpaceIndex(spaceId).QueryByIds(attachmentIds)
-		if err != nil {
-			return nil, fmt.Errorf("query attachments: %w", err)
-		}
-		attachments := make([]*chatpush.Attachment, 0, len(message.Attachments))
-		for _, att := range attachmentDetails {
-			attachments = append(attachments, &chatpush.Attachment{
-				Layout: int(att.Details.GetInt64(bundle.RelationKeyResolvedLayout)),
-			})
-		}
-		return attachments, nil
+	attachmentIds := make([]string, 0, len(message.Attachments))
+	for _, attachment := range message.Attachments {
+		attachmentIds = append(attachmentIds, attachment.Target)
 	}
-	return nil, nil
+	attachmentIds = append(attachmentIds, message.LinkBlockTargetIds()...)
+
+	if len(attachmentIds) == 0 {
+		return nil, nil
+	}
+
+	attachmentDetails, err := s.objectStore.SpaceIndex(spaceId).QueryByIds(attachmentIds)
+	if err != nil {
+		return nil, fmt.Errorf("query attachments: %w", err)
+	}
+	attachments := make([]*chatpush.Attachment, 0, len(attachmentIds))
+	for _, att := range attachmentDetails {
+		attachments = append(attachments, &chatpush.Attachment{
+			Layout: int(att.Details.GetInt64(bundle.RelationKeyResolvedLayout)),
+		})
+	}
+	return attachments, nil
 }
 
 func applyEmojiMarks(text string, marks []*model.BlockContentTextMark) string {
@@ -530,9 +678,50 @@ func (s *service) ToggleMessageReaction(ctx context.Context, chatObjectId string
 }
 
 func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messageId string) error {
-	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+	var (
+		spaceId       string
+		attachments   []*model.ChatMessageAttachment
+		linkTargetIds []string
+	)
+
+	// First get the message to extract attachments before deletion
+	messages, err := s.GetMessagesByIds(ctx, chatObjectId, []string{messageId})
+	if err == nil && len(messages) > 0 && messages[0] != nil {
+		attachments = messages[0].Attachments
+		linkTargetIds = messages[0].LinkBlockTargetIds()
+	}
+
+	err = s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		spaceId = sb.SpaceID()
 		return sb.DeleteMessage(ctx, messageId)
 	})
+
+	// If deletion was successful and there were attachments, run file GC
+	if err == nil && (len(attachments) > 0 || len(linkTargetIds) > 0) {
+		// Get file IDs from attachments and link blocks
+		fileIds := make([]string, 0, len(attachments)+len(linkTargetIds))
+		for _, attachment := range attachments {
+			// do not filter by attachment type, because of bug on anytype-ts
+			// we filter out files by layouts later in CheckFilesOnLinksRemoval
+			fileIds = append(fileIds, attachment.Target)
+		}
+		fileIds = append(fileIds, linkTargetIds...)
+
+		if len(fileIds) > 0 {
+			// Run file GC asynchronously with skipBin=true to permanently delete orphaned files
+			// Pass messageId to only delete files created specifically for this message
+			go func() {
+				if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, chatObjectId, fileIds, true, []string{messageId}); err != nil {
+					log.Error("file GC failed for deleted message",
+						zap.String("messageId", messageId),
+						zap.String("chatObjectId", chatObjectId),
+						zap.Error(err))
+				}
+			}()
+		}
+	}
+
+	return err
 }
 
 func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error) {
@@ -609,6 +798,94 @@ func (s *service) UnreadMessages(ctx context.Context, chatObjectId string, after
 	})
 }
 
+func (s *service) ReadReaction(ctx context.Context, chatObjectId string) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.MarkReadReactions(ctx)
+	})
+}
+
+func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
+	ftResults, err := s.ftSearch.Search(req.SpaceId, req.FullText)
+	if err != nil {
+		return nil, fmt.Errorf("search ft: %w", err)
+	}
+
+	messageIds := make([]string, 0, len(ftResults))
+	ftResultsMap := make(map[string]*ftsearch.DocumentMatch, len(ftResults))
+	for _, result := range ftResults {
+		path, err := domain.NewFromPath(result.ID)
+		if err != nil {
+			log.Error("failed to parse ft result", zap.Error(err))
+			continue
+		}
+
+		if path.MessageId == "" || path.ObjectId != req.ChatId {
+			continue
+		}
+
+		messageIds = append(messageIds, path.MessageId)
+		ftResultsMap[path.MessageId] = result
+	}
+
+	messages := make([]*chatmodel.Message, 0, len(messageIds))
+	if err = s.chatObjectDo(ctx, req.ChatId, func(sb chatobject.StoreObject) error {
+		messages, err = sb.GetMessagesByIds(ctx, messageIds)
+		return err
+	}); err != nil {
+		return nil, err
+	}
+
+	results := make([]*model.SearchMessageResult, 0, len(messages))
+	for _, message := range messages {
+		docMatch := ftResultsMap[message.Id]
+		ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
+		if err != nil {
+			return nil, err
+		}
+
+		result := ftResult.MessageModel()
+		result.Message = message.ChatMessage
+
+		results = append(results, &result)
+	}
+
+	slices.SortFunc(results, getComparator(req.Sorts))
+
+	if req.Offset > 0 && len(results) >= int(req.Offset) {
+		results = results[req.Offset:]
+	}
+
+	if req.Limit > 0 && len(results) > int(req.Limit) {
+		results = results[:req.Limit]
+	}
+
+	return results, nil
+}
+
+func getComparator(sorts []*model.SearchMessageSort) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {
+	return func(a *model.SearchMessageResult, b *model.SearchMessageResult) (cmp int) {
+		for _, sort := range sorts {
+			switch sort.Key {
+			case model.SearchMessageSort_ORDER_ID:
+				cmp = strings.Compare(a.Message.OrderId, b.Message.OrderId)
+			case model.SearchMessageSort_SCORE:
+				cmp = int(a.Score - b.Score)
+			case model.SearchMessageSort_CREATED_AT:
+				cmp = int(a.Message.CreatedAt - b.Message.CreatedAt)
+			case model.SearchMessageSort_MODIFIED_AT:
+				cmp = int(a.Message.ModifiedAt - b.Message.ModifiedAt)
+			}
+			if sort.Type == model.SearchMessageSort_Desc {
+				cmp = -cmp
+			}
+			if cmp != 0 {
+				return
+			}
+		}
+		return 0
+	}
+}
+
 func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc func(sb chatobject.StoreObject) error) error {
 	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -639,6 +916,9 @@ func (s *service) ReadAll(ctx context.Context) error {
 			if err != nil {
 				return fmt.Errorf("mentions: %w", err)
 			}
+			if err := sb.MarkReadReactions(ctx); err != nil {
+				return fmt.Errorf("reactions: %w", err)
+			}
 			if markedMessages+markedMentions > 0 {
 				if nErr := s.pushService.NotifyRead(ctx, sb.SpaceID(), pushGroupId(chatId)); nErr != nil {
 					log.Error("notifyRead", zap.Error(nErr))
@@ -652,6 +932,27 @@ func (s *service) ReadAll(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error {
+	return fmt.Errorf("not implemented")
+	// TODO: GO-6749 uncomment when old clients will be able to unmarshal messages with pinned=true
+	// return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+	// 	for _, msgId := range messageIds {
+	// 		if err := sb.SetMessagePinned(ctx, msgId, pinned); err != nil {
+	// 			return fmt.Errorf("failed to set pinned status %v to message: %w", pinned, err)
+	// 		}
+	// 	}
+	// 	return nil
+	// })
+}
+
+func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) (msgs []*chatmodel.Message, err error) {
+	err = s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		msgs, err = sb.GetPinnedMessages(ctx)
+		return err
+	})
+	return msgs, err
 }
 
 func pushGroupId(objectId string) string {

@@ -28,6 +28,8 @@ func TestMarshalUnmarshal(t *testing.T) {
 func givenFileInfo() FileInfo {
 
 	testFileId := domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
+	testCid2 := cid.MustParse("bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi")
+	testCid3 := cid.MustParse("bafybeie5gq4jxvzmsym6hjlwxej4rwdoxt7wadqvmmwbqi7r27irfvnfza")
 
 	return FileInfo{
 		FileId:              testFileId,
@@ -41,9 +43,13 @@ func givenFileInfo() FileInfo {
 		BytesToUploadOrBind: 123,
 		CidsToBind: map[cid.Cid]struct{}{
 			cid.MustParse(testFileId.String()): {},
+			testCid2:                           {},
+			testCid3:                           {},
 		},
 		CidsToUpload: map[cid.Cid]struct{}{
 			cid.MustParse(testFileId.String()): {},
+			testCid2:                           {},
+			testCid3:                           {},
 		},
 	}
 }

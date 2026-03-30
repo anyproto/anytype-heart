@@ -729,7 +729,7 @@ func removeRelationLinks(s *common.SnapshotModel, reporter *reporter) {
 	reporter.addMsg(getId(s), "relation links removed")
 }
 
-func processProfile(info *useCaseInfo, spaceDashboardId string, reporter *reporter) ([]byte, error) {
+func processProfile(info *useCaseInfo, homepage string, reporter *reporter) ([]byte, error) {
 	profile := &pb.Profile{}
 	if err := profile.Unmarshal(info.profile); err != nil {
 		err = fmt.Errorf("cannot unmarshal profile: %w", err)
@@ -739,19 +739,19 @@ func processProfile(info *useCaseInfo, spaceDashboardId string, reporter *report
 	profile.Name = ""
 	profile.ProfileId = ""
 
-	if spaceDashboardId != "" {
-		profile.SpaceDashboardId = spaceDashboardId
+	if homepage != "" {
+		profile.SpaceDashboardId = homepage
 		return profile.Marshal()
 	}
 
 	if profile.SpaceDashboardId == "" {
-		profile.SpaceDashboardId = "lastOpened"
+		profile.SpaceDashboardId = domain.HomepageWidgets
 		return profile.Marshal()
 	}
 
-	if _, found := info.objects[profile.SpaceDashboardId]; !found && !slices.Contains([]string{"lastOpened", "graph"}, profile.SpaceDashboardId) {
-		reporter.addMsg("profile", fmt.Sprintf("spaceDashboardId '%s' not found, so setting 'lastOpened' value", profile.SpaceDashboardId))
-		profile.SpaceDashboardId = "lastOpened"
+	if _, found := info.objects[profile.SpaceDashboardId]; !found && !domain.IsHomepageConstant(profile.SpaceDashboardId) {
+		reporter.addMsg("profile", fmt.Sprintf("homepage '%s' not found, so setting 'widgets' value", profile.SpaceDashboardId))
+		profile.SpaceDashboardId = domain.HomepageWidgets
 	}
 	return profile.Marshal()
 }

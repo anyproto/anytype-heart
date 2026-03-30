@@ -67,10 +67,3 @@ func (p *pbc) SetKnownDocs(map[string]*domain.Details) converter.Converter {
 	return p
 }
 
-func (p *pbc) FileHashes() []string {
-	return nil
-}
-
-func (p *pbc) ImageHashes() []string {
-	return nil
-}

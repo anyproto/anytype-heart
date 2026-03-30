@@ -79,4 +79,11 @@ var Images = []TestImage{
 		Width:   1728,
 		Height:  2376,
 	},
+	{
+		Path:    "testdata/image_mdat_first.heic",
+		Format:  "heic",
+		HasExif: false,
+		Width:   1440,
+		Height:  960,
+	},
 }

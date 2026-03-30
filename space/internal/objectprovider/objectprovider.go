@@ -217,6 +217,7 @@ func (o *objectProvider) CreateMandatoryObjects(ctx context.Context, space smart
 	err = space.Do(space.DerivedIDs().Workspace, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyAnalyticsSpaceId, domain.String(metrics.GenerateAnalyticsId()))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyMigrationObjectContext, domain.Int64(domain.MigrationObjectContextVersion))
 		return sb.Apply(st)
 	})
 	if err != nil {

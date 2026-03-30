@@ -17,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
 const detailsDocumentId = "details"
@@ -30,7 +29,6 @@ type detailsComponent struct {
 	storeSource           source.Store
 	storeState            *storestate.StoreState
 	sb                    smartblock.SmartBlock
-	spaceIndex            spaceindex.Store
 }
 
 func (c *detailsComponent) init(st *state.State) error {
@@ -117,7 +115,7 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 }
 
 func (c *detailsComponent) onAnystoreUpdated(ctx context.Context) error {
-	c.sb.(source.ChangeReceiver).StateAppend(func(d state.Doc) (*state.State, []*pb.ChangeContent, error) {
+	c.sb.StateAppend(func(d state.Doc) (*state.State, []*pb.ChangeContent, error) {
 		st := d.NewState()
 		err := c.setDetailsFromAnystore(ctx, st, false)
 		if err != nil {

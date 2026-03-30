@@ -120,6 +120,12 @@ func New(
 func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, accountRequiredRelations...)
 
+	// Set object type and layout details for this fake state
+	st := ctx.Doc.(*state.State)
+	st.SetObjectTypeKey(bundle.TypeKeyProfile)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(model.ObjectType_profile)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(true))
+
 	err := a.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -130,7 +136,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	}
 	a.state = stateStore
 
-	a.AnystoreDebug = anystoredebug.New(a.SmartBlock, stateStore)
+	a.AnystoreDebug = anystoredebug.New(a.SmartBlock)
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
 		return fmt.Errorf("source is not a store")
@@ -280,7 +286,7 @@ func (a *accountObject) onUpdate() {
 		log.Warn("get profile details", zap.Error(err))
 		return
 	}
-	err = a.SmartBlock.(source.ChangeReceiver).StateRebuild(st)
+	err = a.SmartBlock.StateRebuild(st)
 	if err != nil {
 		log.Warn("state rebuild", zap.Error(err))
 		return

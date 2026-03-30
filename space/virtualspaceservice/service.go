@@ -1,5 +1,18 @@
 package virtualspaceservice
 
+/*
+AI generated
+
+Name: Virtual Space Registration
+Scope: global
+
+## Responsibility
+- Registers virtual (local-only, non-synced) spaces in the object store
+
+## External State
+- virtualSpaces collection in object store (via objectStore.SaveVirtualSpace)
+*/
+
 import (
 	"context"
 

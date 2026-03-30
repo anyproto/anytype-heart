@@ -91,6 +91,10 @@ func (s *invalidStore) UpdateObjectLinks(ctx context.Context, id string, links [
 	return s.err
 }
 
+func (s *invalidStore) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
+	return s.err
+}
+
 func (s *invalidStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
 	return s.err
 }
@@ -129,6 +133,22 @@ func (s *invalidStore) GetInboundLinksById(id string) ([]string, error) {
 
 func (s *invalidStore) GetOutboundLinksById(id string) ([]string, error) {
 	return nil, s.err
+}
+
+func (s *invalidStore) GetOutboundLinksDetailedById(id string) ([]OutgoingLink, error) {
+	return nil, s.err
+}
+
+func (s *invalidStore) GetOutboundLinksDetailedIterator(f func(id string, links []OutgoingLink) bool) error {
+	return s.err
+}
+
+func (s *invalidStore) GetInboundLinksDetailedById(id string) ([]IncomingLink, error) {
+	return nil, s.err
+}
+
+func (s *invalidStore) GetInboundLinksDetailedIterator(f func(targetId string, links []IncomingLink) bool) error {
+	return s.err
 }
 
 func (s *invalidStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
@@ -194,6 +214,19 @@ func (s *invalidStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (
 func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
 	return s.err
 }
+
+func (s *invalidStore) SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error) {
+	return s.err
+}
+
+func (s *invalidStore) GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error) {
+	return nil, s.err
+}
+
+func (s *invalidStore) ClearHeadsState(ctx context.Context) error {
+	return s.err
+}
+
 
 func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return nil, s.err

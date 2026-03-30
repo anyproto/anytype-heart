@@ -1,5 +1,18 @@
 package spaceoffloader
 
+/*
+AI generated
+
+Name: Local Space Data Offloader
+Scope: space
+
+## Responsibility
+- Deletes local space storage, files, and indexes when space is being removed
+
+## Background Tasks
+- offloadRetry: Retries offload operation every 20s until success or context cancellation
+*/
+
 import (
 	"context"
 	"sync/atomic"

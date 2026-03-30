@@ -1,5 +1,19 @@
 package detailservice
 
+/*
+AI generated
+
+Name: Object Details and Properties Manager
+Scope: global
+
+## Responsibility
+- Set/modify object details (properties) on single or multiple objects
+- Manage object type recommended relations
+- Set favorite/archived status via Home/Archive collections
+- Set space info and workspace dashboard
+- List relations containing specific value
+*/
+
 import (
 	"context"
 	"errors"
@@ -14,6 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/filegc"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -26,7 +41,7 @@ const CName = "details.service"
 var log = logger.NewNamed(CName)
 
 type Service interface {
-	app.Component
+	app.ComponentRunnable
 
 	SetDetails(ctx session.Context, objectId string, details []domain.Detail) error
 	SetDetailsList(ctx session.Context, objectIds []string, details []domain.Detail) error
@@ -42,7 +57,6 @@ type Service interface {
 	ListRelationsWithValue(spaceId string, value domain.Value) ([]*pb.RpcRelationListWithValueResponseResponseItem, error)
 
 	SetSpaceInfo(spaceId string, details *domain.Details) error
-	SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (setId string, err error)
 
 	SetIsFavorite(objectId string, isFavorite bool) error
 	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
@@ -64,6 +78,10 @@ type service struct {
 	spaceService space.Service
 	store        objectstore.ObjectStore
 	fileService  fileService
+	fileGC       filegc.FileGC
+
+	componentCtx    context.Context
+	componentCancel context.CancelFunc
 }
 
 func (s *service) Init(a *app.App) error {
@@ -72,11 +90,25 @@ func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileService = app.MustComponent[fileService](a)
+	s.fileGC = app.MustComponent[filegc.FileGC](a)
+
+	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
 	return nil
 }
 
 func (s *service) Name() string {
 	return CName
+}
+
+func (s *service) Run(ctx context.Context) error {
+	return nil
+}
+
+func (s *service) Close(ctx context.Context) error {
+	if s.componentCancel != nil {
+		s.componentCancel()
+	}
+	return nil
 }
 
 func (s *service) SetDetails(ctx session.Context, objectId string, details []domain.Detail) (err error) {

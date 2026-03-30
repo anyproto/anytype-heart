@@ -15,11 +15,11 @@ import (
 )
 
 func (s *dsObjectStore) GetRelationLink(key string) (*model.RelationLink, error) {
-	bundledRel, err := bundle.GetRelation(domain.RelationKey(key))
+	format, err := bundle.GetRelationFormat(domain.RelationKey(key))
 	if err == nil {
 		return &model.RelationLink{
-			Key:    bundledRel.Key,
-			Format: bundledRel.Format,
+			Key:    key,
+			Format: format,
 		}, nil
 	}
 

@@ -21,6 +21,8 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
@@ -43,15 +45,26 @@ const (
 	ForceFilestoreKeysReindexCounter int32 = 2
 
 	// ForceLinksReindexCounter forces to erase links from store and reindex them
-	ForceLinksReindexCounter int32 = 1
+	ForceLinksReindexCounter int32 = 3
 
 	// ForceMarketplaceReindex forces to do reindex only for marketplace space
 	ForceMarketplaceReindex int32 = 1
 
 	ForceReindexDeletedObjectsCounter int32 = 1
 
-	ForceReindexParticipantsCounter int32 = 1
-	ForceReindexChatsCounter        int32 = 7
+	ForceReindexParticipantsCounter  int32 = 1
+	ForceReindexChatsCounter         int32 = 7
+	ForceReindexChatsFulltextCounter int32 = 1
+	ForceReindexDiscussionsCounter   int32 = 1
+
+	// ForceFTRecheckCounter triggers a lightweight FT consistency check
+	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
+	ForceFTRecheckCounter int32 = 0
+
+	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
+	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it
+	// reindexes objects asynchronously and continue reindex after app F
+	ForceInvalidateObjectsIndexCounter int32 = 3
 )
 
 type allDeletedIdsProvider interface {
@@ -75,11 +88,14 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			FilestoreKeysForceReindexCounter: ForceFilestoreKeysReindexCounter,
 			LinksErase:                       ForceLinksReindexCounter,
 			// global
-			BundledObjects:        ForceBundledObjectsReindexCounter,
-			AreOldFilesRemoved:    true,
-			ReindexDeletedObjects: 0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
-			ReindexParticipants:   ForceReindexParticipantsCounter,
-			ReindexChats:          ForceReindexChatsCounter,
+			BundledObjects:              ForceBundledObjectsReindexCounter,
+			AreOldFilesRemoved:          true,
+			ReindexDeletedObjects:       0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
+			ReindexParticipants:         ForceReindexParticipantsCounter,
+			ReindexChats:                ForceReindexChatsCounter,
+			ReindexDiscussions:          ForceReindexDiscussionsCounter,
+			ReindexFulltextChatMessages: ForceReindexChatsFulltextCounter,
+			InvalidateObjectsIndex:      ForceInvalidateObjectsIndexCounter,
 		}
 	}
 
@@ -122,6 +138,15 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.ReindexChats != ForceReindexChatsCounter {
 		flags.chats = true
+	}
+	if checksums.ReindexDiscussions != ForceReindexDiscussionsCounter {
+		flags.discussions = true
+	}
+	if checksums.ReindexFulltextChatMessages != ForceReindexChatsFulltextCounter {
+		flags.messagesFulltext = true
+	}
+	if checksums.InvalidateObjectsIndex != ForceInvalidateObjectsIndexCounter {
+		flags.invalidateObjectsIndex = true
 	}
 	if spaceID == addr.AnytypeMarketplaceWorkspace && checksums.MarketplaceForceReindexCounter != ForceMarketplaceReindex {
 		flags.enableAll()
@@ -186,6 +211,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 			}
 		}
 
+		if flags.invalidateObjectsIndex {
+			store := i.store.SpaceIndex(space.Id())
+			if err := store.ClearHeadsState(ctx); err != nil {
+				log.With(zap.String("space", space.Id())).Errorf("failed to clear heads state: %s", err)
+			}
+		}
+
 		// Index objects that updated, but not indexed yet
 		// we can have objects which actual state is newer than the indexed one
 		// this may happen e.g. if the app got closed in the middle of object updates processing
@@ -212,6 +244,20 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		err = i.reindexChats(ctx, space)
 		if err != nil {
 			log.Error("reindex chats", zap.Error(err))
+		}
+	}
+
+	if flags.discussions {
+		err = i.reindexDiscussions(ctx, space)
+		if err != nil {
+			log.Error("reindex discussions", zap.Error(err))
+		}
+	}
+
+	if flags.messagesFulltext {
+		err = i.reindexChatMessagesFulltext(ctx, space)
+		if err != nil {
+			log.Error("reindex chats fulltext", zap.Error(err))
 		}
 	}
 
@@ -276,6 +322,21 @@ func (i *indexer) cleanChatCollection(ctx context.Context, db anystore.DB, chatI
 	return nil
 }
 
+func (i *indexer) cleanMetaEntry(ctx context.Context, db anystore.DB, objectId string) error {
+	col, err := db.OpenCollection(ctx, storestate.CollMeta)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("open meta collection: %w", err)
+	}
+	err = col.DeleteId(ctx, objectId)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("delete meta entry: %w", err)
+	}
+	return nil
+}
+
 func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) error {
 	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
 	if err != nil {
@@ -309,10 +370,9 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 		if err != nil {
 			return fmt.Errorf("open collection: %w", err)
 		}
-		// Collection for orders
-		err = i.cleanChatCollection(txn.Context(), db, id, storestate.CollChangeOrders)
-		if err != nil {
-			return fmt.Errorf("open collection: %w", err)
+		// Clean addSeq entry from meta collection
+		if err = i.cleanMetaEntry(txn.Context(), db, id); err != nil {
+			return fmt.Errorf("clean meta entry: %w", err)
 		}
 	}
 
@@ -322,6 +382,72 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 	}
 
 	i.reindexIdsIgnoreErr(ctx, space, ids...)
+
+	return nil
+}
+
+func (i *indexer) reindexDiscussions(ctx context.Context, space clientspace.Space) error {
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeDiscussionObject)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	db, err := i.dbProvider.GetCrdtDb(space.Id()).Wait()
+	if err != nil {
+		return fmt.Errorf("get crdt db: %w", err)
+	}
+
+	txn, err := db.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("write tx: %w", err)
+	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	for _, id := range ids {
+		err = i.cleanChatCollection(txn.Context(), db, id, chatobject.CollectionName)
+		if err != nil {
+			return fmt.Errorf("clean discussion messages collection: %w", err)
+		}
+		err = i.cleanChatCollection(txn.Context(), db, id, chatobject.EditorCollectionName)
+		if err != nil {
+			return fmt.Errorf("clean discussion editor collection: %w", err)
+		}
+		// Clean addSeq entry from meta collection
+		if err = i.cleanMetaEntry(txn.Context(), db, id); err != nil {
+			return fmt.Errorf("clean discussion meta entry: %w", err)
+		}
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	i.reindexIdsIgnoreErr(ctx, space, ids...)
+
+	return nil
+}
+
+func (i *indexer) reindexChatMessagesFulltext(ctx context.Context, space clientspace.Space) error {
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	for _, id := range ids {
+		err = i.store.AddChatMessageToIndexQueue(ctx, domain.FullID{ObjectID: id, SpaceID: space.Id()}, objectstore.FtAllOrderId)
+		if err != nil {
+			log.With("chatId", id).Errorf("failed to add chat to fulltext queue: %v", err)
+		}
+	}
 
 	return nil
 }
@@ -534,8 +660,14 @@ func (i *indexer) reindexIDs(ctx context.Context, space smartblock.Space, reinde
 
 func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.Space) (toReindex, success int, err error) {
 	store := i.store.SpaceIndex(space.Id())
+
+	// FT queue consistency check: detect objects that were added to headsState
+	// but the FT queue wasn't flushed before crash
+	i.checkFTQueueConsistency(ctx, store, space.Id())
+
 	var entries []headstorage.HeadsEntry
 
+	start := time.Now()
 	err = space.Storage().HeadStorage().IterateEntries(ctx, headstorage.IterOpts{}, func(entry headstorage.HeadsEntry) (bool, error) {
 		// skipping Acl
 		if entry.CommonSnapshot != "" && entry.Id != space.Storage().StateStorage().SettingsId() {
@@ -548,6 +680,7 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	}
 	var idsToReindex []string
 	for _, entry := range entries {
+		// todo: make it more effective
 		id := entry.Id
 		logErr := func(err error) {
 			log.With("tree", entry.Id).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
@@ -557,17 +690,57 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 			logErr(err)
 			continue
 		}
-		hh := headsHash(entry.Heads)
-		if lastHash != hh {
-			if lastHash != "" {
-				log.With("tree", id).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(entry.Heads))
-			}
+		if lastHash == "" || lastHash != headsHash(entry.Heads) {
 			idsToReindex = append(idsToReindex, id)
 		}
 	}
-
+	if len(idsToReindex) == 0 {
+		return 0, 0, nil
+	}
+	log.Warn("reindexOutdatedObjects: found outdated objects to reindex", zap.Int("len", len(idsToReindex)), zap.Int64("durMs", time.Since(start).Milliseconds()))
 	success = i.reindexIdsIgnoreErr(ctx, space, idsToReindex...)
 	return len(idsToReindex), success, nil
+}
+
+// checkFTQueueConsistency checks for objects that may have been added to headsState
+// but the FT queue wasn't flushed before crash. It compares the ftQueueCtr in headsState
+// against the persisted FT queue counter (per-space) and re-adds any missing objects to the queue.
+func (i *indexer) checkFTQueueConsistency(ctx context.Context, store spaceindex.Store, spaceId string) {
+	// Read THIS space's counter from commonDB
+	ftQueueCounter, err := i.store.GetFTQueueCounter(ctx, spaceId)
+	if err != nil {
+		log.With("space", spaceId).Warnf("get ft queue counter: %v", err)
+		return
+	}
+
+	// If counter is 0, this is either first run for this space or no FT queue operations have happened yet
+	if ftQueueCounter == 0 {
+		return
+	}
+
+	entries, err := store.GetHeadsWithFtQueueCtrGreaterThan(ctx, ftQueueCounter)
+	if err != nil {
+		log.With("space", spaceId).Warnf("get heads with ftQueueCtr > counter: %v", err)
+		return
+	}
+
+	if len(entries) == 0 {
+		return
+	}
+
+	log.With("space", spaceId, "count", len(entries), "ftQueueCounter", ftQueueCounter).
+		Warn("ft queue consistency: re-adding objects after crash recovery")
+
+	var toRequeue []domain.FullID
+	for _, e := range entries {
+		toRequeue = append(toRequeue, domain.FullID{ObjectID: e.ObjectID, SpaceID: spaceId})
+	}
+
+	// Re-adding will update the per-space counter in commonDB
+	_, _, err = i.store.AddToIndexQueue(ctx, toRequeue...)
+	if err != nil {
+		log.With("space", spaceId).Errorf("re-add to ft queue: %v", err)
+	}
 }
 
 func (i *indexer) reindexDoc(space smartblock.Space, id string) error {
@@ -609,6 +782,9 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
 		ReindexParticipants:              ForceReindexParticipantsCounter,
 		ReindexChats:                     ForceReindexChatsCounter,
+		ReindexDiscussions:               ForceReindexDiscussionsCounter,
+		ReindexFulltextChatMessages:      ForceReindexChatsFulltextCounter,
+		InvalidateObjectsIndex:           ForceInvalidateObjectsIndexCounter,
 	}
 	if isMarketplace {
 		checksums.MarketplaceForceReindexCounter = ForceMarketplaceReindex
@@ -638,8 +814,8 @@ func (i *indexer) getIdsForTypes(space smartblock.Space, sbt ...coresb.SmartBloc
 }
 
 func (i *indexer) GetLogFields() []zap.Field {
-	i.lock.Lock()
-	defer i.lock.Unlock()
+	i.lock.RLock()
+	defer i.lock.RUnlock()
 	return i.reindexLogFields
 }
 

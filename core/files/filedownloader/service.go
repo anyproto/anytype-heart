@@ -1,5 +1,26 @@
 package filedownloader
 
+/*
+AI generated
+
+Name: File Auto-Download Manager
+Scope: global
+
+## Responsibility
+- Auto-downloads files to local store based on criteria: not available offline, synced, <20MB
+- Provides on-demand partial file caching (CacheFile) with block limits
+- Respects network state for wifi-only download mode
+
+## Background Tasks
+- downloader (5 workers): subscribes to eligible files across spaces, downloads full content (runManager, runDownloadWorker)
+- cacheWarmer (5 workers): processes on-demand cache requests with limited blocks (run, runWorker)
+
+## Documentation
+Two download subsystems:
+- downloader: subscribes to files matching auto-download criteria, downloads entire file, marks FileAvailableOffline
+- cacheWarmer: accepts individual file requests via CacheFile, downloads limited blocks (10) with timeout (2min)
+*/
+
 import (
 	"context"
 	"errors"
@@ -11,7 +32,6 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
-	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -30,6 +50,7 @@ var log = logging.Logger(CName).Desugar()
 
 type Service interface {
 	SetEnabled(enabled bool, wifiOnly bool) error
+	SetSizeLimit(sizeLimitMb int64) error
 	CacheFile(spaceId string, fileId domain.FileId)
 	CancelFileCaching(fileId domain.FileId)
 	DownloadToLocalStore(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error
@@ -47,10 +68,11 @@ type service struct {
 	networkState         device.NetworkState
 	cacheWarmer          *cacheWarmer
 
-	lock       sync.Mutex
-	isEnabled  bool
-	wifiOnly   bool
-	downloader *downloader
+	lock        sync.Mutex
+	isEnabled   bool
+	wifiOnly    bool
+	sizeLimitMb int64
+	downloader  *downloader
 }
 
 func New() Service {
@@ -80,10 +102,10 @@ func (s *service) Init(a *app.App) error {
 }
 
 func (s *service) Run(ctx context.Context) error {
-	err := s.SetEnabled(s.config.AutoDownloadFiles, s.config.AutoDownloadFiles)
-	if err != nil {
-		log.Error("set enabled", zap.Error(err))
-	}
+	enabled := s.config.AutoDownloadFiles()
+	wifiOnly := s.config.AutoDownloadOnWifiOnly()
+	sizeLimitMb := s.config.AutoDownloadSizeLimitMb()
+	s.setDownloadState(enabled, wifiOnly, sizeLimitMb)
 	for range 5 {
 		go s.cacheWarmer.runWorker()
 	}
@@ -99,27 +121,43 @@ func (s *service) Close(ctx context.Context) error {
 }
 
 func (s *service) SetEnabled(enabled bool, wifiOnly bool) error {
-	s.setEnabled(enabled, wifiOnly)
+	s.lock.Lock()
+	sizeLimitMb := s.sizeLimitMb
+	s.lock.Unlock()
 
-	// Write to the config file only if it's changed
-	if s.config.AutoDownloadFiles != enabled || s.config.AutoDownloadOnWifiOnly != wifiOnly {
-		cfgPart := config.ConfigAutoDownloadFiles{}
-		cfgPart.AutoDownloadFiles = enabled
-		cfgPart.AutoDownloadOnWifiOnly = wifiOnly
-		return config.WriteJsonConfig(s.config.GetConfigPath(), cfgPart)
-	}
-	return nil
+	s.setDownloadState(enabled, wifiOnly, sizeLimitMb)
+	return s.config.SetAutoDownloadSettings(enabled, wifiOnly)
 }
 
-func (s *service) setEnabled(enabled bool, wifiOnly bool) {
+func (s *service) SetSizeLimit(sizeLimitMb int64) error {
+	s.lock.Lock()
+	isEnabled := s.isEnabled
+	wifiOnly := s.wifiOnly
+	s.lock.Unlock()
+
+	s.setDownloadState(isEnabled, wifiOnly, sizeLimitMb)
+	return s.config.SetAutoDownloadSizeLimitMb(sizeLimitMb)
+}
+
+func (s *service) setDownloadState(enabled bool, wifiOnly bool, sizeLimitMb int64) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	s.isEnabled = enabled
 	s.wifiOnly = wifiOnly
+	oldLimit := s.sizeLimitMb
+	s.sizeLimitMb = sizeLimitMb
+
+	sizeLimitBytes := sizeLimitMb * 1024 * 1024
+
 	if enabled {
 		if s.downloader == nil {
-			s.downloader = s.newDownloader()
+			s.downloader = s.newDownloader(sizeLimitBytes)
+			s.downloader.start()
+		} else if oldLimit != sizeLimitMb {
+			// Size limit changed: restart downloader to update subscription filters
+			s.downloader.stop()
+			s.downloader = s.newDownloader(sizeLimitBytes)
 			s.downloader.start()
 		}
 	} else if s.downloader != nil {
@@ -140,17 +178,18 @@ func (s *service) networkStateChanged(networkState model.DeviceNetworkType) {
 	s.lock.Lock()
 	isEnabled := s.isEnabled
 	wifiOnly := s.wifiOnly
+	sizeLimitMb := s.sizeLimitMb
 	s.lock.Unlock()
 
 	if isEnabled {
 		if wifiOnly {
 			if networkState == model.DeviceNetworkType_WIFI {
-				s.setEnabled(true, wifiOnly)
+				s.setDownloadState(true, wifiOnly, sizeLimitMb)
 			} else {
-				s.setEnabled(false, wifiOnly)
+				s.setDownloadState(false, wifiOnly, sizeLimitMb)
 			}
 		} else {
-			s.setEnabled(true, wifiOnly)
+			s.setDownloadState(true, wifiOnly, sizeLimitMb)
 		}
 	}
 }

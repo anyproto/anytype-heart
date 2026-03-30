@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -43,7 +44,7 @@ func (s *IconSyncer) Sync(id domain.FullID, newIdsSet map[string]struct{}, b sim
 	if iconImage == addr.MissingObject {
 		return nil
 	}
-	newId, err := s.handleIconImage(id.SpaceID, newIdsSet, iconImage, origin)
+	newId, err := s.handleIconImage(id.SpaceID, newIdsSet, iconImage, origin, id.ObjectID, b.Model().Id)
 	if err != nil {
 		uplErr := s.updateTextBlock(id, "", b)
 		if uplErr != nil {
@@ -79,13 +80,16 @@ func (s *IconSyncer) updateTextBlock(id domain.FullID, newId string, b simple.Bl
 	})
 }
 
-func (s *IconSyncer) handleIconImage(spaceId string, newIdsSet map[string]struct{}, iconImage string, origin objectorigin.ObjectOrigin) (string, error) {
+func (s *IconSyncer) handleIconImage(spaceId string, newIdsSet map[string]struct{}, iconImage string, origin objectorigin.ObjectOrigin, contextId string, contextRef string) (string, error) {
 	if _, ok := newIdsSet[iconImage]; ok {
 		return iconImage, nil
 	}
 	_, err := cid.Decode(iconImage)
 	if err == nil {
-		fileObjectId, err := s.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(iconImage)}, origin)
+		details := domain.NewDetails()
+		details.SetString(bundle.RelationKeyCreatedInContext, contextId)
+		details.SetString(bundle.RelationKeyCreatedInContextRef, contextRef)
+		fileObjectId, err := s.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(iconImage)}, origin, details)
 		if err != nil {
 			log.With("fileId", iconImage).Errorf("create file object: %v", err)
 			return iconImage, nil
@@ -93,9 +97,16 @@ func (s *IconSyncer) handleIconImage(spaceId string, newIdsSet map[string]struct
 		return fileObjectId, nil
 	}
 
-	req := pb.RpcFileUploadRequest{LocalPath: iconImage, ImageKind: model.ImageKind_Icon}
+	req := pb.RpcFileUploadRequest{
+		LocalPath:        iconImage,
+		ImageKind:        model.ImageKind_Icon,
+		CreatedInContext: contextId,
+	}
 	if strings.HasPrefix(iconImage, "http://") || strings.HasPrefix(iconImage, "https://") {
-		req = pb.RpcFileUploadRequest{Url: iconImage}
+		req = pb.RpcFileUploadRequest{
+			Url:              iconImage,
+			CreatedInContext: contextId,
+		}
 	}
 	dto := block.FileUploadRequest{
 		RpcFileUploadRequest: req,

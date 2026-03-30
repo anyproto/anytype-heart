@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anyproto/any-store/query"
@@ -80,11 +81,16 @@ func (s *fileSync) processNextToDelete(ctx context.Context) error {
 func (s *fileSync) processDeletion(ctx context.Context, it FileInfo) (FileInfo, error) {
 	err := s.rpcStore.DeleteFiles(ctx, it.SpaceId, it.FileId)
 	if err != nil {
+		errStr := err.Error()
+		if strings.Contains(errStr, "space is deleted") || strings.Contains(errStr, "code: 502") {
+			it.State = FileStateDeleted
+			return it, nil
+		}
 		it = it.Reschedule()
 		return it, err
 	}
 
-	mngr, err := s.limitManager.getSpace(ctx, it.SpaceId)
+	mngr, err := s.limitManager.getSpace(it.SpaceId)
 	if err == nil {
 		mngr.deallocateFile(it.Key())
 	} else {

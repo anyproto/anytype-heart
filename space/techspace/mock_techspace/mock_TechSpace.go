@@ -731,6 +731,54 @@ func (_c *MockTechSpace_SpaceViewSetData_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
+// SpaceViewSetOneToOneIdentity provides a mock function with given fields: ctx, spaceId, identity
+func (_m *MockTechSpace) SpaceViewSetOneToOneIdentity(ctx context.Context, spaceId string, identity string) error {
+	ret := _m.Called(ctx, spaceId, identity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SpaceViewSetOneToOneIdentity")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, spaceId, identity)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockTechSpace_SpaceViewSetOneToOneIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SpaceViewSetOneToOneIdentity'
+type MockTechSpace_SpaceViewSetOneToOneIdentity_Call struct {
+	*mock.Call
+}
+
+// SpaceViewSetOneToOneIdentity is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - identity string
+func (_e *MockTechSpace_Expecter) SpaceViewSetOneToOneIdentity(ctx interface{}, spaceId interface{}, identity interface{}) *MockTechSpace_SpaceViewSetOneToOneIdentity_Call {
+	return &MockTechSpace_SpaceViewSetOneToOneIdentity_Call{Call: _e.mock.On("SpaceViewSetOneToOneIdentity", ctx, spaceId, identity)}
+}
+
+func (_c *MockTechSpace_SpaceViewSetOneToOneIdentity_Call) Run(run func(ctx context.Context, spaceId string, identity string)) *MockTechSpace_SpaceViewSetOneToOneIdentity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_SpaceViewSetOneToOneIdentity_Call) Return(err error) *MockTechSpace_SpaceViewSetOneToOneIdentity_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTechSpace_SpaceViewSetOneToOneIdentity_Call) RunAndReturn(run func(context.Context, string, string) error) *MockTechSpace_SpaceViewSetOneToOneIdentity_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // StartSync provides a mock function with given fields:
 func (_m *MockTechSpace) StartSync() {
 	_m.Called()

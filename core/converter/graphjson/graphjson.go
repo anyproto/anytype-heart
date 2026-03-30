@@ -46,8 +46,6 @@ type Graph struct {
 
 type graphjson struct {
 	knownDocs   map[string]*domain.Details
-	fileHashes  []string
-	imageHashes []string
 	nodes       map[string]*Node
 	linksByNode map[string][]*Edge
 
@@ -67,14 +65,6 @@ func NewMultiConverter(
 func (g *graphjson) SetKnownDocs(docs map[string]*domain.Details) converter.Converter {
 	g.knownDocs = docs
 	return g
-}
-
-func (g *graphjson) FileHashes() []string {
-	return g.fileHashes
-}
-
-func (g *graphjson) ImageHashes() []string {
-	return g.imageHashes
 }
 
 func (g *graphjson) Add(space smartblock.Space, st *state.State, fetcher relationutils.RelationFormatFetcher) error {

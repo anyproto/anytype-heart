@@ -1,5 +1,19 @@
 package keyvalueobserver
 
+/*
+AI generated
+
+Name: Key-Value Change Observer
+Scope: space
+
+## Responsibility
+- Bridges any-sync key-value storage to client space by implementing keyvaluestorage.Indexer
+- Queues incoming key-value changes and forwards them to the registered observer
+
+## Background Tasks
+- Queue processor: reads from updateQueue and invokes observerFunc (Run goroutine)
+*/
+
 import (
 	"context"
 	"errors"
@@ -79,7 +93,7 @@ func (o *observer) Close(ctx context.Context) (err error) {
 	if o.componentContextCancel != nil {
 		o.componentContextCancel()
 	}
-	return nil
+	return o.updateQueue.Close()
 }
 
 func (o *observer) Name() (name string) {

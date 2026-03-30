@@ -1398,6 +1398,188 @@ func Test_docsForExport(t *testing.T) {
 	})
 }
 
+func Test_isExcludedFromExport(t *testing.T) {
+	t.Run("nil details", func(t *testing.T) {
+		assert.True(t, isExcludedFromExport(nil))
+	})
+	t.Run("empty details", func(t *testing.T) {
+		details := domain.NewDetails()
+		assert.True(t, isExcludedFromExport(details))
+	})
+	t.Run("only id", func(t *testing.T) {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("objectId"),
+		})
+		assert.True(t, isExcludedFromExport(details))
+	})
+	t.Run("id and backlinks only", func(t *testing.T) {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:        domain.String("objectId"),
+			bundle.RelationKeyBacklinks: domain.StringList([]string{"link1"}),
+		})
+		assert.True(t, isExcludedFromExport(details))
+	})
+	t.Run("old file id", func(t *testing.T) {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"),
+			bundle.RelationKeyType:    domain.String("objectType"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		})
+		assert.True(t, isExcludedFromExport(details))
+	})
+	t.Run("valid object", func(t *testing.T) {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String("objectId"),
+			bundle.RelationKeyType:    domain.String("objectType"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		})
+		assert.False(t, isExcludedFromExport(details))
+	})
+}
+
+func Test_fillLinkedFiles(t *testing.T) {
+	t.Run("skip excluded object", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		oldFileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+
+		expCtx := newExportContext(fx.export, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		expCtx.docs[oldFileId] = &Doc{Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String(oldFileId),
+			bundle.RelationKeyType:    domain.String("objectType"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		})}
+
+		// No GetObject expectation — cache.Do must not be called
+
+		// when
+		files, err := expCtx.fillLinkedFiles(oldFileId)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, files)
+	})
+	t.Run("skip object with only id", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		objectId := "objectId"
+
+		expCtx := newExportContext(fx.export, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		expCtx.docs[objectId] = &Doc{Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String(objectId),
+		})}
+
+		// No GetObject expectation — cache.Do must not be called
+
+		// when
+		files, err := expCtx.fillLinkedFiles(objectId)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, files)
+	})
+}
+
+func Test_addNestedObject(t *testing.T) {
+	t.Run("skip excluded object", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		oldFileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+
+		expCtx := newExportContext(fx.export, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		expCtx.docs[oldFileId] = &Doc{Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:      domain.String(oldFileId),
+			bundle.RelationKeyType:    domain.String("objectType"),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+		})}
+
+		// No GetObject expectation — cache.Do must not be called
+
+		// when
+		nestedDocs := map[string]*Doc{}
+		expCtx.addNestedObject(oldFileId, nestedDocs)
+
+		// then
+		assert.Empty(t, nestedDocs)
+	})
+	t.Run("skip object with only id", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		objectId := "objectId"
+
+		expCtx := newExportContext(fx.export, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		expCtx.docs[objectId] = &Doc{Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String(objectId),
+		})}
+
+		// No GetObject expectation — cache.Do must not be called
+
+		// when
+		nestedDocs := map[string]*Doc{}
+		expCtx.addNestedObject(objectId, nestedDocs)
+
+		// then
+		assert.Empty(t, nestedDocs)
+	})
+}
+
+func Test_collectDerivedObjects(t *testing.T) {
+	t.Run("skip old file ids", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		objectId := "objectId"
+		objectTypeId := "customObjectType"
+		// Valid CID that domain.IsFileId returns true for
+		oldFileId := "bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku"
+
+		smartBlockTest := setupObject(objectId, objectTypeId, smartblock.SmartBlockTypePage, nil)
+		fx.picker.EXPECT().GetObject(context.Background(), objectId).Return(smartBlockTest, nil)
+		// No GetObject expectation for oldFileId — it must be skipped
+
+		expCtx := newExportContext(fx.export, pb.RpcObjectListExportRequest{
+			SpaceId: spaceId,
+			Format:  model.Export_Protobuf,
+		})
+
+		docs := map[string]*Doc{
+			objectId: {Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:      domain.String(objectId),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			})},
+			oldFileId: {Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:      domain.String(oldFileId),
+				bundle.RelationKeyType:    domain.String(objectTypeId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			})},
+		}
+
+		// when
+		err := expCtx.collectDerivedObjects(docs)
+
+		// then
+		require.NoError(t, err)
+		// objectType from the regular object should be collected
+		assert.Contains(t, expCtx.objectTypes, objectTypeId)
+	})
+}
+
 func Test_provideFileName(t *testing.T) {
 	t.Run("file dir for relation", func(t *testing.T) {
 		// when

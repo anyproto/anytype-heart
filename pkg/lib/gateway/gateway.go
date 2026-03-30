@@ -252,8 +252,8 @@ func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s\"", meta.Name))
 	w.Header().Set("Cache-Control", "max-age=31536000")
 
-	// todo: inside textile it still requires the file to be fully downloaded and decrypted(consuming 2xSize in ram) to provide the ReadSeeker interface
-	// 	need to find a way to use ReadSeeker all the way from downloading files from IPFS to writing the decrypted chunk to the HTTP
+	// Note: the DagReader is lazy and streams ~1MB blocks on demand. The CFBDecryptor.Seek
+	// fast-path avoids expensive IPFS block preloading during size determination (SeekEnd).
 	http.ServeContent(w, r, meta.Name, meta.Added, reader)
 }
 

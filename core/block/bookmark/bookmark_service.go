@@ -1,5 +1,29 @@
 package bookmark
 
+/*
+AI generated
+
+Name: URL Bookmark Object Manager
+Scope: global
+
+## Responsibility
+- Creates bookmark objects from URLs with deduplication (reuses existing bookmark if same URL exists)
+- Fetches URL metadata asynchronously (title, description, cover image, favicon)
+- Updates bookmark objects/blocks with fetched content
+- Parses HTML content into blocks when requested
+
+## Background Tasks
+- Content fetching: parallel goroutines fetch metadata, images, favicon concurrently via ContentUpdaters
+- Object update: goroutine updates object details after content is fetched in CreateBookmarkObject
+
+## Documentation
+Content fetching uses a channel-based updater pattern:
+1. ContentUpdaters returns a channel of update functions
+2. Multiple goroutines send updaters for metadata, cover image, favicon in parallel
+3. Consumer applies updaters sequentially to build final ObjectContent
+4. ContentFuture wraps this for synchronous access - blocks until all updaters complete
+*/
+
 import (
 	"context"
 	"fmt"
@@ -186,7 +210,6 @@ func (s *service) CreateBookmarkObject(
 	if url != "" {
 		go func() {
 			if err := s.UpdateObject(objectId, getContent()); err != nil {
-
 				log.Errorf("update bookmark object %s: %s", objectId, err)
 				return
 			}
@@ -205,7 +228,38 @@ func (s *service) UpdateObject(objectId string, content *bookmark.ObjectContent)
 		{Key: bundle.RelationKeyIconImage, Value: domain.String(content.BookmarkContent.FaviconHash)},
 	}
 
-	return s.detailsSetter.SetDetails(nil, objectId, details)
+	if err := s.detailsSetter.SetDetails(nil, objectId, details); err != nil {
+		return err
+	}
+
+	// Update CreatedInContext for image files to point to this bookmark object
+	s.updateFilesCreatedInContext(objectId, content)
+	return nil
+}
+
+// updateFilesCreatedInContext updates the CreatedInContext relation for image files
+// that were uploaded before the bookmark object was created
+func (s *service) updateFilesCreatedInContext(bookmarkObjectId string, content *bookmark.ObjectContent) {
+	if content == nil || content.BookmarkContent == nil {
+		return
+	}
+
+	fileIds := []string{}
+	if content.BookmarkContent.ImageHash != "" {
+		fileIds = append(fileIds, content.BookmarkContent.ImageHash)
+	}
+	if content.BookmarkContent.FaviconHash != "" {
+		fileIds = append(fileIds, content.BookmarkContent.FaviconHash)
+	}
+
+	for _, fileId := range fileIds {
+		err := s.detailsSetter.SetDetails(nil, fileId, []domain.Detail{
+			{Key: bundle.RelationKeyCreatedInContext, Value: domain.String(bookmarkObjectId)},
+		})
+		if err != nil {
+			log.Errorf("update CreatedInContext for file %s: %s", fileId, err)
+		}
+	}
 }
 
 func (s *service) FetchAsync(spaceID string, blockID string, params bookmark.FetchParams) {

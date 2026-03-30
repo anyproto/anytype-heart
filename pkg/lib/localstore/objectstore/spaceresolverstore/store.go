@@ -15,7 +15,7 @@ import (
 const bindKey = "b"
 
 type Store interface {
-	BindSpaceId(spaceId, objectId string) error
+	BindSpaceId(ctx context.Context, spaceId, objectId string) error
 	GetSpaceId(objectId string) (spaceId string, err error)
 }
 
@@ -37,8 +37,8 @@ func New(componentCtx context.Context, db anystore.DB) (Store, error) {
 	}, nil
 }
 
-func (d *dsObjectStore) BindSpaceId(spaceId, objectId string) error {
-	return d.modifyBind(d.componentCtx, objectId, spaceId)
+func (d *dsObjectStore) BindSpaceId(ctx context.Context, spaceId, objectId string) error {
+	return d.modifyBind(ctx, objectId, spaceId)
 }
 
 func (d *dsObjectStore) GetSpaceId(objectId string) (spaceId string, err error) {
@@ -53,13 +53,6 @@ func (d *dsObjectStore) GetSpaceId(objectId string) (spaceId string, err error) 
 }
 
 func (d *dsObjectStore) modifyBind(ctx context.Context, objectId, spaceId string) error {
-	tx, err := d.collection.WriteTx(ctx)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = tx.Rollback()
-	}()
 	arena := d.arenaPool.Get()
 	defer d.arenaPool.Put(arena)
 	mod := query.ModifyFunc(func(a *anyenc.Arena, v *anyenc.Value) (result *anyenc.Value, modified bool, err error) {
@@ -69,9 +62,6 @@ func (d *dsObjectStore) modifyBind(ctx context.Context, objectId, spaceId string
 		v.Set(bindKey, arena.NewString(spaceId))
 		return v, true, nil
 	})
-	_, err = d.collection.UpsertId(tx.Context(), objectId, mod)
-	if err != nil {
-		return err
-	}
-	return tx.Commit()
+	_, err := d.collection.UpsertId(ctx, objectId, mod)
+	return err
 }

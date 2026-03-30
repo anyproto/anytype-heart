@@ -2,6 +2,7 @@ package md
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -360,6 +361,120 @@ func TestMD_Convert(t *testing.T) {
 		c := NewMDConverter(s, nil, false)
 		res := c.Convert(model.SmartBlockType_Page)
 		exp := "```\n\n\n\n\n```\n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("toggle header 1 renders as h1", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 1",
+					Style: model.BlockContentText_ToggleHeader1,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "# Toggle Header 1   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("toggle header 2 renders as h2", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 2",
+					Style: model.BlockContentText_ToggleHeader2,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "## Toggle Header 2   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("toggle header 3 renders as h3", func(t *testing.T) {
+		s := newState(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header 3",
+					Style: model.BlockContentText_ToggleHeader3,
+				},
+			},
+		})
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "### Toggle Header 3   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("toggle headers with children", func(t *testing.T) {
+		toggleBlock := &model.Block{
+			Id:          "toggle1",
+			ChildrenIds: []string{"child1"},
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Toggle Header",
+					Style: model.BlockContentText_ToggleHeader1,
+				},
+			},
+		}
+		childBlock := &model.Block{
+			Id: "child1",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text:  "Child content",
+					Style: model.BlockContentText_Paragraph,
+				},
+			},
+		}
+
+		blocks := map[string]simple.Block{
+			"root":    simple.New(&model.Block{Id: "root", ChildrenIds: []string{"toggle1"}}),
+			"toggle1": simple.New(toggleBlock),
+			"child1":  simple.New(childBlock),
+		}
+		s := state.NewDoc("root", blocks).(*state.State)
+
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+
+		// Toggle header renders as h1 with child indented
+		exp := "# Toggle Header   \n    Child content   \n"
+		assert.Equal(t, exp, string(res))
+	})
+
+	t.Run("all toggle headers render correctly", func(t *testing.T) {
+		s := newState(
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Toggle H1",
+						Style: model.BlockContentText_ToggleHeader1,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Toggle H2",
+						Style: model.BlockContentText_ToggleHeader2,
+					},
+				},
+			},
+			&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Text:  "Toggle H3",
+						Style: model.BlockContentText_ToggleHeader3,
+					},
+				},
+			},
+		)
+		c := NewMDConverter(s, nil, false)
+		res := c.Convert(model.SmartBlockType_Page)
+		exp := "# Toggle H1   \n## Toggle H2   \n### Toggle H3   \n"
 		assert.Equal(t, exp, string(res))
 	})
 }
@@ -946,11 +1061,6 @@ func TestMD_FileFormatRelations(t *testing.T) {
 		assert.Contains(t, resultStr, "- files/file789_data.xlsx")
 		assert.Contains(t, resultStr, "- files/pdf012_manual.pdf")
 
-		// Check that file hashes were recorded
-		assert.Contains(t, conv.fileHashes, "file123")
-		assert.Contains(t, conv.fileHashes, "file789")
-		assert.Contains(t, conv.fileHashes, "pdf012")
-		assert.Contains(t, conv.imageHashes, "image456")
 	})
 }
 
@@ -1734,4 +1844,138 @@ func TestMD_GenerateJSONSchema_PropertyOrder(t *testing.T) {
 			assert.Equal(t, "prop5", xKey)
 		}
 	}
+}
+func TestMD_TableWithMultiLineCells(t *testing.T) {
+	t.Run("table with multi-line cells preserves newlines as br tags", func(t *testing.T) {
+		// given: Create a table with cells containing newlines
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id:          "root",
+				ChildrenIds: []string{"table"},
+			}),
+			"table": simple.New(&model.Block{
+				Id:          "table",
+				ChildrenIds: []string{"columns", "rows"},
+				Content:     &model.BlockContentOfTable{Table: &model.BlockContentTable{}},
+			}),
+			"columns": simple.New(&model.Block{
+				Id:          "columns",
+				ChildrenIds: []string{"col1", "col2"},
+				Content:     &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}},
+			}),
+			"col1": simple.New(&model.Block{
+				Id:      "col1",
+				Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
+			}),
+			"col2": simple.New(&model.Block{
+				Id:      "col2",
+				Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
+			}),
+			"rows": simple.New(&model.Block{
+				Id:          "rows",
+				ChildrenIds: []string{"row1", "row2"},
+				Content:     &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}},
+			}),
+			"row1": simple.New(&model.Block{
+				Id:          "row1",
+				ChildrenIds: []string{"row1-col1", "row1-col2"},
+				Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: true}},
+			}),
+			"row1-col1": simple.New(&model.Block{
+				Id:      "row1-col1",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Header 1"}},
+			}),
+			"row1-col2": simple.New(&model.Block{
+				Id:      "row1-col2",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Header 2"}},
+			}),
+			"row2": simple.New(&model.Block{
+				Id:          "row2",
+				ChildrenIds: []string{"row2-col1", "row2-col2"},
+				Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}},
+			}),
+			"row2-col1": simple.New(&model.Block{
+				Id:      "row2-col1",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Line 1\nLine 2\nLine 3"}},
+			}),
+			"row2-col2": simple.New(&model.Block{
+				Id:      "row2-col2",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Another\nmulti-line\ncell"}},
+			}),
+		}
+
+		s := state.NewDoc("root", blocks).(*state.State)
+
+		// when
+		c := NewMDConverter(s, nil, false)
+		result := string(c.Convert(model.SmartBlockType_Page))
+
+		fmt.Println(result)
+
+		// then: Check that newlines are converted to <br> tags
+		assert.Contains(t, result, "Line 1<br>Line 2<br>Line 3")
+		assert.Contains(t, result, "Another<br>multi-line<br>cell")
+
+		// Ensure we don't have literal newlines in the table cells
+		lines := strings.Split(result, "\n")
+		for _, line := range lines {
+			if strings.HasPrefix(strings.TrimSpace(line), "|") && !strings.HasPrefix(strings.TrimSpace(line), "|--") {
+				// This is a table row line, it should not contain unescaped newlines within cells
+				// Count the pipes - if we have the right number, newlines were properly converted
+				pipeCount := strings.Count(line, "|")
+				if pipeCount > 0 {
+					// Should have 3 pipes for 2 columns (start, separator, end)
+					assert.Equal(t, 3, pipeCount, "Table row should have correct number of pipes: %s", line)
+				}
+			}
+		}
+	})
+
+	t.Run("table with CRLF line endings", func(t *testing.T) {
+		// given: Create a table with cells containing Windows-style line endings
+		blocks := map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id:          "root",
+				ChildrenIds: []string{"table"},
+			}),
+			"table": simple.New(&model.Block{
+				Id:          "table",
+				ChildrenIds: []string{"columns", "rows"},
+				Content:     &model.BlockContentOfTable{Table: &model.BlockContentTable{}},
+			}),
+			"columns": simple.New(&model.Block{
+				Id:          "columns",
+				ChildrenIds: []string{"col1"},
+				Content:     &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}},
+			}),
+			"col1": simple.New(&model.Block{
+				Id:      "col1",
+				Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
+			}),
+			"rows": simple.New(&model.Block{
+				Id:          "rows",
+				ChildrenIds: []string{"row1"},
+				Content:     &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}},
+			}),
+			"row1": simple.New(&model.Block{
+				Id:          "row1",
+				ChildrenIds: []string{"row1-col1"},
+				Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: false}},
+			}),
+			"row1-col1": simple.New(&model.Block{
+				Id:      "row1-col1",
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "Line 1\r\nLine 2"}},
+			}),
+		}
+
+		s := state.NewDoc("root", blocks).(*state.State)
+
+		// when
+		c := NewMDConverter(s, nil, false)
+		result := string(c.Convert(model.SmartBlockType_Page))
+
+		// then: CRLF should be converted to <br>
+		assert.Contains(t, result, "Line 1<br>Line 2")
+		assert.NotContains(t, result, "\r\n")
+	})
 }

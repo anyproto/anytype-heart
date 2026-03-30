@@ -36,6 +36,7 @@ service ClientCommands {
     rpc WorkspaceGetCurrent (anytype.Rpc.Workspace.GetCurrent.Request) returns (anytype.Rpc.Workspace.GetCurrent.Response);
     rpc WorkspaceGetAll (anytype.Rpc.Workspace.GetAll.Request) returns (anytype.Rpc.Workspace.GetAll.Response);
     rpc WorkspaceSetInfo (anytype.Rpc.Workspace.SetInfo.Request) returns (anytype.Rpc.Workspace.SetInfo.Response);
+    rpc WorkspaceSetHomepage (anytype.Rpc.Workspace.SetHomepage.Request) returns (anytype.Rpc.Workspace.SetHomepage.Response);
     rpc WorkspaceExport (anytype.Rpc.Workspace.Export.Request) returns (anytype.Rpc.Workspace.Export.Response);
 
     // Account
@@ -76,6 +77,8 @@ service ClientCommands {
     rpc SpaceParticipantPermissionsChange (anytype.Rpc.Space.ParticipantPermissionsChange.Request) returns (anytype.Rpc.Space.ParticipantPermissionsChange.Response);
     rpc SpaceSetOrder (anytype.Rpc.Space.SetOrder.Request) returns (anytype.Rpc.Space.SetOrder.Response);
     rpc SpaceUnsetOrder (anytype.Rpc.Space.UnsetOrder.Request) returns (anytype.Rpc.Space.UnsetOrder.Response);
+    rpc SpaceChangeOwnership(anytype.Rpc.Space.ChangeOwnership.Request) returns (anytype.Rpc.Space.ChangeOwnership.Response);
+    rpc SpaceDeleteCorruptedBackup (anytype.Rpc.Space.DeleteCorruptedBackup.Request) returns (anytype.Rpc.Space.DeleteCorruptedBackup.Response);
 
     // Publishing
     // ***
@@ -118,7 +121,6 @@ service ClientCommands {
     rpc ObjectSetIsFavorite (anytype.Rpc.Object.SetIsFavorite.Request) returns (anytype.Rpc.Object.SetIsFavorite.Response);
     rpc ObjectSetIsArchived (anytype.Rpc.Object.SetIsArchived.Request) returns (anytype.Rpc.Object.SetIsArchived.Response);
     rpc ObjectSetSource (anytype.Rpc.Object.SetSource.Request) returns (anytype.Rpc.Object.SetSource.Response);
-    rpc ObjectWorkspaceSetDashboard (anytype.Rpc.Object.WorkspaceSetDashboard.Request) returns (anytype.Rpc.Object.WorkspaceSetDashboard.Response);
     rpc ObjectListDuplicate (anytype.Rpc.Object.ListDuplicate.Request) returns (anytype.Rpc.Object.ListDuplicate.Response);
     rpc ObjectListDelete (anytype.Rpc.Object.ListDelete.Request) returns (anytype.Rpc.Object.ListDelete.Response);
     rpc ObjectListSetIsArchived (anytype.Rpc.Object.ListSetIsArchived.Request) returns (anytype.Rpc.Object.ListSetIsArchived.Response);
@@ -196,6 +198,7 @@ service ClientCommands {
     rpc FileSetAutoDownload (anytype.Rpc.File.SetAutoDownload.Request) returns (anytype.Rpc.File.SetAutoDownload.Response);
     rpc FileCacheDownload (anytype.Rpc.File.CacheDownload.Request) returns (anytype.Rpc.File.CacheDownload.Response);
     rpc FileCacheCancelDownload (anytype.Rpc.File.CacheCancelDownload.Request) returns (anytype.Rpc.File.CacheCancelDownload.Response);
+    rpc FileAutoDownloadSetLimit (anytype.Rpc.File.AutoDownloadSetLimit.Request) returns (anytype.Rpc.File.AutoDownloadSetLimit.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
@@ -397,7 +400,8 @@ service ClientCommands {
     rpc MembershipV2AnyNameAllocate(anytype.Rpc.MembershipV2.AnyNameAllocate.Request) returns (anytype.Rpc.MembershipV2.AnyNameAllocate.Response);
     rpc MembershipV2CartGet(anytype.Rpc.MembershipV2.CartGet.Request) returns (anytype.Rpc.MembershipV2.CartGet.Response);
     rpc MembershipV2CartUpdate(anytype.Rpc.MembershipV2.CartUpdate.Request) returns (anytype.Rpc.MembershipV2.CartUpdate.Response);
-    
+    rpc MembershipV2SubscribeToUpdates(anytype.Rpc.MembershipV2.SubscribeToUpdates.Request) returns (anytype.Rpc.MembershipV2.SubscribeToUpdates.Response);
+
     // Name Service:
     // ***
     // hello.any -> data
@@ -426,7 +430,12 @@ service ClientCommands {
     rpc ChatSubscribeToMessagePreviews (anytype.Rpc.Chat.SubscribeToMessagePreviews.Request) returns (anytype.Rpc.Chat.SubscribeToMessagePreviews.Response);
     rpc ChatUnsubscribeFromMessagePreviews (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Request) returns (anytype.Rpc.Chat.UnsubscribeFromMessagePreviews.Response);
     rpc ObjectChatAdd (anytype.Rpc.Object.ChatAdd.Request) returns (anytype.Rpc.Object.ChatAdd.Response);
+    rpc ObjectAddDiscussion (anytype.Rpc.Object.DiscussionAdd.Request) returns (anytype.Rpc.Object.DiscussionAdd.Response);
     rpc ChatReadAll (anytype.Rpc.Chat.ReadAll.Request) returns (anytype.Rpc.Chat.ReadAll.Response);
+    rpc ChatReadReactions (anytype.Rpc.Chat.ReadReactions.Request) returns (anytype.Rpc.Chat.ReadReactions.Response);
+    rpc ChatSearch (anytype.Rpc.Chat.Search.Request) returns (anytype.Rpc.Chat.Search.Response);
+    rpc ChatSetPinnedMessages (anytype.Rpc.Chat.SetPinnedMessages.Request) returns (anytype.Rpc.Chat.SetPinnedMessages.Response);
+    rpc ChatGetPinnedMessages (anytype.Rpc.Chat.GetPinnedMessages.Request) returns (anytype.Rpc.Chat.GetPinnedMessages.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);
