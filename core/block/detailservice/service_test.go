@@ -41,7 +41,7 @@ func (f *fileGCStub) Close(ctx context.Context) error { return nil }
 func (f *fileGCStub) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
 	return nil
 }
-func (f *fileGCStub) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
+func (f *fileGCStub) CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error {
 	return nil
 }
 

@@ -252,7 +252,7 @@ func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string, isA
 
 	for _, objId := range objectIds {
 		go func(objId string) {
-			if err := s.fileGC.CheckFilesOnContextArchived(spaceId, objId, isArchived); err != nil {
+			if err := s.fileGC.CheckFilesOnObjectArchived(spaceId, objId, isArchived); err != nil {
 				log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
 			}
 		}(objId)
