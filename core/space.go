@@ -456,7 +456,7 @@ func (mw *Middleware) SpaceDeleteCorruptedBackup(_ context.Context, req *pb.RpcS
 func (mw *Middleware) SpaceParticipantsAddList(cctx context.Context, req *pb.RpcSpaceParticipantsAddListRequest) *pb.RpcSpaceParticipantsAddListResponse {
 	aclService := mustService[acl.AclService](mw)
 	inboxSender := mustService[inboxsender.Sender](mw)
-	err := addMembers(cctx, req.SpaceId, req.Identities, aclService, inboxSender)
+	err := addMembers(cctx, req.SpaceId, req.Identities, req.Permissions, aclService, inboxSender)
 	code := mapErrorCode(err,
 		errToCode(inboxsender.ErrSendPayloadInvite, pb.RpcSpaceParticipantsAddListResponseError_SEND_INVITE_FAILED),
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceParticipantsAddListResponseError_SPACE_IS_DELETED),
@@ -464,6 +464,7 @@ func (mw *Middleware) SpaceParticipantsAddList(cctx context.Context, req *pb.Rpc
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceParticipantsAddListResponseError_REQUEST_FAILED),
 		errToCode(acl.ErrLimitReached, pb.RpcSpaceParticipantsAddListResponseError_LIMIT_REACHED),
 		errToCode(acl.ErrNotShareable, pb.RpcSpaceParticipantsAddListResponseError_NOT_SHAREABLE),
+		errToCode(acl.ErrIncorrectPermissions, pb.RpcSpaceParticipantsAddListResponseError_INCORRECT_PERMISSIONS),
 	)
 	return &pb.RpcSpaceParticipantsAddListResponse{
 		Error: &pb.RpcSpaceParticipantsAddListResponseError{
@@ -548,16 +549,27 @@ func ownershipChange(ctx context.Context, spaceId string, newOwnerIdentity strin
 	return aclService.OwnershipChange(ctx, spaceId, newOwnerKey, oldOwnerPermissions)
 }
 
-func addMembers(ctx context.Context, spaceId string, identities []string, aclService acl.AclService, inboxSender inboxsender.Sender) error {
+func addMembers(ctx context.Context, spaceId string, identities []string, permissions model.ParticipantPermissions, aclService acl.AclService, inboxSender inboxsender.Sender) error {
 	if len(identities) == 0 {
 		return fmt.Errorf("no identities provided")
 	}
+
+	var aclPerms list.AclPermissions
+	switch permissions {
+	case model.ParticipantPermissions_Reader:
+		aclPerms = list.AclPermissionsReader
+	case model.ParticipantPermissions_Writer:
+		aclPerms = list.AclPermissionsWriter
+	default:
+		return acl.ErrIncorrectPermissions
+	}
+
 	for _, identity := range identities {
 		pubKey, err := crypto.DecodeAccountAddress(identity)
 		if err != nil {
 			return fmt.Errorf("decode identity %s: %w", identity, err)
 		}
-		if err := aclService.AddAccount(ctx, spaceId, pubKey, nil, list.AclPermissionsWriter); err != nil {
+		if err := aclService.AddAccount(ctx, spaceId, pubKey, nil, aclPerms); err != nil {
 			return fmt.Errorf("add account %s: %w", identity, err)
 		}
 	}

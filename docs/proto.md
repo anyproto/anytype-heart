@@ -22550,6 +22550,7 @@ Available undo/redo operations
 | ----- | ---- | ----- | ----------- |
 | spaceId | [string](#string) |  |  |
 | identities | [string](#string) | repeated |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 
 
 
@@ -28853,7 +28854,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
-| NOT_SHAREABLE | 106 |  |
+| NOT_SHAREABLE | 105 |  |
+| INCORRECT_PERMISSIONS | 106 |  |
 
 
 
