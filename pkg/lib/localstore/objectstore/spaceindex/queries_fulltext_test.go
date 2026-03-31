@@ -145,7 +145,7 @@ func TestGetObjectsWithObjectInRelation(t *testing.T) {
 
 		// verify score is propagated
 		for _, rec := range result {
-			assert.Equal(t, 0.8, rec.Details.GetFloat64(database.RecordScoreField))
+			assert.Equal(t, 0.8, rec.Details.GetFloat64(bundle.RelationKey_score))
 		}
 
 		// verify meta
@@ -466,7 +466,7 @@ func TestGetObjectsWithObjectInRelation(t *testing.T) {
 
 		// then
 		require.Len(t, result, 1)
-		assert.Equal(t, 1.5, result[0].Details.GetFloat64(database.RecordScoreField))
+		assert.Equal(t, 1.5, result[0].Details.GetFloat64(bundle.RelationKey_score))
 	})
 
 	t.Run("sets correct meta with filtered relation details", func(t *testing.T) {
@@ -987,7 +987,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, recs, 1)
-		assert.InDelta(t, 3.14, recs[0].Details.GetFloat64(database.RecordScoreField), 0.001)
+		assert.InDelta(t, 3.14, recs[0].Details.GetFloat64(bundle.RelationKey_score), 0.001)
 	})
 
 	t.Run("highlight is generated from title when not provided", func(t *testing.T) {
@@ -1348,7 +1348,7 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, records, 1)
-		assert.InDelta(t, math.Log1p(score), records[0].Details.GetFloat64(database.RecordFinalScoreField), 1e-9)
+		assert.InDelta(t, math.Log1p(score), records[0].Details.GetFloat64(bundle.RelationKey_final_score), 1e-9)
 	})
 
 	t.Run("_final_score gets name_boost when match is in name field", func(t *testing.T) {
@@ -1378,8 +1378,8 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 		// then
 		require.Len(t, nameRecords, 1)
 		require.Len(t, otherRecords, 1)
-		nameScore := nameRecords[0].Details.GetFloat64(database.RecordFinalScoreField)
-		otherScore := otherRecords[0].Details.GetFloat64(database.RecordFinalScoreField)
+		nameScore := nameRecords[0].Details.GetFloat64(bundle.RelationKey_final_score)
+		otherScore := otherRecords[0].Details.GetFloat64(bundle.RelationKey_final_score)
 		assert.InDelta(t, otherScore+1.0, nameScore, 1e-9, "name match should add exactly 1.0 to _final_score")
 	})
 
@@ -1419,7 +1419,7 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 		byId := map[string]float64{}
 		for _, r := range records {
 			id := r.Details.GetString(bundle.RelationKeyId)
-			byId[id] = r.Details.GetFloat64(database.RecordFinalScoreField)
+			byId[id] = r.Details.GetFloat64(bundle.RelationKey_final_score)
 		}
 		assert.Greater(t, byId["fresh"], byId["stale"], "fresh object should outscore stale one with same BM25")
 	})

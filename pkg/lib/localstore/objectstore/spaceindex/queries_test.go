@@ -24,8 +24,8 @@ import (
 
 func removeScoreFromRecords(records []database.Record) []database.Record {
 	for i := range records {
-		records[i].Details.Delete(database.RecordScoreField)
-		records[i].Details.Delete(database.RecordFinalScoreField)
+		records[i].Details.Delete(bundle.RelationKey_score)
+		records[i].Details.Delete(bundle.RelationKey_final_score)
 	}
 	return records
 }

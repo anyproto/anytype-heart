@@ -19,9 +19,7 @@ import (
 var log = logging.Logger("anytype-database")
 
 const (
-	RecordScoreField      = "_score"
-	RecordFinalScoreField = "_final_score"
-	secondsPerDay         = 86400.0
+	secondsPerDay = 86400.0
 )
 
 type Record struct {
@@ -172,13 +170,13 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	}
 
 	for _, sort := range sorts {
-		if sort.RelationKey == RecordScoreField || sort.RelationKey == RecordFinalScoreField {
+		if sort.RelationKey == bundle.RelationKey_score || sort.RelationKey == bundle.RelationKey_final_score {
 			hasScoreSort = true
 		}
 	}
 
 	if !hasScoreSort {
-		sorts = append([]SortRequest{{RelationKey: RecordFinalScoreField, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
+		sorts = append([]SortRequest{{RelationKey: bundle.RelationKey_final_score, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
 	}
 
 	return sorts
@@ -411,7 +409,12 @@ func ComputeFinalScore(bm25Score float64, details *domain.Details, nameMatch boo
 	now := time.Now().Unix()
 	lastOpened := details.GetInt64(bundle.RelationKeyLastOpenedDate)
 	lastModified := details.GetInt64(bundle.RelationKeyLastModifiedDate)
-	recency := math.Max(recencyDecay(now, lastOpened), recencyDecay(now, lastModified))
+	var recency float64
+	if lastOpened > lastModified {
+		recency = recencyDecay(now, lastOpened)
+	} else {
+		recency = recencyDecay(now, lastModified)
+	}
 	nameBoost := 0.0
 	if nameMatch {
 		nameBoost = 1.0
