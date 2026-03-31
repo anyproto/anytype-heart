@@ -282,7 +282,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limi
 		}
 		if len(succeedIds) == 0 {
 			// special case to prevent infinite loop
-			return fmt.Errorf("all ids failed to process")
+			return fmt.Errorf("all ids failed to process cappedToLimit: %v", len(ids) == int(limit))
 		}
 		err = s.FtQueueMarkAsIndexed(succeedIds, ftIndexSeq)
 		if err != nil {
