@@ -48,7 +48,7 @@ func (f *ObjectFactory) newParticipant(spaceId string, sb smartblock.SmartBlock,
 func (p *participant) Init(ctx *smartblock.InitContext) (err error) {
 	s := ctx.Doc.(*state.State)
 	s.SetObjectTypeKey(bundle.TypeKeyParticipant)
-	records, err := p.objectStore.QueryByIds([]string{ctx.Source.Id()})
+	records, err := p.objectStore.QueryByIds([]string{s.RootId()})
 	if err == nil && len(records) > 0 {
 		s.SetDetails(records[0].Details)
 	}
