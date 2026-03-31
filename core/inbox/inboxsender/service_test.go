@@ -88,7 +88,7 @@ func TestSendSpaceInvite(t *testing.T) {
 		require.NoError(t, err)
 		receiverIdentity := receiverKeys.SignKey.GetPublic().Account()
 
-		want := SpaceInvitePayload{
+		want := spaceInvitePayload{
 			SpaceId:    spaceId,
 			SpaceName:  "Test Space",
 			IconOption: 5,
@@ -119,7 +119,7 @@ func TestSendSpaceInvite(t *testing.T) {
 		assert.Equal(t, inboxPayloadTypeRegularInvite, msg.Packet.Payload.PayloadType)
 		assert.Equal(t, receiverIdentity, msg.Packet.ReceiverIdentity)
 
-		var gotPayload SpaceInvitePayload
+		var gotPayload spaceInvitePayload
 		err = json.Unmarshal(msg.Packet.Payload.Body, &gotPayload)
 		require.NoError(t, err)
 		assert.Equal(t, want, gotPayload)
@@ -154,7 +154,7 @@ func TestProcessSpaceInvite(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		spaceId := "invited-space"
-		payload := SpaceInvitePayload{
+		payload := spaceInvitePayload{
 			SpaceId:   spaceId,
 			SpaceName: "My Space",
 		}
