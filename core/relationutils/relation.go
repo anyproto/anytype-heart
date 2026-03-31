@@ -133,8 +133,10 @@ func ValidateRelationFormat(key domain.RelationKey, v domain.Value, format model
 
 	if maxCount == 0 {
 		// let's try bundle relation
-		relation, _ := bundle.PickRelation(key) // nolint:errcheck
-		maxCount = relation.MaxCount
+		relation, err := bundle.PickRelation(key)
+		if err == nil {
+			maxCount = relation.MaxCount
+		}
 	}
 
 	switch format {
