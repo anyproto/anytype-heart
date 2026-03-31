@@ -35,8 +35,8 @@ import (
 )
 
 var (
-	ftIndexInterval                     = 1 * time.Second
-	ftMaxIndexInterval                  = time.Second * 32
+	ftIndexInterval                     = 10 * time.Second
+	ftMaxIndexInterval                  = time.Second * 60
 	ftIndexForceMinInterval             = time.Second * 10
 	ftInconsistencyCheckStartDelay      = time.Second * 10
 	ftBatchLimit                   uint = 1000
