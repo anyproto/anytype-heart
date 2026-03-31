@@ -131,6 +131,10 @@ func (h historyStub) IterateFrom(id string, convert objecttree.ChangeConvertFunc
 	return nil
 }
 
+func (h historyStub) IterateAfterAddSeq(ctx context.Context, addSeq uint64, convert objecttree.ChangeConvertFunc, iterate objecttree.ChangeIterateFunc) error {
+	return nil
+}
+
 func TestHistory_GetBlocksParticipants(t *testing.T) {
 	objectId := "objectId"
 	spaceID := "spaceId"

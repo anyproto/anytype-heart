@@ -66,7 +66,7 @@ func (_c *MockSyncDetailsUpdater_Init_Call) RunAndReturn(run func(*app.App) erro
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSyncDetailsUpdater) Name() string {
 	ret := _m.Called()
 
@@ -142,7 +142,7 @@ func (_c *MockSyncDetailsUpdater_UpdateSpaceDetails_Call) Return() *MockSyncDeta
 }
 
 func (_c *MockSyncDetailsUpdater_UpdateSpaceDetails_Call) RunAndReturn(run func([]string, []string, string)) *MockSyncDetailsUpdater_UpdateSpaceDetails_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

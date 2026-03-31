@@ -33,6 +33,27 @@ const (
 	ValueTypeMap = 7
 )
 
+func (t ValueType) String() string {
+	switch t {
+	case ValueTypeNone:
+		return "none"
+	case ValueTypeNull:
+		return "null"
+	case ValueTypeBool:
+		return "bool"
+	case ValueTypeString:
+		return "string"
+	case ValueTypeFloat:
+		return "float"
+	case ValueTypeStringList:
+		return "string list"
+	case ValueTypeMap:
+		return "map"
+	default:
+		return "invalid"
+	}
+}
+
 func Invalid() Value {
 	return Value{ok: false}
 }

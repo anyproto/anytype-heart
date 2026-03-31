@@ -209,7 +209,7 @@ func (_c *MockBlockService_UploadBlockFile_Call) RunAndReturn(run func(session.C
 }
 
 // UploadFile provides a mock function with given fields: ctx, spaceId, req
-func (_m *MockBlockService) UploadFile(ctx context.Context, spaceId string, req block.FileUploadRequest) (string, model.BlockContentFileType, *domain.Details, error) {
+func (_m *MockBlockService) UploadFile(ctx context.Context, spaceId string, req block.FileUploadRequest) (string, model.BlockContentFileType, *domain.GenericMap[domain.RelationKey], error) {
 	ret := _m.Called(ctx, spaceId, req)
 
 	if len(ret) == 0 {
@@ -218,9 +218,9 @@ func (_m *MockBlockService) UploadFile(ctx context.Context, spaceId string, req 
 
 	var r0 string
 	var r1 model.BlockContentFileType
-	var r2 *domain.Details
+	var r2 *domain.GenericMap[domain.RelationKey]
 	var r3 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, block.FileUploadRequest) (string, model.BlockContentFileType, *domain.Details, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, block.FileUploadRequest) (string, model.BlockContentFileType, *domain.GenericMap[domain.RelationKey], error)); ok {
 		return rf(ctx, spaceId, req)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context, string, block.FileUploadRequest) string); ok {
@@ -235,11 +235,11 @@ func (_m *MockBlockService) UploadFile(ctx context.Context, spaceId string, req 
 		r1 = ret.Get(1).(model.BlockContentFileType)
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, string, block.FileUploadRequest) *domain.Details); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, string, block.FileUploadRequest) *domain.GenericMap[domain.RelationKey]); ok {
 		r2 = rf(ctx, spaceId, req)
 	} else {
 		if ret.Get(2) != nil {
-			r2 = ret.Get(2).(*domain.Details)
+			r2 = ret.Get(2).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -272,12 +272,12 @@ func (_c *MockBlockService_UploadFile_Call) Run(run func(ctx context.Context, sp
 	return _c
 }
 
-func (_c *MockBlockService_UploadFile_Call) Return(objectId string, fileType model.BlockContentFileType, details *domain.Details, err error) *MockBlockService_UploadFile_Call {
+func (_c *MockBlockService_UploadFile_Call) Return(objectId string, fileType model.BlockContentFileType, details *domain.GenericMap[domain.RelationKey], err error) *MockBlockService_UploadFile_Call {
 	_c.Call.Return(objectId, fileType, details, err)
 	return _c
 }
 
-func (_c *MockBlockService_UploadFile_Call) RunAndReturn(run func(context.Context, string, block.FileUploadRequest) (string, model.BlockContentFileType, *domain.Details, error)) *MockBlockService_UploadFile_Call {
+func (_c *MockBlockService_UploadFile_Call) RunAndReturn(run func(context.Context, string, block.FileUploadRequest) (string, model.BlockContentFileType, *domain.GenericMap[domain.RelationKey], error)) *MockBlockService_UploadFile_Call {
 	_c.Call.Return(run)
 	return _c
 }

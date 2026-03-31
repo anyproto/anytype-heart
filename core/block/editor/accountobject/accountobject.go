@@ -136,7 +136,7 @@ func (a *accountObject) Init(ctx *smartblock.InitContext) error {
 	}
 	a.state = stateStore
 
-	a.AnystoreDebug = anystoredebug.New(a.SmartBlock, stateStore)
+	a.AnystoreDebug = anystoredebug.New(a.SmartBlock)
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
 		return fmt.Errorf("source is not a store")

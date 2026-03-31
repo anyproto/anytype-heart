@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
@@ -21,8 +22,6 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
-
-	"go.uber.org/zap"
 )
 
 func (s *Service) ObjectDuplicate(ctx context.Context, id string) (objectID string, err error) {
@@ -72,6 +71,7 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		Name:                       identityProfileWithKey.IdentityProfile.Name,
 		IconImage:                  identityProfileWithKey.IdentityProfile.IconCid,
 		SpaceUxType:                model.SpaceUxType_OneToOne,
+		SpaceType:                  model.SpaceType_SpaceTypeOneToOne, // TODO: GO-7102 remove when this field is marked outdated
 		OneToOneIdentity:           identityProfileWithKey.IdentityProfile.Identity,
 		OneToOneRequestMetadataKey: requestMetadataKeyStr,
 		OneToOneInboxSentStatus:    inviteSentStatus,
@@ -90,26 +90,6 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 		return "", "", fmt.Errorf("onetoone, SpaceViewSetData: %w", err)
 	}
 
-	predefinedObjectIDs := newSpace.DerivedIDs()
-
-	details := []domain.Detail{
-		{Key: bundle.RelationKeySpaceUxType, Value: domain.Float64(float64(model.SpaceUxType_OneToOne))},
-		{Key: bundle.RelationKeyName, Value: domain.String(identityProfileWithKey.IdentityProfile.Name)},
-		{Key: bundle.RelationKeyIconImage, Value: domain.String(identityProfileWithKey.IdentityProfile.IconCid)},
-		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
-		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
-		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(inviteSentStatus))},
-		{Key: bundle.RelationKeySpaceDashboardId, Value: domain.String("lastOpened")},
-	}
-
-	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
-		return b.SetDetails(nil, details, true)
-	})
-
-	if err != nil {
-		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
-	}
-
 	workspaceId := newSpace.DerivedIDs().Workspace
 	chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
 	if err != nil {
@@ -119,6 +99,24 @@ func (s *Service) CreateOneToOneFromInbox(ctx context.Context, identityProfileWi
 	chatId, err := newSpace.DeriveObjectID(s.componentCtx, chatUk)
 	if err != nil {
 		return "", "", fmt.Errorf("onetoone, failed to derive chatId for space %s: %w", newSpace.Id(), err)
+	}
+
+	details := []domain.Detail{
+		{Key: bundle.RelationKeySpaceUxType, Value: domain.Float64(float64(model.SpaceUxType_OneToOne))}, // TODO: remove
+		{Key: bundle.RelationKeyName, Value: domain.String(identityProfileWithKey.IdentityProfile.Name)},
+		{Key: bundle.RelationKeyIconImage, Value: domain.String(identityProfileWithKey.IdentityProfile.IconCid)},
+		{Key: bundle.RelationKeyIconOption, Value: domain.Float64(float64(5))},
+		{Key: bundle.RelationKeyOneToOneRequestMetadataKey, Value: domain.String(requestMetadataKeyStr)},
+		{Key: bundle.RelationKeyOneToOneInboxSentStatus, Value: domain.Int64(int64(inviteSentStatus))},
+		{Key: bundle.RelationKeyHomepage, Value: domain.String(chatId)},
+	}
+
+	err = cache.Do(s, workspaceId, func(b basic.DetailsSettable) error {
+		return b.SetDetails(nil, details, true)
+	})
+
+	if err != nil {
+		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
 
 	return newSpace.Id(), chatId, nil
@@ -155,7 +153,15 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 }
 func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreateRequest) (spaceID string, startingPageId string, err error) {
 	spaceDetails := domain.NewDetailsFromProto(req.Details)
+
+	// TODO: GO-7102 remove this hack when clients transfer from UXType to SpaceType
+	deriveSpaceTypeIfNeeded(spaceDetails)
+
 	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
+
+	if err = validateSpaceType(spaceDescription.SpaceType); err != nil {
+		return "", "", err
+	}
 
 	// when RequestMetadataKey is passed it means we create from a deeplink / QR code
 	if spaceDescription.OneToOneRequestMetadataKey != "" {
@@ -169,42 +175,84 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 	predefinedObjectIDs := newSpace.DerivedIDs()
 
 	err = cache.Do(s, predefinedObjectIDs.Workspace, func(b basic.DetailsSettable) error {
-		details := make([]domain.Detail, 0, len(req.Details.GetFields()))
-		for k, v := range req.Details.GetFields() {
-			details = append(details, domain.Detail{
-				Key:   domain.RelationKey(k),
-				Value: domain.ValueFromProto(v),
-			})
+		details := make([]domain.Detail, 0, spaceDetails.Len()+1)
+		for k, v := range spaceDetails.Iterate() {
+			details = append(details, domain.Detail{Key: k, Value: v})
 		}
 		details = append(details, domain.Detail{
 			Key:   bundle.RelationKeyAnalyticsSpaceId,
 			Value: domain.String(metrics.GenerateAnalyticsId()),
 		})
+		// TODO: GO-7102 remove this code when backward compatibility will be unnecessary
+		if !spaceDetails.Has(bundle.RelationKeySpaceUxType) {
+			spaceUxType := model.SpaceUxType_Data
+			if spaceDescription.SpaceType == model.SpaceType_SpaceTypeOneToOne {
+				spaceUxType = model.SpaceUxType_OneToOne
+			}
+			details = append(details, domain.Detail{
+				Key:   bundle.RelationKeySpaceUxType,
+				Value: domain.Int64(spaceUxType),
+			})
+		}
 		return b.SetDetails(nil, details, true)
 	})
 	if err != nil {
 		return "", "", fmt.Errorf("set details for space %s: %w", newSpace.Id(), err)
 	}
-	if spaceDescription.SpaceUxType != model.SpaceUxType_OneToOne {
+	if spaceDescription.SpaceType != model.SpaceType_SpaceTypeOneToOne {
 		startingPageId, _, err = s.builtinObjectService.CreateObjectsForUseCase(nil, newSpace.Id(), req.UseCase)
 		if err != nil {
 			return "", "", fmt.Errorf("import use-case: %w", err)
 		}
-	} else {
-		workspaceId := newSpace.DerivedIDs().Workspace
-		chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
-		if err != nil {
-			return "", "", err
-		}
+		return newSpace.Id(), startingPageId, err
+	}
 
-		chatId, err := newSpace.DeriveObjectID(context.Background(), chatUk)
-		if err != nil {
-			return "", "", err
-		}
-		startingPageId = chatId
+	workspaceId := newSpace.DerivedIDs().Workspace
+	chatUk, err := domain.NewUniqueKey(coresb.SmartBlockTypeChatDerivedObject, workspaceId)
+	if err != nil {
+		return "", "", err
+	}
+
+	chatId, err := newSpace.DeriveObjectID(context.Background(), chatUk)
+	if err != nil {
+		return "", "", err
+	}
+	startingPageId = chatId
+
+	// TODO: make it async in space init
+	chatInitErr := s.SpaceInitChat(ctx, newSpace.Id(), true)
+	if chatInitErr != nil {
+		log.With("error", chatInitErr).Warn("failed to init space level chat")
 	}
 
 	return newSpace.Id(), startingPageId, err
+}
+
+func deriveSpaceTypeIfNeeded(details *domain.Details) {
+	spaceType := model.SpaceType(details.GetInt64(bundle.RelationKeySpaceType)) // nolint:gosec
+	if spaceType == model.SpaceType_SpaceTypeUnknown {
+		uxType := model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)) // nolint:gosec
+		switch uxType {
+		case model.SpaceUxType_OneToOne:
+			spaceType = model.SpaceType_SpaceTypeOneToOne
+		default:
+			spaceType = model.SpaceType_SpaceTypeRegular
+		}
+		details.SetInt64(bundle.RelationKeySpaceType, int64(spaceType))
+	}
+}
+
+func validateSpaceType(spaceType model.SpaceType) error {
+	switch spaceType {
+	case model.SpaceType_SpaceTypeRegular, model.SpaceType_SpaceTypeOneToOne:
+		return nil
+	case model.SpaceType_SpaceTypeTech:
+		return errors.New("creation of technical space via command is restricted")
+	case model.SpaceType_SpaceTypeChat:
+		return errors.New("creation of chat space via command is restricted")
+	default:
+		return errors.New("unknown space type")
+	}
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block

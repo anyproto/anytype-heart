@@ -83,7 +83,7 @@ func (_c *MockSpace_DeriveObjectID_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// DerivedIDs provides a mock function with given fields:
+// DerivedIDs provides a mock function with no fields
 func (_m *MockSpace) DerivedIDs() threads.DerivedSmartblockIds {
 	ret := _m.Called()
 
@@ -336,7 +336,7 @@ func (_c *MockSpace_GetTypeIdByKey_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// Id provides a mock function with given fields:
+// Id provides a mock function with no fields
 func (_m *MockSpace) Id() string {
 	ret := _m.Called()
 
@@ -381,7 +381,7 @@ func (_c *MockSpace_Id_Call) RunAndReturn(run func() string) *MockSpace_Id_Call 
 	return _c
 }
 
-// IsOneToOne provides a mock function with given fields:
+// IsOneToOne provides a mock function with no fields
 func (_m *MockSpace) IsOneToOne() bool {
 	ret := _m.Called()
 
@@ -426,7 +426,7 @@ func (_c *MockSpace_IsOneToOne_Call) RunAndReturn(run func() bool) *MockSpace_Is
 	return _c
 }
 
-// IsPersonal provides a mock function with given fields:
+// IsPersonal provides a mock function with no fields
 func (_m *MockSpace) IsPersonal() bool {
 	ret := _m.Called()
 
@@ -517,7 +517,7 @@ func (_c *MockSpace_RefreshObjects_Call) RunAndReturn(run func([]string) error) 
 	return _c
 }
 
-// StoredIds provides a mock function with given fields:
+// StoredIds provides a mock function with no fields
 func (_m *MockSpace) StoredIds() []string {
 	ret := _m.Called()
 
@@ -564,7 +564,7 @@ func (_c *MockSpace_StoredIds_Call) RunAndReturn(run func() []string) *MockSpace
 	return _c
 }
 
-// TreeBuilder provides a mock function with given fields:
+// TreeBuilder provides a mock function with no fields
 func (_m *MockSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
 	ret := _m.Called()
 

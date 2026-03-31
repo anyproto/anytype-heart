@@ -69,14 +69,20 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		return err
 	}
 	w.initTemplate(ctx)
+	w.deriveSpaceType(ctx.State)
 	w.migrator.migrateSubObjects(ctx.State)
 	w.onWorkspaceChanged(ctx.State)
 	w.AddHook(w.onApply, smartblock.HookAfterApply)
 
-	if w.isOneToOne(ctx.State) {
+	if w.isOneToOne() {
 		w.subscribeForOneToOneProfile(ctx.State)
 	}
 	return nil
+}
+
+func (w *Workspaces) deriveSpaceType(s *state.State) {
+	spaceType := w.Space().SpaceType()
+	s.SetDetail(bundle.RelationKeySpaceType, domain.Int64(spaceType.ToEnum()))
 }
 
 func (w *Workspaces) subscribeForOneToOneProfile(state *state.State) {
@@ -137,6 +143,8 @@ func (w *Workspaces) updateOneToOneInfo(details *domain.Details) {
 		bundle.RelationKeyName:       details.Get(bundle.RelationKeyName),
 		bundle.RelationKeyIconImage:  details.Get(bundle.RelationKeyIconImage),
 		bundle.RelationKeyIconOption: details.Get(bundle.RelationKeyIconOption),
+		bundle.RelationKeyHomepage:   details.Get(bundle.RelationKeyHomepage),
+		bundle.RelationKeySpaceType:  domain.Int64(model.SpaceType_SpaceTypeOneToOne),
 	})
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), toSave)
 }
@@ -217,7 +225,7 @@ func (w *Workspaces) GetExistingGuestInviteInfo() (fileCid string, fileKey strin
 func (w *Workspaces) StateMigrations() migration.Migrations {
 	return migration.MakeMigrations([]migration.Migration{{
 		Version: 2,
-		Proc: func(s *state.State) {
+		Proc: func(s *state.State) { // TODO: GO-7102 make this migration no-op
 			spaceUxType, ok := s.Details().TryInt64(bundle.RelationKeySpaceUxType)
 			if !ok {
 				spaceUxType = int64(model.SpaceUxType_Data)
@@ -236,14 +244,13 @@ func (w *Workspaces) onApply(info smartblock.ApplyInfo) error {
 	return nil
 }
 
-func (w *Workspaces) isOneToOne(state *state.State) bool {
-	spaceUxType := model.SpaceUxType(state.Details().GetInt64(bundle.RelationKeySpaceUxType)) //nolint:gosec
-	return spaceUxType == model.SpaceUxType_OneToOne
+func (w *Workspaces) isOneToOne() bool {
+	return w.Space().IsOneToOne()
 }
 
 func (w *Workspaces) onWorkspaceChanged(state *state.State) {
 	details := state.CombinedDetails().Copy()
-	if w.isOneToOne(state) {
+	if w.isOneToOne() {
 		w.subscribeForOneToOneProfile(state)
 		return
 	}

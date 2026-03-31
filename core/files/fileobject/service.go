@@ -106,6 +106,7 @@ type Service interface {
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
+	MarkFileUploaded(objectId string) error
 }
 
 type objectCreatorService interface {
@@ -319,6 +320,10 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 	}
 	err := s.addToSyncQueue(req)
 	return err
+}
+
+func (s *service) MarkFileUploaded(objectId string) error {
+	return s.fileSync.MarkUploaded(objectId)
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -679,18 +684,14 @@ func (s *service) CanDeleteFile(ctx context.Context, objectId string) error {
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	workspaceDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(spc.DerivedIDs().Workspace)
-	if err != nil {
-		return fmt.Errorf("get workspace details: %w", err)
-	}
-
-	if workspaceDetails.GetInt64(bundle.RelationKeySpaceUxType) == int64(model.SpaceUxType_OneToOne) {
+	if spc.IsOneToOne() {
 		myParticipantId := s.accountService.MyParticipantId(spaceId)
 
 		if details.GetString(bundle.RelationKeyCreator) != myParticipantId {
 			return fmt.Errorf("can't delete other's file")
 		}
 	}
+
 	return nil
 }
 

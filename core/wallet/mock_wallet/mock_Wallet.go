@@ -6,7 +6,11 @@ import (
 	app "github.com/anyproto/any-sync/app"
 	accountdata "github.com/anyproto/any-sync/commonspace/object/accountdata"
 
+	common "github.com/ethereum/go-ethereum/common"
+
 	crypto "github.com/anyproto/any-sync/util/crypto"
+
+	ecdsa "crypto/ecdsa"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -28,7 +32,7 @@ func (_m *MockWallet) EXPECT() *MockWallet_Expecter {
 	return &MockWallet_Expecter{mock: &_m.Mock}
 }
 
-// Account provides a mock function with given fields:
+// Account provides a mock function with no fields
 func (_m *MockWallet) Account() *accountdata.AccountKeys {
 	ret := _m.Called()
 
@@ -75,7 +79,7 @@ func (_c *MockWallet_Account_Call) RunAndReturn(run func() *accountdata.AccountK
 	return _c
 }
 
-// FtsPrimaryLang provides a mock function with given fields:
+// FtsPrimaryLang provides a mock function with no fields
 func (_m *MockWallet) FtsPrimaryLang() string {
 	ret := _m.Called()
 
@@ -120,20 +124,20 @@ func (_c *MockWallet_FtsPrimaryLang_Call) RunAndReturn(run func() string) *MockW
 	return _c
 }
 
-// GetAccountEthAddress provides a mock function with given fields:
-func (_m *MockWallet) GetAccountEthAddress() wallet.EthAddress {
+// GetAccountEthAddress provides a mock function with no fields
+func (_m *MockWallet) GetAccountEthAddress() common.Address {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAccountEthAddress")
 	}
 
-	var r0 wallet.EthAddress
-	if rf, ok := ret.Get(0).(func() wallet.EthAddress); ok {
+	var r0 common.Address
+	if rf, ok := ret.Get(0).(func() common.Address); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(wallet.EthAddress)
+			r0 = ret.Get(0).(common.Address)
 		}
 	}
 
@@ -157,30 +161,30 @@ func (_c *MockWallet_GetAccountEthAddress_Call) Run(run func()) *MockWallet_GetA
 	return _c
 }
 
-func (_c *MockWallet_GetAccountEthAddress_Call) Return(_a0 wallet.EthAddress) *MockWallet_GetAccountEthAddress_Call {
+func (_c *MockWallet_GetAccountEthAddress_Call) Return(_a0 common.Address) *MockWallet_GetAccountEthAddress_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockWallet_GetAccountEthAddress_Call) RunAndReturn(run func() wallet.EthAddress) *MockWallet_GetAccountEthAddress_Call {
+func (_c *MockWallet_GetAccountEthAddress_Call) RunAndReturn(run func() common.Address) *MockWallet_GetAccountEthAddress_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetAccountEthPrivkey provides a mock function with given fields:
-func (_m *MockWallet) GetAccountEthPrivkey() wallet.EthPrivateKey {
+// GetAccountEthPrivkey provides a mock function with no fields
+func (_m *MockWallet) GetAccountEthPrivkey() *ecdsa.PrivateKey {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAccountEthPrivkey")
 	}
 
-	var r0 wallet.EthPrivateKey
-	if rf, ok := ret.Get(0).(func() wallet.EthPrivateKey); ok {
+	var r0 *ecdsa.PrivateKey
+	if rf, ok := ret.Get(0).(func() *ecdsa.PrivateKey); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(wallet.EthPrivateKey)
+			r0 = ret.Get(0).(*ecdsa.PrivateKey)
 		}
 	}
 
@@ -204,17 +208,17 @@ func (_c *MockWallet_GetAccountEthPrivkey_Call) Run(run func()) *MockWallet_GetA
 	return _c
 }
 
-func (_c *MockWallet_GetAccountEthPrivkey_Call) Return(_a0 wallet.EthPrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
+func (_c *MockWallet_GetAccountEthPrivkey_Call) Return(_a0 *ecdsa.PrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockWallet_GetAccountEthPrivkey_Call) RunAndReturn(run func() wallet.EthPrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
+func (_c *MockWallet_GetAccountEthPrivkey_Call) RunAndReturn(run func() *ecdsa.PrivateKey) *MockWallet_GetAccountEthPrivkey_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetAccountPrivkey provides a mock function with given fields:
+// GetAccountPrivkey provides a mock function with no fields
 func (_m *MockWallet) GetAccountPrivkey() crypto.PrivKey {
 	ret := _m.Called()
 
@@ -261,7 +265,7 @@ func (_c *MockWallet_GetAccountPrivkey_Call) RunAndReturn(run func() crypto.Priv
 	return _c
 }
 
-// GetDevicePrivkey provides a mock function with given fields:
+// GetDevicePrivkey provides a mock function with no fields
 func (_m *MockWallet) GetDevicePrivkey() crypto.PrivKey {
 	ret := _m.Called()
 
@@ -308,7 +312,7 @@ func (_c *MockWallet_GetDevicePrivkey_Call) RunAndReturn(run func() crypto.PrivK
 	return _c
 }
 
-// GetMasterKey provides a mock function with given fields:
+// GetMasterKey provides a mock function with no fields
 func (_m *MockWallet) GetMasterKey() crypto.PrivKey {
 	ret := _m.Called()
 
@@ -401,7 +405,7 @@ func (_c *MockWallet_Init_Call) RunAndReturn(run func(*app.App) error) *MockWall
 	return _c
 }
 
-// ListAppLinks provides a mock function with given fields:
+// ListAppLinks provides a mock function with no fields
 func (_m *MockWallet) ListAppLinks() ([]*wallet.AppLinkInfo, error) {
 	ret := _m.Called()
 
@@ -458,7 +462,7 @@ func (_c *MockWallet_ListAppLinks_Call) RunAndReturn(run func() ([]*wallet.AppLi
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockWallet) Name() string {
 	ret := _m.Called()
 
@@ -620,7 +624,7 @@ func (_c *MockWallet_ReadAppLink_Call) RunAndReturn(run func(string) (*wallet.Ap
 	return _c
 }
 
-// RepoPath provides a mock function with given fields:
+// RepoPath provides a mock function with no fields
 func (_m *MockWallet) RepoPath() string {
 	ret := _m.Called()
 
@@ -711,7 +715,7 @@ func (_c *MockWallet_RevokeAppLink_Call) RunAndReturn(run func(string) error) *M
 	return _c
 }
 
-// RootPath provides a mock function with given fields:
+// RootPath provides a mock function with no fields
 func (_m *MockWallet) RootPath() string {
 	ret := _m.Called()
 
