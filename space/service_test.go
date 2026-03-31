@@ -25,7 +25,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
-	"github.com/anyproto/anytype-heart/core/inbox/inboxsender/mock_inboxsender"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice/mock_inboxservice"
 	"github.com/anyproto/anytype-heart/core/kanban/mock_kanban"
 	"github.com/anyproto/anytype-heart/core/notifications/mock_notifications"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -239,7 +239,7 @@ func newFixture(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) 
 	collService := &dummyCollectionService{}
 	subscriptionService := subscription.New()
 	identityService := testutil.PrepareMock(ctx, fx.a, mock_dependencies.NewMockIdentityService(t))
-	inboxSenderMock := mock_inboxsender.NewMockSender(t)
+	inboxSenderMock := mock_inboxservice.NewMockSender(t)
 	inboxSenderMock.EXPECT().Run(mock.Anything).Return(nil).Maybe()
 	inboxSenderMock.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 	inboxSenderService := testutil.PrepareMock(ctx, fx.a, inboxSenderMock)

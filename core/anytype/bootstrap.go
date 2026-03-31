@@ -83,7 +83,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inbox/inboxclient"
-	"github.com/anyproto/anytype-heart/core/inbox/inboxsender"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore"
@@ -348,7 +348,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscribeclient.New()).
 		Register(anysyncinboxclient.New()).
 		Register(inboxclient.New()).
-		Register(inboxsender.New()).
+		Register(inboxservice.New()).
 		Register(durability.New()) // leave it the last one
 }
 

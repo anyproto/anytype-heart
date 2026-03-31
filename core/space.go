@@ -12,7 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/inbox/inboxsender"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/pb"
@@ -455,10 +455,10 @@ func (mw *Middleware) SpaceDeleteCorruptedBackup(_ context.Context, req *pb.RpcS
 
 func (mw *Middleware) SpaceParticipantsAddList(cctx context.Context, req *pb.RpcSpaceParticipantsAddListRequest) *pb.RpcSpaceParticipantsAddListResponse {
 	aclService := mustService[acl.AclService](mw)
-	inboxSender := mustService[inboxsender.Sender](mw)
+	inboxSender := mustService[inboxservice.Sender](mw)
 	err := addMembers(cctx, req.SpaceId, req.Identities, req.Permissions, aclService, inboxSender)
 	code := mapErrorCode(err,
-		errToCode(inboxsender.ErrSendPayloadInvite, pb.RpcSpaceParticipantsAddListResponseError_SEND_INVITE_FAILED),
+		errToCode(inboxservice.ErrSendPayloadInvite, pb.RpcSpaceParticipantsAddListResponseError_SEND_INVITE_FAILED),
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceParticipantsAddListResponseError_SPACE_IS_DELETED),
 		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceParticipantsAddListResponseError_NO_SUCH_SPACE),
 		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceParticipantsAddListResponseError_REQUEST_FAILED),
@@ -549,7 +549,7 @@ func ownershipChange(ctx context.Context, spaceId string, newOwnerIdentity strin
 	return aclService.OwnershipChange(ctx, spaceId, newOwnerKey, oldOwnerPermissions)
 }
 
-func addMembers(ctx context.Context, spaceId string, identities []string, permissions model.ParticipantPermissions, aclService acl.AclService, inboxSender inboxsender.Sender) error {
+func addMembers(ctx context.Context, spaceId string, identities []string, permissions model.ParticipantPermissions, aclService acl.AclService, inboxSender inboxservice.Sender) error {
 	if len(identities) == 0 {
 		return fmt.Errorf("no identities provided")
 	}

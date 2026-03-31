@@ -1,4 +1,4 @@
-package inboxsender
+package inboxservice
 
 import (
 	"context"

@@ -1,19 +1,18 @@
-package inboxsender
+package inboxservice
 
 import (
 	"context"
 	"encoding/json"
 	"testing"
 
-	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
-	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxclient/mock_inboxclient"
+	"github.com/anyproto/anytype-heart/space/mock_space"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
@@ -21,15 +20,15 @@ import (
 
 type fixture struct {
 	*inboxSender
-	mockInboxClient  *mockInboxClientImpl
+	mockInboxClient  *mock_inboxclient.MockInboxClient
 	mockTechSpace    *mock_techspace.MockTechSpace
-	mockSpaceService *mockSpaceServiceImpl
+	mockSpaceService *mock_space.MockService
 }
 
 func newFixture(t *testing.T) *fixture {
-	mockInbox := &mockInboxClientImpl{}
+	mockInbox := mock_inboxclient.NewMockInboxClient(t)
 	mockTS := mock_techspace.NewMockTechSpace(t)
-	mockSS := &mockSpaceServiceImpl{}
+	mockSS := mock_space.NewMockService(t)
 
 	s := &inboxSender{
 		inboxClient:  mockInbox,
@@ -42,39 +41,6 @@ func newFixture(t *testing.T) *fixture {
 		mockTechSpace:    mockTS,
 		mockSpaceService: mockSS,
 	}
-}
-
-type mockSpaceServiceImpl struct {
-	mock.Mock
-}
-
-func (m *mockSpaceServiceImpl) TechSpace() *clientspace.TechSpace {
-	return nil
-}
-
-func (m *mockSpaceServiceImpl) InviteJoin(ctx context.Context, id, aclHeadId string) error {
-	args := m.Called(ctx, id, aclHeadId)
-	return args.Error(0)
-}
-
-// mockInboxClientImpl implements inboxclient.InboxClient for testing
-type mockInboxClientImpl struct {
-	mock.Mock
-}
-
-func (m *mockInboxClientImpl) Init(_ *app.App) error         { return nil }
-func (m *mockInboxClientImpl) Name() string                  { return "mock.inboxclient" }
-func (m *mockInboxClientImpl) Run(_ context.Context) error   { return nil }
-func (m *mockInboxClientImpl) Close(_ context.Context) error { return nil }
-
-func (m *mockInboxClientImpl) SetReceiverByType(payloadType coordinatorproto.InboxPayloadType, handler func(*coordinatorproto.InboxPacket) error) error {
-	args := m.Called(payloadType, handler)
-	return args.Error(0)
-}
-
-func (m *mockInboxClientImpl) InboxAddMessage(ctx context.Context, receiverPubKey crypto.PubKey, message *coordinatorproto.InboxMessage) error {
-	args := m.Called(ctx, receiverPubKey, message)
-	return args.Error(0)
 }
 
 func TestSendSpaceInvite(t *testing.T) {
@@ -103,9 +69,7 @@ func TestSendSpaceInvite(t *testing.T) {
 			RunAndReturn(func(ctx context.Context, id string, apply func(techspace.SpaceView) error) error {
 				return apply(mockSpaceView)
 			})
-
-		fx.mockInboxClient.On("InboxAddMessage", mock.Anything, mock.Anything, mock.Anything).
-			Return(nil)
+		fx.mockInboxClient.EXPECT().InboxAddMessage(mock.Anything, mock.Anything, mock.Anything).Return(nil)
 
 		// when
 		err = fx.SendRegularSpaceInvites(ctx, spaceId, receiverIdentity)
