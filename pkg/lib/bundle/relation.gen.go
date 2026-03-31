@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "a44309a103773f403e2cb14c85ff84a2ae8abb5c65ffd74b3a7a51110a960a1a"
+const RelationChecksum = "a5767b827131febb8270a169e636c51b427891efb7c57916fc270835561c7fec"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -194,6 +194,7 @@ const (
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
 	RelationKey_score                               domain.RelationKey = "_score"
+	RelationKey_final_score                         domain.RelationKey = "_final_score"
 	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
 	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
 )
@@ -2732,6 +2733,20 @@ var (
 			Key:              "writersLimit",
 			MaxCount:         1,
 			Name:             "Writers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKey_final_score: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Fulltext search final score (BM25 + recency + name boost)",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_br_final_score",
+			Key:              "_final_score",
+			MaxCount:         1,
+			Name:             "Final Score",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

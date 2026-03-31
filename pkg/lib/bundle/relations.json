@@ -1878,6 +1878,16 @@
     "source": "derived"
   },
   {
+    "description": "Fulltext search final score (BM25 + recency + name boost)",
+    "format": "number",
+    "hidden": true,
+    "key": "_final_score",
+    "maxCount": 1,
+    "name": "Final Score",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Version of file context migration completed for this space",
     "format": "number",
     "hidden": true,
