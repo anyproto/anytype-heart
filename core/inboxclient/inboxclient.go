@@ -249,7 +249,9 @@ func (s *inboxclient) InboxAddMessage(ctx context.Context, receiverPubKey crypto
 	return s.inboxClient.InboxAddMessage(ctx, receiverPubKey, message)
 }
 func (s *inboxclient) Close(_ context.Context) (err error) {
-	s.componentCtxCancel()
+	if s.componentCtxCancel != nil {
+		s.componentCtxCancel()
+	}
 	if s.periodicCheck != nil {
 		s.periodicCheck.Close()
 	}
