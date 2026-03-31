@@ -125,7 +125,7 @@ func TestProcessSpaceInvite(t *testing.T) {
 		body, err := json.Marshal(payload)
 		require.NoError(t, err)
 
-		fx.mockSpaceService.On("InviteJoin", mock.Anything, spaceId, "").Return(nil)
+		fx.mockSpaceService.EXPECT().InviteJoin(mock.Anything, spaceId, mock.Anything).Return(nil)
 		fx.mockTechSpace.EXPECT().SpaceViewSetData(mock.Anything, spaceId, mock.Anything).Return(nil)
 
 		packet := &coordinatorproto.InboxPacket{
