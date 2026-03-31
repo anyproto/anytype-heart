@@ -27,6 +27,8 @@ import (
 
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 
+	spacedomain "github.com/anyproto/anytype-heart/space/spacedomain"
+
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 
 	treestorage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -1695,6 +1697,51 @@ func (_c *MockSpace_Remove_Call) Return(_a0 error) *MockSpace_Remove_Call {
 }
 
 func (_c *MockSpace_Remove_Call) RunAndReturn(run func(context.Context, string) error) *MockSpace_Remove_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SpaceType provides a mock function with no fields
+func (_m *MockSpace) SpaceType() spacedomain.SpaceType {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SpaceType")
+	}
+
+	var r0 spacedomain.SpaceType
+	if rf, ok := ret.Get(0).(func() spacedomain.SpaceType); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(spacedomain.SpaceType)
+	}
+
+	return r0
+}
+
+// MockSpace_SpaceType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SpaceType'
+type MockSpace_SpaceType_Call struct {
+	*mock.Call
+}
+
+// SpaceType is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) SpaceType() *MockSpace_SpaceType_Call {
+	return &MockSpace_SpaceType_Call{Call: _e.mock.On("SpaceType")}
+}
+
+func (_c *MockSpace_SpaceType_Call) Run(run func()) *MockSpace_SpaceType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_SpaceType_Call) Return(_a0 spacedomain.SpaceType) *MockSpace_SpaceType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_SpaceType_Call) RunAndReturn(run func() spacedomain.SpaceType) *MockSpace_SpaceType_Call {
 	_c.Call.Return(run)
 	return _c
 }
