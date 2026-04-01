@@ -326,3 +326,10 @@ func (d *GenericMap[K]) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
 	}
 	return obj
 }
+
+func (d *GenericMap[K]) ToMap() map[K]Value {
+	if d == nil {
+		return nil
+	}
+	return d.data
+}
