@@ -289,6 +289,9 @@ packages:
   github.com/anyproto/anytype-heart/core/relationutils:
     interfaces:
       RelationFormatFetcher:
-  github.com/anyproto/anytype-heart/core/onetoone:
+  github.com/anyproto/anytype-heart/core/inbox/inboxservice:
     interfaces:
-      Service:
+      Sender:
+  github.com/anyproto/anytype-heart/core/inbox/inboxclient:
+    interfaces:
+      InboxClient:
