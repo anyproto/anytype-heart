@@ -44,6 +44,9 @@ func (f *fileGCStub) CheckFilesOnLinksRemoval(spaceId, contextId string, removed
 func (f *fileGCStub) CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error {
 	return nil
 }
+func (f *fileGCStub) CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error {
+	return nil
+}
 
 type fixture struct {
 	Service

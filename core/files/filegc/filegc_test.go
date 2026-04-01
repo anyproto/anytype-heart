@@ -254,6 +254,61 @@ func TestCheckFilesOnObjectArchived_ObjectIsFile_EarlyReturn(t *testing.T) {
 	assert.Empty(t, fx.archiver.archivedIds)
 }
 
+// -- links restored (undo) tests --
+
+func TestCheckFilesOnLinksRestored_RestoresArchivedFile(t *testing.T) {
+	// given: file was GC'd (archived) when its link was deleted; undo re-adds the link
+	fx := newFixture(t)
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               domain.String("file1"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_image)),
+			bundle.RelationKeyCreatedInContext: domain.String("page"),
+			bundle.RelationKeyIsArchived:       domain.Bool(true),
+		},
+	})
+
+	// when: undo re-adds the file link
+	err := fx.CheckFilesOnLinksRestored(testSpaceId, "page", []string{"file1"})
+
+	// then: file is unarchived
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.unarchivedIds)
+}
+
+func TestCheckFilesOnLinksRestored_IgnoresFileFromDifferentContext(t *testing.T) {
+	// given: file belongs to a different context
+	fx := newFixture(t)
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               domain.String("file1"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_image)),
+			bundle.RelationKeyCreatedInContext: domain.String("other-page"),
+			bundle.RelationKeyIsArchived:       domain.Bool(true),
+		},
+	})
+
+	// when: link restored to a different page
+	err := fx.CheckFilesOnLinksRestored(testSpaceId, "page", []string{"file1"})
+
+	// then: file is not touched — wrong context
+	require.NoError(t, err)
+	assert.Empty(t, fx.archiver.unarchivedIds)
+}
+
+func TestCheckFilesOnLinksRestored_IgnoresAlreadyActiveFile(t *testing.T) {
+	// given: file is not archived (was never GC'd or was already restored)
+	fx := newFixture(t)
+	fx.addObject(t, fileObject("file1", "page", []string{"page"}))
+
+	// when
+	err := fx.CheckFilesOnLinksRestored(testSpaceId, "page", []string{"file1"})
+
+	// then: nothing to do
+	require.NoError(t, err)
+	assert.Empty(t, fx.archiver.unarchivedIds)
+}
+
 // -- unarchive direction tests --
 
 func TestCheckFilesOnObjectArchived_Unarchive_NoOtherBacklinks(t *testing.T) {

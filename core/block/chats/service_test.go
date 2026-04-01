@@ -87,6 +87,9 @@ func (s *fileGCDummy) CheckFilesOnLinksRemoval(spaceId, contextId string, remove
 func (s *fileGCDummy) CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error {
 	return nil
 }
+func (s *fileGCDummy) CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error {
+	return nil
+}
 
 type actionType int
 

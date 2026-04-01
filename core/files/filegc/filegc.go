@@ -25,6 +25,7 @@ type FileGC interface {
 	app.ComponentRunnable
 	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error
 	CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error
+	CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -434,6 +435,61 @@ func hasActiveBacklinks(details *domain.Details, fileId, currentlyArchivingId st
 		}
 	}
 	return false
+}
+
+// CheckFilesOnLinksRestored unarchives file objects that were previously GC'd when links are re-added
+// to a context object (e.g. via undo). For each added link that is an archived file whose
+// CreatedInContext matches the context, the file is restored unconditionally — the active link
+// in the page is sufficient justification to unarchive it.
+func (gc *fileGC) CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error {
+	if len(addedLinks) == 0 {
+		return nil
+	}
+
+	log.Debugf("checking %d restored links in context %s", len(addedLinks), contextId)
+
+	gc.backlinksWatcher.FlushUpdates()
+	idx := gc.objectStore.SpaceIndex(spaceId)
+
+	fileLayouts := makeFileLayouts()
+
+	// Find archived files among the added links that belong to this context.
+	// Explicit IsArchived == true suppresses the implicit IsArchived != true default filter.
+	records, err := idx.Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyId,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.StringList(addedLinks),
+			},
+			{
+				RelationKey: bundle.RelationKeyCreatedInContext,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(contextId),
+			},
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List(fileLayouts),
+			},
+			{
+				RelationKey: bundle.RelationKeyIsArchived,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Bool(true),
+			},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("query archived files for restore: %w", err)
+	}
+
+	var toRestore []string
+	for _, record := range records {
+		fileId := record.Details.GetString(bundle.RelationKeyId)
+		log.Debugf("restoring archived file %s after link re-added to context %s", fileId, contextId)
+		toRestore = append(toRestore, fileId)
+	}
+	return gc.objectArchiver.SetListIsArchived(gc.componentCtx, toRestore, false)
 }
 
 func makeFileLayouts() []int64 {
