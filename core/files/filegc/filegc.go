@@ -21,7 +21,7 @@ var log = logging.Logger("filegc")
 
 const CName = "core.files.filegc"
 
-type FileGC interface {
+type ObjectGC interface {
 	app.ComponentRunnable
 	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error
 	CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error
@@ -53,7 +53,7 @@ type fileGC struct {
 	componentCtx context.Context
 }
 
-func New() FileGC {
+func New() ObjectGC {
 	return &fileGC{}
 }
 
@@ -96,7 +96,7 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 	gc.backlinksWatcher.FlushUpdates()
 	idx := gc.objectStore.SpaceIndex(spaceId)
 
-	fileLayouts := makeFileLayouts()
+	fileLayouts := makeGCEligibleLayouts()
 
 	// Build query filters
 	filters := []database.FilterRequest{
@@ -151,6 +151,11 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 
 		// File has no active backlinks and was created in this context - can be deleted or archived.
 		shouldSkipBin := skipBin
+		// Per-layout override: non-file objects must never be permanently deleted.
+		layout := model.ObjectTypeLayout(int32(record.Details.GetInt64(bundle.RelationKeyResolvedLayout)))
+		if !slices.Contains(domain.FileLayouts, layout) {
+			shouldSkipBin = false
+		}
 		if shouldSkipBin {
 			// Additional safety: only permanently delete if the file was created by the current user.
 			fileCreator := record.Details.GetString(bundle.RelationKeyCreator)
@@ -204,15 +209,15 @@ func (gc *fileGC) CheckFilesOnObjectArchived(spaceId, objectId string, isArchive
 	if err != nil {
 		return fmt.Errorf("get details of object: %w", err)
 	}
-	if slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(int32(d.GetInt64(bundle.RelationKeyResolvedLayout)))) {
-		// files can't have files as children, so there's no need to check them
+	if !slices.Contains(domain.GCEligibleLayouts, model.ObjectTypeLayout(int32(d.GetInt64(bundle.RelationKeyResolvedLayout)))) {
+		// system/unsupported objects can't have GC-tracked children
 		return nil
 	}
 
 	// make sure we have all backlinks updates flushed to the store
 	gc.backlinksWatcher.FlushUpdates()
 
-	fileLayouts := makeFileLayouts()
+	fileLayouts := makeGCEligibleLayouts()
 
 	if !isArchived {
 		return gc.restoreFilesOnUnarchive(idx, objectId, fileLayouts)
@@ -451,7 +456,7 @@ func (gc *fileGC) CheckFilesOnLinksRestored(spaceId, contextId string, addedLink
 	gc.backlinksWatcher.FlushUpdates()
 	idx := gc.objectStore.SpaceIndex(spaceId)
 
-	fileLayouts := makeFileLayouts()
+	fileLayouts := makeGCEligibleLayouts()
 
 	// Find archived files among the added links that belong to this context.
 	// Explicit IsArchived == true suppresses the implicit IsArchived != true default filter.
@@ -492,9 +497,9 @@ func (gc *fileGC) CheckFilesOnLinksRestored(spaceId, contextId string, addedLink
 	return gc.objectArchiver.SetListIsArchived(gc.componentCtx, toRestore, false)
 }
 
-func makeFileLayouts() []int64 {
-	layouts := make([]int64, 0, len(domain.FileLayouts))
-	for _, layout := range domain.FileLayouts {
+func makeGCEligibleLayouts() []int64 {
+	layouts := make([]int64, 0, len(domain.GCEligibleLayouts))
+	for _, layout := range domain.GCEligibleLayouts {
 		layouts = append(layouts, int64(layout))
 	}
 	return layouts
