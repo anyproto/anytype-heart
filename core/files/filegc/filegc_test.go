@@ -28,10 +28,11 @@ func newFixture(t *testing.T) *fixture {
 	store := objectstore.NewStoreFixture(t)
 	archiver := &mockArchiver{}
 	gc := &fileGC{
-		objectStore:      store,
-		objectArchiver:   archiver,
-		backlinksWatcher: &noopFlusher{},
-		componentCtx:     context.Background(),
+		objectStore:         store,
+		objectArchiver:      archiver,
+		backlinksWatcher:    &noopFlusher{},
+		componentCtx:        context.Background(),
+		participantProvider: &mockParticipantProvider{},
 	}
 	return &fixture{
 		fileGC:   gc,
@@ -76,7 +77,29 @@ func deletedObject(id string) objectstore.TestObject {
 	}
 }
 
+func basicObject(id, createdInContext string, backlinks []string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:               domain.String(id),
+		bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+		bundle.RelationKeyCreatedInContext: domain.String(createdInContext),
+		bundle.RelationKeyBacklinks:        domain.StringList(backlinks),
+	}
+}
+
+func systemObject(id, createdInContext string, backlinks []string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:               domain.String(id),
+		bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_participant)),
+		bundle.RelationKeyCreatedInContext: domain.String(createdInContext),
+		bundle.RelationKeyBacklinks:        domain.StringList(backlinks),
+	}
+}
+
 // -- mocks --
+
+type mockParticipantProvider struct{ id string }
+
+func (m *mockParticipantProvider) MyParticipantId(_ string) string { return m.id }
 
 type mockArchiver struct {
 	archivedIds   []string
@@ -353,4 +376,115 @@ func TestCheckFilesOnObjectArchived_Unarchive_HasOtherBacklinks(t *testing.T) {
 	// then: file kept archived because it has other backlinks
 	require.NoError(t, err)
 	assert.Empty(t, fx.archiver.unarchivedIds)
+}
+
+// -- non-file object GC tests --
+
+func TestCheckFilesOnObjectArchived_NonFileObject_ParentArchived_NoOtherBacklinks(t *testing.T) {
+	// given: a basic (non-file) object was created inside parent
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	fx.addObject(t, basicObject("child", "parent", []string{"parent"}))
+
+	// when: parent is archived
+	err := fx.CheckFilesOnObjectArchived(testSpaceId, "parent", true)
+
+	// then: child is archived too
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"child"}, fx.archiver.archivedIds)
+}
+
+func TestCheckFilesOnObjectArchived_NonFileObject_ParentArchived_WithActiveBacklink(t *testing.T) {
+	// given: child still referenced by another active object
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	fx.addObject(t, regularObject("other"))
+	fx.addObject(t, basicObject("child", "parent", []string{"parent", "other"}))
+
+	// when
+	err := fx.CheckFilesOnObjectArchived(testSpaceId, "parent", true)
+
+	// then: child is kept because "other" is still active
+	require.NoError(t, err)
+	assert.Empty(t, fx.archiver.archivedIds)
+}
+
+func TestCheckFilesOnObjectArchived_NonFileObject_Unarchive(t *testing.T) {
+	// given: child was archived alongside parent
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               domain.String("child"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyCreatedInContext: domain.String("parent"),
+			bundle.RelationKeyBacklinks:        domain.StringList([]string{"parent"}),
+			bundle.RelationKeyIsArchived:       domain.Bool(true),
+		},
+	})
+
+	// when: parent is unarchived
+	err := fx.CheckFilesOnObjectArchived(testSpaceId, "parent", false)
+
+	// then: child is restored
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"child"}, fx.archiver.unarchivedIds)
+}
+
+func TestCheckFilesOnLinksRemoval_NonFileObject_SkipBinForcedFalse(t *testing.T) {
+	// given: a basic object whose link is removed; caller requests skipBin=true
+	fx := newFixture(t)
+	fx.participantProvider = &mockParticipantProvider{id: "user1"}
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               domain.String("child"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyCreatedInContext: domain.String("parent"),
+			bundle.RelationKeyBacklinks:        domain.StringList([]string{"parent"}),
+			bundle.RelationKeyCreator:          domain.String("user1"),
+		},
+	})
+
+	// when: caller requests skipBin=true (as chat service does for files)
+	err := fx.CheckFilesOnLinksRemoval(testSpaceId, "parent", []string{"child"}, true, nil)
+
+	// then: child is archived, NOT permanently deleted — skipBin overridden to false for non-files
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"child"}, fx.archiver.archivedIds)
+}
+
+func TestCheckFilesOnObjectArchived_SystemLayoutObject_NotGCd(t *testing.T) {
+	// given: an object with a system layout (participant) has createdInContext set
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		systemObject("sysobj", "parent", []string{"parent"}),
+	})
+
+	// when: parent is archived
+	err := fx.CheckFilesOnObjectArchived(testSpaceId, "parent", true)
+
+	// then: system object is NOT touched
+	require.NoError(t, err)
+	assert.Empty(t, fx.archiver.archivedIds)
+}
+
+func TestCheckFilesOnLinksRestored_NonFileObject_Restored(t *testing.T) {
+	// given: basic object was GC'd (archived), undo re-adds the link
+	fx := newFixture(t)
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               domain.String("child"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyCreatedInContext: domain.String("page"),
+			bundle.RelationKeyIsArchived:       domain.Bool(true),
+		},
+	})
+
+	// when: link re-added via undo
+	err := fx.CheckFilesOnLinksRestored(testSpaceId, "page", []string{"child"})
+
+	// then: child is unarchived
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"child"}, fx.archiver.unarchivedIds)
 }
