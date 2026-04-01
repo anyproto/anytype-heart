@@ -2,7 +2,9 @@ package metrics
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +32,13 @@ const (
 var (
 	maxDuration = time.Second * 10
 	cache       = new(methodsCache)
+	profilesDir atomic.String
 )
+
+// SetProfilesDir sets the directory where long method traces are saved.
+func SetProfilesDir(dir string) {
+	profilesDir.Store(dir)
+}
 
 type methodsCache struct {
 	methods map[string]struct{}
@@ -197,7 +205,6 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 	start := time.Now()
 
 	lastTrace := atomic.NewString("")
-	l := log.With("method", methodName)
 	go func() {
 		select {
 		case <-doneCh:
@@ -207,12 +214,7 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 			// double check, because we can have a race and the stack trace can be taken after the method is already finished
 			if !cache.hasMethod(methodName) && stackTraceHasMethod(methodName, trace) {
 				lastTrace.Store(string(trace))
-				traceCompressed := debug.CompressBytes(trace)
-				l.With("ver", 2).
-					With("in_progress", true).
-					With("goroutines", traceCompressed).
-					With("total", time.Since(start).Milliseconds()).
-					Warnf("grpc unary request is taking too long")
+				saveLongMethodTrace(methodName, trace, start)
 				cache.addMethod(methodName)
 			}
 		}
@@ -222,18 +224,36 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 	close(doneCh)
 	if time.Since(start) > maxDuration {
 		if !cache.hasMethod(methodName) {
-			// todo: save long stack trace to files
-			lastTraceB := debug.CompressBytes([]byte(lastTrace.String()))
-			l.With("ver", 2).
-				With("error", err).
-				With("in_progress", false).
-				With("goroutines", lastTraceB).
-				With("total", time.Since(start).Milliseconds()).
-				Warnf("grpc unary request took too long")
+			trace := []byte(lastTrace.String())
+			if len(trace) == 0 {
+				trace = debug.Stack(true)
+			}
+			saveLongMethodTrace(methodName, trace, start)
 			cache.addMethod(methodName)
 		}
 	}
 	return resp, err
+}
+
+func saveLongMethodTrace(methodName string, trace []byte, start time.Time) {
+	dir := profilesDir.Load()
+	if dir == "" {
+		return
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return
+	}
+	ts := time.Now().Format("20060102_150405")
+	duration := time.Since(start).Truncate(time.Millisecond)
+	filename := filepath.Join(dir, fmt.Sprintf("long_method_%s_%s_%s.txt.gz", methodName, ts, duration))
+	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	gz := gzip.NewWriter(f)
+	_, _ = gz.Write(trace)
+	_ = gz.Close()
 }
 
 func extractHotSync(req *pb.RpcAccountSelectRequest) bool {

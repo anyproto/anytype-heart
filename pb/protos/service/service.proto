@@ -349,11 +349,14 @@ service ClientCommands {
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
     rpc DebugSubscriptions (anytype.Rpc.Debug.Subscriptions.Request) returns (anytype.Rpc.Debug.Subscriptions.Response);
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
+    // When DurationInSeconds=0, saves a heap memory profile to the logs directory and returns the file path.
+    // When DurationInSeconds>0, runs a full profiler (CPU, heap, trace, goroutines) for the given duration.
     rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
     rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
     rpc DebugAnystoreObjectChanges (anytype.Rpc.Debug.AnystoreObjectChanges.Request) returns (anytype.Rpc.Debug.AnystoreObjectChanges.Response);
     rpc DebugNetCheck (anytype.Rpc.Debug.NetCheck.Request) returns (anytype.Rpc.Debug.NetCheck.Response);
-    rpc DebugExportLog (anytype.Rpc.Debug.ExportLog.Request) returns (anytype.Rpc.Debug.ExportLog.Response);
+    rpc DebugExportReport (anytype.Rpc.Debug.ExportReport.Request) returns (anytype.Rpc.Debug.ExportReport.Response);
+    rpc DebugCleanupReport (anytype.Rpc.Debug.CleanupReport.Request) returns (anytype.Rpc.Debug.CleanupReport.Response);
 
     rpc InitialSetParameters (anytype.Rpc.Initial.SetParameters.Request) returns (anytype.Rpc.Initial.SetParameters.Response);
 
