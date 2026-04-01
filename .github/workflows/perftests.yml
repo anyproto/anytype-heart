@@ -137,7 +137,7 @@ jobs:
   #         UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
   #         INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
   #       run: |
-  #         $GIT_SUMMARY = git describe --tags --always
+  #         $GIT_SUMMARY = git describe --tags --exclude='*-nightly.*' --always
   #         echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=$GIT_SUMMARY -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=$env:INHOUSE_KEY -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=$env:UNSPLASH_KEY" >> $env:GITHUB_ENV
   #         if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch") {
   #           $VERSION = ${{ github.event.inputs.alpha_version }}
