@@ -158,6 +158,15 @@ jobs:
             https://api.github.com/repos/anyproto/anytype-suite/dispatches \
             -d "{\"event_type\": \"test-release\", \"client_payload\": {\"version\": \"${{ env.VERSION }}\"}}"
 
+      - name: Trigger release in anytype-cli
+        if: github.event_name == 'push'
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.ANYTYPE_CLI_TRIGGER_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/anyproto/anytype-cli/dispatches \
+            -d "{\"event_type\": \"trigger-from-heart\", \"client_payload\": {\"version\": \"${{ env.VERSION }}\"}}"
+
       # # start of notifications in Linear
       # - name: Clone DevOps Utils Repository
       #   run: |
