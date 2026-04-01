@@ -93,7 +93,7 @@ type AclService interface {
 	Leave(ctx context.Context, spaceId string) (err error)
 	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
-	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permissions list.AclPermissions) error
+	AddAccounts(ctx context.Context, spaceId string, additions []list.AccountAdd) error
 	AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error)
 	OwnershipChange(ctx context.Context, spaceId string, newOwner crypto.PubKey, oldOwnerPerm model.ParticipantPermissions) (err error)
 }
@@ -214,21 +214,19 @@ func (a *aclService) AddGuestAccount(ctx context.Context, spaceId string) (privK
 	if err != nil {
 		return nil, err
 	}
-	return pk, a.AddAccount(ctx, spaceId, pubKey, metadata, list.AclPermissionsGuest)
+	return pk, a.AddAccounts(ctx, spaceId, []list.AccountAdd{{
+		Identity:    pubKey,
+		Metadata:    metadata,
+		Permissions: list.AclPermissionsGuest,
+	}})
 }
 
-func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permission list.AclPermissions) error {
+func (a *aclService) AddAccounts(ctx context.Context, spaceId string, additions []list.AccountAdd) error {
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
-	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: []list.AccountAdd{
-		{
-			Identity:    pubKey,
-			Metadata:    metadata,
-			Permissions: permission,
-		},
-	}})
+	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: additions})
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}

@@ -564,14 +564,19 @@ func addMembers(ctx context.Context, spaceId string, identities []string, permis
 		return acl.ErrIncorrectPermissions
 	}
 
+	additions := make([]list.AccountAdd, 0, len(identities))
 	for _, identity := range identities {
 		pubKey, err := crypto.DecodeAccountAddress(identity)
 		if err != nil {
 			return fmt.Errorf("decode identity %s: %w", identity, err)
 		}
-		if err := aclService.AddAccount(ctx, spaceId, pubKey, nil, aclPerms); err != nil {
-			return fmt.Errorf("add account %s: %w", identity, err)
-		}
+		additions = append(additions, list.AccountAdd{
+			Identity:    pubKey,
+			Permissions: aclPerms,
+		})
+	}
+	if err := aclService.AddAccounts(ctx, spaceId, additions); err != nil {
+		return fmt.Errorf("add accounts: %w", err)
 	}
 	return inboxSender.SendRegularSpaceInvites(ctx, spaceId, identities...)
 }
