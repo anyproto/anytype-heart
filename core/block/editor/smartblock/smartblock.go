@@ -271,12 +271,6 @@ type smartBlock struct {
 	spaceIdResolver idresolver.Resolver
 	formatFetcher   relationutils.RelationFormatFetcher
 	objectGC        filegc.ObjectGC
-
-	// sessionCreatedLinks tracks links added locally in this session.
-	// These are considered "session-created" and will be permanently deleted (skipBin=true) when removed.
-	// nil means object was never explicitly opened → safe default (archive all removals).
-	// empty map means object was opened but no local links added yet.
-	sessionCreatedLinks map[string]struct{}
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -616,16 +610,6 @@ func (sb *smartBlock) dependentSmartIds(includeRelations, includeObjTypes, inclu
 
 func (sb *smartBlock) RegisterSession(ctx session.Context) {
 	sb.sessions[ctx.ID()] = ctx
-	sb.initSessionTracking()
-}
-
-// initSessionTracking initializes session-created links tracking.
-// Only initializes if not already done (first session registration).
-func (sb *smartBlock) initSessionTracking() {
-	if sb.sessionCreatedLinks != nil {
-		return
-	}
-	sb.sessionCreatedLinks = make(map[string]struct{})
 }
 
 func (sb *smartBlock) IsLocked() bool {
@@ -863,15 +847,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if parent := s.ParentState(); parent != nil {
 		linksAfter := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
 
-		// Compute added links unconditionally — needed for both session tracking and file restore.
 		addedLinks := getAddedLinks(linksBefore, linksAfter)
-
-		// Track newly added links as session-created (if object was explicitly opened)
-		if sb.sessionCreatedLinks != nil {
-			for _, link := range addedLinks {
-				sb.sessionCreatedLinks[link] = struct{}{}
-			}
-		}
 
 		// Restore archived files whose links were re-added (e.g. via undo).
 		if len(addedLinks) > 0 {
@@ -880,12 +856,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 		removedLinks := getRemovedLinks(linksBefore, linksAfter)
 		if len(removedLinks) > 0 {
-			// Clean up session-created tracking for removed links
-			if sb.sessionCreatedLinks != nil {
-				for _, link := range removedLinks {
-					delete(sb.sessionCreatedLinks, link)
-				}
-			}
 			// Perform file GC asynchronously to not block the Apply
 			go sb.performFileGC(sb.SpaceID(), sb.Id(), removedLinks)
 		}
@@ -1579,51 +1549,15 @@ func (sb *smartBlock) restoreArchivedFilesOnLinksAdded(spaceId, contextId string
 	}
 }
 
-// performFileGC runs the file garbage collector for removed links
+// performFileGC runs the object garbage collector for removed links
 func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []string) {
 	if sb.objectGC == nil {
 		return
 	}
-
-	// If sessionCreatedLinks is nil, object was never explicitly opened by user.
-	// Treat all removed links as existing (safe default - archive instead of delete).
-	if sb.sessionCreatedLinks == nil {
-		if len(removedLinks) > 0 {
-			if err := sb.objectGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false, nil); err != nil {
-				log.With("objectId", contextId).Errorf("file gc on links removal failed: %v", err)
-			}
-		}
+	if len(removedLinks) == 0 {
 		return
 	}
-
-	// Classify removed links as session-created or existing.
-	// Session-created links are tracked explicitly in sessionCreatedLinks map
-	// (populated during Apply when links are added locally).
-	// This ensures that links added by remote sync are NOT considered session-created.
-	var sessionCreated []string
-	var existing []string
-
-	for _, link := range removedLinks {
-		if _, isSessionCreated := sb.sessionCreatedLinks[link]; isSessionCreated {
-			// This link was added during the current session by the local user
-			sessionCreated = append(sessionCreated, link)
-		} else {
-			// This link existed at open time OR was added via remote sync
-			existing = append(existing, link)
-		}
-	}
-
-	// Process existing files - archive them (skipBin=false)
-	if len(existing) > 0 {
-		if err := sb.objectGC.CheckFilesOnLinksRemoval(spaceId, contextId, existing, false, nil); err != nil {
-			log.Errorf("file GC failed for existing files in context %s: %v", contextId, err)
-		}
-	}
-
-	// Process session-created files - delete them permanently (skipBin=true)
-	if len(sessionCreated) > 0 {
-		if err := sb.objectGC.CheckFilesOnLinksRemoval(spaceId, contextId, sessionCreated, true, nil); err != nil {
-			log.Errorf("file GC failed for session-created files in context %s: %v", contextId, err)
-		}
+	if err := sb.objectGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false, nil); err != nil {
+		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}
 }
