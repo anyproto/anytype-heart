@@ -22,6 +22,8 @@ import (
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/process"
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	exptrace "golang.org/x/exp/trace"
 
 	"github.com/anyproto/anytype-heart/metrics"
@@ -83,6 +85,21 @@ func (s *Service) profilesDir() string {
 	return dir
 }
 
+func (s *Service) getStatJSON() string {
+	if s.app == nil {
+		return ""
+	}
+	svc, err := app.GetComponent[debugstat.StatService](s.app)
+	if err != nil {
+		return ""
+	}
+	data, err := json.Marshal(svc.GetStat())
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
 // profileInfo is written as info.json inside profile zip archives.
 type profileInfo struct {
 	Version      string           `json:"version"`
@@ -107,6 +124,7 @@ type systemMemory struct {
 // SaveDebugSnapshot saves heap profile, goroutine stacks, and runtime info
 // as a zip file. Called via DebugRunProfiler with DurationInSeconds=0.
 func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
+	statJSON := s.getStatJSON()
 	profilesDir := s.profilesDir()
 	if profilesDir == "" {
 		return "", fmt.Errorf("log path not configured")
@@ -181,6 +199,13 @@ func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
 	if _, err := w.Write(debug.Stack(true)); err != nil {
 		zipw.Close()
 		return "", fmt.Errorf("write goroutines: %w", err)
+	}
+
+	// stat.json
+	if statJSON != "" {
+		if w, err = zipw.Create("stat.json"); err == nil {
+			w.Write([]byte(statJSON))
+		}
 	}
 
 	if err := zipw.Close(); err != nil {
@@ -418,6 +443,11 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	infoJSON, _ := json.MarshalIndent(info, "", "  ")
 	if dst, err := zipw.Create("info.json"); err == nil {
 		dst.Write(infoJSON)
+	}
+	if statJSON := s.getStatJSON(); statJSON != "" {
+		if dst, err := zipw.Create("stat.json"); err == nil {
+			dst.Write([]byte(statJSON))
+		}
 	}
 
 	zipw.Close()
