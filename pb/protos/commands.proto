@@ -4948,7 +4948,7 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
-                        // ...
+                        ALL_SLOTS_EMPTY = 3;
                     }
                 }
             }

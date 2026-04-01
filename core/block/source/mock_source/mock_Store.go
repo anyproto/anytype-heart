@@ -30,7 +30,7 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 	return &MockStore_Expecter{mock: &_m.Mock}
 }
 
-// Close provides a mock function with given fields:
+// Close provides a mock function with no fields
 func (_m *MockStore) Close() error {
 	ret := _m.Called()
 
@@ -75,7 +75,7 @@ func (_c *MockStore_Close_Call) RunAndReturn(run func() error) *MockStore_Close_
 	return _c
 }
 
-// GetCreationInfo provides a mock function with given fields:
+// GetCreationInfo provides a mock function with no fields
 func (_m *MockStore) GetCreationInfo() (string, int64, error) {
 	ret := _m.Called()
 
@@ -137,7 +137,7 @@ func (_c *MockStore_GetCreationInfo_Call) RunAndReturn(run func() (string, int64
 	return _c
 }
 
-// GetFileKeysSnapshot provides a mock function with given fields:
+// GetFileKeysSnapshot provides a mock function with no fields
 func (_m *MockStore) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	ret := _m.Called()
 
@@ -184,7 +184,7 @@ func (_c *MockStore_GetFileKeysSnapshot_Call) RunAndReturn(run func() []*pb.Chan
 	return _c
 }
 
-// Heads provides a mock function with given fields:
+// Heads provides a mock function with no fields
 func (_m *MockStore) Heads() []string {
 	ret := _m.Called()
 
@@ -231,7 +231,7 @@ func (_c *MockStore_Heads_Call) RunAndReturn(run func() []string) *MockStore_Hea
 	return _c
 }
 
-// Id provides a mock function with given fields:
+// Id provides a mock function with no fields
 func (_m *MockStore) Id() string {
 	ret := _m.Called()
 
@@ -545,7 +545,7 @@ func (_c *MockStore_ReadDoc_Call) RunAndReturn(run func(context.Context, source.
 	return _c
 }
 
-// ReadOnly provides a mock function with given fields:
+// ReadOnly provides a mock function with no fields
 func (_m *MockStore) ReadOnly() bool {
 	ret := _m.Called()
 
@@ -668,7 +668,7 @@ func (_c *MockStore_RegisterDiffManager_Call) Return() *MockStore_RegisterDiffMa
 }
 
 func (_c *MockStore_RegisterDiffManager_Call) RunAndReturn(run func(string, func([]string))) *MockStore_RegisterDiffManager_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -701,11 +701,11 @@ func (_c *MockStore_SetPushChangeHook_Call) Return() *MockStore_SetPushChangeHoo
 }
 
 func (_c *MockStore_SetPushChangeHook_Call) RunAndReturn(run func(source.PushChangeHook)) *MockStore_SetPushChangeHook_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// SpaceID provides a mock function with given fields:
+// SpaceID provides a mock function with no fields
 func (_m *MockStore) SpaceID() string {
 	ret := _m.Called()
 
@@ -797,7 +797,7 @@ func (_c *MockStore_StoreSeenHeads_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// Type provides a mock function with given fields:
+// Type provides a mock function with no fields
 func (_m *MockStore) Type() smartblock.SmartBlockType {
 	ret := _m.Called()
 

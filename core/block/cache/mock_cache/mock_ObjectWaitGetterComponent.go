@@ -73,7 +73,7 @@ func (_c *MockObjectWaitGetterComponent_Init_Call) RunAndReturn(run func(*app.Ap
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockObjectWaitGetterComponent) Name() string {
 	ret := _m.Called()
 

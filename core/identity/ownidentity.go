@@ -177,11 +177,21 @@ func (s *ownProfileSubscription) handleOwnProfileDetails(profileDetails *domain.
 		bundle.RelationKeyId,
 		bundle.RelationKeyName,
 		bundle.RelationKeyDescription,
-		bundle.RelationKeyIconImage,
+		bundle.RelationKeyGlobalName,
 	} {
 		if v, ok := profileDetails.TryString(key); ok {
 			s.details.SetString(key, v)
 		}
+	}
+	// Resolve file object ID to file CID so that iconImage is consistent
+	// with what the identity repo stores and what other peers receive.
+	if iconObjectId, ok := profileDetails.TryString(bundle.RelationKeyIconImage); ok {
+		iconCid, _, err := s.prepareIconImageInfo(iconObjectId)
+		if err != nil {
+			log.Error("handleOwnProfileDetails: resolve icon to file cid", zap.Error(err))
+			iconCid = iconObjectId
+		}
+		s.details.SetString(bundle.RelationKeyIconImage, iconCid)
 	}
 	identityProfile := s.prepareIdentityProfile()
 	s.detailsLock.Unlock()

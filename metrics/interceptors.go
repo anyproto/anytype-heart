@@ -188,6 +188,8 @@ var excludedLongExecutionMethods = []string{
 }
 
 func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
+	return actualCall(ctx, req)
+	// todo: noop till GO-7143
 	if lo.Contains(excludedLongExecutionMethods, methodName) {
 		return actualCall(ctx, req)
 	}

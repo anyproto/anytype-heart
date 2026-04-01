@@ -106,6 +106,7 @@ type Service interface {
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
+	MarkFileUploaded(objectId string) error
 }
 
 type objectCreatorService interface {
@@ -319,6 +320,10 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 	}
 	err := s.addToSyncQueue(req)
 	return err
+}
+
+func (s *service) MarkFileUploaded(objectId string) error {
+	return s.fileSync.MarkUploaded(objectId)
 }
 
 func (s *service) Close(ctx context.Context) error {

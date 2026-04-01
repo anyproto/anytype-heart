@@ -30,23 +30,23 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 }
 
 // DetailsFromIdBasedSource provides a mock function with given fields: id
-func (_m *MockService) DetailsFromIdBasedSource(id domain.FullID) (*domain.Details, error) {
+func (_m *MockService) DetailsFromIdBasedSource(id domain.FullID) (*domain.GenericMap[domain.RelationKey], error) {
 	ret := _m.Called(id)
 
 	if len(ret) == 0 {
 		panic("no return value specified for DetailsFromIdBasedSource")
 	}
 
-	var r0 *domain.Details
+	var r0 *domain.GenericMap[domain.RelationKey]
 	var r1 error
-	if rf, ok := ret.Get(0).(func(domain.FullID) (*domain.Details, error)); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullID) (*domain.GenericMap[domain.RelationKey], error)); ok {
 		return rf(id)
 	}
-	if rf, ok := ret.Get(0).(func(domain.FullID) *domain.Details); ok {
+	if rf, ok := ret.Get(0).(func(domain.FullID) *domain.GenericMap[domain.RelationKey]); ok {
 		r0 = rf(id)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.Details)
+			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -77,12 +77,12 @@ func (_c *MockService_DetailsFromIdBasedSource_Call) Run(run func(id domain.Full
 	return _c
 }
 
-func (_c *MockService_DetailsFromIdBasedSource_Call) Return(_a0 *domain.Details, _a1 error) *MockService_DetailsFromIdBasedSource_Call {
+func (_c *MockService_DetailsFromIdBasedSource_Call) Return(_a0 *domain.GenericMap[domain.RelationKey], _a1 error) *MockService_DetailsFromIdBasedSource_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockService_DetailsFromIdBasedSource_Call) RunAndReturn(run func(domain.FullID) (*domain.Details, error)) *MockService_DetailsFromIdBasedSource_Call {
+func (_c *MockService_DetailsFromIdBasedSource_Call) RunAndReturn(run func(domain.FullID) (*domain.GenericMap[domain.RelationKey], error)) *MockService_DetailsFromIdBasedSource_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -192,7 +192,7 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 

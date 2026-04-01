@@ -30,7 +30,7 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// AccountMetadataPayload provides a mock function with given fields:
+// AccountMetadataPayload provides a mock function with no fields
 func (_m *MockService) AccountMetadataPayload() []byte {
 	ret := _m.Called()
 
@@ -77,7 +77,7 @@ func (_c *MockService_AccountMetadataPayload_Call) RunAndReturn(run func() []byt
 	return _c
 }
 
-// AccountMetadataSymKey provides a mock function with given fields:
+// AccountMetadataSymKey provides a mock function with no fields
 func (_m *MockService) AccountMetadataSymKey() crypto.SymKey {
 	ret := _m.Called()
 
@@ -431,7 +431,7 @@ func (_c *MockService_Delete_Call) RunAndReturn(run func(context.Context, string
 	return _c
 }
 
-// FirstCreatedSpaceId provides a mock function with given fields:
+// FirstCreatedSpaceId provides a mock function with no fields
 func (_m *MockService) FirstCreatedSpaceId() string {
 	ret := _m.Called()
 
@@ -793,7 +793,7 @@ func (_c *MockService_Join_Call) RunAndReturn(run func(context.Context, string, 
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 
@@ -838,7 +838,7 @@ func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Na
 	return _c
 }
 
-// PersonalSpaceId provides a mock function with given fields:
+// PersonalSpaceId provides a mock function with no fields
 func (_m *MockService) PersonalSpaceId() string {
 	ret := _m.Called()
 
@@ -985,7 +985,7 @@ func (_c *MockService_SpaceViewId_Call) RunAndReturn(run func(string) (string, e
 	return _c
 }
 
-// TechSpace provides a mock function with given fields:
+// TechSpace provides a mock function with no fields
 func (_m *MockService) TechSpace() *clientspace.TechSpace {
 	ret := _m.Called()
 
@@ -1032,7 +1032,7 @@ func (_c *MockService_TechSpace_Call) RunAndReturn(run func() *clientspace.TechS
 	return _c
 }
 
-// TechSpaceId provides a mock function with given fields:
+// TechSpaceId provides a mock function with no fields
 func (_m *MockService) TechSpaceId() string {
 	ret := _m.Called()
 

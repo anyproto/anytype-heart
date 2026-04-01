@@ -36,7 +36,8 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) Run(ctx context.Context) (err error) {
-	go s.run()
+	// todo: temporarily disable until GO-7143
+	// go s.run()
 
 	return nil
 }

@@ -77,7 +77,7 @@ func (_c *MockSpaceStatus_Close_Call) RunAndReturn(run func(context.Context) err
 	return _c
 }
 
-// GetLatestAclHeadId provides a mock function with given fields:
+// GetLatestAclHeadId provides a mock function with no fields
 func (_m *MockSpaceStatus) GetLatestAclHeadId() string {
 	ret := _m.Called()
 
@@ -122,7 +122,7 @@ func (_c *MockSpaceStatus_GetLatestAclHeadId_Call) RunAndReturn(run func() strin
 	return _c
 }
 
-// GetLocalStatus provides a mock function with given fields:
+// GetLocalStatus provides a mock function with no fields
 func (_m *MockSpaceStatus) GetLocalStatus() spaceinfo.LocalStatus {
 	ret := _m.Called()
 
@@ -167,7 +167,7 @@ func (_c *MockSpaceStatus_GetLocalStatus_Call) RunAndReturn(run func() spaceinfo
 	return _c
 }
 
-// GetPersistentStatus provides a mock function with given fields:
+// GetPersistentStatus provides a mock function with no fields
 func (_m *MockSpaceStatus) GetPersistentStatus() spaceinfo.AccountStatus {
 	ret := _m.Called()
 
@@ -212,7 +212,7 @@ func (_c *MockSpaceStatus_GetPersistentStatus_Call) RunAndReturn(run func() spac
 	return _c
 }
 
-// GetSpaceView provides a mock function with given fields:
+// GetSpaceView provides a mock function with no fields
 func (_m *MockSpaceStatus) GetSpaceView() techspace.SpaceView {
 	ret := _m.Called()
 
@@ -305,7 +305,7 @@ func (_c *MockSpaceStatus_Init_Call) RunAndReturn(run func(*app.App) error) *Moc
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSpaceStatus) Name() string {
 	ret := _m.Called()
 
@@ -768,7 +768,7 @@ func (_c *MockSpaceStatus_SetPersistentStatus_Call) RunAndReturn(run func(spacei
 	return _c
 }
 
-// SpaceId provides a mock function with given fields:
+// SpaceId provides a mock function with no fields
 func (_m *MockSpaceStatus) SpaceId() string {
 	ret := _m.Called()
 

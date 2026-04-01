@@ -49,7 +49,7 @@ func (_c *MockEventService_Broadcast_Call) Return() *MockEventService_Broadcast_
 }
 
 func (_c *MockEventService_Broadcast_Call) RunAndReturn(run func(*pb.Event)) *MockEventService_Broadcast_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

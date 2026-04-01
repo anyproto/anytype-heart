@@ -115,7 +115,7 @@ func (_c *MockUpdater_Init_Call) RunAndReturn(run func(*app.App) error) *MockUpd
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockUpdater) Name() string {
 	ret := _m.Called()
 
@@ -189,7 +189,7 @@ func (_c *MockUpdater_Refresh_Call) Return() *MockUpdater_Refresh_Call {
 }
 
 func (_c *MockUpdater_Refresh_Call) RunAndReturn(run func(string)) *MockUpdater_Refresh_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

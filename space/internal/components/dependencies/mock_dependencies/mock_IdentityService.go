@@ -88,7 +88,7 @@ func (_c *MockIdentityService_GetMetadataKey_Call) RunAndReturn(run func(string)
 }
 
 // GetMyProfileDetails provides a mock function with given fields: ctx
-func (_m *MockIdentityService) GetMyProfileDetails(ctx context.Context) (string, crypto.SymKey, *domain.Details) {
+func (_m *MockIdentityService) GetMyProfileDetails(ctx context.Context) (string, crypto.SymKey, *domain.GenericMap[domain.RelationKey]) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
@@ -97,8 +97,8 @@ func (_m *MockIdentityService) GetMyProfileDetails(ctx context.Context) (string,
 
 	var r0 string
 	var r1 crypto.SymKey
-	var r2 *domain.Details
-	if rf, ok := ret.Get(0).(func(context.Context) (string, crypto.SymKey, *domain.Details)); ok {
+	var r2 *domain.GenericMap[domain.RelationKey]
+	if rf, ok := ret.Get(0).(func(context.Context) (string, crypto.SymKey, *domain.GenericMap[domain.RelationKey])); ok {
 		return rf(ctx)
 	}
 	if rf, ok := ret.Get(0).(func(context.Context) string); ok {
@@ -115,11 +115,11 @@ func (_m *MockIdentityService) GetMyProfileDetails(ctx context.Context) (string,
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context) *domain.Details); ok {
+	if rf, ok := ret.Get(2).(func(context.Context) *domain.GenericMap[domain.RelationKey]); ok {
 		r2 = rf(ctx)
 	} else {
 		if ret.Get(2) != nil {
-			r2 = ret.Get(2).(*domain.Details)
+			r2 = ret.Get(2).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -144,12 +144,12 @@ func (_c *MockIdentityService_GetMyProfileDetails_Call) Run(run func(ctx context
 	return _c
 }
 
-func (_c *MockIdentityService_GetMyProfileDetails_Call) Return(identity string, metadataKey crypto.SymKey, details *domain.Details) *MockIdentityService_GetMyProfileDetails_Call {
+func (_c *MockIdentityService_GetMyProfileDetails_Call) Return(identity string, metadataKey crypto.SymKey, details *domain.GenericMap[domain.RelationKey]) *MockIdentityService_GetMyProfileDetails_Call {
 	_c.Call.Return(identity, metadataKey, details)
 	return _c
 }
 
-func (_c *MockIdentityService_GetMyProfileDetails_Call) RunAndReturn(run func(context.Context) (string, crypto.SymKey, *domain.Details)) *MockIdentityService_GetMyProfileDetails_Call {
+func (_c *MockIdentityService_GetMyProfileDetails_Call) RunAndReturn(run func(context.Context) (string, crypto.SymKey, *domain.GenericMap[domain.RelationKey])) *MockIdentityService_GetMyProfileDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -200,7 +200,7 @@ func (_c *MockIdentityService_Init_Call) RunAndReturn(run func(*app.App) error) 
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockIdentityService) Name() string {
 	ret := _m.Called()
 
@@ -323,7 +323,7 @@ func (_c *MockIdentityService_UnregisterIdentitiesInSpace_Call) Return() *MockId
 }
 
 func (_c *MockIdentityService_UnregisterIdentitiesInSpace_Call) RunAndReturn(run func(string)) *MockIdentityService_UnregisterIdentitiesInSpace_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -357,7 +357,7 @@ func (_c *MockIdentityService_UnregisterIdentity_Call) Return() *MockIdentitySer
 }
 
 func (_c *MockIdentityService_UnregisterIdentity_Call) RunAndReturn(run func(string, string)) *MockIdentityService_UnregisterIdentity_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
