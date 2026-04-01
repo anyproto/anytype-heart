@@ -39,11 +39,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
-	"github.com/anyproto/anytype-heart/pb"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -737,17 +737,17 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		
+
 		// Mock ACL getter to return ACL records
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
 		aclList, err := list.NewInMemoryDerivedAcl(spaceId, keys)
 		require.NoError(t, err)
-		
+
 		// Get the raw records from the ACL to return them in the mock
 		records, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
-		
+
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 		fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(nil)
 		err = fx.Leave(ctx, spaceId)
@@ -794,7 +794,7 @@ func TestService_Leave(t *testing.T) {
 				fx := newFixture(t)
 				defer fx.finish(t)
 				spaceId := "spaceId"
-				
+
 				// Mock ACL getter to return ACL records
 				keys, err := accountdata.NewRandom()
 				require.NoError(t, err)
@@ -802,10 +802,10 @@ func TestService_Leave(t *testing.T) {
 				require.NoError(t, err)
 				records, err := aclList.RecordsAfter(ctx, "")
 				require.NoError(t, err)
-				
+
 				fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 				fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(testErr)
-				
+
 				actualErr := fx.Leave(ctx, spaceId)
 				require.Error(t, actualErr)
 				// Check the expected error conversion based on the error type
@@ -827,7 +827,7 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		
+
 		// Mock ACL getter to return ACL records
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
@@ -835,10 +835,10 @@ func TestService_Leave(t *testing.T) {
 		require.NoError(t, err)
 		records, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
-		
+
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 		fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(fmt.Errorf("unknown error"))
-		
+
 		err = fx.Leave(ctx, spaceId)
 		require.True(t, errors.Is(err, ErrAclRequestFailed))
 	})
@@ -851,7 +851,7 @@ func TestService_Leave(t *testing.T) {
 
 		// Mock ACL getter to fail with "no such account" error (guest user scenario)
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(nil, list.ErrNoSuchAccount)
-		
+
 		err := fx.Leave(ctx, spaceId)
 		require.Error(t, err)
 		// ErrNoSuchAccount should be wrapped as ErrNoSuchAccount (converted in convertedOrAclRequestError)

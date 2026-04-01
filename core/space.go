@@ -5,12 +5,15 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/identity"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/pb"
@@ -451,6 +454,28 @@ func (mw *Middleware) SpaceDeleteCorruptedBackup(_ context.Context, req *pb.RpcS
 	return response(pb.RpcSpaceDeleteCorruptedBackupResponseError_NULL, nil)
 }
 
+func (mw *Middleware) SpaceParticipantsAddList(cctx context.Context, req *pb.RpcSpaceParticipantsAddListRequest) *pb.RpcSpaceParticipantsAddListResponse {
+	aclService := mustService[acl.AclService](mw)
+	inboxSender := mustService[inboxservice.Sender](mw)
+	identityService := mustService[identity.Service](mw)
+	err := addMembers(cctx, req, aclService, inboxSender, identityService)
+	code := mapErrorCode(err,
+		errToCode(inboxservice.ErrSendPayloadInvite, pb.RpcSpaceParticipantsAddListResponseError_SEND_INVITE_FAILED),
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceParticipantsAddListResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceParticipantsAddListResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceParticipantsAddListResponseError_REQUEST_FAILED),
+		errToCode(acl.ErrLimitReached, pb.RpcSpaceParticipantsAddListResponseError_LIMIT_REACHED),
+		errToCode(acl.ErrNotShareable, pb.RpcSpaceParticipantsAddListResponseError_NOT_SHAREABLE),
+		errToCode(acl.ErrIncorrectPermissions, pb.RpcSpaceParticipantsAddListResponseError_INCORRECT_PERMISSIONS),
+	)
+	return &pb.RpcSpaceParticipantsAddListResponse{
+		Error: &pb.RpcSpaceParticipantsAddListResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func join(ctx context.Context, aclService acl.AclService, req *pb.RpcSpaceJoinRequest) (err error) {
 	inviteFileKey, err := encode.DecodeKeyFromBase58(req.InviteFileKey)
 	if err != nil {
@@ -524,4 +549,60 @@ func ownershipChange(ctx context.Context, spaceId string, newOwnerIdentity strin
 		return err
 	}
 	return aclService.OwnershipChange(ctx, spaceId, newOwnerKey, oldOwnerPermissions)
+}
+
+func addMembers(ctx context.Context, req *pb.RpcSpaceParticipantsAddListRequest, aclService acl.AclService, inboxSender inboxservice.Sender, idService identity.Service) error {
+	if len(req.Identities) == 0 {
+		return fmt.Errorf("no identities provided")
+	}
+
+	var aclPerms list.AclPermissions
+	switch req.Permissions {
+	case model.ParticipantPermissions_Reader:
+		aclPerms = list.AclPermissionsReader
+	case model.ParticipantPermissions_Writer:
+		aclPerms = list.AclPermissionsWriter
+	default:
+		return acl.ErrIncorrectPermissions
+	}
+
+	additions := make([]list.AccountAdd, 0, len(req.Identities))
+	for _, anyId := range req.Identities {
+		pubKey, err := crypto.DecodeAccountAddress(anyId)
+		if err != nil {
+			return fmt.Errorf("decode identity %s: %w", anyId, err)
+		}
+		metadata, err := buildMetadata(idService, anyId)
+		if err != nil {
+			return fmt.Errorf("build metadata for %s: %w", anyId, err)
+		}
+		additions = append(additions, list.AccountAdd{
+			Identity:    pubKey,
+			Permissions: aclPerms,
+			Metadata:    metadata,
+		})
+	}
+	if err := aclService.AddAccounts(ctx, req.SpaceId, additions); err != nil {
+		return fmt.Errorf("add accounts: %w", err)
+	}
+	return inboxSender.SendRegularSpaceInvites(ctx, req.SpaceId, req.Identities...)
+}
+
+func buildMetadata(idService identity.Service, identity string) ([]byte, error) {
+	symKey, err := idService.GetMetadataKey(identity)
+	if err != nil {
+		return nil, fmt.Errorf("get metadata key: %w", err)
+	}
+	symKeyProto, err := symKey.Marshall()
+	if err != nil {
+		return nil, fmt.Errorf("marshal sym key: %w", err)
+	}
+	md := &model.Metadata{
+		Payload: &model.MetadataPayloadOfIdentity{
+			Identity: &model.MetadataPayloadIdentityPayload{
+				ProfileSymKey: symKeyProto,
+			},
+		},
+	}
+	return md.Marshal()
 }
