@@ -857,8 +857,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.CheckSubscriptions()
 	}
 
-	// Check for file GC after successful apply
-	if parent := s.ParentState(); parent != nil && len(linksBefore) > 0 {
+	// Check for file GC after successful apply.
+	// Note: do NOT guard on len(linksBefore) > 0 — undo can add links from an empty state
+	// (linksBefore == []) and we must still detect those additions to restore archived files.
+	if parent := s.ParentState(); parent != nil {
 		linksAfter := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
 
 		// Compute added links unconditionally — needed for both session tracking and file restore.
