@@ -138,7 +138,7 @@ type Service struct {
 
 	fileUploaderService fileuploader.Service
 	fileOffloader       fileoffloader.Service
-	fileGC              filegc.FileGC
+	objectGC            filegc.ObjectGC
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -180,7 +180,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
-	s.fileGC = app.MustComponent[filegc.FileGC](a)
+	s.objectGC = app.MustComponent[filegc.ObjectGC](a)
 	return
 }
 

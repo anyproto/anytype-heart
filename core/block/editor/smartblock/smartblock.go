@@ -101,7 +101,7 @@ func New(
 	eventSender event.Sender,
 	spaceIdResolver idresolver.Resolver,
 	formatFetcher relationutils.RelationFormatFetcher,
-	fileGC filegc.FileGC,
+	objectGC filegc.ObjectGC,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -113,7 +113,7 @@ func New(
 
 		spaceIndex:      spaceIndex,
 		indexer:         indexer,
-		fileGC:          fileGC,
+		objectGC:        objectGC,
 		eventSender:     eventSender,
 		objectStore:     objectStore,
 		spaceIdResolver: spaceIdResolver,
@@ -270,7 +270,7 @@ type smartBlock struct {
 	eventSender     event.Sender
 	spaceIdResolver idresolver.Resolver
 	formatFetcher   relationutils.RelationFormatFetcher
-	fileGC          filegc.FileGC
+	objectGC        filegc.ObjectGC
 
 	// sessionCreatedLinks tracks links added locally in this session.
 	// These are considered "session-created" and will be permanently deleted (skipBin=true) when removed.
@@ -1571,17 +1571,17 @@ func guessRelationFormatFromValue(val domain.Value) model.RelationFormat {
 // restoreArchivedFilesOnLinksAdded unarchives file objects that were GC'd when their link is re-added
 // to the context (e.g. via undo).
 func (sb *smartBlock) restoreArchivedFilesOnLinksAdded(spaceId, contextId string, addedLinks []string) {
-	if sb.fileGC == nil {
+	if sb.objectGC == nil {
 		return
 	}
-	if err := sb.fileGC.CheckFilesOnLinksRestored(spaceId, contextId, addedLinks); err != nil {
+	if err := sb.objectGC.CheckFilesOnLinksRestored(spaceId, contextId, addedLinks); err != nil {
 		log.With("objectId", contextId).Errorf("file restore on links added failed: %v", err)
 	}
 }
 
 // performFileGC runs the file garbage collector for removed links
 func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []string) {
-	if sb.fileGC == nil {
+	if sb.objectGC == nil {
 		return
 	}
 
@@ -1589,7 +1589,7 @@ func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []st
 	// Treat all removed links as existing (safe default - archive instead of delete).
 	if sb.sessionCreatedLinks == nil {
 		if len(removedLinks) > 0 {
-			if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false, nil); err != nil {
+			if err := sb.objectGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false, nil); err != nil {
 				log.With("objectId", contextId).Errorf("file gc on links removal failed: %v", err)
 			}
 		}
@@ -1615,14 +1615,14 @@ func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []st
 
 	// Process existing files - archive them (skipBin=false)
 	if len(existing) > 0 {
-		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, existing, false, nil); err != nil {
+		if err := sb.objectGC.CheckFilesOnLinksRemoval(spaceId, contextId, existing, false, nil); err != nil {
 			log.Errorf("file GC failed for existing files in context %s: %v", contextId, err)
 		}
 	}
 
 	// Process session-created files - delete them permanently (skipBin=true)
 	if len(sessionCreated) > 0 {
-		if err := sb.fileGC.CheckFilesOnLinksRemoval(spaceId, contextId, sessionCreated, true, nil); err != nil {
+		if err := sb.objectGC.CheckFilesOnLinksRemoval(spaceId, contextId, sessionCreated, true, nil); err != nil {
 			log.Errorf("file GC failed for session-created files in context %s: %v", contextId, err)
 		}
 	}

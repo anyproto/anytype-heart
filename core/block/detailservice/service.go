@@ -78,7 +78,7 @@ type service struct {
 	spaceService space.Service
 	store        objectstore.ObjectStore
 	fileService  fileService
-	fileGC       filegc.FileGC
+	objectGC     filegc.ObjectGC
 
 	componentCtx    context.Context
 	componentCancel context.CancelFunc
@@ -90,7 +90,7 @@ func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileService = app.MustComponent[fileService](a)
-	s.fileGC = app.MustComponent[filegc.FileGC](a)
+	s.objectGC = app.MustComponent[filegc.ObjectGC](a)
 
 	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
 	return nil

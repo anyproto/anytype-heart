@@ -65,7 +65,7 @@ func TestSmartBlock_FileGC_LinksAdded_TriggersRestore(t *testing.T) {
 	fx.init(t, []*model.Block{{Id: objectId}})
 
 	recorder := newFileGCCallRecorder()
-	fx.fileGC = recorder
+	fx.objectGC = recorder
 
 	fx.indexer.EXPECT().Index(mock.Anything, mock.Anything).Return(nil).Maybe()
 	fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything).Maybe()
@@ -101,7 +101,7 @@ func TestSmartBlock_FileGC_LinksRemoved_TriggersGC(t *testing.T) {
 	fx.init(t, []*model.Block{{Id: objectId}})
 
 	recorder := newFileGCCallRecorder()
-	fx.fileGC = recorder
+	fx.objectGC = recorder
 
 	fx.indexer.EXPECT().Index(mock.Anything, mock.Anything).Return(nil).Maybe()
 	fx.eventSender.EXPECT().SendToSession(mock.Anything, mock.Anything).Maybe()

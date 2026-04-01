@@ -75,7 +75,7 @@ func newFixture(t *testing.T) *fixture {
 		spaceService: spaceService,
 		store:        store,
 		fileService:  fileService,
-		fileGC:       &fileGCStub{},
+		objectGC:     &fileGCStub{},
 	}
 
 	return &fixture{
