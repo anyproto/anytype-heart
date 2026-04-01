@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/order"
@@ -456,7 +457,8 @@ func (mw *Middleware) SpaceDeleteCorruptedBackup(_ context.Context, req *pb.RpcS
 func (mw *Middleware) SpaceParticipantsAddList(cctx context.Context, req *pb.RpcSpaceParticipantsAddListRequest) *pb.RpcSpaceParticipantsAddListResponse {
 	aclService := mustService[acl.AclService](mw)
 	inboxSender := mustService[inboxservice.Sender](mw)
-	err := addMembers(cctx, req.SpaceId, req.Identities, req.Permissions, aclService, inboxSender)
+	identityService := mustService[identity.Service](mw)
+	err := addMembers(cctx, req, aclService, inboxSender, identityService)
 	code := mapErrorCode(err,
 		errToCode(inboxservice.ErrSendPayloadInvite, pb.RpcSpaceParticipantsAddListResponseError_SEND_INVITE_FAILED),
 		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceParticipantsAddListResponseError_SPACE_IS_DELETED),
@@ -549,13 +551,13 @@ func ownershipChange(ctx context.Context, spaceId string, newOwnerIdentity strin
 	return aclService.OwnershipChange(ctx, spaceId, newOwnerKey, oldOwnerPermissions)
 }
 
-func addMembers(ctx context.Context, spaceId string, identities []string, permissions model.ParticipantPermissions, aclService acl.AclService, inboxSender inboxservice.Sender) error {
-	if len(identities) == 0 {
+func addMembers(ctx context.Context, req *pb.RpcSpaceParticipantsAddListRequest, aclService acl.AclService, inboxSender inboxservice.Sender, idService identity.Service) error {
+	if len(req.Identities) == 0 {
 		return fmt.Errorf("no identities provided")
 	}
 
 	var aclPerms list.AclPermissions
-	switch permissions {
+	switch req.Permissions {
 	case model.ParticipantPermissions_Reader:
 		aclPerms = list.AclPermissionsReader
 	case model.ParticipantPermissions_Writer:
@@ -564,19 +566,43 @@ func addMembers(ctx context.Context, spaceId string, identities []string, permis
 		return acl.ErrIncorrectPermissions
 	}
 
-	additions := make([]list.AccountAdd, 0, len(identities))
-	for _, identity := range identities {
-		pubKey, err := crypto.DecodeAccountAddress(identity)
+	additions := make([]list.AccountAdd, 0, len(req.Identities))
+	for _, anyId := range req.Identities {
+		pubKey, err := crypto.DecodeAccountAddress(anyId)
 		if err != nil {
-			return fmt.Errorf("decode identity %s: %w", identity, err)
+			return fmt.Errorf("decode identity %s: %w", anyId, err)
+		}
+		metadata, err := buildMetadata(idService, anyId)
+		if err != nil {
+			return fmt.Errorf("build metadata for %s: %w", anyId, err)
 		}
 		additions = append(additions, list.AccountAdd{
 			Identity:    pubKey,
 			Permissions: aclPerms,
+			Metadata:    metadata,
 		})
 	}
-	if err := aclService.AddAccounts(ctx, spaceId, additions); err != nil {
+	if err := aclService.AddAccounts(ctx, req.SpaceId, additions); err != nil {
 		return fmt.Errorf("add accounts: %w", err)
 	}
-	return inboxSender.SendRegularSpaceInvites(ctx, spaceId, identities...)
+	return inboxSender.SendRegularSpaceInvites(ctx, req.SpaceId, req.Identities...)
+}
+
+func buildMetadata(idService identity.Service, identity string) ([]byte, error) {
+	symKey, err := idService.GetMetadataKey(identity)
+	if err != nil {
+		return nil, fmt.Errorf("get metadata key: %w", err)
+	}
+	symKeyProto, err := symKey.Marshall()
+	if err != nil {
+		return nil, fmt.Errorf("marshal sym key: %w", err)
+	}
+	md := &model.Metadata{
+		Payload: &model.MetadataPayloadOfIdentity{
+			Identity: &model.MetadataPayloadIdentityPayload{
+				ProfileSymKey: symKeyProto,
+			},
+		},
+	}
+	return md.Marshal()
 }
