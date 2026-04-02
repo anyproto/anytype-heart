@@ -213,12 +213,6 @@ func (a *aclService) pushGuest(ctx context.Context, privKey crypto.PrivKey) (met
 }
 
 func (a *aclService) AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error) {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
-	return a.addGuestAccount(ctx, spaceId)
-}
-
-func (a *aclService) addGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error) {
 	pk, pubKey, err := crypto.GenerateRandomEd25519KeyPair()
 	if err != nil {
 		return nil, err
@@ -227,7 +221,7 @@ func (a *aclService) addGuestAccount(ctx context.Context, spaceId string) (privK
 	if err != nil {
 		return nil, err
 	}
-	return pk, a.addAccounts(ctx, spaceId, []list.AccountAdd{{
+	return pk, a.AddAccounts(ctx, spaceId, []list.AccountAdd{{
 		Identity:    pubKey,
 		Metadata:    metadata,
 		Permissions: list.AclPermissionsGuest,
@@ -235,16 +229,12 @@ func (a *aclService) addGuestAccount(ctx context.Context, spaceId string) (privK
 }
 
 func (a *aclService) AddAccounts(ctx context.Context, spaceId string, additions []list.AccountAdd) error {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
-	return a.addAccounts(ctx, spaceId, additions)
-}
-
-func (a *aclService) addAccounts(ctx context.Context, spaceId string, additions []list.AccountAdd) error {
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: additions})
 	if err != nil {
 		return convertedOrAclRequestError(err)
@@ -253,12 +243,6 @@ func (a *aclService) addAccounts(ctx context.Context, spaceId string, additions 
 }
 
 func (a *aclService) Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) error {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
-	return a.remove(ctx, spaceId, identities)
-}
-
-func (a *aclService) remove(ctx context.Context, spaceId string, identities []crypto.PubKey) error {
 	removeSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
@@ -268,6 +252,8 @@ func (a *aclService) remove(ctx context.Context, spaceId string, identities []cr
 		return convertedOrInternalError("generate random key pair", err)
 	}
 	cl := removeSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.RemoveAccounts(ctx, list.AccountRemovePayload{
 		Identities: identities,
 		Change: list.ReadKeyChangePayload{
@@ -294,13 +280,13 @@ func (a *aclService) CancelJoin(ctx context.Context, spaceId string) (err error)
 }
 
 func (a *aclService) Decline(ctx context.Context, spaceId string, identity crypto.PubKey) (err error) {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
 	cl := sp.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.DeclineRequest(ctx, identity)
 	if err != nil {
 		return convertedOrAclRequestError(err)
@@ -309,14 +295,14 @@ func (a *aclService) Decline(ctx context.Context, spaceId string, identity crypt
 }
 
 func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
 	cl := sp.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
 	err = cl.RevokeAllInvites(ctx)
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -328,8 +314,6 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 }
 
 func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	if len(perms) == 0 {
 		return fmt.Errorf("%w: empty permissions", ErrIncorrectPermissions)
 	}
@@ -366,6 +350,8 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 	}
 	acl.RUnlock()
 	cl := sp.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.ChangePermissions(ctx, list.PermissionChangesPayload{
 		Changes: listPerms,
 	})
@@ -376,8 +362,6 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 }
 
 func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identities []crypto.PubKey) error {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
@@ -405,7 +389,7 @@ func (a *aclService) ApproveLeave(ctx context.Context, spaceId string, identitie
 		return fmt.Errorf("%w with identities: %s", ErrRequestNotExists, strings.Join(identities, ", "))
 	}
 	acl.RUnlock()
-	return a.remove(ctx, spaceId, identities)
+	return a.Remove(ctx, spaceId, identities)
 }
 
 func (a *aclService) Leave(ctx context.Context, spaceId string) (err error) {
@@ -432,8 +416,6 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) (err error) {
 }
 
 func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	removeSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
@@ -456,10 +438,12 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 		return convertedOrInternalError("generate random key pair", err)
 	}
 	cl := commonSpace.AclClient()
+	a.aclClientLock.Lock()
 	err = cl.StopSharing(ctx, list.ReadKeyChangePayload{
 		MetadataKey: newPrivKey,
 		ReadKey:     crypto.NewAES(),
 	})
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -634,8 +618,6 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 }
 
 func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	validPerms := permissions == model.ParticipantPermissions_Reader || permissions == model.ParticipantPermissions_Writer
 	if !validPerms {
 		return ErrIncorrectPermissions
@@ -662,7 +644,6 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	if recId == "" {
 		return fmt.Errorf("%w with identity: %s", ErrRequestNotExists, identity.Account())
 	}
-	cl := acceptSpace.CommonSpace().AclClient()
 	var aclPerms list.AclPermissions
 	switch permissions {
 	case model.ParticipantPermissions_Reader:
@@ -670,6 +651,9 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	case model.ParticipantPermissions_Writer:
 		aclPerms = list.AclPermissionsWriter
 	}
+	cl := acceptSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.AcceptRequest(ctx, list.RequestAcceptPayload{
 		RequestRecordId: recId,
 		Permissions:     aclPerms,
@@ -685,8 +669,6 @@ func (a *aclService) GetCurrentInvite(ctx context.Context, spaceId string) (doma
 }
 
 func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissions model.ParticipantPermissions) (err error) {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	if spaceId == a.accountService.PersonalSpaceID() {
 		err = ErrPersonalSpace
 		return
@@ -717,7 +699,9 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 	if invite.Permissions == invitePermissions {
 		return ErrIncorrectPermissions
 	}
+	a.aclClientLock.Lock()
 	err = aclClient.ChangeInvitePermissions(ctx, invites[0].Id, invitePermissions)
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -729,8 +713,6 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 }
 
 func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType model.InviteType, permissions model.ParticipantPermissions) (result domain.InviteInfo, err error) {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	if spaceId == a.accountService.PersonalSpaceID() {
 		err = ErrPersonalSpace
 		return
@@ -752,6 +734,8 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 		Permissions: aclPermissions,
 		InviteType:  domain.ConvertInviteType(inviteType),
 	}
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	res, err := aclClient.ReplaceInvite(ctx, invitePayload)
 	if err != nil {
 		err = convertedOrInternalError("couldn't generate acl invite", err)
@@ -797,11 +781,9 @@ func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (in
 			return
 		}
 	}
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	// todo: race conds in case guest user already created?
 	// we can iterate users to find the guest key
-	guestKey, err := a.addGuestAccount(ctx, spaceId)
+	guestKey, err := a.AddGuestAccount(ctx, spaceId)
 	if err != nil {
 		return domain.InviteInfo{}, convertedOrInternalError("add guest account", err)
 	}
@@ -817,8 +799,6 @@ func (a *aclService) joinAsGuest(ctx context.Context, spaceId string, guestUserK
 }
 
 func (a *aclService) OwnershipChange(ctx context.Context, spaceId string, newOwner crypto.PubKey, oldOwnerPerm model.ParticipantPermissions) (err error) {
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
 	if spaceId == a.accountService.PersonalSpaceID() {
 		err = ErrPersonalSpace
 		return
@@ -827,7 +807,8 @@ func (a *aclService) OwnershipChange(ctx context.Context, spaceId string, newOwn
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
-
 	aclClient := ownedSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	return aclClient.OwnershipChange(ctx, newOwner, domain.ConvertParticipantPermissions(oldOwnerPerm))
 }
