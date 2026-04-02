@@ -10,7 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/anyproto/anytype-heart/core/acl"
-	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/identity"
 	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
@@ -41,36 +40,19 @@ func (mw *Middleware) SpaceDelete(cctx context.Context, req *pb.RpcSpaceDeleteRe
 func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceMakeShareableRequest) *pb.RpcSpaceMakeShareableResponse {
 	aclService := mustService[acl.AclService](mw)
 	err := aclService.MakeShareable(cctx, req.SpaceId)
-	if err != nil {
-		code := mapErrorCode(err,
-			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceMakeShareableResponseError_SPACE_IS_DELETED),
-			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceMakeShareableResponseError_NO_SUCH_SPACE),
-			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceMakeShareableResponseError_BAD_INPUT),
-			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceMakeShareableResponseError_REQUEST_FAILED),
-			errToCode(acl.ErrLimitReached, pb.RpcSpaceMakeShareableResponseError_LIMIT_REACHED),
-		)
-		return &pb.RpcSpaceMakeShareableResponse{
-			Error: &pb.RpcSpaceMakeShareableResponseError{
-				Code:        code,
-				Description: getErrorDescription(err),
-			},
-		}
+	code := mapErrorCode(err,
+		errToCode(space.ErrSpaceDeleted, pb.RpcSpaceMakeShareableResponseError_SPACE_IS_DELETED),
+		errToCode(space.ErrSpaceNotExists, pb.RpcSpaceMakeShareableResponseError_NO_SUCH_SPACE),
+		errToCode(acl.ErrPersonalSpace, pb.RpcSpaceMakeShareableResponseError_BAD_INPUT),
+		errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceMakeShareableResponseError_REQUEST_FAILED),
+		errToCode(acl.ErrLimitReached, pb.RpcSpaceMakeShareableResponseError_LIMIT_REACHED),
+	)
+	return &pb.RpcSpaceMakeShareableResponse{
+		Error: &pb.RpcSpaceMakeShareableResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
 	}
-	err = mw.doBlockService(func(bs *block.Service) (err error) {
-		err = bs.SpaceInitChat(cctx, req.SpaceId, true)
-		return err
-	})
-
-	if err != nil {
-		return &pb.RpcSpaceMakeShareableResponse{
-			Error: &pb.RpcSpaceMakeShareableResponseError{
-				Code:        pb.RpcSpaceMakeShareableResponseError_UNKNOWN_ERROR,
-				Description: getErrorDescription(err),
-			},
-		}
-	}
-
-	return &pb.RpcSpaceMakeShareableResponse{&pb.RpcSpaceMakeShareableResponseError{}}
 }
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
