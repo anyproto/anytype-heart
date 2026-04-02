@@ -60,7 +60,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
-	"github.com/anyproto/anytype-heart/core/onetoone"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -128,7 +128,7 @@ type Service struct {
 	objectCreator        objectcreator.Service
 	templateService      template.Service
 	identityService      IdentityService
-	onetoone             onetoone.Service
+	inboxSender          inboxservice.Sender
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
@@ -168,7 +168,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.identityService = app.MustComponent[IdentityService](a)
-	s.onetoone = app.MustComponent[onetoone.Service](a)
+	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[template.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
