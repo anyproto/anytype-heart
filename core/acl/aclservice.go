@@ -186,7 +186,6 @@ func (a *aclService) Name() (name string) {
 	return CName
 }
 
-
 func (a *aclService) MakeShareable(ctx context.Context, spaceId string) error {
 	err := a.coordClient.SpaceMakeShareable(ctx, spaceId)
 	if err != nil {
