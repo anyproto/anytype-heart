@@ -857,16 +857,25 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.CheckSubscriptions()
 	}
 
-	// Check for file GC after successful apply
-	if parent := s.ParentState(); parent != nil && len(linksBefore) > 0 {
+	// Check for file GC after successful apply.
+	// Note: do NOT guard on len(linksBefore) > 0 — undo can add links from an empty state
+	// (linksBefore == []) and we must still detect those additions to restore archived files.
+	if parent := s.ParentState(); parent != nil {
 		linksAfter := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+
+		// Compute added links unconditionally — needed for both session tracking and file restore.
+		addedLinks := getAddedLinks(linksBefore, linksAfter)
 
 		// Track newly added links as session-created (if object was explicitly opened)
 		if sb.sessionCreatedLinks != nil {
-			addedLinks := getAddedLinks(linksBefore, linksAfter)
 			for _, link := range addedLinks {
 				sb.sessionCreatedLinks[link] = struct{}{}
 			}
+		}
+
+		// Restore archived files whose links were re-added (e.g. via undo).
+		if len(addedLinks) > 0 {
+			go sb.restoreArchivedFilesOnLinksAdded(sb.SpaceID(), sb.Id(), addedLinks)
 		}
 
 		removedLinks := getRemovedLinks(linksBefore, linksAfter)
@@ -1556,6 +1565,17 @@ func guessRelationFormatFromValue(val domain.Value) model.RelationFormat {
 		return model.RelationFormat_file
 	default:
 		return 0
+	}
+}
+
+// restoreArchivedFilesOnLinksAdded unarchives file objects that were GC'd when their link is re-added
+// to the context (e.g. via undo).
+func (sb *smartBlock) restoreArchivedFilesOnLinksAdded(spaceId, contextId string, addedLinks []string) {
+	if sb.fileGC == nil {
+		return
+	}
+	if err := sb.fileGC.CheckFilesOnLinksRestored(spaceId, contextId, addedLinks); err != nil {
+		log.With("objectId", contextId).Errorf("file restore on links added failed: %v", err)
 	}
 }
 
