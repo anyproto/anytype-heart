@@ -79,6 +79,7 @@ service ClientCommands {
     rpc SpaceUnsetOrder (anytype.Rpc.Space.UnsetOrder.Request) returns (anytype.Rpc.Space.UnsetOrder.Response);
     rpc SpaceChangeOwnership(anytype.Rpc.Space.ChangeOwnership.Request) returns (anytype.Rpc.Space.ChangeOwnership.Response);
     rpc SpaceDeleteCorruptedBackup (anytype.Rpc.Space.DeleteCorruptedBackup.Request) returns (anytype.Rpc.Space.DeleteCorruptedBackup.Response);
+    rpc SpaceParticipantsAddList (anytype.Rpc.Space.ParticipantsAddList.Request) returns (anytype.Rpc.Space.ParticipantsAddList.Response);
 
     // Publishing
     // ***

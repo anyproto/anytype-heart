@@ -84,7 +84,10 @@ func (s *fileGCDummy) Close(ctx context.Context) error { return nil }
 func (s *fileGCDummy) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
 	return nil
 }
-func (s *fileGCDummy) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
+func (s *fileGCDummy) CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error {
+	return nil
+}
+func (s *fileGCDummy) CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error {
 	return nil
 }
 

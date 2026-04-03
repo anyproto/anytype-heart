@@ -1371,6 +1371,10 @@
     - [Rpc.Space.ParticipantRemove.Request](#anytype-Rpc-Space-ParticipantRemove-Request)
     - [Rpc.Space.ParticipantRemove.Response](#anytype-Rpc-Space-ParticipantRemove-Response)
     - [Rpc.Space.ParticipantRemove.Response.Error](#anytype-Rpc-Space-ParticipantRemove-Response-Error)
+    - [Rpc.Space.ParticipantsAddList](#anytype-Rpc-Space-ParticipantsAddList)
+    - [Rpc.Space.ParticipantsAddList.Request](#anytype-Rpc-Space-ParticipantsAddList-Request)
+    - [Rpc.Space.ParticipantsAddList.Response](#anytype-Rpc-Space-ParticipantsAddList-Response)
+    - [Rpc.Space.ParticipantsAddList.Response.Error](#anytype-Rpc-Space-ParticipantsAddList-Response-Error)
     - [Rpc.Space.RequestApprove](#anytype-Rpc-Space-RequestApprove)
     - [Rpc.Space.RequestApprove.Request](#anytype-Rpc-Space-RequestApprove-Request)
     - [Rpc.Space.RequestApprove.Response](#anytype-Rpc-Space-RequestApprove-Response)
@@ -1826,6 +1830,7 @@
     - [Rpc.Space.MakeShareable.Response.Error.Code](#anytype-Rpc-Space-MakeShareable-Response-Error-Code)
     - [Rpc.Space.ParticipantPermissionsChange.Response.Error.Code](#anytype-Rpc-Space-ParticipantPermissionsChange-Response-Error-Code)
     - [Rpc.Space.ParticipantRemove.Response.Error.Code](#anytype-Rpc-Space-ParticipantRemove-Response-Error-Code)
+    - [Rpc.Space.ParticipantsAddList.Response.Error.Code](#anytype-Rpc-Space-ParticipantsAddList-Response-Error-Code)
     - [Rpc.Space.RequestApprove.Response.Error.Code](#anytype-Rpc-Space-RequestApprove-Response-Error-Code)
     - [Rpc.Space.RequestDecline.Response.Error.Code](#anytype-Rpc-Space-RequestDecline-Response-Error-Code)
     - [Rpc.Space.SetOrder.Response.Error.Code](#anytype-Rpc-Space-SetOrder-Response-Error-Code)
@@ -2383,6 +2388,7 @@
 | SpaceUnsetOrder | [Rpc.Space.UnsetOrder.Request](#anytype-Rpc-Space-UnsetOrder-Request) | [Rpc.Space.UnsetOrder.Response](#anytype-Rpc-Space-UnsetOrder-Response) |  |
 | SpaceChangeOwnership | [Rpc.Space.ChangeOwnership.Request](#anytype-Rpc-Space-ChangeOwnership-Request) | [Rpc.Space.ChangeOwnership.Response](#anytype-Rpc-Space-ChangeOwnership-Response) |  |
 | SpaceDeleteCorruptedBackup | [Rpc.Space.DeleteCorruptedBackup.Request](#anytype-Rpc-Space-DeleteCorruptedBackup-Request) | [Rpc.Space.DeleteCorruptedBackup.Response](#anytype-Rpc-Space-DeleteCorruptedBackup-Response) |  |
+| SpaceParticipantsAddList | [Rpc.Space.ParticipantsAddList.Request](#anytype-Rpc-Space-ParticipantsAddList-Request) | [Rpc.Space.ParticipantsAddList.Response](#anytype-Rpc-Space-ParticipantsAddList-Response) |  |
 | PublishingCreate | [Rpc.Publishing.Create.Request](#anytype-Rpc-Publishing-Create-Request) | [Rpc.Publishing.Create.Response](#anytype-Rpc-Publishing-Create-Response) | Publishing *** |
 | PublishingRemove | [Rpc.Publishing.Remove.Request](#anytype-Rpc-Publishing-Remove-Request) | [Rpc.Publishing.Remove.Response](#anytype-Rpc-Publishing-Remove-Response) |  |
 | PublishingList | [Rpc.Publishing.List.Request](#anytype-Rpc-Publishing-List-Request) | [Rpc.Publishing.List.Response](#anytype-Rpc-Publishing-List-Response) |  |
@@ -22545,6 +22551,64 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Space-ParticipantsAddList"></a>
+
+### Rpc.Space.ParticipantsAddList
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantsAddList-Request"></a>
+
+### Rpc.Space.ParticipantsAddList.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| identities | [string](#string) | repeated |  |
+| permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantsAddList-Response"></a>
+
+### Rpc.Space.ParticipantsAddList.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Space.ParticipantsAddList.Response.Error](#anytype-Rpc-Space-ParticipantsAddList-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Space-ParticipantsAddList-Response-Error"></a>
+
+### Rpc.Space.ParticipantsAddList.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Space.ParticipantsAddList.Response.Error.Code](#anytype-Rpc-Space-ParticipantsAddList-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Space-RequestApprove"></a>
 
 ### Rpc.Space.RequestApprove
@@ -28966,6 +29030,26 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 104 |  |
 | LIMIT_REACHED | 105 |  |
 | NOT_SHAREABLE | 106 |  |
+
+
+
+<a name="anytype-Rpc-Space-ParticipantsAddList-Response-Error-Code"></a>
+
+### Rpc.Space.ParticipantsAddList.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| SEND_INVITE_FAILED | 3 |  |
+| NO_SUCH_SPACE | 101 |  |
+| SPACE_IS_DELETED | 102 |  |
+| REQUEST_FAILED | 103 |  |
+| LIMIT_REACHED | 104 |  |
+| NOT_SHAREABLE | 105 |  |
+| INCORRECT_PERMISSIONS | 106 |  |
 
 
 
