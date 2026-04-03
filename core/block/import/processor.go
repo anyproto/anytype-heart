@@ -235,10 +235,16 @@ func (p *importProcessor) createObjects(ctx context.Context) (map[string]*domain
 
 func (p *importProcessor) assignIdsToAllObjects(ctx context.Context) error {
 	relationOptions := make([]*common.Snapshot, 0)
+	fileObjects := make([]*common.Snapshot, 0)
 	for _, snapshot := range p.converterResponse.Snapshots {
 		// we will process relation options after relations when all relation keys are collected
 		if lo.Contains(snapshot.Snapshot.Data.ObjectTypes, bundle.TypeKeyRelationOption.String()) {
 			relationOptions = append(relationOptions, snapshot)
+			continue
+		}
+		// file objects are processed last so that object ID remapping is complete
+		if snapshot.Snapshot.SbType == smartblock.SmartBlockTypeFileObject {
+			fileObjects = append(fileObjects, snapshot)
 			continue
 		}
 		err := p.processSnapshot(ctx, snapshot)
@@ -259,6 +265,19 @@ func (p *importProcessor) assignIdsToAllObjects(ctx context.Context) error {
 				return err
 			}
 			log.With(zap.String("object name", option.Id)).Error(err)
+		}
+	}
+	for _, fileObject := range fileObjects {
+		if fileObject.Snapshot.Data.Details != nil {
+			common.UpdateObjectIDsInDetails(fileObject.Snapshot.Data.Details, p.oldIDToNew, p.relationKeysToFormat)
+		}
+		err := p.processSnapshot(ctx, fileObject)
+		if err != nil {
+			p.errors.Add(err)
+			if p.request.Mode != pb.RpcObjectImportRequest_IGNORE_ERRORS {
+				return err
+			}
+			log.With(zap.String("object name", fileObject.Id)).Error(err)
 		}
 	}
 	return nil

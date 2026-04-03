@@ -71,7 +71,7 @@ func uploadFile(
 ) (string, error) {
 	params := pb.RpcFileUploadRequest{
 		SpaceId: spaceId,
-		Details: details.CopyOnlyKeys(bundle.RelationKeyName, bundle.RelationKeyIsHiddenDiscovery).ToProto(),
+		Details: details.CopyOnlyKeys(bundle.RelationKeyName, bundle.RelationKeyIsHiddenDiscovery, bundle.RelationKeyCreatedInContext, bundle.RelationKeyCreatedInContextRef).ToProto(),
 	}
 
 	if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
