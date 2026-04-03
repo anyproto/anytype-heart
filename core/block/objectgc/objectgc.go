@@ -184,7 +184,15 @@ func (gc *objectGC) CheckObjectsOnLinksRemoval(sctx session.Context, spaceId, co
 	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toArchive, true); err != nil {
 		return fmt.Errorf("archive objects: %w", err)
 	}
-	accumulateAutoArchiveEvent(sctx, toArchive, contextId)
+	if sctx != nil && len(toArchive) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoArchive{
+				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: toArchive},
+			},
+		})
+		sctx.SetMessages(contextId, msgs)
+	}
 	return nil
 }
 
@@ -464,7 +472,15 @@ func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, idx spaceindex.
 	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toArchive, true); err != nil {
 		return fmt.Errorf("archive objects: %w", err)
 	}
-	accumulateAutoArchiveEvent(sctx, toArchive, objectId)
+	if sctx != nil && len(toArchive) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoArchive{
+				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: toArchive},
+			},
+		})
+		sctx.SetMessages(objectId, msgs)
+	}
 	return nil
 }
 
@@ -571,7 +587,15 @@ func (gc *objectGC) restoreObjectsOnUnarchive(sctx session.Context, idx spaceind
 	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toRestore, false); err != nil {
 		return fmt.Errorf("restore objects: %w", err)
 	}
-	accumulateAutoRestoreEvent(sctx, toRestore, objectId)
+	if sctx != nil && len(toRestore) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoRestore{
+				ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: toRestore},
+			},
+		})
+		sctx.SetMessages(objectId, msgs)
+	}
 	return nil
 }
 
@@ -674,7 +698,15 @@ func (gc *objectGC) CheckObjectsOnLinksRestored(sctx session.Context, spaceId, c
 	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toRestore, false); err != nil {
 		return fmt.Errorf("restore objects: %w", err)
 	}
-	accumulateAutoRestoreEvent(sctx, toRestore, contextId)
+	if sctx != nil && len(toRestore) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoRestore{
+				ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: toRestore},
+			},
+		})
+		sctx.SetMessages(contextId, msgs)
+	}
 	return nil
 }
 
@@ -699,88 +731,6 @@ func makeGCEligibleLayouts() []int64 {
 		layouts = append(layouts, int64(layout))
 	}
 	return layouts
-}
-
-// accumulateAutoArchiveEvent merges objectIds into the auto-archive event already present in sctx,
-// or appends a new one if none exists. All callers sharing the same sctx will end up with exactly
-// one EventObjectAutoArchive message containing the union of all archived IDs, which is what the
-// RPC layer harvests via GetResponseEvent at the end of each call.
-func accumulateAutoArchiveEvent(sctx session.Context, objectIds []string, smartBlockId string) {
-	if sctx == nil || len(objectIds) == 0 {
-		return
-	}
-	msgs := sctx.GetMessages()
-	for i, msg := range msgs {
-		if existing, ok := msg.Value.(*pb.EventMessageValueOfObjectAutoArchive); ok {
-			seen := make(map[string]struct{}, len(existing.ObjectAutoArchive.ObjectIds)+len(objectIds))
-			merged := make([]string, 0, len(existing.ObjectAutoArchive.ObjectIds)+len(objectIds))
-			for _, id := range existing.ObjectAutoArchive.ObjectIds {
-				if _, dup := seen[id]; !dup {
-					seen[id] = struct{}{}
-					merged = append(merged, id)
-				}
-			}
-			for _, id := range objectIds {
-				if _, dup := seen[id]; !dup {
-					seen[id] = struct{}{}
-					merged = append(merged, id)
-				}
-			}
-			msgs[i] = &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectAutoArchive{
-					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: merged},
-				},
-			}
-			sctx.SetMessages(smartBlockId, msgs)
-			return
-		}
-	}
-	msgs = append(msgs, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectAutoArchive{
-			ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: objectIds},
-		},
-	})
-	sctx.SetMessages(smartBlockId, msgs)
-}
-
-// accumulateAutoRestoreEvent merges objectIds into the auto-restore event already present in sctx,
-// or appends a new one if none exists. Mirrors accumulateAutoArchiveEvent for the unarchive direction.
-func accumulateAutoRestoreEvent(sctx session.Context, objectIds []string, smartBlockId string) {
-	if sctx == nil || len(objectIds) == 0 {
-		return
-	}
-	msgs := sctx.GetMessages()
-	for i, msg := range msgs {
-		if existing, ok := msg.Value.(*pb.EventMessageValueOfObjectAutoRestore); ok {
-			seen := make(map[string]struct{}, len(existing.ObjectAutoRestore.ObjectIds)+len(objectIds))
-			merged := make([]string, 0, len(existing.ObjectAutoRestore.ObjectIds)+len(objectIds))
-			for _, id := range existing.ObjectAutoRestore.ObjectIds {
-				if _, dup := seen[id]; !dup {
-					seen[id] = struct{}{}
-					merged = append(merged, id)
-				}
-			}
-			for _, id := range objectIds {
-				if _, dup := seen[id]; !dup {
-					seen[id] = struct{}{}
-					merged = append(merged, id)
-				}
-			}
-			msgs[i] = &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectAutoRestore{
-					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: merged},
-				},
-			}
-			sctx.SetMessages(smartBlockId, msgs)
-			return
-		}
-	}
-	msgs = append(msgs, &pb.EventMessage{
-		Value: &pb.EventMessageValueOfObjectAutoRestore{
-			ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: objectIds},
-		},
-	})
-	sctx.SetMessages(smartBlockId, msgs)
 }
 
 // FilterExplicitIds removes ids from all auto-archive and auto-restore events in sctx.
