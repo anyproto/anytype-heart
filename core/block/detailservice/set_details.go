@@ -141,6 +141,34 @@ func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, o
 	return resultErr
 }
 
+// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
+// Used by the GC itself for its batch write to prevent recursive re-entry.
+func (s *service) SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error {
+	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
+	if err != nil {
+		return fmt.Errorf("partition object ids by spaces: %w", err)
+	}
+
+	var (
+		resultErr  error
+		anySucceed bool
+	)
+	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
+		err = s.setIsArchivedForObjectsNoGC(ctx, spaceId, objectIdsOfThisSpace, isArchived)
+		if err != nil {
+			log.Error("failed to set isArchived to objects (no-gc)", zap.String("spaceId", spaceId),
+				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
+			resultErr = errors.Join(resultErr, err)
+			continue
+		}
+		anySucceed = true
+	}
+	if anySucceed {
+		return nil
+	}
+	return resultErr
+}
+
 func (s *service) checkArchivedRestriction(ctx context.Context, isArchived bool, objectId string) error {
 	if !isArchived {
 		return nil
@@ -208,7 +236,6 @@ func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Cont
 		ids = slice.Filter(ids, func(id string) bool {
 			for _, objId := range spc.DerivedIDs().IDsWithSystemTypesAndRelations() {
 				if id == objId {
-					// avoid archive system objects including archive itself
 					return false
 				}
 			}
@@ -218,6 +245,45 @@ func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Cont
 
 		if err != nil {
 			log.Warn("failed to archive", zap.Error(err))
+		}
+		if anySucceed {
+			return nil
+		}
+		return err
+	})
+}
+
+// setIsArchivedForObjectsNoGC is identical to setIsArchivedForObjects but does NOT call
+// triggerFileGCOnArchive, preventing recursive GC re-entry when the GC itself archives objects.
+func (s *service) setIsArchivedForObjectsNoGC(ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
+	spc, err := s.spaceService.Get(context.Background(), spaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
+
+	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(blockcollection.Collection)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(objectIds)
+		if err != nil {
+			return err
+		}
+
+		ids = slice.Filter(ids, func(id string) bool {
+			for _, objId := range spc.DerivedIDs().IDsWithSystemTypesAndRelations() {
+				if id == objId {
+					return false
+				}
+			}
+			return true
+		})
+		anySucceed, err := s.modifyArchiveLinks(ctx, archive, isArchived, ids...)
+
+		if err != nil {
+			log.Warn("failed to archive (no-gc)", zap.Error(err))
 		}
 		if anySucceed {
 			return nil

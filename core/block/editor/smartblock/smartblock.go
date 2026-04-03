@@ -852,7 +852,24 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 		// Restore archived files whose links were re-added (e.g. via undo).
 		if len(addedLinks) > 0 {
-			go sb.restoreArchivedFilesOnLinksAdded(sctx, sb.SpaceID(), sb.Id(), addedLinks)
+			// A fresh child context isolates accumulated events so they can be
+			// pushed to the originating session once restore finishes, avoiding
+			// a data race with the RPC handler reading ctx.GetResponseEvent().
+			var restoreSctx session.Context
+			if sctx != nil {
+				restoreSctx = session.NewChildContext(sctx)
+			}
+			go func() {
+				sb.restoreArchivedFilesOnLinksAdded(restoreSctx, sb.SpaceID(), sb.Id(), addedLinks)
+				if restoreSctx != nil && restoreSctx.ID() != "" {
+					if msgs := restoreSctx.GetMessages(); len(msgs) > 0 {
+						sb.eventSender.SendToSession(restoreSctx.ID(), &pb.Event{
+							Messages:  msgs,
+							ContextId: sb.Id(),
+						})
+					}
+				}
+			}()
 		}
 
 		removedLinks := getRemovedLinks(linksBefore, linksAfter)

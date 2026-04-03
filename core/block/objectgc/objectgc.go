@@ -38,6 +38,9 @@ type ObjectDeleter interface {
 // ObjectArchiver is an interface to archive objects
 type ObjectArchiver interface {
 	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
+	// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
+	// Used by the GC itself for its batch write to prevent recursive re-entry.
+	SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 // ParticipantProvider provides the current user's participant ID for a given space
@@ -171,7 +174,7 @@ func (gc *objectGC) CheckObjectsOnLinksRemoval(sctx session.Context, spaceId, co
 		if shouldSkipBin {
 			log.With("id", id).Debugf("deleting orphaned object created in context %s", contextId)
 			if err := gc.deleteObject(spaceId, id); err != nil {
-				log.With("id", id).Errorf("failed to delete object object: %v", err)
+				log.With("id", id).Errorf("failed to delete object: %v", err)
 			}
 		} else {
 			log.With("id", id).Debugf("archiving orphaned object created in context %s", contextId)
@@ -179,7 +182,7 @@ func (gc *objectGC) CheckObjectsOnLinksRemoval(sctx session.Context, spaceId, co
 		}
 	}
 	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toArchive, true); err != nil {
-		return err
+		return fmt.Errorf("archive objects: %w", err)
 	}
 	accumulateAutoArchiveEvent(sctx, toArchive, contextId)
 	return nil
@@ -231,66 +234,129 @@ func (gc *objectGC) CheckObjectsOnObjectArchived(sctx session.Context, spaceId, 
 	return gc.archiveOrphanedObjects(sctx, spaceId, idx, objectId, gcLayouts)
 }
 
-// archiveOrphanedObjects runs both queries and archives objects that have no active backlinks.
-// Active-status of all referenced objects is resolved via at most two batch Id IN [...] queries —
-// one per query set — rather than per-item detail lookups.
-func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, spaceId string, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
-	var toArchive []string
+// collectOrphanedObjects performs a BFS over the createdInContext tree rooted at objectId and
+// returns the flat list of object IDs that should be archived alongside it.
+//
+// It is a pure read operation — no state changes occur. The BFS uses a visited set to detect
+// and break cycles in the createdInContext graph. A pending set (always identical to visited)
+// tracks IDs that will be archived in this batch; backlinks pointing into the pending set are
+// treated as inactive so that sibling cross-references do not falsely prevent archiving.
+//
+// After the BFS (Query 1 / parent case), a second pass (Query 2 / backlinker case) runs once
+// to collect objects that reference objectId as a backlink but have a different parent context,
+// applying the same confirmed-inactive parent safety gate as archiveOrphanedObjects previously did.
+func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
+	// visited doubles as the pending set — anything added to the result is also in visited.
+	visited := map[string]struct{}{objectId: {}}
+	queue := []string{objectId}
+	var result []string
 
-	// Query 1: objects whose parent context is the object being archived.
-	// No safety gate needed — objectId IS the parent and is being archived right now.
-	parentRecords, err := idx.Query(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyCreatedInContext,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(objectId),
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		// Query 1: direct children whose parent context is current.
+		childRecords, err := idx.Query(database.Query{
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyCreatedInContext,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.String(current),
+				},
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout,
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       domain.Int64List(gcLayouts),
+				},
 			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List(gcLayouts),
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("query parent objects: %w", err)
-	}
-
-	if len(parentRecords) > 0 {
-		// Collect all unique backlink IDs to check across all parent objects.
-		linksToCheck := make(map[string]struct{})
-		for _, record := range parentRecords {
-			id := record.Details.GetString(bundle.RelationKeyId)
-			for _, link := range record.Details.GetStringList(bundle.RelationKeyBacklinks) {
-				if link != id && link != objectId {
-					linksToCheck[link] = struct{}{}
-				}
-			}
-		}
-
-		// Single batch query: which of these backlinks are still active (not archived/deleted)?
-		// The implicit IsArchived/IsDeleted filter from Query() excludes archived and deleted objects.
-		activeIds, err := gc.queryActiveIds(idx, linksToCheck)
+		})
 		if err != nil {
-			return fmt.Errorf("query active backlinks for parent objects: %w", err)
+			return nil, fmt.Errorf("query children of %s: %w", current, err)
+		}
+		if len(childRecords) == 0 {
+			continue
 		}
 
-		for _, record := range parentRecords {
+		// Build a candidate map for this BFS level (all non-visited children).
+		// Candidates treat each other as "in-batch" for backlink checks, which allows
+		// sibling cross-references to be archived together correctly.
+		candidates := make(map[string]*domain.Details, len(childRecords))
+		for _, record := range childRecords {
 			id := record.Details.GetString(bundle.RelationKeyId)
-			if hasActiveBacklinks(record.Details, id, objectId, activeIds) {
-				log.Debugf("object %s has active backlinks, keeping", id)
+			if _, seen := visited[id]; seen {
 				continue
 			}
-			log.Debugf("archiving orphaned object %s (parent %s archived)", id, objectId)
-			toArchive = append(toArchive, id)
+			candidates[id] = record.Details
+		}
+
+		// Collect all backlinks that are neither self-references nor already in visited/candidates.
+		// We need active-status for these to decide which candidates to exclude.
+		linksToCheck := make(map[string]struct{})
+		for id, details := range candidates {
+			for _, link := range details.GetStringList(bundle.RelationKeyBacklinks) {
+				if link == id {
+					continue
+				}
+				if _, inVisited := visited[link]; inVisited {
+					continue
+				}
+				if _, inCandidates := candidates[link]; inCandidates {
+					continue
+				}
+				linksToCheck[link] = struct{}{}
+			}
+		}
+
+		activeIds, err := gc.queryActiveIds(idx, linksToCheck)
+		if err != nil {
+			return nil, fmt.Errorf("query active backlinks for children of %s: %w", current, err)
+		}
+
+		// Iteratively remove candidates that have active backlinks outside (visited ∪ candidates).
+		// This converges because each iteration removes at least one candidate.
+		// It correctly handles cascading exclusions: if A is excluded (has external backlink),
+		// and B's only other backlink is A (now outside the candidate set and active), B is
+		// excluded in the next iteration.
+		for {
+			changed := false
+			for id, details := range candidates {
+				hasExternal := false
+				for _, link := range details.GetStringList(bundle.RelationKeyBacklinks) {
+					if link == id {
+						continue
+					}
+					if _, inVisited := visited[link]; inVisited {
+						continue
+					}
+					if _, inCandidates := candidates[link]; inCandidates {
+						continue // sibling candidate — treated as in-batch
+					}
+					if _, active := activeIds[link]; active {
+						hasExternal = true
+						break
+					}
+				}
+				if hasExternal {
+					log.Debugf("collectOrphanedObjects: object %s has external active backlinks, skipping subtree", id)
+					delete(candidates, id)
+					changed = true
+					break // restart since candidates changed
+				}
+			}
+			if !changed {
+				break
+			}
+		}
+
+		for id := range candidates {
+			visited[id] = struct{}{}
+			result = append(result, id)
+			queue = append(queue, id)
 		}
 	}
 
-	// Query 2: objects where objectId is a backlinker but NOT the parent.
-	// Only objects with an explicit createdInContext are considered — objects without it were
-	// not created in the context of any specific object and should not be auto-archived.
-	// Safety gate per object: the object's own parent must already be archived or deleted.
+	// Query 2 (backlinker case): objects where objectId is a backlinker but NOT the parent.
+	// Runs once as a post-BFS batch; uses the accumulated pending set when evaluating backlinks.
 	backlinkRecords, err := idx.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -315,112 +381,166 @@ func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, spaceId string,
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("query backlinker objects: %w", err)
+		return nil, fmt.Errorf("query backlinker objects: %w", err)
 	}
 
 	if len(backlinkRecords) > 0 {
-		// Collect all unique IDs to check: parent IDs (for safety gate) + backlink IDs.
 		idsToCheck := make(map[string]struct{})
 		for _, record := range backlinkRecords {
 			id := record.Details.GetString(bundle.RelationKeyId)
+			if _, seen := visited[id]; seen {
+				continue
+			}
 			if parentId := record.Details.GetString(bundle.RelationKeyCreatedInContext); parentId != "" {
 				idsToCheck[parentId] = struct{}{}
 			}
 			for _, link := range record.Details.GetStringList(bundle.RelationKeyBacklinks) {
-				if link != id && link != objectId {
-					idsToCheck[link] = struct{}{}
+				if link == id || link == objectId {
+					continue
 				}
+				if _, inPending := visited[link]; inPending {
+					continue
+				}
+				idsToCheck[link] = struct{}{}
 			}
 		}
 
-		// Single batch query: which of these IDs are still active?
 		activeIds, err := gc.queryActiveIds(idx, idsToCheck)
 		if err != nil {
-			return fmt.Errorf("query active ids for backlinker objects: %w", err)
+			return nil, fmt.Errorf("query active ids for backlinker objects: %w", err)
 		}
 
 		for _, record := range backlinkRecords {
 			id := record.Details.GetString(bundle.RelationKeyId)
+			if _, seen := visited[id]; seen {
+				continue
+			}
 			parentId := record.Details.GetString(bundle.RelationKeyCreatedInContext)
-
-			// Safety gate: only GC if the object's own parent is already in the bin or fully deleted.
 			if _, parentActive := activeIds[parentId]; parentActive {
-				log.Debugf("object %s parent %s is still active, keeping", id, parentId)
 				continue
 			}
-			// Sync-consistency check: the parent must be explicitly indexed as archived or deleted.
-			// "Not active" is not enough — the parent might simply not be indexed yet on this
-			// device due to sync lag. Without this check, GC would incorrectly archive objects
-			// whose parent has never been seen locally.
 			if !gc.isConfirmedInactive(idx, parentId) {
-				log.Debugf("object %s parent %s not confirmed inactive in store, skipping GC", id, parentId)
+				log.Debugf("collectOrphanedObjects: object %s parent %s not confirmed inactive, skipping", id, parentId)
 				continue
 			}
-			if hasActiveBacklinks(record.Details, id, objectId, activeIds) {
-				log.Debugf("object %s has active backlinks, keeping", id)
+			hasExternal := false
+			for _, link := range record.Details.GetStringList(bundle.RelationKeyBacklinks) {
+				if link == id || link == objectId {
+					continue
+				}
+				if _, inPending := visited[link]; inPending {
+					continue
+				}
+				if _, active := activeIds[link]; active {
+					hasExternal = true
+					break
+				}
+			}
+			if hasExternal {
 				continue
 			}
-			log.Debugf("archiving orphaned object %s (backlinker %s archived, parent %s already in bin)", id, objectId, parentId)
-			toArchive = append(toArchive, id)
+			visited[id] = struct{}{}
+			result = append(result, id)
 		}
 	}
 
-	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toArchive, true); err != nil {
-		return err
+	return result, nil
+}
+
+// archiveOrphanedObjects collects all orphaned objects via BFS and archives them in a single call.
+func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, _ string, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
+	toArchive, err := gc.collectOrphanedObjects(idx, objectId, gcLayouts)
+	if err != nil {
+		return fmt.Errorf("collect orphaned objects: %w", err)
+	}
+	if len(toArchive) == 0 {
+		return nil
+	}
+	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toArchive, true); err != nil {
+		return fmt.Errorf("archive objects: %w", err)
 	}
 	accumulateAutoArchiveEvent(sctx, toArchive, objectId)
 	return nil
 }
 
-// restoreObjectsOnUnarchive restores objects whose parent is being unarchived, provided they have
-// no other backlinks besides the parent itself.
-func (gc *objectGC) restoreObjectsOnUnarchive(sctx session.Context, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
-	records, err := idx.Query(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				RelationKey: bundle.RelationKeyCreatedInContext,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.String(objectId),
-			},
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List(gcLayouts),
-			},
-			{
-				// Explicit IsArchived filter suppresses the implicit IsArchived != true default,
-				// allowing archived objects to appear in results.
-				RelationKey: bundle.RelationKeyIsArchived,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Bool(true),
-			},
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("query archived objects for restore: %w", err)
-	}
+// collectOrphanedForRestore performs a BFS over archived children of objectId and returns the
+// flat list of object IDs that should be unarchived alongside it. The BFS queries archived
+// objects explicitly (overriding the default isArchived=false implicit filter) and stops when a
+// child has backlinks outside the pending set (meaning something else still references it).
+func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
+	visited := map[string]struct{}{objectId: {}}
+	queue := []string{objectId}
+	var result []string
 
-	if len(records) == 0 {
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+
+		records, err := idx.Query(database.Query{
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyCreatedInContext,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.String(current),
+				},
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout,
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       domain.Int64List(gcLayouts),
+				},
+				{
+					// Explicit IsArchived == true suppresses the default implicit filter,
+					// allowing archived objects to appear in results.
+					RelationKey: bundle.RelationKeyIsArchived,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.Bool(true),
+				},
+			},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("query archived children of %s: %w", current, err)
+		}
+
+		for _, record := range records {
+			id := record.Details.GetString(bundle.RelationKeyId)
+			if _, seen := visited[id]; seen {
+				continue
+			}
+			// Only restore if the only backlinks are from nodes already in the pending set.
+			hasExternal := false
+			for _, link := range record.Details.GetStringList(bundle.RelationKeyBacklinks) {
+				if link == id {
+					continue
+				}
+				if _, inPending := visited[link]; inPending {
+					continue
+				}
+				hasExternal = true
+				break
+			}
+			if hasExternal {
+				log.Debugf("collectOrphanedForRestore: object %s has external backlinks, keeping archived", id)
+				continue
+			}
+			visited[id] = struct{}{}
+			result = append(result, id)
+			queue = append(queue, id)
+		}
+	}
+	return result, nil
+}
+
+// restoreObjectsOnUnarchive collects all archived children via BFS and restores them in a single call.
+func (gc *objectGC) restoreObjectsOnUnarchive(sctx session.Context, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
+	toRestore, err := gc.collectOrphanedForRestore(idx, objectId, gcLayouts)
+	if err != nil {
+		return fmt.Errorf("collect orphaned for restore: %w", err)
+	}
+	if len(toRestore) == 0 {
 		return nil
 	}
-
-	log.Debugf("found %d archived objects created in context %s to consider restoring", len(records), objectId)
-
-	var toRestore []string
-	for _, record := range records {
-		id := record.Details.GetString(bundle.RelationKeyId)
-		backlinks := record.Details.GetStringList(bundle.RelationKeyBacklinks)
-		otherBacklinks := lo.Filter(backlinks, func(link string, _ int) bool {
-			return link != objectId && link != id
-		})
-		if len(otherBacklinks) > 0 {
-			log.Debugf("object %s has %d other backlinks, keeping archived", id, len(otherBacklinks))
-			continue
-		}
-		toRestore = append(toRestore, id)
-	}
-	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toRestore, false); err != nil {
-		return err
+	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toRestore, false); err != nil {
+		return fmt.Errorf("restore objects: %w", err)
 	}
 	accumulateAutoRestoreEvent(sctx, toRestore, objectId)
 	return nil
@@ -523,7 +643,7 @@ func (gc *objectGC) CheckObjectsOnLinksRestored(sctx session.Context, spaceId, c
 		toRestore = append(toRestore, id)
 	}
 	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toRestore, false); err != nil {
-		return err
+		return fmt.Errorf("restore objects: %w", err)
 	}
 	accumulateAutoRestoreEvent(sctx, toRestore, contextId)
 	return nil
@@ -648,7 +768,7 @@ func FilterExplicitIds(sctx session.Context, ids []string) {
 	}
 	msgs := sctx.GetMessages()
 	changed := false
-	result := msgs[:0:len(msgs)]
+	result := make([]*pb.EventMessage, 0, len(msgs))
 	for _, msg := range msgs {
 		switch v := msg.Value.(type) {
 		case *pb.EventMessageValueOfObjectAutoArchive:
@@ -684,12 +804,12 @@ func FilterExplicitIds(sctx session.Context, ids []string) {
 		}
 	}
 	if changed {
-		sctx.SetMessages("", result)
+		sctx.SetMessages(sctx.ObjectID(), result)
 	}
 }
 
 func filterExcluded(ids []string, exclude map[string]struct{}) []string {
-	out := ids[:0:len(ids)]
+	out := make([]string, 0, len(ids))
 	for _, id := range ids {
 		if _, skip := exclude[id]; !skip {
 			out = append(out, id)
