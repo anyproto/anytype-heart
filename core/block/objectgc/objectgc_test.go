@@ -678,3 +678,40 @@ func TestAccumulateAutoRestoreEvent_MergesAcrossMultipleCalls(t *testing.T) {
 	msg := msgs[0].Value.(*pb.EventMessageValueOfObjectAutoRestore)
 	assert.ElementsMatch(t, []string{"file1", "file2", "file3"}, msg.ObjectAutoRestore.ObjectIds)
 }
+
+func TestFilterExplicitIds_RemovesFromAutoArchive(t *testing.T) {
+	sctx := session.NewContext(session.WithSession("test-token"))
+	accumulateAutoArchiveEvent(sctx, []string{"a", "b", "c"}, "block1")
+
+	FilterExplicitIds(sctx, []string{"b", "c"})
+
+	msgs := sctx.GetMessages()
+	require.Len(t, msgs, 1)
+	msg := msgs[0].Value.(*pb.EventMessageValueOfObjectAutoArchive)
+	assert.ElementsMatch(t, []string{"a"}, msg.ObjectAutoArchive.ObjectIds)
+}
+
+func TestFilterExplicitIds_RemovesFromAutoRestore(t *testing.T) {
+	sctx := session.NewContext(session.WithSession("test-token"))
+	accumulateAutoRestoreEvent(sctx, []string{"a", "b", "c"}, "block1")
+
+	FilterExplicitIds(sctx, []string{"a", "b", "c"})
+
+	// all IDs removed — message dropped entirely
+	assert.Empty(t, sctx.GetMessages())
+}
+
+func TestFilterExplicitIds_PreservesUnrelatedMessages(t *testing.T) {
+	sctx := session.NewContext(session.WithSession("test-token"))
+	accumulateAutoArchiveEvent(sctx, []string{"a", "b"}, "block1")
+	accumulateAutoRestoreEvent(sctx, []string{"c", "d"}, "block1")
+
+	FilterExplicitIds(sctx, []string{"b", "d"})
+
+	msgs := sctx.GetMessages()
+	require.Len(t, msgs, 2)
+	archiveMsg := msgs[0].Value.(*pb.EventMessageValueOfObjectAutoArchive)
+	assert.ElementsMatch(t, []string{"a"}, archiveMsg.ObjectAutoArchive.ObjectIds)
+	restoreMsg := msgs[1].Value.(*pb.EventMessageValueOfObjectAutoRestore)
+	assert.ElementsMatch(t, []string{"c"}, restoreMsg.ObjectAutoRestore.ObjectIds)
+}

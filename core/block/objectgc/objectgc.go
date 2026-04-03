@@ -610,3 +610,67 @@ func accumulateAutoRestoreEvent(sctx session.Context, objectIds []string, smartB
 	})
 	sctx.SetMessages(smartBlockId, msgs)
 }
+
+// FilterExplicitIds removes ids from all auto-archive and auto-restore events in sctx.
+// Call this after GC runs to prevent explicitly user-requested IDs from appearing in
+// auto events — e.g. if B is in the original archive request AND gets auto-archived
+// as a child of A, it should not be reported as auto-archived.
+func FilterExplicitIds(sctx session.Context, ids []string) {
+	if sctx == nil || len(ids) == 0 {
+		return
+	}
+	exclude := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		exclude[id] = struct{}{}
+	}
+	msgs := sctx.GetMessages()
+	changed := false
+	result := msgs[:0:len(msgs)]
+	for _, msg := range msgs {
+		switch v := msg.Value.(type) {
+		case *pb.EventMessageValueOfObjectAutoArchive:
+			filtered := filterExcluded(v.ObjectAutoArchive.ObjectIds, exclude)
+			if len(filtered) == len(v.ObjectAutoArchive.ObjectIds) {
+				result = append(result, msg)
+				continue
+			}
+			changed = true
+			if len(filtered) > 0 {
+				result = append(result, &pb.EventMessage{
+					Value: &pb.EventMessageValueOfObjectAutoArchive{
+						ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: filtered},
+					},
+				})
+			}
+		case *pb.EventMessageValueOfObjectAutoRestore:
+			filtered := filterExcluded(v.ObjectAutoRestore.ObjectIds, exclude)
+			if len(filtered) == len(v.ObjectAutoRestore.ObjectIds) {
+				result = append(result, msg)
+				continue
+			}
+			changed = true
+			if len(filtered) > 0 {
+				result = append(result, &pb.EventMessage{
+					Value: &pb.EventMessageValueOfObjectAutoRestore{
+						ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: filtered},
+					},
+				})
+			}
+		default:
+			result = append(result, msg)
+		}
+	}
+	if changed {
+		sctx.SetMessages("", result)
+	}
+}
+
+func filterExcluded(ids []string, exclude map[string]struct{}) []string {
+	out := ids[:0:len(ids)]
+	for _, id := range ids {
+		if _, skip := exclude[id]; !skip {
+			out = append(out, id)
+		}
+	}
+	return out
+}

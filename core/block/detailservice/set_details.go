@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -255,6 +256,7 @@ func (s *service) triggerFileGCOnArchive(sctx session.Context, spaceId string, o
 			log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
 		}
 	}
+	objectgc.FilterExplicitIds(sctx, objectIds)
 }
 
 func (s *service) validateHomepage(spaceId string, homepageValue domain.Value) error {
