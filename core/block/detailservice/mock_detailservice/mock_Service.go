@@ -855,6 +855,54 @@ func (_c *MockService_SetListIsArchived_Call) RunAndReturn(run func(session.Cont
 	return _c
 }
 
+// SetListIsArchivedNoGC provides a mock function with given fields: ctx, objectIds, isArchived
+func (_m *MockService) SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error {
+	ret := _m.Called(ctx, objectIds, isArchived)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetListIsArchivedNoGC")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string, bool) error); ok {
+		r0 = rf(ctx, objectIds, isArchived)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_SetListIsArchivedNoGC_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetListIsArchivedNoGC'
+type MockService_SetListIsArchivedNoGC_Call struct {
+	*mock.Call
+}
+
+// SetListIsArchivedNoGC is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectIds []string
+//   - isArchived bool
+func (_e *MockService_Expecter) SetListIsArchivedNoGC(ctx interface{}, objectIds interface{}, isArchived interface{}) *MockService_SetListIsArchivedNoGC_Call {
+	return &MockService_SetListIsArchivedNoGC_Call{Call: _e.mock.On("SetListIsArchivedNoGC", ctx, objectIds, isArchived)}
+}
+
+func (_c *MockService_SetListIsArchivedNoGC_Call) Run(run func(ctx context.Context, objectIds []string, isArchived bool)) *MockService_SetListIsArchivedNoGC_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string), args[2].(bool))
+	})
+	return _c
+}
+
+func (_c *MockService_SetListIsArchivedNoGC_Call) Return(_a0 error) *MockService_SetListIsArchivedNoGC_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_SetListIsArchivedNoGC_Call) RunAndReturn(run func(context.Context, []string, bool) error) *MockService_SetListIsArchivedNoGC_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetListIsFavorite provides a mock function with given fields: objectIds, isFavorite
 func (_m *MockService) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 	ret := _m.Called(objectIds, isFavorite)

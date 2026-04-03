@@ -211,8 +211,6 @@ func (gc *objectGC) deleteObject(spaceId, id string) error {
 //
 // Unarchive direction (isArchived=false): only Query 1 runs, restoring objects whose parent is being unarchived,
 // provided they have no other backlinks besides the parent itself.
-// CheckObjectsOnObjectArchived finds objects that should be archived or restored when objectId changes state.
-// It returns the IDs of all affected objects; the caller is responsible for emitting any events.
 func (gc *objectGC) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
 	log.Debugf("checking objects on object archived: %s isArchived=%v", objectId, isArchived)
 	idx := gc.objectStore.SpaceIndex(spaceId)
@@ -252,11 +250,12 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 	// visited doubles as the pending set — anything added to the result is also in visited.
 	visited := map[string]struct{}{objectId: {}}
 	queue := []string{objectId}
+	head := 0
 	var result []string
 
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
+	for head < len(queue) {
+		current := queue[head]
+		head++
 
 		// Query 1: direct children whose parent context is current.
 		childRecords, err := idx.Query(database.Query{
@@ -473,11 +472,12 @@ func (gc *objectGC) archiveOrphanedObjects(idx spaceindex.Store, objectId string
 func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
 	visited := map[string]struct{}{objectId: {}}
 	queue := []string{objectId}
+	head := 0
 	var result []string
 
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
+	for head < len(queue) {
+		current := queue[head]
+		head++
 
 		records, err := idx.Query(database.Query{
 			Filters: []database.FilterRequest{
