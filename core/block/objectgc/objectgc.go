@@ -231,7 +231,7 @@ func (gc *objectGC) CheckObjectsOnObjectArchived(sctx session.Context, spaceId, 
 	if !isArchived {
 		return gc.restoreObjectsOnUnarchive(sctx, idx, objectId, gcLayouts)
 	}
-	return gc.archiveOrphanedObjects(sctx, spaceId, idx, objectId, gcLayouts)
+	return gc.archiveOrphanedObjects(sctx, idx, objectId, gcLayouts)
 }
 
 // collectOrphanedObjects performs a BFS over the createdInContext tree rooted at objectId and
@@ -314,9 +314,13 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 
 		// Iteratively remove candidates that have active backlinks outside (visited ∪ candidates).
 		// This converges because each iteration removes at least one candidate.
-		// It correctly handles cascading exclusions: if A is excluded (has external backlink),
-		// and B's only other backlink is A (now outside the candidate set and active), B is
-		// excluded in the next iteration.
+		//
+		// When candidate X is evicted (has an external active backlink), X remains a live object.
+		// We add X to activeIds so that remaining candidates whose only backlink is X will
+		// correctly see X as active and also be excluded in the next iteration.
+		if activeIds == nil {
+			activeIds = make(map[string]struct{})
+		}
 		for {
 			changed := false
 			for id, details := range candidates {
@@ -338,6 +342,7 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 				}
 				if hasExternal {
 					log.Debugf("collectOrphanedObjects: object %s has external active backlinks, skipping subtree", id)
+					activeIds[id] = struct{}{} // evicted candidates stay active — visible to remaining candidates
 					delete(candidates, id)
 					changed = true
 					break // restart since candidates changed
@@ -448,7 +453,7 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 }
 
 // archiveOrphanedObjects collects all orphaned objects via BFS and archives them in a single call.
-func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, _ string, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
+func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
 	toArchive, err := gc.collectOrphanedObjects(idx, objectId, gcLayouts)
 	if err != nil {
 		return fmt.Errorf("collect orphaned objects: %w", err)
@@ -501,27 +506,51 @@ func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId str
 			return nil, fmt.Errorf("query archived children of %s: %w", current, err)
 		}
 
+		// Build a per-level candidates map so that archived siblings which mutually
+		// reference each other are treated as a batch and restored together — mirroring
+		// the archive direction's candidates treatment.
+		candidates := make(map[string]*domain.Details, len(records))
 		for _, record := range records {
 			id := record.Details.GetString(bundle.RelationKeyId)
 			if _, seen := visited[id]; seen {
 				continue
 			}
-			// Only restore if the only backlinks are from nodes already in the pending set.
-			hasExternal := false
-			for _, link := range record.Details.GetStringList(bundle.RelationKeyBacklinks) {
-				if link == id {
-					continue
+			candidates[id] = record.Details
+		}
+
+		// Iteratively remove candidates that have backlinks outside (visited ∪ candidates).
+		// Evicted candidates are NOT added to activeIds here because archived objects are
+		// not "active" in the usual sense — they are simply not being restored.
+		for {
+			changed := false
+			for id, details := range candidates {
+				hasExternal := false
+				for _, link := range details.GetStringList(bundle.RelationKeyBacklinks) {
+					if link == id {
+						continue
+					}
+					if _, inVisited := visited[link]; inVisited {
+						continue
+					}
+					if _, inCandidates := candidates[link]; inCandidates {
+						continue // sibling candidate — treated as in-batch
+					}
+					hasExternal = true
+					break
 				}
-				if _, inPending := visited[link]; inPending {
-					continue
+				if hasExternal {
+					log.Debugf("collectOrphanedForRestore: object %s has external backlinks, keeping archived", id)
+					delete(candidates, id)
+					changed = true
+					break
 				}
-				hasExternal = true
+			}
+			if !changed {
 				break
 			}
-			if hasExternal {
-				log.Debugf("collectOrphanedForRestore: object %s has external backlinks, keeping archived", id)
-				continue
-			}
+		}
+
+		for id := range candidates {
 			visited[id] = struct{}{}
 			result = append(result, id)
 			queue = append(queue, id)

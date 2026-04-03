@@ -865,3 +865,60 @@ func TestCheckObjectsOnObjectArchived_Unarchive_MultiLevelRestored(t *testing.T)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"child", "grandchild"}, fx.archiver.unarchivedIds)
 }
+
+func TestCheckObjectsOnObjectArchived_SiblingExcludedCascade_DependentSiblingAlsoExcluded(t *testing.T) {
+	// Regression test for cascade exclusion bug:
+	// When sibling X is evicted (has external active backlink), sibling Y whose only
+	// backlink is X must also be excluded — not archived.
+	//
+	// parent (being archived)
+	//   └→ X (backlinks=[parent, external])  ← external active backlink → excluded
+	//   └→ Y (backlinks=[X])                 ← X is not being archived → Y must also be excluded
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	fx.addObject(t, regularObject("external"))
+	fx.addObject(t, basicObject("X", "parent", []string{"parent", "external"}))
+	fx.addObject(t, basicObject("Y", "parent", []string{"X"}))
+
+	// when
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
+
+	// then: neither X nor Y is archived
+	require.NoError(t, err)
+	assert.Empty(t, fx.archiver.archivedIds)
+}
+
+func TestCheckObjectsOnObjectArchived_Unarchive_ArchivedSiblingCrossReference_BothRestored(t *testing.T) {
+	// Regression test for restore-path sibling bug:
+	// Two archived siblings that mutually reference each other should both be restored
+	// when their parent is unarchived, not block each other.
+	//
+	// parent (unarchived)
+	//   └→ child1 (archived, backlinks=[parent, child2])
+	//   └→ child2 (archived, backlinks=[parent, child1])
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               domain.String("child1"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyCreatedInContext: domain.String("parent"),
+			bundle.RelationKeyBacklinks:        domain.StringList([]string{"parent", "child2"}),
+			bundle.RelationKeyIsArchived:       domain.Bool(true),
+		},
+		{
+			bundle.RelationKeyId:               domain.String("child2"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
+			bundle.RelationKeyCreatedInContext: domain.String("parent"),
+			bundle.RelationKeyBacklinks:        domain.StringList([]string{"parent", "child1"}),
+			bundle.RelationKeyIsArchived:       domain.Bool(true),
+		},
+	})
+
+	// when
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", false)
+
+	// then: both siblings are restored
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"child1", "child2"}, fx.archiver.unarchivedIds)
+}
