@@ -1302,10 +1302,10 @@ func TestService_Search(t *testing.T) {
 			},
 			// Type "Project" that recommends the "done" relation
 			{
-				bundle.RelationKeyId:                     domain.String("type-project-id"),
-				bundle.RelationKeyUniqueKey:              domain.String(projectTypeUK.Marshal()),
-				bundle.RelationKeyResolvedLayout:         domain.Int64(int64(model.ObjectType_objectType)),
-				bundle.RelationKeyRecommendedRelations:   domain.StringList([]string{"rel-done-id"}),
+				bundle.RelationKeyId:                   domain.String("type-project-id"),
+				bundle.RelationKeyUniqueKey:            domain.String(projectTypeUK.Marshal()),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-done-id"}),
 			},
 			// Type "Note" that does NOT recommend the "done" relation
 			{
@@ -1322,11 +1322,11 @@ func TestService_Search(t *testing.T) {
 			},
 			// Project object WITH the "done" key set (backward compat)
 			{
-				bundle.RelationKeyId:               domain.String("project2"),
-				bundle.RelationKeyName:             domain.String("Project 2"),
-				bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_basic)),
-				bundle.RelationKeyType:             domain.String("type-project-id"),
-				domain.RelationKey(relationKey):     domain.Bool(true),
+				bundle.RelationKeyId:             domain.String("project2"),
+				bundle.RelationKeyName:           domain.String("Project 2"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyType:           domain.String("type-project-id"),
+				domain.RelationKey(relationKey):  domain.Bool(true),
 			},
 			// Note object WITHOUT the "done" key (negative case — should not match)
 			{

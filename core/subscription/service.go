@@ -98,7 +98,6 @@ type SubscribeResponse struct {
 type Service interface {
 	Search(req SubscribeRequest) (resp *SubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
-	SubscribeIds(subId string, ids []string) (records []*domain.Details, err error)
 	SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error)
@@ -229,10 +228,6 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 		return nil, err
 	}
 	return spaceSubs.SubscribeIdsReq(req)
-}
-
-func (s *service) SubscribeIds(subId string, ids []string) (records []*domain.Details, err error) {
-	return
 }
 
 func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
@@ -936,8 +931,8 @@ func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(c
 }
 
 func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filter, error) {
-	var relTypeFilter database.FiltersOr
 	var (
+		relTypeFilter  database.FiltersOr
 		relKeys        []string
 		typeUniqueKeys []string
 	)
@@ -978,8 +973,8 @@ func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filte
 			Key: domain.RelationKey(relKey),
 		}
 
-		typeUKs, err := s.typesRecommendingRelation(relKey)
-		if err != nil || len(typeUKs) == 0 {
+		typeUniqueKeys, err = s.typesRecommendingRelation(relKey)
+		if err != nil || len(typeUniqueKeys) == 0 {
 			relTypeFilter = append(relTypeFilter, existsFilter)
 			continue
 		}
@@ -987,7 +982,7 @@ func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filte
 		nestedTypeFilter, err := database.MakeFilter("", database.FilterRequest{
 			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       domain.StringList(typeUKs),
+			Value:       domain.StringList(typeUniqueKeys),
 		}, s.objectStore)
 		if err != nil {
 			relTypeFilter = append(relTypeFilter, existsFilter)
@@ -1023,6 +1018,7 @@ func (s *spaceSubscriptions) typesRecommendingRelation(relKey string) ([]string,
 			database.FiltersOr{
 				database.FilterAllIn{Key: bundle.RelationKeyRecommendedRelations, Strings: []string{relId}},
 				database.FilterAllIn{Key: bundle.RelationKeyRecommendedFeaturedRelations, Strings: []string{relId}},
+				database.FilterAllIn{Key: bundle.RelationKeyRecommendedFileRelations, Strings: []string{relId}},
 				database.FilterAllIn{Key: bundle.RelationKeyRecommendedHiddenRelations, Strings: []string{relId}},
 			},
 		},
