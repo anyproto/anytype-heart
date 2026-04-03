@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -45,12 +46,14 @@ func (r *fileGCCallRecorder) Init(_ *app.App) error                             
 func (r *fileGCCallRecorder) Name() string                                            { return "test-filegc" }
 func (r *fileGCCallRecorder) Run(_ context.Context) error                             { return nil }
 func (r *fileGCCallRecorder) Close(_ context.Context) error                           { return nil }
-func (r *fileGCCallRecorder) CheckFilesOnObjectArchived(_, _ string, _ bool) error    { return nil }
-func (r *fileGCCallRecorder) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) error {
+func (r *fileGCCallRecorder) CheckFilesOnObjectArchived(_ session.Context, _, _ string, _ bool) error {
+	return nil
+}
+func (r *fileGCCallRecorder) CheckFilesOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) error {
 	r.removedCh <- linksRemovalCall{spaceId: spaceId, contextId: contextId, links: removedLinks, skipBin: skipBin}
 	return nil
 }
-func (r *fileGCCallRecorder) CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error {
+func (r *fileGCCallRecorder) CheckFilesOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
 	r.restoredCh <- linksRestoredCall{spaceId: spaceId, contextId: contextId, links: addedLinks}
 	return nil
 }

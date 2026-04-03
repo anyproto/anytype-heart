@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -38,13 +39,13 @@ func (f *fileGCStub) Name() string                    { return "fileGCStub" }
 func (f *fileGCStub) Init(a *app.App) error           { return nil }
 func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
 func (f *fileGCStub) Close(ctx context.Context) error { return nil }
-func (f *fileGCStub) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+func (f *fileGCStub) CheckFilesOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
 	return nil
 }
-func (f *fileGCStub) CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error {
+func (f *fileGCStub) CheckFilesOnObjectArchived(_ session.Context, spaceId, objectId string, isArchived bool) error {
 	return nil
 }
-func (f *fileGCStub) CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error {
+func (f *fileGCStub) CheckFilesOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
 	return nil
 }
 
@@ -344,7 +345,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.NoError(t, err)
@@ -368,7 +369,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.Error(t, err)
@@ -389,7 +390,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.Error(t, err)
@@ -421,7 +422,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -449,7 +450,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, false)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, false)
 
 		// then
 		assert.NoError(t, err)
@@ -474,7 +475,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -492,7 +493,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.Error(t, err)

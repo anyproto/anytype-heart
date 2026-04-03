@@ -59,9 +59,9 @@ type Service interface {
 	SetSpaceInfo(spaceId string, details *domain.Details) error
 
 	SetIsFavorite(objectId string, isFavorite bool) error
-	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
+	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
 	SetListIsFavorite(objectIds []string, isFavorite bool) error
-	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 func New() Service {

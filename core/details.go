@@ -105,14 +105,17 @@ func (mw *Middleware) ObjectSetIsFavorite(_ context.Context, req *pb.RpcObjectSe
 }
 
 func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
+	sctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
 		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.Event = mw.getResponseEvent(sctx)
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetIsArchived(cctx, req.ContextId, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetIsArchived(sctx, cctx, req.ContextId, req.IsArchived)
 	if err != nil {
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
@@ -120,14 +123,17 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 }
 
 func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
+	sctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectListSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectListSetIsArchivedResponse {
 		m := &pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.Event = mw.getResponseEvent(sctx)
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetListIsArchived(cctx, req.ObjectIds, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetListIsArchived(sctx, cctx, req.ObjectIds, req.IsArchived)
 	if err != nil {
 		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}

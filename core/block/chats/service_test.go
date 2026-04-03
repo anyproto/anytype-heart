@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatpush"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
@@ -81,13 +82,13 @@ func (s *fileGCDummy) Name() string                    { return "fileGCDummy" }
 func (s *fileGCDummy) Init(a *app.App) error           { return nil }
 func (s *fileGCDummy) Run(ctx context.Context) error   { return nil }
 func (s *fileGCDummy) Close(ctx context.Context) error { return nil }
-func (s *fileGCDummy) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+func (s *fileGCDummy) CheckFilesOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
 	return nil
 }
-func (s *fileGCDummy) CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error {
+func (s *fileGCDummy) CheckFilesOnObjectArchived(_ session.Context, spaceId, objectId string, isArchived bool) error {
 	return nil
 }
-func (s *fileGCDummy) CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error {
+func (s *fileGCDummy) CheckFilesOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
 	return nil
 }
 

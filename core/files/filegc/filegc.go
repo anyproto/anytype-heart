@@ -9,6 +9,8 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -23,9 +25,9 @@ const CName = "core.files.filegc"
 
 type ObjectGC interface {
 	app.ComponentRunnable
-	CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error
-	CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error
-	CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error
+	CheckFilesOnLinksRemoval(sctx session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error
+	CheckFilesOnObjectArchived(sctx session.Context, spaceId, objectId string, isArchived bool) error
+	CheckFilesOnLinksRestored(sctx session.Context, spaceId, contextId string, addedLinks []string) error
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -35,7 +37,7 @@ type ObjectDeleter interface {
 
 // ObjectArchiver is an interface to archive objects
 type ObjectArchiver interface {
-	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 // ParticipantProvider provides the current user's participant ID for a given space
@@ -85,7 +87,7 @@ func (gc *fileGC) Close(ctx context.Context) error {
 
 // CheckFilesOnLinksRemoval checks if any of the removed links are file objects that should be garbage collected.
 // If onlyBlockIds is provided, it will only process files created in those specific block IDs.
-func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+func (gc *fileGC) CheckFilesOnLinksRemoval(sctx session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
 	if len(removedLinks) == 0 {
 		return nil
 	}
@@ -176,7 +178,11 @@ func (gc *fileGC) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLin
 			toArchive = append(toArchive, fileId)
 		}
 	}
-	return gc.objectArchiver.SetListIsArchived(gc.componentCtx, toArchive, true)
+	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toArchive, true); err != nil {
+		return err
+	}
+	accumulateAutoArchiveEvent(sctx, toArchive, contextId)
+	return nil
 }
 
 func (gc *fileGC) deleteFileObject(spaceId, fileId string) error {
@@ -201,7 +207,7 @@ func (gc *fileGC) deleteFileObject(spaceId, fileId string) error {
 //
 // Unarchive direction (isArchived=false): only Query 1 runs, restoring files whose parent is being unarchived,
 // provided they have no other backlinks besides the parent itself.
-func (gc *fileGC) CheckFilesOnObjectArchived(spaceId, objectId string, isArchived bool) error {
+func (gc *fileGC) CheckFilesOnObjectArchived(sctx session.Context, spaceId, objectId string, isArchived bool) error {
 	log.Debugf("checking files on object archived: %s isArchived=%v", objectId, isArchived)
 	idx := gc.objectStore.SpaceIndex(spaceId)
 
@@ -222,13 +228,13 @@ func (gc *fileGC) CheckFilesOnObjectArchived(spaceId, objectId string, isArchive
 	if !isArchived {
 		return gc.restoreFilesOnUnarchive(idx, objectId, fileLayouts)
 	}
-	return gc.archiveOrphanedFiles(idx, objectId, fileLayouts)
+	return gc.archiveOrphanedFiles(sctx, spaceId, idx, objectId, fileLayouts)
 }
 
 // archiveOrphanedFiles runs both queries and archives files that have no active backlinks.
 // Active-status of all referenced objects is resolved via at most two batch Id IN [...] queries —
 // one per query set — rather than per-item detail lookups.
-func (gc *fileGC) archiveOrphanedFiles(idx spaceindex.Store, objectId string, fileLayouts []int64) error {
+func (gc *fileGC) archiveOrphanedFiles(sctx session.Context, spaceId string, idx spaceindex.Store, objectId string, fileLayouts []int64) error {
 	var toArchive []string
 
 	// Query 1: files whose parent context is the object being archived.
@@ -345,7 +351,11 @@ func (gc *fileGC) archiveOrphanedFiles(idx spaceindex.Store, objectId string, fi
 		}
 	}
 
-	return gc.objectArchiver.SetListIsArchived(gc.componentCtx, toArchive, true)
+	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toArchive, true); err != nil {
+		return err
+	}
+	accumulateAutoArchiveEvent(sctx, toArchive, objectId)
+	return nil
 }
 
 // restoreFilesOnUnarchive restores files whose parent is being unarchived, provided they have
@@ -395,7 +405,7 @@ func (gc *fileGC) restoreFilesOnUnarchive(idx spaceindex.Store, objectId string,
 		}
 		toRestore = append(toRestore, fileId)
 	}
-	return gc.objectArchiver.SetListIsArchived(gc.componentCtx, toRestore, false)
+	return gc.objectArchiver.SetListIsArchived(nil, gc.componentCtx, toRestore, false)
 }
 
 // queryActiveIds returns the subset of the given IDs that are active (not archived, not deleted).
@@ -446,7 +456,7 @@ func hasActiveBacklinks(details *domain.Details, fileId, currentlyArchivingId st
 // to a context object (e.g. via undo). For each added link that is an archived file whose
 // CreatedInContext matches the context, the file is restored unconditionally — the active link
 // in the page is sufficient justification to unarchive it.
-func (gc *fileGC) CheckFilesOnLinksRestored(spaceId, contextId string, addedLinks []string) error {
+func (gc *fileGC) CheckFilesOnLinksRestored(sctx session.Context, spaceId, contextId string, addedLinks []string) error {
 	if len(addedLinks) == 0 {
 		return nil
 	}
@@ -494,7 +504,7 @@ func (gc *fileGC) CheckFilesOnLinksRestored(spaceId, contextId string, addedLink
 		log.Debugf("restoring archived file %s after link re-added to context %s", fileId, contextId)
 		toRestore = append(toRestore, fileId)
 	}
-	return gc.objectArchiver.SetListIsArchived(gc.componentCtx, toRestore, false)
+	return gc.objectArchiver.SetListIsArchived(nil, gc.componentCtx, toRestore, false)
 }
 
 func makeGCEligibleLayouts() []int64 {
@@ -503,4 +513,46 @@ func makeGCEligibleLayouts() []int64 {
 		layouts = append(layouts, int64(layout))
 	}
 	return layouts
+}
+
+// accumulateAutoArchiveEvent merges objectIds into the auto-archive event already present in sctx,
+// or appends a new one if none exists. All callers sharing the same sctx will end up with exactly
+// one EventObjectAutoArchive message containing the union of all archived IDs, which is what the
+// RPC layer harvests via GetResponseEvent at the end of each call.
+func accumulateAutoArchiveEvent(sctx session.Context, objectIds []string, smartBlockId string) {
+	if sctx == nil || len(objectIds) == 0 {
+		return
+	}
+	msgs := sctx.GetMessages()
+	for i, msg := range msgs {
+		if existing, ok := msg.Value.(*pb.EventMessageValueOfObjectAutoArchive); ok {
+			seen := make(map[string]struct{}, len(existing.ObjectAutoArchive.ObjectIds)+len(objectIds))
+			merged := make([]string, 0, len(existing.ObjectAutoArchive.ObjectIds)+len(objectIds))
+			for _, id := range existing.ObjectAutoArchive.ObjectIds {
+				if _, dup := seen[id]; !dup {
+					seen[id] = struct{}{}
+					merged = append(merged, id)
+				}
+			}
+			for _, id := range objectIds {
+				if _, dup := seen[id]; !dup {
+					seen[id] = struct{}{}
+					merged = append(merged, id)
+				}
+			}
+			msgs[i] = &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoArchive{
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: merged},
+				},
+			}
+			sctx.SetMessages(smartBlockId, msgs)
+			return
+		}
+	}
+	msgs = append(msgs, &pb.EventMessage{
+		Value: &pb.EventMessageValueOfObjectAutoArchive{
+			ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: objectIds},
+		},
+	})
+	sctx.SetMessages(smartBlockId, msgs)
 }

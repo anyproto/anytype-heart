@@ -26,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -45,7 +46,7 @@ type (
 	}
 
 	objectArchiver interface {
-		SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
+		SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
 	}
 )
 

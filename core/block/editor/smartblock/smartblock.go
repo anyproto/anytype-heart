@@ -846,18 +846,37 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	// (linksBefore == []) and we must still detect those additions to restore archived files.
 	if parent := s.ParentState(); parent != nil {
 		linksAfter := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		sctx := s.Context() // capture before goroutines; session.Context is immutable
 
 		addedLinks := getAddedLinks(linksBefore, linksAfter)
 
 		// Restore archived files whose links were re-added (e.g. via undo).
 		if len(addedLinks) > 0 {
-			go sb.restoreArchivedFilesOnLinksAdded(sb.SpaceID(), sb.Id(), addedLinks)
+			go sb.restoreArchivedFilesOnLinksAdded(sctx, sb.SpaceID(), sb.Id(), addedLinks)
 		}
 
 		removedLinks := getRemovedLinks(linksBefore, linksAfter)
 		if len(removedLinks) > 0 {
-			// Perform file GC asynchronously to not block the Apply
-			go sb.performFileGC(sb.SpaceID(), sb.Id(), removedLinks)
+			// Perform file GC asynchronously to not block the Apply and avoid
+			// potential deadlock: Apply holds sb.Lock; GC needs archive.Lock; the
+			// archive's own Apply can need sb.Lock via checkArchivedRestriction.
+			// A fresh child context isolates accumulated events so they can be
+			// pushed to the originating session once GC finishes.
+			var gcSctx session.Context
+			if sctx != nil {
+				gcSctx = session.NewChildContext(sctx)
+			}
+			go func() {
+				sb.performFileGC(gcSctx, sb.SpaceID(), sb.Id(), removedLinks)
+				if gcSctx != nil && gcSctx.ID() != "" {
+					if msgs := gcSctx.GetMessages(); len(msgs) > 0 {
+						sb.eventSender.SendToSession(gcSctx.ID(), &pb.Event{
+							Messages:  msgs,
+							ContextId: sb.Id(),
+						})
+					}
+				}
+			}()
 		}
 	}
 	if hooks {
@@ -1540,24 +1559,24 @@ func guessRelationFormatFromValue(val domain.Value) model.RelationFormat {
 
 // restoreArchivedFilesOnLinksAdded unarchives file objects that were GC'd when their link is re-added
 // to the context (e.g. via undo).
-func (sb *smartBlock) restoreArchivedFilesOnLinksAdded(spaceId, contextId string, addedLinks []string) {
+func (sb *smartBlock) restoreArchivedFilesOnLinksAdded(sctx session.Context, spaceId, contextId string, addedLinks []string) {
 	if sb.objectGC == nil {
 		return
 	}
-	if err := sb.objectGC.CheckFilesOnLinksRestored(spaceId, contextId, addedLinks); err != nil {
+	if err := sb.objectGC.CheckFilesOnLinksRestored(sctx, spaceId, contextId, addedLinks); err != nil {
 		log.With("objectId", contextId).Errorf("file restore on links added failed: %v", err)
 	}
 }
 
 // performFileGC runs the object garbage collector for removed links
-func (sb *smartBlock) performFileGC(spaceId, contextId string, removedLinks []string) {
+func (sb *smartBlock) performFileGC(sctx session.Context, spaceId, contextId string, removedLinks []string) {
 	if sb.objectGC == nil {
 		return
 	}
 	if len(removedLinks) == 0 {
 		return
 	}
-	if err := sb.objectGC.CheckFilesOnLinksRemoval(spaceId, contextId, removedLinks, false, nil); err != nil {
+	if err := sb.objectGC.CheckFilesOnLinksRemoval(sctx, spaceId, contextId, removedLinks, false, nil); err != nil {
 		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}
 }

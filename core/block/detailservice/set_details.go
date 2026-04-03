@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -55,7 +56,7 @@ func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	return nil
 }
 
-func (s *service) SetIsArchived(ctx context.Context, objectId string, isArchived bool) error {
+func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -71,7 +72,7 @@ func (s *service) SetIsArchived(ctx context.Context, objectId string, isArchived
 		return err
 	}
 
-	s.triggerFileGCOnArchive(spaceID, []string{objectId}, isArchived)
+	s.triggerFileGCOnArchive(sctx, spaceID, []string{objectId}, isArchived)
 
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
 }
@@ -113,7 +114,7 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 	return resultError
 }
 
-func (s *service) SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error {
+func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error {
 	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
 		return fmt.Errorf("partition object ids by spaces: %w", err)
@@ -124,7 +125,7 @@ func (s *service) SetListIsArchived(ctx context.Context, objectIds []string, isA
 		anySucceed bool
 	)
 	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
-		err = s.setIsArchivedForObjects(ctx, spaceId, objectIdsOfThisSpace, isArchived)
+		err = s.setIsArchivedForObjects(sctx, ctx, spaceId, objectIdsOfThisSpace, isArchived)
 		if err != nil {
 			log.Error("failed to set isArchived to objects", zap.String("spaceId", spaceId),
 				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
@@ -184,13 +185,13 @@ func (s *service) partitionObjectIdsBySpaceId(objectIds []string) (map[string][]
 	return res, nil
 }
 
-func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
+func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
 	spc, err := s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	s.triggerFileGCOnArchive(spaceId, objectIds, isArchived)
+	s.triggerFileGCOnArchive(sctx, spaceId, objectIds, isArchived)
 
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
@@ -245,17 +246,14 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 
 // triggerFileGCOnArchive runs file GC for all "children" files that doesn't have other backlinks
 // This helps clean up orphaned files when objects are moved to archive as well as unarchive the children of archived objects.
-func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string, isArchived bool) {
+func (s *service) triggerFileGCOnArchive(sctx session.Context, spaceId string, objectIds []string, isArchived bool) {
 	if len(objectIds) == 0 {
 		return
 	}
-
 	for _, objId := range objectIds {
-		go func(objId string) {
-			if err := s.objectGC.CheckFilesOnObjectArchived(spaceId, objId, isArchived); err != nil {
-				log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
-			}
-		}(objId)
+		if err := s.objectGC.CheckFilesOnObjectArchived(sctx, spaceId, objId, isArchived); err != nil {
+			log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
+		}
 	}
 }
 
