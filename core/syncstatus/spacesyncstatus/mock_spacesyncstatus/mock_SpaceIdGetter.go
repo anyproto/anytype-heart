@@ -20,7 +20,7 @@ func (_m *MockSpaceIdGetter) EXPECT() *MockSpaceIdGetter_Expecter {
 	return &MockSpaceIdGetter_Expecter{mock: &_m.Mock}
 }
 
-// AllSpaceIds provides a mock function with given fields:
+// AllSpaceIds provides a mock function with no fields
 func (_m *MockSpaceIdGetter) AllSpaceIds() []string {
 	ret := _m.Called()
 
@@ -113,7 +113,7 @@ func (_c *MockSpaceIdGetter_Init_Call) RunAndReturn(run func(*app.App) error) *M
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSpaceIdGetter) Name() string {
 	ret := _m.Called()
 
@@ -158,7 +158,7 @@ func (_c *MockSpaceIdGetter_Name_Call) RunAndReturn(run func() string) *MockSpac
 	return _c
 }
 
-// TechSpaceId provides a mock function with given fields:
+// TechSpaceId provides a mock function with no fields
 func (_m *MockSpaceIdGetter) TechSpaceId() string {
 	ret := _m.Called()
 

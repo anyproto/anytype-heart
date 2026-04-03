@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -49,14 +51,20 @@ var (
 	}
 )
 
+type accountIdProvider interface {
+	AccountID() string
+}
+
 type service struct {
-	picker       cache.ObjectGetter
-	store        objectstore.ObjectStore
-	spaceService space.Service
-	creator      objectcreator.Service
-	resolver     idresolver.Resolver
-	exporter     export.Export
-	converter    converter.LayoutConverter
+	picker         cache.ObjectGetter
+	store          objectstore.ObjectStore
+	spaceService   space.Service
+	creator        objectcreator.Service
+	resolver       idresolver.Resolver
+	exporter       export.Export
+	converter      converter.LayoutConverter
+	accountService accountIdProvider
+	formatFetcher  relationutils.RelationFormatFetcher
 }
 
 func New() templateSvc.Service {
@@ -75,6 +83,8 @@ func (s *service) Init(a *app.App) error {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.exporter = a.MustComponent(export.CName).(export.Export)
 	s.converter = app.MustComponent[converter.LayoutConverter](a)
+	s.accountService = app.MustComponent[account.Service](a)
+	s.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return nil
 }
 
@@ -101,6 +111,7 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 		}
 	}
 
+	s.resolveTemplatePlaceholders(targetState, req.SpaceId)
 	addDetailsToTemplateState(targetState, req.Details)
 	return targetState, nil
 }
@@ -171,6 +182,7 @@ func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, re
 	if err != nil {
 		st = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
 	}
+	s.resolveTemplatePlaceholders(st, req.SpaceId)
 	addDetailsToTemplateState(st, req.Details)
 	return st
 }

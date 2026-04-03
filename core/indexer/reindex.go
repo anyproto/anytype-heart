@@ -322,6 +322,21 @@ func (i *indexer) cleanChatCollection(ctx context.Context, db anystore.DB, chatI
 	return nil
 }
 
+func (i *indexer) cleanMetaEntry(ctx context.Context, db anystore.DB, objectId string) error {
+	col, err := db.OpenCollection(ctx, storestate.CollMeta)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("open meta collection: %w", err)
+	}
+	err = col.DeleteId(ctx, objectId)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("delete meta entry: %w", err)
+	}
+	return nil
+}
+
 func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) error {
 	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
 	if err != nil {
@@ -355,10 +370,9 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 		if err != nil {
 			return fmt.Errorf("open collection: %w", err)
 		}
-		// Collection for orders
-		err = i.cleanChatCollection(txn.Context(), db, id, storestate.CollChangeOrders)
-		if err != nil {
-			return fmt.Errorf("open collection: %w", err)
+		// Clean addSeq entry from meta collection
+		if err = i.cleanMetaEntry(txn.Context(), db, id); err != nil {
+			return fmt.Errorf("clean meta entry: %w", err)
 		}
 	}
 
@@ -403,9 +417,9 @@ func (i *indexer) reindexDiscussions(ctx context.Context, space clientspace.Spac
 		if err != nil {
 			return fmt.Errorf("clean discussion editor collection: %w", err)
 		}
-		err = i.cleanChatCollection(txn.Context(), db, id, storestate.CollChangeOrders)
-		if err != nil {
-			return fmt.Errorf("clean discussion orders collection: %w", err)
+		// Clean addSeq entry from meta collection
+		if err = i.cleanMetaEntry(txn.Context(), db, id); err != nil {
+			return fmt.Errorf("clean discussion meta entry: %w", err)
 		}
 	}
 

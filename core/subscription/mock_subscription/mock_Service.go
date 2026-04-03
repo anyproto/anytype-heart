@@ -7,6 +7,8 @@ import (
 
 	app "github.com/anyproto/any-sync/app"
 
+	domain "github.com/anyproto/anytype-heart/core/domain"
+
 	mock "github.com/stretchr/testify/mock"
 
 	pb "github.com/anyproto/anytype-heart/pb"
@@ -322,6 +324,65 @@ func (_c *MockService_SubscribeGroups_Call) Return(_a0 *pb.RpcObjectGroupsSubscr
 }
 
 func (_c *MockService_SubscribeGroups_Call) RunAndReturn(run func(subscription.SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)) *MockService_SubscribeGroups_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SubscribeIds provides a mock function with given fields: subId, ids
+func (_m *MockService) SubscribeIds(subId string, ids []string) ([]*domain.GenericMap[domain.RelationKey], error) {
+	ret := _m.Called(subId, ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SubscribeIds")
+	}
+
+	var r0 []*domain.GenericMap[domain.RelationKey]
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string, []string) ([]*domain.GenericMap[domain.RelationKey], error)); ok {
+		return rf(subId, ids)
+	}
+	if rf, ok := ret.Get(0).(func(string, []string) []*domain.GenericMap[domain.RelationKey]); ok {
+		r0 = rf(subId, ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain.GenericMap[domain.RelationKey])
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(string, []string) error); ok {
+		r1 = rf(subId, ids)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockService_SubscribeIds_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SubscribeIds'
+type MockService_SubscribeIds_Call struct {
+	*mock.Call
+}
+
+// SubscribeIds is a helper method to define mock.On call
+//   - subId string
+//   - ids []string
+func (_e *MockService_Expecter) SubscribeIds(subId interface{}, ids interface{}) *MockService_SubscribeIds_Call {
+	return &MockService_SubscribeIds_Call{Call: _e.mock.On("SubscribeIds", subId, ids)}
+}
+
+func (_c *MockService_SubscribeIds_Call) Run(run func(subId string, ids []string)) *MockService_SubscribeIds_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockService_SubscribeIds_Call) Return(records []*domain.GenericMap[domain.RelationKey], err error) *MockService_SubscribeIds_Call {
+	_c.Call.Return(records, err)
+	return _c
+}
+
+func (_c *MockService_SubscribeIds_Call) RunAndReturn(run func(string, []string) ([]*domain.GenericMap[domain.RelationKey], error)) *MockService_SubscribeIds_Call {
 	_c.Call.Return(run)
 	return _c
 }

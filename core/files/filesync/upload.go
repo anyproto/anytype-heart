@@ -40,8 +40,21 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 		return fmt.Errorf("invalid file id: %q", req.FileId)
 	}
 
+	fileCid, err := req.FileId.FileId.Cid()
+	if err != nil {
+		return fmt.Errorf("parse file CID: %w", err)
+	}
+	existingCids, err := s.fileStorage.ExistsCids(context.Background(), []cid.Cid{fileCid})
+	if err != nil {
+		return fmt.Errorf("check local block existence: %w", err)
+	}
+	// Skip upload: root block not found locally
+	if len(existingCids) == 0 {
+		return nil
+	}
+
 	return s.process(req.FileObjectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
-		if exists && info.State.IsUploadingState() {
+		if exists && (info.State.IsUploadingState() || info.State == FileStateMissingBlocks) {
 			return info, false, nil
 		}
 		info = FileInfo{
@@ -56,6 +69,16 @@ func (s *fileSync) AddFile(req AddFileRequest) error {
 			CidsToUpload: map[cid.Cid]struct{}{},
 			CidsToBind:   map[cid.Cid]struct{}{},
 		}
+		return info, true, nil
+	})
+}
+
+func (s *fileSync) MarkUploaded(objectId string) error {
+	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
+		if !exists || (!info.State.IsUploadingState() && info.State != FileStateMissingBlocks) {
+			return info, false, nil
+		}
+		info.State = FileStateDone
 		return info, true, nil
 	})
 }
@@ -135,6 +158,10 @@ func (s *fileSync) processNextPendingUploadItem(ctx context.Context, state FileS
 func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (FileInfo, error) {
 	blocksAvailability, err := s.checkBlocksAvailability(ctx, it)
 	if err != nil {
+		if errors.Is(err, errBlockNotFound) {
+			it.State = FileStateMissingBlocks
+			return it, nil
+		}
 		it = it.Reschedule()
 		return it, fmt.Errorf("check blocks availability: %w", err)
 	}

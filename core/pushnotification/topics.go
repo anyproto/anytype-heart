@@ -63,7 +63,7 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 
 	needCreate := false
 	isOwner := strings.HasSuffix(status.creator, c.identity)
-	isOneToOne := status.uxType == model.SpaceUxType_OneToOne
+	isOneToOne := status.spaceType == model.SpaceType_SpaceTypeOneToOne
 	if isOwner || isOneToOne {
 		needCreate = true
 		if !isOneToOne {

@@ -7,6 +7,7 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
@@ -248,6 +249,10 @@ func (b *inMemBatch) PartitionByExistence(ctx context.Context, ks []cid.Cid) (ex
 // Close implements localStore interface for batch
 func (b *inMemBatch) Close() error {
 	return nil
+}
+
+func (i *inMemBlockStore) LocalDAGService() format.DAGService {
+	return fileservice.NewFileHandler(i).DAGService()
 }
 
 func (i *inMemBlockStore) NewLocalStoreGarbageCollector() LocalStoreGarbageCollector {

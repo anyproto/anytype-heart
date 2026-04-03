@@ -112,7 +112,7 @@ func (_c *MockNotificationSender_GetLastNotificationId_Call) RunAndReturn(run fu
 	return _c
 }
 
-// LoadFinish provides a mock function with given fields:
+// LoadFinish provides a mock function with no fields
 func (_m *MockNotificationSender) LoadFinish() chan struct{} {
 	ret := _m.Called()
 

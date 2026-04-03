@@ -60,7 +60,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
-	"github.com/anyproto/anytype-heart/core/onetoone"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -128,7 +128,7 @@ type Service struct {
 	objectCreator        objectcreator.Service
 	templateService      template.Service
 	identityService      IdentityService
-	onetoone             onetoone.Service
+	inboxSender          inboxservice.Sender
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
@@ -168,7 +168,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.identityService = app.MustComponent[IdentityService](a)
-	s.onetoone = app.MustComponent[onetoone.Service](a)
+	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[template.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
@@ -846,4 +846,30 @@ func removeDescriptionFromRecommended(typeId string, details *domain.Details, sp
 		}
 		return nil
 	})
+}
+
+func (s *Service) SpaceSetHomepage(spaceId string, homepage string) error {
+	if err := s.validateHomepage(spaceId, homepage); err != nil {
+		return fmt.Errorf("validate homepage: %w", err)
+	}
+	return s.detailsService.SetSpaceInfo(spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyHomepage: domain.String(homepage),
+	}))
+}
+
+func (s *Service) validateHomepage(spaceId string, homepage string) error {
+	if homepage == "" {
+		return nil
+	}
+	if domain.IsHomepageConstant(homepage) {
+		return nil
+	}
+	exists, err := s.objectStore.SpaceIndex(spaceId).HasIds([]string{homepage})
+	if err != nil {
+		return fmt.Errorf("check homepage object existence: %w", err)
+	}
+	if len(exists) == 0 {
+		return fmt.Errorf("homepage object %s not found in space %s", homepage, spaceId)
+	}
+	return nil
 }

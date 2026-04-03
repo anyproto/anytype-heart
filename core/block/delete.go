@@ -29,6 +29,9 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
 		}
+		if b.NewState().Details().GetString(bundle.RelationKeyDiscussionId) != "" {
+			return fmt.Errorf("cannot delete object with discussion")
+		}
 		sbType = b.Type()
 		return nil
 	})
@@ -43,7 +46,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 
 	if sbType != coresb.SmartBlockTypeFileObject {
 		// in case client skips archiving, lets still call fileGC
-		if err := s.fileGC.CheckFilesOnContextArchived(id.SpaceID, id.ObjectID, true); err != nil {
+		if err := s.fileGC.CheckFilesOnObjectArchived(id.SpaceID, id.ObjectID, true); err != nil {
 			log.With("objectId", id.ObjectID).Warnf("failed to check files on context deletion: %v", err)
 		}
 	}
@@ -72,6 +75,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	if err != nil {
 		return err
 	}
+	s.unsetHomepageIfNeeded(id, spc)
 	s.sendOnRemoveEvent(id.SpaceID, id.ObjectID)
 	// Remove from cache
 	err = spc.Remove(context.Background(), id.ObjectID)
@@ -192,6 +196,23 @@ func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) e
 	}
 
 	return nil
+}
+
+func (s *Service) unsetHomepageIfNeeded(id domain.FullID, spc clientspace.Space) {
+	workspaceId := spc.DerivedIDs().Workspace
+	details, err := s.objectStore.SpaceIndex(id.SpaceID).GetDetails(workspaceId)
+	if err != nil {
+		log.With("objectId", id.ObjectID).Warnf("failed to get workspace details for dashboard check: %v", err)
+		return
+	}
+	homepage := details.GetString(bundle.RelationKeyHomepage)
+	if homepage == id.ObjectID {
+		if err = s.detailsService.SetSpaceInfo(spc.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyHomepage: domain.String(""),
+		})); err != nil {
+			log.With("objectId", id.ObjectID).Warnf("failed to unset homepage: %v", err)
+		}
+	}
 }
 
 func (s *Service) sendOnRemoveEvent(spaceId string, id string) {

@@ -29,7 +29,13 @@ const (
 var LexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 
 const (
+	// Deprecated: CollChangeOrders is kept for migration purposes only.
+	// New code should use CollMeta instead.
 	CollChangeOrders = "_change_orders"
+
+	// CollMeta is a shared collection storing per-object metadata (e.g. maxAddSeq).
+	// Documents are keyed by object ID: {id: "<objectId>", q: <addSeq>}.
+	CollMeta = "_meta"
 )
 
 func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (state *StoreState, err error) {
@@ -59,9 +65,8 @@ func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (s
 
 	defer func() {
 		if err != nil {
-			if state.collChangeOrders != nil {
-				_ = state.collChangeOrders.Close()
-				// TODO: close all collections (maybe need to do smth like db.CollectionsPrefix)
+			if state.collMeta != nil {
+				_ = state.collMeta.Close()
 			}
 			_ = tx.Rollback()
 		} else {
@@ -92,8 +97,8 @@ type Change struct {
 }
 
 type StoreState struct {
-	id               string
-	collChangeOrders anystore.Collection
+	id       string
+	collMeta anystore.Collection
 
 	handlers map[string]Handler
 
@@ -108,15 +113,27 @@ func (ss *StoreState) Id() string {
 }
 
 func (ss *StoreState) init(ctx context.Context) (err error) {
-	if ss.collChangeOrders, err = ss.Collection(ctx, CollChangeOrders); err != nil {
+	// Open shared meta collection (no object-ID prefix)
+	if ss.collMeta, err = ss.db.Collection(ctx, CollMeta); err != nil {
 		return
 	}
+	// Migration: drop old per-object _change_orders collection if it exists
+	ss.dropOldChangeOrders(ctx)
+
 	for _, h := range ss.handlers {
 		if err = h.Init(ctx, ss); err != nil {
 			return
 		}
 	}
 	return
+}
+
+func (ss *StoreState) dropOldChangeOrders(ctx context.Context) {
+	coll, err := ss.db.OpenCollection(ctx, ss.id+CollChangeOrders)
+	if err != nil {
+		return // Collection doesn't exist or other error — nothing to do
+	}
+	_ = coll.Drop(ctx)
 }
 
 func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {

@@ -102,5 +102,6 @@
   "defaultTypeId",
   "resolvedLayout",
   "pluralName",
-  "lastMessageDate"
+  "lastMessageDate",
+  "templatePlaceholders"
 ]

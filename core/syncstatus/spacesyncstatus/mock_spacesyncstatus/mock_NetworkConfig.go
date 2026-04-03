@@ -22,7 +22,7 @@ func (_m *MockNetworkConfig) EXPECT() *MockNetworkConfig_Expecter {
 	return &MockNetworkConfig_Expecter{mock: &_m.Mock}
 }
 
-// GetNetworkMode provides a mock function with given fields:
+// GetNetworkMode provides a mock function with no fields
 func (_m *MockNetworkConfig) GetNetworkMode() pb.RpcAccountNetworkMode {
 	ret := _m.Called()
 
@@ -113,7 +113,7 @@ func (_c *MockNetworkConfig_Init_Call) RunAndReturn(run func(*app.App) error) *M
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockNetworkConfig) Name() string {
 	ret := _m.Called()
 

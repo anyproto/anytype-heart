@@ -27,24 +27,24 @@ func (_m *MockFile) EXPECT() *MockFile_Expecter {
 }
 
 // Details provides a mock function with given fields: ctx
-func (_m *MockFile) Details(ctx context.Context) (*domain.Details, domain.TypeKey, error) {
+func (_m *MockFile) Details(ctx context.Context) (*domain.GenericMap[domain.RelationKey], domain.TypeKey, error) {
 	ret := _m.Called(ctx)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Details")
 	}
 
-	var r0 *domain.Details
+	var r0 *domain.GenericMap[domain.RelationKey]
 	var r1 domain.TypeKey
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context) (*domain.Details, domain.TypeKey, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) (*domain.GenericMap[domain.RelationKey], domain.TypeKey, error)); ok {
 		return rf(ctx)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context) *domain.Details); ok {
+	if rf, ok := ret.Get(0).(func(context.Context) *domain.GenericMap[domain.RelationKey]); ok {
 		r0 = rf(ctx)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*domain.Details)
+			r0 = ret.Get(0).(*domain.GenericMap[domain.RelationKey])
 		}
 	}
 
@@ -81,17 +81,17 @@ func (_c *MockFile_Details_Call) Run(run func(ctx context.Context)) *MockFile_De
 	return _c
 }
 
-func (_c *MockFile_Details_Call) Return(_a0 *domain.Details, _a1 domain.TypeKey, _a2 error) *MockFile_Details_Call {
+func (_c *MockFile_Details_Call) Return(_a0 *domain.GenericMap[domain.RelationKey], _a1 domain.TypeKey, _a2 error) *MockFile_Details_Call {
 	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockFile_Details_Call) RunAndReturn(run func(context.Context) (*domain.Details, domain.TypeKey, error)) *MockFile_Details_Call {
+func (_c *MockFile_Details_Call) RunAndReturn(run func(context.Context) (*domain.GenericMap[domain.RelationKey], domain.TypeKey, error)) *MockFile_Details_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// FileId provides a mock function with given fields:
+// FileId provides a mock function with no fields
 func (_m *MockFile) FileId() domain.FileId {
 	ret := _m.Called()
 
@@ -136,7 +136,7 @@ func (_c *MockFile_FileId_Call) RunAndReturn(run func() domain.FileId) *MockFile
 	return _c
 }
 
-// LastModifiedDate provides a mock function with given fields:
+// LastModifiedDate provides a mock function with no fields
 func (_m *MockFile) LastModifiedDate() int64 {
 	ret := _m.Called()
 
@@ -181,7 +181,7 @@ func (_c *MockFile_LastModifiedDate_Call) RunAndReturn(run func() int64) *MockFi
 	return _c
 }
 
-// Meta provides a mock function with given fields:
+// Meta provides a mock function with no fields
 func (_m *MockFile) Meta() *files.FileMeta {
 	ret := _m.Called()
 
@@ -228,7 +228,7 @@ func (_c *MockFile_Meta_Call) RunAndReturn(run func() *files.FileMeta) *MockFile
 	return _c
 }
 
-// Mill provides a mock function with given fields:
+// Mill provides a mock function with no fields
 func (_m *MockFile) Mill() string {
 	ret := _m.Called()
 
@@ -273,7 +273,7 @@ func (_c *MockFile_Mill_Call) RunAndReturn(run func() string) *MockFile_Mill_Cal
 	return _c
 }
 
-// MimeType provides a mock function with given fields:
+// MimeType provides a mock function with no fields
 func (_m *MockFile) MimeType() string {
 	ret := _m.Called()
 
@@ -318,7 +318,7 @@ func (_c *MockFile_MimeType_Call) RunAndReturn(run func() string) *MockFile_Mime
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockFile) Name() string {
 	ret := _m.Called()
 
@@ -421,7 +421,7 @@ func (_c *MockFile_Reader_Call) RunAndReturn(run func(context.Context) (io.ReadS
 	return _c
 }
 
-// SpaceId provides a mock function with given fields:
+// SpaceId provides a mock function with no fields
 func (_m *MockFile) SpaceId() string {
 	ret := _m.Called()
 

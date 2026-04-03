@@ -1,6 +1,7 @@
 package sourceimpl
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -13,26 +14,22 @@ import (
 )
 
 type storeApply struct {
-	tx       *storestate.StoreStateTx
-	ot       objecttree.ObjectTree
-	allIsNew bool
-
-	needFetchPrevOrderId bool
-	hook                 source.ReadStoreTreeHook
+	tx   *storestate.StoreStateTx
+	ot   objecttree.ObjectTree
+	hook source.ReadStoreTreeHook
 }
 
-func (a *storeApply) Apply() error {
+func (a *storeApply) Apply(ctx context.Context) error {
 	var lastErr error
 
 	if a.hook != nil {
 		a.hook.BeforeIteration(a.ot)
 	}
 
-	err := a.ot.IterateRoot(UnmarshalStoreChange, func(change *objecttree.Change) bool {
-		// not a new change - remember and continue
-		if !a.allIsNew && !change.IsNew {
-			return true
-		}
+	maxAddSeq := a.tx.GetMaxAddSeq()
+
+	err := a.ot.IterateAfterAddSeq(ctx, maxAddSeq, UnmarshalStoreChange, func(change *objecttree.Change) bool {
+		a.tx.UpdateMaxAddSeq(change.AddSeq)
 
 		if a.hook != nil {
 			a.hook.OnIteration(a.ot, change)
@@ -52,9 +49,9 @@ func (a *storeApply) Apply() error {
 func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
 	storeChange, ok := change.Model.(*pb.StoreChange)
 	if !ok {
-		// if it is root
+		// if it is root, skip — no order tracking needed
 		if _, ok := change.Model.(*treechangeproto.TreeChangeInfo); ok {
-			return a.tx.SetOrder(change.Id, change.OrderId)
+			return nil
 		}
 		return fmt.Errorf("unexpected change content type: %T", change.Model)
 	}
