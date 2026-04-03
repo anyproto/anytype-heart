@@ -24,9 +24,10 @@ permissions:
 jobs:
   build:
     runs-on: ${{ github.event_name == 'push' && 'macos-15' || (github.event.inputs.run-on-runner || 'macos-15') }}
+    timeout-minutes: 120
     steps:
       - name: Install Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version: '1.25'
           check-latest: true
@@ -42,7 +43,7 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -50,7 +51,7 @@ jobs:
         run: make install-brew-and-node-deps
 
       - name: Setup Xcode
-        uses: maxim-lobanov/setup-xcode@v1.6.0
+        uses: maxim-lobanov/setup-xcode@v1.7.0
         with:
           xcode-version: '16.2'
 
@@ -138,11 +139,35 @@ jobs:
         run: |
           gradle publish
 
+      - name: Validate release artifacts
+        if: github.event_name == 'push'
+        run: |
+          expected=(
+            ".release/android_lib_${VERSION}.tar.gz"
+            ".release/ios_framework_${VERSION}.tar.gz"
+            ".release/js_${VERSION}_darwin-amd64.tar.gz"
+            ".release/js_${VERSION}_darwin-arm64.tar.gz"
+            ".release/js_${VERSION}_linux-amd64.tar.gz"
+            ".release/js_${VERSION}_linux-arm64.tar.gz"
+            ".release/js_${VERSION}_windows-amd64.zip"
+          )
+          missing=()
+          for f in "${expected[@]}"; do
+            [ -f "$f" ] || missing+=("$f")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Release blocked — missing artifacts:"
+            printf '  - %s\n' "${missing[@]}"
+            exit 1
+          fi
+          echo "All 7 release artifacts present:"
+          ls -lh .release/
+
       - name: Release
         if: github.event_name == 'push'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}
           fail_on_unmatched_files: true
@@ -166,55 +191,3 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/anyproto/anytype-cli/dispatches \
             -d "{\"event_type\": \"trigger-from-heart\", \"client_payload\": {\"version\": \"${{ env.VERSION }}\"}}"
-
-      # # start of notifications in Linear
-      # - name: Clone DevOps Utils Repository
-      #   run: |
-      #     git clone git@github.com:anyproto/devops-utils.git ${{ github.workspace }}/devops-utils
-
-      # - name: Create Configuration File - release_config.yaml
-      #   run: |
-      #     mkdir -p ${{ github.workspace }}/devops-utils/release-utils
-      #     cat <<EOT > ${{ github.workspace }}/devops-utils/release-utils/release_config.yaml
-      #     linear_token: "${{ secrets.LINEAR_TOKEN }}"
-      #     private_key_full_path: ''
-      #     public_key_full_path: ''
-      #     repo_local_full_path: "${{ github.workspace }}/.git"
-      #     git_passphrase: ''
-      #     git_fetch: false
-      #     git_revision_from: "$(git describe --first-parent --tags --abbrev=0 HEAD~)"
-      #     git_revision_to: "$VERSION"
-      #     comment: "Implemented in ${VERSION}. This comment was created automatically."
-      #     tasks_to_run:
-      #       - add_comment
-      #     EOT
-
-      # - name: Debug - release_config.yaml
-      #   run: |
-      #     cat <<EOT > ${{ github.workspace }}/devops-utils/release-utils/release_config-debug.yaml
-      #     private_key_full_path: ''
-      #     public_key_full_path: ''
-      #     repo_local_full_path: "${{ github.workspace }}/.git"
-      #     git_passphrase: ''
-      #     git_fetch: false
-      #     git_revision_from: "$(git describe --first-parent --tags --abbrev=0 HEAD~)"
-      #     git_revision_to: "$VERSION"
-      #     comment: "Implemented in ${VERSION}. This comment was created automatically."
-      #     tasks_to_run:
-      #       - add_comment
-      #     EOT
-      #     cat ${{ github.workspace }}/devops-utils/release-utils/release_config-debug.yaml
-
-      # - name: Set up Python environment
-      #   continue-on-error: true
-      #   if: github.event_name == 'push'
-      #   run: |
-      #     cd ${{ github.workspace }}/devops-utils/release-utils
-      #     python3 -m venv linear-comment-venv
-      #     source linear-comment-venv/bin/activate
-      #     pip install -r requirements.txt
-      #     python3 release.py
-
-      # - name: Cleanup devops-utils
-      #   run: |
-      #     rm -rf ${{ github.workspace }}/devops-utils
