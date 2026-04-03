@@ -2015,6 +2015,7 @@
     - [Event.Notification.Update](#anytype-Event-Notification-Update)
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive)
+    - [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore)
     - [Event.Object.Close](#anytype-Event-Object-Close)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
@@ -31888,6 +31889,7 @@ received to update per-message mention read status (if needed |
 | chatUpdatePinnedStatus | [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus) |  |  |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
+| objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
@@ -31951,6 +31953,21 @@ received to update per-message mention read status (if needed |
 <a name="anytype-Event-Object-AutoArchive"></a>
 
 ### Event.Object.AutoArchive
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Object-AutoRestore"></a>
+
+### Event.Object.AutoRestore
 
 
 
