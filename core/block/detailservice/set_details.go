@@ -74,7 +74,8 @@ func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objec
 		return err
 	}
 
-	s.triggerGCOnArchive(sctx, spaceID, []string{objectId}, isArchived)
+	gcIds := s.triggerGCOnArchive(spaceID, []string{objectId}, isArchived)
+	s.appendGCEvent(sctx, gcIds, []string{objectId}, isArchived)
 
 	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
 }
@@ -221,7 +222,8 @@ func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Cont
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	s.triggerGCOnArchive(sctx, spaceId, objectIds, isArchived)
+	gcIds := s.triggerGCOnArchive(spaceId, objectIds, isArchived)
+	s.appendGCEvent(sctx, gcIds, objectIds, isArchived)
 
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
@@ -312,12 +314,12 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 	return
 }
 
-// triggerGCOnArchive runs GC for all children that don't have other backlinks.
-// All affected IDs are collected across the loop and emitted as a single auto-archive or
-// auto-restore event, so the caller receives one merged notification.
-func (s *service) triggerGCOnArchive(sctx session.Context, spaceId string, objectIds []string, isArchived bool) {
+// triggerGCOnArchive runs GC for all children of objectIds that have no other backlinks.
+// It returns the IDs of objects that were archived or restored; the caller is responsible
+// for emitting events and filtering explicit IDs from the session context.
+func (s *service) triggerGCOnArchive(spaceId string, objectIds []string, isArchived bool) []string {
 	if len(objectIds) == 0 {
-		return
+		return nil
 	}
 	var allAffected []string
 	for _, objId := range objectIds {
@@ -328,24 +330,30 @@ func (s *service) triggerGCOnArchive(sctx session.Context, spaceId string, objec
 		}
 		allAffected = append(allAffected, ids...)
 	}
-	if sctx != nil && len(allAffected) > 0 {
+	return allAffected
+}
+
+// appendGCEvent emits a single auto-archive or auto-restore event for gcIds into sctx,
+// then strips explicitIds from all GC events so user-requested objects are not double-reported.
+func (s *service) appendGCEvent(sctx session.Context, gcIds []string, explicitIds []string, isArchived bool) {
+	if sctx != nil && len(gcIds) > 0 {
 		msgs := sctx.GetMessages()
 		if isArchived {
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectAutoArchive{
-					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: allAffected},
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: gcIds},
 				},
 			})
 		} else {
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectAutoRestore{
-					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: allAffected},
+					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: gcIds},
 				},
 			})
 		}
 		sctx.SetMessages(sctx.ObjectID(), msgs)
 	}
-	objectgc.FilterExplicitIds(sctx, objectIds)
+	objectgc.FilterExplicitIds(sctx, explicitIds)
 }
 
 func (s *service) validateHomepage(spaceId string, homepageValue domain.Value) error {
