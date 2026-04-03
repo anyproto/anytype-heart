@@ -38,13 +38,13 @@ func (f *fileGCStub) Name() string                    { return "fileGCStub" }
 func (f *fileGCStub) Init(a *app.App) error           { return nil }
 func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
 func (f *fileGCStub) Close(ctx context.Context) error { return nil }
-func (f *fileGCStub) CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
+func (f *fileGCStub) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
 	return nil, nil
 }
 func (f *fileGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
 	return nil, nil
 }
-func (f *fileGCStub) CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error) {
+func (f *fileGCStub) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	return nil, nil
 }
 
@@ -378,11 +378,15 @@ func TestService_SetIsArchived(t *testing.T) {
 	t.Run("can't delete others files", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		sb := smarttest.New(binId)
-		sb.SetType(coresb.SmartBlockTypeFileObject)
-		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		binSb := smarttest.New(binId)
+		binSb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		objSb := smarttest.New("obj1")
+		objSb.SetType(coresb.SmartBlockTypeFileObject)
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			return sb, nil
+			if objectId == binId {
+				return editor.NewArchive(binSb, fx.store.SpaceIndex(spaceId)), nil
+			}
+			return objSb, nil
 		})
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(fmt.Errorf("not allowed"))

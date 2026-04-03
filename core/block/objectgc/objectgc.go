@@ -25,9 +25,12 @@ const CName = "core.block.objectgc"
 
 type ObjectGC interface {
 	app.ComponentRunnable
-	CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error)
+	// CheckObjectsOnObjectArchived finds objects that should be archived or restored when objectId changes state.
+	// the caller is responsible for actual archive-object operation
 	CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error)
-	CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error)
+
+	ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error)
+	RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error)
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -38,9 +41,6 @@ type ObjectDeleter interface {
 // ObjectArchiver is an interface to archive objects
 type ObjectArchiver interface {
 	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
-	// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
-	// Used by the GC itself for its batch write to prevent recursive re-entry.
-	SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 // ParticipantProvider provides the current user's participant ID for a given space
@@ -88,10 +88,10 @@ func (gc *objectGC) Close(ctx context.Context) error {
 	return nil
 }
 
-// CheckObjectsOnLinksRemoval checks if any of the removed links are objects that should be garbage collected.
+// ArchiveOrphansOnLinksRemoval checks if any of the removed links are objects that should be garbage collected.
 // If onlyBlockIds is provided, it will only process objects created in those specific block IDs.
 // It returns the IDs of objects that were archived; the caller is responsible for emitting any events.
-func (gc *objectGC) CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
+func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
 	if len(removedLinks) == 0 {
 		return nil, nil
 	}
@@ -454,18 +454,13 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 	return result, nil
 }
 
-// archiveOrphanedObjects collects all orphaned objects via BFS and archives them in a single call.
-// It returns the archived IDs; the caller is responsible for emitting any events.
+// archiveOrphanedObjects collects all orphaned objects via BFS and returns their IDs.
+// It is a pure read operation — no state changes occur. The caller is responsible for
+// archiving the returned IDs and emitting any events.
 func (gc *objectGC) archiveOrphanedObjects(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
 	toArchive, err := gc.collectOrphanedObjects(idx, objectId, gcLayouts)
 	if err != nil {
 		return nil, fmt.Errorf("collect orphaned objects: %w", err)
-	}
-	if len(toArchive) == 0 {
-		return nil, nil
-	}
-	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toArchive, true); err != nil {
-		return nil, fmt.Errorf("archive objects: %w", err)
 	}
 	return toArchive, nil
 }
@@ -561,18 +556,13 @@ func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId str
 	return result, nil
 }
 
-// restoreObjectsOnUnarchive collects all archived children via BFS and restores them in a single call.
-// It returns the restored IDs; the caller is responsible for emitting any events.
+// restoreObjectsOnUnarchive collects all archived children via BFS and returns their IDs.
+// It is a pure read operation — no state changes occur. The caller is responsible for
+// restoring the returned IDs and emitting any events.
 func (gc *objectGC) restoreObjectsOnUnarchive(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
 	toRestore, err := gc.collectOrphanedForRestore(idx, objectId, gcLayouts)
 	if err != nil {
 		return nil, fmt.Errorf("collect orphaned for restore: %w", err)
-	}
-	if len(toRestore) == 0 {
-		return nil, nil
-	}
-	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toRestore, false); err != nil {
-		return nil, fmt.Errorf("restore objects: %w", err)
 	}
 	return toRestore, nil
 }
@@ -607,26 +597,12 @@ func (gc *objectGC) queryActiveIds(idx spaceindex.Store, ids map[string]struct{}
 	return active, nil
 }
 
-// hasActiveBacklinks reports whether any backlink of the object (excluding id and currentlyArchivingId)
-// appears in activeIds, meaning it is still an active (non-archived, non-deleted) object.
-func hasActiveBacklinks(details *domain.Details, id, currentlyArchivingId string, activeIds map[string]struct{}) bool {
-	for _, link := range details.GetStringList(bundle.RelationKeyBacklinks) {
-		if link == id || link == currentlyArchivingId {
-			continue
-		}
-		if _, active := activeIds[link]; active {
-			return true
-		}
-	}
-	return false
-}
-
-// CheckObjectsOnLinksRestored unarchives objects that were previously GC'd when links are re-added
+// RestoreOrphansOnLinksAdded unarchives objects that were previously GC'd when links are re-added
 // to a context object (e.g. via undo). For each added link that is an archived object whose
 // CreatedInContext matches the context, the object is restored unconditionally — the active link
 // in the page is sufficient justification to unarchive it.
-// CheckObjectsOnLinksRestored returns the IDs of objects that were restored; the caller emits events.
-func (gc *objectGC) CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error) {
+// RestoreOrphansOnLinksAdded returns the IDs of objects that were restored; the caller emits events.
+func (gc *objectGC) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	if len(addedLinks) == 0 {
 		return nil, nil
 	}

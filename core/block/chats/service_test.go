@@ -81,13 +81,13 @@ func (s *fileGCDummy) Name() string                    { return "fileGCDummy" }
 func (s *fileGCDummy) Init(a *app.App) error           { return nil }
 func (s *fileGCDummy) Run(ctx context.Context) error   { return nil }
 func (s *fileGCDummy) Close(ctx context.Context) error { return nil }
-func (s *fileGCDummy) CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
+func (s *fileGCDummy) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
 	return nil, nil
 }
 func (s *fileGCDummy) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
 	return nil, nil
 }
-func (s *fileGCDummy) CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error) {
+func (s *fileGCDummy) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	return nil, nil
 }
 

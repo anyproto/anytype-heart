@@ -1580,7 +1580,7 @@ func (sb *smartBlock) restoreObjectsOnLinksAdded(sctx session.Context, spaceId, 
 	if sb.objectGC == nil {
 		return
 	}
-	restoredIds, err := sb.objectGC.CheckObjectsOnLinksRestored(spaceId, contextId, addedLinks)
+	restoredIds, err := sb.objectGC.RestoreOrphansOnLinksAdded(spaceId, contextId, addedLinks)
 	if err != nil {
 		log.With("objectId", contextId).Errorf("restore on links added failed: %v", err)
 	}
@@ -1603,7 +1603,7 @@ func (sb *smartBlock) performGCOnLinksRemoval(sctx session.Context, spaceId, con
 	if len(removedLinks) == 0 {
 		return
 	}
-	archivedIds, err := sb.objectGC.CheckObjectsOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
+	archivedIds, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
 	if err != nil {
 		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}

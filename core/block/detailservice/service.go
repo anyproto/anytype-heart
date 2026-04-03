@@ -62,6 +62,9 @@ type Service interface {
 	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
 	SetListIsFavorite(objectIds []string, isFavorite bool) error
 	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
+	// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
+	// Used by callers that must act on GC results without re-entering the GC loop.
+	SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 func New() Service {

@@ -702,7 +702,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 		fileIds := make([]string, 0, len(attachments)+len(linkTargetIds))
 		for _, attachment := range attachments {
 			// do not filter by attachment type, because of bug on anytype-ts
-			// we filter out files by layouts later in CheckObjectsOnLinksRemoval
+			// we filter out files by layouts later in ArchiveOrphansOnLinksRemoval
 			fileIds = append(fileIds, attachment.Target)
 		}
 		fileIds = append(fileIds, linkTargetIds...)
@@ -711,7 +711,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 			// Run file GC asynchronously with skipBin=true to permanently delete orphaned files
 			// Pass messageId to only delete files created specifically for this message
 			go func() {
-				if _, err := s.objectGC.CheckObjectsOnLinksRemoval(spaceId, chatObjectId, fileIds, true, []string{messageId}); err != nil {
+				if _, err := s.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, chatObjectId, fileIds, true, []string{messageId}); err != nil {
 					log.Error("file GC failed for deleted message",
 						zap.String("messageId", messageId),
 						zap.String("chatObjectId", chatObjectId),

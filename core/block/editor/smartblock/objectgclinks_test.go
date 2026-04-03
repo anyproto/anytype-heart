@@ -14,7 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// objectGCCallRecorder records calls to CheckObjectsOnLinksRemoval and CheckObjectsOnLinksRestored
+// objectGCCallRecorder records calls to ArchiveOrphansOnLinksRemoval and RestoreOrphansOnLinksAdded
 // via buffered channels so goroutine timing works in tests.
 type objectGCCallRecorder struct {
 	removedCh  chan linksRemovalCall
@@ -48,17 +48,17 @@ func (r *objectGCCallRecorder) Close(_ context.Context) error                   
 func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_, _ string, _ bool) ([]string, error) {
 	return nil, nil
 }
-func (r *objectGCCallRecorder) CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) ([]string, error) {
+func (r *objectGCCallRecorder) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) ([]string, error) {
 	r.removedCh <- linksRemovalCall{spaceId: spaceId, contextId: contextId, links: removedLinks, skipBin: skipBin}
 	return nil, nil
 }
-func (r *objectGCCallRecorder) CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error) {
+func (r *objectGCCallRecorder) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	r.restoredCh <- linksRestoredCall{spaceId: spaceId, contextId: contextId, links: addedLinks}
 	return nil, nil
 }
 
 // TestSmartBlock_ObjectGC_LinksAdded_TriggersRestore verifies that Apply calls
-// CheckObjectsOnLinksRestored when links are added from an empty state (the undo case).
+// RestoreOrphansOnLinksAdded when links are added from an empty state (the undo case).
 // This exercises the fix for the len(linksBefore) > 0 guard that used to skip the diff.
 func TestSmartBlock_ObjectGC_LinksAdded_TriggersRestore(t *testing.T) {
 	// given – object with no link blocks initially
@@ -83,19 +83,19 @@ func TestSmartBlock_ObjectGC_LinksAdded_TriggersRestore(t *testing.T) {
 	require.NoError(t, s.InsertTo(objectId, model.Block_Inner, "link1"))
 	require.NoError(t, fx.Apply(s))
 
-	// then – CheckObjectsOnLinksRestored must be called with "file1"
+	// then – RestoreOrphansOnLinksAdded must be called with "file1"
 	select {
 	case call := <-recorder.restoredCh:
 		assert.Equal(t, testSpaceId, call.spaceId)
 		assert.Equal(t, objectId, call.contextId)
 		assert.Equal(t, []string{"file1"}, call.links)
 	case <-time.After(time.Second):
-		t.Fatal("timeout: CheckObjectsOnLinksRestored was not called")
+		t.Fatal("timeout: RestoreOrphansOnLinksAdded was not called")
 	}
 }
 
 // TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC verifies that Apply calls
-// CheckObjectsOnLinksRemoval when a link block is removed.
+// ArchiveOrphansOnLinksRemoval when a link block is removed.
 func TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC(t *testing.T) {
 	// given – object starts empty
 	objectId := "root"
@@ -131,13 +131,13 @@ func TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC(t *testing.T) {
 	s2.Unlink("link1")
 	require.NoError(t, fx.Apply(s2))
 
-	// then – CheckObjectsOnLinksRemoval must be called with "file1"
+	// then – ArchiveOrphansOnLinksRemoval must be called with "file1"
 	select {
 	case call := <-recorder.removedCh:
 		assert.Equal(t, testSpaceId, call.spaceId)
 		assert.Equal(t, objectId, call.contextId)
 		assert.Contains(t, call.links, "file1")
 	case <-time.After(time.Second):
-		t.Fatal("timeout: CheckObjectsOnLinksRemoval was not called")
+		t.Fatal("timeout: ArchiveOrphansOnLinksRemoval was not called")
 	}
 }

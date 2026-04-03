@@ -70,14 +70,7 @@ func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objec
 	if objectId == spc.DerivedIDs().Archive {
 		return fmt.Errorf("can't archive archive itself")
 	}
-	if err := s.checkArchivedRestriction(ctx, isArchived, objectId); err != nil {
-		return err
-	}
-
-	gcIds := s.triggerGCOnArchive(spaceID, []string{objectId}, isArchived)
-	s.appendGCEvent(sctx, gcIds, []string{objectId}, isArchived)
-
-	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
+	return s.setIsArchivedForObjects(sctx, ctx, spaceID, []string{objectId}, isArchived)
 }
 
 func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
@@ -225,13 +218,16 @@ func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Cont
 	gcIds := s.triggerGCOnArchive(spaceId, objectIds, isArchived)
 	s.appendGCEvent(sctx, gcIds, objectIds, isArchived)
 
+	// Merge explicit IDs and GC-collected children so they are all archived in one operation.
+	allIds := append(objectIds, gcIds...)
+
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		ids, err := s.store.SpaceIndex(spaceId).HasIds(objectIds)
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(allIds)
 		if err != nil {
 			return err
 		}
