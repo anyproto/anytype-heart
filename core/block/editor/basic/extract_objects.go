@@ -47,8 +47,11 @@ func (bs *basic) ExtractBlocksToObjects(
 			return nil, err
 		}
 
-		// Mark the new object as created in the context of this object so GC can track it.
+		// Pre-generate the link block ID so we can set both GC tracking relations on the
+		// object state before creation, without needing a post-creation ModifyDetails call.
+		linkBlockId := bson.NewObjectId().Hex()
 		objState.SetDetail(bundle.RelationKeyCreatedInContext, domain.String(bs.Id()))
+		objState.SetDetail(bundle.RelationKeyCreatedInContextRef, domain.String(linkBlockId))
 
 		insertBlocksToState(newState, rootBlock, objState)
 
@@ -62,7 +65,7 @@ func (bs *basic) ExtractBlocksToObjects(
 			return nil, fmt.Errorf("create child object: %w", err)
 		}
 
-		linkID, err := bs.changeToBlockWithLink(newState, rootBlock, objectID, req.Block)
+		linkID, err := bs.changeToBlockWithLink(newState, rootBlock, objectID, req.Block, linkBlockId)
 		if err != nil {
 			return nil, fmt.Errorf("create link to object %s: %w", objectID, err)
 		}
@@ -131,10 +134,12 @@ func insertBlocksToState(
 	targetState.Set(simple.New(targetRootBlock))
 }
 
-func (bs *basic) changeToBlockWithLink(newState *state.State, blockToReplace simple.Block, objectID string, linkBlock *model.Block) (string, error) {
+func (bs *basic) changeToBlockWithLink(newState *state.State, blockToReplace simple.Block, objectID string, linkBlock *model.Block, blockId string) (string, error) {
+	block := buildBlock(linkBlock, objectID)
+	block.Id = blockId
 	return bs.CreateBlock(newState, pb.RpcBlockCreateRequest{
 		TargetId: blockToReplace.Model().Id,
-		Block:    buildBlock(linkBlock, objectID),
+		Block:    block,
 		Position: model.Block_Replace,
 	})
 }
