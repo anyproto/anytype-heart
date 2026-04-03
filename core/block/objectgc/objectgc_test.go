@@ -261,6 +261,28 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentMissingFromStore(
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
+func TestCheckObjectsOnObjectArchived_BacklinkerArchived_NoCreatedInContext_NotArchived(t *testing.T) {
+	// given: file has no createdInContext (e.g. imported without context tracking),
+	// and its only backlink is the object being archived (e.g. usecase icon image)
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("page"))
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("icon"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_image)),
+			bundle.RelationKeyBacklinks:      domain.StringList([]string{"page"}),
+			// no createdInContext — mimics usecase-imported icons
+		},
+	})
+
+	// when: page is archived
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "page", true)
+
+	// then: icon must NOT be archived — only objects with explicit createdInContext are GC'd
+	require.NoError(t, err)
+	assert.Empty(t, fx.archiver.archivedIds)
+}
+
 func TestCheckObjectsOnObjectArchived_ObjectIsFile_EarlyReturn(t *testing.T) {
 	// given: the archived object is itself a file
 	fx := newFixture(t)

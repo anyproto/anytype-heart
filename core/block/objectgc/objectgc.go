@@ -288,6 +288,8 @@ func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, spaceId string,
 	}
 
 	// Query 2: objects where objectId is a backlinker but NOT the parent.
+	// Only objects with an explicit createdInContext are considered — objects without it were
+	// not created in the context of any specific object and should not be auto-archived.
 	// Safety gate per object: the object's own parent must already be archived or deleted.
 	backlinkRecords, err := idx.Query(database.Query{
 		Filters: []database.FilterRequest{
@@ -295,6 +297,10 @@ func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, spaceId string,
 				RelationKey: bundle.RelationKeyBacklinks,
 				Condition:   model.BlockContentDataviewFilter_AllIn,
 				Value:       domain.StringList([]string{objectId}),
+			},
+			{
+				RelationKey: bundle.RelationKeyCreatedInContext,
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
 				RelationKey: bundle.RelationKeyCreatedInContext,
