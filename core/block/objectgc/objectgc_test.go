@@ -597,7 +597,7 @@ func TestCheckObjectsOnObjectArchived_NilSession_NoEvent(t *testing.T) {
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckObjectsOnObjectArchived_Unarchive_NoEvent(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_Unarchive_EmitsRestoreEvent(t *testing.T) {
 	// given: parent unarchived, file was archived
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -615,10 +615,38 @@ func TestCheckObjectsOnObjectArchived_Unarchive_NoEvent(t *testing.T) {
 	// when: unarchive direction
 	err := fx.CheckObjectsOnObjectArchived(sctx, testSpaceId, "parent", false)
 
-	// then: file restored, NO auto-archive event (only archive direction emits)
+	// then: file restored, auto-restore event emitted
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.unarchivedIds)
-	assert.Empty(t, sctx.GetMessages())
+	msgs := sctx.GetMessages()
+	require.Len(t, msgs, 1)
+	msg := msgs[0].Value.(*pb.EventMessageValueOfObjectAutoRestore)
+	assert.ElementsMatch(t, []string{"file1"}, msg.ObjectAutoRestore.ObjectIds)
+}
+
+func TestCheckObjectsOnLinksRestored_EmitsRestoreEvent(t *testing.T) {
+	// given: file was GC'd and is now being restored via undo
+	fx := newFixture(t)
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:               domain.String("file1"),
+			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_image)),
+			bundle.RelationKeyCreatedInContext: domain.String("page"),
+			bundle.RelationKeyIsArchived:       domain.Bool(true),
+		},
+	})
+	sctx := session.NewContext(session.WithSession("test-token"))
+
+	// when
+	err := fx.CheckObjectsOnLinksRestored(sctx, testSpaceId, "page", []string{"file1"})
+
+	// then: file unarchived, auto-restore event emitted
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.unarchivedIds)
+	msgs := sctx.GetMessages()
+	require.Len(t, msgs, 1)
+	msg := msgs[0].Value.(*pb.EventMessageValueOfObjectAutoRestore)
+	assert.ElementsMatch(t, []string{"file1"}, msg.ObjectAutoRestore.ObjectIds)
 }
 
 func TestAccumulateAutoArchiveEvent_MergesAcrossMultipleCalls(t *testing.T) {
@@ -634,4 +662,19 @@ func TestAccumulateAutoArchiveEvent_MergesAcrossMultipleCalls(t *testing.T) {
 	require.Len(t, msgs, 1)
 	msg := msgs[0].Value.(*pb.EventMessageValueOfObjectAutoArchive)
 	assert.ElementsMatch(t, []string{"file1", "file2", "file3"}, msg.ObjectAutoArchive.ObjectIds)
+}
+
+func TestAccumulateAutoRestoreEvent_MergesAcrossMultipleCalls(t *testing.T) {
+	// given: a fresh session context
+	sctx := session.NewContext(session.WithSession("test-token"))
+
+	// when: two separate restore operations accumulate into the same session
+	accumulateAutoRestoreEvent(sctx, []string{"file1", "file2"}, "block1")
+	accumulateAutoRestoreEvent(sctx, []string{"file2", "file3"}, "block1")
+
+	// then: exactly one event with deduplicated union of all IDs
+	msgs := sctx.GetMessages()
+	require.Len(t, msgs, 1)
+	msg := msgs[0].Value.(*pb.EventMessageValueOfObjectAutoRestore)
+	assert.ElementsMatch(t, []string{"file1", "file2", "file3"}, msg.ObjectAutoRestore.ObjectIds)
 }

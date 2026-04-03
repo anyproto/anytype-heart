@@ -226,7 +226,7 @@ func (gc *objectGC) CheckObjectsOnObjectArchived(sctx session.Context, spaceId, 
 	gcLayouts := makeGCEligibleLayouts()
 
 	if !isArchived {
-		return gc.restoreObjectsOnUnarchive(idx, objectId, gcLayouts)
+		return gc.restoreObjectsOnUnarchive(sctx, idx, objectId, gcLayouts)
 	}
 	return gc.archiveOrphanedObjects(sctx, spaceId, idx, objectId, gcLayouts)
 }
@@ -366,7 +366,7 @@ func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, spaceId string,
 
 // restoreObjectsOnUnarchive restores objects whose parent is being unarchived, provided they have
 // no other backlinks besides the parent itself.
-func (gc *objectGC) restoreObjectsOnUnarchive(idx spaceindex.Store, objectId string, gcLayouts []int64) error {
+func (gc *objectGC) restoreObjectsOnUnarchive(sctx session.Context, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
 	records, err := idx.Query(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -411,7 +411,11 @@ func (gc *objectGC) restoreObjectsOnUnarchive(idx spaceindex.Store, objectId str
 		}
 		toRestore = append(toRestore, id)
 	}
-	return gc.objectArchiver.SetListIsArchived(nil, gc.componentCtx, toRestore, false)
+	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toRestore, false); err != nil {
+		return err
+	}
+	accumulateAutoRestoreEvent(sctx, toRestore, objectId)
+	return nil
 }
 
 // queryActiveIds returns the subset of the given IDs that are active (not archived, not deleted).
@@ -510,7 +514,11 @@ func (gc *objectGC) CheckObjectsOnLinksRestored(sctx session.Context, spaceId, c
 		log.Debugf("restoring archived object %s after link re-added to context %s", id, contextId)
 		toRestore = append(toRestore, id)
 	}
-	return gc.objectArchiver.SetListIsArchived(nil, gc.componentCtx, toRestore, false)
+	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toRestore, false); err != nil {
+		return err
+	}
+	accumulateAutoRestoreEvent(sctx, toRestore, contextId)
+	return nil
 }
 
 func makeGCEligibleLayouts() []int64 {
@@ -558,6 +566,46 @@ func accumulateAutoArchiveEvent(sctx session.Context, objectIds []string, smartB
 	msgs = append(msgs, &pb.EventMessage{
 		Value: &pb.EventMessageValueOfObjectAutoArchive{
 			ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: objectIds},
+		},
+	})
+	sctx.SetMessages(smartBlockId, msgs)
+}
+
+// accumulateAutoRestoreEvent merges objectIds into the auto-restore event already present in sctx,
+// or appends a new one if none exists. Mirrors accumulateAutoArchiveEvent for the unarchive direction.
+func accumulateAutoRestoreEvent(sctx session.Context, objectIds []string, smartBlockId string) {
+	if sctx == nil || len(objectIds) == 0 {
+		return
+	}
+	msgs := sctx.GetMessages()
+	for i, msg := range msgs {
+		if existing, ok := msg.Value.(*pb.EventMessageValueOfObjectAutoRestore); ok {
+			seen := make(map[string]struct{}, len(existing.ObjectAutoRestore.ObjectIds)+len(objectIds))
+			merged := make([]string, 0, len(existing.ObjectAutoRestore.ObjectIds)+len(objectIds))
+			for _, id := range existing.ObjectAutoRestore.ObjectIds {
+				if _, dup := seen[id]; !dup {
+					seen[id] = struct{}{}
+					merged = append(merged, id)
+				}
+			}
+			for _, id := range objectIds {
+				if _, dup := seen[id]; !dup {
+					seen[id] = struct{}{}
+					merged = append(merged, id)
+				}
+			}
+			msgs[i] = &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoRestore{
+					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: merged},
+				},
+			}
+			sctx.SetMessages(smartBlockId, msgs)
+			return
+		}
+	}
+	msgs = append(msgs, &pb.EventMessage{
+		Value: &pb.EventMessageValueOfObjectAutoRestore{
+			ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: objectIds},
 		},
 	})
 	sctx.SetMessages(smartBlockId, msgs)
