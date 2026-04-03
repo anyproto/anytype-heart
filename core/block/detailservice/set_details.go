@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -311,16 +312,38 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 	return
 }
 
-// triggerFileGCOnArchive runs file GC for all "children" files that doesn't have other backlinks
-// This helps clean up orphaned files when objects are moved to archive as well as unarchive the children of archived objects.
+// triggerFileGCOnArchive runs GC for all children that don't have other backlinks.
+// All affected IDs are collected across the loop and emitted as a single auto-archive or
+// auto-restore event, so the caller receives one merged notification.
 func (s *service) triggerFileGCOnArchive(sctx session.Context, spaceId string, objectIds []string, isArchived bool) {
 	if len(objectIds) == 0 {
 		return
 	}
+	var allAffected []string
 	for _, objId := range objectIds {
-		if err := s.objectGC.CheckObjectsOnObjectArchived(sctx, spaceId, objId, isArchived); err != nil {
+		ids, err := s.objectGC.CheckObjectsOnObjectArchived(spaceId, objId, isArchived)
+		if err != nil {
 			log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
+			continue
 		}
+		allAffected = append(allAffected, ids...)
+	}
+	if sctx != nil && len(allAffected) > 0 {
+		msgs := sctx.GetMessages()
+		if isArchived {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoArchive{
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: allAffected},
+				},
+			})
+		} else {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoRestore{
+					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: allAffected},
+				},
+			})
+		}
+		sctx.SetMessages(sctx.ObjectID(), msgs)
 	}
 	objectgc.FilterExplicitIds(sctx, objectIds)
 }

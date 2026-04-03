@@ -25,9 +25,9 @@ const CName = "core.block.objectgc"
 
 type ObjectGC interface {
 	app.ComponentRunnable
-	CheckObjectsOnLinksRemoval(sctx session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error
-	CheckObjectsOnObjectArchived(sctx session.Context, spaceId, objectId string, isArchived bool) error
-	CheckObjectsOnLinksRestored(sctx session.Context, spaceId, contextId string, addedLinks []string) error
+	CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error)
+	CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error)
+	CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error)
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -90,9 +90,10 @@ func (gc *objectGC) Close(ctx context.Context) error {
 
 // CheckObjectsOnLinksRemoval checks if any of the removed links are objects that should be garbage collected.
 // If onlyBlockIds is provided, it will only process objects created in those specific block IDs.
-func (gc *objectGC) CheckObjectsOnLinksRemoval(sctx session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+// It returns the IDs of objects that were archived; the caller is responsible for emitting any events.
+func (gc *objectGC) CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
 	if len(removedLinks) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	log.Debugf("checking %d removed links from context %s", len(removedLinks), contextId)
@@ -136,7 +137,7 @@ func (gc *objectGC) CheckObjectsOnLinksRemoval(sctx session.Context, spaceId, co
 		Filters: filters,
 	})
 	if err != nil {
-		return fmt.Errorf("query objects: %w", err)
+		return nil, fmt.Errorf("query objects: %w", err)
 	}
 
 	var toArchive []string
@@ -181,19 +182,10 @@ func (gc *objectGC) CheckObjectsOnLinksRemoval(sctx session.Context, spaceId, co
 			toArchive = append(toArchive, id)
 		}
 	}
-	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toArchive, true); err != nil {
-		return fmt.Errorf("archive objects: %w", err)
+	if err := gc.objectArchiver.SetListIsArchived(nil, gc.componentCtx, toArchive, true); err != nil {
+		return nil, fmt.Errorf("archive objects: %w", err)
 	}
-	if sctx != nil && len(toArchive) > 0 {
-		msgs := sctx.GetMessages()
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectAutoArchive{
-				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: toArchive},
-			},
-		})
-		sctx.SetMessages(contextId, msgs)
-	}
-	return nil
+	return toArchive, nil
 }
 
 func (gc *objectGC) deleteObject(spaceId, id string) error {
@@ -218,17 +210,19 @@ func (gc *objectGC) deleteObject(spaceId, id string) error {
 //
 // Unarchive direction (isArchived=false): only Query 1 runs, restoring objects whose parent is being unarchived,
 // provided they have no other backlinks besides the parent itself.
-func (gc *objectGC) CheckObjectsOnObjectArchived(sctx session.Context, spaceId, objectId string, isArchived bool) error {
+// CheckObjectsOnObjectArchived finds objects that should be archived or restored when objectId changes state.
+// It returns the IDs of all affected objects; the caller is responsible for emitting any events.
+func (gc *objectGC) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
 	log.Debugf("checking objects on object archived: %s isArchived=%v", objectId, isArchived)
 	idx := gc.objectStore.SpaceIndex(spaceId)
 
 	d, err := idx.GetDetails(objectId)
 	if err != nil {
-		return fmt.Errorf("get details of object: %w", err)
+		return nil, fmt.Errorf("get details of object: %w", err)
 	}
 	if !slices.Contains(domain.GCEligibleLayouts, model.ObjectTypeLayout(int32(d.GetInt64(bundle.RelationKeyResolvedLayout)))) {
 		// system/unsupported objects can't have GC-tracked children
-		return nil
+		return nil, nil
 	}
 
 	// make sure we have all backlinks updates flushed to the store
@@ -237,9 +231,9 @@ func (gc *objectGC) CheckObjectsOnObjectArchived(sctx session.Context, spaceId, 
 	gcLayouts := makeGCEligibleLayouts()
 
 	if !isArchived {
-		return gc.restoreObjectsOnUnarchive(sctx, idx, objectId, gcLayouts)
+		return gc.restoreObjectsOnUnarchive(idx, objectId, gcLayouts)
 	}
-	return gc.archiveOrphanedObjects(sctx, idx, objectId, gcLayouts)
+	return gc.archiveOrphanedObjects(idx, objectId, gcLayouts)
 }
 
 // collectOrphanedObjects performs a BFS over the createdInContext tree rooted at objectId and
@@ -461,27 +455,19 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 }
 
 // archiveOrphanedObjects collects all orphaned objects via BFS and archives them in a single call.
-func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
+// It returns the archived IDs; the caller is responsible for emitting any events.
+func (gc *objectGC) archiveOrphanedObjects(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
 	toArchive, err := gc.collectOrphanedObjects(idx, objectId, gcLayouts)
 	if err != nil {
-		return fmt.Errorf("collect orphaned objects: %w", err)
+		return nil, fmt.Errorf("collect orphaned objects: %w", err)
 	}
 	if len(toArchive) == 0 {
-		return nil
+		return nil, nil
 	}
 	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toArchive, true); err != nil {
-		return fmt.Errorf("archive objects: %w", err)
+		return nil, fmt.Errorf("archive objects: %w", err)
 	}
-	if sctx != nil && len(toArchive) > 0 {
-		msgs := sctx.GetMessages()
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectAutoArchive{
-				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: toArchive},
-			},
-		})
-		sctx.SetMessages(objectId, msgs)
-	}
-	return nil
+	return toArchive, nil
 }
 
 // collectOrphanedForRestore performs a BFS over archived children of objectId and returns the
@@ -576,27 +562,19 @@ func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId str
 }
 
 // restoreObjectsOnUnarchive collects all archived children via BFS and restores them in a single call.
-func (gc *objectGC) restoreObjectsOnUnarchive(sctx session.Context, idx spaceindex.Store, objectId string, gcLayouts []int64) error {
+// It returns the restored IDs; the caller is responsible for emitting any events.
+func (gc *objectGC) restoreObjectsOnUnarchive(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
 	toRestore, err := gc.collectOrphanedForRestore(idx, objectId, gcLayouts)
 	if err != nil {
-		return fmt.Errorf("collect orphaned for restore: %w", err)
+		return nil, fmt.Errorf("collect orphaned for restore: %w", err)
 	}
 	if len(toRestore) == 0 {
-		return nil
+		return nil, nil
 	}
 	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toRestore, false); err != nil {
-		return fmt.Errorf("restore objects: %w", err)
+		return nil, fmt.Errorf("restore objects: %w", err)
 	}
-	if sctx != nil && len(toRestore) > 0 {
-		msgs := sctx.GetMessages()
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectAutoRestore{
-				ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: toRestore},
-			},
-		})
-		sctx.SetMessages(objectId, msgs)
-	}
-	return nil
+	return toRestore, nil
 }
 
 // queryActiveIds returns the subset of the given IDs that are active (not archived, not deleted).
@@ -647,9 +625,10 @@ func hasActiveBacklinks(details *domain.Details, id, currentlyArchivingId string
 // to a context object (e.g. via undo). For each added link that is an archived object whose
 // CreatedInContext matches the context, the object is restored unconditionally — the active link
 // in the page is sufficient justification to unarchive it.
-func (gc *objectGC) CheckObjectsOnLinksRestored(sctx session.Context, spaceId, contextId string, addedLinks []string) error {
+// CheckObjectsOnLinksRestored returns the IDs of objects that were restored; the caller emits events.
+func (gc *objectGC) CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	if len(addedLinks) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	log.Debugf("checking %d restored links in context %s", len(addedLinks), contextId)
@@ -686,7 +665,7 @@ func (gc *objectGC) CheckObjectsOnLinksRestored(sctx session.Context, spaceId, c
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("query archived objects for restore: %w", err)
+		return nil, fmt.Errorf("query archived objects for restore: %w", err)
 	}
 
 	var toRestore []string
@@ -695,19 +674,10 @@ func (gc *objectGC) CheckObjectsOnLinksRestored(sctx session.Context, spaceId, c
 		log.Debugf("restoring archived object %s after link re-added to context %s", id, contextId)
 		toRestore = append(toRestore, id)
 	}
-	if err := gc.objectArchiver.SetListIsArchived(sctx, gc.componentCtx, toRestore, false); err != nil {
-		return fmt.Errorf("restore objects: %w", err)
+	if err := gc.objectArchiver.SetListIsArchived(nil, gc.componentCtx, toRestore, false); err != nil {
+		return nil, fmt.Errorf("restore objects: %w", err)
 	}
-	if sctx != nil && len(toRestore) > 0 {
-		msgs := sctx.GetMessages()
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectAutoRestore{
-				ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: toRestore},
-			},
-		})
-		sctx.SetMessages(contextId, msgs)
-	}
-	return nil
+	return toRestore, nil
 }
 
 // isConfirmedInactive returns true only if id is explicitly indexed in the store with

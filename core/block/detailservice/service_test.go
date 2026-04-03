@@ -19,7 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -39,14 +38,14 @@ func (f *fileGCStub) Name() string                    { return "fileGCStub" }
 func (f *fileGCStub) Init(a *app.App) error           { return nil }
 func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
 func (f *fileGCStub) Close(ctx context.Context) error { return nil }
-func (f *fileGCStub) CheckObjectsOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
-	return nil
+func (f *fileGCStub) CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
+	return nil, nil
 }
-func (f *fileGCStub) CheckObjectsOnObjectArchived(_ session.Context, spaceId, objectId string, isArchived bool) error {
-	return nil
+func (f *fileGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
+	return nil, nil
 }
-func (f *fileGCStub) CheckObjectsOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
-	return nil
+func (f *fileGCStub) CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error) {
+	return nil, nil
 }
 
 type fixture struct {

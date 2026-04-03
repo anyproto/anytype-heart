@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -46,16 +45,16 @@ func (r *objectGCCallRecorder) Init(_ *app.App) error                           
 func (r *objectGCCallRecorder) Name() string                                            { return "test-objectgc" }
 func (r *objectGCCallRecorder) Run(_ context.Context) error                             { return nil }
 func (r *objectGCCallRecorder) Close(_ context.Context) error                           { return nil }
-func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_ session.Context, _, _ string, _ bool) error {
-	return nil
+func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_, _ string, _ bool) ([]string, error) {
+	return nil, nil
 }
-func (r *objectGCCallRecorder) CheckObjectsOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) error {
+func (r *objectGCCallRecorder) CheckObjectsOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) ([]string, error) {
 	r.removedCh <- linksRemovalCall{spaceId: spaceId, contextId: contextId, links: removedLinks, skipBin: skipBin}
-	return nil
+	return nil, nil
 }
-func (r *objectGCCallRecorder) CheckObjectsOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
+func (r *objectGCCallRecorder) CheckObjectsOnLinksRestored(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	r.restoredCh <- linksRestoredCall{spaceId: spaceId, contextId: contextId, links: addedLinks}
-	return nil
+	return nil, nil
 }
 
 // TestSmartBlock_ObjectGC_LinksAdded_TriggersRestore verifies that Apply calls

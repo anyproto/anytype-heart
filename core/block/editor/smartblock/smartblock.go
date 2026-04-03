@@ -1580,8 +1580,18 @@ func (sb *smartBlock) restoreArchivedFilesOnLinksAdded(sctx session.Context, spa
 	if sb.objectGC == nil {
 		return
 	}
-	if err := sb.objectGC.CheckObjectsOnLinksRestored(sctx, spaceId, contextId, addedLinks); err != nil {
+	restoredIds, err := sb.objectGC.CheckObjectsOnLinksRestored(spaceId, contextId, addedLinks)
+	if err != nil {
 		log.With("objectId", contextId).Errorf("file restore on links added failed: %v", err)
+	}
+	if sctx != nil && len(restoredIds) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoRestore{
+				ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: restoredIds},
+			},
+		})
+		sctx.SetMessages(contextId, msgs)
 	}
 }
 
@@ -1593,7 +1603,17 @@ func (sb *smartBlock) performFileGC(sctx session.Context, spaceId, contextId str
 	if len(removedLinks) == 0 {
 		return
 	}
-	if err := sb.objectGC.CheckObjectsOnLinksRemoval(sctx, spaceId, contextId, removedLinks, false, nil); err != nil {
+	archivedIds, err := sb.objectGC.CheckObjectsOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
+	if err != nil {
 		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
+	}
+	if sctx != nil && len(archivedIds) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoArchive{
+				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: archivedIds},
+			},
+		})
+		sctx.SetMessages(contextId, msgs)
 	}
 }
