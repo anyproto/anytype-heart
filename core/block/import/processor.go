@@ -268,6 +268,10 @@ func (p *importProcessor) assignIdsToAllObjects(ctx context.Context) error {
 		}
 	}
 	for _, fileObject := range fileObjects {
+		// Remap all object-format relations in file object details before GetIDAndPayload,
+		// so uploadFile receives final system IDs. All parent objects are already assigned
+		// by this point, so oldIDToNew contains their mappings.
+		// objectcreator skips UpdateObjectIDsInRelations for file objects to avoid double-remapping.
 		if fileObject.Snapshot.Data.Details != nil {
 			common.UpdateObjectIDsInDetails(fileObject.Snapshot.Data.Details, p.oldIDToNew, p.relationKeysToFormat)
 		}

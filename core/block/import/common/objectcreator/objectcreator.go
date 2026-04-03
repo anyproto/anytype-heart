@@ -111,7 +111,12 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 		oc.onFinish(err, spaceID, st, filesToDelete)
 	}()
 
-	common.UpdateObjectIDsInRelations(st, oldIDtoNew, dataObject.relationKeysToFormat)
+	// File object details (createdInContext/createdInContextRef) are pre-mapped by the processor
+	// before GetIDAndPayload is called, so they arrive as final system IDs. Skip remapping here
+	// to prevent UpdateObjectIDsInRelations from treating them as unknown CIDs → _missing_object.
+	if sn.Snapshot.SbType != coresb.SmartBlockTypeFileObject {
+		common.UpdateObjectIDsInRelations(st, oldIDtoNew, dataObject.relationKeysToFormat)
+	}
 
 	if err = common.UpdateLinksToObjects(st, oldIDtoNew); err != nil {
 		log.With("objectID", newID).Errorf("failed to update objects ids: %s", err)

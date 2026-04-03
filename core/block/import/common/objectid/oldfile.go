@@ -61,6 +61,18 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 	return objectId, treestorage.TreeStorageCreatePayload{}, nil
 }
 
+// copyDetailsExcludingFileRelations copies all details except file-system relations
+// (keys starting with "file"), which are managed internally by the file service.
+func copyDetailsExcludingFileRelations(details *domain.Details) *domain.Details {
+	result := domain.NewDetails()
+	for k, v := range details.Iterate() {
+		if !strings.HasPrefix(string(k), "file") {
+			result.Set(k, v)
+		}
+	}
+	return result
+}
+
 func uploadFile(
 	ctx context.Context,
 	blockService *block.Service,
@@ -71,7 +83,7 @@ func uploadFile(
 ) (string, error) {
 	params := pb.RpcFileUploadRequest{
 		SpaceId: spaceId,
-		Details: details.CopyOnlyKeys(bundle.RelationKeyName, bundle.RelationKeyIsHiddenDiscovery, bundle.RelationKeyCreatedInContext, bundle.RelationKeyCreatedInContextRef).ToProto(),
+		Details: copyDetailsExcludingFileRelations(details).ToProto(),
 	}
 
 	if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {
