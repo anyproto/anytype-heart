@@ -38,9 +38,10 @@ type ObjectDeleter interface {
 	DeleteObjectByFullID(id domain.FullID) error
 }
 
-// ObjectArchiver is an interface to archive objects
+// ObjectArchiver is an interface to archive objects.
+// SetListIsArchivedNoGC is used (not SetListIsArchived) to prevent recursive GC re-entry.
 type ObjectArchiver interface {
-	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 // ParticipantProvider provides the current user's participant ID for a given space
@@ -182,7 +183,7 @@ func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, remo
 			toArchive = append(toArchive, id)
 		}
 	}
-	if err := gc.objectArchiver.SetListIsArchived(nil, gc.componentCtx, toArchive, true); err != nil {
+	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toArchive, true); err != nil {
 		return nil, fmt.Errorf("archive objects: %w", err)
 	}
 	return toArchive, nil
@@ -650,7 +651,7 @@ func (gc *objectGC) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedL
 		log.Debugf("restoring archived object %s after link re-added to context %s", id, contextId)
 		toRestore = append(toRestore, id)
 	}
-	if err := gc.objectArchiver.SetListIsArchived(nil, gc.componentCtx, toRestore, false); err != nil {
+	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toRestore, false); err != nil {
 		return nil, fmt.Errorf("restore objects: %w", err)
 	}
 	return toRestore, nil

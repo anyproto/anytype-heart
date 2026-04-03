@@ -108,7 +108,7 @@ type mockArchiver struct {
 	unarchivedIds []string
 }
 
-func (m *mockArchiver) SetListIsArchived(_ session.Context, _ context.Context, objectIds []string, isArchived bool) error {
+func (m *mockArchiver) SetListIsArchivedNoGC(_ context.Context, objectIds []string, isArchived bool) error {
 	if isArchived {
 		m.archivedIds = append(m.archivedIds, objectIds...)
 	} else {
