@@ -46,7 +46,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 
 	if sbType != coresb.SmartBlockTypeFileObject {
 		// in case client skips archiving, lets still call objectGC
-		if err := s.objectGC.CheckFilesOnObjectArchived(nil, id.SpaceID, id.ObjectID, true); err != nil {
+		if err := s.objectGC.CheckObjectsOnObjectArchived(nil, id.SpaceID, id.ObjectID, true); err != nil {
 			log.With("objectId", id.ObjectID).Warnf("failed to check files on context deletion: %v", err)
 		}
 	}

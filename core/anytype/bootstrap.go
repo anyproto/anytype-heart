@@ -70,7 +70,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/filedownloader"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
@@ -302,7 +302,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(detailservice.New()).
-		Register(filegc.New()).
+		Register(objectgc.New()).
 		Register(dataviewservice.New()).
 		Register(migration.New()).
 		Register(indexer.New()).

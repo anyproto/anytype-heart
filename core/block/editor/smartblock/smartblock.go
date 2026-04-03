@@ -29,7 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -101,7 +101,7 @@ func New(
 	eventSender event.Sender,
 	spaceIdResolver idresolver.Resolver,
 	formatFetcher relationutils.RelationFormatFetcher,
-	objectGC filegc.ObjectGC,
+	objectGC objectgc.ObjectGC,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -270,7 +270,7 @@ type smartBlock struct {
 	eventSender     event.Sender
 	spaceIdResolver idresolver.Resolver
 	formatFetcher   relationutils.RelationFormatFetcher
-	objectGC        filegc.ObjectGC
+	objectGC        objectgc.ObjectGC
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -1563,7 +1563,7 @@ func (sb *smartBlock) restoreArchivedFilesOnLinksAdded(sctx session.Context, spa
 	if sb.objectGC == nil {
 		return
 	}
-	if err := sb.objectGC.CheckFilesOnLinksRestored(sctx, spaceId, contextId, addedLinks); err != nil {
+	if err := sb.objectGC.CheckObjectsOnLinksRestored(sctx, spaceId, contextId, addedLinks); err != nil {
 		log.With("objectId", contextId).Errorf("file restore on links added failed: %v", err)
 	}
 }
@@ -1576,7 +1576,7 @@ func (sb *smartBlock) performFileGC(sctx session.Context, spaceId, contextId str
 	if len(removedLinks) == 0 {
 		return
 	}
-	if err := sb.objectGC.CheckFilesOnLinksRemoval(sctx, spaceId, contextId, removedLinks, false, nil); err != nil {
+	if err := sb.objectGC.CheckObjectsOnLinksRemoval(sctx, spaceId, contextId, removedLinks, false, nil); err != nil {
 		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}
 }

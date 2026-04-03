@@ -1,4 +1,4 @@
-package filegc
+package objectgc
 
 import (
 	"context"
@@ -21,7 +21,7 @@ const testSpaceId = "test-space"
 // -- fixture --
 
 type fixture struct {
-	*fileGC
+	*objectGC
 	store    *objectstore.StoreFixture
 	archiver *mockArchiver
 }
@@ -29,7 +29,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	store := objectstore.NewStoreFixture(t)
 	archiver := &mockArchiver{}
-	gc := &fileGC{
+	gc := &objectGC{
 		objectStore:         store,
 		objectArchiver:      archiver,
 		backlinksWatcher:    &noopFlusher{},
@@ -37,7 +37,7 @@ func newFixture(t *testing.T) *fixture {
 		participantProvider: &mockParticipantProvider{},
 	}
 	return &fixture{
-		fileGC:   gc,
+		objectGC:   gc,
 		store:    store,
 		archiver: archiver,
 	}
@@ -125,21 +125,21 @@ func (n *noopFlusher) FlushUpdates()         {}
 
 // -- archive direction tests --
 
-func TestCheckFilesOnObjectArchived_ParentArchived_NoOtherBacklinks(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_ParentArchived_NoOtherBacklinks(t *testing.T) {
 	// given
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent"}))
 
 	// when
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
 
 	// then
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_ParentArchived_WithActiveBacklink(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_ParentArchived_WithActiveBacklink(t *testing.T) {
 	// given
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -147,14 +147,14 @@ func TestCheckFilesOnObjectArchived_ParentArchived_WithActiveBacklink(t *testing
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "other"}))
 
 	// when
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
 
 	// then
 	require.NoError(t, err)
 	assert.Empty(t, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_ParentArchived_OtherBacklinksAllArchived(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_ParentArchived_OtherBacklinksAllArchived(t *testing.T) {
 	// given
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -162,14 +162,14 @@ func TestCheckFilesOnObjectArchived_ParentArchived_OtherBacklinksAllArchived(t *
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "other"}))
 
 	// when
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
 
 	// then
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_ParentArchived_OtherBacklinksAllDeleted(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_ParentArchived_OtherBacklinksAllDeleted(t *testing.T) {
 	// given
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -177,14 +177,14 @@ func TestCheckFilesOnObjectArchived_ParentArchived_OtherBacklinksAllDeleted(t *t
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "other"}))
 
 	// when
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
 
 	// then
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentStillActive(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentStillActive(t *testing.T) {
 	// given: file's parent is active, objectId is just a backlinker
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -192,14 +192,14 @@ func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentStillActive(t *test
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "backlinker"}))
 
 	// when: backlinker is archived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "backlinker", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "backlinker", true)
 
 	// then: file must not be touched — parent is still active (safety gate)
 	require.NoError(t, err)
 	assert.Empty(t, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentArchived_NoOtherBacklinks(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_NoOtherBacklinks(t *testing.T) {
 	// given: file's parent is already archived, backlinker is the last reference
 	fx := newFixture(t)
 	fx.addObject(t, archivedObject("parent"))
@@ -207,14 +207,14 @@ func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentArchived_NoOtherBac
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "backlinker"}))
 
 	// when: backlinker is archived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "backlinker", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "backlinker", true)
 
 	// then: file should be archived
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentArchived_OtherActiveBacklink(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_OtherActiveBacklink(t *testing.T) {
 	// given: file's parent is archived, but another object still actively links to the file
 	fx := newFixture(t)
 	fx.addObject(t, archivedObject("parent"))
@@ -223,14 +223,14 @@ func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentArchived_OtherActiv
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "backlinker", "activeRef"}))
 
 	// when: backlinker is archived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "backlinker", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "backlinker", true)
 
 	// then: file kept because activeRef is still active
 	require.NoError(t, err)
 	assert.Empty(t, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentArchived_OtherBacklinksAllArchived(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_OtherBacklinksAllArchived(t *testing.T) {
 	// given: file's parent and all other backlinks are archived
 	fx := newFixture(t)
 	fx.addObject(t, archivedObject("parent"))
@@ -239,14 +239,14 @@ func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentArchived_OtherBackl
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "backlinker", "archivedRef"}))
 
 	// when: backlinker is archived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "backlinker", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "backlinker", true)
 
 	// then: file should be archived
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentMissingFromStore(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentMissingFromStore(t *testing.T) {
 	// given: file's parent is not in the store at all (fully deleted), backlinker is the last reference
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("backlinker"))
@@ -254,14 +254,14 @@ func TestCheckFilesOnObjectArchived_BacklinkerArchived_ParentMissingFromStore(t 
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "backlinker"}))
 
 	// when: backlinker is archived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "backlinker", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "backlinker", true)
 
 	// then: file archived — missing parent treated as deleted (safety gate passes)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_ObjectIsFile_EarlyReturn(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_ObjectIsFile_EarlyReturn(t *testing.T) {
 	// given: the archived object is itself a file
 	fx := newFixture(t)
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -272,7 +272,7 @@ func TestCheckFilesOnObjectArchived_ObjectIsFile_EarlyReturn(t *testing.T) {
 	})
 
 	// when
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "fileContext", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "fileContext", true)
 
 	// then: returns immediately, no GC triggered
 	require.NoError(t, err)
@@ -281,7 +281,7 @@ func TestCheckFilesOnObjectArchived_ObjectIsFile_EarlyReturn(t *testing.T) {
 
 // -- links restored (undo) tests --
 
-func TestCheckFilesOnLinksRestored_RestoresArchivedFile(t *testing.T) {
+func TestCheckObjectsOnLinksRestored_RestoresArchivedFile(t *testing.T) {
 	// given: file was GC'd (archived) when its link was deleted; undo re-adds the link
 	fx := newFixture(t)
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -294,14 +294,14 @@ func TestCheckFilesOnLinksRestored_RestoresArchivedFile(t *testing.T) {
 	})
 
 	// when: undo re-adds the file link
-	err := fx.CheckFilesOnLinksRestored(nil, testSpaceId, "page", []string{"file1"})
+	err := fx.CheckObjectsOnLinksRestored(nil, testSpaceId, "page", []string{"file1"})
 
 	// then: file is unarchived
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.unarchivedIds)
 }
 
-func TestCheckFilesOnLinksRestored_IgnoresFileFromDifferentContext(t *testing.T) {
+func TestCheckObjectsOnLinksRestored_IgnoresFileFromDifferentContext(t *testing.T) {
 	// given: file belongs to a different context
 	fx := newFixture(t)
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -314,20 +314,20 @@ func TestCheckFilesOnLinksRestored_IgnoresFileFromDifferentContext(t *testing.T)
 	})
 
 	// when: link restored to a different page
-	err := fx.CheckFilesOnLinksRestored(nil, testSpaceId, "page", []string{"file1"})
+	err := fx.CheckObjectsOnLinksRestored(nil, testSpaceId, "page", []string{"file1"})
 
 	// then: file is not touched — wrong context
 	require.NoError(t, err)
 	assert.Empty(t, fx.archiver.unarchivedIds)
 }
 
-func TestCheckFilesOnLinksRestored_IgnoresAlreadyActiveFile(t *testing.T) {
+func TestCheckObjectsOnLinksRestored_IgnoresAlreadyActiveFile(t *testing.T) {
 	// given: file is not archived (was never GC'd or was already restored)
 	fx := newFixture(t)
 	fx.addObject(t, fileObject("file1", "page", []string{"page"}))
 
 	// when
-	err := fx.CheckFilesOnLinksRestored(nil, testSpaceId, "page", []string{"file1"})
+	err := fx.CheckObjectsOnLinksRestored(nil, testSpaceId, "page", []string{"file1"})
 
 	// then: nothing to do
 	require.NoError(t, err)
@@ -336,7 +336,7 @@ func TestCheckFilesOnLinksRestored_IgnoresAlreadyActiveFile(t *testing.T) {
 
 // -- unarchive direction tests --
 
-func TestCheckFilesOnObjectArchived_Unarchive_NoOtherBacklinks(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_Unarchive_NoOtherBacklinks(t *testing.T) {
 	// given: file was archived alongside its parent, now parent is being restored
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -351,14 +351,14 @@ func TestCheckFilesOnObjectArchived_Unarchive_NoOtherBacklinks(t *testing.T) {
 	})
 
 	// when: parent unarchived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", false)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", false)
 
 	// then: file restored
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.unarchivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_Unarchive_HasOtherBacklinks(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_Unarchive_HasOtherBacklinks(t *testing.T) {
 	// given: file has another backlink besides the parent
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -373,7 +373,7 @@ func TestCheckFilesOnObjectArchived_Unarchive_HasOtherBacklinks(t *testing.T) {
 	})
 
 	// when: parent unarchived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", false)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", false)
 
 	// then: file kept archived because it has other backlinks
 	require.NoError(t, err)
@@ -382,21 +382,21 @@ func TestCheckFilesOnObjectArchived_Unarchive_HasOtherBacklinks(t *testing.T) {
 
 // -- non-file object GC tests --
 
-func TestCheckFilesOnObjectArchived_NonFileObject_ParentArchived_NoOtherBacklinks(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_NonFileObject_ParentArchived_NoOtherBacklinks(t *testing.T) {
 	// given: a basic (non-file) object was created inside parent
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
 	fx.addObject(t, basicObject("child", "parent", []string{"parent"}))
 
 	// when: parent is archived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
 
 	// then: child is archived too
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"child"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_NonFileObject_ParentArchived_WithActiveBacklink(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_NonFileObject_ParentArchived_WithActiveBacklink(t *testing.T) {
 	// given: child still referenced by another active object
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -404,14 +404,14 @@ func TestCheckFilesOnObjectArchived_NonFileObject_ParentArchived_WithActiveBackl
 	fx.addObject(t, basicObject("child", "parent", []string{"parent", "other"}))
 
 	// when
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
 
 	// then: child is kept because "other" is still active
 	require.NoError(t, err)
 	assert.Empty(t, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_NonFileObject_Unarchive(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_NonFileObject_Unarchive(t *testing.T) {
 	// given: child was archived alongside parent
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -426,14 +426,14 @@ func TestCheckFilesOnObjectArchived_NonFileObject_Unarchive(t *testing.T) {
 	})
 
 	// when: parent is unarchived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", false)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", false)
 
 	// then: child is restored
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"child"}, fx.archiver.unarchivedIds)
 }
 
-func TestCheckFilesOnLinksRemoval_NonFileObject_SkipBinForcedFalse(t *testing.T) {
+func TestCheckObjectsOnLinksRemoval_NonFileObject_SkipBinForcedFalse(t *testing.T) {
 	// given: a basic object whose link is removed; caller requests skipBin=true
 	fx := newFixture(t)
 	fx.participantProvider = &mockParticipantProvider{id: "user1"}
@@ -448,14 +448,14 @@ func TestCheckFilesOnLinksRemoval_NonFileObject_SkipBinForcedFalse(t *testing.T)
 	})
 
 	// when: caller requests skipBin=true (as chat service does for files)
-	err := fx.CheckFilesOnLinksRemoval(nil, testSpaceId, "parent", []string{"child"}, true, nil)
+	err := fx.CheckObjectsOnLinksRemoval(nil, testSpaceId, "parent", []string{"child"}, true, nil)
 
 	// then: child is archived, NOT permanently deleted — skipBin overridden to false for non-files
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"child"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_SystemLayoutObject_NotGCd(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_SystemLayoutObject_NotGCd(t *testing.T) {
 	// given: an object with a system layout (participant) has createdInContext set
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -464,14 +464,14 @@ func TestCheckFilesOnObjectArchived_SystemLayoutObject_NotGCd(t *testing.T) {
 	})
 
 	// when: parent is archived
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
 
 	// then: system object is NOT touched
 	require.NoError(t, err)
 	assert.Empty(t, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnLinksRestored_NonFileObject_Restored(t *testing.T) {
+func TestCheckObjectsOnLinksRestored_NonFileObject_Restored(t *testing.T) {
 	// given: basic object was GC'd (archived), undo re-adds the link
 	fx := newFixture(t)
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -484,23 +484,23 @@ func TestCheckFilesOnLinksRestored_NonFileObject_Restored(t *testing.T) {
 	})
 
 	// when: link re-added via undo
-	err := fx.CheckFilesOnLinksRestored(nil, testSpaceId, "page", []string{"child"})
+	err := fx.CheckObjectsOnLinksRestored(nil, testSpaceId, "page", []string{"child"})
 
 	// then: child is unarchived
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"child"}, fx.archiver.unarchivedIds)
 }
 
-// -- event emission tests for CheckFilesOnLinksRemoval --
+// -- event emission tests for CheckObjectsOnLinksRemoval --
 
-func TestCheckFilesOnLinksRemoval_WithSession_EmitsEvent(t *testing.T) {
+func TestCheckObjectsOnLinksRemoval_WithSession_EmitsEvent(t *testing.T) {
 	// given: a file that will be archived (no active backlinks, sctx provided)
 	fx := newFixture(t)
 	fx.addObject(t, fileObject("file1", "page", []string{"page"}))
 	sctx := session.NewContext(session.WithSession("test-token"))
 
 	// when
-	err := fx.CheckFilesOnLinksRemoval(sctx, testSpaceId, "page", []string{"file1"}, false, nil)
+	err := fx.CheckObjectsOnLinksRemoval(sctx, testSpaceId, "page", []string{"file1"}, false, nil)
 
 	// then: file archived AND event accumulated in session context
 	require.NoError(t, err)
@@ -511,20 +511,20 @@ func TestCheckFilesOnLinksRemoval_WithSession_EmitsEvent(t *testing.T) {
 	assert.ElementsMatch(t, []string{"file1"}, msg.ObjectAutoArchive.ObjectIds)
 }
 
-func TestCheckFilesOnLinksRemoval_NilSession_NoEvent(t *testing.T) {
+func TestCheckObjectsOnLinksRemoval_NilSession_NoEvent(t *testing.T) {
 	// given: same setup but no session
 	fx := newFixture(t)
 	fx.addObject(t, fileObject("file1", "page", []string{"page"}))
 
 	// when
-	err := fx.CheckFilesOnLinksRemoval(nil, testSpaceId, "page", []string{"file1"}, false, nil)
+	err := fx.CheckObjectsOnLinksRemoval(nil, testSpaceId, "page", []string{"file1"}, false, nil)
 
 	// then: file archived, nil sctx — no panic, nothing to assert on session
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnLinksRemoval_WithSession_NothingArchived_NoEvent(t *testing.T) {
+func TestCheckObjectsOnLinksRemoval_WithSession_NothingArchived_NoEvent(t *testing.T) {
 	// given: file has an active backlink — won't be archived
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("other"))
@@ -532,7 +532,7 @@ func TestCheckFilesOnLinksRemoval_WithSession_NothingArchived_NoEvent(t *testing
 	sctx := session.NewContext(session.WithSession("test-token"))
 
 	// when
-	err := fx.CheckFilesOnLinksRemoval(sctx, testSpaceId, "page", []string{"file1"}, false, nil)
+	err := fx.CheckObjectsOnLinksRemoval(sctx, testSpaceId, "page", []string{"file1"}, false, nil)
 
 	// then: nothing archived, no event in session
 	require.NoError(t, err)
@@ -540,9 +540,9 @@ func TestCheckFilesOnLinksRemoval_WithSession_NothingArchived_NoEvent(t *testing
 	assert.Empty(t, sctx.GetMessages())
 }
 
-// -- event emission tests for CheckFilesOnObjectArchived --
+// -- event emission tests for CheckObjectsOnObjectArchived --
 
-func TestCheckFilesOnObjectArchived_WithSession_EmitsEvent(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_WithSession_EmitsEvent(t *testing.T) {
 	// given: parent archived, file has no other backlinks
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -550,7 +550,7 @@ func TestCheckFilesOnObjectArchived_WithSession_EmitsEvent(t *testing.T) {
 	sctx := session.NewContext(session.WithSession("test-token"))
 
 	// when
-	err := fx.CheckFilesOnObjectArchived(sctx, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(sctx, testSpaceId, "parent", true)
 
 	// then: file archived AND event accumulated in session context
 	require.NoError(t, err)
@@ -561,21 +561,21 @@ func TestCheckFilesOnObjectArchived_WithSession_EmitsEvent(t *testing.T) {
 	assert.ElementsMatch(t, []string{"file1"}, msg.ObjectAutoArchive.ObjectIds)
 }
 
-func TestCheckFilesOnObjectArchived_NilSession_NoEvent(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_NilSession_NoEvent(t *testing.T) {
 	// given: parent archived, file has no other backlinks, but no session
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent"}))
 
 	// when
-	err := fx.CheckFilesOnObjectArchived(nil, testSpaceId, "parent", true)
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "parent", true)
 
 	// then: file archived, nil sctx — no panic
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
 
-func TestCheckFilesOnObjectArchived_Unarchive_NoEvent(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_Unarchive_NoEvent(t *testing.T) {
 	// given: parent unarchived, file was archived
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
@@ -591,7 +591,7 @@ func TestCheckFilesOnObjectArchived_Unarchive_NoEvent(t *testing.T) {
 	sctx := session.NewContext(session.WithSession("test-token"))
 
 	// when: unarchive direction
-	err := fx.CheckFilesOnObjectArchived(sctx, testSpaceId, "parent", false)
+	err := fx.CheckObjectsOnObjectArchived(sctx, testSpaceId, "parent", false)
 
 	// then: file restored, NO auto-archive event (only archive direction emits)
 	require.NoError(t, err)

@@ -15,9 +15,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// fileGCCallRecorder records calls to CheckFilesOnLinksRemoval and CheckFilesOnLinksRestored
+// objectGCCallRecorder records calls to CheckObjectsOnLinksRemoval and CheckObjectsOnLinksRestored
 // via buffered channels so goroutine timing works in tests.
-type fileGCCallRecorder struct {
+type objectGCCallRecorder struct {
 	removedCh  chan linksRemovalCall
 	restoredCh chan linksRestoredCall
 }
@@ -35,39 +35,39 @@ type linksRestoredCall struct {
 	links     []string
 }
 
-func newFileGCCallRecorder() *fileGCCallRecorder {
-	return &fileGCCallRecorder{
+func newObjectGCCallRecorder() *objectGCCallRecorder {
+	return &objectGCCallRecorder{
 		removedCh:  make(chan linksRemovalCall, 4),
 		restoredCh: make(chan linksRestoredCall, 4),
 	}
 }
 
-func (r *fileGCCallRecorder) Init(_ *app.App) error                                  { return nil }
-func (r *fileGCCallRecorder) Name() string                                            { return "test-filegc" }
-func (r *fileGCCallRecorder) Run(_ context.Context) error                             { return nil }
-func (r *fileGCCallRecorder) Close(_ context.Context) error                           { return nil }
-func (r *fileGCCallRecorder) CheckFilesOnObjectArchived(_ session.Context, _, _ string, _ bool) error {
+func (r *objectGCCallRecorder) Init(_ *app.App) error                                  { return nil }
+func (r *objectGCCallRecorder) Name() string                                            { return "test-objectgc" }
+func (r *objectGCCallRecorder) Run(_ context.Context) error                             { return nil }
+func (r *objectGCCallRecorder) Close(_ context.Context) error                           { return nil }
+func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_ session.Context, _, _ string, _ bool) error {
 	return nil
 }
-func (r *fileGCCallRecorder) CheckFilesOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) error {
+func (r *objectGCCallRecorder) CheckObjectsOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) error {
 	r.removedCh <- linksRemovalCall{spaceId: spaceId, contextId: contextId, links: removedLinks, skipBin: skipBin}
 	return nil
 }
-func (r *fileGCCallRecorder) CheckFilesOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
+func (r *objectGCCallRecorder) CheckObjectsOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
 	r.restoredCh <- linksRestoredCall{spaceId: spaceId, contextId: contextId, links: addedLinks}
 	return nil
 }
 
-// TestSmartBlock_FileGC_LinksAdded_TriggersRestore verifies that Apply calls
-// CheckFilesOnLinksRestored when links are added from an empty state (the undo case).
+// TestSmartBlock_ObjectGC_LinksAdded_TriggersRestore verifies that Apply calls
+// CheckObjectsOnLinksRestored when links are added from an empty state (the undo case).
 // This exercises the fix for the len(linksBefore) > 0 guard that used to skip the diff.
-func TestSmartBlock_FileGC_LinksAdded_TriggersRestore(t *testing.T) {
+func TestSmartBlock_ObjectGC_LinksAdded_TriggersRestore(t *testing.T) {
 	// given – object with no link blocks initially
 	objectId := "root"
 	fx := newFixture(objectId, t)
 	fx.init(t, []*model.Block{{Id: objectId}})
 
-	recorder := newFileGCCallRecorder()
+	recorder := newObjectGCCallRecorder()
 	fx.objectGC = recorder
 
 	fx.indexer.EXPECT().Index(mock.Anything, mock.Anything).Return(nil).Maybe()
@@ -84,26 +84,26 @@ func TestSmartBlock_FileGC_LinksAdded_TriggersRestore(t *testing.T) {
 	require.NoError(t, s.InsertTo(objectId, model.Block_Inner, "link1"))
 	require.NoError(t, fx.Apply(s))
 
-	// then – CheckFilesOnLinksRestored must be called with "file1"
+	// then – CheckObjectsOnLinksRestored must be called with "file1"
 	select {
 	case call := <-recorder.restoredCh:
 		assert.Equal(t, testSpaceId, call.spaceId)
 		assert.Equal(t, objectId, call.contextId)
 		assert.Equal(t, []string{"file1"}, call.links)
 	case <-time.After(time.Second):
-		t.Fatal("timeout: CheckFilesOnLinksRestored was not called")
+		t.Fatal("timeout: CheckObjectsOnLinksRestored was not called")
 	}
 }
 
-// TestSmartBlock_FileGC_LinksRemoved_TriggersGC verifies that Apply calls
-// CheckFilesOnLinksRemoval when a link block is removed.
-func TestSmartBlock_FileGC_LinksRemoved_TriggersGC(t *testing.T) {
+// TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC verifies that Apply calls
+// CheckObjectsOnLinksRemoval when a link block is removed.
+func TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC(t *testing.T) {
 	// given – object starts empty
 	objectId := "root"
 	fx := newFixture(objectId, t)
 	fx.init(t, []*model.Block{{Id: objectId}})
 
-	recorder := newFileGCCallRecorder()
+	recorder := newObjectGCCallRecorder()
 	fx.objectGC = recorder
 
 	fx.indexer.EXPECT().Index(mock.Anything, mock.Anything).Return(nil).Maybe()
@@ -132,13 +132,13 @@ func TestSmartBlock_FileGC_LinksRemoved_TriggersGC(t *testing.T) {
 	s2.Unlink("link1")
 	require.NoError(t, fx.Apply(s2))
 
-	// then – CheckFilesOnLinksRemoval must be called with "file1"
+	// then – CheckObjectsOnLinksRemoval must be called with "file1"
 	select {
 	case call := <-recorder.removedCh:
 		assert.Equal(t, testSpaceId, call.spaceId)
 		assert.Equal(t, objectId, call.contextId)
 		assert.Contains(t, call.links, "file1")
 	case <-time.After(time.Second):
-		t.Fatal("timeout: CheckFilesOnLinksRemoval was not called")
+		t.Fatal("timeout: CheckObjectsOnLinksRemoval was not called")
 	}
 }

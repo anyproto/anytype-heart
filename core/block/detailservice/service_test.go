@@ -39,13 +39,13 @@ func (f *fileGCStub) Name() string                    { return "fileGCStub" }
 func (f *fileGCStub) Init(a *app.App) error           { return nil }
 func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
 func (f *fileGCStub) Close(ctx context.Context) error { return nil }
-func (f *fileGCStub) CheckFilesOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
+func (f *fileGCStub) CheckObjectsOnLinksRemoval(_ session.Context, spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
 	return nil
 }
-func (f *fileGCStub) CheckFilesOnObjectArchived(_ session.Context, spaceId, objectId string, isArchived bool) error {
+func (f *fileGCStub) CheckObjectsOnObjectArchived(_ session.Context, spaceId, objectId string, isArchived bool) error {
 	return nil
 }
-func (f *fileGCStub) CheckFilesOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
+func (f *fileGCStub) CheckObjectsOnLinksRestored(_ session.Context, spaceId, contextId string, addedLinks []string) error {
 	return nil
 }
 
