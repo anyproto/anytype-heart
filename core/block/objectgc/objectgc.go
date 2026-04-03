@@ -348,6 +348,14 @@ func (gc *objectGC) archiveOrphanedObjects(sctx session.Context, spaceId string,
 				log.Debugf("object %s parent %s is still active, keeping", id, parentId)
 				continue
 			}
+			// Sync-consistency check: the parent must be explicitly indexed as archived or deleted.
+			// "Not active" is not enough — the parent might simply not be indexed yet on this
+			// device due to sync lag. Without this check, GC would incorrectly archive objects
+			// whose parent has never been seen locally.
+			if !gc.isConfirmedInactive(idx, parentId) {
+				log.Debugf("object %s parent %s not confirmed inactive in store, skipping GC", id, parentId)
+				continue
+			}
 			if hasActiveBacklinks(record.Details, id, objectId, activeIds) {
 				log.Debugf("object %s has active backlinks, keeping", id)
 				continue
@@ -519,6 +527,21 @@ func (gc *objectGC) CheckObjectsOnLinksRestored(sctx session.Context, spaceId, c
 	}
 	accumulateAutoRestoreEvent(sctx, toRestore, contextId)
 	return nil
+}
+
+// isConfirmedInactive returns true only if id is explicitly indexed in the store with
+// isArchived=true or isDeleted=true. Returns false if id is missing from the store
+// (sync gap) or if it is still active. Used to guard against archiving objects whose
+// parent context has not yet been delivered by sync.
+func (gc *objectGC) isConfirmedInactive(idx spaceindex.Store, id string) bool {
+	if id == "" {
+		return false
+	}
+	d, err := idx.GetDetails(id)
+	if err != nil {
+		return false // not indexed — treat as unknown, not confirmed inactive
+	}
+	return d.GetBool(bundle.RelationKeyIsArchived) || d.GetBool(bundle.RelationKeyIsDeleted)
 }
 
 func makeGCEligibleLayouts() []int64 {

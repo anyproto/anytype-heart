@@ -247,16 +247,46 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_OtherBac
 }
 
 func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentMissingFromStore(t *testing.T) {
-	// given: file's parent is not in the store at all (fully deleted), backlinker is the last reference
+	// given: file's parent is not in the store at all (sync gap), backlinker is the last reference
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("backlinker"))
-	// "parent" is intentionally not added to the store
+	// "parent" is intentionally not added to the store — simulates sync lag
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "backlinker"}))
 
 	// when: backlinker is archived
 	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "backlinker", true)
 
-	// then: file archived — missing parent treated as deleted (safety gate passes)
+	// then: file NOT archived — parent is not confirmed inactive in the store (sync-consistency check)
+	require.NoError(t, err)
+	assert.Empty(t, fx.archiver.archivedIds)
+}
+
+func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchivedInStore(t *testing.T) {
+	// given: file's parent is confirmed archived in the store
+	fx := newFixture(t)
+	fx.addObject(t, archivedObject("parent"))
+	fx.addObject(t, regularObject("backlinker"))
+	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "backlinker"}))
+
+	// when: backlinker is archived
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "backlinker", true)
+
+	// then: file archived — parent confirmed inactive
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
+}
+
+func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentDeletedInStore(t *testing.T) {
+	// given: file's parent is confirmed deleted in the store
+	fx := newFixture(t)
+	fx.addObject(t, deletedObject("parent"))
+	fx.addObject(t, regularObject("backlinker"))
+	fx.addObject(t, fileObject("file1", "parent", []string{"parent", "backlinker"}))
+
+	// when: backlinker is archived
+	err := fx.CheckObjectsOnObjectArchived(nil, testSpaceId, "backlinker", true)
+
+	// then: file archived — parent confirmed inactive (deleted)
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
 }
