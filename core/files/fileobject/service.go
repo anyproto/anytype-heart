@@ -459,6 +459,16 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 			createState.SetDetailAndBundledRelation(k, v)
 		}
 	}
+	if req.ObjectOrigin.IsImported() && req.AdditionalDetails != nil {
+		// Preserve imported timestamps and avoid rewriting lastModified during create.
+		createState.SetChangeType(domain.ChangeTypeHistoryOperation)
+		if created := req.AdditionalDetails.GetInt64(bundle.RelationKeyCreatedDate); created > 0 {
+			createState.SetOriginalCreatedTimestamp(created)
+		}
+		if creator := req.AdditionalDetails.Get(bundle.RelationKeyCreator); creator.Ok() {
+			createState.SetLocalDetail(bundle.RelationKeyCreator, creator)
+		}
+	}
 
 	// Type will be changed after indexing, just use general type File for now
 	id, object, err = s.objectCreator.CreateSmartBlockFromStateInSpaceWithOptions(ctx, space, []domain.TypeKey{bundle.TypeKeyFile}, createState, objectcreator.WithPayload(&payload))

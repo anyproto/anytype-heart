@@ -2,6 +2,8 @@ package filter
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
@@ -111,6 +113,54 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 	}
 
 	value := filter.Value
+	if property.Format == apimodel.PropertyFormatCheckbox {
+		switch v := value.(type) {
+		case bool:
+			// Already a boolean.
+		case string:
+			trimmed := strings.TrimSpace(v)
+			parsed, err := strconv.ParseBool(trimmed)
+			if err != nil {
+				return nil, util.ErrBadInput(fmt.Sprintf("invalid boolean value %q", v))
+			}
+			value = parsed
+		}
+	}
+	if property.Format == apimodel.PropertyFormatNumber {
+		switch v := value.(type) {
+		case float64, int, int64, uint, uint64, string:
+			parsed, err := convertAnyToFloat(v)
+			if err != nil {
+				return nil, err
+			}
+			value = parsed
+		}
+	}
+	if property.Format == apimodel.PropertyFormatNumber &&
+		(filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn) {
+		switch v := value.(type) {
+		case []string:
+			values := make([]interface{}, 0, len(v))
+			for _, item := range v {
+				parsed, err := convertAnyToFloat(item)
+				if err != nil {
+					return nil, err
+				}
+				values = append(values, parsed)
+			}
+			value = values
+		case []interface{}:
+			values := make([]interface{}, 0, len(v))
+			for _, item := range v {
+				parsed, err := convertAnyToFloat(item)
+				if err != nil {
+					return nil, err
+				}
+				values = append(values, parsed)
+			}
+			value = values
+		}
+	}
 	if property.Format == apimodel.PropertyFormatSelect &&
 		(filter.Condition == model.BlockContentDataviewFilter_In || filter.Condition == model.BlockContentDataviewFilter_NotIn) {
 		var items []interface{}
@@ -155,4 +205,28 @@ func (v *Validator) convertAndValidateValue(spaceId string, filter *Filter, prop
 	}
 
 	return v.apiService.SanitizeAndValidatePropertyValue(spaceId, filter.PropertyKey, value, property, propertyMap)
+}
+
+func convertAnyToFloat(v any) (float64, error) {
+	switch n := v.(type) {
+	case float64:
+		return n, nil
+	case int:
+		return float64(n), nil
+	case int64:
+		return float64(n), nil
+	case uint:
+		return float64(n), nil
+	case uint64:
+		return float64(n), nil
+	case string:
+		trimmed := strings.TrimSpace(n)
+		parsed, err := strconv.ParseFloat(trimmed, 64)
+		if err != nil {
+			return 0, util.ErrBadInput(fmt.Sprintf("invalid number value %q", n))
+		}
+		return parsed, nil
+	default:
+		return 0, util.ErrBadInput(fmt.Sprintf("invalid number value %v", v))
+	}
 }

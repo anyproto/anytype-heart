@@ -54,7 +54,19 @@ func (f *oldFile) GetIDAndPayload(ctx context.Context, spaceId string, sn *commo
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("add file keys: %w", err)
 	}
-	objectId, err := f.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fileId)}, origin, nil)
+	objectId, err := f.fileObjectService.CreateFromImport(
+		domain.FullFileId{SpaceId: spaceId, FileId: domain.FileId(fileId)},
+		origin,
+		sn.Snapshot.Data.Details.CopyOnlyKeys(
+			bundle.RelationKeyName,
+			bundle.RelationKeyIsHiddenDiscovery,
+			bundle.RelationKeyCreatedDate,
+			bundle.RelationKeyLastModifiedDate,
+			bundle.RelationKeyAddedDate,
+			bundle.RelationKeyCreator,
+			bundle.RelationKeyLastModifiedBy,
+		),
+	)
 	if err != nil {
 		return "", treestorage.TreeStorageCreatePayload{}, fmt.Errorf("create file object: %w", err)
 	}
@@ -71,7 +83,16 @@ func uploadFile(
 ) (string, error) {
 	params := pb.RpcFileUploadRequest{
 		SpaceId: spaceId,
-		Details: details.CopyOnlyKeys(bundle.RelationKeyName, bundle.RelationKeyIsHiddenDiscovery).ToProto(),
+		// Preserve file-object timestamps from imported snapshots.
+		Details: details.CopyOnlyKeys(
+			bundle.RelationKeyName,
+			bundle.RelationKeyIsHiddenDiscovery,
+			bundle.RelationKeyCreatedDate,
+			bundle.RelationKeyLastModifiedDate,
+			bundle.RelationKeyAddedDate,
+			bundle.RelationKeyCreator,
+			bundle.RelationKeyLastModifiedBy,
+		).ToProto(),
 	}
 
 	if strings.HasPrefix(filePath, "http://") || strings.HasPrefix(filePath, "https://") {

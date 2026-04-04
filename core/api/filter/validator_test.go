@@ -1,7 +1,6 @@
 package filter_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -162,7 +161,7 @@ func TestValidator_ValidateFilters(t *testing.T) {
 				m.On("SanitizeAndValidatePropertyValue",
 					testSpaceId,
 					"age",
-					"25",
+					float64(25),
 					mockProperties["age"],
 					mockProperties,
 				).Return(float64(25), nil)
@@ -171,6 +170,62 @@ func TestValidator_ValidateFilters(t *testing.T) {
 				require.Len(t, filters.Filters, 1)
 				assert.Equal(t, "age", filters.Filters[0].PropertyKey)
 				assert.Equal(t, float64(25), filters.Filters[0].Value)
+			},
+		},
+		{
+			name: "valid checkbox filter with string value",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "is_active",
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       "true",
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("ResolvePropertyApiKey", mockProperties, "is_active").Return("is_active", true)
+				m.On("SanitizeAndValidatePropertyValue",
+					testSpaceId,
+					"is_active",
+					true,
+					mockProperties["is_active"],
+					mockProperties,
+				).Return(true, nil)
+			},
+			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
+				require.Len(t, filters.Filters, 1)
+				assert.Equal(t, "is_active", filters.Filters[0].PropertyKey)
+				assert.Equal(t, true, filters.Filters[0].Value)
+			},
+		},
+		{
+			name: "valid number in filter with string list",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "age",
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       []string{"1", "2"},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("ResolvePropertyApiKey", mockProperties, "age").Return("age", true)
+				m.On("SanitizeAndValidatePropertyValue",
+					testSpaceId,
+					"age",
+					[]interface{}{float64(1), float64(2)},
+					mockProperties["age"],
+					mockProperties,
+				).Return([]interface{}{float64(1), float64(2)}, nil)
+			},
+			checkResult: func(t *testing.T, filters *filter.ParsedFilters) {
+				require.Len(t, filters.Filters, 1)
+				assert.Equal(t, "age", filters.Filters[0].PropertyKey)
+				assert.Equal(t, []interface{}{float64(1), float64(2)}, filters.Filters[0].Value)
 			},
 		},
 		{
@@ -299,6 +354,23 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			expectedError: "invalid filter at index 0: bad input: condition \"gt\" is not valid for property type \"text\"",
 		},
 		{
+			name: "checkbox in condition is rejected",
+			filters: &filter.ParsedFilters{
+				Filters: []filter.Filter{
+					{
+						PropertyKey: "is_active",
+						Condition:   model.BlockContentDataviewFilter_In,
+						Value:       []interface{}{true},
+					},
+				},
+			},
+			setupMock: func(m *mock_filter.MockApiService) {
+				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
+				m.On("ResolvePropertyApiKey", mockProperties, "is_active").Return("is_active", true)
+			},
+			expectedError: "invalid filter at index 0: bad input: condition \"in\" is not valid for property type \"checkbox\"",
+		},
+		{
 			name: "invalid value for number property",
 			filters: &filter.ParsedFilters{
 				Filters: []filter.Filter{
@@ -312,15 +384,8 @@ func TestValidator_ValidateFilters(t *testing.T) {
 			setupMock: func(m *mock_filter.MockApiService) {
 				m.On("GetCachedProperties", testSpaceId).Return(mockProperties)
 				m.On("ResolvePropertyApiKey", mockProperties, "age").Return("age", true)
-				m.On("SanitizeAndValidatePropertyValue",
-					testSpaceId,
-					"age",
-					"not a number",
-					mockProperties["age"],
-					mockProperties,
-				).Return(nil, errors.New("invalid number format"))
 			},
-			expectedError: "invalid filter at index 0: invalid value for property \"age\": invalid number format",
+			expectedError: "invalid filter at index 0: invalid value for property \"age\": bad input: invalid number value \"not a number\"",
 		},
 		{
 			name: "empty condition with boolean value",
@@ -511,12 +576,20 @@ func TestValidator_ConditionValidation(t *testing.T) {
 				"test-key": property,
 			}
 
+			value := "test-value"
+			switch tt.propertyFormat {
+			case apimodel.PropertyFormatCheckbox:
+				value = "true"
+			case apimodel.PropertyFormatNumber:
+				value = "1"
+			}
+
 			filters := &filter.ParsedFilters{
 				Filters: []filter.Filter{
 					{
 						PropertyKey: "test-key",
 						Condition:   tt.condition,
-						Value:       "test-value",
+						Value:       value,
 					},
 				},
 			}
