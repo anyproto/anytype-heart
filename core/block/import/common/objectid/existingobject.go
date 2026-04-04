@@ -32,6 +32,10 @@ func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *
 		return id, treestorage.TreeStorageCreatePayload{}, nil
 	}
 	if getExisting {
+		id = e.getExistingObjectByID(spaceID, sn)
+		if id != "" {
+			return id, treestorage.TreeStorageCreatePayload{}, nil
+		}
 		id = e.getExistingObject(spaceID, sn)
 		if id != "" {
 			return id, treestorage.TreeStorageCreatePayload{}, nil
@@ -51,51 +55,61 @@ func (e *existingObject) GetIDAndPayload(_ context.Context, spaceID string, sn *
 
 func (e *existingObject) getObjectByOldAnytypeID(spaceID string, sn *common.Snapshot) (string, error) {
 	oldAnytypeID := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyOldAnytypeID)
+	if oldAnytypeID == "" {
+		return "", nil
+	}
 
 	// Check for imported objects
-	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyOldAnytypeID,
-				Value:       domain.String(oldAnytypeID),
-			},
-		},
-	})
-	if err == nil && len(ids) > 0 {
-		return ids[0], nil
+	records, err := e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FilterEq{
+		Key:   bundle.RelationKeyOldAnytypeID,
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: domain.String(oldAnytypeID),
+	}}, 1, 0)
+	if err == nil && len(records) > 0 {
+		return records[0].Details.GetString(bundle.RelationKeyId), nil
 	}
 
 	// Check for derived objects
-	ids, _, err = e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUniqueKey,
-				Value:       domain.String(oldAnytypeID), // Old id equals to unique key
-			},
-		},
-	})
-	if err == nil && len(ids) > 0 {
-		return ids[0], nil
+	records, err = e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FilterEq{
+		Key:   bundle.RelationKeyUniqueKey,
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: domain.String(oldAnytypeID), // Old id equals to unique key
+	}}, 1, 0)
+	if err == nil && len(records) > 0 {
+		return records[0].Details.GetString(bundle.RelationKeyId), nil
 	}
 
 	return "", err
 }
 
+func (e *existingObject) getExistingObjectByID(spaceID string, sn *common.Snapshot) string {
+	oldAnytypeID := sn.Snapshot.Data.Details.GetString(bundle.RelationKeyOldAnytypeID)
+	if oldAnytypeID == "" {
+		return ""
+	}
+	records, err := e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FilterEq{
+		Key:   bundle.RelationKeyId,
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: domain.String(oldAnytypeID),
+	}}, 1, 0)
+	if err == nil && len(records) > 0 {
+		return records[0].Details.GetString(bundle.RelationKeyId)
+	}
+	return ""
+}
+
 func (e *existingObject) getExistingObject(spaceID string, sn *common.Snapshot) string {
 	source := sn.Snapshot.Data.Details.GetString(bundle.RelationKeySourceFilePath)
-	ids, _, err := e.objectStore.SpaceIndex(spaceID).QueryObjectIds(database.Query{
-		Filters: []database.FilterRequest{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeySourceFilePath,
-				Value:       domain.String(source),
-			},
-		},
-	})
-	if err == nil && len(ids) > 0 {
-		return ids[0]
+	if source == "" {
+		return ""
+	}
+	records, err := e.objectStore.SpaceIndex(spaceID).QueryRaw(&database.Filters{FilterObj: database.FilterEq{
+		Key:   bundle.RelationKeySourceFilePath,
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: domain.String(source),
+	}}, 1, 0)
+	if err == nil && len(records) > 0 {
+		return records[0].Details.GetString(bundle.RelationKeyId)
 	}
 	return ""
 }

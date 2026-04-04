@@ -158,9 +158,15 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	}
 	oc.setFavorite(snapshot, newID)
 
-	oc.setArchived(ctx, snapshot, newID)
+	wasUnarchived := oc.setArchived(ctx, snapshot, newID)
 
 	syncErr := oc.syncFilesAndLinks(dataObject.newIdsSet, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
+	if wasUnarchived {
+		// Unarchive mutates archive collection links and bumps modified time.
+		// For import with UpdateExistingObjects=true we must keep snapshot
+		// lastModifiedDate, so we re-apply it after archive+sync side effects finish.
+		oc.restoreLastModifiedDate(snapshot, newID)
+	}
 	if syncErr != nil {
 		if errors.Is(syncErr, common.ErrFileLoad) {
 			return respDetails, newID, syncErr
@@ -415,15 +421,54 @@ func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID strin
 	}
 }
 
-func (oc *ObjectCreator) setArchived(ctx context.Context, snapshot *common.StateSnapshot, newID string) {
-	isArchive := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
-	if isArchive {
-		err := oc.detailsService.SetIsArchived(ctx, newID, true)
-		if err != nil {
-			log.With(zap.String("object id", newID)).
-				Errorf("failed to set isFavorite when importing object %s: %s", newID, err)
-		}
+func (oc *ObjectCreator) setArchived(ctx context.Context, snapshot *common.StateSnapshot, newID string) bool {
+	desiredArchived := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
+	currentArchived, err := oc.isArchived(newID)
+	if err != nil {
+		log.With(zap.String("object id", newID)).
+			Errorf("failed to get current archived status during import %s: %s", newID, err)
+		return false
 	}
+	if desiredArchived == currentArchived {
+		return false
+	}
+	err = oc.detailsService.SetIsArchived(ctx, newID, desiredArchived)
+	if err != nil {
+		log.With(zap.String("object id", newID)).
+			Errorf("failed to set isArchived when importing object %s: %s", newID, err)
+		return false
+	}
+	return !desiredArchived && currentArchived
+}
+
+func (oc *ObjectCreator) restoreLastModifiedDate(snapshot *common.StateSnapshot, objectID string) {
+	if !snapshot.Details.Has(bundle.RelationKeyLastModifiedDate) {
+		return
+	}
+	err := cache.Do(oc.objectGetterDeleter, objectID, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.Get(bundle.RelationKeyLastModifiedDate))
+		// Use local details + NoHistory here to avoid generating a new user
+		// change that would overwrite lastModifiedDate with "now". Do not change
+		// global SetIsArchived semantics; keep this scoped to restore flow.
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
+	})
+	if err != nil {
+		log.With(zap.String("object id", objectID)).
+			Errorf("failed to restore lastModifiedDate after unarchive: %s", err)
+	}
+}
+
+func (oc *ObjectCreator) isArchived(objectID string) (bool, error) {
+	var archived bool
+	err := cache.Do(oc.objectGetterDeleter, objectID, func(b smartblock.SmartBlock) error {
+		archived = b.CombinedDetails().GetBool(bundle.RelationKeyIsArchived)
+		return nil
+	})
+	if err != nil {
+		return false, fmt.Errorf("get object details: %w", err)
+	}
+	return archived, nil
 }
 
 func (oc *ObjectCreator) syncFilesAndLinks(newIdsSet map[string]struct{}, id domain.FullID, origin objectorigin.ObjectOrigin) error {
