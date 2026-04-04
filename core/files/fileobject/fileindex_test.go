@@ -12,7 +12,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/mock_files"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -228,6 +230,52 @@ func TestIndexer_addFromObjectStore(t *testing.T) {
 		}
 
 		assert.ElementsMatch(t, want, got)
+	})
+}
+
+func TestIndexer_injectMetadataToState(t *testing.T) {
+	t.Run("imported dates and identity keys are preserved after metadata injection", func(t *testing.T) {
+		// given
+		fx := newIndexerFixture(t)
+		ctx := context.Background()
+
+		fileId := domain.FullFileId{SpaceId: "space1", FileId: testFileId}
+		objectId := domain.FullID{SpaceID: "space1", ObjectID: "obj1"}
+
+		// File infos with filesystem-derived timestamps that differ from import values.
+		infos := []*storage.FileInfo{
+			{
+				Name:             "name",
+				Media:            "application/pdf",
+				Mill:             mill.BlobId,
+				LastModifiedDate: 9000,
+				Added:            8000,
+			},
+		}
+
+		// Build a state with import-provided details already set (simulating what
+		// createInSpace does before calling injectMetadataToState).
+		st := state.NewDoc("root", nil).(*state.State)
+		fileblocks.InitEmptyFileState(st)
+		importDetails := domain.NewDetails()
+		importDetails.SetInt64(bundle.RelationKeyCreatedDate, 1000)
+		importDetails.SetInt64(bundle.RelationKeyLastModifiedDate, 2000)
+		importDetails.SetInt64(bundle.RelationKeyAddedDate, 3000)
+		importDetails.SetString(bundle.RelationKeyCreator, "importCreator")
+		importDetails.SetString(bundle.RelationKeyLastModifiedBy, "importEditor")
+		st.SetDetails(importDetails)
+
+		// when
+		err := fx.injectMetadataToState(ctx, st, infos, fileId, objectId)
+
+		// then
+		require.NoError(t, err)
+		got := st.CombinedDetails()
+		assert.Equal(t, int64(1000), got.GetInt64(bundle.RelationKeyCreatedDate))
+		assert.Equal(t, int64(2000), got.GetInt64(bundle.RelationKeyLastModifiedDate))
+		assert.Equal(t, int64(3000), got.GetInt64(bundle.RelationKeyAddedDate))
+		assert.Equal(t, "importCreator", got.GetString(bundle.RelationKeyCreator))
+		assert.Equal(t, "importEditor", got.GetString(bundle.RelationKeyLastModifiedBy))
 	})
 }
 
