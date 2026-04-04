@@ -91,6 +91,10 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	newID := oldIDtoNew[sn.Id]
 
 	if sn.Snapshot.SbType == coresb.SmartBlockTypeFile {
+		// Legacy file snapshots resolve to file-object ids via object-id providers.
+		// Apply imported details directly to the resolved file object so replace/import
+		// keeps snapshot metadata (for example name and dates).
+		oc.restoreLegacyFileDetails(snapshot, newID)
 		return nil, newID, nil
 	}
 
@@ -144,7 +148,10 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 	if err != nil {
 		log.With("objectID", newID).Errorf("failed to install bundled relations and types: %s", err)
 	}
-	var respDetails *domain.Details
+	var (
+		respDetails *domain.Details
+		isExisting  bool
+	)
 	if payload := dataObject.createPayloads[newID]; payload.RootRawChange != nil {
 		respDetails, err = oc.createNewObject(ctx, spaceID, payload, st, newID, oldIDtoNew)
 		if err != nil {
@@ -152,15 +159,29 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 			return nil, "", err
 		}
 	} else {
+		isExisting = true
 		if canUpdateObject(sn.Snapshot.SbType) {
 			respDetails = oc.updateExistingObject(st, oldIDtoNew, newID)
 		}
 	}
 	oc.setFavorite(snapshot, newID)
 
-	oc.setArchived(ctx, snapshot, newID)
+	wasUnarchived := oc.setArchived(ctx, snapshot, newID)
 
 	syncErr := oc.syncFilesAndLinks(dataObject.newIdsSet, domain.FullID{SpaceID: spaceID, ObjectID: newID}, origin)
+	if isExisting || wasUnarchived {
+		// Keep backup timestamp semantics for replace/existing-object import after
+		// archive/sync side-effects that can bump modified time.
+		// wasUnarchived covers the create-but-tree-exists path: the payload has
+		// RootRawChange so isExisting is false, yet the object may already exist
+		// (ErrTreeExists fallback) and have been archived before this import.
+		oc.restoreLastModifiedDate(snapshot, newID)
+	}
+	if isExisting && sn.Snapshot.SbType == coresb.SmartBlockTypeFileObject {
+		// File objects can retain runtime metadata despite resetState; re-apply
+		// imported file details explicitly for replace on existing objects.
+		oc.restoreLegacyFileDetails(snapshot, newID)
+	}
 	if syncErr != nil {
 		if errors.Is(syncErr, common.ErrFileLoad) {
 			return respDetails, newID, syncErr
@@ -172,7 +193,6 @@ func (oc *ObjectCreator) Create(dataObject *DataObject, sn *common.Snapshot) (*d
 func canUpdateObject(sbType coresb.SmartBlockType) bool {
 	return sbType != coresb.SmartBlockTypeRelation &&
 		sbType != coresb.SmartBlockTypeRelationOption &&
-		sbType != coresb.SmartBlockTypeFileObject &&
 		sbType != coresb.SmartBlockTypeParticipant
 }
 
@@ -415,15 +435,102 @@ func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID strin
 	}
 }
 
-func (oc *ObjectCreator) setArchived(ctx context.Context, snapshot *common.StateSnapshot, newID string) {
-	isArchive := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
-	if isArchive {
-		err := oc.detailsService.SetIsArchived(ctx, newID, true)
-		if err != nil {
-			log.With(zap.String("object id", newID)).
-				Errorf("failed to set isFavorite when importing object %s: %s", newID, err)
+func (oc *ObjectCreator) setArchived(ctx context.Context, snapshot *common.StateSnapshot, newID string) bool {
+	desiredArchived := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
+	currentArchived, err := oc.isArchived(newID)
+	if err != nil {
+		log.With(zap.String("object id", newID)).
+			Errorf("failed to get current archived status during import %s: %s", newID, err)
+		return false
+	}
+	if desiredArchived == currentArchived {
+		return false
+	}
+	err = oc.detailsService.SetIsArchived(ctx, newID, desiredArchived)
+	if err != nil {
+		log.With(zap.String("object id", newID)).
+			Errorf("failed to set isArchived when importing object %s: %s", newID, err)
+		return false
+	}
+	return !desiredArchived && currentArchived
+}
+
+func (oc *ObjectCreator) restoreLastModifiedDate(snapshot *common.StateSnapshot, objectID string) {
+	if !snapshot.Details.Has(bundle.RelationKeyLastModifiedDate) {
+		return
+	}
+	err := cache.Do(oc.objectGetterDeleter, objectID, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetLocalDetail(bundle.RelationKeyLastModifiedDate, snapshot.Details.Get(bundle.RelationKeyLastModifiedDate))
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
+	})
+	if err != nil {
+		log.With(zap.String("object id", objectID)).
+			Errorf("failed to restore lastModifiedDate after import: %s", err)
+	}
+}
+
+func (oc *ObjectCreator) isArchived(objectID string) (bool, error) {
+	var archived bool
+	err := cache.Do(oc.objectGetterDeleter, objectID, func(b smartblock.SmartBlock) error {
+		archived = b.CombinedDetails().GetBool(bundle.RelationKeyIsArchived)
+		return nil
+	})
+	if err != nil {
+		return false, fmt.Errorf("get object details: %w", err)
+	}
+	return archived, nil
+}
+
+func (oc *ObjectCreator) restoreLegacyFileDetails(snapshot *common.StateSnapshot, objectID string) {
+	keys := []domain.RelationKey{
+		bundle.RelationKeyName,
+		bundle.RelationKeyIsHiddenDiscovery,
+		bundle.RelationKeyCreatedDate,
+		bundle.RelationKeyLastModifiedDate,
+		bundle.RelationKeyAddedDate,
+		bundle.RelationKeyCreator,
+		bundle.RelationKeyLastModifiedBy,
+	}
+	restoredFileName := snapshot.Details.GetString(bundle.RelationKeyName)
+	if restoredFileName == "" {
+		restoredFileName = firstSnapshotFileBlockName(snapshot)
+	}
+	err := cache.Do(oc.objectGetterDeleter, objectID, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		for _, key := range keys {
+			if snapshot.Details.Has(key) {
+				st.SetLocalDetail(key, snapshot.Details.Get(key))
+			}
+		}
+		if restoredFileName != "" {
+			// File-object reads can use the file block caption/name; keep it in sync with
+			// restored details for replace/updateExisting import.
+			if iterErr := st.Iterate(func(bl simple.Block) (isContinue bool) {
+				if file := bl.Model().GetFile(); file != nil {
+					file.Name = restoredFileName
+					return false
+				}
+				return true
+			}); iterErr != nil {
+				return iterErr
+			}
+		}
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.KeepInternalFlags)
+	})
+	if err != nil {
+		log.With(zap.String("object id", objectID)).
+			Errorf("failed to restore legacy file details after import: %s", err)
+	}
+}
+
+func firstSnapshotFileBlockName(snapshot *common.StateSnapshot) string {
+	for _, block := range snapshot.Blocks {
+		if file := block.GetFile(); file != nil && file.Name != "" {
+			return file.Name
 		}
 	}
+	return ""
 }
 
 func (oc *ObjectCreator) syncFilesAndLinks(newIdsSet map[string]struct{}, id domain.FullID, origin objectorigin.ObjectOrigin) error {
