@@ -973,16 +973,16 @@ func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filte
 			Key: domain.RelationKey(relKey),
 		}
 
-		typeUniqueKeys, err = s.typesRecommendingRelation(relKey)
-		if err != nil || len(typeUniqueKeys) == 0 {
+		typeIds, err := s.typesRecommendingRelation(relKey)
+		if err != nil || len(typeIds) == 0 {
 			relTypeFilter = append(relTypeFilter, existsFilter)
 			continue
 		}
 
 		nestedTypeFilter, err := database.MakeFilter("", database.FilterRequest{
-			RelationKey: database.NestedRelationKey(bundle.RelationKeyType, bundle.RelationKeyUniqueKey),
+			RelationKey: bundle.RelationKeyType,
 			Condition:   model.BlockContentDataviewFilter_In,
-			Value:       domain.StringList(typeUniqueKeys),
+			Value:       domain.StringList(typeIds),
 		}, s.objectStore)
 		if err != nil {
 			relTypeFilter = append(relTypeFilter, existsFilter)
@@ -1027,13 +1027,13 @@ func (s *spaceSubscriptions) typesRecommendingRelation(relKey string) ([]string,
 		return nil, fmt.Errorf("query types recommending relation: %w", err)
 	}
 
-	var typeUniqueKeys []string
+	var typeIds []string
 	for _, rec := range records {
-		if uk := rec.Details.GetString(bundle.RelationKeyUniqueKey); uk != "" {
-			typeUniqueKeys = append(typeUniqueKeys, uk)
+		if typeId := rec.Details.GetString(bundle.RelationKeyId); typeId != "" {
+			typeIds = append(typeIds, typeId)
 		}
 	}
-	return typeUniqueKeys, nil
+	return typeIds, nil
 }
 
 func (s *spaceSubscriptions) depIdsFromFilter(filters []database.FilterRequest) (depIds []string) {
