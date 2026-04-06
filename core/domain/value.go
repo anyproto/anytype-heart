@@ -30,7 +30,8 @@ const (
 	ValueTypeFloat
 	ValueTypeStringList
 	ValueTypeFloatList
-	ValueTypeMap = 7
+	ValueTypeMap     = 7
+	ValueTypeMapList = 8
 )
 
 func (t ValueType) String() string {
@@ -47,8 +48,12 @@ func (t ValueType) String() string {
 		return "float"
 	case ValueTypeStringList:
 		return "string list"
+	case ValueTypeFloatList:
+		return "float list"
 	case ValueTypeMap:
 		return "map"
+	case ValueTypeMapList:
+		return "map list"
 	default:
 		return "invalid"
 	}
@@ -94,6 +99,10 @@ func Float64List(v []float64) Value {
 	return Value{ok: true, value: v}
 }
 
+func MapList(v []ValueMap) Value {
+	return Value{ok: true, value: v}
+}
+
 func ValueList(vs []Value) Value {
 	// Prefer string list
 	if len(vs) == 0 {
@@ -112,6 +121,13 @@ func ValueList(vs []Value) Value {
 			floats = append(floats, v.Float64())
 		}
 		return Float64List(floats)
+	}
+	if vs[0].IsMapValue() {
+		maps := make([]ValueMap, 0, len(vs))
+		for _, v := range vs {
+			maps = append(maps, v.MapValue())
+		}
+		return MapList(maps)
 	}
 	return StringList(nil)
 }
@@ -155,6 +171,14 @@ func ValueFromProto(value *types.Value) Value {
 		if list := pbtypes.ListValueToFloats(value.GetListValue()); len(list) > 0 {
 			return Float64List(list)
 		}
+		if list := pbtypes.ListValueToStructs(value.GetListValue()); len(list) > 0 {
+			values := make([]Value, 0, len(list))
+			for _, val := range value.GetListValue().Values {
+				values = append(values, ValueFromProto(val))
+			}
+			return ValueList(values)
+		}
+
 		return StringList(pbtypes.ListValueToStrings(value.GetListValue()))
 	}
 	return Null()
@@ -409,6 +433,13 @@ func (v Value) TryListValues() ([]Value, bool) {
 		}
 		return res, true
 	}
+	if v, ok := v.TryMapList(); ok {
+		res := make([]Value, 0, len(v))
+		for _, m := range v {
+			res = append(res, Value{ok: true, value: m})
+		}
+		return res, true
+	}
 	return nil, false
 }
 
@@ -439,6 +470,30 @@ func (v Value) TryMapValue() (ValueMap, bool) {
 	return m, ok
 }
 
+func (v Value) IsMapList() bool {
+	if !v.ok {
+		return false
+	}
+	_, ok := v.value.([]ValueMap)
+	return ok
+}
+
+func (v Value) TryMapList() ([]ValueMap, bool) {
+	if !v.ok {
+		return nil, false
+	}
+	l, ok := v.value.([]ValueMap)
+	return l, ok
+}
+
+func (v Value) MapListValue() []ValueMap {
+	l, ok := v.TryMapList()
+	if !ok {
+		return nil
+	}
+	return l
+}
+
 func (v Value) Type() ValueType {
 	if !v.ok {
 		return ValueTypeNone
@@ -458,6 +513,8 @@ func (v Value) Type() ValueType {
 		return ValueTypeFloatList
 	case ValueMap:
 		return ValueTypeMap
+	case []ValueMap:
+		return ValueTypeMapList
 	default:
 		return ValueTypeNone
 	}
@@ -486,6 +543,16 @@ func (v Value) ToProto() *types.Value {
 			s.Fields[k] = val.ToProto()
 		}
 		return pbtypes.Struct(s)
+	case []ValueMap:
+		vals := make([]*types.Value, 0, len(v))
+		for _, m := range v {
+			s := &types.Struct{Fields: make(map[string]*types.Value, m.Len())}
+			for k, val := range m.Iterate() {
+				s.Fields[k] = val.ToProto()
+			}
+			vals = append(vals, pbtypes.Struct(s))
+		}
+		return &types.Value{Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}}}
 	default:
 		panic("integrity violation")
 	}
@@ -577,6 +644,14 @@ func (v Value) Compare(other Value) int {
 		}
 	}
 
+	{
+		v1, ok := v.TryMapList()
+		v2, _ := other.TryMapList()
+		if ok {
+			return compareMapLists(v1, v2)
+		}
+	}
+
 	return 0
 }
 
@@ -603,6 +678,21 @@ func compareMaps(a, b ValueMap) int {
 		}
 	}
 
+	return 0
+}
+
+func compareMapLists(a, b []ValueMap) int {
+	if len(a) < len(b) {
+		return -1
+	}
+	if len(a) > len(b) {
+		return 1
+	}
+	for i := range a {
+		if res := compareMaps(a[i], b[i]); res != 0 {
+			return res
+		}
+	}
 	return 0
 }
 
@@ -691,6 +781,22 @@ func (v Value) Equal(other Value) bool {
 		}
 	}
 
+	{
+		v1, ok := v.TryMapList()
+		v2, _ := other.TryMapList()
+		if ok {
+			if len(v1) != len(v2) {
+				return false
+			}
+			for i := range v1 {
+				if !v1[i].Equal(v2[i]) {
+					return false
+				}
+			}
+			return true
+		}
+	}
+
 	return false
 }
 
@@ -704,6 +810,7 @@ type ValueMatcher struct {
 	Float64List func(v []float64)
 	Int64List   func(v []int64)
 	MapValue    func(valueMap ValueMap)
+	MapList     func(v []ValueMap)
 }
 
 func (v Value) Match(matcher ValueMatcher) {
@@ -737,6 +844,9 @@ func (v Value) Match(matcher ValueMatcher) {
 	if v.IsMapValue() && matcher.MapValue != nil {
 		matcher.MapValue(v.MapValue())
 	}
+	if v.IsMapList() && matcher.MapList != nil {
+		matcher.MapList(v.MapListValue())
+	}
 }
 
 func (v Value) IsEmpty() bool {
@@ -766,6 +876,9 @@ func (v Value) IsEmpty() bool {
 		MapValue: func(v ValueMap) {
 			ok = v.Len() == 0
 		},
+		MapList: func(v []ValueMap) {
+			ok = len(v) == 0
+		},
 	})
 	return ok
 }
@@ -794,6 +907,19 @@ func (v Value) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
 		lst := arena.NewArray()
 		for i, it := range v {
 			lst.SetArrayItem(i, arena.NewNumberFloat64(it))
+		}
+		return lst
+	case ValueMap:
+		obj := arena.NewObject()
+		for k, val := range v.Iterate() {
+			anyVal := val.ToAnyEnc(arena)
+			obj.Set(k, anyVal)
+		}
+		return obj
+	case []ValueMap:
+		lst := arena.NewArray()
+		for i, m := range v {
+			lst.SetArrayItem(i, m.ToAnyEnc(arena))
 		}
 		return lst
 	default:
