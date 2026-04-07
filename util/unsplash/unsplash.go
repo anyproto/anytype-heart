@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -241,7 +241,8 @@ func (l *unsplashService) Download(ctx context.Context, id string) (imgPath stri
 		return "", fmt.Errorf("failed to download file from unsplash: %w", err)
 	}
 	defer resp.Body.Close()
-	tmpfile, err := ioutil.TempFile(l.tempDirProvider.TempDir(), picture.ID)
+	ext := extensionFromContentType(resp.Header.Get("Content-Type"))
+	tmpfile, err := os.CreateTemp(l.tempDirProvider.TempDir(), picture.ID+"*"+ext)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %w", err)
 	}
@@ -302,6 +303,22 @@ func injectIntoExif(filePath, artistName, artistUrl, description string) error {
 		return fmt.Errorf("failed to write exif: %w", err)
 	}
 	return nil
+}
+
+func extensionFromContentType(contentType string) string {
+	if contentType == "" {
+		return ".jpg"
+	}
+	// mime.ExtensionsByType returns extensions alphabetically,
+	// so image/jpeg gives ".jpe" instead of ".jpeg"
+	if contentType == "image/jpeg" {
+		return ".jpg"
+	}
+	exts, err := mime.ExtensionsByType(contentType)
+	if err == nil && len(exts) > 0 {
+		return exts[0]
+	}
+	return ".jpg"
 }
 
 func init() {
