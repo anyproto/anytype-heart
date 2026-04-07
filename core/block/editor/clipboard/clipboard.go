@@ -75,6 +75,12 @@ func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, gr
 		return nil, nil, caretPosition, false, err
 	}
 
+	for _, b := range req.AnySlot {
+		if b.Id == template.FeaturedRelationsId {
+			return nil, nil, caretPosition, false, fmt.Errorf("paste: block %q is a system block and cannot be pasted", b.Id)
+		}
+	}
+
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
 		return
@@ -104,12 +110,6 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 	if len(req.Blocks) == 0 {
 		return textSlot, htmlSlot, anySlot, fmt.Errorf("copy: no blocks")
-	}
-
-	for _, b := range req.Blocks {
-		if b.Id == template.FeaturedRelationsId {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("copy: block %q is a system block and cannot be copied", b.Id)
-		}
 	}
 
 	s := cb.blocksToState(req.Blocks)

@@ -838,6 +838,33 @@ func TestClipboard_TitleOps(t *testing.T) {
 			require.True(t, hasBlockId)
 		})
 	}
+	t.Run("paste - when pasted blocks contain featuredRelations system block", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		cb := newFixture(t, sb)
+
+		// when
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			AnySlot: []*model.Block{
+				{
+					Id: "paste1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: "some text"},
+					},
+				},
+				{
+					Id:      template.FeaturedRelationsId,
+					Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
+				},
+			},
+		}, "")
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "system block")
+		assert.Contains(t, err.Error(), template.FeaturedRelationsId)
+	})
 	t.Run("paste - when insert partially", func(t *testing.T) {
 		// given
 		sb := smarttest.New("text")
@@ -1648,27 +1675,6 @@ func Test_CopyAndCutText(t *testing.T) {
 		assert.Len(t, anySlotCut, 1)
 	})
 
-	t.Run("copy - featuredRelations system block is rejected", func(t *testing.T) {
-		// given
-		sb := smarttest.New("text")
-		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
-		cb := newFixture(t, sb)
-
-		// when
-		_, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
-			Blocks: []*model.Block{
-				{
-					Id:      template.FeaturedRelationsId,
-					Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
-				},
-			},
-		})
-
-		// then
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "system block")
-		assert.Contains(t, err.Error(), template.FeaturedRelationsId)
-	})
 }
 
 func givenRow3Level1NumberedBlock(s *state.State) *model.Block {
