@@ -28,7 +28,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -59,9 +59,12 @@ type Service interface {
 	SetSpaceInfo(spaceId string, details *domain.Details) error
 
 	SetIsFavorite(objectId string, isFavorite bool) error
-	SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
+	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
 	SetListIsFavorite(objectIds []string, isFavorite bool) error
-	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
+	// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
+	// Used by callers that must act on GC results without re-entering the GC loop.
+	SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 func New() Service {
@@ -78,7 +81,7 @@ type service struct {
 	spaceService space.Service
 	store        objectstore.ObjectStore
 	fileService  fileService
-	fileGC       filegc.FileGC
+	objectGC     objectgc.ObjectGC
 
 	componentCtx    context.Context
 	componentCancel context.CancelFunc
@@ -90,7 +93,7 @@ func (s *service) Init(a *app.App) error {
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.store = app.MustComponent[objectstore.ObjectStore](a)
 	s.fileService = app.MustComponent[fileService](a)
-	s.fileGC = app.MustComponent[filegc.FileGC](a)
+	s.objectGC = app.MustComponent[objectgc.ObjectGC](a)
 
 	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
 	return nil

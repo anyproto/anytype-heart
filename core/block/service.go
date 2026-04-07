@@ -56,7 +56,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
@@ -138,7 +138,7 @@ type Service struct {
 
 	fileUploaderService fileuploader.Service
 	fileOffloader       fileoffloader.Service
-	fileGC              filegc.FileGC
+	objectGC            objectgc.ObjectGC
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -180,7 +180,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
-	s.fileGC = app.MustComponent[filegc.FileGC](a)
+	s.objectGC = app.MustComponent[objectgc.ObjectGC](a)
 	return
 }
 
@@ -572,7 +572,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if id == spc.DerivedIDs().Archive {
 		return fmt.Errorf("cannot delete archive object")
 	}
-	// we need to do it outside of cache.Do to avoid deadlock via filegc
+	// we need to do it outside of cache.Do to avoid deadlock via objectgc
 	err = s.DeleteObject(id)
 	if err != nil {
 		return fmt.Errorf("delete object: %w", err)

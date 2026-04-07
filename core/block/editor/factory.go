@@ -38,7 +38,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
@@ -100,7 +100,7 @@ type ObjectFactory struct {
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
 	formatFetcher           relationutils.RelationFormatFetcher
-	fileGC                  filegc.FileGC
+	objectGC                objectgc.ObjectGC
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -133,7 +133,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 	f.dbProvider = app.MustComponent[anystoreprovider.Provider](a)
 	f.chatRepositoryService = app.MustComponent[chatrepository.Service](a)
 	f.chatSubscriptionService = app.MustComponent[chatsubscription.Service](a)
-	f.fileGC = app.MustComponent[filegc.FileGC](a)
+	f.objectGC = app.MustComponent[objectgc.ObjectGC](a)
 	f.statService, err = app.GetComponent[debugstat.StatService](a)
 	f.backlinksUpdater = app.MustComponent[backlinks.UpdateWatcher](a)
 	if err != nil {
@@ -216,7 +216,7 @@ func (f *ObjectFactory) produceSmartblock(space smartblock.Space) (smartblock.Sm
 		f.eventSender,
 		f.spaceIdResolver,
 		f.formatFetcher,
-		f.fileGC,
+		f.objectGC,
 	), store
 }
 

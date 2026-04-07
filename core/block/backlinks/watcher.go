@@ -278,7 +278,7 @@ func (w *watcher) updateBackLinksInObject(id domain.FullID, backlinksUpdate *bac
 		err = spc.DoLockedIfNotExists(id.ObjectID, func() error {
 			return w.store.SpaceIndex(id.SpaceID).ModifyObjectDetails(id.ObjectID, func(details *domain.Details) (*domain.Details, bool, error) {
 				return updateBacklinks(details, backlinksUpdate)
-			})
+			}, false)
 		})
 	}
 

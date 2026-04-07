@@ -70,7 +70,7 @@ type Store interface {
 	UpdateObjectLinks(ctx context.Context, id string, links []string) error
 	UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
-	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error
+	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error
 
 	DeleteObject(id string) error
 	DeleteDetails(ctx context.Context, ids []string) error

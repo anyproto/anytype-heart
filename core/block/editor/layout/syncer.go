@@ -248,7 +248,7 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, needAppl
 			}
 			details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 			return details, true, nil
-		})
+		}, true)
 	})
 
 	if !errors.Is(err, ocache.ErrExists) {
