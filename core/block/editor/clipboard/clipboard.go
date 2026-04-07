@@ -106,6 +106,12 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 		return textSlot, htmlSlot, anySlot, fmt.Errorf("copy: no blocks")
 	}
 
+	for _, b := range req.Blocks {
+		if b.Id == template.FeaturedRelationsId {
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("copy: block %q is a system block and cannot be copied", b.Id)
+		}
+	}
+
 	s := cb.blocksToState(req.Blocks)
 
 	textSlot = renderText(s, len(req.Blocks) == 1)

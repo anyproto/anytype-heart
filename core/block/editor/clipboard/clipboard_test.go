@@ -1647,6 +1647,28 @@ func Test_CopyAndCutText(t *testing.T) {
 		assert.Len(t, anySlotCopy, 1)
 		assert.Len(t, anySlotCut, 1)
 	})
+
+	t.Run("copy - featuredRelations system block is rejected", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		cb := newFixture(t, sb)
+
+		// when
+		_, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks: []*model.Block{
+				{
+					Id:      template.FeaturedRelationsId,
+					Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
+				},
+			},
+		})
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "system block")
+		assert.Contains(t, err.Error(), template.FeaturedRelationsId)
+	})
 }
 
 func givenRow3Level1NumberedBlock(s *state.State) *model.Block {
