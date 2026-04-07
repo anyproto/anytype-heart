@@ -531,7 +531,7 @@ func (s *service) addDetailsToTemplateState(st *state.State, details *domain.Det
 	}
 
 	// Merge multi-value relations (tag, object, file) from template and incoming details
-	if s.formatFetcher != nil && st.Details() != nil {
+	if st.Details() != nil {
 		for key, incomingVal := range toAdd.Iterate() {
 			templateVal := st.Details().GetStringList(key)
 			if len(templateVal) == 0 {
