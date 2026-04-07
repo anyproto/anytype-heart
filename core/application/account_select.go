@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype"
 	"github.com/anyproto/anytype-heart/core/anytype/account"
+	"github.com/anyproto/anytype-heart/core/anytype/config"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
@@ -64,6 +65,10 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		// TODO What should we do?
 		// objectCache := app.MustComponent[objectcache.Cache](s.app)
 		// objectCache.CloseBlocks()
+
+		if req.EnableMembershipV2 {
+			s.app.MustComponent(config.CName).(*config.Config).EnableMembershipV2 = true
+		}
 
 		acc := &model.Account{Id: req.Id}
 		var err error
