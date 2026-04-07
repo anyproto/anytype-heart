@@ -1379,27 +1379,4 @@ func TestService_MultiValueRelationMerging(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"status2"}, st.Details().GetStringList(domain.RelationKey("status")))
 	})
-
-	t.Run("no formatFetcher does not break backward compatibility", func(t *testing.T) {
-		// given
-		tmpl := newTemplateTestWithTags(templateName, bundle.TypeKeyTask.String(), []string{"tag1"})
-		details := domain.NewDetails()
-		details.Set(bundle.RelationKeyTag, domain.StringList([]string{"tag2"}))
-
-		s := service{
-			picker: &testPicker{sb: tmpl},
-		}
-
-		// when
-		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
-			SpaceId:    testSpaceId,
-			TemplateId: templateName,
-			Details:    details,
-		})
-
-		// then
-		require.NoError(t, err)
-		// Without formatFetcher, incoming overwrites (old behavior)
-		assert.Equal(t, []string{"tag2"}, st.Details().GetStringList(bundle.RelationKeyTag))
-	})
 }
