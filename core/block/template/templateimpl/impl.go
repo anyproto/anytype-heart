@@ -531,20 +531,18 @@ func (s *service) addDetailsToTemplateState(st *state.State, details *domain.Det
 	}
 
 	// Merge multi-value relations (tag, object, file) from template and incoming details
-	if st.Details() != nil {
-		for key, incomingVal := range toAdd.Iterate() {
-			templateVal := st.Details().GetStringList(key)
-			if len(templateVal) == 0 {
-				continue
-			}
-			format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, key)
-			if err != nil {
-				continue
-			}
-			if isMultiValueRelationFormat(format) {
-				merged := lo.Uniq(append(templateVal, incomingVal.StringList()...))
-				toAdd.Set(key, domain.StringList(merged))
-			}
+	for key, incomingVal := range toAdd.Iterate() {
+		templateVal := st.Details().GetStringList(key)
+		if len(templateVal) == 0 {
+			continue
+		}
+		format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, key)
+		if err != nil {
+			continue
+		}
+		if isMultiValueRelationFormat(format) {
+			merged := lo.Uniq(append(templateVal, incomingVal.StringList()...))
+			toAdd.Set(key, domain.StringList(merged))
 		}
 	}
 
