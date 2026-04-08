@@ -880,15 +880,17 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 		})
 
 		// then
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.True(t, isChat)
 		require.Len(t, docs, totalMessages)
 
-		// Verify ordering: docs should be in ascending order
-		assert.Equal(t, chatId+"/m/msg001", docs[0].Id)
-		assert.Contains(t, docs[0].Text, "Message 1")
-		assert.Equal(t, chatId+fmt.Sprintf("/m/msg%03d", totalMessages), docs[totalMessages-1].Id)
-		assert.Contains(t, docs[totalMessages-1].Text, fmt.Sprintf("Message %d", totalMessages))
+		// Verify all messages are present
+		docIds := make(map[string]struct{}, len(docs))
+		for _, doc := range docs {
+			docIds[doc.Id] = struct{}{}
+		}
+		assert.Contains(t, docIds, chatId+"/m/msg001")
+		assert.Contains(t, docIds, chatId+fmt.Sprintf("/m/msg%03d", totalMessages))
 	})
 
 	t.Run("chat object", func(t *testing.T) {

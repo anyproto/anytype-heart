@@ -355,13 +355,11 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 const chatMessagesBatchSize = 100
 
 func (i *indexer) prepareChatSearchDocsAll(ctx context.Context, repository chatrepository.Repository, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
-	var lastOrderId string
+	var beforeOrderId string
 	for {
 		req := chatrepository.GetMessagesRequest{Limit: chatMessagesBatchSize}
-		if lastOrderId != "" {
-			req.AfterOrderId = lastOrderId
-		} else {
-			req.OrderAsc = true
+		if beforeOrderId != "" {
+			req.BeforeOrderId = beforeOrderId
 		}
 		batch, batchErr := repository.GetMessages(ctx, req)
 		if batchErr != nil {
@@ -376,7 +374,8 @@ func (i *indexer) prepareChatSearchDocsAll(ctx context.Context, repository chatr
 		if len(batch) < chatMessagesBatchSize {
 			break
 		}
-		lastOrderId = batch[len(batch)-1].OrderId
+		// Results are sorted ascending by queryMessages, so first element has the smallest OrderId
+		beforeOrderId = batch[0].OrderId
 	}
 	return docs, nil
 }

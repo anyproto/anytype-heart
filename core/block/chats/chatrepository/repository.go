@@ -499,7 +499,6 @@ type GetMessagesRequest struct {
 	BeforeOrderId   string
 	Limit           int
 	IncludeBoundary bool
-	OrderAsc        bool // When true and no order ID filters set, sort ascending
 }
 
 func (s *repository) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error) {
@@ -517,11 +516,7 @@ func (s *repository) GetMessages(ctx context.Context, req GetMessagesRequest) ([
 		}
 		qry = s.collection.Find(query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
 	} else {
-		sortOrder := descOrder
-		if req.OrderAsc {
-			sortOrder = ascOrder
-		}
-		qry = s.collection.Find(nil).Sort(sortOrder).Limit(uint(req.Limit))
+		qry = s.collection.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
 	}
 
 	msgs, err := s.queryMessages(ctx, qry)
