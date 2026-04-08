@@ -335,8 +335,7 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	var msgs []*chatmodel.Message
 	switch object.MsgOrderId {
 	case objectstore.FtAllOrderId:
-		// TODO: GO-6758 add batch messages fetch by limits
-		msgs, err = repository.GetMessages(ctx, chatrepository.GetMessagesRequest{})
+		return i.prepareChatSearchDocsAll(ctx, repository, object)
 	case "":
 		return nil, nil // no new search docs should be added
 	default:
@@ -348,25 +347,57 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	}
 
 	for _, msg := range msgs {
-		text := msg.Message.Text
-		if blocksText := msg.BlocksText(); blocksText != "" {
-			if text != "" {
-				text += "\n"
-			}
-			text += blocksText
-		}
-		docs = append(docs, ftsearch.SearchDoc{
-			Id:        domain.NewObjectPathWithMessage(object.ObjectId, msg.Id).String(),
-			SpaceId:   object.SpaceId,
-			Text:      text,
-			Author:    msg.Creator,
-			OrderId:   msg.OrderId,
-			MessageId: msg.Id,
-			Timestamp: strconv.Itoa(int(msg.CreatedAt)),
-		})
+		docs = append(docs, chatMessageToSearchDoc(object.ObjectId, object.SpaceId, msg))
 	}
 	return docs, nil
+}
 
+const chatMessagesBatchSize = 100
+
+func (i *indexer) prepareChatSearchDocsAll(ctx context.Context, repository chatrepository.Repository, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
+	var lastOrderId string
+	for {
+		req := chatrepository.GetMessagesRequest{Limit: chatMessagesBatchSize}
+		if lastOrderId != "" {
+			req.AfterOrderId = lastOrderId
+		} else {
+			req.OrderAsc = true
+		}
+		batch, batchErr := repository.GetMessages(ctx, req)
+		if batchErr != nil {
+			return nil, fmt.Errorf("get messages batch: %w", batchErr)
+		}
+		if len(batch) == 0 {
+			break
+		}
+		for _, msg := range batch {
+			docs = append(docs, chatMessageToSearchDoc(object.ObjectId, object.SpaceId, msg))
+		}
+		if len(batch) < chatMessagesBatchSize {
+			break
+		}
+		lastOrderId = batch[len(batch)-1].OrderId
+	}
+	return docs, nil
+}
+
+func chatMessageToSearchDoc(objectId, spaceId string, msg *chatmodel.Message) ftsearch.SearchDoc {
+	text := msg.Message.Text
+	if blocksText := msg.BlocksText(); blocksText != "" {
+		if text != "" {
+			text += "\n"
+		}
+		text += blocksText
+	}
+	return ftsearch.SearchDoc{
+		Id:        domain.NewObjectPathWithMessage(objectId, msg.Id).String(),
+		SpaceId:   spaceId,
+		Text:      text,
+		Author:    msg.Creator,
+		OrderId:   msg.OrderId,
+		MessageId: msg.Id,
+		Timestamp: strconv.Itoa(int(msg.CreatedAt)),
+	}
 }
 
 func (i *indexer) prepareRelationSearchDocs(fullId domain.FullID, sb smartblock.SmartBlock) (docs []ftsearch.SearchDoc) {

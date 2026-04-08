@@ -854,6 +854,43 @@ func TestPrepareSearchDocs_ChatObject(t *testing.T) {
 		assert.GreaterOrEqual(t, len(docs), 3)
 	})
 
+	t.Run("all messages batched", func(t *testing.T) {
+		// given
+		indexerFx := newFixture(t)
+		repo, err := indexerFx.chatRepository.Repository(spaceId, chatId)
+		require.NoError(t, err)
+
+		totalMessages := chatMessagesBatchSize + 50
+		for i := 1; i <= totalMessages; i++ {
+			err = repo.AddTestMessage(context.Background(), &chatmodel.Message{
+				ChatMessage: &model.ChatMessage{
+					Id:      fmt.Sprintf("msg%03d", i),
+					Message: &model.ChatMessageMessageContent{Text: fmt.Sprintf("Message %d", i)},
+					OrderId: fmt.Sprintf("o%03d", i),
+				},
+			})
+			require.NoError(t, err)
+		}
+
+		// when
+		docs, isChat, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{
+			ObjectId:   chatId,
+			SpaceId:    spaceId,
+			MsgOrderId: objectstore.FtAllOrderId,
+		})
+
+		// then
+		assert.NoError(t, err)
+		assert.True(t, isChat)
+		require.Len(t, docs, totalMessages)
+
+		// Verify ordering: docs should be in ascending order
+		assert.Equal(t, chatId+"/m/msg001", docs[0].Id)
+		assert.Contains(t, docs[0].Text, "Message 1")
+		assert.Equal(t, chatId+fmt.Sprintf("/m/msg%03d", totalMessages), docs[totalMessages-1].Id)
+		assert.Contains(t, docs[totalMessages-1].Text, fmt.Sprintf("Message %d", totalMessages))
+	})
+
 	t.Run("chat object", func(t *testing.T) {
 		// given
 		indexerFx := newFixture(t)
