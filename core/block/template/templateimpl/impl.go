@@ -112,7 +112,7 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 	}
 
 	s.resolveTemplatePlaceholders(targetState, req.SpaceId)
-	addDetailsToTemplateState(targetState, req.Details)
+	s.addDetailsToTemplateState(targetState, req.Details, req.SpaceId)
 	return targetState, nil
 }
 
@@ -183,7 +183,7 @@ func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, re
 		st = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
 	}
 	s.resolveTemplatePlaceholders(st, req.SpaceId)
-	addDetailsToTemplateState(st, req.Details)
+	s.addDetailsToTemplateState(st, req.Details, req.SpaceId)
 	return st
 }
 
@@ -509,7 +509,7 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 	return st, nil
 }
 
-func addDetailsToTemplateState(st *state.State, details *domain.Details) {
+func (s *service) addDetailsToTemplateState(st *state.State, details *domain.Details, spaceId string) {
 	var keysToExclude []domain.RelationKey
 	if st.Details() != nil {
 		for key := range templatePreferableRelationKeys {
@@ -530,6 +530,30 @@ func addDetailsToTemplateState(st *state.State, details *domain.Details) {
 		st.AddBundledRelationLinks(bundle.RelationKeyName)
 	}
 
+	// Merge multi-value relations (tag, object, file) from template and incoming details
+	for key, incomingVal := range toAdd.Iterate() {
+		templateVal := st.Details().GetStringList(key)
+		if len(templateVal) == 0 {
+			continue
+		}
+		format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, key)
+		if err != nil {
+			continue
+		}
+		if isMultiValueRelationFormat(format) {
+			merged := lo.Uniq(append(templateVal, incomingVal.StringList()...))
+			toAdd.Set(key, domain.StringList(merged))
+		}
+	}
+
 	st.AddDetails(toAdd)
 	st.BlocksInit(st)
+}
+
+func isMultiValueRelationFormat(format model.RelationFormat) bool {
+	switch format {
+	case model.RelationFormat_tag, model.RelationFormat_object, model.RelationFormat_file:
+		return true
+	}
+	return false
 }
