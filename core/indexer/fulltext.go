@@ -34,7 +34,10 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-const maxErrorsPerSession = 100
+const (
+	maxErrorsPerSession   = 100
+	chatMessagesBatchSize = 100
+)
 
 var (
 	ftIndexInterval                     = 10 * time.Second
@@ -352,8 +355,6 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	return docs, nil
 }
 
-const chatMessagesBatchSize = 100
-
 func (i *indexer) prepareChatSearchDocsAll(ctx context.Context, repository chatrepository.Repository, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
 	var beforeOrderId string
 	for {
@@ -374,7 +375,7 @@ func (i *indexer) prepareChatSearchDocsAll(ctx context.Context, repository chatr
 		if len(batch) < chatMessagesBatchSize {
 			break
 		}
-		// Results are sorted ascending by queryMessages, so first element has the smallest OrderId
+		// Results are sorted ascending by queryMessages, so the first element has the smallest OrderId
 		beforeOrderId = batch[0].OrderId
 	}
 	return docs, nil
