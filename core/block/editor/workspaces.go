@@ -143,7 +143,7 @@ func (w *Workspaces) updateOneToOneInfo(details *domain.Details) {
 		bundle.RelationKeyName:       details.Get(bundle.RelationKeyName),
 		bundle.RelationKeyIconImage:  details.Get(bundle.RelationKeyIconImage),
 		bundle.RelationKeyIconOption: details.Get(bundle.RelationKeyIconOption),
-		bundle.RelationKeyHomepage:   details.Get(bundle.RelationKeyHomepage),
+		bundle.RelationKeyHomepage:   w.Details().Get(bundle.RelationKeyHomepage),
 		bundle.RelationKeySpaceType:  domain.Int64(model.SpaceType_SpaceTypeOneToOne),
 	})
 	w.spaceService.OnWorkspaceChanged(w.SpaceID(), toSave)
