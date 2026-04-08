@@ -15,9 +15,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
 	"github.com/klauspost/compress/flate"
 	exptrace "golang.org/x/exp/trace"
 
+	"github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/util/debug"
 )
 
@@ -66,7 +68,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int) (string, error) 
 	goroutinesEnd := debug.Stack(true)
 
 	// Write
-	f, err := os.CreateTemp("", "anytype_profile.*.zip")
+	f, err := os.CreateTemp(s.getTempDir(), "anytype_profile.*.zip")
 	if err != nil {
 		return "", fmt.Errorf("create temp file: %w", err)
 	}
@@ -113,6 +115,22 @@ func createZipArchive(w io.Writer, files []zipFile) error {
 		return nil
 	}()
 	return errors.Join(err, zipw.Close())
+}
+
+// getTempDir returns the temp directory from TempDirProvider if available,
+// otherwise falls back to the system temp directory.
+// This ensures proper temp directory access on Android where the system temp
+// directory may not be writable.
+func (s *Service) getTempDir() string {
+	a := s.GetApp()
+	if a == nil {
+		return os.TempDir()
+	}
+	tempDirProvider, err := app.Component[core.TempDirProvider](a)
+	if err != nil || tempDirProvider == nil {
+		return os.TempDir()
+	}
+	return tempDirProvider.TempDir()
 }
 
 func (s *Service) SaveLoginTrace(dir string) (string, error) {
