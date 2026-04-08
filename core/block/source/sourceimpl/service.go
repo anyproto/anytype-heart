@@ -133,6 +133,23 @@ func (s *service) newSource(ctx context.Context, space source.Space, id string, 
 			return NewBundledObjectType(id), nil
 		case smartblock.SmartBlockTypeBundledRelation:
 			return NewBundledRelation(id), nil
+		case smartblock.SmartBlockTypeTechSpaceVirtualObject:
+			spaceId, err := domain.ParsePersonalWidgetsId(id)
+			if err != nil {
+				return nil, fmt.Errorf("parse personal widgets id: %w", err)
+			}
+			virtualState := state.NewDoc(id, nil).(*state.State)
+			virtualState.SetDetailAndBundledRelation(bundle.RelationKeySpaceId, domain.String(spaceId))
+			params := source.StaticSourceParams{
+				Id: domain.FullID{
+					ObjectID: id,
+					SpaceID:  spaceId,
+				},
+				State:     virtualState,
+				SbType:    smartblock.SmartBlockTypeTechSpaceVirtualObject,
+				CreatorId: addr.AnytypeProfileId,
+			}
+			return s.NewStaticSource(params), nil
 		case smartblock.SmartBlockTypeParticipant:
 			spaceId, _, err := domain.ParseParticipantId(id)
 			if err != nil {

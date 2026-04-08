@@ -692,7 +692,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
 		!allowApplyWithEmptyTree &&
 		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
-		sb.Type() != smartblock.SmartBlockTypeAccountObject {
+		sb.Type() != smartblock.SmartBlockTypeAccountObject &&
+		sb.Type() != smartblock.SmartBlockTypeTechSpaceObject {
 		// protection for applying migrations on empty tree
 		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
 		return ErrApplyOnEmptyTreeDisallowed

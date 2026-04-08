@@ -45,6 +45,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/bookmark"
 	decorator "github.com/anyproto/anytype-heart/core/block/bookmark/bookmarkimporter"
 	"github.com/anyproto/anytype-heart/core/block/chats"
+	"github.com/anyproto/anytype-heart/core/block/editor/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/block/collection"
@@ -281,6 +282,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(chatrepository.New()).
 		Register(chatsubscription.New()).
 		Register(chats.New()).
+		Register(personalfavorites.New()).
 		Register(sourceimpl.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).

@@ -17,6 +17,29 @@ func (i FullID) IsEmpty() bool {
 
 const ParticipantPrefix = "_participant_"
 
+const PersonalWidgetsPrefix = "_personalWidgets_"
+
+// NewPersonalWidgetsId returns the id of the personal widgets virtual widget
+// for the given space. Dots in the spaceId are replaced with underscores to
+// avoid issues on Desktop client (same encoding as participant ids).
+func NewPersonalWidgetsId(spaceId string) string {
+	spaceId = strings.Replace(spaceId, ".", "_", 1)
+	return PersonalWidgetsPrefix + spaceId
+}
+
+// ParsePersonalWidgetsId extracts the spaceId encoded in a personal widgets id.
+func ParsePersonalWidgetsId(id string) (spaceId string, err error) {
+	if !strings.HasPrefix(id, PersonalWidgetsPrefix) {
+		return "", fmt.Errorf("personal widgets id must start with %s", PersonalWidgetsPrefix)
+	}
+	rest := strings.TrimPrefix(id, PersonalWidgetsPrefix)
+	parts := strings.Split(rest, "_")
+	if len(parts) != 2 {
+		return "", fmt.Errorf("can't extract space id from %s", id)
+	}
+	return fmt.Sprintf("%s.%s", parts[0], parts[1]), nil
+}
+
 var ErrParseLongId = errors.New("failed to parse object id")
 
 func NewParticipantId(spaceId, identity string) string {

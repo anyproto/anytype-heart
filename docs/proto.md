@@ -36215,6 +36215,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
 | DiscussionObject | 546 | Any-store based object for discussion |
+| TechSpaceObject | 547 | Any-store based object in tech space for cross-device sync |
+| TechSpaceVirtualObject | 548 | Per-space virtual object backed by a tech space CRDT document |
 
 
 

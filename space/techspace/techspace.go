@@ -47,13 +47,19 @@ var log = logger.NewNamed(CName)
 const spaceViewCheckTimeout = time.Second * 15
 
 var (
-	ErrSpaceViewExists        = errors.New("spaceView exists")
-	ErrSpaceViewNotExists     = errors.New("spaceView not exists")
-	ErrAccountObjectNotExists = errors.New("accountObject not exists")
-	ErrNotASpaceView          = errors.New("smartblock not a spaceView")
-	ErrNotAnAccountObject     = errors.New("smartblock not an accountObject")
-	ErrNotStarted             = errors.New("techspace not started")
+	ErrSpaceViewExists                  = errors.New("spaceView exists")
+	ErrSpaceViewNotExists               = errors.New("spaceView not exists")
+	ErrAccountObjectNotExists           = errors.New("accountObject not exists")
+	ErrPersonalFavoritesStoreNotExists  = errors.New("personalFavoritesStore not exists")
+	ErrNotASpaceView                    = errors.New("smartblock not a spaceView")
+	ErrNotAnAccountObject               = errors.New("smartblock not an accountObject")
+	ErrNotAPersonalFavoritesStore       = errors.New("smartblock not a personalFavoritesStore")
+	ErrNotStarted                       = errors.New("techspace not started")
 )
+
+type PersonalFavoritesStore interface {
+	editorsb.SmartBlock
+}
 
 type AccountObject interface {
 	editorsb.SmartBlock
@@ -85,6 +91,8 @@ type TechSpace interface {
 	SpaceViewSetOneToOneIdentity(ctx context.Context, spaceId string, identity string) (err error)
 	SpaceViewId(id string) (string, error)
 	AccountObjectId() (string, error)
+	PersonalFavoritesObjectId() (string, error)
+	DoPersonalFavoritesStore(ctx context.Context, apply func(store PersonalFavoritesStore) error) (err error)
 }
 
 type SpaceView interface {
@@ -117,9 +125,10 @@ func New() TechSpace {
 }
 
 type techSpace struct {
-	techCore        commonspace.Space
-	objectCache     objectcache.Cache
-	accountObjectId string
+	techCore                    commonspace.Space
+	objectCache                 objectcache.Cache
+	accountObjectId             string
+	personalFavoritesObjectId   string
 
 	mu sync.Mutex
 
@@ -141,16 +150,20 @@ func (s *techSpace) Name() (name string) {
 func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache.Cache, create bool) (err error) {
 	s.techCore = techCoreSpace
 	s.objectCache = objectCache
+	needCreateAccount := create
 	if !create {
 		exists, err := s.accountObjectExists(s.ctx)
 		if err != nil {
 			return err
 		}
-		if exists {
-			return nil
+		needCreateAccount = !exists
+	}
+	if needCreateAccount {
+		if err = s.accountObjectCreate(s.ctx); err != nil {
+			return err
 		}
 	}
-	return s.accountObjectCreate(s.ctx)
+	return s.personalFavoritesObjectCreate(s.ctx)
 }
 
 func (s *techSpace) StartSync() {
@@ -291,6 +304,33 @@ func (s *techSpace) accountObjectCreate(ctx context.Context) (err error) {
 	return
 }
 
+func (s *techSpace) personalFavoritesObjectCreate(ctx context.Context) (err error) {
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeTechSpaceObject, "personalFavorites")
+	if err != nil {
+		return
+	}
+	initFunc := func(id string) *editorsb.InitContext {
+		st := state.NewDoc(id, nil).(*state.State)
+		return &editorsb.InitContext{Ctx: ctx, SpaceID: s.techCore.Id(), State: st}
+	}
+	_, err = s.objectCache.DeriveTreeObject(ctx, objectcache.TreeDerivationParams{
+		Key:      uniqueKey,
+		InitFunc: initFunc,
+	})
+	if errors.Is(err, treestorage.ErrTreeExists) {
+		pfId, err := s.PersonalFavoritesObjectId()
+		if err != nil {
+			return err
+		}
+		loadCtx, cancel := context.WithTimeout(ctx, spaceViewCheckTimeout)
+		defer cancel()
+		loadCtx = peer.CtxWithPeerId(loadCtx, peer.CtxResponsiblePeers)
+		_, err = s.objectCache.GetObject(loadCtx, pfId)
+		return err
+	}
+	return
+}
+
 func (s *techSpace) AccountObjectId() (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -361,6 +401,44 @@ func (s *techSpace) DoAccountObject(ctx context.Context, apply func(accountObjec
 	accountObject.Lock()
 	defer accountObject.Unlock()
 	return apply(accountObject)
+}
+
+func (s *techSpace) PersonalFavoritesObjectId() (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.personalFavoritesObjectId != "" {
+		return s.personalFavoritesObjectId, nil
+	}
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeTechSpaceObject, "personalFavorites")
+	if err != nil {
+		return "", err
+	}
+	payload, err := s.objectCache.DeriveTreePayload(context.Background(), payloadcreator.PayloadDerivationParams{
+		Key: uniqueKey,
+	})
+	if err != nil {
+		return "", err
+	}
+	s.personalFavoritesObjectId = payload.RootRawChange.Id
+	return payload.RootRawChange.Id, nil
+}
+
+func (s *techSpace) DoPersonalFavoritesStore(ctx context.Context, apply func(store PersonalFavoritesStore) error) (err error) {
+	id, err := s.PersonalFavoritesObjectId()
+	if err != nil {
+		return err
+	}
+	obj, err := s.objectCache.GetObject(ctx, id)
+	if err != nil {
+		return ErrPersonalFavoritesStoreNotExists
+	}
+	store, ok := obj.(PersonalFavoritesStore)
+	if !ok {
+		return ErrNotAPersonalFavoritesStore
+	}
+	store.Lock()
+	defer store.Unlock()
+	return apply(store)
 }
 
 func (s *techSpace) getViewIdLocked(ctx context.Context, spaceId string) (viewId string, err error) {

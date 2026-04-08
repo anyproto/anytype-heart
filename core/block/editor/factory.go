@@ -31,6 +31,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	"github.com/anyproto/anytype-heart/core/block/editor/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -100,7 +101,8 @@ type ObjectFactory struct {
 	statService             debugstat.StatService
 	backlinksUpdater        backlinks.UpdateWatcher
 	formatFetcher           relationutils.RelationFormatFetcher
-	fileGC                  filegc.FileGC
+	fileGC                   filegc.FileGC
+	personalFavoritesService personalfavorites.Service
 }
 
 func NewObjectFactory() *ObjectFactory {
@@ -140,6 +142,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 		f.statService = debugstat.NewNoOp()
 	}
 	f.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
+	f.personalFavoritesService = app.MustComponent[personalfavorites.Service](a)
 	return nil
 }
 
@@ -279,6 +282,14 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
 		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
+	case coresb.SmartBlockTypeTechSpaceObject:
+		crdtDb, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
+		if err != nil {
+			return nil, fmt.Errorf("get crdt db: %w", err)
+		}
+		return personalfavorites.NewStore(sb, crdtDb, f.personalFavoritesService.OnStoreUpdate), nil
+	case coresb.SmartBlockTypeTechSpaceVirtualObject:
+		return personalfavorites.NewVirtualWidget(sb, spaceIndex, f.personalFavoritesService, f.layoutConverter), nil
 	default:
 		return nil, fmt.Errorf("%w: %v", ErrUnexpectedSmartblockType, sbType)
 	}
