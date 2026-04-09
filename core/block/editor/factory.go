@@ -31,10 +31,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
-	"github.com/anyproto/anytype-heart/core/block/editor/personalfavorites"
+	pfeditor "github.com/anyproto/anytype-heart/core/block/editor/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
@@ -76,31 +77,31 @@ type deviceService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService         bookmark.BookmarkService
-	layoutConverter         converter.LayoutConverter
-	objectStore             objectstore.ObjectStore
-	sourceService           source.Service
-	tempDirProvider         core.TempDirProvider
-	fileService             files.Service
-	config                  *config.Config
-	picker                  cache.ObjectGetter
-	eventSender             event.Sender
-	indexer                 smartblock.Indexer
-	spaceService            spaceService
-	accountService          accountService
-	fileObjectService       fileobject.Service
-	fileUploaderService     fileuploader.Service
-	fileReconciler          reconciler.Reconciler
-	objectDeleter           ObjectDeleter
-	deviceService           deviceService
-	spaceIdResolver         idresolver.Resolver
-	commonFile              fileservice.FileService
-	dbProvider              anystoreprovider.Provider
-	chatRepositoryService   chatrepository.Service
-	chatSubscriptionService chatsubscription.Service
-	statService             debugstat.StatService
-	backlinksUpdater        backlinks.UpdateWatcher
-	formatFetcher           relationutils.RelationFormatFetcher
+	bookmarkService          bookmark.BookmarkService
+	layoutConverter          converter.LayoutConverter
+	objectStore              objectstore.ObjectStore
+	sourceService            source.Service
+	tempDirProvider          core.TempDirProvider
+	fileService              files.Service
+	config                   *config.Config
+	picker                   cache.ObjectGetter
+	eventSender              event.Sender
+	indexer                  smartblock.Indexer
+	spaceService             spaceService
+	accountService           accountService
+	fileObjectService        fileobject.Service
+	fileUploaderService      fileuploader.Service
+	fileReconciler           reconciler.Reconciler
+	objectDeleter            ObjectDeleter
+	deviceService            deviceService
+	spaceIdResolver          idresolver.Resolver
+	commonFile               fileservice.FileService
+	dbProvider               anystoreprovider.Provider
+	chatRepositoryService    chatrepository.Service
+	chatSubscriptionService  chatsubscription.Service
+	statService              debugstat.StatService
+	backlinksUpdater         backlinks.UpdateWatcher
+	formatFetcher            relationutils.RelationFormatFetcher
 	fileGC                   filegc.FileGC
 	personalFavoritesService personalfavorites.Service
 }
@@ -287,9 +288,9 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 		if err != nil {
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
-		return personalfavorites.NewStore(sb, crdtDb, f.personalFavoritesService.OnStoreUpdate), nil
+		return pfeditor.NewStore(sb, crdtDb, f.personalFavoritesService.OnStoreUpdate), nil
 	case coresb.SmartBlockTypeTechSpaceVirtualObject:
-		return personalfavorites.NewVirtualWidget(sb, spaceIndex, f.personalFavoritesService, f.layoutConverter), nil
+		return pfeditor.NewVirtualWidget(sb, spaceIndex, f.personalFavoritesService, f.layoutConverter), nil
 	default:
 		return nil, fmt.Errorf("%w: %v", ErrUnexpectedSmartblockType, sbType)
 	}

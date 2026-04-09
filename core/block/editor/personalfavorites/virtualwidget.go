@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -29,14 +30,14 @@ type VirtualWidgetObject struct {
 	widget.Widget
 	basic.DetailsSettable
 
-	service    Service
-	unregister func()
+	service     personalfavorites.Service
+	unsubscribe func()
 }
 
 func NewVirtualWidget(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
-	svc Service,
+	svc personalfavorites.Service,
 	layoutConverter converter.LayoutConverter,
 ) *VirtualWidgetObject {
 	bs := basic.NewBasic(sb, objectStore, layoutConverter, nil)
@@ -63,7 +64,7 @@ func (v *VirtualWidgetObject) Init(ctx *smartblock.InitContext) error {
 		template.WithDetail(bundle.RelationKeyIsHidden, domain.Bool(true)),
 	)
 
-	v.unregister = v.service.Register(RegisterParams{
+	v.unsubscribe = v.service.Subscribe(personalfavorites.SubscribeParams{
 		SpaceId:  v.SpaceID(),
 		Observer: v,
 	})
@@ -80,8 +81,8 @@ func (v *VirtualWidgetObject) Init(ctx *smartblock.InitContext) error {
 }
 
 func (v *VirtualWidgetObject) Close() error {
-	if v.unregister != nil {
-		v.unregister()
+	if v.unsubscribe != nil {
+		v.unsubscribe()
 	}
 	return v.SmartBlock.Close()
 }
@@ -117,11 +118,11 @@ func (v *VirtualWidgetObject) syncToStore() {
 		return
 	}
 
-	currentMap := make(map[string]WidgetEntry, len(current))
+	currentMap := make(map[string]personalfavorites.WidgetEntry, len(current))
 	for _, e := range current {
 		currentMap[e.Id] = e
 	}
-	desiredMap := make(map[string]WidgetEntry, len(desired))
+	desiredMap := make(map[string]personalfavorites.WidgetEntry, len(desired))
 	for _, e := range desired {
 		desiredMap[e.Id] = e
 	}
@@ -160,8 +161,8 @@ func (v *VirtualWidgetObject) syncToStore() {
 // the set of fields that changed. TargetId is immutable for a given entry —
 // changing the target of a widget is modeled as delete + create in the block
 // layer, so we don't need to handle it here.
-func diffEntry(cur, desired WidgetEntry) (WidgetUpdate, bool) {
-	var update WidgetUpdate
+func diffEntry(cur, desired personalfavorites.WidgetEntry) (personalfavorites.WidgetUpdate, bool) {
+	var update personalfavorites.WidgetUpdate
 	changed := false
 	if cur.Layout != desired.Layout {
 		v := desired.Layout
@@ -186,7 +187,7 @@ func diffEntry(cur, desired WidgetEntry) (WidgetUpdate, bool) {
 	return update, changed
 }
 
-func (v *VirtualWidgetObject) extractEntries(s *state.State) []WidgetEntry {
+func (v *VirtualWidgetObject) extractEntries(s *state.State) []personalfavorites.WidgetEntry {
 	return extractEntriesFromState(s, v.SpaceID())
 }
 
@@ -194,14 +195,14 @@ func (v *VirtualWidgetObject) extractEntries(s *state.State) []WidgetEntry {
 // widget wrapper holding a single link child, and chains the resulting
 // entries via AfterId. Blocks not matching the wrapper→link shape are
 // dropped and logged — silent data loss from a corrupt state would be worse.
-func extractEntriesFromState(s *state.State, spaceId string) []WidgetEntry {
+func extractEntriesFromState(s *state.State, spaceId string) []personalfavorites.WidgetEntry {
 	root := s.Pick(s.RootId())
 	if root == nil {
 		return nil
 	}
 
 	var prevId string
-	var entries []WidgetEntry
+	var entries []personalfavorites.WidgetEntry
 	for _, wrapperId := range root.Model().ChildrenIds {
 		wrapper := s.Pick(wrapperId)
 		if wrapper == nil {
@@ -229,7 +230,7 @@ func extractEntriesFromState(s *state.State, spaceId string) []WidgetEntry {
 			continue
 		}
 
-		entries = append(entries, WidgetEntry{
+		entries = append(entries, personalfavorites.WidgetEntry{
 			Id:       linkId,
 			SpaceId:  spaceId,
 			TargetId: lc.Link.TargetBlockId,
@@ -244,7 +245,7 @@ func extractEntriesFromState(s *state.State, spaceId string) []WidgetEntry {
 }
 
 // rebuildStateFromEntries rebuilds the block state from CRDT entries.
-func (v *VirtualWidgetObject) rebuildStateFromEntries(st *state.State, entries []WidgetEntry) {
+func (v *VirtualWidgetObject) rebuildStateFromEntries(st *state.State, entries []personalfavorites.WidgetEntry) {
 	// Remove all existing widget blocks
 	root := st.Pick(st.RootId())
 	if root != nil {
@@ -284,13 +285,13 @@ func (v *VirtualWidgetObject) rebuildStateFromEntries(st *state.State, entries [
 // Observer interface implementation — called by the Service when CRDT changes arrive
 // from remote devices. These run on the store's goroutine, so we must lock the virtual widget.
 
-func (v *VirtualWidgetObject) OnWidgetCreate(entry WidgetEntry) {
+func (v *VirtualWidgetObject) OnWidgetCreate(entry personalfavorites.WidgetEntry) {
 	v.Lock()
 	defer v.Unlock()
 	v.rebuildAll()
 }
 
-func (v *VirtualWidgetObject) OnWidgetUpdate(entry WidgetEntry) {
+func (v *VirtualWidgetObject) OnWidgetUpdate(entry personalfavorites.WidgetEntry) {
 	v.Lock()
 	defer v.Unlock()
 	v.rebuildAll()

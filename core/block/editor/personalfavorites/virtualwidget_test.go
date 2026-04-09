@@ -7,12 +7,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestDiffEntry(t *testing.T) {
-	base := WidgetEntry{
+	base := personalfavorites.WidgetEntry{
 		Id:       "link1",
 		SpaceId:  "space1",
 		TargetId: "target1",
@@ -68,7 +69,7 @@ func TestDiffEntry(t *testing.T) {
 	})
 
 	t.Run("every field at once", func(t *testing.T) {
-		desired := WidgetEntry{
+		desired := personalfavorites.WidgetEntry{
 			Id:       base.Id,
 			SpaceId:  base.SpaceId,
 			TargetId: base.TargetId,
@@ -107,7 +108,7 @@ func TestExtractEntriesFromState(t *testing.T) {
 
 		got := extractEntriesFromState(st, "spaceA")
 
-		want := []WidgetEntry{
+		want := []personalfavorites.WidgetEntry{
 			{Id: "l1", SpaceId: "spaceA", TargetId: "targetA", Layout: model.BlockContentWidget_Link, Limit: 5, ViewId: "vA", AfterId: ""},
 			{Id: "l2", SpaceId: "spaceA", TargetId: "targetB", Layout: model.BlockContentWidget_List, Limit: 10, ViewId: "vB", AfterId: "l1"},
 		}

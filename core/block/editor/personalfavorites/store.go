@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
@@ -29,26 +30,11 @@ const (
 	dispatchQueueSize = 64
 )
 
-// StoreObject is the per-account CRDT store of personal favorites entries
-// living in the tech space. Ordering is encoded in each entry's AfterId, so
-// reorder is just an UpdateWidget on every entry whose AfterId changed —
-// there is no separate move/repair helper.
-type StoreObject interface {
-	smartblock.SmartBlock
-	anystoredebug.AnystoreDebug
-
-	CreateWidget(ctx context.Context, entry WidgetEntry) error
-	DeleteWidget(ctx context.Context, id string) error
-	UpdateWidget(ctx context.Context, id string, updates WidgetUpdate) error
-	GetWidgets(ctx context.Context, spaceId string) ([]WidgetEntry, error)
-	GetWidget(ctx context.Context, id string) (WidgetEntry, error)
-}
-
 // dispatchBatch carries a group of changes for a single space from
 // dispatchUpdate to the runDispatcher goroutine.
 type dispatchBatch struct {
 	spaceId string
-	changes []pendingChange
+	changes []personalfavorites.WidgetChange
 }
 
 type storeObject struct {
@@ -64,13 +50,13 @@ type storeObject struct {
 
 	// onUpdate is set once at construction time and read by runDispatcher.
 	// spaceId is "" when the store could not determine the affected space.
-	onUpdate func(spaceId string, changes []pendingChange)
+	onUpdate func(spaceId string, changes []personalfavorites.WidgetChange)
 
 	dispatchQueue chan dispatchBatch
 	dispatcherWg  sync.WaitGroup
 }
 
-func NewStore(sb smartblock.SmartBlock, crdtDb anystore.DB, onUpdate func(spaceId string, changes []pendingChange)) StoreObject {
+func NewStore(sb smartblock.SmartBlock, crdtDb anystore.DB, onUpdate func(spaceId string, changes []personalfavorites.WidgetChange)) personalfavorites.StoreObject {
 	return &storeObject{
 		SmartBlock: sb,
 		crdtDb:     crdtDb,
@@ -145,9 +131,9 @@ func (s *storeObject) dispatchUpdate() {
 	if s.onUpdate == nil || s.dispatchQueue == nil {
 		return
 	}
-	bySpace := make(map[string][]pendingChange)
+	bySpace := make(map[string][]personalfavorites.WidgetChange)
 	for _, ch := range changes {
-		bySpace[ch.entry.SpaceId] = append(bySpace[ch.entry.SpaceId], ch)
+		bySpace[ch.Entry.SpaceId] = append(bySpace[ch.Entry.SpaceId], ch)
 	}
 	for spaceId, group := range bySpace {
 		s.enqueueBatch(dispatchBatch{spaceId: spaceId, changes: group})
@@ -181,7 +167,7 @@ func (s *storeObject) runDispatcher() {
 	}
 }
 
-func (s *storeObject) CreateWidget(ctx context.Context, entry WidgetEntry) error {
+func (s *storeObject) CreateWidget(ctx context.Context, entry personalfavorites.WidgetEntry) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -216,7 +202,7 @@ func (s *storeObject) DeleteWidget(ctx context.Context, id string) error {
 	return nil
 }
 
-func (s *storeObject) UpdateWidget(ctx context.Context, id string, updates WidgetUpdate) error {
+func (s *storeObject) UpdateWidget(ctx context.Context, id string, updates personalfavorites.WidgetUpdate) error {
 	arena := s.arenaPool.Get()
 	defer func() {
 		arena.Reset()
@@ -261,12 +247,12 @@ func (s *storeObject) pushChanges(ctx context.Context, builder *storestate.Build
 	})
 }
 
-func (s *storeObject) GetWidgets(ctx context.Context, spaceId string) ([]WidgetEntry, error) {
+func (s *storeObject) GetWidgets(ctx context.Context, spaceId string) ([]personalfavorites.WidgetEntry, error) {
 	entries, err := s.getAllWidgets(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("get all widgets: %w", err)
 	}
-	var filtered []WidgetEntry
+	var filtered []personalfavorites.WidgetEntry
 	for _, e := range entries {
 		if e.SpaceId == spaceId {
 			filtered = append(filtered, e)
@@ -275,19 +261,19 @@ func (s *storeObject) GetWidgets(ctx context.Context, spaceId string) ([]WidgetE
 	return resolveOrder(filtered), nil
 }
 
-func (s *storeObject) GetWidget(ctx context.Context, id string) (WidgetEntry, error) {
+func (s *storeObject) GetWidget(ctx context.Context, id string) (personalfavorites.WidgetEntry, error) {
 	coll, err := s.storeState.Collection(ctx, collectionName)
 	if err != nil {
-		return WidgetEntry{}, fmt.Errorf("get collection: %w", err)
+		return personalfavorites.WidgetEntry{}, fmt.Errorf("get collection: %w", err)
 	}
 	doc, err := coll.FindId(ctx, id)
 	if err != nil {
-		return WidgetEntry{}, fmt.Errorf("find document: %w", err)
+		return personalfavorites.WidgetEntry{}, fmt.Errorf("find document: %w", err)
 	}
 	return entryFromDoc(doc), nil
 }
 
-func (s *storeObject) getAllWidgets(ctx context.Context) ([]WidgetEntry, error) {
+func (s *storeObject) getAllWidgets(ctx context.Context) ([]personalfavorites.WidgetEntry, error) {
 	coll, err := s.storeState.Collection(ctx, collectionName)
 	if err != nil {
 		return nil, fmt.Errorf("get collection: %w", err)
@@ -298,7 +284,7 @@ func (s *storeObject) getAllWidgets(ctx context.Context) ([]WidgetEntry, error) 
 	}
 	defer iter.Close()
 
-	var entries []WidgetEntry
+	var entries []personalfavorites.WidgetEntry
 	for iter.Next() {
 		doc, err := iter.Doc()
 		if err != nil {
@@ -312,8 +298,8 @@ func (s *storeObject) getAllWidgets(ctx context.Context) ([]WidgetEntry, error) 
 	return entries, nil
 }
 
-func entryFromDoc(doc anystore.Doc) WidgetEntry {
-	return WidgetEntry{
+func entryFromDoc(doc anystore.Doc) personalfavorites.WidgetEntry {
+	return personalfavorites.WidgetEntry{
 		Id:       doc.Value().GetString("id"),
 		SpaceId:  doc.Value().GetString("spaceId"),
 		TargetId: doc.Value().GetString("targetId"),
@@ -327,12 +313,12 @@ func entryFromDoc(doc anystore.Doc) WidgetEntry {
 // resolveOrder reconstructs the linked list order from afterId references.
 // Returns entries sorted from first (afterId=="") to last.
 // Handles corrupted state (duplicate afterId, missing links) by appending orphans at the end.
-func resolveOrder(entries []WidgetEntry) []WidgetEntry {
+func resolveOrder(entries []personalfavorites.WidgetEntry) []personalfavorites.WidgetEntry {
 	if len(entries) == 0 {
 		return nil
 	}
 
-	byAfterId := make(map[string][]WidgetEntry, len(entries))
+	byAfterId := make(map[string][]personalfavorites.WidgetEntry, len(entries))
 	for _, e := range entries {
 		byAfterId[e.AfterId] = append(byAfterId[e.AfterId], e)
 	}
@@ -342,7 +328,7 @@ func resolveOrder(entries []WidgetEntry) []WidgetEntry {
 		return entries
 	}
 
-	result := make([]WidgetEntry, 0, len(entries))
+	result := make([]personalfavorites.WidgetEntry, 0, len(entries))
 	seen := make(map[string]bool, len(entries))
 
 	current := heads[0]

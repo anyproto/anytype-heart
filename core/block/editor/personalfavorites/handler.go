@@ -9,33 +9,21 @@ import (
 	"github.com/anyproto/any-store/query"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-type changeType int
-
-const (
-	changeCreate changeType = iota
-	changeModify
-	changeDelete
-)
-
-type pendingChange struct {
-	typ   changeType
-	entry WidgetEntry
-}
-
-// favoritesHandler implements storestate.Handler and accumulates change notifications.
-// pending is synchronized because BeforeCreate/Modify/Delete can be called from a
-// remote-update goroutine (via store.update → storestate tx) concurrently with
-// FlushPendingChanges running on a local-push goroutine after its tx commit.
-// After the transaction commits, FlushPendingChanges is called (from onUpdate) to dispatch them to observers.
+// favoritesHandler implements storestate.Handler and accumulates change
+// notifications. pending is synchronized because BeforeCreate/Modify/Delete
+// can be called from a remote-update goroutine (via store.update → storestate
+// tx) concurrently with FlushPendingChanges running on a local-push goroutine
+// after its tx commit.
 type favoritesHandler struct {
 	state *storestate.StoreState
 
 	mu      sync.Mutex
-	pending []pendingChange
+	pending []personalfavorites.WidgetChange
 }
 
 func (h *favoritesHandler) CollectionName() string {
@@ -53,27 +41,27 @@ func (h *favoritesHandler) Init(ctx context.Context, s *storestate.StoreState) e
 func (h *favoritesHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
 	entry := entryFromAnyencValue(ch.Value)
 	h.mu.Lock()
-	h.pending = append(h.pending, pendingChange{typ: changeCreate, entry: entry})
+	h.pending = append(h.pending, personalfavorites.WidgetChange{Type: personalfavorites.ChangeCreate, Entry: entry})
 	h.mu.Unlock()
 	return nil
 }
 
 func (h *favoritesHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (storestate.ModifyMode, error) {
 	docId := ch.Change.Change.GetModify().GetDocumentId()
-	entry := WidgetEntry{Id: docId}
+	entry := personalfavorites.WidgetEntry{Id: docId}
 	entry.SpaceId = h.lookupSpaceId(ctx, docId)
 	h.mu.Lock()
-	h.pending = append(h.pending, pendingChange{typ: changeModify, entry: entry})
+	h.pending = append(h.pending, personalfavorites.WidgetChange{Type: personalfavorites.ChangeModify, Entry: entry})
 	h.mu.Unlock()
 	return storestate.ModifyModeUpsert, nil
 }
 
 func (h *favoritesHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) (storestate.DeleteMode, error) {
 	docId := ch.Change.Change.GetDelete().GetDocumentId()
-	entry := WidgetEntry{Id: docId}
+	entry := personalfavorites.WidgetEntry{Id: docId}
 	entry.SpaceId = h.lookupSpaceId(ctx, docId)
 	h.mu.Lock()
-	h.pending = append(h.pending, pendingChange{typ: changeDelete, entry: entry})
+	h.pending = append(h.pending, personalfavorites.WidgetChange{Type: personalfavorites.ChangeDelete, Entry: entry})
 	h.mu.Unlock()
 	return storestate.DeleteModeDelete, nil
 }
@@ -104,7 +92,7 @@ func (h *favoritesHandler) lookupSpaceId(ctx context.Context, docId string) stri
 }
 
 // FlushPendingChanges returns accumulated changes and clears the buffer.
-func (h *favoritesHandler) FlushPendingChanges() []pendingChange {
+func (h *favoritesHandler) FlushPendingChanges() []personalfavorites.WidgetChange {
 	h.mu.Lock()
 	changes := h.pending
 	h.pending = nil
@@ -112,11 +100,11 @@ func (h *favoritesHandler) FlushPendingChanges() []pendingChange {
 	return changes
 }
 
-func entryFromAnyencValue(v *anyenc.Value) WidgetEntry {
+func entryFromAnyencValue(v *anyenc.Value) personalfavorites.WidgetEntry {
 	if v == nil {
-		return WidgetEntry{}
+		return personalfavorites.WidgetEntry{}
 	}
-	return WidgetEntry{
+	return personalfavorites.WidgetEntry{
 		Id:       v.GetString("id"),
 		SpaceId:  v.GetString("spaceId"),
 		TargetId: v.GetString("targetId"),

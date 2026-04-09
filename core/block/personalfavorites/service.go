@@ -7,45 +7,16 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/techspace"
 )
 
-const CName = "core.block.editor.personalfavorites"
-
-type WidgetEntry struct {
-	Id       string
-	SpaceId  string
-	TargetId string
-	Layout   model.BlockContentWidgetLayout
-	Limit    int32
-	ViewId   string
-	AfterId  string
-}
-
-type WidgetUpdate struct {
-	Layout  *model.BlockContentWidgetLayout
-	Limit   *int32
-	ViewId  *string
-	AfterId *string
-}
-
-type Observer interface {
-	OnWidgetCreate(entry WidgetEntry)
-	OnWidgetUpdate(entry WidgetEntry)
-	OnWidgetDelete(wrapperId string)
-}
-
-type RegisterParams struct {
-	SpaceId  string
-	Observer Observer
-}
+const CName = "core.block.personalfavorites"
 
 type Service interface {
 	app.Component
 
-	Register(params RegisterParams) (unregister func())
+	Subscribe(params SubscribeParams) (unsubscribe func())
 	CreateWidget(ctx context.Context, entry WidgetEntry) error
 	DeleteWidget(ctx context.Context, id string) error
 	UpdateWidget(ctx context.Context, id string, updates WidgetUpdate) error
@@ -55,7 +26,7 @@ type Service interface {
 	// construction time (see factory.New). It runs on the store's dispatcher
 	// goroutine, so observer calls may re-enter the store via GetWidgets
 	// without deadlocking.
-	OnStoreUpdate(spaceId string, changes []pendingChange)
+	OnStoreUpdate(spaceId string, changes []WidgetChange)
 }
 
 type subscription struct {
@@ -94,11 +65,12 @@ func (s *service) techSpace() techspace.TechSpace {
 	return ts.TechSpace
 }
 
-// Register adds a subscription for the given space. A second Register for the
-// same space replaces the previous one — the old subscription's done channel
-// is closed so any in-flight dispatch skips it, and the old unregister closure
-// becomes a no-op (identity check against the current map entry).
-func (s *service) Register(params RegisterParams) (unregister func()) {
+// Subscribe adds a subscription for the given space. A second Subscribe for
+// the same space replaces the previous one — the old subscription's done
+// channel is closed so any in-flight dispatch skips it, and the old
+// unsubscribe closure becomes a no-op (identity check against the current
+// map entry).
+func (s *service) Subscribe(params SubscribeParams) (unsubscribe func()) {
 	sub := &subscription{
 		spaceId:  params.SpaceId,
 		observer: params.Observer,
@@ -167,7 +139,7 @@ func (s *service) doStore(ctx context.Context, apply func(store StoreObject) err
 	})
 }
 
-func (s *service) OnStoreUpdate(spaceId string, changes []pendingChange) {
+func (s *service) OnStoreUpdate(spaceId string, changes []WidgetChange) {
 	s.mu.RLock()
 	sub, ok := s.subscriptions[spaceId]
 	s.mu.RUnlock()
@@ -180,13 +152,13 @@ func (s *service) OnStoreUpdate(spaceId string, changes []pendingChange) {
 	default:
 	}
 	for _, ch := range changes {
-		switch ch.typ {
-		case changeCreate:
-			sub.observer.OnWidgetCreate(ch.entry)
-		case changeModify:
-			sub.observer.OnWidgetUpdate(ch.entry)
-		case changeDelete:
-			sub.observer.OnWidgetDelete(ch.entry.Id)
+		switch ch.Type {
+		case ChangeCreate:
+			sub.observer.OnWidgetCreate(ch.Entry)
+		case ChangeModify:
+			sub.observer.OnWidgetUpdate(ch.Entry)
+		case ChangeDelete:
+			sub.observer.OnWidgetDelete(ch.Entry.Id)
 		}
 	}
 }

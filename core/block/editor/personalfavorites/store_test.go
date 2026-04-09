@@ -4,16 +4,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 )
 
 func TestResolveOrder(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		assert.Nil(t, resolveOrder(nil))
-		assert.Nil(t, resolveOrder([]WidgetEntry{}))
+		assert.Nil(t, resolveOrder([]personalfavorites.WidgetEntry{}))
 	})
 
 	t.Run("linear chain", func(t *testing.T) {
-		entries := []WidgetEntry{
+		entries := []personalfavorites.WidgetEntry{
 			{Id: "b", AfterId: "a"},
 			{Id: "c", AfterId: "b"},
 			{Id: "a", AfterId: ""},
@@ -25,7 +27,7 @@ func TestResolveOrder(t *testing.T) {
 	})
 
 	t.Run("no head returns input unchanged", func(t *testing.T) {
-		entries := []WidgetEntry{
+		entries := []personalfavorites.WidgetEntry{
 			{Id: "a", AfterId: "missing"},
 			{Id: "b", AfterId: "a"},
 		}
@@ -34,7 +36,7 @@ func TestResolveOrder(t *testing.T) {
 	})
 
 	t.Run("duplicate afterId: walker takes first, orphans appended", func(t *testing.T) {
-		entries := []WidgetEntry{
+		entries := []personalfavorites.WidgetEntry{
 			{Id: "a", AfterId: ""},
 			{Id: "b", AfterId: "a"},
 			{Id: "c", AfterId: "a"},
@@ -49,7 +51,7 @@ func TestResolveOrder(t *testing.T) {
 	})
 
 	t.Run("seen-set guards against infinite loop", func(t *testing.T) {
-		entries := []WidgetEntry{
+		entries := []personalfavorites.WidgetEntry{
 			{Id: "a", AfterId: ""},
 			{Id: "b", AfterId: "a"},
 		}
@@ -58,7 +60,7 @@ func TestResolveOrder(t *testing.T) {
 	})
 }
 
-func idsOf(entries []WidgetEntry) []string {
+func idsOf(entries []personalfavorites.WidgetEntry) []string {
 	out := make([]string, len(entries))
 	for i, e := range entries {
 		out[i] = e.Id
