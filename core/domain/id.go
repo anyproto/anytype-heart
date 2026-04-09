@@ -20,24 +20,25 @@ const ParticipantPrefix = "_participant_"
 const PersonalWidgetsPrefix = "_personalWidgets_"
 
 // NewPersonalWidgetsId returns the id of the personal widgets virtual widget
-// for the given space. Dots in the spaceId are replaced with underscores to
-// avoid issues on Desktop client (same encoding as participant ids).
+// for the given space. The single dot in the spaceId is replaced with an
+// underscore (Desktop client constraint, same encoding as participant ids);
+// the encoding round-trips only for spaceIds with exactly one dot and no
+// underscores in either half.
 func NewPersonalWidgetsId(spaceId string) string {
 	spaceId = strings.Replace(spaceId, ".", "_", 1)
 	return PersonalWidgetsPrefix + spaceId
 }
 
-// ParsePersonalWidgetsId extracts the spaceId encoded in a personal widgets id.
 func ParsePersonalWidgetsId(id string) (spaceId string, err error) {
 	if !strings.HasPrefix(id, PersonalWidgetsPrefix) {
 		return "", fmt.Errorf("personal widgets id must start with %s", PersonalWidgetsPrefix)
 	}
 	rest := strings.TrimPrefix(id, PersonalWidgetsPrefix)
-	parts := strings.Split(rest, "_")
-	if len(parts) != 2 {
+	parts := strings.SplitN(rest, "_", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", fmt.Errorf("can't extract space id from %s", id)
 	}
-	return fmt.Sprintf("%s.%s", parts[0], parts[1]), nil
+	return parts[0] + "." + parts[1], nil
 }
 
 var ErrParseLongId = errors.New("failed to parse object id")

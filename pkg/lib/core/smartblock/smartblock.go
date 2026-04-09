@@ -30,7 +30,7 @@ const (
 	SmartBlockTypeChatObjectDeprecated = SmartBlockType(model.SmartBlockType_ChatObjectDeprecated) // deprecated. Container for any-store based chats
 	SmartBlockTypeChatDerivedObject    = SmartBlockType(model.SmartBlockType_ChatDerivedObject)    // Any-store based object for chat
 	SmartBlockTypeAccountObject        = SmartBlockType(model.SmartBlockType_AccountObject)
-	SmartBlockTypeDiscussionObject     = SmartBlockType(model.SmartBlockType_DiscussionObject)   // Any-store based object for discussion
+	SmartBlockTypeDiscussionObject     = SmartBlockType(model.SmartBlockType_DiscussionObject) // Any-store based object for discussion
 
 	SmartBlockTypeWorkspace      = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget         = SmartBlockType(model.SmartBlockType_Widget)
@@ -69,6 +69,21 @@ func (sbt SmartBlockType) IsOneOf(sbts ...SmartBlockType) bool {
 		if t == sbt {
 			return true
 		}
+	}
+	return false
+}
+
+// IsStoreBacked reports whether the type uses storestate (any-store CRDT
+// collections) instead of the classic ObjectTree block-change pipeline.
+// Store-backed types may Apply on an empty tree, get MarkNewChangeFlusher
+// on their underlying tree, and route through source.Store.
+func (sbt SmartBlockType) IsStoreBacked() bool {
+	switch sbt {
+	case SmartBlockTypeChatDerivedObject,
+		SmartBlockTypeAccountObject,
+		SmartBlockTypeDiscussionObject,
+		SmartBlockTypeTechSpaceObject:
+		return true
 	}
 	return false
 }

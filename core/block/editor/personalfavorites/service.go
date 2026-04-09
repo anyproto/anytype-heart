@@ -145,7 +145,10 @@ func (s *service) GetWidgets(ctx context.Context, spaceId string) ([]WidgetEntry
 	return result, err
 }
 
-// doStore opens the store object and calls apply under the store lock.
+// doStore opens the tech-space personal favorites store and calls apply
+// under its smartblock lock. techspace exposes PersonalFavoritesStore as an
+// opaque smartblock to avoid an import cycle, so the cast to StoreObject
+// lives here.
 func (s *service) doStore(ctx context.Context, apply func(store StoreObject) error) error {
 	ts := s.techSpace()
 	if ts == nil {
@@ -154,7 +157,7 @@ func (s *service) doStore(ctx context.Context, apply func(store StoreObject) err
 	return ts.DoPersonalFavoritesStore(ctx, func(pfStore techspace.PersonalFavoritesStore) error {
 		storeObj, ok := pfStore.(StoreObject)
 		if !ok {
-			return fmt.Errorf("personal favorites store does not implement StoreObject")
+			return fmt.Errorf("personal favorites smartblock %T is not a StoreObject — check factory wiring for SmartBlockTypeTechSpaceObject", pfStore)
 		}
 		return apply(storeObj)
 	})

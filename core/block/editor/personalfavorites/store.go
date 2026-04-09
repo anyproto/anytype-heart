@@ -3,6 +3,7 @@ package personalfavorites
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -23,17 +24,15 @@ import (
 
 var log = logger.NewNamedSugared("common.editor.personalfavorites")
 
-const collectionName = "personalFavorites"
+const (
+	collectionName    = "personalFavorites"
+	dispatchQueueSize = 64
+)
 
-// StoreObject is a tech space CRDT object that stores personal favorites data.
-// It is a pure data store — observer management is handled by Service.
-//
-// The store exposes a flat per-entry API: CreateWidget writes a full entry,
-// UpdateWidget patches individual fields (including AfterId), and DeleteWidget
-// removes an entry by id. There is no move-or-repair-the-linked-list helper on
-// the store because all ordering lives in a single mutable field (AfterId), and
-// callers can reorder deterministically by issuing UpdateWidget on every entry
-// whose AfterId changed.
+// StoreObject is the per-account CRDT store of personal favorites entries
+// living in the tech space. Ordering is encoded in each entry's AfterId, so
+// reorder is just an UpdateWidget on every entry whose AfterId changed —
+// there is no separate move/repair helper.
 type StoreObject interface {
 	smartblock.SmartBlock
 	anystoredebug.AnystoreDebug
@@ -56,10 +55,11 @@ type storeObject struct {
 	cancel      context.CancelFunc
 	arenaPool   *anyenc.ArenaPool
 
-	// onUpdate is set once at construction time and never mutated afterwards,
-	// so no synchronization is needed on it. It fires for every store change
-	// (local push and remote tree delivery) after the tx commits.
+	// onUpdate is set once at construction time and read by runDispatcher.
 	onUpdate func(changes []pendingChange)
+
+	dispatchQueue chan []pendingChange
+	dispatcherWg  sync.WaitGroup
 }
 
 func NewStore(sb smartblock.SmartBlock, crdtDb anystore.DB, onUpdate func(changes []pendingChange)) StoreObject {
@@ -78,7 +78,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(true))
 
 	if err := s.SmartBlock.Init(ctx); err != nil {
-		return err
+		return fmt.Errorf("init smartblock: %w", err)
 	}
 
 	s.handler = &favoritesHandler{}
@@ -103,6 +103,9 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
+	s.dispatchQueue = make(chan []pendingChange, dispatchQueueSize)
+	s.dispatcherWg.Add(1)
+	go s.runDispatcher()
 
 	template.InitTemplate(ctx.State,
 		template.WithEmpty,
@@ -118,27 +121,46 @@ func (s *storeObject) Close() error {
 	if s.cancel != nil {
 		s.cancel()
 	}
+	s.dispatcherWg.Wait()
 	return s.SmartBlock.Close()
 }
 
-// dispatchUpdate is the OnUpdateHook passed to source.ReadStoreDoc. It fires
-// synchronously after every store change (local push or remote tree delivery)
-// and forwards the accumulated pending changes to the Service asynchronously.
-//
-// The async indirection is important: when a VirtualWidgetObject calls
-// service.CreateWidget/UpdateWidget/…, this hook runs inside PushStoreChange
-// which is itself called under the virtual widget's SmartBlock lock. A
-// synchronous dispatch back into the same observer would deadlock when it
-// tries to re-lock the widget.
+// dispatchUpdate is the OnUpdateHook passed to source.ReadStoreDoc. It hands
+// off accumulated changes to runDispatcher; the indirection is required
+// because this hook runs inside PushStoreChange under the caller's
+// SmartBlock lock and observers must not re-enter that lock.
 func (s *storeObject) dispatchUpdate() {
 	changes := s.handler.FlushPendingChanges()
 	if len(changes) == 0 {
 		return
 	}
-	if s.onUpdate == nil {
+	if s.onUpdate == nil || s.dispatchQueue == nil {
 		return
 	}
-	go s.onUpdate(changes)
+	select {
+	case <-s.ctx.Done():
+		return
+	case s.dispatchQueue <- changes:
+	default:
+		// Observers rebuild full state on every callback, so dropping a
+		// delta only costs an intermediate redraw.
+		log.With("objectId", s.Id()).Warnf("dispatch queue full, dropping %d changes", len(changes))
+	}
+}
+
+func (s *storeObject) runDispatcher() {
+	defer s.dispatcherWg.Done()
+	for {
+		select {
+		case <-s.ctx.Done():
+			return
+		case changes, ok := <-s.dispatchQueue:
+			if !ok {
+				return
+			}
+			s.onUpdate(changes)
+		}
+	}
 }
 
 func (s *storeObject) CreateWidget(ctx context.Context, entry WidgetEntry) error {
@@ -326,4 +348,3 @@ func resolveOrder(entries []WidgetEntry) []WidgetEntry {
 	}
 	return result
 }
-

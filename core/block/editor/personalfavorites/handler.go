@@ -82,20 +82,21 @@ func (h *favoritesHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.Ke
 	return mod
 }
 
-// lookupSpaceId resolves the spaceId of an existing doc. Called from Before*
-// callbacks inside a storestate tx. Returns empty string on any failure — the
-// observer dispatcher will then fan out to all registered observers, which is
-// the previous (less efficient but correct) behavior.
+// lookupSpaceId resolves the spaceId of an existing doc from inside a
+// storestate tx. Returns empty string on any failure; the dispatcher then
+// fans out to every observer, which is correct but less efficient.
 func (h *favoritesHandler) lookupSpaceId(ctx context.Context, docId string) string {
 	if h.state == nil {
 		return ""
 	}
 	coll, err := h.state.Collection(ctx, collectionName)
 	if err != nil {
+		log.Debugf("lookupSpaceId: get collection %s: %s", collectionName, err)
 		return ""
 	}
 	doc, err := coll.FindId(ctx, docId)
 	if err != nil {
+		log.Debugf("lookupSpaceId: find doc %s: %s", docId, err)
 		return ""
 	}
 	return doc.Value().GetString("spaceId")

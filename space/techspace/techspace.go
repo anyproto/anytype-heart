@@ -46,15 +46,19 @@ var log = logger.NewNamed(CName)
 
 const spaceViewCheckTimeout = time.Second * 15
 
+// personalFavoritesUniqueKey is the internal key for the per-account
+// personal favorites store. Changing it orphans existing stores.
+const personalFavoritesUniqueKey = "personalFavorites"
+
 var (
-	ErrSpaceViewExists                  = errors.New("spaceView exists")
-	ErrSpaceViewNotExists               = errors.New("spaceView not exists")
-	ErrAccountObjectNotExists           = errors.New("accountObject not exists")
-	ErrPersonalFavoritesStoreNotExists  = errors.New("personalFavoritesStore not exists")
-	ErrNotASpaceView                    = errors.New("smartblock not a spaceView")
-	ErrNotAnAccountObject               = errors.New("smartblock not an accountObject")
-	ErrNotAPersonalFavoritesStore       = errors.New("smartblock not a personalFavoritesStore")
-	ErrNotStarted                       = errors.New("techspace not started")
+	ErrSpaceViewExists                 = errors.New("spaceView exists")
+	ErrSpaceViewNotExists              = errors.New("spaceView not exists")
+	ErrAccountObjectNotExists          = errors.New("accountObject not exists")
+	ErrPersonalFavoritesStoreNotExists = errors.New("personalFavoritesStore not exists")
+	ErrNotASpaceView                   = errors.New("smartblock not a spaceView")
+	ErrNotAnAccountObject              = errors.New("smartblock not an accountObject")
+	ErrNotAPersonalFavoritesStore      = errors.New("smartblock not a personalFavoritesStore")
+	ErrNotStarted                      = errors.New("techspace not started")
 )
 
 type PersonalFavoritesStore interface {
@@ -125,10 +129,10 @@ func New() TechSpace {
 }
 
 type techSpace struct {
-	techCore                    commonspace.Space
-	objectCache                 objectcache.Cache
-	accountObjectId             string
-	personalFavoritesObjectId   string
+	techCore                  commonspace.Space
+	objectCache               objectcache.Cache
+	accountObjectId           string
+	personalFavoritesObjectId string
 
 	mu sync.Mutex
 
@@ -305,7 +309,7 @@ func (s *techSpace) accountObjectCreate(ctx context.Context) (err error) {
 }
 
 func (s *techSpace) personalFavoritesObjectCreate(ctx context.Context) (err error) {
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeTechSpaceObject, "personalFavorites")
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeTechSpaceObject, personalFavoritesUniqueKey)
 	if err != nil {
 		return
 	}
@@ -409,7 +413,7 @@ func (s *techSpace) PersonalFavoritesObjectId() (string, error) {
 	if s.personalFavoritesObjectId != "" {
 		return s.personalFavoritesObjectId, nil
 	}
-	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeTechSpaceObject, "personalFavorites")
+	uniqueKey, err := domain.NewUniqueKey(smartblock.SmartBlockTypeTechSpaceObject, personalFavoritesUniqueKey)
 	if err != nil {
 		return "", err
 	}

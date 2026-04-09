@@ -312,6 +312,10 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 		require.Equal(t, peer.CtxResponsiblePeers, peerId)
 		return nil, nil
 	}).Times(1)
+
+	// techspace.Run derives the personal favorites store after accountObject.
+	fx.objectCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, nil).Times(1)
+
 	require.NoError(t, fx.a.Start(ctx))
 	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
 	require.NoError(t, err)

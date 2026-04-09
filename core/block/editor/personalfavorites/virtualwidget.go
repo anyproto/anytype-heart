@@ -2,6 +2,7 @@ package personalfavorites
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
@@ -52,7 +53,7 @@ func NewVirtualWidget(
 
 func (v *VirtualWidgetObject) Init(ctx *smartblock.InitContext) error {
 	if err := v.SmartBlock.Init(ctx); err != nil {
-		return err
+		return fmt.Errorf("init smartblock: %w", err)
 	}
 
 	template.InitTemplate(ctx.State,
@@ -67,13 +68,13 @@ func (v *VirtualWidgetObject) Init(ctx *smartblock.InitContext) error {
 		Observer: v,
 	})
 
-	// Load initial state from store
+	// Init must fail on load error: an empty initial state would be
+	// snapshot-synced back on the next Apply and delete the store contents.
 	entries, err := v.service.GetWidgets(ctx.Ctx, v.SpaceID())
 	if err != nil {
-		log.Errorf("personal widgets: load initial widgets for space %s: %s", v.SpaceID(), err)
-	} else {
-		v.rebuildStateFromEntries(ctx.State, entries)
+		return fmt.Errorf("load initial widgets for space %s: %w", v.SpaceID(), err)
 	}
+	v.rebuildStateFromEntries(ctx.State, entries)
 
 	return v.SmartBlock.Apply(ctx.State, smartblock.NotPushChanges, smartblock.NoHistory)
 }
@@ -99,7 +100,7 @@ func (v *VirtualWidgetObject) Close() error {
 // it to.
 func (v *VirtualWidgetObject) Apply(s *state.State, flags ...smartblock.ApplyFlag) error {
 	if err := v.SmartBlock.Apply(s, append(flags, smartblock.NotPushChanges)...); err != nil {
-		return err
+		return fmt.Errorf("apply smartblock: %w", err)
 	}
 	v.syncToStore()
 	return nil
@@ -185,8 +186,15 @@ func diffEntry(cur, desired WidgetEntry) (WidgetUpdate, bool) {
 	return update, changed
 }
 
-// extractEntries extracts WidgetEntry list from the current block state.
 func (v *VirtualWidgetObject) extractEntries(s *state.State) []WidgetEntry {
+	return extractEntriesFromState(s, v.SpaceID())
+}
+
+// extractEntriesFromState walks the root's children expecting each to be a
+// widget wrapper holding a single link child, and chains the resulting
+// entries via AfterId. Blocks not matching the wrapper→link shape are
+// dropped and logged — silent data loss from a corrupt state would be worse.
+func extractEntriesFromState(s *state.State, spaceId string) []WidgetEntry {
 	root := s.Pick(s.RootId())
 	if root == nil {
 		return nil
@@ -197,28 +205,33 @@ func (v *VirtualWidgetObject) extractEntries(s *state.State) []WidgetEntry {
 	for _, wrapperId := range root.Model().ChildrenIds {
 		wrapper := s.Pick(wrapperId)
 		if wrapper == nil {
+			log.Warnf("extract entries: missing wrapper %s under root", wrapperId)
 			continue
 		}
 		wc, ok := wrapper.Model().Content.(*model.BlockContentOfWidget)
 		if !ok {
+			log.Warnf("extract entries: block %s under root is not a widget wrapper (%T)", wrapperId, wrapper.Model().Content)
 			continue
 		}
 		if len(wrapper.Model().ChildrenIds) == 0 {
+			log.Warnf("extract entries: widget wrapper %s has no child link", wrapperId)
 			continue
 		}
 		linkId := wrapper.Model().ChildrenIds[0]
 		link := s.Pick(linkId)
 		if link == nil {
+			log.Warnf("extract entries: missing link %s in wrapper %s", linkId, wrapperId)
 			continue
 		}
 		lc, ok := link.Model().Content.(*model.BlockContentOfLink)
 		if !ok {
+			log.Warnf("extract entries: child %s of wrapper %s is not a link (%T)", linkId, wrapperId, link.Model().Content)
 			continue
 		}
 
 		entries = append(entries, WidgetEntry{
 			Id:       linkId,
-			SpaceId:  v.SpaceID(),
+			SpaceId:  spaceId,
 			TargetId: lc.Link.TargetBlockId,
 			Layout:   wc.Widget.Layout,
 			Limit:    wc.Widget.Limit,
@@ -305,11 +318,6 @@ func (v *VirtualWidgetObject) rebuildAll() {
 // Unlink overrides the widget unlink to also handle wrapper blocks.
 func (v *VirtualWidgetObject) Unlink(ctx session.Context, ids ...string) (err error) {
 	st := v.NewStateCtx(ctx)
-	for _, id := range ids {
-		if p := st.PickParentOf(id); p != nil && p.Model().GetWidget() != nil {
-			st.Unlink(p.Model().Id)
-		}
-		st.Unlink(id)
-	}
+	widget.UnlinkWithWrapper(st, ids...)
 	return v.Apply(st)
 }
