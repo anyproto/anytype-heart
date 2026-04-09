@@ -824,6 +824,8 @@ type ClientCommandsHandler interface {
 	ChatSearch(context.Context, *pb.RpcChatSearchRequest) *pb.RpcChatSearchResponse
 	ChatSetPinnedMessages(context.Context, *pb.RpcChatSetPinnedMessagesRequest) *pb.RpcChatSetPinnedMessagesResponse
 	ChatGetPinnedMessages(context.Context, *pb.RpcChatGetPinnedMessagesRequest) *pb.RpcChatGetPinnedMessagesResponse
+	ChatAddNotificationSubscriber(context.Context, *pb.RpcChatAddNotificationSubscriberRequest) *pb.RpcChatAddNotificationSubscriberResponse
+	ChatRemoveNotificationSubscriber(context.Context, *pb.RpcChatRemoveNotificationSubscriberRequest) *pb.RpcChatRemoveNotificationSubscriberResponse
 	// mock AI RPCs for compatibility between branches. Not implemented in main
 	AIWritingTools(context.Context, *pb.RpcAIWritingToolsRequest) *pb.RpcAIWritingToolsResponse
 	AIAutofill(context.Context, *pb.RpcAIAutofillRequest) *pb.RpcAIAutofillResponse
@@ -7260,6 +7262,46 @@ func ChatGetPinnedMessages(b []byte) (resp []byte) {
 	return resp
 }
 
+func ChatAddNotificationSubscriber(b []byte) (resp []byte) {
+	defer func() {
+		if PanicHandler != nil {
+			if r := recover(); r != nil {
+				resp, _ = (&pb.RpcChatAddNotificationSubscriberResponse{Error: &pb.RpcChatAddNotificationSubscriberResponseError{Code: pb.RpcChatAddNotificationSubscriberResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
+				PanicHandler(r)
+			}
+		}
+	}()
+
+	in := new(pb.RpcChatAddNotificationSubscriberRequest)
+	if err := in.Unmarshal(b); err != nil {
+		resp, _ = (&pb.RpcChatAddNotificationSubscriberResponse{Error: &pb.RpcChatAddNotificationSubscriberResponseError{Code: pb.RpcChatAddNotificationSubscriberResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		return resp
+	}
+
+	resp, _ = clientCommandsHandler.ChatAddNotificationSubscriber(context.Background(), in).Marshal()
+	return resp
+}
+
+func ChatRemoveNotificationSubscriber(b []byte) (resp []byte) {
+	defer func() {
+		if PanicHandler != nil {
+			if r := recover(); r != nil {
+				resp, _ = (&pb.RpcChatRemoveNotificationSubscriberResponse{Error: &pb.RpcChatRemoveNotificationSubscriberResponseError{Code: pb.RpcChatRemoveNotificationSubscriberResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
+				PanicHandler(r)
+			}
+		}
+	}()
+
+	in := new(pb.RpcChatRemoveNotificationSubscriberRequest)
+	if err := in.Unmarshal(b); err != nil {
+		resp, _ = (&pb.RpcChatRemoveNotificationSubscriberResponse{Error: &pb.RpcChatRemoveNotificationSubscriberResponseError{Code: pb.RpcChatRemoveNotificationSubscriberResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		return resp
+	}
+
+	resp, _ = clientCommandsHandler.ChatRemoveNotificationSubscriber(context.Background(), in).Marshal()
+	return resp
+}
+
 func AIWritingTools(b []byte) (resp []byte) {
 	defer func() {
 		if PanicHandler != nil {
@@ -8068,6 +8110,10 @@ func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 			cd = ChatSetPinnedMessages(data)
 		case "ChatGetPinnedMessages":
 			cd = ChatGetPinnedMessages(data)
+		case "ChatAddNotificationSubscriber":
+			cd = ChatAddNotificationSubscriber(data)
+		case "ChatRemoveNotificationSubscriber":
+			cd = ChatRemoveNotificationSubscriber(data)
 		case "AIWritingTools":
 			cd = AIWritingTools(data)
 		case "AIAutofill":
@@ -12711,4 +12757,32 @@ func (h *ClientCommandsHandlerProxy) PushNotificationResetIds(ctx context.Contex
 	}
 	call, _ := actualCall(ctx, req)
 	return call.(*pb.RpcPushNotificationResetIdsResponse)
+}
+func (h *ClientCommandsHandlerProxy) ChatAddNotificationSubscriber(ctx context.Context, req *pb.RpcChatAddNotificationSubscriberRequest) *pb.RpcChatAddNotificationSubscriberResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ChatAddNotificationSubscriber(ctx, req.(*pb.RpcChatAddNotificationSubscriberRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ChatAddNotificationSubscriber", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcChatAddNotificationSubscriberResponse)
+}
+func (h *ClientCommandsHandlerProxy) ChatRemoveNotificationSubscriber(ctx context.Context, req *pb.RpcChatRemoveNotificationSubscriberRequest) *pb.RpcChatRemoveNotificationSubscriberResponse {
+	actualCall := func(ctx context.Context, req any) (any, error) {
+		return h.client.ChatRemoveNotificationSubscriber(ctx, req.(*pb.RpcChatRemoveNotificationSubscriberRequest)), nil
+	}
+	for _, interceptor := range h.interceptors {
+		toCall := actualCall
+		currentInterceptor := interceptor
+		actualCall = func(ctx context.Context, req any) (any, error) {
+			return currentInterceptor(ctx, req, "ChatRemoveNotificationSubscriber", toCall)
+		}
+	}
+	call, _ := actualCall(ctx, req)
+	return call.(*pb.RpcChatRemoveNotificationSubscriberResponse)
 }

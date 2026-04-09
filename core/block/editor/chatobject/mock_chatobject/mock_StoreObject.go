@@ -207,6 +207,53 @@ func (_c *MockStoreObject_AddMessage_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
+// AddNotificationSubscriber provides a mock function with given fields: ctx, identity
+func (_m *MockStoreObject) AddNotificationSubscriber(ctx context.Context, identity string) error {
+	ret := _m.Called(ctx, identity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for AddNotificationSubscriber")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, identity)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_AddNotificationSubscriber_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddNotificationSubscriber'
+type MockStoreObject_AddNotificationSubscriber_Call struct {
+	*mock.Call
+}
+
+// AddNotificationSubscriber is a helper method to define mock.On call
+//   - ctx context.Context
+//   - identity string
+func (_e *MockStoreObject_Expecter) AddNotificationSubscriber(ctx interface{}, identity interface{}) *MockStoreObject_AddNotificationSubscriber_Call {
+	return &MockStoreObject_AddNotificationSubscriber_Call{Call: _e.mock.On("AddNotificationSubscriber", ctx, identity)}
+}
+
+func (_c *MockStoreObject_AddNotificationSubscriber_Call) Run(run func(ctx context.Context, identity string)) *MockStoreObject_AddNotificationSubscriber_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_AddNotificationSubscriber_Call) Return(_a0 error) *MockStoreObject_AddNotificationSubscriber_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_AddNotificationSubscriber_Call) RunAndReturn(run func(context.Context, string) error) *MockStoreObject_AddNotificationSubscriber_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // AddRelationLinksToState provides a mock function with given fields: s, relationKeys
 func (_m *MockStoreObject) AddRelationLinksToState(s *state.State, relationKeys ...domain.RelationKey) error {
 	_va := make([]interface{}, len(relationKeys))
@@ -1108,6 +1155,64 @@ func (_c *MockStoreObject_GetMessagesByIds_Call) Return(_a0 []*chatmodel.Message
 }
 
 func (_c *MockStoreObject_GetMessagesByIds_Call) RunAndReturn(run func(context.Context, []string) ([]*chatmodel.Message, error)) *MockStoreObject_GetMessagesByIds_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetNotificationSubscribers provides a mock function with given fields: ctx
+func (_m *MockStoreObject) GetNotificationSubscribers(ctx context.Context) ([]string, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetNotificationSubscribers")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) ([]string, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) []string); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStoreObject_GetNotificationSubscribers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNotificationSubscribers'
+type MockStoreObject_GetNotificationSubscribers_Call struct {
+	*mock.Call
+}
+
+// GetNotificationSubscribers is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockStoreObject_Expecter) GetNotificationSubscribers(ctx interface{}) *MockStoreObject_GetNotificationSubscribers_Call {
+	return &MockStoreObject_GetNotificationSubscribers_Call{Call: _e.mock.On("GetNotificationSubscribers", ctx)}
+}
+
+func (_c *MockStoreObject_GetNotificationSubscribers_Call) Run(run func(ctx context.Context)) *MockStoreObject_GetNotificationSubscribers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_GetNotificationSubscribers_Call) Return(_a0 []string, _a1 error) *MockStoreObject_GetNotificationSubscribers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStoreObject_GetNotificationSubscribers_Call) RunAndReturn(run func(context.Context) ([]string, error)) *MockStoreObject_GetNotificationSubscribers_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2094,6 +2199,53 @@ func (_c *MockStoreObject_RegisterSession_Call) Return() *MockStoreObject_Regist
 
 func (_c *MockStoreObject_RegisterSession_Call) RunAndReturn(run func(session.Context)) *MockStoreObject_RegisterSession_Call {
 	_c.Run(run)
+	return _c
+}
+
+// RemoveNotificationSubscriber provides a mock function with given fields: ctx, identity
+func (_m *MockStoreObject) RemoveNotificationSubscriber(ctx context.Context, identity string) error {
+	ret := _m.Called(ctx, identity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RemoveNotificationSubscriber")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, identity)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockStoreObject_RemoveNotificationSubscriber_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveNotificationSubscriber'
+type MockStoreObject_RemoveNotificationSubscriber_Call struct {
+	*mock.Call
+}
+
+// RemoveNotificationSubscriber is a helper method to define mock.On call
+//   - ctx context.Context
+//   - identity string
+func (_e *MockStoreObject_Expecter) RemoveNotificationSubscriber(ctx interface{}, identity interface{}) *MockStoreObject_RemoveNotificationSubscriber_Call {
+	return &MockStoreObject_RemoveNotificationSubscriber_Call{Call: _e.mock.On("RemoveNotificationSubscriber", ctx, identity)}
+}
+
+func (_c *MockStoreObject_RemoveNotificationSubscriber_Call) Run(run func(ctx context.Context, identity string)) *MockStoreObject_RemoveNotificationSubscriber_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockStoreObject_RemoveNotificationSubscriber_Call) Return(_a0 error) *MockStoreObject_RemoveNotificationSubscriber_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStoreObject_RemoveNotificationSubscriber_Call) RunAndReturn(run func(context.Context, string) error) *MockStoreObject_RemoveNotificationSubscriber_Call {
+	_c.Call.Return(run)
 	return _c
 }
 
