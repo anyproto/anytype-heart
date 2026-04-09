@@ -164,6 +164,7 @@ func (w *Workspaces) Close() error {
 	if w.otherProfileSubClose != nil {
 		w.otherProfileSubClose()
 	}
+	close(w.updateDetailsChan)
 	return w.SmartBlock.Close()
 }
 
