@@ -44,6 +44,13 @@ type StoreObject interface {
 	GetWidget(ctx context.Context, id string) (WidgetEntry, error)
 }
 
+// dispatchBatch carries a group of changes for a single space from
+// dispatchUpdate to the runDispatcher goroutine.
+type dispatchBatch struct {
+	spaceId string
+	changes []pendingChange
+}
+
 type storeObject struct {
 	anystoredebug.AnystoreDebug
 	smartblock.SmartBlock
@@ -56,13 +63,14 @@ type storeObject struct {
 	arenaPool   *anyenc.ArenaPool
 
 	// onUpdate is set once at construction time and read by runDispatcher.
-	onUpdate func(changes []pendingChange)
+	// spaceId is "" when the store could not determine the affected space.
+	onUpdate func(spaceId string, changes []pendingChange)
 
-	dispatchQueue chan []pendingChange
+	dispatchQueue chan dispatchBatch
 	dispatcherWg  sync.WaitGroup
 }
 
-func NewStore(sb smartblock.SmartBlock, crdtDb anystore.DB, onUpdate func(changes []pendingChange)) StoreObject {
+func NewStore(sb smartblock.SmartBlock, crdtDb anystore.DB, onUpdate func(spaceId string, changes []pendingChange)) StoreObject {
 	return &storeObject{
 		SmartBlock: sb,
 		crdtDb:     crdtDb,
@@ -103,7 +111,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	s.dispatchQueue = make(chan []pendingChange, dispatchQueueSize)
+	s.dispatchQueue = make(chan dispatchBatch, dispatchQueueSize)
 	s.dispatcherWg.Add(1)
 	go s.runDispatcher()
 
@@ -125,10 +133,10 @@ func (s *storeObject) Close() error {
 	return s.SmartBlock.Close()
 }
 
-// dispatchUpdate is the OnUpdateHook passed to source.ReadStoreDoc. It hands
-// off accumulated changes to runDispatcher; the indirection is required
-// because this hook runs inside PushStoreChange under the caller's
-// SmartBlock lock and observers must not re-enter that lock.
+// dispatchUpdate is the OnUpdateHook passed to source.ReadStoreDoc. It groups
+// accumulated changes by spaceId and hands each group off to runDispatcher;
+// the indirection is required because this hook runs inside PushStoreChange
+// under the caller's SmartBlock lock and observers must not re-enter it.
 func (s *storeObject) dispatchUpdate() {
 	changes := s.handler.FlushPendingChanges()
 	if len(changes) == 0 {
@@ -137,14 +145,24 @@ func (s *storeObject) dispatchUpdate() {
 	if s.onUpdate == nil || s.dispatchQueue == nil {
 		return
 	}
+	bySpace := make(map[string][]pendingChange)
+	for _, ch := range changes {
+		bySpace[ch.entry.SpaceId] = append(bySpace[ch.entry.SpaceId], ch)
+	}
+	for spaceId, group := range bySpace {
+		s.enqueueBatch(dispatchBatch{spaceId: spaceId, changes: group})
+	}
+}
+
+func (s *storeObject) enqueueBatch(batch dispatchBatch) {
 	select {
 	case <-s.ctx.Done():
 		return
-	case s.dispatchQueue <- changes:
+	case s.dispatchQueue <- batch:
 	default:
 		// Observers rebuild full state on every callback, so dropping a
 		// delta only costs an intermediate redraw.
-		log.With("objectId", s.Id()).Warnf("dispatch queue full, dropping %d changes", len(changes))
+		log.With("objectId", s.Id()).Warnf("dispatch queue full, dropping %d changes for space %q", len(batch.changes), batch.spaceId)
 	}
 }
 
@@ -154,11 +172,11 @@ func (s *storeObject) runDispatcher() {
 		select {
 		case <-s.ctx.Done():
 			return
-		case changes, ok := <-s.dispatchQueue:
+		case batch, ok := <-s.dispatchQueue:
 			if !ok {
 				return
 			}
-			s.onUpdate(changes)
+			s.onUpdate(batch.spaceId, batch.changes)
 		}
 	}
 }

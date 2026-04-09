@@ -51,32 +51,29 @@ type Service interface {
 	UpdateWidget(ctx context.Context, id string, updates WidgetUpdate) error
 	GetWidgets(ctx context.Context, spaceId string) ([]WidgetEntry, error)
 
-	// OnStoreUpdate is the callback wired into the tech-space store object at
-	// construction time (see factory.New). It runs on a dedicated goroutine
-	// spawned by the store, so observer calls may freely re-enter the store
-	// via GetWidgets without deadlocking.
-	OnStoreUpdate(changes []pendingChange)
+	// OnStoreUpdate is wired into the tech-space store object at
+	// construction time (see factory.New). It runs on the store's dispatcher
+	// goroutine, so observer calls may re-enter the store via GetWidgets
+	// without deadlocking.
+	OnStoreUpdate(spaceId string, changes []pendingChange)
 }
 
-type registration struct {
+type subscription struct {
 	spaceId  string
 	observer Observer
-	done     chan struct{} // closed when the registration is removed
+	done     chan struct{} // closed when the subscription is removed or replaced
 }
 
 type service struct {
 	spaceService space.Service
 
-	// mu protects registrations. Register/unregister may be called without
-	// the store's SmartBlock lock, while OnStoreUpdate reads registrations
-	// from its dispatcher goroutine.
 	mu            sync.RWMutex
-	registrations map[*registration]struct{}
+	subscriptions map[string]*subscription // keyed by spaceId
 }
 
 func New() Service {
 	return &service{
-		registrations: make(map[*registration]struct{}),
+		subscriptions: make(map[string]*subscription),
 	}
 }
 
@@ -97,21 +94,28 @@ func (s *service) techSpace() techspace.TechSpace {
 	return ts.TechSpace
 }
 
+// Register adds a subscription for the given space. A second Register for the
+// same space replaces the previous one — the old subscription's done channel
+// is closed so any in-flight dispatch skips it, and the old unregister closure
+// becomes a no-op (identity check against the current map entry).
 func (s *service) Register(params RegisterParams) (unregister func()) {
-	reg := &registration{
+	sub := &subscription{
 		spaceId:  params.SpaceId,
 		observer: params.Observer,
 		done:     make(chan struct{}),
 	}
 	s.mu.Lock()
-	s.registrations[reg] = struct{}{}
+	if prev, ok := s.subscriptions[params.SpaceId]; ok {
+		close(prev.done)
+	}
+	s.subscriptions[params.SpaceId] = sub
 	s.mu.Unlock()
 
 	return func() {
 		s.mu.Lock()
-		if _, ok := s.registrations[reg]; ok {
-			delete(s.registrations, reg)
-			close(reg.done)
+		if current, ok := s.subscriptions[params.SpaceId]; ok && current == sub {
+			delete(s.subscriptions, params.SpaceId)
+			close(sub.done)
 		}
 		s.mu.Unlock()
 	}
@@ -163,38 +167,26 @@ func (s *service) doStore(ctx context.Context, apply func(store StoreObject) err
 	})
 }
 
-// OnStoreUpdate is wired into the tech-space store object at construction time
-// (see core/block/editor/factory.go) and runs on a goroutine spawned by the
-// store. It fans out changes to observers while skipping registrations that
-// have already unregistered.
-func (s *service) OnStoreUpdate(changes []pendingChange) {
+func (s *service) OnStoreUpdate(spaceId string, changes []pendingChange) {
 	s.mu.RLock()
-	regs := make([]*registration, 0, len(s.registrations))
-	for reg := range s.registrations {
-		regs = append(regs, reg)
-	}
+	sub, ok := s.subscriptions[spaceId]
 	s.mu.RUnlock()
-
-	for _, reg := range regs {
-		// Skip dispatch for registrations that were removed between the
-		// snapshot above and now — their observer may be closed.
-		select {
-		case <-reg.done:
-			continue
-		default:
-		}
-		for _, ch := range changes {
-			if ch.entry.SpaceId != "" && ch.entry.SpaceId != reg.spaceId {
-				continue
-			}
-			switch ch.typ {
-			case changeCreate:
-				reg.observer.OnWidgetCreate(ch.entry)
-			case changeModify:
-				reg.observer.OnWidgetUpdate(ch.entry)
-			case changeDelete:
-				reg.observer.OnWidgetDelete(ch.entry.Id)
-			}
+	if !ok {
+		return
+	}
+	select {
+	case <-sub.done:
+		return
+	default:
+	}
+	for _, ch := range changes {
+		switch ch.typ {
+		case changeCreate:
+			sub.observer.OnWidgetCreate(ch.entry)
+		case changeModify:
+			sub.observer.OnWidgetUpdate(ch.entry)
+		case changeDelete:
+			sub.observer.OnWidgetDelete(ch.entry.Id)
 		}
 	}
 }

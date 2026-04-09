@@ -83,8 +83,9 @@ func (h *favoritesHandler) UpgradeKeyModifier(ch storestate.ChangeOp, key *pb.Ke
 }
 
 // lookupSpaceId resolves the spaceId of an existing doc from inside a
-// storestate tx. Returns empty string on any failure; the dispatcher then
-// fans out to every observer, which is correct but less efficient.
+// storestate tx. Returns empty string on any failure — the observer
+// dispatch then skips the change because there is no subscription for
+// the empty key.
 func (h *favoritesHandler) lookupSpaceId(ctx context.Context, docId string) string {
 	if h.state == nil {
 		return ""
