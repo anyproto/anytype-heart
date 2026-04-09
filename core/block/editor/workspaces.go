@@ -18,6 +18,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+const updateDetailsChanCapacity = 10
+
 var workspaceRequiredRelations = []domain.RelationKey{
 	// SpaceInviteFileCid and SpaceInviteFileKey are added only when creating invite
 }
@@ -36,8 +38,9 @@ type Workspaces struct {
 	migrator       subObjectsMigrator
 
 	subscribedForOneToOneProfile bool
+	otherProfileSubClose         func()
 
-	otherProfileSubClose func()
+	updateDetailsChan chan *domain.Details
 }
 
 func (f *ObjectFactory) newWorkspace(sb smartblock.SmartBlock, store spaceindex.Store) *Workspaces {
@@ -71,6 +74,14 @@ func (w *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	w.initTemplate(ctx)
 	w.deriveSpaceType(ctx.State)
 	w.migrator.migrateSubObjects(ctx.State)
+
+	w.updateDetailsChan = make(chan *domain.Details, updateDetailsChanCapacity)
+	go func() {
+		for details := range w.updateDetailsChan {
+			w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
+		}
+	}()
+
 	w.onWorkspaceChanged(ctx.State)
 	w.AddHook(w.onApply, smartblock.HookAfterApply)
 
@@ -146,7 +157,7 @@ func (w *Workspaces) updateOneToOneInfo(details *domain.Details) {
 		bundle.RelationKeyHomepage:   details.Get(bundle.RelationKeyHomepage),
 		bundle.RelationKeySpaceType:  domain.Int64(model.SpaceType_SpaceTypeOneToOne),
 	})
-	w.spaceService.OnWorkspaceChanged(w.SpaceID(), toSave)
+	w.updateDetailsChan <- toSave
 }
 
 func (w *Workspaces) Close() error {
@@ -254,5 +265,5 @@ func (w *Workspaces) onWorkspaceChanged(state *state.State) {
 		w.subscribeForOneToOneProfile(state)
 		return
 	}
-	w.spaceService.OnWorkspaceChanged(w.SpaceID(), details)
+	w.updateDetailsChan <- details
 }
