@@ -225,7 +225,16 @@ func (s *Service) CreateProperty(ctx context.Context, spaceId string, request ap
 		}
 	}
 
-	return s.GetProperty(ctx, spaceId, resp.ObjectId)
+	prop, err := s.GetProperty(ctx, spaceId, resp.ObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("get created property: %w", err)
+	}
+
+	// Synchronously cache the property so it's immediately available for subsequent
+	// requests without waiting for async subscription events.
+	s.cache.cacheProperty(spaceId, prop)
+
+	return prop, nil
 }
 
 // UpdateProperty updates an existing property in a specific space.
