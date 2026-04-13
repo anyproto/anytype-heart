@@ -14,6 +14,7 @@
       devShell = pkgs.mkShell {
         name = "anytype-heart";
         nativeBuildInputs = [
+          pkgs.qdrant
           pkgs.go_1_25
           pkgs.gox
           pkgs.protobuf
