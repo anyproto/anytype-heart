@@ -145,22 +145,21 @@ func TestBuildExpressionFilters(t *testing.T) {
 				},
 			},
 			setupMock: func(m *mock_filter.MockApiService) {
-				propertyMap := map[string]*apimodel.Property{
-					"type": {
-						Key:         "type",
-						RelationKey: bundle.RelationKeyType.String(),
-						Format:      apimodel.PropertyFormatText,
-					},
+				propertyMap := map[string]*apimodel.Property{}
+				typeMap := map[string]*apimodel.Type{
+					"page": {Id: "type-page-id", Key: "page", UniqueKey: "ot-page"},
+					"task": {Id: "type-task-id", Key: "task", UniqueKey: "ot-task"},
 				}
 				m.On("GetCachedProperties", spaceId).Return(propertyMap)
-				m.On("ResolvePropertyApiKey", propertyMap, "type").Return("type", true)
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "type", "page", propertyMap["type"], propertyMap).Return("page", nil)
-				m.On("SanitizeAndValidatePropertyValue", spaceId, "type", "task", propertyMap["type"], propertyMap).Return("task", nil)
+				m.On("GetCachedTypes", spaceId).Return(typeMap)
 			},
 			checkResult: func(t *testing.T, result *model.BlockContentDataviewFilter) {
 				require.NotNil(t, result)
 				assert.Equal(t, model.BlockContentDataviewFilter_Or, result.Operator)
 				assert.Len(t, result.NestedFilters, 2)
+				assert.Equal(t, bundle.RelationKeyType.String(), result.NestedFilters[0].RelationKey)
+				assert.Equal(t, "type-page-id", result.NestedFilters[0].Value.GetStringValue())
+				assert.Equal(t, "type-task-id", result.NestedFilters[1].Value.GetStringValue())
 			},
 		},
 		{
