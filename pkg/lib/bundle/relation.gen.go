@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "9e51e2c16ce4183dc77834a9d32f39fbae84987403dec4c4706efdac6d454ed7"
+const RelationChecksum = "778f662b6ab26fb8a4627c72df8da4681c3df79725f1f0de1a2c5686663482ad"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -1581,7 +1581,7 @@ var (
 		},
 		RelationKeyNotificationSubscribers: {
 
-			DataSource:       model.Relation_derived,
+			DataSource:       model.Relation_details,
 			Description:      "Participants subscribed to notifications on this discussion",
 			Format:           model.RelationFormat_object,
 			Id:               "_brnotificationSubscribers",

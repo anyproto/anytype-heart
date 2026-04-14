@@ -1848,7 +1848,7 @@
       "participant"
     ],
     "readonly": true,
-    "source": "derived"
+    "source": "details"
   },
   {
     "description": "Is file available offline",
