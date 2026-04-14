@@ -148,6 +148,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 				bundle.RelationKeySpaceType.String():  pbtypes.Float64(float64(model.SpaceType_SpaceTypeRegular)),
 			},
 		},
+		UseCase: pb.RpcObjectImportUseCaseRequest_DATA_SPACE,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcWorkspaceCreateResponseError_NULL {
