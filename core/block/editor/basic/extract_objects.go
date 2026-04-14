@@ -21,6 +21,7 @@ type ObjectCreator interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 }
 
+
 // ExtractBlocksToObjects extracts child blocks from the object to separate objects and
 // replaces these blocks to the links to these objects
 func (bs *basic) ExtractBlocksToObjects(
@@ -45,6 +46,9 @@ func (bs *basic) ExtractBlocksToObjects(
 		if err != nil {
 			return nil, err
 		}
+
+		objState.SetDetail(bundle.RelationKeyCreatedInContext, domain.String(bs.Id()))
+		// createdInContextRef intentionally not set here — CreateBlock clears pre-set block IDs
 
 		insertBlocksToState(newState, rootBlock, objState)
 

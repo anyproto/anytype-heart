@@ -176,7 +176,7 @@ func (_c *MockIndexer_Init_Call) RunAndReturn(run func(*app.App) error) *MockInd
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockIndexer) Name() string {
 	ret := _m.Called()
 

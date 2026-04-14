@@ -210,6 +210,120 @@ func TestFileSync_AddFile(t *testing.T) {
 	})
 }
 
+func TestFileSync_AddFile_SkipWhenNotLocal(t *testing.T) {
+	fx := newFixture(t, 1024*1024*1024)
+	defer fx.Finish(t)
+
+	nonExistentFileId := domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
+	req := AddFileRequest{
+		FileObjectId:   "objectId1",
+		FileId:         domain.FullFileId{SpaceId: "space1", FileId: nonExistentFileId},
+		UploadedByUser: true,
+	}
+	err := fx.AddFile(req)
+	require.NoError(t, err)
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err = fx.queue.GetNext(timeoutCtx, filequeue.GetNextRequest[FileInfo]{
+		Subscribe:   true,
+		StoreFilter: filterByState(FileStatePendingUpload),
+		Filter:      func(info FileInfo) bool { return info.FileId == nonExistentFileId },
+	})
+	assert.Error(t, err, "file without local blocks should not be queued")
+}
+
+func TestFileSync_MarkUploaded(t *testing.T) {
+	t.Run("marks pending file as done", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		fileId, _ := fx.givenFileAddedToDAG(t, 1024)
+		objectId := "objectId1"
+		spaceId := "space1"
+
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		}))
+
+		require.NoError(t, fx.MarkUploaded(objectId))
+
+		it, err := fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		assert.Equal(t, FileStateDone, it.State)
+
+		err = fx.queue.Release(objectId)
+		require.NoError(t, err)
+	})
+
+	t.Run("marks missing-blocks file as done", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+		objectId := "objectId1"
+		spaceId := "space1"
+
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		}))
+
+		// Simulate missing blocks by deleting root and processing
+		err := fx.localFileStorage.Delete(ctx, fileNode.Cid())
+		require.NoError(t, err)
+
+		it, err := fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		it.State = FileStateMissingBlocks
+		require.NoError(t, fx.queue.ReleaseAndUpdate(objectId, it))
+
+		require.NoError(t, fx.MarkUploaded(objectId))
+
+		it, err = fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		assert.Equal(t, FileStateDone, it.State)
+
+		err = fx.queue.Release(objectId)
+		require.NoError(t, err)
+	})
+
+	t.Run("no error when file not in queue", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		require.NoError(t, fx.MarkUploaded("nonExistentObject"))
+	})
+}
+
+func TestFileSync_UploadTransitionsToMissingBlocks(t *testing.T) {
+	fx := newFixture(t, 1024*1024*1024)
+	defer fx.Finish(t)
+
+	spaceId := "space1"
+	fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+
+	// Delete root block from local storage so walkDAG fails with errBlockNotFound
+	err := fx.localFileStorage.Delete(ctx, fileNode.Cid())
+	require.NoError(t, err)
+
+	it := FileInfo{
+		FileId:       fileId,
+		SpaceId:      spaceId,
+		ObjectId:     "objectId1",
+		State:        FileStatePendingUpload,
+		ScheduledAt:  time.Now(),
+		CidsToUpload: map[cid.Cid]struct{}{},
+		CidsToBind:   map[cid.Cid]struct{}{},
+	}
+
+	result, err := fx.processFilePendingUpload(ctx, it)
+	require.NoError(t, err)
+	assert.Equal(t, FileStateMissingBlocks, result.State)
+	assert.Equal(t, fileId, result.FileId)
+}
+
 func TestFileSync_NoSyncingStatusWhenLimitReached(t *testing.T) {
 	fx := newFixtureNotStarted(t, 1024)
 	spaceId := "space1"

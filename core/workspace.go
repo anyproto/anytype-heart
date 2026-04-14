@@ -19,8 +19,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
-	"github.com/anyproto/anytype-heart/space/spaceinfo"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspaceCreateRequest) *pb.RpcWorkspaceCreateResponse {
@@ -37,31 +35,10 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		spaceId        string
 		startingPageId string
 	)
+
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		spaceId, startingPageId, err = bs.CreateWorkspace(cctx, req)
-		if err != nil {
-			return
-		}
-		var spaceUxType model.SpaceUxType
-		hasUxType := pbtypes.HasField(req.GetDetails(), bundle.RelationKeySpaceUxType.String())
-		if !hasUxType {
-			spaceUxType = model.SpaceUxType_Data
-		} else {
-			spaceUxType = model.SpaceUxType(pbtypes.GetInt64(req.GetDetails(), bundle.RelationKeySpaceUxType.String()))
-			if spaceUxType.String() == "" {
-				return errors.New("unknown space ux type")
-			} else if spaceUxType == model.SpaceUxType_None {
-				return errors.New("space ux type cannot be None")
-			}
-		}
-		if spaceUxType == model.SpaceUxType_Chat || spaceUxType == model.SpaceUxType_OneToOne {
-			// TODO: make it async in space init
-			err = bs.SpaceInitChat(cctx, spaceId, true)
-			if err != nil {
-				log.With("error", err).Warn("failed to init space level chat")
-			}
-		}
-		return
+		return err
 	})
 	if err != nil {
 		return response("", "", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
@@ -118,18 +95,15 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
-		var shareableStatus spaceinfo.ShareableStatus
-		var spaceUxType model.SpaceUxType
+		var spaceType model.SpaceType
 		err = cache.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
-			spaceUxType = sv.GetSpaceDescription().SpaceUxType
-			localInfo := sv.GetLocalInfo()
-			shareableStatus = localInfo.GetShareableStatus()
+			spaceType = sv.GetSpaceDescription().SpaceType
 			return sv.UpdateLastOpenedDate()
 		})
 		if err != nil {
 			return err
 		}
-		if shareableStatus == spaceinfo.ShareableStatusShareable || spaceUxType == model.SpaceUxType_OneToOne {
+		if spaceType == model.SpaceType_SpaceTypeOneToOne {
 			// migration for existing users
 			err = bs.SpaceInitChat(cctx, req.SpaceId, false)
 			if err != nil {
@@ -162,6 +136,26 @@ func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspac
 	}
 
 	return response(pb.RpcWorkspaceSetInfoResponseError_NULL, nil)
+}
+
+func (mw *Middleware) WorkspaceSetHomepage(cctx context.Context, req *pb.RpcWorkspaceSetHomepageRequest) *pb.RpcWorkspaceSetHomepageResponse {
+	response := func(code pb.RpcWorkspaceSetHomepageResponseErrorCode, err error) *pb.RpcWorkspaceSetHomepageResponse {
+		m := &pb.RpcWorkspaceSetHomepageResponse{Error: &pb.RpcWorkspaceSetHomepageResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+
+		return m
+	}
+
+	err := mustService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyHomepage: domain.String(req.Homepage),
+	}))
+	if err != nil {
+		return response(pb.RpcWorkspaceSetHomepageResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcWorkspaceSetHomepageResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceSelect(cctx context.Context, req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {

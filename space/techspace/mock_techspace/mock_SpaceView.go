@@ -30,7 +30,7 @@ func (_m *MockSpaceView) EXPECT() *MockSpaceView_Expecter {
 	return &MockSpaceView_Expecter{mock: &_m.Mock}
 }
 
-// GetLocalInfo provides a mock function with given fields:
+// GetLocalInfo provides a mock function with no fields
 func (_m *MockSpaceView) GetLocalInfo() spaceinfo.SpaceLocalInfo {
 	ret := _m.Called()
 
@@ -75,7 +75,7 @@ func (_c *MockSpaceView_GetLocalInfo_Call) RunAndReturn(run func() spaceinfo.Spa
 	return _c
 }
 
-// GetPersistentInfo provides a mock function with given fields:
+// GetPersistentInfo provides a mock function with no fields
 func (_m *MockSpaceView) GetPersistentInfo() spaceinfo.SpacePersistentInfo {
 	ret := _m.Called()
 
@@ -120,7 +120,7 @@ func (_c *MockSpaceView_GetPersistentInfo_Call) RunAndReturn(run func() spaceinf
 	return _c
 }
 
-// GetSharedSpacesLimit provides a mock function with given fields:
+// GetSharedSpacesLimit provides a mock function with no fields
 func (_m *MockSpaceView) GetSharedSpacesLimit() int {
 	ret := _m.Called()
 
@@ -165,7 +165,7 @@ func (_c *MockSpaceView_GetSharedSpacesLimit_Call) RunAndReturn(run func() int) 
 	return _c
 }
 
-// GetSpaceDescription provides a mock function with given fields:
+// GetSpaceDescription provides a mock function with no fields
 func (_m *MockSpaceView) GetSpaceDescription() spaceinfo.SpaceDescription {
 	ret := _m.Called()
 
@@ -210,7 +210,7 @@ func (_c *MockSpaceView_GetSpaceDescription_Call) RunAndReturn(run func() spacei
 	return _c
 }
 
-// Lock provides a mock function with given fields:
+// Lock provides a mock function with no fields
 func (_m *MockSpaceView) Lock() {
 	_m.Called()
 }
@@ -238,7 +238,7 @@ func (_c *MockSpaceView_Lock_Call) Return() *MockSpaceView_Lock_Call {
 }
 
 func (_c *MockSpaceView_Lock_Call) RunAndReturn(run func()) *MockSpaceView_Lock_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -711,7 +711,7 @@ func (_c *MockSpaceView_SetSharedSpacesLimit_Call) RunAndReturn(run func(int) er
 }
 
 // SetSpaceData provides a mock function with given fields: details
-func (_m *MockSpaceView) SetSpaceData(details *domain.Details) error {
+func (_m *MockSpaceView) SetSpaceData(details *domain.GenericMap[domain.RelationKey]) error {
 	ret := _m.Called(details)
 
 	if len(ret) == 0 {
@@ -719,7 +719,7 @@ func (_m *MockSpaceView) SetSpaceData(details *domain.Details) error {
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*domain.Details) error); ok {
+	if rf, ok := ret.Get(0).(func(*domain.GenericMap[domain.RelationKey]) error); ok {
 		r0 = rf(details)
 	} else {
 		r0 = ret.Error(0)
@@ -734,14 +734,14 @@ type MockSpaceView_SetSpaceData_Call struct {
 }
 
 // SetSpaceData is a helper method to define mock.On call
-//   - details *domain.Details
+//   - details *domain.GenericMap[domain.RelationKey]
 func (_e *MockSpaceView_Expecter) SetSpaceData(details interface{}) *MockSpaceView_SetSpaceData_Call {
 	return &MockSpaceView_SetSpaceData_Call{Call: _e.mock.On("SetSpaceData", details)}
 }
 
-func (_c *MockSpaceView_SetSpaceData_Call) Run(run func(details *domain.Details)) *MockSpaceView_SetSpaceData_Call {
+func (_c *MockSpaceView_SetSpaceData_Call) Run(run func(details *domain.GenericMap[domain.RelationKey])) *MockSpaceView_SetSpaceData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*domain.Details))
+		run(args[0].(*domain.GenericMap[domain.RelationKey]))
 	})
 	return _c
 }
@@ -751,7 +751,7 @@ func (_c *MockSpaceView_SetSpaceData_Call) Return(_a0 error) *MockSpaceView_SetS
 	return _c
 }
 
-func (_c *MockSpaceView_SetSpaceData_Call) RunAndReturn(run func(*domain.Details) error) *MockSpaceView_SetSpaceData_Call {
+func (_c *MockSpaceView_SetSpaceData_Call) RunAndReturn(run func(*domain.GenericMap[domain.RelationKey]) error) *MockSpaceView_SetSpaceData_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -848,7 +848,7 @@ func (_c *MockSpaceView_SetSpacePersistentInfo_Call) RunAndReturn(run func(space
 	return _c
 }
 
-// Unlock provides a mock function with given fields:
+// Unlock provides a mock function with no fields
 func (_m *MockSpaceView) Unlock() {
 	_m.Called()
 }
@@ -876,7 +876,7 @@ func (_c *MockSpaceView_Unlock_Call) Return() *MockSpaceView_Unlock_Call {
 }
 
 func (_c *MockSpaceView_Unlock_Call) RunAndReturn(run func()) *MockSpaceView_Unlock_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

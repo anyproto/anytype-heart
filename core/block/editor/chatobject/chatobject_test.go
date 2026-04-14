@@ -95,6 +95,7 @@ type fixture struct {
 	storeFixture       *objectstore.StoreFixture
 
 	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
+	lastOrder           string
 }
 
 const (
@@ -589,7 +590,8 @@ func (fx *fixture) generateOrderId(tx *storestate.StoreStateTx) string {
 	if fx.generateOrderIdFunc != nil {
 		return fx.generateOrderIdFunc(tx)
 	}
-	return tx.NextOrder(tx.GetMaxOrder())
+	fx.lastOrder = storestate.LexId.Next(fx.lastOrder)
+	return fx.lastOrder
 }
 
 func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChangeParams) (string, error) {

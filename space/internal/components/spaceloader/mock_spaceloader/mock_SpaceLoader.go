@@ -116,7 +116,7 @@ func (_c *MockSpaceLoader_Init_Call) RunAndReturn(run func(*app.App) error) *Moc
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSpaceLoader) Name() string {
 	ret := _m.Called()
 

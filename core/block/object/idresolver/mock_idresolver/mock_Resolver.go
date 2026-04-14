@@ -115,7 +115,7 @@ func (_c *MockResolver_Init_Call) RunAndReturn(run func(*app.App) error) *MockRe
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockResolver) Name() string {
 	ret := _m.Called()
 

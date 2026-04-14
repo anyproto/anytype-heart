@@ -115,7 +115,7 @@ func (_c *MockClientServer_Init_Call) RunAndReturn(run func(*app.App) error) *Mo
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockClientServer) Name() string {
 	ret := _m.Called()
 
@@ -160,7 +160,7 @@ func (_c *MockClientServer_Name_Call) RunAndReturn(run func() string) *MockClien
 	return _c
 }
 
-// Port provides a mock function with given fields:
+// Port provides a mock function with no fields
 func (_m *MockClientServer) Port() int {
 	ret := _m.Called()
 
@@ -251,7 +251,7 @@ func (_c *MockClientServer_Run_Call) RunAndReturn(run func(context.Context) erro
 	return _c
 }
 
-// ServerStarted provides a mock function with given fields:
+// ServerStarted provides a mock function with no fields
 func (_m *MockClientServer) ServerStarted() bool {
 	ret := _m.Called()
 

@@ -58,6 +58,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
@@ -106,6 +107,7 @@ type Service interface {
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
+	MarkFileUploaded(objectId string) error
 }
 
 type objectCreatorService interface {
@@ -216,7 +218,7 @@ func (s *service) Run(_ context.Context) error {
 }
 
 type objectArchiver interface {
-	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
@@ -247,7 +249,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 		for _, record := range records {
 			ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 		}
-		if err = s.objectArchiver.SetListIsArchived(ctx, ids, true); err != nil {
+		if err = s.objectArchiver.SetListIsArchived(nil, ctx, ids, true); err != nil {
 			return err
 		}
 	}
@@ -319,6 +321,10 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 	}
 	err := s.addToSyncQueue(req)
 	return err
+}
+
+func (s *service) MarkFileUploaded(objectId string) error {
+	return s.fileSync.MarkUploaded(objectId)
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -679,18 +685,14 @@ func (s *service) CanDeleteFile(ctx context.Context, objectId string) error {
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	workspaceDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(spc.DerivedIDs().Workspace)
-	if err != nil {
-		return fmt.Errorf("get workspace details: %w", err)
-	}
-
-	if workspaceDetails.GetInt64(bundle.RelationKeySpaceUxType) == int64(model.SpaceUxType_OneToOne) {
+	if spc.IsOneToOne() {
 		myParticipantId := s.accountService.MyParticipantId(spaceId)
 
 		if details.GetString(bundle.RelationKeyCreator) != myParticipantId {
 			return fmt.Errorf("can't delete other's file")
 		}
 	}
+
 	return nil
 }
 

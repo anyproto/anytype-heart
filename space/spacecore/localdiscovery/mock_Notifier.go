@@ -52,7 +52,7 @@ func (_c *MockNotifier_PeerDiscovered_Call) Return() *MockNotifier_PeerDiscovere
 }
 
 func (_c *MockNotifier_PeerDiscovered_Call) RunAndReturn(run func(context.Context, DiscoveredPeer, OwnAddresses)) *MockNotifier_PeerDiscovered_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

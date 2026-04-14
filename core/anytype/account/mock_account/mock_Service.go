@@ -28,7 +28,7 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
-// AccountID provides a mock function with given fields:
+// AccountID provides a mock function with no fields
 func (_m *MockService) AccountID() string {
 	ret := _m.Called()
 
@@ -129,7 +129,7 @@ func (_c *MockService_Delete_Call) RunAndReturn(run func(context.Context) (int64
 	return _c
 }
 
-// GetAccountObjectId provides a mock function with given fields:
+// GetAccountObjectId provides a mock function with no fields
 func (_m *MockService) GetAccountObjectId() (string, error) {
 	ret := _m.Called()
 
@@ -347,7 +347,7 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// Keys provides a mock function with given fields:
+// Keys provides a mock function with no fields
 func (_m *MockService) Keys() *accountdata.AccountKeys {
 	ret := _m.Called()
 
@@ -440,7 +440,7 @@ func (_c *MockService_MyParticipantId_Call) RunAndReturn(run func(string) string
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 
@@ -485,7 +485,7 @@ func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Na
 	return _c
 }
 
-// PersonalSpaceID provides a mock function with given fields:
+// PersonalSpaceID provides a mock function with no fields
 func (_m *MockService) PersonalSpaceID() string {
 	ret := _m.Called()
 
@@ -530,7 +530,7 @@ func (_c *MockService_PersonalSpaceID_Call) RunAndReturn(run func() string) *Moc
 	return _c
 }
 
-// ProfileInfo provides a mock function with given fields:
+// ProfileInfo provides a mock function with no fields
 func (_m *MockService) ProfileInfo() (account.Profile, error) {
 	ret := _m.Called()
 
@@ -585,7 +585,7 @@ func (_c *MockService_ProfileInfo_Call) RunAndReturn(run func() (account.Profile
 	return _c
 }
 
-// ProfileObjectId provides a mock function with given fields:
+// ProfileObjectId provides a mock function with no fields
 func (_m *MockService) ProfileObjectId() (string, error) {
 	ret := _m.Called()
 

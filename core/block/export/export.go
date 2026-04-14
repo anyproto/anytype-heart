@@ -1317,21 +1317,21 @@ func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
-	var spaceDashBoardID string
+	var homepage string
 
 	pr, err := e.accountService.ProfileInfo()
 	if err != nil {
 		return fmt.Errorf("get profile info: %w", err)
 	}
 	err = cache.Do(e.picker, spc.DerivedIDs().Workspace, func(b sb.SmartBlock) error {
-		spaceDashBoardID = b.CombinedDetails().GetString(bundle.RelationKeySpaceDashboardId)
+		homepage = b.Details().GetString(bundle.RelationKeyHomepage)
 		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("get workspace: %w", err)
 	}
 	profile := &pb.Profile{
-		SpaceDashboardId: spaceDashBoardID,
+		SpaceDashboardId: homepage,
 		Address:          pr.AccountId,
 		Name:             pr.Name,
 		Avatar:           pr.IconImage,

@@ -179,7 +179,7 @@ type Repository interface {
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error)
 	GetLastMessages(ctx context.Context, limit uint) ([]*chatmodel.Message, error)
-	SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) ([]string, error)
+	SetSyncedByMaxOrderId(ctx context.Context, maxOrderId string) ([]string, error)
 	// GetAllMessageAttachments returns attachment info from all messages, optionally filtered by afterOrderId.
 	GetAllMessageAttachments(ctx context.Context, afterOrderId string) ([]MessageAttachmentInfo, error)
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
@@ -476,50 +476,20 @@ func (r *repository) setReadFlag(ctx context.Context, arena *anyenc.Arena, handl
 	return mod.getModifiedIds(), nil
 }
 
-func (r *repository) SetSyncedFlag(ctx context.Context, chatObjectId string, msgIds []string, value bool) ([]string, error) {
-	arena := r.arenaPool.Get()
-	defer func() {
-		r.arenaPool.Put(arena)
-	}()
-
-	var idsModified []string
-
-	chunks := lo.Chunk(msgIds, 100)
-	for _, chunk := range chunks {
-		modified, err := r.setSyncedFlag(ctx, arena, chunk, value)
-		if err != nil {
-			return nil, err
-		}
-		idsModified = append(idsModified, modified...)
+func (r *repository) SetSyncedByMaxOrderId(ctx context.Context, maxOrderId string) ([]string, error) {
+	if maxOrderId == "" {
+		return nil, nil
 	}
 
-	return idsModified, nil
-}
-
-func (r *repository) setSyncedFlag(ctx context.Context, arena *anyenc.Arena, msgIds []string, value bool) ([]string, error) {
-	arena.Reset()
-	encIds := make([]*anyenc.Value, 0, len(msgIds))
-	for _, id := range msgIds {
-		encIds = append(encIds, arena.NewString(id))
+	filter := query.And{
+		filterSyncedFalse,
+		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpLte, maxOrderId)},
 	}
 
-	var syncedFilter query.Filter
-	if value {
-		syncedFilter = filterSyncedFalse
-	} else {
-		syncedFilter = filterSyncedTrue
-	}
-
-	mod := &syncedModifier{value: value}
-	_, err := r.collection.Find(query.And{
-		syncedFilter,
-		query.Key{
-			Path:   []string{"id"},
-			Filter: query.NewInValue(encIds...),
-		},
-	}).Update(ctx, mod)
+	mod := &syncedModifier{value: true}
+	_, err := r.collection.Find(filter).Update(ctx, mod)
 	if err != nil {
-		return nil, fmt.Errorf("update synced flag: %w", err)
+		return nil, fmt.Errorf("set synced by max order id: %w", err)
 	}
 	return mod.getModifiedIds(), nil
 }

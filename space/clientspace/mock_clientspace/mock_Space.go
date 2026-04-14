@@ -27,6 +27,8 @@ import (
 
 	smartblock "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 
+	spacedomain "github.com/anyproto/anytype-heart/space/spacedomain"
+
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 
 	treestorage "github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
@@ -91,7 +93,7 @@ func (_c *MockSpace_Close_Call) RunAndReturn(run func(context.Context) error) *M
 	return _c
 }
 
-// CloseBlocks provides a mock function with given fields:
+// CloseBlocks provides a mock function with no fields
 func (_m *MockSpace) CloseBlocks() {
 	_m.Called()
 }
@@ -119,11 +121,11 @@ func (_c *MockSpace_CloseBlocks_Call) Return() *MockSpace_CloseBlocks_Call {
 }
 
 func (_c *MockSpace_CloseBlocks_Call) RunAndReturn(run func()) *MockSpace_CloseBlocks_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// CommonSpace provides a mock function with given fields:
+// CommonSpace provides a mock function with no fields
 func (_m *MockSpace) CommonSpace() commonspace.Space {
 	ret := _m.Called()
 
@@ -277,7 +279,7 @@ func (_c *MockSpace_CreateTreeObject_Call) RunAndReturn(run func(context.Context
 }
 
 // CreateTreeObjectWithPayload provides a mock function with given fields: ctx, payload, initFunc
-func (_m *MockSpace) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc objectcache.InitFunc) (smartblock.SmartBlock, error) {
+func (_m *MockSpace) CreateTreeObjectWithPayload(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc func(string) *smartblock.InitContext) (smartblock.SmartBlock, error) {
 	ret := _m.Called(ctx, payload, initFunc)
 
 	if len(ret) == 0 {
@@ -286,10 +288,10 @@ func (_m *MockSpace) CreateTreeObjectWithPayload(ctx context.Context, payload tr
 
 	var r0 smartblock.SmartBlock
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload, objectcache.InitFunc) (smartblock.SmartBlock, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload, func(string) *smartblock.InitContext) (smartblock.SmartBlock, error)); ok {
 		return rf(ctx, payload, initFunc)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload, objectcache.InitFunc) smartblock.SmartBlock); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, treestorage.TreeStorageCreatePayload, func(string) *smartblock.InitContext) smartblock.SmartBlock); ok {
 		r0 = rf(ctx, payload, initFunc)
 	} else {
 		if ret.Get(0) != nil {
@@ -297,7 +299,7 @@ func (_m *MockSpace) CreateTreeObjectWithPayload(ctx context.Context, payload tr
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, treestorage.TreeStorageCreatePayload, objectcache.InitFunc) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, treestorage.TreeStorageCreatePayload, func(string) *smartblock.InitContext) error); ok {
 		r1 = rf(ctx, payload, initFunc)
 	} else {
 		r1 = ret.Error(1)
@@ -314,14 +316,14 @@ type MockSpace_CreateTreeObjectWithPayload_Call struct {
 // CreateTreeObjectWithPayload is a helper method to define mock.On call
 //   - ctx context.Context
 //   - payload treestorage.TreeStorageCreatePayload
-//   - initFunc objectcache.InitFunc
+//   - initFunc func(string) *smartblock.InitContext
 func (_e *MockSpace_Expecter) CreateTreeObjectWithPayload(ctx interface{}, payload interface{}, initFunc interface{}) *MockSpace_CreateTreeObjectWithPayload_Call {
 	return &MockSpace_CreateTreeObjectWithPayload_Call{Call: _e.mock.On("CreateTreeObjectWithPayload", ctx, payload, initFunc)}
 }
 
-func (_c *MockSpace_CreateTreeObjectWithPayload_Call) Run(run func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc objectcache.InitFunc)) *MockSpace_CreateTreeObjectWithPayload_Call {
+func (_c *MockSpace_CreateTreeObjectWithPayload_Call) Run(run func(ctx context.Context, payload treestorage.TreeStorageCreatePayload, initFunc func(string) *smartblock.InitContext)) *MockSpace_CreateTreeObjectWithPayload_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(treestorage.TreeStorageCreatePayload), args[2].(objectcache.InitFunc))
+		run(args[0].(context.Context), args[1].(treestorage.TreeStorageCreatePayload), args[2].(func(string) *smartblock.InitContext))
 	})
 	return _c
 }
@@ -331,7 +333,7 @@ func (_c *MockSpace_CreateTreeObjectWithPayload_Call) Return(sb smartblock.Smart
 	return _c
 }
 
-func (_c *MockSpace_CreateTreeObjectWithPayload_Call) RunAndReturn(run func(context.Context, treestorage.TreeStorageCreatePayload, objectcache.InitFunc) (smartblock.SmartBlock, error)) *MockSpace_CreateTreeObjectWithPayload_Call {
+func (_c *MockSpace_CreateTreeObjectWithPayload_Call) RunAndReturn(run func(context.Context, treestorage.TreeStorageCreatePayload, func(string) *smartblock.InitContext) (smartblock.SmartBlock, error)) *MockSpace_CreateTreeObjectWithPayload_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -393,7 +395,7 @@ func (_c *MockSpace_CreateTreePayload_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// DebugAllHeads provides a mock function with given fields:
+// DebugAllHeads provides a mock function with no fields
 func (_m *MockSpace) DebugAllHeads() []headsync.TreeHeads {
 	ret := _m.Called()
 
@@ -832,7 +834,7 @@ func (_c *MockSpace_DeriveTreePayload_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-// DerivedIDs provides a mock function with given fields:
+// DerivedIDs provides a mock function with no fields
 func (_m *MockSpace) DerivedIDs() threads.DerivedSmartblockIds {
 	ret := _m.Called()
 
@@ -1019,7 +1021,7 @@ func (_c *MockSpace_DoLockedIfNotExists_Call) RunAndReturn(run func(string, func
 	return _c
 }
 
-// GetAclIdentity provides a mock function with given fields:
+// GetAclIdentity provides a mock function with no fields
 func (_m *MockSpace) GetAclIdentity() crypto.PubKey {
 	ret := _m.Called()
 
@@ -1298,7 +1300,7 @@ func (_c *MockSpace_GetTypeIdByKey_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// Id provides a mock function with given fields:
+// Id provides a mock function with no fields
 func (_m *MockSpace) Id() string {
 	ret := _m.Called()
 
@@ -1343,7 +1345,7 @@ func (_c *MockSpace_Id_Call) RunAndReturn(run func() string) *MockSpace_Id_Call 
 	return _c
 }
 
-// IsOneToOne provides a mock function with given fields:
+// IsOneToOne provides a mock function with no fields
 func (_m *MockSpace) IsOneToOne() bool {
 	ret := _m.Called()
 
@@ -1388,7 +1390,7 @@ func (_c *MockSpace_IsOneToOne_Call) RunAndReturn(run func() bool) *MockSpace_Is
 	return _c
 }
 
-// IsPersonal provides a mock function with given fields:
+// IsPersonal provides a mock function with no fields
 func (_m *MockSpace) IsPersonal() bool {
 	ret := _m.Called()
 
@@ -1433,7 +1435,7 @@ func (_c *MockSpace_IsPersonal_Call) RunAndReturn(run func() bool) *MockSpace_Is
 	return _c
 }
 
-// IsReadOnly provides a mock function with given fields:
+// IsReadOnly provides a mock function with no fields
 func (_m *MockSpace) IsReadOnly() bool {
 	ret := _m.Called()
 
@@ -1478,7 +1480,7 @@ func (_c *MockSpace_IsReadOnly_Call) RunAndReturn(run func() bool) *MockSpace_Is
 	return _c
 }
 
-// KeyValueService provides a mock function with given fields:
+// KeyValueService provides a mock function with no fields
 func (_m *MockSpace) KeyValueService() keyvalueservice.Service {
 	ret := _m.Called()
 
@@ -1602,7 +1604,7 @@ func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) Return() *MockSpace_LoadObjectsI
 }
 
 func (_c *MockSpace_LoadObjectsIgnoreErrs_Call) RunAndReturn(run func(context.Context, []string)) *MockSpace_LoadObjectsIgnoreErrs_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -1699,7 +1701,52 @@ func (_c *MockSpace_Remove_Call) RunAndReturn(run func(context.Context, string) 
 	return _c
 }
 
-// Storage provides a mock function with given fields:
+// SpaceType provides a mock function with no fields
+func (_m *MockSpace) SpaceType() spacedomain.SpaceType {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SpaceType")
+	}
+
+	var r0 spacedomain.SpaceType
+	if rf, ok := ret.Get(0).(func() spacedomain.SpaceType); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(spacedomain.SpaceType)
+	}
+
+	return r0
+}
+
+// MockSpace_SpaceType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SpaceType'
+type MockSpace_SpaceType_Call struct {
+	*mock.Call
+}
+
+// SpaceType is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) SpaceType() *MockSpace_SpaceType_Call {
+	return &MockSpace_SpaceType_Call{Call: _e.mock.On("SpaceType")}
+}
+
+func (_c *MockSpace_SpaceType_Call) Run(run func()) *MockSpace_SpaceType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_SpaceType_Call) Return(_a0 spacedomain.SpaceType) *MockSpace_SpaceType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_SpaceType_Call) RunAndReturn(run func() spacedomain.SpaceType) *MockSpace_SpaceType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Storage provides a mock function with no fields
 func (_m *MockSpace) Storage() anystorage.ClientSpaceStorage {
 	ret := _m.Called()
 
@@ -1746,7 +1793,7 @@ func (_c *MockSpace_Storage_Call) RunAndReturn(run func() anystorage.ClientSpace
 	return _c
 }
 
-// StoredIds provides a mock function with given fields:
+// StoredIds provides a mock function with no fields
 func (_m *MockSpace) StoredIds() []string {
 	ret := _m.Called()
 
@@ -1793,7 +1840,7 @@ func (_c *MockSpace_StoredIds_Call) RunAndReturn(run func() []string) *MockSpace
 	return _c
 }
 
-// TreeBuilder provides a mock function with given fields:
+// TreeBuilder provides a mock function with no fields
 func (_m *MockSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
 	ret := _m.Called()
 

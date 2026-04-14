@@ -267,14 +267,40 @@ func UpdateObjectIDsInRelations(st *state.State, oldIDtoNew map[string]string, r
 			}
 			format = int32(rel.Format)
 		}
-		if !isObjectRelation(k, format) {
+		if !IsObjectRelation(k, format) {
 			continue
 		}
 		handleObjectRelation(st, oldIDtoNew, v, k)
 	}
 }
 
-func isObjectRelation(key domain.RelationKey, format int32) bool {
+// UpdateObjectIDsInDetails remaps object-format relation values directly in details
+// without requiring a state. Used to patch snapshot details before object creation.
+func UpdateObjectIDsInDetails(details *domain.Details, oldIDtoNew map[string]string, relationKeysToFormat map[domain.RelationKey]int32) {
+	for k, v := range details.Iterate() {
+		format, ok := relationKeysToFormat[k]
+		if !ok {
+			rel, err := bundle.GetRelation(k)
+			if err != nil {
+				continue
+			}
+			format = int32(rel.Format)
+		}
+		if !IsObjectRelation(k, format) {
+			continue
+		}
+		if objectId, ok := v.TryString(); ok {
+			if newIDs := getNewObjectsIDForRelation([]string{objectId}, oldIDtoNew); len(newIDs) != 0 {
+				details.SetString(k, newIDs[0])
+			}
+		} else {
+			objectsIDs := getNewObjectsIDForRelation(v.StringList(), oldIDtoNew)
+			details.Set(k, domain.StringList(objectsIDs))
+		}
+	}
+}
+
+func IsObjectRelation(key domain.RelationKey, format int32) bool {
 	return key != bundle.RelationKeyFeaturedRelations && // featured relations have relation keys instead of IDs
 		(key == bundle.RelationKeyCoverId || // cover could either be a color (longtext) or image (object)
 			format == int32(model.RelationFormat_object) ||

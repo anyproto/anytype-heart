@@ -330,6 +330,19 @@ func ListValueToFloats(list *types.ListValue) []float64 {
 	return res
 }
 
+func ListValueToStructs(list *types.ListValue) []*types.Struct {
+	if list == nil {
+		return nil
+	}
+	res := make([]*types.Struct, 0, len(list.Values))
+	for _, v := range list.Values {
+		if _, ok := v.GetKind().(*types.Value_StructValue); ok {
+			res = append(res, v.GetStructValue())
+		}
+	}
+	return res
+}
+
 func HasField(st *types.Struct, key string) bool {
 	if st == nil || st.Fields == nil {
 		return false
