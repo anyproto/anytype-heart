@@ -12,7 +12,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/cache/mock_cache"
 	"github.com/anyproto/anytype-heart/core/block/editor"
-	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
@@ -35,15 +34,18 @@ const spaceId = "spaceId"
 
 type fileGCStub struct{}
 
-func (f *fileGCStub) Name() string                        { return "fileGCStub" }
-func (f *fileGCStub) Init(a *app.App) error               { return nil }
-func (f *fileGCStub) Run(ctx context.Context) error        { return nil }
-func (f *fileGCStub) Close(ctx context.Context) error      { return nil }
-func (f *fileGCStub) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
-	return nil
+func (f *fileGCStub) Name() string                    { return "fileGCStub" }
+func (f *fileGCStub) Init(a *app.App) error           { return nil }
+func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
+func (f *fileGCStub) Close(ctx context.Context) error { return nil }
+func (f *fileGCStub) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
+	return nil, nil
 }
-func (f *fileGCStub) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
-	return nil
+func (f *fileGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
+	return nil, nil
+}
+func (f *fileGCStub) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
+	return nil, nil
 }
 
 type fixture struct {
@@ -73,7 +75,7 @@ func newFixture(t *testing.T) *fixture {
 		spaceService: spaceService,
 		store:        store,
 		fileService:  fileService,
-		fileGC:       &fileGCStub{},
+		objectGC:     &fileGCStub{},
 	}
 
 	return &fixture{
@@ -291,58 +293,6 @@ func TestService_SetSpaceInfo(t *testing.T) {
 	})
 }
 
-func TestService_SetWorkspaceDashboardId(t *testing.T) {
-	var (
-		wsObjectId  = "workspace"
-		dashboardId = "homepage"
-	)
-
-	t.Run("no error", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		sb := smarttest.New(wsObjectId)
-		sb.SetType(coresb.SmartBlockTypeWorkspace)
-		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			assert.Equal(t, wsObjectId, objectId)
-			ws := &editor.Workspaces{
-				SmartBlock:    sb,
-				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil),
-			}
-			return ws, nil
-		})
-
-		// when
-		setId, err := fx.SetWorkspaceDashboardId(nil, wsObjectId, dashboardId)
-
-		// then
-		assert.NoError(t, err)
-		assert.Equal(t, dashboardId, setId)
-		assert.Equal(t, []string{dashboardId}, sb.NewState().Details().GetStringList(bundle.RelationKeySpaceDashboardId))
-	})
-
-	t.Run("error if wrong smartblock type", func(t *testing.T) {
-		// given
-		fx := newFixture(t)
-		sb := smarttest.New(wsObjectId)
-		sb.SetType(coresb.SmartBlockTypePage)
-		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			assert.Equal(t, wsObjectId, objectId)
-			ws := &editor.Workspaces{
-				SmartBlock:    sb,
-				AllOperations: basic.NewBasic(sb, fx.store.SpaceIndex(spaceId), nil, nil),
-			}
-			return ws, nil
-		})
-
-		// when
-		_, err := fx.SetWorkspaceDashboardId(nil, wsObjectId, dashboardId)
-
-		// then
-		assert.Error(t, err)
-		assert.ErrorIs(t, ErrUnexpectedBlockType, err)
-	})
-}
-
 func TestService_SetListIsFavorite(t *testing.T) {
 	var (
 		objects = []objectstore.TestObject{
@@ -394,7 +344,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.NoError(t, err)
@@ -418,7 +368,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.Error(t, err)
@@ -428,18 +378,22 @@ func TestService_SetIsArchived(t *testing.T) {
 	t.Run("can't delete others files", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		sb := smarttest.New(binId)
-		sb.SetType(coresb.SmartBlockTypeFileObject)
-		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		binSb := smarttest.New(binId)
+		binSb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		objSb := smarttest.New("obj1")
+		objSb.SetType(coresb.SmartBlockTypeFileObject)
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			return sb, nil
+			if objectId == binId {
+				return editor.NewArchive(binSb, fx.store.SpaceIndex(spaceId)), nil
+			}
+			return objSb, nil
 		})
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(fmt.Errorf("not allowed"))
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.Error(t, err)
@@ -471,7 +425,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -499,7 +453,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, false)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, false)
 
 		// then
 		assert.NoError(t, err)
@@ -524,7 +478,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -542,7 +496,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.Error(t, err)

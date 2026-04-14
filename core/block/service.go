@@ -56,11 +56,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
-	"github.com/anyproto/anytype-heart/core/onetoone"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -128,7 +128,7 @@ type Service struct {
 	objectCreator        objectcreator.Service
 	templateService      template.Service
 	identityService      IdentityService
-	onetoone             onetoone.Service
+	inboxSender          inboxservice.Sender
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
@@ -138,7 +138,7 @@ type Service struct {
 
 	fileUploaderService fileuploader.Service
 	fileOffloader       fileoffloader.Service
-	fileGC              filegc.FileGC
+	objectGC            objectgc.ObjectGC
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -168,7 +168,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.identityService = app.MustComponent[IdentityService](a)
-	s.onetoone = app.MustComponent[onetoone.Service](a)
+	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[template.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
@@ -180,7 +180,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
-	s.fileGC = app.MustComponent[filegc.FileGC](a)
+	s.objectGC = app.MustComponent[objectgc.ObjectGC](a)
 	return
 }
 
@@ -370,7 +370,8 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
-		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
+		hasDiscussion := s.Details().GetString(bundle.RelationKeyDiscussionId) != ""
+		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty) && !hasDiscussion
 		return nil
 	})
 	if err != nil {
@@ -474,6 +475,31 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalytic
 	return nil
 }
 
+func (s *Service) ObjectAddDiscussion(ctx context.Context, objectId string) (discussionId string, err error) {
+	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return "", fmt.Errorf("resolve space: %w", err)
+	}
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("get space: %w", err)
+	}
+	discussionId, err = s.objectCreator.AddDiscussionDerivedObject(ctx, spc, objectId)
+	if err != nil {
+		return "", fmt.Errorf("add discussion derived object: %w", err)
+	}
+
+	err = spc.DoCtx(ctx, objectId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetDetail(bundle.RelationKeyDiscussionId, domain.String(discussionId))
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags)
+	})
+	if err != nil {
+		return "", fmt.Errorf("set discussionId on parent object: %w", err)
+	}
+	return discussionId, nil
+}
+
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	panic("should be removed")
 }
@@ -546,7 +572,7 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if id == spc.DerivedIDs().Archive {
 		return fmt.Errorf("cannot delete archive object")
 	}
-	// we need to do it outside of cache.Do to avoid deadlock via filegc
+	// we need to do it outside of cache.Do to avoid deadlock via objectgc
 	err = s.DeleteObject(id)
 	if err != nil {
 		return fmt.Errorf("delete object: %w", err)
@@ -628,7 +654,6 @@ func (s *Service) Close(_ context.Context) (err error) {
 	}
 	return nil
 }
-
 
 func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
 	return cache.Do(s, pageID, func(sb smartblock.SmartBlock) error {
@@ -821,4 +846,30 @@ func removeDescriptionFromRecommended(typeId string, details *domain.Details, sp
 		}
 		return nil
 	})
+}
+
+func (s *Service) SpaceSetHomepage(spaceId string, homepage string) error {
+	if err := s.validateHomepage(spaceId, homepage); err != nil {
+		return fmt.Errorf("validate homepage: %w", err)
+	}
+	return s.detailsService.SetSpaceInfo(spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyHomepage: domain.String(homepage),
+	}))
+}
+
+func (s *Service) validateHomepage(spaceId string, homepage string) error {
+	if homepage == "" {
+		return nil
+	}
+	if domain.IsHomepageConstant(homepage) {
+		return nil
+	}
+	exists, err := s.objectStore.SpaceIndex(spaceId).HasIds([]string{homepage})
+	if err != nil {
+		return fmt.Errorf("check homepage object existence: %w", err)
+	}
+	if len(exists) == 0 {
+		return fmt.Errorf("homepage object %s not found in space %s", homepage, spaceId)
+	}
+	return nil
 }

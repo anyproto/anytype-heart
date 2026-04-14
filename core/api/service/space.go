@@ -10,9 +10,11 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -140,12 +142,13 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 	resp := s.mw.WorkspaceCreate(ctx, &pb.RpcWorkspaceCreateRequest{
 		Details: &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():             pbtypes.String(s.sanitizedString(*request.Name)),
-				bundle.RelationKeyIconOption.String():       pbtypes.Float64(float64(iconOption.Int64())),
-				bundle.RelationKeySpaceDashboardId.String(): pbtypes.String("lastOpened"),
-				bundle.RelationKeySpaceUxType.String():      pbtypes.Float64(float64(model.SpaceUxType_Data)),
+				bundle.RelationKeyName.String():       pbtypes.String(s.sanitizedString(*request.Name)),
+				bundle.RelationKeyIconOption.String(): pbtypes.Float64(float64(iconOption.Int64())),
+				bundle.RelationKeyHomepage.String():   pbtypes.String(domain.HomepageWidgets),
+				bundle.RelationKeySpaceType.String():  pbtypes.Float64(float64(model.SpaceType_SpaceTypeRegular)),
 			},
 		},
+		UseCase: pb.RpcObjectImportUseCaseRequest_DATA_SPACE,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcWorkspaceCreateResponseError_NULL {
@@ -224,13 +227,19 @@ func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimo
 		return apimodel.Space{}, ErrFailedOpenSpace
 	}
 
-	spaceUxType := s.spaceUxTypeToSpaceType(model.SpaceUxType(spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeySpaceUxType.String()].GetNumberValue()))
+	workspaceDetails := domain.NewDetailsFromProto(spaceResp.ObjectView.Details[0].Details)
+	spaceTypeModel := model.SpaceType(workspaceDetails.GetInt64(bundle.RelationKeySpaceType)) // nolint:gosec
+	spaceType, err := spacedomain.SpaceTypeFromModel(spaceTypeModel)
+	if err != nil {
+		spaceType = spacedomain.SpaceTypeRegular
+	}
+
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
 	icon := getIcon(s.gatewayUrl, "", spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return apimodel.Space{
-		Object:      spaceUxType,
+		Object:      spaceType.String(),
 		Id:          spaceId,
 		Name:        name,
 		Icon:        icon,
@@ -271,13 +280,4 @@ func (s *Service) GetAllSpaceIds(ctx context.Context) ([]string, error) {
 	}
 
 	return spaceIds, nil
-}
-
-func (s *Service) spaceUxTypeToSpaceType(uxType model.SpaceUxType) string {
-	switch uxType {
-	case model.SpaceUxType_Chat, model.SpaceUxType_OneToOne:
-		return "chat"
-	default:
-		return "space"
-	}
 }

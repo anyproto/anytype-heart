@@ -55,6 +55,7 @@ const (
 	ForceReindexParticipantsCounter  int32 = 1
 	ForceReindexChatsCounter         int32 = 7
 	ForceReindexChatsFulltextCounter int32 = 1
+	ForceReindexDiscussionsCounter   int32 = 1
 
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
 	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
@@ -92,6 +93,7 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 			ReindexDeletedObjects:       0, // Set to zero to force reindexing of deleted objects when objectstore was deleted
 			ReindexParticipants:         ForceReindexParticipantsCounter,
 			ReindexChats:                ForceReindexChatsCounter,
+			ReindexDiscussions:          ForceReindexDiscussionsCounter,
 			ReindexFulltextChatMessages: ForceReindexChatsFulltextCounter,
 			InvalidateObjectsIndex:      ForceInvalidateObjectsIndexCounter,
 		}
@@ -136,6 +138,9 @@ func (i *indexer) buildFlags(spaceID string) (reindexFlags, error) {
 	}
 	if checksums.ReindexChats != ForceReindexChatsCounter {
 		flags.chats = true
+	}
+	if checksums.ReindexDiscussions != ForceReindexDiscussionsCounter {
+		flags.discussions = true
 	}
 	if checksums.ReindexFulltextChatMessages != ForceReindexChatsFulltextCounter {
 		flags.messagesFulltext = true
@@ -242,6 +247,13 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		}
 	}
 
+	if flags.discussions {
+		err = i.reindexDiscussions(ctx, space)
+		if err != nil {
+			log.Error("reindex discussions", zap.Error(err))
+		}
+	}
+
 	if flags.messagesFulltext {
 		err = i.reindexChatMessagesFulltext(ctx, space)
 		if err != nil {
@@ -310,6 +322,21 @@ func (i *indexer) cleanChatCollection(ctx context.Context, db anystore.DB, chatI
 	return nil
 }
 
+func (i *indexer) cleanMetaEntry(ctx context.Context, db anystore.DB, objectId string) error {
+	col, err := db.OpenCollection(ctx, storestate.CollMeta)
+	if errors.Is(err, anystore.ErrCollectionNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("open meta collection: %w", err)
+	}
+	err = col.DeleteId(ctx, objectId)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("delete meta entry: %w", err)
+	}
+	return nil
+}
+
 func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) error {
 	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
 	if err != nil {
@@ -343,10 +370,56 @@ func (i *indexer) reindexChats(ctx context.Context, space clientspace.Space) err
 		if err != nil {
 			return fmt.Errorf("open collection: %w", err)
 		}
-		// Collection for orders
-		err = i.cleanChatCollection(txn.Context(), db, id, storestate.CollChangeOrders)
+		// Clean addSeq entry from meta collection
+		if err = i.cleanMetaEntry(txn.Context(), db, id); err != nil {
+			return fmt.Errorf("clean meta entry: %w", err)
+		}
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+
+	i.reindexIdsIgnoreErr(ctx, space, ids...)
+
+	return nil
+}
+
+func (i *indexer) reindexDiscussions(ctx context.Context, space clientspace.Space) error {
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeDiscussionObject)
+	if err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	db, err := i.dbProvider.GetCrdtDb(space.Id()).Wait()
+	if err != nil {
+		return fmt.Errorf("get crdt db: %w", err)
+	}
+
+	txn, err := db.WriteTx(ctx)
+	if err != nil {
+		return fmt.Errorf("write tx: %w", err)
+	}
+	defer func() {
+		_ = txn.Rollback()
+	}()
+
+	for _, id := range ids {
+		err = i.cleanChatCollection(txn.Context(), db, id, chatobject.CollectionName)
 		if err != nil {
-			return fmt.Errorf("open collection: %w", err)
+			return fmt.Errorf("clean discussion messages collection: %w", err)
+		}
+		err = i.cleanChatCollection(txn.Context(), db, id, chatobject.EditorCollectionName)
+		if err != nil {
+			return fmt.Errorf("clean discussion editor collection: %w", err)
+		}
+		// Clean addSeq entry from meta collection
+		if err = i.cleanMetaEntry(txn.Context(), db, id); err != nil {
+			return fmt.Errorf("clean discussion meta entry: %w", err)
 		}
 	}
 
@@ -397,7 +470,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 			return store.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
 				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
 				return details, true, nil
-			})
+			}, true)
 		})
 		if err != nil {
 			log.Debug("failed to add sync status relations", zap.Error(err))
@@ -709,6 +782,7 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 		ReindexDeletedObjects:            ForceReindexDeletedObjectsCounter,
 		ReindexParticipants:              ForceReindexParticipantsCounter,
 		ReindexChats:                     ForceReindexChatsCounter,
+		ReindexDiscussions:               ForceReindexDiscussionsCounter,
 		ReindexFulltextChatMessages:      ForceReindexChatsFulltextCounter,
 		InvalidateObjectsIndex:           ForceInvalidateObjectsIndexCounter,
 	}

@@ -87,6 +87,7 @@ var publishingRelationsWhiteList = map[model.ObjectTypeLayout][]string{
 	model.ObjectType_relationOptionsList: relationOptionWhiteList,
 	model.ObjectType_participant:         documentRelationsWhiteList,
 	model.ObjectType_chatDerived:         allObjectsRelationsWhiteList,
+	model.ObjectType_discussion:          allObjectsRelationsWhiteList,
 	model.ObjectType_tag:                 documentRelationsWhiteList,
 }
 

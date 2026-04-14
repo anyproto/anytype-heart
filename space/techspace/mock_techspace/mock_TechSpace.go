@@ -32,7 +32,7 @@ func (_m *MockTechSpace) EXPECT() *MockTechSpace_Expecter {
 	return &MockTechSpace_Expecter{mock: &_m.Mock}
 }
 
-// AccountObjectId provides a mock function with given fields:
+// AccountObjectId provides a mock function with no fields
 func (_m *MockTechSpace) AccountObjectId() (string, error) {
 	ret := _m.Called()
 
@@ -333,7 +333,7 @@ func (_c *MockTechSpace_Init_Call) RunAndReturn(run func(*app.App) error) *MockT
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockTechSpace) Name() string {
 	ret := _m.Called()
 
@@ -684,7 +684,7 @@ func (_c *MockTechSpace_SpaceViewId_Call) RunAndReturn(run func(string) (string,
 }
 
 // SpaceViewSetData provides a mock function with given fields: ctx, spaceId, details
-func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *domain.Details) error {
+func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, details *domain.GenericMap[domain.RelationKey]) error {
 	ret := _m.Called(ctx, spaceId, details)
 
 	if len(ret) == 0 {
@@ -692,7 +692,7 @@ func (_m *MockTechSpace) SpaceViewSetData(ctx context.Context, spaceId string, d
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, *domain.Details) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, string, *domain.GenericMap[domain.RelationKey]) error); ok {
 		r0 = rf(ctx, spaceId, details)
 	} else {
 		r0 = ret.Error(0)
@@ -709,14 +709,14 @@ type MockTechSpace_SpaceViewSetData_Call struct {
 // SpaceViewSetData is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceId string
-//   - details *domain.Details
+//   - details *domain.GenericMap[domain.RelationKey]
 func (_e *MockTechSpace_Expecter) SpaceViewSetData(ctx interface{}, spaceId interface{}, details interface{}) *MockTechSpace_SpaceViewSetData_Call {
 	return &MockTechSpace_SpaceViewSetData_Call{Call: _e.mock.On("SpaceViewSetData", ctx, spaceId, details)}
 }
 
-func (_c *MockTechSpace_SpaceViewSetData_Call) Run(run func(ctx context.Context, spaceId string, details *domain.Details)) *MockTechSpace_SpaceViewSetData_Call {
+func (_c *MockTechSpace_SpaceViewSetData_Call) Run(run func(ctx context.Context, spaceId string, details *domain.GenericMap[domain.RelationKey])) *MockTechSpace_SpaceViewSetData_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(*domain.Details))
+		run(args[0].(context.Context), args[1].(string), args[2].(*domain.GenericMap[domain.RelationKey]))
 	})
 	return _c
 }
@@ -726,12 +726,60 @@ func (_c *MockTechSpace_SpaceViewSetData_Call) Return(err error) *MockTechSpace_
 	return _c
 }
 
-func (_c *MockTechSpace_SpaceViewSetData_Call) RunAndReturn(run func(context.Context, string, *domain.Details) error) *MockTechSpace_SpaceViewSetData_Call {
+func (_c *MockTechSpace_SpaceViewSetData_Call) RunAndReturn(run func(context.Context, string, *domain.GenericMap[domain.RelationKey]) error) *MockTechSpace_SpaceViewSetData_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// StartSync provides a mock function with given fields:
+// SpaceViewSetOneToOneIdentity provides a mock function with given fields: ctx, spaceId, identity
+func (_m *MockTechSpace) SpaceViewSetOneToOneIdentity(ctx context.Context, spaceId string, identity string) error {
+	ret := _m.Called(ctx, spaceId, identity)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SpaceViewSetOneToOneIdentity")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = rf(ctx, spaceId, identity)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockTechSpace_SpaceViewSetOneToOneIdentity_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SpaceViewSetOneToOneIdentity'
+type MockTechSpace_SpaceViewSetOneToOneIdentity_Call struct {
+	*mock.Call
+}
+
+// SpaceViewSetOneToOneIdentity is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - identity string
+func (_e *MockTechSpace_Expecter) SpaceViewSetOneToOneIdentity(ctx interface{}, spaceId interface{}, identity interface{}) *MockTechSpace_SpaceViewSetOneToOneIdentity_Call {
+	return &MockTechSpace_SpaceViewSetOneToOneIdentity_Call{Call: _e.mock.On("SpaceViewSetOneToOneIdentity", ctx, spaceId, identity)}
+}
+
+func (_c *MockTechSpace_SpaceViewSetOneToOneIdentity_Call) Run(run func(ctx context.Context, spaceId string, identity string)) *MockTechSpace_SpaceViewSetOneToOneIdentity_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_SpaceViewSetOneToOneIdentity_Call) Return(err error) *MockTechSpace_SpaceViewSetOneToOneIdentity_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTechSpace_SpaceViewSetOneToOneIdentity_Call) RunAndReturn(run func(context.Context, string, string) error) *MockTechSpace_SpaceViewSetOneToOneIdentity_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StartSync provides a mock function with no fields
 func (_m *MockTechSpace) StartSync() {
 	_m.Called()
 }
@@ -759,11 +807,11 @@ func (_c *MockTechSpace_StartSync_Call) Return() *MockTechSpace_StartSync_Call {
 }
 
 func (_c *MockTechSpace_StartSync_Call) RunAndReturn(run func()) *MockTechSpace_StartSync_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// TechSpaceId provides a mock function with given fields:
+// TechSpaceId provides a mock function with no fields
 func (_m *MockTechSpace) TechSpaceId() string {
 	ret := _m.Called()
 

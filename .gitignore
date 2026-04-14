@@ -22,3 +22,5 @@ build
 /.envrc
 *.swp
 doc/dependency_decisions.yml
+.serena/
+.ralphex/progress/

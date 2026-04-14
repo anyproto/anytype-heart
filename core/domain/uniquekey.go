@@ -25,6 +25,7 @@ var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
 	smartblock.SmartBlockTypeNotificationObject: "notification",
 	smartblock.SmartBlockTypeDevicesObject:      "devices",
 	smartblock.SmartBlockTypeChatDerivedObject:  "chatDerived",
+	smartblock.SmartBlockTypeDiscussionObject:   "discussion",
 	smartblock.SmartBlockTypeAccountObject:      "account",
 }
 

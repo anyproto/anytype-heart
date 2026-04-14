@@ -15,7 +15,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -43,7 +42,6 @@ type ObjectType struct {
 	basic.IHistory
 	stext.Text
 	clipboard.Clipboard
-	source.ChangeReceiver
 	dataview.Dataview
 	order.OrderSettable
 
@@ -55,7 +53,6 @@ func (f *ObjectFactory) newObjectType(spaceId string, sb smartblock.SmartBlock) 
 	fileComponent := file.NewFile(sb, f.picker, f.fileUploaderService)
 	return &ObjectType{
 		SmartBlock:     sb,
-		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"anyproto/anytype-agent-runtime/anyruntime"
-	agentrt "anyproto/anytype-agent-runtime/runtime"
+	"github.com/anyproto/anytype-agent-runtime/anyruntime"
+	agentrt "github.com/anyproto/anytype-agent-runtime/runtime"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/anytype-heart/core/block/chats"

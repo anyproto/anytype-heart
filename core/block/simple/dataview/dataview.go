@@ -192,6 +192,7 @@ func (d *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	v.EndRelationKey = view.EndRelationKey
 	v.WrapContent = view.WrapContent
 	v.ListSize = view.ListSize
+	v.AlternateRows = view.AlternateRows
 
 	return nil
 }
@@ -217,6 +218,7 @@ func (d *Dataview) SetViewFields(viewID string, view *model.BlockContentDataview
 	v.EndRelationKey = view.EndRelationKey
 	v.WrapContent = view.WrapContent
 	v.ListSize = view.ListSize
+	v.AlternateRows = view.AlternateRows
 
 	return nil
 }

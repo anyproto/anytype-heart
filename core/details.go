@@ -89,27 +89,6 @@ func (mw *Middleware) ObjectListModifyDetailValues(_ context.Context, req *pb.Rp
 	return response(pb.RpcObjectListModifyDetailValuesResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectWorkspaceSetDashboard(cctx context.Context, req *pb.RpcObjectWorkspaceSetDashboardRequest) *pb.RpcObjectWorkspaceSetDashboardResponse {
-	ctx := mw.newContext(cctx)
-	response := func(setId string, err error) *pb.RpcObjectWorkspaceSetDashboardResponse {
-		resp := &pb.RpcObjectWorkspaceSetDashboardResponse{
-			ObjectId: setId,
-			Error: &pb.RpcObjectWorkspaceSetDashboardResponseError{
-				Code: pb.RpcObjectWorkspaceSetDashboardResponseError_NULL,
-			},
-		}
-		if err != nil {
-			resp.Error.Code = pb.RpcObjectWorkspaceSetDashboardResponseError_UNKNOWN_ERROR
-			resp.Error.Description = getErrorDescription(err)
-		} else {
-			resp.Event = mw.getResponseEvent(ctx)
-		}
-		return resp
-	}
-	setId, err := mustService[detailservice.Service](mw).SetWorkspaceDashboardId(ctx, req.ContextId, req.ObjectId)
-	return response(setId, err)
-}
-
 func (mw *Middleware) ObjectSetIsFavorite(_ context.Context, req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
 	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {
 		m := &pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: code}}
@@ -126,14 +105,17 @@ func (mw *Middleware) ObjectSetIsFavorite(_ context.Context, req *pb.RpcObjectSe
 }
 
 func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
+	sctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
 		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.Event = mw.getResponseEvent(sctx)
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetIsArchived(cctx, req.ContextId, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetIsArchived(sctx, cctx, req.ContextId, req.IsArchived)
 	if err != nil {
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
@@ -141,14 +123,17 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 }
 
 func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
+	sctx := mw.newContext(cctx)
 	response := func(code pb.RpcObjectListSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectListSetIsArchivedResponse {
 		m := &pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.Event = mw.getResponseEvent(sctx)
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetListIsArchived(cctx, req.ObjectIds, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetListIsArchived(sctx, cctx, req.ObjectIds, req.IsArchived)
 	if err != nil {
 		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}

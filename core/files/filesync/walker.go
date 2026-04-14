@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -36,7 +37,7 @@ func (s *fileSync) walkFileBlocks(ctx context.Context, spaceId string, fileId do
 		return nil
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "could not find") {
+		if ipld.IsNotFound(err) || strings.Contains(err.Error(), "failed to fetch all nodes") || errors.Is(err, fileprotoerr.ErrCIDNotFound) {
 			return errors.Join(err, errBlockNotFound)
 		}
 		return fmt.Errorf("walk DAG: %w", err)

@@ -1205,7 +1205,11 @@ func (s *service) CodeRedeem(ctx context.Context, req *pb.RpcMembershipCodeRedee
 	}
 
 	// immediately update own any name, do not wait for background refresh
-	s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
+	// only if nsName is provided
+	// in some rare cases like after the subscriptions cancellation client CAN pass empty name here...
+	if nsName != "" {
+		s.profileUpdater.UpdateOwnGlobalName(nameservice.NsNameToFullName(nsName, nsNameType))
+	}
 
 	go s.forceRefresh(30 * time.Minute)
 

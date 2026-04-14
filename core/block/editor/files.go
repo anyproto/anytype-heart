@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
@@ -18,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/files/reconciler"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -34,7 +34,6 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 	basicComponent := basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService)
 	return &File{
 		SmartBlock:        sb,
-		ChangeReceiver:    sb.(source.ChangeReceiver),
 		FileObject:        fileobject2.NewFileObject(sb, f.fileService),
 		AllOperations:     basicComponent,
 		Text:              stext.NewText(sb, store, f.eventSender),
@@ -48,7 +47,6 @@ func (f *ObjectFactory) newFile(spaceId string, sb smartblock.SmartBlock) *File 
 type File struct {
 	smartblock.SmartBlock
 	fileobject2.FileObject
-	source.ChangeReceiver
 	basic.AllOperations
 	stext.Text
 	fileObjectService fileobject.Service
@@ -103,6 +101,7 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 	myParticipantId := f.accountService.MyParticipantId(f.SpaceID())
 
 	if !ctx.IsNewObject && creator == myParticipantId {
+		f.AddHook(f.markUploadedHook, smartblock.HookAfterApply)
 		// Run in a goroutine to prevent deadlocks when filesync updates file status before file is loaded into cache
 		go func() {
 			err = f.fileObjectService.EnsureFileAddedToSyncQueue(fullId, ctx.State.Details())
@@ -142,6 +141,25 @@ func (f *File) Init(ctx *smartblock.InitContext) error {
 		}
 	}
 
+	return nil
+}
+
+func (f *File) markUploadedHook(applyInfo smartblock.ApplyInfo) error {
+	for _, ch := range applyInfo.Changes {
+		if ds := ch.GetDetailsSet(); ds != nil && ds.Key == bundle.RelationKeyFileBackupStatus.String() {
+			if applyInfo.State.Details().GetInt64(bundle.RelationKeyFileBackupStatus) == int64(filesyncstatus.Synced) {
+				// Run async to avoid deadlock: this hook fires inside process() which holds the
+				// file queue item, and MarkUploaded calls process() for the same item.
+				objectId := f.Id()
+				go func() {
+					if err := f.fileObjectService.MarkFileUploaded(objectId); err != nil {
+						log.Errorf("mark file uploaded: %v", err)
+					}
+				}()
+			}
+			return nil
+		}
+	}
 	return nil
 }
 

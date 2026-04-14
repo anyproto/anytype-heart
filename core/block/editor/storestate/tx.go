@@ -3,21 +3,20 @@ package storestate
 import (
 	"context"
 	"errors"
-	"time"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 )
 
-const maxOrderId = "_max"
+const addSeqKey = "q"
 
 type StoreStateTx struct {
 	tx              anystore.WriteTx
 	ctx             context.Context
 	state           *StoreState
 	arena           *anyenc.Arena
-	maxOrder        string
-	maxOrderChanged bool
+	maxAddSeq       uint64
+	maxAddSeqChanged bool
 }
 
 func (stx *StoreStateTx) Context() context.Context {
@@ -25,63 +24,52 @@ func (stx *StoreStateTx) Context() context.Context {
 }
 
 func (stx *StoreStateTx) init() (err error) {
-	stx.maxOrder, err = stx.GetOrder(maxOrderId)
-	if err != nil && !errors.Is(err, ErrOrderNotFound) {
-		return
+	doc, findErr := stx.state.collMeta.FindId(stx.ctx, stx.state.id)
+	if findErr != nil {
+		if errors.Is(findErr, anystore.ErrDocNotFound) {
+			stx.maxAddSeq = 0
+			return nil
+		}
+		return findErr
 	}
+	stx.maxAddSeq = uint64(doc.Value().GetInt(addSeqKey))
 	return nil
 }
 
-func (stx *StoreStateTx) GetOrder(changeId string) (orderId string, err error) {
-	doc, err := stx.state.collChangeOrders.FindId(stx.ctx, changeId)
-	if err != nil {
-		if errors.Is(err, anystore.ErrDocNotFound) {
-			err = ErrOrderNotFound
-		}
-		return
-	}
-	return string(doc.Value().GetStringBytes("o")), nil
+func (stx *StoreStateTx) GetMaxAddSeq() uint64 {
+	return stx.maxAddSeq
 }
 
-func (stx *StoreStateTx) GetMaxOrder() string {
-	return stx.maxOrder
+func (stx *StoreStateTx) UpdateMaxAddSeq(seq uint64) {
+	if seq > stx.maxAddSeq {
+		stx.maxAddSeq = seq
+		stx.maxAddSeqChanged = true
+	}
 }
 
 func (stx *StoreStateTx) NextOrder(prev string) string {
 	return LexId.Next(prev)
 }
 
-func (stx *StoreStateTx) SetOrder(changeId, order string) (err error) {
-	stx.arena.Reset()
-	obj := stx.arena.NewObject()
-	obj.Set("id", stx.arena.NewString(changeId))
-	obj.Set("o", stx.arena.NewString(order))
-	obj.Set("t", stx.arena.NewNumberInt(int(time.Now().UnixMilli())))
-	if err = stx.state.collChangeOrders.UpsertOne(stx.ctx, obj); err != nil {
-		return
-	}
-	stx.checkMaxOrder(order)
-	return
-}
-
-func (stx *StoreStateTx) checkMaxOrder(order string) {
-	if order > stx.maxOrder {
-		stx.maxOrder = order
-		stx.maxOrderChanged = true
-	}
-}
-
 func (stx *StoreStateTx) ApplyChangeSet(ch ChangeSet) (err error) {
-	if err = stx.SetOrder(ch.Id, ch.Order); err != nil && !errors.Is(err, anystore.ErrDocExists) {
-		return
-	}
-	err = stx.state.applyChangeSet(stx.ctx, ch)
-	return err
+	return stx.applyChangeSet(ch, false)
+}
+
+func (stx *StoreStateTx) ApplyChangeSetReturnAllErrors(ch ChangeSet) (err error) {
+	return stx.applyChangeSet(ch, true)
+}
+
+func (stx *StoreStateTx) applyChangeSet(ch ChangeSet, returnAllErrors bool) (err error) {
+	return stx.state.applyChangeSet(stx.ctx, ch, returnAllErrors)
 }
 
 func (stx *StoreStateTx) Commit() (err error) {
-	if stx.maxOrderChanged {
-		if err = stx.SetOrder(maxOrderId, stx.maxOrder); err != nil {
+	if stx.maxAddSeqChanged {
+		stx.arena.Reset()
+		obj := stx.arena.NewObject()
+		obj.Set("id", stx.arena.NewString(stx.state.id))
+		obj.Set(addSeqKey, stx.arena.NewNumberInt(int(stx.maxAddSeq)))
+		if err = stx.state.collMeta.UpsertOne(stx.ctx, obj); err != nil {
 			return
 		}
 	}

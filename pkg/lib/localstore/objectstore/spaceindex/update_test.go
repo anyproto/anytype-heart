@@ -414,7 +414,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		s := NewStoreFixture(t)
 
 		// when
-		err := s.ModifyObjectDetails("id", nil)
+		err := s.ModifyObjectDetails("id", nil, true)
 
 		// then
 		assert.NoError(t, err)
@@ -432,7 +432,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		err := s.ModifyObjectDetails("id", func(details *domain.Details) (*domain.Details, bool, error) {
 			details.Set(bundle.RelationKeyName, domain.String("bar"))
 			return details, true, nil
-		})
+		}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -454,7 +454,7 @@ func TestDsObjectStore_ModifyObjectDetails(t *testing.T) {
 		// when
 		err := s.ModifyObjectDetails("id", func(_ *domain.Details) (*domain.Details, bool, error) {
 			return nil, true, nil
-		})
+		}, true)
 
 		// then
 		assert.NoError(t, err)

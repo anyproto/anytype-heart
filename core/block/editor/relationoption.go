@@ -7,7 +7,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -21,7 +20,6 @@ type RelationOption struct {
 	smartblock.SmartBlock
 	basic.AllOperations
 	basic.IHistory
-	source.ChangeReceiver
 	order.OrderSettable
 }
 
@@ -29,7 +27,6 @@ func (f *ObjectFactory) newRelationOption(spaceId string, sb smartblock.SmartBlo
 	store := f.objectStore.SpaceIndex(spaceId)
 	return &RelationOption{
 		SmartBlock:     sb,
-		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
 		OrderSettable:  order.NewOrderSettable(sb, bundle.RelationKeyOrderId),

@@ -233,7 +233,7 @@ func (s *provider) setDefaultConfig() {
 	}
 	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "normal"
-	s.anyStoreConfig.SQLiteConnectionOptions["wal_autocheckpoint"] = "0"
+	s.anyStoreConfig.SQLiteConnectionOptions["wal_autocheckpoint"] = "10000"
 
 }
 

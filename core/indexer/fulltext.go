@@ -26,19 +26,21 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/vectorsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
+const maxErrorsPerSession = 100
+
 var (
-	ftIndexInterval                     = 1 * time.Second
-	ftMaxIndexInterval                  = time.Second * 32
+	ftIndexInterval                     = 10 * time.Second
+	ftMaxIndexInterval                  = time.Second * 60
 	ftIndexForceMinInterval             = time.Second * 10
 	ftInconsistencyCheckStartDelay      = time.Second * 10
 	ftBatchLimit                   uint = 1000
@@ -46,7 +48,13 @@ var (
 	maxErrSent                     atomic.Int32
 )
 
-const maxErrorsPerSession = 100
+var filesLayouts = map[model.ObjectTypeLayout]struct{}{
+	model.ObjectType_file:  {},
+	model.ObjectType_image: {},
+	model.ObjectType_audio: {},
+	model.ObjectType_video: {},
+	model.ObjectType_pdf:   {},
+}
 
 func (i *indexer) ForceFTIndex() {
 	select {
@@ -303,7 +311,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 
 	err = cache.DoContextFullID(i.picker, ctx, domain.FullID{SpaceID: object.SpaceId, ObjectID: object.ObjectId}, func(sb smartblock.SmartBlock) error {
 		sbType := sb.Type()
-		isChat = sbType == coresb.SmartBlockTypeChatDerivedObject
+		isChat = sbType == coresb.SmartBlockTypeChatDerivedObject || sbType == coresb.SmartBlockTypeDiscussionObject
 		fulltext, _, _ := sbType.Indexable()
 		if !fulltext {
 			fulltextSkipped = true
@@ -398,6 +406,8 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 			}
 		}
 
+		docs = append(docs, i.prepareRelationSearchDocs(object.FullId(), sb)...)
+		docs = append(docs, prepareBlockSearchDocs(ctx, sb)...)
 		return nil
 	})
 
@@ -441,10 +451,17 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 	}
 
 	for _, msg := range msgs {
+		text := msg.Message.Text
+		if blocksText := msg.BlocksText(); blocksText != "" {
+			if text != "" {
+				text += "\n"
+			}
+			text += blocksText
+		}
 		docs = append(docs, ftsearch.SearchDoc{
 			Id:        domain.NewObjectPathWithMessage(object.ObjectId, msg.Id).String(),
 			SpaceId:   object.SpaceId,
-			Text:      msg.Message.Text,
+			Text:      text,
 			Author:    msg.Creator,
 			OrderId:   msg.OrderId,
 			MessageId: msg.Id,
@@ -492,8 +509,99 @@ func isPageLikeLayout(layout model.ObjectTypeLayout) bool {
 	return false
 }
 
+func (i *indexer) prepareRelationSearchDocs(fullId domain.FullID, sb smartblock.SmartBlock) (docs []ftsearch.SearchDoc) {
+	layout, _ := sb.Layout()
+	for key, value := range sb.Details().Iterate() {
+		format, err := i.formatFetcher.GetRelationFormatByKey(fullId.SpaceID, key)
+		if err == nil && !isIndexableFormat(format) {
+			continue
+		}
+		val := value.String()
+		if format == model.RelationFormat_number {
+			f := value.Float64()
+			val = strconv.FormatFloat(f, 'f', -1, 64)
+		}
+		if val == "" {
+			continue
+		}
+		// skip hidden relations
+		bundledRel, _ := bundle.PickRelation(key) // nolint:errcheck
+		if !isName(key) && bundledRel != nil && bundledRel.Hidden {
+			continue
+		}
+
+		doc := ftsearch.SearchDoc{
+			Id:      domain.NewObjectPathWithRelation(fullId.ObjectID, key.String()).String(),
+			SpaceId: fullId.SpaceID,
+			Text:    val,
+		}
+
+		_, isFile := filesLayouts[layout]
+		if isName(key) && !isFile {
+			doc.Title = val
+			doc.Text = ""
+		}
+
+		docs = append(docs, doc)
+	}
+
+	if layout == model.ObjectType_note {
+		snippet := sb.LocalDetails().GetString(bundle.RelationKeySnippet)
+		docs = append(docs, ftsearch.SearchDoc{
+			Id:      domain.NewObjectPathWithRelation(fullId.ObjectID, bundle.RelationKeySnippet.String()).String(),
+			SpaceId: fullId.SpaceID,
+			Text:    snippet,
+		})
+	}
+
+	return docs
+}
+
+func prepareBlockSearchDocs(ctx context.Context, sb smartblock.SmartBlock) (docs []ftsearch.SearchDoc) {
+	// nolint:errcheck
+	_ = sb.Iterate(func(b simple.Block) (isContinue bool) {
+		if ctx.Err() != nil {
+			return false
+		}
+		if tb := b.Model().GetText(); tb != nil {
+			if len(strings.TrimSpace(tb.Text)) == 0 {
+				return true
+			}
+
+			if len(pbtypes.GetStringList(b.Model().GetFields(), text.DetailsKeyFieldName)) > 0 {
+				// block doesn't store the value itself, but it's a reference to relation
+				return true
+			}
+			doc := ftsearch.SearchDoc{
+				Id:      domain.NewObjectPathWithBlock(sb.Id(), b.Model().Id).String(),
+				SpaceId: sb.SpaceID(),
+			}
+			if len(tb.Text) > ftBlockMaxSize {
+				doc.Text = tb.Text[:ftBlockMaxSize]
+			} else {
+				doc.Text = tb.Text
+			}
+			docs = append(docs, doc)
+
+		}
+		return true
+	})
+	return docs
+}
+
 func isName(key domain.RelationKey) bool {
 	return key == bundle.RelationKeyName || key == bundle.RelationKeyPluralName
+}
+
+func isIndexableFormat(format model.RelationFormat) bool {
+	switch format {
+	case model.RelationFormat_shorttext, model.RelationFormat_longtext,
+		model.RelationFormat_number, model.RelationFormat_url,
+		model.RelationFormat_email, model.RelationFormat_phone:
+		return true
+	default:
+		return false
+	}
 }
 
 func (i *indexer) ftInit() error {

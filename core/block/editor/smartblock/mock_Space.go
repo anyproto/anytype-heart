@@ -10,6 +10,8 @@ import (
 
 	objecttreebuilder "github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 
+	spacedomain "github.com/anyproto/anytype-heart/space/spacedomain"
+
 	threads "github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
@@ -83,7 +85,7 @@ func (_c *MockSpace_DeriveObjectID_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// DerivedIDs provides a mock function with given fields:
+// DerivedIDs provides a mock function with no fields
 func (_m *MockSpace) DerivedIDs() threads.DerivedSmartblockIds {
 	ret := _m.Called()
 
@@ -336,7 +338,7 @@ func (_c *MockSpace_GetTypeIdByKey_Call) RunAndReturn(run func(context.Context, 
 	return _c
 }
 
-// Id provides a mock function with given fields:
+// Id provides a mock function with no fields
 func (_m *MockSpace) Id() string {
 	ret := _m.Called()
 
@@ -381,7 +383,7 @@ func (_c *MockSpace_Id_Call) RunAndReturn(run func() string) *MockSpace_Id_Call 
 	return _c
 }
 
-// IsOneToOne provides a mock function with given fields:
+// IsOneToOne provides a mock function with no fields
 func (_m *MockSpace) IsOneToOne() bool {
 	ret := _m.Called()
 
@@ -426,7 +428,7 @@ func (_c *MockSpace_IsOneToOne_Call) RunAndReturn(run func() bool) *MockSpace_Is
 	return _c
 }
 
-// IsPersonal provides a mock function with given fields:
+// IsPersonal provides a mock function with no fields
 func (_m *MockSpace) IsPersonal() bool {
 	ret := _m.Called()
 
@@ -517,7 +519,52 @@ func (_c *MockSpace_RefreshObjects_Call) RunAndReturn(run func([]string) error) 
 	return _c
 }
 
-// StoredIds provides a mock function with given fields:
+// SpaceType provides a mock function with no fields
+func (_m *MockSpace) SpaceType() spacedomain.SpaceType {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for SpaceType")
+	}
+
+	var r0 spacedomain.SpaceType
+	if rf, ok := ret.Get(0).(func() spacedomain.SpaceType); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(spacedomain.SpaceType)
+	}
+
+	return r0
+}
+
+// MockSpace_SpaceType_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SpaceType'
+type MockSpace_SpaceType_Call struct {
+	*mock.Call
+}
+
+// SpaceType is a helper method to define mock.On call
+func (_e *MockSpace_Expecter) SpaceType() *MockSpace_SpaceType_Call {
+	return &MockSpace_SpaceType_Call{Call: _e.mock.On("SpaceType")}
+}
+
+func (_c *MockSpace_SpaceType_Call) Run(run func()) *MockSpace_SpaceType_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockSpace_SpaceType_Call) Return(_a0 spacedomain.SpaceType) *MockSpace_SpaceType_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_SpaceType_Call) RunAndReturn(run func() spacedomain.SpaceType) *MockSpace_SpaceType_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// StoredIds provides a mock function with no fields
 func (_m *MockSpace) StoredIds() []string {
 	ret := _m.Called()
 
@@ -564,7 +611,7 @@ func (_c *MockSpace_StoredIds_Call) RunAndReturn(run func() []string) *MockSpace
 	return _c
 }
 
-// TreeBuilder provides a mock function with given fields:
+// TreeBuilder provides a mock function with no fields
 func (_m *MockSpace) TreeBuilder() objecttreebuilder.TreeBuilder {
 	ret := _m.Called()
 

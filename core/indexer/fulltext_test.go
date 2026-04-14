@@ -43,10 +43,10 @@ import (
 
 type noopVectorSearch struct{}
 
-func (n *noopVectorSearch) Init(_ *app.App) error          { return nil }
-func (n *noopVectorSearch) Name() string                   { return vectorsearch.CName }
-func (n *noopVectorSearch) Run(_ context.Context) error    { return nil }
-func (n *noopVectorSearch) Close(_ context.Context) error  { return nil }
+func (n *noopVectorSearch) Init(_ *app.App) error                  { return nil }
+func (n *noopVectorSearch) Name() string                           { return vectorsearch.CName }
+func (n *noopVectorSearch) Run(_ context.Context) error            { return nil }
+func (n *noopVectorSearch) Close(_ context.Context) error          { return nil }
 func (n *noopVectorSearch) TryEnqueue(_ vectorsearch.SemanticTask) {}
 func (n *noopVectorSearch) Search(_ context.Context, _ string, _ string, _ int) ([]vectorsearch.ObjectScore, error) {
 	return nil, nil
@@ -223,20 +223,24 @@ func TestPrepareSearchDocument_NoTextBlock(t *testing.T) {
 
 func TestPrepareSearchDocument_RelationShortText_Success(t *testing.T) {
 	indexerFx := newFixture(t)
+	key := domain.RelationKey("shortName")
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_shorttext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyName: domain.String("Title Text"),
+		key: domain.String("Title Text"),
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		return model.RelationFormat_shorttext, nil
+	})
+	indexerFx.formatFetcher = fetcher
+
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
-	assert.Equal(t, "objectId1/r/name", docs[0].Id)
+	assert.Equal(t, "objectId1/r/shortName", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
 	assert.Equal(t, "", docs[0].Title)
 }
@@ -267,20 +271,24 @@ func TestPrepareSearchDocument_System_Plural_Success(t *testing.T) {
 
 func TestPrepareSearchDocument_RelationLongText_Success(t *testing.T) {
 	indexerFx := newFixture(t)
+	key := domain.RelationKey("longName")
 	smartTest := smarttest.New("objectId1")
-	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    bundle.RelationKeyName.String(),
-		Format: model.RelationFormat_longtext,
-	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyName: domain.String("Title Text"),
+		key: domain.String("Title Text"),
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	fetcher := mock_relationutils.NewMockRelationFormatFetcher(t)
+	fetcher.EXPECT().GetRelationFormatByKey(mock.Anything, mock.Anything).RunAndReturn(func(_ string, key domain.RelationKey) (model.RelationFormat, error) {
+		return model.RelationFormat_longtext, nil
+	})
+	indexerFx.formatFetcher = fetcher
+
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	assert.Len(t, docs, 1)
-	assert.Equal(t, "objectId1/r/name", docs[0].Id)
+	assert.Equal(t, "objectId1/r/longName", docs[0].Id)
 	assert.Equal(t, "Title Text", docs[0].Text)
 	assert.Equal(t, "", docs[0].Title)
 }
@@ -306,19 +314,91 @@ func TestPrepareSearchDocument_RelationText_EmptyValue(t *testing.T) {
 func TestPrepareSearchDocument_RelationText_WrongFormat(t *testing.T) {
 	indexerFx := newFixture(t)
 	smartTest := smarttest.New("objectId1")
-	// Relation with wrong format
+	// Relation with non-indexable format (date)
 	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
-		Key:    "email",
-		Format: model.RelationFormat_email, // Wrong format
+		Key:    bundle.RelationKeyAddedDate.String(),
+		Format: model.RelationFormat_date,
 	})
 	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		"email": domain.String("Title Text"),
+		bundle.RelationKeyAddedDate: domain.String("some value"),
 	}))
 	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
 
 	docs, _, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
 	assert.NoError(t, err)
 	require.Len(t, docs, 0)
+}
+
+func TestPrepareSearchDocument_RelationEmail_Indexable(t *testing.T) {
+	indexerFx := newFixture(t)
+	smartTest := smarttest.New("objectId1")
+	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+		Key:    "email",
+		Format: model.RelationFormat_email,
+	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		"email": domain.String("user@example.com"),
+	}))
+	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
+
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	assert.NoError(t, err)
+	require.Len(t, docs, 1)
+	assert.Equal(t, "user@example.com", docs[0].Text)
+}
+
+func TestPrepareSearchDocument_RelationNumber_Success(t *testing.T) {
+	indexerFx := newFixture(t)
+	smartTest := smarttest.New("objectId1")
+	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyHeightInPixels.String(),
+		Format: model.RelationFormat_number,
+	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyHeightInPixels: domain.Float64(100),
+	}))
+	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
+
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	assert.NoError(t, err)
+	require.Len(t, docs, 1)
+	assert.Equal(t, "100", docs[0].Text)
+}
+
+func TestPrepareSearchDocument_RelationNumber_Decimal(t *testing.T) {
+	indexerFx := newFixture(t)
+	smartTest := smarttest.New("objectId1")
+	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyHeightInPixels.String(),
+		Format: model.RelationFormat_number,
+	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyHeightInPixels: domain.Float64(3.5),
+	}))
+	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
+
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	assert.NoError(t, err)
+	require.Len(t, docs, 1)
+	assert.Equal(t, "3.5", docs[0].Text)
+}
+
+func TestPrepareSearchDocument_ReadonlyRelation_FileExt(t *testing.T) {
+	indexerFx := newFixture(t)
+	smartTest := smarttest.New("objectId1")
+	smartTest.Doc.(*state.State).AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyFileExt.String(),
+		Format: model.RelationFormat_longtext,
+	})
+	smartTest.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyFileExt: domain.String("pdf"),
+	}))
+	indexerFx.pickerFx.EXPECT().GetObjectByFullID(mock.Anything, mock.Anything).Return(smartTest, nil)
+
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: "objectId1", SpaceId: "spaceId1"})
+	assert.NoError(t, err)
+	require.Len(t, docs, 1)
+	assert.Equal(t, "pdf", docs[0].Text)
 }
 
 func TestPrepareSearchDocument_BlockText_LessThanMaxSize(t *testing.T) {

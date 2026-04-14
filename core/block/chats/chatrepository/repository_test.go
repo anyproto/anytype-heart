@@ -218,35 +218,20 @@ func TestSetReadFlag(t *testing.T) {
 	})
 }
 
-func TestSetSyncedFlag(t *testing.T) {
-	chatObjectId := "chatObj1"
-
-	t.Run("mark unsynced messages as synced", func(t *testing.T) {
+func TestSetSyncedByMaxOrderId(t *testing.T) {
+	t.Run("mark unsynced messages up to max order id", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.addMessageWithSynced(t, "msg1", "order1", false)
 		fx.addMessageWithSynced(t, "msg2", "order2", false)
 		fx.addMessageWithSynced(t, "msg3", "order3", false)
 
-		modified, err := fx.repo.SetSyncedFlag(context.Background(), chatObjectId, []string{"msg1", "msg2", "msg3"}, true)
-		require.NoError(t, err)
-
-		assert.ElementsMatch(t, []string{"msg1", "msg2", "msg3"}, modified)
-		assert.True(t, fx.getMessage(t, "msg1").Synced)
-		assert.True(t, fx.getMessage(t, "msg2").Synced)
-		assert.True(t, fx.getMessage(t, "msg3").Synced)
-	})
-
-	t.Run("mark synced messages as unsynced", func(t *testing.T) {
-		fx := newFixture(t)
-		fx.addMessageWithSynced(t, "msg1", "order1", true)
-		fx.addMessageWithSynced(t, "msg2", "order2", true)
-
-		modified, err := fx.repo.SetSyncedFlag(context.Background(), chatObjectId, []string{"msg1", "msg2"}, false)
+		modified, err := fx.repo.SetSyncedByMaxOrderId(context.Background(), "order2")
 		require.NoError(t, err)
 
 		assert.ElementsMatch(t, []string{"msg1", "msg2"}, modified)
-		assert.False(t, fx.getMessage(t, "msg1").Synced)
-		assert.False(t, fx.getMessage(t, "msg2").Synced)
+		assert.True(t, fx.getMessage(t, "msg1").Synced)
+		assert.True(t, fx.getMessage(t, "msg2").Synced)
+		assert.False(t, fx.getMessage(t, "msg3").Synced)
 	})
 
 	t.Run("skip already synced messages", func(t *testing.T) {
@@ -254,71 +239,30 @@ func TestSetSyncedFlag(t *testing.T) {
 		fx.addMessageWithSynced(t, "msg1", "order1", true)
 		fx.addMessageWithSynced(t, "msg2", "order2", false)
 
-		modified, err := fx.repo.SetSyncedFlag(context.Background(), chatObjectId, []string{"msg1", "msg2"}, true)
+		modified, err := fx.repo.SetSyncedByMaxOrderId(context.Background(), "order2")
 		require.NoError(t, err)
 
 		assert.Equal(t, []string{"msg2"}, modified)
 	})
 
-	t.Run("skip already unsynced messages", func(t *testing.T) {
-		fx := newFixture(t)
-		fx.addMessageWithSynced(t, "msg1", "order1", false)
-		fx.addMessageWithSynced(t, "msg2", "order2", true)
-
-		modified, err := fx.repo.SetSyncedFlag(context.Background(), chatObjectId, []string{"msg1", "msg2"}, false)
-		require.NoError(t, err)
-
-		assert.Equal(t, []string{"msg2"}, modified)
-	})
-
-	t.Run("skip missing messages", func(t *testing.T) {
-		fx := newFixture(t)
-		fx.addMessageWithSynced(t, "msg1", "order1", false)
-
-		modified, err := fx.repo.SetSyncedFlag(context.Background(), chatObjectId, []string{"msg1", "nonexistent"}, true)
-		require.NoError(t, err)
-
-		assert.Equal(t, []string{"msg1"}, modified)
-	})
-
-	t.Run("empty input returns nil", func(t *testing.T) {
+	t.Run("empty max order id returns nil", func(t *testing.T) {
 		fx := newFixture(t)
 
-		modified, err := fx.repo.SetSyncedFlag(context.Background(), chatObjectId, nil, true)
+		modified, err := fx.repo.SetSyncedByMaxOrderId(context.Background(), "")
 		require.NoError(t, err)
 
 		assert.Nil(t, modified)
 	})
 
-	t.Run("more than 100 messages are chunked", func(t *testing.T) {
+	t.Run("no unsynced messages in range", func(t *testing.T) {
 		fx := newFixture(t)
-		var ids []string
-		for i := range 150 {
-			id := fmt.Sprintf("msg%03d", i)
-			fx.addMessageWithSynced(t, id, fmt.Sprintf("order%03d", i), false)
-			ids = append(ids, id)
-		}
+		fx.addMessageWithSynced(t, "msg1", "order1", true)
+		fx.addMessageWithSynced(t, "msg2", "order2", true)
 
-		modified, err := fx.repo.SetSyncedFlag(context.Background(), chatObjectId, ids, true)
+		modified, err := fx.repo.SetSyncedByMaxOrderId(context.Background(), "order2")
 		require.NoError(t, err)
 
-		assert.Len(t, modified, 150)
-		for _, id := range ids {
-			assert.True(t, fx.getMessage(t, id).Synced, id)
-		}
-	})
-
-	t.Run("updates are committed", func(t *testing.T) {
-		fx := newFixture(t)
-		fx.addMessageWithSynced(t, "msg1", "order1", false)
-		fx.addMessageWithSynced(t, "msg2", "order2", false)
-
-		modified, err := fx.repo.SetSyncedFlag(context.Background(), chatObjectId, []string{"msg1", "msg2"}, true)
-		require.NoError(t, err)
-		assert.Len(t, modified, 2)
-
-		assert.True(t, fx.getMessage(t, "msg1").Synced)
-		assert.True(t, fx.getMessage(t, "msg2").Synced)
+		assert.Empty(t, modified)
 	})
 }
 

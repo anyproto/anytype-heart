@@ -249,6 +249,9 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 }
 
 func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
+	if slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(set.Key)) {
+		return nil
+	}
 	det := s.Details()
 	if det == nil {
 		det = domain.NewDetails()
@@ -360,8 +363,8 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 }
 
 func (s *State) changeBlockRemove(remove *pb.ChangeBlockRemove) error {
+	s.UnlinkAll(remove.Ids)
 	for _, id := range remove.Ids {
-		s.Unlink(id)
 		s.CleanupBlock(id)
 	}
 	return nil
@@ -378,9 +381,7 @@ func (s *State) changeBlockUpdate(update *pb.ChangeBlockUpdate) error {
 }
 
 func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
-	for _, id := range move.Ids {
-		s.Unlink(id)
-	}
+	s.UnlinkAll(move.Ids)
 	return s.InsertTo(move.TargetId, move.Position, move.Ids...)
 }
 

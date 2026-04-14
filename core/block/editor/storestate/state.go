@@ -29,7 +29,13 @@ const (
 var LexId = lexid.Must(lexid.CharsAllNoEscape, 4, 100)
 
 const (
+	// Deprecated: CollChangeOrders is kept for migration purposes only.
+	// New code should use CollMeta instead.
 	CollChangeOrders = "_change_orders"
+
+	// CollMeta is a shared collection storing per-object metadata (e.g. maxAddSeq).
+	// Documents are keyed by object ID: {id: "<objectId>", q: <addSeq>}.
+	CollMeta = "_meta"
 )
 
 func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (state *StoreState, err error) {
@@ -59,9 +65,8 @@ func New(ctx context.Context, id string, db anystore.DB, handlers ...Handler) (s
 
 	defer func() {
 		if err != nil {
-			if state.collChangeOrders != nil {
-				_ = state.collChangeOrders.Close()
-				// TODO: close all collections (maybe need to do smth like db.CollectionsPrefix)
+			if state.collMeta != nil {
+				_ = state.collMeta.Close()
 			}
 			_ = tx.Rollback()
 		} else {
@@ -92,8 +97,8 @@ type Change struct {
 }
 
 type StoreState struct {
-	id               string
-	collChangeOrders anystore.Collection
+	id       string
+	collMeta anystore.Collection
 
 	handlers map[string]Handler
 
@@ -108,15 +113,27 @@ func (ss *StoreState) Id() string {
 }
 
 func (ss *StoreState) init(ctx context.Context) (err error) {
-	if ss.collChangeOrders, err = ss.Collection(ctx, CollChangeOrders); err != nil {
+	// Open shared meta collection (no object-ID prefix)
+	if ss.collMeta, err = ss.db.Collection(ctx, CollMeta); err != nil {
 		return
 	}
+	// Migration: drop old per-object _change_orders collection if it exists
+	ss.dropOldChangeOrders(ctx)
+
 	for _, h := range ss.handlers {
 		if err = h.Init(ctx, ss); err != nil {
 			return
 		}
 	}
 	return
+}
+
+func (ss *StoreState) dropOldChangeOrders(ctx context.Context) {
+	coll, err := ss.db.OpenCollection(ctx, ss.id+CollChangeOrders)
+	if err != nil {
+		return // Collection doesn't exist or other error — nothing to do
+	}
+	_ = coll.Drop(ctx)
 }
 
 func (ss *StoreState) NewTx(ctx context.Context) (*StoreStateTx, error) {
@@ -136,7 +153,7 @@ func (ss *StoreState) Collection(ctx context.Context, name string) (anystore.Col
 	return ss.db.Collection(ctx, ss.id+name)
 }
 
-func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet) (err error) {
+func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet, returnAllErrors bool) (err error) {
 	for _, ch := range set.Changes {
 		applyErr := ss.applyChange(ctx, Change{
 			Id:        set.Id,
@@ -148,16 +165,20 @@ func (ss *StoreState) applyChangeSet(ctx context.Context, set ChangeSet) (err er
 		if applyErr == nil || errors.Is(applyErr, ErrIgnore) {
 			continue
 		}
-		if errors.Is(applyErr, ErrLog) {
-			log.Warn("change apply error",
-				zap.Error(applyErr),
-				zap.String("changeId", set.Id),
-				zap.String("order", set.Order),
-			)
-			continue
+		if errors.Is(applyErr, ErrCritical) {
+			err = applyErr
+			break
 		}
-		err = applyErr
-		break
+		if returnAllErrors {
+			err = applyErr
+			break
+		}
+		// Default: log and skip for forward compatibility
+		log.Warn("change apply error",
+			zap.Error(applyErr),
+			zap.String("changeId", set.Id),
+			zap.String("order", set.Order),
+		)
 	}
 	return
 }
@@ -206,14 +227,14 @@ func (ss *StoreState) applyCreate(ctx context.Context, ch Change) (err error) {
 	// insert
 	coll, err := ss.Collection(ctx, create.Collection)
 	if err != nil {
-		return err
+		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
 
 	if err = coll.Insert(ctx, value); err != nil {
 		if errors.Is(err, anystore.ErrDocExists) {
 			return ErrIgnore
 		}
-		return
+		return errors.Join(ErrCritical, fmt.Errorf("insert document: %w", err))
 	}
 	return
 }
@@ -240,7 +261,7 @@ func (ss *StoreState) applyModify(ctx context.Context, ch Change) (err error) {
 
 	coll, err := ss.Collection(ctx, modify.Collection)
 	if err != nil {
-		return
+		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
 
 	var exec func(ctx context.Context, id any, m query.Modifier) (anystore.ModifyResult, error)
@@ -250,16 +271,19 @@ func (ss *StoreState) applyModify(ctx context.Context, ch Change) (err error) {
 		exec = coll.UpdateId
 	}
 
-	// TODO: check result?
-	_, err = exec(ctx, modify.DocumentId, mod)
+	_, err = exec(ctx, modify.DocumentId, wrapModifierErrors(mod))
 	if err != nil {
 		if errors.Is(err, anystore.ErrDocNotFound) {
-			return ErrLog
-		} else {
-			return
+			return nil
 		}
+		// An error from the modifier
+		if errors.Is(err, errModifier) {
+			return err
+		}
+		// An error from any-store
+		return errors.Join(ErrCritical, fmt.Errorf("modify document: %w", err))
 	}
-	return
+	return nil
 }
 
 func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
@@ -277,19 +301,25 @@ func (ss *StoreState) applyDelete(ctx context.Context, ch Change) (err error) {
 
 	coll, err := ss.Collection(ctx, del.Collection)
 	if err != nil {
-		return
+		return errors.Join(ErrCritical, fmt.Errorf("get collection: %w", err))
 	}
 	switch mode {
 	case DeleteModeMark:
 		payload := ss.newDeleteMark(del.DocumentId)
 		fillRootOrder(ss.arena, payload, ch.Order)
-		return coll.UpdateOne(ctx, payload)
+		if err = coll.UpdateOne(ctx, payload); err != nil {
+			return errors.Join(ErrCritical, fmt.Errorf("update document: %w", err))
+		}
+		return nil
 	case DeleteModeDelete:
 		err = coll.DeleteId(ctx, del.DocumentId)
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			return nil
 		}
-		return err
+		if err != nil {
+			return errors.Join(ErrCritical, fmt.Errorf("delete document: %w", err))
+		}
+		return nil
 	}
 	return
 }
@@ -314,5 +344,5 @@ func (ss *StoreState) getHandler(collection string) (Handler, error) {
 	if h, ok := ss.handlers[collection]; ok {
 		return h, nil
 	}
-	return nil, errors.Join(ErrLog, ErrUnexpectedHandler, fmt.Errorf("'%s'", collection))
+	return nil, errors.Join(ErrUnexpectedHandler, fmt.Errorf("'%s'", collection))
 }

@@ -350,8 +350,8 @@ func (s *service) runChatIdsSubscription() (err error) {
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       domain.Int64(int64(model.ObjectType_chatDerived)),
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List([]model.ObjectTypeLayout{model.ObjectType_chatDerived, model.ObjectType_discussion}),
 			},
 		},
 	}, func(d *domain.Details) bool {

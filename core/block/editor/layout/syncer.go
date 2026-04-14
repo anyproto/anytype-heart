@@ -14,7 +14,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/simple"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -249,7 +248,7 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, needAppl
 			}
 			details.Set(bundle.RelationKeyResolvedLayout, domain.Int64(layout))
 			return details, true, nil
-		})
+		}, true)
 	})
 
 	if !errors.Is(err, ocache.ErrExists) {
@@ -261,9 +260,9 @@ func (s *syncer) updateResolvedLayout(id string, layout int64, addName, needAppl
 	}
 
 	return s.space.Do(id, func(b smartblock.SmartBlock) error {
-		if cr, ok := b.(source.ChangeReceiver); ok && !addName {
+		if !addName {
 			// we can do StateAppend here, so resolvedLayout will be injected automatically
-			return cr.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
+			return b.StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error) {
 				return d.NewState(), nil, nil
 			})
 		}

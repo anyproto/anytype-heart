@@ -93,7 +93,7 @@ func (o *observer) Close(ctx context.Context) (err error) {
 	if o.componentContextCancel != nil {
 		o.componentContextCancel()
 	}
-	return nil
+	return o.updateQueue.Close()
 }
 
 func (o *observer) Name() (name string) {

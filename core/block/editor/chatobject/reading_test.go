@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -439,5 +440,29 @@ func TestUnreadReactionTracking(t *testing.T) {
 		msg, err := fx.GetMessageById(ctx, messageId)
 		require.NoError(t, err)
 		assert.False(t, msg.UnreadReaction)
+	})
+
+	t.Run("reaction before epoch does not track unread", func(t *testing.T) {
+		ctx := context.Background()
+		// Set epoch far in the future so current time is before it
+		fx := newFixture(t, withReactionsCounterEpoch(time.Now().Add(time.Hour).Unix()))
+
+		// testCreator creates a message
+		messageId, err := fx.AddMessage(ctx, nil, givenSimpleMessage("my message"))
+		require.NoError(t, err)
+
+		// Another person adds a reaction (timestamp is before epoch)
+		fx.sourceCreator = anotherPerson
+		fx.accountServiceStub.accountId = anotherPerson
+		added, err := fx.ToggleMessageReaction(ctx, messageId, "👍")
+		require.NoError(t, err)
+		assert.True(t, added)
+
+		// Reaction should be applied but not tracked as unread
+		fx.sourceCreator = testCreator
+		fx.accountServiceStub.accountId = testCreator
+		msg, err := fx.GetMessageById(ctx, messageId)
+		require.NoError(t, err)
+		assert.False(t, msg.UnreadReaction, "reactions before epoch should not be tracked as unread")
 	})
 }

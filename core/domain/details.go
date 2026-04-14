@@ -62,7 +62,7 @@ func NewDetailsFromAnyEnc(v *anyenc.Value) (*Details, error) {
 	return res, visitErr
 }
 
-func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
+func setValueFromAnyEnc[T ~string](d *GenericMap[T], key T, val *anyenc.Value) error {
 	switch val.Type() {
 	case anyenc.TypeNumber:
 		v, err := val.Float64()
@@ -106,13 +106,17 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 				arrayType = anyenc.TypeString
 				break
 			}
+			if arrVal.Type() == anyenc.TypeObject {
+				arrayType = anyenc.TypeObject
+				break
+			}
 		}
 		if arrayType == anyenc.TypeString {
 			res := make([]string, 0, len(arrVals))
 			for i, arrVal := range arrVals {
 				if arrVal.Type() != anyenc.TypeString {
 					// todo: make it not possible to create such an arrays and remove this
-					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected string, got %s", arrVal.Type()))
+					log.With(zap.String("key", string(key))).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected string, got %s", arrVal.Type()))
 					continue
 				}
 				v, err := arrVal.StringBytes()
@@ -128,7 +132,7 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			for i, arrVal := range arrVals {
 				if arrVal.Type() != anyenc.TypeNumber {
 					// todo: make it not possible to create such an arrays and remove this
-					log.With(zap.String("key", key.String())).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected number, got %s", arrVal.Type()))
+					log.With(zap.String("key", string(key))).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected number, got %s", arrVal.Type()))
 					continue
 				}
 				v, err := arrVal.Float64()
@@ -139,6 +143,34 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			}
 			d.SetFloat64List(key, res)
 			return nil
+		} else if arrayType == anyenc.TypeObject {
+			res := make([]ValueMap, 0, len(arrVals))
+			for i, arrVal := range arrVals {
+				if arrVal.Type() != anyenc.TypeObject {
+					// todo: make it not possible to create such an arrays and remove this
+					log.With(zap.String("key", string(key))).With(zap.Int("index", i)).Error(fmt.Sprintf("array item: expected object, got %s", arrVal.Type()))
+					continue
+				}
+				v, err := arrVal.Object()
+				if err != nil {
+					return fmt.Errorf("array item: object: %w", err)
+				}
+				mapValue := make(map[string]Value, v.Len())
+				genericMap := &GenericMap[string]{data: mapValue}
+
+				var visitErr error
+				v.Visit(func(k []byte, v *anyenc.Value) {
+					if err := setValueFromAnyEnc(genericMap, string(k), v); err != nil {
+						visitErr = fmt.Errorf("key %s: %w", k, err)
+					}
+				})
+				if visitErr != nil {
+					return fmt.Errorf("object: visit: %w", visitErr)
+				}
+				res = append(res, genericMap)
+			}
+			d.Set(key, MapList(res))
+			return nil
 		} else {
 			var elTypes []string
 			for _, arrVal := range arrVals {
@@ -146,11 +178,31 @@ func setValueFromAnyEnc(d *Details, key RelationKey, val *anyenc.Value) error {
 			}
 
 			d.SetStringList(key, []string{})
-			log.With(zap.String("key", key.String())).Error(fmt.Sprintf("unsupported array: %v", elTypes))
+			log.With(zap.String("key", string(key))).Error(fmt.Sprintf("unsupported array: %v", elTypes))
 
 			// todo: make it not possible to create such an arrays and remove this logic
 			return nil
 		}
+	case anyenc.TypeObject:
+		v, err := val.Object()
+		if err != nil {
+			return fmt.Errorf("object: %w", err)
+		}
+		mapValue := make(map[string]Value, v.Len())
+		genericMap := &GenericMap[string]{data: mapValue}
+
+		var visitErr error
+		v.Visit(func(k []byte, v *anyenc.Value) {
+			if err := setValueFromAnyEnc(genericMap, string(k), v); err != nil {
+				visitErr = fmt.Errorf("key %s: %w", k, err)
+			}
+		})
+		if visitErr != nil {
+			return fmt.Errorf("object: visit: %w", visitErr)
+		}
+
+		d.Set(key, NewValueMap(genericMap.data))
+		return nil
 	}
 	d.Set(key, Null())
 	return nil

@@ -102,7 +102,7 @@ func (s *participantSub) Run(ctx context.Context) error {
 func (s *participantSub) Close() error {
 	s.cancel()
 	<-s.waiter
-	return nil
+	return s.internalQueue.Close()
 }
 
 func newSubPredicate(creatorId string) crossspacesub.Predicate {

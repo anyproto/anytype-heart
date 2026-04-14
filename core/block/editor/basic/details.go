@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -18,7 +17,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/internalflag"
-	"github.com/anyproto/anytype-heart/util/uri"
 )
 
 var log = logging.Logger("anytype-mw-editor-basic")
@@ -127,126 +125,7 @@ func (bs *basic) validateDetailFormat(key domain.RelationKey, v domain.Value) er
 	if err != nil {
 		return err
 	}
-	if v.IsNull() {
-		// allow null value for any field
-		return nil
-	}
-
-	switch r.Format {
-	case model.RelationFormat_longtext, model.RelationFormat_shorttext:
-		if !v.IsString() {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
-		}
-		return nil
-	case model.RelationFormat_number:
-		if !v.IsFloat64() {
-			return fmt.Errorf("incorrect type: %v instead of number", v)
-		}
-		return nil
-	case model.RelationFormat_status:
-		vals, ok := v.TryWrapToStringList()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string list", v)
-		}
-		if len(vals) > 1 {
-			return fmt.Errorf("status should not contain more than one value")
-		}
-		return bs.validateOptions(r, vals)
-
-	case model.RelationFormat_tag:
-		vals, ok := v.TryWrapToStringList()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string list", v)
-		}
-		if r.MaxCount > 0 && len(vals) > int(r.MaxCount) {
-			return fmt.Errorf("maxCount exceeded")
-		}
-
-		return bs.validateOptions(r, vals)
-	case model.RelationFormat_date:
-		if !v.IsFloat64() {
-			return fmt.Errorf("incorrect type: %v instead of number", v)
-		}
-
-		return nil
-	case model.RelationFormat_file, model.RelationFormat_object:
-		vals, ok := v.TryWrapToStringList()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string list", v)
-		}
-		if r.MaxCount > 0 && len(vals) > int(r.MaxCount) {
-			return fmt.Errorf("relation %s(%s) has maxCount exceeded", r.Key, r.Format.String())
-		}
-
-		for i, lv := range vals {
-			if lv == "" {
-				return fmt.Errorf("empty option at index %d", i)
-			}
-		}
-		return nil
-
-	case model.RelationFormat_checkbox:
-		if !v.IsBool() {
-			return fmt.Errorf("incorrect type: %v instead of bool", v)
-		}
-
-		return nil
-	case model.RelationFormat_url:
-		val, ok := v.TryString()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
-		}
-		s := strings.TrimSpace(val)
-		if s != "" {
-			err := uri.ValidateURI(s)
-			if err != nil {
-				return fmt.Errorf("failed to parse URL: %w", err)
-			}
-		}
-		// todo: should we allow schemas other than http/https?
-		// if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
-		//	return fmt.Errorf("url scheme %s not supported", u.Scheme)
-		// }
-		return nil
-	case model.RelationFormat_email:
-		_, ok := v.TryString()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
-		}
-		// todo: revise regexp and reimplement
-		/*valid := uri.ValidateEmail(v.GetStringValue())
-		if !valid {
-			return fmt.Errorf("failed to validate email")
-		}*/
-		return nil
-	case model.RelationFormat_phone:
-		_, ok := v.TryString()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
-		}
-
-		// todo: revise regexp and reimplement
-		/*valid := uri.ValidatePhone(v.GetStringValue())
-		if !valid {
-			return fmt.Errorf("failed to validate phone")
-		}*/
-		return nil
-	case model.RelationFormat_emoji:
-		_, ok := v.TryString()
-		if !ok {
-			return fmt.Errorf("incorrect type: %v instead of string", v)
-		}
-
-		// check if the symbol is emoji
-		return nil
-	default:
-		return fmt.Errorf("unsupported rel format: %s", r.Format.String())
-	}
-}
-
-func (bs *basic) validateOptions(rel *relationutils.Relation, v []string) error {
-	// TODO:
-	return nil
+	return relationutils.ValidateRelationFormat(key, v, r.Format, r.MaxCount)
 }
 
 func (bs *basic) validateSpecialCases(st *state.State, detail domain.Detail) error {

@@ -29,6 +29,8 @@ type ChatHandler struct {
 	chatFullId      domain.FullID
 	currentIdentity string
 	myParticipantId string
+	// reactionsCounterEpoch is the unix timestamp after which reactions counters are tracked
+	reactionsCounterEpoch int64
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
 }
@@ -107,7 +109,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	d.subscription.Add(prevOrderId, msg)
 
-	if err = d.indexerStore.AddChatMessageToIndexQueue(ctx, d.chatFullId, msg.OrderId); err != nil {
+	if err = d.indexerStore.AddChatMessageToIndexQueue(context.Background(), d.chatFullId, msg.OrderId); err != nil {
 		return fmt.Errorf("add chat message to full text index queue: %w", err)
 	}
 
@@ -117,7 +119,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 }
 
 func (d *ChatHandler) BeforeModify(ctx context.Context, ch storestate.ChangeOp) (mode storestate.ModifyMode, err error) {
-	if err = d.indexerStore.AddChatMessageToIndexQueue(ctx, d.chatFullId, ch.Change.Order); err != nil {
+	if err = d.indexerStore.AddChatMessageToIndexQueue(context.Background(), d.chatFullId, ch.Change.Order); err != nil {
 		return 0, fmt.Errorf("add chat message to full text index queue: %w", err)
 	}
 	return storestate.ModifyModeUpsert, nil
@@ -151,7 +153,7 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	defer d.subscription.Unlock()
 	d.subscription.Delete(messageId)
 
-	if err = d.indexerStore.AddChatMessageDeleteToIndexQueue(ctx, d.chatFullId, messageId); err != nil {
+	if err = d.indexerStore.AddChatMessageDeleteToIndexQueue(context.Background(), d.chatFullId, messageId); err != nil {
 		log.With(zap.String("chatId", d.chatFullId.ObjectID), zap.String("messageId", messageId), zap.Error(err)).
 			Error("failed to add message to fulltext delete queue")
 	}
@@ -228,8 +230,10 @@ func (d *ChatHandler) handleReactionsModify(
 	}
 	// TODO Count validation
 
+	reactionsCounterEnabled := ch.Change.Timestamp > d.reactionsCounterEpoch
+
 	// Track unread reaction changes on current user's messages from other users
-	if msg.Creator == d.currentIdentity && ch.Change.Creator != d.currentIdentity && len(key.KeyPath) > 1 {
+	if reactionsCounterEnabled && msg.Creator == d.currentIdentity && ch.Change.Creator != d.currentIdentity && len(key.KeyPath) > 1 {
 		emoji := key.KeyPath[1]
 		wasPresent := isIdentityInReactions(oldReactions, emoji, identity)
 		isPresent := isIdentityInReactions(msg.GetReactions(), emoji, identity)

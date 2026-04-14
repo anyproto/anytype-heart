@@ -227,21 +227,3 @@ func (h *readStoreTreeHook) AfterDiffManagersInit(ctx context.Context) error {
 	return nil
 }
 
-func (s *storeObject) setMessagesSyncStatus(changeIds []string) error {
-	if len(changeIds) == 0 {
-		return nil
-	}
-
-	idsModified, err := s.repository.SetSyncedFlag(s.componentCtx, s.Id(), changeIds, true)
-	if err != nil {
-		return fmt.Errorf("set synced flag: %w", err)
-	}
-
-	if len(idsModified) > 0 {
-		s.subscription.Lock()
-		defer s.subscription.Unlock()
-		s.subscription.UpdateSyncStatus(idsModified, true)
-		s.subscription.Flush(false)
-	}
-	return nil
-}

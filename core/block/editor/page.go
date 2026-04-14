@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/migration"
-	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -60,7 +59,6 @@ type Page struct {
 	stext.Text
 	clipboard.Clipboard
 	bookmark.Bookmark
-	source.ChangeReceiver
 	collection.Collection
 
 	dataview.Dataview
@@ -77,7 +75,6 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 	fileComponent := file.NewFile(sb, f.picker, f.fileUploaderService)
 	return &Page{
 		SmartBlock:     sb,
-		ChangeReceiver: sb.(source.ChangeReceiver),
 		AllOperations:  basic.NewBasic(sb, store, f.layoutConverter, f.fileObjectService),
 		IHistory:       basic.NewHistory(sb),
 		Text: stext.NewText(
@@ -237,7 +234,7 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 					template.WithTitle,
 					template.WithLayout(layout),
 				)
-			case model.ObjectType_chatDerived:
+			case model.ObjectType_chatDerived, model.ObjectType_discussion:
 				templates = append(templates,
 					template.WithLayout(layout),
 				)

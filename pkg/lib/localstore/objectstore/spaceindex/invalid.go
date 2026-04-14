@@ -99,7 +99,7 @@ func (s *invalidStore) UpdatePendingLocalDetails(id string, proc func(details *d
 	return s.err
 }
 
-func (s *invalidStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
+func (s *invalidStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
 	return s.err
 }
 

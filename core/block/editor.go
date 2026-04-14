@@ -328,15 +328,15 @@ func (s *Service) SetLayout(ctx session.Context, contextId string, layout model.
 	})
 }
 
-func (s *Service) FeaturedRelationAdd(ctx session.Context, contextId string, relations ...string) error {
+func (s *Service) DescriptionShow(ctx session.Context, contextId string) error {
 	return cache.Do(s, contextId, func(b basic.CommonOperations) error {
-		return b.FeaturedRelationAdd(ctx, relations...)
+		return b.DescriptionShow(ctx)
 	})
 }
 
-func (s *Service) FeaturedRelationRemove(ctx session.Context, contextId string, relations ...string) error {
+func (s *Service) DescriptionHide(ctx session.Context, contextId string) error {
 	return cache.Do(s, contextId, func(b basic.CommonOperations) error {
-		return b.FeaturedRelationRemove(ctx, relations...)
+		return b.DescriptionHide(ctx)
 	})
 }
 

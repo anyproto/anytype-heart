@@ -57,6 +57,18 @@ func (srv *Server) Stop() {
 	srv.service.Stop()
 }
 
+// RevokeToken removes the cached API key entry associated with the given session token.
+func (srv *Server) RevokeToken(token string) {
+	srv.mu.Lock()
+	defer srv.mu.Unlock()
+	for key, entry := range srv.KeyToToken {
+		if entry.Token == token {
+			delete(srv.KeyToToken, key)
+			return
+		}
+	}
+}
+
 // Engine returns the underlying gin.Engine.
 func (srv *Server) Engine() *gin.Engine {
 	return srv.engine

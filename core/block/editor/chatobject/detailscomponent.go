@@ -115,7 +115,7 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 }
 
 func (c *detailsComponent) onAnystoreUpdated(ctx context.Context) error {
-	c.sb.(source.ChangeReceiver).StateAppend(func(d state.Doc) (*state.State, []*pb.ChangeContent, error) {
+	c.sb.StateAppend(func(d state.Doc) (*state.State, []*pb.ChangeContent, error) {
 		st := d.NewState()
 		err := c.setDetailsFromAnystore(ctx, st, false)
 		if err != nil {

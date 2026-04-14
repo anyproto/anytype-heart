@@ -224,7 +224,7 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 		opts = make(map[string]string)
 	}
 	opts["synchronous"] = "normal"
-	opts["wal_autocheckpoint"] = "0" // we will flush on idle
+	opts["wal_autocheckpoint"] = "10000"
 
 	return &anystore.Config{
 		ReadConnections:                           4,

@@ -43,6 +43,7 @@ var (
 type Service interface {
 	app.ComponentRunnable
 	ReassignAddress(ctx context.Context, listenAddr string) error
+	RevokeToken(token string)
 }
 
 type apiService struct {
@@ -178,6 +179,16 @@ func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) err
 
 	s.listenAddr = listenAddr
 	return s.startServer()
+}
+
+// RevokeToken removes a cached API session token from the server's in-memory cache.
+func (s *apiService) RevokeToken(token string) {
+	s.lock.Lock()
+	srv := s.srv
+	s.lock.Unlock()
+	if srv != nil {
+		srv.RevokeToken(token)
+	}
 }
 
 func SetMiddlewareParams(mw apicore.ClientCommands) {

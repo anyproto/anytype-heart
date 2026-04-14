@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/components"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/storestate"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -40,8 +41,7 @@ const (
 	EditorCollectionName  = "editor"
 	diffManagerMessages   = "messages"
 	diffManagerMentions   = "mentions"
-	diffManagerSyncStatus  = "syncStatus"
-	diffManagerReactions   = "reactions"
+	diffManagerReactions = "reactions"
 )
 
 var log = logging.Logger("core.block.editor.chatobject").Desugar()
@@ -96,6 +96,11 @@ type storeObject struct {
 	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
 	indexerStore            objectstore.IndexerStore
+
+	reactionsCounterEpoch int64
+
+	typeKey domain.TypeKey
+	layout  model.ObjectTypeLayout
 
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
@@ -159,6 +164,8 @@ func New(
 	layoutConverter converter.LayoutConverter,
 	fileObjectService fileobject.Service,
 	statService debugstat.StatService,
+	typeKey domain.TypeKey,
+	layout model.ObjectTypeLayout,
 ) StoreObject {
 	ctx, cancel := context.WithCancel(context.Background())
 	bs := basic.NewBasic(sb, spaceIndex, layoutConverter, fileObjectService)
@@ -171,11 +178,14 @@ func New(
 		crdtDb:                  crdtDb,
 		repositoryService:       repositoryService,
 		indexerStore:            indexerStore,
+		reactionsCounterEpoch:   time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC).Unix(),
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
 		chatSubscriptionService: chatSubscriptionService,
 		DetailsSettable:         bs,
 		DetailsUpdatable:        bs,
+		typeKey:                 typeKey,
+		layout:                  layout,
 	}
 }
 
@@ -184,6 +194,12 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	if !ok {
 		return fmt.Errorf("source is not a store")
 	}
+
+	// Set object type and layout details for this fake state
+	st := ctx.Doc.(*state.State)
+	st.SetObjectTypeKey(s.typeKey)
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLayout, domain.Int64(int64(s.layout)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyIsHidden, domain.Bool(false))
 
 	var err error
 	s.repository, err = s.repositoryService.Repository(ctx.Source.SpaceID(), storeSource.Id())
@@ -213,12 +229,6 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 			log.Error("mark read reactions", zap.Error(markErr))
 		}
 	})
-	storeSource.RegisterDiffManager(diffManagerSyncStatus, func(removed []string) {
-		updateErr := s.setMessagesSyncStatus(removed)
-		if updateErr != nil {
-			log.Error("set sync status", zap.Error(updateErr))
-		}
-	})
 	err = s.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
@@ -231,12 +241,13 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	}
 
 	s.chatHandler = &ChatHandler{
-		repository:      s.repository,
-		subscription:    s.subscription,
-		indexerStore:    s.indexerStore,
-		chatFullId:      domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
-		currentIdentity: s.accountService.AccountID(),
-		myParticipantId: myParticipantId,
+		repository:            s.repository,
+		subscription:          s.subscription,
+		indexerStore:          s.indexerStore,
+		chatFullId:            domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
+		currentIdentity:       s.accountService.AccountID(),
+		myParticipantId:       myParticipantId,
+		reactionsCounterEpoch: s.reactionsCounterEpoch,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})
@@ -281,7 +292,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 
 	storeSource.SetPushChangeHook(s.detailsComponent.onPushOrdinaryChange)
 
-	s.AnystoreDebug = anystoredebug.New(s.SmartBlock, stateStore)
+	s.AnystoreDebug = anystoredebug.New(s.SmartBlock)
 
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
@@ -529,11 +540,35 @@ func (s *storeObject) Close() error {
 }
 
 func (s *storeObject) HandleSyncStatusUpdate(heads []string, status domain.ObjectSyncStatus, syncError domain.SyncError) {
-	if status == (domain.ObjectSyncStatusSynced) {
-		err := s.storeSource.MarkSeenHeads(s.componentCtx, diffManagerSyncStatus, heads)
+	if status != domain.ObjectSyncStatusSynced {
+		return
+	}
+
+	var maxOrderId string
+	for _, head := range heads {
+		ch, err := s.Tree().GetChange(head)
 		if err != nil {
-			log.Error("mark sync status heads", zap.Error(err))
+			continue
 		}
+		if ch.OrderId > maxOrderId {
+			maxOrderId = ch.OrderId
+		}
+	}
+	if maxOrderId == "" {
+		return
+	}
+
+	idsModified, err := s.repository.SetSyncedByMaxOrderId(s.componentCtx, maxOrderId)
+	if err != nil {
+		log.Error("set synced by max order id", zap.Error(err))
+		return
+	}
+
+	if len(idsModified) > 0 {
+		s.subscription.Lock()
+		defer s.subscription.Unlock()
+		s.subscription.UpdateSyncStatus(idsModified, true)
+		s.subscription.Flush(false)
 	}
 }
 

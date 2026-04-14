@@ -47,6 +47,7 @@ const (
 	ChangeTypeObjectReinstall
 	ChangeTypeIndexing
 	ChangeTypeSystemObjectReviserMigration
+	ChangeTypeDescriptionToggle
 )
 
 func (c ChangeType) String() string {
@@ -71,6 +72,8 @@ func (c ChangeType) String() string {
 		return "Indexing"
 	case ChangeTypeSystemObjectReviserMigration:
 		return "SystemObjectReviserMigration"
+	case ChangeTypeDescriptionToggle:
+		return "DescriptionToggle"
 	default:
 		return "Unknown"
 	}

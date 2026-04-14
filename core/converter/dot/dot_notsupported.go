@@ -36,14 +36,6 @@ func (d *dot) SetKnownDocs(docs map[string]*domain.Details) converter.Converter 
 	return d
 }
 
-func (d *dot) FileHashes() []string {
-	return nil
-}
-
-func (d *dot) ImageHashes() []string {
-	return nil
-}
-
 func (d *dot) Add(space smartblock.Space, st *state.State, fetcher relationutils.RelationFormatFetcher) error {
 	return nil
 }
