@@ -1275,7 +1275,9 @@ func (m *Markdown) processObjectProperties(files *fileContainer, progress proces
 					targetFile := m.findFileByPath(path, files)
 					if targetFile != nil && targetFile.PageID != "" {
 						ids = append(ids, targetFile.PageID)
+						continue
 					}
+					log.Warnf("markdown import: object property %q in %q references missing file %q", prop.Name, fileName, path)
 				}
 				file.YAMLDetails.Set(domain.RelationKey(prop.Key), domain.StringList(ids))
 			}
