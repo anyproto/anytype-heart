@@ -46,12 +46,17 @@ func newFixture(t *testing.T) *fixture {
 	// Create a simple space service implementation
 	spaceService := &spaceServiceStub{techSpace: &clientspace.TechSpace{TechSpace: mockTechSpace}}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
 	ic := &inboxclient{
-		inboxClient:  mockInboxClient,
-		spaceService: spaceService,
-		wallet:       mockWallet,
-		techSpace:    mockTechSpace,
-		receivers:    make(map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error),
+		inboxClient:        mockInboxClient,
+		spaceService:       spaceService,
+		wallet:             mockWallet,
+		techSpace:          mockTechSpace,
+		receivers:          make(map[coordinatorproto.InboxPayloadType]func(*coordinatorproto.InboxPacket) error),
+		componentCtx:       ctx,
+		componentCtxCancel: cancel,
 	}
 
 	return &fixture{
@@ -179,7 +184,7 @@ func TestInboxClient_FetchMessages(t *testing.T) {
 			})
 
 		// Execute
-		messages, err := fx.inboxClient.fetchMessages()
+		messages, err := fx.inboxClient.fetchMessages(context.Background())
 		require.NoError(t, err)
 		require.Len(t, messages, 2)
 
@@ -219,7 +224,7 @@ func TestInboxClient_FetchMessages(t *testing.T) {
 			})
 
 		// Execute
-		messages, err := fx.inboxClient.fetchMessages()
+		messages, err := fx.inboxClient.fetchMessages(context.Background())
 		require.NoError(t, err)
 		require.Len(t, messages, 2)
 	})
@@ -253,7 +258,7 @@ func TestInboxClient_FetchMessages(t *testing.T) {
 			})
 
 		// Execute
-		messages, err := fx.inboxClient.fetchMessages()
+		messages, err := fx.inboxClient.fetchMessages(context.Background())
 		require.NoError(t, err)
 		// Only msg2 should be in the result (msg1 was skipped)
 		require.Len(t, messages, 1)
@@ -293,7 +298,7 @@ func TestInboxClient_FetchMessages(t *testing.T) {
 			})
 
 		// Execute
-		messages, err := fx.inboxClient.fetchMessages()
+		messages, err := fx.inboxClient.fetchMessages(context.Background())
 		require.NoError(t, err)
 		// Only msg2 should be in the result (msg1 decryption failed)
 		require.Len(t, messages, 1)
@@ -314,7 +319,7 @@ func TestInboxClient_FetchMessages(t *testing.T) {
 			Return(nil, false, errors.New("network error"))
 
 		// Execute - offset should NOT be set when there's an error
-		messages, err := fx.inboxClient.fetchMessages()
+		messages, err := fx.inboxClient.fetchMessages(context.Background())
 		require.NoError(t, err)
 		require.Len(t, messages, 0)
 	})
