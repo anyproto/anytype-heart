@@ -296,9 +296,26 @@ func (si *SchemaImporter) HasSchemas() bool {
 	return len(si.schemas) > 0
 }
 
-// ResolvePropertyKey returns the property key for a given name from schemas
-// This implements the yaml.PropertyResolver interface
-func (si *SchemaImporter) ResolvePropertyKey(name string) string {
+// ResolvePropertyKey returns the property key for a given name from schemas.
+// When objectTypeName is non-empty the resolver first looks for a relation
+// declared by the schema whose Type.Name matches, so two schemas declaring
+// properties with the same display name but different x-keys do not
+// collide. It falls back to a global scan so cross-type or bundled
+// relations still work.
+// This implements the yaml.PropertyResolver interface.
+func (si *SchemaImporter) ResolvePropertyKey(objectTypeName, name string) string {
+	if objectTypeName != "" {
+		for _, s := range si.schemas {
+			if s.Type == nil || s.Type.Name != objectTypeName {
+				continue
+			}
+			for _, rel := range s.Relations {
+				if rel.Name == name {
+					return rel.Key
+				}
+			}
+		}
+	}
 	for _, s := range si.schemas {
 		for _, rel := range s.Relations {
 			// Check if the relation name matches (case-sensitive)
@@ -310,8 +327,22 @@ func (si *SchemaImporter) ResolvePropertyKey(name string) string {
 	return ""
 }
 
-// GetRelationFormat returns the format for a given relation key
-func (si *SchemaImporter) GetRelationFormat(key string) model.RelationFormat {
+// GetRelationFormat returns the format for a given relation key.
+// When objectTypeName is non-empty the resolver prefers a relation from
+// the matching schema before scanning globally.
+func (si *SchemaImporter) GetRelationFormat(objectTypeName, key string) model.RelationFormat {
+	if objectTypeName != "" {
+		for _, s := range si.schemas {
+			if s.Type == nil || s.Type.Name != objectTypeName {
+				continue
+			}
+			for _, rel := range s.Relations {
+				if rel.Key == key {
+					return rel.Format
+				}
+			}
+		}
+	}
 	for _, s := range si.schemas {
 		for _, rel := range s.Relations {
 			if rel.Key == key {
