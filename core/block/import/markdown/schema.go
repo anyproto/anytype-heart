@@ -139,58 +139,90 @@ func (si *SchemaImporter) optionId(relationKey, optionName string) string {
 	return si.propIdPrefix + "option_" + relationKey + "_" + optionName
 }
 
-// CreateRelationOptionSnapshots creates snapshots for relation options (for select/multi-select relations)
+// RegisterOptionValue records that a relation option value was encountered
+// in YAML. It returns the option ID that will be used in details and
+// ensures CreateRelationOptionSnapshots will emit a matching snapshot.
+// Safe to call multiple times for the same (relationKey, optionName).
+func (si *SchemaImporter) RegisterOptionValue(relationKey, optionName string) string {
+	if si.relationOptions[relationKey] == nil {
+		si.relationOptions[relationKey] = make(map[string]string)
+	}
+	if id, ok := si.relationOptions[relationKey][optionName]; ok && id != "" {
+		return id
+	}
+	id := si.optionId(relationKey, optionName)
+	si.relationOptions[relationKey][optionName] = id
+	return id
+}
+
+// CreateRelationOptionSnapshots creates snapshots for relation options
+// registered either from schema enum/examples or from YAML values
+// encountered during import via RegisterOptionValue. Options from
+// rel.Options (status) and rel.Examples (tag) are emitted, plus any
+// option that showed up in YAML but was not pre-declared — this covers
+// the common case where a schema lists a tag relation without seeding
+// examples.
 func (si *SchemaImporter) CreateRelationOptionSnapshots() []*common.Snapshot {
 	var snapshots []*common.Snapshot
+	emitted := make(map[string]bool)
+
+	emit := func(rel *schema.Relation, optionName, optionId string) {
+		if emitted[optionId] {
+			return
+		}
+		emitted[optionId] = true
+		snapshots = append(snapshots, &common.Snapshot{
+			Id: optionId,
+			Snapshot: &common.SnapshotModel{
+				SbType: smartblock.SmartBlockTypeRelationOption,
+				Data: &common.StateSnapshot{
+					Blocks: []*model.Block{{
+						Id: optionId,
+						Content: &model.BlockContentOfSmartblock{
+							Smartblock: &model.BlockContentSmartblock{},
+						},
+					}},
+					Details: rel.CreateOptionDetails(optionName, ""),
+					ObjectTypes: []string{
+						bundle.TypeKeyRelationOption.String(),
+					},
+				},
+			},
+		})
+	}
 
 	for _, s := range si.schemas {
 		for _, rel := range s.Relations {
-			var optionsToCreate []string
+			if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
+				continue
+			}
 
-			// Collect options based on relation format
+			// Options declared by the schema.
+			var schemaDeclared []string
 			switch rel.Format {
 			case model.RelationFormat_status:
-				optionsToCreate = rel.Options
+				schemaDeclared = rel.Options
 			case model.RelationFormat_tag:
-				optionsToCreate = rel.Examples
-			default:
-				continue
+				schemaDeclared = rel.Examples
 			}
 
-			if len(optionsToCreate) == 0 {
-				continue
-			}
-
-			// Initialize option map for this relation
-			if si.relationOptions[rel.Key] == nil {
-				si.relationOptions[rel.Key] = make(map[string]string)
-			}
-
-			for _, opt := range optionsToCreate {
-				optionId := si.optionId(rel.Key, opt)
-
-				// Track option ID
-				si.relationOptions[rel.Key][opt] = optionId
-
-				snapshot := &common.Snapshot{
-					Id: optionId,
-					Snapshot: &common.SnapshotModel{
-						SbType: smartblock.SmartBlockTypeRelationOption,
-						Data: &common.StateSnapshot{
-							Blocks: []*model.Block{{
-								Id: optionId,
-								Content: &model.BlockContentOfSmartblock{
-									Smartblock: &model.BlockContentSmartblock{},
-								},
-							}},
-							Details: rel.CreateOptionDetails(opt, ""),
-							ObjectTypes: []string{
-								bundle.TypeKeyRelationOption.String(),
-							},
-						},
-					},
+			if len(schemaDeclared) > 0 {
+				if si.relationOptions[rel.Key] == nil {
+					si.relationOptions[rel.Key] = make(map[string]string)
 				}
-				snapshots = append(snapshots, snapshot)
+				for _, opt := range schemaDeclared {
+					optionId := si.optionId(rel.Key, opt)
+					si.relationOptions[rel.Key][opt] = optionId
+					emit(rel, opt, optionId)
+				}
+			}
+
+			// Options registered from YAML values encountered during import.
+			for opt, id := range si.relationOptions[rel.Key] {
+				if id == "" {
+					continue
+				}
+				emit(rel, opt, id)
 			}
 		}
 	}
