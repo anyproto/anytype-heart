@@ -147,7 +147,7 @@ func (s *service) newSource(ctx context.Context, space source.Space, id string, 
 				},
 				State:     virtualState,
 				SbType:    smartblock.SmartBlockTypeTechSpaceVirtualObject,
-				CreatorId: addr.AnytypeProfileId,
+				CreatorId: s.accountService.MyParticipantId(spaceId),
 			}
 			return s.NewStaticSource(params), nil
 		case smartblock.SmartBlockTypeParticipant:
