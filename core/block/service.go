@@ -50,13 +50,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
@@ -846,30 +846,4 @@ func removeDescriptionFromRecommended(typeId string, details *domain.Details, sp
 		}
 		return nil
 	})
-}
-
-func (s *Service) SpaceSetHomepage(spaceId string, homepage string) error {
-	if err := s.validateHomepage(spaceId, homepage); err != nil {
-		return fmt.Errorf("validate homepage: %w", err)
-	}
-	return s.detailsService.SetSpaceInfo(spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeyHomepage: domain.String(homepage),
-	}))
-}
-
-func (s *Service) validateHomepage(spaceId string, homepage string) error {
-	if homepage == "" {
-		return nil
-	}
-	if domain.IsHomepageConstant(homepage) {
-		return nil
-	}
-	exists, err := s.objectStore.SpaceIndex(spaceId).HasIds([]string{homepage})
-	if err != nil {
-		return fmt.Errorf("check homepage object existence: %w", err)
-	}
-	if len(exists) == 0 {
-		return fmt.Errorf("homepage object %s not found in space %s", homepage, spaceId)
-	}
-	return nil
 }
