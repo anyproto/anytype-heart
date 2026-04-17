@@ -5,12 +5,21 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anyerror"
 )
+
+// universalBadInputErrors are errors that map to BAD_INPUT across any RPC response error enum.
+// All generated Rpc*ResponseError_BAD_INPUT constants share the value 2, so we can safely type-assert.
+const universalBadInputCode int32 = 2
+
+var universalBadInputErrors = []error{
+	idresolver.ErrEmptyObjectId,
+}
 
 func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {
 	ev := ctx.GetResponseEvent()
@@ -50,6 +59,11 @@ func mapErrorCode[T ~int32](err error, mappings ...errToCodeTuple[T]) T {
 			if errors.As(err, m.checkErrorType) {
 				return m.code
 			}
+		}
+	}
+	for _, badInputErr := range universalBadInputErrors {
+		if errors.Is(err, badInputErr) {
+			return T(universalBadInputCode)
 		}
 	}
 	// Unknown error
