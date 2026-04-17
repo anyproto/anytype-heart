@@ -18,8 +18,12 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
+
+var ErrHomepageChangeRestricted = errors.New("homepage change is restricted for 1-on-1 spaces")
 
 func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	spc, err := s.spaceService.Get(s.componentCtx, spaceId)
@@ -31,7 +35,7 @@ func (s *service) SetSpaceInfo(spaceId string, details *domain.Details) error {
 	setDetails := make([]domain.Detail, 0, details.Len())
 	for k, v := range details.Iterate() {
 		if k == bundle.RelationKeyHomepage {
-			if err = s.validateHomepage(spaceId, v); err != nil {
+			if err = s.validateHomepage(spc, v); err != nil {
 				return fmt.Errorf("validate homepage: %w", err)
 			}
 		}
@@ -352,20 +356,25 @@ func (s *service) appendGCEvent(sctx session.Context, gcIds []string, explicitId
 	objectgc.FilterExplicitIds(sctx, explicitIds)
 }
 
-func (s *service) validateHomepage(spaceId string, homepageValue domain.Value) error {
+func (s *service) validateHomepage(spc clientspace.Space, homepageValue domain.Value) error {
 	if !homepageValue.IsString() {
 		return fmt.Errorf("invalid homepage value type: %s", homepageValue.Type().String())
 	}
 	homepage := homepageValue.String()
+
+	if spc.SpaceType() == spacedomain.SpaceTypeOneToOne {
+		return ErrHomepageChangeRestricted
+	}
+
 	if domain.IsHomepageConstant(homepage) {
 		return nil
 	}
-	exists, err := s.store.SpaceIndex(spaceId).HasIds([]string{homepage})
+	exists, err := s.store.SpaceIndex(spc.Id()).HasIds([]string{homepage})
 	if err != nil {
 		return fmt.Errorf("check homepage object existence: %w", err)
 	}
 	if len(exists) == 0 {
-		return fmt.Errorf("homepage object %s not found in space %s", homepage, spaceId)
+		return fmt.Errorf("homepage object %s not found in space %s", homepage, spc.Id())
 	}
 	return nil
 }

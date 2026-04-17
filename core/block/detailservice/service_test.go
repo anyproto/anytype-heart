@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -290,6 +291,74 @@ func TestService_SetSpaceInfo(t *testing.T) {
 
 		// then
 		assert.Error(t, err)
+	})
+
+	t.Run("reject homepage change for 1-on-1 space", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: wsObjectId})
+		fx.space.EXPECT().SpaceType().Return(spacedomain.SpaceTypeOneToOne)
+		homepageDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyHomepage: domain.String("someObjectId"),
+		})
+
+		// when
+		err := fx.SetSpaceInfo(spaceId, homepageDetails)
+
+		// then
+		require.ErrorIs(t, err, ErrHomepageChangeRestricted)
+	})
+
+	t.Run("allow homepage change for regular space", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ws := smarttest.New(wsObjectId)
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: wsObjectId})
+		fx.space.EXPECT().SpaceType().Return(spacedomain.SpaceTypeRegular)
+		fx.space.EXPECT().Id().Return(spaceId)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("someObjectId"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, wsObjectId, objectId)
+			return ws, nil
+		})
+		homepageDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyHomepage: domain.String("someObjectId"),
+		})
+
+		// when
+		err := fx.SetSpaceInfo(spaceId, homepageDetails)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "someObjectId", ws.NewState().Details().GetString(bundle.RelationKeyHomepage))
+	})
+
+	t.Run("allow non-homepage changes for 1-on-1 space", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ws := smarttest.New(wsObjectId)
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: wsObjectId})
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, wsObjectId, objectId)
+			return ws, nil
+		})
+		nameDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:       domain.String("Renamed space"),
+			bundle.RelationKeyIconOption: domain.Int64(3),
+		})
+
+		// when
+		err := fx.SetSpaceInfo(spaceId, nameDetails)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "Renamed space", ws.NewState().Details().GetString(bundle.RelationKeyName))
+		assert.Equal(t, int64(3), ws.NewState().Details().GetInt64(bundle.RelationKeyIconOption))
 	})
 }
 
