@@ -487,6 +487,7 @@ func copyChatState(state *model.ChatState) *model.ChatState {
 		LastStateId:           state.LastStateId,
 		Order:                 state.Order,
 		UnreadReactionOrderId: state.UnreadReactionOrderId,
+		MessageCount:          state.MessageCount,
 	}
 }
 

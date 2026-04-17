@@ -287,11 +287,17 @@ func (s *repository) LoadChatState(ctx context.Context) (*model.ChatState, error
 		return nil, fmt.Errorf("get newest unread reaction order id: %w", err)
 	}
 
+	messageCount, err := s.countAllMessages(txn.Context())
+	if err != nil {
+		return nil, fmt.Errorf("count all messages: %w", err)
+	}
+
 	return &model.ChatState{
 		Messages:              messagesState,
 		Mentions:              mentionsState,
 		LastStateId:           lastStateId,
 		UnreadReactionOrderId: unreadReactionOrderId,
+		MessageCount:          int32(messageCount),
 	}, nil
 }
 
@@ -341,6 +347,10 @@ func (s *repository) countUnreadMessages(ctx context.Context, handler readHandle
 	unreadQuery := s.collection.Find(handler.getReadFilter(false))
 
 	return unreadQuery.Count(ctx)
+}
+
+func (s *repository) countAllMessages(ctx context.Context) (int, error) {
+	return s.collection.Find(nil).Count(ctx)
 }
 
 func (s *repository) GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error) {

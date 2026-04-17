@@ -246,10 +246,11 @@ func TestFlush(t *testing.T) {
 							Value: &pb.EventMessageValueOfChatStateUpdate{
 								ChatStateUpdate: &pb.EventChatUpdateState{
 									State: &model.ChatState{
-										Messages:    &model.ChatStateUnreadState{},
-										Mentions:    &model.ChatStateUnreadState{},
-										LastStateId: "",
-										Order:       6,
+										Messages:     &model.ChatStateUnreadState{},
+										Mentions:     &model.ChatStateUnreadState{},
+										LastStateId:  "",
+										Order:        6,
+										MessageCount: 4,
 									},
 									SubIds: []string{
 										subId,

@@ -34278,6 +34278,7 @@ Used to decode block meta only, without the content itself
 | lastStateId | [string](#string) |  | reflects the state of the chat db at the moment of sending response/event that includes this state |
 | order | [int64](#int64) |  | Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order |
 | unreadReactionOrderId | [string](#string) |  | order id of the newest message with any unread reactions |
+| messageCount | [int32](#int32) |  | total number of non-deleted messages (includes replies). Stays current via ChatStateUpdate events. |
 
 
 
