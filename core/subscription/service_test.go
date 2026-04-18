@@ -83,8 +83,14 @@ func TestService_Search(t *testing.T) {
 		spaceSub, err := fx.getSpaceSubscriptions(testSpaceId)
 		require.NoError(t, err)
 
-		// Wait enough time to flush pending updates to subscriptions handler
-		time.Sleep(batchTime + 4*time.Millisecond)
+		// Wait for background recordsHandler to process the author2/author3 additions
+		require.Eventually(t, func() bool {
+			spaceSub.m.Lock()
+			defer spaceSub.m.Unlock()
+			_, ok1 := spaceSub.cache.entries["author2"]
+			_, ok2 := spaceSub.cache.entries["author3"]
+			return ok1 && ok2
+		}, time.Second, 10*time.Millisecond)
 
 		spaceSub.onChange([]*entry{
 			newEntry("1", domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
