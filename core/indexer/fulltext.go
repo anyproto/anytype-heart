@@ -278,14 +278,6 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	return changedDocs, removeDocs, nil
 }
 
-var filesLayouts = map[model.ObjectTypeLayout]struct{}{
-	model.ObjectType_file:  {},
-	model.ObjectType_image: {},
-	model.ObjectType_audio: {},
-	model.ObjectType_video: {},
-	model.ObjectType_pdf:   {},
-}
-
 func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, isChat bool, semanticTask *vectorsearch.SemanticTask, err error) {
 	// shortcut for deleted objects via objectstore
 	// otherwise we can have race condition when object is marked as deleted but the tree is not yet deleted
