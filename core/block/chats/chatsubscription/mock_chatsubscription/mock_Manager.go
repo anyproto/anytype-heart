@@ -300,6 +300,51 @@ func (_c *MockManager_GetLastMessage_Call) RunAndReturn(run func() (*model.ChatM
 	return _c
 }
 
+// GetMessageCount provides a mock function with no fields
+func (_m *MockManager) GetMessageCount() int32 {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMessageCount")
+	}
+
+	var r0 int32
+	if rf, ok := ret.Get(0).(func() int32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+
+	return r0
+}
+
+// MockManager_GetMessageCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMessageCount'
+type MockManager_GetMessageCount_Call struct {
+	*mock.Call
+}
+
+// GetMessageCount is a helper method to define mock.On call
+func (_e *MockManager_Expecter) GetMessageCount() *MockManager_GetMessageCount_Call {
+	return &MockManager_GetMessageCount_Call{Call: _e.mock.On("GetMessageCount")}
+}
+
+func (_c *MockManager_GetMessageCount_Call) Run(run func()) *MockManager_GetMessageCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockManager_GetMessageCount_Call) Return(_a0 int32) *MockManager_GetMessageCount_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockManager_GetMessageCount_Call) RunAndReturn(run func() int32) *MockManager_GetMessageCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // IsActive provides a mock function with no fields
 func (_m *MockManager) IsActive() bool {
 	ret := _m.Called()
@@ -609,6 +654,39 @@ func (_c *MockManager_UpdateFull_Call) Return() *MockManager_UpdateFull_Call {
 }
 
 func (_c *MockManager_UpdateFull_Call) RunAndReturn(run func(*chatmodel.Message)) *MockManager_UpdateFull_Call {
+	_c.Run(run)
+	return _c
+}
+
+// UpdateMessageCount provides a mock function with given fields: delta
+func (_m *MockManager) UpdateMessageCount(delta int32) {
+	_m.Called(delta)
+}
+
+// MockManager_UpdateMessageCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateMessageCount'
+type MockManager_UpdateMessageCount_Call struct {
+	*mock.Call
+}
+
+// UpdateMessageCount is a helper method to define mock.On call
+//   - delta int32
+func (_e *MockManager_Expecter) UpdateMessageCount(delta interface{}) *MockManager_UpdateMessageCount_Call {
+	return &MockManager_UpdateMessageCount_Call{Call: _e.mock.On("UpdateMessageCount", delta)}
+}
+
+func (_c *MockManager_UpdateMessageCount_Call) Run(run func(delta int32)) *MockManager_UpdateMessageCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int32))
+	})
+	return _c
+}
+
+func (_c *MockManager_UpdateMessageCount_Call) Return() *MockManager_UpdateMessageCount_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_UpdateMessageCount_Call) RunAndReturn(run func(int32)) *MockManager_UpdateMessageCount_Call {
 	_c.Run(run)
 	return _c
 }

@@ -169,6 +169,7 @@ type Repository interface {
 	GetLastStateId(ctx context.Context) (string, error)
 	GetPrevOrderId(ctx context.Context, orderId string) (string, error)
 	LoadChatState(ctx context.Context) (*model.ChatState, error)
+	CountMessages(ctx context.Context) (int, error)
 	GetOldestOrderId(ctx context.Context, counterType chatmodel.CounterType) (string, error)
 	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
@@ -293,6 +294,10 @@ func (s *repository) LoadChatState(ctx context.Context) (*model.ChatState, error
 		LastStateId:           lastStateId,
 		UnreadReactionOrderId: unreadReactionOrderId,
 	}, nil
+}
+
+func (s *repository) CountMessages(ctx context.Context) (int, error) {
+	return s.collection.Find(nil).Count(ctx)
 }
 
 func (s *repository) loadChatStateByType(ctx context.Context, counterType chatmodel.CounterType) (*model.ChatStateUnreadState, error) {
