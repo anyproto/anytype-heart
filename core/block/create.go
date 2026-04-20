@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -159,7 +160,7 @@ func (s *Service) CreateWorkspace(ctx context.Context, req *pb.RpcWorkspaceCreat
 
 	spaceDescription := spaceinfo.NewSpaceDescriptionFromDetails(spaceDetails)
 
-	if err = validateSpaceType(spaceDescription.SpaceType); err != nil {
+	if err = validateSpaceDescription(spaceDescription); err != nil {
 		return "", "", err
 	}
 
@@ -242,9 +243,14 @@ func deriveSpaceTypeIfNeeded(details *domain.Details) {
 	}
 }
 
-func validateSpaceType(spaceType model.SpaceType) error {
-	switch spaceType {
-	case model.SpaceType_SpaceTypeRegular, model.SpaceType_SpaceTypeOneToOne:
+func validateSpaceDescription(desc spaceinfo.SpaceDescription) error {
+	switch desc.SpaceType {
+	case model.SpaceType_SpaceTypeRegular:
+		return nil
+	case model.SpaceType_SpaceTypeOneToOne:
+		if desc.Homepage != "" && desc.Homepage != domain.HomepageChat {
+			return detailservice.ErrHomepageChangeRestricted
+		}
 		return nil
 	case model.SpaceType_SpaceTypeTech:
 		return errors.New("creation of technical space via command is restricted")
