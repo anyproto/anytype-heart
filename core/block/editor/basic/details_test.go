@@ -192,6 +192,7 @@ func TestBasic_UpdateDetails(t *testing.T) {
 	})
 }
 
+
 func TestBasic_SetObjectTypesInState(t *testing.T) {
 	t.Run("no error", func(t *testing.T) {
 		// given

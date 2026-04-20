@@ -107,7 +107,6 @@ func TestParticipant_ModifyIdentityDetails(t *testing.T) {
 func TestParticipant_Init(t *testing.T) {
 	t.Run("title block not empty, because name detail is in store", func(t *testing.T) {
 		// given
-		sb := smarttest.New("root")
 		store := newStoreFixture(t)
 		store.AddObjects(t, []objectstore.TestObject{{
 			bundle.RelationKeySpaceId: domain.String("spaceId"),
@@ -115,23 +114,8 @@ func TestParticipant_Init(t *testing.T) {
 			bundle.RelationKeyName:    domain.String("test"),
 		}})
 
-		basicComponent := basic.NewBasic(sb, store, nil, nil)
-		p := &participant{
-			SmartBlock:       sb,
-			DetailsUpdatable: basicComponent,
-			objectStore:      store,
-		}
-
-		initCtx := &smartblock.InitContext{
-			IsNewObject: true,
-		}
-
-		// when
-		err := p.Init(initCtx)
-		assert.NoError(t, err)
-		migration.RunMigrations(p, initCtx)
-		err = p.Apply(initCtx.State)
-		assert.NoError(t, err)
+		p, err := newParticipantTestWithStore(t, store)
+		require.NoError(t, err)
 
 		// then
 		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
@@ -139,26 +123,8 @@ func TestParticipant_Init(t *testing.T) {
 	})
 	t.Run("title block is empty", func(t *testing.T) {
 		// given
-		sb := smarttest.New("root")
-		store := newStoreFixture(t)
-
-		basicComponent := basic.NewBasic(sb, store, nil, nil)
-		p := &participant{
-			SmartBlock:       sb,
-			DetailsUpdatable: basicComponent,
-			objectStore:      store,
-		}
-
-		initCtx := &smartblock.InitContext{
-			IsNewObject: true,
-		}
-
-		// when
-		err := p.Init(initCtx)
-		assert.NoError(t, err)
-		migration.RunMigrations(p, initCtx)
-		err = p.Apply(initCtx.State)
-		assert.NoError(t, err)
+		p, err := newParticipantTest(t)
+		require.NoError(t, err)
 
 		// then
 		assert.NotNil(t, p.NewState().Get(state.TitleBlockID))
@@ -211,8 +177,11 @@ func (a accountServiceStub) GetAccountObjectId() (string, error) {
 }
 
 func newParticipantTest(t *testing.T) (*participant, error) {
+	return newParticipantTestWithStore(t, newStoreFixture(t))
+}
+
+func newParticipantTestWithStore(t *testing.T, store spaceindex.Store) (*participant, error) {
 	sb := smarttest.New("root")
-	store := newStoreFixture(t)
 	basicComponent := basic.NewBasic(sb, store, nil, nil)
 	p := &participant{
 		SmartBlock:       sb,
@@ -223,7 +192,9 @@ func newParticipantTest(t *testing.T) (*participant, error) {
 
 	initCtx := &smartblock.InitContext{
 		IsNewObject: true,
+		Doc:         sb.Doc,
 	}
+
 	if err := p.Init(initCtx); err != nil {
 		return nil, err
 	}

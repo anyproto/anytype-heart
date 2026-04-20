@@ -470,7 +470,7 @@ func (i *indexer) addSyncDetails(space clientspace.Space) {
 			return store.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
 				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
 				return details, true, nil
-			})
+			}, true)
 		})
 		if err != nil {
 			log.Debug("failed to add sync status relations", zap.Error(err))

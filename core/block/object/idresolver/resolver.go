@@ -27,6 +27,8 @@ import (
 
 const CName = "block.object.resolver"
 
+var ErrEmptyObjectId = errors.New("empty object id")
+
 type Resolver interface {
 	app.ComponentRunnable
 	ResolveSpaceID(objectID string) (string, error)
@@ -76,6 +78,9 @@ func (r *resolver) Name() (name string) {
 }
 
 func (r *resolver) ResolveSpaceID(objectID string) (string, error) {
+	if objectID == "" {
+		return "", ErrEmptyObjectId
+	}
 	select {
 	case <-r.componentCtx.Done():
 		return "", r.componentCtx.Err()
@@ -91,6 +96,9 @@ func (r *resolver) ResolveSpaceID(objectID string) (string, error) {
 }
 
 func (r *resolver) ResolveSpaceIdWithRetry(ctx context.Context, objectId string) (string, error) {
+	if objectId == "" {
+		return "", ErrEmptyObjectId
+	}
 	return retry.DoWithData(func() (string, error) {
 		spaceId, err := r.ResolveSpaceID(objectId)
 		if errors.Is(err, context.Canceled) {

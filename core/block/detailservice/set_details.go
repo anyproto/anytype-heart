@@ -10,8 +10,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -55,7 +58,7 @@ func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	return nil
 }
 
-func (s *service) SetIsArchived(ctx context.Context, objectId string, isArchived bool) error {
+func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -67,13 +70,7 @@ func (s *service) SetIsArchived(ctx context.Context, objectId string, isArchived
 	if objectId == spc.DerivedIDs().Archive {
 		return fmt.Errorf("can't archive archive itself")
 	}
-	if err := s.checkArchivedRestriction(ctx, isArchived, objectId); err != nil {
-		return err
-	}
-
-	s.triggerFileGCOnArchive(spaceID, []string{objectId}, isArchived)
-
-	return s.objectLinksCollectionModify(spc.DerivedIDs().Archive, objectId, isArchived)
+	return s.setIsArchivedForObjects(sctx, ctx, spaceID, []string{objectId}, isArchived)
 }
 
 func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
@@ -113,7 +110,7 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 	return resultError
 }
 
-func (s *service) SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error {
+func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error {
 	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
 		return fmt.Errorf("partition object ids by spaces: %w", err)
@@ -124,9 +121,37 @@ func (s *service) SetListIsArchived(ctx context.Context, objectIds []string, isA
 		anySucceed bool
 	)
 	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
-		err = s.setIsArchivedForObjects(ctx, spaceId, objectIdsOfThisSpace, isArchived)
+		err = s.setIsArchivedForObjects(sctx, ctx, spaceId, objectIdsOfThisSpace, isArchived)
 		if err != nil {
 			log.Error("failed to set isArchived to objects", zap.String("spaceId", spaceId),
+				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
+			resultErr = errors.Join(resultErr, err)
+			continue
+		}
+		anySucceed = true
+	}
+	if anySucceed {
+		return nil
+	}
+	return resultErr
+}
+
+// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
+// Used by the GC itself for its batch write to prevent recursive re-entry.
+func (s *service) SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error {
+	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
+	if err != nil {
+		return fmt.Errorf("partition object ids by spaces: %w", err)
+	}
+
+	var (
+		resultErr  error
+		anySucceed bool
+	)
+	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
+		err = s.setIsArchivedForObjectsNoGC(ctx, spaceId, objectIdsOfThisSpace, isArchived)
+		if err != nil {
+			log.Error("failed to set isArchived to objects (no-gc)", zap.String("spaceId", spaceId),
 				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
 			resultErr = errors.Join(resultErr, err)
 			continue
@@ -184,13 +209,56 @@ func (s *service) partitionObjectIdsBySpaceId(objectIds []string) (map[string][]
 	return res, nil
 }
 
-func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
+func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
 	spc, err := s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	s.triggerFileGCOnArchive(spaceId, objectIds, isArchived)
+	gcIds := s.triggerGCOnArchive(spaceId, objectIds, isArchived)
+	s.appendGCEvent(sctx, gcIds, objectIds, isArchived)
+
+	// Merge explicit IDs and GC-collected children so they are all archived in one operation.
+	allIds := append(objectIds, gcIds...)
+
+	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(blockcollection.Collection)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		ids, err := s.store.SpaceIndex(spaceId).HasIds(allIds)
+		if err != nil {
+			return err
+		}
+
+		ids = slice.Filter(ids, func(id string) bool {
+			for _, objId := range spc.DerivedIDs().IDsWithSystemTypesAndRelations() {
+				if id == objId {
+					return false
+				}
+			}
+			return true
+		})
+		anySucceed, err := s.modifyArchiveLinks(ctx, archive, isArchived, ids...)
+
+		if err != nil {
+			log.Warn("failed to archive", zap.Error(err))
+		}
+		if anySucceed {
+			return nil
+		}
+		return err
+	})
+}
+
+// setIsArchivedForObjectsNoGC is identical to setIsArchivedForObjects but does NOT call
+// triggerGCOnArchive, preventing recursive GC re-entry when the GC itself archives objects.
+func (s *service) setIsArchivedForObjectsNoGC(ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
+	spc, err := s.spaceService.Get(context.Background(), spaceId)
+	if err != nil {
+		return fmt.Errorf("get space: %w", err)
+	}
 
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
@@ -206,7 +274,6 @@ func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, o
 		ids = slice.Filter(ids, func(id string) bool {
 			for _, objId := range spc.DerivedIDs().IDsWithSystemTypesAndRelations() {
 				if id == objId {
-					// avoid archive system objects including archive itself
 					return false
 				}
 			}
@@ -215,7 +282,7 @@ func (s *service) setIsArchivedForObjects(ctx context.Context, spaceId string, o
 		anySucceed, err := s.modifyArchiveLinks(ctx, archive, isArchived, ids...)
 
 		if err != nil {
-			log.Warn("failed to archive", zap.Error(err))
+			log.Warn("failed to archive (no-gc)", zap.Error(err))
 		}
 		if anySucceed {
 			return nil
@@ -243,20 +310,46 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 	return
 }
 
-// triggerFileGCOnArchive runs file GC for all "children" files that doesn't have other backlinks
-// This helps clean up orphaned files when objects are moved to archive as well as unarchive the children of archived objects.
-func (s *service) triggerFileGCOnArchive(spaceId string, objectIds []string, isArchived bool) {
+// triggerGCOnArchive runs GC for all children of objectIds that have no other backlinks.
+// It returns the IDs of objects that were archived or restored; the caller is responsible
+// for emitting events and filtering explicit IDs from the session context.
+func (s *service) triggerGCOnArchive(spaceId string, objectIds []string, isArchived bool) []string {
 	if len(objectIds) == 0 {
-		return
+		return nil
 	}
-
+	var allAffected []string
 	for _, objId := range objectIds {
-		go func(objId string) {
-			if err := s.fileGC.CheckFilesOnContextArchived(spaceId, objId, isArchived); err != nil {
-				log.Error("file GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
-			}
-		}(objId)
+		ids, err := s.objectGC.CheckObjectsOnObjectArchived(spaceId, objId, isArchived)
+		if err != nil {
+			log.Error("GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
+			continue
+		}
+		allAffected = append(allAffected, ids...)
 	}
+	return allAffected
+}
+
+// appendGCEvent emits a single auto-archive or auto-restore event for gcIds into sctx,
+// then strips explicitIds from all GC events so user-requested objects are not double-reported.
+func (s *service) appendGCEvent(sctx session.Context, gcIds []string, explicitIds []string, isArchived bool) {
+	if sctx != nil && len(gcIds) > 0 {
+		msgs := sctx.GetMessages()
+		if isArchived {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoArchive{
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: gcIds},
+				},
+			})
+		} else {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoRestore{
+					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: gcIds},
+				},
+			})
+		}
+		sctx.SetMessages(sctx.ObjectID(), msgs)
+	}
+	objectgc.FilterExplicitIds(sctx, explicitIds)
 }
 
 func (s *service) validateHomepage(spaceId string, homepageValue domain.Value) error {

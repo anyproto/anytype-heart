@@ -1878,6 +1878,16 @@
     "source": "derived"
   },
   {
+    "description": "Fulltext search final score (BM25 + recency + name boost)",
+    "format": "number",
+    "hidden": true,
+    "key": "_final_score",
+    "maxCount": 1,
+    "name": "Final Score",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Version of file context migration completed for this space",
     "format": "number",
     "hidden": true,
@@ -1914,6 +1924,16 @@
     "key": "homepage",
     "maxCount": 1,
     "name": "Home page",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Dynamic placeholder mappings for template relation default values",
+    "format": "map",
+    "hidden": true,
+    "key": "templatePlaceholders",
+    "maxCount": 1,
+    "name": "Template Placeholders",
     "readonly": false,
     "source": "details"
   }

@@ -45,9 +45,14 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	}
 
 	if sbType != coresb.SmartBlockTypeFileObject {
-		// in case client skips archiving, lets still call fileGC
-		if err := s.fileGC.CheckFilesOnContextArchived(id.SpaceID, id.ObjectID, true); err != nil {
-			log.With("objectId", id.ObjectID).Warnf("failed to check files on context deletion: %v", err)
+		// in case client skips archiving, lets still call objectGC
+		gcIds, err := s.objectGC.CheckObjectsOnObjectArchived(id.SpaceID, id.ObjectID, true)
+		if err != nil {
+			log.With("objectId", id.ObjectID).Warnf("failed to check objects on context deletion: %v", err)
+		} else if len(gcIds) > 0 {
+			if err := s.detailsService.SetListIsArchivedNoGC(context.Background(), gcIds, true); err != nil {
+				log.With("objectId", id.ObjectID).Warnf("failed to archive children on context deletion: %v", err)
+			}
 		}
 	}
 
@@ -208,9 +213,9 @@ func (s *Service) unsetHomepageIfNeeded(id domain.FullID, spc clientspace.Space)
 	homepage := details.GetString(bundle.RelationKeyHomepage)
 	if homepage == id.ObjectID {
 		if err = s.detailsService.SetSpaceInfo(spc.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyHomepage: domain.String(""),
+			bundle.RelationKeyHomepage: domain.String(domain.HomepageWidgets),
 		})); err != nil {
-			log.With("objectId", id.ObjectID).Warnf("failed to unset homepage: %v", err)
+			log.With("objectId", id.ObjectID).Warnf("failed to reset homepage to widgets: %v", err)
 		}
 	}
 }

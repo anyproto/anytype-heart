@@ -79,6 +79,7 @@ service ClientCommands {
     rpc SpaceUnsetOrder (anytype.Rpc.Space.UnsetOrder.Request) returns (anytype.Rpc.Space.UnsetOrder.Response);
     rpc SpaceChangeOwnership(anytype.Rpc.Space.ChangeOwnership.Request) returns (anytype.Rpc.Space.ChangeOwnership.Response);
     rpc SpaceDeleteCorruptedBackup (anytype.Rpc.Space.DeleteCorruptedBackup.Request) returns (anytype.Rpc.Space.DeleteCorruptedBackup.Response);
+    rpc SpaceParticipantsAddList (anytype.Rpc.Space.ParticipantsAddList.Request) returns (anytype.Rpc.Space.ParticipantsAddList.Response);
 
     // Publishing
     // ***
@@ -206,6 +207,9 @@ service ClientCommands {
     rpc TemplateCreateFromObject (anytype.Rpc.Template.CreateFromObject.Request) returns (anytype.Rpc.Template.CreateFromObject.Response);
     rpc TemplateClone (anytype.Rpc.Template.Clone.Request) returns (anytype.Rpc.Template.Clone.Response);
     rpc TemplateExportAll (anytype.Rpc.Template.ExportAll.Request) returns (anytype.Rpc.Template.ExportAll.Response);
+    rpc TemplateSetPlaceholders (anytype.Rpc.Template.SetPlaceholders.Request) returns (anytype.Rpc.Template.SetPlaceholders.Response);
+    rpc TemplateGetPlaceholders (anytype.Rpc.Template.GetPlaceholders.Request) returns (anytype.Rpc.Template.GetPlaceholders.Response);
+    rpc TemplateDeletePlaceholders (anytype.Rpc.Template.DeletePlaceholders.Request) returns (anytype.Rpc.Template.DeletePlaceholders.Response);
 
     rpc LinkPreview (anytype.Rpc.LinkPreview.Request) returns (anytype.Rpc.LinkPreview.Response);
 

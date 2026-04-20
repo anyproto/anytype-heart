@@ -143,7 +143,7 @@ func (s *Service) CreateOneToOneFromLink(ctx context.Context, spaceDescription s
 		return "", "", fmt.Errorf("createWorkspace: failed to CreateOneToOneFromInbox: %w", err)
 	}
 
-	err = s.onetoone.ResendFailedOneToOneInvites(ctx)
+	err = s.inboxSender.ResendFailedOneToOneInvites(ctx)
 	if err != nil {
 		log.Error("failed to reschedule onetoone inbox resend", zap.Error(err))
 	}
@@ -315,7 +315,25 @@ func (s *Service) CreateLinkToTheNewObject(
 		}
 		return nil
 	})
+	if err == nil {
+		s.setCreatedInContext(sctx, objectId, req.ContextId, linkID)
+	}
 	return
+}
+
+// setCreatedInContext sets createdInContext and createdInContextRef on an object.
+// No-op when contextId or contextRef is empty.
+func (s *Service) setCreatedInContext(sctx session.Context, objectId, contextId, contextRef string) {
+	if contextId == "" || contextRef == "" {
+		return
+	}
+	if err := s.detailsService.ModifyDetails(sctx, objectId, func(current *domain.Details) (*domain.Details, error) {
+		current.SetString(bundle.RelationKeyCreatedInContext, contextId)
+		current.SetString(bundle.RelationKeyCreatedInContextRef, contextRef)
+		return current, nil
+	}); err != nil {
+		log.With("objectId", objectId).Warnf("set createdInContext: %v", err)
+	}
 }
 
 func (s *Service) ObjectToSet(id string, source []string) error {

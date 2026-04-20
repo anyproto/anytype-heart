@@ -51,7 +51,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -117,7 +117,7 @@ type service struct {
 	chatSubscriptionService chatsubscription.Service
 	eventSender             event.Sender
 	detailsService          detailservice.Service
-	fileGC                  filegc.FileGC
+	objectGC                objectgc.ObjectGC
 	ftSearch                ftsearch.FTSearch
 	chatRepoService         chatrepository.Service
 
@@ -157,7 +157,7 @@ func (s *service) Init(a *app.App) error {
 	s.spaceIdResolver = app.MustComponent[idresolver.Resolver](a)
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
-	s.fileGC = app.MustComponent[filegc.FileGC](a)
+	s.objectGC = app.MustComponent[objectgc.ObjectGC](a)
 	s.ftSearch = app.MustComponent[ftsearch.FTSearch](a)
 	s.chatRepoService = app.MustComponent[chatrepository.Service](a)
 	return nil
@@ -702,7 +702,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 		fileIds := make([]string, 0, len(attachments)+len(linkTargetIds))
 		for _, attachment := range attachments {
 			// do not filter by attachment type, because of bug on anytype-ts
-			// we filter out files by layouts later in CheckFilesOnLinksRemoval
+			// we filter out files by layouts later in ArchiveOrphansOnLinksRemoval
 			fileIds = append(fileIds, attachment.Target)
 		}
 		fileIds = append(fileIds, linkTargetIds...)
@@ -711,7 +711,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 			// Run file GC asynchronously with skipBin=true to permanently delete orphaned files
 			// Pass messageId to only delete files created specifically for this message
 			go func() {
-				if err := s.fileGC.CheckFilesOnLinksRemoval(spaceId, chatObjectId, fileIds, true, []string{messageId}); err != nil {
+				if _, err := s.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, chatObjectId, fileIds, true, []string{messageId}); err != nil {
 					log.Error("file GC failed for deleted message",
 						zap.String("messageId", messageId),
 						zap.String("chatObjectId", chatObjectId),
