@@ -45,7 +45,7 @@ func TestSubscription(t *testing.T) {
 
 		messageId, err := fx.AddMessage(ctx, nil, givenComplexMessage())
 		require.NoError(t, err)
-		require.Len(t, fx.events, 2)
+		require.Len(t, fx.events, 3)
 
 		message, err := fx.GetMessageById(ctx, messageId)
 		require.NoError(t, err)
@@ -68,14 +68,22 @@ func TestSubscription(t *testing.T) {
 			},
 			{
 				SpaceId: testSpaceId,
+				Value: &pb.EventMessageValueOfChatUpdateMessageCount{
+					ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+						MessageCount: 11,
+						SubIds:       []string{"subId"},
+					},
+				},
+			},
+			{
+				SpaceId: testSpaceId,
 				Value: &pb.EventMessageValueOfChatStateUpdate{
 					ChatStateUpdate: &pb.EventChatUpdateState{
 						State: &model.ChatState{
-							Messages:     &model.ChatStateUnreadState{},
-							Mentions:     &model.ChatStateUnreadState{},
-							LastStateId:  message.StateId,
-							Order:        11,
-							MessageCount: 11,
+							Messages:    &model.ChatStateUnreadState{},
+							Mentions:    &model.ChatStateUnreadState{},
+							LastStateId: message.StateId,
+							Order:       11,
 						},
 						SubIds: []string{"subId"},
 					},
@@ -155,7 +163,7 @@ func TestSubscription(t *testing.T) {
 
 		err = fx.DeleteMessage(ctx, resp.Messages[0].Id)
 		require.NoError(t, err)
-		require.Len(t, fx.events, 2)
+		require.Len(t, fx.events, 3)
 
 		wantEvents := []*pb.EventMessage{
 			{
@@ -169,14 +177,22 @@ func TestSubscription(t *testing.T) {
 			},
 			{
 				SpaceId: testSpaceId,
+				Value: &pb.EventMessageValueOfChatUpdateMessageCount{
+					ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+						MessageCount: 10,
+						SubIds:       []string{"subId"},
+					},
+				},
+			},
+			{
+				SpaceId: testSpaceId,
 				Value: &pb.EventMessageValueOfChatStateUpdate{
 					ChatStateUpdate: &pb.EventChatUpdateState{
 						State: &model.ChatState{
-							Messages:     &model.ChatStateUnreadState{},
-							Mentions:     &model.ChatStateUnreadState{},
-							LastStateId:  lastStateId,
-							Order:        12,
-							MessageCount: 10,
+							Messages:    &model.ChatStateUnreadState{},
+							Mentions:    &model.ChatStateUnreadState{},
+							LastStateId: lastStateId,
+							Order:       12,
 						},
 						SubIds: []string{"subId"},
 					},
@@ -226,6 +242,15 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 		},
 		{
 			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateMessageCount{
+				ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+					MessageCount: 1,
+					SubIds:       []string{"subId"},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
 			Value: &pb.EventMessageValueOfChatStateUpdate{
 				ChatStateUpdate: &pb.EventChatUpdateState{
 					State: &model.ChatState{
@@ -233,10 +258,9 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 							Counter:       1,
 							OldestOrderId: firstMessage.OrderId,
 						},
-						Mentions:     &model.ChatStateUnreadState{},
-						LastStateId:  firstMessage.StateId,
-						Order:        1,
-						MessageCount: 1,
+						Mentions:    &model.ChatStateUnreadState{},
+						LastStateId: firstMessage.StateId,
+						Order:       1,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -269,6 +293,15 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 		},
 		{
 			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateMessageCount{
+				ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+					MessageCount: 2,
+					SubIds:       []string{"subId"},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
 			Value: &pb.EventMessageValueOfChatStateUpdate{
 				ChatStateUpdate: &pb.EventChatUpdateState{
 					State: &model.ChatState{
@@ -276,10 +309,9 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 							Counter:       2,
 							OldestOrderId: firstMessage.OrderId,
 						},
-						Mentions:     &model.ChatStateUnreadState{},
-						LastStateId:  secondMessage.StateId,
-						Order:        2,
-						MessageCount: 2,
+						Mentions:    &model.ChatStateUnreadState{},
+						LastStateId: secondMessage.StateId,
+						Order:       2,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -320,10 +352,9 @@ func TestSubscriptionMessageCounters(t *testing.T) {
 							Counter:       1,
 							OldestOrderId: secondMessage.OrderId,
 						},
-						Mentions:     &model.ChatStateUnreadState{},
-						LastStateId:  secondMessage.StateId,
-						Order:        4,
-						MessageCount: 2,
+						Mentions:    &model.ChatStateUnreadState{},
+						LastStateId: secondMessage.StateId,
+						Order:       4,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -375,6 +406,15 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 		},
 		{
 			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateMessageCount{
+				ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+					MessageCount: 1,
+					SubIds:       []string{"subId"},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
 			Value: &pb.EventMessageValueOfChatStateUpdate{
 				ChatStateUpdate: &pb.EventChatUpdateState{
 					State: &model.ChatState{
@@ -386,9 +426,8 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							Counter:       1,
 							OldestOrderId: firstMessage.OrderId,
 						},
-						LastStateId:  firstMessage.StateId,
-						Order:        1,
-						MessageCount: 1,
+						LastStateId: firstMessage.StateId,
+						Order:       1,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -421,6 +460,15 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 		},
 		{
 			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateMessageCount{
+				ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+					MessageCount: 2,
+					SubIds:       []string{"subId"},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
 			Value: &pb.EventMessageValueOfChatStateUpdate{
 				ChatStateUpdate: &pb.EventChatUpdateState{
 					State: &model.ChatState{
@@ -432,9 +480,8 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							Counter:       2,
 							OldestOrderId: firstMessage.OrderId,
 						},
-						LastStateId:  secondMessage.StateId,
-						Order:        2,
-						MessageCount: 2,
+						LastStateId: secondMessage.StateId,
+						Order:       2,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -479,9 +526,8 @@ func TestSubscriptionMentionCounters(t *testing.T) {
 							Counter:       1,
 							OldestOrderId: secondMessage.OrderId,
 						},
-						LastStateId:  secondMessage.StateId,
-						Order:        4,
-						MessageCount: 2,
+						LastStateId: secondMessage.StateId,
+						Order:       4,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -562,7 +608,6 @@ func TestSubscriptionReactionCounters(t *testing.T) {
 						LastStateId:           firstMessage.StateId,
 						Order:                 2,
 						UnreadReactionOrderId: firstMessage.OrderId,
-						MessageCount:          1,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -596,11 +641,10 @@ func TestSubscriptionReactionCounters(t *testing.T) {
 			Value: &pb.EventMessageValueOfChatStateUpdate{
 				ChatStateUpdate: &pb.EventChatUpdateState{
 					State: &model.ChatState{
-						Messages:     &model.ChatStateUnreadState{},
-						Mentions:     &model.ChatStateUnreadState{},
-						LastStateId:  firstMessage.StateId,
-						Order:        3,
-						MessageCount: 1,
+						Messages:    &model.ChatStateUnreadState{},
+						Mentions:    &model.ChatStateUnreadState{},
+						LastStateId: firstMessage.StateId,
+						Order:       3,
 					},
 					SubIds: []string{"subId"},
 				},
@@ -675,14 +719,22 @@ func TestSubscriptionWithDeps(t *testing.T) {
 		},
 		{
 			SpaceId: testSpaceId,
+			Value: &pb.EventMessageValueOfChatUpdateMessageCount{
+				ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+					MessageCount: 1,
+					SubIds:       []string{"subId"},
+				},
+			},
+		},
+		{
+			SpaceId: testSpaceId,
 			Value: &pb.EventMessageValueOfChatStateUpdate{
 				ChatStateUpdate: &pb.EventChatUpdateState{
 					State: &model.ChatState{
-						Messages:     &model.ChatStateUnreadState{},
-						Mentions:     &model.ChatStateUnreadState{},
-						LastStateId:  message.StateId,
-						Order:        1,
-						MessageCount: 1,
+						Messages:    &model.ChatStateUnreadState{},
+						Mentions:    &model.ChatStateUnreadState{},
+						LastStateId: message.StateId,
+						Order:       1,
 					},
 					SubIds: []string{"subId"},
 				},

@@ -99,12 +99,12 @@ func (f *fixture) addMessageWithUnreadReactions(t *testing.T, id, orderId string
 	require.NoError(t, err)
 }
 
-func TestLoadChatStateMessageCount(t *testing.T) {
+func TestCountMessages(t *testing.T) {
 	t.Run("zero on empty collection", func(t *testing.T) {
 		fx := newFixture(t)
-		state, err := fx.repo.LoadChatState(context.Background())
+		count, err := fx.repo.CountMessages(context.Background())
 		require.NoError(t, err)
-		assert.Equal(t, int32(0), state.MessageCount)
+		assert.Equal(t, 0, count)
 	})
 
 	t.Run("counts all messages including read, unread and mentioned", func(t *testing.T) {
@@ -113,9 +113,12 @@ func TestLoadChatStateMessageCount(t *testing.T) {
 		fx.addMessage(t, "msg2", "order2", false, false, false) // unread
 		fx.addMessage(t, "msg3", "order3", true, true, true)    // read with mention
 
+		count, err := fx.repo.CountMessages(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, 3, count)
+
 		state, err := fx.repo.LoadChatState(context.Background())
 		require.NoError(t, err)
-		assert.Equal(t, int32(3), state.MessageCount)
 		// sanity: pre-existing unread counter still reflects only unread
 		assert.Equal(t, int32(1), state.Messages.Counter)
 	})

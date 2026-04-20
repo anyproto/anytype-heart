@@ -86,9 +86,8 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 
 	d.subscription.Lock()
 	defer d.subscription.Unlock()
+	d.subscription.UpdateMessageCount(1)
 	d.subscription.UpdateChatState(func(state *model.ChatState) *model.ChatState {
-		state.MessageCount++
-
 		if !msg.Read {
 			if msg.OrderId < state.Messages.OldestOrderId || state.Messages.OldestOrderId == "" {
 				state.Messages.OldestOrderId = msg.OrderId

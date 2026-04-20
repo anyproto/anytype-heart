@@ -87,11 +87,11 @@ func TestReadMessagesLoadedInBackground(t *testing.T) {
 				Counter:       1,
 				OldestOrderId: secondMessage.OrderId,
 			},
-			Mentions:     &model.ChatStateUnreadState{},
-			LastStateId:  secondMessage.StateId,
-			Order:        4,
-			MessageCount: 2,
+			Mentions:    &model.ChatStateUnreadState{},
+			LastStateId: secondMessage.StateId,
+			Order:       4,
 		},
+		MessageCount: 2,
 	}
 	assert.Equal(t, wantResponse, gotResponse)
 }

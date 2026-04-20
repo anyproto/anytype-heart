@@ -37,9 +37,11 @@ type subscriptionManager struct {
 
 	chatStateOrder          int64
 	chatState               *model.ChatState
+	messageCount            int32
 	needReloadState         bool
 	needReloadReactionState bool
 	chatStateUpdated        bool
+	messageCountUpdated     bool
 
 	// Deps
 	spaceIndex  spaceindex.Store
@@ -80,6 +82,7 @@ func (s *subscriptionManager) subscribe(req SubscribeLastMessagesRequest, initia
 		state:                  st,
 	}
 	s.chatStateUpdated = false
+	s.messageCountUpdated = false
 }
 
 func (s *subscriptionManager) unsubscribe(subId string) {
@@ -119,6 +122,11 @@ func (s *subscriptionManager) loadChatState(ctx context.Context) error {
 		return err
 	}
 	s.chatState = state
+	count, err := s.repository.CountMessages(ctx)
+	if err != nil {
+		return fmt.Errorf("count messages: %w", err)
+	}
+	s.messageCount = int32(count)
 	return nil
 }
 
@@ -133,8 +141,21 @@ func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *mo
 	s.chatStateUpdated = true
 }
 
+func (s *subscriptionManager) UpdateMessageCount(delta int32) {
+	s.messageCount += delta
+	if s.messageCount < 0 {
+		s.messageCount = 0
+	}
+	s.messageCountUpdated = true
+}
+
+func (s *subscriptionManager) GetMessageCount() int32 {
+	return s.messageCount
+}
+
 func (s *subscriptionManager) ForceSendingChatState() {
 	s.chatStateUpdated = true
+	s.messageCountUpdated = true
 }
 
 func (s *subscriptionManager) GetLastMessage() (*model.ChatMessage, bool, error) {
@@ -170,6 +191,13 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 			}
 			return newState
 		})
+		newCount, err := s.repository.CountMessages(s.componentCtx)
+		if err != nil {
+			log.Error("failed to reload message count", zap.Error(err))
+		} else if int32(newCount) != s.messageCount {
+			s.messageCount = int32(newCount)
+			s.messageCountUpdated = true
+		}
 		s.needReloadState = false
 		s.needReloadReactionState = false
 	}
@@ -210,6 +238,14 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 				s.enrichWithDependencies(ev)
 			}
 		}
+	}
+
+	if s.messageCountUpdated {
+		events = append(events, event.NewMessage(s.spaceId, &pb.EventMessageValueOfChatUpdateMessageCount{ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+			MessageCount: s.messageCount,
+			SubIds:       s.listSubIds(),
+		}}))
+		s.messageCountUpdated = false
 	}
 
 	if s.chatStateUpdated {
@@ -487,7 +523,6 @@ func copyChatState(state *model.ChatState) *model.ChatState {
 		LastStateId:           state.LastStateId,
 		Order:                 state.Order,
 		UnreadReactionOrderId: state.UnreadReactionOrderId,
-		MessageCount:          state.MessageCount,
 	}
 }
 
@@ -531,6 +566,8 @@ func eventsSetSubIds(subIds []string, events []*pb.EventMessage) {
 		} else if v := ev.GetChatUpdatePinnedStatus(); v != nil {
 			v.SubIds = subIds
 		} else if v := ev.GetChatUpdateReactionReadStatus(); v != nil {
+			v.SubIds = subIds
+		} else if v := ev.GetChatUpdateMessageCount(); v != nil {
 			v.SubIds = subIds
 		}
 	}
