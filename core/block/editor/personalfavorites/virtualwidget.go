@@ -276,8 +276,12 @@ func (v *VirtualWidgetObject) rebuildStateFromEntries(st *state.State, entries [
 				},
 			},
 		})
-		st.Add(linkBlock)
-		st.Add(wrapperBlock)
+		// Set (not Add) so remote updates override stale wrapper/link blocks
+		// still held by the parent state: wrapperId and linkId are stable
+		// across rebuilds, so Add would be a no-op via Pick's parent walk and
+		// Layout/Limit/ViewId changes would be silently dropped.
+		st.Set(linkBlock)
+		st.Set(wrapperBlock)
 		st.InsertTo(st.RootId(), model.Block_Inner, wrapperId)
 	}
 }

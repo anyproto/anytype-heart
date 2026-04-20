@@ -150,6 +150,98 @@ func TestExtractEntriesFromState(t *testing.T) {
 	})
 }
 
+func TestRebuildStateFromEntries(t *testing.T) {
+	t.Run("remote layout update is applied", func(t *testing.T) {
+		// given: state carrying a wrapper with Layout=Link, a remote update
+		// arrives changing it to List. The rebuilt state must reflect List.
+		st := buildState(t,
+			widgetBlock{wrapperId: "l1" + widgetWrapperSuffix, linkId: "l1", target: "targetA", layout: model.BlockContentWidget_Link, limit: 5, view: "vA"},
+		).NewState()
+		entries := []personalfavorites.WidgetEntry{
+			{Id: "l1", SpaceId: "spaceA", TargetId: "targetA", Layout: model.BlockContentWidget_List, Limit: 5, ViewId: "vA"},
+		}
+
+		(&VirtualWidgetObject{}).rebuildStateFromEntries(st, entries)
+
+		got := pickWidget(t, st, "l1"+widgetWrapperSuffix)
+		assert.Equal(t, model.BlockContentWidget_List, got.Layout)
+	})
+
+	t.Run("remote limit update is applied", func(t *testing.T) {
+		st := buildState(t,
+			widgetBlock{wrapperId: "l1" + widgetWrapperSuffix, linkId: "l1", target: "targetA", layout: model.BlockContentWidget_Link, limit: 5, view: "vA"},
+		).NewState()
+		entries := []personalfavorites.WidgetEntry{
+			{Id: "l1", SpaceId: "spaceA", TargetId: "targetA", Layout: model.BlockContentWidget_Link, Limit: 99, ViewId: "vA"},
+		}
+
+		(&VirtualWidgetObject{}).rebuildStateFromEntries(st, entries)
+
+		got := pickWidget(t, st, "l1"+widgetWrapperSuffix)
+		assert.Equal(t, int32(99), got.Limit)
+	})
+
+	t.Run("remote viewId update is applied", func(t *testing.T) {
+		st := buildState(t,
+			widgetBlock{wrapperId: "l1" + widgetWrapperSuffix, linkId: "l1", target: "targetA", layout: model.BlockContentWidget_Link, limit: 5, view: "vA"},
+		).NewState()
+		entries := []personalfavorites.WidgetEntry{
+			{Id: "l1", SpaceId: "spaceA", TargetId: "targetA", Layout: model.BlockContentWidget_Link, Limit: 5, ViewId: "vB"},
+		}
+
+		(&VirtualWidgetObject{}).rebuildStateFromEntries(st, entries)
+
+		got := pickWidget(t, st, "l1"+widgetWrapperSuffix)
+		assert.Equal(t, "vB", got.ViewId)
+	})
+
+	t.Run("entry removal unlinks wrapper from root", func(t *testing.T) {
+		st := buildState(t,
+			widgetBlock{wrapperId: "l1" + widgetWrapperSuffix, linkId: "l1", target: "targetA", layout: model.BlockContentWidget_Link, limit: 5, view: "vA"},
+		).NewState()
+
+		(&VirtualWidgetObject{}).rebuildStateFromEntries(st, nil)
+
+		root := st.Pick(st.RootId())
+		require.NotNil(t, root)
+		assert.Empty(t, root.Model().ChildrenIds)
+	})
+
+	t.Run("new entry adds wrapper and link", func(t *testing.T) {
+		st := state.NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{Id: "root"}),
+		}).NewState()
+		entries := []personalfavorites.WidgetEntry{
+			{Id: "l1", SpaceId: "spaceA", TargetId: "targetA", Layout: model.BlockContentWidget_List, Limit: 7, ViewId: "vA"},
+		}
+
+		(&VirtualWidgetObject{}).rebuildStateFromEntries(st, entries)
+
+		root := st.Pick(st.RootId())
+		require.NotNil(t, root)
+		require.Equal(t, []string{"l1" + widgetWrapperSuffix}, root.Model().ChildrenIds)
+
+		wrapper := pickWidget(t, st, "l1"+widgetWrapperSuffix)
+		assert.Equal(t, model.BlockContentWidget_List, wrapper.Layout)
+		assert.Equal(t, int32(7), wrapper.Limit)
+
+		link := st.Pick("l1")
+		require.NotNil(t, link)
+		lc, ok := link.Model().Content.(*model.BlockContentOfLink)
+		require.True(t, ok)
+		assert.Equal(t, "targetA", lc.Link.TargetBlockId)
+	})
+}
+
+func pickWidget(t *testing.T, st *state.State, wrapperId string) *model.BlockContentWidget {
+	t.Helper()
+	b := st.Pick(wrapperId)
+	require.NotNil(t, b, "wrapper %s missing", wrapperId)
+	wc, ok := b.Model().Content.(*model.BlockContentOfWidget)
+	require.True(t, ok, "block %s is not a widget wrapper (%T)", wrapperId, b.Model().Content)
+	return wc.Widget
+}
+
 type widgetBlock struct {
 	wrapperId string
 	linkId    string
