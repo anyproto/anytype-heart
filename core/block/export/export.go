@@ -47,6 +47,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 	"github.com/samber/lo"
@@ -1337,9 +1338,19 @@ func (e *exportContext) createProfileFile(spaceID string, wr writer) error {
 		Avatar:           pr.IconImage,
 		ProfileId:        pr.Id,
 	}
-	data, err := profile.Marshal()
-	if err != nil {
-		return fmt.Errorf("marshal profile: %w", err)
+	var data []byte
+	if e.isJson {
+		m := jsonpb.Marshaler{Indent: " ", EmitDefaults: true}
+		result, mErr := m.MarshalToString(profile)
+		if mErr != nil {
+			return fmt.Errorf("marshal profile to json: %w", mErr)
+		}
+		data = []byte(result)
+	} else {
+		data, err = profile.Marshal()
+		if err != nil {
+			return fmt.Errorf("marshal profile: %w", err)
+		}
 	}
 	err = wr.WriteFile(constant.ProfileFile, bytes.NewReader(data), 0)
 	if err != nil {
