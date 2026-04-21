@@ -141,7 +141,7 @@ func (b *BuildOptions) BuildTreeOpts() objecttreebuilder.BuildTreeOpts {
 			if err != nil {
 				return nil, err
 			}
-			if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeAccountObject || sbt == smartblock.SmartBlockTypeDiscussionObject {
+			if sbt.IsStoreBacked() {
 				ot.SetFlusher(objecttree.MarkNewChangeFlusher())
 			}
 			return ot, nil

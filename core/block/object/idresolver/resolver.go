@@ -14,12 +14,14 @@ Scope: global
 import (
 	"context"
 	"errors"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/avast/retry-go/v4"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
@@ -83,6 +85,12 @@ func (r *resolver) ResolveSpaceID(objectID string) (string, error) {
 	case <-r.componentCtx.Done():
 		return "", r.componentCtx.Err()
 	default:
+	}
+	// Ids that already encode the spaceId are parsed directly. This avoids
+	// depending on the persistent bindId index, which may not be populated
+	// yet on a clean cache or on the very first open of a virtual object.
+	if strings.HasPrefix(objectID, domain.PersonalWidgetsPrefix) {
+		return domain.ParsePersonalWidgetsId(objectID)
 	}
 	return r.objectStore.GetSpaceId(objectID)
 }
