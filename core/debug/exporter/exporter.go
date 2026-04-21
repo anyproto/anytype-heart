@@ -3,6 +3,7 @@ package exporter
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/app"
@@ -41,6 +42,10 @@ type DataConverter interface {
 	Marshall(model any) (data []byte, dataType string, err error)
 }
 
+type addSeqSetter interface {
+	SetAddSeq(seq *atomic.Uint64)
+}
+
 func prepareExport(ctx context.Context, readable objecttree.ReadableObjectTree, store anystore.DB) (objecttree.ObjectTree, error) {
 	headStorage, err := headstorage.New(ctx, store)
 	if err != nil {
@@ -63,6 +68,9 @@ func prepareExport(ctx context.Context, readable objecttree.ReadableObjectTree, 
 	treeStorage, err := objecttree.CreateStorage(ctx, readable.Header(), headStorage, store)
 	if err != nil {
 		return nil, err
+	}
+	if setter, ok := treeStorage.(addSeqSetter); ok {
+		setter.SetAddSeq(&atomic.Uint64{})
 	}
 	writeTree, err := objecttree.BuildTestableTree(treeStorage, newAcl)
 	if err != nil {
