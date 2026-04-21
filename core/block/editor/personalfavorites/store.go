@@ -145,10 +145,6 @@ func (s *storeObject) enqueueBatch(batch dispatchBatch) {
 	case <-s.ctx.Done():
 		return
 	case s.dispatchQueue <- batch:
-	default:
-		// Observers rebuild full state on every callback, so dropping a
-		// delta only costs an intermediate redraw.
-		log.With("objectId", s.Id()).Warnf("dispatch queue full, dropping %d changes for space %q", len(batch.changes), batch.spaceId)
 	}
 }
 
