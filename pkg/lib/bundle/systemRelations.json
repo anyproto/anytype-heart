@@ -104,5 +104,7 @@
   "pluralName",
   "lastMessageDate",
   "notificationSubscribers",
-  "templatePlaceholders"
+  "templatePlaceholders",
+  "unreadMessageCount",
+  "unreadMentionCount"
 ]
