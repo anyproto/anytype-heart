@@ -136,8 +136,9 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 	}
 
 	return &pb.RpcChatGetMessagesResponse{
-		Messages:  messagesToProto(resp.Messages),
-		ChatState: resp.ChatState,
+		Messages:     messagesToProto(resp.Messages),
+		ChatState:    resp.ChatState,
+		MessageCount: resp.MessageCount,
 	}
 }
 
@@ -176,6 +177,7 @@ func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.Rp
 		Messages:          messagesToProto(resp.Messages),
 		NumMessagesBefore: 0,
 		ChatState:         resp.ChatState,
+		MessageCount:      resp.MessageCount,
 	}
 }
 

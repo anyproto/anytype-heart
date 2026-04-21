@@ -41,6 +41,9 @@ func (mw *Middleware) WorkspaceCreate(cctx context.Context, req *pb.RpcWorkspace
 		return err
 	})
 	if err != nil {
+		if errors.Is(err, detailservice.ErrHomepageChangeRestricted) {
+			return response("", "", pb.RpcWorkspaceCreateResponseError_BAD_INPUT, err)
+		}
 		return response("", "", pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
@@ -120,42 +123,28 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	return response(info, pb.RpcWorkspaceOpenResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceSetInfo(cctx context.Context, req *pb.RpcWorkspaceSetInfoRequest) *pb.RpcWorkspaceSetInfoResponse {
-	response := func(code pb.RpcWorkspaceSetInfoResponseErrorCode, err error) *pb.RpcWorkspaceSetInfoResponse {
-		m := &pb.RpcWorkspaceSetInfoResponse{Error: &pb.RpcWorkspaceSetInfoResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-
-		return m
-	}
-
+func (mw *Middleware) WorkspaceSetInfo(_ context.Context, req *pb.RpcWorkspaceSetInfoRequest) *pb.RpcWorkspaceSetInfoResponse {
 	err := mustService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromProto(req.Details))
-	if err != nil {
-		return response(pb.RpcWorkspaceSetInfoResponseError_UNKNOWN_ERROR, err)
+	code := mapErrorCode[pb.RpcWorkspaceSetInfoResponseErrorCode](err)
+	return &pb.RpcWorkspaceSetInfoResponse{
+		Error: &pb.RpcWorkspaceSetInfoResponseError{
+			Description: getErrorDescription(err),
+			Code:        code,
+		},
 	}
-
-	return response(pb.RpcWorkspaceSetInfoResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceSetHomepage(cctx context.Context, req *pb.RpcWorkspaceSetHomepageRequest) *pb.RpcWorkspaceSetHomepageResponse {
-	response := func(code pb.RpcWorkspaceSetHomepageResponseErrorCode, err error) *pb.RpcWorkspaceSetHomepageResponse {
-		m := &pb.RpcWorkspaceSetHomepageResponse{Error: &pb.RpcWorkspaceSetHomepageResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		}
-
-		return m
-	}
-
+func (mw *Middleware) WorkspaceSetHomepage(_ context.Context, req *pb.RpcWorkspaceSetHomepageRequest) *pb.RpcWorkspaceSetHomepageResponse {
 	err := mustService[detailservice.Service](mw).SetSpaceInfo(req.SpaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		bundle.RelationKeyHomepage: domain.String(req.Homepage),
 	}))
-	if err != nil {
-		return response(pb.RpcWorkspaceSetHomepageResponseError_UNKNOWN_ERROR, err)
+	code := mapErrorCode[pb.RpcWorkspaceSetHomepageResponseErrorCode](err)
+	return &pb.RpcWorkspaceSetHomepageResponse{
+		Error: &pb.RpcWorkspaceSetHomepageResponseError{
+			Description: getErrorDescription(err),
+			Code:        code,
+		},
 	}
-
-	return response(pb.RpcWorkspaceSetHomepageResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceSelect(cctx context.Context, req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {

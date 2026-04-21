@@ -2015,6 +2015,7 @@
     - [Event.Chat.Delete](#anytype-Event-Chat-Delete)
     - [Event.Chat.Update](#anytype-Event-Chat-Update)
     - [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus)
+    - [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount)
     - [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus)
     - [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus)
     - [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus)
@@ -11278,6 +11279,7 @@ Get marks list in the selected range in text block.
 | error | [Rpc.Chat.GetMessages.Response.Error](#anytype-Rpc-Chat-GetMessages-Response-Error) |  |  |
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
+| messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
 
 
 
@@ -11802,6 +11804,7 @@ Get marks list in the selected range in text block.
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated | List of messages |
 | numMessagesBefore | [int32](#int32) |  | Number of messages before the returned messages |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  | Chat state |
+| messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
 
 
 
@@ -31902,6 +31905,22 @@ to its type.
 
 
 
+<a name="anytype-Event-Chat-UpdateMessageCount"></a>
+
+### Event.Chat.UpdateMessageCount
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messageCount | [int32](#int32) |  | total number of non-deleted messages (includes replies) |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateMessageReadStatus"></a>
 
 ### Event.Chat.UpdateMessageReadStatus
@@ -32275,6 +32294,7 @@ received to update per-message mention read status (if needed |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
 | objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
+| chatUpdateMessageCount | [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount) |  | received whenever the total number of non-deleted messages in |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |

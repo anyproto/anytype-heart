@@ -9015,6 +9015,7 @@ message Rpc {
                 Error error = 1;
                 repeated model.ChatMessage messages = 2;
                 model.ChatState chatState = 3;
+                int32 messageCount = 4;  // Total number of non-deleted messages in the chat
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -9065,6 +9066,7 @@ message Rpc {
                 repeated model.ChatMessage messages = 2;  // List of messages
                 int32 numMessagesBefore = 3;  // Number of messages before the returned messages
                 model.ChatState chatState = 4;  // Chat state
+                int32 messageCount = 5;  // Total number of non-deleted messages in the chat
                 message Error {
                     Code code = 1;
                     string description = 2;

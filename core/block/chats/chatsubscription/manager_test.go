@@ -243,6 +243,17 @@ func TestFlush(t *testing.T) {
 						// ChatState is reloaded from database, because Delete was called
 						{
 							SpaceId: testSpaceId,
+							Value: &pb.EventMessageValueOfChatUpdateMessageCount{
+								ChatUpdateMessageCount: &pb.EventChatUpdateMessageCount{
+									MessageCount: 4,
+									SubIds: []string{
+										subId,
+									},
+								},
+							},
+						},
+						{
+							SpaceId: testSpaceId,
 							Value: &pb.EventMessageValueOfChatStateUpdate{
 								ChatStateUpdate: &pb.EventChatUpdateState{
 									State: &model.ChatState{
@@ -304,10 +315,12 @@ func TestFlushReloadStateFlag(t *testing.T) {
 		fx.lock.Unlock()
 		mngr.Flush(true)
 
-		// then: ChatStateUpdate is sent from the deferred state reload
+		// then: ChatUpdateMessageCount + ChatStateUpdate are sent from the deferred state reload
 		require.Len(t, fx.events, 1)
-		require.Len(t, fx.events[0].Messages, 1)
-		stateUpdate := fx.events[0].Messages[0].GetChatStateUpdate()
+		require.Len(t, fx.events[0].Messages, 2)
+		countUpdate := fx.events[0].Messages[0].GetChatUpdateMessageCount()
+		require.NotNil(t, countUpdate, "expected ChatUpdateMessageCount event after Flush(true)")
+		stateUpdate := fx.events[0].Messages[1].GetChatStateUpdate()
 		require.NotNil(t, stateUpdate, "expected ChatStateUpdate event after Flush(true)")
 
 		// when: flush again, no more events (needReloadState was reset)

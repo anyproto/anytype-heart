@@ -371,8 +371,9 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 }
 
 type GetMessagesResponse struct {
-	Messages  []*chatmodel.Message
-	ChatState *model.ChatState
+	Messages     []*chatmodel.Message
+	ChatState    *model.ChatState
+	MessageCount int32
 }
 
 func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMessagesRequest) (*GetMessagesResponse, error) {
@@ -382,10 +383,12 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	}
 	s.subscription.Lock()
 	state := s.subscription.GetChatState()
+	count := s.subscription.GetMessageCount()
 	s.subscription.Unlock()
 	return &GetMessagesResponse{
-		Messages:  msgs,
-		ChatState: state,
+		Messages:     msgs,
+		ChatState:    state,
+		MessageCount: count,
 	}, nil
 }
 

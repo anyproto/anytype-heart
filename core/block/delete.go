@@ -213,9 +213,9 @@ func (s *Service) unsetHomepageIfNeeded(id domain.FullID, spc clientspace.Space)
 	homepage := details.GetString(bundle.RelationKeyHomepage)
 	if homepage == id.ObjectID {
 		if err = s.detailsService.SetSpaceInfo(spc.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyHomepage: domain.String(""),
+			bundle.RelationKeyHomepage: domain.String(domain.HomepageWidgets),
 		})); err != nil {
-			log.With("objectId", id.ObjectID).Warnf("failed to unset homepage: %v", err)
+			log.With("objectId", id.ObjectID).Warnf("failed to reset homepage to widgets: %v", err)
 		}
 	}
 }

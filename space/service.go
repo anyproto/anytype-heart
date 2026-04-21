@@ -432,11 +432,9 @@ func (s *service) SpaceViewSetOneToOneIdentity(spaceId string, identity string) 
 }
 
 func (s *service) OnWorkspaceChanged(spaceId string, details *domain.Details) {
-	go func() {
-		if err := s.techSpace.SpaceViewSetData(s.ctx, spaceId, details); err != nil {
-			log.Warn("OnWorkspaceChanged error", zap.Error(err))
-		}
-	}()
+	if err := s.techSpace.SpaceViewSetData(s.ctx, spaceId, details); err != nil {
+		log.Warn("OnWorkspaceChanged error", zap.Error(err))
+	}
 }
 
 func (s *service) AccountMetadataSymKey() crypto.SymKey {
