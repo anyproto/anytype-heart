@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/util/crypto"
+	"go.uber.org/zap"
 
 	editorsb "github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -167,7 +168,14 @@ func (s *techSpace) Run(techCoreSpace commonspace.Space, objectCache objectcache
 			return err
 		}
 	}
-	return s.personalFavoritesObjectCreate(s.ctx)
+
+	go func() {
+		favErr := s.personalFavoritesObjectCreate(s.ctx)
+		if favErr != nil {
+			log.Error("load personal favorites object", zap.Error(favErr))
+		}
+	}()
+	return nil
 }
 
 func (s *techSpace) StartSync() {
