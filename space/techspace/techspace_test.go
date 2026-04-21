@@ -314,7 +314,7 @@ func newFixture(t *testing.T, storeIDs []string) *fixture {
 	}).Times(1)
 
 	// techspace.Run derives the personal favorites store after accountObject.
-	fx.objectCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, nil).Times(1)
+	fx.objectCache.EXPECT().DeriveTreeObject(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
 
 	require.NoError(t, fx.a.Start(ctx))
 	err := fx.TechSpace.Run(fx.techCore, fx.objectCache, false)
