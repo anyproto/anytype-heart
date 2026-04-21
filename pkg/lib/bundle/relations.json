@@ -1851,6 +1851,26 @@
     "source": "details"
   },
   {
+    "description": "Number of unread messages in a discussion for the current user",
+    "format": "number",
+    "hidden": false,
+    "key": "unreadMessageCount",
+    "maxCount": 1,
+    "name": "Unread messages",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Number of unread mentions in a discussion for the current user",
+    "format": "number",
+    "hidden": false,
+    "key": "unreadMentionCount",
+    "maxCount": 1,
+    "name": "Unread mentions",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Is file available offline",
     "format": "checkbox",
     "hidden": true,

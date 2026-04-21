@@ -321,6 +321,7 @@ func (s *storeObject) onInit(ctx *smartblock.InitContext) {
 	if ok && last != nil {
 		ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 	}
+	s.setUnreadCountersOnStateLocked(ctx.State)
 }
 
 func (s *storeObject) onUpdate() {
@@ -350,8 +351,47 @@ func (s *storeObject) onUpdate() {
 	if ok && last != nil {
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 	}
+	s.setUnreadCountersOnStateLocked(st)
 	if err = s.Apply(st, smartblock.NotPushChanges); err != nil {
 		log.Error("onUpdate: apply derived details", zap.Error(err))
+	}
+}
+
+// setUnreadCountersOnStateLocked projects the current subscription chat state
+// counters onto the given state. No-op for non-discussion chats (e.g. the
+// space chat and other chatDerived objects). The caller must hold
+// s.subscription.Lock.
+func (s *storeObject) setUnreadCountersOnStateLocked(st *state.State) {
+	if s.typeKey != bundle.TypeKeyDiscussion {
+		return
+	}
+	chatState := s.subscription.GetChatState()
+	var messages, mentions int64
+	if chatState != nil {
+		if chatState.Messages != nil {
+			messages = int64(chatState.Messages.Counter)
+		}
+		if chatState.Mentions != nil {
+			mentions = int64(chatState.Mentions.Counter)
+		}
+	}
+	st.SetDetailAndBundledRelation(bundle.RelationKeyUnreadMessageCount, domain.Int64(messages))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyUnreadMentionCount, domain.Int64(mentions))
+}
+
+// applyUnreadCountersLocked creates a new smartblock state, projects the
+// current unread counters onto it, and applies it without pushing changes.
+// Intended for the local mark-read/unread paths that do not flow through
+// onUpdate. No-op for non-discussion chats. The caller must hold
+// s.subscription.Lock.
+func (s *storeObject) applyUnreadCountersLocked() {
+	if s.typeKey != bundle.TypeKeyDiscussion {
+		return
+	}
+	st := s.NewState()
+	s.setUnreadCountersOnStateLocked(st)
+	if err := s.Apply(st, smartblock.NotPushChanges); err != nil {
+		log.Error("apply unread counters", zap.Error(err))
 	}
 }
 

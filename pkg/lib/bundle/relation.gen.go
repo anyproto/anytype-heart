@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "778f662b6ab26fb8a4627c72df8da4681c3df79725f1f0de1a2c5686663482ad"
+const RelationChecksum = "66578c491294b5fbd5b6777a42c5e81084f998219eb45aba35511d9b9bac821c"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -191,6 +191,8 @@ const (
 	RelationKeyIsMainChat                           domain.RelationKey = "isMainChat"
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
 	RelationKeyNotificationSubscribers              domain.RelationKey = "notificationSubscribers"
+	RelationKeyUnreadMessageCount                   domain.RelationKey = "unreadMessageCount"
+	RelationKeyUnreadMentionCount                   domain.RelationKey = "unreadMentionCount"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
@@ -2710,6 +2712,32 @@ var (
 			Key:              "uniqueKey",
 			MaxCount:         1,
 			Name:             "Unique object key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUnreadMentionCount: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Number of unread mentions in a discussion for the current user",
+			Format:           model.RelationFormat_number,
+			Id:               "_brunreadMentionCount",
+			Key:              "unreadMentionCount",
+			MaxCount:         1,
+			Name:             "Unread mentions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUnreadMessageCount: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Number of unread messages in a discussion for the current user",
+			Format:           model.RelationFormat_number,
+			Id:               "_brunreadMessageCount",
+			Key:              "unreadMessageCount",
+			MaxCount:         1,
+			Name:             "Unread messages",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
