@@ -87,71 +87,81 @@ func (v *VirtualWidgetObject) Close() error {
 	return v.SmartBlock.Close()
 }
 
-// Apply overrides SmartBlock.Apply to intercept state changes and sync them to
-// the CRDT store. We disable tree push since the store is the source of truth.
+// Apply overrides SmartBlock.Apply to intercept state changes and publish
+// them to the CRDT store as operations. We disable tree push because the
+// store is the source of truth.
 //
-// The sync model is a deterministic snapshot-sync rather than an event-diff.
-// After SmartBlock.Apply commits the caller's mutations locally, we walk the
-// resulting block tree once to compute the *desired* list of store entries
-// (with correct AfterId derived from sibling order under root), load the
-// *current* store entries for this space, and emit one Create/Delete/Update
-// per divergence. Each operation is independent: Update can change any subset
-// of {Layout, Limit, ViewId, AfterId} atomically, so reorders don't need a
-// linked-list repair dance — the store just stores whatever AfterId we tell
-// it to.
+// The sync model is op-based, not snapshot-sync: we diff the caller's
+// pre-mutation VW state against the post-mutation state and emit one
+// Create/Delete/Update per touched entry. We never read the store here —
+// that would race with concurrent remote changes (the store's observer
+// would be blocked on VW's lock while syncToStore reads the CRDT state,
+// see-ing remote entries that VW hasn't absorbed yet; diffing against them
+// would incorrectly delete them). Remote changes flow in via the observer
+// path (OnWidgetCreate/Update/Delete → rebuildAll), unchanged.
+//
+// Field-level diffing: diffEntry only flags fields where prev differs from
+// desired, so concurrent remote edits to untouched fields survive.
 func (v *VirtualWidgetObject) Apply(s *state.State, flags ...smartblock.ApplyFlag) error {
+	spaceId := v.SpaceID()
+	parent := s.ParentState()
+	if parent == nil {
+		// Defensive: no pre-mutation state available, so we can't compute a
+		// delta safely. Skip the push rather than risk treating prev as empty
+		// (which would re-create every entry and potentially delete the rest).
+		log.Warnf("apply without parent state; skipping delta push for space %s", spaceId)
+		return v.SmartBlock.Apply(s, append(flags, smartblock.NotPushChanges)...)
+	}
+
+	prev := extractEntriesFromState(parent, spaceId)
+	desired := extractEntriesFromState(s, spaceId)
+
 	if err := v.SmartBlock.Apply(s, append(flags, smartblock.NotPushChanges)...); err != nil {
 		return fmt.Errorf("apply smartblock: %w", err)
 	}
-	v.syncToStore()
+	v.pushDelta(prev, desired, spaceId)
 	return nil
 }
 
-func (v *VirtualWidgetObject) syncToStore() {
+// pushDelta publishes the entry-level ops that take prev to desired. It does
+// not read the store, so it cannot interpret a concurrent remote change as a
+// local deletion.
+func (v *VirtualWidgetObject) pushDelta(prev, desired []personalfavorites.WidgetEntry, spaceId string) {
 	ctx := context.Background()
-	spaceId := v.SpaceID()
-	desired := v.extractEntries(v.NewState())
 
-	current, err := v.service.GetWidgets(ctx, spaceId)
-	if err != nil {
-		log.Errorf("sync widgets: load current state: %s", err)
-		return
-	}
-
-	currentMap := make(map[string]personalfavorites.WidgetEntry, len(current))
-	for _, e := range current {
-		currentMap[e.Id] = e
+	prevMap := make(map[string]personalfavorites.WidgetEntry, len(prev))
+	for _, e := range prev {
+		prevMap[e.Id] = e
 	}
 	desiredMap := make(map[string]personalfavorites.WidgetEntry, len(desired))
 	for _, e := range desired {
 		desiredMap[e.Id] = e
 	}
 
-	// Deletes: entries in the store that the desired state no longer contains.
-	for id := range currentMap {
+	// Deletes: entries the caller removed from VW.
+	for id := range prevMap {
 		if _, ok := desiredMap[id]; ok {
 			continue
 		}
 		if err := v.service.DeleteWidget(ctx, id); err != nil {
-			log.Warnf("sync widgets: delete %s: %s", id, err)
+			log.Warnf("push delta: delete %s: %s", id, err)
 		}
 	}
 
-	// Creates + updates: walk desired in order and reconcile each entry with
-	// the current store view.
+	// Creates + updates: walk desired in order and emit the per-entry op.
 	for _, d := range desired {
 		d.SpaceId = spaceId
-		cur, exists := currentMap[d.Id]
+		p, exists := prevMap[d.Id]
 		if !exists {
 			if err := v.service.CreateWidget(ctx, d); err != nil {
-				log.Warnf("sync widgets: create %s: %s", d.Id, err)
+				log.Warnf("push delta: create %s: %s", d.Id, err)
 			}
 			continue
 		}
-		update, changed := diffEntry(cur, d)
+		update, changed := diffEntry(p, d)
 		if changed {
 			if err := v.service.UpdateWidget(ctx, d.Id, update); err != nil {
-				log.Warnf("sync widgets: update %s: %s", d.Id, err)
+				log.Warnf("push delta: update %s: %s", d.Id, err)
 			}
 		}
 	}
@@ -185,10 +195,6 @@ func diffEntry(cur, desired personalfavorites.WidgetEntry) (personalfavorites.Wi
 		changed = true
 	}
 	return update, changed
-}
-
-func (v *VirtualWidgetObject) extractEntries(s *state.State) []personalfavorites.WidgetEntry {
-	return extractEntriesFromState(s, v.SpaceID())
 }
 
 // extractEntriesFromState walks the root's children expecting each to be a
