@@ -1169,6 +1169,98 @@ func TestClipboard_PasteToCodeBlock(t *testing.T) {
 	assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Style)
 }
 
+func TestClipboard_PasteToCodeBlock_TrailingNewline(t *testing.T) {
+	t.Run("strip trailing newline when selection extends to end", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "some code",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select " code" (positions 4..9, end of text) and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(4, 9),
+			TextSlot:          " replacement\n",
+		}, "")
+
+		// then — trailing newline should be stripped
+		require.NoError(t, err)
+		assert.Equal(t, "some replacement", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+
+	t.Run("full text replacement strips trailing newline", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "hello world",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select all text and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(0, 11),
+			TextSlot:          "replacement\n",
+		}, "")
+
+		// then — no blank line at the end
+		require.NoError(t, err)
+		assert.Equal(t, "replacement", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+
+	t.Run("preserve trailing newline when selection is in the middle", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "some code here",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select "code" (positions 5..9, NOT end of text) and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(5, 9),
+			TextSlot:          "block\n",
+		}, "")
+
+		// then — trailing newline should be preserved as a separator
+		require.NoError(t, err)
+		assert.Equal(t, "some block\n here", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+}
+
 func TestClipboard_PasteToTableCellBlock(t *testing.T) {
 	// given
 	sb := smarttest.New("text")
