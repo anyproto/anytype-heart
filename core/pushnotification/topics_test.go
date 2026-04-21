@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -131,7 +132,7 @@ func TestSpaceTopicsCollection(t *testing.T) {
 			statusS1.muteIds = []string{"ch1"}
 			statusS1.mentionIds = []string{"ch2"}
 			statusS1.allIds = []string{"ch3"}
-			tc.SetSpaceViewStatus(statusS1, []string{"ch1", "ch2", "ch3", "ch4", "ch5"})
+			tc.SetSpaceViewStatus(statusS1, chatEntriesForIds("s1", "ch1", "ch2", "ch3", "ch4", "ch5"))
 			req := tc.MakeApiRequest()
 			require.NotNil(t, req)
 			assertHasMuted(t, req.Topics, "ch1")
@@ -147,7 +148,7 @@ func TestSpaceTopicsCollection(t *testing.T) {
 			statusS1.muteIds = []string{"ch1"}
 			statusS1.mentionIds = []string{"ch2"}
 			statusS1.allIds = []string{"ch3"}
-			tc.SetSpaceViewStatus(statusS1, []string{"ch1", "ch2", "ch3", "ch4", "ch5"})
+			tc.SetSpaceViewStatus(statusS1, chatEntriesForIds("s1", "ch1", "ch2", "ch3", "ch4", "ch5"))
 			req := tc.MakeApiRequest()
 			require.NotNil(t, req)
 			assertHasMuted(t, req.Topics, "ch1")
@@ -163,7 +164,7 @@ func TestSpaceTopicsCollection(t *testing.T) {
 			statusS1.muteIds = []string{"ch1"}
 			statusS1.mentionIds = []string{"ch2"}
 			statusS1.allIds = []string{"ch3"}
-			tc.SetSpaceViewStatus(statusS1, []string{"ch1", "ch2", "ch3", "ch4", "ch5"})
+			tc.SetSpaceViewStatus(statusS1, chatEntriesForIds("s1", "ch1", "ch2", "ch3", "ch4", "ch5"))
 			req := tc.MakeApiRequest()
 			require.NotNil(t, req)
 			assertHasMuted(t, req.Topics, "ch1")
@@ -173,6 +174,90 @@ func TestSpaceTopicsCollection(t *testing.T) {
 			assertHasMuted(t, req.Topics, "ch5")
 		})
 	})
+	t.Run("discussions", func(t *testing.T) {
+		myParticipant := domain.NewParticipantId("s1", "my")
+		t.Run("identity in subscribers - all messages", func(t *testing.T) {
+			tc := newSpaceTopicsCollection("my")
+			tc.Flush()
+			statusS1 := newTestSpaceStatus("s1", pb.RpcPushNotification_Mentions, "my")
+			tc.SetSpaceViewStatus(statusS1, []chatEntry{
+				{chatId: "d1", spaceId: "s1", isDiscussion: true, subscribers: []string{myParticipant}},
+			})
+			req := tc.MakeApiRequest()
+			require.NotNil(t, req)
+			assertHasAll(t, req.Topics, "d1")
+		})
+		t.Run("identity not in subscribers - mentions only", func(t *testing.T) {
+			tc := newSpaceTopicsCollection("my")
+			tc.Flush()
+			statusS1 := newTestSpaceStatus("s1", pb.RpcPushNotification_All, "my")
+			tc.SetSpaceViewStatus(statusS1, []chatEntry{
+				{chatId: "d1", spaceId: "s1", isDiscussion: true, subscribers: []string{domain.NewParticipantId("s1", "other")}},
+			})
+			req := tc.MakeApiRequest()
+			require.NotNil(t, req)
+			assertHasMention(t, req.Topics, "d1")
+		})
+		t.Run("empty subscribers - mentions only", func(t *testing.T) {
+			tc := newSpaceTopicsCollection("my")
+			tc.Flush()
+			statusS1 := newTestSpaceStatus("s1", pb.RpcPushNotification_All, "my")
+			tc.SetSpaceViewStatus(statusS1, []chatEntry{
+				{chatId: "d1", spaceId: "s1", isDiscussion: true},
+			})
+			req := tc.MakeApiRequest()
+			require.NotNil(t, req)
+			assertHasMention(t, req.Topics, "d1")
+		})
+		t.Run("space-level allIds beats subscribers absence", func(t *testing.T) {
+			tc := newSpaceTopicsCollection("my")
+			tc.Flush()
+			statusS1 := newTestSpaceStatus("s1", pb.RpcPushNotification_Mentions, "my")
+			statusS1.allIds = []string{"d1"}
+			tc.SetSpaceViewStatus(statusS1, []chatEntry{
+				{chatId: "d1", spaceId: "s1", isDiscussion: true},
+			})
+			req := tc.MakeApiRequest()
+			require.NotNil(t, req)
+			assertHasAll(t, req.Topics, "d1")
+		})
+		t.Run("space-level muteIds beats subscriber membership", func(t *testing.T) {
+			tc := newSpaceTopicsCollection("my")
+			tc.Flush()
+			statusS1 := newTestSpaceStatus("s1", pb.RpcPushNotification_All, "my")
+			statusS1.muteIds = []string{"d1"}
+			tc.SetSpaceViewStatus(statusS1, []chatEntry{
+				{chatId: "d1", spaceId: "s1", isDiscussion: true, subscribers: []string{myParticipant}},
+				{chatId: "d2", spaceId: "s1", isDiscussion: true, subscribers: []string{myParticipant}},
+			})
+			req := tc.MakeApiRequest()
+			require.NotNil(t, req)
+			assertHasMuted(t, req.Topics, "d1")
+			assertHasAll(t, req.Topics, "d2")
+		})
+		t.Run("non-discussion ignores subscribers", func(t *testing.T) {
+			tc := newSpaceTopicsCollection("my")
+			tc.Flush()
+			// mode=Mentions + chat (not a discussion) where my identity IS in subscribers
+			// → should still be mentions (subscribers ignored for non-discussion chats)
+			statusS1 := newTestSpaceStatus("s1", pb.RpcPushNotification_Mentions, "my")
+			tc.SetSpaceViewStatus(statusS1, []chatEntry{
+				{chatId: "c1", spaceId: "s1", isDiscussion: false, subscribers: []string{myParticipant}},
+			})
+			req := tc.MakeApiRequest()
+			require.NotNil(t, req)
+			// no discussion + no overrides → falls through to bulk topics (chats / identity)
+			assert.Len(t, req.Topics, 1)
+		})
+	})
+}
+
+func chatEntriesForIds(spaceId string, ids ...string) []chatEntry {
+	out := make([]chatEntry, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, chatEntry{chatId: id, spaceId: spaceId})
+	}
+	return out
 }
 
 func assertHasMention(t *testing.T, topics []*pushapi.Topic, chId string) {

@@ -37,10 +37,10 @@ import (
 )
 
 const (
-	CollectionName        = "chats"
-	EditorCollectionName  = "editor"
-	diffManagerMessages   = "messages"
-	diffManagerMentions   = "mentions"
+	CollectionName       = "chats"
+	EditorCollectionName = "editor"
+	diffManagerMessages  = "messages"
+	diffManagerMentions  = "mentions"
 	diffManagerReactions = "reactions"
 )
 
@@ -65,6 +65,10 @@ type StoreObject interface {
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
 	SetMessagePinned(ctx context.Context, messageId string, pinned bool) error
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
+
+	AddNotificationSubscriber(ctx context.Context, identity string) error
+	RemoveNotificationSubscriber(ctx context.Context, identity string) error
+	GetNotificationSubscribers(ctx context.Context) ([]string, error)
 }
 
 type AccountService interface {
@@ -325,6 +329,12 @@ func (s *storeObject) onUpdate() {
 		log.Error("onUpdate: on anystore updated", zap.Error(err))
 	}
 
+	// Read before taking subscription mutex to avoid nesting anystore tx in it.
+	participantIds, subsErr := s.readNotificationSubscribers(s.componentCtx)
+	if subsErr != nil {
+		log.Error("onUpdate: read notification subscribers", zap.Error(subsErr))
+	}
+
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 
@@ -334,13 +344,14 @@ func (s *storeObject) onUpdate() {
 	if err != nil {
 		log.Error("onUpdate: get last message", zap.Error(err))
 	}
+
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyNotificationSubscribers, domain.StringList(participantIds))
 	if ok && last != nil {
-		st := s.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
-		err = s.Apply(st, smartblock.NotPushChanges)
-		if err != nil {
-			log.Error("onUpdate: update last message date", zap.Error(err))
-		}
+	}
+	if err = s.Apply(st, smartblock.NotPushChanges); err != nil {
+		log.Error("onUpdate: apply derived details", zap.Error(err))
 	}
 }
 

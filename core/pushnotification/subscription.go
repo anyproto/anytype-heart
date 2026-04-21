@@ -30,6 +30,62 @@ type spaceViewStatus struct {
 	spaceType      model.SpaceType
 }
 
+type chatEntry struct {
+	chatId       string
+	spaceId      string
+	isDiscussion bool
+	subscribers  []string // participantIds from notificationSubscribers
+}
+
+func newChatSubscriptionParams(wakeUp func()) objectsubscription.SubscriptionParams[chatEntry] {
+	return objectsubscription.SubscriptionParams[chatEntry]{
+		SetDetails: func(details *domain.Details) (string, chatEntry) {
+			defer wakeUp()
+			id := details.GetString(bundle.RelationKeyId)
+			return id, chatEntry{
+				chatId:       id,
+				spaceId:      details.GetString(bundle.RelationKeySpaceId),
+				isDiscussion: isDiscussionLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)),
+				subscribers:  details.GetStringList(bundle.RelationKeyNotificationSubscribers),
+			}
+		},
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, entry chatEntry) chatEntry {
+			defer wakeUp()
+			for _, kv := range keyValues {
+				switch domain.RelationKey(kv.Key) {
+				case bundle.RelationKeyResolvedLayout:
+					entry.isDiscussion = isDiscussionLayout(kv.Value.Int64())
+				case bundle.RelationKeyNotificationSubscribers:
+					entry.subscribers = kv.Value.StringList()
+				case bundle.RelationKeySpaceId:
+					entry.spaceId = kv.Value.String()
+				}
+			}
+			return entry
+		},
+		RemoveKeys: func(keys []string, entry chatEntry) chatEntry {
+			defer wakeUp()
+			for _, key := range keys {
+				if key == bundle.RelationKeyNotificationSubscribers.String() {
+					entry.subscribers = nil
+				}
+			}
+			return entry
+		},
+		OnAdded: func(string, chatEntry) {
+			wakeUp()
+		},
+		OnRemoved: func(string, chatEntry) {
+			wakeUp()
+		},
+	}
+}
+
+func isDiscussionLayout(layout int64) bool {
+	// nolint: gosec
+	return model.ObjectTypeLayout(layout) == model.ObjectType_discussion
+}
+
 func newSpaceViewSubscription(service subscription.Service, techSpaceId string, wakeUp func()) (*objectsubscription.ObjectSubscription[spaceViewStatus], error) {
 	objectReq := subscription.SubscribeRequest{
 		SpaceId:           techSpaceId,

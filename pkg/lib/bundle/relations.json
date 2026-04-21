@@ -1838,6 +1838,19 @@
     "includeTime": true
   },
   {
+    "description": "Participants subscribed to notifications on this discussion",
+    "format": "object",
+    "hidden": false,
+    "key": "notificationSubscribers",
+    "maxCount": 0,
+    "name": "Notification subscribers",
+    "objectTypes": [
+      "participant"
+    ],
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Is file available offline",
     "format": "checkbox",
     "hidden": true,

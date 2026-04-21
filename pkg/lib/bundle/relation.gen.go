@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "08eb2910b64036f7031c1559378b4a1447c7177c80fd4f4c266bcd1f10addc75"
+const RelationChecksum = "778f662b6ab26fb8a4627c72df8da4681c3df79725f1f0de1a2c5686663482ad"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -190,6 +190,7 @@ const (
 	RelationKeyWidgetViewId                         domain.RelationKey = "widgetViewId"
 	RelationKeyIsMainChat                           domain.RelationKey = "isMainChat"
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
+	RelationKeyNotificationSubscribers              domain.RelationKey = "notificationSubscribers"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
@@ -1575,6 +1576,19 @@ var (
 			MaxCount:         1,
 			Name:             "Name",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyNotificationSubscribers: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Participants subscribed to notifications on this discussion",
+			Format:           model.RelationFormat_object,
+			Id:               "_brnotificationSubscribers",
+			Key:              "notificationSubscribers",
+			Name:             "Notification subscribers",
+			ObjectTypes:      []string{TypePrefix + "participant"},
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

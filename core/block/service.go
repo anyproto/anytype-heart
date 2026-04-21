@@ -44,6 +44,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
@@ -487,6 +488,17 @@ func (s *Service) ObjectAddDiscussion(ctx context.Context, objectId string) (dis
 	discussionId, err = s.objectCreator.AddDiscussionDerivedObject(ctx, spc, objectId)
 	if err != nil {
 		return "", fmt.Errorf("add discussion derived object: %w", err)
+	}
+
+	if subErr := spc.DoCtx(ctx, discussionId, func(b smartblock.SmartBlock) error {
+		storeObj, ok := b.(chatobject.StoreObject)
+		if !ok {
+			return fmt.Errorf("discussion is not a chat store object")
+		}
+		return storeObj.AddNotificationSubscriber(ctx, s.accountService.AccountID())
+	}); subErr != nil {
+		log.With(zap.String("discussionId", discussionId), zap.Error(subErr)).
+			Warn("auto-subscribe creator to discussion")
 	}
 
 	err = spc.DoCtx(ctx, objectId, func(b smartblock.SmartBlock) error {

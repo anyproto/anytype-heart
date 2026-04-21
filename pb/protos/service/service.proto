@@ -440,6 +440,8 @@ service ClientCommands {
     rpc ChatSearch (anytype.Rpc.Chat.Search.Request) returns (anytype.Rpc.Chat.Search.Response);
     rpc ChatSetPinnedMessages (anytype.Rpc.Chat.SetPinnedMessages.Request) returns (anytype.Rpc.Chat.SetPinnedMessages.Response);
     rpc ChatGetPinnedMessages (anytype.Rpc.Chat.GetPinnedMessages.Request) returns (anytype.Rpc.Chat.GetPinnedMessages.Response);
+    rpc ChatAddNotificationSubscriber (anytype.Rpc.Chat.AddNotificationSubscriber.Request) returns (anytype.Rpc.Chat.AddNotificationSubscriber.Response);
+    rpc ChatRemoveNotificationSubscriber (anytype.Rpc.Chat.RemoveNotificationSubscriber.Request) returns (anytype.Rpc.Chat.RemoveNotificationSubscriber.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);
