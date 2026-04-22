@@ -49,9 +49,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -961,16 +961,14 @@ func (s *service) ReadAll(ctx context.Context) error {
 }
 
 func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error {
-	return fmt.Errorf("not implemented")
-	// TODO: GO-6749 uncomment when old clients will be able to unmarshal messages with pinned=true
-	// return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-	// 	for _, msgId := range messageIds {
-	// 		if err := sb.SetMessagePinned(ctx, msgId, pinned); err != nil {
-	// 			return fmt.Errorf("failed to set pinned status %v to message: %w", pinned, err)
-	// 		}
-	// 	}
-	// 	return nil
-	// })
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		for _, msgId := range messageIds {
+			if err := sb.SetMessagePinned(ctx, msgId, pinned); err != nil {
+				return fmt.Errorf("failed to set pinned status %v to message: %w", pinned, err)
+			}
+		}
+		return nil
+	})
 }
 
 func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) (msgs []*chatmodel.Message, err error) {
