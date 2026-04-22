@@ -111,6 +111,7 @@ type identityRepoClient interface {
 
 type aclService struct {
 	nodeConfigGetter NodeConfGetter
+	nodeConf         nodeconf.Service
 	joiningClient    aclclient.AclJoiningClient
 	spaceService     space.Service
 	inviteService    inviteservice.InviteService
@@ -133,6 +134,7 @@ type aclService struct {
 
 func (a *aclService) Init(ap *app.App) (err error) {
 	a.nodeConfigGetter = app.MustComponent[NodeConfGetter](ap)
+	a.nodeConf = app.MustComponent[nodeconf.Service](ap)
 	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
 	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
@@ -142,7 +144,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	subService := app.MustComponent[subscription.Service](ap)
 	crossSub := app.MustComponent[crossspacesub.Service](ap)
 	wlt := app.MustComponent[wallet.Wallet](ap)
-	a.getter = newAclGetter(a.joiningClient, wlt.Account())
+	a.getter = newAclGetter(a.joiningClient, wlt.Account(), a.nodeConf)
 	a.updater, err = newAclUpdater("acl-updater",
 		wlt.Account().SignKey.GetPublic().Account(),
 		crossSub,
@@ -157,7 +159,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	}
 
 	a.ctx, a.ctxCancel = context.WithCancel(context.Background())
-	a.recordVerifier = recordverifier.New()
+	a.recordVerifier = recordverifier.New(a.nodeConf)
 	return nil
 }
 
