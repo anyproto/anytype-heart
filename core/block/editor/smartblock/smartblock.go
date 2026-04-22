@@ -920,7 +920,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	// Without this, imported states may lack relation links for details like setOf,
 	// producing a RelationRemove change that wipes the detail on replay (GO-7217).
 	var relKeys []domain.RelationKey
-	for k, _ := range s.Details().Iterate() {
+	for k := range s.Details().Iterate() {
 		if bundle.HasRelation(k) {
 			relKeys = append(relKeys, k)
 		}
