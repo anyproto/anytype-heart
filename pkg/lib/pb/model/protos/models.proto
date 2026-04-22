@@ -1684,6 +1684,7 @@ message ChatMessage {
             MessageBlockText text = 1;
             MessageBlockLink link = 2;
             MessageBlockEmbed embed = 3;
+            MessageBlockQuote quote = 4;
         }
     }
 
@@ -1710,6 +1711,11 @@ message ChatMessage {
     message MessageBlockEmbed {
         string text = 1;
         Block.Content.Latex.Processor processor = 2;
+    }
+
+    message MessageBlockQuote {
+        string blockId = 1;   // original block id being quoted
+        string text = 2;      // quoted text
     }
 }
 

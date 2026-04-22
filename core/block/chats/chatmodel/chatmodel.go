@@ -302,6 +302,14 @@ func (m *Message) Validate() error {
 			}
 		case block.GetEmbed() != nil:
 			// embed block is valid as-is
+		case block.GetQuote() != nil:
+			qb := block.GetQuote()
+			if qb.BlockId == "" {
+				return fmt.Errorf("quote block blockId is empty")
+			}
+			if qb.Text == "" {
+				return fmt.Errorf("quote block text is empty")
+			}
 		default:
 			return fmt.Errorf("block content is nil")
 		}
@@ -473,6 +481,11 @@ func marshalBlocks(arena *anyenc.Arena, inBlocks []*model.ChatMessageMessageBloc
 			embedObj.Set("text", arena.NewString(eb.Text))
 			embedObj.Set("processor", arena.NewNumberInt(int(eb.Processor)))
 			block.Set("embed", embedObj)
+		} else if qb := inBlock.GetQuote(); qb != nil {
+			quoteObj := arena.NewObject()
+			quoteObj.Set("blockId", arena.NewString(qb.BlockId))
+			quoteObj.Set("text", arena.NewString(qb.Text))
+			block.Set("quote", quoteObj)
 		}
 		blocks.SetArrayItem(i, block)
 	}
@@ -591,6 +604,13 @@ func (m *messageUnmarshaller) blocksToModel() []*model.ChatMessageMessageBlock {
 				Embed: &model.ChatMessageMessageBlockEmbed{
 					Text:      string(embedVal.GetStringBytes("text")),
 					Processor: model.BlockContentLatexProcessor(embedVal.GetInt("processor")),
+				},
+			}
+		} else if quoteVal := inBlock.Get("quote"); quoteVal != nil {
+			block.Content = &model.ChatMessageMessageBlockContentOfQuote{
+				Quote: &model.ChatMessageMessageBlockQuote{
+					BlockId: string(quoteVal.GetStringBytes("blockId")),
+					Text:    string(quoteVal.GetStringBytes("text")),
 				},
 			}
 		}

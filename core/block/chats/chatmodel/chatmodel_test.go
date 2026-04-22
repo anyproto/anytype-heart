@@ -225,6 +225,60 @@ func TestValidate(t *testing.T) {
 		assert.Error(t, msg.Validate())
 	})
 
+	t.Run("valid quote block", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfQuote{
+						Quote: &model.ChatMessageMessageBlockQuote{
+							BlockId: "srcBlock1",
+							Text:    "quoted",
+						},
+					}},
+				},
+			},
+		}
+
+		assert.NoError(t, msg.Validate())
+	})
+
+	t.Run("quote block empty blockId", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfQuote{
+						Quote: &model.ChatMessageMessageBlockQuote{
+							BlockId: "",
+							Text:    "quoted",
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("quote block empty text", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfQuote{
+						Quote: &model.ChatMessageMessageBlockQuote{
+							BlockId: "srcBlock1",
+							Text:    "",
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
 	t.Run("block with nil content", func(t *testing.T) {
 		msg := &Message{
 			ChatMessage: &model.ChatMessage{
@@ -352,6 +406,12 @@ func TestBlocksRoundTrip(t *testing.T) {
 							Processor: model.BlockContentLatex_Mermaid,
 						},
 					}},
+					{Content: &model.ChatMessageMessageBlockContentOfQuote{
+						Quote: &model.ChatMessageMessageBlockQuote{
+							BlockId: "srcBlock1",
+							Text:    "original content snippet",
+						},
+					}},
 				},
 			},
 		}
@@ -365,7 +425,7 @@ func TestBlocksRoundTrip(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		require.Len(t, got.ChatMessage.Blocks, 5)
+		require.Len(t, got.ChatMessage.Blocks, 6)
 
 		// Text block 0
 		tb0 := got.ChatMessage.Blocks[0].GetText()
@@ -403,6 +463,12 @@ func TestBlocksRoundTrip(t *testing.T) {
 		require.NotNil(t, eb4)
 		assert.Equal(t, "graph TD; A-->B;", eb4.Text)
 		assert.Equal(t, model.BlockContentLatex_Mermaid, eb4.Processor)
+
+		// Quote block 5
+		qb5 := got.ChatMessage.Blocks[5].GetQuote()
+		require.NotNil(t, qb5)
+		assert.Equal(t, "srcBlock1", qb5.BlockId)
+		assert.Equal(t, "original content snippet", qb5.Text)
 	})
 
 	t.Run("empty blocks round-trip", func(t *testing.T) {

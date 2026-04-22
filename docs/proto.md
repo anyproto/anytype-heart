@@ -2167,6 +2167,7 @@
     - [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock)
     - [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed)
     - [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink)
+    - [ChatMessage.MessageBlockQuote](#anytype-model-ChatMessage-MessageBlockQuote)
     - [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
@@ -34317,6 +34318,7 @@ Used to decode block meta only, without the content itself
 | text | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  |  |
 | link | [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink) |  |  |
 | embed | [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed) |  |  |
+| quote | [ChatMessage.MessageBlockQuote](#anytype-model-ChatMessage-MessageBlockQuote) |  |  |
 
 
 
@@ -34349,6 +34351,22 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | targetObjectId | [string](#string) |  |  |
 | type | [ChatMessage.MessageBlockLink.LinkType](#anytype-model-ChatMessage-MessageBlockLink-LinkType) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockQuote"></a>
+
+### ChatMessage.MessageBlockQuote
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  | original block id being quoted |
+| text | [string](#string) |  | quoted text |
 
 
 
