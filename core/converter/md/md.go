@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/uri"
 )
 
@@ -582,7 +583,8 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 		buf.WriteString("   \n\n")
 		h.renderChildren(buf, in, b)
 	case model.BlockContentText_Code:
-		buf.WriteString("```\n") // nolint:errcheck
+		lang := pbtypes.GetString(b.GetFields(), "lang")
+		buf.WriteString("```" + lang + "\n") // nolint:errcheck
 		txt := strings.ReplaceAll(text.Text, "```", "\\`\\`\\`")
 		txt = strings.ReplaceAll(txt, "\n", "\n"+in.indent)
 		buf.WriteString(in.indent + txt)            // nolint:errcheck
