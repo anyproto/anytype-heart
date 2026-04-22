@@ -200,10 +200,10 @@ func ParseYAMLFrontMatterWithResolverAndPath(frontMatter []byte, resolver schema
 		if prop.Key == "" {
 			// Try to resolve property key from schema if resolver is available
 			if resolver != nil {
-				if schemaKey := resolver.ResolvePropertyKey(prop.Name); schemaKey != "" {
+				if schemaKey := resolver.ResolvePropertyKey(result.ObjectType, prop.Name); schemaKey != "" {
 					prop.Key = schemaKey
 					// Get the actual format from schema
-					schemaFormat := resolver.GetRelationFormat(schemaKey)
+					schemaFormat := resolver.GetRelationFormat(result.ObjectType, schemaKey)
 					if schemaFormat != model.RelationFormat_longtext {
 						prop.Format = schemaFormat
 					}
