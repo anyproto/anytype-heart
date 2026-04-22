@@ -190,3 +190,117 @@ func TestSubscriptionFromQueue(t *testing.T) {
 	require.Len(t, ids, 1)
 	require.Contains(t, ids, "3")
 }
+
+func TestSubscriptionFromQueueCustomFilterOnInitialRecords(t *testing.T) {
+	events := mb.New[*pb.EventMessage](0)
+	initial := []*domain.Details{
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("1"),
+			bundle.RelationKeyName: domain.String("keep"),
+		}),
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("2"),
+			bundle.RelationKeyName: domain.String("drop"),
+		}),
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("3"),
+			bundle.RelationKeyName: domain.String("keep"),
+		}),
+	}
+	params := IdSubscriptionParams
+	params.CustomFilter = func(d *domain.Details) bool {
+		return d.GetString(bundle.RelationKeyName) == "keep"
+	}
+	sub := NewFromQueue(events, params, initial)
+	err := sub.Run()
+	require.NoError(t, err)
+	time.Sleep(100 * time.Millisecond)
+	ids := make(map[string]struct{})
+	sub.Iterate(func(id string, _ struct{}) bool {
+		ids[id] = struct{}{}
+		return true
+	})
+	require.Len(t, ids, 2)
+	require.Contains(t, ids, "1")
+	require.Contains(t, ids, "3")
+}
+
+func TestSubscriptionFromQueueKeyDifferentFromId(t *testing.T) {
+	events := mb.New[*pb.EventMessage](0)
+	// SubscriptionParams whose key (returned by SetDetails) is the name, not the id.
+	// This exercises the keyToId/idToKey mapping: a remove-by-id event must resolve
+	// to the correct key.
+	params := SubscriptionParams[string]{
+		SetDetails: func(d *domain.Details) (string, string) {
+			return d.GetString(bundle.RelationKeyName), d.GetString(bundle.RelationKeyName)
+		},
+		UpdateKeys: func(_ []RelationKeyValue, s string) string { return s },
+		RemoveKeys: func(_ []string, s string) string { return s },
+	}
+	initial := []*domain.Details{
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("id-1"),
+			bundle.RelationKeyName: domain.String("alice"),
+		}),
+		domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:   domain.String("id-2"),
+			bundle.RelationKeyName: domain.String("bob"),
+		}),
+	}
+	// Remove bob by id, which requires idToKey["id-2"] == "bob".
+	err := events.Add(context.Background(), makeSubscriptionRemove("id-2"))
+	require.NoError(t, err)
+
+	sub := NewFromQueue(events, params, initial)
+	require.NoError(t, sub.Run())
+	time.Sleep(100 * time.Millisecond)
+
+	names := make(map[string]struct{})
+	sub.Iterate(func(id string, name string) bool {
+		names[name] = struct{}{}
+		return true
+	})
+	require.Len(t, names, 1)
+	require.Contains(t, names, "alice")
+
+	// Get by id should resolve through idToKey to find the entry by key.
+	entry, ok := sub.Get("id-1")
+	assert.True(t, ok)
+	assert.Equal(t, "alice", entry)
+}
+
+func TestSubscriptionFromQueueWithInitialRecords(t *testing.T) {
+	events := mb.New[*pb.EventMessage](0)
+	// Initial records must survive Run() and their key<->id mapping must be
+	// populated so later SubscriptionRemove / ObjectDetailsAmend events apply.
+	initial := makeStructs([]string{"1", "2", "3"})
+	messages := []*pb.EventMessage{
+		makeSubscriptionRemove("2"),
+		makeDetailsAmend("3"),
+		makeSubscriptionAdd("4"),
+		makeDetailsSet("4"),
+	}
+	for _, msg := range messages {
+		err := events.Add(context.Background(), msg)
+		require.NoError(t, err)
+	}
+	sub := NewIdSubscriptionFromQueue(events, initial)
+	err := sub.Run()
+	require.NoError(t, err)
+	time.Sleep(100 * time.Millisecond)
+	ids := make(map[string]struct{})
+	sub.Iterate(func(id string, _ struct{}) bool {
+		ids[id] = struct{}{}
+		return true
+	})
+	require.Len(t, ids, 3)
+	require.Contains(t, ids, "1")
+	require.Contains(t, ids, "3")
+	require.Contains(t, ids, "4")
+
+	// key<->id mapping for initial records was populated: Get by id works.
+	_, ok := sub.Get("1")
+	assert.True(t, ok)
+	_, ok = sub.Get("2")
+	assert.False(t, ok)
+}

@@ -31,9 +31,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
+	pfeditor "github.com/anyproto/anytype-heart/core/block/editor/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -75,31 +77,32 @@ type deviceService interface {
 }
 
 type ObjectFactory struct {
-	bookmarkService         bookmark.BookmarkService
-	layoutConverter         converter.LayoutConverter
-	objectStore             objectstore.ObjectStore
-	sourceService           source.Service
-	tempDirProvider         core.TempDirProvider
-	fileService             files.Service
-	config                  *config.Config
-	picker                  cache.ObjectGetter
-	eventSender             event.Sender
-	indexer                 smartblock.Indexer
-	spaceService            spaceService
-	accountService          accountService
-	fileObjectService       fileobject.Service
-	fileUploaderService     fileuploader.Service
-	fileReconciler          reconciler.Reconciler
-	objectDeleter           ObjectDeleter
-	deviceService           deviceService
-	spaceIdResolver         idresolver.Resolver
-	commonFile              fileservice.FileService
-	dbProvider              anystoreprovider.Provider
-	chatRepositoryService   chatrepository.Service
-	chatSubscriptionService chatsubscription.Service
-	statService             debugstat.StatService
-	backlinksUpdater        backlinks.UpdateWatcher
-	formatFetcher           relationutils.RelationFormatFetcher
+	bookmarkService          bookmark.BookmarkService
+	layoutConverter          converter.LayoutConverter
+	objectStore              objectstore.ObjectStore
+	sourceService            source.Service
+	tempDirProvider          core.TempDirProvider
+	fileService              files.Service
+	config                   *config.Config
+	picker                   cache.ObjectGetter
+	eventSender              event.Sender
+	indexer                  smartblock.Indexer
+	spaceService             spaceService
+	accountService           accountService
+	fileObjectService        fileobject.Service
+	fileUploaderService      fileuploader.Service
+	fileReconciler           reconciler.Reconciler
+	objectDeleter            ObjectDeleter
+	deviceService            deviceService
+	spaceIdResolver          idresolver.Resolver
+	commonFile               fileservice.FileService
+	dbProvider               anystoreprovider.Provider
+	chatRepositoryService    chatrepository.Service
+	chatSubscriptionService  chatsubscription.Service
+	statService              debugstat.StatService
+	backlinksUpdater         backlinks.UpdateWatcher
+	formatFetcher            relationutils.RelationFormatFetcher
+	personalFavoritesService personalfavorites.Service
 	objectGC                objectgc.ObjectGC
 }
 
@@ -140,6 +143,7 @@ func (f *ObjectFactory) Init(a *app.App) (err error) {
 		f.statService = debugstat.NewNoOp()
 	}
 	f.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
+	f.personalFavoritesService = app.MustComponent[personalfavorites.Service](a)
 	return nil
 }
 
@@ -279,6 +283,14 @@ func (f *ObjectFactory) New(space smartblock.Space, sbType coresb.SmartBlockType
 			return nil, fmt.Errorf("get crdt db: %w", err)
 		}
 		return accountobject.New(sb, f.accountService.Keys(), spaceIndex, f.layoutConverter, f.fileObjectService, db, f.config), nil
+	case coresb.SmartBlockTypeTechSpaceObject:
+		crdtDb, err := f.dbProvider.GetCrdtDb(space.Id()).Wait()
+		if err != nil {
+			return nil, fmt.Errorf("get crdt db: %w", err)
+		}
+		return pfeditor.NewStore(sb, crdtDb, f.personalFavoritesService.OnStoreUpdate), nil
+	case coresb.SmartBlockTypeTechSpaceVirtualObject:
+		return pfeditor.NewVirtualWidget(sb, spaceIndex, f.personalFavoritesService, f.layoutConverter), nil
 	default:
 		return nil, fmt.Errorf("%w: %v", ErrUnexpectedSmartblockType, sbType)
 	}

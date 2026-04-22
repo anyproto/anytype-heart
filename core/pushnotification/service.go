@@ -30,7 +30,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"sync"
 	"time"
 
@@ -89,8 +88,8 @@ type service struct {
 	crossSpaceSubscriptions crossspacesub.Service
 
 	spaceViewSubscription *objectsubscription.ObjectSubscription[spaceViewStatus]
+	chatSubscription      *objectsubscription.ObjectSubscription[chatEntry]
 	token                 string
-	chatIds               map[string][]string
 
 	platform pushapi.Platform
 
@@ -309,12 +308,20 @@ func (s *service) registerToken() (err error) {
 
 func (s *service) syncSubscriptions() (err error) {
 	s.topics.ResetLocal()
-	s.mu.Lock()
+	chatEntriesBySpace := map[string][]chatEntry{}
+	if s.chatSubscription != nil {
+		s.chatSubscription.Iterate(func(_ string, entry chatEntry) bool {
+			if entry.spaceId == "" {
+				return true
+			}
+			chatEntriesBySpace[entry.spaceId] = append(chatEntriesBySpace[entry.spaceId], entry)
+			return true
+		})
+	}
 	s.spaceViewSubscription.Iterate(func(id string, data spaceViewStatus) bool {
-		s.topics.SetSpaceViewStatus(&data, s.chatIds[data.spaceId])
+		s.topics.SetSpaceViewStatus(&data, chatEntriesBySpace[data.spaceId])
 		return true
 	})
-	s.mu.Unlock()
 
 	// create spaces
 	spacesToCreate := s.topics.SpaceKeysToCreate()
@@ -343,9 +350,15 @@ func (s *service) syncSubscriptions() (err error) {
 
 func (s *service) runChatIdsSubscription() (err error) {
 	resp, err := s.crossSpaceSubscriptions.Subscribe(subscription.SubscribeRequest{
-		SubId:             CName,
-		InternalQueue:     s.chatIdsQueue,
-		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeySpaceId.String(), bundle.RelationKeyIdentity.String()},
+		SubId:         CName,
+		InternalQueue: s.chatIdsQueue,
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeySpaceId.String(),
+			bundle.RelationKeyIdentity.String(),
+			bundle.RelationKeyResolvedLayout.String(),
+			bundle.RelationKeyNotificationSubscribers.String(),
+		},
 		NoDepSubscription: true,
 		Filters: []database.FilterRequest{
 			{
@@ -358,53 +371,13 @@ func (s *service) runChatIdsSubscription() (err error) {
 		return d.GetString(bundle.RelationKeySpaceId) != s.spaceService.TechSpaceId()
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("subscribe chats: %w", err)
 	}
-	s.chatIds = make(map[string][]string)
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for _, chatDet := range resp.Records {
-		chatId := chatDet.GetString(bundle.RelationKeyId)
-		spaceId := chatDet.GetString(bundle.RelationKeySpaceId)
-		s.chatIds[spaceId] = append(s.chatIds[spaceId], chatId)
+	s.chatSubscription = objectsubscription.NewFromQueue(s.chatIdsQueue, newChatSubscriptionParams(s.wakeUp), resp.Records)
+	if err = s.chatSubscription.Run(); err != nil {
+		return fmt.Errorf("run chat subscription: %w", err)
 	}
-	go s.monitorChatIds()
-	return
-}
-
-func (s *service) monitorChatIds() {
-	matcher := subscription.EventMatcher{
-		OnAdd: func(spaceId string, add *pb.EventObjectSubscriptionAdd) {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			chatIds := s.chatIds[spaceId]
-			if !slices.Contains(chatIds, add.Id) {
-				chatIds = append(chatIds, add.Id)
-				s.chatIds[spaceId] = chatIds
-				s.wakeUp()
-			}
-		},
-		OnRemove: func(spaceId string, remove *pb.EventObjectSubscriptionRemove) {
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			chatIds := s.chatIds[spaceId]
-			chatIds = slices.DeleteFunc(chatIds, func(id string) bool {
-				return id == remove.Id
-			})
-			s.chatIds[spaceId] = chatIds
-		},
-	}
-	for {
-		msg, err := s.chatIdsQueue.WaitOne(s.runCtx)
-		if errors.Is(err, mb.ErrClosed) {
-			return
-		}
-		if err != nil {
-			log.Error("wait message", zap.Error(err))
-			return
-		}
-		matcher.Match(msg)
-	}
+	return nil
 }
 
 func (s *service) RevokeToken(ctx context.Context) (err error) {
@@ -417,6 +390,9 @@ func (s *service) Close(ctx context.Context) (err error) {
 	}
 	if s.spaceViewSubscription != nil {
 		s.spaceViewSubscription.Close()
+	}
+	if s.chatSubscription != nil {
+		s.chatSubscription.Close()
 	}
 	return s.notifyQueue.Close()
 }

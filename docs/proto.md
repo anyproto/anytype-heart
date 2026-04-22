@@ -578,6 +578,10 @@
     - [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request)
     - [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response)
     - [Rpc.Chat.AddMessage.Response.Error](#anytype-Rpc-Chat-AddMessage-Response-Error)
+    - [Rpc.Chat.AddNotificationSubscriber](#anytype-Rpc-Chat-AddNotificationSubscriber)
+    - [Rpc.Chat.AddNotificationSubscriber.Request](#anytype-Rpc-Chat-AddNotificationSubscriber-Request)
+    - [Rpc.Chat.AddNotificationSubscriber.Response](#anytype-Rpc-Chat-AddNotificationSubscriber-Response)
+    - [Rpc.Chat.AddNotificationSubscriber.Response.Error](#anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error)
     - [Rpc.Chat.DeleteMessage](#anytype-Rpc-Chat-DeleteMessage)
     - [Rpc.Chat.DeleteMessage.Request](#anytype-Rpc-Chat-DeleteMessage-Request)
     - [Rpc.Chat.DeleteMessage.Response](#anytype-Rpc-Chat-DeleteMessage-Response)
@@ -610,6 +614,10 @@
     - [Rpc.Chat.ReadReactions.Request](#anytype-Rpc-Chat-ReadReactions-Request)
     - [Rpc.Chat.ReadReactions.Response](#anytype-Rpc-Chat-ReadReactions-Response)
     - [Rpc.Chat.ReadReactions.Response.Error](#anytype-Rpc-Chat-ReadReactions-Response-Error)
+    - [Rpc.Chat.RemoveNotificationSubscriber](#anytype-Rpc-Chat-RemoveNotificationSubscriber)
+    - [Rpc.Chat.RemoveNotificationSubscriber.Request](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Request)
+    - [Rpc.Chat.RemoveNotificationSubscriber.Response](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response)
+    - [Rpc.Chat.RemoveNotificationSubscriber.Response.Error](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error)
     - [Rpc.Chat.Search](#anytype-Rpc-Chat-Search)
     - [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request)
     - [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response)
@@ -1630,6 +1638,7 @@
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
     - [Rpc.Chat.AddMessage.Response.Error.Code](#anytype-Rpc-Chat-AddMessage-Response-Error-Code)
+    - [Rpc.Chat.AddNotificationSubscriber.Response.Error.Code](#anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error-Code)
     - [Rpc.Chat.DeleteMessage.Response.Error.Code](#anytype-Rpc-Chat-DeleteMessage-Response-Error-Code)
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
@@ -1639,6 +1648,7 @@
     - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
     - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
     - [Rpc.Chat.ReadReactions.Response.Error.Code](#anytype-Rpc-Chat-ReadReactions-Response-Error-Code)
+    - [Rpc.Chat.RemoveNotificationSubscriber.Response.Error.Code](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error-Code)
     - [Rpc.Chat.Search.Response.Error.Code](#anytype-Rpc-Chat-Search-Response-Error-Code)
     - [Rpc.Chat.SetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-SetPinnedMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
@@ -2005,6 +2015,7 @@
     - [Event.Chat.Delete](#anytype-Event-Chat-Delete)
     - [Event.Chat.Update](#anytype-Event-Chat-Update)
     - [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus)
+    - [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount)
     - [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus)
     - [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus)
     - [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus)
@@ -2655,6 +2666,8 @@
 | ChatSearch | [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request) | [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response) |  |
 | ChatSetPinnedMessages | [Rpc.Chat.SetPinnedMessages.Request](#anytype-Rpc-Chat-SetPinnedMessages-Request) | [Rpc.Chat.SetPinnedMessages.Response](#anytype-Rpc-Chat-SetPinnedMessages-Response) |  |
 | ChatGetPinnedMessages | [Rpc.Chat.GetPinnedMessages.Request](#anytype-Rpc-Chat-GetPinnedMessages-Request) | [Rpc.Chat.GetPinnedMessages.Response](#anytype-Rpc-Chat-GetPinnedMessages-Response) |  |
+| ChatAddNotificationSubscriber | [Rpc.Chat.AddNotificationSubscriber.Request](#anytype-Rpc-Chat-AddNotificationSubscriber-Request) | [Rpc.Chat.AddNotificationSubscriber.Response](#anytype-Rpc-Chat-AddNotificationSubscriber-Response) |  |
+| ChatRemoveNotificationSubscriber | [Rpc.Chat.RemoveNotificationSubscriber.Request](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Request) | [Rpc.Chat.RemoveNotificationSubscriber.Response](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response) |  |
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | mock AI RPCs for compatibility between branches. Not implemented in main |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
@@ -11055,6 +11068,63 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber"></a>
+
+### Rpc.Chat.AddNotificationSubscriber
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber-Request"></a>
+
+### Rpc.Chat.AddNotificationSubscriber.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber-Response"></a>
+
+### Rpc.Chat.AddNotificationSubscriber.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.AddNotificationSubscriber.Response.Error](#anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error"></a>
+
+### Rpc.Chat.AddNotificationSubscriber.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.AddNotificationSubscriber.Response.Error.Code](#anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Chat-DeleteMessage"></a>
 
 ### Rpc.Chat.DeleteMessage
@@ -11210,6 +11280,7 @@ Get marks list in the selected range in text block.
 | error | [Rpc.Chat.GetMessages.Response.Error](#anytype-Rpc-Chat-GetMessages-Response-Error) |  |  |
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
+| messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
 
 
 
@@ -11517,6 +11588,63 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber-Request"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber-Response"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.RemoveNotificationSubscriber.Response.Error](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.RemoveNotificationSubscriber.Response.Error.Code](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Chat-Search"></a>
 
 ### Rpc.Chat.Search
@@ -11677,6 +11805,7 @@ Get marks list in the selected range in text block.
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated | List of messages |
 | numMessagesBefore | [int32](#int32) |  | Number of messages before the returned messages |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  | Chat state |
+| messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
 
 
 
@@ -26195,6 +26324,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error-Code"></a>
+
+### Rpc.Chat.AddNotificationSubscriber.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Chat-DeleteMessage-Response-Error-Code"></a>
 
 ### Rpc.Chat.DeleteMessage.Response.Error.Code
@@ -26309,6 +26451,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error-Code"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -31751,6 +31906,22 @@ to its type.
 
 
 
+<a name="anytype-Event-Chat-UpdateMessageCount"></a>
+
+### Event.Chat.UpdateMessageCount
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messageCount | [int32](#int32) |  | total number of non-deleted messages (includes replies) |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateMessageReadStatus"></a>
 
 ### Event.Chat.UpdateMessageReadStatus
@@ -32124,6 +32295,7 @@ received to update per-message mention read status (if needed |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
 | objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
+| chatUpdateMessageCount | [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount) |  | received whenever the total number of non-deleted messages in |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
@@ -36637,6 +36809,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
 | DiscussionObject | 546 | Any-store based object for discussion |
+| TechSpaceObject | 547 | Any-store based object in tech space for cross-device sync |
+| TechSpaceVirtualObject | 548 | Per-space virtual object backed by a tech space CRDT document |
 
 
 

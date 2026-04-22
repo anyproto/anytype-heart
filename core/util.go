@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -19,6 +20,7 @@ const universalBadInputCode int32 = 2
 
 var universalBadInputErrors = []error{
 	idresolver.ErrEmptyObjectId,
+	detailservice.ErrHomepageChangeRestricted,
 }
 
 func (mw *Middleware) getResponseEvent(ctx session.Context) *pb.ResponseEvent {

@@ -49,9 +49,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/session"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -92,6 +92,10 @@ type Service interface {
 
 	PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error
 	GetPinnedMessages(ctx context.Context, chatObjectId string) ([]*chatmodel.Message, error)
+
+	AddNotificationSubscriber(ctx context.Context, chatObjectId string, identity string) error
+	RemoveNotificationSubscriber(ctx context.Context, chatObjectId string, identity string) error
+	GetNotificationSubscribers(ctx context.Context, chatObjectId string) ([]string, error)
 
 	app.ComponentRunnable
 }
@@ -724,6 +728,28 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 	return err
 }
 
+func (s *service) AddNotificationSubscriber(ctx context.Context, chatObjectId string, identity string) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.AddNotificationSubscriber(ctx, identity)
+	})
+}
+
+func (s *service) RemoveNotificationSubscriber(ctx context.Context, chatObjectId string, identity string) error {
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		return sb.RemoveNotificationSubscriber(ctx, identity)
+	})
+}
+
+func (s *service) GetNotificationSubscribers(ctx context.Context, chatObjectId string) ([]string, error) {
+	var res []string
+	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		var e error
+		res, e = sb.GetNotificationSubscribers(ctx)
+		return e
+	})
+	return res, err
+}
+
 func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chatrepository.GetMessagesRequest) (*chatobject.GetMessagesResponse, error) {
 	var resp *chatobject.GetMessagesResponse
 	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
@@ -935,16 +961,14 @@ func (s *service) ReadAll(ctx context.Context) error {
 }
 
 func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageIds []string, pinned bool) error {
-	return fmt.Errorf("not implemented")
-	// TODO: GO-6749 uncomment when old clients will be able to unmarshal messages with pinned=true
-	// return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-	// 	for _, msgId := range messageIds {
-	// 		if err := sb.SetMessagePinned(ctx, msgId, pinned); err != nil {
-	// 			return fmt.Errorf("failed to set pinned status %v to message: %w", pinned, err)
-	// 		}
-	// 	}
-	// 	return nil
-	// })
+	return s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
+		for _, msgId := range messageIds {
+			if err := sb.SetMessagePinned(ctx, msgId, pinned); err != nil {
+				return fmt.Errorf("failed to set pinned status %v to message: %w", pinned, err)
+			}
+		}
+		return nil
+	})
 }
 
 func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) (msgs []*chatmodel.Message, err error) {

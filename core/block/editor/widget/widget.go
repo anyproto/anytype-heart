@@ -20,7 +20,6 @@ const (
 	DefaultWidgetRecentlyOpened = "recentOpen"
 	widgetWrapperBlockSuffix    = "-wrapper" // in case blockId is specifically provided to avoid bad tree merges
 
-
 )
 
 var ErrWidgetAlreadyExists = fmt.Errorf("widget with specified id already exists")
@@ -67,6 +66,17 @@ func IsPredefinedWidgetTargetId(targetID string) bool {
 func NewWidget(sb smartblock.SmartBlock) Widget {
 	return &widget{
 		SmartBlock: sb,
+	}
+}
+
+// UnlinkWithWrapper unlinks the given block ids together with their parent
+// widget wrapper. Removing only the inner link leaves an empty wrapper.
+func UnlinkWithWrapper(st *state.State, ids ...string) {
+	for _, id := range ids {
+		if p := st.PickParentOf(id); p != nil && p.Model().GetWidget() != nil {
+			st.Unlink(p.Model().Id)
+		}
+		st.Unlink(id)
 	}
 }
 

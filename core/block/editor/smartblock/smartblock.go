@@ -675,8 +675,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		len(sb.ObjectTree.Heads()) == 1 &&
 		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
 		!allowApplyWithEmptyTree &&
-		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
-		sb.Type() != smartblock.SmartBlockTypeAccountObject {
+		!sb.Type().IsStoreBacked() {
 		// protection for applying migrations on empty tree
 		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
 		return ErrApplyOnEmptyTreeDisallowed
@@ -917,6 +916,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex, sb.formatFetcher).Migrate(s)
+	// Ensure bundled relation links are present for all bundled detail keys.
+	// Without this, imported states may lack relation links for details like setOf,
+	// producing a RelationRemove change that wipes the detail on replay (GO-7217).
+	var relKeys []domain.RelationKey
+	for k := range s.Details().Iterate() {
+		if bundle.HasRelation(k) {
+			relKeys = append(relKeys, k)
+		}
+	}
+	s.AddBundledRelationLinks(relKeys...)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)

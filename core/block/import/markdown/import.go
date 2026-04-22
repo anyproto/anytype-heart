@@ -574,21 +574,35 @@ func (m *Markdown) createSnapshots(
 				}
 				props = append(props, yamlRelations[prop.Name].Key)
 
-				// Collect option values for non-schema imports
-				if !hasSchemas && (prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag) {
-					if yamlRelationOptions[prop.Key] == nil {
-						yamlRelationOptions[prop.Key] = make(map[string]string)
-					}
-
-					// Collect values
-					switch prop.Format {
-					case model.RelationFormat_status:
-						if val := prop.Value.String(); val != "" {
-							yamlRelationOptions[prop.Key][val] = ""
+				// Collect option values so we can create snapshots for any
+				// options the schema did not pre-declare (examples/enum).
+				// Non-schema imports still rely on the yamlRelationOptions
+				// map which is materialised below.
+				if prop.Format == model.RelationFormat_status || prop.Format == model.RelationFormat_tag {
+					if hasSchemas {
+						switch prop.Format {
+						case model.RelationFormat_status:
+							if val := prop.Value.String(); val != "" {
+								m.blockConverter.schemaImporter.RegisterOptionValue(prop.Key, val)
+							}
+						case model.RelationFormat_tag:
+							for _, val := range prop.Value.StringList() {
+								m.blockConverter.schemaImporter.RegisterOptionValue(prop.Key, val)
+							}
 						}
-					case model.RelationFormat_tag:
-						for _, val := range prop.Value.StringList() {
-							yamlRelationOptions[prop.Key][val] = ""
+					} else {
+						if yamlRelationOptions[prop.Key] == nil {
+							yamlRelationOptions[prop.Key] = make(map[string]string)
+						}
+						switch prop.Format {
+						case model.RelationFormat_status:
+							if val := prop.Value.String(); val != "" {
+								yamlRelationOptions[prop.Key][val] = ""
+							}
+						case model.RelationFormat_tag:
+							for _, val := range prop.Value.StringList() {
+								yamlRelationOptions[prop.Key][val] = ""
+							}
 						}
 					}
 				}
@@ -1261,7 +1275,9 @@ func (m *Markdown) processObjectProperties(files *fileContainer, progress proces
 					targetFile := m.findFileByPath(path, files)
 					if targetFile != nil && targetFile.PageID != "" {
 						ids = append(ids, targetFile.PageID)
+						continue
 					}
+					log.Warnf("markdown import: object property %q in %q references missing file %q", prop.Name, fileName, path)
 				}
 				file.YAMLDetails.Set(domain.RelationKey(prop.Key), domain.StringList(ids))
 			}

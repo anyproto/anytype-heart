@@ -2,6 +2,7 @@ package chatobject
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/util/slice"
 	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
@@ -37,10 +40,10 @@ import (
 )
 
 const (
-	CollectionName        = "chats"
-	EditorCollectionName  = "editor"
-	diffManagerMessages   = "messages"
-	diffManagerMentions   = "mentions"
+	CollectionName       = "chats"
+	EditorCollectionName = "editor"
+	diffManagerMessages  = "messages"
+	diffManagerMentions  = "mentions"
 	diffManagerReactions = "reactions"
 )
 
@@ -65,6 +68,10 @@ type StoreObject interface {
 	MarkMessagesAsUnread(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) error
 	SetMessagePinned(ctx context.Context, messageId string, pinned bool) error
 	GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error)
+
+	AddNotificationSubscriber(ctx context.Context, identity string) error
+	RemoveNotificationSubscriber(ctx context.Context, identity string) error
+	GetNotificationSubscribers(ctx context.Context) ([]string, error)
 }
 
 type AccountService interface {
@@ -105,6 +112,13 @@ type storeObject struct {
 	arenaPool          *anyenc.ArenaPool
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
+
+	// parentUpdateTrigger coalesces requests to forward unread counters to the
+	// discussion's parent object. Buffered with capacity 1: triggers fired
+	// while a write is pending are dropped, and the worker re-reads the latest
+	// counters from the subscription before each write so the parent always
+	// converges to the most recent value.
+	parentUpdateTrigger chan struct{}
 }
 
 type UnreadStats struct {
@@ -181,6 +195,7 @@ func New(
 		reactionsCounterEpoch:   time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC).Unix(),
 		componentCtx:            ctx,
 		componentCtxCancel:      cancel,
+		parentUpdateTrigger:     make(chan struct{}, 1),
 		chatSubscriptionService: chatSubscriptionService,
 		DetailsSettable:         bs,
 		DetailsUpdatable:        bs,
@@ -297,6 +312,10 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	s.seenHeadsCollector = newTreeSeenHeadsCollector(s.Tree())
 	s.statService.AddProvider(s)
 
+	if s.typeKey == bundle.TypeKeyDiscussion {
+		go s.runParentUnreadUpdater()
+	}
+
 	s.onInit(ctx)
 
 	return nil
@@ -317,12 +336,19 @@ func (s *storeObject) onInit(ctx *smartblock.InitContext) {
 	if ok && last != nil {
 		ctx.State.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
 	}
+	s.triggerParentUnreadUpdate()
 }
 
 func (s *storeObject) onUpdate() {
 	err := s.detailsComponent.onAnystoreUpdated(s.componentCtx)
 	if err != nil {
 		log.Error("onUpdate: on anystore updated", zap.Error(err))
+	}
+
+	// Read before taking subscription mutex to avoid nesting anystore tx in it.
+	participantIds, subsErr := s.readNotificationSubscribers(s.componentCtx)
+	if subsErr != nil {
+		log.Error("onUpdate: read notification subscribers", zap.Error(subsErr))
 	}
 
 	s.subscription.Lock()
@@ -334,14 +360,93 @@ func (s *storeObject) onUpdate() {
 	if err != nil {
 		log.Error("onUpdate: get last message", zap.Error(err))
 	}
+
+	st := s.NewState()
+	st.SetDetailAndBundledRelation(bundle.RelationKeyNotificationSubscribers, domain.StringList(participantIds))
 	if ok && last != nil {
-		st := s.NewState()
 		st.SetDetailAndBundledRelation(bundle.RelationKeyLastMessageDate, domain.Int64(last.CreatedAt))
-		err = s.Apply(st, smartblock.NotPushChanges)
-		if err != nil {
-			log.Error("onUpdate: update last message date", zap.Error(err))
+	}
+	s.triggerParentUnreadUpdate()
+	if err = s.Apply(st, smartblock.NotPushChanges); err != nil {
+		log.Error("onUpdate: apply derived details", zap.Error(err))
+	}
+}
+
+// triggerParentUnreadUpdate signals the per-discussion worker to forward the
+// latest unread counters to the parent object. Non-blocking: if a write is
+// already pending, the trigger is dropped and the worker will pick up the
+// freshest counter values when it next runs. No-op for non-discussion chats
+// (the space chat and other chatDerived objects do not project counters onto
+// a parent).
+func (s *storeObject) triggerParentUnreadUpdate() {
+	if s.typeKey != bundle.TypeKeyDiscussion {
+		return
+	}
+	select {
+	case s.parentUpdateTrigger <- struct{}{}:
+	default:
+	}
+}
+
+// runParentUnreadUpdater is the single worker that serializes parent unread
+// counter writes. It guarantees ordering (only one write at a time) and that
+// the parent ends up with the latest counter values, since each iteration
+// re-reads the current chat state before writing.
+func (s *storeObject) runParentUnreadUpdater() {
+	for {
+		select {
+		case <-s.componentCtx.Done():
+			return
+		case <-s.parentUpdateTrigger:
+			s.writeUnreadCountersToParent()
 		}
 	}
+}
+
+// writeUnreadCountersToParent reads the current counters from the chat
+// subscription and writes them as local details onto the discussion's parent
+// object. Called only from the worker goroutine, so writes are serialized.
+func (s *storeObject) writeUnreadCountersToParent() {
+	parentId := s.Tree().Root().ParentId
+	if parentId == "" {
+		return
+	}
+
+	s.subscription.Lock()
+	chatState := s.subscription.GetChatState()
+	var messages, mentions int64
+	if chatState != nil {
+		if chatState.Messages != nil {
+			messages = int64(chatState.Messages.Counter)
+		}
+		if chatState.Mentions != nil {
+			mentions = int64(chatState.Mentions.Counter)
+		}
+	}
+	s.subscription.Unlock()
+
+	err := s.Space().Do(parentId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetLocalDetail(bundle.RelationKeyUnreadMessageCount, domain.Int64(messages))
+		st.SetLocalDetail(bundle.RelationKeyUnreadMentionCount, domain.Int64(mentions))
+		return b.Apply(st, smartblock.KeepInternalFlags)
+	})
+	if err != nil {
+		s.logParentUnreadError(err)
+	}
+}
+
+// logParentUnreadError swallows expected errors that occur when the parent has
+// already been deleted, and logs everything else. Mirrors the error filtering
+// in core/block/editor/archive.go:logArchiveError.
+func (s *storeObject) logParentUnreadError(err error) {
+	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+		return
+	}
+	if errors.Is(err, treestorage.ErrUnknownTreeId) {
+		return
+	}
+	log.Error("forward unread counters to parent", zap.Error(err))
 }
 
 func (s *storeObject) GetMessageById(ctx context.Context, id string) (*chatmodel.Message, error) {
@@ -360,8 +465,9 @@ func (s *storeObject) GetMessagesByIds(ctx context.Context, messageIds []string)
 }
 
 type GetMessagesResponse struct {
-	Messages  []*chatmodel.Message
-	ChatState *model.ChatState
+	Messages     []*chatmodel.Message
+	ChatState    *model.ChatState
+	MessageCount int32
 }
 
 func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMessagesRequest) (*GetMessagesResponse, error) {
@@ -371,10 +477,12 @@ func (s *storeObject) GetMessages(ctx context.Context, req chatrepository.GetMes
 	}
 	s.subscription.Lock()
 	state := s.subscription.GetChatState()
+	count := s.subscription.GetMessageCount()
 	s.subscription.Unlock()
 	return &GetMessagesResponse{
-		Messages:  msgs,
-		ChatState: state,
+		Messages:     msgs,
+		ChatState:    state,
+		MessageCount: count,
 	}, nil
 }
 

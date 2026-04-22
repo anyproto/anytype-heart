@@ -103,5 +103,8 @@
   "resolvedLayout",
   "pluralName",
   "lastMessageDate",
-  "templatePlaceholders"
+  "notificationSubscribers",
+  "templatePlaceholders",
+  "unreadMessageCount",
+  "unreadMentionCount"
 ]
