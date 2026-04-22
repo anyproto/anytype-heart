@@ -126,6 +126,14 @@ components:
           type: string
         icon:
           $ref: '#/components/schemas/Icon'
+        mini_app_embed:
+          description: |-
+            TODO: rename body to markdown?
+            MiniAppEmbed is a hack for mini apps: when true, an empty AnytypeMiniApp embed block is injected as the first block of the object.
+            The embed carries no content of its own — a mini app's source lives in sibling code blocks on the same page, and the embed renders from them.
+            Do not extend this to a more general block-authoring surface (URLs, arbitrary processors, positioning, arrays) without a new API — this shape is intentionally narrow.
+          example: false
+          type: boolean
         name:
           description: The name of the object
           example: My object
@@ -1339,6 +1347,23 @@ components:
       - IconNameWifi
       - IconNameWine
       - IconNameWoman
+    MatchedChunk:
+      description: Best-matching chunk from vector search, if available
+      nullable: true
+      properties:
+        score:
+          description: Vector similarity score (0-1)
+          example: 0.87
+          type: number
+        text:
+          description: The chunk text that matched semantically
+          example: This section covers...
+          type: string
+        title:
+          description: The header/section title of the matching chunk
+          example: Introduction
+          type: string
+      type: object
     Member:
       description: The member
       properties:
@@ -1522,6 +1547,8 @@ components:
           type: string
         layout:
           $ref: '#/components/schemas/ObjectLayout'
+        matched_chunk:
+          $ref: '#/components/schemas/MatchedChunk'
         name:
           description: The name of the object
           example: My object
@@ -1982,8 +2009,8 @@ components:
         object:
           description: The data model of the object
           enum:
-          - space
-          - chat
+          - regular
+          - onetoone
           example: space
           type: string
       type: object
@@ -2158,6 +2185,15 @@ components:
           example: This is the updated body of the object. Markdown syntax is supported
             here.
           type: string
+        mini_app_embed:
+          description: |-
+            MiniAppEmbed mirrors the create-time hack for mini apps. Pointer semantics:
+              nil   — preserve the existing embed across a markdown replacement (a markdown update would otherwise wipe it).
+              true  — ensure an empty AnytypeMiniApp embed exists at the top of the object (idempotent: no-op if already present).
+              false — ensure no such embed exists (removed if present).
+            Do not extend this to a broader block-authoring surface; that belongs in a new API.
+          example: false
+          type: boolean
         name:
           description: The name of the object
           example: My object
@@ -3377,7 +3413,7 @@ paths:
     get:
       description: |-
         Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
-        Supports dynamic filtering via query parameters (e.g., ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For type filtering use the type's API key (e.g., ?type=note, ?type=page). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.
       operationId: list_objects
       parameters:
       - description: The version of the API to use

@@ -61,6 +61,12 @@ type UpdateObjectRequest struct {
 	TypeKey    *string                  `json:"type_key" example:"page"`                                                                                                                                                                                                                                                                  // The key of the type of object to set
 	Properties *[]PropertyLinkWithValue `json:"properties" oneOf:"TextPropertyLinkValue,NumberPropertyLinkValue,SelectPropertyLinkValue,MultiSelectPropertyLinkValue,DatePropertyLinkValue,FilesPropertyLinkValue,CheckboxPropertyLinkValue,UrlPropertyLinkValue,EmailPropertyLinkValue,PhonePropertyLinkValue,ObjectsPropertyLinkValue"` // The properties to set for the object; see ListTypes or GetType endpoints for linked properties
 	Markdown   *string                  `json:"markdown" example:"This is the updated body of the object. Markdown syntax is supported here."`                                                                                                                                                                                            // The updated body of the object
+	// MiniAppEmbed mirrors the create-time hack for mini apps. Pointer semantics:
+	//   nil   — preserve the existing embed across a markdown replacement (a markdown update would otherwise wipe it).
+	//   true  — ensure an empty AnytypeMiniApp embed exists at the top of the object (idempotent: no-op if already present).
+	//   false — ensure no such embed exists (removed if present).
+	// Do not extend this to a broader block-authoring surface; that belongs in a new API.
+	MiniAppEmbed *bool `json:"mini_app_embed" example:"false"` // Preserve (nil), ensure present (true), or ensure absent (false) — see notes.
 }
 
 type ObjectResponse struct {

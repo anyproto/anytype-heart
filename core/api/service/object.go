@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 
 	"github.com/gogo/protobuf/types"
 
@@ -16,6 +17,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
+
+// emptyLatexBlockRegexp matches a latex/embed block with no content (e.g. the mini-app embed hack).
+// The shared markdown exporter renders every latex block as `\n$$\n<text>\n$$\n` — embeds with empty
+// text surface as `$$\n\n$$\n`, which is noise for API consumers. The match is anchored on the `$$`
+// fences rather than surrounding newlines so it handles the case where the embed is the first block
+// (no leading newline survives in the export). Real math content has non-whitespace between the fences
+// and is therefore preserved. See core/converter/md/md.go renderLatex.
+var emptyLatexBlockRegexp = regexp.MustCompile(`\$\$\n\s*\$\$\n?`)
 
 var (
 	ErrObjectNotFound            = errors.New("object not found")
@@ -209,8 +218,54 @@ func (s *Service) UpdateObject(ctx context.Context, spaceId string, objectId str
 		return nil, ErrFailedUpdateObject
 	}
 
+	// Resolve the mini-app embed state before any block mutation so we can bridge current→desired.
+	// The lookup is only worth doing when the request touches either the embed flag or the body.
+	var existingEmbedBlockId string
+	if request.MiniAppEmbed != nil || request.Markdown != nil {
+		id, err := s.findMiniAppEmbedBlockId(ctx, spaceId, objectId)
+		if err != nil {
+			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			return object, err
+		}
+		existingEmbedBlockId = id
+	}
+	embedExistsBefore := existingEmbedBlockId != ""
+
 	if request.Markdown != nil {
-		if err := s.replaceObjectMarkdown(ctx, spaceId, objectId, *request.Markdown); err != nil {
+		if err := s.wipeBodyBlocks(ctx, spaceId, objectId); err != nil {
+			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			return object, err
+		}
+	}
+
+	// After an optional wipe, recompute whether the embed is still present.
+	embedPresent := embedExistsBefore
+	if request.Markdown != nil {
+		embedPresent = false
+	}
+
+	// Desired state: explicit request wins; otherwise preserve prior state across the wipe.
+	desiredEmbed := embedExistsBefore
+	if request.MiniAppEmbed != nil {
+		desiredEmbed = *request.MiniAppEmbed
+	}
+
+	// Bridge current→desired. Injection happens before body paste so the embed sits at the top,
+	// matching the order used by CreateObject.
+	if desiredEmbed && !embedPresent {
+		if err := s.createMiniAppEmbedBlock(ctx, objectId); err != nil {
+			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			return object, err
+		}
+	} else if !desiredEmbed && embedPresent {
+		if err := s.removeMiniAppEmbedBlock(ctx, objectId, existingEmbedBlockId); err != nil {
+			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			return object, err
+		}
+	}
+
+	if request.Markdown != nil && *request.Markdown != "" {
+		if err := s.createAndPasteBody(ctx, spaceId, objectId, *request.Markdown); err != nil {
 			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
 			return object, err
 		}
@@ -238,8 +293,9 @@ func (s *Service) DeleteObject(ctx context.Context, spaceId string, objectId str
 	return object, nil
 }
 
-// replaceObjectMarkdown replaces all object content with the provided markdown
-func (s *Service) replaceObjectMarkdown(ctx context.Context, spaceId, objectId, markdown string) error {
+// wipeBodyBlocks removes every root-level child of the object except the header,
+// clearing the way for a fresh markdown paste or a reshaped set of blocks.
+func (s *Service) wipeBodyBlocks(ctx context.Context, spaceId, objectId string) error {
 	showResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
@@ -267,12 +323,46 @@ func (s *Service) replaceObjectMarkdown(ctx context.Context, spaceId, objectId, 
 		}
 	}
 
-	if markdown != "" {
-		if err := s.createAndPasteBody(ctx, spaceId, objectId, markdown); err != nil {
-			return err
-		}
+	return nil
+}
+
+// findMiniAppEmbedBlockId scans the root blocks for an AnytypeMiniApp latex embed
+// and returns its block id (or empty string if none exists). See createMiniAppEmbedBlock
+// for the matching write path.
+func (s *Service) findMiniAppEmbedBlockId(ctx context.Context, spaceId, objectId string) (string, error) {
+	showResp := s.mw.ObjectShow(ctx, &pb.RpcObjectShowRequest{
+		SpaceId:  spaceId,
+		ObjectId: objectId,
+	})
+
+	if showResp.Error != nil && showResp.Error.Code != pb.RpcObjectShowResponseError_NULL {
+		return "", ErrFailedRetrieveObject
 	}
 
+	for _, block := range showResp.ObjectView.Blocks {
+		latex, ok := block.Content.(*model.BlockContentOfLatex)
+		if !ok || latex.Latex == nil {
+			continue
+		}
+		if latex.Latex.Processor == model.BlockContentLatexProcessor(27) {
+			return block.Id, nil
+		}
+	}
+	return "", nil
+}
+
+// removeMiniAppEmbedBlock deletes a previously injected AnytypeMiniApp embed block.
+// Counterpart to createMiniAppEmbedBlock; used by UpdateObject when the caller asks
+// to drop the embed.
+func (s *Service) removeMiniAppEmbedBlock(ctx context.Context, objectId, blockId string) error {
+	resp := s.mw.BlockListDelete(ctx, &pb.RpcBlockListDeleteRequest{
+		ContextId: objectId,
+		BlockIds:  []string{blockId},
+	})
+
+	if resp.Error != nil && resp.Error.Code != pb.RpcBlockListDeleteResponseError_NULL {
+		return ErrFailedReplaceBlocks
+	}
 	return nil
 }
 
@@ -482,6 +572,8 @@ func (s *Service) getMarkdownExport(ctx context.Context, spaceId string, objectI
 				}
 			}
 		}
+
+		markdown = emptyLatexBlockRegexp.ReplaceAllString(markdown, "")
 
 		return markdown, nil
 	}
