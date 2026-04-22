@@ -27,6 +27,7 @@ var (
 	ErrFailedSetPropertyFeatured = errors.New("failed to set property featured")
 	ErrFailedCreateBookmark      = errors.New("failed to fetch bookmark")
 	ErrFailedCreateBlock         = errors.New("failed to create block")
+	ErrFailedCreateEmbed         = errors.New("failed to create embed block")
 	ErrFailedPasteBody           = errors.New("failed to paste body")
 	ErrFailedUpdateObject        = errors.New("failed to update object")
 	ErrFailedReplaceBlocks       = errors.New("failed to replace blocks")
@@ -152,6 +153,16 @@ func (s *Service) CreateObject(ctx context.Context, spaceId string, request apim
 		if relAddFeatResp.Error.Code != pb.RpcObjectRelationAddFeaturedResponseError_NULL {
 			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
 			return object, ErrFailedSetPropertyFeatured
+		}
+	}
+
+	// Mini-apps hack: inject an empty AnytypeMiniApp embed block before the body so it sits at the top of the object.
+	// The mini app's source lives in sibling code blocks on the same page; the embed itself carries no content.
+	// Keep this narrow — any broader block-authoring surface belongs in a new API, not here.
+	if request.MiniAppEmbed {
+		if err := s.createMiniAppEmbedBlock(ctx, objectId); err != nil {
+			object, _ := s.GetObject(ctx, spaceId, objectId) // nolint:errcheck
+			return object, err
 		}
 	}
 
@@ -487,6 +498,30 @@ func structToDetails(details *types.Struct) []*model.Detail {
 		})
 	}
 	return detailList
+}
+
+// createMiniAppEmbedBlock appends an empty Latex block configured as an AnytypeMiniApp embed at the root of the object.
+// Processor value 27 corresponds to the AnytypeMiniApp processor declared on the client; no Go enum constant exists yet,
+// so we cast the raw int. The block carries no text — the mini app's source lives in sibling code blocks on the same page.
+// Do not generalise this helper — it exists to support the mini-apps hack in CreateObject.
+func (s *Service) createMiniAppEmbedBlock(ctx context.Context, objectId string) error {
+	resp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
+		ContextId: objectId,
+		TargetId:  "",
+		Block: &model.Block{
+			Content: &model.BlockContentOfLatex{
+				Latex: &model.BlockContentLatex{
+					Processor: model.BlockContentLatexProcessor(27),
+				},
+			},
+		},
+		Position: model.Block_Bottom,
+	})
+
+	if resp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
+		return ErrFailedCreateEmbed
+	}
+	return nil
 }
 
 // createAndPasteBody creates a text block and pastes the body content into it.

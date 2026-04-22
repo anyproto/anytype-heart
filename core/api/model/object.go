@@ -49,6 +49,10 @@ type CreateObjectRequest struct {
 	Properties []PropertyLinkWithValue `json:"properties" oneOf:"TextPropertyLinkValue,NumberPropertyLinkValue,SelectPropertyLinkValue,MultiSelectPropertyLinkValue,DatePropertyLinkValue,FilesPropertyLinkValue,CheckboxPropertyLinkValue,UrlPropertyLinkValue,EmailPropertyLinkValue,PhonePropertyLinkValue,ObjectsPropertyLinkValue"` // The properties to set on the object; see ListTypes or GetType endpoints for linked properties
 	Body       string                  `json:"body" example:"This is the body of the object. Markdown syntax is supported here."`                                                                                                                                                                                                        // The body of the object
 	// TODO: rename body to markdown?
+	// MiniAppEmbed is a hack for mini apps: when true, an empty AnytypeMiniApp embed block is injected as the first block of the object.
+	// The embed carries no content of its own — a mini app's source lives in sibling code blocks on the same page, and the embed renders from them.
+	// Do not extend this to a more general block-authoring surface (URLs, arbitrary processors, positioning, arrays) without a new API — this shape is intentionally narrow.
+	MiniAppEmbed bool `json:"mini_app_embed" example:"false"` // If true, inject an empty AnytypeMiniApp embed as the first block (mini-apps hack, see notes)
 }
 
 type UpdateObjectRequest struct {

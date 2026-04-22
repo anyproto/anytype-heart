@@ -133,6 +133,7 @@ func CreateObjectHandler(s *service.Service) gin.HandlerFunc {
 			util.ErrToCode(service.ErrFailedCreateObject, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedSetPropertyFeatured, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedCreateBlock, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedCreateEmbed, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedPasteBody, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrObjectNotFound, http.StatusInternalServerError),
 			util.ErrToCode(service.ErrFailedRetrieveObject, http.StatusInternalServerError),
