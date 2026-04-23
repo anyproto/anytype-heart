@@ -57,7 +57,8 @@ func deriveEqualMembershipV2Product(this, that *MembershipV2Product) bool {
 			deriveEqual_(this.PricesMonthly, that.PricesMonthly) &&
 			this.ColorStr == that.ColorStr &&
 			this.Offer == that.Offer &&
-			deriveEqual_1(this.Features, that.Features)
+			deriveEqual_1(this.Features, that.Features) &&
+			deriveEqual_(this.PricesLifetime, that.PricesLifetime)
 }
 
 // deriveEqualMembershipV2 returns whether this and that are equal.
@@ -67,7 +68,8 @@ func deriveEqualMembershipV2(this, that *MembershipV2Data) bool {
 			deriveEqual_2(this.Products, that.Products) &&
 			deriveEqual_3(this.NextInvoice, that.NextInvoice) &&
 			this.TeamOwnerID == that.TeamOwnerID &&
-			this.PaymentProvider == that.PaymentProvider
+			this.PaymentProvider == that.PaymentProvider &&
+			deriveEqual(this.AppliedPromocodes, that.AppliedPromocodes)
 }
 
 // deriveEqualPurchasedProduct returns whether this and that are equal.

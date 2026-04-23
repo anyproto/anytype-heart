@@ -2194,6 +2194,7 @@
     - [MembershipV2.Amount](#anytype-model-MembershipV2-Amount)
     - [MembershipV2.Cart](#anytype-model-MembershipV2-Cart)
     - [MembershipV2.CartProduct](#anytype-model-MembershipV2-CartProduct)
+    - [MembershipV2.CryptoCheckout](#anytype-model-MembershipV2-CryptoCheckout)
     - [MembershipV2.Data](#anytype-model-MembershipV2-Data)
     - [MembershipV2.Features](#anytype-model-MembershipV2-Features)
     - [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice)
@@ -34811,6 +34812,7 @@ Used to decode block meta only, without the content itself
 | total | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | total amount of the cart (including discounts, etc) |
 | totalNextInvoice | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | in case you are paying in the middle of the period (for existing customers) the next invoice amount will also be generated |
 | nextInvoiceDate | [uint64](#uint64) |  |  |
+| appliedPromocodes | [string](#string) | repeated |  |
 
 
 
@@ -34826,8 +34828,26 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | product | [MembershipV2.Product](#anytype-model-MembershipV2-Product) |  |  |
-| isYearly | [bool](#bool) |  | otherwise - monthly |
+| isYearly | [bool](#bool) |  | otherwise - monthly or isLifetime |
 | remove | [bool](#bool) |  | set to true if you want to remove this item from the customer it&#39;s like setting -1 to some product |
+| isLifetime | [bool](#bool) |  | if true - then this is lifetime product (no matter what isYearly above is) unfortunately we do not use Period here to keep compatibility with old versions that still use isYearly! |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-CryptoCheckout"></a>
+
+### MembershipV2.CryptoCheckout
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| invoiceURL | [string](#string) |  |  |
+| total | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  |  |
+| isCanCancel | [bool](#bool) |  |  |
 
 
 
@@ -34846,6 +34866,7 @@ Used to decode block meta only, without the content itself
 | nextInvoice | [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice) |  |  |
 | teamOwnerID | [string](#string) |  |  |
 | paymentProvider | [MembershipV2.PaymentProvider](#anytype-model-MembershipV2-PaymentProvider) |  |  |
+| appliedPromocodes | [string](#string) | repeated |  |
 
 
 
@@ -34914,6 +34935,7 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | colorStr | [string](#string) |  | green, blue, red, purple, custom, etc |
 | offer | [string](#string) |  |  |
 | features | [MembershipV2.Features](#anytype-model-MembershipV2-Features) |  |  |
+| pricesLifetime | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) | repeated |  |
 
 
 
@@ -36453,6 +36475,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Monthly | 1 |  |
 | Yearly | 2 |  |
 | ThreeYears | 3 |  |
+| Lifetime | 4 |  |
 
 
 
