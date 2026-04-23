@@ -18,13 +18,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/klauspost/compress/flate"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/disk"
 	"github.com/shirou/gopsutil/v4/mem"
 	"github.com/shirou/gopsutil/v4/process"
-	"github.com/anyproto/any-sync/app"
-	"github.com/anyproto/any-sync/app/debugstat"
 	exptrace "golang.org/x/exp/trace"
 
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
@@ -217,7 +217,7 @@ func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
 	}
 
 	ts := time.Now().Format("20060102_150405")
-	zipPath := filepath.Join(profilesDir, fmt.Sprintf("snapshot_%s_%s.zip", info.Version, ts))
+	zipPath := filepath.Join(profilesDir, fmt.Sprintf("snapshot_%s.zip", ts))
 
 	zipF, err := os.Create(zipPath)
 	if err != nil {
@@ -525,25 +525,6 @@ func (s *Service) SaveLoginTrace(dir string) (string, error) {
 // recent rotated/compressed one.
 const maxLogFilesInPartialReport = 2
 
-// sanitizeForFilename replaces characters that could cause trouble in a path
-// (slashes, whitespace, control characters) with a single dash. Used to make
-// version strings safe to embed in archive filenames.
-func sanitizeForFilename(s string) string {
-	if s == "" {
-		return "unknown"
-	}
-	return strings.Map(func(r rune) rune {
-		switch {
-		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
-			return r
-		case r == '.', r == '_', r == '-':
-			return r
-		default:
-			return '-'
-		}
-	}, s)
-}
-
 // SaveReport creates a zip of logs and profiles. Returns (path, summary JSON, lastModifiedTs, error).
 // lastModifiedTs is the Unix timestamp (seconds) of the most recently modified source file included in the report.
 // When full is false the report keeps only the 2 newest log files (by mtime);
@@ -554,10 +535,7 @@ func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, 
 	if logsDir == "" {
 		return "", "", 0, ErrNoFolder
 	}
-	namePattern := fmt.Sprintf("anytype-report-%s-%s-*.zip",
-		sanitizeForFilename(vcs.GetVCSInfo().Version()),
-		time.Now().Format("20060102-150405"),
-	)
+	namePattern := fmt.Sprintf("anytype-report-%s-*.zip", time.Now().Format("20060102-150405"))
 	targetFile, err := os.CreateTemp(destDir, namePattern)
 	if err != nil {
 		return "", "", 0, fmt.Errorf("create temp file: %w", err)
