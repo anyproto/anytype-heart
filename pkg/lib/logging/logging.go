@@ -17,7 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 )
 
-const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;*=WARN"
+const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;anytype-app=INFO;anytype-core-account=INFO;*=WARN"
 const lumberjackScheme = "lumberjack"
 
 var DefaultCfg = logger.Config{
@@ -102,10 +102,10 @@ func (s *bufferedLumberjackSink) Close() error {
 
 func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 	var lj *lumberjack.Logger
-	bufSize := 256 * 1024
-	flushInterval := 30 * time.Second
-	// On mobile the process can be suspended or killed at any moment, so keep
-	// less in-memory to reduce the window of logs lost on abrupt termination.
+	const bufSize = 256 * 1024
+	const flushInterval = 30 * time.Second
+	// Mobile keeps smaller rotated files to save disk; buffering behaviour
+	// matches desktop.
 	if runtime.GOOS == "android" || runtime.GOARCH == "ios" {
 		lj = &lumberjack.Logger{
 			Filename:   u.Path,
@@ -113,8 +113,6 @@ func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 			MaxBackups: 2,
 			Compress:   false,
 		}
-		bufSize = 32 * 1024
-		flushInterval = 5 * time.Second
 	} else {
 		lj = &lumberjack.Logger{
 			Filename:   u.Path,

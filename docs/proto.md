@@ -12421,6 +12421,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | dir | [string](#string) |  | empty means using OS-provided temp dir |
+| full | [bool](#bool) |  | When false (default) the report includes only the 2 newest log files (active &#43; most recent rotated). When true, all logs are included. |
 
 
 

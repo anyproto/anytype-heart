@@ -244,7 +244,7 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 }
 
 func (mw *Middleware) DebugExportReport(cctx context.Context, req *pb.RpcDebugExportReportRequest) *pb.RpcDebugExportReportResponse {
-	path, summary, lastModifiedTs, err := mw.applicationService.SaveReport(req.Dir)
+	path, summary, lastModifiedTs, err := mw.applicationService.SaveReport(req.Dir, req.Full)
 
 	code := mapErrorCode(err,
 		errToCode(application.ErrNoFolder, pb.RpcDebugExportReportResponseError_NO_FOLDER),

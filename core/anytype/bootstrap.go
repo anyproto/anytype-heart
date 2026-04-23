@@ -165,6 +165,7 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	Bootstrap(a, components...)
 	metrics.Service.SetAppVersion(a.VersionName())
 	metrics.Service.Run()
+	log.Info("starting app", zap.String("mwVersion", MiddlewareVersion()), zap.String("appVersion", complexAppVersion))
 	startTime := time.Now()
 	if err = a.Start(ctx); err != nil {
 		metrics.Service.Close()

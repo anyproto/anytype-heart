@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -454,8 +455,9 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 }
 
 type zipFile struct {
-	name string
-	data io.Reader
+	name    string
+	data    io.Reader
+	modTime time.Time // zero value means "use archive creation time"
 }
 
 func createZipArchive(w io.Writer, files []zipFile) error {
@@ -465,7 +467,14 @@ func createZipArchive(w io.Writer, files []zipFile) error {
 	})
 	err := func() error {
 		for _, file := range files {
-			f, err := zipw.Create(file.name)
+			header := &zip.FileHeader{
+				Name:   file.name,
+				Method: zip.Deflate,
+			}
+			if !file.modTime.IsZero() {
+				header.Modified = file.modTime
+			}
+			f, err := zipw.CreateHeader(header)
 			if err != nil {
 				return fmt.Errorf("create file in zip archive: %w", err)
 			}
@@ -483,15 +492,45 @@ func (s *Service) SaveLoginTrace(dir string) (string, error) {
 	return s.traceRecorder.save(dir)
 }
 
+// maxLogFilesInPartialReport is the number of newest log files included when
+// SaveReport is called with full=false. Includes the active log plus the most
+// recent rotated/compressed one.
+const maxLogFilesInPartialReport = 2
+
+// sanitizeForFilename replaces characters that could cause trouble in a path
+// (slashes, whitespace, control characters) with a single dash. Used to make
+// version strings safe to embed in archive filenames.
+func sanitizeForFilename(s string) string {
+	if s == "" {
+		return "unknown"
+	}
+	return strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			return r
+		case r == '.', r == '_', r == '-':
+			return r
+		default:
+			return '-'
+		}
+	}, s)
+}
+
 // SaveReport creates a zip of logs and profiles. Returns (path, summary JSON, lastModifiedTs, error).
 // lastModifiedTs is the Unix timestamp (seconds) of the most recently modified source file included in the report.
-func (s *Service) SaveReport(destDir string) (string, string, int64, error) {
+// When full is false the report keeps only the 2 newest log files (by mtime);
+// profiles are always included in full.
+func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, error) {
 	paths := initialparams.Get().Paths
 	logsDir := paths.LogsDir
 	if logsDir == "" {
 		return "", "", 0, ErrNoFolder
 	}
-	targetFile, err := os.CreateTemp(destDir, "anytype-log-*.zip")
+	namePattern := fmt.Sprintf("anytype-report-%s-%s-*.zip",
+		sanitizeForFilename(vcs.GetVCSInfo().Version()),
+		time.Now().Format("20060102-150405"),
+	)
+	targetFile, err := os.CreateTemp(destDir, namePattern)
 	if err != nil {
 		return "", "", 0, fmt.Errorf("create temp file: %w", err)
 	}
@@ -509,8 +548,9 @@ func (s *Service) SaveReport(destDir string) (string, string, int64, error) {
 	// archive preserves the logs/ and profiles/ subdirectory structure.
 	parentDir := filepath.Dir(logsDir)
 
-	collectDir := func(dir string, filter func(string) bool) error {
-		return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+	collectDir := func(dir string, filter func(string) bool) ([]zipFile, error) {
+		var collected []zipFile
+		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return fmt.Errorf("error accessing file %s: %w", path, err)
 			}
@@ -531,26 +571,37 @@ func (s *Service) SaveReport(destDir string) (string, string, int64, error) {
 			if err != nil {
 				return fmt.Errorf("failed to open file %s: %w", path, err)
 			}
-			files = append(files, zipFile{name: relPath, data: file})
+			collected = append(collected, zipFile{name: relPath, data: file, modTime: info.ModTime()})
 			toClose = append(toClose, file)
 			return nil
 		})
+		return collected, err
 	}
 
 	// Collect log files (only anytype-prefixed)
-	err = collectDir(logsDir, func(name string) bool {
+	logFiles, err := collectDir(logsDir, func(name string) bool {
 		return strings.HasPrefix(name, "anytype")
 	})
 	if err != nil {
 		return "", "", 0, fmt.Errorf("error while walking logs directory: %w", err)
 	}
+	if !full && len(logFiles) > maxLogFilesInPartialReport {
+		sort.Slice(logFiles, func(i, j int) bool {
+			return logFiles[i].modTime.After(logFiles[j].modTime)
+		})
+		logFiles = logFiles[:maxLogFilesInPartialReport]
+	}
+	files = append(files, logFiles...)
+
 	// Collect profile files
 	profilesDir := paths.ProfilesDir
 	if profilesDir != "" {
 		if info, statErr := os.Stat(profilesDir); statErr == nil && info.IsDir() {
-			if walkErr := collectDir(profilesDir, nil); walkErr != nil {
+			profileFiles, walkErr := collectDir(profilesDir, nil)
+			if walkErr != nil {
 				return "", "", 0, fmt.Errorf("error while walking profiles directory: %w", walkErr)
 			}
+			files = append(files, profileFiles...)
 		}
 	}
 	defer func() {
@@ -568,7 +619,7 @@ func (s *Service) SaveReport(destDir string) (string, string, int64, error) {
 	if profilesDir != "" {
 		if summary := generateProfilesSummary(profilesDir, logsDir); len(summary) > 0 {
 			summaryStr = string(summary)
-			files = append(files, zipFile{name: "profiles_summary.json", data: bytes.NewReader(summary)})
+			files = append(files, zipFile{name: "profiles_summary.json", data: bytes.NewReader(summary), modTime: time.Now()})
 		}
 	}
 

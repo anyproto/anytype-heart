@@ -7610,6 +7610,9 @@ message Rpc {
         message ExportReport {
             message Request {
                 string dir = 1; // empty means using OS-provided temp dir
+                // When false (default) the report includes only the 2 newest log files
+                // (active + most recent rotated). When true, all logs are included.
+                bool full = 2;
             }
 
             message Response {
