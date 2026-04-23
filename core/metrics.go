@@ -27,7 +27,7 @@ func (mw *Middleware) InitialSetParameters(cctx context.Context, req *pb.RpcInit
 	metrics.Service.SetPlatform(req.Platform)
 	metrics.Service.SetStartVersion(req.Version)
 	metrics.Service.SetEnabled(!req.DoNotSendTelemetry)
-	logging.Init(req.Workdir, req.LogLevel, !req.DoNotSendLogs, !req.DoNotSaveLogs)
+	logging.Init(req.Workdir, req.LogLevel, !req.DoNotSaveLogs)
 
 	return response(pb.RpcInitialSetParametersResponseError_NULL, nil)
 }

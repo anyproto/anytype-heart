@@ -100,9 +100,7 @@ func (r *wallet) Init(a *app.App) (err error) {
 
 	peerId := r.deviceKey.GetPublic().PeerId()
 	accountId := r.accountKey.GetPublic().Account()
-	logging.SetHost(peerId)
 	metrics.Service.SetDeviceId(peerId)
-	logging.SetAccount(accountId)
 	metrics.Service.SetUserId(accountId)
 
 	r.accountData = accountdata.New(r.deviceKey, r.accountKey)

@@ -161,7 +161,6 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	a = new(app.App)
 	complexAppVersion := appVersion(a, clientWithVersion)
 	a.SetVersionName(complexAppVersion)
-	logging.SetVersion(complexAppVersion)
 	Bootstrap(a, components...)
 	metrics.Service.SetAppVersion(a.VersionName())
 	metrics.Service.Run()

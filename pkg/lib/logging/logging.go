@@ -1,19 +1,21 @@
 package logging
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/environment"
-	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;*=WARN"
@@ -79,33 +81,60 @@ type lumberjackSink struct {
 	*lumberjack.Logger
 }
 
+// Sync is a no-op: we rely on the OS page cache to flush eventually and
+// avoid the fsync cost on every log write.
 func (s *lumberjackSink) Sync() error {
 	return nil
 }
 
+// bufferedLumberjackSink wraps a lumberjack rotator with an in-memory buffer so
+// many small log writes coalesce into a single syscall per flush.
+type bufferedLumberjackSink struct {
+	*zapcore.BufferedWriteSyncer
+	lj *lumberjack.Logger
+}
+
+func (s *bufferedLumberjackSink) Close() error {
+	// Stop flushes pending buffered bytes to the underlying writer.
+	stopErr := s.BufferedWriteSyncer.Stop()
+	closeErr := s.lj.Close()
+	return errors.Join(stopErr, closeErr)
+}
+
 func newLumberjackSink(u *url.URL) (zap.Sink, error) {
-	// if android, limit the log file size to 10MB
+	var lj *lumberjack.Logger
+	bufSize := 256 * 1024
+	flushInterval := 30 * time.Second
+	// On mobile the process can be suspended or killed at any moment, so keep
+	// less in-memory to reduce the window of logs lost on abrupt termination.
 	if runtime.GOOS == "android" || runtime.GOARCH == "ios" {
-		return &lumberjackSink{
-			Logger: &lumberjack.Logger{
-				Filename:   u.Path,
-				MaxSize:    10,
-				MaxBackups: 2,
-				Compress:   false,
-			},
-		}, nil
-	}
-	return &lumberjackSink{
-		Logger: &lumberjack.Logger{
+		lj = &lumberjack.Logger{
+			Filename:   u.Path,
+			MaxSize:    10,
+			MaxBackups: 2,
+			Compress:   false,
+		}
+		bufSize = 32 * 1024
+		flushInterval = 5 * time.Second
+	} else {
+		lj = &lumberjack.Logger{
 			Filename:   u.Path,
 			MaxSize:    100,
 			MaxBackups: 10,
 			Compress:   true,
+		}
+	}
+	return &bufferedLumberjackSink{
+		BufferedWriteSyncer: &zapcore.BufferedWriteSyncer{
+			WS:            &lumberjackSink{Logger: lj},
+			Size:          bufSize,
+			FlushInterval: flushInterval,
 		},
+		lj: lj,
 	}, nil
 }
 
-func Init(root string, logLevels string, sendLogs bool, saveLogs bool) {
+func Init(root string, logLevels string, saveLogs bool) {
 	if root != "" {
 		environment.ROOT_PATH = filepath.Join(root, "common")
 		err := os.MkdirAll(environment.ROOT_PATH, 0755)
@@ -116,16 +145,9 @@ func Init(root string, logLevels string, sendLogs bool, saveLogs bool) {
 		}
 	}
 
-	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" || !sendLogs {
-		if !saveLogs {
-			DefaultCfg.Format = logger.ColorizedOutput
-		}
+	if !saveLogs {
+		DefaultCfg.Format = logger.ColorizedOutput
 	} else {
-		registerGelfSink(&DefaultCfg)
-		info := vcs.GetVCSInfo()
-		SetVersion(info.Version())
-	}
-	if saveLogs {
 		registerLumberjackSink(environment.ROOT_PATH, &DefaultCfg)
 	}
 	envLogLevels := os.Getenv("ANYTYPE_LOG_LEVEL")
