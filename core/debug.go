@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/environment"
 )
 
 func (mw *Middleware) DebugTree(cctx context.Context, req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
@@ -245,7 +244,7 @@ func (mw *Middleware) DebugAccountSelectTrace(cctx context.Context, req *pb.RpcD
 }
 
 func (mw *Middleware) DebugExportReport(cctx context.Context, req *pb.RpcDebugExportReportRequest) *pb.RpcDebugExportReportResponse {
-	path, summary, lastModifiedTs, err := mw.applicationService.SaveReport(environment.LOG_PATH, req.Dir)
+	path, summary, lastModifiedTs, err := mw.applicationService.SaveReport(req.Dir)
 
 	code := mapErrorCode(err,
 		errToCode(application.ErrNoFolder, pb.RpcDebugExportReportResponseError_NO_FOLDER),
@@ -262,7 +261,7 @@ func (mw *Middleware) DebugExportReport(cctx context.Context, req *pb.RpcDebugEx
 }
 
 func (mw *Middleware) DebugCleanupReport(cctx context.Context, req *pb.RpcDebugCleanupReportRequest) *pb.RpcDebugCleanupReportResponse {
-	err := mw.applicationService.CleanupReport(environment.LOG_PATH, req.Ts)
+	err := mw.applicationService.CleanupReport(req.Ts)
 	if err != nil {
 		return &pb.RpcDebugCleanupReportResponse{
 			Error: &pb.RpcDebugCleanupReportResponseError{

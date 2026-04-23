@@ -26,7 +26,7 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	exptrace "golang.org/x/exp/trace"
 
-	"github.com/anyproto/anytype-heart/metrics"
+	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
@@ -77,12 +77,7 @@ func getDiskFreeMB(path string) uint64 {
 }
 
 func (s *Service) profilesDir() string {
-	if s.rootPath == "" {
-		return ""
-	}
-	dir := filepath.Join(s.rootPath, "common", "profiles")
-	metrics.SetProfilesDir(dir)
-	return dir
+	return initialparams.Get().Paths.ProfilesDir
 }
 
 func (s *Service) getStatJSON() string {
@@ -490,8 +485,10 @@ func (s *Service) SaveLoginTrace(dir string) (string, error) {
 
 // SaveReport creates a zip of logs and profiles. Returns (path, summary JSON, lastModifiedTs, error).
 // lastModifiedTs is the Unix timestamp (seconds) of the most recently modified source file included in the report.
-func (s *Service) SaveReport(logFile, destDir string) (string, string, int64, error) {
-	if logFile == "" {
+func (s *Service) SaveReport(destDir string) (string, string, int64, error) {
+	paths := initialparams.Get().Paths
+	logsDir := paths.LogsDir
+	if logsDir == "" {
 		return "", "", 0, ErrNoFolder
 	}
 	targetFile, err := os.CreateTemp(destDir, "anytype-log-*.zip")
@@ -508,8 +505,9 @@ func (s *Service) SaveReport(logFile, destDir string) (string, string, int64, er
 	var toClose []io.Closer
 	var lastModifiedTs int64
 
-	srcDir := filepath.Dir(logFile)
-	parentDir := filepath.Dir(srcDir)
+	// parentDir is the "common" dir; zip entries are relative to it so the
+	// archive preserves the logs/ and profiles/ subdirectory structure.
+	parentDir := filepath.Dir(logsDir)
 
 	collectDir := func(dir string, filter func(string) bool) error {
 		return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -540,14 +538,14 @@ func (s *Service) SaveReport(logFile, destDir string) (string, string, int64, er
 	}
 
 	// Collect log files (only anytype-prefixed)
-	err = collectDir(srcDir, func(name string) bool {
+	err = collectDir(logsDir, func(name string) bool {
 		return strings.HasPrefix(name, "anytype")
 	})
 	if err != nil {
 		return "", "", 0, fmt.Errorf("error while walking logs directory: %w", err)
 	}
 	// Collect profile files
-	profilesDir := s.profilesDir()
+	profilesDir := paths.ProfilesDir
 	if profilesDir != "" {
 		if info, statErr := os.Stat(profilesDir); statErr == nil && info.IsDir() {
 			if walkErr := collectDir(profilesDir, nil); walkErr != nil {
@@ -568,7 +566,7 @@ func (s *Service) SaveReport(logFile, destDir string) (string, string, int64, er
 	// Generate profiles summary
 	var summaryStr string
 	if profilesDir != "" {
-		if summary := generateProfilesSummary(profilesDir, srcDir); len(summary) > 0 {
+		if summary := generateProfilesSummary(profilesDir, logsDir); len(summary) > 0 {
 			summaryStr = string(summary)
 			files = append(files, zipFile{name: "profiles_summary.json", data: bytes.NewReader(summary)})
 		}
@@ -583,12 +581,12 @@ func (s *Service) SaveReport(logFile, destDir string) (string, string, int64, er
 }
 
 // CleanupReport removes log and profile source files with a modification time strictly before ts (Unix seconds).
-func (s *Service) CleanupReport(logFile string, ts int64) error {
-	if logFile == "" {
+func (s *Service) CleanupReport(ts int64) error {
+	paths := initialparams.Get().Paths
+	if paths.LogsDir == "" {
 		return ErrNoFolder
 	}
 	cutoff := time.Unix(ts, 0)
-	srcDir := filepath.Dir(logFile)
 
 	removeOld := func(dir string, filter func(string) bool) error {
 		entries, err := os.ReadDir(dir)
@@ -616,15 +614,14 @@ func (s *Service) CleanupReport(logFile string, ts int64) error {
 		return nil
 	}
 
-	if err := removeOld(srcDir, func(name string) bool {
+	if err := removeOld(paths.LogsDir, func(name string) bool {
 		return strings.HasPrefix(name, "anytype")
 	}); err != nil {
 		return err
 	}
 
-	profilesDir := s.profilesDir()
-	if profilesDir != "" {
-		if err := removeOld(profilesDir, nil); err != nil {
+	if paths.ProfilesDir != "" {
+		if err := removeOld(paths.ProfilesDir, nil); err != nil {
 			return err
 		}
 	}

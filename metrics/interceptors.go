@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/reflection"
 )
@@ -32,13 +33,7 @@ const (
 var (
 	maxDuration = time.Second * 10
 	cache       = new(methodsCache)
-	profilesDir atomic.String
 )
-
-// SetProfilesDir sets the directory where long method traces are saved.
-func SetProfilesDir(dir string) {
-	profilesDir.Store(dir)
-}
 
 type methodsCache struct {
 	methods map[string]struct{}
@@ -236,7 +231,7 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 }
 
 func saveLongMethodTrace(methodName string, trace []byte, start time.Time) {
-	dir := profilesDir.Load()
+	dir := initialparams.Get().Paths.ProfilesDir
 	if dir == "" {
 		return
 	}

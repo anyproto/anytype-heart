@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -15,7 +14,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/environment"
+	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 )
 
 const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;*=WARN"
@@ -134,21 +133,21 @@ func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 	}, nil
 }
 
-func Init(root string, logLevels string, saveLogs bool) {
-	if root != "" {
-		environment.ROOT_PATH = filepath.Join(root, "common")
-		err := os.MkdirAll(environment.ROOT_PATH, 0755)
-		if err != nil {
-			if !os.IsExist(err) {
-				fmt.Println("failed to create global dir", err)
-			}
+// Init configures global zap levels and, when saveLogs is true, routes logs to
+// a rotating file under initialparams.Get().Paths.LogFile. Callers must call
+// initialparams.Init first so the path layout is resolved.
+func Init(logLevels string, saveLogs bool) {
+	paths := initialparams.Get().Paths
+	if paths.Common != "" {
+		if err := os.MkdirAll(paths.Common, 0755); err != nil && !os.IsExist(err) {
+			fmt.Println("failed to create common dir", err)
 		}
 	}
 
 	if !saveLogs {
 		DefaultCfg.Format = logger.ColorizedOutput
 	} else {
-		registerLumberjackSink(environment.ROOT_PATH, &DefaultCfg)
+		registerLumberjackSink(paths.LogsDir, paths.LogFile, &DefaultCfg)
 	}
 	envLogLevels := os.Getenv("ANYTYPE_LOG_LEVEL")
 	if logLevels == "" {
@@ -161,16 +160,14 @@ func Init(root string, logLevels string, saveLogs bool) {
 	SetLogLevels(logLevels)
 }
 
-func registerLumberjackSink(globalRoot string, config *logger.Config) {
-	if globalRoot == "" {
-		fmt.Println("globalRoot dir is not set")
+func registerLumberjackSink(logsDir, logFile string, config *logger.Config) {
+	if logsDir == "" || logFile == "" {
+		fmt.Println("logs dir is not set")
 		return
 	}
-	logsDir := filepath.Join(globalRoot, "logs")
 	err := os.Mkdir(logsDir, 0755)
 	if err != nil && !os.IsExist(err) {
 		fmt.Println("failed to create logs dir", err)
-		// do not continue if logs dir can't be created
 		return
 	}
 
@@ -179,6 +176,5 @@ func registerLumberjackSink(globalRoot string, config *logger.Config) {
 		fmt.Println("failed to register lumberjack sink", err)
 	}
 
-	environment.LOG_PATH = filepath.Join(logsDir, "anytype.log")
-	config.AddOutputPaths = append(config.AddOutputPaths, lumberjackScheme+":"+environment.LOG_PATH)
+	config.AddOutputPaths = append(config.AddOutputPaths, lumberjackScheme+":"+logFile)
 }
