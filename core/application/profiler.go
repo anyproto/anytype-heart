@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/any-sync/app/debugstat"
 	exptrace "golang.org/x/exp/trace"
 
+	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/vcs"
@@ -109,6 +110,30 @@ type profileInfo struct {
 	DiskFreeMB   uint64           `json:"diskFreeMB"`
 	MemStats     runtime.MemStats `json:"memstats"`
 	SystemMemory *systemMemory    `json:"systemMemory,omitempty"`
+	// PeerId and AccountId are populated only when an account is active;
+	// a snapshot taken before AccountSelect leaves them empty.
+	PeerId    string `json:"peerId,omitempty"`
+	AccountId string `json:"accountId,omitempty"`
+}
+
+// identity returns the current device PeerId and Account Id if the app is
+// running and a wallet component is available; otherwise returns empty
+// strings. Safe to call before AccountSelect.
+func (s *Service) identity() (peerId, accountId string) {
+	if s == nil || s.app == nil {
+		return "", ""
+	}
+	w, ok := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	if !ok || w == nil {
+		return "", ""
+	}
+	if dk := w.GetDevicePrivkey(); dk != nil {
+		peerId = dk.GetPublic().PeerId()
+	}
+	if ak := w.GetAccountPrivkey(); ak != nil {
+		accountId = ak.GetPublic().Account()
+	}
+	return
 }
 
 type systemMemory struct {
@@ -147,6 +172,7 @@ func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
 	// info.json
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
+	peerId, accountId := s.identity()
 	info := profileInfo{
 		Version:      version,
 		Reason:       reason,
@@ -159,6 +185,8 @@ func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
 		DiskFreeMB:   getDiskFreeMB(s.rootPath),
 		MemStats:     ms,
 		SystemMemory: getSystemMemory(),
+		PeerId:       peerId,
+		AccountId:    accountId,
 	}
 	infoJSON, err := json.MarshalIndent(info, "", "  ")
 	if err != nil {
@@ -423,6 +451,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	// info.json
 	var ms runtime.MemStats
 	runtime.ReadMemStats(&ms)
+	peerId, accountId := s.identity()
 	info := profileInfo{
 		Version:      vcs.GetVCSInfo().Version(),
 		Reason:       reason,
@@ -435,6 +464,8 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 		DiskFreeMB:   getDiskFreeMB(s.rootPath),
 		MemStats:     ms,
 		SystemMemory: getSystemMemory(),
+		PeerId:       peerId,
+		AccountId:    accountId,
 	}
 	infoJSON, _ := json.MarshalIndent(info, "", "  ")
 	if dst, err := zipw.Create("info.json"); err == nil {
