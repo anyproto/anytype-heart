@@ -116,6 +116,67 @@ type profileInfo struct {
 	AccountId string `json:"accountId,omitempty"`
 }
 
+// newProfileZip wraps w in a zip.Writer configured with BestSpeed Deflate,
+// matching the compression settings used for every profile archive.
+func newProfileZip(w io.Writer) *zip.Writer {
+	zipw := zip.NewWriter(w)
+	zipw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
+		return flate.NewWriter(w, flate.BestSpeed)
+	})
+	return zipw
+}
+
+// buildProfileInfo collects runtime, host, and identity fields for the
+// info.json entry of a profile archive. reason and reasonDesc come from the
+// originating RPC; the rest is derived.
+func (s *Service) buildProfileInfo(reason, reasonDesc string) profileInfo {
+	var ms runtime.MemStats
+	runtime.ReadMemStats(&ms)
+	peerId, accountId := s.identity()
+	return profileInfo{
+		Version:      vcs.GetVCSInfo().Version(),
+		Reason:       reason,
+		ReasonDesc:   reasonDesc,
+		Time:         time.Now().Format(time.RFC3339),
+		Platform:     runtime.GOOS + "/" + runtime.GOARCH,
+		NumCPU:       runtime.NumCPU(),
+		CPUModel:     getCPUModel(),
+		ProcessRSSMB: getProcessRSSMB(),
+		DiskFreeMB:   getDiskFreeMB(s.rootPath),
+		MemStats:     ms,
+		SystemMemory: getSystemMemory(),
+		PeerId:       peerId,
+		AccountId:    accountId,
+	}
+}
+
+// writeProfileMetadata writes info.json and (when non-empty) stat.json into
+// the zip archive.
+func writeProfileMetadata(zipw *zip.Writer, info profileInfo, statJSON string) error {
+	data, err := json.MarshalIndent(info, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal info: %w", err)
+	}
+	w, err := zipw.Create("info.json")
+	if err != nil {
+		return fmt.Errorf("create info entry: %w", err)
+	}
+	if _, err := w.Write(data); err != nil {
+		return fmt.Errorf("write info: %w", err)
+	}
+	if statJSON == "" {
+		return nil
+	}
+	w, err = zipw.Create("stat.json")
+	if err != nil {
+		return fmt.Errorf("create stat entry: %w", err)
+	}
+	if _, err := w.Write([]byte(statJSON)); err != nil {
+		return fmt.Errorf("write stat: %w", err)
+	}
+	return nil
+}
+
 // identity returns the current device PeerId and Account Id if the app is
 // running and a wallet component is available; otherwise returns empty
 // strings. Safe to call before AccountSelect.
@@ -145,6 +206,7 @@ type systemMemory struct {
 // SaveDebugSnapshot saves heap profile, goroutine stacks, and runtime info
 // as a zip file. Called via DebugRunProfiler with DurationInSeconds=0.
 func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
+	info := s.buildProfileInfo(reason, reasonDesc)
 	statJSON := s.getStatJSON()
 	profilesDir := s.profilesDir()
 	if profilesDir == "" {
@@ -154,9 +216,8 @@ func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
 		return "", fmt.Errorf("create profiles dir: %w", err)
 	}
 
-	version := vcs.GetVCSInfo().Version()
 	ts := time.Now().Format("20060102_150405")
-	zipPath := filepath.Join(profilesDir, fmt.Sprintf("snapshot_%s_%s.zip", version, ts))
+	zipPath := filepath.Join(profilesDir, fmt.Sprintf("snapshot_%s_%s.zip", info.Version, ts))
 
 	zipF, err := os.Create(zipPath)
 	if err != nil {
@@ -164,47 +225,15 @@ func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
 	}
 	defer zipF.Close()
 
-	zipw := zip.NewWriter(zipF)
-	zipw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
-		return flate.NewWriter(w, flate.BestSpeed)
-	})
+	zipw := newProfileZip(zipF)
 
-	// info.json
-	var ms runtime.MemStats
-	runtime.ReadMemStats(&ms)
-	peerId, accountId := s.identity()
-	info := profileInfo{
-		Version:      version,
-		Reason:       reason,
-		ReasonDesc:   reasonDesc,
-		Time:         time.Now().Format(time.RFC3339),
-		Platform:     runtime.GOOS + "/" + runtime.GOARCH,
-		NumCPU:       runtime.NumCPU(),
-		CPUModel:     getCPUModel(),
-		ProcessRSSMB: getProcessRSSMB(),
-		DiskFreeMB:   getDiskFreeMB(s.rootPath),
-		MemStats:     ms,
-		SystemMemory: getSystemMemory(),
-		PeerId:       peerId,
-		AccountId:    accountId,
-	}
-	infoJSON, err := json.MarshalIndent(info, "", "  ")
-	if err != nil {
+	if err := writeProfileMetadata(zipw, info, statJSON); err != nil {
 		zipw.Close()
-		return "", fmt.Errorf("marshal info: %w", err)
-	}
-	w, err := zipw.Create("info.json")
-	if err != nil {
-		zipw.Close()
-		return "", fmt.Errorf("create info entry: %w", err)
-	}
-	if _, err := w.Write(infoJSON); err != nil {
-		zipw.Close()
-		return "", fmt.Errorf("write info: %w", err)
+		return "", err
 	}
 
 	// Heap profile
-	w, err = zipw.Create("heap.pb.gz")
+	w, err := zipw.Create("heap.pb.gz")
 	if err != nil {
 		zipw.Close()
 		return "", fmt.Errorf("create heap entry: %w", err)
@@ -223,13 +252,6 @@ func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
 	if _, err := w.Write(debug.Stack(true)); err != nil {
 		zipw.Close()
 		return "", fmt.Errorf("write goroutines: %w", err)
-	}
-
-	// stat.json
-	if statJSON != "" {
-		if w, err = zipw.Create("stat.json"); err == nil {
-			w.Write([]byte(statJSON))
-		}
 	}
 
 	if err := zipw.Close(); err != nil {
@@ -405,10 +427,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 		cleanup()
 		return "", fmt.Errorf("create zip: %w", err)
 	}
-	zipw := zip.NewWriter(zipF)
-	zipw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
-		return flate.NewWriter(w, flate.BestSpeed)
-	})
+	zipw := newProfileZip(zipF)
 
 	for _, t := range temps {
 		src, err := os.Open(t.path)
@@ -448,33 +467,11 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 		}
 	}
 
-	// info.json
-	var ms runtime.MemStats
-	runtime.ReadMemStats(&ms)
-	peerId, accountId := s.identity()
-	info := profileInfo{
-		Version:      vcs.GetVCSInfo().Version(),
-		Reason:       reason,
-		ReasonDesc:   reasonDesc,
-		Time:         time.Now().Format(time.RFC3339),
-		Platform:     runtime.GOOS + "/" + runtime.GOARCH,
-		NumCPU:       runtime.NumCPU(),
-		CPUModel:     getCPUModel(),
-		ProcessRSSMB: getProcessRSSMB(),
-		DiskFreeMB:   getDiskFreeMB(s.rootPath),
-		MemStats:     ms,
-		SystemMemory: getSystemMemory(),
-		PeerId:       peerId,
-		AccountId:    accountId,
-	}
-	infoJSON, _ := json.MarshalIndent(info, "", "  ")
-	if dst, err := zipw.Create("info.json"); err == nil {
-		dst.Write(infoJSON)
-	}
-	if statJSON := s.getStatJSON(); statJSON != "" {
-		if dst, err := zipw.Create("stat.json"); err == nil {
-			dst.Write([]byte(statJSON))
-		}
+	if err := writeProfileMetadata(zipw, s.buildProfileInfo(reason, reasonDesc), s.getStatJSON()); err != nil {
+		zipw.Close()
+		zipF.Close()
+		cleanup()
+		return "", err
 	}
 
 	zipw.Close()
