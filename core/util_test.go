@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 )
 
 type testErrorType struct {
@@ -42,6 +44,15 @@ func TestErrorCodeMapping(t *testing.T) {
 	assert.Equal(t, testCode(3), mapper(wrapped2))
 	assert.Equal(t, testCode(4), mapper(err3))
 	assert.Equal(t, testCode(5), mapper(err4))
+}
+
+func TestErrorCodeMappingUniversalBadInput(t *testing.T) {
+	mapper := func(err error) testCode {
+		return mapErrorCode[testCode](err)
+	}
+
+	assert.Equal(t, testCode(universalBadInputCode), mapper(idresolver.ErrEmptyObjectId))
+	assert.Equal(t, testCode(universalBadInputCode), mapper(fmt.Errorf("wrap: %w", idresolver.ErrEmptyObjectId)))
 }
 
 func TestErrorCodeMappingWithPayload(t *testing.T) {

@@ -44,7 +44,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/core/onetoone"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -128,7 +128,7 @@ type service struct {
 	spaceCore           spacecore.SpaceCoreService
 	aclJoiner           AclJoiner
 	accountService      accountservice.Service
-	onetoone            onetoone.Service
+	inboxSender         inboxservice.Sender
 	identityService     dependencies.IdentityService
 	config              *config.Config
 	notificationService NotificationSender
@@ -182,7 +182,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
 	s.identityService = app.MustComponent[dependencies.IdentityService](a)
-	s.onetoone = app.MustComponent[onetoone.Service](a)
+	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
 	s.waiting = make(map[string]controllerWaiter)
 	s.techSpaceReady = make(chan struct{})
 	s.personalSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeRegular)
@@ -432,11 +432,9 @@ func (s *service) SpaceViewSetOneToOneIdentity(spaceId string, identity string) 
 }
 
 func (s *service) OnWorkspaceChanged(spaceId string, details *domain.Details) {
-	go func() {
-		if err := s.techSpace.SpaceViewSetData(s.ctx, spaceId, details); err != nil {
-			log.Warn("OnWorkspaceChanged error", zap.Error(err))
-		}
-	}()
+	if err := s.techSpace.SpaceViewSetData(s.ctx, spaceId, details); err != nil {
+		log.Warn("OnWorkspaceChanged error", zap.Error(err))
+	}
 }
 
 func (s *service) AccountMetadataSymKey() crypto.SymKey {

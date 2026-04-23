@@ -153,6 +153,9 @@ func SmartblockTypeFromID(id string) (smartblock.SmartBlockType, error) {
 	if strings.HasPrefix(id, addr.AnytypeProfileId) {
 		return smartblock.SmartBlockTypeProfilePage, nil
 	}
+	if strings.HasPrefix(id, domain.PersonalWidgetsPrefix) {
+		return smartblock.SmartBlockTypeTechSpaceVirtualObject, nil
+	}
 	if strings.HasPrefix(id, addr.VirtualPrefix) {
 		sbt, err := addr.ExtractVirtualSourceType(id)
 		if err != nil {

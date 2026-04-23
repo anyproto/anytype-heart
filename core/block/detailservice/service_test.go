@@ -27,6 +27,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/mock_space"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
@@ -38,11 +39,14 @@ func (f *fileGCStub) Name() string                    { return "fileGCStub" }
 func (f *fileGCStub) Init(a *app.App) error           { return nil }
 func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
 func (f *fileGCStub) Close(ctx context.Context) error { return nil }
-func (f *fileGCStub) CheckFilesOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) error {
-	return nil
+func (f *fileGCStub) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
+	return nil, nil
 }
-func (f *fileGCStub) CheckFilesOnContextArchived(spaceId, contextId string, isArchived bool) error {
-	return nil
+func (f *fileGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
+	return nil, nil
+}
+func (f *fileGCStub) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
+	return nil, nil
 }
 
 type fixture struct {
@@ -72,7 +76,7 @@ func newFixture(t *testing.T) *fixture {
 		spaceService: spaceService,
 		store:        store,
 		fileService:  fileService,
-		fileGC:       &fileGCStub{},
+		objectGC:     &fileGCStub{},
 	}
 
 	return &fixture{
@@ -288,6 +292,74 @@ func TestService_SetSpaceInfo(t *testing.T) {
 		// then
 		assert.Error(t, err)
 	})
+
+	t.Run("reject homepage change for 1-on-1 space", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: wsObjectId})
+		fx.space.EXPECT().SpaceType().Return(spacedomain.SpaceTypeOneToOne)
+		homepageDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyHomepage: domain.String("someObjectId"),
+		})
+
+		// when
+		err := fx.SetSpaceInfo(spaceId, homepageDetails)
+
+		// then
+		require.ErrorIs(t, err, ErrHomepageChangeRestricted)
+	})
+
+	t.Run("allow homepage change for regular space", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ws := smarttest.New(wsObjectId)
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: wsObjectId})
+		fx.space.EXPECT().SpaceType().Return(spacedomain.SpaceTypeRegular)
+		fx.space.EXPECT().Id().Return(spaceId)
+		fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("someObjectId"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+		})
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, wsObjectId, objectId)
+			return ws, nil
+		})
+		homepageDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyHomepage: domain.String("someObjectId"),
+		})
+
+		// when
+		err := fx.SetSpaceInfo(spaceId, homepageDetails)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "someObjectId", ws.NewState().Details().GetString(bundle.RelationKeyHomepage))
+	})
+
+	t.Run("allow non-homepage changes for 1-on-1 space", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ws := smarttest.New(wsObjectId)
+		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Workspace: wsObjectId})
+		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+			assert.Equal(t, wsObjectId, objectId)
+			return ws, nil
+		})
+		nameDetails := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:       domain.String("Renamed space"),
+			bundle.RelationKeyIconOption: domain.Int64(3),
+		})
+
+		// when
+		err := fx.SetSpaceInfo(spaceId, nameDetails)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "Renamed space", ws.NewState().Details().GetString(bundle.RelationKeyName))
+		assert.Equal(t, int64(3), ws.NewState().Details().GetInt64(bundle.RelationKeyIconOption))
+	})
 }
 
 func TestService_SetListIsFavorite(t *testing.T) {
@@ -341,7 +413,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.NoError(t, err)
@@ -365,7 +437,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.Error(t, err)
@@ -375,18 +447,22 @@ func TestService_SetIsArchived(t *testing.T) {
 	t.Run("can't delete others files", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		sb := smarttest.New(binId)
-		sb.SetType(coresb.SmartBlockTypeFileObject)
-		sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		binSb := smarttest.New(binId)
+		binSb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+		objSb := smarttest.New("obj1")
+		objSb.SetType(coresb.SmartBlockTypeFileObject)
 		fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
-			return sb, nil
+			if objectId == binId {
+				return editor.NewArchive(binSb, fx.store.SpaceIndex(spaceId)), nil
+			}
+			return objSb, nil
 		})
 		fx.store.AddObjects(t, spaceId, objects)
 		fx.fileSerivce.EXPECT().CanDeleteFile(mock.Anything, mock.Anything).Return(fmt.Errorf("not allowed"))
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 
 		// when
-		err := fx.SetIsArchived(context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
 
 		// then
 		assert.Error(t, err)
@@ -418,7 +494,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -446,7 +522,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, false)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, false)
 
 		// then
 		assert.NoError(t, err)
@@ -471,7 +547,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.NoError(t, err)
@@ -489,7 +565,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
 
 		// then
 		assert.Error(t, err)

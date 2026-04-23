@@ -171,6 +171,14 @@ func convertProductData(src *paymentserviceproto.MembershipV2_Product) *model.Me
 	} else {
 		out.PricesMonthly = nil
 	}
+	if len(src.PricesLifetime) > 0 {
+		out.PricesLifetime = make([]*model.MembershipV2Amount, len(src.PricesLifetime))
+		for i, price := range src.PricesLifetime {
+			out.PricesLifetime[i] = convertAmountData(price)
+		}
+	} else {
+		out.PricesLifetime = nil
+	}
 
 	if src.Features != nil {
 		out.Features = &model.MembershipV2Features{}
@@ -256,6 +264,7 @@ func convertCartData(src *paymentserviceproto.MembershipV2_StoreCartGetResponse)
 	out.Total = convertAmountData(src.Cart.Total)
 	out.TotalNextInvoice = convertAmountData(src.Cart.TotalNextInvoice)
 	out.NextInvoiceDate = src.Cart.NextInvoiceDate
+	out.AppliedPromocodes = src.Cart.AppliedPromocodes
 	return out
 }
 
@@ -267,6 +276,7 @@ func convertCartProductData(src *paymentserviceproto.MembershipV2_CartProduct) *
 	out.Product = convertProductData(src.Product)
 	out.IsYearly = src.IsYearly
 	out.Remove = src.Remove
+	out.IsLifetime = src.IsLifetime
 	return out
 }
 

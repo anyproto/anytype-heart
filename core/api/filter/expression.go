@@ -6,6 +6,7 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
@@ -87,7 +88,15 @@ func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceI
 		return nil, fmt.Errorf("failed to resolve property %q: %w", wrapped.GetPropertyKey(), err)
 	}
 
-	if !isValidConditionForType(property.Format, dbCondition) {
+	// Type filter supports equality and array conditions
+	isTypeFilter := property.RelationKey == bundle.RelationKeyType.String()
+	if isTypeFilter {
+		if !isValidConditionForType(property.Format, dbCondition) &&
+			dbCondition != model.BlockContentDataviewFilter_Equal &&
+			dbCondition != model.BlockContentDataviewFilter_NotEqual {
+			return nil, util.ErrBadInput(fmt.Sprintf("condition %q is not valid for type filter", wrapped.GetCondition()))
+		}
+	} else if !isValidConditionForType(property.Format, dbCondition) {
 		return nil, util.ErrBadInput(fmt.Sprintf("condition %q is not valid for property type %q", wrapped.GetCondition(), property.Format))
 	}
 
@@ -102,6 +111,11 @@ func buildConditionFilter(cond apimodel.FilterItem, validator *Validator, spaceI
 	value := wrapped.GetValue()
 	if value == nil {
 		return nil, util.ErrBadInput(fmt.Sprintf("value is required for condition %q on property %q", wrapped.GetCondition(), wrapped.GetPropertyKey()))
+	}
+
+	// Resolve type filter values
+	if isTypeFilter {
+		return validator.buildTypeFilter(spaceId, rk, dbCondition, value)
 	}
 
 	validatedValue, err := validator.apiService.SanitizeAndValidatePropertyValue(spaceId, wrapped.GetPropertyKey(), value, property, propertyMap)

@@ -55,6 +55,8 @@ enum SmartBlockType {
     ChatDerivedObject = 0x220; // Any-store based object for chat
     AccountObject = 0x221; // Container for account data in tech space
     DiscussionObject = 0x222; // Any-store based object for discussion
+    TechSpaceObject = 0x223; // Any-store based object in tech space for cross-device sync
+    TechSpaceVirtualObject = 0x224; // Per-space virtual object backed by a tech space CRDT document
 }
 
 message Search {
@@ -949,7 +951,7 @@ enum RelationFormat {
 
     object = 100; // relation can has objectType to specify objectType
     relations = 101; // base64-encoded relation pb model
-
+    map = 102; // relation that handle map of values
 }
 
 enum ObjectOrigin {
@@ -1490,10 +1492,11 @@ message MembershipV2 {
     }
 
     enum Period {
-        Unlimited = 0;
+        Unlimited = 0 [deprecated = true];
         Monthly = 1;
         Yearly = 2;
         ThreeYears = 3;
+        Lifetime = 4;
     }
 
     message Invoice {
@@ -1544,6 +1547,7 @@ message MembershipV2 {
         string offer = 11;
 
         Features features = 12;
+        repeated Amount pricesLifetime = 13;
     }
 
     message PurchaseInfo {
@@ -1571,11 +1575,15 @@ message MembershipV2 {
 
     message CartProduct {
         Product product = 1;    
-        // otherwise - monthly
+        // otherwise - monthly or isLifetime
         bool isYearly = 2;
         // set to true if you want to remove this item from the customer
         // it's like setting -1 to some product
         bool remove = 3;
+        // if true - then this is lifetime product (no matter what isYearly above is)
+        // unfortunately we do not use Period here to keep compatibility with old versions 
+        // that still use isYearly! 
+        bool isLifetime = 4;
     }
 
     message Cart {
@@ -1589,6 +1597,13 @@ message MembershipV2 {
         // the next invoice amount will also be generated
         Amount totalNextInvoice = 3;
         uint64 nextInvoiceDate = 4;
+        repeated string appliedPromocodes = 5;
+    }
+
+    message CryptoCheckout {
+        string invoiceURL = 1;
+        Amount total = 2;
+        bool isCanCancel = 3;
     }
 
     message Data {
@@ -1596,6 +1611,7 @@ message MembershipV2 {
         Invoice nextInvoice = 2;
         string teamOwnerID = 3;
         PaymentProvider paymentProvider = 4;
+        repeated string appliedPromocodes = 5;
     }
 }
 
@@ -1728,4 +1744,20 @@ enum SyncError {
 enum TemplateNamePrefillType {
     Empty = 0;
     FromTemplateName = 1;
+}
+
+message Placeholder {
+    string relationKey = 1;
+    repeated Value values = 2;
+
+    message Value {
+        Type type = 1;
+        google.protobuf.Value value = 2;
+    }
+
+    enum Type {
+        PlaceholderValue = 0;
+        PlaceholderToday = 1;
+        PlaceholderCurrentUser = 2;
+    }
 }

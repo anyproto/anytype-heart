@@ -59,6 +59,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
@@ -70,7 +71,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/filedownloader"
-	"github.com/anyproto/anytype-heart/core/files/filegc"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
@@ -82,7 +83,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
-	"github.com/anyproto/anytype-heart/core/inboxclient"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxclient"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore"
@@ -90,7 +92,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/migration"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
-	"github.com/anyproto/anytype-heart/core/onetoone"
 	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
@@ -280,6 +281,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(chatrepository.New()).
 		Register(chatsubscription.New()).
 		Register(chats.New()).
+		Register(personalfavorites.New()).
 		Register(sourceimpl.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
@@ -301,7 +303,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(detailservice.New()).
-		Register(filegc.New()).
+		Register(objectgc.New()).
 		Register(dataviewservice.New()).
 		Register(migration.New()).
 		Register(indexer.New()).
@@ -347,7 +349,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscribeclient.New()).
 		Register(anysyncinboxclient.New()).
 		Register(inboxclient.New()).
-		Register(onetoone.New()).
+		Register(inboxservice.New()).
 		Register(durability.New()) // leave it the last one
 }
 

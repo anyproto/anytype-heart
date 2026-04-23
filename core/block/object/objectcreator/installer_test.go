@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -127,7 +128,7 @@ func TestInstaller_reinstallObject(t *testing.T) {
 		spc.EXPECT().IsReadOnly().Return(true)
 
 		archiver := mock_detailservice.NewMockService(t)
-		archiver.EXPECT().SetIsArchived(mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(ctx context.Context, id string, isArchived bool) error {
+		archiver.EXPECT().SetIsArchived(mock.Anything, mock.Anything, mock.Anything, mock.Anything).RunAndReturn(func(sctx session.Context, ctx context.Context, id string, isArchived bool) error {
 			assert.Equal(t, id, bundle.TypeKeyProject.URL())
 			assert.False(t, isArchived)
 			return nil

@@ -57,6 +57,8 @@ type Manager interface {
 	UpdatePinned(message *chatmodel.Message)
 	UpdateFull(message *chatmodel.Message)
 	UpdateChatState(updater func(*model.ChatState) *model.ChatState)
+	UpdateMessageCount(delta int32)
+	GetMessageCount() int32
 	Add(prevOrderId string, message *chatmodel.Message)
 	Delete(messageId string)
 	ForceSendingChatState()
@@ -198,6 +200,7 @@ type SubscribeLastMessagesResponse struct {
 	PreviousOrderId string
 	Messages        []*chatmodel.Message
 	ChatState       *model.ChatState
+	MessageCount    int32
 	// Dependencies per message id
 	Dependencies map[string][]*domain.Details
 }
@@ -263,6 +266,7 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 	return &SubscribeLastMessagesResponse{
 		Messages:        messages,
 		ChatState:       mngr.GetChatState(),
+		MessageCount:    mngr.GetMessageCount(),
 		Dependencies:    depsPerMessage,
 		PreviousOrderId: previousOrderId,
 	}, nil

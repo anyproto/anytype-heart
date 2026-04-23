@@ -3,8 +3,10 @@ package spaceindex
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
@@ -179,9 +181,9 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	return nil
 }
 
-// ModifyObjectDetails updates existing details in store using modification function `proc`
-// `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
-func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
+// ModifyObjectDetails updates details in store using modification function `proc`.
+// When upsert is true, the object is created if it does not exist; when false, missing objects are silently skipped.
+func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
 	if proc == nil {
 		return nil
 	}
@@ -190,7 +192,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+	modifier := query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		inputDetails, err := domain.NewDetailsFromAnyEnc(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
@@ -218,10 +220,18 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		}
 		s.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
-	}))
-
+	})
+	var err error
+	if upsert {
+		_, err = s.objects.UpsertId(s.componentCtx, id, modifier)
+	} else {
+		_, err = s.objects.UpdateId(s.componentCtx, id, modifier)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			return nil
+		}
+	}
 	if err != nil {
-		return fmt.Errorf("upsert details: %w", err)
+		return fmt.Errorf("modify details: %w", err)
 	}
 	return nil
 }

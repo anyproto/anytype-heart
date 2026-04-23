@@ -437,6 +437,13 @@ func (p *pasteCtrl) intoCodeBlock() (err error) {
 		})
 		txt = strings.Join(txtArr, "\n")
 	}
+	// Strip trailing newlines when selection reaches the end of the code block,
+	// because there is no text after the selection to absorb them. This prevents
+	// clipboard artifacts (trailing \n or \r\n) from adding blank lines.
+	textLen := int32(textutil.UTF16RuneCountString(selText.GetText()))
+	if p.selRange.To >= textLen {
+		txt = strings.TrimRight(txt, "\n\r")
+	}
 	tb := &model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{

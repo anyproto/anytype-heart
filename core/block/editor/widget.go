@@ -175,11 +175,6 @@ func (w *WidgetObject) StateMigrations() migration.Migrations {
 
 func (w *WidgetObject) Unlink(ctx session.Context, ids ...string) (err error) {
 	st := w.NewStateCtx(ctx)
-	for _, id := range ids {
-		if p := st.PickParentOf(id); p != nil && p.Model().GetWidget() != nil {
-			st.Unlink(p.Model().Id)
-		}
-		st.Unlink(id)
-	}
+	widget.UnlinkWithWrapper(st, ids...)
 	return w.Apply(st)
 }

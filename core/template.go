@@ -73,3 +73,64 @@ func (mw *Middleware) TemplateExportAll(ctx context.Context, req *pb.RpcTemplate
 	path, err := mustService[template.Service](mw).TemplateExportAll(ctx, req.Path)
 	return response(path, err)
 }
+
+func (mw *Middleware) TemplateSetPlaceholders(cctx context.Context, req *pb.RpcTemplateSetPlaceholdersRequest) *pb.RpcTemplateSetPlaceholdersResponse {
+	// TODO: GO-6915 uncomment me
+	// ctx := mw.newContext(cctx)
+	// code := pb.RpcTemplateSetPlaceholdersResponseError_NULL
+	// err := mustService[template.Service](mw).SetTemplatePlaceholders(ctx, req.TemplateId, req.Placeholders)
+	// if err != nil {
+	// 	code = pb.RpcTemplateSetPlaceholdersResponseError_UNKNOWN_ERROR
+	// }
+	// return &pb.RpcTemplateSetPlaceholdersResponse{
+	// 	Event: mw.getResponseEvent(ctx),
+	// 	Error: &pb.RpcTemplateSetPlaceholdersResponseError{
+	// 		Description: getErrorDescription(err),
+	// 		Code:        code,
+	// 	},
+	// }
+	return &pb.RpcTemplateSetPlaceholdersResponse{
+		Error: &pb.RpcTemplateSetPlaceholdersResponseError{
+			Description: "not implemented",
+			Code:        pb.RpcTemplateSetPlaceholdersResponseError_UNKNOWN_ERROR,
+		},
+	}
+}
+
+func (mw *Middleware) TemplateGetPlaceholders(ctx context.Context, req *pb.RpcTemplateGetPlaceholdersRequest) *pb.RpcTemplateGetPlaceholdersResponse {
+	placeholders, err := mustService[template.Service](mw).GetTemplatePlaceholders(req.TemplateId)
+	code := pb.RpcTemplateGetPlaceholdersResponseError_NULL
+	if err != nil {
+		code = pb.RpcTemplateGetPlaceholdersResponseError_UNKNOWN_ERROR
+	}
+	return &pb.RpcTemplateGetPlaceholdersResponse{
+		Placeholders: placeholders,
+		Error: &pb.RpcTemplateGetPlaceholdersResponseError{
+			Description: getErrorDescription(err),
+			Code:        code,
+		},
+	}
+}
+
+func (mw *Middleware) TemplateDeletePlaceholders(cctx context.Context, req *pb.RpcTemplateDeletePlaceholdersRequest) *pb.RpcTemplateDeletePlaceholdersResponse {
+	// TODO: GO-6915 uncomment me
+	// ctx := mw.newContext(cctx)
+	// code := pb.RpcTemplateDeletePlaceholdersResponseError_NULL
+	// err := mustService[template.Service](mw).DeleteTemplatePlaceholders(ctx, req.TemplateId, req.RelationKeys)
+	// if err != nil {
+	// 	code = pb.RpcTemplateDeletePlaceholdersResponseError_UNKNOWN_ERROR
+	// }
+	// return &pb.RpcTemplateDeletePlaceholdersResponse{
+	// 	Event: mw.getResponseEvent(ctx),
+	// 	Error: &pb.RpcTemplateDeletePlaceholdersResponseError{
+	// 		Description: getErrorDescription(err),
+	// 		Code:        code,
+	// 	},
+	// }
+	return &pb.RpcTemplateDeletePlaceholdersResponse{
+		Error: &pb.RpcTemplateDeletePlaceholdersResponseError{
+			Description: "not implemented",
+			Code:        pb.RpcTemplateDeletePlaceholdersResponseError_UNKNOWN_ERROR,
+		},
+	}
+}

@@ -112,8 +112,6 @@ func TestStructDiff(t *testing.T) {
 }
 
 func TestNewDetailsFromAnyEnc(t *testing.T) {
-	arena := &anyenc.Arena{}
-
 	t.Run("empty", func(t *testing.T) {
 		val := anyenc.MustParseJson(`{}`)
 
@@ -123,6 +121,7 @@ func TestNewDetailsFromAnyEnc(t *testing.T) {
 		want := NewDetails()
 		assert.Equal(t, want, got)
 
+		arena := &anyenc.Arena{}
 		gotVal := got.ToAnyEnc(arena)
 		diff, err := pbtypes.DiffAnyEnc(val, gotVal)
 		require.NoError(t, err)
@@ -155,21 +154,106 @@ func TestNewDetailsFromAnyEnc(t *testing.T) {
 			"key6": Null(),
 			"key7": Int64List([]int64{1, 2, 3}),
 			"key8": StringList([]string{"foo", "bar"}),
-			"key9": Null(),
+			"key9": NewValueMap(map[string]Value{
+				"nestedKey1": String("value1"),
+				"nestedKey2": Float64(123),
+			}),
 		})
 		assert.Equal(t, want, got)
 
+		arena := &anyenc.Arena{}
 		gotVal := got.ToAnyEnc(arena)
 		diff, err := pbtypes.DiffAnyEnc(val, gotVal)
 		require.NoError(t, err)
+		assert.Empty(t, diff)
+	})
 
-		// We don't yet support converting nested objects from AnyEnc to proto
-		assert.Equal(t, []pbtypes.AnyEncDiff{
-			{
-				Type:  pbtypes.AnyEncDiffTypeUpdate,
-				Key:   "key9",
-				Value: arena.NewNull(),
-			},
-		}, diff)
+	t.Run("nested object", func(t *testing.T) {
+		val := anyenc.MustParseJson(`{"meta": {"color": "red", "size": 42}}`)
+
+		got, err := NewDetailsFromAnyEnc(val)
+		require.NoError(t, err)
+
+		meta := got.Get("meta")
+		require.True(t, meta.IsMapValue())
+
+		m := meta.MapValue()
+		assert.Equal(t, "red", m.GetString("color"))
+		assert.Equal(t, float64(42), m.GetFloat64("size"))
+	})
+
+	t.Run("array of objects", func(t *testing.T) {
+		val := anyenc.MustParseJson(`{
+			"items": [
+				{"type": 1, "name": "first"},
+				{"type": 2, "name": "second"}
+			]
+		}`)
+
+		got, err := NewDetailsFromAnyEnc(val)
+		require.NoError(t, err)
+
+		items := got.Get("items")
+		require.True(t, items.IsMapList(), "expected map list, got %s", items.Type())
+
+		maps := items.MapListValue()
+		require.Len(t, maps, 2)
+		assert.Equal(t, float64(1), maps[0].GetFloat64("type"))
+		assert.Equal(t, "first", maps[0].GetString("name"))
+		assert.Equal(t, float64(2), maps[1].GetFloat64("type"))
+		assert.Equal(t, "second", maps[1].GetString("name"))
+	})
+
+	t.Run("array of objects with nested values", func(t *testing.T) {
+		val := anyenc.MustParseJson(`{
+			"items": [
+				{"id": 1, "tags": ["a", "b"]},
+				{"id": 2, "tags": ["c"]}
+			]
+		}`)
+
+		got, err := NewDetailsFromAnyEnc(val)
+		require.NoError(t, err)
+
+		items := got.Get("items")
+		require.True(t, items.IsMapList(), "expected map list, got %s", items.Type())
+
+		maps := items.MapListValue()
+		require.Len(t, maps, 2)
+		assert.Equal(t, float64(1), maps[0].GetFloat64("id"))
+		assert.Equal(t, []string{"a", "b"}, maps[0].GetStringList("tags"))
+		assert.Equal(t, float64(2), maps[1].GetFloat64("id"))
+		assert.Equal(t, []string{"c"}, maps[1].GetStringList("tags"))
+	})
+
+	t.Run("roundtrip: object value", func(t *testing.T) {
+		val := anyenc.MustParseJson(`{"meta": {"x": 10, "y": 20}}`)
+
+		got, err := NewDetailsFromAnyEnc(val)
+		require.NoError(t, err)
+
+		arena := &anyenc.Arena{}
+		gotVal := got.ToAnyEnc(arena)
+		diff, err := pbtypes.DiffAnyEnc(val, gotVal)
+		require.NoError(t, err)
+		assert.Empty(t, diff)
+	})
+
+	t.Run("roundtrip: array of objects", func(t *testing.T) {
+		val := anyenc.MustParseJson(`{
+			"items": [
+				{"type": 1, "name": "first"},
+				{"type": 2, "name": "second"}
+			]
+		}`)
+
+		got, err := NewDetailsFromAnyEnc(val)
+		require.NoError(t, err)
+
+		arena := &anyenc.Arena{}
+		gotVal := got.ToAnyEnc(arena)
+		diff, err := pbtypes.DiffAnyEnc(val, gotVal)
+		require.NoError(t, err)
+		assert.Empty(t, diff)
 	})
 }
