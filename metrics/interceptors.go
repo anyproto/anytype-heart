@@ -38,7 +38,37 @@ const (
 var (
 	maxDuration = time.Second * 10
 	cache       = new(methodsCache)
+
+	// profileCreatedHook, when set, is invoked after saveLongMethodTrace
+	// successfully writes a trace file so consumers (currently the profiler
+	// component) can broadcast an Event.Debug.ProfileCreated notification
+	// without pulling the event sender into this package.
+	profileCreatedHook atomic.Value // stores func(reason, reasonDesc, path string, full bool)
 )
+
+// SetProfileCreatedHook registers a callback invoked after the middleware
+// writes a profile artifact of its own accord (currently only the
+// long-method trace file; the memory-growth detector and other callers
+// broadcast the event themselves). Passing nil clears the hook.
+func SetProfileCreatedHook(f func(reason, reasonDesc, path string, full bool)) {
+	if f == nil {
+		profileCreatedHook.Store((func(string, string, string, bool))(nil))
+		return
+	}
+	profileCreatedHook.Store(f)
+}
+
+func emitProfileCreated(reason, reasonDesc, path string, full bool) {
+	v := profileCreatedHook.Load()
+	if v == nil {
+		return
+	}
+	f, _ := v.(func(reason, reasonDesc, path string, full bool))
+	if f == nil {
+		return
+	}
+	f(reason, reasonDesc, path, full)
+}
 
 type methodsCache struct {
 	methods map[string]struct{}
@@ -254,11 +284,16 @@ func saveLongMethodTrace(methodName string, trace []byte, start time.Time) {
 	}
 	defer f.Close()
 	gz := gzip.NewWriter(f)
-	if _, err := gz.Write(trace); err != nil {
-		log.Warnw("long-method trace: gzip write failed", "filename", filename, "error", err)
+	_, writeErr := gz.Write(trace)
+	if writeErr != nil {
+		log.Warnw("long-method trace: gzip write failed", "filename", filename, "error", writeErr)
 	}
-	if err := gz.Close(); err != nil {
-		log.Warnw("long-method trace: gzip close failed", "filename", filename, "error", err)
+	closeErr := gz.Close()
+	if closeErr != nil {
+		log.Warnw("long-method trace: gzip close failed", "filename", filename, "error", closeErr)
+	}
+	if writeErr == nil && closeErr == nil {
+		emitProfileCreated("LONG_METHOD", methodName, filename, false)
 	}
 }
 

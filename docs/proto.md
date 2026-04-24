@@ -2028,6 +2028,8 @@
     - [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
+    - [Event.Debug](#anytype-Event-Debug)
+    - [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
@@ -32120,6 +32122,39 @@ to its type.
 
 
 
+<a name="anytype-Event-Debug"></a>
+
+### Event.Debug
+
+
+
+
+
+
+
+<a name="anytype-Event-Debug-ProfileCreated"></a>
+
+### Event.Debug.ProfileCreated
+ProfileCreated is emitted whenever the middleware writes a snapshot
+archive on its own (e.g. the memory-growth detector), so clients can
+surface it or queue the archive for upload without polling the
+profiles directory. Archives produced as a result of a client RPC
+(DebugRunProfiler) are NOT re-announced via this event — the RPC
+response already carries the path.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| reason | [string](#string) |  | matches DebugRunProfiler.Reason names |
+| reasonDesc | [string](#string) |  | free-form context |
+| path | [string](#string) |  | absolute path to the snapshot archive |
+| full | [bool](#bool) |  | true for timed (&gt;0s) archives |
+
+
+
+
+
+
 <a name="anytype-Event-File"></a>
 
 ### Event.File
@@ -32392,6 +32427,7 @@ received to update per-message mention read status (if needed |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
 | objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
+| debugProfileCreated | [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated) |  |  |
 | chatUpdateMessageCount | [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount) |  | received whenever the total number of non-deleted messages in |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |

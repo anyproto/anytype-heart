@@ -83,6 +83,7 @@ func (s *service) detect() (stop bool, err error) {
 
 	log.With("sysMemory", s.previousHighMemoryDetected, "snapshot", path).Warn("memory growth detected, snapshot saved")
 	s.timesHighMemoryUsageDetected++
+	s.emitProfileCreated(reasonMemoryGrowth, reasonDesc, path, false)
 
 	return s.timesHighMemoryUsageDetected >= maxProfiles, nil
 }
