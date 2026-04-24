@@ -236,6 +236,7 @@ func saveLongMethodTrace(methodName string, trace []byte, start time.Time) {
 		return
 	}
 	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Warnw("long-method trace skipped: cannot create profiles dir", "dir", dir, "error", err)
 		return
 	}
 	ts := time.Now().Format("20060102_150405")
@@ -243,12 +244,17 @@ func saveLongMethodTrace(methodName string, trace []byte, start time.Time) {
 	filename := filepath.Join(dir, fmt.Sprintf("long_method_%s_%s_%s.txt.gz", methodName, ts, duration))
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
+		log.Warnw("long-method trace skipped: cannot open file", "filename", filename, "error", err)
 		return
 	}
 	defer f.Close()
 	gz := gzip.NewWriter(f)
-	_, _ = gz.Write(trace)
-	_ = gz.Close()
+	if _, err := gz.Write(trace); err != nil {
+		log.Warnw("long-method trace: gzip write failed", "filename", filename, "error", err)
+	}
+	if err := gz.Close(); err != nil {
+		log.Warnw("long-method trace: gzip close failed", "filename", filename, "error", err)
+	}
 }
 
 func extractHotSync(req *pb.RpcAccountSelectRequest) bool {
