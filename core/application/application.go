@@ -86,10 +86,13 @@ func (s *Service) stop() error {
 			log.Warnf("error while stop anytype: %v", err)
 		}
 		log.Infow("closing app: finished", "mwVersion", mwVersion, "tookMs", time.Since(start).Milliseconds())
-		// Drain zap's buffered sink so the "closing app: finished" line above
-		// survives the imminent process exit. Errors are benign (stderr Sync
-		// can fail on some platforms) and intentionally ignored.
-		_ = log.Sync()
+		// Drain zap's buffered sink (the "closing app: finished" line above
+		// must reach disk) and stop the lumberjack flush goroutine. Both
+		// calls are bounded so a stuck disk doesn't hang process exit;
+		// errors are benign (stderr Sync can fail on some platforms) and
+		// intentionally ignored.
+		_ = logging.SyncWithTimeout(3 * time.Second)
+		_ = logging.CloseSink(3 * time.Second)
 
 		s.app = nil
 	}

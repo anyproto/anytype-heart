@@ -428,8 +428,8 @@ func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, 
 
 	// Drain zap's buffered sink so log entries written right before the
 	// report call make it to disk before we start reading the log files.
-	// Error is benign (stderr Sync can fail on some platforms) — ignored.
-	_ = log.Sync()
+	// Bounded — a stuck log volume should not stall a client RPC.
+	_ = logging.SyncWithTimeout(3 * time.Second)
 
 	var files []zipFile
 	var toClose []io.Closer

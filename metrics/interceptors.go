@@ -227,10 +227,15 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 	done := make(chan struct{})
 	start := time.Now()
 
+	// time.NewTimer + Stop instead of time.After so a fast-returning RPC
+	// releases the timer immediately. With time.After the runtime keeps the
+	// 10s timer alive for every call until it fires uselessly.
+	timer := time.NewTimer(maxDuration)
 	go func() {
+		defer timer.Stop()
 		select {
 		case <-done:
-		case <-time.After(maxDuration):
+		case <-timer.C:
 			// Double-check the stack still contains the method: guards
 			// against the race where actualCall returned between the timer
 			// firing and this goroutine getting scheduled.

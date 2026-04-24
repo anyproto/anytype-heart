@@ -12,9 +12,13 @@ import (
 )
 
 // bundleChunkSize controls how often we flush the output gzip stream to
-// measure the on-disk size against the cap. Smaller values give tighter cap
-// enforcement; larger values give better compression. 256KB is a compromise.
-const bundleChunkSize = 256 * 1024
+// measure the on-disk size against the cap. Each Flush forces a gzip sync
+// boundary which fragments the deflate stream and hurts compression ratio,
+// so the value is a deliberate trade-off — smaller = tighter cap, larger =
+// better compression. 1MB keeps the deflate stream healthy while still
+// producing predictable cap enforcement (worst-case overshoot ~1MB on a
+// 10MB cap, ~10%).
+const bundleChunkSize = 1024 * 1024
 
 // WriteLogBundle writes a single gzipped log file to destPath containing at
 // most maxBytes of compressed output. It streams the active log file (the

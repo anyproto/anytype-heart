@@ -94,11 +94,18 @@ type bufferedLumberjackSink struct {
 }
 
 func (s *bufferedLumberjackSink) Close() error {
-	// Stop flushes pending buffered bytes to the underlying writer.
+	// Stop flushes pending buffered bytes to the underlying writer and stops
+	// the background flush goroutine.
 	stopErr := s.BufferedWriteSyncer.Stop()
 	closeErr := s.lj.Close()
 	return errors.Join(stopErr, closeErr)
 }
+
+// activeSink is the most recently registered lumberjack sink. Tracked so
+// CloseSink (called on shutdown) can stop the background flush goroutine
+// and close the underlying file deterministically. Access is guarded by
+// the package-level zap registration which only happens once.
+var activeSink *bufferedLumberjackSink
 
 func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 	var lj *lumberjack.Logger
@@ -121,14 +128,60 @@ func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 			Compress:   true,
 		}
 	}
-	return &bufferedLumberjackSink{
+	sink := &bufferedLumberjackSink{
 		BufferedWriteSyncer: &zapcore.BufferedWriteSyncer{
 			WS:            &lumberjackSink{Logger: lj},
 			Size:          bufSize,
 			FlushInterval: flushInterval,
 		},
 		lj: lj,
-	}, nil
+	}
+	activeSink = sink
+	return sink, nil
+}
+
+// CloseSink stops the background flush goroutine of the lumberjack sink and
+// closes the underlying log file. Safe to call when no sink is registered
+// (no-op). Bounded by timeout so a stuck disk can't hang shutdown — if the
+// stop takes longer, we abandon and let the OS reclaim the FD on exit.
+func CloseSink(timeout time.Duration) error {
+	sink := activeSink
+	if sink == nil {
+		return nil
+	}
+	done := make(chan error, 1)
+	go func() {
+		done <- sink.Close()
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return fmt.Errorf("close lumberjack sink: timed out after %s", timeout)
+	}
+}
+
+// SyncWithTimeout drains zap's buffered sink so recent log lines reach the
+// OS page cache before process exit. Bounded — a stuck disk should not stall
+// shutdown indefinitely. Errors are returned but typically benign (stderr
+// Sync can fail on some platforms).
+func SyncWithTimeout(timeout time.Duration) error {
+	done := make(chan error, 1)
+	go func() {
+		done <- DefaultLogger().Sync()
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return fmt.Errorf("zap sync: timed out after %s", timeout)
+	}
+}
+
+// DefaultLogger returns the global zap logger. Helper kept here so callers
+// don't need to import go.uber.org/zap directly for shutdown plumbing.
+func DefaultLogger() *zap.Logger {
+	return zap.L()
 }
 
 // Init configures global zap levels and, when saveLogs is true, routes logs to
