@@ -2,22 +2,20 @@ package metrics
 
 import (
 	"bytes"
-	"compress/gzip"
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/samber/lo"
 	"github.com/valyala/fastjson"
-	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/pb"
-	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/reflection"
 )
@@ -28,46 +26,35 @@ const (
 	accountSelect       = "AccountSelect"
 	accountStop         = "AccountStop"
 	accountStopJson     = "account_stop.json"
-
-	// LongMethodTracePrefix is the filename prefix used by saveLongMethodTrace.
-	// Exported so consumers (report summary, cleanup) can identify these files
-	// without hard-coding the string.
-	LongMethodTracePrefix = "long_method_"
 )
 
 var (
 	maxDuration = time.Second * 10
 	cache       = new(methodsCache)
 
-	// profileCreatedHook, when set, is invoked after saveLongMethodTrace
-	// successfully writes a trace file so consumers (currently the profiler
-	// component) can broadcast an Event.Debug.ProfileCreated notification
-	// without pulling the event sender into this package.
-	profileCreatedHook atomic.Value // stores func(reason, reasonDesc, path string, full bool)
+	// reporter is the process-wide debugreporter.Reporter used to emit
+	// long-method reports. Wired once at bootstrap via SetReporter; left nil
+	// in non-app contexts (unit tests) where the interceptor simply skips
+	// reporting.
+	reporter atomic.Pointer[debugreporter.Reporter]
 )
 
-// SetProfileCreatedHook registers a callback invoked after the middleware
-// writes a profile artifact of its own accord (currently only the
-// long-method trace file; the memory-growth detector and other callers
-// broadcast the event themselves). Passing nil clears the hook.
-func SetProfileCreatedHook(f func(reason, reasonDesc, path string, full bool)) {
-	if f == nil {
-		profileCreatedHook.Store((func(string, string, string, bool))(nil))
+// SetReporter installs the Reporter used by the long-method interceptor.
+// Passing nil clears it (useful in tests). Concurrency-safe.
+func SetReporter(r debugreporter.Reporter) {
+	if r == nil {
+		reporter.Store(nil)
 		return
 	}
-	profileCreatedHook.Store(f)
+	reporter.Store(&r)
 }
 
-func emitProfileCreated(reason, reasonDesc, path string, full bool) {
-	v := profileCreatedHook.Load()
-	if v == nil {
-		return
+func loadReporter() debugreporter.Reporter {
+	p := reporter.Load()
+	if p == nil {
+		return nil
 	}
-	f, _ := v.(func(reason, reasonDesc, path string, full bool))
-	if f == nil {
-		return
-	}
-	f(reason, reasonDesc, path, full)
+	return *p
 }
 
 type methodsCache struct {
@@ -226,75 +213,45 @@ var excludedLongExecutionMethods = []string{
 }
 
 func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
-	return actualCall(ctx, req)
-	// todo: noop till GO-7143
 	if lo.Contains(excludedLongExecutionMethods, methodName) {
 		return actualCall(ctx, req)
 	}
-	doneCh := make(chan struct{})
+	done := make(chan struct{})
 	start := time.Now()
 
-	lastTrace := atomic.NewString("")
 	go func() {
 		select {
-		case <-doneCh:
-			break
+		case <-done:
 		case <-time.After(maxDuration):
-			trace := debug.Stack(true)
-			// double check, because we can have a race and the stack trace can be taken after the method is already finished
-			if !cache.hasMethod(methodName) && stackTraceHasMethod(methodName, trace) {
-				lastTrace.Store(string(trace))
-				saveLongMethodTrace(methodName, trace, start)
+			// Double-check the stack still contains the method: guards
+			// against the race where actualCall returned between the timer
+			// firing and this goroutine getting scheduled.
+			if !cache.hasMethod(methodName) && stackTraceHasMethod(methodName, debug.Stack(true)) {
+				reportLongMethod(methodName, start)
 				cache.addMethod(methodName)
 			}
 		}
 	}()
 	ctx = context.WithValue(ctx, CtxKeyRPC, methodName)
 	resp, err := actualCall(ctx, req)
-	close(doneCh)
-	if time.Since(start) > maxDuration {
-		if !cache.hasMethod(methodName) {
-			trace := []byte(lastTrace.String())
-			if len(trace) == 0 {
-				trace = debug.Stack(true)
-			}
-			saveLongMethodTrace(methodName, trace, start)
-			cache.addMethod(methodName)
-		}
-	}
+	close(done)
 	return resp, err
 }
 
-func saveLongMethodTrace(methodName string, trace []byte, start time.Time) {
-	dir := initialparams.Get().Paths.ProfilesDir
-	if dir == "" {
+// reportLongMethod dispatches a LONG_METHOD report through the registered
+// Reporter. The Reporter captures a heap + goroutines snapshot at this
+// moment (while the method is still blocked if the goroutine fires first),
+// so the archive contains the useful stack context. If no Reporter is
+// registered yet (startup race, unit test), the call is silently skipped.
+func reportLongMethod(methodName string, start time.Time) {
+	r := loadReporter()
+	if r == nil {
 		return
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		log.Warnw("long-method trace skipped: cannot create profiles dir", "dir", dir, "error", err)
-		return
-	}
-	ts := time.Now().Format("20060102_150405")
-	duration := time.Since(start).Truncate(time.Millisecond)
-	filename := filepath.Join(dir, fmt.Sprintf("%s%s_%s_%s.txt.gz", LongMethodTracePrefix, methodName, ts, duration))
-	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
-	if err != nil {
-		log.Warnw("long-method trace skipped: cannot open file", "filename", filename, "error", err)
-		return
-	}
-	defer f.Close()
-	gz := gzip.NewWriter(f)
-	_, writeErr := gz.Write(trace)
-	if writeErr != nil {
-		log.Warnw("long-method trace: gzip write failed", "filename", filename, "error", writeErr)
-	}
-	closeErr := gz.Close()
-	if closeErr != nil {
-		log.Warnw("long-method trace: gzip close failed", "filename", filename, "error", closeErr)
-	}
-	if writeErr == nil && closeErr == nil {
-		emitProfileCreated("LONG_METHOD", methodName, filename, false)
-	}
+	r.Report("LONG_METHOD", map[string]any{
+		"method":     methodName,
+		"durationMs": time.Since(start).Milliseconds(),
+	}, debugreporter.Capture{Kind: debugreporter.KindHeap})
 }
 
 func extractHotSync(req *pb.RpcAccountSelectRequest) bool {

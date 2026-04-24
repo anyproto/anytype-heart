@@ -81,6 +81,20 @@ func Get() Params {
 	return Params{}
 }
 
+// SetForTest stores arbitrary Params, bypassing the first-call-wins CAS in
+// Init. Reserved for tests that need to run with a specific Paths layout
+// without routing through the RPC entry point. Not safe for production
+// callers — they must go through Init.
+func SetForTest(p Params) {
+	current.Store(&p)
+}
+
+// ResetForTest clears the stored Params so a subsequent Init behaves as if
+// the process just started. Tests only.
+func ResetForTest() {
+	current.Store(nil)
+}
+
 func paths(workdir string) Paths {
 	if workdir == "" {
 		return Paths{}

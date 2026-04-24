@@ -3,12 +3,10 @@
 package profiler
 
 import (
-	"fmt"
 	"runtime"
 	"time"
 
-	"github.com/anyproto/anytype-heart/core/debug/debugsnapshot"
-	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 )
 
 const (
@@ -25,11 +23,7 @@ func (s *service) run() {
 	for {
 		select {
 		case <-ticker.C:
-			stop, err := s.detect()
-			if err != nil {
-				log.Errorf("memory-growth detector error: %s", err)
-			}
-			if stop {
+			if s.detect() {
 				return
 			}
 		case <-s.closeCh:
@@ -58,32 +52,20 @@ func (s *service) isMemoryGrowing() bool {
 	return false
 }
 
-// detect writes a debug snapshot into profilesDir when memory growth is
-// detected. Returns stop=true after maxProfiles triggers so the background
-// goroutine exits instead of filling the profiles directory endlessly.
-func (s *service) detect() (stop bool, err error) {
+// detect checks the memory-growth heuristic and, when it trips, reports a
+// heap snapshot via the Reporter path (artifact + event in one call).
+// Returns true after maxProfiles triggers so the background goroutine exits
+// rather than filling the profiles directory indefinitely.
+func (s *service) detect() (stop bool) {
 	if !s.isMemoryGrowing() {
-		return false, nil
+		return false
 	}
 
-	paths := initialparams.Get().Paths
-	if paths.ProfilesDir == "" {
-		// Not yet configured (InitialSetParameters hasn't been called, or
-		// workdir is empty). Nothing we can write — skip this tick.
-		return false, nil
-	}
-
-	reasonDesc := fmt.Sprintf("sysMemory=%d", s.previousHighMemoryDetected)
-	path, err := debugsnapshot.Save(paths.ProfilesDir, reasonMemoryGrowth, reasonDesc, debugsnapshot.Meta{
-		RootPath: paths.Workdir,
-	})
-	if err != nil {
-		return false, fmt.Errorf("save memory-growth snapshot: %w", err)
-	}
-
-	log.With("sysMemory", s.previousHighMemoryDetected, "snapshot", path).Warn("memory growth detected, snapshot saved")
+	s.Report(reasonMemoryGrowth, map[string]any{
+		"sysMemory": s.previousHighMemoryDetected,
+	}, debugreporter.Capture{Kind: debugreporter.KindHeap})
 	s.timesHighMemoryUsageDetected++
-	s.emitProfileCreated(reasonMemoryGrowth, reasonDesc, path, false)
+	log.Warnw("memory growth detected", "sysMemory", s.previousHighMemoryDetected)
 
-	return s.timesHighMemoryUsageDetected >= maxProfiles, nil
+	return s.timesHighMemoryUsageDetected >= maxProfiles
 }

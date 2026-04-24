@@ -65,6 +65,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/durability"
@@ -172,6 +173,10 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 		a = nil
 		return
 	}
+	// Wire the profiler component as the process-wide Reporter so the
+	// metrics long-method interceptor and any future critical-signal sites
+	// can produce snapshots + events without reaching into internal APIs.
+	metrics.SetReporter(app.MustComponent[debugreporter.Reporter](a))
 	totalSpent := time.Since(startTime)
 	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
 	stat := a.StartStat()

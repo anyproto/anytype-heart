@@ -23,7 +23,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/debug/debugsnapshot"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
@@ -608,7 +607,6 @@ func (s *Service) CleanupReport(ts int64) error {
 
 type profilesSummary struct {
 	Profiles     int                  `json:"profiles"`
-	LongRequests int                  `json:"longRequests"`
 	Logs         int                  `json:"logs"`
 	ReasonCounts map[string]int       `json:"reasonCounts"`
 	Items        []profileSummaryItem `json:"items,omitempty"`
@@ -635,30 +633,25 @@ func generateProfilesSummary(profilesDir, logsDir string) []byte {
 
 	if entries, err := os.ReadDir(profilesDir); err == nil {
 		for _, e := range entries {
-			if e.IsDir() {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".zip") {
 				continue
 			}
 			name := e.Name()
-			switch {
-			case strings.HasSuffix(name, ".zip"):
-				summary.Profiles++
-				item := profileSummaryItem{File: name}
-				if info, ok := debugsnapshot.ReadInfoFromZip(filepath.Join(profilesDir, name)); ok {
-					reason := info.Reason
-					if reason == "" {
-						reason = "(none)"
-					}
-					summary.ReasonCounts[reason]++
-					item.Version = info.Version
-					item.Reason = info.Reason
-					item.ReasonDesc = info.ReasonDesc
-					item.Time = info.Time
-					item.Full = info.Full
+			summary.Profiles++
+			item := profileSummaryItem{File: name}
+			if info, ok := debugsnapshot.ReadInfoFromZip(filepath.Join(profilesDir, name)); ok {
+				reason := info.Reason
+				if reason == "" {
+					reason = "(none)"
 				}
-				summary.Items = append(summary.Items, item)
-			case strings.HasPrefix(name, metrics.LongMethodTracePrefix):
-				summary.LongRequests++
+				summary.ReasonCounts[reason]++
+				item.Version = info.Version
+				item.Reason = info.Reason
+				item.ReasonDesc = info.ReasonDesc
+				item.Time = info.Time
+				item.Full = info.Full
 			}
+			summary.Items = append(summary.Items, item)
 		}
 	}
 
