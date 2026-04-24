@@ -13,7 +13,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -28,7 +27,9 @@ import (
 	exptrace "golang.org/x/exp/trace"
 
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/vcs"
 )
@@ -520,15 +521,55 @@ func (s *Service) SaveLoginTrace(dir string) (string, error) {
 	return s.traceRecorder.save(dir)
 }
 
-// maxLogFilesInPartialReport is the number of newest log files included when
-// SaveReport is called with full=false. Includes the active log plus the most
-// recent rotated/compressed one.
-const maxLogFilesInPartialReport = 2
+// buildPartialLogBundle writes a capped gzip bundle of the logs in logsDir
+// to a temp file and returns its path plus the newest source mtime. An empty
+// path is returned when there are no eligible log files.
+func (s *Service) buildPartialLogBundle(logsDir string) (string, time.Time, error) {
+	var newest time.Time
+	entries, err := os.ReadDir(logsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", time.Time{}, nil
+		}
+		return "", time.Time{}, fmt.Errorf("read logs dir: %w", err)
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), "anytype") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if t := info.ModTime(); t.After(newest) {
+			newest = t
+		}
+	}
+	if newest.IsZero() {
+		return "", time.Time{}, nil
+	}
+	tmp, err := os.CreateTemp("", "anytype-logs-*.log.gz")
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("create tmp bundle: %w", err)
+	}
+	tmp.Close()
+	if err := logging.WriteLogBundle(logsDir, tmp.Name(), partialReportLogBudget); err != nil {
+		os.Remove(tmp.Name())
+		return "", time.Time{}, err
+	}
+	return tmp.Name(), newest, nil
+}
+
+// partialReportLogBudget caps the size of the single gzipped log bundle
+// produced when SaveReport is called with full=false. Bundle is streamed
+// newest-first across active + rotated logs until the cap is hit.
+const partialReportLogBudget = 10 * 1024 * 1024
 
 // SaveReport creates a zip of logs and profiles. Returns (path, summary JSON, lastModifiedTs, error).
 // lastModifiedTs is the Unix timestamp (seconds) of the most recently modified source file included in the report.
-// When full is false the report keeps only the 2 newest log files (by mtime);
-// profiles are always included in full.
+// When full is false the report replaces the individual log files with a
+// single gzipped bundle capped at partialReportLogBudget; profiles are
+// included in both modes.
 func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, error) {
 	paths := initialparams.Get().Paths
 	logsDir := paths.LogsDir
@@ -545,6 +586,11 @@ func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, 
 	if err != nil {
 		return "", "", 0, err
 	}
+
+	// Drain zap's buffered sink so log entries written right before the
+	// report call make it to disk before we start reading the log files.
+	// Error is benign (stderr Sync can fail on some platforms) — ignored.
+	_ = log.Sync()
 
 	var files []zipFile
 	var toClose []io.Closer
@@ -584,20 +630,41 @@ func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, 
 		return collected, err
 	}
 
-	// Collect log files (only anytype-prefixed)
-	logFiles, err := collectDir(logsDir, func(name string) bool {
-		return strings.HasPrefix(name, "anytype")
-	})
-	if err != nil {
-		return "", "", 0, fmt.Errorf("error while walking logs directory: %w", err)
-	}
-	if !full && len(logFiles) > maxLogFilesInPartialReport {
-		sort.Slice(logFiles, func(i, j int) bool {
-			return logFiles[i].modTime.After(logFiles[j].modTime)
+	if full {
+		logFiles, err := collectDir(logsDir, func(name string) bool {
+			return strings.HasPrefix(name, "anytype")
 		})
-		logFiles = logFiles[:maxLogFilesInPartialReport]
+		if err != nil {
+			return "", "", 0, fmt.Errorf("error while walking logs directory: %w", err)
+		}
+		files = append(files, logFiles...)
+	} else {
+		// Partial report: one capped gzip bundle in place of the individual
+		// log files. Track newest log mtime separately so lastModifiedTs
+		// reflects it without loading every file into the zip.
+		bundlePath, bundleMTime, err := s.buildPartialLogBundle(logsDir)
+		if err != nil {
+			return "", "", 0, fmt.Errorf("build log bundle: %w", err)
+		}
+		if bundlePath != "" {
+			bundleFile, err := os.Open(bundlePath)
+			if err != nil {
+				os.Remove(bundlePath)
+				return "", "", 0, fmt.Errorf("open log bundle: %w", err)
+			}
+			toClose = append(toClose, bundleFile)
+			// Delete the temp bundle after the zip is built.
+			defer os.Remove(bundlePath)
+			files = append(files, zipFile{
+				name:    filepath.Join(filepath.Base(logsDir), "bundle.log.gz"),
+				data:    bundleFile,
+				modTime: bundleMTime,
+			})
+			if ts := bundleMTime.Unix(); ts > lastModifiedTs {
+				lastModifiedTs = ts
+			}
+		}
 	}
-	files = append(files, logFiles...)
 
 	// Collect profile files
 	profilesDir := paths.ProfilesDir
@@ -686,9 +753,11 @@ func (s *Service) CleanupReport(ts int64) error {
 }
 
 type profilesSummary struct {
-	Profiles int                  `json:"profiles"`
-	Logs     int                  `json:"logs"`
-	Items    []profileSummaryItem `json:"items,omitempty"`
+	Profiles     int                  `json:"profiles"`
+	LongRequests int                  `json:"longRequests"`
+	Logs         int                  `json:"logs"`
+	ReasonCounts map[string]int       `json:"reasonCounts"`
+	Items        []profileSummaryItem `json:"items,omitempty"`
 }
 
 // profileSummaryItem captures the per-snapshot fields pulled from each
@@ -703,22 +772,35 @@ type profileSummaryItem struct {
 }
 
 func generateProfilesSummary(profilesDir, logsDir string) []byte {
-	var summary profilesSummary
+	summary := profilesSummary{
+		ReasonCounts: make(map[string]int),
+	}
 
 	if entries, err := os.ReadDir(profilesDir); err == nil {
 		for _, e := range entries {
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".zip") {
+			if e.IsDir() {
 				continue
 			}
-			summary.Profiles++
-			item := profileSummaryItem{File: e.Name()}
-			if info, ok := readInfoFromZip(filepath.Join(profilesDir, e.Name())); ok {
-				item.Version = info.Version
-				item.Reason = info.Reason
-				item.ReasonDesc = info.ReasonDesc
-				item.Time = info.Time
+			name := e.Name()
+			switch {
+			case strings.HasSuffix(name, ".zip"):
+				summary.Profiles++
+				item := profileSummaryItem{File: name}
+				if info, ok := readInfoFromZip(filepath.Join(profilesDir, name)); ok {
+					reason := info.Reason
+					if reason == "" {
+						reason = "(none)"
+					}
+					summary.ReasonCounts[reason]++
+					item.Version = info.Version
+					item.Reason = info.Reason
+					item.ReasonDesc = info.ReasonDesc
+					item.Time = info.Time
+				}
+				summary.Items = append(summary.Items, item)
+			case strings.HasPrefix(name, metrics.LongMethodTracePrefix):
+				summary.LongRequests++
 			}
-			summary.Items = append(summary.Items, item)
 		}
 	}
 

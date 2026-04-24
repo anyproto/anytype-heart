@@ -28,6 +28,11 @@ const (
 	accountSelect       = "AccountSelect"
 	accountStop         = "AccountStop"
 	accountStopJson     = "account_stop.json"
+
+	// LongMethodTracePrefix is the filename prefix used by saveLongMethodTrace.
+	// Exported so consumers (report summary, cleanup) can identify these files
+	// without hard-coding the string.
+	LongMethodTracePrefix = "long_method_"
 )
 
 var (
@@ -241,7 +246,7 @@ func saveLongMethodTrace(methodName string, trace []byte, start time.Time) {
 	}
 	ts := time.Now().Format("20060102_150405")
 	duration := time.Since(start).Truncate(time.Millisecond)
-	filename := filepath.Join(dir, fmt.Sprintf("long_method_%s_%s_%s.txt.gz", methodName, ts, duration))
+	filename := filepath.Join(dir, fmt.Sprintf("%s%s_%s_%s.txt.gz", LongMethodTracePrefix, methodName, ts, duration))
 	f, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Warnw("long-method trace skipped: cannot open file", "filename", filename, "error", err)

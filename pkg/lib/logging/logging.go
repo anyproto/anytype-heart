@@ -106,7 +106,7 @@ func newLumberjackSink(u *url.URL) (zap.Sink, error) {
 	const flushInterval = 30 * time.Second
 	// Mobile keeps smaller rotated files to save disk; buffering behaviour
 	// matches desktop.
-	if runtime.GOOS == "android" || runtime.GOARCH == "ios" {
+	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
 		lj = &lumberjack.Logger{
 			Filename:   u.Path,
 			MaxSize:    10,
