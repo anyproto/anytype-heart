@@ -91,9 +91,8 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 				Error("failed to open spacestore, backing up")
 			if s.reporter != nil {
 				s.reporter.Report("DB_CORRUPTION", map[string]any{
-					"db":      "spacestore",
+					"db":      filepath.Join(filepath.Base(filepath.Dir(dbPath)), filepath.Base(dbPath)),
 					"spaceId": id,
-					"path":    dbPath,
 					"code":    code.String(),
 					"desc":    code.Message(),
 					"error":   err.Error(),

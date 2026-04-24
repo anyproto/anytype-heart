@@ -200,8 +200,7 @@ func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path s
 		if isCorrupted {
 			if reporter != nil {
 				reporter.Report("DB_CORRUPTION", map[string]any{
-					"db":     filepath.Base(path),
-					"path":   path,
+					"db":     filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path)),
 					"code":   code.String(),
 					"desc":   code.Message(),
 					"error":  err.Error(),

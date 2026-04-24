@@ -1103,10 +1103,27 @@ message Event {
     // (DebugRunProfiler) are NOT re-announced via this event — the RPC
     // response already carries the path.
     message ProfileCreated {
-      string reason = 1;     // matches DebugRunProfiler.Reason names
-      string reasonDesc = 2; // free-form context
-      string path = 3;       // absolute path to the snapshot archive
-      bool full = 4;         // true for timed (>0s) archives
+      // reason is a short, stable, UPPER_SNAKE_CASE label describing why the
+      // middleware produced this report. It is NOT the DebugRunProfiler
+      // Reason enum — values come from the internal call sites:
+      //   - "MEMORY_GROWTH"  : the desktop memory-growth detector tripped
+      //   - "LONG_METHOD"    : an RPC exceeded the long-execution threshold
+      //   - "DB_CORRUPTION"  : an anystore/spacestore database failed to open
+      // More reasons may be added over time; clients should forward unknown
+      // values to Sentry as-is.
+      string reason = 1;
+      // jsonInfo is JSON-encoded context produced by the middleware (reason-
+      // specific keys like "sysMemory", "method", "durationMs", "db", "code").
+      // Clients forward it verbatim to Sentry as the event context.
+      string jsonInfo = 2;
+      // path is the absolute path to the snapshot archive on disk; empty
+      // when the reason is event-only (e.g. DB_CORRUPTION) and no artifact
+      // was produced.
+      string path = 3;
+      // full is true when the archive carries a timed CPU profile + trace
+      // in addition to heap and goroutines. False for fast snapshots and
+      // for event-only reports.
+      bool full = 4;
     }
   }
 }

@@ -251,7 +251,7 @@ func reportLongMethod(methodName string, start time.Time) {
 	r.Report("LONG_METHOD", map[string]any{
 		"method":     methodName,
 		"durationMs": time.Since(start).Milliseconds(),
-	}, debugreporter.Capture{Kind: debugreporter.KindHeap})
+	}, debugreporter.Capture{Kind: debugreporter.KindGoroutines})
 }
 
 func extractHotSync(req *pb.RpcAccountSelectRequest) bool {

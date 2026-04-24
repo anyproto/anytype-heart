@@ -72,13 +72,15 @@ func (s *service) Report(reason string, extra map[string]any, capture debugrepor
 	switch capture.Kind {
 	case debugreporter.KindNone:
 		// event only — no on-disk artifact
+	case debugreporter.KindGoroutines:
+		path = s.saveSnapshot(reason, desc, debugsnapshot.WithoutHeap())
+	case debugreporter.KindHeap:
+		path = s.saveSnapshot(reason, desc)
 	case debugreporter.KindTimedFull:
 		// Timed capture is not yet factored out of core/application.RunProfiler;
 		// fall back to a heap snapshot so callers still get something usable.
 		log.Warnw("Report: KindTimedFull not implemented yet, falling back to KindHeap", "reason", reason)
-		path = s.saveHeapSnapshot(reason, desc)
-	case debugreporter.KindHeap:
-		path = s.saveHeapSnapshot(reason, desc)
+		path = s.saveSnapshot(reason, desc)
 	default:
 		log.Warnw("Report: unknown Kind", "reason", reason, "kind", capture.Kind)
 	}
@@ -86,15 +88,16 @@ func (s *service) Report(reason string, extra map[string]any, capture debugrepor
 	s.broadcastProfileCreated(reason, desc, path, full)
 }
 
-// saveHeapSnapshot writes a heap+goroutines snapshot zip into the profiles
-// dir and returns its path. Returns "" on failure (error is logged).
-func (s *service) saveHeapSnapshot(reason, reasonDesc string) string {
+// saveSnapshot writes a snapshot zip into the profiles dir and returns its
+// path. Returns "" on failure (error is logged). Accepts debugsnapshot
+// options to tune the archive contents.
+func (s *service) saveSnapshot(reason, jsonInfo string, opts ...debugsnapshot.SaveOption) string {
 	paths := initialparams.Get().Paths
-	path, err := debugsnapshot.Save(paths.ProfilesDir, reason, reasonDesc, debugsnapshot.Meta{
+	path, err := debugsnapshot.Save(paths.ProfilesDir, reason, jsonInfo, debugsnapshot.Meta{
 		RootPath: paths.Workdir,
-	})
+	}, opts...)
 	if err != nil {
-		log.Warnw("Report: save heap snapshot failed", "reason", reason, "error", err)
+		log.Warnw("Report: save snapshot failed", "reason", reason, "error", err)
 		return ""
 	}
 	return path
@@ -102,7 +105,7 @@ func (s *service) saveHeapSnapshot(reason, reasonDesc string) string {
 
 // broadcastProfileCreated emits Event.Debug.ProfileCreated. Safe to call
 // with path == "" (KindNone or failed capture).
-func (s *service) broadcastProfileCreated(reason, reasonDesc, path string, full bool) {
+func (s *service) broadcastProfileCreated(reason, jsonInfo, path string, full bool) {
 	if s.sender == nil {
 		return
 	}
@@ -110,10 +113,10 @@ func (s *service) broadcastProfileCreated(reason, reasonDesc, path string, full 
 		Messages: []*pb.EventMessage{
 			event.NewMessage("", &pb.EventMessageValueOfDebugProfileCreated{
 				DebugProfileCreated: &pb.EventDebugProfileCreated{
-					Reason:     reason,
-					ReasonDesc: reasonDesc,
-					Path:       path,
-					Full:       full,
+					Reason:   reason,
+					JsonInfo: jsonInfo,
+					Path:     path,
+					Full:     full,
 				},
 			}),
 		},

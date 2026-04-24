@@ -69,10 +69,30 @@ type Meta struct {
 	Full bool
 }
 
+// SaveOption tunes what Save writes into the archive. See WithoutHeap.
+type SaveOption func(*saveOptions)
+
+type saveOptions struct {
+	skipHeap bool
+}
+
+// WithoutHeap omits the heap.pb.gz entry from the produced archive. Use when
+// goroutine stacks are the actionable signal and the heap snapshot would be
+// noise (e.g. long-method detection).
+func WithoutHeap() SaveOption {
+	return func(o *saveOptions) { o.skipHeap = true }
+}
+
 // Save writes a new snapshot archive into profilesDir and returns its path.
 // The caller must supply a non-empty profilesDir (empty returns an error that
-// the callers recognize as "log path not configured").
-func Save(profilesDir, reason, reasonDesc string, meta Meta) (string, error) {
+// the callers recognize as "log path not configured"). By default the archive
+// carries info.json + heap.pb.gz + goroutines.txt (+ stat.json when
+// meta.StatJSON is non-empty); see SaveOption for tuning.
+func Save(profilesDir, reason, reasonDesc string, meta Meta, opts ...SaveOption) (string, error) {
+	var cfg saveOptions
+	for _, opt := range opts {
+		opt(&cfg)
+	}
 	if profilesDir == "" {
 		return "", fmt.Errorf("log path not configured")
 	}
@@ -98,19 +118,20 @@ func Save(profilesDir, reason, reasonDesc string, meta Meta) (string, error) {
 		return "", err
 	}
 
-	// Heap profile
-	w, err := zipw.Create("heap.pb.gz")
-	if err != nil {
-		zipw.Close()
-		return "", fmt.Errorf("create heap entry: %w", err)
-	}
-	if err := pprof.WriteHeapProfile(w); err != nil {
-		zipw.Close()
-		return "", fmt.Errorf("write heap: %w", err)
+	if !cfg.skipHeap {
+		w, err := zipw.Create("heap.pb.gz")
+		if err != nil {
+			zipw.Close()
+			return "", fmt.Errorf("create heap entry: %w", err)
+		}
+		if err := pprof.WriteHeapProfile(w); err != nil {
+			zipw.Close()
+			return "", fmt.Errorf("write heap: %w", err)
+		}
 	}
 
 	// Goroutine stacks
-	w, err = zipw.Create("goroutines.txt")
+	w, err := zipw.Create("goroutines.txt")
 	if err != nil {
 		zipw.Close()
 		return "", fmt.Errorf("create goroutines entry: %w", err)

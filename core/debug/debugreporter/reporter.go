@@ -18,10 +18,14 @@ const (
 	// for signals whose context fully fits in the `extra` map (database
 	// corruption, invariant violations, etc.).
 	KindNone Kind = iota
+	// KindGoroutines writes a small snapshot zip with goroutines.txt +
+	// info.json. Use when the actionable signal is "what is everyone
+	// doing right now" (long-method detection, deadlock suspicion)
+	// without the memory cost of a heap profile.
+	KindGoroutines
 	// KindHeap writes a snapshot zip with heap.pb.gz + goroutines.txt +
-	// info.json (+ stat.json when available). This is the default choice
-	// for non-CPU-bound investigations (memory growth, long request
-	// suspected of blocking on GC/IO).
+	// info.json (+ stat.json when available). Use for memory investigations
+	// where the heap snapshot is load-bearing.
 	KindHeap
 	// KindTimedFull writes a richer archive: CPU profile, execution trace,
 	// heap start/end and goroutine start/end, captured over

@@ -77,9 +77,37 @@ func TestReport(t *testing.T) {
 		msg := sender.events[0].Messages[0].GetDebugProfileCreated()
 		require.NotNil(t, msg)
 		assert.Equal(t, "DB_CORRUPTION", msg.Reason)
-		assert.JSONEq(t, `{"err":"checksum mismatch","table":"objects"}`, msg.ReasonDesc)
+		assert.JSONEq(t, `{"err":"checksum mismatch","table":"objects"}`, msg.JsonInfo)
 		assert.Empty(t, msg.Path)
 		assert.False(t, msg.Full)
+	})
+
+	t.Run("KindGoroutines writes snapshot zip without heap.pb.gz", func(t *testing.T) {
+		profilesDir := setupProfilesDir(t)
+		sender := &recordingSender{}
+		s := &service{sender: sender}
+
+		s.Report("LONG_METHOD", map[string]any{"method": "TestMethod", "durationMs": 12345}, debugreporter.Capture{Kind: debugreporter.KindGoroutines})
+
+		entries, err := os.ReadDir(profilesDir)
+		require.NoError(t, err)
+		require.Len(t, entries, 1)
+
+		require.Len(t, sender.events, 1)
+		msg := sender.events[0].Messages[0].GetDebugProfileCreated()
+		assert.Equal(t, "LONG_METHOD", msg.Reason)
+		assert.Equal(t, filepath.Join(profilesDir, entries[0].Name()), msg.Path)
+
+		archive, err := zip.OpenReader(msg.Path)
+		require.NoError(t, err)
+		defer archive.Close()
+		names := make(map[string]bool)
+		for _, f := range archive.File {
+			names[f.Name] = true
+		}
+		assert.True(t, names["info.json"], "info.json missing")
+		assert.True(t, names["goroutines.txt"], "goroutines.txt missing")
+		assert.False(t, names["heap.pb.gz"], "heap.pb.gz must not be present for KindGoroutines")
 	})
 
 	t.Run("KindHeap writes snapshot zip and broadcasts its path", func(t *testing.T) {
@@ -98,7 +126,7 @@ func TestReport(t *testing.T) {
 		require.Len(t, sender.events, 1)
 		msg := sender.events[0].Messages[0].GetDebugProfileCreated()
 		assert.Equal(t, "MEMORY_GROWTH", msg.Reason)
-		assert.JSONEq(t, `{"sysMemory":1234567}`, msg.ReasonDesc)
+		assert.JSONEq(t, `{"sysMemory":1234567}`, msg.JsonInfo)
 		assert.Equal(t, filepath.Join(profilesDir, entries[0].Name()), msg.Path)
 
 		// The archive's info.json must carry the reason + reasonDesc.
@@ -133,7 +161,7 @@ func TestReport(t *testing.T) {
 		require.Len(t, sender.events, 1)
 		msg := sender.events[0].Messages[0].GetDebugProfileCreated()
 		assert.Equal(t, "STARTUP", msg.Reason)
-		assert.Empty(t, msg.ReasonDesc)
+		assert.Empty(t, msg.JsonInfo)
 	})
 
 	t.Run("marshal failure still broadcasts event", func(t *testing.T) {
@@ -147,7 +175,7 @@ func TestReport(t *testing.T) {
 		require.Len(t, sender.events, 1)
 		msg := sender.events[0].Messages[0].GetDebugProfileCreated()
 		assert.Equal(t, "BAD_EXTRAS", msg.Reason)
-		assert.Empty(t, msg.ReasonDesc, "marshal failure must fall back to empty reasonDesc")
+		assert.Empty(t, msg.JsonInfo, "marshal failure must fall back to empty reasonDesc")
 	})
 
 	t.Run("nil sender is a no-op", func(t *testing.T) {
