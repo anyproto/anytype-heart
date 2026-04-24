@@ -287,12 +287,7 @@ func (m *Message) Validate() error {
 	for _, block := range m.ChatMessage.Blocks {
 		switch {
 		case block.GetText() != nil:
-			tb := block.GetText()
-			utf16 := textUtil.StrToUTF16(tb.Text)
-			if len(utf16) > MaxMessageLength {
-				return fmt.Errorf("block text exceeds maximum length of %d characters", MaxMessageLength)
-			}
-			if err := validateMarks(tb.Marks, utf16); err != nil {
+			if err := validateTextContent(block.GetText()); err != nil {
 				return err
 			}
 		case block.GetLink() != nil:
@@ -302,19 +297,47 @@ func (m *Message) Validate() error {
 			}
 		case block.GetEmbed() != nil:
 			// embed block is valid as-is
-		case block.GetQuote() != nil:
-			qb := block.GetQuote()
+		case block.GetEditorQuote() != nil:
+			qb := block.GetEditorQuote()
 			if qb.BlockId == "" {
-				return fmt.Errorf("quote block blockId is empty")
+				return fmt.Errorf("editor quote block blockId is empty")
 			}
-			if qb.Text == "" {
-				return fmt.Errorf("quote block text is empty")
+			if qb.Content == nil || qb.Content.Text == "" {
+				return fmt.Errorf("editor quote block text is empty")
+			}
+			if err := validateTextContent(qb.Content); err != nil {
+				return err
+			}
+		case block.GetMessageQuote() != nil:
+			qb := block.GetMessageQuote()
+			if qb.MessageId == "" {
+				return fmt.Errorf("message quote block messageId is empty")
+			}
+			if qb.ParticipantId == "" {
+				return fmt.Errorf("message quote block participantId is empty")
+			}
+			if qb.Content == nil || qb.Content.Text == "" {
+				return fmt.Errorf("message quote block text is empty")
+			}
+			if err := validateTextContent(qb.Content); err != nil {
+				return err
 			}
 		default:
 			return fmt.Errorf("block content is nil")
 		}
 	}
 
+	return nil
+}
+
+func validateTextContent(tb *model.ChatMessageMessageBlockText) error {
+	utf16 := textUtil.StrToUTF16(tb.Text)
+	if len(utf16) > MaxMessageLength {
+		return fmt.Errorf("block text exceeds maximum length of %d characters", MaxMessageLength)
+	}
+	if err := validateMarks(tb.Marks, utf16); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -456,21 +479,7 @@ func marshalBlocks(arena *anyenc.Arena, inBlocks []*model.ChatMessageMessageBloc
 	for i, inBlock := range inBlocks {
 		block := arena.NewObject()
 		if tb := inBlock.GetText(); tb != nil {
-			textObj := arena.NewObject()
-			textObj.Set("text", arena.NewString(tb.Text))
-			textObj.Set("style", arena.NewNumberInt(int(tb.Style)))
-			textMarks := arena.NewArray()
-			for j, inMark := range tb.Marks {
-				marshalMark(arena, textMarks, j, inMark)
-			}
-			textObj.Set("marks", textMarks)
-			if tb.Checked {
-				textObj.Set("checked", arena.NewTrue())
-			}
-			if tb.Lang != "" {
-				textObj.Set("lang", arena.NewString(tb.Lang))
-			}
-			block.Set("text", textObj)
+			block.Set("text", marshalTextContent(arena, tb))
 		} else if lb := inBlock.GetLink(); lb != nil {
 			linkObj := arena.NewObject()
 			linkObj.Set("targetObjectId", arena.NewString(lb.TargetObjectId))
@@ -481,15 +490,43 @@ func marshalBlocks(arena *anyenc.Arena, inBlocks []*model.ChatMessageMessageBloc
 			embedObj.Set("text", arena.NewString(eb.Text))
 			embedObj.Set("processor", arena.NewNumberInt(int(eb.Processor)))
 			block.Set("embed", embedObj)
-		} else if qb := inBlock.GetQuote(); qb != nil {
+		} else if qb := inBlock.GetEditorQuote(); qb != nil {
 			quoteObj := arena.NewObject()
 			quoteObj.Set("blockId", arena.NewString(qb.BlockId))
-			quoteObj.Set("text", arena.NewString(qb.Text))
-			block.Set("quote", quoteObj)
+			if qb.Content != nil {
+				quoteObj.Set("content", marshalTextContent(arena, qb.Content))
+			}
+			block.Set("editorQuote", quoteObj)
+		} else if qb := inBlock.GetMessageQuote(); qb != nil {
+			quoteObj := arena.NewObject()
+			quoteObj.Set("messageId", arena.NewString(qb.MessageId))
+			quoteObj.Set("participantId", arena.NewString(qb.ParticipantId))
+			if qb.Content != nil {
+				quoteObj.Set("content", marshalTextContent(arena, qb.Content))
+			}
+			block.Set("messageQuote", quoteObj)
 		}
 		blocks.SetArrayItem(i, block)
 	}
 	return blocks
+}
+
+func marshalTextContent(arena *anyenc.Arena, tb *model.ChatMessageMessageBlockText) *anyenc.Value {
+	textObj := arena.NewObject()
+	textObj.Set("text", arena.NewString(tb.Text))
+	textObj.Set("style", arena.NewNumberInt(int(tb.Style)))
+	textMarks := arena.NewArray()
+	for j, inMark := range tb.Marks {
+		marshalMark(arena, textMarks, j, inMark)
+	}
+	textObj.Set("marks", textMarks)
+	if tb.Checked {
+		textObj.Set("checked", arena.NewTrue())
+	}
+	if tb.Lang != "" {
+		textObj.Set("lang", arena.NewString(tb.Lang))
+	}
+	return textObj
 }
 
 func marshalMark(arena *anyenc.Arena, arr *anyenc.Value, idx int, inMark *model.BlockContentTextMark) {
@@ -584,13 +621,7 @@ func (m *messageUnmarshaller) blocksToModel() []*model.ChatMessageMessageBlock {
 		block := &model.ChatMessageMessageBlock{}
 		if textVal := inBlock.Get("text"); textVal != nil {
 			block.Content = &model.ChatMessageMessageBlockContentOfText{
-				Text: &model.ChatMessageMessageBlockText{
-					Text:    string(textVal.GetStringBytes("text")),
-					Style:   model.BlockContentTextStyle(textVal.GetInt("style")),
-					Marks:   unmarshalMarks(textVal.GetArray("marks")),
-					Checked: textVal.GetBool("checked"),
-					Lang:    string(textVal.GetStringBytes("lang")),
-				},
+				Text: unmarshalTextContent(textVal),
 			}
 		} else if linkVal := inBlock.Get("link"); linkVal != nil {
 			block.Content = &model.ChatMessageMessageBlockContentOfLink{
@@ -606,17 +637,41 @@ func (m *messageUnmarshaller) blocksToModel() []*model.ChatMessageMessageBlock {
 					Processor: model.BlockContentLatexProcessor(embedVal.GetInt("processor")),
 				},
 			}
-		} else if quoteVal := inBlock.Get("quote"); quoteVal != nil {
-			block.Content = &model.ChatMessageMessageBlockContentOfQuote{
-				Quote: &model.ChatMessageMessageBlockQuote{
-					BlockId: string(quoteVal.GetStringBytes("blockId")),
-					Text:    string(quoteVal.GetStringBytes("text")),
-				},
+		} else if quoteVal := inBlock.Get("editorQuote"); quoteVal != nil {
+			quote := &model.ChatMessageMessageBlockEditorQuote{
+				BlockId: string(quoteVal.GetStringBytes("blockId")),
+			}
+			if contentVal := quoteVal.Get("content"); contentVal != nil {
+				quote.Content = unmarshalTextContent(contentVal)
+			}
+			block.Content = &model.ChatMessageMessageBlockContentOfEditorQuote{
+				EditorQuote: quote,
+			}
+		} else if quoteVal := inBlock.Get("messageQuote"); quoteVal != nil {
+			quote := &model.ChatMessageMessageBlockMessageQuote{
+				MessageId:     string(quoteVal.GetStringBytes("messageId")),
+				ParticipantId: string(quoteVal.GetStringBytes("participantId")),
+			}
+			if contentVal := quoteVal.Get("content"); contentVal != nil {
+				quote.Content = unmarshalTextContent(contentVal)
+			}
+			block.Content = &model.ChatMessageMessageBlockContentOfMessageQuote{
+				MessageQuote: quote,
 			}
 		}
 		blocks = append(blocks, block)
 	}
 	return blocks
+}
+
+func unmarshalTextContent(val *anyenc.Value) *model.ChatMessageMessageBlockText {
+	return &model.ChatMessageMessageBlockText{
+		Text:    string(val.GetStringBytes("text")),
+		Style:   model.BlockContentTextStyle(val.GetInt("style")),
+		Marks:   unmarshalMarks(val.GetArray("marks")),
+		Checked: val.GetBool("checked"),
+		Lang:    string(val.GetStringBytes("lang")),
+	}
 }
 
 func unmarshalMarks(inMarks []*anyenc.Value) []*model.BlockContentTextMark {
