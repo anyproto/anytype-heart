@@ -33,6 +33,7 @@ import (
 	"go.uber.org/zap"
 	"zombiezen.com/go/sqlite"
 
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -110,6 +111,10 @@ type provider struct {
 	componentCtxCancel context.CancelFunc
 
 	dbsAreFlushing atomic.Bool
+
+	// reporter is looked up in Init; may be nil when the provider is
+	// constructed outside an app container (NewInPath, tests).
+	reporter debugreporter.Reporter
 }
 
 func New() Provider {
@@ -142,6 +147,11 @@ func (s *provider) Init(a *app.App) error {
 	cfg := app.MustComponent[configProvider](a)
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	s.anyStoreConfig = cfg.GetAnyStoreConfig()
+	// Reporter is optional — tests build smaller app graphs without the
+	// profiler component. Corruption reports in those contexts become no-ops.
+	if r, err := app.GetComponent[debugreporter.Reporter](a); err == nil {
+		s.reporter = r
+	}
 
 	return s.initInPath(repoPath)
 }
@@ -158,7 +168,7 @@ func (s *provider) initInPath(repoPath string) error {
 		return err
 	}
 
-	s.commonDb, err = openDatabaseWithReinit(context.Background(), s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, "objects.db"))
+	s.commonDb, err = openDatabaseWithReinit(context.Background(), s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, "objects.db"), s.reporter)
 	if err != nil {
 		return fmt.Errorf("open db: %w", err)
 	}
@@ -180,7 +190,7 @@ func getLogger(err error, code sqlite.ResultCode) *zap.Logger {
 }
 
 // openDatabaseWithReinit tries to open anystore database, if it fails with corruption error it removes the files and tries to open again
-func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path string) (anystore.DB, error) {
+func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path string, reporter debugreporter.Reporter) (anystore.DB, error) {
 	err := ensureDirExists(filepath.Dir(path))
 	if err != nil {
 		return nil, fmt.Errorf("ensure dir exists: %w", err)
@@ -192,6 +202,15 @@ func openDatabaseWithReinit(ctx context.Context, config *anystore.Config, path s
 		code, isCorrupted := anystorehelper.IsCorruptedError(err)
 		getLogger(err, code).With(zap.Bool("isCorrupted", isCorrupted)).With(zap.Int64("tookMs", time.Since(start).Milliseconds())).Error("failed to open anystore")
 		if isCorrupted {
+			if reporter != nil {
+				reporter.Report("DB_CORRUPTION", map[string]any{
+					"db":     filepath.Join(filepath.Base(filepath.Dir(path)), filepath.Base(path)),
+					"code":   code.String(),
+					"desc":   code.Message(),
+					"error":  err.Error(),
+					"tookMs": time.Since(start).Milliseconds(),
+				}, debugreporter.Capture{Kind: debugreporter.KindNone})
+			}
 			removeErr := anystorehelper.RemoveSqliteFiles(path)
 			if removeErr != nil {
 				log.Error("failed to remove sqlite files", zap.Error(removeErr))
@@ -254,7 +273,7 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 		return db, nil
 	}
 
-	db, err := openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, spaceId, "objects.db"))
+	db, err := openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, spaceId, "objects.db"), s.reporter)
 	if err != nil {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
@@ -269,6 +288,7 @@ type AnystoreGetter struct {
 	config          *anystore.Config
 	objectStorePath string
 	spaceId         string
+	reporter        debugreporter.Reporter
 
 	lock sync.Mutex
 	db   anystore.DB
@@ -290,7 +310,7 @@ func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	}
 
 	path := filepath.Join(g.objectStorePath, g.spaceId, "crdt.db")
-	db, err := openDatabaseWithReinit(g.ctx, g.config, path)
+	db, err := openDatabaseWithReinit(g.ctx, g.config, path, g.reporter)
 	if err != nil {
 		return nil, fmt.Errorf("open: %w", err)
 	}
@@ -314,6 +334,7 @@ func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 		ctx:             s.componentCtx,
 		config:          s.getAnyStoreConfig(),
 		objectStorePath: s.objectStorePath,
+		reporter:        s.reporter,
 	}
 	s.crdtDbs[spaceId] = db
 	return db

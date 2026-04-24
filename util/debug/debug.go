@@ -82,7 +82,25 @@ func ParseGoroutinesDump(trace string, pattern string) string {
 }
 
 func Stack(allGoroutines bool) []byte {
-	buf := make([]byte, 1024)
+	return StackReuse(nil, allGoroutines)
+}
+
+// StackReuse captures goroutine stacks, reusing buf if large enough.
+// The returned slice may be a sub-slice of buf or a newly allocated one.
+//
+// Callers can pass a slice returned by a previous StackReuse call directly;
+// the full underlying capacity is reclaimed internally, so the fact that the
+// earlier return was trimmed to buf[:n] does not prevent reuse on the next
+// call.
+func StackReuse(buf []byte, allGoroutines bool) []byte {
+	buf = buf[:cap(buf)]
+	if len(buf) == 0 {
+		if allGoroutines {
+			buf = make([]byte, 2*1024*1024) // 2MB initial for all goroutines
+		} else {
+			buf = make([]byte, 8*1024) // 8KB for single goroutine
+		}
+	}
 	for {
 		n := runtime.Stack(buf, allGoroutines)
 		if n < len(buf) {

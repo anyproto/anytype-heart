@@ -7,13 +7,14 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/samber/lo"
 	"github.com/valyala/fastjson"
-	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/util/debug"
 	"github.com/anyproto/anytype-heart/util/reflection"
@@ -30,7 +31,31 @@ const (
 var (
 	maxDuration = time.Second * 10
 	cache       = new(methodsCache)
+
+	// reporter is the process-wide debugreporter.Reporter used to emit
+	// long-method reports. Wired once at bootstrap via SetReporter; left nil
+	// in non-app contexts (unit tests) where the interceptor simply skips
+	// reporting.
+	reporter atomic.Pointer[debugreporter.Reporter]
 )
+
+// SetReporter installs the Reporter used by the long-method interceptor.
+// Passing nil clears it (useful in tests). Concurrency-safe.
+func SetReporter(r debugreporter.Reporter) {
+	if r == nil {
+		reporter.Store(nil)
+		return
+	}
+	reporter.Store(&r)
+}
+
+func loadReporter() debugreporter.Reporter {
+	p := reporter.Load()
+	if p == nil {
+		return nil
+	}
+	return *p
+}
 
 type methodsCache struct {
 	methods map[string]struct{}
@@ -82,7 +107,15 @@ func extractMethodName(info string) string {
 func SharedTraceInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
 	var hotSync bool
 	if methodName == accountSelect {
-		hotSync = extractHotSync(req.(*pb.RpcAccountSelectRequest))
+		asReq := req.(*pb.RpcAccountSelectRequest)
+		hotSync = extractHotSync(asReq)
+		if !hotSync {
+			// Cold AccountSelect: the repo folder for this account was not
+			// present on disk. For an existing user this means local data was
+			// wiped (reinstall, manual delete, new device). Worth knowing at
+			// support time — fires once per cold select.
+			log.Warnw("AccountSelect: cold start", "accountId", asReq.Id)
+		}
 	}
 	start := time.Now().UnixMilli()
 	resp, err := actualCall(ctx, req)
@@ -188,52 +221,50 @@ var excludedLongExecutionMethods = []string{
 }
 
 func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
-	return actualCall(ctx, req)
-	// todo: noop till GO-7143
 	if lo.Contains(excludedLongExecutionMethods, methodName) {
 		return actualCall(ctx, req)
 	}
-	doneCh := make(chan struct{})
+	done := make(chan struct{})
 	start := time.Now()
 
-	lastTrace := atomic.NewString("")
-	l := log.With("method", methodName)
+	// time.NewTimer + Stop instead of time.After so a fast-returning RPC
+	// releases the timer immediately. With time.After the runtime keeps the
+	// 10s timer alive for every call until it fires uselessly.
+	timer := time.NewTimer(maxDuration)
 	go func() {
+		defer timer.Stop()
 		select {
-		case <-doneCh:
-			break
-		case <-time.After(maxDuration):
-			trace := debug.Stack(true)
-			// double check, because we can have a race and the stack trace can be taken after the method is already finished
-			if !cache.hasMethod(methodName) && stackTraceHasMethod(methodName, trace) {
-				lastTrace.Store(string(trace))
-				traceCompressed := debug.CompressBytes(trace)
-				l.With("ver", 2).
-					With("in_progress", true).
-					With("goroutines", traceCompressed).
-					With("total", time.Since(start).Milliseconds()).
-					Warnf("grpc unary request is taking too long")
+		case <-done:
+		case <-timer.C:
+			// Double-check the stack still contains the method: guards
+			// against the race where actualCall returned between the timer
+			// firing and this goroutine getting scheduled.
+			if !cache.hasMethod(methodName) && stackTraceHasMethod(methodName, debug.Stack(true)) {
+				reportLongMethod(methodName, start)
 				cache.addMethod(methodName)
 			}
 		}
 	}()
 	ctx = context.WithValue(ctx, CtxKeyRPC, methodName)
 	resp, err := actualCall(ctx, req)
-	close(doneCh)
-	if time.Since(start) > maxDuration {
-		if !cache.hasMethod(methodName) {
-			// todo: save long stack trace to files
-			lastTraceB := debug.CompressBytes([]byte(lastTrace.String()))
-			l.With("ver", 2).
-				With("error", err).
-				With("in_progress", false).
-				With("goroutines", lastTraceB).
-				With("total", time.Since(start).Milliseconds()).
-				Warnf("grpc unary request took too long")
-			cache.addMethod(methodName)
-		}
-	}
+	close(done)
 	return resp, err
+}
+
+// reportLongMethod dispatches a LONG_RPC report through the registered
+// Reporter. The Reporter captures goroutine stacks at this moment (while
+// the method is still blocked if the goroutine fires first), so the
+// archive contains the useful stack context. If no Reporter is registered
+// yet (startup race, unit test), the call is silently skipped.
+func reportLongMethod(methodName string, start time.Time) {
+	r := loadReporter()
+	if r == nil {
+		return
+	}
+	r.Report("LONG_RPC", map[string]any{
+		"method":     methodName,
+		"durationMs": time.Since(start).Milliseconds(),
+	}, debugreporter.Capture{Kind: debugreporter.KindGoroutines})
 }
 
 func extractHotSync(req *pb.RpcAccountSelectRequest) bool {

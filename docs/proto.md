@@ -661,14 +661,18 @@
     - [Rpc.Debug.AnystoreObjectChanges.Response](#anytype-Rpc-Debug-AnystoreObjectChanges-Response)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Change](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Change)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error)
+    - [Rpc.Debug.CleanupReport](#anytype-Rpc-Debug-CleanupReport)
+    - [Rpc.Debug.CleanupReport.Request](#anytype-Rpc-Debug-CleanupReport-Request)
+    - [Rpc.Debug.CleanupReport.Response](#anytype-Rpc-Debug-CleanupReport-Response)
+    - [Rpc.Debug.CleanupReport.Response.Error](#anytype-Rpc-Debug-CleanupReport-Response-Error)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
     - [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response)
     - [Rpc.Debug.ExportLocalstore.Response.Error](#anytype-Rpc-Debug-ExportLocalstore-Response-Error)
-    - [Rpc.Debug.ExportLog](#anytype-Rpc-Debug-ExportLog)
-    - [Rpc.Debug.ExportLog.Request](#anytype-Rpc-Debug-ExportLog-Request)
-    - [Rpc.Debug.ExportLog.Response](#anytype-Rpc-Debug-ExportLog-Response)
-    - [Rpc.Debug.ExportLog.Response.Error](#anytype-Rpc-Debug-ExportLog-Response-Error)
+    - [Rpc.Debug.ExportReport](#anytype-Rpc-Debug-ExportReport)
+    - [Rpc.Debug.ExportReport.Request](#anytype-Rpc-Debug-ExportReport-Request)
+    - [Rpc.Debug.ExportReport.Response](#anytype-Rpc-Debug-ExportReport-Response)
+    - [Rpc.Debug.ExportReport.Response.Error](#anytype-Rpc-Debug-ExportReport-Response-Error)
     - [Rpc.Debug.NetCheck](#anytype-Rpc-Debug-NetCheck)
     - [Rpc.Debug.NetCheck.Request](#anytype-Rpc-Debug-NetCheck-Request)
     - [Rpc.Debug.NetCheck.Response](#anytype-Rpc-Debug-NetCheck-Response)
@@ -1661,11 +1665,13 @@
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code)
+    - [Rpc.Debug.CleanupReport.Response.Error.Code](#anytype-Rpc-Debug-CleanupReport-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
-    - [Rpc.Debug.ExportLog.Response.Error.Code](#anytype-Rpc-Debug-ExportLog-Response-Error-Code)
+    - [Rpc.Debug.ExportReport.Response.Error.Code](#anytype-Rpc-Debug-ExportReport-Response-Error-Code)
     - [Rpc.Debug.NetCheck.Response.Error.Code](#anytype-Rpc-Debug-NetCheck-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
+    - [Rpc.Debug.RunProfiler.Request.Reason](#anytype-Rpc-Debug-RunProfiler-Request-Reason)
     - [Rpc.Debug.RunProfiler.Response.Error.Code](#anytype-Rpc-Debug-RunProfiler-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
     - [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code)
@@ -2022,6 +2028,8 @@
     - [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
+    - [Event.Debug](#anytype-Event-Debug)
+    - [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
@@ -2610,11 +2618,12 @@
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request) | [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response) |  |
 | DebugSubscriptions | [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request) | [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response) |  |
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
-| DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) |  |
+| DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) | When DurationInSeconds=0, saves a heap memory profile to the logs directory and returns the file path. When DurationInSeconds&gt;0, runs a full profiler (CPU, heap, trace, goroutines) for the given duration. |
 | DebugAccountSelectTrace | [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request) | [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response) |  |
 | DebugAnystoreObjectChanges | [Rpc.Debug.AnystoreObjectChanges.Request](#anytype-Rpc-Debug-AnystoreObjectChanges-Request) | [Rpc.Debug.AnystoreObjectChanges.Response](#anytype-Rpc-Debug-AnystoreObjectChanges-Response) |  |
 | DebugNetCheck | [Rpc.Debug.NetCheck.Request](#anytype-Rpc-Debug-NetCheck-Request) | [Rpc.Debug.NetCheck.Response](#anytype-Rpc-Debug-NetCheck-Response) |  |
-| DebugExportLog | [Rpc.Debug.ExportLog.Request](#anytype-Rpc-Debug-ExportLog-Request) | [Rpc.Debug.ExportLog.Response](#anytype-Rpc-Debug-ExportLog-Response) |  |
+| DebugExportReport | [Rpc.Debug.ExportReport.Request](#anytype-Rpc-Debug-ExportReport-Request) | [Rpc.Debug.ExportReport.Response](#anytype-Rpc-Debug-ExportReport-Response) |  |
+| DebugCleanupReport | [Rpc.Debug.CleanupReport.Request](#anytype-Rpc-Debug-CleanupReport-Request) | [Rpc.Debug.CleanupReport.Response](#anytype-Rpc-Debug-CleanupReport-Response) |  |
 | InitialSetParameters | [Rpc.Initial.SetParameters.Request](#anytype-Rpc-Initial-SetParameters-Request) | [Rpc.Initial.SetParameters.Response](#anytype-Rpc-Initial-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
@@ -12279,6 +12288,62 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-CleanupReport"></a>
+
+### Rpc.Debug.CleanupReport
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-CleanupReport-Request"></a>
+
+### Rpc.Debug.CleanupReport.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ts | [int64](#int64) |  | Unix timestamp (seconds); files with lastModified &lt; ts will be removed |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-CleanupReport-Response"></a>
+
+### Rpc.Debug.CleanupReport.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.CleanupReport.Response.Error](#anytype-Rpc-Debug-CleanupReport-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-CleanupReport-Response-Error"></a>
+
+### Rpc.Debug.CleanupReport.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.CleanupReport.Response.Error.Code](#anytype-Rpc-Debug-CleanupReport-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore"></a>
 
 ### Rpc.Debug.ExportLocalstore
@@ -12339,56 +12404,59 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog"></a>
+<a name="anytype-Rpc-Debug-ExportReport"></a>
 
-### Rpc.Debug.ExportLog
-
-
+### Rpc.Debug.ExportReport
 
 
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog-Request"></a>
 
-### Rpc.Debug.ExportLog.Request
+
+<a name="anytype-Rpc-Debug-ExportReport-Request"></a>
+
+### Rpc.Debug.ExportReport.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | dir | [string](#string) |  | empty means using OS-provided temp dir |
+| full | [bool](#bool) |  | When false (default) the report includes only the 2 newest log files (active &#43; most recent rotated). When true, all logs are included. |
 
 
 
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog-Response"></a>
+<a name="anytype-Rpc-Debug-ExportReport-Response"></a>
 
-### Rpc.Debug.ExportLog.Response
+### Rpc.Debug.ExportReport.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Debug.ExportLog.Response.Error](#anytype-Rpc-Debug-ExportLog-Response-Error) |  |  |
+| error | [Rpc.Debug.ExportReport.Response.Error](#anytype-Rpc-Debug-ExportReport-Response-Error) |  |  |
 | path | [string](#string) |  |  |
+| summary | [string](#string) |  | JSON summary with profile counts by reason and log count |
+| lastModifiedTs | [int64](#int64) |  | Unix timestamp (seconds) of the newest source file in this report. Pass to DebugCleanupReport after the report is successfully uploaded to the reporter server. |
 
 
 
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog-Response-Error"></a>
+<a name="anytype-Rpc-Debug-ExportReport-Response-Error"></a>
 
-### Rpc.Debug.ExportLog.Response.Error
+### Rpc.Debug.ExportReport.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Debug.ExportLog.Response.Error.Code](#anytype-Rpc-Debug-ExportLog-Response-Error-Code) |  |  |
+| code | [Rpc.Debug.ExportReport.Response.Error.Code](#anytype-Rpc-Debug-ExportReport-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12581,7 +12649,9 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| durationInSeconds | [int32](#int32) |  |  |
+| durationInSeconds | [int32](#int32) |  | 0 = save heap snapshot only; &gt;0 = run full profiler (CPU, heap, trace, goroutines) for this many seconds |
+| reason | [Rpc.Debug.RunProfiler.Request.Reason](#anytype-Rpc-Debug-RunProfiler-Request-Reason) |  |  |
+| reasonDesc | [string](#string) |  | Optional free-form description to attach to the profile |
 
 
 
@@ -26621,6 +26691,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-CleanupReport-Response-Error-Code"></a>
+
+### Rpc.Debug.CleanupReport.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -26634,9 +26717,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog-Response-Error-Code"></a>
+<a name="anytype-Rpc-Debug-ExportReport-Response-Error-Code"></a>
 
-### Rpc.Debug.ExportLog.Response.Error.Code
+### Rpc.Debug.ExportReport.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -26684,6 +26767,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Request-Reason"></a>
+
+### Rpc.Debug.RunProfiler.Request.Reason
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNKNOWN | 0 |  |
+| USER_REQUEST | 1 | Triggered explicitly by the user |
+| MEMORY_PRESSURE_WARN | 2 | iOS: DISPATCH_MEMORYPRESSURE_WARN Android: onTrimMemory(RUNNING_LOW) |
+| MEMORY_PRESSURE_CRITICAL | 3 | iOS: DISPATCH_MEMORYPRESSURE_CRITICAL / applicationDidReceiveMemoryWarning Android: onTrimMemory(RUNNING_CRITICAL) |
+| THERMAL_SERIOUS | 4 | iOS: ProcessInfo.thermalState == .serious Android: THERMAL_STATUS_SEVERE |
+| THERMAL_CRITICAL | 5 | iOS: ProcessInfo.thermalState == .critical Android: THERMAL_STATUS_CRITICAL or higher |
 
 
 
@@ -32023,6 +32122,39 @@ to its type.
 
 
 
+<a name="anytype-Event-Debug"></a>
+
+### Event.Debug
+
+
+
+
+
+
+
+<a name="anytype-Event-Debug-ProfileCreated"></a>
+
+### Event.Debug.ProfileCreated
+ProfileCreated is emitted whenever the middleware writes a snapshot
+archive on its own (e.g. the memory-growth detector), so clients can
+surface it or queue the archive for upload without polling the
+profiles directory. Archives produced as a result of a client RPC
+(DebugRunProfiler) are NOT re-announced via this event — the RPC
+response already carries the path.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| reason | [string](#string) |  | reason is a short, stable, UPPER_SNAKE_CASE label describing why the middleware produced this report. It is NOT the DebugRunProfiler Reason enum — values come from the internal call sites: - &#34;MEMORY_GROWTH&#34; : the desktop memory-growth detector tripped - &#34;LONG_RPC&#34; : an RPC exceeded the long-execution threshold - &#34;DB_CORRUPTION&#34; : an anystore/spacestore database failed to open More reasons may be added over time; clients should forward unknown values to Sentry as-is. |
+| jsonInfo | [string](#string) |  | jsonInfo is JSON-encoded context produced by the middleware (reason- specific keys like &#34;sysMemory&#34;, &#34;method&#34;, &#34;durationMs&#34;, &#34;db&#34;, &#34;code&#34;). Clients forward it verbatim to Sentry as the event context. |
+| path | [string](#string) |  | path is the absolute path to the snapshot archive on disk; empty when the reason is event-only (e.g. DB_CORRUPTION) and no artifact was produced. |
+| full | [bool](#bool) |  | full is true when the archive carries a timed CPU profile &#43; trace in addition to heap and goroutines. False for fast snapshots and for event-only reports. |
+
+
+
+
+
+
 <a name="anytype-Event-File"></a>
 
 ### Event.File
@@ -32295,6 +32427,7 @@ received to update per-message mention read status (if needed |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
 | objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
+| debugProfileCreated | [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated) |  |  |
 | chatUpdateMessageCount | [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount) |  | received whenever the total number of non-deleted messages in |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |

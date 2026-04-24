@@ -3,19 +3,17 @@
 package profiler
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
-	"fmt"
 	"runtime"
-	"runtime/pprof"
 	"time"
+
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 )
 
 const (
-	highMemoryUsageThreshold = 1024 * 1024 * 1024 // 1 Gb
+	highMemoryUsageThreshold = 1024 * 1024 * 1024 // 1 GiB system memory
 	maxProfiles              = 3
 	growthFactor             = 1.5
+	reasonMemoryGrowth       = "MEMORY_GROWTH"
 )
 
 func (s *service) run() {
@@ -25,12 +23,8 @@ func (s *service) run() {
 	for {
 		select {
 		case <-ticker.C:
-			stop, err := s.detect()
-			if stop {
+			if s.detect() {
 				return
-			}
-			if err != nil {
-				log.Errorf("high memory detector error: %s", err)
 			}
 		case <-s.closeCh:
 			return
@@ -38,6 +32,9 @@ func (s *service) run() {
 	}
 }
 
+// isMemoryGrowing samples runtime.MemStats.Sys. It trips on the first
+// crossing of highMemoryUsageThreshold and again whenever Sys grows by
+// growthFactor (1.5x) past the previous trip value.
 func (s *service) isMemoryGrowing() bool {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
@@ -55,24 +52,20 @@ func (s *service) isMemoryGrowing() bool {
 	return false
 }
 
-func (s *service) detect() (stop bool, err error) {
-	if s.isMemoryGrowing() {
-		buf := &bytes.Buffer{}
-		gzipWriter := gzip.NewWriter(buf)
-		err := pprof.WriteHeapProfile(gzipWriter)
-		if err != nil {
-			return stop, fmt.Errorf("write heap profile: %w", err)
-		}
-		gzipWriter.Close()
-
-		// To extract profile from logged string use `base64 -d | gzip -d`
-		log.With("sysMemory", s.previousHighMemoryDetected, "profile", base64.StdEncoding.EncodeToString(buf.Bytes())).Error("high memory usage detected, logging memory profile")
-		s.timesHighMemoryUsageDetected++
-
-		if s.timesHighMemoryUsageDetected >= maxProfiles {
-			return true, nil
-		}
+// detect checks the memory-growth heuristic and, when it trips, reports a
+// heap snapshot via the Reporter path (artifact + event in one call).
+// Returns true after maxProfiles triggers so the background goroutine exits
+// rather than filling the profiles directory indefinitely.
+func (s *service) detect() (stop bool) {
+	if !s.isMemoryGrowing() {
+		return false
 	}
 
-	return false, nil
+	s.Report(reasonMemoryGrowth, map[string]any{
+		"sysMemory": s.previousHighMemoryDetected,
+	}, debugreporter.Capture{Kind: debugreporter.KindHeap})
+	s.timesHighMemoryUsageDetected++
+	log.Warnw("memory growth detected", "sysMemory", s.previousHighMemoryDetected)
+
+	return s.timesHighMemoryUsageDetected >= maxProfiles
 }
