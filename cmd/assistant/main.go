@@ -14,6 +14,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
@@ -57,6 +59,7 @@ func run() error {
 	_ = handledMessages
 
 	chatService := getService[chats.Service](app)
+	objectStore := getService[objectstore.ObjectStore](app)
 	// hacky way to subscribe to all chats
 	_, err = chatService.SubscribeToMessagePreviews(ctx, "ai_assistant_chat")
 	if err != nil {
@@ -86,7 +89,13 @@ func run() error {
 			continue
 		}
 
-		fmt.Printf("-- message in chat %s (space %s)\n", chatId, currentSpaceId)
+		spaceType, err := resolveSpaceType(objectStore, currentSpaceId)
+		if err != nil {
+			fmt.Printf("resolve space type err: %s\n", err.Error())
+			spaceType = model.SpaceType_SpaceTypeUnknown
+		}
+
+		fmt.Printf("-- message in chat %s (space %s, type %d)\n", chatId, currentSpaceId, spaceType)
 
 		// Create a new runtime for each message
 		rt, err := createMessageRuntime(ctx, chatService, chatId, currentSpaceId, apiBaseUrl, privateSpaceId, claudeKey)
@@ -99,11 +108,12 @@ func run() error {
 		quotedIdentity, _ := json.Marshal(chatAddEv.Message.Creator)
 		quotedSpaceId, _ := json.Marshal(currentSpaceId)
 		quotedApiBaseUrl, _ := json.Marshal(apiBaseUrl)
+		quotedChatId, _ := json.Marshal(chatId)
 
 		wrapperSource := fmt.Sprintf(`import { main as entryMain } from %q;
 export function main() {
-  return entryMain({ text: %s, identity: %s, spaceId: %s, apiBaseUrl: %s, verbose: false });
-}`, mainProgram, string(quotedText), string(quotedIdentity), string(quotedSpaceId), string(quotedApiBaseUrl))
+  return entryMain({ text: %s, identity: %s, spaceId: %s, spaceType: %d, chatId: %s, apiBaseUrl: %s, verbose: false });
+}`, mainProgram, string(quotedText), string(quotedIdentity), string(quotedSpaceId), int32(spaceType), string(quotedChatId), string(quotedApiBaseUrl))
 
 		res, err := rt.EvalToString("__wrapper__", wrapperSource, nil)
 		if res != nil {
@@ -135,6 +145,16 @@ export function main() {
 			}
 		}
 	}
+}
+
+// resolveSpaceType reads spaceType from the spaceView details in the tech space.
+// Returns model.SpaceType_SpaceTypeUnknown if the spaceView cannot be found.
+func resolveSpaceType(store objectstore.ObjectStore, spaceId string) (model.SpaceType, error) {
+	details, err := store.GetSpaceViewDetails(spaceId)
+	if err != nil {
+		return model.SpaceType_SpaceTypeUnknown, fmt.Errorf("get spaceView details: %w", err)
+	}
+	return model.SpaceType(details.GetInt64(bundle.RelationKeySpaceType)), nil // nolint:gosec
 }
 
 // createMessageRuntime creates a runtime for a single message.
