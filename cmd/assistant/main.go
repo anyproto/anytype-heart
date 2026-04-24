@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
+	"strings"
 
+	"github.com/anyproto/any-sync/nodeconf"
 	"github.com/anyproto/anytype-agent-runtime/anyruntime"
 	agentrt "github.com/anyproto/anytype-agent-runtime/runtime"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/anytype-heart/core/acl"
 	"github.com/anyproto/anytype-heart/core/block/chats"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/session"
@@ -60,6 +64,8 @@ func run() error {
 
 	chatService := getService[chats.Service](app)
 	objectStore := getService[objectstore.ObjectStore](app)
+	aclService := getService[acl.AclService](app)
+	networkId := getService[nodeconf.Service](app).Configuration().NetworkId
 	// hacky way to subscribe to all chats
 	_, err = chatService.SubscribeToMessagePreviews(ctx, "ai_assistant_chat")
 	if err != nil {
@@ -98,7 +104,7 @@ func run() error {
 		fmt.Printf("-- message in chat %s (space %s, type %d)\n", chatId, currentSpaceId, spaceType)
 
 		// Create a new runtime for each message
-		rt, err := createMessageRuntime(ctx, chatService, chatId, currentSpaceId, apiBaseUrl, privateSpaceId, claudeKey)
+		rt, err := createMessageRuntime(ctx, chatService, aclService, networkId, chatId, currentSpaceId, apiBaseUrl, privateSpaceId, claudeKey)
 		if err != nil {
 			fmt.Printf("create runtime err: %s\n", err.Error())
 			continue
@@ -159,8 +165,9 @@ func resolveSpaceType(store objectstore.ObjectStore, spaceId string) (model.Spac
 
 // createMessageRuntime creates a runtime for a single message.
 // createMessageRuntime sets up a runtime for a single message using the standard
-// Anytype runtime base, then overrides chatReply to deliver messages to the chat.
-func createMessageRuntime(ctx context.Context, chatService chats.Service, chatId string, spaceId string, apiBaseUrl string, privateSpaceId string, claudeKey string) (agentrt.Runtime, error) {
+// Anytype runtime base, then overrides chatReply to deliver messages to the chat
+// and registers acceptInvite for joining shared spaces from JS.
+func createMessageRuntime(ctx context.Context, chatService chats.Service, aclService acl.AclService, networkId string, chatId string, spaceId string, apiBaseUrl string, privateSpaceId string, claudeKey string) (agentrt.Runtime, error) {
 	rt, err := agentrt.NewSobekRuntime()
 	if err != nil {
 		return nil, fmt.Errorf("create sobek runtime: %w", err)
@@ -175,6 +182,7 @@ func createMessageRuntime(ctx context.Context, chatService chats.Service, chatId
 	})
 
 	rt.SetEffectResolver("chatReply", newChatReplyEffect(ctx, chatService, chatId))
+	rt.SetEffectResolver("acceptInvite", newAcceptInviteEffect(ctx, aclService, networkId))
 
 	return rt, nil
 }
@@ -240,6 +248,82 @@ func newChatReplyEffect(ctx context.Context, chatService chats.Service, chatId s
 		}
 		return nil
 	}
+}
+
+// newAcceptInviteEffect returns an acceptInvite effect handler that resolves an
+// invite URL and joins the target space via aclService. The handler expects a
+// single string argument — a shared-space invite link like
+// "https://invite.any.coop/{cid}#{key}". Use WithoutApprove ("anyone with the
+// link can join") links — Member invites land in a joining state that only the
+// space owner can approve.
+func newAcceptInviteEffect(ctx context.Context, aclService acl.AclService, networkId string) func(tr *agentrt.TraceRecord, args ...any) any {
+	return func(tr *agentrt.TraceRecord, args ...any) any {
+		if len(args) == 0 {
+			return map[string]any{"error": "missing invite link"}
+		}
+		link, ok := args[0].(string)
+		if !ok {
+			return map[string]any{"error": fmt.Sprintf("invite link must be a string, got %T", args[0])}
+		}
+		tr.SetInput(link)
+
+		cid, key, err := parseInviteLink(link)
+		if err != nil {
+			return map[string]any{"error": fmt.Errorf("parse invite: %w", err).Error()}
+		}
+
+		iv, err := viewInvite(ctx, aclService, &pb.RpcSpaceInviteViewRequest{
+			InviteCid:     cid,
+			InviteFileKey: key,
+		})
+		if err != nil {
+			return map[string]any{"error": fmt.Errorf("view invite: %w", err).Error()}
+		}
+
+		err = joinSpace(ctx, aclService, &pb.RpcSpaceJoinRequest{
+			NetworkId:     networkId,
+			SpaceId:       iv.SpaceId,
+			InviteCid:     cid,
+			InviteFileKey: key,
+		})
+		if err != nil {
+			return map[string]any{
+				"spaceId": iv.SpaceId,
+				"error":   fmt.Errorf("join space: %w", err).Error(),
+			}
+		}
+
+		fmt.Printf("-- joined space %s (%s)\n", iv.SpaceId, iv.SpaceName)
+
+		return map[string]any{
+			"spaceId":    iv.SpaceId,
+			"spaceName":  iv.SpaceName,
+			"spaceType":  int32(iv.SpaceType),
+			"inviteType": int(iv.InviteType),
+		}
+	}
+}
+
+// parseInviteLink extracts cid (URL path) and file key (URL fragment) from an
+// invite URL like "https://invite.any.coop/{cid}#{key}". The fragment may be
+// percent-encoded.
+func parseInviteLink(link string) (cid, key string, err error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return "", "", fmt.Errorf("parse url: %w", err)
+	}
+	cid = strings.TrimPrefix(u.Path, "/")
+	if cid == "" {
+		return "", "", fmt.Errorf("link missing cid path")
+	}
+	key = u.Fragment
+	if key == "" {
+		return "", "", fmt.Errorf("link missing key fragment")
+	}
+	if decoded, derr := url.PathUnescape(key); derr == nil {
+		key = decoded
+	}
+	return cid, key, nil
 }
 
 func main() {
