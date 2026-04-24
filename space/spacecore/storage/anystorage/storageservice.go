@@ -124,7 +124,10 @@ func (s *storageService) Close(ctx context.Context) (err error) {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
-	s.reporter = app.MustComponent[debugreporter.Reporter](a)
+	// Reporter is optional — see anystoreprovider.Init comment.
+	if r, err := app.GetComponent[debugreporter.Reporter](a); err == nil {
+		s.reporter = r
+	}
 	if _, err = os.Stat(s.rootPath); err != nil {
 		err = os.MkdirAll(s.rootPath, 0755)
 		if err != nil {

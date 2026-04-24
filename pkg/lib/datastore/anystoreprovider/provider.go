@@ -147,7 +147,11 @@ func (s *provider) Init(a *app.App) error {
 	cfg := app.MustComponent[configProvider](a)
 	repoPath := app.MustComponent[wallet.Wallet](a).RepoPath()
 	s.anyStoreConfig = cfg.GetAnyStoreConfig()
-	s.reporter = app.MustComponent[debugreporter.Reporter](a)
+	// Reporter is optional — tests build smaller app graphs without the
+	// profiler component. Corruption reports in those contexts become no-ops.
+	if r, err := app.GetComponent[debugreporter.Reporter](a); err == nil {
+		s.reporter = r
+	}
 
 	return s.initInPath(repoPath)
 }
