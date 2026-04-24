@@ -422,7 +422,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	if err != nil {
 		return "", fmt.Errorf("create goroutines end file: %w", err)
 	}
-	stackBuf = debug.StackReuse(stackBuf[:cap(stackBuf)], true)
+	stackBuf = debug.StackReuse(stackBuf, true)
 	_, err = geF.Write(stackBuf)
 	geF.Close()
 	if err != nil {
@@ -686,30 +686,39 @@ func (s *Service) CleanupReport(ts int64) error {
 }
 
 type profilesSummary struct {
-	Profiles     int            `json:"profiles"`
-	Logs         int            `json:"logs"`
-	ReasonCounts map[string]int `json:"reasonCounts"`
+	Profiles int                  `json:"profiles"`
+	Logs     int                  `json:"logs"`
+	Items    []profileSummaryItem `json:"items,omitempty"`
+}
+
+// profileSummaryItem captures the per-snapshot fields pulled from each
+// profile zip's info.json, so a reviewer can see the contents of a report
+// without opening every archive.
+type profileSummaryItem struct {
+	File       string `json:"file"`
+	Version    string `json:"version,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+	ReasonDesc string `json:"reasonDesc,omitempty"`
+	Time       string `json:"time,omitempty"`
 }
 
 func generateProfilesSummary(profilesDir, logsDir string) []byte {
-	summary := profilesSummary{
-		ReasonCounts: make(map[string]int),
-	}
+	var summary profilesSummary
 
-	// Count profiles and extract reasons
 	if entries, err := os.ReadDir(profilesDir); err == nil {
 		for _, e := range entries {
 			if e.IsDir() || !strings.HasSuffix(e.Name(), ".zip") {
 				continue
 			}
 			summary.Profiles++
+			item := profileSummaryItem{File: e.Name()}
 			if info, ok := readInfoFromZip(filepath.Join(profilesDir, e.Name())); ok {
-				reason := info.Reason
-				if reason == "" {
-					reason = "(none)"
-				}
-				summary.ReasonCounts[reason]++
+				item.Version = info.Version
+				item.Reason = info.Reason
+				item.ReasonDesc = info.ReasonDesc
+				item.Time = info.Time
 			}
+			summary.Items = append(summary.Items, item)
 		}
 	}
 
