@@ -305,17 +305,18 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 		return "", err
 	}
 
-	// Create temp files for streaming
+	// Create temp files for streaming. We defer removal unconditionally —
+	// the caller never sees these paths, only the final zip.
 	type tempFile struct {
 		zipName string
 		path    string
 	}
 	var temps []tempFile
-	cleanup := func() {
+	defer func() {
 		for _, t := range temps {
 			os.Remove(t.path)
 		}
-	}
+	}()
 
 	createTemp := func(zipName, pattern string) (*os.File, error) {
 		f, err := os.CreateTemp(profilesDir, pattern)
@@ -333,55 +334,54 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	}
 	if err := trace.Start(traceF); err != nil {
 		traceF.Close()
-		cleanup()
 		return "", fmt.Errorf("start tracer: %w", err)
 	}
+	traceRunning := true
+	defer func() {
+		if traceRunning {
+			trace.Stop()
+		}
+		traceF.Close()
+	}()
 
 	// Stream CPU profile to file
 	cpuF, err := createTemp("cpu_profile", "tmp_cpu_*")
 	if err != nil {
-		trace.Stop()
-		traceF.Close()
-		cleanup()
 		return "", fmt.Errorf("create cpu file: %w", err)
 	}
 	if err := pprof.StartCPUProfile(cpuF); err != nil {
-		trace.Stop()
-		traceF.Close()
 		cpuF.Close()
-		cleanup()
 		return "", fmt.Errorf("start cpu profile: %w", err)
 	}
+	cpuRunning := true
+	defer func() {
+		if cpuRunning {
+			pprof.StopCPUProfile()
+		}
+		cpuF.Close()
+	}()
 
 	// Heap start - stream to file
 	heapStartF, err := createTemp("heap_start", "tmp_heap_start_*")
-	if err == nil {
-		err = pprof.WriteHeapProfile(heapStartF)
-		heapStartF.Close()
-	}
 	if err != nil {
-		pprof.StopCPUProfile()
-		cpuF.Close()
-		trace.Stop()
-		traceF.Close()
-		cleanup()
+		return "", fmt.Errorf("create heap start file: %w", err)
+	}
+	err = pprof.WriteHeapProfile(heapStartF)
+	heapStartF.Close()
+	if err != nil {
 		return "", fmt.Errorf("write heap start: %w", err)
 	}
 
 	// Goroutines start - stream to file (reuse stackBuf for end)
 	var stackBuf []byte
 	gsF, err := createTemp("goroutines_start.txt", "tmp_goroutines_start_*")
-	if err == nil {
-		stackBuf = debug.StackReuse(stackBuf, true)
-		_, err = gsF.Write(stackBuf)
-		gsF.Close()
-	}
 	if err != nil {
-		pprof.StopCPUProfile()
-		cpuF.Close()
-		trace.Stop()
-		traceF.Close()
-		cleanup()
+		return "", fmt.Errorf("create goroutines start file: %w", err)
+	}
+	stackBuf = debug.StackReuse(stackBuf, true)
+	_, err = gsF.Write(stackBuf)
+	gsF.Close()
+	if err != nil {
 		return "", fmt.Errorf("write goroutines start: %w", err)
 	}
 
@@ -391,93 +391,85 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	case <-ctx.Done():
 	}
 
-	// Stop profilers, close their files
+	// Stop profilers so the on-disk files are finalized before we read them.
+	// The deferred cleanup above still closes the underlying files.
 	pprof.StopCPUProfile()
-	cpuF.Close()
+	cpuRunning = false
 	trace.Stop()
-	traceF.Close()
+	traceRunning = false
 
 	// Heap end
 	heapEndF, err := createTemp("heap_end", "tmp_heap_end_*")
-	if err == nil {
-		err = pprof.WriteHeapProfile(heapEndF)
-		heapEndF.Close()
-	}
 	if err != nil {
-		cleanup()
+		return "", fmt.Errorf("create heap end file: %w", err)
+	}
+	err = pprof.WriteHeapProfile(heapEndF)
+	heapEndF.Close()
+	if err != nil {
 		return "", fmt.Errorf("write heap end: %w", err)
 	}
 
 	// Goroutines end (reuse stackBuf from start)
 	geF, err := createTemp("goroutines_end.txt", "tmp_goroutines_end_*")
-	if err == nil {
-		stackBuf = debug.StackReuse(stackBuf[:cap(stackBuf)], true)
-		_, err = geF.Write(stackBuf)
-		geF.Close()
-	}
 	if err != nil {
-		cleanup()
+		return "", fmt.Errorf("create goroutines end file: %w", err)
+	}
+	stackBuf = debug.StackReuse(stackBuf[:cap(stackBuf)], true)
+	_, err = geF.Write(stackBuf)
+	geF.Close()
+	if err != nil {
 		return "", fmt.Errorf("write goroutines end: %w", err)
 	}
 
-	// Pack into zip, streaming each temp file from disk
+	// Pack into zip, streaming each temp file from disk. The zip path and
+	// zip writer are both managed through defers: on any error before
+	// zipSuccess flips, the partial archive is removed.
 	zipPath := filepath.Join(profilesDir, fmt.Sprintf("anytype_profile_%s.zip", time.Now().Format("20060102_150405")))
 	zipF, err := os.Create(zipPath)
 	if err != nil {
-		cleanup()
 		return "", fmt.Errorf("create zip: %w", err)
 	}
+	zipSuccess := false
+	defer func() {
+		zipF.Close()
+		if !zipSuccess {
+			os.Remove(zipPath)
+		}
+	}()
 	zipw := newProfileZip(zipF)
+	defer zipw.Close()
 
 	for _, t := range temps {
 		src, err := os.Open(t.path)
 		if err != nil {
-			zipw.Close()
-			zipF.Close()
-			cleanup()
 			return "", fmt.Errorf("open temp file %s: %w", t.zipName, err)
 		}
 		dst, err := zipw.Create(t.zipName)
 		if err != nil {
 			src.Close()
-			zipw.Close()
-			zipF.Close()
-			cleanup()
 			return "", fmt.Errorf("create zip entry %s: %w", t.zipName, err)
 		}
 		_, err = io.Copy(dst, src)
 		src.Close()
 		if err != nil {
-			zipw.Close()
-			zipF.Close()
-			cleanup()
 			return "", fmt.Errorf("copy %s to zip: %w", t.zipName, err)
 		}
 	}
 	if inFlightTraceBuf != nil {
 		dst, err := zipw.Create("account_select_trace")
-		if err == nil {
-			_, err = io.Copy(dst, inFlightTraceBuf)
-		}
 		if err != nil {
-			zipw.Close()
-			zipF.Close()
-			cleanup()
+			return "", fmt.Errorf("write in-flight trace: %w", err)
+		}
+		if _, err := io.Copy(dst, inFlightTraceBuf); err != nil {
 			return "", fmt.Errorf("write in-flight trace: %w", err)
 		}
 	}
 
 	if err := writeProfileMetadata(zipw, s.buildProfileInfo(reason, reasonDesc), s.getStatJSON()); err != nil {
-		zipw.Close()
-		zipF.Close()
-		cleanup()
 		return "", err
 	}
 
-	zipw.Close()
-	zipF.Close()
-	cleanup()
-
+	zipSuccess = true
 	cleanupProfiles(profilesDir, maxProfileFiles, profileMaxAge)
 	return zipPath, nil
 }
@@ -617,7 +609,7 @@ func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, 
 	}()
 
 	if len(files) == 0 {
-		return "", "", 0, fmt.Errorf("no log files found in directory: %w", err)
+		return "", "", 0, errors.New("no log files found in directory")
 	}
 
 	// Generate profiles summary
