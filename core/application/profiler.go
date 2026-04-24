@@ -258,20 +258,28 @@ func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
 		return "", fmt.Errorf("close zip: %w", err)
 	}
 
-	cleanupProfiles(profilesDir, maxProfileFiles, profileMaxAge)
+	pruneOldProfilesIfOvercrowded(profilesDir, profilesPruneTrigger, profilesPruneOlderThan)
 	return zipPath, nil
 }
 
-const maxProfileFiles = 50 // each recording is a single zip file
-const profileMaxAge = 30 * 24 * time.Hour
+// profilesPruneTrigger is the file count that must be exceeded before any
+// age-based pruning runs. Below this count every profile is kept regardless
+// of age; above it, files older than profilesPruneOlderThan are removed.
+const profilesPruneTrigger = 50
+const profilesPruneOlderThan = 30 * 24 * time.Hour
 
-// cleanupProfiles removes files older than maxAge when there are more than maxFiles in the directory.
-func cleanupProfiles(dir string, maxFiles int, maxAge time.Duration) {
+// pruneOldProfilesIfOvercrowded is a lazy, trigger-based cleanup for the
+// profiles directory. It is NOT a hard cap — below countTrigger nothing is
+// deleted even if entries are older than maxAge, and above countTrigger only
+// entries older than maxAge are removed (so the directory can still exceed
+// countTrigger if every file is fresh). The intent is "let the directory
+// breathe, but don't hoard stale files once it starts filling up".
+func pruneOldProfilesIfOvercrowded(dir string, countTrigger int, maxAge time.Duration) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return
 	}
-	if len(entries) <= maxFiles {
+	if len(entries) <= countTrigger {
 		return
 	}
 	cutoff := time.Now().Add(-maxAge)
@@ -470,7 +478,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	}
 
 	zipSuccess = true
-	cleanupProfiles(profilesDir, maxProfileFiles, profileMaxAge)
+	pruneOldProfilesIfOvercrowded(profilesDir, profilesPruneTrigger, profilesPruneOlderThan)
 	return zipPath, nil
 }
 
