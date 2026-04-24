@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/exp/maps"
 
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 )
@@ -48,6 +49,8 @@ type storageService struct {
 
 	backupsMu sync.RWMutex
 	backups   []CorruptedBackup
+
+	reporter debugreporter.Reporter
 }
 
 func (s *storageService) AllSpaceIds() (ids []string, err error) {
@@ -86,6 +89,17 @@ func (s *storageService) openDb(ctx context.Context, id string) (db anystore.DB,
 				With(zap.Bool("isCorrupted", isCorrupted)).
 				With(zap.Int64("tookMs", time.Since(start).Milliseconds())).
 				Error("failed to open spacestore, backing up")
+			if s.reporter != nil {
+				s.reporter.Report("DB_CORRUPTION", map[string]any{
+					"db":      "spacestore",
+					"spaceId": id,
+					"path":    dbPath,
+					"code":    code.String(),
+					"desc":    code.Message(),
+					"error":   err.Error(),
+					"tookMs":  time.Since(start).Milliseconds(),
+				}, debugreporter.Capture{Kind: debugreporter.KindNone})
+			}
 			if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
 				log.With(zap.Error(backupErr)).Error("failed to backup corrupted space")
 			}
@@ -111,6 +125,7 @@ func (s *storageService) Close(ctx context.Context) (err error) {
 }
 
 func (s *storageService) Init(a *app.App) (err error) {
+	s.reporter = app.MustComponent[debugreporter.Reporter](a)
 	if _, err = os.Stat(s.rootPath); err != nil {
 		err = os.MkdirAll(s.rootPath, 0755)
 		if err != nil {

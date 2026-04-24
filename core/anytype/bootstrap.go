@@ -235,6 +235,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	}
 
 	a.
+		// profiler is registered early so its Init wires the event sender
+		// before any storage component runs its own Init — storage corruption
+		// detection below relies on the Reporter being live.
+		Register(profiler.New()).
 		// Data storages
 		Register(debugstat.New()).
 		Register(anystoreprovider.New()).
@@ -336,7 +340,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(editor.NewObjectFactory()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
-		Register(profiler.New()).
 		Register(identity.New(5*time.Minute, 10*time.Second)).
 		Register(templateimpl.New()).
 		Register(notifications.New(time.Second * 10)).
