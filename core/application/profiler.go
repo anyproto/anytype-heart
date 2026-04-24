@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime"
 	"runtime/pprof"
 	"runtime/trace"
 	"strings"
@@ -20,64 +19,17 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/klauspost/compress/flate"
-	"github.com/shirou/gopsutil/v4/cpu"
-	"github.com/shirou/gopsutil/v4/disk"
-	"github.com/shirou/gopsutil/v4/mem"
-	"github.com/shirou/gopsutil/v4/process"
 	exptrace "golang.org/x/exp/trace"
 
+	"github.com/anyproto/anytype-heart/core/debug/debugsnapshot"
 	walletComp "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
-	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 var ErrNoFolder = fmt.Errorf("no folder provided")
-
-func getCPUModel() string {
-	infos, err := cpu.Info()
-	if err != nil || len(infos) == 0 {
-		return ""
-	}
-	return infos[0].ModelName
-}
-
-func getSystemMemory() *systemMemory {
-	v, err := mem.VirtualMemory()
-	if err != nil {
-		return nil
-	}
-	return &systemMemory{
-		TotalMB:     v.Total / (1024 * 1024),
-		AvailableMB: v.Available / (1024 * 1024),
-		UsedPercent: v.UsedPercent,
-	}
-}
-
-func getProcessRSSMB() uint64 {
-	p, err := process.NewProcess(int32(os.Getpid()))
-	if err != nil {
-		return 0
-	}
-	mi, err := p.MemoryInfo()
-	if err != nil {
-		return 0
-	}
-	return mi.RSS / (1024 * 1024)
-}
-
-func getDiskFreeMB(path string) uint64 {
-	if path == "" {
-		return 0
-	}
-	usage, err := disk.Usage(path)
-	if err != nil {
-		return 0
-	}
-	return usage.Free / (1024 * 1024)
-}
 
 func (s *Service) profilesDir() string {
 	return initialparams.Get().Paths.ProfilesDir
@@ -98,84 +50,16 @@ func (s *Service) getStatJSON() string {
 	return string(data)
 }
 
-// profileInfo is written as info.json inside profile zip archives.
-type profileInfo struct {
-	Version      string           `json:"version"`
-	Reason       string           `json:"reason,omitempty"`
-	ReasonDesc   string           `json:"reasonDesc,omitempty"`
-	Time         string           `json:"time"`
-	Platform     string           `json:"platform"`
-	NumCPU       int              `json:"numCPU"`
-	CPUModel     string           `json:"cpuModel,omitempty"`
-	ProcessRSSMB uint64           `json:"processRSSMB"`
-	DiskFreeMB   uint64           `json:"diskFreeMB"`
-	MemStats     runtime.MemStats `json:"memstats"`
-	SystemMemory *systemMemory    `json:"systemMemory,omitempty"`
-	// PeerId and AccountId are populated only when an account is active;
-	// a snapshot taken before AccountSelect leaves them empty.
-	PeerId    string `json:"peerId,omitempty"`
-	AccountId string `json:"accountId,omitempty"`
-}
-
-// newProfileZip wraps w in a zip.Writer configured with BestSpeed Deflate,
-// matching the compression settings used for every profile archive.
-func newProfileZip(w io.Writer) *zip.Writer {
-	zipw := zip.NewWriter(w)
-	zipw.RegisterCompressor(zip.Deflate, func(w io.Writer) (io.WriteCloser, error) {
-		return flate.NewWriter(w, flate.BestSpeed)
-	})
-	return zipw
-}
-
-// buildProfileInfo collects runtime, host, and identity fields for the
-// info.json entry of a profile archive. reason and reasonDesc come from the
-// originating RPC; the rest is derived.
-func (s *Service) buildProfileInfo(reason, reasonDesc string) profileInfo {
-	var ms runtime.MemStats
-	runtime.ReadMemStats(&ms)
+// snapshotMeta assembles the debugsnapshot.Meta view of this Service, pulling
+// the wallet-scoped identity and the current rootPath for disk-free stats.
+func (s *Service) snapshotMeta() debugsnapshot.Meta {
 	peerId, accountId := s.identity()
-	return profileInfo{
-		Version:      vcs.GetVCSInfo().Version(),
-		Reason:       reason,
-		ReasonDesc:   reasonDesc,
-		Time:         time.Now().Format(time.RFC3339),
-		Platform:     runtime.GOOS + "/" + runtime.GOARCH,
-		NumCPU:       runtime.NumCPU(),
-		CPUModel:     getCPUModel(),
-		ProcessRSSMB: getProcessRSSMB(),
-		DiskFreeMB:   getDiskFreeMB(s.rootPath),
-		MemStats:     ms,
-		SystemMemory: getSystemMemory(),
-		PeerId:       peerId,
-		AccountId:    accountId,
+	return debugsnapshot.Meta{
+		StatJSON:  s.getStatJSON(),
+		PeerId:    peerId,
+		AccountId: accountId,
+		RootPath:  s.rootPath,
 	}
-}
-
-// writeProfileMetadata writes info.json and (when non-empty) stat.json into
-// the zip archive.
-func writeProfileMetadata(zipw *zip.Writer, info profileInfo, statJSON string) error {
-	data, err := json.MarshalIndent(info, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshal info: %w", err)
-	}
-	w, err := zipw.Create("info.json")
-	if err != nil {
-		return fmt.Errorf("create info entry: %w", err)
-	}
-	if _, err := w.Write(data); err != nil {
-		return fmt.Errorf("write info: %w", err)
-	}
-	if statJSON == "" {
-		return nil
-	}
-	w, err = zipw.Create("stat.json")
-	if err != nil {
-		return fmt.Errorf("create stat entry: %w", err)
-	}
-	if _, err := w.Write([]byte(statJSON)); err != nil {
-		return fmt.Errorf("write stat: %w", err)
-	}
-	return nil
 }
 
 // identity returns the current device PeerId and Account Id if the app is
@@ -198,67 +82,14 @@ func (s *Service) identity() (peerId, accountId string) {
 	return
 }
 
-type systemMemory struct {
-	TotalMB     uint64  `json:"totalMB"`
-	AvailableMB uint64  `json:"availableMB"`
-	UsedPercent float64 `json:"usedPercent"`
-}
-
 // SaveDebugSnapshot saves heap profile, goroutine stacks, and runtime info
 // as a zip file. Called via DebugRunProfiler with DurationInSeconds=0.
 func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
-	info := s.buildProfileInfo(reason, reasonDesc)
-	statJSON := s.getStatJSON()
 	profilesDir := s.profilesDir()
-	if profilesDir == "" {
-		return "", fmt.Errorf("log path not configured")
-	}
-	if err := os.MkdirAll(profilesDir, 0755); err != nil {
-		return "", fmt.Errorf("create profiles dir: %w", err)
-	}
-
-	ts := time.Now().Format("20060102_150405")
-	zipPath := filepath.Join(profilesDir, fmt.Sprintf("snapshot_%s.zip", ts))
-
-	zipF, err := os.Create(zipPath)
+	zipPath, err := debugsnapshot.Save(profilesDir, reason, reasonDesc, s.snapshotMeta())
 	if err != nil {
-		return "", fmt.Errorf("create zip: %w", err)
-	}
-	defer zipF.Close()
-
-	zipw := newProfileZip(zipF)
-
-	if err := writeProfileMetadata(zipw, info, statJSON); err != nil {
-		zipw.Close()
 		return "", err
 	}
-
-	// Heap profile
-	w, err := zipw.Create("heap.pb.gz")
-	if err != nil {
-		zipw.Close()
-		return "", fmt.Errorf("create heap entry: %w", err)
-	}
-	if err := pprof.WriteHeapProfile(w); err != nil {
-		zipw.Close()
-		return "", fmt.Errorf("write heap: %w", err)
-	}
-
-	// Goroutine stacks
-	w, err = zipw.Create("goroutines.txt")
-	if err != nil {
-		zipw.Close()
-		return "", fmt.Errorf("create goroutines entry: %w", err)
-	}
-	if _, err := w.Write(debug.Stack(true)); err != nil {
-		zipw.Close()
-		return "", fmt.Errorf("write goroutines: %w", err)
-	}
-
-	if err := zipw.Close(); err != nil {
-		return "", fmt.Errorf("close zip: %w", err)
-	}
-
 	pruneOldProfilesIfOvercrowded(profilesDir, profilesPruneTrigger, profilesPruneOlderThan)
 	return zipPath, nil
 }
@@ -445,7 +276,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 			os.Remove(zipPath)
 		}
 	}()
-	zipw := newProfileZip(zipF)
+	zipw := debugsnapshot.NewZipWriter(zipF)
 	defer zipw.Close()
 
 	for _, t := range temps {
@@ -474,7 +305,8 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 		}
 	}
 
-	if err := writeProfileMetadata(zipw, s.buildProfileInfo(reason, reasonDesc), s.getStatJSON()); err != nil {
+	meta := s.snapshotMeta()
+	if err := debugsnapshot.WriteMetadata(zipw, debugsnapshot.BuildInfo(reason, reasonDesc, meta), meta.StatJSON); err != nil {
 		return "", err
 	}
 
@@ -786,7 +618,7 @@ func generateProfilesSummary(profilesDir, logsDir string) []byte {
 			case strings.HasSuffix(name, ".zip"):
 				summary.Profiles++
 				item := profileSummaryItem{File: name}
-				if info, ok := readInfoFromZip(filepath.Join(profilesDir, name)); ok {
+				if info, ok := debugsnapshot.ReadInfoFromZip(filepath.Join(profilesDir, name)); ok {
 					reason := info.Reason
 					if reason == "" {
 						reason = "(none)"
@@ -818,31 +650,6 @@ func generateProfilesSummary(profilesDir, logsDir string) []byte {
 		return nil
 	}
 	return data
-}
-
-func readInfoFromZip(zipPath string) (profileInfo, bool) {
-	r, err := zip.OpenReader(zipPath)
-	if err != nil {
-		return profileInfo{}, false
-	}
-	defer r.Close()
-
-	for _, f := range r.File {
-		if f.Name != "info.json" {
-			continue
-		}
-		rc, err := f.Open()
-		if err != nil {
-			return profileInfo{}, false
-		}
-		defer rc.Close()
-		var info profileInfo
-		if err := json.NewDecoder(rc).Decode(&info); err != nil {
-			return profileInfo{}, false
-		}
-		return info, true
-	}
-	return profileInfo{}, false
 }
 
 // traceRecorder is a helper to start and stop flight trace recorder

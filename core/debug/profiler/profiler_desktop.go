@@ -3,19 +3,19 @@
 package profiler
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
 	"fmt"
 	"runtime"
-	"runtime/pprof"
 	"time"
+
+	"github.com/anyproto/anytype-heart/core/debug/debugsnapshot"
+	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 )
 
 const (
-	highMemoryUsageThreshold = 1024 * 1024 * 1024 // 1 Gb
+	highMemoryUsageThreshold = 1024 * 1024 * 1024 // 1 GiB system memory
 	maxProfiles              = 3
 	growthFactor             = 1.5
+	reasonMemoryGrowth       = "MEMORY_GROWTH"
 )
 
 func (s *service) run() {
@@ -26,11 +26,11 @@ func (s *service) run() {
 		select {
 		case <-ticker.C:
 			stop, err := s.detect()
+			if err != nil {
+				log.Errorf("memory-growth detector error: %s", err)
+			}
 			if stop {
 				return
-			}
-			if err != nil {
-				log.Errorf("high memory detector error: %s", err)
 			}
 		case <-s.closeCh:
 			return
@@ -38,6 +38,9 @@ func (s *service) run() {
 	}
 }
 
+// isMemoryGrowing samples runtime.MemStats.Sys. It trips on the first
+// crossing of highMemoryUsageThreshold and again whenever Sys grows by
+// growthFactor (1.5x) past the previous trip value.
 func (s *service) isMemoryGrowing() bool {
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
@@ -55,24 +58,31 @@ func (s *service) isMemoryGrowing() bool {
 	return false
 }
 
+// detect writes a debug snapshot into profilesDir when memory growth is
+// detected. Returns stop=true after maxProfiles triggers so the background
+// goroutine exits instead of filling the profiles directory endlessly.
 func (s *service) detect() (stop bool, err error) {
-	if s.isMemoryGrowing() {
-		buf := &bytes.Buffer{}
-		gzipWriter := gzip.NewWriter(buf)
-		err := pprof.WriteHeapProfile(gzipWriter)
-		if err != nil {
-			return stop, fmt.Errorf("write heap profile: %w", err)
-		}
-		gzipWriter.Close()
-
-		// To extract profile from logged string use `base64 -d | gzip -d`
-		log.With("sysMemory", s.previousHighMemoryDetected, "profile", base64.StdEncoding.EncodeToString(buf.Bytes())).Error("high memory usage detected, logging memory profile")
-		s.timesHighMemoryUsageDetected++
-
-		if s.timesHighMemoryUsageDetected >= maxProfiles {
-			return true, nil
-		}
+	if !s.isMemoryGrowing() {
+		return false, nil
 	}
 
-	return false, nil
+	paths := initialparams.Get().Paths
+	if paths.ProfilesDir == "" {
+		// Not yet configured (InitialSetParameters hasn't been called, or
+		// workdir is empty). Nothing we can write — skip this tick.
+		return false, nil
+	}
+
+	reasonDesc := fmt.Sprintf("sysMemory=%d", s.previousHighMemoryDetected)
+	path, err := debugsnapshot.Save(paths.ProfilesDir, reasonMemoryGrowth, reasonDesc, debugsnapshot.Meta{
+		RootPath: paths.Workdir,
+	})
+	if err != nil {
+		return false, fmt.Errorf("save memory-growth snapshot: %w", err)
+	}
+
+	log.With("sysMemory", s.previousHighMemoryDetected, "snapshot", path).Warn("memory growth detected, snapshot saved")
+	s.timesHighMemoryUsageDetected++
+
+	return s.timesHighMemoryUsageDetected >= maxProfiles, nil
 }
