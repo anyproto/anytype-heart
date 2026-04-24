@@ -238,17 +238,17 @@ func SharedLongMethodsInterceptor(ctx context.Context, req any, methodName strin
 	return resp, err
 }
 
-// reportLongMethod dispatches a LONG_METHOD report through the registered
-// Reporter. The Reporter captures a heap + goroutines snapshot at this
-// moment (while the method is still blocked if the goroutine fires first),
-// so the archive contains the useful stack context. If no Reporter is
-// registered yet (startup race, unit test), the call is silently skipped.
+// reportLongMethod dispatches a LONG_RPC report through the registered
+// Reporter. The Reporter captures goroutine stacks at this moment (while
+// the method is still blocked if the goroutine fires first), so the
+// archive contains the useful stack context. If no Reporter is registered
+// yet (startup race, unit test), the call is silently skipped.
 func reportLongMethod(methodName string, start time.Time) {
 	r := loadReporter()
 	if r == nil {
 		return
 	}
-	r.Report("LONG_METHOD", map[string]any{
+	r.Report("LONG_RPC", map[string]any{
 		"method":     methodName,
 		"durationMs": time.Since(start).Milliseconds(),
 	}, debugreporter.Capture{Kind: debugreporter.KindGoroutines})

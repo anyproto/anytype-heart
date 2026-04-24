@@ -87,7 +87,7 @@ func TestReport(t *testing.T) {
 		sender := &recordingSender{}
 		s := &service{sender: sender}
 
-		s.Report("LONG_METHOD", map[string]any{"method": "TestMethod", "durationMs": 12345}, debugreporter.Capture{Kind: debugreporter.KindGoroutines})
+		s.Report("LONG_RPC", map[string]any{"method": "TestMethod", "durationMs": 12345}, debugreporter.Capture{Kind: debugreporter.KindGoroutines})
 
 		entries, err := os.ReadDir(profilesDir)
 		require.NoError(t, err)
@@ -95,7 +95,7 @@ func TestReport(t *testing.T) {
 
 		require.Len(t, sender.events, 1)
 		msg := sender.events[0].Messages[0].GetDebugProfileCreated()
-		assert.Equal(t, "LONG_METHOD", msg.Reason)
+		assert.Equal(t, "LONG_RPC", msg.Reason)
 		assert.Equal(t, filepath.Join(profilesDir, entries[0].Name()), msg.Path)
 
 		archive, err := zip.OpenReader(msg.Path)

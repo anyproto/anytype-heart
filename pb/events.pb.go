@@ -12595,7 +12595,7 @@ type EventDebugProfileCreated struct {
 	// middleware produced this report. It is NOT the DebugRunProfiler
 	// Reason enum — values come from the internal call sites:
 	//   - "MEMORY_GROWTH"  : the desktop memory-growth detector tripped
-	//   - "LONG_METHOD"    : an RPC exceeded the long-execution threshold
+	//   - "LONG_RPC"       : an RPC exceeded the long-execution threshold
 	//   - "DB_CORRUPTION"  : an anystore/spacestore database failed to open
 	//
 	// More reasons may be added over time; clients should forward unknown

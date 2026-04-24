@@ -44,7 +44,7 @@ type Capture struct {
 
 // Reporter is implemented by the profiler component. Callers pass a reason
 // label (stable, short, grep-friendly — e.g. "MEMORY_GROWTH",
-// "LONG_METHOD", "DB_CORRUPTION"), an arbitrary map of extras that gets
+// "LONG_RPC", "DB_CORRUPTION"), an arbitrary map of extras that gets
 // marshaled to JSON and forwarded verbatim to the event / info.json
 // reasonDesc field, and a Capture describing whether and how to take a
 // profile.
