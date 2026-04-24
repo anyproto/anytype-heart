@@ -101,9 +101,9 @@ func Save(profilesDir, reason, reasonDesc string, meta Meta, opts ...SaveOption)
 	}
 
 	info := BuildInfo(reason, reasonDesc, meta)
+	now := time.Now()
 
-	ts := time.Now().Format("20060102_150405")
-	zipPath := filepath.Join(profilesDir, fmt.Sprintf("snapshot_%s.zip", ts))
+	zipPath := filepath.Join(profilesDir, fmt.Sprintf("snapshot_%s.zip", now.Format("20060102_150405")))
 
 	zipF, err := os.Create(zipPath)
 	if err != nil {
@@ -113,13 +113,13 @@ func Save(profilesDir, reason, reasonDesc string, meta Meta, opts ...SaveOption)
 
 	zipw := NewZipWriter(zipF)
 
-	if err := WriteMetadata(zipw, info, meta.StatJSON); err != nil {
+	if err := WriteMetadata(zipw, info, meta.StatJSON, now); err != nil {
 		zipw.Close()
 		return "", err
 	}
 
 	if !cfg.skipHeap {
-		w, err := zipw.Create("heap.pb.gz")
+		w, err := CreateEntry(zipw, "heap.pb.gz", now)
 		if err != nil {
 			zipw.Close()
 			return "", fmt.Errorf("create heap entry: %w", err)
@@ -131,7 +131,7 @@ func Save(profilesDir, reason, reasonDesc string, meta Meta, opts ...SaveOption)
 	}
 
 	// Goroutine stacks
-	w, err := zipw.Create("goroutines.txt")
+	w, err := CreateEntry(zipw, "goroutines.txt", now)
 	if err != nil {
 		zipw.Close()
 		return "", fmt.Errorf("create goroutines entry: %w", err)
@@ -181,14 +181,28 @@ func NewZipWriter(w io.Writer) *zip.Writer {
 	return zipw
 }
 
-// WriteMetadata writes info.json and (when non-empty) stat.json into zipw.
-// Exposed so RunProfiler can reuse the exact metadata shape.
-func WriteMetadata(zipw *zip.Writer, info Info, statJSON string) error {
+// CreateEntry adds a new entry to zipw with modTime recorded on the
+// FileHeader. zipw.Create (the stdlib shortcut) leaves Modified unset, which
+// unzippers render as 1979-11-30 — using this helper gives archives a
+// realistic wall-clock timestamp and keeps `unzip -l` output readable.
+func CreateEntry(zipw *zip.Writer, name string, modTime time.Time) (io.Writer, error) {
+	return zipw.CreateHeader(&zip.FileHeader{
+		Name:     name,
+		Method:   zip.Deflate,
+		Modified: modTime,
+	})
+}
+
+// WriteMetadata writes info.json and (when non-empty) stat.json into zipw,
+// stamping each entry with modTime. Exposed so RunProfiler can reuse the
+// exact metadata shape; pass time.Now() unless you need a specific
+// timestamp.
+func WriteMetadata(zipw *zip.Writer, info Info, statJSON string, modTime time.Time) error {
 	data, err := json.MarshalIndent(info, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal info: %w", err)
 	}
-	w, err := zipw.Create("info.json")
+	w, err := CreateEntry(zipw, "info.json", modTime)
 	if err != nil {
 		return fmt.Errorf("create info entry: %w", err)
 	}
@@ -198,7 +212,7 @@ func WriteMetadata(zipw *zip.Writer, info Info, statJSON string) error {
 	if statJSON == "" {
 		return nil
 	}
-	w, err = zipw.Create("stat.json")
+	w, err = CreateEntry(zipw, "stat.json", modTime)
 	if err != nil {
 		return fmt.Errorf("create stat entry: %w", err)
 	}

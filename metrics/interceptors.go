@@ -107,7 +107,15 @@ func extractMethodName(info string) string {
 func SharedTraceInterceptor(ctx context.Context, req any, methodName string, actualCall func(ctx context.Context, req any) (any, error)) (any, error) {
 	var hotSync bool
 	if methodName == accountSelect {
-		hotSync = extractHotSync(req.(*pb.RpcAccountSelectRequest))
+		asReq := req.(*pb.RpcAccountSelectRequest)
+		hotSync = extractHotSync(asReq)
+		if !hotSync {
+			// Cold AccountSelect: the repo folder for this account was not
+			// present on disk. For an existing user this means local data was
+			// wiped (reinstall, manual delete, new device). Worth knowing at
+			// support time — fires once per cold select.
+			log.Warnw("AccountSelect: cold start", "accountId", asReq.Id)
+		}
 	}
 	start := time.Now().UnixMilli()
 	resp, err := actualCall(ctx, req)

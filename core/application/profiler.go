@@ -278,12 +278,19 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	zipw := debugsnapshot.NewZipWriter(zipF)
 	defer zipw.Close()
 
+	zipEntryTime := time.Now()
 	for _, t := range temps {
 		src, err := os.Open(t.path)
 		if err != nil {
 			return "", fmt.Errorf("open temp file %s: %w", t.zipName, err)
 		}
-		dst, err := zipw.Create(t.zipName)
+		// Preserve the source temp file's mod time when known; it lets a
+		// reviewer see the relative ordering of trace/cpu/heap captures.
+		entryTime := zipEntryTime
+		if info, statErr := src.Stat(); statErr == nil {
+			entryTime = info.ModTime()
+		}
+		dst, err := debugsnapshot.CreateEntry(zipw, t.zipName, entryTime)
 		if err != nil {
 			src.Close()
 			return "", fmt.Errorf("create zip entry %s: %w", t.zipName, err)
@@ -295,7 +302,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 		}
 	}
 	if inFlightTraceBuf != nil {
-		dst, err := zipw.Create("account_select_trace")
+		dst, err := debugsnapshot.CreateEntry(zipw, "account_select_trace", zipEntryTime)
 		if err != nil {
 			return "", fmt.Errorf("write in-flight trace: %w", err)
 		}
@@ -306,7 +313,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 
 	meta := s.snapshotMeta()
 	meta.Full = true
-	if err := debugsnapshot.WriteMetadata(zipw, debugsnapshot.BuildInfo(reason, reasonDesc, meta), meta.StatJSON); err != nil {
+	if err := debugsnapshot.WriteMetadata(zipw, debugsnapshot.BuildInfo(reason, reasonDesc, meta), meta.StatJSON, zipEntryTime); err != nil {
 		return "", err
 	}
 
