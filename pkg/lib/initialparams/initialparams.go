@@ -45,10 +45,14 @@ type Params struct {
 var current atomic.Pointer[Params]
 
 // Init computes and stores Params derived from the incoming RPC request.
-// Returns the stored Params on success. If Init has already been called,
-// returns the previously stored Params and ErrAlreadyInitialized; callers
-// must not re-run startup side effects in that case.
-func Init(req *pb.RpcInitialSetParametersRequest) (Params, error) {
+//
+// Returns (p, true, nil) on the first call — callers should run startup
+// side effects (logging.Init, metrics registration, etc.) in this case.
+// Returns (existing, false, nil) on an idempotent retry with the same
+// params (e.g. a desktop reload issuing InitialSetParameters again) — side
+// effects must NOT run a second time. Returns (existing, false,
+// ErrAlreadyInitialized) when the stored and requested params differ.
+func Init(req *pb.RpcInitialSetParametersRequest) (params Params, created bool, err error) {
 	p := Params{
 		Platform:      req.Platform,
 		Version:       req.Version,
@@ -58,9 +62,13 @@ func Init(req *pb.RpcInitialSetParametersRequest) (Params, error) {
 		Paths:         paths(req.Workdir),
 	}
 	if current.CompareAndSwap(nil, &p) {
-		return p, nil
+		return p, true, nil
 	}
-	return *current.Load(), ErrAlreadyInitialized
+	existing := *current.Load()
+	if existing == p {
+		return existing, false, nil
+	}
+	return existing, false, ErrAlreadyInitialized
 }
 
 // Get returns the stored Params, or the zero value if Init has not been

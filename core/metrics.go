@@ -24,9 +24,15 @@ func (mw *Middleware) InitialSetParameters(cctx context.Context, req *pb.RpcInit
 			errors.New("version is empty. Version must be in format: 1.0.0-optional-commit-hash-for-dev-builds"))
 	}
 
-	params, err := initialparams.Init(req)
+	params, created, err := initialparams.Init(req)
 	if err != nil {
 		return response(pb.RpcInitialSetParametersResponseError_BAD_INPUT, err)
+	}
+	// An idempotent retry (same params) is treated as success: the client
+	// may re-send InitialSetParameters on a reload and startup side effects
+	// are not safe to run twice (logging.Init would re-register the sink).
+	if !created {
+		return response(pb.RpcInitialSetParametersResponseError_NULL, nil)
 	}
 
 	mw.applicationService.SetClientVersion(params.Platform, params.Version)
