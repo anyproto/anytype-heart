@@ -306,6 +306,7 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	}
 
 	meta := s.snapshotMeta()
+	meta.Full = true
 	if err := debugsnapshot.WriteMetadata(zipw, debugsnapshot.BuildInfo(reason, reasonDesc, meta), meta.StatJSON); err != nil {
 		return "", err
 	}
@@ -498,15 +499,36 @@ func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, 
 		}
 	}
 
-	// Collect profile files
+	// Collect profile files (top level only — nested directories under
+	// profiles/ are intentionally skipped).
 	profilesDir := paths.ProfilesDir
 	if profilesDir != "" {
-		if info, statErr := os.Stat(profilesDir); statErr == nil && info.IsDir() {
-			profileFiles, walkErr := collectDir(profilesDir, nil)
-			if walkErr != nil {
-				return "", "", 0, fmt.Errorf("error while walking profiles directory: %w", walkErr)
+		entries, readErr := os.ReadDir(profilesDir)
+		if readErr != nil && !os.IsNotExist(readErr) {
+			return "", "", 0, fmt.Errorf("read profiles dir: %w", readErr)
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
 			}
-			files = append(files, profileFiles...)
+			info, err := e.Info()
+			if err != nil {
+				continue
+			}
+			path := filepath.Join(profilesDir, e.Name())
+			f, err := os.Open(path)
+			if err != nil {
+				return "", "", 0, fmt.Errorf("open profile file %s: %w", e.Name(), err)
+			}
+			toClose = append(toClose, f)
+			relPath, err := filepath.Rel(parentDir, path)
+			if err != nil {
+				return "", "", 0, fmt.Errorf("rel path %s: %w", path, err)
+			}
+			if ts := info.ModTime().Unix(); ts > lastModifiedTs {
+				lastModifiedTs = ts
+			}
+			files = append(files, zipFile{name: relPath, data: f, modTime: info.ModTime()})
 		}
 	}
 	defer func() {
@@ -601,6 +623,9 @@ type profileSummaryItem struct {
 	Reason     string `json:"reason,omitempty"`
 	ReasonDesc string `json:"reasonDesc,omitempty"`
 	Time       string `json:"time,omitempty"`
+	// Full mirrors debugsnapshot.Info.Full: true for timed archives,
+	// false/omitted for fast snapshots.
+	Full bool `json:"full,omitempty"`
 }
 
 func generateProfilesSummary(profilesDir, logsDir string) []byte {
@@ -628,6 +653,7 @@ func generateProfilesSummary(profilesDir, logsDir string) []byte {
 					item.Reason = info.Reason
 					item.ReasonDesc = info.ReasonDesc
 					item.Time = info.Time
+					item.Full = info.Full
 				}
 				summary.Items = append(summary.Items, item)
 			case strings.HasPrefix(name, metrics.LongMethodTracePrefix):

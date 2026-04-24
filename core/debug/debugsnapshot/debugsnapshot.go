@@ -28,9 +28,14 @@ import (
 
 // Info is serialized as info.json inside every snapshot archive.
 type Info struct {
-	Version      string           `json:"version"`
-	Reason       string           `json:"reason,omitempty"`
-	ReasonDesc   string           `json:"reasonDesc,omitempty"`
+	Version    string `json:"version"`
+	Reason     string `json:"reason,omitempty"`
+	ReasonDesc string `json:"reasonDesc,omitempty"`
+	// Full is true when the archive also carries a CPU profile, execution
+	// trace, and start/end heap + goroutine captures (produced by the timed
+	// DebugRunProfiler path with durationInSeconds > 0). False for fast
+	// snapshots (heap + goroutines only).
+	Full         bool             `json:"full,omitempty"`
 	Time         string           `json:"time"`
 	Platform     string           `json:"platform"`
 	NumCPU       int              `json:"numCPU"`
@@ -60,6 +65,8 @@ type Meta struct {
 	PeerId    string
 	AccountId string
 	RootPath  string // used for disk-free calculation
+	// Full is true for timed-profile archives (see Info.Full).
+	Full bool
 }
 
 // Save writes a new snapshot archive into profilesDir and returns its path.
@@ -129,6 +136,7 @@ func BuildInfo(reason, reasonDesc string, meta Meta) Info {
 		Version:      vcs.GetVCSInfo().Version(),
 		Reason:       reason,
 		ReasonDesc:   reasonDesc,
+		Full:         meta.Full,
 		Time:         time.Now().Format(time.RFC3339),
 		Platform:     runtime.GOOS + "/" + runtime.GOARCH,
 		NumCPU:       runtime.NumCPU(),
