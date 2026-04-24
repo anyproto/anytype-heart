@@ -115,11 +115,12 @@ func run() error {
 		quotedSpaceId, _ := json.Marshal(currentSpaceId)
 		quotedApiBaseUrl, _ := json.Marshal(apiBaseUrl)
 		quotedChatId, _ := json.Marshal(chatId)
+		quotedBotIdentity, _ := json.Marshal(app.config.AccountId)
 
 		wrapperSource := fmt.Sprintf(`import { main as entryMain } from %q;
 export function main() {
-  return entryMain({ text: %s, identity: %s, spaceId: %s, spaceType: %d, chatId: %s, apiBaseUrl: %s, verbose: false });
-}`, mainProgram, string(quotedText), string(quotedIdentity), string(quotedSpaceId), int32(spaceType), string(quotedChatId), string(quotedApiBaseUrl))
+  return entryMain({ text: %s, identity: %s, spaceId: %s, spaceType: %d, chatId: %s, apiBaseUrl: %s, botIdentity: %s, verbose: false });
+}`, mainProgram, string(quotedText), string(quotedIdentity), string(quotedSpaceId), int32(spaceType), string(quotedChatId), string(quotedApiBaseUrl), string(quotedBotIdentity))
 
 		res, err := rt.EvalToString("__wrapper__", wrapperSource, nil)
 		if res != nil {
