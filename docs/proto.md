@@ -2173,8 +2173,10 @@
     - [ChatMessage](#anytype-model-ChatMessage)
     - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
     - [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock)
+    - [ChatMessage.MessageBlockEditorQuote](#anytype-model-ChatMessage-MessageBlockEditorQuote)
     - [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed)
     - [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink)
+    - [ChatMessage.MessageBlockMessageQuote](#anytype-model-ChatMessage-MessageBlockMessageQuote)
     - [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
@@ -34451,6 +34453,24 @@ Used to decode block meta only, without the content itself
 | text | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  |  |
 | link | [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink) |  |  |
 | embed | [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed) |  |  |
+| editorQuote | [ChatMessage.MessageBlockEditorQuote](#anytype-model-ChatMessage-MessageBlockEditorQuote) |  |  |
+| messageQuote | [ChatMessage.MessageBlockMessageQuote](#anytype-model-ChatMessage-MessageBlockMessageQuote) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockEditorQuote"></a>
+
+### ChatMessage.MessageBlockEditorQuote
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  | id of the quoted block in the source object |
+| content | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  | quoted block content (text, style, marks, ...) |
 
 
 
@@ -34483,6 +34503,23 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | targetObjectId | [string](#string) |  |  |
 | type | [ChatMessage.MessageBlockLink.LinkType](#anytype-model-ChatMessage-MessageBlockLink-LinkType) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockMessageQuote"></a>
+
+### ChatMessage.MessageBlockMessageQuote
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messageId | [string](#string) |  | id of the quoted chat message |
+| participantId | [string](#string) |  | id of the participant who authored the quoted message |
+| content | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  | quoted message content (text, style, marks, ...) |
 
 
 
