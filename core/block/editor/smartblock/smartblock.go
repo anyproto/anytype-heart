@@ -23,13 +23,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -742,6 +742,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 	st := sb.Doc.(*state.State)
 
+	if sendEvent {
+		events := msgsToEvents(msgs)
+		if ctx := s.Context(); ctx != nil {
+			ctx.SetMessages(sb.Id(), events)
+		} else {
+			sb.sendEvent(&pb.Event{
+				Messages:  events,
+				ContextId: sb.RootId(),
+			})
+		}
+	}
+
 	changes := st.GetChanges()
 	var changeId string
 	if len(changes) == 0 && !migrationVersionUpdated {
@@ -822,18 +834,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st, SkipIfHeadsNotChanged)
 	} else {
 		sb.runIndexer(st)
-	}
-
-	if sendEvent {
-		events := msgsToEvents(msgs)
-		if ctx := s.Context(); ctx != nil {
-			ctx.SetMessages(sb.Id(), events)
-		} else {
-			sb.sendEvent(&pb.Event{
-				Messages:  events,
-				ContextId: sb.RootId(),
-			})
-		}
 	}
 
 	if sb.hasDepIds(&act) {
