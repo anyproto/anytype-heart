@@ -10,6 +10,7 @@ import "C"
 import (
 	"encoding/json"
 	"fmt"
+	"runtime/debug"
 	"unsafe"
 
 	"github.com/gogo/protobuf/proto"
@@ -54,6 +55,11 @@ func Command(cmd *C.char, data unsafe.Pointer, dataLen C.int, callback C.proxyFu
 //export Shutdown
 func Shutdown() {
 	service.AppShutdown(nil)
+}
+
+//export FreeOSMemory
+func FreeOSMemory() {
+	debug.FreeOSMemory()
 }
 
 func main() {

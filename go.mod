@@ -7,7 +7,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.10.2
 	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-store v0.4.6
-	github.com/anyproto/any-sync v0.12.0
+	github.com/anyproto/any-sync v0.12.1
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
@@ -114,7 +114,6 @@ require (
 	golang.org/x/text v0.35.0
 	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.11
-	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
 	storj.io/drpc v0.0.34
@@ -314,8 +313,6 @@ replace github.com/libp2p/zeroconf/v2 => github.com/anyproto/zeroconf/v2 v2.2.1-
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139
 
 replace github.com/ipfs/go-log/v2 => github.com/anyproto/go-log/v2 v2.1.2-0.20220721095711-bcf09ff293b2
-
-replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anyproto/go-gelf v0.0.0-20210418191311-774bd5b016e7
 
 replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-20210806203422-f82c8742c9f8 // use a fork to support dd.mm.yyyy date format
 

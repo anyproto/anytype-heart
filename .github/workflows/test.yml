@@ -91,7 +91,6 @@ jobs:
           prometheus_password: ${{ secrets.PROMETHEUS_PASSWORD }}
         run: |
           export ANYTYPE_LOG_LEVEL=DEBUG
-          export ANYTYPE_LOG_NOGELF=1
           go install gotest.tools/gotestsum@latest
           PACKAGE_NAMES=$(go list -tags nogrpcserver ./... | grep -v "github.com/anyproto/anytype-heart/cmd/grpserver" | grep -v "github.com/anyproto/anytype-heart/clientlibrary/clib")
           rm -rf ~/gotestsum-report

@@ -101,7 +101,7 @@ func (r *SimpleSchemaRegistry) ListSchemas() []*schema.Schema {
 }
 
 // ResolvePropertyKey returns the property key for a given name
-func (r *SimpleSchemaRegistry) ResolvePropertyKey(name string) string {
+func (r *SimpleSchemaRegistry) ResolvePropertyKey(_ string, name string) string {
 	if rel, ok := r.GetRelationByName(name); ok {
 		return rel.Key
 	}
@@ -109,7 +109,7 @@ func (r *SimpleSchemaRegistry) ResolvePropertyKey(name string) string {
 }
 
 // GetRelationFormat returns the format for a given relation key
-func (r *SimpleSchemaRegistry) GetRelationFormat(key string) model.RelationFormat {
+func (r *SimpleSchemaRegistry) GetRelationFormat(_ string, key string) model.RelationFormat {
 	if rel, ok := r.GetRelation(key); ok {
 		return rel.Format
 	}
@@ -524,14 +524,14 @@ func TestSchemaRegistryIntegration(t *testing.T) {
 		registry.RegisterSchema(s)
 
 		// Test ResolvePropertyKey
-		assert.Equal(t, "test_name", registry.ResolvePropertyKey("Name"))
-		assert.Equal(t, "test_status", registry.ResolvePropertyKey("Status"))
-		assert.Equal(t, "", registry.ResolvePropertyKey("Unknown"))
+		assert.Equal(t, "test_name", registry.ResolvePropertyKey("", "Name"))
+		assert.Equal(t, "test_status", registry.ResolvePropertyKey("", "Status"))
+		assert.Equal(t, "", registry.ResolvePropertyKey("", "Unknown"))
 
 		// Test GetRelationFormat
-		assert.Equal(t, model.RelationFormat_shorttext, registry.GetRelationFormat("test_name"))
-		assert.Equal(t, model.RelationFormat_status, registry.GetRelationFormat("test_status"))
-		assert.Equal(t, model.RelationFormat_tag, registry.GetRelationFormat("test_tags"))
+		assert.Equal(t, model.RelationFormat_shorttext, registry.GetRelationFormat("", "test_name"))
+		assert.Equal(t, model.RelationFormat_status, registry.GetRelationFormat("", "test_status"))
+		assert.Equal(t, model.RelationFormat_tag, registry.GetRelationFormat("", "test_tags"))
 
 		// Test option resolution
 		optionId := registry.ResolveOptionValue("test_status", "Done")

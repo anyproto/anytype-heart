@@ -18,11 +18,11 @@ type MockResolver struct {
 // Ensure MockResolver implements schema.PropertyResolver
 var _ schema.PropertyResolver = (*MockResolver)(nil)
 
-func (m *MockResolver) ResolvePropertyKey(name string) string {
+func (m *MockResolver) ResolvePropertyKey(_ string, name string) string {
 	return m.properties[name]
 }
 
-func (m *MockResolver) GetRelationFormat(key string) model.RelationFormat {
+func (m *MockResolver) GetRelationFormat(_ string, key string) model.RelationFormat {
 	return model.RelationFormat_shorttext
 }
 

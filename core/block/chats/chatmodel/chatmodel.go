@@ -23,7 +23,7 @@ const (
 	DiffManagerMessages = "messages"
 	DiffManagerMentions = "mentions"
 
-	MaxMessageLength = 4000
+	MaxMessageLength = 8000
 )
 
 func (t CounterType) DiffManagerName() string {

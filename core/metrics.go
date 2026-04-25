@@ -6,6 +6,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -22,12 +23,23 @@ func (mw *Middleware) InitialSetParameters(cctx context.Context, req *pb.RpcInit
 		return response(pb.RpcInitialSetParametersResponseError_BAD_INPUT,
 			errors.New("version is empty. Version must be in format: 1.0.0-optional-commit-hash-for-dev-builds"))
 	}
-	mw.applicationService.SetClientVersion(req.Platform, req.Version)
 
-	metrics.Service.SetPlatform(req.Platform)
-	metrics.Service.SetStartVersion(req.Version)
-	metrics.Service.SetEnabled(!req.DoNotSendTelemetry)
-	logging.Init(req.Workdir, req.LogLevel, !req.DoNotSendLogs, !req.DoNotSaveLogs)
+	params, created, err := initialparams.Init(req)
+	if err != nil {
+		return response(pb.RpcInitialSetParametersResponseError_BAD_INPUT, err)
+	}
+	// An idempotent retry (same params) is treated as success: the client
+	// may re-send InitialSetParameters on a reload and startup side effects
+	// are not safe to run twice (logging.Init would re-register the sink).
+	if !created {
+		return response(pb.RpcInitialSetParametersResponseError_NULL, nil)
+	}
+
+	mw.applicationService.SetClientVersion(params.Platform, params.Version)
+	metrics.Service.SetPlatform(params.Platform)
+	metrics.Service.SetStartVersion(params.Version)
+	metrics.Service.SetEnabled(params.SendTelemetry)
+	logging.Init(params.LogLevel, params.SaveLogs)
 
 	return response(pb.RpcInitialSetParametersResponseError_NULL, nil)
 }

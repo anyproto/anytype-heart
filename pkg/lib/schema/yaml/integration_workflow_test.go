@@ -270,7 +270,7 @@ type mockResolver struct {
 	schema *schema.Schema
 }
 
-func (m *mockResolver) ResolvePropertyKey(name string) string {
+func (m *mockResolver) ResolvePropertyKey(_ string, name string) string {
 	// Check exact match first
 	for key, rel := range m.schema.Relations {
 		if rel.Name == name {
@@ -289,7 +289,7 @@ func (m *mockResolver) ResolvePropertyKey(name string) string {
 	return ""
 }
 
-func (m *mockResolver) GetRelationFormat(key string) model.RelationFormat {
+func (m *mockResolver) GetRelationFormat(_ string, key string) model.RelationFormat {
 	if rel, exists := m.schema.Relations[key]; exists {
 		return rel.Format
 	}
