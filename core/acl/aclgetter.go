@@ -62,7 +62,7 @@ func (g *aclGetter) getAcl(ctx context.Context, spaceId string) (l list.AclList,
 	if err != nil {
 		return
 	}
-	verifier := recordverifier.AcceptorVerifier(recordverifier.NewValidateFull())
+	verifier := recordverifier.NewValidateFull()
 	if networkId := g.nodeConf.Configuration().NetworkId; networkId != "" {
 		netKey, decodeErr := crypto.DecodeNetworkId(networkId)
 		if decodeErr != nil {
