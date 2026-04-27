@@ -8,19 +8,23 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
+	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/util/crypto"
 )
 
 type aclGetter struct {
 	currentAcls map[string]list.AclList
 	aclClient   aclclient.AclJoiningClient
 	keys        *accountdata.AccountKeys
+	nodeConf    nodeconf.NodeConf
 }
 
-func newAclGetter(aclClient aclclient.AclJoiningClient, keys *accountdata.AccountKeys) *aclGetter {
+func newAclGetter(aclClient aclclient.AclJoiningClient, keys *accountdata.AccountKeys, nodeConf nodeconf.NodeConf) *aclGetter {
 	return &aclGetter{
 		currentAcls: make(map[string]list.AclList),
 		aclClient:   aclClient,
 		keys:        keys,
+		nodeConf:    nodeConf,
 	}
 }
 
@@ -58,7 +62,15 @@ func (g *aclGetter) getAcl(ctx context.Context, spaceId string) (l list.AclList,
 	if err != nil {
 		return
 	}
-	return list.BuildAclListWithIdentity(g.keys, storage, recordverifier.New())
+	verifier := recordverifier.AcceptorVerifier(recordverifier.NewValidateFull())
+	if networkId := g.nodeConf.Configuration().NetworkId; networkId != "" {
+		netKey, decodeErr := crypto.DecodeNetworkId(networkId)
+		if decodeErr != nil {
+			return nil, fmt.Errorf("invalid networkId: %w", decodeErr)
+		}
+		verifier = recordverifier.New(netKey)
+	}
+	return list.BuildAclListWithIdentity(g.keys, storage, verifier)
 }
 
 func (g *aclGetter) refresh(ctx context.Context, spaceId string, aclList list.AclList) (err error) {
