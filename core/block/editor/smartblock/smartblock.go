@@ -1482,9 +1482,11 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 		}
 
 		if text := blockModel.GetText(); text != nil && text.Marks != nil {
-			// Extract mentions from text marks
 			for _, mark := range text.Marks.Marks {
-				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
+				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
+					continue
+				}
+				if mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
 					linkSet[mark.Param] = true
 					outgoingLinks = append(outgoingLinks, OutgoingLink{
 						TargetID:      mark.Param,

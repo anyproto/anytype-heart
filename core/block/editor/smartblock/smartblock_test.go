@@ -348,6 +348,33 @@ func TestSmartBlock_CollectOutgoingLinks(t *testing.T) {
 		assert.Equal(t, "text1", links[0].SourceBlockID)
 	})
 
+	t.Run("collect link from text object mark", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"text1"}},
+			{Id: "text1", Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "Hello inline-object",
+					Marks: &model.BlockContentTextMarks{
+						Marks: []*model.BlockContentTextMark{
+							{Type: model.BlockContentTextMark_Object, Param: "objectTarget1"},
+						},
+					},
+				},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "objectTarget1", links[0].TargetID)
+		assert.Equal(t, "text1", links[0].SourceBlockID)
+	})
+
 	t.Run("skip self-reference in link block", func(t *testing.T) {
 		// given
 		objectId := "root"
