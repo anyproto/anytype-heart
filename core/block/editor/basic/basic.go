@@ -144,14 +144,15 @@ func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id s
 		err = fmt.Errorf("no block content")
 		return
 	}
-	req.Block.Id = ""
 	block := simple.New(req.Block)
 	block.Model().ChildrenIds = nil
 	err = block.Validate()
 	if err != nil {
 		return
 	}
-	s.Add(block)
+	if !s.Add(block) {
+		return "", fmt.Errorf("block id %s already exists", block.Model().Id)
+	}
 	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
 		return
 	}

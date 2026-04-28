@@ -745,6 +745,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if sendEvent {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
+			// TODO: sessionContext.SetMessages replaces (not appends), so a second Apply
+			// against a different smartblock under the same sctx silently drops the first
+			// smartblock's events. The response slot can only carry events for one smartblock,
+			// but today we let the second writer win. Decide on the right behavior (route the
+			// mismatched writer through sb.sendEvent, or model multi-smartblock responses
+			// explicitly) and remove this warning. See GO-7152.
+			if prevId := ctx.ObjectID(); prevId != "" && prevId != sb.Id() {
+				log.With("prevSmartBlockId", prevId, "smartBlockId", sb.Id()).
+					Warnf("session context already holds events for a different smartblock; previous events will be discarded")
+			}
 			ctx.SetMessages(sb.Id(), events)
 		} else {
 			sb.sendEvent(&pb.Event{
