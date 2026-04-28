@@ -58,12 +58,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/fileblocks"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -457,7 +457,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 
 	if req.AdditionalDetails != nil {
 		for k, v := range req.AdditionalDetails.Iterate() {
-			createState.SetDetailAndBundledRelation(k, v)
+			createState.SetDetail(k, v)
 		}
 	}
 
