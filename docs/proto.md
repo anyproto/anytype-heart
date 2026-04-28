@@ -15644,6 +15644,7 @@ before requesting a payment link and paying
 | ----- | ---- | ----- | ----------- |
 | productIds | [string](#string) | repeated |  |
 | isYearly | [bool](#bool) |  |  |
+| isLifetime | [bool](#bool) |  |  |
 
 
 

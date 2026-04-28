@@ -1464,7 +1464,8 @@ func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartU
 				// specify only the ID of the product
 				Id: productId,
 			},
-			IsYearly: req.IsYearly,
+			IsYearly:   req.IsYearly,
+			IsLifetime: req.IsLifetime,
 
 			// add to cart
 			Remove: false,
