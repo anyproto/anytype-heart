@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list/listtest"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list/mock_list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
@@ -28,8 +29,10 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/strkey"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/mock"
@@ -119,6 +122,20 @@ func newFixture(t *testing.T) *fixture {
 		mockAcl:                 mock_list.NewMockAclList(ctrl),
 		mockConfig:              &mockConfig{},
 	}
+	_, netPub, err := crypto.GenerateRandomEd25519KeyPair()
+	require.NoError(t, err)
+	netPubRaw, err := netPub.Raw()
+	require.NoError(t, err)
+	networkId, err := strkey.Encode(strkey.NetworkAddressVersionByte, netPubRaw)
+	require.NoError(t, err)
+
+	mockNodeConf := mock_nodeconf.NewMockService(ctrl)
+	mockNodeConf.EXPECT().Name().Return(nodeconf.CName).AnyTimes()
+	mockNodeConf.EXPECT().Init(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Run(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Close(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Configuration().Return(nodeconf.Configuration{NetworkId: networkId}).AnyTimes()
+
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockWallet)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockJoiningClient)).
@@ -128,6 +145,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCoordinatorClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCrossSpace)).
 		Register(fx.mockConfig).
+		Register(mockNodeConf).
 		Register(fx.aclService)
 	keys, err := accountdata.NewRandom()
 	require.NoError(t, err)
@@ -365,7 +383,7 @@ func TestService_ViewInvite(t *testing.T) {
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(inv.InviteRec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(inv.InviteRec))
 		require.NoError(t, err)
 		recs, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
@@ -396,14 +414,14 @@ func TestService_ViewInvite(t *testing.T) {
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(inv.InviteRec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(inv.InviteRec))
 		require.NoError(t, err)
 		invRecIds := aclList.AclState().InviteIds()
 		removeInv, err := aclList.RecordBuilder().BuildBatchRequest(list.BatchRequestPayload{
 			InviteRevokes: invRecIds,
 		})
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(removeInv.Rec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(removeInv.Rec))
 		require.NoError(t, err)
 		recs, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
