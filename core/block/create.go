@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/globalsign/mgo/bson"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -283,6 +284,23 @@ func (s *Service) CreateLinkToTheNewObject(
 		ObjectTypeKey: objectTypeKey,
 		TemplateId:    req.TemplateId,
 	}
+
+	// When ContextId is set, validate req.Block up front and pre-generate the link block id.
+	// Validating before CreateObject prevents leaving an orphan object in the space if the
+	// block is malformed. Pre-generating the id lets us bake createdInContext /
+	// createdInContextRef into the new object's initial state, avoiding a second Apply on
+	// the new object that would clobber the parent's link-block events held on sctx.
+	// When ContextId is empty, the RPC's link-block half is skipped (legacy "just create
+	// the object" mode); req.Block is intentionally ignored in that path.
+	if req.ContextId != "" {
+		if req.Block != nil && req.Block.GetLink() == nil {
+			return "", "", nil, errors.New("block content is not a link")
+		}
+		linkID = bson.NewObjectId().Hex()
+		createReq.Details.SetString(bundle.RelationKeyCreatedInContext, req.ContextId)
+		createReq.Details.SetString(bundle.RelationKeyCreatedInContextRef, linkID)
+	}
+
 	objectId, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
 	if err != nil {
 		return
@@ -302,44 +320,21 @@ func (s *Service) CreateLinkToTheNewObject(
 			Fields: req.Fields,
 		}
 	} else {
-		link := req.Block.GetLink()
-		if link == nil {
-			return "", "", nil, errors.New("block content is not a link")
-		} else {
-			link.TargetBlockId = objectId
-		}
+		req.Block.GetLink().TargetBlockId = objectId
 	}
+	req.Block.Id = linkID
 
 	err = cache.DoStateCtx(s, sctx, req.ContextId, func(st *state.State, sb basic.Creatable) error {
-		linkID, err = sb.CreateBlock(st, pb.RpcBlockCreateRequest{
+		if _, err := sb.CreateBlock(st, pb.RpcBlockCreateRequest{
 			TargetId: req.TargetId,
 			Block:    req.Block,
 			Position: req.Position,
-		})
-		if err != nil {
+		}); err != nil {
 			return fmt.Errorf("link create error: %w", err)
 		}
 		return nil
 	})
-	if err == nil {
-		s.setCreatedInContext(sctx, objectId, req.ContextId, linkID)
-	}
 	return
-}
-
-// setCreatedInContext sets createdInContext and createdInContextRef on an object.
-// No-op when contextId or contextRef is empty.
-func (s *Service) setCreatedInContext(sctx session.Context, objectId, contextId, contextRef string) {
-	if contextId == "" || contextRef == "" {
-		return
-	}
-	if err := s.detailsService.ModifyDetails(sctx, objectId, func(current *domain.Details) (*domain.Details, error) {
-		current.SetString(bundle.RelationKeyCreatedInContext, contextId)
-		current.SetString(bundle.RelationKeyCreatedInContextRef, contextRef)
-		return current, nil
-	}); err != nil {
-		log.With("objectId", objectId).Warnf("set createdInContext: %v", err)
-	}
 }
 
 func (s *Service) ObjectToSet(id string, source []string) error {
