@@ -281,6 +281,35 @@ func defaultInternalFlags() (flags internalflag.Set) {
 	return
 }
 
+func TestSmartBlock_Apply_CollectionPushesMembersToIndexer(t *testing.T) {
+	// given a collection-shaped smartblock applies a state with two members in the
+	// collection store. The indexer must receive OutgoingLinks for those members so
+	// the backlinks watcher then populates each member's Backlinks relation.
+	objectId := "coll1"
+	fx := newFixture(objectId, t)
+	fx.init(t, []*model.Block{{Id: objectId}})
+
+	st := fx.NewState()
+	st.UpdateStoreSlice(template.CollectionStoreKey, []string{"member1", "member2"})
+
+	var captured DocInfo
+	fx.indexer.EXPECT().Index(mock.Anything, mock.Anything).RunAndReturn(func(info DocInfo, _ ...IndexOption) error {
+		captured = info
+		return nil
+	}).Maybe()
+
+	// when
+	require.NoError(t, fx.Apply(st))
+
+	// then
+	targets := map[string]bool{}
+	for _, l := range captured.OutgoingLinks {
+		targets[l.TargetID] = true
+	}
+	assert.True(t, targets["member1"], "member1 must be pushed to the indexer")
+	assert.True(t, targets["member2"], "member2 must be pushed to the indexer")
+}
+
 func TestSmartBlock_GetDocInfo_CollectionMembersInOutgoingLinks(t *testing.T) {
 	// given a smartblock state with two collection members
 	objectId := "coll1"
