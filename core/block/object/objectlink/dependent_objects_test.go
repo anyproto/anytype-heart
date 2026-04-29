@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/relationutils"
@@ -430,6 +431,27 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 		assert.Equal(t, []string{
 			fakeDerivedID(bundle.TypeKeyPage.String()),
 		}, objectIDs)
+	})
+}
+
+func TestDependentObjectIDs_CollectionStoreIncluded(t *testing.T) {
+	// given a state with two collection store members
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root"}),
+	}).(*state.State)
+	st.UpdateStoreSlice(template.CollectionStoreKey, []string{"obj1", "obj2"})
+	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, nil)
+
+	t.Run("Collection flag on: store members appear", func(t *testing.T) {
+		ids := DependentObjectIDs(st, converter, fetcher, Flags{Collection: true})
+		assert.Subset(t, ids, []string{"obj1", "obj2"})
+	})
+
+	t.Run("Collection flag off: store members do NOT appear", func(t *testing.T) {
+		ids := DependentObjectIDs(st, converter, fetcher, Flags{})
+		assert.NotContains(t, ids, "obj1")
+		assert.NotContains(t, ids, "obj2")
 	})
 }
 

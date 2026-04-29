@@ -64,45 +64,20 @@ type OutgoingLink struct {
 }
 
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, fetcher relationutils.RelationFormatFetcher, flags Flags) (ids []string) {
-	// TODO Blocks is always true
+	collect := func(link OutgoingLink) bool {
+		ids = append(ids, link.TargetID)
+		return true
+	}
+
 	if flags.Blocks {
-		ids = collectIdsFromBlocks(s, flags)
+		visitBlockLinks(s, flags, collect)
 	}
-
 	if flags.Types {
-		ids = append(ids, collectIdsFromTypes(s, converter)...)
+		visitTypeLinks(s, converter, collect)
 	}
-
-	var det *domain.Details
-	if flags.Details {
-		det = s.CombinedDetails()
-	}
-
-	for _, key := range s.AllRelationKeys() {
-		if flags.Relations {
-			id, err := converter.GetRelationIdByKey(context.Background(), key)
-			if err != nil {
-				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", key, err)
-				continue
-			}
-			ids = append(ids, id)
-		}
-
-		if !flags.Details {
-			continue
-		}
-
-		format, err := fetcher.GetRelationFormatByKey(converter.Id(), key)
-		if err != nil {
-			// let's suppose relation has an object format, so we don't miss dependencies
-			format = model.RelationFormat_object
-		}
-
-		ids = append(ids, collectIdsFromDetail(&model.RelationLink{Key: key.String(), Format: format}, det, flags)...)
-	}
-
+	visitRelationLinks(s, converter, fetcher, flags, collect)
 	if flags.Collection {
-		ids = append(ids, s.GetStoreSlice(template.CollectionStoreKey)...)
+		visitCollectionStoreLinks(s, collect)
 	}
 
 	if flags.RoundDateIdsToDay {
@@ -145,12 +120,18 @@ func DependentObjectIDsPerSpace(
 	return perSpace
 }
 
-func collectIdsFromBlocks(s *state.State, flags Flags) (ids []string) {
+// visitBlockLinks calls emit for every outgoing-link target found in blocks. Each emitted
+// record carries SourceBlockID = block.Model().Id. emit returning false stops iteration.
+func visitBlockLinks(s *state.State, flags Flags, emit func(OutgoingLink) bool) {
 	err := s.Iterate(func(b simple.Block) (isContinue bool) {
+		blockId := b.Model().Id
+
 		if flags.DataviewBlockOnlyTarget {
 			if dv := b.Model().GetDataview(); dv != nil {
 				if dv.TargetObjectId != "" {
-					ids = append(ids, dv.TargetObjectId)
+					if !emit(OutgoingLink{TargetID: dv.TargetObjectId, SourceBlockID: blockId}) {
+						return false
+					}
 				}
 				return true
 			}
@@ -160,24 +141,30 @@ func collectIdsFromBlocks(s *state.State, flags Flags) (ids []string) {
 		if flags.NoImages {
 			if f := b.Model().GetFile(); f != nil {
 				if f.TargetObjectId != "" && f.Type != model.BlockContentFile_Image {
-					ids = append(ids, f.TargetObjectId)
+					if !emit(OutgoingLink{TargetID: f.TargetObjectId, SourceBlockID: blockId}) {
+						return false
+					}
 				}
 				return true
 			}
 		}
 
 		if ls, ok := b.(linkSource); ok {
-			ids = ls.FillSmartIds(ids)
+			for _, id := range ls.FillSmartIds(nil) {
+				if !emit(OutgoingLink{TargetID: id, SourceBlockID: blockId}) {
+					return false
+				}
+			}
 		}
 		return true
 	})
 	if err != nil {
 		log.With("objectID", s.RootId()).Errorf("failed to iterate over simple blocks: %s", err)
 	}
-	return ids
 }
 
-func collectIdsFromTypes(s *state.State, converter KeyToIDConverter) (ids []string) {
+// visitTypeLinks calls emit for the object's type IDs (no source attribution).
+func visitTypeLinks(s *state.State, converter KeyToIDConverter, emit func(OutgoingLink) bool) {
 	for _, objectTypeKey := range s.ObjectTypeKeys() {
 		if objectTypeKey == "" { // TODO is it possible?
 			log.Errorf("sb %s has empty ot", s.RootId())
@@ -188,9 +175,59 @@ func collectIdsFromTypes(s *state.State, converter KeyToIDConverter) (ids []stri
 			log.With("objectID", s.RootId()).Errorf("failed to get object type id by key %s: %s", objectTypeKey, err)
 			continue
 		}
-		ids = append(ids, id)
+		if !emit(OutgoingLink{TargetID: id}) {
+			return
+		}
 	}
-	return ids
+}
+
+// visitRelationLinks calls emit for every outgoing-link target found in object relations.
+// Each record carries RelationKey = relation key string. Honors the Flags filters.
+func visitRelationLinks(s *state.State, converter KeyToIDConverter, fetcher relationutils.RelationFormatFetcher, flags Flags, emit func(OutgoingLink) bool) {
+	var det *domain.Details
+	if flags.Details {
+		det = s.CombinedDetails()
+	}
+
+	for _, key := range s.AllRelationKeys() {
+		if flags.Relations {
+			id, err := converter.GetRelationIdByKey(context.Background(), key)
+			if err != nil {
+				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", key, err)
+			} else if !emit(OutgoingLink{TargetID: id, RelationKey: key.String()}) {
+				return
+			}
+		}
+
+		if !flags.Details {
+			continue
+		}
+
+		format, err := fetcher.GetRelationFormatByKey(converter.Id(), key)
+		if err != nil {
+			// let's suppose relation has an object format, so we don't miss dependencies
+			format = model.RelationFormat_object
+		}
+
+		for _, id := range collectIdsFromDetail(&model.RelationLink{Key: key.String(), Format: format}, det, flags) {
+			if !emit(OutgoingLink{TargetID: id, RelationKey: key.String()}) {
+				return
+			}
+		}
+	}
+}
+
+// visitCollectionStoreLinks calls emit for every member of the collection's StoreSlice
+// (no SourceBlockID, no RelationKey).
+func visitCollectionStoreLinks(s *state.State, emit func(OutgoingLink) bool) {
+	for _, id := range s.GetStoreSlice(template.CollectionStoreKey) {
+		if id == "" {
+			continue
+		}
+		if !emit(OutgoingLink{TargetID: id}) {
+			return
+		}
+	}
 }
 
 func collectIdsFromDetail(rel *model.RelationLink, det *domain.Details, flags Flags) (ids []string) {
