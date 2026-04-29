@@ -1314,8 +1314,21 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 			heads = []string{lastChangeId}
 		}
 	}
-	// Collect outgoing links with source information
-	outgoingLinks := sb.collectOutgoingLinks(st)
+	// Collect outgoing links with source information using the same canonical preset
+	// as injectLinksDetails — single source of truth for "what counts as an outgoing link".
+	outgoingLinks := objectlink.DependentObjectLinks(st, sb.Space(), sb.formatFetcher, objectlink.Flags{
+		Blocks:                   true,
+		Details:                  true,
+		Relations:                sb.includeRelationObjectsAsDependents,
+		Types:                    false,
+		Collection:               !internalflag.NewFromState(st).Has(model.InternalFlag_collectionDontIndexLinks),
+		DataviewBlockOnlyTarget:  true,
+		NoSystemRelations:        true,
+		NoHiddenBundledRelations: true,
+		NoImages:                 false,
+		RoundDateIdsToDay:        true,
+		FilterPresentationOnly:   true,
+	})
 
 	return DocInfo{
 		Id:             sb.Id(),

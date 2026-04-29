@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
@@ -278,6 +279,26 @@ func defaultInternalFlags() (flags internalflag.Set) {
 	flags.Add(model.InternalFlag_editorSelectType)
 	flags.Add(model.InternalFlag_editorSelectTemplate)
 	return
+}
+
+func TestSmartBlock_GetDocInfo_CollectionMembersInOutgoingLinks(t *testing.T) {
+	// given a smartblock state with two collection members
+	objectId := "coll1"
+	fx := newFixture(objectId, t)
+	fx.init(t, []*model.Block{{Id: objectId}})
+	st := fx.NewState()
+	st.UpdateStoreSlice(template.CollectionStoreKey, []string{"member1", "member2"})
+
+	// when
+	info := fx.getDocInfo(st)
+
+	// then
+	targets := map[string]bool{}
+	for _, l := range info.OutgoingLinks {
+		targets[l.TargetID] = true
+	}
+	assert.True(t, targets["member1"], "member1 must appear in OutgoingLinks")
+	assert.True(t, targets["member2"], "member2 must appear in OutgoingLinks")
 }
 
 func TestSmartBlock_CollectOutgoingLinks(t *testing.T) {
