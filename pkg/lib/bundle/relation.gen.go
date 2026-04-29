@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "66578c491294b5fbd5b6777a42c5e81084f998219eb45aba35511d9b9bac821c"
+const RelationChecksum = "e197bc55a42d31ee93e99229200a1eba2e17a73782ee719ac69579634e676051"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -2721,6 +2721,7 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Number of unread mentions in a discussion for the current user",
 			Format:           model.RelationFormat_number,
+			Hidden:           true,
 			Id:               "_brunreadMentionCount",
 			Key:              "unreadMentionCount",
 			MaxCount:         1,
@@ -2734,6 +2735,7 @@ var (
 			DataSource:       model.Relation_derived,
 			Description:      "Number of unread messages in a discussion for the current user",
 			Format:           model.RelationFormat_number,
+			Hidden:           true,
 			Id:               "_brunreadMessageCount",
 			Key:              "unreadMessageCount",
 			MaxCount:         1,
