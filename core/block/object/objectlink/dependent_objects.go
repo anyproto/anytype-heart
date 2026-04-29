@@ -3,6 +3,7 @@ package objectlink
 import (
 	"context"
 	"errors"
+	"sort"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -84,11 +85,12 @@ type OutgoingLink struct {
 // ID appears more than once.
 func DependentObjectLinks(s *state.State, converter KeyToIDConverter, fetcher relationutils.RelationFormatFetcher, flags Flags) []OutgoingLink {
 	var (
-		links []OutgoingLink
-		seen  = make(map[string]struct{})
+		links  []OutgoingLink
+		seen   = make(map[string]struct{})
+		selfId = s.RootId()
 	)
 	emit := func(link OutgoingLink) bool {
-		if link.TargetID == "" {
+		if link.TargetID == "" || link.TargetID == selfId {
 			return true
 		}
 		if _, ok := seen[link.TargetID]; ok {
@@ -117,11 +119,32 @@ func DependentObjectLinks(s *state.State, converter KeyToIDConverter, fetcher re
 				links[i].TargetID = rounded[0]
 			}
 		}
+		// Two raw date IDs that round to the same day-id would otherwise survive as
+		// duplicates in the result. Match the pre-refactor DependentObjectIDs path,
+		// which dedups via lo.Uniq AFTER rounding.
+		links = dedupOutgoingLinks(links)
 	}
 	if flags.FilterPresentationOnly {
 		links = filterPresentationOnly(s, links)
 	}
 	return links
+}
+
+// dedupOutgoingLinks keeps the first occurrence of each TargetID. Stable.
+func dedupOutgoingLinks(links []OutgoingLink) []OutgoingLink {
+	if len(links) <= 1 {
+		return links
+	}
+	seen := make(map[string]struct{}, len(links))
+	out := links[:0]
+	for _, l := range links {
+		if _, ok := seen[l.TargetID]; ok {
+			continue
+		}
+		seen[l.TargetID] = struct{}{}
+		out = append(out, l)
+	}
+	return out
 }
 
 // filterPresentationOnly removes target IDs that appear as values of presentation
@@ -304,7 +327,14 @@ func visitRelationLinks(s *state.State, converter KeyToIDConverter, fetcher rela
 		det = s.CombinedDetails()
 	}
 
-	for _, key := range s.AllRelationKeys() {
+	// Sort relation keys for deterministic emission order. The pre-GO-6052
+	// collectOutgoingLinks used Details().IterateSorted(); without sorting here, two
+	// consecutive runs over the same state would produce OutgoingLinks in random order
+	// (Go map iteration), causing spurious isDetailedLinksChanged churn in the indexer.
+	keys := s.AllRelationKeys()
+	sort.Slice(keys, func(i, j int) bool { return keys[i] < keys[j] })
+
+	for _, key := range keys {
 		if flags.Relations {
 			id, err := converter.GetRelationIdByKey(context.Background(), key)
 			if err != nil {

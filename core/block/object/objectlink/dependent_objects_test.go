@@ -472,6 +472,71 @@ func TestDependentObjectLinks_AttributesBlockAndRelation(t *testing.T) {
 	assert.Empty(t, byTarget["tgtRel"].SourceBlockID)
 }
 
+func TestDependentObjectLinks_DeterministicRelationOrder(t *testing.T) {
+	// given a state with multiple object/file/status/tag relations whose values get
+	// emitted alphabetically by relation key — independent of map iteration order.
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root"}),
+	}).(*state.State)
+	relations := []*model.RelationLink{
+		{Key: "company", Format: model.RelationFormat_object},
+		{Key: "assignee", Format: model.RelationFormat_object},
+		{Key: "author", Format: model.RelationFormat_object},
+	}
+	st.AddRelationLinks(relations...)
+	st.SetDetail("company", domain.StringList([]string{"company1"}))
+	st.SetDetail("assignee", domain.StringList([]string{"user1"}))
+	st.SetDetail("author", domain.StringList([]string{"author1"}))
+
+	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, st.PickRelationLinks())
+
+	var first []OutgoingLink
+	for i := 0; i < 20; i++ {
+		got := DependentObjectLinks(st, converter, fetcher, Flags{Details: true})
+		if i == 0 {
+			first = got
+			continue
+		}
+		require.Equal(t, first, got, "iteration %d produced different order", i)
+	}
+	// expect alphabetical-by-relation-key
+	require.Len(t, first, 3)
+	assert.Equal(t, "assignee", first[0].RelationKey)
+	assert.Equal(t, "author", first[1].RelationKey)
+	assert.Equal(t, "company", first[2].RelationKey)
+}
+
+func TestDependentObjectLinks_SkipsSelfReferences(t *testing.T) {
+	// given a state whose root has a link block, file block, mention mark, and object
+	// relation all pointing at the root itself
+	objectId := "root"
+	st := state.NewDoc(objectId, map[string]simple.Block{
+		objectId: simple.New(&model.Block{Id: objectId, ChildrenIds: []string{"l", "f", "t"}}),
+		"l":      simple.New(&model.Block{Id: "l", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: objectId}}}),
+		"f":      simple.New(&model.Block{Id: "f", Content: &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: objectId}}}),
+		"t": simple.New(&model.Block{Id: "t", Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Marks: &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{
+				{Type: model.BlockContentTextMark_Mention, Param: objectId},
+				{Type: model.BlockContentTextMark_Object, Param: objectId},
+			}},
+		}}}),
+	}).(*state.State)
+	st.AddRelationLinks(&model.RelationLink{Key: "assignee", Format: model.RelationFormat_object})
+	st.SetDetail("assignee", domain.StringList([]string{objectId}))
+
+	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, st.PickRelationLinks())
+
+	// when
+	links := DependentObjectLinks(st, converter, fetcher, Flags{Blocks: true, Details: true})
+
+	// then
+	for _, l := range links {
+		assert.NotEqual(t, objectId, l.TargetID, "self-reference must be filtered out")
+	}
+}
+
 func TestDependentObjectLinks_FilterPresentationOnlyDropsIconOnlyReferences(t *testing.T) {
 	// given a state where a file id appears ONLY as iconImage
 	st := state.NewDoc("root", map[string]simple.Block{
