@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -41,7 +40,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
-	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/dateutil"
@@ -1458,139 +1456,6 @@ func getAddedLinks(linksBefore, linksAfter []string) []string {
 		}
 	}
 	return added
-}
-
-// collectOutgoingLinks collects all outgoing links from blocks and relations with their source information
-func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
-	var outgoingLinks []OutgoingLink
-	linkSet := make(map[string]bool) // To avoid duplicates
-	objectId := sb.Id()
-
-	// Collect links from blocks
-	if err := st.Iterate(func(b simple.Block) (isContinue bool) {
-		blockModel := b.Model()
-		if blockModel == nil {
-			return true
-		}
-
-		// Extract links based on block content type
-		// Skip self-references to avoid creating links from an object to itself
-		if link := blockModel.GetLink(); link != nil && link.TargetBlockId != "" && link.TargetBlockId != objectId && !linkSet[link.TargetBlockId] {
-			linkSet[link.TargetBlockId] = true
-			outgoingLinks = append(outgoingLinks, OutgoingLink{
-				TargetID:      link.TargetBlockId,
-				SourceBlockID: blockModel.Id,
-			})
-		}
-
-		if file := blockModel.GetFile(); file != nil && file.TargetObjectId != "" && file.TargetObjectId != objectId && !linkSet[file.TargetObjectId] {
-			linkSet[file.TargetObjectId] = true
-			outgoingLinks = append(outgoingLinks, OutgoingLink{
-				TargetID:      file.TargetObjectId,
-				SourceBlockID: blockModel.Id,
-			})
-		}
-
-		if text := blockModel.GetText(); text != nil && text.Marks != nil {
-			// Extract mentions from text marks
-			for _, mark := range text.Marks.Marks {
-				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
-					linkSet[mark.Param] = true
-					outgoingLinks = append(outgoingLinks, OutgoingLink{
-						TargetID:      mark.Param,
-						SourceBlockID: blockModel.Id,
-					})
-				}
-			}
-		}
-
-		return true
-	}); err != nil {
-		log.Warnf("failed to iterate state blocks: %v", err)
-	}
-
-	// Collect links from object relations
-	outgoingLinks = append(outgoingLinks, sb.collectLinksFromRelations(st, objectId, linkSet)...)
-
-	return outgoingLinks
-}
-
-// collectLinksFromRelations extracts outgoing links from object relation values
-func (sb *smartBlock) collectLinksFromRelations(st *state.State, objectId string, linkSet map[string]bool) []OutgoingLink {
-	var outgoingLinks []OutgoingLink
-	if st.Details() == nil {
-		return outgoingLinks
-	}
-	for key, val := range st.Details().IterateSorted() {
-		if slices.Contains(relationsToSkipLinksIndexing, key) {
-			continue
-		}
-		format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
-		if err != nil {
-			log.Debugf("failed to get relation format for key %s: %v", key, err)
-			format = guessRelationFormatFromValue(val)
-		}
-
-		if key == bundle.RelationKeyCoverId {
-			// special hacky case for coverId
-			coverType := st.Details().GetInt64(bundle.RelationKeyCoverType)
-			if coverType == 1 {
-				format = model.RelationFormat_file
-			}
-		}
-		// Only process object relations
-		if format != model.RelationFormat_object && format != model.RelationFormat_file {
-			continue
-		}
-
-		// Extract target IDs based on value type
-		targetIds, ok := val.TryWrapToStringList()
-		if !ok {
-			continue
-		}
-
-		// Add outgoing links for each target
-		// Skip self-references to avoid creating links from an object to itself
-		for _, targetId := range targetIds {
-			if targetId != "" && targetId != objectId && !linkSet[targetId] {
-				linkSet[targetId] = true
-				outgoingLinks = append(outgoingLinks, OutgoingLink{
-					TargetID:    targetId,
-					RelationKey: key.String(),
-				})
-			}
-		}
-	}
-	return outgoingLinks
-}
-
-// guessRelationFormatFromValue attempts to determine the relation format
-// by inspecting the value's content when the format fetcher fails
-func guessRelationFormatFromValue(val domain.Value) model.RelationFormat {
-	var id string
-	if s, ok := val.TryString(); ok {
-		id = s
-		if ids, ok := val.TryStringList(); ok && len(ids) > 0 {
-			id = ids[0]
-		}
-	}
-	if id == "" {
-		return 0
-	}
-	sbt, err := typeprovider.SmartblockTypeFromID(id)
-	if err != nil {
-		return 0
-	}
-	switch sbt {
-	case smartblock.SmartBlockTypePage,
-		smartblock.SmartBlockTypeObjectType,
-		smartblock.SmartBlockTypeParticipant:
-		return model.RelationFormat_object
-	case smartblock.SmartBlockTypeFileObject:
-		return model.RelationFormat_file
-	default:
-		return 0
-	}
 }
 
 // restoreObjectsOnLinksAdded unarchives objects that were GC'd when their link is re-added
