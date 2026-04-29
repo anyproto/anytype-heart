@@ -204,7 +204,7 @@ func (i *spaceIndexer) index(ctx context.Context, ftQueueCounter uint64, info sm
 
 	var hasError bool
 	if indexLinks {
-		// Convert smartblock.OutgoingLink to spaceindex.OutgoingLink
+		// Convert objectlink.OutgoingLink to spaceindex.OutgoingLink
 		var spaceIndexLinks []spaceindex.OutgoingLink
 		if len(info.OutgoingLinks) > 0 {
 			spaceIndexLinks = make([]spaceindex.OutgoingLink, len(info.OutgoingLinks))
