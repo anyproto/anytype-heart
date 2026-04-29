@@ -472,6 +472,45 @@ func TestDependentObjectLinks_AttributesBlockAndRelation(t *testing.T) {
 	assert.Empty(t, byTarget["tgtRel"].SourceBlockID)
 }
 
+func TestDependentObjectLinks_FilterPresentationOnlyDropsIconOnlyReferences(t *testing.T) {
+	// given a state where a file id appears ONLY as iconImage
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root"}),
+	}).(*state.State)
+	st.AddRelationLinks(&model.RelationLink{
+		Key:    bundle.RelationKeyIconImage.String(),
+		Format: model.RelationFormat_file,
+	})
+	st.SetDetail(bundle.RelationKeyIconImage, domain.StringList([]string{"iconFileId"}))
+
+	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, st.PickRelationLinks())
+
+	// when filter is on
+	linksFiltered := DependentObjectLinks(st, converter, fetcher, Flags{
+		Blocks:                 true,
+		Details:                true,
+		FilterPresentationOnly: true,
+	})
+	// when filter is off
+	linksAll := DependentObjectLinks(st, converter, fetcher, Flags{
+		Blocks:  true,
+		Details: true,
+	})
+
+	// then
+	for _, l := range linksFiltered {
+		assert.NotEqual(t, "iconFileId", l.TargetID, "filter should drop icon-only refs")
+	}
+	hasIcon := false
+	for _, l := range linksAll {
+		if l.TargetID == "iconFileId" {
+			hasIcon = true
+		}
+	}
+	assert.True(t, hasIcon, "without filter the icon ref must still be present")
+}
+
 func TestDependentObjectLinks_CollectionStoreEmittedWithoutAttribution(t *testing.T) {
 	// given
 	st := state.NewDoc("root", map[string]simple.Block{

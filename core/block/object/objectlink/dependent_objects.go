@@ -51,7 +51,21 @@ type Flags struct {
 	NoHiddenBundledRelations,
 	NoImages,
 	RoundDateIdsToDay,
+	// FilterPresentationOnly drops targets that appear only via presentation relations
+	// (iconImage, picture, fileId, coverId). Targets referenced from any other source
+	// (block, non-presentation relation, store slice) are kept.
+	FilterPresentationOnly,
 	NoBackLinks bool
+}
+
+// presentationOnlyRelations are relations whose values are presentation references
+// (icon, picture, cover, file binding), not data connections. Targets that appear
+// only via these relations are filtered out by FilterPresentationOnly.
+var presentationOnlyRelations = []domain.RelationKey{
+	bundle.RelationKeyIconImage,
+	bundle.RelationKeyPicture,
+	bundle.RelationKeyFileId,
+	bundle.RelationKeyCoverId,
 }
 
 // OutgoingLink represents a link from one object to another, with optional source attribution.
@@ -104,10 +118,60 @@ func DependentObjectLinks(s *state.State, converter KeyToIDConverter, fetcher re
 			}
 		}
 	}
+	if flags.FilterPresentationOnly {
+		links = filterPresentationOnly(links)
+	}
 	return links
 }
 
+// filterPresentationOnly removes target IDs that appear ONLY as values of presentation
+// relations (icon, picture, cover, fileId). If the same target appears via any other
+// source (block, non-presentation relation, store slice) it is kept.
+func filterPresentationOnly(links []OutgoingLink) []OutgoingLink {
+	if len(links) == 0 {
+		return links
+	}
+
+	presentationKeys := make(map[string]struct{}, len(presentationOnlyRelations))
+	for _, k := range presentationOnlyRelations {
+		presentationKeys[k.String()] = struct{}{}
+	}
+
+	hasNonPresentation := map[string]bool{}
+	for _, l := range links {
+		if l.RelationKey == "" {
+			// block-derived or store-derived — counts as non-presentation
+			hasNonPresentation[l.TargetID] = true
+			continue
+		}
+		if _, ok := presentationKeys[l.RelationKey]; !ok {
+			hasNonPresentation[l.TargetID] = true
+		}
+	}
+
+	out := links[:0]
+	for _, l := range links {
+		if _, isPres := presentationKeys[l.RelationKey]; isPres && !hasNonPresentation[l.TargetID] {
+			continue
+		}
+		out = append(out, l)
+	}
+	return out
+}
+
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, fetcher relationutils.RelationFormatFetcher, flags Flags) (ids []string) {
+	// When FilterPresentationOnly is requested we need attribution to distinguish
+	// presentation-only references from genuine data links — route through the attributed
+	// walker, project to []string, return.
+	if flags.FilterPresentationOnly {
+		links := DependentObjectLinks(s, converter, fetcher, flags)
+		out := make([]string, 0, len(links))
+		for _, l := range links {
+			out = append(out, l.TargetID)
+		}
+		return out
+	}
+
 	collect := func(link OutgoingLink) bool {
 		ids = append(ids, link.TargetID)
 		return true
