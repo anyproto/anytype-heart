@@ -434,6 +434,68 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 	})
 }
 
+func TestDependentObjectLinks_AttributesBlockAndRelation(t *testing.T) {
+	// given a state with one link block and one object relation
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"link1"}}),
+		"link1": simple.New(&model.Block{
+			Id: "link1",
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{TargetBlockId: "tgtBlock"},
+			},
+		}),
+	}).(*state.State)
+	st.AddRelationLinks(&model.RelationLink{
+		Key:    "assignee",
+		Format: model.RelationFormat_object,
+	})
+	st.SetDetail("assignee", domain.StringList([]string{"tgtRel"}))
+
+	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, st.PickRelationLinks())
+
+	// when
+	links := DependentObjectLinks(st, converter, fetcher, Flags{
+		Blocks:  true,
+		Details: true,
+	})
+
+	// then
+	require.Len(t, links, 2)
+	byTarget := map[string]OutgoingLink{}
+	for _, l := range links {
+		byTarget[l.TargetID] = l
+	}
+	assert.Equal(t, "link1", byTarget["tgtBlock"].SourceBlockID)
+	assert.Empty(t, byTarget["tgtBlock"].RelationKey)
+	assert.Equal(t, "assignee", byTarget["tgtRel"].RelationKey)
+	assert.Empty(t, byTarget["tgtRel"].SourceBlockID)
+}
+
+func TestDependentObjectLinks_CollectionStoreEmittedWithoutAttribution(t *testing.T) {
+	// given
+	st := state.NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root"}),
+	}).(*state.State)
+	st.UpdateStoreSlice(template.CollectionStoreKey, []string{"obj1", "obj2"})
+	converter := &fakeConverter{}
+	fetcher := setupFetcher(t, nil)
+
+	// when
+	links := DependentObjectLinks(st, converter, fetcher, Flags{
+		Blocks:     true,
+		Collection: true,
+	})
+
+	// then
+	require.Len(t, links, 2)
+	for _, l := range links {
+		assert.Empty(t, l.SourceBlockID)
+		assert.Empty(t, l.RelationKey)
+		assert.Contains(t, []string{"obj1", "obj2"}, l.TargetID)
+	}
+}
+
 func TestDependentObjectIDs_CollectionStoreIncluded(t *testing.T) {
 	// given a state with two collection store members
 	st := state.NewDoc("root", map[string]simple.Block{

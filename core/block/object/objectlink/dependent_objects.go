@@ -63,6 +63,50 @@ type OutgoingLink struct {
 	RelationKey   string
 }
 
+// DependentObjectLinks returns outgoing links from a state with per-source attribution
+// (SourceBlockID for block-derived links, RelationKey for relation-derived links).
+// Same Flags semantics as DependentObjectIDs. Targets are deduplicated by ID — the first
+// emitter wins, so block sources take precedence over relations and store slice when an
+// ID appears more than once.
+func DependentObjectLinks(s *state.State, converter KeyToIDConverter, fetcher relationutils.RelationFormatFetcher, flags Flags) []OutgoingLink {
+	var (
+		links []OutgoingLink
+		seen  = make(map[string]struct{})
+	)
+	emit := func(link OutgoingLink) bool {
+		if link.TargetID == "" {
+			return true
+		}
+		if _, ok := seen[link.TargetID]; ok {
+			return true
+		}
+		seen[link.TargetID] = struct{}{}
+		links = append(links, link)
+		return true
+	}
+
+	if flags.Blocks {
+		visitBlockLinks(s, flags, emit)
+	}
+	if flags.Types {
+		visitTypeLinks(s, converter, emit)
+	}
+	visitRelationLinks(s, converter, fetcher, flags, emit)
+	if flags.Collection {
+		visitCollectionStoreLinks(s, emit)
+	}
+
+	if flags.RoundDateIdsToDay {
+		for i := range links {
+			rounded := roundDateIds([]string{links[i].TargetID})
+			if len(rounded) == 1 {
+				links[i].TargetID = rounded[0]
+			}
+		}
+	}
+	return links
+}
+
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, fetcher relationutils.RelationFormatFetcher, flags Flags) (ids []string) {
 	collect := func(link OutgoingLink) bool {
 		ids = append(ids, link.TargetID)
