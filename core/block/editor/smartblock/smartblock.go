@@ -1492,9 +1492,14 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 		}
 
 		if text := blockModel.GetText(); text != nil && text.Marks != nil {
-			// Extract mentions from text marks
+			// Extract mentions and inline-object marks from text marks. Object marks
+			// (e.g. @page references) are semantically equivalent to mentions for the
+			// purpose of outgoing links.
 			for _, mark := range text.Marks.Marks {
-				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
+				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
+					continue
+				}
+				if mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
 					linkSet[mark.Param] = true
 					outgoingLinks = append(outgoingLinks, OutgoingLink{
 						TargetID:      mark.Param,
@@ -1504,9 +1509,31 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			}
 		}
 
+		// Inline dataview embed (e.g. a Set/Collection embedded on a Page) — its
+		// TargetObjectId is the embedded object. A standalone Set/Collection's own
+		// dataview block has TargetObjectId == "" and is unaffected.
+		if dv := blockModel.GetDataview(); dv != nil && dv.TargetObjectId != "" && dv.TargetObjectId != objectId && !linkSet[dv.TargetObjectId] {
+			linkSet[dv.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      dv.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
 		return true
 	}); err != nil {
 		log.Warnf("failed to iterate state blocks: %v", err)
+	}
+
+	// Collect collection members (StoreSlice). A Collection points at its members via
+	// a store slice, not via blocks or relations, so they need an explicit emission.
+	if !internalflag.NewFromState(st).Has(model.InternalFlag_collectionDontIndexLinks) {
+		for _, id := range st.GetStoreSlice(template.CollectionStoreKey) {
+			if id != "" && id != objectId && !linkSet[id] {
+				linkSet[id] = true
+				outgoingLinks = append(outgoingLinks, OutgoingLink{TargetID: id})
+			}
+		}
 	}
 
 	// Collect links from object relations
