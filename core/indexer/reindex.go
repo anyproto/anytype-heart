@@ -64,7 +64,9 @@ const (
 	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
 	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it
 	// reindexes objects asynchronously and continue reindex after app F
-	ForceInvalidateObjectsIndexCounter int32 = 3
+	// Bumped to 4 for GO-7237: collection members, inline dataview embeds, and Object-marks
+	// are now indexed as outgoing links — existing objects need a one-shot reindex pass.
+	ForceInvalidateObjectsIndexCounter int32 = 4
 )
 
 type allDeletedIdsProvider interface {
