@@ -119,39 +119,46 @@ func DependentObjectLinks(s *state.State, converter KeyToIDConverter, fetcher re
 		}
 	}
 	if flags.FilterPresentationOnly {
-		links = filterPresentationOnly(links)
+		links = filterPresentationOnly(s, links)
 	}
 	return links
 }
 
-// filterPresentationOnly removes target IDs that appear ONLY as values of presentation
-// relations (icon, picture, cover, fileId). If the same target appears via any other
-// source (block, non-presentation relation, store slice) it is kept.
-func filterPresentationOnly(links []OutgoingLink) []OutgoingLink {
-	if len(links) == 0 {
+// filterPresentationOnly removes target IDs that appear as values of presentation
+// relations (icon, picture, cover, fileId), matching the pre-GO-6052 behavior of
+// injectLinksDetails: a target referenced by any presentation relation is dropped
+// from the link set — even if it is also referenced from a block or another relation.
+// This is intentional: presentation references inflate backlinks (1000 objects sharing
+// an avatar would all backlink that file).
+func filterPresentationOnly(s *state.State, links []OutgoingLink) []OutgoingLink {
+	if len(links) == 0 || s.Details() == nil {
 		return links
 	}
 
-	presentationKeys := make(map[string]struct{}, len(presentationOnlyRelations))
-	for _, k := range presentationOnlyRelations {
-		presentationKeys[k.String()] = struct{}{}
-	}
-
-	hasNonPresentation := map[string]bool{}
-	for _, l := range links {
-		if l.RelationKey == "" {
-			// block-derived or store-derived — counts as non-presentation
-			hasNonPresentation[l.TargetID] = true
+	presentationTargets := map[string]struct{}{}
+	for _, key := range presentationOnlyRelations {
+		if !s.Details().Has(key) {
 			continue
 		}
-		if _, ok := presentationKeys[l.RelationKey]; !ok {
-			hasNonPresentation[l.TargetID] = true
+		val := s.Details().Get(key)
+		if str, ok := val.TryString(); ok && str != "" {
+			presentationTargets[str] = struct{}{}
 		}
+		if list, ok := val.TryStringList(); ok {
+			for _, v := range list {
+				if v != "" {
+					presentationTargets[v] = struct{}{}
+				}
+			}
+		}
+	}
+	if len(presentationTargets) == 0 {
+		return links
 	}
 
 	out := links[:0]
 	for _, l := range links {
-		if _, isPres := presentationKeys[l.RelationKey]; isPres && !hasNonPresentation[l.TargetID] {
+		if _, drop := presentationTargets[l.TargetID]; drop {
 			continue
 		}
 		out = append(out, l)
@@ -301,8 +308,13 @@ func visitRelationLinks(s *state.State, converter KeyToIDConverter, fetcher rela
 		if flags.Relations {
 			id, err := converter.GetRelationIdByKey(context.Background(), key)
 			if err != nil {
+				// Match pre-refactor DependentObjectIDs: if we can't resolve the relation
+				// schema id, skip the entire iteration for this key — don't fall through
+				// to details extraction.
 				log.With("objectID", s.RootId()).Errorf("failed to get relation id by key %s: %s", key, err)
-			} else if !emit(OutgoingLink{TargetID: id, RelationKey: key.String()}) {
+				continue
+			}
+			if !emit(OutgoingLink{TargetID: id, RelationKey: key.String()}) {
 				return
 			}
 		}
