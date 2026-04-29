@@ -54,6 +54,15 @@ type Flags struct {
 	NoBackLinks bool
 }
 
+// OutgoingLink represents a link from one object to another, with optional source attribution.
+// SourceBlockID is set when the link originates from a block; RelationKey is set when it
+// originates from a relation; both are empty for collection-store membership links.
+type OutgoingLink struct {
+	TargetID      string
+	SourceBlockID string
+	RelationKey   string
+}
+
 func DependentObjectIDs(s *state.State, converter KeyToIDConverter, fetcher relationutils.RelationFormatFetcher, flags Flags) (ids []string) {
 	// TODO Blocks is always true
 	if flags.Blocks {

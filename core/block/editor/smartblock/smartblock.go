@@ -201,12 +201,9 @@ type DocInfo struct {
 	OutgoingLinks []OutgoingLink
 }
 
-// OutgoingLink represents a link from this object to another object
-type OutgoingLink struct {
-	TargetID      string // ID of the target object
-	SourceBlockID string // Block ID where the link originates (empty for relation links)
-	RelationKey   string // Relation key (empty for block links)
-}
+// OutgoingLink is an alias for objectlink.OutgoingLink.
+// Kept so existing callers using smartblock.OutgoingLink keep compiling.
+type OutgoingLink = objectlink.OutgoingLink
 
 // TODO Maybe create constructor? Don't want to forget required fields
 type InitContext struct {
