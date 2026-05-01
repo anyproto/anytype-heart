@@ -36797,6 +36797,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Writer | 1 |  |
 | Owner | 2 |  |
 | NoPermissions | 3 |  |
+| Admin | 4 |  |
 
 
 
