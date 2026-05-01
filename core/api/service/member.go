@@ -214,6 +214,8 @@ func (s *Service) mapMemberPermissions(permissions model.ParticipantPermissions)
 		return "viewer"
 	case model.ParticipantPermissions_Writer:
 		return "editor"
+	case model.ParticipantPermissions_Admin:
+		return "admin"
 	default:
 		return strcase.ToSnake(model.ParticipantPermissions_name[int32(permissions)])
 	}
@@ -226,6 +228,8 @@ func (s *Service) mapMemberRole(role string) model.ParticipantPermissions {
 		return model.ParticipantPermissions_Reader
 	case "editor":
 		return model.ParticipantPermissions_Writer
+	case "admin":
+		return model.ParticipantPermissions_Admin
 	default:
 		return model.ParticipantPermissions_Reader
 	}

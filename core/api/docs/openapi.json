@@ -1566,6 +1566,7 @@
             "enum": [
               "viewer",
               "editor",
+              "admin",
               "owner",
               "no_permission"
             ],
@@ -2412,8 +2413,8 @@
           "object": {
             "description": "The data model of the object",
             "enum": [
-              "space",
-              "chat"
+              "regular",
+              "onetoone"
             ],
             "example": "space",
             "type": "string"
@@ -4381,7 +4382,7 @@
     },
     "/v1/spaces/{space_id}/objects": {
       "get": {
-        "description": "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.\nSupports dynamic filtering via query parameters (e.g., ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.",
+        "description": "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.\nSupports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For type filtering use the type's API key (e.g., ?type=note, ?type=page). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.",
         "operationId": "list_objects",
         "parameters": [
           {

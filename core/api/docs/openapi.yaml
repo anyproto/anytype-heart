@@ -1369,6 +1369,7 @@ components:
           enum:
           - viewer
           - editor
+          - admin
           - owner
           - no_permission
           example: owner
@@ -1982,8 +1983,8 @@ components:
         object:
           description: The data model of the object
           enum:
-          - space
-          - chat
+          - regular
+          - onetoone
           example: space
           type: string
       type: object
@@ -3377,7 +3378,7 @@ paths:
     get:
       description: |-
         Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.
-        Supports dynamic filtering via query parameters (e.g., ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.
+        Supports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For type filtering use the type's API key (e.g., ?type=note, ?type=page). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.
       operationId: list_objects
       parameters:
       - description: The version of the API to use
