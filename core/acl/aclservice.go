@@ -644,7 +644,9 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 }
 
 func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error {
-	validPerms := permissions == model.ParticipantPermissions_Reader || permissions == model.ParticipantPermissions_Writer
+	validPerms := permissions == model.ParticipantPermissions_Reader ||
+		permissions == model.ParticipantPermissions_Writer ||
+		permissions == model.ParticipantPermissions_Admin
 	if !validPerms {
 		return ErrIncorrectPermissions
 	}
@@ -676,6 +678,8 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 		aclPerms = list.AclPermissionsReader
 	case model.ParticipantPermissions_Writer:
 		aclPerms = list.AclPermissionsWriter
+	case model.ParticipantPermissions_Admin:
+		aclPerms = list.AclPermissionsAdmin
 	}
 	cl := acceptSpace.CommonSpace().AclClient()
 	a.aclClientLock.Lock()

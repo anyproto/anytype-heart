@@ -1092,3 +1092,39 @@ func TestService_ChangePermissions_Admin(t *testing.T) {
 	}})
 	require.NoError(t, err)
 }
+
+func TestService_Accept_Admin(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+	mockSpace.EXPECT().CommonSpace().Times(2).Return(mockCommonSpace)
+	exec := list.NewAclExecutor(spaceId)
+	type cmdErr struct {
+		cmd string
+		err error
+	}
+	cmds := []cmdErr{
+		{"a.init::a", nil},
+		{"a.invite::invId", nil},
+		// b joins but is not yet approved
+		{"b.join::invId", nil},
+	}
+	for _, cmd := range cmds {
+		err := exec.Execute(cmd.cmd)
+		require.Equal(t, cmd.err, err, cmd)
+	}
+	identityB := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
+	acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
+	mockCommonSpace.EXPECT().Acl().Return(acl)
+	aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+	mockCommonSpace.EXPECT().AclClient().Return(aclClient)
+	aclClient.EXPECT().AcceptRequest(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, payload list.RequestAcceptPayload) error {
+		require.Equal(t, list.AclPermissionsAdmin, payload.Permissions)
+		return nil
+	}).Return(nil)
+	err := fx.Accept(ctx, spaceId, identityB, model.ParticipantPermissions_Admin)
+	require.NoError(t, err)
+}
