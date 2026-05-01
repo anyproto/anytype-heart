@@ -267,6 +267,7 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 		err = tx.ApplyChangeSetReturnAllErrors(storestate.ChangeSet{
 			Id:        change.Id,
 			Order:     change.OrderId,
+			AclHeadId: s.ObjectTree.AclList().Head().Id,
 			Changes:   params.Changes,
 			Creator:   s.accountService.AccountID(),
 			Timestamp: params.Time.Unix(),
