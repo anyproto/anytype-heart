@@ -9,6 +9,8 @@ import (
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/globalsign/mgo/bson"
 	"go.uber.org/zap"
 
@@ -29,10 +31,34 @@ type ChatHandler struct {
 	chatFullId      domain.FullID
 	currentIdentity string
 	myParticipantId string
+	// aclList resolves permissions for the change author at the change's AclHeadId.
+	// May be nil in unit tests that exercise pre-Admin behavior.
+	aclList list.AclList
 	// reactionsCounterEpoch is the unix timestamp after which reactions counters are tracked
 	reactionsCounterEpoch int64
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
+}
+
+// canModerateAt reports whether the change author had Owner or Admin permission
+// at the ACL head referenced by the change. Falls back to false when the AclList
+// is unavailable or the head/identity cannot be resolved — preserving the
+// historical creator-only restriction in those cases.
+func (d *ChatHandler) canModerateAt(authorAccount, aclHeadId string) bool {
+	if d.aclList == nil || aclHeadId == "" {
+		return false
+	}
+	authorKey, err := crypto.DecodeAccountAddress(authorAccount)
+	if err != nil {
+		return false
+	}
+	d.aclList.RLock()
+	defer d.aclList.RUnlock()
+	perms, err := d.aclList.AclState().PermissionsAtRecord(aclHeadId, authorKey)
+	if err != nil {
+		return false
+	}
+	return perms.IsOwner() || perms.IsAdmin()
 }
 
 func (d *ChatHandler) CollectionName() string {

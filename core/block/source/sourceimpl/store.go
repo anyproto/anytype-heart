@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
@@ -89,6 +90,10 @@ func (s *store) getTechSpace() clientspace.Space {
 
 func (s *store) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
+}
+
+func (s *store) AclList() list.AclList {
+	return s.ObjectTree.AclList()
 }
 
 func (s *store) SetPushChangeHook(onPushChange source.PushChangeHook) {
