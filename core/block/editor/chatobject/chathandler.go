@@ -172,7 +172,7 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	if err != nil {
 		return storestate.DeleteModeDelete, fmt.Errorf("unmarshal message: %w", err)
 	}
-	if message.Creator != ch.Change.Creator {
+	if message.Creator != ch.Change.Creator && !d.canModerateAt(ch.Change.Creator, ch.Change.AclHeadId) {
 		return storestate.DeleteModeDelete, errors.New("can't delete not own message")
 	}
 
