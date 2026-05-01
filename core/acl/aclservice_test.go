@@ -1051,3 +1051,44 @@ func TestService_ConcurrentInviteAndAddAccounts(t *testing.T) {
 
 	require.Equal(t, int32(1), maxConcurrent.Load(), "expected operations to be serialized, but observed concurrent execution")
 }
+
+func TestService_ChangePermissions_Admin(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+	mockSpace.EXPECT().CommonSpace().Times(2).Return(mockCommonSpace)
+	exec := list.NewAclExecutor(spaceId)
+	type cmdErr struct {
+		cmd string
+		err error
+	}
+	cmds := []cmdErr{
+		{"a.init::a", nil},
+		{"a.invite::invId", nil},
+		{"b.join::invId", nil},
+		{"a.approve::b,r", nil},
+	}
+	for _, cmd := range cmds {
+		err := exec.Execute(cmd.cmd)
+		require.Equal(t, cmd.err, err, cmd)
+	}
+	identityB := exec.ActualAccounts()["b"].Keys.SignKey.GetPublic()
+	acl := mockSyncAcl{exec.ActualAccounts()["a"].Acl}
+	mockCommonSpace.EXPECT().Acl().Return(acl)
+	aclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+	mockCommonSpace.EXPECT().AclClient().Return(aclClient)
+	aclClient.EXPECT().ChangePermissions(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, payload list.PermissionChangesPayload) error {
+		require.Len(t, payload.Changes, 1)
+		require.True(t, payload.Changes[0].Identity.Equals(identityB))
+		require.Equal(t, list.AclPermissionsAdmin, payload.Changes[0].Permissions)
+		return nil
+	}).Return(nil)
+	err := fx.ChangePermissions(ctx, spaceId, []AccountPermissions{{
+		Account:     identityB,
+		Permissions: model.ParticipantPermissions_Admin,
+	}})
+	require.NoError(t, err)
+}

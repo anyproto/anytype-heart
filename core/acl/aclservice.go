@@ -351,6 +351,8 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 			aclPerms = list.AclPermissionsReader
 		case model.ParticipantPermissions_Writer:
 			aclPerms = list.AclPermissionsWriter
+		case model.ParticipantPermissions_Admin:
+			aclPerms = list.AclPermissionsAdmin
 		default:
 			acl.RUnlock()
 			return ErrIncorrectPermissions
