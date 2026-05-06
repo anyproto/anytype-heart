@@ -27,7 +27,7 @@ func TestUploadFileHandler(t *testing.T) {
 		// given
 		mwMock := mock_apicore.NewMockClientCommands(t)
 		crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
-		svc := service.NewService(mwMock, "http://localhost:31006", "techspace", crossSpaceSubService)
+		svc := service.NewService(mwMock, nil, "http://127.0.0.1:31009", "techspace", crossSpaceSubService)
 
 		mwMock.On("FileUpload", mock.Anything, mock.MatchedBy(func(req *pb.RpcFileUploadRequest) bool {
 			return req.SpaceId == "space1" && req.Type == model.BlockContentFile_None
@@ -72,7 +72,7 @@ func TestUploadFileHandler(t *testing.T) {
 		// given
 		mwMock := mock_apicore.NewMockClientCommands(t)
 		crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
-		svc := service.NewService(mwMock, "http://localhost:31006", "techspace", crossSpaceSubService)
+		svc := service.NewService(mwMock, nil, "http://127.0.0.1:31009", "techspace", crossSpaceSubService)
 
 		req := httptest.NewRequest(http.MethodPost, "/v1/spaces/space1/files", nil)
 		w := httptest.NewRecorder()
@@ -92,7 +92,7 @@ func TestUploadFileHandler(t *testing.T) {
 		// given
 		mwMock := mock_apicore.NewMockClientCommands(t)
 		crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
-		svc := service.NewService(mwMock, "http://localhost:31006", "techspace", crossSpaceSubService)
+		svc := service.NewService(mwMock, nil, "http://127.0.0.1:31009", "techspace", crossSpaceSubService)
 
 		mwMock.On("FileUpload", mock.Anything, mock.Anything).
 			Return(&pb.RpcFileUploadResponse{

@@ -23,7 +23,10 @@ func isEmoji(s string) bool {
 }
 
 // getIcon returns the appropriate apimodel.Icon based on the provided parameters.
-func getIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName string, iconOption float64) *apimodel.Icon {
+// File-backed icons are served by the API itself via the proxy endpoint
+// (GET /v1/spaces/{space_id}/images/{image_id}), so the URL inherits the same
+// bearer-token auth as the rest of the API.
+func (s *Service) getIcon(spaceId string, iconEmoji string, iconImage string, iconName string, iconOption float64) *apimodel.Icon {
 	if iconName != "" {
 		return &apimodel.Icon{WrappedIcon: apimodel.NamedIcon{
 			Format: apimodel.IconFormatIcon,
@@ -42,7 +45,7 @@ func getIcon(gatewayUrl string, iconEmoji string, iconImage string, iconName str
 	if iconImage != "" {
 		return &apimodel.Icon{WrappedIcon: apimodel.FileIcon{
 			Format: apimodel.IconFormatFile,
-			File:   fmt.Sprintf("%s/image/%s", gatewayUrl, iconImage),
+			File:   fmt.Sprintf("%s/v1/spaces/%s/images/%s", s.apiBaseUrl, spaceId, iconImage),
 		}}
 	}
 

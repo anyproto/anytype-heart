@@ -116,6 +116,19 @@ func (srv *Server) registerFileRoutes(v1 *gin.RouterGroup, eventService apicore.
 		ensureAnalyticsEvent("UploadFile", eventService),
 		handler.UploadFileHandler(srv.service),
 	)
+	v1.GET("/spaces/:space_id/files/:file_id",
+		ensureAnalyticsEvent("DownloadFile", eventService),
+		handler.DownloadFileHandler(srv.service),
+	)
+	v1.GET("/spaces/:space_id/images/:image_id",
+		ensureAnalyticsEvent("GetImage", eventService),
+		handler.GetImageHandler(srv.service),
+	)
+	v1.DELETE("/spaces/:space_id/files/:file_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("DeleteFile", eventService),
+		handler.DeleteFileHandler(srv.service),
+	)
 }
 
 // registerListRoutes registers list-related routes

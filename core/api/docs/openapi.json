@@ -473,6 +473,24 @@
         },
         "type": "object"
       },
+      "FileUploadResponse": {
+        "properties": {
+          "details": {
+            "additionalProperties": {},
+            "description": "File metadata",
+            "type": "object"
+          },
+          "file_id": {
+            "description": "Preload file ID (IPFS CID)",
+            "type": "string"
+          },
+          "object_id": {
+            "description": "File object ID",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "FilesFilterItem": {
         "properties": {
           "condition": {
@@ -2412,8 +2430,8 @@
           "object": {
             "description": "The data model of the object",
             "enum": [
-              "space",
-              "chat"
+              "regular",
+              "onetoone"
             ],
             "example": "space",
             "type": "string"
@@ -3754,6 +3772,382 @@
         ]
       }
     },
+    "/v1/spaces/{space_id}/files": {
+      "post": {
+        "description": "Uploads a file to the specified space. Accepts multipart/form-data with a file field. The file is processed and stored, then a file object is created. Returns the file object ID and file ID (IPFS CID).",
+        "operationId": "upload_file",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space to upload the file to",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "file"
+              }
+            }
+          },
+          "description": "The file to upload",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            },
+            "description": "File uploaded successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Upload file",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/files/{file_id}": {
+      "delete": {
+        "description": "Removes a file object. By default the file is moved to the bin and can be restored. Pass `skip_bin=true` to permanently delete it instead.",
+        "operationId": "delete_file",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space the file belongs to",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The file object ID",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "When true, permanently delete instead of moving to bin",
+            "in": "query",
+            "name": "skip_bin",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "File deleted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Delete file",
+        "tags": [
+          "Files"
+        ]
+      },
+      "get": {
+        "description": "Streams the raw bytes of a file object. The response Content-Type matches the stored media type. Authentication is the same bearer-token scheme as the rest of the API, so the URL is not directly embeddable in unauthenticated <img> tags.",
+        "operationId": "download_file",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space the file belongs to",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The file object ID",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "file"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "File contents"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            },
+            "description": "File not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Download file",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/images/{image_id}": {
+      "get": {
+        "description": "Streams an image. Pass `width` to receive a pre-rendered variant; SVGs are sanitized inline. The id can be either a file object ID or a raw file CID. Same bearer-token auth as other endpoints.",
+        "operationId": "get_image",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space the image belongs to",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The image object ID or file CID",
+            "in": "path",
+            "name": "image_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional pixel width for a pre-rendered variant",
+            "in": "query",
+            "name": "width",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "file"
+                }
+              },
+              "image/*": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Image contents"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            },
+            "description": "Image not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Download image",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
     "/v1/spaces/{space_id}/lists/{list_id}/objects": {
       "post": {
         "description": "Adds one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag‑and‑drop or multi‑select additions to collections, enabling users to dynamically manage their collections without needing to modify the underlying object data.",
@@ -4381,7 +4775,7 @@
     },
     "/v1/spaces/{space_id}/objects": {
       "get": {
-        "description": "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.\nSupports dynamic filtering via query parameters (e.g., ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.",
+        "description": "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.\nSupports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For type filtering use the type's API key (e.g., ?type=note, ?type=page). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.",
         "operationId": "list_objects",
         "parameters": [
           {
