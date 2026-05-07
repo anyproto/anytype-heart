@@ -77,3 +77,14 @@ Instructions to setup environment for Android: [here](https://github.com/anyprot
    Parameters:
     - `ANY_SYNC_NETWORK=/path/to/network.yml` — build using self-hosted [network configuration](https://tech.anytype.io/anytype-heart/configuration)
 2. `make protos-java` to generate java protobuf bindings into `dist/android/pb`
+
+#### gRPC server variant (experimental)
+`make build-android-grpc` builds a variant of the library into `dist/android-grpc` that exposes
+`StartGrpcServer(addr string) string` and `StopGrpcServer()` via the gomobile interface.
+This allows the anytype-heart gRPC server to run inside an Android foreground service,
+providing the full `ClientCommands` RPC surface — object management, spaces, sync, search,
+account handling, and event streaming — over a local `127.0.0.1` address, identical to
+the API used by the Linux and Windows desktop builds.
+
+The standard `build-android` target is unaffected: it continues to use the `nogrpcserver`
+build tag, and `clientlibrary/service/grpc_server.go` is excluded from that build.

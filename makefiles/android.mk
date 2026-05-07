@@ -10,6 +10,22 @@ endif
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
 	@go mod tidy
 
+# build-android-grpc: same as build-android but without the nogrpcserver tag.
+# This exports StartGrpcServer/StopGrpcServer via gomobile, allowing the gRPC
+# server to run inside a foreground service (e.g. a Flutter app). The standard
+# build-android target excludes this intentionally — see makefiles/android.mk.
+build-android-grpc: setup-go setup-gomobile
+	$(DEPS_PATH)/gomobile init
+	@echo 'Building gRPC-enabled library for Android...'
+	@$(eval FLAGS += $$(shell govvv -flags | sed 's/main/github.com\/anyproto\/anytype-heart\/util\/vcs/g'))
+	@$(eval TAGS := gomobile nowatchdog nosigar timetzdata rasterizesvg)
+ifdef ANY_SYNC_NETWORK
+	@$(eval TAGS := $(TAGS) envnetworkcustom)
+endif
+	gomobile bind -tags "$(TAGS)" -ldflags "$(FLAGS)" $(BUILD_FLAGS) -target=android -androidapi 26 -o lib.aar github.com/anyproto/anytype-heart/clientlibrary/service github.com/anyproto/anytype-heart/core
+	@mkdir -p dist/android-grpc/ && mv lib.aar dist/android-grpc/
+	@go mod tidy
+
 install-dev-android: setup-go build-android
 	@echo 'Installing android lib locally in $(CLIENT_ANDROID_PATH)...'
 	@rm -f $(CLIENT_ANDROID_PATH)/libs/lib.aar
