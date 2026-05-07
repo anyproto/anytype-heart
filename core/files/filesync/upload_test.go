@@ -333,6 +333,18 @@ func TestFileSync_TransientAllocateErrorReschedules(t *testing.T) {
 		// Update fails and its cache stays empty — subsequent allocateFile
 		// calls will retry SpaceInfo and hit the same error.
 		fx.rpcStore.SetSpaceInfoError(transientErr)
+
+		// Capture filesyncstatus updates: the user-visible regression in GO-7275
+		// was a stray filesyncstatus.Limited emitted via OnStatusUpdated.
+		var statusMu sync.Mutex
+		statuses := map[string][]filesyncstatus.Status{}
+		fx.OnStatusUpdated(func(objectId string, _ domain.FullFileId, status filesyncstatus.Status) error {
+			statusMu.Lock()
+			defer statusMu.Unlock()
+			statuses[objectId] = append(statuses[objectId], status)
+			return nil
+		})
+
 		require.NoError(t, fx.a.Start(ctx))
 		defer fx.Finish(t)
 
@@ -349,10 +361,11 @@ func TestFileSync_TransientAllocateErrorReschedules(t *testing.T) {
 		dummyCid, err := cid.Parse("bafybeihqbmekus5fwgtlybi7qdjmwo7d2o2aksjth4fqabzcduswc7o6re")
 		require.NoError(t, err)
 
+		objectId := "objectId1"
 		it := FileInfo{
 			FileId:              domain.FileId("bafybeihqbmekus5fwgtlybi7qdjmwo7d2o2aksjth4fqabzcduswc7o6re"),
 			SpaceId:             spaceId,
-			ObjectId:            "objectId1",
+			ObjectId:            objectId,
 			State:               FileStatePendingUpload,
 			ScheduledAt:         time.Now(),
 			AddedByUser:         true,
@@ -369,11 +382,17 @@ func TestFileSync_TransientAllocateErrorReschedules(t *testing.T) {
 		assert.Equal(t, FileStatePendingUpload, result.State, "file should stay PendingUpload for retry")
 
 		fx.eventsLock.Lock()
-		defer fx.eventsLock.Unlock()
 		for _, e := range fx.events {
 			for _, msg := range e.Messages {
 				assert.Nil(t, msg.GetFileLimitReached(), "FileLimitReached event must not be broadcast for transient errors")
 			}
+		}
+		fx.eventsLock.Unlock()
+
+		statusMu.Lock()
+		defer statusMu.Unlock()
+		for _, s := range statuses[objectId] {
+			assert.NotEqual(t, filesyncstatus.Limited, s, "filesyncstatus.Limited must not be emitted for transient errors")
 		}
 	})
 }
