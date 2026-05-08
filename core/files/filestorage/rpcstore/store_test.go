@@ -2,10 +2,12 @@ package rpcstore
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
@@ -109,6 +111,66 @@ func TestStore_GetMany(t *testing.T) {
 	assert.Equal(t, bs, resBlocks)
 }
 
+func TestStore_doNodeReserved_TimeoutUnblocksMutex(t *testing.T) {
+	// Regression test for GO-7267: a stuck reserved RPC would hold s.mu
+	// indefinitely, wedging every other metadata caller. doNodeReserved must
+	// bound the inner call by reservedCallTimeout, return a deadline error,
+	// and reset the reserved conn so subsequent callers can proceed.
+	prev := reservedCallTimeout
+	reservedCallTimeout = 100 * time.Millisecond
+	t.Cleanup(func() { reservedCallTimeout = prev })
+
+	fx := newFixture(t)
+	defer fx.Finish(t)
+
+	// Make every SpaceInfo handler block until release is signalled
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	fx.serv.setSpaceInfoHook(func(ctx context.Context) error {
+		select {
+		case <-release:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	})
+
+	// 1) The first call must return within ~timeout with a deadline error, not hang.
+	start := time.Now()
+	_, err := fx.SpaceInfo(ctx, "spaceA")
+	elapsed := time.Since(start)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, context.DeadlineExceeded),
+		"expected context.DeadlineExceeded, got %v", err)
+	assert.Less(t, elapsed, 2*time.Second, "first call must respect reservedCallTimeout")
+
+	// 2) reservedConn must be reset after a deadline-induced failure so the next caller
+	// starts from a fresh sub-conn rather than reusing one whose stream we abandoned.
+	fx.store.mu.Lock()
+	resetOk := fx.store.reservedConn == nil
+	fx.store.mu.Unlock()
+	assert.True(t, resetOk, "reservedConn must be reset after deadline timeout")
+
+	// 3) The mutex must be released so other callers aren't wedged.
+	// Fire two concurrent SpaceInfo calls and verify both unblock within ~2 windows.
+	results := make(chan time.Duration, 2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			t0 := time.Now()
+			_, _ = fx.SpaceInfo(ctx, "spaceB")
+			results <- time.Since(t0)
+		}()
+	}
+	for i := 0; i < 2; i++ {
+		select {
+		case d := <-results:
+			assert.Less(t, d, 2*time.Second, "follow-up calls must not wedge")
+		case <-time.After(3 * time.Second):
+			t.Fatal("doNodeReserved still wedged after timeout fix")
+		}
+	}
+}
+
 func TestStore_AddAsync(t *testing.T) {
 	fx := newFixture(t)
 	defer fx.Finish(t)
@@ -179,6 +241,16 @@ type testServer struct {
 	mu    sync.Mutex
 	data  map[string][]byte
 	files map[string][][]byte
+	// spaceInfoHook, if set, runs at the start of SpaceInfo. Tests use it
+	// to simulate a hung server (block until ctx is canceled).
+	// Always read/write under mu — races trip -race otherwise.
+	spaceInfoHook func(ctx context.Context) error
+}
+
+func (t *testServer) setSpaceInfoHook(f func(ctx context.Context) error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.spaceInfoHook = f
 }
 
 func (t *testServer) BlockPushMany(ctx2 context.Context, request *fileproto.BlockPushManyRequest) (*fileproto.Ok, error) {
@@ -267,6 +339,14 @@ func (t *testServer) FilesInfo(ctx context.Context, req *fileproto.FilesInfoRequ
 }
 
 func (t *testServer) SpaceInfo(ctx context.Context, req *fileproto.SpaceInfoRequest) (*fileproto.SpaceInfoResponse, error) {
+	t.mu.Lock()
+	hook := t.spaceInfoHook
+	t.mu.Unlock()
+	if hook != nil {
+		if err := hook(ctx); err != nil {
+			return nil, err
+		}
+	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	resp := &fileproto.SpaceInfoResponse{
