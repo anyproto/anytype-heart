@@ -66,7 +66,18 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		if err != nil && !errors.Is(err, filemodels.ErrEmptyFileId) {
 			return fmt.Errorf("delete file data: %w", err)
 		}
+		// BeforeDelete tears down the spaceindex row, closes open sessions
+		// and marks the smartblock as deleted. Without this the CID→object
+		// dedup lookup keeps returning the stale id, so re-uploads of the
+		// same bytes resurrect a broken object instead of creating a new one.
+		if err = s.BeforeDelete(id, nil); err != nil {
+			return fmt.Errorf("before delete: %w", err)
+		}
 		err = spc.DeleteTree(context.Background(), id.ObjectID)
+		// Tolerate a concurrent deletion that already removed the tree.
+		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+			err = nil
+		}
 	default:
 		if entry.IsDerived {
 			err = s.deleteDerivedObject(id, sbType, spc)

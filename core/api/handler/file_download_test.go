@@ -36,8 +36,12 @@ func newDownloadSvc(t *testing.T) (*service.Service, *mock_apicore.MockFileObjec
 func TestDownloadFileHandler(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	t.Run("streams file bytes with content type", func(t *testing.T) {
+	t.Run("streams non-image file bytes", func(t *testing.T) {
 		svc, fileObjectMock := newDownloadSvc(t)
+
+		// Service tries image pipeline first; non-image returns error and we
+		// fall through to GetFileData.
+		fileObjectMock.EXPECT().GetImageData(mock.Anything, "obj-1").Return(nil, errors.New("not an image")).Once()
 
 		fileMock := mock_files.NewMockFile(t)
 		fileMock.EXPECT().Meta().Return(&files.FileMeta{
@@ -46,7 +50,6 @@ func TestDownloadFileHandler(t *testing.T) {
 			LastModifiedDate: time.Now().Unix(),
 		})
 		fileMock.EXPECT().Reader(mock.Anything).Return(readSeekerOf("hello world"), nil)
-
 		fileObjectMock.EXPECT().GetFileData(mock.Anything, "obj-1").Return(fileMock, nil).Once()
 
 		req := httptest.NewRequest(http.MethodGet, "/v1/spaces/space-1/files/obj-1", nil)
@@ -61,8 +64,62 @@ func TestDownloadFileHandler(t *testing.T) {
 		assert.Equal(t, "hello world", w.Body.String())
 	})
 
+	t.Run("HEAD returns headers without body", func(t *testing.T) {
+		svc, fileObjectMock := newDownloadSvc(t)
+
+		fileObjectMock.EXPECT().GetImageData(mock.Anything, "obj-1").Return(nil, errors.New("not an image")).Once()
+
+		fileMock := mock_files.NewMockFile(t)
+		fileMock.EXPECT().Meta().Return(&files.FileMeta{
+			Media:            "text/plain",
+			Name:             "hello.txt",
+			LastModifiedDate: time.Now().Unix(),
+		})
+		fileMock.EXPECT().Reader(mock.Anything).Return(readSeekerOf("hello world"), nil)
+		fileObjectMock.EXPECT().GetFileData(mock.Anything, "obj-1").Return(fileMock, nil).Once()
+
+		req := httptest.NewRequest(http.MethodHead, "/v1/spaces/space-1/files/obj-1", nil)
+		w := httptest.NewRecorder()
+
+		router := gin.New()
+		router.HEAD("/v1/spaces/:space_id/files/:file_id", DownloadFileHandler(svc))
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, "text/plain", w.Header().Get("Content-Type"))
+		assert.Empty(t, w.Body.String(), "HEAD response must have empty body")
+	})
+
+	t.Run("rejects non-numeric width", func(t *testing.T) {
+		svc, _ := newDownloadSvc(t)
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/spaces/space-1/files/obj-1?width=oops", nil)
+		w := httptest.NewRecorder()
+
+		router := gin.New()
+		router.GET("/v1/spaces/:space_id/files/:file_id", DownloadFileHandler(svc))
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Contains(t, w.Body.String(), "invalid width")
+	})
+
+	t.Run("rejects negative width", func(t *testing.T) {
+		svc, _ := newDownloadSvc(t)
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/spaces/space-1/files/obj-1?width=-5", nil)
+		w := httptest.NewRecorder()
+
+		router := gin.New()
+		router.GET("/v1/spaces/:space_id/files/:file_id", DownloadFileHandler(svc))
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
 	t.Run("returns 404 when file is not found", func(t *testing.T) {
 		svc, fileObjectMock := newDownloadSvc(t)
+		fileObjectMock.EXPECT().GetImageData(mock.Anything, "missing").Return(nil, errors.New("not an image")).Once()
 		fileObjectMock.EXPECT().GetFileData(mock.Anything, "missing").Return(nil, errors.New("not found")).Once()
 
 		req := httptest.NewRequest(http.MethodGet, "/v1/spaces/space-1/files/missing", nil)
@@ -74,43 +131,6 @@ func TestDownloadFileHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
-}
-
-func TestGetImageHandler(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-
-	t.Run("rejects non-numeric width", func(t *testing.T) {
-		svc, _ := newDownloadSvc(t)
-
-		req := httptest.NewRequest(http.MethodGet, "/v1/spaces/space-1/images/img-1?width=oops", nil)
-		w := httptest.NewRecorder()
-
-		router := gin.New()
-		router.GET("/v1/spaces/:space_id/images/:image_id", GetImageHandler(svc))
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusBadRequest, w.Code)
-		assert.Contains(t, w.Body.String(), "invalid width")
-	})
-
-	t.Run("returns 404 when image is not found", func(t *testing.T) {
-		svc, fileObjectMock := newDownloadSvc(t)
-		fileObjectMock.EXPECT().GetImageData(mock.Anything, "missing").Return(nil, errors.New("not found")).Once()
-
-		req := httptest.NewRequest(http.MethodGet, "/v1/spaces/space-1/images/missing", nil)
-		w := httptest.NewRecorder()
-
-		router := gin.New()
-		router.GET("/v1/spaces/:space_id/images/:image_id", GetImageHandler(svc))
-		router.ServeHTTP(w, req)
-
-		assert.Equal(t, http.StatusNotFound, w.Code)
-	})
-}
-
-// readSeekerOf adapts a string to an io.ReadSeeker for stubbed file readers.
-func readSeekerOf(s string) io.ReadSeeker {
-	return bytes.NewReader([]byte(s))
 }
 
 func TestDeleteFileHandler(t *testing.T) {
@@ -199,4 +219,9 @@ func TestDeleteFileHandler(t *testing.T) {
 
 		assert.Equal(t, http.StatusInternalServerError, w.Code)
 	})
+}
+
+// readSeekerOf adapts a string to an io.ReadSeeker for stubbed file readers.
+func readSeekerOf(s string) io.ReadSeeker {
+	return bytes.NewReader([]byte(s))
 }

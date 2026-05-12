@@ -45,7 +45,7 @@ func (s *Service) getIcon(spaceId string, iconEmoji string, iconImage string, ic
 	if iconImage != "" {
 		return &apimodel.Icon{WrappedIcon: apimodel.FileIcon{
 			Format: apimodel.IconFormatFile,
-			File:   fmt.Sprintf("%s/v1/spaces/%s/images/%s", s.apiBaseUrl, spaceId, iconImage),
+			File:   fmt.Sprintf("%s/v1/spaces/%s/files/%s", s.apiBaseUrl, spaceId, iconImage),
 		}}
 	}
 

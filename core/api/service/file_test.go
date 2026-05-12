@@ -25,12 +25,13 @@ func TestFileService_UploadFile(t *testing.T) {
 			LocalPath: "/tmp/test.txt",
 			Type:      model.BlockContentFile_None,
 		}).Return(&pb.RpcFileUploadResponse{
-			ObjectId:      "obj123",
-			PreloadFileId: "bafyreiabc123",
+			ObjectId: "obj123",
 			Details: &types.Struct{
 				Fields: map[string]*types.Value{
-					"name":     pbtypes.String("test.txt"),
-					"sizeInBytes": pbtypes.Int64(1024),
+					"name":         pbtypes.String("test.txt"),
+					"fileMimeType": pbtypes.String("text/plain"),
+					"fileExt":      pbtypes.String("txt"),
+					"sizeInBytes":  pbtypes.Int64(1024),
 				},
 			},
 			Error: &pb.RpcFileUploadResponseError{Code: pb.RpcFileUploadResponseError_NULL},
@@ -42,9 +43,10 @@ func TestFileService_UploadFile(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "obj123", result.ObjectId)
-		assert.Equal(t, "bafyreiabc123", result.FileId)
-		assert.Equal(t, "test.txt", result.Details["name"])
-		assert.Equal(t, float64(1024), result.Details["sizeInBytes"])
+		assert.Equal(t, "test.txt", result.Name)
+		assert.Equal(t, "text/plain", result.Media)
+		assert.Equal(t, "txt", result.Extension)
+		assert.Equal(t, int64(1024), result.SizeInBytes)
 	})
 
 	t.Run("upload error", func(t *testing.T) {
@@ -77,10 +79,9 @@ func TestFileService_UploadFile(t *testing.T) {
 
 		fx.mwMock.On("FileUpload", mock.Anything, mock.Anything).
 			Return(&pb.RpcFileUploadResponse{
-				ObjectId:      "obj456",
-				PreloadFileId: "bafyreiabc456",
-				Details:       nil,
-				Error:         &pb.RpcFileUploadResponseError{Code: pb.RpcFileUploadResponseError_NULL},
+				ObjectId: "obj456",
+				Details:  nil,
+				Error:    &pb.RpcFileUploadResponseError{Code: pb.RpcFileUploadResponseError_NULL},
 			}).Once()
 
 		// when
@@ -89,7 +90,7 @@ func TestFileService_UploadFile(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "obj456", result.ObjectId)
-		assert.Equal(t, "bafyreiabc456", result.FileId)
-		assert.Nil(t, result.Details)
+		assert.Empty(t, result.Name)
+		assert.Empty(t, result.Media)
 	})
 }

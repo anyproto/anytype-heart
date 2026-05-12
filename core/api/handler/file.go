@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,17 +16,20 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/util"
 )
 
-// DownloadFileHandler streams a file's bytes back to the caller.
+// DownloadFileHandler streams a file's bytes back to the caller. For image
+// files, an optional `width` query parameter selects a pre-rendered variant.
 //
 //	@Summary		Download file
-//	@Description	Streams the raw bytes of a file object. The response Content-Type matches the stored media type. Authentication is the same bearer-token scheme as the rest of the API, so the URL is not directly embeddable in unauthenticated <img> tags.
+//	@Description	Streams the bytes of a file object. The response Content-Type matches the stored media type. For images, pass `width` to fetch a pre-rendered variant at that pixel width; SVGs are sanitized inline. `width` is ignored for non-image files. The id can be either a file object ID or, for images, a raw file CID.
 //	@Id				download_file
 //	@Tags			Files
 //	@Produce		application/octet-stream
 //	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
 //	@Param			space_id		path		string					true	"The ID of the space the file belongs to"
-//	@Param			file_id			path		string					true	"The file object ID"
+//	@Param			file_id			path		string					true	"The file object ID (or raw file CID for images)"
+//	@Param			width			query		int						false	"Optional pixel width for image variants; ignored on non-images"
 //	@Success		200				{file}		binary					"File contents"
+//	@Failure		400				{object}	util.ValidationError	"Invalid query parameters"
 //	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		404				{object}	util.NotFoundError		"File not found"
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
@@ -34,37 +38,6 @@ import (
 func DownloadFileHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		fileId := c.Param("file_id")
-
-		content, err := s.GetFileContent(c.Request.Context(), fileId)
-		if err != nil {
-			writeFileError(c, err)
-			return
-		}
-
-		serveContent(c, content)
-	}
-}
-
-// GetImageHandler streams an image, optionally resized via the `width` query.
-//
-//	@Summary		Download image
-//	@Description	Streams an image. Pass `width` to receive a pre-rendered variant; SVGs are sanitized inline. The id can be either a file object ID or a raw file CID. Same bearer-token auth as other endpoints.
-//	@Id				get_image
-//	@Tags			Files
-//	@Produce		image/*
-//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-05-20)
-//	@Param			space_id		path		string					true	"The ID of the space the image belongs to"
-//	@Param			image_id		path		string					true	"The image object ID or file CID"
-//	@Param			width			query		int						false	"Optional pixel width for a pre-rendered variant"
-//	@Success		200				{file}		binary					"Image contents"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		404				{object}	util.NotFoundError		"Image not found"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
-//	@Security		bearerauth
-//	@Router			/v1/spaces/{space_id}/images/{image_id} [get]
-func GetImageHandler(s *service.Service) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		imageId := c.Param("image_id")
 
 		width := 0
 		if w := c.Query("width"); w != "" {
@@ -77,7 +50,7 @@ func GetImageHandler(s *service.Service) gin.HandlerFunc {
 			width = parsed
 		}
 
-		content, err := s.GetImageContent(c.Request.Context(), imageId, width)
+		content, err := s.GetFileContent(c.Request.Context(), fileId, width)
 		if err != nil {
 			writeFileError(c, err)
 			return
@@ -164,7 +137,7 @@ func DeleteFileHandler(s *service.Service) gin.HandlerFunc {
 // UploadFileHandler handles file uploads
 //
 //	@Summary		Upload file
-//	@Description	Uploads a file to the specified space. Accepts multipart/form-data with a file field. The file is processed and stored, then a file object is created. Returns the file object ID and file ID (IPFS CID).
+//	@Description	Uploads a file to the specified space. Accepts multipart/form-data with a file field. The file is processed and stored, then a file object is created. Returns the file object ID along with its name, MIME type and size.
 //	@Id				upload_file
 //	@Tags			Files
 //	@Accept			multipart/form-data
@@ -175,6 +148,9 @@ func DeleteFileHandler(s *service.Service) gin.HandlerFunc {
 //	@Success		200				{object}	apimodel.FileUploadResponse	"File uploaded successfully"
 //	@Failure		400				{object}	util.ValidationError		"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		403				{object}	util.ForbiddenError			"Forbidden — read-only space or no permission"
+//	@Failure		404				{object}	util.NotFoundError			"Space not found"
+//	@Failure		410				{object}	util.GoneError				"Space was deleted"
 //	@Failure		500				{object}	util.ServerError			"Internal server error"
 //	@Security		bearerauth
 //	@Router			/v1/spaces/{space_id}/files [post]
@@ -199,15 +175,30 @@ func UploadFileHandler(s *service.Service) gin.HandlerFunc {
 		}
 		defer file.Close()
 
-		// Create temp file
-		tempFile, err := os.CreateTemp("", "anytype-upload-*-"+filepath.Base(fileHeader.Filename))
+		// Stage the upload inside a private temp directory so the upload
+		// pipeline (which derives the file name from filepath.Base of the
+		// path) sees the caller-supplied filename instead of a temp prefix.
+		tempDir, err := os.MkdirTemp("", "anytype-upload-")
+		if err != nil {
+			apiErr := util.CodeToApiError(http.StatusInternalServerError, "failed to create temp dir")
+			c.JSON(http.StatusInternalServerError, apiErr)
+			return
+		}
+		defer os.RemoveAll(tempDir)
+
+		// Sanitize: strip any path components so we can't escape tempDir.
+		uploadedName := filepath.Base(fileHeader.Filename)
+		if uploadedName == "." || uploadedName == ".." || uploadedName == "" || strings.ContainsRune(uploadedName, 0) {
+			uploadedName = "upload"
+		}
+		tempPath := filepath.Join(tempDir, uploadedName)
+
+		tempFile, err := os.Create(tempPath)
 		if err != nil {
 			apiErr := util.CodeToApiError(http.StatusInternalServerError, "failed to create temp file")
 			c.JSON(http.StatusInternalServerError, apiErr)
 			return
 		}
-		tempPath := tempFile.Name()
-		defer os.Remove(tempPath) // cleanup
 
 		// Copy uploaded file to temp file
 		_, err = io.Copy(tempFile, file)
@@ -221,6 +212,9 @@ func UploadFileHandler(s *service.Service) gin.HandlerFunc {
 		// Upload via service
 		result, err := s.UploadFile(c.Request.Context(), spaceId, tempPath)
 		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrSpaceNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrSpaceDeleted, http.StatusGone),
+			util.ErrToCode(service.ErrForbidden, http.StatusForbidden),
 			util.ErrToCode(service.ErrFailedUploadFile, http.StatusInternalServerError),
 		)
 

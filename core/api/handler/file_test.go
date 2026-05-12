@@ -65,7 +65,7 @@ func TestUploadFileHandler(t *testing.T) {
 		// then
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "obj123")
-		assert.Contains(t, w.Body.String(), "bafyreiabc123")
+		assert.Contains(t, w.Body.String(), "test.txt")
 	})
 
 	t.Run("missing file", func(t *testing.T) {

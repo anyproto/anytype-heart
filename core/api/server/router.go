@@ -120,9 +120,10 @@ func (srv *Server) registerFileRoutes(v1 *gin.RouterGroup, eventService apicore.
 		ensureAnalyticsEvent("DownloadFile", eventService),
 		handler.DownloadFileHandler(srv.service),
 	)
-	v1.GET("/spaces/:space_id/images/:image_id",
-		ensureAnalyticsEvent("GetImage", eventService),
-		handler.GetImageHandler(srv.service),
+	// HEAD reuses the same handler; http.ServeContent omits the body and
+	// returns just the status line + headers, which is what HEAD requires.
+	v1.HEAD("/spaces/:space_id/files/:file_id",
+		handler.DownloadFileHandler(srv.service),
 	)
 	v1.DELETE("/spaces/:space_id/files/:file_id",
 		writeRateLimitMW,
