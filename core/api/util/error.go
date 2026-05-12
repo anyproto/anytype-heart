@@ -136,6 +136,14 @@ func CodeToApiError(code int, message string) any {
 			Message: message,
 		}
 
+	case http.StatusGone:
+		return GoneError{
+			Object:  "error",
+			Status:  http.StatusGone,
+			Code:    "resource_gone",
+			Message: message,
+		}
+
 	case http.StatusTooManyRequests:
 		return RateLimitError{
 			Object:  "error",
