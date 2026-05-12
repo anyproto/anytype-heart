@@ -64,6 +64,33 @@ func TestDownloadFileHandler(t *testing.T) {
 		assert.Equal(t, "hello world", w.Body.String())
 	})
 
+	t.Run("Range request returns 206 with partial body", func(t *testing.T) {
+		svc, fileObjectMock := newDownloadSvc(t)
+
+		fileObjectMock.EXPECT().GetImageData(mock.Anything, "obj-1").Return(nil, errors.New("not an image")).Once()
+
+		fileMock := mock_files.NewMockFile(t)
+		fileMock.EXPECT().Meta().Return(&files.FileMeta{
+			Media:            "text/plain",
+			Name:             "hello.txt",
+			LastModifiedDate: time.Now().Unix(),
+		})
+		fileMock.EXPECT().Reader(mock.Anything).Return(readSeekerOf("hello world"), nil)
+		fileObjectMock.EXPECT().GetFileData(mock.Anything, "obj-1").Return(fileMock, nil).Once()
+
+		req := httptest.NewRequest(http.MethodGet, "/v1/spaces/space-1/files/obj-1", nil)
+		req.Header.Set("Range", "bytes=0-4")
+		w := httptest.NewRecorder()
+
+		router := gin.New()
+		router.GET("/v1/spaces/:space_id/files/:file_id", DownloadFileHandler(svc))
+		router.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusPartialContent, w.Code)
+		assert.Equal(t, "hello", w.Body.String())
+		assert.Equal(t, "bytes 0-4/11", w.Header().Get("Content-Range"))
+	})
+
 	t.Run("HEAD returns headers without body", func(t *testing.T) {
 		svc, fileObjectMock := newDownloadSvc(t)
 

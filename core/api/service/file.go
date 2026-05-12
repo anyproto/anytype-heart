@@ -76,7 +76,15 @@ func (s *Service) GetFileContent(ctx context.Context, objectId string, width int
 	// sanitization. If the object isn't an image, fall through to the
 	// generic file pipeline.
 	if img, err := s.fetchImage(ctx, objectId); err == nil {
-		return s.serveImage(ctx, img, width)
+		content, err := s.serveImage(ctx, img, width)
+		if err != nil {
+			return nil, err
+		}
+		// Wrap the reader so transient block-fetch errors during streaming
+		// are retried with backoff (mirrors gateway behavior). EOF is never
+		// retried.
+		content.Reader = newRetryReadSeeker(content.Reader, blockFetchRetryOptions(ctx)...)
+		return content, nil
 	}
 
 	file, err := s.fileObjectService.GetFileData(ctx, objectId)
