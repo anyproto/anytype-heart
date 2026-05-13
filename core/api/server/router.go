@@ -111,9 +111,14 @@ func (srv *Server) registerAuthRoutes(router *gin.Engine) {
 
 // registerChatRoutes registers chat message routes
 func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.GET("/spaces/:space_id/chats",
+		srv.ensureFilters(),
+		ensureAnalyticsEvent("ListChats", eventService),
+		handler.ListChatsHandler(srv.service),
+	)
 	v1.GET("/spaces/:space_id/chats/:chat_id/messages/stream",
 		ensureAnalyticsEvent("ChatMessageStream", eventService),
-		handler.ChatStreamHandler(srv.chatSubSvc),
+		handler.ChatStreamHandler(srv.service, srv.chatSubSvc),
 	)
 	v1.GET("/spaces/:space_id/chats/:chat_id/messages",
 		ensureAnalyticsEvent("GetChatMessages", eventService),

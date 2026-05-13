@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pb"
 )
@@ -37,8 +39,9 @@ const (
 //	@Failure		500				{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/v1/spaces/{space_id}/chats/{chat_id}/messages/stream [get]
-func ChatStreamHandler(chatSubSvc apicore.ChatSubscriptionService) gin.HandlerFunc {
+func ChatStreamHandler(s *service.Service, chatSubSvc apicore.ChatSubscriptionService) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
 		chatId := c.Param("chat_id")
 
 		limit := defaultSSELimit
@@ -65,11 +68,16 @@ func ChatStreamHandler(chatSubSvc apicore.ChatSubscriptionService) gin.HandlerFu
 		c.Header("X-Accel-Buffering", "no")
 		c.Status(http.StatusOK)
 
+		initial := make([]apimodel.ChatMessage, 0, len(messages))
 		for _, msg := range messages {
+			initial = append(initial, apimodel.ChatMessageFromProto(msg))
+		}
+		s.EnrichChatMessageCreators(c.Request.Context(), spaceId, initial)
+		for i := range initial {
 			ev := &apimodel.ChatEvent{
 				Type: "message_added",
 				Payload: apimodel.ChatEventMessageAdded{
-					Message: apimodel.ChatMessageFromProto(msg),
+					Message: initial[i],
 				},
 			}
 			writeSSE(c, ev)
@@ -87,13 +95,31 @@ func ChatStreamHandler(chatSubSvc apicore.ChatSubscriptionService) gin.HandlerFu
 				}
 				for _, msg := range event.Messages {
 					chatEvent := apimodel.ConvertEventMessage(msg)
-					if chatEvent != nil {
-						writeSSE(c, chatEvent)
+					if chatEvent == nil {
+						continue
 					}
+					enrichEventMessage(ctx, s, spaceId, chatEvent)
+					writeSSE(c, chatEvent)
 				}
 				c.Writer.Flush()
 			}
 		}
+	}
+}
+
+// enrichEventMessage applies creator enrichment to events whose payload
+// carries a ChatMessage. Other event types (deletions, reaction updates) are
+// untouched.
+func enrichEventMessage(ctx context.Context, s *service.Service, spaceId string, ev *apimodel.ChatEvent) {
+	switch p := ev.Payload.(type) {
+	case apimodel.ChatEventMessageAdded:
+		msgs := []apimodel.ChatMessage{p.Message}
+		s.EnrichChatMessageCreators(ctx, spaceId, msgs)
+		ev.Payload = apimodel.ChatEventMessageAdded{Message: msgs[0]}
+	case apimodel.ChatEventMessageUpdated:
+		msgs := []apimodel.ChatMessage{p.Message}
+		s.EnrichChatMessageCreators(ctx, spaceId, msgs)
+		ev.Payload = apimodel.ChatEventMessageUpdated{Message: msgs[0]}
 	}
 }
 

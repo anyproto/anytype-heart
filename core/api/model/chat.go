@@ -6,16 +6,17 @@ import (
 )
 
 type ChatMessage struct {
-	Id               string                    `json:"id" example:"msg-abc123"`
-	OrderId          string                    `json:"order_id" example:"00a1b2c3d4e5f6"`
-	Creator          string                    `json:"creator" example:"AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q"`
-	CreatedAt        int64                     `json:"created_at" example:"1717405200"`
-	ModifiedAt       int64                     `json:"modified_at" example:"1717405200"`
-	ReplyToMessageId string                    `json:"reply_to_message_id,omitempty" example:"msg-def456"`
-	Content          ChatMessageContent        `json:"content"`
-	Attachments      []ChatAttachment          `json:"attachments"`
-	Reactions        map[string][]string       `json:"reactions"`
-	Pinned           bool                      `json:"pinned"`
+	Id               string              `json:"id" example:"msg-abc123"`
+	OrderId          string              `json:"order_id" example:"00a1b2c3d4e5f6"`
+	Creator          string              `json:"creator" example:"_participant_bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q"`
+	CreatorName      string              `json:"creator_name" example:"Alice"`
+	CreatedAt        int64               `json:"created_at" example:"1717405200"`
+	ModifiedAt       int64               `json:"modified_at" example:"1717405200"`
+	ReplyToMessageId string              `json:"reply_to_message_id,omitempty" example:"msg-def456"`
+	Content          ChatMessageContent  `json:"content"`
+	Attachments      []ChatAttachment    `json:"attachments"`
+	Reactions        map[string][]string `json:"reactions"`
+	Pinned           bool                `json:"pinned"`
 }
 
 type ChatMessageContent struct {

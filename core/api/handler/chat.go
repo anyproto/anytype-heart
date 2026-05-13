@@ -7,11 +7,54 @@ import (
 	"github.com/gin-gonic/gin"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/service"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const defaultChatMessagesLimit = 50
+
+// ListChatsHandler retrieves a list of chat objects in a space
+//
+//	@Summary		List chats
+//	@Description	Retrieves a paginated list of chat objects in the given space. Chat objects are containers for chat messages; use the returned chat IDs with the GetChatMessages endpoint to fetch their messages.
+//	@Description	Supports dynamic filtering via query parameters (see ListObjects for the full filter grammar).
+//	@Id				list_chats
+//	@Tags			Chat
+//	@Produce		json
+//	@Param			Anytype-Version	header		string											true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string											true	"The ID of the space in which to list chats; must be retrieved from ListSpaces endpoint"
+//	@Param			offset			query		int												false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int												false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.Object]	"The list of chats in the specified space"
+//	@Failure		401				{object}	util.UnauthorizedError							"Unauthorized"
+//	@Failure		500				{object}	util.ServerError								"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats [get]
+func ListChatsHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
+
+		filtersAny, _ := c.Get("filters")
+		filters := filtersAny.([]*model.BlockContentDataviewFilter)
+
+		chats, total, hasMore, err := s.ListChats(c.Request.Context(), spaceId, filters, offset, limit)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrFailedListChats, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		pagination.RespondWithPagination(c, http.StatusOK, chats, total, offset, limit, hasMore)
+	}
+}
 
 // GetChatMessagesHandler returns messages for a chat
 //
@@ -33,6 +76,7 @@ const defaultChatMessagesLimit = 50
 //	@Router			/v1/spaces/{space_id}/chats/{chat_id}/messages [get]
 func GetChatMessagesHandler(s *service.Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
 		chatId := c.Param("chat_id")
 		beforeOrderId := c.Query("before_order_id")
 		afterOrderId := c.Query("after_order_id")
@@ -44,7 +88,7 @@ func GetChatMessagesHandler(s *service.Service) gin.HandlerFunc {
 			}
 		}
 
-		messages, err := s.GetChatMessages(c.Request.Context(), chatId, beforeOrderId, afterOrderId, limit)
+		messages, err := s.GetChatMessages(c.Request.Context(), spaceId, chatId, beforeOrderId, afterOrderId, limit)
 		code := util.MapErrorCode(err,
 			util.ErrToCode(service.ErrFailedGetMessages, http.StatusInternalServerError),
 		)

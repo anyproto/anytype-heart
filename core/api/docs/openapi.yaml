@@ -63,7 +63,10 @@ components:
           example: 1717405200
           type: integer
         creator:
-          example: AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q
+          example: _participant_bafyreigyfkt6rbv24sbv5aq2hko3bhmv5xxlf22b4bypdu6j7hnphm3psq_23me69r569oi1_AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q
+          type: string
+        creator_name:
+          example: Alice
           type: string
         id:
           example: msg-abc123
@@ -1679,6 +1682,7 @@ components:
       - ObjectLayoutSet
       - ObjectLayoutCollection
       - ObjectLayoutParticipant
+      - ObjectLayoutChat
     ObjectResponse:
       properties:
         object:
@@ -1710,6 +1714,7 @@ components:
           - ObjectLayoutSet
           - ObjectLayoutCollection
           - ObjectLayoutParticipant
+          - ObjectLayoutChat
         markdown:
           description: The markdown body of the object
           example: |-
@@ -1873,7 +1878,7 @@ components:
           type: string
       type: object
     PropertyFormat:
-      description: The format of the property used for filtering
+      description: The format of the property
       enum:
       - text
       - number
@@ -2253,6 +2258,7 @@ components:
           - ObjectLayoutSet
           - ObjectLayoutCollection
           - ObjectLayoutParticipant
+          - ObjectLayoutChat
         name:
           description: The name of the type
           example: Page
@@ -3084,6 +3090,65 @@ paths:
       summary: Update space
       tags:
       - Spaces
+  /v1/spaces/{space_id}/chats:
+    get:
+      description: |-
+        Retrieves a paginated list of chat objects in the given space. Chat objects are containers for chat messages; use the returned chat IDs with the GetChatMessages endpoint to fetch their messages.
+        Supports dynamic filtering via query parameters (see ListObjects for the full filter grammar).
+      operationId: list_chats
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-11-08"
+          type: string
+      - description: The ID of the space in which to list chats; must be retrieved
+          from ListSpaces endpoint
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: The number of items to return
+        in: query
+        name: limit
+        schema:
+          default: 100
+          maximum: 1000
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse-Object'
+          description: The list of chats in the specified space
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: List chats
+      tags:
+      - Chat
   /v1/spaces/{space_id}/chats/{chat_id}/messages:
     get:
       description: Retrieves a list of messages from a chat. Supports cursor-based

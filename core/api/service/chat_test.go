@@ -4,13 +4,18 @@ import (
 	"context"
 	"testing"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const (
@@ -18,11 +23,145 @@ const (
 	mockedMessageId = "msg-123"
 )
 
-func TestChatService_GetChatMessages(t *testing.T) {
-	t.Run("successful get messages", func(t *testing.T) {
+func TestChatService_ListChats(t *testing.T) {
+	expectedBaseFilters := []*model.BlockContentDataviewFilter{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout.String(),
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       pbtypes.IntList(util.LayoutsToIntArgs(util.ChatLayouts)...),
+		},
+		{
+			RelationKey: bundle.RelationKeyIsHidden.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.Bool(true),
+		},
+	}
+	expectedSorts := []*model.BlockContentDataviewSort{{
+		RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+		Type:        model.BlockContentDataviewSort_Desc,
+		IncludeTime: true,
+	}}
+
+	t.Run("returns chats with chat layout", func(t *testing.T) {
 		// given
 		ctx := context.Background()
 		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: expectedBaseFilters,
+			Sorts:   expectedSorts,
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyId.String():             pbtypes.String(mockedChatId),
+						bundle.RelationKeyName.String():           pbtypes.String("Team Discussions"),
+						bundle.RelationKeyType.String():           pbtypes.String(mockedTypeId),
+						bundle.RelationKeyResolvedLayout.String(): pbtypes.Float64(float64(model.ObjectType_chatDerived)),
+						bundle.RelationKeySpaceId.String():        pbtypes.String(mockedSpaceId),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		chats, total, hasMore, err := fx.service.ListChats(ctx, mockedSpaceId, nil, offset, limit)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, chats, 1)
+		assert.Equal(t, mockedChatId, chats[0].Id)
+		assert.Equal(t, "Team Discussions", chats[0].Name)
+		assert.Equal(t, apimodel.ObjectLayoutChat, chats[0].Layout)
+		assert.Equal(t, 1, total)
+		assert.False(t, hasMore)
+	})
+
+	t.Run("no chats found", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, &pb.RpcObjectSearchRequest{
+			SpaceId: mockedSpaceId,
+			Filters: expectedBaseFilters,
+			Sorts:   expectedSorts,
+		}).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		chats, total, hasMore, err := fx.service.ListChats(ctx, mockedSpaceId, nil, offset, limit)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, chats, 0)
+		assert.Equal(t, 0, total)
+		assert.False(t, hasMore)
+	})
+
+	t.Run("error from middleware", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_UNKNOWN_ERROR},
+		}).Once()
+
+		// when
+		_, _, _, err := fx.service.ListChats(ctx, mockedSpaceId, nil, offset, limit)
+
+		// then
+		require.ErrorIs(t, err, ErrFailedListChats)
+	})
+
+	t.Run("additional filters are forwarded", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		extra := &model.BlockContentDataviewFilter{
+			RelationKey: bundle.RelationKeyName.String(),
+			Condition:   model.BlockContentDataviewFilter_Like,
+			Value:       pbtypes.String("team"),
+		}
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSearchRequest) bool {
+			if req.SpaceId != mockedSpaceId {
+				return false
+			}
+			if len(req.Filters) != len(expectedBaseFilters)+1 {
+				return false
+			}
+			return req.Filters[len(req.Filters)-1] == extra
+		})).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		_, _, _, err := fx.service.ListChats(ctx, mockedSpaceId, []*model.BlockContentDataviewFilter{extra}, offset, limit)
+
+		// then
+		require.NoError(t, err)
+	})
+}
+
+func TestChatService_GetChatMessages(t *testing.T) {
+	t.Run("successful get messages enriches creator", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		const creatorIdentity = "AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q"
 
 		fx.mwMock.EXPECT().ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{
 			ChatObjectId: mockedChatId,
@@ -31,21 +170,107 @@ func TestChatService_GetChatMessages(t *testing.T) {
 			Messages: []*model.ChatMessage{
 				{
 					Id:      mockedMessageId,
-					Creator: "user1",
+					Creator: creatorIdentity,
 					Message: &model.ChatMessageMessageContent{Text: "hello"},
 				},
 			},
 			Error: &pb.RpcChatGetMessagesResponseError{Code: pb.RpcChatGetMessagesResponseError_NULL},
 		})
 
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSearchRequest) bool {
+			return req.SpaceId == mockedSpaceId
+		})).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyIdentity.String(): pbtypes.String(creatorIdentity),
+						bundle.RelationKeyName.String():     pbtypes.String("Alice"),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
 		// when
-		messages, err := fx.service.GetChatMessages(ctx, mockedChatId, "", "", 50)
+		messages, err := fx.service.GetChatMessages(ctx, mockedSpaceId, mockedChatId, "", "", 50)
 
 		// then
 		require.NoError(t, err)
 		require.Len(t, messages, 1)
 		assert.Equal(t, mockedMessageId, messages[0].Id)
 		assert.Equal(t, "hello", messages[0].Content.Text)
+		assert.Equal(t, domain.NewParticipantId(mockedSpaceId, creatorIdentity), messages[0].Creator)
+		assert.Equal(t, "Alice", messages[0].CreatorName)
+	})
+
+	t.Run("falls back to global name when participant has no name", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		const creatorIdentity = "AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q"
+
+		fx.mwMock.EXPECT().ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{
+			ChatObjectId: mockedChatId,
+			Limit:        50,
+		}).Return(&pb.RpcChatGetMessagesResponse{
+			Messages: []*model.ChatMessage{
+				{Id: mockedMessageId, Creator: creatorIdentity, Message: &model.ChatMessageMessageContent{Text: "hi"}},
+			},
+			Error: &pb.RpcChatGetMessagesResponseError{Code: pb.RpcChatGetMessagesResponseError_NULL},
+		})
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{
+				{
+					Fields: map[string]*types.Value{
+						bundle.RelationKeyIdentity.String():   pbtypes.String(creatorIdentity),
+						bundle.RelationKeyGlobalName.String(): pbtypes.String("alice.any"),
+					},
+				},
+			},
+			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		messages, err := fx.service.GetChatMessages(ctx, mockedSpaceId, mockedChatId, "", "", 50)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, messages, 1)
+		assert.Equal(t, "alice.any", messages[0].CreatorName)
+	})
+
+	t.Run("unknown identity still gets participant id", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+
+		const creatorIdentity = "AAjUnknown"
+
+		fx.mwMock.EXPECT().ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{
+			ChatObjectId: mockedChatId,
+			Limit:        50,
+		}).Return(&pb.RpcChatGetMessagesResponse{
+			Messages: []*model.ChatMessage{
+				{Id: mockedMessageId, Creator: creatorIdentity, Message: &model.ChatMessageMessageContent{Text: "?"}},
+			},
+			Error: &pb.RpcChatGetMessagesResponseError{Code: pb.RpcChatGetMessagesResponseError_NULL},
+		})
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		messages, err := fx.service.GetChatMessages(ctx, mockedSpaceId, mockedChatId, "", "", 50)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, messages, 1)
+		assert.Equal(t, domain.NewParticipantId(mockedSpaceId, creatorIdentity), messages[0].Creator)
+		assert.Empty(t, messages[0].CreatorName)
 	})
 
 	t.Run("error from middleware", func(t *testing.T) {
@@ -61,7 +286,7 @@ func TestChatService_GetChatMessages(t *testing.T) {
 		})
 
 		// when
-		_, err := fx.service.GetChatMessages(ctx, mockedChatId, "", "", 50)
+		_, err := fx.service.GetChatMessages(ctx, mockedSpaceId, mockedChatId, "", "", 50)
 
 		// then
 		require.ErrorIs(t, err, ErrFailedGetMessages)
