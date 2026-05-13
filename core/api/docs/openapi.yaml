@@ -103,6 +103,27 @@ components:
           example: Hello, world!
           type: string
       type: object
+    ChatMessageResponse:
+      properties:
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+      type: object
+    ChatMessageSearchResult:
+      properties:
+        highlight:
+          example: '...the **search** match in context...'
+          type: string
+        highlight_ranges:
+          items:
+            $ref: '#/components/schemas/TextRange'
+          type: array
+          uniqueItems: false
+        message:
+          $ref: '#/components/schemas/ChatMessage'
+        score:
+          example: 42
+          type: integer
+      type: object
     ChatMessagesResponse:
       properties:
         messages:
@@ -1954,6 +1975,30 @@ components:
       - $ref: '#/components/schemas/PhonePropertyValue'
       - $ref: '#/components/schemas/ObjectsPropertyValue'
       type: object
+    ReadChatMessagesRequest:
+      properties:
+        after_order_id:
+          example: 00a1b2c3d4e5f0
+          type: string
+        before_order_id:
+          example: 00a1b2c3d4e5f6
+          type: string
+        last_state_id:
+          example: state-id
+          type: string
+        type:
+          enum:
+          - messages
+          - mentions
+          example: messages
+          type: string
+      type: object
+    ReadChatReactionsRequest:
+      properties:
+        order_id:
+          example: 00a1b2c3d4e5f6
+          type: string
+      type: object
     SearchRequest:
       properties:
         filters:
@@ -2209,6 +2254,15 @@ components:
           description: The text value of the property
           example: Some text...
           type: string
+      type: object
+    TextRange:
+      properties:
+        from:
+          example: 0
+          type: integer
+        to:
+          example: 5
+          type: integer
       type: object
     ToggleReactionRequest:
       properties:
@@ -2466,6 +2520,17 @@ components:
             $ref: '#/components/schemas/Sort'
           type: array
           uniqueItems: false
+      type: object
+    PaginatedResponse-ChatMessageSearchResult:
+      properties:
+        data:
+          description: The list of items in the current result set
+          items:
+            $ref: '#/components/schemas/ChatMessageSearchResult'
+          type: array
+          uniqueItems: false
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
       type: object
     PaginatedResponse-Member:
       properties:
@@ -3326,6 +3391,65 @@ paths:
       summary: Delete chat message
       tags:
       - Chat
+    get:
+      description: Retrieves a single message from a chat by its id.
+      operationId: get_chat_message
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-11-08"
+          type: string
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the chat object
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the message
+        in: path
+        name: message_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResponse'
+          description: The message
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+          description: Unauthorized
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundError'
+          description: Not found
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Get chat message
+      tags:
+      - Chat
     patch:
       description: Edits the content of an existing message in the specified chat.
       operationId: edit_chat_message
@@ -3456,6 +3580,141 @@ paths:
       summary: Toggle message reaction
       tags:
       - Chat
+  /v1/spaces/{space_id}/chats/{chat_id}/messages/read:
+    post:
+      description: Marks messages within the given order-id range as read. Pass an
+        empty body to mark the entire chat as read. `type` defaults to "messages";
+        use "mentions" to mark unread @-mentions instead.
+      operationId: read_chat_messages
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-11-08"
+          type: string
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the chat object
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadChatMessagesRequest'
+        description: Read range parameters
+      responses:
+        "200":
+          content:
+            application/json: {}
+          description: Marked as read
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Read messages
+      tags:
+      - Chat
+  /v1/spaces/{space_id}/chats/{chat_id}/messages/search:
+    get:
+      description: Performs a full-text search over the messages in the chat. Results
+        are sorted by relevance and include a highlight snippet for each match.
+      operationId: search_chat_messages
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-11-08"
+          type: string
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the chat object
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      - description: Full-text query
+        in: query
+        name: query
+        required: true
+        schema:
+          type: string
+      - description: The number of items to skip before starting to collect the result
+          set
+        in: query
+        name: offset
+        schema:
+          default: 0
+          type: integer
+      - description: The number of items to return
+        in: query
+        name: limit
+        schema:
+          default: 100
+          maximum: 1000
+          type: integer
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse-ChatMessageSearchResult'
+          description: The search results
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Search chat messages
+      tags:
+      - Chat
   /v1/spaces/{space_id}/chats/{chat_id}/messages/stream:
     get:
       description: 'Opens a Server-Sent Events stream for real-time chat updates.
@@ -3529,6 +3788,111 @@ paths:
       security:
       - bearerauth: []
       summary: Subscribe to chat messages (SSE)
+      tags:
+      - Chat
+  /v1/spaces/{space_id}/chats/{chat_id}/reactions/read:
+    post:
+      description: Marks unread reactions in the chat as seen. Pass an empty body
+        to mark every unread reaction.
+      operationId: read_chat_reactions
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-11-08"
+          type: string
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the chat object
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReadChatReactionsRequest'
+        description: Order id of the last read reaction
+      responses:
+        "200":
+          content:
+            application/json: {}
+          description: Reactions marked as read
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Read reactions
+      tags:
+      - Chat
+  /v1/spaces/{space_id}/chats/{chat_id}/read_all:
+    post:
+      description: Marks every message in the chat as read for the current user.
+      operationId: read_all_chat_messages
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-11-08"
+          type: string
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      - description: The ID of the chat object
+        in: path
+        name: chat_id
+        required: true
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            application/json: {}
+          description: Chat marked as read
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Mark chat as read
       tags:
       - Chat
   /v1/spaces/{space_id}/lists/{list_id}/objects:

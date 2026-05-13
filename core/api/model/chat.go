@@ -56,6 +56,17 @@ type ToggleReactionRequest struct {
 	Emoji string `json:"emoji" binding:"required" example:"👍"`
 }
 
+type ReadChatMessagesRequest struct {
+	BeforeOrderId string `json:"before_order_id,omitempty" example:"00a1b2c3d4e5f6"`
+	AfterOrderId  string `json:"after_order_id,omitempty" example:"00a1b2c3d4e5f0"`
+	LastStateId   string `json:"last_state_id,omitempty" example:"state-id"`
+	Type          string `json:"type,omitempty" enums:"messages,mentions" example:"messages"`
+}
+
+type ReadChatReactionsRequest struct {
+	OrderId string `json:"order_id,omitempty" example:"00a1b2c3d4e5f6"`
+}
+
 type AddChatMessageResponse struct {
 	MessageId string `json:"message_id" example:"msg-abc123"`
 }
@@ -66,6 +77,18 @@ type ChatMessageResponse struct {
 
 type ChatMessagesResponse struct {
 	Messages []ChatMessage `json:"messages"`
+}
+
+type ChatMessageSearchResult struct {
+	Message         ChatMessage `json:"message"`
+	Score           int64       `json:"score" example:"42"`
+	Highlight       string      `json:"highlight" example:"...the **search** match in context..."`
+	HighlightRanges []TextRange `json:"highlight_ranges"`
+}
+
+type TextRange struct {
+	From int32 `json:"from" example:"0"`
+	To   int32 `json:"to" example:"5"`
 }
 
 type ChatEvent struct {
@@ -226,6 +249,25 @@ func EditContentToProto(req EditChatMessageRequest) *model.ChatMessage {
 			Marks: marks,
 		},
 		Attachments: attachments,
+	}
+}
+
+func ChatMessageSearchResultFromProto(r *model.SearchMessageResult) ChatMessageSearchResult {
+	if r == nil {
+		return ChatMessageSearchResult{HighlightRanges: []TextRange{}}
+	}
+	ranges := make([]TextRange, 0, len(r.HighlightRanges))
+	for _, rng := range r.HighlightRanges {
+		if rng == nil {
+			continue
+		}
+		ranges = append(ranges, TextRange{From: rng.From, To: rng.To})
+	}
+	return ChatMessageSearchResult{
+		Message:         ChatMessageFromProto(r.Message),
+		Score:           r.Score,
+		Highlight:       r.Highlight,
+		HighlightRanges: ranges,
 	}
 }
 

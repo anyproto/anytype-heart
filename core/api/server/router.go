@@ -124,6 +124,14 @@ func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.
 		ensureAnalyticsEvent("GetChatMessages", eventService),
 		handler.GetChatMessagesHandler(srv.service),
 	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages/search",
+		ensureAnalyticsEvent("SearchChatMessages", eventService),
+		handler.SearchChatMessagesHandler(srv.service),
+	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		ensureAnalyticsEvent("GetChatMessage", eventService),
+		handler.GetChatMessageHandler(srv.service),
+	)
 	v1.POST("/spaces/:space_id/chats/:chat_id/messages",
 		writeRateLimitMW,
 		ensureAnalyticsEvent("AddChatMessage", eventService),
@@ -143,6 +151,21 @@ func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.
 		writeRateLimitMW,
 		ensureAnalyticsEvent("ToggleChatReaction", eventService),
 		handler.ToggleChatReactionHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/read_all",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ReadAllChatMessages", eventService),
+		handler.ReadAllChatMessagesHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/messages/read",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ReadChatMessages", eventService),
+		handler.ReadChatMessagesHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/reactions/read",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ReadChatReactions", eventService),
+		handler.ReadChatReactionsHandler(srv.service),
 	)
 }
 

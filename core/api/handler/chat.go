@@ -274,3 +274,216 @@ func ToggleChatReactionHandler(s *service.Service) gin.HandlerFunc {
 		c.Status(http.StatusOK)
 	}
 }
+
+// GetChatMessageHandler returns a single chat message by id
+//
+//	@Summary		Get chat message
+//	@Description	Retrieves a single message from a chat by its id.
+//	@Id				get_chat_message
+//	@Tags			Chat
+//	@Produce		json
+//	@Param			Anytype-Version	header		string							true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string							true	"The ID of the space"
+//	@Param			chat_id			path		string							true	"The ID of the chat object"
+//	@Param			message_id		path		string							true	"The ID of the message"
+//	@Success		200				{object}	apimodel.ChatMessageResponse	"The message"
+//	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
+//	@Failure		404				{object}	util.NotFoundError				"Not found"
+//	@Failure		500				{object}	util.ServerError				"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [get]
+func GetChatMessageHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		chatId := c.Param("chat_id")
+		messageId := c.Param("message_id")
+
+		message, err := s.GetChatMessage(c.Request.Context(), spaceId, chatId, messageId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrChatMessageNotFound, http.StatusNotFound),
+			util.ErrToCode(service.ErrFailedGetMessages, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusOK, apimodel.ChatMessageResponse{Message: message})
+	}
+}
+
+// ReadAllChatMessagesHandler marks all messages in a chat as read
+//
+//	@Summary		Mark chat as read
+//	@Description	Marks every message in the chat as read for the current user.
+//	@Id				read_all_chat_messages
+//	@Tags			Chat
+//	@Produce		json
+//	@Param			Anytype-Version	header		string					true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string					true	"The ID of the space"
+//	@Param			chat_id			path		string					true	"The ID of the chat object"
+//	@Success		200				{object}	nil						"Chat marked as read"
+//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats/{chat_id}/read_all [post]
+func ReadAllChatMessagesHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		chatId := c.Param("chat_id")
+
+		err := s.ReadAllChatMessages(c.Request.Context(), chatId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrFailedReadAllMessages, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+// ReadChatMessagesHandler marks messages within a range as read
+//
+//	@Summary		Read messages
+//	@Description	Marks messages within the given order-id range as read. Pass an empty body to mark the entire chat as read. `type` defaults to "messages"; use "mentions" to mark unread @-mentions instead.
+//	@Id				read_chat_messages
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string								true	"The ID of the space"
+//	@Param			chat_id			path		string								true	"The ID of the chat object"
+//	@Param			body			body		apimodel.ReadChatMessagesRequest	false	"Read range parameters"
+//	@Success		200				{object}	nil									"Marked as read"
+//	@Failure		400				{object}	util.ValidationError				"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure		500				{object}	util.ServerError					"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats/{chat_id}/messages/read [post]
+func ReadChatMessagesHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		chatId := c.Param("chat_id")
+
+		var req apimodel.ReadChatMessagesRequest
+		if c.Request.ContentLength > 0 {
+			if err := c.ShouldBindJSON(&req); err != nil {
+				apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
+				c.JSON(http.StatusBadRequest, apiErr)
+				return
+			}
+		}
+
+		err := s.ReadChatMessages(c.Request.Context(), chatId, req)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrInvalidReadMessageType, http.StatusBadRequest),
+			util.ErrToCode(service.ErrFailedReadMessages, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+// ReadChatReactionsHandler marks reactions in a chat as read
+//
+//	@Summary		Read reactions
+//	@Description	Marks unread reactions in the chat as seen. Pass an empty body to mark every unread reaction.
+//	@Id				read_chat_reactions
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string								true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string								true	"The ID of the space"
+//	@Param			chat_id			path		string								true	"The ID of the chat object"
+//	@Param			body			body		apimodel.ReadChatReactionsRequest	false	"Order id of the last read reaction"
+//	@Success		200				{object}	nil									"Reactions marked as read"
+//	@Failure		400				{object}	util.ValidationError				"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError				"Unauthorized"
+//	@Failure		500				{object}	util.ServerError					"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats/{chat_id}/reactions/read [post]
+func ReadChatReactionsHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		chatId := c.Param("chat_id")
+
+		var req apimodel.ReadChatReactionsRequest
+		if c.Request.ContentLength > 0 {
+			if err := c.ShouldBindJSON(&req); err != nil {
+				apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
+				c.JSON(http.StatusBadRequest, apiErr)
+				return
+			}
+		}
+
+		err := s.ReadChatReactions(c.Request.Context(), chatId, req.OrderId)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrFailedReadReactions, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.Status(http.StatusOK)
+	}
+}
+
+// SearchChatMessagesHandler searches messages inside a single chat
+//
+//	@Summary		Search chat messages
+//	@Description	Performs a full-text search over the messages in the chat. Results are sorted by relevance and include a highlight snippet for each match.
+//	@Id				search_chat_messages
+//	@Tags			Chat
+//	@Produce		json
+//	@Param			Anytype-Version	header		string															true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string															true	"The ID of the space"
+//	@Param			chat_id			path		string															true	"The ID of the chat object"
+//	@Param			query			query		string															true	"Full-text query"
+//	@Param			offset			query		int																false	"The number of items to skip before starting to collect the result set"	default(0)
+//	@Param			limit			query		int																false	"The number of items to return"											default(100)	maximum(1000)
+//	@Success		200				{object}	pagination.PaginatedResponse[apimodel.ChatMessageSearchResult]	"The search results"
+//	@Failure		400				{object}	util.ValidationError											"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError											"Unauthorized"
+//	@Failure		500				{object}	util.ServerError												"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats/{chat_id}/messages/search [get]
+func SearchChatMessagesHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+		chatId := c.Param("chat_id")
+		query := c.Query("query")
+		if query == "" {
+			apiErr := util.CodeToApiError(http.StatusBadRequest, "query parameter is required")
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+		offset := c.GetInt(pagination.QueryParamOffset)
+		limit := c.GetInt(pagination.QueryParamLimit)
+
+		results, total, hasMore, err := s.SearchChatMessages(c.Request.Context(), spaceId, chatId, query, offset, limit)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrFailedSearchMessages, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		pagination.RespondWithPagination(c, http.StatusOK, results, total, offset, limit, hasMore)
+	}
+}
