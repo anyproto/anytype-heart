@@ -132,7 +132,7 @@ func TestSpaceService_ListMembers(t *testing.T) {
 		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
-				File:   gatewayUrl + "/image/" + iconImage,
+				File:   apiBaseUrl + "/v1/spaces/space-id/files/" + iconImage,
 			},
 		}, members[0].Icon)
 		require.Equal(t, "jane.any", members[0].GlobalName)
@@ -234,7 +234,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
-				File:   gatewayUrl + "/image/icon.png",
+				File:   apiBaseUrl + "/v1/spaces/space-id/files/icon.png",
 			},
 		}, member.Icon)
 		require.Equal(t, "member-id", member.Identity)
@@ -378,7 +378,7 @@ func TestSpaceService_GetMember(t *testing.T) {
 		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
-				File:   gatewayUrl + "/image/participant.png",
+				File:   apiBaseUrl + "/v1/spaces/space-id/files/participant.png",
 			},
 		}, member.Icon)
 		require.Equal(t, "alice-identity", member.Identity)
