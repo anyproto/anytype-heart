@@ -1,6 +1,49 @@
 {
   "components": {
     "schemas": {
+      "AddChatMessageRequest": {
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/ChatAttachment"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TextMark"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "reply_to_message_id": {
+            "example": "msg-def456",
+            "type": "string"
+          },
+          "style": {
+            "example": "paragraph",
+            "type": "string"
+          },
+          "text": {
+            "example": "Hello, world!",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "type": "object"
+      },
+      "AddChatMessageResponse": {
+        "properties": {
+          "message_id": {
+            "example": "msg-abc123",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "AddObjectsToListRequest": {
         "properties": {
           "objects": {
@@ -10,6 +53,102 @@
             ],
             "items": {
               "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ChatAttachment": {
+        "properties": {
+          "target": {
+            "example": "bafyreie6n5l5nkbjal37su54cha4coy",
+            "type": "string"
+          },
+          "type": {
+            "example": "image",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatMessage": {
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/ChatAttachment"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "content": {
+            "$ref": "#/components/schemas/ChatMessageContent"
+          },
+          "created_at": {
+            "example": 1717405200,
+            "type": "integer"
+          },
+          "creator": {
+            "example": "AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q",
+            "type": "string"
+          },
+          "id": {
+            "example": "msg-abc123",
+            "type": "string"
+          },
+          "modified_at": {
+            "example": 1717405200,
+            "type": "integer"
+          },
+          "order_id": {
+            "example": "00a1b2c3d4e5f6",
+            "type": "string"
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "reactions": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "reply_to_message_id": {
+            "example": "msg-def456",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatMessageContent": {
+        "properties": {
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TextMark"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "style": {
+            "example": "paragraph",
+            "type": "string"
+          },
+          "text": {
+            "example": "Hello, world!",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatMessagesResponse": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
             },
             "type": "array",
             "uniqueItems": false
@@ -367,6 +506,36 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "EditChatMessageRequest": {
+        "properties": {
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/ChatAttachment"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "marks": {
+            "items": {
+              "$ref": "#/components/schemas/TextMark"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "style": {
+            "example": "paragraph",
+            "type": "string"
+          },
+          "text": {
+            "example": "Updated message text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
         "type": "object"
       },
       "EmailFilterItem": {
@@ -2412,8 +2581,8 @@
           "object": {
             "description": "The data model of the object",
             "enum": [
-              "space",
-              "chat"
+              "regular",
+              "onetoone"
             ],
             "example": "space",
             "type": "string"
@@ -2492,6 +2661,27 @@
         },
         "type": "object"
       },
+      "TextMark": {
+        "properties": {
+          "from": {
+            "example": 0,
+            "type": "integer"
+          },
+          "param": {
+            "example": "",
+            "type": "string"
+          },
+          "to": {
+            "example": 5,
+            "type": "integer"
+          },
+          "type": {
+            "example": "bold",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "TextPropertyLinkValue": {
         "properties": {
           "key": {
@@ -2537,6 +2727,18 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "ToggleReactionRequest": {
+        "properties": {
+          "emoji": {
+            "example": "👍",
+            "type": "string"
+          }
+        },
+        "required": [
+          "emoji"
+        ],
         "type": "object"
       },
       "Type": {
@@ -3754,6 +3956,584 @@
         ]
       }
     },
+    "/v1/spaces/{space_id}/chats/{chat_id}/messages": {
+      "get": {
+        "description": "Retrieves a list of messages from a chat. Supports cursor-based pagination via before_order_id and after_order_id query parameters.",
+        "operationId": "get_chat_messages",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the chat object",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Return messages before this order ID",
+            "in": "query",
+            "name": "before_order_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Return messages after this order ID",
+            "in": "query",
+            "name": "after_order_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of messages to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessagesResponse"
+                }
+              }
+            },
+            "description": "The list of messages"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get chat messages",
+        "tags": [
+          "Chat"
+        ]
+      },
+      "post": {
+        "description": "Adds a new message to the specified chat.",
+        "operationId": "add_chat_message",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the chat object",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddChatMessageRequest"
+              }
+            }
+          },
+          "description": "The message to add",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddChatMessageResponse"
+                }
+              }
+            },
+            "description": "The created message ID"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Add chat message",
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/chats/{chat_id}/messages/stream": {
+      "get": {
+        "description": "Opens a Server-Sent Events stream for real-time chat updates. On connect, the last N messages are sent, followed by live events (message_added, message_updated, message_deleted, reactions_updated). Supports authentication via Authorization header or token query parameter.",
+        "operationId": "chat_message_stream",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the chat object",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of recent messages to send on connect",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "API key for authentication (alternative to Authorization header, needed for browser EventSource)",
+            "in": "query",
+            "name": "token",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "SSE stream of chat events"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Subscribe to chat messages (SSE)",
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/chats/{chat_id}/messages/{message_id}": {
+      "delete": {
+        "description": "Deletes a message from the specified chat.",
+        "operationId": "delete_chat_message",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the chat object",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the message to delete",
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {}
+            },
+            "description": "Message deleted successfully"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Delete chat message",
+        "tags": [
+          "Chat"
+        ]
+      },
+      "patch": {
+        "description": "Edits the content of an existing message in the specified chat.",
+        "operationId": "edit_chat_message",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the chat object",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the message to edit",
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditChatMessageRequest"
+              }
+            }
+          },
+          "description": "The updated message content",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {}
+            },
+            "description": "Message updated successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Edit chat message",
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions": {
+      "post": {
+        "description": "Toggles an emoji reaction on a message. If the reaction already exists for the current user, it will be removed; otherwise, it will be added.",
+        "operationId": "toggle_chat_reaction",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-11-08",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the chat object",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the message",
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleReactionRequest"
+              }
+            }
+          },
+          "description": "The emoji to toggle",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {}
+            },
+            "description": "Reaction toggled"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Toggle message reaction",
+        "tags": [
+          "Chat"
+        ]
+      }
+    },
     "/v1/spaces/{space_id}/lists/{list_id}/objects": {
       "post": {
         "description": "Adds one or more objects to a specific list (collection only) by submitting a JSON array of object IDs. Upon success, the endpoint returns a confirmation message. This endpoint is vital for building user interfaces that allow drag‑and‑drop or multi‑select additions to collections, enabling users to dynamically manage their collections without needing to modify the underlying object data.",
@@ -4381,7 +5161,7 @@
     },
     "/v1/spaces/{space_id}/objects": {
       "get": {
-        "description": "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.\nSupports dynamic filtering via query parameters (e.g., ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.",
+        "description": "Retrieves a paginated list of objects in the given space. The endpoint takes query parameters for pagination (offset and limit) and returns detailed data about each object including its ID, name, icon, type information, a snippet of the content (if applicable), layout, space ID, blocks and details. It is intended for building views where users can see all objects in a space at a glance.\nSupports dynamic filtering via query parameters (e.g., ?type=page, ?done=false, ?created_date[gte]=2024-01-01, ?tags[in]=urgent,important). For type filtering use the type's API key (e.g., ?type=note, ?type=page). For select/multi_select properties you can use either tag keys or tag IDs, for object properties use object IDs. See FilterCondition enum for available conditions.",
         "operationId": "list_objects",
         "parameters": [
           {

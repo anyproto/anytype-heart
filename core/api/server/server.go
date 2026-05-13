@@ -17,8 +17,9 @@ type ApiSessionEntry struct {
 
 // Server wraps the HTTP server and service logic.
 type Server struct {
-	engine  *gin.Engine
-	service *service.Service
+	engine     *gin.Engine
+	service    *service.Service
+	chatSubSvc apicore.ChatSubscriptionService
 
 	mu         sync.Mutex
 	KeyToToken map[string]ApiSessionEntry // appKey -> token
@@ -27,13 +28,16 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, openapiYAML []byte, openapiJSON []byte) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, chatSubSvc apicore.ChatSubscriptionService, openapiYAML []byte, openapiJSON []byte) *Server {
 	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
 	if err != nil {
 		panic(err)
 	}
 
-	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService)}
+	s := &Server{
+		service:    service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService),
+		chatSubSvc: chatSubSvc,
+	}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 

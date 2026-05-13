@@ -267,6 +267,251 @@ func (_c *MockClientCommands_BlockPaste_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// ChatAddMessage provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ChatAddMessage(_a0 context.Context, _a1 *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatAddMessage")
+	}
+
+	var r0 *pb.RpcChatAddMessageResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatAddMessageResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ChatAddMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatAddMessage'
+type MockClientCommands_ChatAddMessage_Call struct {
+	*mock.Call
+}
+
+// ChatAddMessage is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatAddMessageRequest
+func (_e *MockClientCommands_Expecter) ChatAddMessage(_a0 interface{}, _a1 interface{}) *MockClientCommands_ChatAddMessage_Call {
+	return &MockClientCommands_ChatAddMessage_Call{Call: _e.mock.On("ChatAddMessage", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ChatAddMessage_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatAddMessageRequest)) *MockClientCommands_ChatAddMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatAddMessageRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ChatAddMessage_Call) Return(_a0 *pb.RpcChatAddMessageResponse) *MockClientCommands_ChatAddMessage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ChatAddMessage_Call) RunAndReturn(run func(context.Context, *pb.RpcChatAddMessageRequest) *pb.RpcChatAddMessageResponse) *MockClientCommands_ChatAddMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ChatDeleteMessage provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ChatDeleteMessage(_a0 context.Context, _a1 *pb.RpcChatDeleteMessageRequest) *pb.RpcChatDeleteMessageResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatDeleteMessage")
+	}
+
+	var r0 *pb.RpcChatDeleteMessageResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatDeleteMessageRequest) *pb.RpcChatDeleteMessageResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatDeleteMessageResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ChatDeleteMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatDeleteMessage'
+type MockClientCommands_ChatDeleteMessage_Call struct {
+	*mock.Call
+}
+
+// ChatDeleteMessage is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatDeleteMessageRequest
+func (_e *MockClientCommands_Expecter) ChatDeleteMessage(_a0 interface{}, _a1 interface{}) *MockClientCommands_ChatDeleteMessage_Call {
+	return &MockClientCommands_ChatDeleteMessage_Call{Call: _e.mock.On("ChatDeleteMessage", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ChatDeleteMessage_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatDeleteMessageRequest)) *MockClientCommands_ChatDeleteMessage_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatDeleteMessageRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ChatDeleteMessage_Call) Return(_a0 *pb.RpcChatDeleteMessageResponse) *MockClientCommands_ChatDeleteMessage_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ChatDeleteMessage_Call) RunAndReturn(run func(context.Context, *pb.RpcChatDeleteMessageRequest) *pb.RpcChatDeleteMessageResponse) *MockClientCommands_ChatDeleteMessage_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ChatEditMessageContent provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ChatEditMessageContent(_a0 context.Context, _a1 *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatEditMessageContent")
+	}
+
+	var r0 *pb.RpcChatEditMessageContentResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatEditMessageContentResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ChatEditMessageContent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatEditMessageContent'
+type MockClientCommands_ChatEditMessageContent_Call struct {
+	*mock.Call
+}
+
+// ChatEditMessageContent is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatEditMessageContentRequest
+func (_e *MockClientCommands_Expecter) ChatEditMessageContent(_a0 interface{}, _a1 interface{}) *MockClientCommands_ChatEditMessageContent_Call {
+	return &MockClientCommands_ChatEditMessageContent_Call{Call: _e.mock.On("ChatEditMessageContent", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ChatEditMessageContent_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatEditMessageContentRequest)) *MockClientCommands_ChatEditMessageContent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatEditMessageContentRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ChatEditMessageContent_Call) Return(_a0 *pb.RpcChatEditMessageContentResponse) *MockClientCommands_ChatEditMessageContent_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ChatEditMessageContent_Call) RunAndReturn(run func(context.Context, *pb.RpcChatEditMessageContentRequest) *pb.RpcChatEditMessageContentResponse) *MockClientCommands_ChatEditMessageContent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ChatGetMessages provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ChatGetMessages(_a0 context.Context, _a1 *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatGetMessages")
+	}
+
+	var r0 *pb.RpcChatGetMessagesResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatGetMessagesResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ChatGetMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatGetMessages'
+type MockClientCommands_ChatGetMessages_Call struct {
+	*mock.Call
+}
+
+// ChatGetMessages is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatGetMessagesRequest
+func (_e *MockClientCommands_Expecter) ChatGetMessages(_a0 interface{}, _a1 interface{}) *MockClientCommands_ChatGetMessages_Call {
+	return &MockClientCommands_ChatGetMessages_Call{Call: _e.mock.On("ChatGetMessages", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ChatGetMessages_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatGetMessagesRequest)) *MockClientCommands_ChatGetMessages_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatGetMessagesRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ChatGetMessages_Call) Return(_a0 *pb.RpcChatGetMessagesResponse) *MockClientCommands_ChatGetMessages_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ChatGetMessages_Call) RunAndReturn(run func(context.Context, *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse) *MockClientCommands_ChatGetMessages_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ChatToggleMessageReaction provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ChatToggleMessageReaction(_a0 context.Context, _a1 *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ChatToggleMessageReaction")
+	}
+
+	var r0 *pb.RpcChatToggleMessageReactionResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcChatToggleMessageReactionResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ChatToggleMessageReaction_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ChatToggleMessageReaction'
+type MockClientCommands_ChatToggleMessageReaction_Call struct {
+	*mock.Call
+}
+
+// ChatToggleMessageReaction is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcChatToggleMessageReactionRequest
+func (_e *MockClientCommands_Expecter) ChatToggleMessageReaction(_a0 interface{}, _a1 interface{}) *MockClientCommands_ChatToggleMessageReaction_Call {
+	return &MockClientCommands_ChatToggleMessageReaction_Call{Call: _e.mock.On("ChatToggleMessageReaction", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ChatToggleMessageReaction_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcChatToggleMessageReactionRequest)) *MockClientCommands_ChatToggleMessageReaction_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcChatToggleMessageReactionRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ChatToggleMessageReaction_Call) Return(_a0 *pb.RpcChatToggleMessageReactionResponse) *MockClientCommands_ChatToggleMessageReaction_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ChatToggleMessageReaction_Call) RunAndReturn(run func(context.Context, *pb.RpcChatToggleMessageReactionRequest) *pb.RpcChatToggleMessageReactionResponse) *MockClientCommands_ChatToggleMessageReaction_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectCollectionAdd provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectCollectionAdd(_a0 context.Context, _a1 *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse {
 	ret := _m.Called(_a0, _a1)

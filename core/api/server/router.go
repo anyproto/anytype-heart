@@ -36,6 +36,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1.Use(srv.ensureCacheInitialized())
 	v1.Use(srv.ensureAuthenticated(mw))
 
+	srv.registerChatRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerListRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerMemberRoutes(v1, eventService)
 	srv.registerObjectRoutes(v1, eventService, writeRateLimitMW)
@@ -106,6 +107,38 @@ func (srv *Server) registerAuthRoutes(router *gin.Engine) {
 		authGroup.POST("/auth/challenges", handler.CreateChallengeHandler(srv.service))
 		authGroup.POST("/auth/api_keys", handler.CreateApiKeyHandler(srv.service))
 	}
+}
+
+// registerChatRoutes registers chat message routes
+func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages/stream",
+		ensureAnalyticsEvent("ChatMessageStream", eventService),
+		handler.ChatStreamHandler(srv.chatSubSvc),
+	)
+	v1.GET("/spaces/:space_id/chats/:chat_id/messages",
+		ensureAnalyticsEvent("GetChatMessages", eventService),
+		handler.GetChatMessagesHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/messages",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("AddChatMessage", eventService),
+		handler.AddChatMessageHandler(srv.service),
+	)
+	v1.PATCH("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("EditChatMessage", eventService),
+		handler.EditChatMessageHandler(srv.service),
+	)
+	v1.DELETE("/spaces/:space_id/chats/:chat_id/messages/:message_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("DeleteChatMessage", eventService),
+		handler.DeleteChatMessageHandler(srv.service),
+	)
+	v1.POST("/spaces/:space_id/chats/:chat_id/messages/:message_id/reactions",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("ToggleChatReaction", eventService),
+		handler.ToggleChatReactionHandler(srv.service),
+	)
 }
 
 // registerListRoutes registers list-related routes
