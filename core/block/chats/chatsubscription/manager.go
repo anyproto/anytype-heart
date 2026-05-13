@@ -56,6 +56,9 @@ type subscription struct {
 	// couldUseSessionContext determines if client could receive events synchronously in API responses
 	couldUseSessionContext bool
 
+	// sseSink, when set, receives events directly instead of going through the event sender
+	sseSink chan<- *pb.Event
+
 	state *messagesState
 }
 
@@ -79,6 +82,7 @@ func (s *subscriptionManager) subscribe(req SubscribeLastMessagesRequest, initia
 		id:                     req.SubId,
 		withDependencies:       req.WithDependencies,
 		couldUseSessionContext: req.CouldUseSessionContext,
+		sseSink:                req.SseSink,
 		state:                  st,
 	}
 	s.chatStateUpdated = false
@@ -262,8 +266,15 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 
 	var syncSubIds []string
 	var asyncSubIds []string
+	type sseSub struct {
+		id   string
+		sink chan<- *pb.Event
+	}
+	var sseSubs []sseSub
 	for _, sub := range s.subscriptions {
-		if sub.couldUseSessionContext && s.sessionContext != nil {
+		if sub.sseSink != nil {
+			sseSubs = append(sseSubs, sseSub{id: sub.id, sink: sub.sseSink})
+		} else if sub.couldUseSessionContext && s.sessionContext != nil {
 			syncSubIds = append(syncSubIds, sub.id)
 		} else {
 			asyncSubIds = append(asyncSubIds, sub.id)
@@ -290,6 +301,19 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 			Messages:  asyncEvents,
 		}
 		s.eventSender.Broadcast(ev)
+	}
+
+	for _, ss := range sseSubs {
+		sseEvents := cloneEvents(events)
+		eventsSetSubIds([]string{ss.id}, sseEvents)
+		ev := &pb.Event{
+			ContextId: s.chatId,
+			Messages:  sseEvents,
+		}
+		select {
+		case ss.sink <- ev:
+		default:
+		}
 	}
 
 }
