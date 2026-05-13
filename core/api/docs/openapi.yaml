@@ -3458,10 +3458,14 @@ paths:
       - Chat
   /v1/spaces/{space_id}/chats/{chat_id}/messages/stream:
     get:
-      description: Opens a Server-Sent Events stream for real-time chat updates. On
-        connect, the last N messages are sent, followed by live events (message_added,
-        message_updated, message_deleted, reactions_updated). Supports authentication
-        via Authorization header or token query parameter.
+      description: 'Opens a Server-Sent Events stream for real-time chat updates.
+        On connect, the last N messages are sent, followed by live events (message_added,
+        message_updated, message_deleted, reactions_updated). Periodic SSE comment
+        lines (`: heartbeat`) keep the connection alive during idle periods; per the
+        SSE spec these are invisible to EventSource clients. Clients can tune the
+        cadence with the Anytype-Heartbeat-Seconds header (1-60s, default 30s; out-of-range
+        or unparsable values fall back to the default). Supports authentication via
+        Authorization header or token query parameter.'
       operationId: chat_message_stream
       parameters:
       - description: The version of the API to use
@@ -3471,6 +3475,14 @@ paths:
         schema:
           default: "2025-11-08"
           type: string
+      - description: Heartbeat interval in seconds (1-60, default 30)
+        in: header
+        name: Anytype-Heartbeat-Seconds
+        schema:
+          default: 30
+          maximum: 60
+          minimum: 1
+          type: integer
       - description: The ID of the space
         in: path
         name: space_id

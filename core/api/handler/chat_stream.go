@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -18,31 +19,52 @@ import (
 )
 
 const (
-	defaultSSELimit   = 50
-	sseChannelBufSize = 256
+	defaultSSELimit          = 50
+	sseChannelBufSize        = 256
+	heartbeatHeader          = "Anytype-Heartbeat-Seconds"
+	defaultHeartbeatSeconds  = 30
+	minHeartbeatSeconds      = 1
+	maxHeartbeatSeconds      = 60
 )
+
+// parseHeartbeatSeconds reads the Anytype-Heartbeat-Seconds header. Missing,
+// malformed, or out-of-range values fall back to the default. The accepted
+// range is [minHeartbeatSeconds, maxHeartbeatSeconds].
+func parseHeartbeatSeconds(c *gin.Context) int {
+	raw := c.GetHeader(heartbeatHeader)
+	if raw == "" {
+		return defaultHeartbeatSeconds
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v < minHeartbeatSeconds || v > maxHeartbeatSeconds {
+		return defaultHeartbeatSeconds
+	}
+	return v
+}
 
 // ChatStreamHandler streams chat events via Server-Sent Events
 //
 //	@Summary		Subscribe to chat messages (SSE)
-//	@Description	Opens a Server-Sent Events stream for real-time chat updates. On connect, the last N messages are sent, followed by live events (message_added, message_updated, message_deleted, reactions_updated). Supports authentication via Authorization header or token query parameter.
+//	@Description	Opens a Server-Sent Events stream for real-time chat updates. On connect, the last N messages are sent, followed by live events (message_added, message_updated, message_deleted, reactions_updated). Periodic SSE comment lines (`: heartbeat`) keep the connection alive during idle periods; per the SSE spec these are invisible to EventSource clients. Clients can tune the cadence with the Anytype-Heartbeat-Seconds header (1-60s, default 30s; out-of-range or unparsable values fall back to the default). Supports authentication via Authorization header or token query parameter.
 //	@Id				chat_message_stream
 //	@Tags			Chat
 //	@Produce		text/event-stream
-//	@Param			Anytype-Version	header	string	true	"The version of the API to use"	default(2025-11-08)
-//	@Param			space_id		path	string	true	"The ID of the space"
-//	@Param			chat_id			path	string	true	"The ID of the chat object"
-//	@Param			limit			query	int		false	"Number of recent messages to send on connect"	default(50)
-//	@Param			token			query	string	false	"API key for authentication (alternative to Authorization header, needed for browser EventSource)"
-//	@Success		200				"SSE stream of chat events"
-//	@Failure		401				{object}	util.UnauthorizedError	"Unauthorized"
-//	@Failure		500				{object}	util.ServerError		"Internal server error"
+//	@Param			Anytype-Version				header	string	true	"The version of the API to use"						default(2025-11-08)
+//	@Param			Anytype-Heartbeat-Seconds	header	int		false	"Heartbeat interval in seconds (1-60, default 30)"	default(30)	minimum(1)	maximum(60)
+//	@Param			space_id					path	string	true	"The ID of the space"
+//	@Param			chat_id						path	string	true	"The ID of the chat object"
+//	@Param			limit						query	int		false	"Number of recent messages to send on connect"	default(50)
+//	@Param			token						query	string	false	"API key for authentication (alternative to Authorization header, needed for browser EventSource)"
+//	@Success		200							"SSE stream of chat events"
+//	@Failure		401							{object}	util.UnauthorizedError	"Unauthorized"
+//	@Failure		500							{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
 //	@Router			/v1/spaces/{space_id}/chats/{chat_id}/messages/stream [get]
 func ChatStreamHandler(s *service.Service, chatSubSvc apicore.ChatSubscriptionService) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		spaceId := c.Param("space_id")
 		chatId := c.Param("chat_id")
+		heartbeatPeriod := time.Duration(parseHeartbeatSeconds(c)) * time.Second
 
 		limit := defaultSSELimit
 		if l := c.Query("limit"); l != "" {
@@ -85,6 +107,9 @@ func ChatStreamHandler(s *service.Service, chatSubSvc apicore.ChatSubscriptionSe
 		c.Writer.Flush()
 
 		ctx := c.Request.Context()
+		heartbeat := time.NewTicker(heartbeatPeriod)
+		defer heartbeat.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -101,6 +126,9 @@ func ChatStreamHandler(s *service.Service, chatSubSvc apicore.ChatSubscriptionSe
 					enrichEventMessage(ctx, s, spaceId, chatEvent)
 					writeSSE(c, chatEvent)
 				}
+				c.Writer.Flush()
+			case <-heartbeat.C:
+				writeSSEComment(c, "heartbeat")
 				c.Writer.Flush()
 			}
 		}
@@ -129,4 +157,12 @@ func writeSSE(c *gin.Context, event *apimodel.ChatEvent) {
 		return
 	}
 	fmt.Fprintf(c.Writer, "event: %s\ndata: %s\n\n", event.Type, data)
+}
+
+// writeSSEComment emits an SSE comment line. Per the SSE spec, lines starting
+// with ":" are ignored by clients (EventSource fires no event), so this acts
+// as an invisible keepalive that prevents proxies and idle timeouts from
+// dropping the connection without surfacing noise to consumers.
+func writeSSEComment(c *gin.Context, text string) {
+	fmt.Fprintf(c.Writer, ": %s\n\n", text)
 }
