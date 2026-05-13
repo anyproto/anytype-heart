@@ -27,6 +27,63 @@ type spaceViewStatus struct {
 	mentionIds     []string
 	allIds         []string
 	status         model.SpaceStatus
+	spaceType      model.SpaceType
+}
+
+type chatEntry struct {
+	chatId       string
+	spaceId      string
+	isDiscussion bool
+	subscribers  []string // participantIds from notificationSubscribers
+}
+
+func newChatSubscriptionParams(wakeUp func()) objectsubscription.SubscriptionParams[chatEntry] {
+	return objectsubscription.SubscriptionParams[chatEntry]{
+		SetDetails: func(details *domain.Details) (string, chatEntry) {
+			defer wakeUp()
+			id := details.GetString(bundle.RelationKeyId)
+			return id, chatEntry{
+				chatId:       id,
+				spaceId:      details.GetString(bundle.RelationKeySpaceId),
+				isDiscussion: isDiscussionLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)),
+				subscribers:  details.GetStringList(bundle.RelationKeyNotificationSubscribers),
+			}
+		},
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, entry chatEntry) chatEntry {
+			defer wakeUp()
+			for _, kv := range keyValues {
+				switch domain.RelationKey(kv.Key) {
+				case bundle.RelationKeyResolvedLayout:
+					entry.isDiscussion = isDiscussionLayout(kv.Value.Int64())
+				case bundle.RelationKeyNotificationSubscribers:
+					entry.subscribers = kv.Value.StringList()
+				case bundle.RelationKeySpaceId:
+					entry.spaceId = kv.Value.String()
+				}
+			}
+			return entry
+		},
+		RemoveKeys: func(keys []string, entry chatEntry) chatEntry {
+			defer wakeUp()
+			for _, key := range keys {
+				if key == bundle.RelationKeyNotificationSubscribers.String() {
+					entry.subscribers = nil
+				}
+			}
+			return entry
+		},
+		OnAdded: func(string, chatEntry) {
+			wakeUp()
+		},
+		OnRemoved: func(string, chatEntry) {
+			wakeUp()
+		},
+	}
+}
+
+func isDiscussionLayout(layout int64) bool {
+	// nolint: gosec
+	return model.ObjectTypeLayout(layout) == model.ObjectType_discussion
 }
 
 func newSpaceViewSubscription(service subscription.Service, techSpaceId string, wakeUp func()) (*objectsubscription.ObjectSubscription[spaceViewStatus], error) {
@@ -45,6 +102,7 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 			bundle.RelationKeySpacePushNotificationForceMuteIds.String(),
 			bundle.RelationKeySpacePushNotificationForceMentionIds.String(),
 			bundle.RelationKeySpacePushNotificationForceAllIds.String(),
+			bundle.RelationKeySpaceType.String(),
 			bundle.RelationKeyCreator.String(),
 		},
 		Filters: []database.FilterRequest{
@@ -81,9 +139,16 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					spaceKey:       spaceKey,
 					encKeyBase64:   encKeyBase64,
 					encKey:         encKey,
+					allIds:         details.GetStringList(bundle.RelationKeySpacePushNotificationForceAllIds),
+					mentionIds:     details.GetStringList(bundle.RelationKeySpacePushNotificationForceMentionIds),
+					muteIds:        details.GetStringList(bundle.RelationKeySpacePushNotificationForceMuteIds),
 					// nolint: gosec
 					mode:    pb.RpcPushNotificationMode(details.GetInt64(bundle.RelationKeySpacePushNotificationMode)),
 					creator: details.GetString(bundle.RelationKeyCreator),
+					// nolint: gosec
+					status: model.SpaceStatus(details.GetInt64(bundle.RelationKeySpaceAccountStatus)),
+					// nolint: gosec
+					spaceType: model.SpaceType(details.GetInt64(bundle.RelationKeySpaceType)),
 				}
 			},
 			UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, status spaceViewStatus) spaceViewStatus {
@@ -118,6 +183,9 @@ func newSpaceViewSubscription(service subscription.Service, techSpaceId string, 
 					case bundle.RelationKeySpaceAccountStatus:
 						// nolint: gosec
 						status.status = model.SpaceStatus(kv.Value.Int64())
+					case bundle.RelationKeySpaceType:
+						// nolint: gosec
+						status.spaceType = model.SpaceType(kv.Value.Int64())
 					}
 				}
 				return status

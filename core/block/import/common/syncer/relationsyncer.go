@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
@@ -26,7 +27,7 @@ func NewFileRelationSyncer(service BlockService, fileObjectService fileobject.Se
 	}
 }
 
-func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[string]struct{}, origin objectorigin.ObjectOrigin) string {
+func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[string]struct{}, origin objectorigin.ObjectOrigin, objectId string) string {
 	// If file is created during import, do nothing
 	if _, ok := newIdsSet[fileId]; ok {
 		return fileId
@@ -41,8 +42,11 @@ func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[
 	)
 	if strings.HasPrefix(fileId, "http://") || strings.HasPrefix(fileId, "https://") {
 		req := block.FileUploadRequest{
-			RpcFileUploadRequest: pb.RpcFileUploadRequest{Url: fileId},
-			ObjectOrigin:         origin,
+			RpcFileUploadRequest: pb.RpcFileUploadRequest{
+				Url:              fileId,
+				CreatedInContext: objectId,
+			},
+			ObjectOrigin: origin,
 		}
 		fileObjectId, _, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 		if err != nil {
@@ -53,7 +57,9 @@ func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[
 
 	_, err = cid.Decode(fileId)
 	if err == nil {
-		fileObjectId, err = fs.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(fileId)}, origin)
+		details := domain.NewDetails()
+		details.SetString(bundle.RelationKeyCreatedInContext, objectId)
+		fileObjectId, err = fs.fileObjectService.CreateFromImport(domain.FullFileId{SpaceId: spaceID, FileId: domain.FileId(fileId)}, origin, details)
 		if err != nil {
 			log.With("fileId", fileId).Errorf("create file object: %v", err)
 			return fileId
@@ -61,8 +67,11 @@ func (fs *FileRelationSyncer) Sync(spaceID string, fileId string, newIdsSet map[
 		return fileObjectId
 	}
 	req := block.FileUploadRequest{
-		RpcFileUploadRequest: pb.RpcFileUploadRequest{LocalPath: fileId},
-		ObjectOrigin:         origin,
+		RpcFileUploadRequest: pb.RpcFileUploadRequest{
+			LocalPath:        fileId,
+			CreatedInContext: objectId,
+		},
+		ObjectOrigin: origin,
 	}
 	fileObjectId, _, _, err = fs.service.UploadFile(context.Background(), spaceID, req)
 	if err != nil {

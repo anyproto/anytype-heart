@@ -11,21 +11,24 @@ import (
 const uniqueKeySeparator = "-"
 
 var smartBlockTypeToKey = map[smartblock.SmartBlockType]string{
-	smartblock.SmartBlockTypeObjectType:         "ot",
-	smartblock.SmartBlockTypeRelation:           "rel",
-	smartblock.SmartBlockTypeRelationOption:     "opt",
-	smartblock.SmartBlockTypeWorkspace:          "ws",
-	smartblock.SmartBlockTypeHome:               "home",
-	smartblock.SmartBlockTypeArchive:            "archive",
-	smartblock.SmartBlockTypeProfilePage:        "profile",
-	smartblock.SmartBlockTypeWidget:             "widget",
-	smartblock.SmartBlockTypeSpaceView:          "spaceview",
-	smartblock.SmartBlockTypeFileObject:         "file", // For migration purposes only
-	smartblock.SmartBlockTypePage:               "page", // For migration purposes only, used for old profile data migration
-	smartblock.SmartBlockTypeNotificationObject: "notification",
-	smartblock.SmartBlockTypeDevicesObject:      "devices",
-	smartblock.SmartBlockTypeChatDerivedObject:  "chatDerived",
-	smartblock.SmartBlockTypeAccountObject:      "account",
+	smartblock.SmartBlockTypeObjectType:             "ot",
+	smartblock.SmartBlockTypeRelation:               "rel",
+	smartblock.SmartBlockTypeRelationOption:         "opt",
+	smartblock.SmartBlockTypeWorkspace:              "ws",
+	smartblock.SmartBlockTypeHome:                   "home",
+	smartblock.SmartBlockTypeArchive:                "archive",
+	smartblock.SmartBlockTypeProfilePage:            "profile",
+	smartblock.SmartBlockTypeWidget:                 "widget",
+	smartblock.SmartBlockTypeSpaceView:              "spaceview",
+	smartblock.SmartBlockTypeFileObject:             "file", // For migration purposes only
+	smartblock.SmartBlockTypePage:                   "page", // For migration purposes only, used for old profile data migration
+	smartblock.SmartBlockTypeNotificationObject:     "notification",
+	smartblock.SmartBlockTypeDevicesObject:          "devices",
+	smartblock.SmartBlockTypeChatDerivedObject:      "chatDerived",
+	smartblock.SmartBlockTypeDiscussionObject:       "discussion",
+	smartblock.SmartBlockTypeAccountObject:          "account",
+	smartblock.SmartBlockTypeTechSpaceObject:        "techObj",
+	smartblock.SmartBlockTypeTechSpaceVirtualObject: "techVirtual",
 }
 
 // UniqueKey is unique key composed of two parts: smartblock type and internal key.

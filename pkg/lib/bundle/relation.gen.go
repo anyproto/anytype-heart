@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "fc4e288e670900b4c987ec16963687b7591fd700788b567702ebc1f7a7bf48e7"
+const RelationChecksum = "0df340fee18663c4f1584c3116f1da177ae6fcdf96a2493e15c6ca81b7aa50c5"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -141,6 +141,8 @@ const (
 	RelationKeyLastUsedDate                         domain.RelationKey = "lastUsedDate"
 	RelationKeyRevision                             domain.RelationKey = "revision"
 	RelationKeyImageKind                            domain.RelationKey = "imageKind"
+	RelationKeyCreatedInContext                     domain.RelationKey = "createdInContext"
+	RelationKeyCreatedInContextRef                  domain.RelationKey = "createdInContextRef"
 	RelationKeyImportType                           domain.RelationKey = "importType"
 	RelationKeyGlobalName                           domain.RelationKey = "globalName"
 	RelationKeySyncStatus                           domain.RelationKey = "syncStatus"
@@ -148,6 +150,7 @@ const (
 	RelationKeySyncError                            domain.RelationKey = "syncError"
 	RelationKeyHasChat                              domain.RelationKey = "hasChat"
 	RelationKeyChatId                               domain.RelationKey = "chatId"
+	RelationKeyDiscussionId                         domain.RelationKey = "discussionId"
 	RelationKeyMentions                             domain.RelationKey = "mentions"
 	RelationKeyTimestamp                            domain.RelationKey = "timestamp"
 	RelationKeyLayoutWidth                          domain.RelationKey = "layoutWidth"
@@ -187,10 +190,19 @@ const (
 	RelationKeyWidgetViewId                         domain.RelationKey = "widgetViewId"
 	RelationKeyIsMainChat                           domain.RelationKey = "isMainChat"
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
+	RelationKeyNotificationSubscribers              domain.RelationKey = "notificationSubscribers"
+	RelationKeyUnreadMessageCount                   domain.RelationKey = "unreadMessageCount"
+	RelationKeyUnreadMentionCount                   domain.RelationKey = "unreadMentionCount"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
 	RelationKey_score                               domain.RelationKey = "_score"
+	RelationKey_final_score                         domain.RelationKey = "_final_score"
+	RelationKeyMigrationObjectContext               domain.RelationKey = "migrationObjectContext"
+	RelationKeyTemplateNamePrefillType              domain.RelationKey = "templateNamePrefillType"
+	RelationKeySpaceType                            domain.RelationKey = "spaceType"
+	RelationKeyHomepage                             domain.RelationKey = "homepage"
+	RelationKeyTemplatePlaceholders                 domain.RelationKey = "templatePlaceholders"
 )
 
 var (
@@ -522,6 +534,34 @@ var (
 			Revision:         1,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyCreatedInContext: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Object ID where the object was initially created",
+			Format:           model.RelationFormat_object,
+			Id:               "_brcreatedInContext",
+			Key:              "createdInContext",
+			MaxCount:         1,
+			Name:             "Created in context",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInContextRef: {
+
+			DataSource:       model.Relation_details,
+			Description:      "BlockID/RelationKey/MessageId where the object was initially created",
+			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
+			Id:               "_brcreatedInContextRef",
+			Key:              "createdInContextRef",
+			MaxCount:         1,
+			Name:             "Created in context inner locator",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyCreator: {
 
 			DataSource:       model.Relation_derived,
@@ -589,6 +629,20 @@ var (
 			MaxCount:         1,
 			Name:             "Description",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyDiscussionId: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Discussion id",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Id:               "_brdiscussionId",
+			Key:              "discussionId",
+			MaxCount:         1,
+			Name:             "Discussion id",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -951,6 +1005,20 @@ var (
 			Key:              "heightInPixels",
 			MaxCount:         1,
 			Name:             "Height",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHomepage: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Homepage of regular spaces. Could handle either object id or special constant",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Id:               "_brhomepage",
+			Key:              "homepage",
+			MaxCount:         1,
+			Name:             "Home page",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1459,6 +1527,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyMigrationObjectContext: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Version of file context migration completed for this space",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brmigrationObjectContext",
+			Key:              "migrationObjectContext",
+			MaxCount:         1,
+			Name:             "Object Context Migration Version",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyMood: {
 
 			DataSource:       model.Relation_details,
@@ -1499,6 +1581,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyNotificationSubscribers: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Participants subscribed to notifications on this discussion",
+			Format:           model.RelationFormat_object,
+			Id:               "_brnotificationSubscribers",
+			Key:              "notificationSubscribers",
+			Name:             "Notification subscribers",
+			ObjectTypes:      []string{TypePrefix + "participant"},
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyOldAnytypeID: {
 
 			DataSource:       model.Relation_details,
@@ -1515,8 +1610,8 @@ var (
 		},
 		RelationKeyOneToOneIdentity: {
 
-			DataSource:       model.Relation_details,
-			Description:      "OneToOne (second) participant identity",
+			DataSource:       model.Relation_local,
+			Description:      "OneToOne other participant identity",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Id:               "_broneToOneIdentity",
@@ -2358,6 +2453,20 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeySpaceType: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Space type derived from space header, see spacedomain.SpaceType",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brspaceType",
+			Key:              "spaceType",
+			MaxCount:         1,
+			Name:             "Space type",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeySpaceUxType: {
 
 			DataSource:       model.Relation_details,
@@ -2510,6 +2619,34 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyTemplateNamePrefillType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Controls whether a template's name should be applied to newly created objects",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brtemplateNamePrefillType",
+			Key:              "templateNamePrefillType",
+			MaxCount:         1,
+			Name:             "Template name prefill type",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTemplatePlaceholders: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Dynamic placeholder mappings for template relation default values",
+			Format:           model.RelationFormat_map,
+			Hidden:           true,
+			Id:               "_brtemplatePlaceholders",
+			Key:              "templatePlaceholders",
+			MaxCount:         1,
+			Name:             "Template Placeholders",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyTime: {
 
 			DataSource:       model.Relation_details,
@@ -2575,6 +2712,34 @@ var (
 			Key:              "uniqueKey",
 			MaxCount:         1,
 			Name:             "Unique object key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUnreadMentionCount: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Number of unread mentions in a discussion for the current user",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brunreadMentionCount",
+			Key:              "unreadMentionCount",
+			MaxCount:         1,
+			Name:             "Unread mentions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUnreadMessageCount: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Number of unread messages in a discussion for the current user",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brunreadMessageCount",
+			Key:              "unreadMessageCount",
+			MaxCount:         1,
+			Name:             "Unread messages",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2657,6 +2822,20 @@ var (
 			Key:              "writersLimit",
 			MaxCount:         1,
 			Name:             "Writers limit",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKey_final_score: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Fulltext search final score (BM25 + recency + name boost)",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_br_final_score",
+			Key:              "_final_score",
+			MaxCount:         1,
+			Name:             "Final Score",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

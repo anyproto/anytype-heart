@@ -1,10 +1,37 @@
 package acl
 
+/*
+AI generated
+
+Name: Space Access Control and Sharing
+Scope: global
+
+## Responsibility
+- Space invite management (generate, view, change, revoke invites for member/guest/anyone types)
+- ACL membership operations (join, leave, accept, decline, remove participants)
+- Permission management (change participant permissions, approve leave requests)
+- Guest user account management
+
+## Background Tasks
+- aclUpdater: monitors participants with "Removing" status via cross-space subscription,
+  schedules automatic ApproveLeave for owners; monitors space views for spaces where user
+  should self-remove, schedules Leave retries. Uses retryscheduler for exponential backoff.
+
+## Documentation
+The aclUpdater coordinates two subscription-based flows:
+1. participantSub: subscribes to participants with status=Removing across all owned spaces,
+   triggers ApproveLeave for each (owner auto-approves leave requests)
+2. spaceSubscription: subscribes to space views where user is not owner but space is deleted,
+   triggers self-Leave requests with retry logic
+Both flows use a shared retryscheduler that handles failures with exponential backoff.
+*/
+
 import (
 	"context"
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -67,8 +94,9 @@ type AclService interface {
 	Leave(ctx context.Context, spaceId string) (err error)
 	Remove(ctx context.Context, spaceId string, identities []crypto.PubKey) (err error)
 	ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) (err error)
-	AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permissions list.AclPermissions) error
+	AddAccounts(ctx context.Context, spaceId string, additions []list.AccountAdd) error
 	AddGuestAccount(ctx context.Context, spaceId string) (privKey crypto.PrivKey, err error)
+	OwnershipChange(ctx context.Context, spaceId string, newOwner crypto.PubKey, oldOwnerPerm model.ParticipantPermissions) (err error)
 }
 
 func New() AclService {
@@ -83,6 +111,7 @@ type identityRepoClient interface {
 
 type aclService struct {
 	nodeConfigGetter NodeConfGetter
+	nodeConf         nodeconf.Service
 	joiningClient    aclclient.AclJoiningClient
 	spaceService     space.Service
 	inviteService    inviteservice.InviteService
@@ -93,12 +122,19 @@ type aclService struct {
 	updater          *aclUpdater
 	getter           *aclGetter
 
+	// aclClientLock serializes all ACL modification operations.
+	// This prevents race conditions where concurrent operations (e.g. GenerateInvite
+	// and AddAccounts) read the same ACL head, build records with the same prevId,
+	// and only one succeeds on the node ("incorrect prev id of a record" error).
+	aclClientLock sync.Mutex
+
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 }
 
 func (a *aclService) Init(ap *app.App) (err error) {
 	a.nodeConfigGetter = app.MustComponent[NodeConfGetter](ap)
+	a.nodeConf = app.MustComponent[nodeconf.Service](ap)
 	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
 	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
@@ -108,7 +144,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	subService := app.MustComponent[subscription.Service](ap)
 	crossSub := app.MustComponent[crossspacesub.Service](ap)
 	wlt := app.MustComponent[wallet.Wallet](ap)
-	a.getter = newAclGetter(a.joiningClient, wlt.Account())
+	a.getter = newAclGetter(a.joiningClient, wlt.Account(), a.nodeConf)
 	a.updater, err = newAclUpdater("acl-updater",
 		wlt.Account().SignKey.GetPublic().Account(),
 		crossSub,
@@ -123,8 +159,26 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	}
 
 	a.ctx, a.ctxCancel = context.WithCancel(context.Background())
-	a.recordVerifier = recordverifier.New()
 	return nil
+}
+
+// buildRecordVerifier returns the test-injected verifier when present, otherwise
+// builds one from the current networkId. We decode lazily because in LocalOnly
+// mode networkId is empty; in that mode there are no acceptor-signed records
+// to check, so we fall back to the no-op verifier.
+func (a *aclService) buildRecordVerifier() (recordverifier.AcceptorVerifier, error) {
+	if a.recordVerifier != nil {
+		return a.recordVerifier, nil
+	}
+	networkId := a.nodeConf.Configuration().NetworkId
+	if networkId == "" {
+		return recordverifier.NewValidateFull(), nil
+	}
+	netKey, err := crypto.DecodeNetworkId(networkId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid networkId: %w", err)
+	}
+	return recordverifier.New(netKey), nil
 }
 
 func (a *aclService) Run(_ context.Context) (err error) {
@@ -187,21 +241,21 @@ func (a *aclService) AddGuestAccount(ctx context.Context, spaceId string) (privK
 	if err != nil {
 		return nil, err
 	}
-	return pk, a.AddAccount(ctx, spaceId, pubKey, metadata, list.AclPermissionsGuest)
+	return pk, a.AddAccounts(ctx, spaceId, []list.AccountAdd{{
+		Identity:    pubKey,
+		Metadata:    metadata,
+		Permissions: list.AclPermissionsGuest,
+	}})
 }
 
-func (a *aclService) AddAccount(ctx context.Context, spaceId string, pubKey crypto.PubKey, metadata []byte, permission list.AclPermissions) error {
+func (a *aclService) AddAccounts(ctx context.Context, spaceId string, additions []list.AccountAdd) error {
 	sp, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
-	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: []list.AccountAdd{
-		{
-			Identity:    pubKey,
-			Metadata:    metadata,
-			Permissions: permission,
-		},
-	}})
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
+	err = sp.CommonSpace().AclClient().AddAccounts(ctx, list.AccountsAddPayload{Additions: additions})
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -218,6 +272,8 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 		return convertedOrInternalError("generate random key pair", err)
 	}
 	cl := removeSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.RemoveAccounts(ctx, list.AccountRemovePayload{
 		Identities: identities,
 		Change: list.ReadKeyChangePayload{
@@ -249,6 +305,8 @@ func (a *aclService) Decline(ctx context.Context, spaceId string, identity crypt
 		return convertedOrSpaceErr(err)
 	}
 	cl := sp.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.DeclineRequest(ctx, identity)
 	if err != nil {
 		return convertedOrAclRequestError(err)
@@ -262,7 +320,9 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 		return convertedOrSpaceErr(err)
 	}
 	cl := sp.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
 	err = cl.RevokeAllInvites(ctx)
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -310,6 +370,8 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 	}
 	acl.RUnlock()
 	cl := sp.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.ChangePermissions(ctx, list.PermissionChangesPayload{
 		Changes: listPerms,
 	})
@@ -396,10 +458,12 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 		return convertedOrInternalError("generate random key pair", err)
 	}
 	cl := commonSpace.AclClient()
+	a.aclClientLock.Lock()
 	err = cl.StopSharing(ctx, list.ReadKeyChangePayload{
 		MetadataKey: newPrivKey,
 		ReadKey:     crypto.NewAES(),
 	})
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -486,7 +550,8 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
 				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid).
 				SetInt64(bundle.RelationKeyIconOption, int64(invitePayload.SpaceIconOption)).
-				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)))
+				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)). // TODO: GO-7102 remove
+				SetInt64(bundle.RelationKeySpaceType, int64(invitePayload.SpaceType)))
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
 		}
@@ -518,7 +583,8 @@ func (a *aclService) Join(ctx context.Context, spaceId, networkId string, invite
 				SetString(bundle.RelationKeyName, invitePayload.SpaceName).
 				SetString(bundle.RelationKeyIconImage, invitePayload.SpaceIconCid).
 				SetInt64(bundle.RelationKeyIconOption, int64(invitePayload.SpaceIconOption)).
-				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)))
+				SetInt64(bundle.RelationKeySpaceUxType, int64(invitePayload.SpaceUxType)). // TODO: GO-7102 remove
+				SetInt64(bundle.RelationKeySpaceType, int64(invitePayload.SpaceType)))
 		if err != nil {
 			return convertedOrInternalError("set space data", err)
 		}
@@ -539,6 +605,7 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 			SpaceIconCid:    res.SpaceIconCid,
 			SpaceIconOption: res.SpaceIconOption,
 			SpaceUxType:     res.SpaceUxType,
+			SpaceType:       res.SpaceType,
 			CreatorName:     res.CreatorName,
 			CreatorIconCid:  res.CreatorIconCid,
 		}, nil
@@ -558,7 +625,11 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
-	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, a.recordVerifier)
+	verifier, err := a.buildRecordVerifier()
+	if err != nil {
+		return domain.InviteView{}, convertedOrInternalError("build record verifier", err)
+	}
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, verifier)
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
@@ -597,7 +668,6 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	if recId == "" {
 		return fmt.Errorf("%w with identity: %s", ErrRequestNotExists, identity.Account())
 	}
-	cl := acceptSpace.CommonSpace().AclClient()
 	var aclPerms list.AclPermissions
 	switch permissions {
 	case model.ParticipantPermissions_Reader:
@@ -605,6 +675,9 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 	case model.ParticipantPermissions_Writer:
 		aclPerms = list.AclPermissionsWriter
 	}
+	cl := acceptSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	err = cl.AcceptRequest(ctx, list.RequestAcceptPayload{
 		RequestRecordId: recId,
 		Permissions:     aclPerms,
@@ -650,7 +723,9 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 	if invite.Permissions == invitePermissions {
 		return ErrIncorrectPermissions
 	}
+	a.aclClientLock.Lock()
 	err = aclClient.ChangeInvitePermissions(ctx, invites[0].Id, invitePermissions)
+	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
@@ -683,6 +758,8 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 		Permissions: aclPermissions,
 		InviteType:  domain.ConvertInviteType(inviteType),
 	}
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
 	res, err := aclClient.ReplaceInvite(ctx, invitePayload)
 	if err != nil {
 		err = convertedOrInternalError("couldn't generate acl invite", err)
@@ -743,4 +820,19 @@ func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (in
 
 func (a *aclService) joinAsGuest(ctx context.Context, spaceId string, guestUserKey crypto.PrivKey) (err error) {
 	return a.spaceService.AddStreamable(ctx, spaceId, guestUserKey)
+}
+
+func (a *aclService) OwnershipChange(ctx context.Context, spaceId string, newOwner crypto.PubKey, oldOwnerPerm model.ParticipantPermissions) (err error) {
+	if spaceId == a.accountService.PersonalSpaceID() {
+		err = ErrPersonalSpace
+		return
+	}
+	ownedSpace, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return convertedOrSpaceErr(err)
+	}
+	aclClient := ownedSpace.CommonSpace().AclClient()
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
+	return aclClient.OwnershipChange(ctx, newOwner, domain.ConvertParticipantPermissions(oldOwnerPerm))
 }

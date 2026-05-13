@@ -36,7 +36,7 @@ func (_m *MockClientSpaceStorage) EXPECT() *MockClientSpaceStorage_Expecter {
 	return &MockClientSpaceStorage_Expecter{mock: &_m.Mock}
 }
 
-// AclStorage provides a mock function with given fields:
+// AclStorage provides a mock function with no fields
 func (_m *MockClientSpaceStorage) AclStorage() (list.Storage, error) {
 	ret := _m.Called()
 
@@ -151,7 +151,7 @@ func (_c *MockClientSpaceStorage_AllDeletedTreeIds_Call) RunAndReturn(run func(c
 	return _c
 }
 
-// AnyStore provides a mock function with given fields:
+// AnyStore provides a mock function with no fields
 func (_m *MockClientSpaceStorage) AnyStore() anystore.DB {
 	ret := _m.Called()
 
@@ -419,7 +419,7 @@ func (_c *MockClientSpaceStorage_HasTree_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// HeadStorage provides a mock function with given fields:
+// HeadStorage provides a mock function with no fields
 func (_m *MockClientSpaceStorage) HeadStorage() headstorage.HeadStorage {
 	ret := _m.Called()
 
@@ -466,7 +466,7 @@ func (_c *MockClientSpaceStorage_HeadStorage_Call) RunAndReturn(run func() heads
 	return _c
 }
 
-// Id provides a mock function with given fields:
+// Id provides a mock function with no fields
 func (_m *MockClientSpaceStorage) Id() string {
 	ret := _m.Called()
 
@@ -659,7 +659,7 @@ func (_c *MockClientSpaceStorage_MarkSpaceCreated_Call) RunAndReturn(run func(co
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockClientSpaceStorage) Name() string {
 	ret := _m.Called()
 
@@ -750,7 +750,7 @@ func (_c *MockClientSpaceStorage_Run_Call) RunAndReturn(run func(context.Context
 	return _c
 }
 
-// StateStorage provides a mock function with given fields:
+// StateStorage provides a mock function with no fields
 func (_m *MockClientSpaceStorage) StateStorage() statestorage.StateStorage {
 	ret := _m.Called()
 

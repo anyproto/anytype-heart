@@ -102,5 +102,8 @@
   "defaultTypeId",
   "resolvedLayout",
   "pluralName",
-  "lastMessageDate"
+  "lastMessageDate",
+  "notificationSubscribers",
+  "templatePlaceholders",
+  "createdInContext"
 ]

@@ -267,6 +267,55 @@ func (_c *MockClientCommands_BlockPaste_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// FileUpload provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) FileUpload(_a0 context.Context, _a1 *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FileUpload")
+	}
+
+	var r0 *pb.RpcFileUploadResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcFileUploadResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_FileUpload_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FileUpload'
+type MockClientCommands_FileUpload_Call struct {
+	*mock.Call
+}
+
+// FileUpload is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcFileUploadRequest
+func (_e *MockClientCommands_Expecter) FileUpload(_a0 interface{}, _a1 interface{}) *MockClientCommands_FileUpload_Call {
+	return &MockClientCommands_FileUpload_Call{Call: _e.mock.On("FileUpload", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_FileUpload_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcFileUploadRequest)) *MockClientCommands_FileUpload_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcFileUploadRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_FileUpload_Call) Return(_a0 *pb.RpcFileUploadResponse) *MockClientCommands_FileUpload_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_FileUpload_Call) RunAndReturn(run func(context.Context, *pb.RpcFileUploadRequest) *pb.RpcFileUploadResponse) *MockClientCommands_FileUpload_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ObjectCollectionAdd provides a mock function with given fields: _a0, _a1
 func (_m *MockClientCommands) ObjectCollectionAdd(_a0 context.Context, _a1 *pb.RpcObjectCollectionAddRequest) *pb.RpcObjectCollectionAddResponse {
 	ret := _m.Called(_a0, _a1)
@@ -655,6 +704,55 @@ func (_c *MockClientCommands_ObjectExport_Call) Return(_a0 *pb.RpcObjectExportRe
 }
 
 func (_c *MockClientCommands_ObjectExport_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectExportRequest) *pb.RpcObjectExportResponse) *MockClientCommands_ObjectExport_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ObjectListDelete provides a mock function with given fields: _a0, _a1
+func (_m *MockClientCommands) ObjectListDelete(_a0 context.Context, _a1 *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
+	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ObjectListDelete")
+	}
+
+	var r0 *pb.RpcObjectListDeleteResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse); ok {
+		r0 = rf(_a0, _a1)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*pb.RpcObjectListDeleteResponse)
+		}
+	}
+
+	return r0
+}
+
+// MockClientCommands_ObjectListDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ObjectListDelete'
+type MockClientCommands_ObjectListDelete_Call struct {
+	*mock.Call
+}
+
+// ObjectListDelete is a helper method to define mock.On call
+//   - _a0 context.Context
+//   - _a1 *pb.RpcObjectListDeleteRequest
+func (_e *MockClientCommands_Expecter) ObjectListDelete(_a0 interface{}, _a1 interface{}) *MockClientCommands_ObjectListDelete_Call {
+	return &MockClientCommands_ObjectListDelete_Call{Call: _e.mock.On("ObjectListDelete", _a0, _a1)}
+}
+
+func (_c *MockClientCommands_ObjectListDelete_Call) Run(run func(_a0 context.Context, _a1 *pb.RpcObjectListDeleteRequest)) *MockClientCommands_ObjectListDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(*pb.RpcObjectListDeleteRequest))
+	})
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectListDelete_Call) Return(_a0 *pb.RpcObjectListDeleteResponse) *MockClientCommands_ObjectListDelete_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientCommands_ObjectListDelete_Call) RunAndReturn(run func(context.Context, *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse) *MockClientCommands_ObjectListDelete_Call {
 	_c.Call.Return(run)
 	return _c
 }

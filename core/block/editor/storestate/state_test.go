@@ -9,6 +9,7 @@ import (
 	"time"
 
 	anystore "github.com/anyproto/any-store"
+	"github.com/anyproto/any-store/query"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -17,34 +18,37 @@ import (
 
 var ctx = context.Background()
 
-func TestStoreStateTx_GetOrder(t *testing.T) {
-	t.Run("empty", func(t *testing.T) {
+func TestStoreStateTx_AddSeq(t *testing.T) {
+	t.Run("empty returns zero", func(t *testing.T) {
 		fx := newFixture(t, "test", DefaultHandler{Name: "tcoll"})
 		tx, err := fx.NewTx(ctx)
 		require.NoError(t, err)
 		defer func() {
 			require.NoError(t, tx.Commit())
 		}()
-		order, err := tx.GetOrder("changeId")
-		assert.ErrorIs(t, err, ErrOrderNotFound)
-		assert.Empty(t, order)
+		assert.Equal(t, uint64(0), tx.GetMaxAddSeq())
 	})
-	t.Run("set-get", func(t *testing.T) {
+	t.Run("update and persist", func(t *testing.T) {
 		fx := newFixture(t, "test", DefaultHandler{Name: "tcoll"})
 		tx, err := fx.NewTx(ctx)
 		require.NoError(t, err)
-		require.NoError(t, tx.SetOrder("changeId", "1"))
-		order, err := tx.GetOrder("changeId")
-		require.NoError(t, err)
-		assert.Equal(t, "1", order)
-		assert.Equal(t, "1", tx.GetMaxOrder())
+		tx.UpdateMaxAddSeq(5)
+		assert.Equal(t, uint64(5), tx.GetMaxAddSeq())
 		require.NoError(t, tx.Commit())
 
 		tx, err = fx.NewTx(ctx)
 		require.NoError(t, err)
-		assert.Equal(t, "1", tx.GetMaxOrder())
-		require.NoError(t, tx.SetOrder("changeId2", "2"))
-		assert.Equal(t, "2", tx.GetMaxOrder())
+		assert.Equal(t, uint64(5), tx.GetMaxAddSeq())
+		tx.UpdateMaxAddSeq(10)
+		assert.Equal(t, uint64(10), tx.GetMaxAddSeq())
+		// smaller value should not update
+		tx.UpdateMaxAddSeq(3)
+		assert.Equal(t, uint64(10), tx.GetMaxAddSeq())
+		require.NoError(t, tx.Commit())
+
+		tx, err = fx.NewTx(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, uint64(10), tx.GetMaxAddSeq())
 		require.NoError(t, tx.Commit())
 	})
 }
@@ -126,6 +130,201 @@ func TestStoreStateTx_ApplyChangeSet(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 0, count)
 	})
+}
+
+func TestApplyChangeSetErrorHandling(t *testing.T) {
+	t.Run("unknown handler error is logged and skipped", func(t *testing.T) {
+		handler := &errorHandler{
+			Name:      "testColl",
+			createErr: fmt.Errorf("some unknown error from handler"),
+		}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+
+		build := &Builder{}
+		// First change will fail with unknown error (should be skipped)
+		assert.NoError(t, build.Create("testColl", "1", `{"key":"value1"}`))
+		// Second change should still be applied
+		handler.createErr = nil
+		assert.NoError(t, build.Create("testColl", "2", `{"key":"value2"}`))
+
+		err = tx.ApplyChangeSet(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.NoError(t, err)
+		require.NoError(t, tx.Commit())
+
+		// Only second document should exist
+		coll, err := fx.Collection(ctx, "testColl")
+		require.NoError(t, err)
+		_, err = coll.FindId(ctx, "2")
+		require.NoError(t, err)
+	})
+
+	t.Run("ErrCritical breaks the loop", func(t *testing.T) {
+		handler := &errorHandler{
+			Name:      "testColl",
+			createErr: fmt.Errorf("db failure: %w", ErrCritical),
+		}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+
+		build := &Builder{}
+		assert.NoError(t, build.Create("testColl", "1", `{"key":"value1"}`))
+		assert.NoError(t, build.Create("testColl", "2", `{"key":"value2"}`))
+
+		err = tx.ApplyChangeSet(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrCritical)
+	})
+
+	t.Run("ErrIgnore continues silently", func(t *testing.T) {
+		handler := &errorHandler{
+			Name:      "testColl",
+			createErr: ErrIgnore,
+		}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+
+		build := &Builder{}
+		assert.NoError(t, build.Create("testColl", "1", `{"key":"value1"}`))
+
+		err = tx.ApplyChangeSet(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.NoError(t, err)
+		require.NoError(t, tx.Commit())
+	})
+
+	t.Run("modify on non-existent document is skipped", func(t *testing.T) {
+		handler := DefaultHandler{Name: "testColl"}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+
+		build := &Builder{}
+		// Modify a document that doesn't exist
+		assert.NoError(t, build.Modify("testColl", "nonexistent", nil, pb.ModifyOp_Set, nil))
+
+		err = tx.ApplyChangeSet(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.NoError(t, err)
+		require.NoError(t, tx.Commit())
+	})
+
+	t.Run("ErrValidation is logged and skipped", func(t *testing.T) {
+		handler := &errorHandler{
+			Name:      "testColl",
+			createErr: fmt.Errorf("validation failed: %w", ErrValidation),
+		}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+
+		build := &Builder{}
+		assert.NoError(t, build.Create("testColl", "1", `{"key":"value1"}`))
+
+		err = tx.ApplyChangeSet(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.NoError(t, err)
+		require.NoError(t, tx.Commit())
+	})
+
+	t.Run("ApplyChangeSetReturnAllErrors returns validation error", func(t *testing.T) {
+		handler := &errorHandler{
+			Name:      "testColl",
+			createErr: fmt.Errorf("validation failed: %w", ErrValidation),
+		}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+
+		build := &Builder{}
+		assert.NoError(t, build.Create("testColl", "1", `{"key":"value1"}`))
+
+		err = tx.ApplyChangeSetReturnAllErrors(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.Error(t, err)
+		assert.ErrorIs(t, err, ErrValidation)
+	})
+
+	t.Run("ApplyChangeSetReturnAllErrors returns unknown handler error", func(t *testing.T) {
+		handler := &errorHandler{
+			Name:      "testColl",
+			createErr: fmt.Errorf("some unknown error from handler"),
+		}
+		fx := newFixture(t, "objId", handler)
+		tx, err := fx.NewTx(ctx)
+		require.NoError(t, err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+
+		build := &Builder{}
+		assert.NoError(t, build.Create("testColl", "1", `{"key":"value1"}`))
+
+		err = tx.ApplyChangeSetReturnAllErrors(ChangeSet{
+			Id:      "1",
+			Order:   "1",
+			Changes: build.ChangeSet,
+		})
+		require.Error(t, err)
+	})
+}
+
+// errorHandler is a test handler that returns configurable errors
+type errorHandler struct {
+	Name      string
+	createErr error
+}
+
+func (h *errorHandler) CollectionName() string { return h.Name }
+
+func (h *errorHandler) Init(ctx context.Context, s *StoreState) error {
+	_, err := s.Collection(ctx, h.Name)
+	return err
+}
+
+func (h *errorHandler) BeforeCreate(_ context.Context, _ ChangeOp) error {
+	return h.createErr
+}
+
+func (h *errorHandler) BeforeModify(_ context.Context, _ ChangeOp) (ModifyMode, error) {
+	return ModifyModeUpdate, nil
+}
+
+func (h *errorHandler) BeforeDelete(_ context.Context, _ ChangeOp) (DeleteMode, error) {
+	return DeleteModeDelete, nil
+}
+
+func (h *errorHandler) UpgradeKeyModifier(_ ChangeOp, _ *pb.KeyModify, mod query.Modifier) query.Modifier {
+	return mod
 }
 
 func TestBenchCreate(t *testing.T) {

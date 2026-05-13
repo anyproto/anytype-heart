@@ -1,5 +1,20 @@
 package cache
 
+/*
+AI generated
+
+Name: Membership Data Cache
+Scope: global
+
+## Responsibility
+- Caches membership status and tier data to reduce network calls to payment node
+- Supports V1 (membership/tiers) and V2 (membership/products) data formats
+- Calculates expiration based on membership tier (Explorer=24h, others=10min)
+
+## External State
+- System collection: PaymentCacheKey (V1), PaymentCacheV2Key (V2) - versioned to auto-invalidate on format change
+*/
+
 import (
 	"context"
 	"errors"

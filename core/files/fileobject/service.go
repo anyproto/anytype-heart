@@ -1,5 +1,41 @@
 package fileobject
 
+/*
+AI generated
+
+Name: File Object Lifecycle Manager
+Scope: global
+
+## Responsibility
+- Create file objects from raw IPFS file data with encryption keys
+- Index file metadata (mime type, dimensions, etc.) into object details
+- Migrate legacy file IDs to file object IDs in blocks and details
+- Manage file sync queue integration for upload/download
+- Delete file data when object is removed (if no other objects reference it)
+
+## Background Tasks
+- runIndexingProvider: Polls objectStore every 60s for non-indexed files, adds to queue
+- runIndexingWorker: Processes index queue, extracts metadata from file variants
+- indexMigrationWorker: Migrates files without variant IDs by touching objects
+- migrationQueue: Persistent queue for migrating legacy files to file objects
+- Startup goroutine: Cleans migrated files in non-personal spaces, ensures sync queue
+
+## External State
+- queue/file_migration in common anystore DB (persistent migration queue)
+
+## Documentation
+Indexing Pipeline:
+1. File created with AsyncMetadataIndexing=true or legacy file detected
+2. runIndexingProvider adds to in-memory indexQueue (deduped by FullID)
+3. runIndexingWorker fetches file variants, extracts metadata, updates object state
+4. FileIndexingStatus set to Indexed when complete
+
+Migration Flow (legacy files):
+1. MigrateFiles called during object open with ChangeFileKeys
+2. Items added to persistent migrationQueue with derived object ID
+3. migrationQueueHandler creates file objects and adds to sync queue
+*/
+
 import (
 	"context"
 	"errors"
@@ -27,6 +63,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filesync"
 	"github.com/anyproto/anytype-heart/core/relationutils"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -55,7 +92,7 @@ type Service interface {
 	CanDeleteFile(ctx context.Context, objectId string) error
 	DeleteFileData(spaceId string, objectId string) error
 	Create(ctx context.Context, spaceId string, req filemodels.CreateRequest) (id string, object *domain.Details, err error)
-	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error)
+	CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details) (string, error)
 	GetFileIdFromObject(objectId string) (domain.FullFileId, error)
 
 	DoFileWaitLoad(ctx context.Context, objectId string, proc func(object fileobject.FileObject) error) error
@@ -70,6 +107,7 @@ type Service interface {
 	MigrateFileIdsInBlocks(st *state.State, spc source.Space)
 	MigrateFiles(st *state.State, spc source.Space, keysChanges []*pb.ChangeFileKeys)
 	EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.Details) error
+	MarkFileUploaded(objectId string) error
 }
 
 type objectCreatorService interface {
@@ -180,7 +218,7 @@ func (s *service) Run(_ context.Context) error {
 }
 
 type objectArchiver interface {
-	SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
 }
 
 func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) error {
@@ -211,7 +249,7 @@ func (s *service) deleteMigratedFilesInNonPersonalSpaces(ctx context.Context) er
 		for _, record := range records {
 			ids = append(ids, record.Details.GetString(bundle.RelationKeyId))
 		}
-		if err = s.objectArchiver.SetListIsArchived(ctx, ids, true); err != nil {
+		if err = s.objectArchiver.SetListIsArchived(nil, ctx, ids, true); err != nil {
 			return err
 		}
 	}
@@ -283,6 +321,10 @@ func (s *service) EnsureFileAddedToSyncQueue(id domain.FullID, details *domain.D
 	}
 	err := s.addToSyncQueue(req)
 	return err
+}
+
+func (s *service) MarkFileUploaded(objectId string) error {
+	return s.fileSync.MarkUploaded(objectId)
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -415,7 +457,7 @@ func (s *service) createInSpace(ctx context.Context, space clientspace.Space, re
 
 	if req.AdditionalDetails != nil {
 		for k, v := range req.AdditionalDetails.Iterate() {
-			createState.SetDetailAndBundledRelation(k, v)
+			createState.SetDetail(k, v)
 		}
 	}
 
@@ -457,7 +499,7 @@ func (s *service) makeInitialDetails(fileId domain.FileId, origin objectorigin.O
 }
 
 // CreateFromImport creates file object from imported raw IPFS file. Encryption keys for this file should exist in file store.
-func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin) (string, error) {
+func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin.ObjectOrigin, additionalDetails *domain.Details) (string, error) {
 	// Check that fileId is not a file object id
 	recs, _, err := s.objectStore.SpaceIndex(fileId.SpaceId).QueryObjectIds(database.Query{
 		Filters: []database.FilterRequest{
@@ -489,6 +531,7 @@ func (s *service) CreateFromImport(fileId domain.FullFileId, origin objectorigin
 		FileId:                fileId.FileId,
 		EncryptionKeys:        keys,
 		ObjectOrigin:          origin,
+		AdditionalDetails:     additionalDetails,
 		AsyncMetadataIndexing: true,
 	})
 	if err != nil {
@@ -642,18 +685,14 @@ func (s *service) CanDeleteFile(ctx context.Context, objectId string) error {
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	workspaceDetails, err := s.objectStore.SpaceIndex(spaceId).GetDetails(spc.DerivedIDs().Workspace)
-	if err != nil {
-		return fmt.Errorf("get workspace details: %w", err)
-	}
-
-	if workspaceDetails.GetInt64(bundle.RelationKeySpaceUxType) == int64(model.SpaceUxType_OneToOne) {
+	if spc.IsOneToOne() {
 		myParticipantId := s.accountService.MyParticipantId(spaceId)
 
 		if details.GetString(bundle.RelationKeyCreator) != myParticipantId {
 			return fmt.Errorf("can't delete other's file")
 		}
 	}
+
 	return nil
 }
 

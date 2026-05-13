@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/base"
+	_ "github.com/anyproto/anytype-heart/core/block/simple/file"
 	"github.com/anyproto/anytype-heart/core/block/simple/text"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
@@ -398,10 +399,10 @@ func TestCommonSmart_RangeSplit(t *testing.T) {
 }
 
 func TestCommonSmart_TextSlot_RangeSplitCases(t *testing.T) {
-	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: inserting blocks on top", func(t *testing.T) {
+	t.Run("1. Cursor at the beginning, range == 0. Expected behavior: paste text is merged into block at cursor position", func(t *testing.T) {
 		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "qwerty", "55555"}, emptyMarks))
 		pasteText(t, sb, "4", model.Range{From: 0, To: 0}, []string{}, "aaaaa\nbbbbb")
-		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa\nbbbbb", "qwerty", "55555"})
+		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa\nbbbbbqwerty", "55555"})
 	})
 
 	t.Run("2. Cursor in a middle, range == 0. Expected behaviour: split block top + bottom, insert in a middle", func(t *testing.T) {
@@ -837,6 +838,33 @@ func TestClipboard_TitleOps(t *testing.T) {
 			require.True(t, hasBlockId)
 		})
 	}
+	t.Run("paste - when pasted blocks contain featuredRelations system block", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		cb := newFixture(t, sb)
+
+		// when
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			AnySlot: []*model.Block{
+				{
+					Id: "paste1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: "some text"},
+					},
+				},
+				{
+					Id:      template.FeaturedRelationsId,
+					Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
+				},
+			},
+		}, "")
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "system block")
+		assert.Contains(t, err.Error(), template.FeaturedRelationsId)
+	})
 	t.Run("paste - when insert partially", func(t *testing.T) {
 		// given
 		sb := smarttest.New("text")
@@ -1141,6 +1169,98 @@ func TestClipboard_PasteToCodeBlock(t *testing.T) {
 	assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Style)
 }
 
+func TestClipboard_PasteToCodeBlock_TrailingNewline(t *testing.T) {
+	t.Run("strip trailing newline when selection extends to end", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "some code",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select " code" (positions 4..9, end of text) and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(4, 9),
+			TextSlot:          " replacement\n",
+		}, "")
+
+		// then — trailing newline should be stripped
+		require.NoError(t, err)
+		assert.Equal(t, "some replacement", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+
+	t.Run("full text replacement strips trailing newline", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "hello world",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select all text and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(0, 11),
+			TextSlot:          "replacement\n",
+		}, "")
+
+		// then — no blank line at the end
+		require.NoError(t, err)
+		assert.Equal(t, "replacement", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+
+	t.Run("preserve trailing newline when selection is in the middle", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
+		s := sb.NewState()
+		codeBlock := simple.New(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Style: model.BlockContentText_Code,
+					Text:  "some code here",
+				},
+			},
+		})
+		s.Add(codeBlock)
+		s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+		require.NoError(t, sb.Apply(s))
+
+		// when — select "code" (positions 5..9, NOT end of text) and paste with trailing \n
+		cb := newFixture(t, sb)
+		_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    codeBlock.Model().Id,
+			SelectedTextRange: rng(5, 9),
+			TextSlot:          "block\n",
+		}, "")
+
+		// then — trailing newline should be preserved as a separator
+		require.NoError(t, err)
+		assert.Equal(t, "some block\n here", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	})
+}
+
 func TestClipboard_PasteToTableCellBlock(t *testing.T) {
 	// given
 	sb := smarttest.New("text")
@@ -1181,6 +1301,94 @@ func TestClipboard_PasteToTableCellBlock(t *testing.T) {
 	// then
 	require.NoError(t, err)
 	assert.Equal(t, "text1\ntext2\ntabletable", sb.Doc.Pick("2-2").Model().GetText().Text)
+}
+
+func TestPasteIntoEmptyStyledBlock(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		style      model.BlockContentTextStyle
+		pasteBlocks []*model.Block
+	}{
+		{
+			name:  "multi-block header paste into empty bullet",
+			style: model.BlockContentText_Marked,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+		},
+		{
+			name:  "multi-block header paste into empty toggle",
+			style: model.BlockContentText_Toggle,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+		},
+		{
+			name:  "multi-block header paste into empty callout",
+			style: model.BlockContentText_Callout,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+				blockbuilder.Text("Paragraph Text", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+		},
+		{
+			name:  "single header paste into empty bullet",
+			style: model.BlockContentText_Marked,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("Header Text", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Header1)).Block(),
+			},
+		},
+		{
+			name:  "multi-block paragraph paste into empty checkbox",
+			style: model.BlockContentText_Checkbox,
+			pasteBlocks: []*model.Block{
+				blockbuilder.Text("First Line", blockbuilder.ID("p1"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+				blockbuilder.Text("Second Line", blockbuilder.ID("p2"), blockbuilder.TextStyle(model.BlockContentText_Paragraph)).Block(),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			// given
+			sb := smarttest.New("test")
+			sb.Doc = testutil.BuildStateFromAST(blockbuilder.Root(
+				blockbuilder.ID("root"),
+				blockbuilder.Children(
+					blockbuilder.Text(
+						"",
+						blockbuilder.ID("1"),
+						blockbuilder.TextStyle(tc.style),
+					),
+				)))
+
+			// when
+			cb := newFixture(t, sb)
+			blockIds, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+				FocusedBlockId:    "1",
+				SelectedTextRange: &model.Range{From: 0, To: 0},
+				AnySlot:           tc.pasteBlocks,
+			}, "")
+
+			// then
+			require.NoError(t, err)
+			targetBlock := sb.Doc.Pick("1")
+			require.NotNil(t, targetBlock, "target block should not be deleted")
+			assert.Equal(t, tc.style, targetBlock.Model().GetText().Style, "target block style should be preserved")
+			
+			// For multi-block paste: target stays empty, blocks inserted separately
+			// For single-block paste: text merges into target (intoBlock mode)
+			if len(tc.pasteBlocks) > 1 {
+				assert.Equal(t, "", targetBlock.Model().GetText().Text, "target block should remain empty for multi-block paste")
+				require.NotEmpty(t, blockIds, "pasted blocks should be inserted")
+				firstPasteBlock := sb.Doc.Pick(blockIds[0])
+				require.NotNil(t, firstPasteBlock, "first paste block should exist in state")
+				assert.Equal(t, tc.pasteBlocks[0].GetText().Text, firstPasteBlock.Model().GetText().Text, "first paste block text should be preserved")
+			} else {
+				assert.Equal(t, tc.pasteBlocks[0].GetText().Text, targetBlock.Model().GetText().Text, "single block text should merge into target")
+			}
+		})
+	}
 }
 
 func Test_PasteText(t *testing.T) {
@@ -1558,6 +1766,7 @@ func Test_CopyAndCutText(t *testing.T) {
 		assert.Len(t, anySlotCopy, 1)
 		assert.Len(t, anySlotCut, 1)
 	})
+
 }
 
 func givenRow3Level1NumberedBlock(s *state.State) *model.Block {
@@ -1640,6 +1849,9 @@ func Test_StyleAndTabExtractionIgnoreStyle(t *testing.T) {
 		{"bulleted", model.BlockContentText_Marked, "some text 1", ""},
 		{"numbered", model.BlockContentText_Numbered, "some text 1", ""},
 		{"callout", model.BlockContentText_Callout, "some text 1", "👍"},
+		{"toggle_header1", model.BlockContentText_ToggleHeader1, "some text 1", ""},
+		{"toggle_header2", model.BlockContentText_ToggleHeader2, "some text 1", ""},
+		{"toggle_header3", model.BlockContentText_ToggleHeader3, "some text 1", ""},
 	}
 
 	for _, testCase := range testData {
@@ -1675,6 +1887,9 @@ func Test_StyleAndTabExtraction(t *testing.T) {
 		{"bulleted", model.BlockContentText_Marked, "\t- some text 1", ""},
 		{"numbered", model.BlockContentText_Numbered, "\t1. some text 1", ""},
 		{"callout", model.BlockContentText_Callout, "\t👍 some text 1", "👍"},
+		{"toggle_header1", model.BlockContentText_ToggleHeader1, "\t## some text 1", ""},
+		{"toggle_header2", model.BlockContentText_ToggleHeader2, "\t### some text 1", ""},
+		{"toggle_header3", model.BlockContentText_ToggleHeader3, "\t#### some text 1", ""},
 	}
 
 	for _, testCase := range testDataWithStyle {
@@ -1839,7 +2054,7 @@ func TestProcessFileBlock(t *testing.T) {
 		// given
 		file := mock_fileobject.NewMockService(t)
 		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
-		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return(fileObject2, nil)
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything, mock.Anything).Return(fileObject2, nil)
 
 		c := &clipboard{
 			SmartBlock:        sb,
@@ -1859,7 +2074,7 @@ func TestProcessFileBlock(t *testing.T) {
 		// given
 		file := mock_fileobject.NewMockService(t)
 		file.EXPECT().GetFileIdFromObject(fileObject1).Return(domain.FullFileId{SpaceId: space2, FileId: fileId}, nil)
-		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything).Return("", fmt.Errorf("some error"))
+		file.EXPECT().CreateFromImport(domain.FullFileId{FileId: fileId, SpaceId: space1}, mock.Anything, mock.Anything).Return("", fmt.Errorf("some error"))
 
 		c := &clipboard{
 			SmartBlock:        sb,
@@ -1892,5 +2107,176 @@ func TestProcessFileBlock(t *testing.T) {
 
 		// then
 		assert.Equal(t, fileObject1, fb.File.TargetObjectId)
+	})
+
+	t.Run("empty target object id is skipped without calling GetFileIdFromObject", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+		// No expectations set — any call to GetFileIdFromObject would fail the test
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: &model.BlockContentFile{TargetObjectId: ""}}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Equal(t, "", fb.File.TargetObjectId)
+	})
+
+	t.Run("nil file content is skipped", func(t *testing.T) {
+		// given
+		file := mock_fileobject.NewMockService(t)
+
+		c := &clipboard{
+			SmartBlock:        sb,
+			fileObjectService: file,
+		}
+
+		fb := &model.BlockContentOfFile{File: nil}
+
+		// when
+		c.processFileBlock(fb)
+
+		// then
+		assert.Nil(t, fb.File)
+	})
+}
+
+func TestPasteEmptyFileBlock(t *testing.T) {
+	t.Run("empty file placeholder pastes without error", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{"text1"}, emptyMarks))
+		cb := newFixture(t, sb)
+
+		req := &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "1",
+			SelectedTextRange: &model.Range{From: 5, To: 5},
+			AnySlot: []*model.Block{
+				{
+					Id: "fileBlock1",
+					Content: &model.BlockContentOfFile{
+						File: &model.BlockContentFile{
+							State: model.BlockContentFile_Empty,
+							Type:  model.BlockContentFile_File,
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		blockIds, uploadArr, _, _, err := cb.Paste(nil, req, "")
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, blockIds)
+		assert.Empty(t, uploadArr)
+	})
+
+	t.Run("empty file placeholder generates no upload requests", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
+		cb := newFixture(t, sb)
+
+		req := &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "",
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				{
+					Id: "fileBlock1",
+					Content: &model.BlockContentOfFile{
+						File: &model.BlockContentFile{
+							State: model.BlockContentFile_Empty,
+							Type:  model.BlockContentFile_Image,
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		_, uploadArr, _, _, err := cb.Paste(nil, req, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, uploadArr)
+	})
+
+	t.Run("file block with URL in Name still generates upload request", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
+		cb := newFixture(t, sb)
+
+		req := &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "",
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				{
+					Id: "fileBlock1",
+					Content: &model.BlockContentOfFile{
+						File: &model.BlockContentFile{
+							State: model.BlockContentFile_Empty,
+							Type:  model.BlockContentFile_Image,
+							Name:  "https://example.com/image.png",
+						},
+					},
+				},
+			},
+		}
+
+		// when
+		_, uploadArr, _, _, err := cb.Paste(nil, req, "")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, uploadArr, 1)
+		assert.Equal(t, "https://example.com/image.png", uploadArr[0].Url)
+	})
+
+	t.Run("mixed text and empty file blocks all paste correctly", func(t *testing.T) {
+		// given
+		sb := createPage(t, createBlocks([]string{}, []string{}, emptyMarks))
+		cb := newFixture(t, sb)
+
+		req := &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "",
+			SelectedTextRange: &model.Range{},
+			AnySlot: []*model.Block{
+				{
+					Id: "textBlock1",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: "hello"},
+					},
+				},
+				{
+					Id: "fileBlock1",
+					Content: &model.BlockContentOfFile{
+						File: &model.BlockContentFile{
+							State: model.BlockContentFile_Empty,
+							Type:  model.BlockContentFile_File,
+						},
+					},
+				},
+				{
+					Id: "textBlock2",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: "world"},
+					},
+				},
+			},
+		}
+
+		// when
+		blockIds, uploadArr, _, _, err := cb.Paste(nil, req, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Len(t, blockIds, 3)
+		assert.Empty(t, uploadArr)
 	})
 }

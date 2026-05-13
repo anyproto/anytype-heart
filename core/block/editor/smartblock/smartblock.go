@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -22,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -39,6 +41,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
+	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/internalflag"
@@ -97,6 +101,7 @@ func New(
 	eventSender event.Sender,
 	spaceIdResolver idresolver.Resolver,
 	formatFetcher relationutils.RelationFormatFetcher,
+	objectGC objectgc.ObjectGC,
 ) SmartBlock {
 	s := &smartBlock{
 		currentParticipantId: currentParticipantId,
@@ -108,6 +113,7 @@ func New(
 
 		spaceIndex:      spaceIndex,
 		indexer:         indexer,
+		objectGC:        objectGC,
 		eventSender:     eventSender,
 		objectStore:     objectStore,
 		spaceIdResolver: spaceIdResolver,
@@ -128,6 +134,7 @@ type Space interface {
 
 	IsPersonal() bool
 	IsOneToOne() bool
+	SpaceType() spacedomain.SpaceType
 
 	Do(objectId string, apply func(sb SmartBlock) error) error
 	DoLockedIfNotExists(objectID string, proc func() error) error // TODO Temporarily before rewriting favorites/archive mechanism
@@ -170,6 +177,9 @@ type SmartBlock interface {
 
 	Space() Space
 
+	StateAppend(func(d state.Doc) (s *state.State, changes []*pb.ChangeContent, err error)) error
+	StateRebuild(d state.Doc) (err error)
+
 	ocache.Object
 	state.Doc
 	sync.Locker
@@ -186,6 +196,16 @@ type DocInfo struct {
 	Details *domain.Details
 
 	SmartblockType smartblock.SmartBlockType
+
+	// OutgoingLinks contains detailed information about links from this object
+	OutgoingLinks []OutgoingLink
+}
+
+// OutgoingLink represents a link from this object to another object
+type OutgoingLink struct {
+	TargetID      string // ID of the target object
+	SourceBlockID string // Block ID where the link originates (empty for relation links)
+	RelationKey   string // Relation key (empty for block links)
 }
 
 // TODO Maybe create constructor? Don't want to forget required fields
@@ -201,6 +221,7 @@ type InitContext struct {
 	SpaceID                      string
 	BuildOpts                    source.BuildOptions
 	Ctx                          context.Context
+	Doc                          state.Doc
 }
 
 type linkSource interface {
@@ -249,6 +270,7 @@ type smartBlock struct {
 	eventSender     event.Sender
 	spaceIdResolver idresolver.Resolver
 	formatFetcher   relationutils.RelationFormatFetcher
+	objectGC        objectgc.ObjectGC
 }
 
 func (sb *smartBlock) SetLocker(locker Locker) {
@@ -301,9 +323,7 @@ func (sb *smartBlock) ObjectTypeID() string {
 
 func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	ctx.RequiredInternalRelationKeys = append(ctx.RequiredInternalRelationKeys, bundle.RequiredInternalRelations...)
-	if sb.Doc, err = ctx.Source.ReadDoc(ctx.Ctx, sb, ctx.State != nil); err != nil {
-		return fmt.Errorf("reading document: %w", err)
-	}
+	sb.Doc = ctx.Doc
 
 	sb.source = ctx.Source
 	if provider, ok := sb.source.(source.ObjectTreeProvider); ok {
@@ -655,11 +675,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		len(sb.ObjectTree.Heads()) == 1 &&
 		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
 		!allowApplyWithEmptyTree &&
-		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
-		sb.Type() != smartblock.SmartBlockTypeAccountObject {
+		!sb.Type().IsStoreBacked() {
 		// protection for applying migrations on empty tree
 		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
 		return ErrApplyOnEmptyTreeDisallowed
+	}
+
+	// Capture current links before applying changes (for GC)
+	var linksBefore []string
+	if parent := s.ParentState(); parent != nil {
+		linksBefore = parent.LocalDetails().GetStringList(bundle.RelationKeyLinks)
 	}
 
 	// Inject derived details to make sure we have consistent state.
@@ -711,12 +736,33 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
-
 	// we may have layout changed, so we need to update restrictions
 	sb.updateRestrictions()
 	sb.setRestrictionsDetail(s)
 
 	st := sb.Doc.(*state.State)
+
+	if sendEvent {
+		events := msgsToEvents(msgs)
+		if ctx := s.Context(); ctx != nil {
+			// TODO: sessionContext.SetMessages replaces (not appends), so a second Apply
+			// against a different smartblock under the same sctx silently drops the first
+			// smartblock's events. The response slot can only carry events for one smartblock,
+			// but today we let the second writer win. Decide on the right behavior (route the
+			// mismatched writer through sb.sendEvent, or model multi-smartblock responses
+			// explicitly) and remove this warning. See GO-7152.
+			if prevId := ctx.ObjectID(); prevId != "" && prevId != sb.Id() {
+				log.With("prevSmartBlockId", prevId, "smartBlockId", sb.Id()).
+					Warnf("session context already holds events for a different smartblock; previous events will be discarded")
+			}
+			ctx.SetMessages(sb.Id(), events)
+		} else {
+			sb.sendEvent(&pb.Event{
+				Messages:  events,
+				ContextId: sb.RootId(),
+			})
+		}
+	}
 
 	changes := st.GetChanges()
 	var changeId string
@@ -800,20 +846,64 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
-	if sendEvent {
-		events := msgsToEvents(msgs)
-		if ctx := s.Context(); ctx != nil {
-			ctx.SetMessages(sb.Id(), events)
-		} else {
-			sb.sendEvent(&pb.Event{
-				Messages:  events,
-				ContextId: sb.RootId(),
-			})
-		}
-	}
-
 	if sb.hasDepIds(&act) {
 		sb.CheckSubscriptions()
+	}
+
+	// Check for file GC after successful apply.
+	// Note: do NOT guard on len(linksBefore) > 0 — undo can add links from an empty state
+	// (linksBefore == []) and we must still detect those additions to restore archived files.
+	if parent := s.ParentState(); parent != nil {
+		linksAfter := st.LocalDetails().GetStringList(bundle.RelationKeyLinks)
+		sctx := s.Context() // capture before goroutines; session.Context is immutable
+
+		addedLinks := getAddedLinks(linksBefore, linksAfter)
+
+		// Restore archived files whose links were re-added (e.g. via undo).
+		if len(addedLinks) > 0 {
+			// A fresh child context isolates accumulated events so they can be
+			// pushed to the originating session once restore finishes, avoiding
+			// a data race with the RPC handler reading ctx.GetResponseEvent().
+			var restoreSctx session.Context
+			if sctx != nil {
+				restoreSctx = session.NewChildContext(sctx)
+			}
+			go func() {
+				sb.restoreObjectsOnLinksAdded(restoreSctx, sb.SpaceID(), sb.Id(), addedLinks)
+				if restoreSctx != nil && restoreSctx.ID() != "" {
+					if msgs := restoreSctx.GetMessages(); len(msgs) > 0 {
+						sb.eventSender.SendToSession(restoreSctx.ID(), &pb.Event{
+							Messages:  msgs,
+							ContextId: sb.Id(),
+						})
+					}
+				}
+			}()
+		}
+
+		removedLinks := getRemovedLinks(linksBefore, linksAfter)
+		if len(removedLinks) > 0 {
+			// Perform file GC asynchronously to not block the Apply and avoid
+			// potential deadlock: Apply holds sb.Lock; GC needs archive.Lock; the
+			// archive's own Apply can need sb.Lock via checkArchivedRestriction.
+			// A fresh child context isolates accumulated events so they can be
+			// pushed to the originating session once GC finishes.
+			var gcSctx session.Context
+			if sctx != nil {
+				gcSctx = session.NewChildContext(sctx)
+			}
+			go func() {
+				sb.performGCOnLinksRemoval(gcSctx, sb.SpaceID(), sb.Id(), removedLinks)
+				if gcSctx != nil && gcSctx.ID() != "" {
+					if msgs := gcSctx.GetMessages(); len(msgs) > 0 {
+						sb.eventSender.SendToSession(gcSctx.ID(), &pb.Event{
+							Messages:  msgs,
+							ContextId: sb.Id(),
+						})
+					}
+				}
+			}()
+		}
 	}
 	if hooks {
 		var parentDetails *domain.Details
@@ -836,6 +926,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex, sb.formatFetcher).Migrate(s)
+	// Ensure bundled relation links are present for all bundled detail keys.
+	// Without this, imported states may lack relation links for details like setOf,
+	// producing a RelationRemove change that wipes the detail on replay (GO-7217).
+	var relKeys []domain.RelationKey
+	for k := range s.Details().Iterate() {
+		if bundle.HasRelation(k) {
+			relKeys = append(relKeys, k)
+		}
+	}
+	s.AddBundledRelationLinks(relKeys...)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -1227,6 +1327,9 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 			heads = []string{lastChangeId}
 		}
 	}
+	// Collect outgoing links with source information
+	outgoingLinks := sb.collectOutgoingLinks(st)
+
 	return DocInfo{
 		Id:             sb.Id(),
 		Space:          sb.Space(),
@@ -1236,6 +1339,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) DocInfo {
 		Details:        sb.CombinedDetails(),
 		Type:           sb.ObjectTypeKey(),
 		SmartblockType: sb.Type(),
+		OutgoingLinks:  outgoingLinks,
 	}
 }
 
@@ -1323,3 +1427,239 @@ func SkipFullTextIfHeadsNotChanged(o *IndexOptions) {
 }
 
 type InitFunc = func(id string) *InitContext
+
+// getRemovedLinks returns links that were in linksBefore but not in linksAfter
+func getRemovedLinks(linksBefore, linksAfter []string) []string {
+	afterSet := make(map[string]struct{}, len(linksAfter))
+	for _, link := range linksAfter {
+		afterSet[link] = struct{}{}
+	}
+
+	var removed []string
+	for _, link := range linksBefore {
+		if _, exists := afterSet[link]; !exists {
+			removed = append(removed, link)
+		}
+	}
+	return removed
+}
+
+// getAddedLinks returns links that are in linksAfter but not in linksBefore
+func getAddedLinks(linksBefore, linksAfter []string) []string {
+	beforeSet := make(map[string]struct{}, len(linksBefore))
+	for _, link := range linksBefore {
+		beforeSet[link] = struct{}{}
+	}
+
+	var added []string
+	for _, link := range linksAfter {
+		if _, exists := beforeSet[link]; !exists {
+			added = append(added, link)
+		}
+	}
+	return added
+}
+
+// collectOutgoingLinks collects all outgoing links from blocks and relations with their source information
+func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
+	var outgoingLinks []OutgoingLink
+	linkSet := make(map[string]bool) // To avoid duplicates
+	objectId := sb.Id()
+
+	// Collect links from blocks
+	if err := st.Iterate(func(b simple.Block) (isContinue bool) {
+		blockModel := b.Model()
+		if blockModel == nil {
+			return true
+		}
+
+		// Extract links based on block content type
+		// Skip self-references to avoid creating links from an object to itself
+		if link := blockModel.GetLink(); link != nil && link.TargetBlockId != "" && link.TargetBlockId != objectId && !linkSet[link.TargetBlockId] {
+			linkSet[link.TargetBlockId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      link.TargetBlockId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
+		if file := blockModel.GetFile(); file != nil && file.TargetObjectId != "" && file.TargetObjectId != objectId && !linkSet[file.TargetObjectId] {
+			linkSet[file.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      file.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
+		if text := blockModel.GetText(); text != nil && text.Marks != nil {
+			// Extract mentions and inline-object marks from text marks. Object marks
+			// (e.g. @page references) are semantically equivalent to mentions for the
+			// purpose of outgoing links.
+			for _, mark := range text.Marks.Marks {
+				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
+					continue
+				}
+				if mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
+					linkSet[mark.Param] = true
+					outgoingLinks = append(outgoingLinks, OutgoingLink{
+						TargetID:      mark.Param,
+						SourceBlockID: blockModel.Id,
+					})
+				}
+			}
+		}
+
+		// Inline dataview embed (e.g. a Set/Collection embedded on a Page) — its
+		// TargetObjectId is the embedded object. A standalone Set/Collection's own
+		// dataview block has TargetObjectId == "" and is unaffected.
+		if dv := blockModel.GetDataview(); dv != nil && dv.TargetObjectId != "" && dv.TargetObjectId != objectId && !linkSet[dv.TargetObjectId] {
+			linkSet[dv.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      dv.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
+		return true
+	}); err != nil {
+		log.Warnf("failed to iterate state blocks: %v", err)
+	}
+
+	// Collect collection members (StoreSlice). A Collection points at its members via
+	// a store slice, not via blocks or relations, so they need an explicit emission.
+	if !internalflag.NewFromState(st).Has(model.InternalFlag_collectionDontIndexLinks) {
+		for _, id := range st.GetStoreSlice(template.CollectionStoreKey) {
+			if id != "" && id != objectId && !linkSet[id] {
+				linkSet[id] = true
+				outgoingLinks = append(outgoingLinks, OutgoingLink{TargetID: id})
+			}
+		}
+	}
+
+	// Collect links from object relations
+	outgoingLinks = append(outgoingLinks, sb.collectLinksFromRelations(st, objectId, linkSet)...)
+
+	return outgoingLinks
+}
+
+// collectLinksFromRelations extracts outgoing links from object relation values
+func (sb *smartBlock) collectLinksFromRelations(st *state.State, objectId string, linkSet map[string]bool) []OutgoingLink {
+	var outgoingLinks []OutgoingLink
+	if st.Details() == nil {
+		return outgoingLinks
+	}
+	for key, val := range st.Details().IterateSorted() {
+		if slices.Contains(relationsToSkipLinksIndexing, key) {
+			continue
+		}
+		format, err := sb.formatFetcher.GetRelationFormatByKey(sb.SpaceID(), key)
+		if err != nil {
+			log.Debugf("failed to get relation format for key %s: %v", key, err)
+			format = guessRelationFormatFromValue(val)
+		}
+
+		if key == bundle.RelationKeyCoverId {
+			// special hacky case for coverId
+			coverType := st.Details().GetInt64(bundle.RelationKeyCoverType)
+			if coverType == 1 {
+				format = model.RelationFormat_file
+			}
+		}
+		// Only process object relations
+		if format != model.RelationFormat_object && format != model.RelationFormat_file {
+			continue
+		}
+
+		// Extract target IDs based on value type
+		targetIds, ok := val.TryWrapToStringList()
+		if !ok {
+			continue
+		}
+
+		// Add outgoing links for each target
+		// Skip self-references to avoid creating links from an object to itself
+		for _, targetId := range targetIds {
+			if targetId != "" && targetId != objectId && !linkSet[targetId] {
+				linkSet[targetId] = true
+				outgoingLinks = append(outgoingLinks, OutgoingLink{
+					TargetID:    targetId,
+					RelationKey: key.String(),
+				})
+			}
+		}
+	}
+	return outgoingLinks
+}
+
+// guessRelationFormatFromValue attempts to determine the relation format
+// by inspecting the value's content when the format fetcher fails
+func guessRelationFormatFromValue(val domain.Value) model.RelationFormat {
+	var id string
+	if s, ok := val.TryString(); ok {
+		id = s
+		if ids, ok := val.TryStringList(); ok && len(ids) > 0 {
+			id = ids[0]
+		}
+	}
+	if id == "" {
+		return 0
+	}
+	sbt, err := typeprovider.SmartblockTypeFromID(id)
+	if err != nil {
+		return 0
+	}
+	switch sbt {
+	case smartblock.SmartBlockTypePage,
+		smartblock.SmartBlockTypeObjectType,
+		smartblock.SmartBlockTypeParticipant:
+		return model.RelationFormat_object
+	case smartblock.SmartBlockTypeFileObject:
+		return model.RelationFormat_file
+	default:
+		return 0
+	}
+}
+
+// restoreObjectsOnLinksAdded unarchives objects that were GC'd when their link is re-added
+// to the context (e.g. via undo).
+func (sb *smartBlock) restoreObjectsOnLinksAdded(sctx session.Context, spaceId, contextId string, addedLinks []string) {
+	if sb.objectGC == nil {
+		return
+	}
+	restoredIds, err := sb.objectGC.RestoreOrphansOnLinksAdded(spaceId, contextId, addedLinks)
+	if err != nil {
+		log.With("objectId", contextId).Errorf("restore on links added failed: %v", err)
+	}
+	if sctx != nil && len(restoredIds) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoRestore{
+				ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: restoredIds},
+			},
+		})
+		sctx.SetMessages(contextId, msgs)
+	}
+}
+
+// performGCOnLinksRemoval runs the object garbage collector for removed links
+func (sb *smartBlock) performGCOnLinksRemoval(sctx session.Context, spaceId, contextId string, removedLinks []string) {
+	if sb.objectGC == nil {
+		return
+	}
+	if len(removedLinks) == 0 {
+		return
+	}
+	archivedIds, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
+	if err != nil {
+		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
+	}
+	if sctx != nil && len(archivedIds) > 0 {
+		msgs := sctx.GetMessages()
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectAutoArchive{
+				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: archivedIds},
+			},
+		})
+		sctx.SetMessages(contextId, msgs)
+	}
+}

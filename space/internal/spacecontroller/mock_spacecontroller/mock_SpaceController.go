@@ -70,20 +70,20 @@ func (_c *MockSpaceController_Close_Call) RunAndReturn(run func(context.Context)
 	return _c
 }
 
-// Current provides a mock function with given fields:
-func (_m *MockSpaceController) Current() any {
+// Current provides a mock function with no fields
+func (_m *MockSpaceController) Current() interface{} {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for Current")
 	}
 
-	var r0 any
-	if rf, ok := ret.Get(0).(func() any); ok {
+	var r0 interface{}
+	if rf, ok := ret.Get(0).(func() interface{}); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(any)
+			r0 = ret.Get(0).(interface{})
 		}
 	}
 
@@ -107,17 +107,17 @@ func (_c *MockSpaceController_Current_Call) Run(run func()) *MockSpaceController
 	return _c
 }
 
-func (_c *MockSpaceController_Current_Call) Return(_a0 any) *MockSpaceController_Current_Call {
+func (_c *MockSpaceController_Current_Call) Return(_a0 interface{}) *MockSpaceController_Current_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockSpaceController_Current_Call) RunAndReturn(run func() any) *MockSpaceController_Current_Call {
+func (_c *MockSpaceController_Current_Call) RunAndReturn(run func() interface{}) *MockSpaceController_Current_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// GetLocalStatus provides a mock function with given fields:
+// GetLocalStatus provides a mock function with no fields
 func (_m *MockSpaceController) GetLocalStatus() spaceinfo.LocalStatus {
 	ret := _m.Called()
 
@@ -162,7 +162,7 @@ func (_c *MockSpaceController_GetLocalStatus_Call) RunAndReturn(run func() space
 	return _c
 }
 
-// GetStatus provides a mock function with given fields:
+// GetStatus provides a mock function with no fields
 func (_m *MockSpaceController) GetStatus() spaceinfo.AccountStatus {
 	ret := _m.Called()
 
@@ -207,7 +207,7 @@ func (_c *MockSpaceController_GetStatus_Call) RunAndReturn(run func() spaceinfo.
 	return _c
 }
 
-// Mode provides a mock function with given fields:
+// Mode provides a mock function with no fields
 func (_m *MockSpaceController) Mode() mode.Mode {
 	ret := _m.Called()
 
@@ -346,7 +346,7 @@ func (_c *MockSpaceController_SetPersistentInfo_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-// SpaceId provides a mock function with given fields:
+// SpaceId provides a mock function with no fields
 func (_m *MockSpaceController) SpaceId() string {
 	ret := _m.Called()
 
@@ -437,7 +437,7 @@ func (_c *MockSpaceController_Start_Call) RunAndReturn(run func(context.Context)
 	return _c
 }
 
-// Update provides a mock function with given fields:
+// Update provides a mock function with no fields
 func (_m *MockSpaceController) Update() error {
 	ret := _m.Called()
 

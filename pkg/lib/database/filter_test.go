@@ -563,6 +563,29 @@ func TestFilterOptionsEqual(t *testing.T) {
 		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.StringList([]string{"optionId1", "optionId2", "optionId3"})})
 		assertFilter(t, eq, obj, false)
 	})
+	t.Run("one option as single string, ok", func(t *testing.T) {
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1"}, optionIdToName)
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("optionId1")})
+		assertFilter(t, eq, obj, true)
+	})
+	t.Run("one option as single string, not ok - wrong value", func(t *testing.T) {
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1"}, optionIdToName)
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("optionId2")})
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("one option as single string, not ok - not in options", func(t *testing.T) {
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1"}, optionIdToName)
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("unknownOption")})
+		assertFilter(t, eq, obj, false)
+	})
+	t.Run("single string matching one of two filter values - allowed for backward compatibility", func(t *testing.T) {
+		// Note: This behavior matches FilterObject() for single strings
+		// In board view, filters always have a single value, so this case shouldn't occur
+		eq := newFilterOptionsEqual(&anyenc.Arena{}, "k", []string{"optionId1", "optionId2"}, optionIdToName)
+		obj := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{"k": domain.String("optionId1")})
+		// Single string is treated as a valid match if it's in the filter values
+		assertFilter(t, eq, obj, true)
+	})
 }
 
 func TestMakeFilters(t *testing.T) {
@@ -876,6 +899,55 @@ func TestMakeFilters(t *testing.T) {
 		assert.NotNil(t, filters.(FiltersOr)[0].(FilterEq))
 		assert.NotNil(t, filters.(FiltersOr)[1].(FilterEq))
 	})
+	t.Run("nested date filter with unset format resolves from store", func(t *testing.T) {
+		// given
+		store := &stubSpaceObjectStore{}
+
+		now := time.Now()
+		yesterday := now.Add(-24 * time.Hour)
+		tomorrow := now.Add(24 * time.Hour)
+
+		// Nested/advanced filter: Format is not set (zero value) by the client
+		filter := []FilterRequest{
+			{
+				Operator: model.BlockContentDataviewFilter_And,
+				NestedFilters: []FilterRequest{
+					{
+						RelationKey: bundle.RelationKeyDueDate,
+						Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+						QuickOption: model.BlockContentDataviewFilter_Today,
+						// Format intentionally omitted — this is what the client sends for advanced filters
+					},
+					{
+						RelationKey: bundle.RelationKeyName,
+						Condition:   model.BlockContentDataviewFilter_NotEmpty,
+					},
+				},
+			},
+		}
+
+		// when
+		f, err := MakeFilters(filter, store)
+		require.NoError(t, err)
+
+		// then
+		objYesterday := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyDueDate: domain.Int64(yesterday.Unix()),
+			bundle.RelationKeyName:    domain.String("task1"),
+		})
+		objToday := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyDueDate: domain.Int64(now.Unix()),
+			bundle.RelationKeyName:    domain.String("task2"),
+		})
+		objTomorrow := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyDueDate: domain.Int64(tomorrow.Unix()),
+			bundle.RelationKeyName:    domain.String("task3"),
+		})
+
+		assertFilter(t, f, objYesterday, true)
+		assertFilter(t, f, objToday, true)
+		assertFilter(t, f, objTomorrow, false)
+	})
 }
 
 func TestFilter2ValuesComp_FilterObject(t *testing.T) {
@@ -928,7 +1000,7 @@ func TestFilter2ValuesComp_FilterObject(t *testing.T) {
 func TestFilterHasPrefix_FilterObject(t *testing.T) {
 	t.Run("date object id", func(t *testing.T) {
 		key := bundle.RelationKeyMentions
-		now := time.Now()
+		now := time.Date(2025, 6, 15, 12, 0, 0, 0, time.UTC)
 		f := FilterHasPrefix{
 			Key:    key,
 			Prefix: dateutil.NewDateObject(now, false).Id(), // _date_YYYY-MM-DD
@@ -1031,5 +1103,33 @@ func TestFilterDate(t *testing.T) {
 		assertFilter(t, f, obj2, false)
 		assertFilter(t, f, obj3, true)
 		assertFilter(t, f, obj4, false)
+	})
+	t.Run("date filter with unset format resolves format from store", func(t *testing.T) {
+		// given
+		store := &stubSpaceObjectStore{}
+
+		now := time.Now()
+		yesterday := now.Add(-24 * time.Hour)
+		tomorrow := now.Add(24 * time.Hour)
+
+		// when - Format is 0 (unset), simulating advanced/nested filter behavior
+		f, err := MakeFilter("spaceId", FilterRequest{
+			RelationKey: bundle.RelationKeyDueDate,
+			Condition:   model.BlockContentDataviewFilter_LessOrEqual,
+			QuickOption: model.BlockContentDataviewFilter_Today,
+		}, store)
+		require.NoError(t, err)
+
+		// then
+		objYesterday := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDueDate: domain.Int64(yesterday.Unix())})
+		objToday := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDueDate: domain.Int64(now.Unix())})
+		objTomorrow := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{bundle.RelationKeyDueDate: domain.Int64(tomorrow.Unix())})
+		objNoDate := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{})
+
+		assertFilter(t, f, objYesterday, true)
+		assertFilter(t, f, objToday, true)
+		assertFilter(t, f, objTomorrow, false)
+		// Object with no date has zero value which is less than today's end timestamp
+		assertFilter(t, f, objNoDate, true)
 	})
 }

@@ -370,6 +370,69 @@ func BenchmarkState_Iterate(b *testing.B) {
 	}
 }
 
+func BenchmarkState_UnlinkAll(b *testing.B) {
+	newBlock := func(id string, childrenIds ...string) simple.Block {
+		return simple.New(&model.Block{Id: id, ChildrenIds: childrenIds})
+	}
+
+	// Build a tree: root -> 100 ch1 -> 10 ch2 each (1101 blocks total)
+	buildState := func() (*State, []string) {
+		s := NewDoc("root", nil).NewState()
+		root := newBlock("root")
+		s.Add(root)
+		var leafIds []string
+		for i := 0; i < 100; i++ {
+			ch1Id := bson.NewObjectId().Hex()
+			root.Model().ChildrenIds = append(root.Model().ChildrenIds, ch1Id)
+			ch1 := newBlock(ch1Id)
+			s.Add(ch1)
+			for j := 0; j < 10; j++ {
+				ch2Id := bson.NewObjectId().Hex()
+				ch2 := newBlock(ch2Id)
+				ch1.Model().ChildrenIds = append(ch1.Model().ChildrenIds, ch2Id)
+				s.Add(ch2)
+				leafIds = append(leafIds, ch2Id)
+			}
+		}
+		return s, leafIds
+	}
+
+	// Pick 50 leaves evenly spread across all 100 parents (1 from every 2nd parent)
+	scatteredIds := func(leafIds []string) []string {
+		var ids []string
+		for i := 0; i < 50; i++ {
+			ids = append(ids, leafIds[i*20]) // every 2nd parent, first child
+		}
+		return ids
+	}
+
+	b.Run("single Unlink scattered x50", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			b.StopTimer()
+			s, leafIds := buildState()
+			removeIds := scatteredIds(leafIds)
+			b.StartTimer()
+
+			for _, id := range removeIds {
+				s.Unlink(id)
+			}
+		}
+	})
+
+	b.Run("UnlinkAll scattered x50", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			b.StopTimer()
+			s, leafIds := buildState()
+			removeIds := scatteredIds(leafIds)
+			b.StartTimer()
+
+			s.UnlinkAll(removeIds)
+		}
+	})
+}
+
 func TestState_IsEmpty(t *testing.T) {
 	t.Run("without title block", func(t *testing.T) {
 		s := NewDoc("root", map[string]simple.Block{
@@ -429,6 +492,21 @@ func TestState_IsEmpty(t *testing.T) {
 		assert.False(t, s.IsEmpty(true))
 		assert.False(t, s.IsEmpty(false))
 	})
+}
+
+func TestState_IsEmpty_WithDiscussion(t *testing.T) {
+	s := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"header"},
+		}),
+		"header": simple.New(&model.Block{Id: "header"}),
+	}).(*State)
+
+	assert.True(t, s.IsEmpty(true))
+
+	s.SetDetail(bundle.RelationKeyDiscussionId, domain.String("discussionObjId"))
+	assert.False(t, s.IsEmpty(true))
 }
 
 func TestState_Descendants(t *testing.T) {
@@ -2127,7 +2205,10 @@ func TestState_ApplyChangeIgnoreErrDetailsSet(t *testing.T) {
 		st.ApplyChangeIgnoreErr(change)
 
 		// then
-		assert.False(t, st.Details().Has("relationKey"))
+		// nil proto value is stored as domain.Null(), not deleted, to avoid
+		// generating duplicate changes on subsequent SetDetail(Null) calls
+		assert.True(t, st.Details().Has("relationKey"))
+		assert.True(t, st.Details().Get("relationKey").IsNull())
 	})
 }
 

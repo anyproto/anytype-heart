@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	anystore "github.com/anyproto/any-store"
@@ -28,6 +29,11 @@ var pluralNameId = domain.ObjectPath{
 	RelationKey: bundle.RelationKeyPluralName.String(),
 }.String()
 
+var (
+	ftHits   atomic.Int64
+	ftMisses atomic.Int64
+)
+
 const (
 	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
 	minFulltextScore = 0.02
@@ -36,78 +42,6 @@ const (
 func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 	recs, err := s.performQuery(q)
 	return recs, err
-}
-
-// getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
-func (s *dsObjectStore) getObjectsWithObjectInRelation(relationKey domain.RelationKey, objectId string, limit int, params database.Filters) ([]database.Record, error) {
-	f := database.FiltersAnd{
-		database.FilterAllIn{Key: relationKey, Strings: []string{objectId}},
-		params.FilterObj,
-	}
-	return s.queryAnyStore(f, params.Order, uint(limit), 0)
-}
-
-func (s *dsObjectStore) getInjectedResults(details *domain.Details, score float64, path domain.ObjectPath, maxLength int, params database.Filters) []database.Record {
-	var injectedResults []database.Record
-	id := details.GetString(bundle.RelationKeyId)
-	if path.RelationKey != bundle.RelationKeyName.String() && path.RelationKey != bundle.RelationKeyPluralName.String() {
-		// inject only in case we match the name
-		return nil
-	}
-	var (
-		relationKey string
-		err         error
-	)
-
-	isDeleted := details.GetBool(bundle.RelationKeyIsDeleted)
-	isArchived := details.GetBool(bundle.RelationKeyIsArchived)
-	if isDeleted || isArchived {
-		return nil
-	}
-
-	//nolint:gosec
-	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
-	switch layout {
-	case model.ObjectType_relationOption:
-		relationKey = details.GetString(bundle.RelationKeyRelationKey)
-	case model.ObjectType_objectType:
-		relationKey = bundle.RelationKeyType.String()
-	default:
-		return nil
-	}
-	recs, err := s.getObjectsWithObjectInRelation(domain.RelationKey(relationKey), id, maxLength, params)
-	if err != nil {
-		log.Errorf("getInjectedResults failed to get objects with object in relation: %v", err)
-		return nil
-	}
-
-	for _, rec := range recs {
-		relDetails := pbtypes.StructFilterKeys(details.ToProto(), []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyType.String(),
-			bundle.RelationKeyResolvedLayout.String(),
-			bundle.RelationKeyRelationOptionColor.String(),
-		})
-		metaInj := model.SearchMeta{
-			RelationKey:     relationKey,
-			RelationDetails: relDetails,
-		}
-
-		detailsCopy := rec.Details.Copy()
-		// set the same score as original object
-		detailsCopy.SetFloat64(database.RecordScoreField, score)
-		injectedResults = append(injectedResults, database.Record{
-			Details: detailsCopy,
-			Meta:    metaInj,
-		})
-
-		if len(injectedResults) == maxLength {
-			break
-		}
-	}
-
-	return injectedResults
 }
 
 func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
@@ -175,9 +109,10 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
 	records := make([]database.Record, 0, len(results))
+	upperBound := offset + limit
 	resultObjectMap := make(map[string]struct{})
 	// we assume that results are already sorted by score DESC.
-	// this mean we use map to ignore duplicates without checking score
+	// this means we use a map to ignore duplicates without checking the score
 	for _, res := range results {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
@@ -187,11 +122,12 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 					SpaceID:  s.SpaceId(),
 				})
 				if err != nil {
-					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
+					log.Errorf("QueryFromFulltext failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
 					continue
 				}
 				details.SetString(bundle.RelationKeyId, res.Path.ObjectId)
-				details.SetFloat64(database.RecordScoreField, res.Score)
+				details.SetFloat64(bundle.RelationKey_score, res.Score)
+				details.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(res.Score, details, res.Path.RelationKey == bundle.RelationKeyName.String()))
 				rec := database.Record{Details: details}
 				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
@@ -210,7 +146,8 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
 			continue
 		}
-		details.SetFloat64(database.RecordScoreField, res.Score)
+		details.SetFloat64(bundle.RelationKey_score, res.Score)
+		details.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(res.Score, details, res.Path.RelationKey == bundle.RelationKeyName.String()))
 
 		rec := database.Record{Details: details}
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
@@ -236,7 +173,15 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			}
 		}
 
-		injectedResults := s.getInjectedResults(details, res.Score, res.Path, 10, params)
+		injectLimit := 0
+		if upperBound > len(records) {
+			injectLimit = upperBound - len(records)
+		} else if upperBound > 0 {
+			continue // len(recs) >= upperBound > 0, so we can stop collecting new records
+		}
+		// fulltext does not search by names of objects in tag/status/object details,
+		// so we need to query those objects that have objects got by fulltext as values in their details
+		injectedResults := s.getObjectsWithObjectInRelation(details, res.Score, res.Path, injectLimit, params)
 		if len(injectedResults) == 0 {
 			continue
 		}
@@ -264,13 +209,86 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 		})
 	}
 	if limit > 0 {
-		upperBound := offset + limit
 		if upperBound > len(records) {
 			upperBound = len(records)
 		}
 		return records[offset:upperBound], nil
 	}
 	return records[offset:], nil
+}
+
+// getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
+func (s *dsObjectStore) getObjectsWithObjectInRelation(details *domain.Details, score float64, path domain.ObjectPath, limit int, params database.Filters) []database.Record {
+	if path.RelationKey != bundle.RelationKeyName.String() && path.RelationKey != bundle.RelationKeyPluralName.String() {
+		// inject only in case we match the name
+		return nil
+	}
+
+	var (
+		relationKey string
+		err         error
+		id          = details.GetString(bundle.RelationKeyId)
+		isDeleted   = details.GetBool(bundle.RelationKeyIsDeleted)
+		isArchived  = details.GetBool(bundle.RelationKeyIsArchived)
+	)
+
+	if isDeleted || isArchived {
+		return nil
+	}
+
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
+	switch layout {
+	case model.ObjectType_relationOption:
+		relationKey = details.GetString(bundle.RelationKeyRelationKey)
+	case model.ObjectType_objectType:
+		relationKey = bundle.RelationKeyType.String()
+	case model.ObjectType_basic, model.ObjectType_note, model.ObjectType_profile, model.ObjectType_todo, model.ObjectType_participant:
+		relationKey = bundle.RelationKeyLinks.String()
+	default:
+		return nil
+	}
+
+	recs, err := s.queryAnyStore(database.FiltersAnd{
+		database.FilterAllIn{Key: domain.RelationKey(relationKey), Strings: []string{id}},
+		params.FilterObj,
+	}, params.Order, uint(limit), 0) //nolint:gosec
+	if err != nil {
+		log.Errorf("queryAnyStore failed to get objects with object in relation: %v", err)
+		return nil
+	}
+
+	injectedResults := make([]database.Record, 0, len(recs))
+	for _, rec := range recs {
+		relDetails := pbtypes.StructFilterKeys(details.ToProto(), []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyType.String(),
+			bundle.RelationKeyResolvedLayout.String(),
+			bundle.RelationKeyRelationOptionColor.String(),
+		})
+		metaInj := model.SearchMeta{
+			RelationKey:     relationKey,
+			RelationDetails: relDetails,
+		}
+
+		detailsCopy := rec.Details.Copy()
+		// set the same score as original object
+		detailsCopy.SetFloat64(bundle.RelationKey_score, score)
+		// nameMatch=false: injected objects are found via relation (links/type/priority),
+		// not because their own name matched the query.
+		detailsCopy.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(score, detailsCopy, false))
+		injectedResults = append(injectedResults, database.Record{
+			Details: detailsCopy,
+			Meta:    metaInj,
+		})
+
+		if len(injectedResults) == limit {
+			break
+		}
+	}
+
+	return injectedResults
 }
 
 func (s *dsObjectStore) performQuery(q database.Query) (records []database.Record, err error) {
@@ -300,6 +318,12 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 		if err != nil {
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
+
+		// Fallback to anystore search when Tantivy returns 0 results
+		if len(fulltextResults) == 0 {
+			return s.performFulltextFallback(q, filters)
+		}
+		ftHits.Add(1)
 
 		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.TextQuery)
 	}
@@ -355,36 +379,151 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 	})
 
 	var results = make([]database.FulltextResult, 0, len(objectResults))
-	for _, result := range objectResults {
-		path, err := domain.NewFromPath(result.ID)
+	for _, docMatch := range objectResults {
+		result, err := database.FTDocumentMatchToFulltextResult(docMatch)
 		if err != nil {
 			return nil, fmt.Errorf("fullText search: %w", err)
 		}
-		var highlight string
-		var ranges []*model.Range
-		for _, v := range result.Fragments {
-			if len(v.Ranges) > 0 {
-				highlight = v.Text
-				ranges = convertToHighlightRanges(v.Ranges, highlight)
-				break
-			}
-		}
-		res := database.FulltextResult{
-			Path:      path,
-			Highlight: highlight,
-			Score:     result.Score,
-		}
-		if highlight != "" {
-			res.Highlight, res.HighlightRanges = highlight, ranges
-		}
-		if result.Score < minFulltextScore && len(res.HighlightRanges) == 0 {
+		if result.Score < minFulltextScore && len(result.HighlightRanges) == 0 {
 			continue
 		}
-		results = append(results, res)
+		results = append(results, result)
 
 	}
 
 	return results, nil
+}
+
+func (s *dsObjectStore) performFulltextFallback(q database.Query, filters *database.Filters) ([]database.Record, error) {
+	// Build text search filter using FiltersOr with FilterLike
+	textFilter := database.FiltersOr{
+		database.FilterLike{Key: bundle.RelationKeyName, Value: q.TextQuery},
+		database.FilterLike{Key: bundle.RelationKeySnippet, Value: q.TextQuery},
+		database.FilterLike{Key: bundle.RelationKeyPluralName, Value: q.TextQuery},
+	}
+
+	// Combine with original filters if present
+	var combinedFilter database.Filter
+	if filters != nil && filters.FilterObj != nil {
+		combinedFilter = database.FiltersAnd{textFilter, filters.FilterObj}
+	} else {
+		combinedFilter = textFilter
+	}
+
+	// Get order from filters
+	var order database.Order
+	if filters != nil {
+		order = filters.Order
+	}
+
+	// Query anystore
+	records, err := s.queryAnyStore(combinedFilter, order, uint(q.Limit), uint(q.Offset))
+	if err != nil {
+		return nil, fmt.Errorf("fulltext fallback query: %w", err)
+	}
+
+	// Run diagnostic check
+	s.logFallbackDiagnostics(q.SpaceId, q.TextQuery, records)
+
+	return records, nil
+}
+
+func isFulltextIndexable(record database.Record) bool {
+	if sbt, err := typeprovider.SmartblockTypeFromID(record.Details.GetString(bundle.RelationKeyId)); err == nil {
+		ft, _, _ := sbt.Indexable()
+		return ft
+	}
+
+	if record.Details.GetBool(bundle.RelationKeyIsDeleted) || record.Details.GetBool(bundle.RelationKeyIsArchived) || record.Details.GetBool(bundle.RelationKeyIsHidden) {
+		return false
+	}
+	return false
+}
+
+func (s *dsObjectStore) logFallbackDiagnostics(spaceId string, textQuery string, records []database.Record) {
+	// Sample up to 10 objects
+	records = slices.DeleteFunc(records, func(r database.Record) bool {
+		return !isFulltextIndexable(r)
+	})
+
+	sampleSize := len(records)
+	if sampleSize > 10 {
+		sampleSize = 10
+	}
+
+	if sampleSize == 0 {
+		log.With("spaceId", spaceId).
+			With("queryLen", len(textQuery)).
+			With("tantivyResults", 0).
+			With("fallbackResults", 0).
+			Debug("fulltext fallback: no results from either source")
+		return
+	}
+
+	// Check if specific relation documents exist in Tantivy
+	// Document IDs in Tantivy: "$objectId/r/name", "$objectId/r/snippet"
+
+	// Track last modified dates for diagnostic purposes
+	var oldestLastModified, newestLastModified int64
+	var nameMissing, noDocs int
+	for i := 0; i < sampleSize; i++ {
+		objectId := records[i].Details.GetString(bundle.RelationKeyId)
+		lastModified := records[i].Details.GetInt64(bundle.RelationKeyLastModifiedDate)
+		layout := model.ObjectTypeLayout(records[i].Details.GetInt64(bundle.RelationKeyResolvedLayout))
+
+		// Track oldest and newest last modified dates
+		if i == 0 || lastModified < oldestLastModified {
+			oldestLastModified = lastModified
+		}
+		if i == 0 || lastModified > newestLastModified {
+			newestLastModified = lastModified
+		}
+
+		// Check $objectId/r/name
+		hasNameDoc, totalDocs := s.checkDocExistsInTantivy(objectId)
+		if layout != model.ObjectType_note && !hasNameDoc {
+			nameMissing++
+		}
+		if totalDocs == 0 {
+			noDocs++
+		}
+	}
+
+	ftMisses.Add(1)
+	ftReport := s.fts.ConsistencyReport()
+	// Log diagnostic info without exposing user data
+	log.With("spaceId", spaceId).
+		With("queryLen", len(textQuery)).
+		With("tantivyResults", 0).
+		With("fallbackResults", len(records)).
+		With("sampleSize", sampleSize).
+		With("nameDocMissing", nameMissing).
+		With("noDocs", noDocs).
+		With("oldestLastModified", oldestLastModified).
+		With("newestLastModified", newestLastModified).
+		With("ftHitsCnt", ftHits.Load()).
+		With("ftMissesCnt", ftMisses.Load()).
+		With("ftOldestSegment", ftReport.OldestSegmentModTime.Unix()).
+		With("ftNewestSegment", ftReport.NewestSegmentModTime.Unix()).
+		With("ftMetaModTime", ftReport.MetaJsonModTime.Unix()).
+		With("ftOk", ftReport.IsOk()).
+		With("ftReportTime", ftReport.ReportTime.Unix()).
+		Warn("fulltext search fallback triggered")
+}
+
+func (s *dsObjectStore) checkDocExistsInTantivy(objectId string) (hasName bool, total int) {
+	ids, err := s.fts.ListByIdPrefix(objectId)
+	if err != nil {
+		log.With("error", err).Debug("fulltext fallback diagnostic: list error")
+		return
+	}
+	for _, id := range ids {
+		if strings.HasSuffix(id, "/r/name") {
+			hasName = true
+		}
+		total++
+	}
+	return
 }
 
 func preferPluralNameRelation(objectPerBlockResults []*ftsearch.DocumentMatch) *ftsearch.DocumentMatch {
@@ -395,37 +534,6 @@ func preferPluralNameRelation(objectPerBlockResults []*ftsearch.DocumentMatch) *
 		doc = objectPerBlockResults[0]
 	}
 	return doc
-}
-
-func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
-	var highlightRanges []*model.Range
-
-	byteToRuneIndex := make([]int, len(highlight)+1)
-	for i := range byteToRuneIndex {
-		byteToRuneIndex[i] = text2.UTF16RuneCountString(highlight[:i])
-	}
-
-	for _, r := range ranges {
-		if len(r) == 2 {
-			fromByte := r[0]
-			toByte := r[1]
-
-			if fromByte < 0 || toByte > len(highlight) {
-				continue
-			}
-
-			fromRune := byteToRuneIndex[fromByte]
-			toRune := byteToRuneIndex[toByte]
-
-			highlightRange := &model.Range{
-				From: int32(fromRune),
-				To:   int32(toRune),
-			}
-			highlightRanges = append(highlightRanges, highlightRange)
-		}
-	}
-
-	return highlightRanges
 }
 
 // TODO: objstore: no one uses total

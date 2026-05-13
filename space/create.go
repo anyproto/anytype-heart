@@ -35,7 +35,7 @@ func (s *service) CreateOneToOneSendInbox(ctx context.Context, description *spac
 		return
 	}
 
-	err = s.onetoone.ResendFailedOneToOneInvites(ctx)
+	err = s.inboxSender.ResendFailedOneToOneInvites(ctx)
 	if err != nil {
 		log.Error("failed to reschedule onetoone inbox resend", zap.Error(err))
 	}

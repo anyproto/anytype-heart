@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gofrs/flock"
 )
@@ -56,6 +58,14 @@ type ConsistencyReport struct {
 	// Informational counters
 	TotalSegmentsInMeta         int
 	UniqueSegmentPrefixesOnDisk int
+
+	// File timestamps
+	MetaJsonModTime      time.Time // modification time of meta.json
+	NewestSegmentModTime time.Time // most recent modification time among segment files
+	NewestSegmentFile    string    // name of the most recently modified segment file
+	OldestSegmentModTime time.Time // oldest modification time among segment files
+	OldestSegmentFile    string    // name of the oldest modified segment file
+	ReportTime           time.Time
 }
 
 // Check runs the consistency test against dir and returns a report.
@@ -65,10 +75,16 @@ func Check(dir string) (ConsistencyReport, error) {
 	// ---------------------------------------------------------------------
 	// 1) Parse meta.json
 	// ---------------------------------------------------------------------
-	meta, err := readMeta(filepath.Join(dir, "meta.json"))
+	metaPath := filepath.Join(dir, "meta.json")
+	meta, err := readMeta(metaPath)
 	if err != nil {
 		return ConsistencyReport{}, err
 	}
+	metaStat, err := os.Stat(metaPath)
+	if err != nil {
+		return ConsistencyReport{}, fmt.Errorf("stat meta.json: %w", err)
+	}
+	metaModTime := metaStat.ModTime()
 
 	// Build metaSegments:  32-hex-id (no dashes) → expected opstamp (nil if none)
 	metaSegments := make(map[string]*uint64, len(meta.Segments))
@@ -86,6 +102,10 @@ func Check(dir string) (ConsistencyReport, error) {
 	// ---------------------------------------------------------------------
 	segmentPrefixesDisk := map[string]struct{}{}
 	delFilesDisk := map[[2]string]struct{}{} // key = [segPrefix, opstamp]
+
+	// Segment file timestamp tracking
+	var newestModTime, oldestModTime time.Time
+	var newestFile, oldestFile string
 
 	// Check lock files using TryLock instead of just file existence
 	writerLockPresent := isLocked(filepath.Join(dir, ".tantivy-writer.lock"))
@@ -107,6 +127,23 @@ func Check(dir string) (ConsistencyReport, error) {
 		if m := delFileRe.FindStringSubmatch(name); m != nil {
 			delFilesDisk[[2]string{m[1], m[2]}] = struct{}{}
 		}
+
+		// Track segment file timestamps
+		if isSegmentFile(name) {
+			info, err := d.Info()
+			if err == nil {
+				modTime := info.ModTime()
+				if newestFile == "" || modTime.After(newestModTime) {
+					newestModTime = modTime
+					newestFile = name
+				}
+				if oldestFile == "" || modTime.Before(oldestModTime) {
+					oldestModTime = modTime
+					oldestFile = name
+				}
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
@@ -170,6 +207,12 @@ func Check(dir string) (ConsistencyReport, error) {
 		MetaLockPresent:             metaLockPresent,
 		TotalSegmentsInMeta:         len(metaSegments),
 		UniqueSegmentPrefixesOnDisk: len(segmentPrefixesDisk),
+		MetaJsonModTime:             metaModTime,
+		NewestSegmentModTime:        newestModTime,
+		NewestSegmentFile:           newestFile,
+		OldestSegmentModTime:        oldestModTime,
+		OldestSegmentFile:           oldestFile,
+		ReportTime:                  time.Now(),
 	}, nil
 }
 
@@ -259,13 +302,23 @@ func stripDashes(s string) string {
 	return string(out)
 }
 
+// isSegmentFile returns true if the filename has a segment file extension
+func isSegmentFile(name string) bool {
+	for _, ext := range segmentFileExts {
+		if strings.HasSuffix(name, ext) {
+			return true
+		}
+	}
+	return false
+}
+
 // isLocked checks if a lock file exists and is actually locked
 func isLocked(lockPath string) bool {
 	if _, err := os.Stat(lockPath); err != nil {
 		// File doesn't exist
 		return false
 	}
-	
+
 	// File exists, check if it's actually locked
 	fl := flock.New(lockPath)
 	locked, err := fl.TryLock()

@@ -49,8 +49,8 @@ type CommonOperations interface {
 
 	SetRelationKey(ctx session.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationAddRequest) error
-	FeaturedRelationAdd(ctx session.Context, relations ...string) error
-	FeaturedRelationRemove(ctx session.Context, relations ...string) error
+	DescriptionShow(ctx session.Context) error
+	DescriptionHide(ctx session.Context) error
 
 	ExtractBlocksToObjects(ctx session.Context, oc ObjectCreator, tsc templateSvc.Service, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 
@@ -96,6 +96,18 @@ type Updatable interface {
 	Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 }
 
+type outdentOpContext struct {
+	blockId           string
+	originalParent    simple.Block
+	positionInParent  int
+	followingSiblings []string
+}
+
+type indentOpContext struct {
+	blockId     string   // the block being indented
+	childrenIds []string // copy of block's children before the move
+}
+
 func NewBasic(
 	sb smartblock.SmartBlock,
 	objectStore spaceindex.Store,
@@ -132,14 +144,15 @@ func (bs *basic) CreateBlock(s *state.State, req pb.RpcBlockCreateRequest) (id s
 		err = fmt.Errorf("no block content")
 		return
 	}
-	req.Block.Id = ""
 	block := simple.New(req.Block)
 	block.Model().ChildrenIds = nil
 	err = block.Validate()
 	if err != nil {
 		return
 	}
-	s.Add(block)
+	if !s.Add(block) {
+		return "", fmt.Errorf("block id %s already exists", block.Model().Id)
+	}
 	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
 		return
 	}
@@ -212,6 +225,7 @@ func (bs *basic) processFileBlock(f *model.BlockContentOfFile, spaceId string) {
 	objectId, err := bs.fileObjectService.CreateFromImport(
 		domain.FullFileId{SpaceId: spaceId, FileId: fileId.FileId},
 		objectorigin.ObjectOrigin{Origin: model.ObjectOrigin_clipboard},
+		nil,
 	)
 	if err != nil {
 		log.Errorf("failed to create file object: %v", err)
@@ -266,8 +280,11 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		return err
 	}
 
+	var opCtx *outdentOpContext
+	var indCtx *indentOpContext
 	var replacementCandidate simple.Block
-	for _, id := range blockIds {
+
+	for i, id := range blockIds {
 		if b := srcState.Pick(id); b != nil {
 			if replacementCandidate == nil {
 				replacementCandidate = srcState.Get(id)
@@ -275,6 +292,18 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 			if slices.Contains(b.Model().ChildrenIds, targetBlockId) {
 				return fmt.Errorf("cannot move block to its child")
 			}
+
+			// Capture outdent context of last moving block before unlinking
+			if i == len(blockIds)-1 {
+				opCtx = collectOutdentContext(srcState, id)
+			}
+
+			// Capture indent context before unlinking (single-block inner moves only)
+			isInnerMove := position == model.Block_Inner || position == model.Block_InnerFirst
+			if len(blockIds) == 1 && targetBlockId != "" && isInnerMove {
+				indCtx = collectIndentContext(srcState, b, targetBlockId)
+			}
+
 			srcState.Unlink(id)
 		}
 	}
@@ -289,6 +318,10 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 	}
 
 	if targetContent, ok := target.Model().Content.(*model.BlockContentOfText); ok && targetContent.Text != nil {
+		if (position == model.Block_Inner || position == model.Block_InnerFirst) && !canHaveChildren(targetContent.Text.Style) {
+			return fmt.Errorf("cannot move to block that cannot have children")
+		}
+
 		if targetContent.Text.Style == model.BlockContentText_Paragraph &&
 			targetContent.Text.Text == "" && position == model.Block_InnerFirst {
 
@@ -308,7 +341,116 @@ func (bs *basic) Move(srcState, destState *state.State, targetBlockId string, po
 		}
 	}
 
-	return srcState.InsertTo(targetBlockId, position, blockIds...)
+	if err = srcState.InsertTo(targetBlockId, position, blockIds...); err != nil {
+		return err
+	}
+
+	if opCtx != nil {
+		if err := processOutdentOperation(opCtx, srcState, targetBlockId, position); err != nil {
+			return err
+		}
+	}
+	if indCtx != nil {
+		if err := processIndentOperation(indCtx, srcState); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func collectOutdentContext(srcState *state.State, blockId string) *outdentOpContext {
+	parent := srcState.GetParentOf(blockId)
+	if parent == nil {
+		return nil
+	}
+	ctx := &outdentOpContext{
+		blockId:          blockId,
+		originalParent:   parent,
+		positionInParent: slice.FindPos(parent.Model().ChildrenIds, blockId),
+	}
+	// Get siblings after this position - make a copy to avoid slice aliasing
+	if ctx.positionInParent != -1 && ctx.positionInParent < len(parent.Model().ChildrenIds)-1 {
+		siblings := parent.Model().ChildrenIds[ctx.positionInParent+1:]
+		ctx.followingSiblings = make([]string, len(siblings))
+		copy(ctx.followingSiblings, siblings)
+	}
+	return ctx
+}
+
+func processOutdentOperation(opCtx *outdentOpContext, srcState *state.State, targetBlockId string, pos model.BlockPosition) error {
+	if opCtx.originalParent == nil || len(opCtx.followingSiblings) == 0 {
+		return nil
+	}
+
+	// Detect outdent: moving to be sibling of a current parent
+	// This happens when target is the current parent and position is Top/Bottom
+	if targetBlockId == "" || opCtx.originalParent.Model().Id != targetBlockId || (pos != model.Block_Top && pos != model.Block_Bottom) {
+		return nil
+	}
+
+	// Validate moved block can have children
+	movedBlock := srcState.Get(opCtx.blockId)
+	if movedBlock != nil {
+		if textContent, ok := movedBlock.Model().Content.(*model.BlockContentOfText); ok {
+			if textContent.Text != nil && !canHaveChildren(textContent.Text.Style) {
+				return nil // Skip if block can't have children
+			}
+		}
+	}
+
+	// Reassign siblings as children
+	for _, siblingId := range opCtx.followingSiblings {
+		srcState.Unlink(siblingId)
+	}
+	if err := srcState.InsertTo(opCtx.blockId, model.Block_Inner, opCtx.followingSiblings...); err != nil {
+		return fmt.Errorf("reassign siblings during outdent: %w", err)
+	}
+	return nil
+}
+
+func collectIndentContext(srcState *state.State, block simple.Block, targetBlockId string) *indentOpContext {
+	childrenIds := block.Model().ChildrenIds
+	if len(childrenIds) == 0 {
+		return nil
+	}
+
+	blockId := block.Model().Id
+	parent := srcState.GetParentOf(blockId)
+	if parent == nil {
+		return nil
+	}
+
+	// Only apply indent logic when target is a sibling (same parent)
+	targetParent := srcState.GetParentOf(targetBlockId)
+	if targetParent == nil || targetParent.Model().Id != parent.Model().Id {
+		return nil
+	}
+
+	copiedChildren := make([]string, len(childrenIds))
+	copy(copiedChildren, childrenIds)
+
+	return &indentOpContext{
+		blockId:     blockId,
+		childrenIds: copiedChildren,
+	}
+}
+
+func processIndentOperation(opCtx *indentOpContext, srcState *state.State) error {
+	if opCtx == nil || len(opCtx.childrenIds) == 0 {
+		return nil
+	}
+
+	// Unlink children from the indented block
+	for _, childId := range opCtx.childrenIds {
+		srcState.Unlink(childId)
+	}
+
+	// Insert children as siblings after the indented block in its new parent
+	if err := srcState.InsertTo(opCtx.blockId, model.Block_Bottom, opCtx.childrenIds...); err != nil {
+		return fmt.Errorf("move children during indent: %w", err)
+	}
+
+	return nil
 }
 
 func (bs *basic) Replace(ctx session.Context, id string, block *model.Block) (newId string, err error) {
@@ -430,52 +572,53 @@ func (bs *basic) AddRelationAndSet(ctx session.Context, req pb.RpcBlockRelationA
 	return bs.Apply(s)
 }
 
-func (bs *basic) FeaturedRelationAdd(ctx session.Context, relations ...string) (err error) {
+func (bs *basic) DescriptionShow(ctx session.Context) error {
 	s := bs.NewStateCtx(ctx)
+
 	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-	frc := make([]string, len(fr))
-	copy(frc, fr)
-	for _, r := range relations {
-		if slice.FindPos(frc, r) == -1 {
-			// special case
-			if r == bundle.RelationKeyDescription.String() {
-				// todo: looks like it's not ok to use templates here but it has a lot of logic inside
-				template.WithForcedDescription(s)
-			}
-			frc = append(frc, r)
-			key := domain.RelationKey(r)
-			if !s.HasRelation(key) {
-				// TODO: GO-4284 remove
-				err = bs.addRelationLink(s, key)
-				if err != nil {
-					return fmt.Errorf("failed to add relation link on adding featured relation '%s': %w", r, err)
-				}
-			}
+	descKey := bundle.RelationKeyDescription.String()
+	if slice.FindPos(fr, descKey) != -1 {
+		return nil // noop
+	}
+
+	template.WithForcedDescription(s)
+
+	if !s.HasRelation(bundle.RelationKeyDescription) {
+		// TODO: GO-4284 remove
+		if err := bs.addRelationLink(s, bundle.RelationKeyDescription); err != nil {
+			return fmt.Errorf("add description relation link: %w", err)
 		}
 	}
-	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
-	}
+
+	s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(append(fr, descKey)))
+	s.SetChangeType(domain.ChangeTypeDescriptionToggle)
 	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
-func (bs *basic) FeaturedRelationRemove(ctx session.Context, relations ...string) (err error) {
+func (bs *basic) DescriptionHide(ctx session.Context) error {
 	s := bs.NewStateCtx(ctx)
+
 	fr := s.Details().GetStringList(bundle.RelationKeyFeaturedRelations)
-	frc := make([]string, len(fr))
-	copy(frc, fr)
-	for _, r := range relations {
-		if slice.FindPos(frc, r) != -1 {
-			// special cases
-			switch r {
-			case bundle.RelationKeyDescription.String():
-				s.Unlink(state.DescriptionBlockID)
-			}
-			frc = slice.RemoveMut(frc, r)
-		}
+	descKey := bundle.RelationKeyDescription.String()
+	if slice.FindPos(fr, descKey) == -1 {
+		return nil // noop
 	}
-	if len(frc) != len(fr) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(frc))
-	}
+
+	s.Unlink(state.DescriptionBlockID)
+	s.SetDetail(bundle.RelationKeyFeaturedRelations, domain.StringList(slice.RemoveMut(append([]string{}, fr...), descKey)))
+	s.SetChangeType(domain.ChangeTypeDescriptionToggle)
 	return bs.Apply(s, smartblock.NoRestrictions)
+}
+
+func canHaveChildren(style model.BlockContentTextStyle) bool {
+	return style == model.BlockContentText_Paragraph ||
+		style == model.BlockContentText_Quote ||
+		style == model.BlockContentText_Checkbox ||
+		style == model.BlockContentText_Marked ||
+		style == model.BlockContentText_Numbered ||
+		style == model.BlockContentText_Toggle ||
+		style == model.BlockContentText_Callout ||
+		style == model.BlockContentText_ToggleHeader1 ||
+		style == model.BlockContentText_ToggleHeader2 ||
+		style == model.BlockContentText_ToggleHeader3
 }

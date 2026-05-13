@@ -6,10 +6,10 @@ on:
       run-on-runner:
         description: 'Specify the runner to use'
         required: true
-        default: 'mac-mini-org-heart'
+        default: 'macos-15'
         type: choice
         options:
-          - mac-mini-org-heart
+          - macos-15
           - macos-14
       build-tag-network:
         description: 'Network config to use'
@@ -28,7 +28,7 @@ on:
           - 'true'
           - 'false'
       nightly-base-version:
-        description: 'Nightly builds base version (optional, default is stored in repo variables https://github.com/anyproto/anytype-heart/settings/variables/actions)'
+        description: 'Nightly builds base version (optional, format like "v1.2.3")'
         required: false
   schedule:
     - cron: '0 1 * * *' # every day at 1am (UTC)
@@ -70,25 +70,20 @@ jobs:
         run: |
           echo "changed: ${{ steps.diff_check.outputs.changed }}"
 
-  wait_for_perftest:
-    uses: ./.github/workflows/reusable_wait_for_perftest.yml
-
   build:
     needs:
       - diff-check
-      - wait_for_perftest
     if: needs.diff-check.outputs.changed == 'true' # run only if there is a diff
-    runs-on: ${{ github.event.inputs.run-on-runner || 'mac-mini-org-heart' }}
+    runs-on: ${{ github.event.inputs.run-on-runner || 'macos-15' }}
     outputs:
       body: ${{ steps.release_info.outputs.body }}
       html_url: ${{ steps.release_info.outputs.html_url }}
       tag_name: ${{ steps.release_info.outputs.tag_name }}
     steps:
       - name: Install Go
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.25'
           check-latest: true
 
       - name: Setup GO
@@ -102,10 +97,11 @@ jobs:
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
 
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install brew and node deps
-        if: ${{ !startsWith(runner.name, 'mac-mini-runner-') }}
         run: make install-brew-and-node-deps
 
       - name: Setup Xcode
@@ -117,17 +113,40 @@ jobs:
         id: nightly_info
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # required for gh CLI to authenticate
+          INPUT_BASE: ${{ github.event.inputs.nightly-base-version }}
         run: |
           set -euo pipefail
+          set -x
+          trap 'rc=$?; echo "ERROR on line $LINENO, command: $BASH_COMMAND, exit code: $rc"; exit $rc' ERR
+
           DATE=$(date -u +'%Y%m%d')
-          PREFIX="v${{ github.event.inputs.nightly-base-version || vars.NIGHTLY_BASE_VERSION }}-nightly.${DATE}"
+          echo "DATE=$DATE"
+
+          LATEST_RELEASE=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' | grep -v '-' | sort -V | tail -1)
+          echo "LATEST_RELEASE=$LATEST_RELEASE"
+
+          MAJOR=$(echo "$LATEST_RELEASE" | cut -d. -f1)
+          MINOR=$(echo "$LATEST_RELEASE" | cut -d. -f2)
+          PATCH=$(echo "$LATEST_RELEASE" | cut -d. -f3)
+          echo "MAJOR=$MAJOR"
+          echo "MINOR=$MINOR"
+          echo "PATCH=$PATCH"
+
+          NEXT_PATCH=$((PATCH + 1))
+          BASE="${INPUT_BASE:-${MAJOR}.${MINOR}.${NEXT_PATCH}}"
+          PREFIX="${BASE}-nightly.${DATE}"
+          echo "BASE=$BASE"
+          echo "PREFIX=$PREFIX"
 
           # Get the number of existing tags for today
-          COUNT=$(gh api "/repos/${{ github.repository }}/git/matching-refs/tags/$PREFIX" --jq 'length')
-          N=$((COUNT + 1))
+          COUNT=$(gh api "/repos/anyproto/anytype-heart/git/matching-refs/tags/$PREFIX" --jq 'length')
+          echo "COUNT=$COUNT"
 
           # Build the final version string
+          N=$((COUNT + 1))
           VERSION="${PREFIX}.${N}"
+          echo "VERSION=$VERSION"
+
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Set env vars
@@ -145,6 +164,12 @@ jobs:
           echo BUILD_TAG_NETWORK=${{ github.event.inputs.build-tag-network || 'envproduction' }} >> $GITHUB_ENV
           echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
+          NDK28=$(ls -d ${ANDROID_HOME}/ndk/28.* 2>/dev/null | sort -V | tail -1)
+          if [ -z "$NDK28" ]; then echo "ERROR: NDK 28.x not found"; ls ${ANDROID_HOME}/ndk/; exit 1; fi
+          echo "Using NDK: $NDK28"
+          echo ANDROID_NDK=$NDK28 >> $GITHUB_ENV
+          echo ANDROID_NDK_HOME=$NDK28 >> $GITHUB_ENV
+          echo ANDROID_NDK_ROOT=$NDK28 >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
           echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
@@ -247,15 +272,26 @@ jobs:
             https://api.github.com/repos/anyproto/anytype-ts/actions/workflows/nightly.yml/dispatches \
             -d '{"ref":"develop","inputs":{"run-diff-check":"false"}}'
 
-      - name: Notify Slack (workflow result)
-        uses: ravsamhq/notify-slack-action@v2
+      - name: Trigger integration tests in anytype-suite
+        if: needs.build.outputs.tag_name != ''
+        run: |
+          curl -X POST \
+            -H "Authorization: token ${{ secrets.ANYTYPE_SUITE_TRIGGER_TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/anyproto/anytype-suite/dispatches \
+            -d "{\"event_type\": \"test-release\", \"client_payload\": {\"version\": \"${{ needs.build.outputs.tag_name }}\"}}"
+
+      - name: Notify Telegram (workflow result)
+        uses: appleboy/telegram-action@v1.0.1
         with:
-          status: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && 'failure' || 'success' }}
-          notification_title: "${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && '❌' || '✅' }} {workflow} {repo}"
-          message_format: |
-            *Release:* <${{ needs.build.outputs.html_url }}|${{ needs.build.outputs.tag_name || 'none' }}>
-            *Description:*
+          to: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && secrets.TELEGRAM_CHAT_ID_ALERTS || secrets.TELEGRAM_CHAT_ID_RELEASE_TRAIN }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: html
+          message: |
+            ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && '❌' || '✅' }} <b>Nightly / anytype-heart</b>
+
+            <b>Release:</b> ${{ needs.build.outputs.tag_name && format('<a href="{1}">{0}</a>', needs.build.outputs.tag_name, needs.build.outputs.html_url) || 'none' }}
+            <b>Description:</b>
             ${{ needs.build.outputs.body || 'no changes, build skipped' }}
-          footer: "Linked Repo <{repo_url}|{repo}> | <{run_url}|View Workflow Run>"
-        env:
-          SLACK_WEBHOOK_URL: ${{ (contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')) && secrets.SLACK_WEBHOOK_URL_ALERTS || secrets.SLACK_WEBHOOK_URL_RELEASE_TRAIN }}
+
+            <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Workflow Run</a>

@@ -1,5 +1,25 @@
 package inviteservice
 
+/*
+AI generated
+
+Name: Space Invite Generator
+Scope: global
+
+## Responsibility
+- Generate, retrieve, view, and remove space invites
+- Build signed invite payloads with space/creator metadata and icon encryption keys
+- Support multiple invite types: member (default), guest, and without-approval
+
+## Documentation
+Invite lifecycle:
+1. Generate: build payload -> sign with account key -> store via invitestore -> persist info in workspace smartblock
+2. Remove: clear from workspace smartblock -> remove from invitestore
+3. View/GetPayload: fetch from invitestore -> verify signature -> optionally store icon encryption keys for rendering
+
+Guest invites are stored separately from regular invites and only work for Stream-type spaces.
+*/
+
 import (
 	"context"
 	"fmt"
@@ -91,7 +111,8 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 		SpaceId:         invitePayload.SpaceId,
 		SpaceName:       invitePayload.SpaceName,
 		SpaceIconCid:    invitePayload.SpaceIconCid,
-		SpaceUxType:     model.SpaceUxType(invitePayload.SpaceUxType),
+		SpaceUxType:     model.SpaceUxType(invitePayload.SpaceUxType), // nolint:gosec
+		SpaceType:       model.SpaceType(invitePayload.SpaceType),     // nolint:gosec
 		SpaceIconOption: int(invitePayload.SpaceIconOption),
 		CreatorName:     invitePayload.CreatorName,
 		CreatorIconCid:  invitePayload.CreatorIconCid,
@@ -301,6 +322,21 @@ func (i *inviteService) GetPayload(ctx context.Context, inviteCid cid.Cid, invit
 			return nil, getInviteError("store creator icon encryption keys", err)
 		}
 	}
+
+	// Backward compatibility: derive spaceType from spaceUxType for old invites
+	if model.SpaceType(invitePayload.SpaceType) == model.SpaceType_SpaceTypeUnknown { // nolint:gosec
+		switch model.SpaceUxType(invitePayload.SpaceUxType) { // nolint:gosec
+		case model.SpaceUxType_Chat, model.SpaceUxType_Data:
+			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeRegular)
+		case model.SpaceUxType_Stream:
+			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeChat)
+		case model.SpaceUxType_OneToOne:
+			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeOneToOne)
+		default:
+			invitePayload.SpaceType = uint32(model.SpaceType_SpaceTypeRegular)
+		}
+	}
+
 	return &invitePayload, nil
 }
 
@@ -363,7 +399,8 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateI
 		return nil, fmt.Errorf("get space description: %w", err)
 	}
 	invitePayload.SpaceIconOption = uint32(description.IconOption)
-	invitePayload.SpaceUxType = uint32(description.SpaceUxType)
+	invitePayload.SpaceUxType = uint32(description.SpaceUxType) // nolint:gosec
+	invitePayload.SpaceType = uint32(description.SpaceType)     // nolint:gosec
 	if description.IconImage != "" {
 		iconCid, iconEncryptionKeys, err := i.fileAcl.GetInfoForFileSharing(description.IconImage)
 		if err == nil {
@@ -388,15 +425,21 @@ func (i *inviteService) buildInvitePayload(ctx context.Context, params GenerateI
 
 func (i *inviteService) GetExistingGuestUserInvite(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
 	var fileCid, fileKey string
-	var spaceType model.SpaceUxType
+	var spaceType model.SpaceType
+	var spaceUxType model.SpaceUxType
 	err = i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		spaceType = spaceView.GetSpaceDescription().SpaceUxType
+		desc := spaceView.GetSpaceDescription()
+		spaceType = desc.SpaceType
+		spaceUxType = desc.SpaceUxType
 		return nil
 	})
 	if err != nil {
 		return domain.InviteInfo{}, getInviteError("get space type", err)
 	}
-	if spaceType != model.SpaceUxType_Stream {
+	// Check if this is a chat space (Stream in old UX type, Chat in new SpaceType)
+	isChat := spaceType == model.SpaceType_SpaceTypeChat ||
+		(spaceType == model.SpaceType_SpaceTypeUnknown && spaceUxType == model.SpaceUxType_Stream)
+	if !isChat {
 		return domain.InviteInfo{}, ErrInvalidSpaceType
 	}
 	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {

@@ -4,15 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient/mock_aclclient"
 	"github.com/anyproto/any-sync/commonspace/mock_commonspace"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
+	"github.com/anyproto/any-sync/commonspace/object/acl/list/listtest"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list/mock_list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
 	"github.com/anyproto/any-sync/commonspace/object/acl/syncacl"
@@ -25,8 +29,10 @@ import (
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/nodeconf"
+	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
 	"github.com/anyproto/any-sync/util/cidutil"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/anyproto/any-sync/util/strkey"
 	"github.com/cheggaaa/mb/v3"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/mock"
@@ -39,11 +45,11 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
-	"github.com/anyproto/anytype-heart/pb"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub/mock_crossspacesub"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -116,6 +122,20 @@ func newFixture(t *testing.T) *fixture {
 		mockAcl:                 mock_list.NewMockAclList(ctrl),
 		mockConfig:              &mockConfig{},
 	}
+	_, netPub, err := crypto.GenerateRandomEd25519KeyPair()
+	require.NoError(t, err)
+	netPubRaw, err := netPub.Raw()
+	require.NoError(t, err)
+	networkId, err := strkey.Encode(strkey.NetworkAddressVersionByte, netPubRaw)
+	require.NoError(t, err)
+
+	mockNodeConf := mock_nodeconf.NewMockService(ctrl)
+	mockNodeConf.EXPECT().Name().Return(nodeconf.CName).AnyTimes()
+	mockNodeConf.EXPECT().Init(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Run(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Close(gomock.Any()).AnyTimes()
+	mockNodeConf.EXPECT().Configuration().Return(nodeconf.Configuration{NetworkId: networkId}).AnyTimes()
+
 	fx.a.Register(testutil.PrepareMock(ctx, fx.a, fx.mockAccountService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockWallet)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockJoiningClient)).
@@ -125,6 +145,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCoordinatorClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCrossSpace)).
 		Register(fx.mockConfig).
+		Register(mockNodeConf).
 		Register(fx.aclService)
 	keys, err := accountdata.NewRandom()
 	require.NoError(t, err)
@@ -362,7 +383,7 @@ func TestService_ViewInvite(t *testing.T) {
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(inv.InviteRec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(inv.InviteRec))
 		require.NoError(t, err)
 		recs, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
@@ -393,14 +414,14 @@ func TestService_ViewInvite(t *testing.T) {
 		require.NoError(t, err)
 		inv, err := aclList.RecordBuilder().BuildInvite()
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(inv.InviteRec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(inv.InviteRec))
 		require.NoError(t, err)
 		invRecIds := aclList.AclState().InviteIds()
 		removeInv, err := aclList.RecordBuilder().BuildBatchRequest(list.BatchRequestPayload{
 			InviteRevokes: invRecIds,
 		})
 		require.NoError(t, err)
-		err = aclList.AddRawRecord(list.WrapAclRecord(removeInv.Rec))
+		err = aclList.AddRawRecord(listtest.WrapAclRecord(removeInv.Rec))
 		require.NoError(t, err)
 		recs, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
@@ -737,17 +758,17 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		
+
 		// Mock ACL getter to return ACL records
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
 		aclList, err := list.NewInMemoryDerivedAcl(spaceId, keys)
 		require.NoError(t, err)
-		
+
 		// Get the raw records from the ACL to return them in the mock
 		records, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
-		
+
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 		fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(nil)
 		err = fx.Leave(ctx, spaceId)
@@ -794,7 +815,7 @@ func TestService_Leave(t *testing.T) {
 				fx := newFixture(t)
 				defer fx.finish(t)
 				spaceId := "spaceId"
-				
+
 				// Mock ACL getter to return ACL records
 				keys, err := accountdata.NewRandom()
 				require.NoError(t, err)
@@ -802,10 +823,10 @@ func TestService_Leave(t *testing.T) {
 				require.NoError(t, err)
 				records, err := aclList.RecordsAfter(ctx, "")
 				require.NoError(t, err)
-				
+
 				fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 				fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(testErr)
-				
+
 				actualErr := fx.Leave(ctx, spaceId)
 				require.Error(t, actualErr)
 				// Check the expected error conversion based on the error type
@@ -827,7 +848,7 @@ func TestService_Leave(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
 		spaceId := "spaceId"
-		
+
 		// Mock ACL getter to return ACL records
 		keys, err := accountdata.NewRandom()
 		require.NoError(t, err)
@@ -835,10 +856,10 @@ func TestService_Leave(t *testing.T) {
 		require.NoError(t, err)
 		records, err := aclList.RecordsAfter(ctx, "")
 		require.NoError(t, err)
-		
+
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
 		fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(fmt.Errorf("unknown error"))
-		
+
 		err = fx.Leave(ctx, spaceId)
 		require.True(t, errors.Is(err, ErrAclRequestFailed))
 	})
@@ -851,10 +872,182 @@ func TestService_Leave(t *testing.T) {
 
 		// Mock ACL getter to fail with "no such account" error (guest user scenario)
 		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(nil, list.ErrNoSuchAccount)
-		
+
 		err := fx.Leave(ctx, spaceId)
 		require.Error(t, err)
 		// ErrNoSuchAccount should be wrapped as ErrNoSuchAccount (converted in convertedOrAclRequestError)
 		require.True(t, errors.Is(err, ErrNoSuchAccount))
 	})
+}
+
+func TestService_ConcurrentInviteGeneration(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+	goroutines := 5
+
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+
+	var concurrent atomic.Int32
+	var maxConcurrent atomic.Int32
+
+	fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal").Maybe()
+
+	// First call has no existing invite; subsequent ones find the invite already exists
+	fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).
+		Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists).Once()
+	fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).
+		Return(domain.InviteInfo{
+			InviteType:    domain.InviteTypeDefault,
+			InviteFileCid: "testCid",
+		}, nil).Maybe()
+
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+
+	mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace).Maybe()
+	mockCommonSpace.EXPECT().AclClient().Return(mockAclClient).AnyTimes()
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil).Maybe()
+
+	rec := &consensusproto.RawRecord{Payload: []byte("test")}
+	mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, payload aclclient.InvitePayload) (list.InviteResult, error) {
+			cur := concurrent.Add(1)
+			for {
+				old := maxConcurrent.Load()
+				if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+					break
+				}
+			}
+			time.Sleep(50 * time.Millisecond)
+			concurrent.Add(-1)
+			return list.InviteResult{
+				InviteRec: rec,
+				InviteKey: keys.SignKey,
+			}, nil
+		}).AnyTimes()
+
+	mockAclClient.EXPECT().AddRecord(ctx, rec).
+		DoAndReturn(func(ctx context.Context, rec *consensusproto.RawRecord) error {
+			cur := concurrent.Add(1)
+			for {
+				old := maxConcurrent.Load()
+				if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+					break
+				}
+			}
+			time.Sleep(50 * time.Millisecond)
+			concurrent.Add(-1)
+			return nil
+		}).AnyTimes()
+
+	fx.mockInviteService.EXPECT().Generate(ctx, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+			return domain.InviteInfo{InviteFileCid: "testCid"}, f()
+		}).Maybe()
+
+	var wg sync.WaitGroup
+	wg.Add(goroutines)
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			_, genErr := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+			require.NoError(t, genErr)
+		}()
+	}
+	wg.Wait()
+
+	require.Equal(t, int32(1), maxConcurrent.Load(), "expected operations to be serialized, but observed concurrent execution")
+}
+
+func TestService_ConcurrentInviteAndAddAccounts(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+	spaceId := "spaceId"
+
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+
+	var concurrent atomic.Int32
+	var maxConcurrent atomic.Int32
+
+	trackConcurrency := func(duration time.Duration) {
+		cur := concurrent.Add(1)
+		for {
+			old := maxConcurrent.Load()
+			if cur <= old || maxConcurrent.CompareAndSwap(old, cur) {
+				break
+			}
+		}
+		time.Sleep(duration)
+		concurrent.Add(-1)
+	}
+
+	fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal").Maybe()
+	fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).
+		Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists).Maybe()
+
+	mockSpace := mock_clientspace.NewMockSpace(t)
+	mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+	mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+
+	mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace).Maybe()
+	mockCommonSpace.EXPECT().AclClient().Return(mockAclClient).AnyTimes()
+	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil).Maybe()
+
+	rec := &consensusproto.RawRecord{Payload: []byte("test")}
+	mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, payload aclclient.InvitePayload) (list.InviteResult, error) {
+			trackConcurrency(50 * time.Millisecond)
+			return list.InviteResult{
+				InviteRec: rec,
+				InviteKey: keys.SignKey,
+			}, nil
+		}).AnyTimes()
+
+	mockAclClient.EXPECT().AddRecord(ctx, rec).
+		DoAndReturn(func(ctx context.Context, rec *consensusproto.RawRecord) error {
+			trackConcurrency(50 * time.Millisecond)
+			return nil
+		}).AnyTimes()
+
+	mockAclClient.EXPECT().AddAccounts(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, payload list.AccountsAddPayload) error {
+			trackConcurrency(50 * time.Millisecond)
+			return nil
+		}).AnyTimes()
+
+	fx.mockInviteService.EXPECT().Generate(ctx, mock.Anything, mock.Anything).
+		RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+			return domain.InviteInfo{InviteFileCid: "testCid"}, f()
+		}).Maybe()
+
+	var wg sync.WaitGroup
+	wg.Add(4)
+
+	// 2 concurrent invite generations
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+			_, genErr := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+			require.NoError(t, genErr)
+		}()
+	}
+
+	// 2 concurrent AddAccounts
+	for i := 0; i < 2; i++ {
+		go func() {
+			defer wg.Done()
+			addErr := fx.AddAccounts(ctx, spaceId, []list.AccountAdd{
+				{Identity: keys.SignKey.GetPublic(), Permissions: list.AclPermissionsReader, Metadata: []byte("meta")},
+			})
+			require.NoError(t, addErr)
+		}()
+	}
+
+	wg.Wait()
+
+	require.Equal(t, int32(1), maxConcurrent.Load(), "expected operations to be serialized, but observed concurrent execution")
 }

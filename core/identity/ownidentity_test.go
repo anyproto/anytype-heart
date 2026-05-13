@@ -134,6 +134,12 @@ func TestOwnProfileSubscription(t *testing.T) {
 				Key:  "key1",
 			},
 		}, nil)
+		fx.fileAclService.EXPECT().GetInfoForFileSharing("fileCid1").Return("fileCid1", []*model.FileEncryptionKey{
+			{
+				Path: "/0/original",
+				Key:  "key1",
+			},
+		}, nil).Maybe()
 
 		err := fx.run(context.Background())
 		require.NoError(t, err)
@@ -165,8 +171,8 @@ func TestOwnProfileSubscription(t *testing.T) {
 				Identity:    "identity1",
 				Name:        "John Doe",
 				Description: "Description",
-				IconCid:     "fileObjectId",
-				GlobalName:  globalName,
+				IconCid:     "fileCid1",
+				GlobalName:  "foobar",
 			},
 		}
 		assert.Equal(t, want, got)
@@ -183,7 +189,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 					Key:  "key1",
 				},
 			},
-			GlobalName: globalName,
+			GlobalName: "foobar",
 		}
 		assert.Equal(t, wantProfile, gotProfile)
 	})
@@ -259,6 +265,12 @@ func TestOwnProfileSubscription(t *testing.T) {
 				Key:  "key2",
 			},
 		}, nil)
+		fx.fileAclService.EXPECT().GetInfoForFileSharing("fileCid2").Return("fileCid2", []*model.FileEncryptionKey{
+			{
+				Path: "/0/original",
+				Key:  "key2",
+			},
+		}, nil).Maybe()
 
 		err := fx.run(context.Background())
 		require.NoError(t, err)
@@ -304,7 +316,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 				Identity:    "identity1",
 				Name:        "John Doe",
 				Description: "Description",
-				GlobalName:  globalName,
+				GlobalName:  newName,
 			},
 			{
 				Identity:    "identity1",
@@ -316,8 +328,8 @@ func TestOwnProfileSubscription(t *testing.T) {
 				Identity:    "identity1",
 				Name:        "John Doe2",
 				Description: "Description2",
-				IconCid:     "fileObjectId2",
-				GlobalName:  newName,
+				IconCid:     "fileCid2",
+				GlobalName:  "foobar2",
 			},
 		}
 		assert.Equal(t, want, got)
@@ -328,7 +340,7 @@ func TestOwnProfileSubscription(t *testing.T) {
 			Name:        "John Doe2",
 			Description: "Description2",
 			IconCid:     "fileCid2",
-			GlobalName:  newName,
+			GlobalName:  "foobar2",
 			IconEncryptionKeys: []*model.FileEncryptionKey{
 				{
 					Path: "/0/original",
@@ -378,6 +390,12 @@ func TestWaitForDetails(t *testing.T) {
 			Key:  "key1",
 		},
 	}, nil)
+	fx.fileAclService.EXPECT().GetInfoForFileSharing("fileCid1").Return("fileCid1", []*model.FileEncryptionKey{
+		{
+			Path: "/0/original",
+			Key:  "key1",
+		},
+	}, nil).Maybe()
 	fx.objectStoreFixture.AddObjects(t, "space1", []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:          domain.String(testProfileObjectId),
@@ -402,8 +420,8 @@ func TestWaitForDetails(t *testing.T) {
 			bundle.RelationKeyId:          domain.String(testProfileObjectId),
 			bundle.RelationKeyName:        domain.String("John Doe"),
 			bundle.RelationKeyDescription: domain.String("Description"),
-			bundle.RelationKeyGlobalName:  domain.String(globalName),
-			bundle.RelationKeyIconImage:   domain.String("fileObjectId"),
+			bundle.RelationKeyGlobalName:  domain.String("foobar"),
+			bundle.RelationKeyIconImage:   domain.String("fileCid1"),
 		})
 		assert.Equal(t, wantDetails, details)
 	})

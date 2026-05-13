@@ -20,6 +20,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
+	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
 
 func TestFileSync_AddFile(t *testing.T) {
@@ -207,6 +208,234 @@ func TestFileSync_AddFile(t *testing.T) {
 			},
 		}, currentUsage.Spaces)
 	})
+}
+
+func TestFileSync_AddFile_SkipWhenNotLocal(t *testing.T) {
+	fx := newFixture(t, 1024*1024*1024)
+	defer fx.Finish(t)
+
+	nonExistentFileId := domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
+	req := AddFileRequest{
+		FileObjectId:   "objectId1",
+		FileId:         domain.FullFileId{SpaceId: "space1", FileId: nonExistentFileId},
+		UploadedByUser: true,
+	}
+	err := fx.AddFile(req)
+	require.NoError(t, err)
+
+	timeoutCtx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	_, err = fx.queue.GetNext(timeoutCtx, filequeue.GetNextRequest[FileInfo]{
+		Subscribe:   true,
+		StoreFilter: filterByState(FileStatePendingUpload),
+		Filter:      func(info FileInfo) bool { return info.FileId == nonExistentFileId },
+	})
+	assert.Error(t, err, "file without local blocks should not be queued")
+}
+
+func TestFileSync_MarkUploaded(t *testing.T) {
+	t.Run("marks pending file as done", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		fileId, _ := fx.givenFileAddedToDAG(t, 1024)
+		objectId := "objectId1"
+		spaceId := "space1"
+
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		}))
+
+		require.NoError(t, fx.MarkUploaded(objectId))
+
+		it, err := fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		assert.Equal(t, FileStateDone, it.State)
+
+		err = fx.queue.Release(objectId)
+		require.NoError(t, err)
+	})
+
+	t.Run("marks missing-blocks file as done", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+		objectId := "objectId1"
+		spaceId := "space1"
+
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		}))
+
+		// Simulate missing blocks by deleting root and processing
+		err := fx.localFileStorage.Delete(ctx, fileNode.Cid())
+		require.NoError(t, err)
+
+		it, err := fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		it.State = FileStateMissingBlocks
+		require.NoError(t, fx.queue.ReleaseAndUpdate(objectId, it))
+
+		require.NoError(t, fx.MarkUploaded(objectId))
+
+		it, err = fx.queue.GetById(objectId)
+		require.NoError(t, err)
+		assert.Equal(t, FileStateDone, it.State)
+
+		err = fx.queue.Release(objectId)
+		require.NoError(t, err)
+	})
+
+	t.Run("no error when file not in queue", func(t *testing.T) {
+		fx := newFixture(t, 1024*1024*1024)
+		defer fx.Finish(t)
+
+		require.NoError(t, fx.MarkUploaded("nonExistentObject"))
+	})
+}
+
+func TestFileSync_UploadTransitionsToMissingBlocks(t *testing.T) {
+	fx := newFixture(t, 1024*1024*1024)
+	defer fx.Finish(t)
+
+	spaceId := "space1"
+	fileId, fileNode := fx.givenFileAddedToDAG(t, 1024)
+
+	// Delete root block from local storage so walkDAG fails with errBlockNotFound
+	err := fx.localFileStorage.Delete(ctx, fileNode.Cid())
+	require.NoError(t, err)
+
+	it := FileInfo{
+		FileId:       fileId,
+		SpaceId:      spaceId,
+		ObjectId:     "objectId1",
+		State:        FileStatePendingUpload,
+		ScheduledAt:  time.Now(),
+		CidsToUpload: map[cid.Cid]struct{}{},
+		CidsToBind:   map[cid.Cid]struct{}{},
+	}
+
+	result, err := fx.processFilePendingUpload(ctx, it)
+	require.NoError(t, err)
+	assert.Equal(t, FileStateMissingBlocks, result.State)
+	assert.Equal(t, fileId, result.FileId)
+}
+
+func TestFileSync_TransientAllocateErrorReschedules(t *testing.T) {
+	t.Run("transient SpaceInfo error must not flip file to Limited", func(t *testing.T) {
+		transientErr := errors.New("lock already taken, locked nodes: [0]")
+
+		fx := newFixtureNotStarted(t, 1024*1024*1024)
+		// Inject the transient error before start so spaceUsage's initial
+		// Update fails and its cache stays empty — subsequent allocateFile
+		// calls will retry SpaceInfo and hit the same error.
+		fx.rpcStore.SetSpaceInfoError(transientErr)
+
+		// Capture filesyncstatus updates: the user-visible regression in GO-7275
+		// was a stray filesyncstatus.Limited emitted via OnStatusUpdated.
+		var statusMu sync.Mutex
+		statuses := map[string][]filesyncstatus.Status{}
+		fx.OnStatusUpdated(func(objectId string, _ domain.FullFileId, status filesyncstatus.Status) error {
+			statusMu.Lock()
+			defer statusMu.Unlock()
+			statuses[objectId] = append(statuses[objectId], status)
+			return nil
+		})
+
+		require.NoError(t, fx.a.Start(ctx))
+		defer fx.Finish(t)
+
+		// Wait until the space view subscription has registered spaceUsage
+		// for "space1" so getSpace returns a valid usage tracker.
+		spaceId := "space1"
+		fx.waitCondition(t, 2*time.Second, func() bool {
+			_, err := fx.limitManager.getSpace(spaceId)
+			return err == nil
+		})
+
+		// Pre-populate CidsToUpload so checkBlocksAvailability short-circuits
+		// without walking the local DAG.
+		dummyCid, err := cid.Parse("bafybeihqbmekus5fwgtlybi7qdjmwo7d2o2aksjth4fqabzcduswc7o6re")
+		require.NoError(t, err)
+
+		objectId := "objectId1"
+		it := FileInfo{
+			FileId:              domain.FileId("bafybeihqbmekus5fwgtlybi7qdjmwo7d2o2aksjth4fqabzcduswc7o6re"),
+			SpaceId:             spaceId,
+			ObjectId:            objectId,
+			State:               FileStatePendingUpload,
+			ScheduledAt:         time.Now(),
+			AddedByUser:         true,
+			BytesToUploadOrBind: 1024,
+			CidsToUpload:        map[cid.Cid]struct{}{dummyCid: {}},
+			CidsToBind:          map[cid.Cid]struct{}{},
+		}
+
+		result, processErr := fx.processFilePendingUpload(ctx, it)
+
+		require.Error(t, processErr, "transient allocateFile error must propagate to caller")
+		assert.ErrorIs(t, processErr, transientErr, "error chain should preserve underlying transient error")
+		assert.NotEqual(t, FileStateLimited, result.State, "transient error must not flip file to Limited")
+		assert.Equal(t, FileStatePendingUpload, result.State, "file should stay PendingUpload for retry")
+
+		fx.eventsLock.Lock()
+		for _, e := range fx.events {
+			for _, msg := range e.Messages {
+				assert.Nil(t, msg.GetFileLimitReached(), "FileLimitReached event must not be broadcast for transient errors")
+			}
+		}
+		fx.eventsLock.Unlock()
+
+		statusMu.Lock()
+		defer statusMu.Unlock()
+		for _, s := range statuses[objectId] {
+			assert.NotEqual(t, filesyncstatus.Limited, s, "filesyncstatus.Limited must not be emitted for transient errors")
+		}
+	})
+}
+
+func TestFileSync_NoSyncingStatusWhenLimitReached(t *testing.T) {
+	fx := newFixtureNotStarted(t, 1024)
+	spaceId := "space1"
+
+	var mu sync.Mutex
+	statuses := map[string][]filesyncstatus.Status{}
+	fx.OnStatusUpdated(func(objectId string, _ domain.FullFileId, status filesyncstatus.Status) error {
+		mu.Lock()
+		statuses[objectId] = append(statuses[objectId], status)
+		mu.Unlock()
+		return nil
+	})
+
+	require.NoError(t, fx.a.Start(ctx))
+	defer fx.Finish(t)
+
+	fileId, _ := fx.givenFileAddedToDAG(t, 1024)
+	objectId := "limitedObject"
+	require.NoError(t, fx.AddFile(AddFileRequest{
+		FileObjectId:   objectId,
+		FileId:         domain.FullFileId{SpaceId: spaceId, FileId: fileId},
+		UploadedByUser: true,
+	}))
+
+	waitCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	it, err := fx.queue.GetNext(waitCtx, filequeue.GetNextRequest[FileInfo]{
+		Subscribe:   true,
+		StoreFilter: filterByState(FileStateLimited),
+		Filter:      func(info FileInfo) bool { return info.ObjectId == objectId && info.State == FileStateLimited },
+	})
+	require.NoError(t, err)
+	require.NoError(t, fx.queue.ReleaseAndUpdate(it.ObjectId, it))
+
+	mu.Lock()
+	defer mu.Unlock()
+	for _, s := range statuses[objectId] {
+		assert.NotEqual(t, filesyncstatus.Syncing, s, "limited file should never get Syncing status")
+	}
 }
 
 func (fx *fixture) assertFileUploadedToRemoteNode(t *testing.T, fileNode ipld.Node, wantSize int) []cid.Cid {

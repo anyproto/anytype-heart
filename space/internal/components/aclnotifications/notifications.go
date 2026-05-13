@@ -1,5 +1,23 @@
 package aclnotifications
 
+/*
+AI generated
+
+Name: ACL Record to Notification Converter
+Scope: space
+
+## Responsibility
+- Converts ACL records into user notifications for space membership events
+- Routes notifications based on user role: owners receive join requests, members receive status changes
+
+## Background Tasks
+- processRecords: consumes batched ACL records and sends corresponding notifications {processRecords}
+
+## Documentation
+Processing waits for NotificationService.LoadFinish (or 1 min timeout) before starting to avoid
+sending notifications for already-processed ACL records on startup.
+*/
+
 import (
 	"fmt"
 	"time"

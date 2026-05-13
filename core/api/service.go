@@ -16,6 +16,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
 	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
@@ -41,6 +42,7 @@ var (
 type Service interface {
 	app.ComponentRunnable
 	ReassignAddress(ctx context.Context, listenAddr string) error
+	RevokeToken(token string)
 }
 
 type apiService struct {
@@ -48,6 +50,7 @@ type apiService struct {
 	accountService       apicore.AccountService
 	eventService         apicore.EventService
 	crossSpaceSubService apicore.CrossSpaceSubscriptionService
+	fileObjectService    apicore.FileObjectService
 
 	listenAddr string
 
@@ -85,6 +88,7 @@ func (s *apiService) Init(a *app.App) error {
 	s.accountService = a.MustComponent(account.CName).(account.Service)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	s.crossSpaceSubService = a.MustComponent(crossspacesub.CName).(apicore.CrossSpaceSubscriptionService)
+	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
 	return nil
 }
 
@@ -117,6 +121,8 @@ func (s *apiService) startServer() error {
 		s.accountService,
 		s.eventService,
 		s.crossSpaceSubService,
+		s.fileObjectService,
+		s.listenAddr,
 		openapiYAML,
 		openapiJSON,
 	)
@@ -159,6 +165,16 @@ func (s *apiService) ReassignAddress(ctx context.Context, listenAddr string) err
 
 	s.listenAddr = listenAddr
 	return s.startServer()
+}
+
+// RevokeToken removes a cached API session token from the server's in-memory cache.
+func (s *apiService) RevokeToken(token string) {
+	s.lock.Lock()
+	srv := s.srv
+	s.lock.Unlock()
+	if srv != nil {
+		srv.RevokeToken(token)
+	}
 }
 
 func SetMiddlewareParams(mw apicore.ClientCommands) {

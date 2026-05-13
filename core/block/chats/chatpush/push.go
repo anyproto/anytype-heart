@@ -8,6 +8,8 @@ const ChatMessage Type = 1
 
 type Payload struct {
 	SpaceId           string             `json:"spaceId,omitempty"`
+	SpaceUxType       int                `json:"spaceUxType"`
+	SpaceType         int                `json:"spaceType"`
 	SenderId          string             `json:"senderId"`
 	Type              Type               `json:"type"`
 	NewMessagePayload *NewMessagePayload `json:"newMessage,omitempty"`
@@ -17,6 +19,7 @@ type NewMessagePayload struct {
 	ChatId         string        `json:"chatId"`
 	MsgId          string        `json:"msgId"`
 	SpaceName      string        `json:"spaceName"`
+	ChatName       string        `json:"chatName"`
 	SenderName     string        `json:"senderName"`
 	Text           string        `json:"text"`
 	HasAttachments bool          `json:"hasAttachments"`

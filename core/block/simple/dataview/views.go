@@ -10,12 +10,12 @@ import (
 
 const DefaultViewRelationWidth = 192
 
-func (d *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFilter) error {
+func (d *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFilter) (string, error) {
 	d.resetObjectOrderForView(viewID)
 
 	view, err := d.GetView(viewID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if filter.Id == "" {
@@ -23,7 +23,7 @@ func (d *Dataview) AddFilter(viewID string, filter *model.BlockContentDataviewFi
 	}
 	d.setRelationFormat(filter)
 	view.Filters = append(view.Filters, filter)
-	return nil
+	return filter.Id, nil
 }
 
 func (d *Dataview) RemoveFilters(viewID string, filterIDs []string) error {
@@ -40,12 +40,12 @@ func (d *Dataview) RemoveFilters(viewID string, filterIDs []string) error {
 	return nil
 }
 
-func (d *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) error {
+func (d *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.BlockContentDataviewFilter) (string, error) {
 	d.resetObjectOrderForView(viewID)
 
 	view, err := d.GetView(viewID)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	idx := slice.Find(view.Filters, func(f *model.BlockContentDataviewFilter) bool {
@@ -59,7 +59,7 @@ func (d *Dataview) ReplaceFilter(viewID string, filterID string, filter *model.B
 	d.setRelationFormat(filter)
 	view.Filters[idx] = filter
 
-	return nil
+	return filter.Id, nil
 }
 
 func (d *Dataview) ReorderFilters(viewID string, ids []string) error {

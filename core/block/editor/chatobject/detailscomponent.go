@@ -17,10 +17,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
 
-const detailsDocumentId = "details"
+const DetailsDocumentId = "details"
 
 type detailsComponent struct {
 	componentCtx          context.Context
@@ -30,7 +29,6 @@ type detailsComponent struct {
 	storeSource           source.Store
 	storeState            *storestate.StoreState
 	sb                    smartblock.SmartBlock
-	spaceIndex            spaceindex.Store
 }
 
 func (c *detailsComponent) init(st *state.State) error {
@@ -63,7 +61,7 @@ func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) 
 			if !val.Ok() {
 				continue
 			}
-			err := builder.Modify(c.collectionName, detailsDocumentId, []string{set.Key}, pb.ModifyOp_Set, val.ToAnyEnc(arena))
+			err := builder.Modify(c.collectionName, DetailsDocumentId, []string{set.Key}, pb.ModifyOp_Set, val.ToAnyEnc(arena))
 			if err != nil {
 				return "", fmt.Errorf("modify content: %w", err)
 			}
@@ -84,7 +82,7 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	doc, err := coll.FindId(ctx, detailsDocumentId)
+	doc, err := coll.FindId(ctx, DetailsDocumentId)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil
 	}
@@ -117,7 +115,7 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 }
 
 func (c *detailsComponent) onAnystoreUpdated(ctx context.Context) error {
-	c.sb.(source.ChangeReceiver).StateAppend(func(d state.Doc) (*state.State, []*pb.ChangeContent, error) {
+	c.sb.StateAppend(func(d state.Doc) (*state.State, []*pb.ChangeContent, error) {
 		st := d.NewState()
 		err := c.setDetailsFromAnystore(ctx, st, false)
 		if err != nil {

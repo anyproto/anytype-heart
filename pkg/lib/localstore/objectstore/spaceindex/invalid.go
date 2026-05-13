@@ -104,6 +104,22 @@ func (s *emptyStore) GetOutboundLinksById(id string) ([]string, error) {
 	return []string{}, nil
 }
 
+func (s *emptyStore) GetOutboundLinksDetailedById(id string) ([]OutgoingLink, error) {
+	return []OutgoingLink{}, nil
+}
+
+func (s *emptyStore) GetOutboundLinksDetailedIterator(f func(id string, links []OutgoingLink) bool) error {
+	return nil
+}
+
+func (s *emptyStore) GetInboundLinksDetailedById(id string) ([]IncomingLink, error) {
+	return []IncomingLink{}, nil
+}
+
+func (s *emptyStore) GetInboundLinksDetailedIterator(f func(targetId string, links []IncomingLink) bool) error {
+	return nil
+}
+
 func (s *emptyStore) GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error) {
 	return nil, ErrObjectNotFound
 }
@@ -166,11 +182,15 @@ func (s *emptyStore) UpdateObjectLinks(ctx context.Context, id string, links []s
 	return ErrSpaceNotInitialized
 }
 
+func (s *emptyStore) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
+	return ErrSpaceNotInitialized
+}
+
 func (s *emptyStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
 	return ErrSpaceNotInitialized
 }
 
-func (s *emptyStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
+func (s *emptyStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
 	return ErrSpaceNotInitialized
 }
 
@@ -195,6 +215,18 @@ func (s *emptyStore) SetActiveViews(objectId string, views map[string]string) er
 }
 
 func (s *emptyStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
+	return ErrSpaceNotInitialized
+}
+
+func (s *emptyStore) SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error) {
+	return ErrSpaceNotInitialized
+}
+
+func (s *emptyStore) GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error) {
+	return nil, nil
+}
+
+func (s *emptyStore) ClearHeadsState(ctx context.Context) error {
 	return ErrSpaceNotInitialized
 }
 

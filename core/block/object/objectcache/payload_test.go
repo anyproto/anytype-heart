@@ -55,11 +55,11 @@ func Test_Payloads(t *testing.T) {
 	})
 
 	t.Run("test derive payload", func(t *testing.T) {
-		firstPayload := derivePayload("spaceId", changePayload)
+		firstPayload := derivePayload("spaceId", changePayload, "")
 		firstRoot, err := objecttree.DeriveObjectTreeRoot(firstPayload, aclList)
 		require.NoError(t, err)
 
-		secondPayload := derivePayload("spaceId", changePayload)
+		secondPayload := derivePayload("spaceId", changePayload, "")
 		secondRoot, err := objecttree.DeriveObjectTreeRoot(secondPayload, aclList)
 		require.NoError(t, err)
 

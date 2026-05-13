@@ -22,6 +22,8 @@ const (
 const (
 	DiffManagerMessages = "messages"
 	DiffManagerMentions = "mentions"
+
+	MaxMessageLength = 8000
 )
 
 func (t CounterType) DiffManagerName() string {
@@ -36,35 +38,174 @@ func (t CounterType) DiffManagerName() string {
 }
 
 const (
-	CreatorKey     = "creator"
-	CreatedAtKey   = "createdAt"
-	ModifiedAtKey  = "modifiedAt"
-	ReactionsKey   = "reactions"
-	ContentKey     = "content"
-	ReadKey        = "read"
-	MentionReadKey = "mentionRead"
-	HasMentionKey  = "hasMention"
-	StateIdKey     = "stateId"
-	OrderKey       = "_o"
-	SyncedKey      = "synced"
+	CreatorKey                 = "creator"
+	CreatedAtKey               = "createdAt"
+	ModifiedAtKey              = "modifiedAt"
+	ReactionsKey               = "reactions"
+	ContentKey                 = "content"
+	ReadKey                    = "read"
+	MentionReadKey             = "mentionRead"
+	HasMentionKey              = "hasMention"
+	StateIdKey                 = "stateId"
+	OrderKey                   = "_o"
+	SyncedKey                  = "synced"
+	PinnedKey                  = "pinned"
+	ReactionUnreadChangeIdsKey = "rUnreadChIds"
+	ReactionUnreadOrderIdKey   = "rUnreadOrdId"
 )
+
+// ReactionChangeEntry tracks the change that added an unread reaction.
+type ReactionChangeEntry struct {
+	ChangeId string
+	OrderId  string
+}
 
 type Message struct {
 	*model.ChatMessage
+
+	// UnreadReactionIds tracks individual unread reactions per message: emoji → identity → entry.
+	// This is a local-only field (not in protobuf), persisted in the store as rUnreadChIds/rUnreadOrdId.
+	//
+	// Each entry records the ChangeId and OrderId of the change that added the reaction.
+	// When the user calls ChatReadReactions(maxOrderId), reactionReadModifier walks the map
+	// and removes only entries with OrderId <= maxOrderId (partial read). If all entries are
+	// removed, both rUnreadChIds and rUnreadOrdId are deleted from the document.
+	//
+	// When a reaction is removed by its author, handleReactionsModify calls RemoveUnreadReaction
+	// to drop that single entry. If the map becomes empty, ForceReloadReactionState is triggered
+	// so the subscription recalculates UnreadReactionOrderId without a full state reload.
+	UnreadReactionIds map[string]map[string]ReactionChangeEntry
 }
 
 func (m *Message) Clone() *Message {
-	return &Message{
+	cloned := &Message{
 		ChatMessage: proto.Clone(m.ChatMessage).(*model.ChatMessage),
 	}
+	if m.UnreadReactionIds != nil {
+		cloned.UnreadReactionIds = make(map[string]map[string]ReactionChangeEntry, len(m.UnreadReactionIds))
+		for emoji, identities := range m.UnreadReactionIds {
+			identitiesCopy := make(map[string]ReactionChangeEntry, len(identities))
+			for id, entry := range identities {
+				identitiesCopy[id] = entry
+			}
+			cloned.UnreadReactionIds[emoji] = identitiesCopy
+		}
+	}
+	return cloned
+}
+
+// AddUnreadReaction records an unread reaction from identity on emoji.
+func (m *Message) AddUnreadReaction(emoji, identity string, entry ReactionChangeEntry) {
+	if m.UnreadReactionIds == nil {
+		m.UnreadReactionIds = make(map[string]map[string]ReactionChangeEntry)
+	}
+	if m.UnreadReactionIds[emoji] == nil {
+		m.UnreadReactionIds[emoji] = make(map[string]ReactionChangeEntry)
+	}
+	m.UnreadReactionIds[emoji][identity] = entry
+}
+
+// RemoveUnreadReaction removes an unread reaction entry. Returns true if the map is now empty.
+func (m *Message) RemoveUnreadReaction(emoji, identity string) (empty bool) {
+	if m.UnreadReactionIds == nil {
+		return true
+	}
+	identities := m.UnreadReactionIds[emoji]
+	if identities == nil {
+		return len(m.UnreadReactionIds) == 0
+	}
+	delete(identities, identity)
+	if len(identities) == 0 {
+		delete(m.UnreadReactionIds, emoji)
+	}
+	return len(m.UnreadReactionIds) == 0
+}
+
+// MarshalUnreadReactionIds serializes the UnreadReactionIds to the given anyenc value,
+// updating rUnreadChIds and rUnreadOrdId fields.
+func (m *Message) MarshalUnreadReactionIds(v *anyenc.Value, arena *anyenc.Arena) {
+	if len(m.UnreadReactionIds) > 0 {
+		chIds := arena.NewObject()
+		for emoji, identities := range m.UnreadReactionIds {
+			emojiObj := arena.NewObject()
+			for identity, entry := range identities {
+				entryObj := arena.NewObject()
+				entryObj.Set("c", arena.NewString(entry.ChangeId))
+				if entry.OrderId != "" {
+					entryObj.Set("o", arena.NewString(entry.OrderId))
+				}
+				emojiObj.Set(identity, entryObj)
+			}
+			chIds.Set(emoji, emojiObj)
+		}
+		v.Set(ReactionUnreadChangeIdsKey, chIds)
+		if orderId := m.pickOrderId(); orderId != "" {
+			v.Set(ReactionUnreadOrderIdKey, arena.NewString(orderId))
+		} else {
+			v.Del(ReactionUnreadOrderIdKey)
+		}
+	} else {
+		v.Del(ReactionUnreadChangeIdsKey)
+		v.Del(ReactionUnreadOrderIdKey)
+	}
+}
+
+// pickOrderId returns the minimum OrderId among all unread reaction entries (for indexing purposes).
+// This allows query-level filtering: if min(OrderId) > maxOrderId, no entries need clearing.
+func (m *Message) pickOrderId() string {
+	var minOrderId string
+	for _, identities := range m.UnreadReactionIds {
+		for _, entry := range identities {
+			if entry.OrderId != "" && (minOrderId == "" || entry.OrderId < minOrderId) {
+				minOrderId = entry.OrderId
+			}
+		}
+	}
+	return minOrderId
 }
 
 type MessagesGetter interface {
 	GetMessagesByIds(ctx context.Context, messageIds []string) ([]*Message, error)
 }
 
+// BlocksText returns the concatenated text of all text blocks, separated by newlines.
+func (m *Message) BlocksText() string {
+	var sb strings.Builder
+	for _, block := range m.ChatMessage.Blocks {
+		if tb := block.GetText(); tb != nil {
+			if sb.Len() > 0 {
+				sb.WriteByte('\n')
+			}
+			sb.WriteString(tb.Text)
+		}
+	}
+	return sb.String()
+}
+
+// LinkBlockTargetIds returns all targetObjectIds from link blocks.
+func (m *Message) LinkBlockTargetIds() []string {
+	var ids []string
+	for _, block := range m.ChatMessage.Blocks {
+		if lb := block.GetLink(); lb != nil && lb.TargetObjectId != "" {
+			ids = append(ids, lb.TargetObjectId)
+		}
+	}
+	return ids
+}
+
+func (m *Message) allMarks() []*model.BlockContentTextMark {
+	var all []*model.BlockContentTextMark
+	all = append(all, m.Message.Marks...)
+	for _, block := range m.ChatMessage.Blocks {
+		if textBlock := block.GetText(); textBlock != nil {
+			all = append(all, textBlock.Marks...)
+		}
+	}
+	return all
+}
+
 func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId string, myIdentity string, repo MessagesGetter) (bool, error) {
-	for _, mark := range m.Message.Marks {
+	for _, mark := range m.allMarks() {
 		if mark.Type == model.BlockContentTextMark_Mention && mark.Param == myParticipantId {
 			return true, nil
 		}
@@ -88,7 +229,7 @@ func (m *Message) IsCurrentUserMentioned(ctx context.Context, myParticipantId st
 
 func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([]string, error) {
 	var mentions []string
-	for _, mark := range m.Message.Marks {
+	for _, mark := range m.allMarks() {
 		if mark.Type == model.BlockContentTextMark_Mention {
 			if identity := extractIdentity(mark.Param); identity != "" {
 				mentions = append(mentions, identity)
@@ -109,24 +250,24 @@ func (m *Message) MentionIdentities(ctx context.Context, repo MessagesGetter) ([
 }
 
 func (m *Message) Validate() error {
-	utf16text := textUtil.StrToUTF16(m.Message.Text)
+	var utf16text []uint16
+	if m.Message != nil {
+		utf16text = textUtil.StrToUTF16(m.Message.Text)
 
-	for _, mark := range m.Message.Marks {
-		if mark.Range.From < 0 {
-			return fmt.Errorf("invalid range.from")
+		if len(utf16text) > MaxMessageLength {
+			return fmt.Errorf("message text exceeds maximum length of %d characters", MaxMessageLength)
 		}
-		if mark.Range.To < 0 {
-			return fmt.Errorf("invalid range.to")
+
+		if err := validateMarks(m.Message.Marks, utf16text); err != nil {
+			return err
 		}
-		if mark.Range.From > mark.Range.To {
-			return fmt.Errorf("range.from should be less than range.to")
-		}
-		if int(mark.Range.From) >= len(utf16text) {
-			return fmt.Errorf("invalid range.from")
-		}
-		if int(mark.Range.To) > len(utf16text) {
-			return fmt.Errorf("invalid range.to")
-		}
+	}
+
+	hasText := len(utf16text) > 0
+	hasAttachments := len(m.Attachments) > 0
+	hasBlocks := len(m.ChatMessage.Blocks) > 0
+	if !hasText && !hasAttachments && !hasBlocks {
+		return fmt.Errorf("message must have at least one of: text, attachments, or blocks")
 	}
 
 	for _, att := range m.Attachments {
@@ -143,6 +284,84 @@ func (m *Message) Validate() error {
 		}
 	}
 
+	for _, block := range m.ChatMessage.Blocks {
+		switch {
+		case block.GetText() != nil:
+			if err := validateTextContent(block.GetText()); err != nil {
+				return err
+			}
+		case block.GetLink() != nil:
+			lb := block.GetLink()
+			if lb.TargetObjectId == "" {
+				return fmt.Errorf("link block targetObjectId is empty")
+			}
+		case block.GetEmbed() != nil:
+			// embed block is valid as-is
+		case block.GetEditorQuote() != nil:
+			qb := block.GetEditorQuote()
+			if qb.BlockId == "" {
+				return fmt.Errorf("editor quote block blockId is empty")
+			}
+			if qb.Content == nil || qb.Content.Text == "" {
+				return fmt.Errorf("editor quote block text is empty")
+			}
+			if err := validateTextContent(qb.Content); err != nil {
+				return err
+			}
+		case block.GetMessageQuote() != nil:
+			qb := block.GetMessageQuote()
+			if qb.MessageId == "" {
+				return fmt.Errorf("message quote block messageId is empty")
+			}
+			if qb.ParticipantId == "" {
+				return fmt.Errorf("message quote block participantId is empty")
+			}
+			if qb.Content == nil || qb.Content.Text == "" {
+				return fmt.Errorf("message quote block text is empty")
+			}
+			if err := validateTextContent(qb.Content); err != nil {
+				return err
+			}
+		default:
+			return fmt.Errorf("block content is nil")
+		}
+	}
+
+	return nil
+}
+
+func validateTextContent(tb *model.ChatMessageMessageBlockText) error {
+	utf16 := textUtil.StrToUTF16(tb.Text)
+	if len(utf16) > MaxMessageLength {
+		return fmt.Errorf("block text exceeds maximum length of %d characters", MaxMessageLength)
+	}
+	if err := validateMarks(tb.Marks, utf16); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateMarks(marks []*model.BlockContentTextMark, utf16text []uint16) error {
+	for _, mark := range marks {
+		if mark.Range == nil {
+			return fmt.Errorf("mark range is nil")
+		}
+		if mark.Range.From < 0 {
+			return fmt.Errorf("invalid range.from")
+		}
+		if mark.Range.To < 0 {
+			return fmt.Errorf("invalid range.to")
+		}
+		if mark.Range.From > mark.Range.To {
+			return fmt.Errorf("range.from should be less than range.to")
+		}
+		if int(mark.Range.From) >= len(utf16text) {
+			return fmt.Errorf("invalid range.from")
+		}
+		if int(mark.Range.To) > len(utf16text) {
+			return fmt.Errorf("invalid range.to")
+		}
+	}
 	return nil
 }
 
@@ -192,7 +411,8 @@ func newMessageWrapper(val *anyenc.Value) *messageUnmarshaller {
   "reactions": { // [addToSet], [pull] to specify the emoji
     "<emoji1>": ["<user_id_1>", "<user_id_2>"], // Users who reacted with this emoji
     "<emoji2>": ["<user_id_3>"] // Users who reacted with this emoji
-  }
+  },
+  "pinned": false,
 }
 
 */
@@ -203,14 +423,7 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	message.Set("style", arena.NewNumberInt(int(m.Message.Style)))
 	marks := arena.NewArray()
 	for i, inMark := range m.Message.Marks {
-		mark := arena.NewObject()
-		mark.Set("from", arena.NewNumberInt(int(inMark.Range.From)))
-		mark.Set("to", arena.NewNumberInt(int(inMark.Range.To)))
-		mark.Set("type", arena.NewNumberInt(int(inMark.Type)))
-		if inMark.Param != "" {
-			mark.Set("param", arena.NewString(inMark.Param))
-		}
-		marks.SetArrayItem(i, mark)
+		marshalMark(arena, marks, i, inMark)
 	}
 	message.Set("marks", marks)
 
@@ -228,6 +441,7 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	content := arena.NewObject()
 	content.Set("message", message)
 	content.Set("attachments", attachments)
+	content.Set("blocks", marshalBlocks(arena, m.ChatMessage.Blocks))
 
 	reactions := arena.NewObject()
 	for emoji, inReaction := range m.GetReactions().GetReactions() {
@@ -250,6 +464,80 @@ func (m *Message) MarshalAnyenc(marshalTo *anyenc.Value, arena *anyenc.Arena) {
 	marshalTo.Set(StateIdKey, arena.NewString(m.StateId))
 	marshalTo.Set(ReactionsKey, reactions)
 	marshalTo.Set(SyncedKey, arenaNewBool(arena, m.Synced))
+	if m.Pinned {
+		// we save Pinned value only in case of =true for good sparse index search
+		marshalTo.Set(PinnedKey, arenaNewBool(arena, m.Pinned))
+	} else {
+		marshalTo.Del(PinnedKey)
+	}
+
+	m.MarshalUnreadReactionIds(marshalTo, arena)
+}
+
+func marshalBlocks(arena *anyenc.Arena, inBlocks []*model.ChatMessageMessageBlock) *anyenc.Value {
+	blocks := arena.NewArray()
+	for i, inBlock := range inBlocks {
+		block := arena.NewObject()
+		if tb := inBlock.GetText(); tb != nil {
+			block.Set("text", marshalTextContent(arena, tb))
+		} else if lb := inBlock.GetLink(); lb != nil {
+			linkObj := arena.NewObject()
+			linkObj.Set("targetObjectId", arena.NewString(lb.TargetObjectId))
+			linkObj.Set("type", arena.NewNumberInt(int(lb.Type)))
+			block.Set("link", linkObj)
+		} else if eb := inBlock.GetEmbed(); eb != nil {
+			embedObj := arena.NewObject()
+			embedObj.Set("text", arena.NewString(eb.Text))
+			embedObj.Set("processor", arena.NewNumberInt(int(eb.Processor)))
+			block.Set("embed", embedObj)
+		} else if qb := inBlock.GetEditorQuote(); qb != nil {
+			quoteObj := arena.NewObject()
+			quoteObj.Set("blockId", arena.NewString(qb.BlockId))
+			if qb.Content != nil {
+				quoteObj.Set("content", marshalTextContent(arena, qb.Content))
+			}
+			block.Set("editorQuote", quoteObj)
+		} else if qb := inBlock.GetMessageQuote(); qb != nil {
+			quoteObj := arena.NewObject()
+			quoteObj.Set("messageId", arena.NewString(qb.MessageId))
+			quoteObj.Set("participantId", arena.NewString(qb.ParticipantId))
+			if qb.Content != nil {
+				quoteObj.Set("content", marshalTextContent(arena, qb.Content))
+			}
+			block.Set("messageQuote", quoteObj)
+		}
+		blocks.SetArrayItem(i, block)
+	}
+	return blocks
+}
+
+func marshalTextContent(arena *anyenc.Arena, tb *model.ChatMessageMessageBlockText) *anyenc.Value {
+	textObj := arena.NewObject()
+	textObj.Set("text", arena.NewString(tb.Text))
+	textObj.Set("style", arena.NewNumberInt(int(tb.Style)))
+	textMarks := arena.NewArray()
+	for j, inMark := range tb.Marks {
+		marshalMark(arena, textMarks, j, inMark)
+	}
+	textObj.Set("marks", textMarks)
+	if tb.Checked {
+		textObj.Set("checked", arena.NewTrue())
+	}
+	if tb.Lang != "" {
+		textObj.Set("lang", arena.NewString(tb.Lang))
+	}
+	return textObj
+}
+
+func marshalMark(arena *anyenc.Arena, arr *anyenc.Value, idx int, inMark *model.BlockContentTextMark) {
+	mark := arena.NewObject()
+	mark.Set("from", arena.NewNumberInt(int(inMark.Range.From)))
+	mark.Set("to", arena.NewNumberInt(int(inMark.Range.To)))
+	mark.Set("type", arena.NewNumberInt(int(inMark.Type)))
+	if inMark.Param != "" {
+		mark.Set("param", arena.NewString(inMark.Param))
+	}
+	arr.SetArrayItem(idx, mark)
 }
 
 func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
@@ -261,6 +549,7 @@ func arenaNewBool(a *anyenc.Arena, value bool) *anyenc.Value {
 }
 
 func (m *messageUnmarshaller) toModel() (*Message, error) {
+	unreadReactionIds := m.unreadReactionIdsToModel()
 	return &Message{
 		ChatMessage: &model.ChatMessage{
 			Id:               string(m.val.GetStringBytes("id")),
@@ -274,32 +563,130 @@ func (m *messageUnmarshaller) toModel() (*Message, error) {
 			Read:             m.val.GetBool(ReadKey),
 			MentionRead:      m.val.GetBool(MentionReadKey),
 			Attachments:      m.attachmentsToModel(),
+			Blocks:           m.blocksToModel(),
 			Reactions:        m.reactionsToModel(),
 			Synced:           m.val.GetBool(SyncedKey),
 			HasMention:       m.val.GetBool(HasMentionKey),
+			Pinned:           m.val.GetBool(PinnedKey),
+			UnreadReaction:   len(unreadReactionIds) > 0 || m.val.GetString(ReactionUnreadOrderIdKey) != "",
 		},
+		UnreadReactionIds: unreadReactionIds,
 	}, nil
+}
+
+func (m *messageUnmarshaller) unreadReactionIdsToModel() map[string]map[string]ReactionChangeEntry {
+	chIdsObj := m.val.GetObject(ReactionUnreadChangeIdsKey)
+	if chIdsObj == nil {
+		return nil
+	}
+	result := make(map[string]map[string]ReactionChangeEntry)
+	chIdsObj.Visit(func(emoji []byte, emojiVal *anyenc.Value) {
+		emojiObj := emojiVal.GetObject()
+		if emojiObj == nil {
+			return
+		}
+		identities := make(map[string]ReactionChangeEntry)
+		emojiObj.Visit(func(identity []byte, entryVal *anyenc.Value) {
+			identities[string(identity)] = ReactionChangeEntry{
+				ChangeId: entryVal.GetString("c"),
+				OrderId:  entryVal.GetString("o"),
+			}
+		})
+		if len(identities) > 0 {
+			result[string(emoji)] = identities
+		}
+	})
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
 func (m *messageUnmarshaller) contentToModel() *model.ChatMessageMessageContent {
 	inMarks := m.val.GetArray(ContentKey, "message", "marks")
+	return &model.ChatMessageMessageContent{
+		Text:  string(m.val.GetStringBytes(ContentKey, "message", "text")),
+		Style: model.BlockContentTextStyle(m.val.GetInt("content", "message", "style")),
+		Marks: unmarshalMarks(inMarks),
+	}
+}
+
+func (m *messageUnmarshaller) blocksToModel() []*model.ChatMessageMessageBlock {
+	inBlocks := m.val.GetArray(ContentKey, "blocks")
+	if len(inBlocks) == 0 {
+		return nil
+	}
+	blocks := make([]*model.ChatMessageMessageBlock, 0, len(inBlocks))
+	for _, inBlock := range inBlocks {
+		block := &model.ChatMessageMessageBlock{}
+		if textVal := inBlock.Get("text"); textVal != nil {
+			block.Content = &model.ChatMessageMessageBlockContentOfText{
+				Text: unmarshalTextContent(textVal),
+			}
+		} else if linkVal := inBlock.Get("link"); linkVal != nil {
+			block.Content = &model.ChatMessageMessageBlockContentOfLink{
+				Link: &model.ChatMessageMessageBlockLink{
+					TargetObjectId: string(linkVal.GetStringBytes("targetObjectId")),
+					Type:           model.ChatMessageMessageBlockLinkLinkType(linkVal.GetInt("type")),
+				},
+			}
+		} else if embedVal := inBlock.Get("embed"); embedVal != nil {
+			block.Content = &model.ChatMessageMessageBlockContentOfEmbed{
+				Embed: &model.ChatMessageMessageBlockEmbed{
+					Text:      string(embedVal.GetStringBytes("text")),
+					Processor: model.BlockContentLatexProcessor(embedVal.GetInt("processor")),
+				},
+			}
+		} else if quoteVal := inBlock.Get("editorQuote"); quoteVal != nil {
+			quote := &model.ChatMessageMessageBlockEditorQuote{
+				BlockId: string(quoteVal.GetStringBytes("blockId")),
+			}
+			if contentVal := quoteVal.Get("content"); contentVal != nil {
+				quote.Content = unmarshalTextContent(contentVal)
+			}
+			block.Content = &model.ChatMessageMessageBlockContentOfEditorQuote{
+				EditorQuote: quote,
+			}
+		} else if quoteVal := inBlock.Get("messageQuote"); quoteVal != nil {
+			quote := &model.ChatMessageMessageBlockMessageQuote{
+				MessageId:     string(quoteVal.GetStringBytes("messageId")),
+				ParticipantId: string(quoteVal.GetStringBytes("participantId")),
+			}
+			if contentVal := quoteVal.Get("content"); contentVal != nil {
+				quote.Content = unmarshalTextContent(contentVal)
+			}
+			block.Content = &model.ChatMessageMessageBlockContentOfMessageQuote{
+				MessageQuote: quote,
+			}
+		}
+		blocks = append(blocks, block)
+	}
+	return blocks
+}
+
+func unmarshalTextContent(val *anyenc.Value) *model.ChatMessageMessageBlockText {
+	return &model.ChatMessageMessageBlockText{
+		Text:    string(val.GetStringBytes("text")),
+		Style:   model.BlockContentTextStyle(val.GetInt("style")),
+		Marks:   unmarshalMarks(val.GetArray("marks")),
+		Checked: val.GetBool("checked"),
+		Lang:    string(val.GetStringBytes("lang")),
+	}
+}
+
+func unmarshalMarks(inMarks []*anyenc.Value) []*model.BlockContentTextMark {
 	marks := make([]*model.BlockContentTextMark, 0, len(inMarks))
 	for _, inMark := range inMarks {
-		mark := &model.BlockContentTextMark{
+		marks = append(marks, &model.BlockContentTextMark{
 			Range: &model.Range{
 				From: int32(inMark.GetInt("from")),
 				To:   int32(inMark.GetInt("to")),
 			},
 			Type:  model.BlockContentTextMarkType(inMark.GetInt("type")),
 			Param: string(inMark.GetStringBytes("param")),
-		}
-		marks = append(marks, mark)
+		})
 	}
-	return &model.ChatMessageMessageContent{
-		Text:  string(m.val.GetStringBytes(ContentKey, "message", "text")),
-		Style: model.BlockContentTextStyle(m.val.GetInt("content", "message", "style")),
-		Marks: marks,
-	}
+	return marks
 }
 
 func (m *messageUnmarshaller) attachmentsToModel() []*model.ChatMessageAttachment {
@@ -319,9 +706,7 @@ func (m *messageUnmarshaller) attachmentsToModel() []*model.ChatMessageAttachmen
 
 func (m *messageUnmarshaller) reactionsToModel() *model.ChatMessageReactions {
 	inReactions := m.val.GetObject(ReactionsKey)
-	reactions := &model.ChatMessageReactions{
-		Reactions: map[string]*model.ChatMessageReactionsIdentityList{},
-	}
+	reactions := &model.ChatMessageReactions{}
 	if inReactions != nil {
 		inReactions.Visit(func(emoji []byte, inReaction *anyenc.Value) {
 			inReactionArr := inReaction.GetArray()
@@ -330,6 +715,9 @@ func (m *messageUnmarshaller) reactionsToModel() *model.ChatMessageReactions {
 				identities = append(identities, string(identity.GetStringBytes()))
 			}
 			if len(identities) > 0 {
+				if reactions.Reactions == nil {
+					reactions.Reactions = make(map[string]*model.ChatMessageReactionsIdentityList)
+				}
 				reactions.Reactions[string(emoji)] = &model.ChatMessageReactionsIdentityList{
 					Ids: identities,
 				}

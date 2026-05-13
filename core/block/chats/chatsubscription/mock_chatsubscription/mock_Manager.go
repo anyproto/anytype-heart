@@ -55,7 +55,7 @@ func (_c *MockManager_Add_Call) Return() *MockManager_Add_Call {
 }
 
 func (_c *MockManager_Add_Call) RunAndReturn(run func(string, *chatmodel.Message)) *MockManager_Add_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -88,13 +88,13 @@ func (_c *MockManager_Delete_Call) Return() *MockManager_Delete_Call {
 }
 
 func (_c *MockManager_Delete_Call) RunAndReturn(run func(string)) *MockManager_Delete_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// Flush provides a mock function with given fields:
-func (_m *MockManager) Flush() {
-	_m.Called()
+// Flush provides a mock function with given fields: reloadStateIfNeeded
+func (_m *MockManager) Flush(reloadStateIfNeeded bool) {
+	_m.Called(reloadStateIfNeeded)
 }
 
 // MockManager_Flush_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Flush'
@@ -103,13 +103,14 @@ type MockManager_Flush_Call struct {
 }
 
 // Flush is a helper method to define mock.On call
-func (_e *MockManager_Expecter) Flush() *MockManager_Flush_Call {
-	return &MockManager_Flush_Call{Call: _e.mock.On("Flush")}
+//   - reloadStateIfNeeded bool
+func (_e *MockManager_Expecter) Flush(reloadStateIfNeeded interface{}) *MockManager_Flush_Call {
+	return &MockManager_Flush_Call{Call: _e.mock.On("Flush", reloadStateIfNeeded)}
 }
 
-func (_c *MockManager_Flush_Call) Run(run func()) *MockManager_Flush_Call {
+func (_c *MockManager_Flush_Call) Run(run func(reloadStateIfNeeded bool)) *MockManager_Flush_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(bool))
 	})
 	return _c
 }
@@ -119,12 +120,44 @@ func (_c *MockManager_Flush_Call) Return() *MockManager_Flush_Call {
 	return _c
 }
 
-func (_c *MockManager_Flush_Call) RunAndReturn(run func()) *MockManager_Flush_Call {
-	_c.Call.Return(run)
+func (_c *MockManager_Flush_Call) RunAndReturn(run func(bool)) *MockManager_Flush_Call {
+	_c.Run(run)
 	return _c
 }
 
-// ForceSendingChatState provides a mock function with given fields:
+// ForceReloadReactionState provides a mock function with no fields
+func (_m *MockManager) ForceReloadReactionState() {
+	_m.Called()
+}
+
+// MockManager_ForceReloadReactionState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ForceReloadReactionState'
+type MockManager_ForceReloadReactionState_Call struct {
+	*mock.Call
+}
+
+// ForceReloadReactionState is a helper method to define mock.On call
+func (_e *MockManager_Expecter) ForceReloadReactionState() *MockManager_ForceReloadReactionState_Call {
+	return &MockManager_ForceReloadReactionState_Call{Call: _e.mock.On("ForceReloadReactionState")}
+}
+
+func (_c *MockManager_ForceReloadReactionState_Call) Run(run func()) *MockManager_ForceReloadReactionState_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockManager_ForceReloadReactionState_Call) Return() *MockManager_ForceReloadReactionState_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_ForceReloadReactionState_Call) RunAndReturn(run func()) *MockManager_ForceReloadReactionState_Call {
+	_c.Run(run)
+	return _c
+}
+
+// ForceSendingChatState provides a mock function with no fields
 func (_m *MockManager) ForceSendingChatState() {
 	_m.Called()
 }
@@ -152,11 +185,11 @@ func (_c *MockManager_ForceSendingChatState_Call) Return() *MockManager_ForceSen
 }
 
 func (_c *MockManager_ForceSendingChatState_Call) RunAndReturn(run func()) *MockManager_ForceSendingChatState_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// GetChatState provides a mock function with given fields:
+// GetChatState provides a mock function with no fields
 func (_m *MockManager) GetChatState() *model.ChatState {
 	ret := _m.Called()
 
@@ -203,8 +236,8 @@ func (_c *MockManager_GetChatState_Call) RunAndReturn(run func() *model.ChatStat
 	return _c
 }
 
-// GetLastMessage provides a mock function with given fields:
-func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool) {
+// GetLastMessage provides a mock function with no fields
+func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
@@ -213,7 +246,8 @@ func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool) {
 
 	var r0 *model.ChatMessage
 	var r1 bool
-	if rf, ok := ret.Get(0).(func() (*model.ChatMessage, bool)); ok {
+	var r2 error
+	if rf, ok := ret.Get(0).(func() (*model.ChatMessage, bool, error)); ok {
 		return rf()
 	}
 	if rf, ok := ret.Get(0).(func() *model.ChatMessage); ok {
@@ -230,7 +264,13 @@ func (_m *MockManager) GetLastMessage() (*model.ChatMessage, bool) {
 		r1 = ret.Get(1).(bool)
 	}
 
-	return r0, r1
+	if rf, ok := ret.Get(2).(func() error); ok {
+		r2 = rf()
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // MockManager_GetLastMessage_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLastMessage'
@@ -250,17 +290,62 @@ func (_c *MockManager_GetLastMessage_Call) Run(run func()) *MockManager_GetLastM
 	return _c
 }
 
-func (_c *MockManager_GetLastMessage_Call) Return(_a0 *model.ChatMessage, _a1 bool) *MockManager_GetLastMessage_Call {
-	_c.Call.Return(_a0, _a1)
+func (_c *MockManager_GetLastMessage_Call) Return(_a0 *model.ChatMessage, _a1 bool, _a2 error) *MockManager_GetLastMessage_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *MockManager_GetLastMessage_Call) RunAndReturn(run func() (*model.ChatMessage, bool)) *MockManager_GetLastMessage_Call {
+func (_c *MockManager_GetLastMessage_Call) RunAndReturn(run func() (*model.ChatMessage, bool, error)) *MockManager_GetLastMessage_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// IsActive provides a mock function with given fields:
+// GetMessageCount provides a mock function with no fields
+func (_m *MockManager) GetMessageCount() int32 {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMessageCount")
+	}
+
+	var r0 int32
+	if rf, ok := ret.Get(0).(func() int32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(int32)
+	}
+
+	return r0
+}
+
+// MockManager_GetMessageCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMessageCount'
+type MockManager_GetMessageCount_Call struct {
+	*mock.Call
+}
+
+// GetMessageCount is a helper method to define mock.On call
+func (_e *MockManager_Expecter) GetMessageCount() *MockManager_GetMessageCount_Call {
+	return &MockManager_GetMessageCount_Call{Call: _e.mock.On("GetMessageCount")}
+}
+
+func (_c *MockManager_GetMessageCount_Call) Run(run func()) *MockManager_GetMessageCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockManager_GetMessageCount_Call) Return(_a0 int32) *MockManager_GetMessageCount_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockManager_GetMessageCount_Call) RunAndReturn(run func() int32) *MockManager_GetMessageCount_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsActive provides a mock function with no fields
 func (_m *MockManager) IsActive() bool {
 	ret := _m.Called()
 
@@ -305,7 +390,7 @@ func (_c *MockManager_IsActive_Call) RunAndReturn(run func() bool) *MockManager_
 	return _c
 }
 
-// Lock provides a mock function with given fields:
+// Lock provides a mock function with no fields
 func (_m *MockManager) Lock() {
 	_m.Called()
 }
@@ -333,7 +418,7 @@ func (_c *MockManager_Lock_Call) Return() *MockManager_Lock_Call {
 }
 
 func (_c *MockManager_Lock_Call) RunAndReturn(run func()) *MockManager_Lock_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -368,7 +453,41 @@ func (_c *MockManager_ReadMessages_Call) Return() *MockManager_ReadMessages_Call
 }
 
 func (_c *MockManager_ReadMessages_Call) RunAndReturn(run func(string, []string, chatmodel.CounterType)) *MockManager_ReadMessages_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
+	return _c
+}
+
+// ReadReactions provides a mock function with given fields: newOrderId, idsModified
+func (_m *MockManager) ReadReactions(newOrderId string, idsModified []string) {
+	_m.Called(newOrderId, idsModified)
+}
+
+// MockManager_ReadReactions_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReadReactions'
+type MockManager_ReadReactions_Call struct {
+	*mock.Call
+}
+
+// ReadReactions is a helper method to define mock.On call
+//   - newOrderId string
+//   - idsModified []string
+func (_e *MockManager_Expecter) ReadReactions(newOrderId interface{}, idsModified interface{}) *MockManager_ReadReactions_Call {
+	return &MockManager_ReadReactions_Call{Call: _e.mock.On("ReadReactions", newOrderId, idsModified)}
+}
+
+func (_c *MockManager_ReadReactions_Call) Run(run func(newOrderId string, idsModified []string)) *MockManager_ReadReactions_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].([]string))
+	})
+	return _c
+}
+
+func (_c *MockManager_ReadReactions_Call) Return() *MockManager_ReadReactions_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_ReadReactions_Call) RunAndReturn(run func(string, []string)) *MockManager_ReadReactions_Call {
+	_c.Run(run)
 	return _c
 }
 
@@ -401,11 +520,11 @@ func (_c *MockManager_SetSessionContext_Call) Return() *MockManager_SetSessionCo
 }
 
 func (_c *MockManager_SetSessionContext_Call) RunAndReturn(run func(session.Context)) *MockManager_SetSessionContext_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
-// Unlock provides a mock function with given fields:
+// Unlock provides a mock function with no fields
 func (_m *MockManager) Unlock() {
 	_m.Called()
 }
@@ -433,7 +552,7 @@ func (_c *MockManager_Unlock_Call) Return() *MockManager_Unlock_Call {
 }
 
 func (_c *MockManager_Unlock_Call) RunAndReturn(run func()) *MockManager_Unlock_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -469,7 +588,7 @@ func (_c *MockManager_UnreadMessages_Call) Return() *MockManager_UnreadMessages_
 }
 
 func (_c *MockManager_UnreadMessages_Call) RunAndReturn(run func(string, string, []string, chatmodel.CounterType)) *MockManager_UnreadMessages_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -502,7 +621,7 @@ func (_c *MockManager_UpdateChatState_Call) Return() *MockManager_UpdateChatStat
 }
 
 func (_c *MockManager_UpdateChatState_Call) RunAndReturn(run func(func(*model.ChatState) *model.ChatState)) *MockManager_UpdateChatState_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -535,7 +654,107 @@ func (_c *MockManager_UpdateFull_Call) Return() *MockManager_UpdateFull_Call {
 }
 
 func (_c *MockManager_UpdateFull_Call) RunAndReturn(run func(*chatmodel.Message)) *MockManager_UpdateFull_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
+	return _c
+}
+
+// UpdateMessageCount provides a mock function with given fields: delta
+func (_m *MockManager) UpdateMessageCount(delta int32) {
+	_m.Called(delta)
+}
+
+// MockManager_UpdateMessageCount_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateMessageCount'
+type MockManager_UpdateMessageCount_Call struct {
+	*mock.Call
+}
+
+// UpdateMessageCount is a helper method to define mock.On call
+//   - delta int32
+func (_e *MockManager_Expecter) UpdateMessageCount(delta interface{}) *MockManager_UpdateMessageCount_Call {
+	return &MockManager_UpdateMessageCount_Call{Call: _e.mock.On("UpdateMessageCount", delta)}
+}
+
+func (_c *MockManager_UpdateMessageCount_Call) Run(run func(delta int32)) *MockManager_UpdateMessageCount_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int32))
+	})
+	return _c
+}
+
+func (_c *MockManager_UpdateMessageCount_Call) Return() *MockManager_UpdateMessageCount_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_UpdateMessageCount_Call) RunAndReturn(run func(int32)) *MockManager_UpdateMessageCount_Call {
+	_c.Run(run)
+	return _c
+}
+
+// UpdatePinned provides a mock function with given fields: message
+func (_m *MockManager) UpdatePinned(message *chatmodel.Message) {
+	_m.Called(message)
+}
+
+// MockManager_UpdatePinned_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdatePinned'
+type MockManager_UpdatePinned_Call struct {
+	*mock.Call
+}
+
+// UpdatePinned is a helper method to define mock.On call
+//   - message *chatmodel.Message
+func (_e *MockManager_Expecter) UpdatePinned(message interface{}) *MockManager_UpdatePinned_Call {
+	return &MockManager_UpdatePinned_Call{Call: _e.mock.On("UpdatePinned", message)}
+}
+
+func (_c *MockManager_UpdatePinned_Call) Run(run func(message *chatmodel.Message)) *MockManager_UpdatePinned_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(*chatmodel.Message))
+	})
+	return _c
+}
+
+func (_c *MockManager_UpdatePinned_Call) Return() *MockManager_UpdatePinned_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_UpdatePinned_Call) RunAndReturn(run func(*chatmodel.Message)) *MockManager_UpdatePinned_Call {
+	_c.Run(run)
+	return _c
+}
+
+// UpdateReactionReadStatus provides a mock function with given fields: msgId, unread
+func (_m *MockManager) UpdateReactionReadStatus(msgId string, unread bool) {
+	_m.Called(msgId, unread)
+}
+
+// MockManager_UpdateReactionReadStatus_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateReactionReadStatus'
+type MockManager_UpdateReactionReadStatus_Call struct {
+	*mock.Call
+}
+
+// UpdateReactionReadStatus is a helper method to define mock.On call
+//   - msgId string
+//   - unread bool
+func (_e *MockManager_Expecter) UpdateReactionReadStatus(msgId interface{}, unread interface{}) *MockManager_UpdateReactionReadStatus_Call {
+	return &MockManager_UpdateReactionReadStatus_Call{Call: _e.mock.On("UpdateReactionReadStatus", msgId, unread)}
+}
+
+func (_c *MockManager_UpdateReactionReadStatus_Call) Run(run func(msgId string, unread bool)) *MockManager_UpdateReactionReadStatus_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string), args[1].(bool))
+	})
+	return _c
+}
+
+func (_c *MockManager_UpdateReactionReadStatus_Call) Return() *MockManager_UpdateReactionReadStatus_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockManager_UpdateReactionReadStatus_Call) RunAndReturn(run func(string, bool)) *MockManager_UpdateReactionReadStatus_Call {
+	_c.Run(run)
 	return _c
 }
 
@@ -568,7 +787,7 @@ func (_c *MockManager_UpdateReactions_Call) Return() *MockManager_UpdateReaction
 }
 
 func (_c *MockManager_UpdateReactions_Call) RunAndReturn(run func(*chatmodel.Message)) *MockManager_UpdateReactions_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -602,7 +821,7 @@ func (_c *MockManager_UpdateSyncStatus_Call) Return() *MockManager_UpdateSyncSta
 }
 
 func (_c *MockManager_UpdateSyncStatus_Call) RunAndReturn(run func([]string, bool)) *MockManager_UpdateSyncStatus_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

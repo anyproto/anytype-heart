@@ -59,17 +59,20 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/block/object/treemanager"
+	"github.com/anyproto/anytype-heart/core/block/personalfavorites"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template/templateimpl"
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
+	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/durability"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
 	"github.com/anyproto/anytype-heart/core/files/filedownloader"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/filespaceusage"
@@ -81,14 +84,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/gallery"
 	"github.com/anyproto/anytype-heart/core/history"
 	"github.com/anyproto/anytype-heart/core/identity"
-	"github.com/anyproto/anytype-heart/core/inboxclient"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxclient"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
+	"github.com/anyproto/anytype-heart/core/migration"
 	"github.com/anyproto/anytype-heart/core/nameservice"
 	"github.com/anyproto/anytype-heart/core/notifications"
-	"github.com/anyproto/anytype-heart/core/onetoone"
 	"github.com/anyproto/anytype-heart/core/order"
 	"github.com/anyproto/anytype-heart/core/payments"
 	paymentscache "github.com/anyproto/anytype-heart/core/payments/cache"
@@ -159,16 +163,20 @@ func StartNewApp(ctx context.Context, clientWithVersion string, components ...ap
 	a = new(app.App)
 	complexAppVersion := appVersion(a, clientWithVersion)
 	a.SetVersionName(complexAppVersion)
-	logging.SetVersion(complexAppVersion)
 	Bootstrap(a, components...)
 	metrics.Service.SetAppVersion(a.VersionName())
 	metrics.Service.Run()
+	log.Info("starting app", zap.String("mwVersion", MiddlewareVersion()), zap.String("appVersion", complexAppVersion))
 	startTime := time.Now()
 	if err = a.Start(ctx); err != nil {
 		metrics.Service.Close()
 		a = nil
 		return
 	}
+	// Wire the profiler component as the process-wide Reporter so the
+	// metrics long-method interceptor and any future critical-signal sites
+	// can produce snapshots + events without reaching into internal APIs.
+	metrics.SetReporter(app.MustComponent[debugreporter.Reporter](a))
 	totalSpent := time.Since(startTime)
 	l := log.With(zap.Int64("total", totalSpent.Milliseconds()))
 	stat := a.StartStat()
@@ -227,6 +235,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 	}
 
 	a.
+		// profiler is registered early so its Init wires the event sender
+		// before any storage component runs its own Init — storage corruption
+		// detection below relies on the Reporter being live.
+		Register(profiler.New()).
 		// Data storages
 		Register(debugstat.New()).
 		Register(anystoreprovider.New()).
@@ -279,6 +291,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(chatrepository.New()).
 		Register(chatsubscription.New()).
 		Register(chats.New()).
+		Register(personalfavorites.New()).
 		Register(sourceimpl.New()).
 		Register(spacefactory.New()).
 		Register(space.New()).
@@ -300,7 +313,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(treemanager.New()).
 		Register(block.New()).
 		Register(detailservice.New()).
+		Register(objectgc.New()).
 		Register(dataviewservice.New()).
+		Register(migration.New()).
 		Register(indexer.New()).
 		Register(detailsupdater.New()).
 		Register(session.NewHookRunner()).
@@ -325,7 +340,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(editor.NewObjectFactory()).
 		Register(objectgraph.NewBuilder()).
 		Register(account.New()).
-		Register(profiler.New()).
 		Register(identity.New(5*time.Minute, 10*time.Second)).
 		Register(templateimpl.New()).
 		Register(notifications.New(time.Second * 10)).
@@ -344,7 +358,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(subscribeclient.New()).
 		Register(anysyncinboxclient.New()).
 		Register(inboxclient.New()).
-		Register(onetoone.New()).
+		Register(inboxservice.New()).
 		Register(durability.New()) // leave it the last one
 }
 

@@ -29,6 +29,52 @@ func (_m *MockService) EXPECT() *MockService_Expecter {
 	return &MockService_Expecter{mock: &_m.Mock}
 }
 
+// Close provides a mock function with given fields: ctx
+func (_m *MockService) Close(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
+type MockService_Close_Call struct {
+	*mock.Call
+}
+
+// Close is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) Close(ctx interface{}) *MockService_Close_Call {
+	return &MockService_Close_Call{Call: _e.mock.On("Close", ctx)}
+}
+
+func (_c *MockService_Close_Call) Run(run func(ctx context.Context)) *MockService_Close_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_Close_Call) Return(err error) *MockService_Close_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_Close_Call) RunAndReturn(run func(context.Context) error) *MockService_Close_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: a
 func (_m *MockService) Init(a *app.App) error {
 	ret := _m.Called(a)
@@ -135,7 +181,7 @@ func (_c *MockService_ListRelationsWithValue_Call) RunAndReturn(run func(string,
 }
 
 // ModifyDetails provides a mock function with given fields: ctx, objectId, modifier
-func (_m *MockService) ModifyDetails(ctx session.Context, objectId string, modifier func(*domain.Details) (*domain.Details, error)) error {
+func (_m *MockService) ModifyDetails(ctx session.Context, objectId string, modifier func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error {
 	ret := _m.Called(ctx, objectId, modifier)
 
 	if len(ret) == 0 {
@@ -143,7 +189,7 @@ func (_m *MockService) ModifyDetails(ctx session.Context, objectId string, modif
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, func(*domain.Details) (*domain.Details, error)) error); ok {
+	if rf, ok := ret.Get(0).(func(session.Context, string, func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error); ok {
 		r0 = rf(ctx, objectId, modifier)
 	} else {
 		r0 = ret.Error(0)
@@ -160,14 +206,14 @@ type MockService_ModifyDetails_Call struct {
 // ModifyDetails is a helper method to define mock.On call
 //   - ctx session.Context
 //   - objectId string
-//   - modifier func(*domain.Details)(*domain.Details , error)
+//   - modifier func(*domain.GenericMap[domain.RelationKey])(*domain.GenericMap[domain.RelationKey] , error)
 func (_e *MockService_Expecter) ModifyDetails(ctx interface{}, objectId interface{}, modifier interface{}) *MockService_ModifyDetails_Call {
 	return &MockService_ModifyDetails_Call{Call: _e.mock.On("ModifyDetails", ctx, objectId, modifier)}
 }
 
-func (_c *MockService_ModifyDetails_Call) Run(run func(ctx session.Context, objectId string, modifier func(*domain.Details) (*domain.Details, error))) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) Run(run func(ctx session.Context, objectId string, modifier func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error))) *MockService_ModifyDetails_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].(func(*domain.Details) (*domain.Details, error)))
+		run(args[0].(session.Context), args[1].(string), args[2].(func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)))
 	})
 	return _c
 }
@@ -177,7 +223,7 @@ func (_c *MockService_ModifyDetails_Call) Return(_a0 error) *MockService_ModifyD
 	return _c
 }
 
-func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(session.Context, string, func(*domain.Details) (*domain.Details, error)) error) *MockService_ModifyDetails_Call {
+func (_c *MockService_ModifyDetails_Call) RunAndReturn(run func(session.Context, string, func(*domain.GenericMap[domain.RelationKey]) (*domain.GenericMap[domain.RelationKey], error)) error) *MockService_ModifyDetails_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -228,7 +274,7 @@ func (_c *MockService_ModifyDetailsList_Call) RunAndReturn(run func(*pb.RpcObjec
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 
@@ -522,6 +568,52 @@ func (_c *MockService_ObjectTypeSetRelations_Call) RunAndReturn(run func(string,
 	return _c
 }
 
+// Run provides a mock function with given fields: ctx
+func (_m *MockService) Run(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Run")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_Run_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Run'
+type MockService_Run_Call struct {
+	*mock.Call
+}
+
+// Run is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) Run(ctx interface{}) *MockService_Run_Call {
+	return &MockService_Run_Call{Call: _e.mock.On("Run", ctx)}
+}
+
+func (_c *MockService_Run_Call) Run(run func(ctx context.Context)) *MockService_Run_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_Run_Call) Return(err error) *MockService_Run_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockService_Run_Call) RunAndReturn(run func(context.Context) error) *MockService_Run_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetDetails provides a mock function with given fields: ctx, objectId, details
 func (_m *MockService) SetDetails(ctx session.Context, objectId string, details []domain.Detail) error {
 	ret := _m.Called(ctx, objectId, details)
@@ -618,17 +710,17 @@ func (_c *MockService_SetDetailsList_Call) RunAndReturn(run func(session.Context
 	return _c
 }
 
-// SetIsArchived provides a mock function with given fields: ctx, objectId, isArchived
-func (_m *MockService) SetIsArchived(ctx context.Context, objectId string, isArchived bool) error {
-	ret := _m.Called(ctx, objectId, isArchived)
+// SetIsArchived provides a mock function with given fields: sctx, ctx, objectId, isArchived
+func (_m *MockService) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error {
+	ret := _m.Called(sctx, ctx, objectId, isArchived)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetIsArchived")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, string, bool) error); ok {
-		r0 = rf(ctx, objectId, isArchived)
+	if rf, ok := ret.Get(0).(func(session.Context, context.Context, string, bool) error); ok {
+		r0 = rf(sctx, ctx, objectId, isArchived)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -642,16 +734,17 @@ type MockService_SetIsArchived_Call struct {
 }
 
 // SetIsArchived is a helper method to define mock.On call
+//   - sctx session.Context
 //   - ctx context.Context
 //   - objectId string
 //   - isArchived bool
-func (_e *MockService_Expecter) SetIsArchived(ctx interface{}, objectId interface{}, isArchived interface{}) *MockService_SetIsArchived_Call {
-	return &MockService_SetIsArchived_Call{Call: _e.mock.On("SetIsArchived", ctx, objectId, isArchived)}
+func (_e *MockService_Expecter) SetIsArchived(sctx interface{}, ctx interface{}, objectId interface{}, isArchived interface{}) *MockService_SetIsArchived_Call {
+	return &MockService_SetIsArchived_Call{Call: _e.mock.On("SetIsArchived", sctx, ctx, objectId, isArchived)}
 }
 
-func (_c *MockService_SetIsArchived_Call) Run(run func(ctx context.Context, objectId string, isArchived bool)) *MockService_SetIsArchived_Call {
+func (_c *MockService_SetIsArchived_Call) Run(run func(sctx session.Context, ctx context.Context, objectId string, isArchived bool)) *MockService_SetIsArchived_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(string), args[2].(bool))
+		run(args[0].(session.Context), args[1].(context.Context), args[2].(string), args[3].(bool))
 	})
 	return _c
 }
@@ -661,7 +754,7 @@ func (_c *MockService_SetIsArchived_Call) Return(_a0 error) *MockService_SetIsAr
 	return _c
 }
 
-func (_c *MockService_SetIsArchived_Call) RunAndReturn(run func(context.Context, string, bool) error) *MockService_SetIsArchived_Call {
+func (_c *MockService_SetIsArchived_Call) RunAndReturn(run func(session.Context, context.Context, string, bool) error) *MockService_SetIsArchived_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -713,17 +806,17 @@ func (_c *MockService_SetIsFavorite_Call) RunAndReturn(run func(string, bool) er
 	return _c
 }
 
-// SetListIsArchived provides a mock function with given fields: ctx, objectIds, isArchived
-func (_m *MockService) SetListIsArchived(ctx context.Context, objectIds []string, isArchived bool) error {
-	ret := _m.Called(ctx, objectIds, isArchived)
+// SetListIsArchived provides a mock function with given fields: sctx, ctx, objectIds, isArchived
+func (_m *MockService) SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error {
+	ret := _m.Called(sctx, ctx, objectIds, isArchived)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SetListIsArchived")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []string, bool) error); ok {
-		r0 = rf(ctx, objectIds, isArchived)
+	if rf, ok := ret.Get(0).(func(session.Context, context.Context, []string, bool) error); ok {
+		r0 = rf(sctx, ctx, objectIds, isArchived)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -737,16 +830,17 @@ type MockService_SetListIsArchived_Call struct {
 }
 
 // SetListIsArchived is a helper method to define mock.On call
+//   - sctx session.Context
 //   - ctx context.Context
 //   - objectIds []string
 //   - isArchived bool
-func (_e *MockService_Expecter) SetListIsArchived(ctx interface{}, objectIds interface{}, isArchived interface{}) *MockService_SetListIsArchived_Call {
-	return &MockService_SetListIsArchived_Call{Call: _e.mock.On("SetListIsArchived", ctx, objectIds, isArchived)}
+func (_e *MockService_Expecter) SetListIsArchived(sctx interface{}, ctx interface{}, objectIds interface{}, isArchived interface{}) *MockService_SetListIsArchived_Call {
+	return &MockService_SetListIsArchived_Call{Call: _e.mock.On("SetListIsArchived", sctx, ctx, objectIds, isArchived)}
 }
 
-func (_c *MockService_SetListIsArchived_Call) Run(run func(ctx context.Context, objectIds []string, isArchived bool)) *MockService_SetListIsArchived_Call {
+func (_c *MockService_SetListIsArchived_Call) Run(run func(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool)) *MockService_SetListIsArchived_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]string), args[2].(bool))
+		run(args[0].(session.Context), args[1].(context.Context), args[2].([]string), args[3].(bool))
 	})
 	return _c
 }
@@ -756,7 +850,55 @@ func (_c *MockService_SetListIsArchived_Call) Return(_a0 error) *MockService_Set
 	return _c
 }
 
-func (_c *MockService_SetListIsArchived_Call) RunAndReturn(run func(context.Context, []string, bool) error) *MockService_SetListIsArchived_Call {
+func (_c *MockService_SetListIsArchived_Call) RunAndReturn(run func(session.Context, context.Context, []string, bool) error) *MockService_SetListIsArchived_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetListIsArchivedNoGC provides a mock function with given fields: ctx, objectIds, isArchived
+func (_m *MockService) SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error {
+	ret := _m.Called(ctx, objectIds, isArchived)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetListIsArchivedNoGC")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string, bool) error); ok {
+		r0 = rf(ctx, objectIds, isArchived)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_SetListIsArchivedNoGC_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetListIsArchivedNoGC'
+type MockService_SetListIsArchivedNoGC_Call struct {
+	*mock.Call
+}
+
+// SetListIsArchivedNoGC is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectIds []string
+//   - isArchived bool
+func (_e *MockService_Expecter) SetListIsArchivedNoGC(ctx interface{}, objectIds interface{}, isArchived interface{}) *MockService_SetListIsArchivedNoGC_Call {
+	return &MockService_SetListIsArchivedNoGC_Call{Call: _e.mock.On("SetListIsArchivedNoGC", ctx, objectIds, isArchived)}
+}
+
+func (_c *MockService_SetListIsArchivedNoGC_Call) Run(run func(ctx context.Context, objectIds []string, isArchived bool)) *MockService_SetListIsArchivedNoGC_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string), args[2].(bool))
+	})
+	return _c
+}
+
+func (_c *MockService_SetListIsArchivedNoGC_Call) Return(_a0 error) *MockService_SetListIsArchivedNoGC_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_SetListIsArchivedNoGC_Call) RunAndReturn(run func(context.Context, []string, bool) error) *MockService_SetListIsArchivedNoGC_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -809,7 +951,7 @@ func (_c *MockService_SetListIsFavorite_Call) RunAndReturn(run func([]string, bo
 }
 
 // SetSpaceInfo provides a mock function with given fields: spaceId, details
-func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.Details) error {
+func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.GenericMap[domain.RelationKey]) error {
 	ret := _m.Called(spaceId, details)
 
 	if len(ret) == 0 {
@@ -817,7 +959,7 @@ func (_m *MockService) SetSpaceInfo(spaceId string, details *domain.Details) err
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, *domain.Details) error); ok {
+	if rf, ok := ret.Get(0).(func(string, *domain.GenericMap[domain.RelationKey]) error); ok {
 		r0 = rf(spaceId, details)
 	} else {
 		r0 = ret.Error(0)
@@ -833,14 +975,14 @@ type MockService_SetSpaceInfo_Call struct {
 
 // SetSpaceInfo is a helper method to define mock.On call
 //   - spaceId string
-//   - details *domain.Details
+//   - details *domain.GenericMap[domain.RelationKey]
 func (_e *MockService_Expecter) SetSpaceInfo(spaceId interface{}, details interface{}) *MockService_SetSpaceInfo_Call {
 	return &MockService_SetSpaceInfo_Call{Call: _e.mock.On("SetSpaceInfo", spaceId, details)}
 }
 
-func (_c *MockService_SetSpaceInfo_Call) Run(run func(spaceId string, details *domain.Details)) *MockService_SetSpaceInfo_Call {
+func (_c *MockService_SetSpaceInfo_Call) Run(run func(spaceId string, details *domain.GenericMap[domain.RelationKey])) *MockService_SetSpaceInfo_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(*domain.Details))
+		run(args[0].(string), args[1].(*domain.GenericMap[domain.RelationKey]))
 	})
 	return _c
 }
@@ -850,65 +992,7 @@ func (_c *MockService_SetSpaceInfo_Call) Return(_a0 error) *MockService_SetSpace
 	return _c
 }
 
-func (_c *MockService_SetSpaceInfo_Call) RunAndReturn(run func(string, *domain.Details) error) *MockService_SetSpaceInfo_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SetWorkspaceDashboardId provides a mock function with given fields: ctx, workspaceId, id
-func (_m *MockService) SetWorkspaceDashboardId(ctx session.Context, workspaceId string, id string) (string, error) {
-	ret := _m.Called(ctx, workspaceId, id)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SetWorkspaceDashboardId")
-	}
-
-	var r0 string
-	var r1 error
-	if rf, ok := ret.Get(0).(func(session.Context, string, string) (string, error)); ok {
-		return rf(ctx, workspaceId, id)
-	}
-	if rf, ok := ret.Get(0).(func(session.Context, string, string) string); ok {
-		r0 = rf(ctx, workspaceId, id)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-
-	if rf, ok := ret.Get(1).(func(session.Context, string, string) error); ok {
-		r1 = rf(ctx, workspaceId, id)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockService_SetWorkspaceDashboardId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetWorkspaceDashboardId'
-type MockService_SetWorkspaceDashboardId_Call struct {
-	*mock.Call
-}
-
-// SetWorkspaceDashboardId is a helper method to define mock.On call
-//   - ctx session.Context
-//   - workspaceId string
-//   - id string
-func (_e *MockService_Expecter) SetWorkspaceDashboardId(ctx interface{}, workspaceId interface{}, id interface{}) *MockService_SetWorkspaceDashboardId_Call {
-	return &MockService_SetWorkspaceDashboardId_Call{Call: _e.mock.On("SetWorkspaceDashboardId", ctx, workspaceId, id)}
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) Run(run func(ctx session.Context, workspaceId string, id string)) *MockService_SetWorkspaceDashboardId_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(session.Context), args[1].(string), args[2].(string))
-	})
-	return _c
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) Return(setId string, err error) *MockService_SetWorkspaceDashboardId_Call {
-	_c.Call.Return(setId, err)
-	return _c
-}
-
-func (_c *MockService_SetWorkspaceDashboardId_Call) RunAndReturn(run func(session.Context, string, string) (string, error)) *MockService_SetWorkspaceDashboardId_Call {
+func (_c *MockService_SetSpaceInfo_Call) RunAndReturn(run func(string, *domain.GenericMap[domain.RelationKey]) error) *MockService_SetSpaceInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -1,5 +1,24 @@
 package order
 
+/*
+AI generated
+
+Name: Lexicographic Object Order Manager
+Scope: global
+
+## Responsibility
+- Assigns and updates lexicographic order IDs (lexids) to objects for sortable ordering
+- Handles space views, relation options, and object types ordering
+- Minimizes updates: only modifies objects whose order actually changes
+
+## Documentation
+Uses lexid library to generate sortable string IDs that allow insertion between existing items.
+When reordering, calculates new lexids only for items that need to move. If inserting between
+two items exhausts the lexid space (cannot generate ID between them), falls back to rebuilding
+all lexids from scratch. Supports partial list reordering: client can send a subset of items,
+and component calculates the full reorder by diffing against the original order.
+*/
+
 import (
 	"errors"
 	"fmt"

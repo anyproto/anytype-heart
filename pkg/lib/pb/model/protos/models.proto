@@ -54,6 +54,9 @@ enum SmartBlockType {
     ChatObjectDeprecated = 0x219; // DEPRECATED Container for any-store based chats
     ChatDerivedObject = 0x220; // Any-store based object for chat
     AccountObject = 0x221; // Container for account data in tech space
+    DiscussionObject = 0x222; // Any-store based object for discussion
+    TechSpaceObject = 0x223; // Any-store based object in tech space for cross-device sync
+    TechSpaceVirtualObject = 0x224; // Per-space virtual object backed by a tech space CRDT document
 }
 
 message Search {
@@ -70,6 +73,35 @@ message Search {
         string relationKey = 4; // relation key of the block where the highlight has been found
         google.protobuf.Struct relationDetails = 5; // contains details for dependent object. E.g. relation option or type. todo: rename to dependantDetails
     }
+
+    message Message {
+        message Sort {
+            Key key = 1;
+            Type type = 2;
+
+            enum Key {
+                ORDER_ID = 0;
+                SCORE = 1;
+                CREATED_AT = 2;
+                MODIFIED_AT = 3;
+            }
+
+            enum Type {
+                Asc = 0;
+                Desc = 1;
+            }
+        }
+
+        message Result {
+            string chatId = 1;
+            string messageId = 2;
+            int64 score = 3;
+            string highlight = 4; // truncated text with highlights
+            repeated Range highlightRanges = 5; // ranges of the highlight in the text (using utf-16 runes)
+            ChatMessage message = 6;
+        }
+    }
+
 }
 
 message Block {
@@ -293,7 +325,9 @@ message Block {
                 Toggle = 11;
                 Description = 12; // currently only one block of this style can exists on a page
                 Callout = 13;
-
+                ToggleHeader1 = 14;
+                ToggleHeader2 = 15;
+                ToggleHeader3 = 16;
             }
         }
 
@@ -365,6 +399,8 @@ message Block {
                 string defaultObjectTypeId = 15; // Default object type that is chosen for new object created within the view
                 string endRelationKey = 16; // Group view by this relationKey
                 bool wrapContent = 17; // Wrap content in view
+                ListSize listSize = 18; // List view size setting
+                bool alternateRows = 19; // Alternate row background colors in grid view
 
                 enum Type {
                     Table = 0;
@@ -379,6 +415,11 @@ message Block {
                     Small = 0;
                     Medium = 1;
                     Large = 2;
+                }
+
+                enum ListSize {
+                    Compact = 0;  // Single-line display (default)
+                    Regular = 1;  // Two-line display with description
                 }
             }
 
@@ -822,6 +863,7 @@ message ObjectType {
         notification = 24;
         missingObject = 25;
         devices = 26;
+        discussion = 27;
     }
 }
 
@@ -909,7 +951,7 @@ enum RelationFormat {
 
     object = 100; // relation can has objectType to specify objectType
     relations = 101; // base64-encoded relation pb model
-
+    map = 102; // relation that handle map of values
 }
 
 enum ObjectOrigin {
@@ -1054,8 +1096,16 @@ enum SpaceUxType {
     None = 0; // old value for chat, deprecated
     Data = 1; // objects-first UX
     Stream = 2; // stream UX (chat with limited amount of owners)
-    Chat = 3; // chat UX
+    Chat = 3; // chat UX, deprecated
     OneToOne = 4; // onetoone UX (space with chat and immutable ACL between two participants)
+}
+
+enum SpaceType {
+    SpaceTypeUnknown  = 0;
+    SpaceTypeRegular  = 1;
+    SpaceTypeTech     = 2;
+    SpaceTypeChat     = 3;
+    SpaceTypeOneToOne = 4;
 }
 
 message Metadata {
@@ -1236,7 +1286,8 @@ message InvitePayload {
     string spaceName = 5;
     string spaceIconCid = 6;
     uint32 spaceIconOption = 10;
-    uint32 spaceUxType = 11;
+    uint32 spaceUxType = 11; // deprecated
+    uint32 spaceType = 14;
     repeated FileEncryptionKey spaceIconEncryptionKeys = 7;
 
 
@@ -1423,6 +1474,14 @@ message MembershipV2 {
         int64 amountCents = 2;
     }
 
+    enum Platform {
+        Unknown = 0;
+        Desktop = 1;
+        MobileIOS = 2;
+        MobileAndroid = 3;
+        Web = 4;
+    }
+
     enum PaymentProvider {
         None = 0;
         Stripe = 1;
@@ -1433,10 +1492,11 @@ message MembershipV2 {
     }
 
     enum Period {
-        Unlimited = 0;
+        Unlimited = 0 [deprecated = true];
         Monthly = 1;
         Yearly = 2;
         ThreeYears = 3;
+        Lifetime = 4;
     }
 
     message Invoice {
@@ -1487,6 +1547,7 @@ message MembershipV2 {
         string offer = 11;
 
         Features features = 12;
+        repeated Amount pricesLifetime = 13;
     }
 
     message PurchaseInfo {
@@ -1514,11 +1575,15 @@ message MembershipV2 {
 
     message CartProduct {
         Product product = 1;    
-        // otherwise - monthly
+        // otherwise - monthly or isLifetime
         bool isYearly = 2;
         // set to true if you want to remove this item from the customer
         // it's like setting -1 to some product
         bool remove = 3;
+        // if true - then this is lifetime product (no matter what isYearly above is)
+        // unfortunately we do not use Period here to keep compatibility with old versions 
+        // that still use isYearly! 
+        bool isLifetime = 4;
     }
 
     message Cart {
@@ -1532,6 +1597,13 @@ message MembershipV2 {
         // the next invoice amount will also be generated
         Amount totalNextInvoice = 3;
         uint64 nextInvoiceDate = 4;
+        repeated string appliedPromocodes = 5;
+    }
+
+    message CryptoCheckout {
+        string invoiceURL = 1;
+        Amount total = 2;
+        bool isCanCancel = 3;
     }
 
     message Data {
@@ -1539,6 +1611,7 @@ message MembershipV2 {
         Invoice nextInvoice = 2;
         string teamOwnerID = 3;
         PaymentProvider paymentProvider = 4;
+        repeated string appliedPromocodes = 5;
     }
 }
 
@@ -1570,6 +1643,7 @@ message ChatState {
     UnreadState mentions = 2; // unread mentions
     string lastStateId = 3; // reflects the state of the chat db at the moment of sending response/event that includes this state
     int64 order = 4; // Order is serial number of this state. Client should apply chat state only if its order is greater than previously saved order
+    string unreadReactionOrderId = 5; // order id of the newest message with any unread reactions
 }
 
 message ChatMessage {
@@ -1590,6 +1664,10 @@ message ChatMessage {
     bool mentionRead = 12;
     bool hasMention = 14;
     bool synced = 13;
+    bool pinned = 15;
+    bool unreadReaction = 16;
+    repeated MessageBlock blocks = 17;  // Ordered list of content blocks
+
     message MessageContent {
         string text = 1;      // The text content of the message part
         Block.Content.Text.Style style = 2;    // The style/type of the message part
@@ -1614,6 +1692,52 @@ message ChatMessage {
             repeated string ids = 1; // List of user IDs
         }
     }
+
+    message MessageBlock {
+        oneof content {
+            MessageBlockText text = 1;
+            MessageBlockLink link = 2;
+            MessageBlockEmbed embed = 3;
+            MessageBlockEditorQuote editorQuote = 4;
+            MessageBlockMessageQuote messageQuote = 5;
+        }
+    }
+
+    message MessageBlockText {
+        string text = 1;
+        Block.Content.Text.Style style = 2;
+        repeated Block.Content.Text.Mark marks = 3;
+        bool checked = 4;
+        string lang = 5;
+    }
+
+    message MessageBlockLink {
+        string targetObjectId = 1;
+        LinkType type = 2;
+
+        enum LinkType {
+            Object = 0;
+            File = 1;
+            Image = 2;
+            Bookmark = 3;
+        }
+    }
+
+    message MessageBlockEmbed {
+        string text = 1;
+        Block.Content.Latex.Processor processor = 2;
+    }
+
+    message MessageBlockEditorQuote {
+        string blockId = 1;           // id of the quoted block in the source object
+        MessageBlockText content = 2; // quoted block content (text, style, marks, ...)
+    }
+
+    message MessageBlockMessageQuote {
+        string messageId = 1;         // id of the quoted chat message
+        string participantId = 2;     // id of the participant who authored the quoted message
+        MessageBlockText content = 3; // quoted message content (text, style, marks, ...)
+    }
 }
 
 enum SyncStatus {
@@ -1628,4 +1752,25 @@ enum SyncError {
     SyncErrorIncompatibleVersion = 2;
     SyncErrorNetworkError        = 3;
     SyncErrorOversized           = 4;
+}
+
+enum TemplateNamePrefillType {
+    Empty = 0;
+    FromTemplateName = 1;
+}
+
+message Placeholder {
+    string relationKey = 1;
+    repeated Value values = 2;
+
+    message Value {
+        Type type = 1;
+        google.protobuf.Value value = 2;
+    }
+
+    enum Type {
+        PlaceholderValue = 0;
+        PlaceholderToday = 1;
+        PlaceholderCurrentUser = 2;
+    }
 }

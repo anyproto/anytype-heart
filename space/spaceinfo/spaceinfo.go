@@ -164,7 +164,9 @@ type SpaceDescription struct {
 	Name                       string
 	IconImage                  string
 	IconOption                 int
-	SpaceUxType                model.SpaceUxType
+	SpaceUxType                model.SpaceUxType // TODO: GO-7102 remove
+	SpaceType                  model.SpaceType
+	Homepage                   string
 	OneToOneIdentity           string
 	OneToOneRequestMetadataKey string
 	OneToOneInboxSentStatus    OneToOneInboxSentStatus
@@ -176,6 +178,8 @@ func NewSpaceDescriptionFromDetails(details *domain.Details) SpaceDescription {
 		IconImage:                  details.GetString(bundle.RelationKeyIconImage),
 		IconOption:                 int(details.GetInt64(bundle.RelationKeyIconOption)),
 		SpaceUxType:                model.SpaceUxType(details.GetInt64(bundle.RelationKeySpaceUxType)), // #nosec G115
+		SpaceType:                  model.SpaceType(details.GetInt64(bundle.RelationKeySpaceType)),     // #nosec G115
+		Homepage:                   details.GetString(bundle.RelationKeyHomepage),
 		OneToOneIdentity:           details.GetString(bundle.RelationKeyOneToOneIdentity),
 		OneToOneRequestMetadataKey: details.GetString(bundle.RelationKeyOneToOneRequestMetadataKey),
 	}
@@ -187,8 +191,10 @@ func (s *SpaceDescription) UpdateDetails(st *state.State) {
 	}
 	st.SetDetailAndBundledRelation(bundle.RelationKeyName, domain.String(s.Name))
 	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceUxType, domain.Int64(s.SpaceUxType))
+	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceType, domain.Int64(s.SpaceType))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconImage, domain.String(s.IconImage))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyIconOption, domain.Int64(s.IconOption))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyHomepage, domain.String(s.Homepage))
 	st.SetDetailAndBundledRelation(bundle.RelationKeyOneToOneInboxSentStatus, domain.Int64(s.OneToOneInboxSentStatus))
 	// OneToOneIdentity is set only once
 }

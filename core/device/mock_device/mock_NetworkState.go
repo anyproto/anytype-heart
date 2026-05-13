@@ -23,7 +23,7 @@ func (_m *MockNetworkState) EXPECT() *MockNetworkState_Expecter {
 	return &MockNetworkState_Expecter{mock: &_m.Mock}
 }
 
-// GetNetworkState provides a mock function with given fields:
+// GetNetworkState provides a mock function with no fields
 func (_m *MockNetworkState) GetNetworkState() model.DeviceNetworkType {
 	ret := _m.Called()
 
@@ -114,7 +114,7 @@ func (_c *MockNetworkState_Init_Call) RunAndReturn(run func(*app.App) error) *Mo
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockNetworkState) Name() string {
 	ret := _m.Called()
 
@@ -188,7 +188,7 @@ func (_c *MockNetworkState_RegisterHook_Call) Return() *MockNetworkState_Registe
 }
 
 func (_c *MockNetworkState_RegisterHook_Call) RunAndReturn(run func(func(model.DeviceNetworkType))) *MockNetworkState_RegisterHook_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -221,7 +221,7 @@ func (_c *MockNetworkState_SetNetworkState_Call) Return() *MockNetworkState_SetN
 }
 
 func (_c *MockNetworkState_SetNetworkState_Call) RunAndReturn(run func(model.DeviceNetworkType)) *MockNetworkState_SetNetworkState_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -254,7 +254,7 @@ func (_c *MockNetworkState_StateChange_Call) Return() *MockNetworkState_StateCha
 }
 
 func (_c *MockNetworkState_StateChange_Call) RunAndReturn(run func(int)) *MockNetworkState_StateChange_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

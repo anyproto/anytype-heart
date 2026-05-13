@@ -36,6 +36,13 @@ var (
 		bundle.RelationKeyBacklinks,
 	}
 
+	defaultBookmarkFeaturedRelationKeys = []domain.RelationKey{
+		bundle.RelationKeyType,
+		bundle.RelationKeyBacklinks,
+		bundle.RelationKeySource,
+		bundle.RelationKeyTag,
+	}
+
 	defaultRecommendedRelationKeys = []domain.RelationKey{
 		bundle.RelationKeyCreatedDate,
 		bundle.RelationKeyCreator,
@@ -76,6 +83,8 @@ func DefaultFeaturedRelationKeys(typeKey domain.TypeKey) []domain.RelationKey {
 		return defaultSetFeaturedRelationKeys
 	case bundle.TypeKeyCollection:
 		return defaultCollectionFeaturedRelationKeys
+	case bundle.TypeKeyBookmark:
+		return defaultBookmarkFeaturedRelationKeys
 	}
 	return defaultFeaturedRelationKeys
 }
@@ -139,6 +148,10 @@ func FillRecommendedRelations(
 		return nil, false, fmt.Errorf("prepare recommended hidden relation ids: %w", err)
 	}
 	details.SetStringList(bundle.RelationKeyRecommendedHiddenRelations, hiddenRelationIds)
+
+	if typeKey == bundle.TypeKeyBookmark {
+		details.SetInt64(bundle.RelationKeyHeaderRelationsLayout, 1) // set List layout for featuredRelations of Bookmark objects
+	}
 
 	return slices.Concat(keys, fileRecommendedRelationKeys, defaultHiddenRelationKeys, featuredRelationKeys), false, nil
 }

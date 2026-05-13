@@ -47,13 +47,18 @@ const (
 	ftsVer   = "16"
 	docLimit = 10000
 
-	fieldTitle   = "Title"
-	fieldTitleZh = "TitleZh"
-	fieldText    = "Text"
-	fieldTextZh  = "TextZh"
-	fieldSpace   = "SpaceID"
-	fieldId      = "Id"
-	fieldIdRaw   = "IdRaw"
+	fieldTitle     = "Title"
+	fieldTitleZh   = "TitleZh"
+	fieldText      = "Text"
+	fieldTextZh    = "TextZh"
+	fieldSpace     = "SpaceID"
+	fieldId        = "Id"
+	fieldIdRaw     = "IdRaw"
+	fieldAuthor    = "Author"
+	fieldOrderId   = "OrderId"
+	fieldMessageId = "MessageId"
+	fieldTimestamp = "Timestamp"
+
 	score        = "score"
 	highlights   = "highlights"
 	fragment     = "fragment"
@@ -74,9 +79,12 @@ type FTSearch interface {
 	Search(spaceId string, query string) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
 	NamePrefixSearch(spaceId string, query string) (results []*DocumentMatch, err error)
+	ListByIdPrefix(prefix string) (ids []string, err error)
 	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
+	ListAllObjectIds() (map[string]struct{}, error)
 	DocCount() (uint64, error)
 	LastDbState() (uint64, error)
+	ConsistencyReport() *tantivycheck.ConsistencyReport
 }
 
 type SearchDoc struct {
@@ -84,6 +92,12 @@ type SearchDoc struct {
 	SpaceId string
 	Title   string
 	Text    string
+
+	// message specific fields
+	Author    string
+	OrderId   string
+	MessageId string
+	Timestamp string
 }
 
 type Highlight struct {
@@ -108,6 +122,7 @@ type ftSearch struct {
 	blevePath           string
 	lang                tantivy.Language
 	appClosingInitiated atomic.Bool
+	startupReport       *tantivycheck.ConsistencyReport
 }
 
 func (f *ftSearch) LastDbState() (uint64, error) {
@@ -210,6 +225,7 @@ func (f *ftSearch) Run(context.Context) error {
 			log.Warnf("tantivy index checking failed: %v", err)
 		}
 	}
+	f.startupReport = &report
 	if !report.IsOk() {
 		var gcErr error
 		if len(report.ExtraDelFiles) > 0 || len(report.ExtraSegments) > 0 {
@@ -223,6 +239,9 @@ func (f *ftSearch) Run(context.Context) error {
 			With("metaLockPresent", report.MetaLockPresent).
 			With("totalSegmentsInMeta", report.TotalSegmentsInMeta).
 			With("uniqueSegmentPrefixesOnDisk", report.UniqueSegmentPrefixesOnDisk).
+			With("oldestSegmentModTime", report.OldestSegmentModTime.Unix()).
+			With("newestSegmentModTime", report.NewestSegmentModTime.Unix()).
+			With("metaJsonModTime", report.MetaJsonModTime.Unix()).
 			With("gcErr", gcErr).
 			Warnf("tantivy index is inconsistent state, cleaning extra files")
 	}
@@ -316,6 +335,54 @@ func (f *ftSearch) Run(context.Context) error {
 		return fmt.Errorf("add Chinese text field: %w", err)
 	}
 
+	err = builder.AddTextField(
+		fieldAuthor, // 7
+		true,
+		false,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
+	)
+	if err != nil {
+		return fmt.Errorf("add author field: %w", err)
+	}
+
+	err = builder.AddTextField(
+		fieldOrderId, // 8
+		true,
+		false,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
+	)
+	if err != nil {
+		return fmt.Errorf("add orderId field: %w", err)
+	}
+
+	err = builder.AddTextField(
+		fieldMessageId, // 9
+		true,
+		false,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
+	)
+	if err != nil {
+		return fmt.Errorf("add message Id field: %w", err)
+	}
+
+	err = builder.AddTextField(
+		fieldTimestamp, // 10
+		true,
+		false,
+		true,
+		tantivy.IndexRecordOptionBasic,
+		tantivy.TokenizerRaw,
+	)
+	if err != nil {
+		return fmt.Errorf("add message timestamp field: %w", err)
+	}
+
 	schema, err := builder.BuildSchema()
 	if err != nil {
 		return err
@@ -401,6 +468,22 @@ func (f *ftSearch) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 		return nil, err
 	}
 	err = document.AddFields(doc.Text, f.index, fieldText, fieldTextZh)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddFields(doc.Author, f.index, fieldAuthor)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddFields(doc.OrderId, f.index, fieldOrderId)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddFields(doc.MessageId, f.index, fieldMessageId)
+	if err != nil {
+		return nil, err
+	}
+	err = document.AddFields(doc.Timestamp, f.index, fieldTimestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -592,6 +675,10 @@ func (f *ftSearch) Close(ctx context.Context) error {
 		}
 	}
 	return nil
+}
+
+func (f *ftSearch) ConsistencyReport() *tantivycheck.ConsistencyReport {
+	return f.startupReport
 }
 
 func (f *ftSearch) cleanupBleve() {

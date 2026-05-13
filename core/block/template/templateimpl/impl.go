@@ -10,6 +10,7 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 
+	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -20,6 +21,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	templateSvc "github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -49,14 +51,20 @@ var (
 	}
 )
 
+type accountIdProvider interface {
+	AccountID() string
+}
+
 type service struct {
-	picker       cache.ObjectGetter
-	store        objectstore.ObjectStore
-	spaceService space.Service
-	creator      objectcreator.Service
-	resolver     idresolver.Resolver
-	exporter     export.Export
-	converter    converter.LayoutConverter
+	picker         cache.ObjectGetter
+	store          objectstore.ObjectStore
+	spaceService   space.Service
+	creator        objectcreator.Service
+	resolver       idresolver.Resolver
+	exporter       export.Export
+	converter      converter.LayoutConverter
+	accountService accountIdProvider
+	formatFetcher  relationutils.RelationFormatFetcher
 }
 
 func New() templateSvc.Service {
@@ -75,6 +83,8 @@ func (s *service) Init(a *app.App) error {
 	s.resolver = a.MustComponent(idresolver.CName).(idresolver.Resolver)
 	s.exporter = a.MustComponent(export.CName).(export.Export)
 	s.converter = app.MustComponent[converter.LayoutConverter](a)
+	s.accountService = app.MustComponent[account.Service](a)
+	s.formatFetcher = app.MustComponent[relationutils.RelationFormatFetcher](a)
 	return nil
 }
 
@@ -101,7 +111,8 @@ func (s *service) CreateTemplateStateWithDetails(req templateSvc.CreateTemplateR
 		}
 	}
 
-	addDetailsToTemplateState(targetState, req.Details)
+	s.resolveTemplatePlaceholders(targetState, req.SpaceId)
+	s.addDetailsToTemplateState(targetState, req.Details, req.SpaceId)
 	return targetState, nil
 }
 
@@ -171,7 +182,8 @@ func (s *service) CreateTemplateStateFromSmartBlock(sb smartblock.SmartBlock, re
 	if err != nil {
 		st = s.createBlankTemplateState(domain.FullID{SpaceID: req.SpaceId, ObjectID: req.TypeId}, req.Layout)
 	}
-	addDetailsToTemplateState(st, req.Details)
+	s.resolveTemplatePlaceholders(st, req.SpaceId)
+	s.addDetailsToTemplateState(st, req.Details, req.SpaceId)
 	return st
 }
 
@@ -211,14 +223,24 @@ func (s *service) buildState(sb smartblock.SmartBlock) (st *state.State, err err
 		return
 	}
 
-	st.RemoveDetail(
+	// Check if template has name prefill enabled
+	prefillType := st.Details().GetInt64(bundle.RelationKeyTemplateNamePrefillType)
+
+	keysToRemove := []domain.RelationKey{
 		bundle.RelationKeyTargetObjectType,
 		bundle.RelationKeyTemplateIsBundled,
 		bundle.RelationKeyOrigin,
 		bundle.RelationKeyAddedDate,
 		bundle.RelationKeyFeaturedRelations,
-		bundle.RelationKeyName,
-	)
+		bundle.RelationKeyDiscussionId,
+	}
+
+	// Only remove template name if prefill type is Empty (default)
+	if prefillType == int64(model.TemplateNamePrefillType_Empty) {
+		keysToRemove = append(keysToRemove, bundle.RelationKeyName)
+	}
+
+	st.RemoveDetail(keysToRemove...)
 	st.SetDetailAndBundledRelation(bundle.RelationKeySourceObject, domain.String(sb.Id()))
 	// original created timestamp is used to set creationDate for imported objects, not for template-based objects
 	st.SetOriginalCreatedTimestamp(0)
@@ -270,16 +292,28 @@ func (s *service) collectOriginalDetails(spaceId string, st *state.State) *domai
 		}
 	}
 
-	emoji := details.GetString(bundle.RelationKeyIconEmoji)
-	if sourceObject == "" || emoji == "" {
+	if sourceObject == "" {
 		return details
 	}
 
 	previousTemplateDetails, _ := s.store.SpaceIndex(spaceId).GetDetails(sourceObject) // nolint:errcheck
-	if previousTemplateDetails != nil {
-		if emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
-			details.Delete(bundle.RelationKeyIconEmoji)
-		}
+	if previousTemplateDetails == nil {
+		return details
+	}
+
+	// If the current emoji matches the previous template's emoji, remove it
+	// so the new template's emoji can be applied
+	emoji := details.GetString(bundle.RelationKeyIconEmoji)
+	if emoji != "" && emoji == previousTemplateDetails.GetString(bundle.RelationKeyIconEmoji) {
+		details.Delete(bundle.RelationKeyIconEmoji)
+	}
+
+	// If the current name matches the previous template's name, remove it
+	// so the new template's prefill setting can decide the name
+	// Otherwise preserve the user's custom name
+	name := details.GetString(bundle.RelationKeyName)
+	if name == previousTemplateDetails.GetString(bundle.RelationKeyName) {
+		details.Delete(bundle.RelationKeyName)
 	}
 
 	return details
@@ -467,13 +501,15 @@ func (s *service) buildTemplateStateFromObject(sb smartblock.SmartBlock) (*state
 			st.RemoveDetail(domain.RelationKey(rel.Key))
 		}
 	}
+	// Discussion-related details are hidden but should not be inherited by templates
+	st.RemoveDetail(bundle.RelationKeyDiscussionId)
 	flags := internalflag.NewFromState(st)
 	flags.Remove(model.InternalFlag_editorDeleteEmpty)
 	flags.AddToState(st)
 	return st, nil
 }
 
-func addDetailsToTemplateState(st *state.State, details *domain.Details) {
+func (s *service) addDetailsToTemplateState(st *state.State, details *domain.Details, spaceId string) {
 	var keysToExclude []domain.RelationKey
 	if st.Details() != nil {
 		for key := range templatePreferableRelationKeys {
@@ -482,7 +518,42 @@ func addDetailsToTemplateState(st *state.State, details *domain.Details) {
 				keysToExclude = append(keysToExclude, key)
 			}
 		}
+		// Preserve template name if it's set and original name is empty
+		if st.Details().GetString(bundle.RelationKeyName) != "" && details.GetString(bundle.RelationKeyName) == "" {
+			keysToExclude = append(keysToExclude, bundle.RelationKeyName)
+		}
 	}
-	st.AddDetails(details.CopyWithoutKeys(keysToExclude...))
+
+	toAdd := details.CopyWithoutKeys(keysToExclude...)
+	if toAdd.Has(bundle.RelationKeyName) {
+		// Add relation link for name, otherwise we'll write "relation remove" change and name will be deleted from state
+		st.AddBundledRelationLinks(bundle.RelationKeyName)
+	}
+
+	// Merge multi-value relations (tag, object, file) from template and incoming details
+	for key, incomingVal := range toAdd.Iterate() {
+		templateVal := st.Details().GetStringList(key)
+		if len(templateVal) == 0 {
+			continue
+		}
+		format, err := s.formatFetcher.GetRelationFormatByKey(spaceId, key)
+		if err != nil {
+			continue
+		}
+		if isMultiValueRelationFormat(format) {
+			merged := lo.Uniq(append(templateVal, incomingVal.StringList()...))
+			toAdd.Set(key, domain.StringList(merged))
+		}
+	}
+
+	st.AddDetails(toAdd)
 	st.BlocksInit(st)
+}
+
+func isMultiValueRelationFormat(format model.RelationFormat) bool {
+	switch format {
+	case model.RelationFormat_tag, model.RelationFormat_object, model.RelationFormat_file:
+		return true
+	}
+	return false
 }

@@ -1,5 +1,18 @@
 package objectcreator
 
+/*
+AI generated
+
+Name: Object Creation and Bundled Object Installation
+Scope: global
+
+## Responsibility
+- Create objects with type-specific handling (object types, relations, relation options, templates, bookmarks, chat-derived, dates)
+- Install bundled objects (types and relations) from marketplace to user space
+- Reinstall previously deleted bundled objects
+- Create smartblocks from state with appropriate tree derivation
+*/
+
 import (
 	"context"
 	"fmt"
@@ -13,6 +26,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/source/sourceimpl"
 	"github.com/anyproto/anytype-heart/core/block/template"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -32,7 +46,7 @@ type (
 	}
 
 	objectArchiver interface {
-		SetIsArchived(ctx context.Context, objectId string, isArchived bool) error
+		SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
 	}
 )
 
@@ -47,6 +61,7 @@ type Service interface {
 	CreateSmartBlockFromState(ctx context.Context, spaceID string, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 	CreateSmartBlockFromStateInSpace(ctx context.Context, space clientspace.Space, objectTypeKeys []domain.TypeKey, createState *state.State) (id string, newDetails *domain.Details, err error)
 	AddChatDerivedObject(ctx context.Context, space clientspace.Space, chatObjectId string, addAnalyticsId bool) (chatId string, err error)
+	AddDiscussionDerivedObject(ctx context.Context, space clientspace.Space, parentObjectId string) (discussionId string, err error)
 
 	InstallBundledObjects(ctx context.Context, space clientspace.Space, sourceObjectIds []string) (ids []string, objects []*domain.Details, err error)
 	app.Component

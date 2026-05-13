@@ -51,8 +51,6 @@ const (
 	CName            = "builtinobjects"
 	injectionTimeout = 30 * time.Second
 
-	defaultDashboardId = "lastOpened"
-
 	contentLengthHeader        = "Content-Length"
 	archiveDownloadingPercents = 30
 	archiveCopyingPercents     = 10
@@ -73,22 +71,16 @@ var getStartedMobileZip []byte
 //go:embed data/chat_space.zip
 var chatSpaceZip []byte
 
-//go:embed data/data_space_desktop.zip
-var dataSpaceDesktopZip []byte
-
-//go:embed data/data_space_mobile.zip
-var dataSpaceMobileZip []byte
-
 var (
 	log = logging.Logger("anytype-mw-builtinobjects")
 
 	archives = map[pb.RpcObjectImportUseCaseRequestUseCase][]byte{
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED:        getStartedZip,
-		pb.RpcObjectImportUseCaseRequest_DATA_SPACE:         dataSpaceDesktopZip,
+		pb.RpcObjectImportUseCaseRequest_DATA_SPACE:         chatSpaceZip,
 		pb.RpcObjectImportUseCaseRequest_GUIDE_ONLY:         startGuideZip,
 		pb.RpcObjectImportUseCaseRequest_GET_STARTED_MOBILE: getStartedMobileZip,
 		pb.RpcObjectImportUseCaseRequest_CHAT_SPACE:         chatSpaceZip,
-		pb.RpcObjectImportUseCaseRequest_DATA_SPACE_MOBILE:  dataSpaceMobileZip,
+		pb.RpcObjectImportUseCaseRequest_DATA_SPACE_MOBILE:  chatSpaceZip,
 	}
 )
 
@@ -258,9 +250,9 @@ func (b *builtinObjects) CreateObjectsForExperience(ctx context.Context, spaceId
 			if len(records) > 0 {
 				id := records[0].Details.GetString(bundle.RelationKeyId)
 				if err = b.detailsService.SetSpaceInfo(spaceId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-					bundle.RelationKeySpaceDashboardId: domain.String(id),
+					bundle.RelationKeyHomepage: domain.String(id),
 				})); err != nil {
-					log.Errorf("failed to set spaceDashboardId to workspace: %v", err)
+					log.Errorf("failed to set homepage to workspace: %v", err)
 				}
 				widgets := []*pb.WidgetBlock{{
 					Layout:         model.BlockContentWidget_Link,
@@ -534,25 +526,28 @@ func (b *builtinObjects) getWidgets(profile *pb.Profile, spaceId string) []*pb.W
 	return profile.Widgets
 }
 
-func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (dashboardId string) {
-	newId, oldId := defaultDashboardId, defaultDashboardId
+func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId string, isBundle bool) (homepage string) {
+	oldId := domain.HomepageWidgets
 	if profile != nil && profile.SpaceDashboardId != "" {
 		oldId = profile.SpaceDashboardId
 	}
 
-	if oldId != defaultDashboardId {
+	switch oldId {
+	case domain.HomepageWidgets, domain.HomepageLastOpened:
+		homepage = domain.HomepageWidgets
+	case domain.HomepageGraph:
+		homepage = domain.HomepageGraph
+	default:
 		var err error
-		newId, err = b.getNewObjectId(spaceId, oldId)
+		homepage, err = b.getNewObjectId(spaceId, oldId)
 		if err != nil {
 			log.Errorf("failed to get new id of home page object: %v", err)
-		} else {
-			newId = defaultDashboardId
+			homepage = domain.HomepageWidgets
 		}
 	}
-	dashboardId = newId
 
 	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-		bundle.RelationKeySpaceDashboardId: domain.String(dashboardId),
+		bundle.RelationKeyHomepage: domain.String(homepage),
 	})
 
 	if profile != nil && isBundle {
@@ -561,8 +556,7 @@ func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId strin
 		}
 
 		if profile.Avatar != "" {
-			var err error
-			newId, err = b.getNewAvatarId(spaceId, profile.Avatar)
+			newId, err := b.getNewAvatarId(spaceId, profile.Avatar)
 			if err != nil {
 				log.Errorf("failed to get new id of workspace icon object: %v", err)
 			} else {
@@ -571,9 +565,9 @@ func (b *builtinObjects) setWorkspaceSettings(profile *pb.Profile, spaceId strin
 		}
 	}
 	if err := b.detailsService.SetSpaceInfo(spaceId, details); err != nil {
-		log.Errorf("failed to set spaceDashboardId to workspace: %v", err)
+		log.Errorf("failed to set space info to workspace: %v", err)
 	}
-	return
+	return homepage
 }
 
 func (b *builtinObjects) getProfile(path string) (profile *pb.Profile, err error) {

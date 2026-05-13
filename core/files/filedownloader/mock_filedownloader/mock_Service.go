@@ -55,7 +55,7 @@ func (_c *MockService_CacheFile_Call) Return() *MockService_CacheFile_Call {
 }
 
 func (_c *MockService_CacheFile_Call) RunAndReturn(run func(string, domain.FileId)) *MockService_CacheFile_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -88,7 +88,7 @@ func (_c *MockService_CancelFileCaching_Call) Return() *MockService_CancelFileCa
 }
 
 func (_c *MockService_CancelFileCaching_Call) RunAndReturn(run func(domain.FileId)) *MockService_CancelFileCaching_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 
@@ -233,7 +233,7 @@ func (_c *MockService_Init_Call) RunAndReturn(run func(*app.App) error) *MockSer
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockService) Name() string {
 	ret := _m.Called()
 
@@ -367,6 +367,52 @@ func (_c *MockService_SetEnabled_Call) Return(_a0 error) *MockService_SetEnabled
 }
 
 func (_c *MockService_SetEnabled_Call) RunAndReturn(run func(bool, bool) error) *MockService_SetEnabled_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SetSizeLimit provides a mock function with given fields: sizeLimitMb
+func (_m *MockService) SetSizeLimit(sizeLimitMb int64) error {
+	ret := _m.Called(sizeLimitMb)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetSizeLimit")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(int64) error); ok {
+		r0 = rf(sizeLimitMb)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_SetSizeLimit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetSizeLimit'
+type MockService_SetSizeLimit_Call struct {
+	*mock.Call
+}
+
+// SetSizeLimit is a helper method to define mock.On call
+//   - sizeLimitMb int64
+func (_e *MockService_Expecter) SetSizeLimit(sizeLimitMb interface{}) *MockService_SetSizeLimit_Call {
+	return &MockService_SetSizeLimit_Call{Call: _e.mock.On("SetSizeLimit", sizeLimitMb)}
+}
+
+func (_c *MockService_SetSizeLimit_Call) Run(run func(sizeLimitMb int64)) *MockService_SetSizeLimit_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(int64))
+	})
+	return _c
+}
+
+func (_c *MockService_SetSizeLimit_Call) Return(_a0 error) *MockService_SetSizeLimit_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_SetSizeLimit_Call) RunAndReturn(run func(int64) error) *MockService_SetSizeLimit_Call {
 	_c.Call.Return(run)
 	return _c
 }

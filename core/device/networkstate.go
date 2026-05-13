@@ -1,5 +1,18 @@
 package device
 
+/*
+AI generated
+
+Name: Device Network and Foreground State Tracker
+Scope: global
+
+## Responsibility
+- Tracks current network type (WiFi/Cellular/NotConnected) set by client
+- Tracks app foreground/background state transitions
+- Notifies registered hooks when network type changes
+- On foreground resume: flushes connection pool if backgrounded >10s, refreshes opened objects
+*/
+
 import (
 	"context"
 	"sync"

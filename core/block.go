@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block"
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -194,22 +195,14 @@ func (mw *Middleware) BlockCopy(cctx context.Context, req *pb.RpcBlockCopyReques
 }
 
 func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequest) *pb.RpcBlockPasteResponse {
-	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcBlockPasteResponseErrorCode, blockIds []string, caretPosition int32, isSameBlockCaret bool, err error) *pb.RpcBlockPasteResponse {
-		m := &pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: code}, BlockIds: blockIds, CaretPosition: caretPosition, IsSameBlockCaret: isSameBlockCaret}
-		if err != nil {
-			m.Error.Description = getErrorDescription(err)
-		} else {
-			m.Event = mw.getResponseEvent(ctx)
-		}
-		return m
-	}
 	var (
+		ctx              = mw.newContext(cctx)
 		blockIds         []string
-		caretPosition    int32
+		caretPosition    int32 = -1
 		isSameBlockCaret bool
 		groupId          = bson.NewObjectId().Hex()
 	)
+
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
 		var uploadArr []pb.RpcBlockUploadRequest
 		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = bs.Paste(ctx, *req, groupId)
@@ -218,7 +211,10 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		}
 		log.Debug("Image requests to upload after paste:", uploadArr)
 		for _, r := range uploadArr {
-			r.ContextId = req.ContextId
+			// Don't overwrite contextId if it's already set by the paste controller
+			if r.ContextId == "" {
+				r.ContextId = req.ContextId
+			}
 			req := block.UploadRequest{
 				RpcBlockUploadRequest: r,
 				ObjectOrigin:          objectorigin.Clipboard(),
@@ -231,11 +227,21 @@ func (mw *Middleware) BlockPaste(cctx context.Context, req *pb.RpcBlockPasteRequ
 		}
 		return
 	})
-	if err != nil {
-		return response(pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, nil, -1, isSameBlockCaret, err)
-	}
 
-	return response(pb.RpcBlockPasteResponseError_NULL, blockIds, caretPosition, isSameBlockCaret, nil)
+	code := mapErrorCode(err,
+		errToCode(clipboard.ErrAllSlotsEmpty, pb.RpcBlockPasteResponseError_ALL_SLOTS_EMPTY),
+	)
+
+	return &pb.RpcBlockPasteResponse{
+		BlockIds:         blockIds,
+		CaretPosition:    caretPosition,
+		IsSameBlockCaret: isSameBlockCaret,
+		Event:            mw.getResponseEvent(ctx),
+		Error: &pb.RpcBlockPasteResponseError{
+			Description: getErrorDescription(err),
+			Code:        code,
+		},
+	}
 }
 
 func (mw *Middleware) BlockCut(cctx context.Context, req *pb.RpcBlockCutRequest) *pb.RpcBlockCutResponse {

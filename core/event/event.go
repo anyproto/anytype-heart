@@ -1,5 +1,19 @@
 package event
 
+/*
+AI generated
+
+Name: Client Event Broadcaster
+Scope: global
+
+## Responsibility
+- Broadcast pb.Event messages to connected client sessions
+- Track active sessions and route events (to one, all, or filtered sessions)
+
+## Background Tasks
+- Session cleanup: handles session disconnection via shutdown channel (GrpcSender only)
+*/
+
 import (
 	"github.com/anyproto/any-sync/app"
 

@@ -25,6 +25,7 @@ var layoutPerSmartBlockType = map[smartblock.SmartBlockType]model.ObjectTypeLayo
 	smartblock.SmartBlockTypeFile:                 model.ObjectType_file, // deprecated
 	smartblock.SmartBlockTypeDate:                 model.ObjectType_date,
 	smartblock.SmartBlockTypeChatDerivedObject:    model.ObjectType_chatDerived,
+	smartblock.SmartBlockTypeDiscussionObject:     model.ObjectType_discussion,
 	smartblock.SmartBlockTypeChatObjectDeprecated: model.ObjectType_chatDeprecated, // deprecated
 	smartblock.SmartBlockTypeWidget:               model.ObjectType_dashboard,
 	smartblock.SmartBlockTypeWorkspace:            model.ObjectType_dashboard,
@@ -322,7 +323,11 @@ func convertLayoutBlocks(st *state.State, oldLayout, newLayout domain.Value) {
 			return
 		}
 		log.With("objectId", st.RootId()).Infof("convert layout: %s -> %s", oldLayout, newLayout)
-		template.InitTemplate(st, template.WithNameFromFirstBlock, template.WithTitle)
+		templates := []template.StateTransformer{template.WithNameFromFirstBlock, template.WithTitle}
+		if st.Details().GetString(bundle.RelationKeyDescription) != "" {
+			templates = append(templates, template.WithDescription)
+		}
+		template.InitTemplate(st, templates...)
 	} else if newLayout.Int64() == int64(model.ObjectType_note) {
 		if !st.Exists(state.TitleBlockID) {
 			return

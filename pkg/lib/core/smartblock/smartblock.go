@@ -30,6 +30,7 @@ const (
 	SmartBlockTypeChatObjectDeprecated = SmartBlockType(model.SmartBlockType_ChatObjectDeprecated) // deprecated. Container for any-store based chats
 	SmartBlockTypeChatDerivedObject    = SmartBlockType(model.SmartBlockType_ChatDerivedObject)    // Any-store based object for chat
 	SmartBlockTypeAccountObject        = SmartBlockType(model.SmartBlockType_AccountObject)
+	SmartBlockTypeDiscussionObject     = SmartBlockType(model.SmartBlockType_DiscussionObject) // Any-store based object for discussion
 
 	SmartBlockTypeWorkspace      = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeWidget         = SmartBlockType(model.SmartBlockType_Widget)
@@ -41,6 +42,9 @@ const (
 	SmartBlockTypeMissingObject      = SmartBlockType(model.SmartBlockType_MissingObject)
 	SmartBlockTypeNotificationObject = SmartBlockType(model.SmartBlockType_NotificationObject)
 	SmartBlockTypeDevicesObject      = SmartBlockType(model.SmartBlockType_DevicesObject)
+
+	SmartBlockTypeTechSpaceObject        = SmartBlockType(model.SmartBlockType_TechSpaceObject)
+	SmartBlockTypeTechSpaceVirtualObject = SmartBlockType(model.SmartBlockType_TechSpaceVirtualObject)
 )
 
 var ErrNoSuchSmartblock = errors.New("this id does not relate to any smartblock type")
@@ -69,18 +73,37 @@ func (sbt SmartBlockType) IsOneOf(sbts ...SmartBlockType) bool {
 	return false
 }
 
+// IsStoreBacked reports whether the type uses storestate (any-store CRDT
+// collections) instead of the classic ObjectTree block-change pipeline.
+// Store-backed types may Apply on an empty tree, get MarkNewChangeFlusher
+// on their underlying tree, and route through source.Store.
+func (sbt SmartBlockType) IsStoreBacked() bool {
+	switch sbt {
+	case SmartBlockTypeChatDerivedObject,
+		SmartBlockTypeAccountObject,
+		SmartBlockTypeDiscussionObject,
+		SmartBlockTypeTechSpaceObject:
+		return true
+	}
+	return false
+}
+
 // Indexable determines if the object of specific type need to be proceeded by the indexer in order to appear in sets
 func (sbt SmartBlockType) Indexable() (fulltext, details, outgoingLinks bool) {
 	switch sbt {
 	case SmartBlockTypeDate, SmartBlockTypeAccountOld, SmartBlockTypeNotificationObject, SmartBlockTypeDevicesObject:
 		return false, false, false
-	case SmartBlockTypeWidget, SmartBlockTypeArchive, SmartBlockTypeHome:
+	case SmartBlockTypeWidget, SmartBlockTypeArchive, SmartBlockTypeHome, SmartBlockTypeTechSpaceObject, SmartBlockTypeTechSpaceVirtualObject:
 		return false, true, false
 	case SmartBlockTypeWorkspace,
 		SmartBlockTypeAccountObject,
 		SmartBlockTypeChatObjectDeprecated,
+		SmartBlockTypeChatDerivedObject,
+		SmartBlockTypeDiscussionObject,
 		SmartBlockTypeSpaceView:
 		return false, true, true
+	case SmartBlockTypeMissingObject:
+		return false, false, false
 	default:
 		return true, true, true
 	}

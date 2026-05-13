@@ -1,5 +1,27 @@
 package filestorage
 
+/*
+AI generated
+
+Name: Local File Block Storage
+Scope: global
+
+## Responsibility
+- Stores IPFS-compatible file blocks locally using flatfs sharding
+- Proxies reads: local first, then remote (with automatic local caching)
+- Provides transactional batch writes with temp directory staging
+- Exposes local garbage collector for cleaning orphaned blocks
+- Serves file blocks to peers via DRPC handler (read-only)
+
+## External State
+- flatfs/ directory: sharded IPFS block storage using IPFS_DEF_SHARD
+
+## Documentation
+Batching mechanism: Batch() creates a temp directory for writes. Reads check temp first,
+then main storage. Commit() atomically moves temp to main. Discard() cleans up temp.
+This ensures incomplete file uploads don't leave partial data in main storage.
+*/
+
 import (
 	"context"
 	"fmt"
@@ -11,10 +33,12 @@ import (
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileproto"
+	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/anyproto/any-sync/net/rpc/server"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -45,12 +69,14 @@ type FileStorage interface {
 	LocalDiskUsage(ctx context.Context) (uint64, error)
 	IterateFiles(ctx context.Context, iterFunc func(fileId domain.FullFileId)) error
 	Batch(ctx context.Context) (Batch, error)
+	LocalDAGService() ipld.DAGService
 }
 
 type fileStorage struct {
-	proxy      *proxyStore
-	handler    *rpcHandler
-	localStore *flatStore // Keep reference to the actual flatStore for batch creation
+	proxy           *proxyStore
+	handler         *rpcHandler
+	localStore      *flatStore // Keep reference to the actual flatStore for batch creation
+	localDAGService ipld.DAGService
 
 	cfg        *config.Config
 	flatfsPath string
@@ -65,10 +91,7 @@ var _ fileblockstore.BlockStoreLocal = &fileStorage{}
 func (f *fileStorage) Init(a *app.App) (err error) {
 	cfg := app.MustComponent[*config.Config](a)
 	f.cfg = cfg
-	fileCfg, err := cfg.FSConfig()
-	if err != nil {
-		return fmt.Errorf("fail to get file config: %w", err)
-	}
+	fileCfg := cfg.FSConfig()
 
 	f.rpcStore = a.MustComponent(rpcstore.CName).(rpcstore.Service)
 	f.spaceStorage = a.MustComponent(spacestorage.CName).(storage.ClientStorage)
@@ -97,6 +120,8 @@ func (f *fileStorage) Run(ctx context.Context) (err error) {
 	}
 	f.handler.store = localStore
 	f.localStore = localStore // Store reference for batch creation
+
+	f.localDAGService = fileservice.NewFileHandler(localStore).DAGService()
 
 	ps := newProxyStore(localStore, f.rpcStore.NewStore())
 	f.proxy = ps
@@ -133,6 +158,10 @@ func (f *fileStorage) ExistsCids(ctx context.Context, ks []cid.Cid) (exists []ci
 
 func (f *fileStorage) NotExistsBlocks(ctx context.Context, bs []blocks.Block) (notExists []blocks.Block, err error) {
 	return f.proxy.NotExistsBlocks(ctx, bs)
+}
+
+func (f *fileStorage) LocalDAGService() ipld.DAGService {
+	return f.localDAGService
 }
 
 func (f *fileStorage) NewLocalStoreGarbageCollector() LocalStoreGarbageCollector {

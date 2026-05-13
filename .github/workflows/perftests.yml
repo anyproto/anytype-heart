@@ -7,7 +7,7 @@ on:
       run-on-runner-mac:
         description: 'Specify the runner to use on MacOS'
         required: true
-        default: 'mac-mini-org-heart'
+        default: 'macos-15'
       # run-on-runner-win:
       #   description: 'Specify the runner to use on Windows'
       #   required: true
@@ -21,78 +21,72 @@ on:
 
 permissions:
   actions: 'write'
-  contents: 'write'
+  contents: 'read'
 
 jobs:
-  wait_for_self_hosted_mac_mini:
-    uses: ./.github/workflows/reusable_wait_for_self_hosted_mac_mini.yml
-
   perftests-macos:
-    needs: wait_for_self_hosted_mac_mini
     timeout-minutes: 60
-    runs-on: 'mac-mini-org-heart'
+    runs-on: ${{ github.event.inputs.run-on-runner-mac || 'macos-15' }}
     steps:
-      - name: Setup GO
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+          check-latest: true
+      - name: Configure Go env vars
         run: |
           go version
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-      - name: Checkout
-        uses: actions/checkout@v3
       - name: Set env vars
-        env:
-          UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
-          INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
         run: |
-          GIT_SUMMARY=$(git describe --tags --always)
-          echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=${GIT_SUMMARY} -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=${INHOUSE_KEY} -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=${UNSPLASH_KEY}" >> $GITHUB_ENV
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            VERSION=${{ github.event.inputs.alpha_version }}
-            if [ -z "$VERSION" ]; then
-              VERSION=$(git rev-parse --short HEAD)
-            fi
-          fi
-          if [ -z "$VERSION" ]; then
-            VERSION=${GITHUB_REF##*/}
-          fi
-          echo VERSION=${VERSION} >> $GITHUB_ENV
-          echo MAVEN_ARTIFACT_VERSION=${VERSION} >> $GITHUB_ENV
           echo GOPRIVATE=github.com/anyproto >> $GITHUB_ENV
           echo $(pwd)/deps >> $GITHUB_PATH
-          echo "${GOBIN}" >> $GITHUB_PATH
           git config --global url."https://${{ secrets.ANYTYPE_PAT }}@github.com/".insteadOf "https://github.com/"
       - name: Go mod download
-        run: |
-          go mod download
-      - name: install protoc
-        run: |
-          make setup-protoc
-      - name: setup go
+        run: go mod download
+      - name: Install protoc
+        run: make setup-protoc
+      - name: Setup gomobile
         run: |
           make setup-go
           make setup-gomobile
           which gomobile
-      - name: run perf tests
+      - name: Install grpcurl
+        run: go install github.com/fullstorydev/grpcurl/cmd/grpcurl@v1.9.3
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          credentials_json: ${{ secrets.GCS_SERVICE_PERFTEST_ACCOUNT_KEY }}
+      - name: set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v3
+      - name: Download account data from GCS
         run: |
-          echo "Running perf tests"
+          ACCOUNT_DATA_PATH="/Users/runner/account30000/"
+          mkdir -p "$ACCOUNT_DATA_PATH"
+          gcloud storage cp "gs://anytype-perftest-account/A6iqZ6CfXjnk8F1kVjqnLpxkG5AdXYoHrW2YcyVkGrxpz6EX.zip" "$ACCOUNT_DATA_PATH/"
+          echo "ACCOUNT_DATA_PATH=$ACCOUNT_DATA_PATH" >> $GITHUB_ENV
+      - name: Run perf tests
+        run: |
           RUN_COUNT=${{ github.event.inputs.perf-test }}
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             RUN_COUNT=10
           fi
-          echo $PERF_CONFIG_STAGING > config.json
           mv .github/staging_fake.yml staging_fake.yml
           PERF_CONFIG=$PWD/config.json
-          cd cmd/perfstand/account_create
-          CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT
-          cd ../account_select
-          CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT
-          cd ../../..
-          echo $PERF_CONFIG_LOCAL > ./config.json
-          cd cmd/perfstand/account_create
-          CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT
-          cd ../account_select
-          CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT
+
+          run_perf_tests() {
+            echo "$1" > config.json
+            (cd cmd/perfstand/account_create && CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT)
+            (cd cmd/perfstand/account_select  && CGO_ENABLED="1" go run main.go $PERF_CONFIG $RUN_COUNT)
+          }
+
+          run_perf_tests "$PERF_CONFIG_STAGING"
+          run_perf_tests "$PERF_CONFIG_LOCAL"
         env:
           PERF_CONFIG_STAGING: ${{ secrets.PERF_CONFIG_STAGING }}
           PERF_CONFIG_LOCAL: ${{ secrets.PERF_CONFIG_LOCAL }}
@@ -143,7 +137,7 @@ jobs:
   #         UNSPLASH_KEY: ${{ secrets.UNSPLASH_KEY }}
   #         INHOUSE_KEY: ${{ secrets.INHOUSE_KEY }}
   #       run: |
-  #         $GIT_SUMMARY = git describe --tags --always
+  #         $GIT_SUMMARY = git describe --tags --exclude='*-nightly.*' --always
   #         echo "FLAGS=-X github.com/anyproto/anytype-heart/util/vcs.GitSummary=$GIT_SUMMARY -X github.com/anyproto/anytype-heart/metrics.DefaultInHouseKey=$env:INHOUSE_KEY -X github.com/anyproto/anytype-heart/util/unsplash.DefaultToken=$env:UNSPLASH_KEY" >> $env:GITHUB_ENV
   #         if ($env:GITHUB_EVENT_NAME -eq "workflow_dispatch") {
   #           $VERSION = ${{ github.event.inputs.alpha_version }}

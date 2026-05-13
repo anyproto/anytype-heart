@@ -2,13 +2,14 @@ package ftsearch
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	tantivy "github.com/anyproto/tantivy-go"
 )
 
 type AutoBatcher interface {
-	// UpsertDoc adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
+	// UpsertDoc adds an update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
 	UpsertDoc(doc SearchDoc) error
 	// DeleteDoc adds a delete operation to the batcher
 	// maxSize limit check is not performed for this operation
@@ -95,6 +96,59 @@ func (f *ftSearch) Iterate(objectId string, fields []string, shouldContinue func
 	}
 	return nil
 }
+func (f *ftSearch) ListByIdPrefix(prefix string) ([]string, error) {
+	query := tantivy.NewQueryBuilder().Query(tantivy.Must, fieldIdRaw, prefix, tantivy.TermPrefixQuery, 1.0).Build()
+	sCtx := tantivy.NewSearchContextBuilder().
+		SetQueryFromJson(&query).
+		SetWithHighlights(false).
+		AddField(fieldIdRaw, 1.0).
+		SetDocsLimit(10000).
+		Build()
+
+	results, err := f.index.SearchFastFieldJson(sCtx, fieldIdRaw)
+	if err != nil {
+		return nil, fmt.Errorf("search ids by id prefix: %w", err)
+	}
+	var ids = make([]string, 0, len(results.Values))
+	for _, id := range results.Values {
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// ListAllObjectIds returns a set of all unique object IDs that have at least one document in the full-text index.
+// Document IDs in Tantivy are structured as "$objectId/r/$relationKey" or "$objectId/b/$blockId".
+// This method extracts the object ID (first part before "/") from each document.
+func (f *ftSearch) ListAllObjectIds() (map[string]struct{}, error) {
+	// Use a very high limit for this one-time consistency check operation
+	// const maxDocsForConsistencyCheck = 10_000_000
+
+	// Build a query that matches all documents using TermPrefixQuery with empty prefix on Id field
+	allQuery := tantivy.NewQueryBuilder().AllQuery(tantivy.Must, 1.0).Build()
+	sCtx := tantivy.NewSearchContextBuilder().
+		SetQueryFromJson(&allQuery).
+		SetWithHighlights(false).
+		AddField(fieldIdRaw, 1.0).
+		SetDocsLimit(1_000_000_000).
+		Build()
+
+	results, err := f.index.SearchFastFieldJson(sCtx, fieldIdRaw)
+	if err != nil {
+		return nil, fmt.Errorf("search all docs: %w", err)
+	}
+
+	objectIds := make(map[string]struct{})
+	for _, id := range results.Values {
+		if idx := strings.Index(id, "/"); idx > 0 {
+			objectIds[id[:idx]] = struct{}{}
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get search results: %w", err)
+	}
+
+	return objectIds, nil
+}
 
 type ftIndexBatcherTantivy struct {
 	index          *tantivy.TantivyContext
@@ -104,7 +158,7 @@ type ftIndexBatcherTantivy struct {
 	mu             *sync.Mutex // original mutex, temporary solution
 }
 
-// Add adds a update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
+// UpsertDoc adds an update operation to the batcher. If the batch is reaching the size limit, it will be indexed and reset.
 func (f *ftIndexBatcherTantivy) UpsertDoc(searchDoc SearchDoc) error {
 	err := f.DeleteDoc(searchDoc.Id)
 	if err != nil {
@@ -115,24 +169,31 @@ func (f *ftIndexBatcherTantivy) UpsertDoc(searchDoc SearchDoc) error {
 		return fmt.Errorf("failed to create document")
 	}
 
-	err = doc.AddFields(searchDoc.Id, f.index, fieldId, fieldIdRaw)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddField(searchDoc.SpaceId, f.index, fieldSpace)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddFields(searchDoc.Title, f.index, fieldTitle, fieldTitleZh)
-	if err != nil {
-		return err
-	}
-
-	err = doc.AddFields(searchDoc.Text, f.index, fieldText, fieldTextZh)
-	if err != nil {
-		return err
+	for _, field := range []struct {
+		value      string
+		fieldNames []string
+	}{
+		{searchDoc.Id, []string{fieldId, fieldIdRaw}},
+		{searchDoc.SpaceId, []string{fieldSpace}},
+		{searchDoc.Title, []string{fieldTitle, fieldTitleZh}},
+		{searchDoc.Text, []string{fieldText, fieldTextZh}},
+		{searchDoc.Author, []string{fieldAuthor}},
+		{searchDoc.OrderId, []string{fieldOrderId}},
+		{searchDoc.MessageId, []string{fieldMessageId}},
+		{searchDoc.Timestamp, []string{fieldTimestamp}},
+	} {
+		if field.value == "" {
+			continue
+		}
+		if len(field.fieldNames) == 1 {
+			if err = doc.AddField(field.value, f.index, field.fieldNames[0]); err != nil {
+				return err
+			}
+			continue
+		}
+		if err = doc.AddFields(field.value, f.index, field.fieldNames...); err != nil {
+			return err
+		}
 	}
 
 	f.updateDocs = append(f.updateDocs, doc)

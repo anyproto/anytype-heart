@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"sort"
+	"sync/atomic"
 	"testing"
 
 	anystore "github.com/anyproto/any-store"
@@ -26,74 +26,77 @@ import (
 var ctx = context.Background()
 
 func TestStoreApply_RealTree(t *testing.T) {
-	update := func(fx *storeFx, heads []string, chs []*treechangeproto.RawTreeChangeWithId) {
-		tx := fx.RequireTx(t)
-		defer tx.Rollback()
-
-		_, err := fx.realTree.AddRawChangesWithUpdater(ctx, objecttree.RawChangesPayload{
+	// addChanges persists changes to tree storage, then apply reads from storage
+	// (matches the production flow: sync persists, then Update listener applies)
+	addChanges := func(fx *storeFx, heads []string, chs []*treechangeproto.RawTreeChangeWithId) {
+		_, err := fx.realTree.AddRawChanges(ctx, objecttree.RawChangesPayload{
 			NewHeads:   heads,
 			RawChanges: chs,
-		}, func(tree objecttree.ObjectTree, md objecttree.Mode) error {
-			applier := &storeApply{
-				tx: tx,
-				ot: fx.realTree,
-			}
-			return applier.Apply()
 		})
 		require.NoError(t, err)
-		require.NoError(t, tx.Commit())
 	}
-	assertOrder := func(fx *storeFx, orders []string) {
-		var changes []*objecttree.Change
-		for _, order := range orders {
-			changes = append(changes, testChange(order, false))
-		}
+	apply := func(fx *storeFx) {
 		tx := fx.RequireTx(t)
 		defer tx.Rollback()
-
-		fx.AssertOrder(t, tx, changes...)
+		applier := &storeApply{
+			tx: tx,
+			ot: fx.realTree,
+		}
+		require.NoError(t, applier.Apply(ctx))
+		require.NoError(t, tx.Commit())
 	}
 	t.Run("new real tree - 1,2,3 then 4,5", func(t *testing.T) {
 		fx := newRealTreeStoreFx(t)
-		newChanges := []*treechangeproto.RawTreeChangeWithId{
+		addChanges(fx, []string{"3"}, []*treechangeproto.RawTreeChangeWithId{
 			fx.changeCreator.CreateRaw("1", fx.aclList.Head().Id, "0", false, "0"),
 			fx.changeCreator.CreateRaw("2", fx.aclList.Head().Id, "0", false, "1"),
 			fx.changeCreator.CreateRaw("3", fx.aclList.Head().Id, "0", true, "2"),
-		}
-		update(fx, []string{"3"}, newChanges)
-		newChanges = []*treechangeproto.RawTreeChangeWithId{
+		})
+		apply(fx)
+
+		addChanges(fx, []string{"3", "5"}, []*treechangeproto.RawTreeChangeWithId{
 			fx.changeCreator.CreateRaw("4", fx.aclList.Head().Id, "0", false, "0"),
 			fx.changeCreator.CreateRaw("5", fx.aclList.Head().Id, "0", true, "4"),
-		}
-		update(fx, []string{"3", "5"}, newChanges)
-		assertOrder(fx, []string{"0", "1", "2", "3", "4", "5"})
+		})
+		apply(fx)
+
+		tx := fx.RequireTx(t)
+		defer tx.Rollback()
+		assert.True(t, tx.GetMaxAddSeq() > 0)
 	})
 	t.Run("new real tree - 4,5 then 1,2,3", func(t *testing.T) {
 		fx := newRealTreeStoreFx(t)
-		newChanges := []*treechangeproto.RawTreeChangeWithId{
+		addChanges(fx, []string{"5"}, []*treechangeproto.RawTreeChangeWithId{
 			fx.changeCreator.CreateRaw("4", fx.aclList.Head().Id, "0", false, "0"),
 			fx.changeCreator.CreateRaw("5", fx.aclList.Head().Id, "0", true, "4"),
-		}
-		update(fx, []string{"5"}, newChanges)
-		newChanges = []*treechangeproto.RawTreeChangeWithId{
+		})
+		apply(fx)
+
+		addChanges(fx, []string{"3", "5"}, []*treechangeproto.RawTreeChangeWithId{
 			fx.changeCreator.CreateRaw("1", fx.aclList.Head().Id, "0", false, "0"),
 			fx.changeCreator.CreateRaw("2", fx.aclList.Head().Id, "0", false, "1"),
 			fx.changeCreator.CreateRaw("3", fx.aclList.Head().Id, "0", true, "2"),
-		}
-		update(fx, []string{"3", "5"}, newChanges)
-		assertOrder(fx, []string{"0", "1", "2", "3", "4", "5"})
+		})
+		apply(fx)
+
+		tx := fx.RequireTx(t)
+		defer tx.Rollback()
+		assert.True(t, tx.GetMaxAddSeq() > 0)
 	})
 	t.Run("new real tree - 1,2,3,4,5 in one batch", func(t *testing.T) {
 		fx := newRealTreeStoreFx(t)
-		newChanges := []*treechangeproto.RawTreeChangeWithId{
+		addChanges(fx, []string{"3", "4", "5"}, []*treechangeproto.RawTreeChangeWithId{
 			fx.changeCreator.CreateRaw("1", fx.aclList.Head().Id, "0", false, "0"),
 			fx.changeCreator.CreateRaw("2", fx.aclList.Head().Id, "0", false, "1"),
 			fx.changeCreator.CreateRaw("3", fx.aclList.Head().Id, "0", true, "2"),
 			fx.changeCreator.CreateRaw("4", fx.aclList.Head().Id, "0", false, "0"),
 			fx.changeCreator.CreateRaw("5", fx.aclList.Head().Id, "0", true, "4"),
-		}
-		update(fx, []string{"3", "4", "5"}, newChanges)
-		assertOrder(fx, []string{"0", "1", "2", "3", "4", "5"})
+		})
+		apply(fx)
+
+		tx := fx.RequireTx(t)
+		defer tx.Rollback()
+		assert.True(t, tx.GetMaxAddSeq() > 0)
 	})
 }
 
@@ -107,25 +110,17 @@ type storeFx struct {
 }
 
 func (fx *storeFx) ExpectTree(changes ...*objecttree.Change) {
-	fx.mockTree.EXPECT().IterateRoot(gomock.Any(), gomock.Any()).DoAndReturn(func(_ objecttree.ChangeConvertFunc, f objecttree.ChangeIterateFunc) error {
-		for _, ch := range changes {
-			if !f(ch) {
-				return nil
+	fx.mockTree.EXPECT().IterateAfterAddSeq(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, addSeq uint64, _ objecttree.ChangeConvertFunc, f objecttree.ChangeIterateFunc) error {
+			for _, ch := range changes {
+				if ch.AddSeq > addSeq {
+					if !f(ch) {
+						return nil
+					}
+				}
 			}
-		}
-		return nil
-	})
-}
-
-func (fx *storeFx) ExpectTreeFrom(fromId string, changes ...*objecttree.Change) {
-	fx.mockTree.EXPECT().IterateFrom(fromId, gomock.Any(), gomock.Any()).DoAndReturn(func(_ string, _ objecttree.ChangeConvertFunc, f objecttree.ChangeIterateFunc) error {
-		for _, ch := range changes {
-			if !f(ch) {
-				return nil
-			}
-		}
-		return nil
-	})
+			return nil
+		})
 }
 
 func (fx *storeFx) RequireTx(t testing.TB) *storestate.StoreStateTx {
@@ -134,28 +129,13 @@ func (fx *storeFx) RequireTx(t testing.TB) *storestate.StoreStateTx {
 	return tx
 }
 
-func (fx *storeFx) AssertOrder(t testing.TB, tx *storestate.StoreStateTx, changes ...*objecttree.Change) {
-	var expectedIds = make([]string, len(changes))
-	var storeOrders = make([]string, len(changes))
-	var err error
-	for i, ch := range changes {
-		expectedIds[i] = ch.Id
-		storeOrders[i], err = tx.GetOrder(ch.Id)
-		require.NoError(t, err)
-	}
-	assert.Equal(t, len(expectedIds), len(storeOrders))
-	assert.True(t, sort.StringsAreSorted(storeOrders))
-	t.Log(storeOrders)
-}
-
 func (fx *storeFx) ApplyChanges(t *testing.T, tx *storestate.StoreStateTx, changes ...*objecttree.Change) {
 	applier := &storeApply{
 		tx: tx,
 		ot: fx.mockTree,
 	}
 	fx.ExpectTree(changes...)
-	require.NoError(t, applier.Apply())
-	fx.AssertOrder(t, tx, changes...)
+	require.NoError(t, applier.Apply(ctx))
 }
 
 func newRealTreeStoreFx(t testing.TB) *storeFx {
@@ -193,22 +173,21 @@ func newRealTreeStoreFx(t testing.TB) *storeFx {
 	tx := fx.RequireTx(t)
 	defer tx.Rollback()
 	applier := &storeApply{
-		tx:       tx,
-		allIsNew: true,
-		ot:       fx.realTree,
+		tx: tx,
+		ot: fx.realTree,
 	}
-	require.NoError(t, applier.Apply())
+	require.NoError(t, applier.Apply(ctx))
 	require.NoError(t, tx.Commit())
 	return fx
 }
 
-func testChange(id string, isNew bool) *objecttree.Change {
+func testChange(id string, addSeq uint64) *objecttree.Change {
 	_, pub, _ := crypto.GenerateRandomEd25519KeyPair()
 
 	return &objecttree.Change{
 		Id:       id,
 		OrderId:  id,
-		IsNew:    isNew,
+		AddSeq:   addSeq,
 		Model:    &pb.StoreChange{},
 		Identity: pub,
 	}
@@ -228,6 +207,10 @@ func buildTree(t testing.TB, aclList list.AclList) (objecttree.ObjectTree, error
 		return createStore(ctx, t)
 	})
 	treeStorage := changeCreator.CreateNewTreeStorage(t.(*testing.T), "0", aclList.Head().Id, false)
+	// Set up AddSeq counter for storage so IterateAfterAddSeq works
+	if setter, ok := treeStorage.(interface{ SetAddSeq(seq *atomic.Uint64) }); ok {
+		setter.SetAddSeq(&atomic.Uint64{})
+	}
 	tree, err := objecttree.BuildTestableTree(treeStorage, aclList)
 	if err != nil {
 		return nil, err

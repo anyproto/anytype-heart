@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-push-server/pushclient/pushapi"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -51,7 +52,7 @@ func (c *spaceTopicsCollection) SetRemoteList(remoteTopics *pushapi.Topics) {
 	}
 }
 
-func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chatIds []string) {
+func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chatEntries []chatEntry) {
 	if status.spaceKey == nil || status.encKey == nil {
 		return
 	}
@@ -62,12 +63,16 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 	pubKey, _ := status.spaceKey.GetPublic().Raw()
 
 	needCreate := false
-	if isOwner := strings.HasSuffix(status.creator, c.identity); isOwner {
+	isOwner := strings.HasSuffix(status.creator, c.identity)
+	isOneToOne := status.spaceType == model.SpaceType_SpaceTypeOneToOne
+	if isOwner || isOneToOne {
 		needCreate = true
-		for _, remoteTopic := range c.remoteTopics {
-			if bytes.Equal(remoteTopic.SpaceKey, pubKey) {
-				needCreate = false
-				break
+		if !isOneToOne {
+			for _, remoteTopic := range c.remoteTopics {
+				if bytes.Equal(remoteTopic.SpaceKey, pubKey) {
+					needCreate = false
+					break
+				}
 			}
 		}
 	}
@@ -86,9 +91,16 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 	}
 
 	hasCustomIds := len(status.muteIds) > 0 || len(status.mentionIds) > 0 || len(status.allIds) > 0
+	hasDiscussion := false
+	for _, ce := range chatEntries {
+		if ce.isDiscussion {
+			hasDiscussion = true
+			break
+		}
+	}
 	// nolint: nestif
-	if !hasCustomIds {
-		// there are no custom ids, so we can use common topics
+	if !hasCustomIds && !hasDiscussion {
+		// no per-chat decisions needed - use bulk topics
 		switch status.mode {
 		case pb.RpcPushNotification_All:
 			c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName), makeTopic(c.identity))
@@ -96,13 +108,20 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 			c.localTopics = append(c.localTopics, makeTopic(c.identity))
 		}
 	} else {
-		for _, chatId := range chatIds {
+		for _, ce := range chatEntries {
+			chatId := ce.chatId
 			if slices.Contains(status.muteIds, chatId) {
 				continue
 			} else if slices.Contains(status.mentionIds, chatId) {
 				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId), c.identity))
 			} else if slices.Contains(status.allIds, chatId) {
 				c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId)))
+			} else if ce.isDiscussion {
+				if slices.Contains(ce.subscribers, domain.NewParticipantId(ce.spaceId, c.identity)) {
+					c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId)))
+				} else {
+					c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId), c.identity))
+				}
 			} else {
 				switch status.mode {
 				case pb.RpcPushNotification_All:
@@ -111,7 +130,6 @@ func (c *spaceTopicsCollection) SetSpaceViewStatus(status *spaceViewStatus, chat
 					c.localTopics = append(c.localTopics, makeTopic(ChatsTopicName, sha256hex(chatId), c.identity))
 				}
 			}
-
 		}
 	}
 
@@ -129,9 +147,6 @@ func (c *spaceTopicsCollection) deleteSpace(status spaceViewStatus) {
 		log.Error("get raw space key", zap.Error(err))
 		return
 	}
-	c.remoteTopics = slices.DeleteFunc(c.remoteTopics, func(topic *pushapi.Topic) bool {
-		return bytes.Equal(topic.SpaceKey, rawSpaceKey)
-	})
 	c.localTopics = slices.DeleteFunc(c.localTopics, func(topic *pushapi.Topic) bool {
 		return bytes.Equal(topic.SpaceKey, rawSpaceKey)
 	})

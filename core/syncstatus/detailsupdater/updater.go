@@ -1,5 +1,29 @@
 package detailsupdater
 
+/*
+AI generated
+
+Name: Object Sync Status Details Writer
+Scope: global
+
+## Responsibility
+- Writes sync status (SyncStatus, SyncError, SyncDate) to object details
+- Batches status updates with 500ms intervals to avoid excessive writes
+- Reconciles local sync state with subscription state (UpdateSpaceDetails)
+- Combines file backup status with object sync status for file objects
+
+## Background Tasks
+- processEvents: processes batched sync status updates from queue
+
+## Documentation
+Update flow:
+1. objectsyncstatus calls UpdateDetails with new status
+2. Status queued in batcher (deduped by objectId, latest status wins)
+3. processEvents drains queue every 500ms
+4. For each object: tries direct store update, falls back to smartblock.Apply if object is in cache
+5. After each update: triggers SpaceStatusUpdater.Refresh to recalculate space-level status
+*/
+
 import (
 	"context"
 	"errors"
@@ -221,7 +245,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			}
 
 			// Force updating via cache
-			if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_chatDerived) {
+			if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_chatDerived) || details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_discussion) {
 				return nil, false, ocache.ErrExists
 			}
 
@@ -236,7 +260,7 @@ func (u *syncStatusUpdater) updateObjectDetails(syncStatusDetails *syncStatusDet
 			details.SetInt64(bundle.RelationKeySyncError, int64(syncError))
 			details.SetInt64(bundle.RelationKeySyncDate, time.Now().Unix())
 			return details, true, nil
-		})
+		}, true)
 	})
 	if err == nil {
 		return nil
@@ -316,6 +340,7 @@ var suitableLayouts = map[model.ObjectTypeLayout]struct{}{
 	model.ObjectType_chatDeprecated: {},
 	model.ObjectType_spaceView:      {},
 	model.ObjectType_chatDerived:    {},
+	model.ObjectType_discussion:    {},
 }
 
 func (u *syncStatusUpdater) isLayoutSuitableForSyncRelations(details *domain.Details) bool {

@@ -1,5 +1,25 @@
 package migratorfinisher
 
+/*
+AI generated
+
+Name: Storage Migration Cleanup Finalizer
+Scope: global
+
+## Responsibility
+- Cleans up old storage artifacts after space storage migration completes
+- Removes CRDT index files from objectstore folder
+- Renames old store folder to "space_store_migrated"
+
+## External State
+- Renames {oldPath} to "space_store_migrated" on successful migration
+- Deletes files prefixed with "crdt" in objectstore folder
+
+## Documentation
+Cleanup executes on Close() only if SetMigrationDone() was called during the session.
+Migration caller must explicitly mark completion before shutdown.
+*/
+
 import (
 	"context"
 	"fmt"

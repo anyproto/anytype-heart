@@ -1,5 +1,30 @@
 package fileuploader
 
+/*
+AI generated
+
+Name: File Upload Orchestrator
+Scope: global
+
+## Responsibility
+- Creates Uploader instances for uploading files from various sources (bytes, URL, file path)
+- Detects file type via MIME sniffing with fallback to generic file type
+- Supports two-phase upload: preload to storage first, then commit/create object later
+- Manages preloaded upload results for deferred object creation
+
+## Background Tasks
+- Preload: async file upload to storage without object creation (Preload method)
+- UploadAsync: async file upload with object creation (UploadAsync method)
+
+## Documentation
+Two-phase upload flow:
+1. Preload() - uploads file to storage, returns preloadId, does NOT commit or create object
+2. Upload() with SetPreloadId() - commits the preloaded batch and creates file object
+This allows uploading files speculatively and discarding if not needed (batch.Discard).
+
+Concurrency: uploadFilesLimiter channel limits parallel uploads to 8 goroutines.
+*/
+
 import (
 	"bufio"
 	"bytes"
@@ -22,6 +47,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/file"
@@ -31,7 +57,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject/filemodels"
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/mill"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -42,12 +71,18 @@ import (
 
 var log = logging.Logger("file-uploader")
 
+// objectStoreProvider provides space-scoped object stores.
+type objectStoreProvider interface {
+	SpaceIndex(spaceId string) spaceindex.Store
+}
+
 type Service interface {
 	app.Component
 
 	NewUploader(spaceId string, origin objectorigin.ObjectOrigin) Uploader
 	GetPreloadResult(preloadId string) (*files.AddResult, bool)
 	RemovePreloadResult(preloadId string)
+	DropFiles(req pb.RpcFileDropRequest) (int, error)
 }
 
 // preloadEntry tracks the status of a preload operation and implements Process interface
@@ -69,6 +104,8 @@ type service struct {
 	picker            cache.ObjectGetter
 	fileObjectService FileObjectService
 	processService    process.Service
+	objectCreator     objectCreator
+	objectStore       objectStoreProvider
 
 	// Manage preloaded results
 	preloadMu      sync.RWMutex
@@ -181,6 +218,8 @@ func (f *service) Init(a *app.App) error {
 	f.tempDirProvider = app.MustComponent[core.TempDirProvider](a)
 	f.picker = app.MustComponent[cache.ObjectGetter](a)
 	f.fileObjectService = app.MustComponent[FileObjectService](a)
+	f.objectCreator = app.MustComponent[objectCreator](a)
+	f.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	// Process service is optional - tests may not provide it
 	if ps := a.Component(process.CName); ps != nil {
 		f.processService = ps.(process.Service)
@@ -196,6 +235,53 @@ func (f *service) Run(_ context.Context) (err error) {
 func (f *service) Close(_ context.Context) (err error) {
 	f.ctxCancel()
 	return nil
+}
+
+func (f *service) DropFiles(req pb.RpcFileDropRequest) (int, error) {
+	var spaceID, rootId string
+	var isCol bool
+	isDropInSpace := req.ContextId == ""
+
+	if isDropInSpace {
+		spaceID = req.SpaceId
+		if spaceID == "" {
+			return 0, fmt.Errorf("spaceId is required when contextId is empty")
+		}
+	} else {
+		err := cache.Do(f.picker, req.ContextId, func(sb smartblock.SmartBlock) error {
+			spaceID = sb.SpaceID()
+			rootId = sb.RootId()
+			layout, ok := sb.Layout()
+			isCol = ok && layout == model.ObjectType_collection
+			if !isCol {
+				if err := sb.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	proc := &dropFilesProcess{
+		spaceId:        spaceID,
+		processService: f.processService,
+		picker:         f.picker,
+		service:        f,
+		objectCreator:  f.objectCreator,
+		objectStore:    f.objectStore.SpaceIndex(spaceID),
+		contextId:      req.ContextId,
+		isDropInSpace:  isDropInSpace,
+		fileType:       req.Type,
+	}
+	if err := proc.Init(req.LocalFilePaths); err != nil {
+		return 0, err
+	}
+	ch := make(chan error)
+	go proc.Start(rootId, isCol, req, ch)
+	return int(proc.total), <-ch
 }
 
 var (
@@ -225,6 +311,8 @@ type Uploader interface {
 	SetImageKind(imageKind model.ImageKind) Uploader
 	SetPreloadId(preloadId string) Uploader
 
+	SetCreatedInContext(contextId string) Uploader
+	SetCreatedInContextRef(blockId string) Uploader
 	AddOptions(options ...files.AddOption) Uploader
 	AsyncUpdates(smartBlockId string) Uploader
 
@@ -298,7 +386,9 @@ type uploader struct {
 	customEncryptionKeys map[string]string
 	preloadId            string
 
-	serviceCtx context.Context // used to cancel async operations
+	serviceCtx          context.Context // used to cancel async operations
+	createdInContext    string
+	createdInContextRef string
 }
 
 type bufioSeekClose struct {
@@ -395,6 +485,16 @@ func (u *uploader) SetCustomEncryptionKeys(keys map[string]string) Uploader {
 
 func (u *uploader) SetImageKind(imageKind model.ImageKind) Uploader {
 	u.imageKind = imageKind
+	return u
+}
+
+func (u *uploader) SetCreatedInContext(contextId string) Uploader {
+	u.createdInContext = contextId
+	return u
+}
+
+func (u *uploader) SetCreatedInContextRef(blockId string) Uploader {
+	u.createdInContextRef = blockId
 	return u
 }
 
@@ -742,12 +842,24 @@ func (u *uploader) getOrCreateFileObject(ctx context.Context, addResult *files.A
 		}
 	}
 
+	// Add creation context to additional details
+	additionalDetails := u.additionalDetails
+	if additionalDetails == nil {
+		additionalDetails = domain.NewDetails()
+	}
+	if u.createdInContext != "" {
+		additionalDetails.SetString(bundle.RelationKeyCreatedInContext, u.createdInContext)
+	}
+	if u.createdInContextRef != "" {
+		additionalDetails.SetString(bundle.RelationKeyCreatedInContextRef, u.createdInContextRef)
+	}
+
 	fileObjectId, fileObjectDetails, err := u.fileObjectService.Create(ctx, u.spaceId, filemodels.CreateRequest{
 		FileId:            addResult.FileId,
 		EncryptionKeys:    addResult.EncryptionKeys.EncryptionKeys,
 		ObjectOrigin:      u.origin,
 		ImageKind:         u.imageKind,
-		AdditionalDetails: u.additionalDetails,
+		AdditionalDetails: additionalDetails,
 		FileVariants:      addResult.Variants,
 	})
 	if err != nil {

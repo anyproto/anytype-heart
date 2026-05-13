@@ -41,6 +41,18 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		return fmt.Errorf("get head entry: %w", err)
 	}
 
+	if sbType != coresb.SmartBlockTypeFileObject {
+		// in case client skips archiving, lets still call objectGC
+		gcIds, err := s.objectGC.CheckObjectsOnObjectArchived(id.SpaceID, id.ObjectID, true)
+		if err != nil {
+			log.With("objectId", id.ObjectID).Warnf("failed to check objects on context deletion: %v", err)
+		} else if len(gcIds) > 0 {
+			if err := s.detailsService.SetListIsArchivedNoGC(context.Background(), gcIds, true); err != nil {
+				log.With("objectId", id.ObjectID).Warnf("failed to archive children on context deletion: %v", err)
+			}
+		}
+	}
+
 	switch sbType {
 	case coresb.SmartBlockTypeObjectType,
 		coresb.SmartBlockTypeRelation,
@@ -54,7 +66,18 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		if err != nil && !errors.Is(err, filemodels.ErrEmptyFileId) {
 			return fmt.Errorf("delete file data: %w", err)
 		}
+		// BeforeDelete tears down the spaceindex row, closes open sessions
+		// and marks the smartblock as deleted. Without this the CID→object
+		// dedup lookup keeps returning the stale id, so re-uploads of the
+		// same bytes resurrect a broken object instead of creating a new one.
+		if err = s.BeforeDelete(id, nil); err != nil {
+			return fmt.Errorf("before delete: %w", err)
+		}
 		err = spc.DeleteTree(context.Background(), id.ObjectID)
+		// Tolerate a concurrent deletion that already removed the tree.
+		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+			err = nil
+		}
 	default:
 		if entry.IsDerived {
 			err = s.deleteDerivedObject(id, sbType, spc)
@@ -65,6 +88,7 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 	if err != nil {
 		return err
 	}
+	s.unsetHomepageIfNeeded(id, spc)
 	s.sendOnRemoveEvent(id.SpaceID, id.ObjectID)
 	// Remove from cache
 	err = spc.Remove(context.Background(), id.ObjectID)
@@ -185,6 +209,23 @@ func (s *Service) BeforeDelete(id domain.FullID, workspaceRemove func() error) e
 	}
 
 	return nil
+}
+
+func (s *Service) unsetHomepageIfNeeded(id domain.FullID, spc clientspace.Space) {
+	workspaceId := spc.DerivedIDs().Workspace
+	details, err := s.objectStore.SpaceIndex(id.SpaceID).GetDetails(workspaceId)
+	if err != nil {
+		log.With("objectId", id.ObjectID).Warnf("failed to get workspace details for dashboard check: %v", err)
+		return
+	}
+	homepage := details.GetString(bundle.RelationKeyHomepage)
+	if homepage == id.ObjectID {
+		if err = s.detailsService.SetSpaceInfo(spc.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyHomepage: domain.String(domain.HomepageWidgets),
+		})); err != nil {
+			log.With("objectId", id.ObjectID).Warnf("failed to reset homepage to widgets: %v", err)
+		}
+	}
 }
 
 func (s *Service) sendOnRemoveEvent(spaceId string, id string) {

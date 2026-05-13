@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/samber/lo"
@@ -61,25 +62,29 @@ func (q *dummyFulltextQueue) FtQueueMarkAsIndexed(ids []domain.FullID, state uin
 	return nil
 }
 
-func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error {
+func (q *dummyFulltextQueue) AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (uint64, int, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
+	var added int
 	for _, id := range ids {
 		if !lo.Contains(q.ids, id.ObjectID) {
 			q.ids = append(q.ids, id.ObjectID)
+			added++
 		}
 	}
-	return nil
+	return uint64(time.Now().Unix()), added, nil
 }
 
-func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error) {
+func (q *dummyFulltextQueue) ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullTextQueuedObject, error) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 
 	if limit > uint(len(q.ids)) {
 		limit = uint(len(q.ids))
 	}
-	return lo.Map(q.ids[:limit], func(item string, index int) domain.FullID { return domain.FullID{ObjectID: item} }), nil
+	return lo.Map(q.ids[:limit], func(item string, index int) domain.FullTextQueuedObject {
+		return domain.FullTextQueuedObject{ObjectId: item}
+	}), nil
 }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
@@ -110,6 +115,11 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	})
 	err = s.Init()
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		fullText.Close(context.Background())
+		provider.Close(context.Background())
+	})
 	return &StoreFixture{
 		Store:         s,
 		fts:           fullText,
@@ -179,4 +189,14 @@ func (fx *StoreFixture) SetSourceService(s SourceDetailsFromID) {
 		panic("SetSourceService called before Init()")
 	}
 	proxy.realStore.sourceService = s
+}
+
+// getObjectsWithObjectInRelation exposes the underlying dsObjectStore method for tests.
+func (fx *StoreFixture) getObjectsWithObjectInRelation(details *domain.Details, score float64, path domain.ObjectPath, limit int, params database.Filters) []database.Record {
+	return fx.Store.(*storeProxy).realStore.getObjectsWithObjectInRelation(details, score, path, limit, params)
+}
+
+// QueryFromFulltext exposes the underlying dsObjectStore method for tests.
+func (fx *StoreFixture) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
+	return fx.Store.(*storeProxy).realStore.QueryFromFulltext(results, params, limit, offset, ftsSearch)
 }

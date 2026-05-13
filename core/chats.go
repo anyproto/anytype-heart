@@ -84,6 +84,38 @@ func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDel
 	return &pb.RpcChatDeleteMessageResponse{}
 }
 
+func (mw *Middleware) ChatAddNotificationSubscriber(cctx context.Context, req *pb.RpcChatAddNotificationSubscriberRequest) *pb.RpcChatAddNotificationSubscriberResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.AddNotificationSubscriber(cctx, req.ChatObjectId, req.Identity)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatAddNotificationSubscriberResponseErrorCode](err)
+		return &pb.RpcChatAddNotificationSubscriberResponse{
+			Error: &pb.RpcChatAddNotificationSubscriberResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatAddNotificationSubscriberResponse{}
+}
+
+func (mw *Middleware) ChatRemoveNotificationSubscriber(cctx context.Context, req *pb.RpcChatRemoveNotificationSubscriberRequest) *pb.RpcChatRemoveNotificationSubscriberResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.RemoveNotificationSubscriber(cctx, req.ChatObjectId, req.Identity)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatRemoveNotificationSubscriberResponseErrorCode](err)
+		return &pb.RpcChatRemoveNotificationSubscriberResponse{
+			Error: &pb.RpcChatRemoveNotificationSubscriberResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatRemoveNotificationSubscriberResponse{}
+}
+
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 
@@ -104,8 +136,9 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 	}
 
 	return &pb.RpcChatGetMessagesResponse{
-		Messages:  messagesToProto(resp.Messages),
-		ChatState: resp.ChatState,
+		Messages:     messagesToProto(resp.Messages),
+		ChatState:    resp.ChatState,
+		MessageCount: resp.MessageCount,
 	}
 }
 
@@ -144,6 +177,7 @@ func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.Rp
 		Messages:          messagesToProto(resp.Messages),
 		NumMessagesBefore: 0,
 		ChatState:         resp.ChatState,
+		MessageCount:      resp.MessageCount,
 	}
 }
 
@@ -282,4 +316,78 @@ func (mw *Middleware) ChatReadAll(cctx context.Context, req *pb.RpcChatReadAllRe
 		}
 	}
 	return &pb.RpcChatReadAllResponse{}
+}
+
+func (mw *Middleware) ChatReadReactions(cctx context.Context, req *pb.RpcChatReadReactionsRequest) *pb.RpcChatReadReactionsResponse {
+	ctx := mw.newContext(cctx)
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.ReadReaction(cctx, req.ChatObjectId)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatReadReactionsResponseErrorCode](err)
+		return &pb.RpcChatReadReactionsResponse{
+			Error: &pb.RpcChatReadReactionsResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatReadReactionsResponse{
+		Event: ctx.GetResponseEvent(),
+	}
+}
+
+func (mw *Middleware) ChatSearch(cctx context.Context, req *pb.RpcChatSearchRequest) *pb.RpcChatSearchResponse {
+	chatService := mustService[chats.Service](mw)
+
+	results, err := chatService.Search(cctx, req)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatSearchResponseErrorCode](err)
+		return &pb.RpcChatSearchResponse{
+			Error: &pb.RpcChatSearchResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatSearchResponse{
+		Results: results,
+	}
+}
+
+func (mw *Middleware) ChatSetPinnedMessages(cctx context.Context, req *pb.RpcChatSetPinnedMessagesRequest) *pb.RpcChatSetPinnedMessagesResponse {
+	ctx := mw.newContext(cctx)
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.PinMessages(cctx, req.ChatObjectId, req.MessageIds, req.Pinned)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatSetPinnedMessagesResponseErrorCode](err)
+		return &pb.RpcChatSetPinnedMessagesResponse{
+			Error: &pb.RpcChatSetPinnedMessagesResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatSetPinnedMessagesResponse{
+		Event: ctx.GetResponseEvent(),
+	}
+}
+
+func (mw *Middleware) ChatGetPinnedMessages(cctx context.Context, req *pb.RpcChatGetPinnedMessagesRequest) *pb.RpcChatGetPinnedMessagesResponse {
+	chatService := mustService[chats.Service](mw)
+
+	messages, err := chatService.GetPinnedMessages(cctx, req.ChatObjectId)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatGetPinnedMessagesResponseErrorCode](err)
+		return &pb.RpcChatGetPinnedMessagesResponse{
+			Error: &pb.RpcChatGetPinnedMessagesResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatGetPinnedMessagesResponse{
+		Messages: messagesToProto(messages),
+	}
 }

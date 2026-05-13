@@ -1,5 +1,29 @@
 package spacesyncstatus
 
+/*
+AI generated
+
+Name: Space Sync Status Event Broadcaster
+Scope: global
+
+## Responsibility
+- Aggregates sync state from multiple sources (node status, storage usage, sync subscriptions)
+- Computes overall space sync status and broadcasts EventSpaceSyncStatusUpdate to clients
+- Deduplicates identical events before broadcasting
+
+## Background Tasks
+- periodicCall: processes queued Refresh requests every 1s (update)
+
+## Documentation
+Status computation priority (highest wins):
+1. IncompatibleVersion - network protocol incompatible
+2. NetworkNeedsUpdate - network needs update
+3. ConnectionError -> Offline
+4. StorageLimitExceed (< 10% storage left)
+5. Syncing (objects pending sync)
+6. Synced (default)
+*/
+
 import (
 	"context"
 	"sync"

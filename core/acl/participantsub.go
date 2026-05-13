@@ -29,10 +29,10 @@ func newParticipantGetter(
 	onAdd identityUpdateFunc,
 ) participantGetter {
 	ctx, cancel := context.WithCancel(context.Background())
-	waiter := make(chan struct{})
 	return &participantSub{
 		ownIdentity:          ownIdentity,
-		waiter:               waiter,
+		started:              make(chan struct{}),
+		waiter:               make(chan struct{}),
 		ctx:                  ctx,
 		cancel:               cancel,
 		id:                   id,
@@ -46,6 +46,7 @@ type participantSub struct {
 	id                   string
 	ownIdentity          string
 	crossSpaceSubService crossspacesub.Service
+	started              chan struct{}
 	waiter               chan struct{}
 	internalQueue        *mb.MB[*pb.EventMessage]
 	ctx                  context.Context
@@ -55,6 +56,7 @@ type participantSub struct {
 }
 
 func (s *participantSub) Run(ctx context.Context) error {
+	close(s.started)
 	s.internalQueue = mb.New[*pb.EventMessage](0)
 	resp, err := s.crossSpaceSubService.Subscribe(subscriptionservice.SubscribeRequest{
 		SubId:             s.id,
@@ -98,11 +100,19 @@ func (s *participantSub) Run(ctx context.Context) error {
 	return nil
 }
 
-// Close will deadlock if Run was not called before
+// Close cancels the subscription and, if Run was started, waits for the
+// monitor goroutine to exit before closing the internal queue. Safe to call
+// when Run was never invoked (e.g. when Init of an enclosing component failed
+// and the framework calls Close on partially-initialized components).
 func (s *participantSub) Close() error {
 	s.cancel()
-	<-s.waiter
-	return nil
+	select {
+	case <-s.started:
+		<-s.waiter
+	default:
+		return nil
+	}
+	return s.internalQueue.Close()
 }
 
 func newSubPredicate(creatorId string) crossspacesub.Predicate {

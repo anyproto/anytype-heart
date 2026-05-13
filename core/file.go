@@ -40,8 +40,8 @@ func (mw *Middleware) FileDownload(cctx context.Context, req *pb.RpcFileDownload
 
 func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
 	ctx := mw.newContext(cctx)
-	response := func(code pb.RpcFileDropResponseErrorCode, err error) *pb.RpcFileDropResponse {
-		m := &pb.RpcFileDropResponse{Error: &pb.RpcFileDropResponseError{Code: code}}
+	response := func(filesCount int, code pb.RpcFileDropResponseErrorCode, err error) *pb.RpcFileDropResponse {
+		m := &pb.RpcFileDropResponse{Error: &pb.RpcFileDropResponseError{Code: code}, FilesCount: int64(filesCount)}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		} else {
@@ -49,13 +49,15 @@ func (mw *Middleware) FileDrop(cctx context.Context, req *pb.RpcFileDropRequest)
 		}
 		return m
 	}
+	var filesCount int
 	err := mw.doBlockService(func(bs *block.Service) (err error) {
-		return bs.DropFiles(*req)
+		filesCount, err = bs.DropFiles(*req)
+		return
 	})
 	if err != nil {
-		return response(pb.RpcFileDropResponseError_UNKNOWN_ERROR, err)
+		return response(0, pb.RpcFileDropResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcFileDropResponseError_NULL, nil)
+	return response(filesCount, pb.RpcFileDropResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileListOffload(cctx context.Context, req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
@@ -240,7 +242,9 @@ func (mw *Middleware) FileReconcile(ctx context.Context, req *pb.RpcFileReconcil
 			},
 		}
 	}
-	return &pb.RpcFileReconcileResponse{}
+	return &pb.RpcFileReconcileResponse{
+		Error: &pb.RpcFileReconcileResponseError{Code: pb.RpcFileReconcileResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSetAutoDownloadRequest) *pb.RpcFileSetAutoDownloadResponse {
@@ -253,7 +257,24 @@ func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSe
 			},
 		}
 	}
-	return &pb.RpcFileSetAutoDownloadResponse{}
+	return &pb.RpcFileSetAutoDownloadResponse{
+		Error: &pb.RpcFileSetAutoDownloadResponseError{Code: pb.RpcFileSetAutoDownloadResponseError_NULL},
+	}
+}
+
+func (mw *Middleware) FileAutoDownloadSetLimit(ctx context.Context, req *pb.RpcFileAutoDownloadSetLimitRequest) *pb.RpcFileAutoDownloadSetLimitResponse {
+	err := mustService[filedownloader.Service](mw).SetSizeLimit(req.SizeLimitMebibytes)
+	if err != nil {
+		return &pb.RpcFileAutoDownloadSetLimitResponse{
+			Error: &pb.RpcFileAutoDownloadSetLimitResponseError{
+				Code:        mapErrorCode[pb.RpcFileAutoDownloadSetLimitResponseErrorCode](err),
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcFileAutoDownloadSetLimitResponse{
+		Error: &pb.RpcFileAutoDownloadSetLimitResponseError{Code: pb.RpcFileAutoDownloadSetLimitResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCacheDownloadRequest) *pb.RpcFileCacheDownloadResponse {
@@ -274,7 +295,9 @@ func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCach
 			},
 		}
 	}
-	return &pb.RpcFileCacheDownloadResponse{}
+	return &pb.RpcFileCacheDownloadResponse{
+		Error: &pb.RpcFileCacheDownloadResponseError{Code: pb.RpcFileCacheDownloadResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileCacheCancelDownload(ctx context.Context, req *pb.RpcFileCacheCancelDownloadRequest) *pb.RpcFileCacheCancelDownloadResponse {
@@ -295,5 +318,7 @@ func (mw *Middleware) FileCacheCancelDownload(ctx context.Context, req *pb.RpcFi
 			},
 		}
 	}
-	return &pb.RpcFileCacheCancelDownloadResponse{}
+	return &pb.RpcFileCacheCancelDownloadResponse{
+		Error: &pb.RpcFileCacheCancelDownloadResponseError{Code: pb.RpcFileCacheCancelDownloadResponseError_NULL},
+	}
 }

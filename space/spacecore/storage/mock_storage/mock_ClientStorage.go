@@ -3,9 +3,10 @@
 package mock_storage
 
 import (
-	context "context"
-
 	app "github.com/anyproto/any-sync/app"
+	anystorage "github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
+
+	context "context"
 
 	mock "github.com/stretchr/testify/mock"
 
@@ -25,7 +26,7 @@ func (_m *MockClientStorage) EXPECT() *MockClientStorage_Expecter {
 	return &MockClientStorage_Expecter{mock: &_m.Mock}
 }
 
-// AllSpaceIds provides a mock function with given fields:
+// AllSpaceIds provides a mock function with no fields
 func (_m *MockClientStorage) AllSpaceIds() ([]string, error) {
 	ret := _m.Called()
 
@@ -187,6 +188,52 @@ func (_c *MockClientStorage_CreateSpaceStorage_Call) RunAndReturn(run func(conte
 	return _c
 }
 
+// DeleteBackup provides a mock function with given fields: backupPath
+func (_m *MockClientStorage) DeleteBackup(backupPath string) error {
+	ret := _m.Called(backupPath)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteBackup")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(backupPath)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClientStorage_DeleteBackup_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteBackup'
+type MockClientStorage_DeleteBackup_Call struct {
+	*mock.Call
+}
+
+// DeleteBackup is a helper method to define mock.On call
+//   - backupPath string
+func (_e *MockClientStorage_Expecter) DeleteBackup(backupPath interface{}) *MockClientStorage_DeleteBackup_Call {
+	return &MockClientStorage_DeleteBackup_Call{Call: _e.mock.On("DeleteBackup", backupPath)}
+}
+
+func (_c *MockClientStorage_DeleteBackup_Call) Run(run func(backupPath string)) *MockClientStorage_DeleteBackup_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClientStorage_DeleteBackup_Call) Return(_a0 error) *MockClientStorage_DeleteBackup_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientStorage_DeleteBackup_Call) RunAndReturn(run func(string) error) *MockClientStorage_DeleteBackup_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DeleteSpaceStorage provides a mock function with given fields: ctx, spaceId
 func (_m *MockClientStorage) DeleteSpaceStorage(ctx context.Context, spaceId string) error {
 	ret := _m.Called(ctx, spaceId)
@@ -280,7 +327,54 @@ func (_c *MockClientStorage_Init_Call) RunAndReturn(run func(*app.App) error) *M
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// ListCorruptedBackups provides a mock function with no fields
+func (_m *MockClientStorage) ListCorruptedBackups() []anystorage.CorruptedBackup {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListCorruptedBackups")
+	}
+
+	var r0 []anystorage.CorruptedBackup
+	if rf, ok := ret.Get(0).(func() []anystorage.CorruptedBackup); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]anystorage.CorruptedBackup)
+		}
+	}
+
+	return r0
+}
+
+// MockClientStorage_ListCorruptedBackups_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListCorruptedBackups'
+type MockClientStorage_ListCorruptedBackups_Call struct {
+	*mock.Call
+}
+
+// ListCorruptedBackups is a helper method to define mock.On call
+func (_e *MockClientStorage_Expecter) ListCorruptedBackups() *MockClientStorage_ListCorruptedBackups_Call {
+	return &MockClientStorage_ListCorruptedBackups_Call{Call: _e.mock.On("ListCorruptedBackups")}
+}
+
+func (_c *MockClientStorage_ListCorruptedBackups_Call) Run(run func()) *MockClientStorage_ListCorruptedBackups_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientStorage_ListCorruptedBackups_Call) Return(_a0 []anystorage.CorruptedBackup) *MockClientStorage_ListCorruptedBackups_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientStorage_ListCorruptedBackups_Call) RunAndReturn(run func() []anystorage.CorruptedBackup) *MockClientStorage_ListCorruptedBackups_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Name provides a mock function with no fields
 func (_m *MockClientStorage) Name() string {
 	ret := _m.Called()
 

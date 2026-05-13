@@ -26,6 +26,9 @@ packages:
   github.com/anyproto/anytype-heart/pkg/lib/core:
     interfaces:
       Service:
+  github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch:
+    interfaces:
+      FTSearch:
   github.com/anyproto/anytype-heart/core/block/editor/file:
     interfaces:
       File:
@@ -63,7 +66,15 @@ packages:
   github.com/anyproto/anytype-heart/core/files/fileuploader:
     interfaces:
       Service:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
       Uploader:
+        config:
+          dir: "{{.InterfaceDir}}"
+          outpkg: "{{.PackageName}}"
+          inpackage: true
   github.com/anyproto/anytype-heart/core/acl:
     interfaces:
       participantRemover:
@@ -259,6 +270,7 @@ packages:
       EventService:
       CrossSpaceSubscriptionService:
       ClientCommands:
+      FileObjectService:
   github.com/anyproto/anytype-heart/core/api/filter:
     interfaces:
       ApiService:
@@ -278,6 +290,9 @@ packages:
   github.com/anyproto/anytype-heart/core/relationutils:
     interfaces:
       RelationFormatFetcher:
-  github.com/anyproto/anytype-heart/core/onetoone:
+  github.com/anyproto/anytype-heart/core/inbox/inboxservice:
     interfaces:
-      Service:
+      Sender:
+  github.com/anyproto/anytype-heart/core/inbox/inboxclient:
+    interfaces:
+      InboxClient:

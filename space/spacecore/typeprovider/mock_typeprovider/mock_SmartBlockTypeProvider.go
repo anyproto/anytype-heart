@@ -68,7 +68,7 @@ func (_c *MockSmartBlockTypeProvider_Init_Call) RunAndReturn(run func(*app.App) 
 	return _c
 }
 
-// Name provides a mock function with given fields:
+// Name provides a mock function with no fields
 func (_m *MockSmartBlockTypeProvider) Name() string {
 	ret := _m.Called()
 
@@ -202,7 +202,7 @@ func (_c *MockSmartBlockTypeProvider_RegisterStaticType_Call) Return() *MockSmar
 }
 
 func (_c *MockSmartBlockTypeProvider_RegisterStaticType_Call) RunAndReturn(run func(string, smartblock.SmartBlockType)) *MockSmartBlockTypeProvider_RegisterStaticType_Call {
-	_c.Call.Return(run)
+	_c.Run(run)
 	return _c
 }
 

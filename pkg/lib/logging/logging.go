@@ -1,22 +1,23 @@
 package logging
 
 import (
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/anyproto/any-sync/app/logger"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/anyproto/anytype-heart/pkg/lib/environment"
-	"github.com/anyproto/anytype-heart/util/vcs"
+	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
 )
 
-const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;*=WARN"
+const DefaultLogLevels = "common.commonspace.headsync=INFO;core.block.editor.spaceview=INFO;anytype-app=INFO;anytype-core-account=INFO;*=WARN"
 const lumberjackScheme = "lumberjack"
 
 var DefaultCfg = logger.Config{
@@ -79,54 +80,125 @@ type lumberjackSink struct {
 	*lumberjack.Logger
 }
 
+// Sync is a no-op: we rely on the OS page cache to flush eventually and
+// avoid the fsync cost on every log write.
 func (s *lumberjackSink) Sync() error {
 	return nil
 }
 
+// bufferedLumberjackSink wraps a lumberjack rotator with an in-memory buffer so
+// many small log writes coalesce into a single syscall per flush.
+type bufferedLumberjackSink struct {
+	*zapcore.BufferedWriteSyncer
+	lj *lumberjack.Logger
+}
+
+func (s *bufferedLumberjackSink) Close() error {
+	// Stop flushes pending buffered bytes to the underlying writer and stops
+	// the background flush goroutine.
+	stopErr := s.BufferedWriteSyncer.Stop()
+	closeErr := s.lj.Close()
+	return errors.Join(stopErr, closeErr)
+}
+
+// activeSink is the most recently registered lumberjack sink. Tracked so
+// CloseSink (called on shutdown) can stop the background flush goroutine
+// and close the underlying file deterministically. Access is guarded by
+// the package-level zap registration which only happens once.
+var activeSink *bufferedLumberjackSink
+
 func newLumberjackSink(u *url.URL) (zap.Sink, error) {
-	// if android, limit the log file size to 10MB
-	if runtime.GOOS == "android" || runtime.GOARCH == "ios" {
-		return &lumberjackSink{
-			Logger: &lumberjack.Logger{
-				Filename:   u.Path,
-				MaxSize:    10,
-				MaxBackups: 2,
-				Compress:   false,
-			},
-		}, nil
-	}
-	return &lumberjackSink{
-		Logger: &lumberjack.Logger{
+	var lj *lumberjack.Logger
+	const bufSize = 256 * 1024
+	const flushInterval = 30 * time.Second
+	// Mobile keeps smaller rotated files to save disk; buffering behaviour
+	// matches desktop.
+	if runtime.GOOS == "android" || runtime.GOOS == "ios" {
+		lj = &lumberjack.Logger{
+			Filename:   u.Path,
+			MaxSize:    10,
+			MaxBackups: 2,
+			Compress:   false,
+		}
+	} else {
+		lj = &lumberjack.Logger{
 			Filename:   u.Path,
 			MaxSize:    100,
 			MaxBackups: 10,
 			Compress:   true,
+		}
+	}
+	sink := &bufferedLumberjackSink{
+		BufferedWriteSyncer: &zapcore.BufferedWriteSyncer{
+			WS:            &lumberjackSink{Logger: lj},
+			Size:          bufSize,
+			FlushInterval: flushInterval,
 		},
-	}, nil
+		lj: lj,
+	}
+	activeSink = sink
+	return sink, nil
 }
 
-func Init(root string, logLevels string, sendLogs bool, saveLogs bool) {
-	if root != "" {
-		environment.ROOT_PATH = filepath.Join(root, "common")
-		err := os.MkdirAll(environment.ROOT_PATH, 0755)
-		if err != nil {
-			if !os.IsExist(err) {
-				fmt.Println("failed to create global dir", err)
-			}
+// CloseSink stops the background flush goroutine of the lumberjack sink and
+// closes the underlying log file. Safe to call when no sink is registered
+// (no-op). Bounded by timeout so a stuck disk can't hang shutdown — if the
+// stop takes longer, we abandon and let the OS reclaim the FD on exit.
+func CloseSink(timeout time.Duration) error {
+	sink := activeSink
+	if sink == nil {
+		return nil
+	}
+	done := make(chan error, 1)
+	go func() {
+		done <- sink.Close()
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return fmt.Errorf("close lumberjack sink: timed out after %s", timeout)
+	}
+}
+
+// SyncWithTimeout drains zap's buffered sink so recent log lines reach the
+// OS page cache before process exit. Bounded — a stuck disk should not stall
+// shutdown indefinitely. Errors are returned but typically benign (stderr
+// Sync can fail on some platforms).
+func SyncWithTimeout(timeout time.Duration) error {
+	done := make(chan error, 1)
+	go func() {
+		done <- DefaultLogger().Sync()
+	}()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(timeout):
+		return fmt.Errorf("zap sync: timed out after %s", timeout)
+	}
+}
+
+// DefaultLogger returns the global zap logger. Helper kept here so callers
+// don't need to import go.uber.org/zap directly for shutdown plumbing.
+func DefaultLogger() *zap.Logger {
+	return zap.L()
+}
+
+// Init configures global zap levels and, when saveLogs is true, routes logs to
+// a rotating file under initialparams.Get().Paths.LogFile. Callers must call
+// initialparams.Init first so the path layout is resolved.
+func Init(logLevels string, saveLogs bool) {
+	paths := initialparams.Get().Paths
+	if paths.Common != "" {
+		if err := os.MkdirAll(paths.Common, 0755); err != nil && !os.IsExist(err) {
+			fmt.Println("failed to create common dir", err)
 		}
 	}
 
-	if os.Getenv("ANYTYPE_LOG_NOGELF") == "1" || !sendLogs {
-		if !saveLogs {
-			DefaultCfg.Format = logger.ColorizedOutput
-		}
+	if !saveLogs {
+		DefaultCfg.Format = logger.ColorizedOutput
 	} else {
-		registerGelfSink(&DefaultCfg)
-		info := vcs.GetVCSInfo()
-		SetVersion(info.Version())
-	}
-	if saveLogs {
-		registerLumberjackSink(environment.ROOT_PATH, &DefaultCfg)
+		registerLumberjackSink(paths.LogsDir, paths.LogFile, &DefaultCfg)
 	}
 	envLogLevels := os.Getenv("ANYTYPE_LOG_LEVEL")
 	if logLevels == "" {
@@ -139,16 +211,14 @@ func Init(root string, logLevels string, sendLogs bool, saveLogs bool) {
 	SetLogLevels(logLevels)
 }
 
-func registerLumberjackSink(globalRoot string, config *logger.Config) {
-	if globalRoot == "" {
-		fmt.Println("globalRoot dir is not set")
+func registerLumberjackSink(logsDir, logFile string, config *logger.Config) {
+	if logsDir == "" || logFile == "" {
+		fmt.Println("logs dir is not set")
 		return
 	}
-	logsDir := filepath.Join(globalRoot, "logs")
 	err := os.Mkdir(logsDir, 0755)
 	if err != nil && !os.IsExist(err) {
 		fmt.Println("failed to create logs dir", err)
-		// do not continue if logs dir can't be created
 		return
 	}
 
@@ -157,6 +227,5 @@ func registerLumberjackSink(globalRoot string, config *logger.Config) {
 		fmt.Println("failed to register lumberjack sink", err)
 	}
 
-	environment.LOG_PATH = filepath.Join(logsDir, "anytype.log")
-	config.AddOutputPaths = append(config.AddOutputPaths, lumberjackScheme+":"+environment.LOG_PATH)
+	config.AddOutputPaths = append(config.AddOutputPaths, lumberjackScheme+":"+logFile)
 }

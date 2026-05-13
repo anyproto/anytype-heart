@@ -1,9 +1,12 @@
 package spaceindex
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/anyenc/anyencutil"
 	"github.com/anyproto/any-store/query"
@@ -107,6 +110,16 @@ func (s *dsObjectStore) UpdateObjectLinks(ctx context.Context, id string, links 
 
 	return nil
 }
+func (s *dsObjectStore) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
+	added, removed, err := s.updateObjectLinksDetailed(ctx, id, outgoingLinks)
+	if err != nil {
+		return err
+	}
+
+	s.subManager.updateObjectLinks(domain.FullID{SpaceID: s.SpaceId(), ObjectID: id}, added, removed)
+
+	return nil
+}
 
 func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (newDetails *domain.Details, err error)) error {
 	if proc == nil {
@@ -168,9 +181,9 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 	return nil
 }
 
-// ModifyObjectDetails updates existing details in store using modification function `proc`
-// `proc` should return ErrDetailsNotChanged in case old details are empty or no changes were made
-func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
+// ModifyObjectDetails updates details in store using modification function `proc`.
+// When upsert is true, the object is created if it does not exist; when false, missing objects are silently skipped.
+func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
 	if proc == nil {
 		return nil
 	}
@@ -179,7 +192,7 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
-	_, err := s.objects.UpsertId(s.componentCtx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+	modifier := query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
 		inputDetails, err := domain.NewDetailsFromAnyEnc(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
@@ -207,10 +220,18 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 		}
 		s.sendUpdatesToSubscriptions(id, newDetails)
 		return jsonVal, true, nil
-	}))
-
+	})
+	var err error
+	if upsert {
+		_, err = s.objects.UpsertId(s.componentCtx, id, modifier)
+	} else {
+		_, err = s.objects.UpdateId(s.componentCtx, id, modifier)
+		if errors.Is(err, anystore.ErrDocNotFound) {
+			return nil
+		}
+	}
 	if err != nil {
-		return fmt.Errorf("upsert details: %w", err)
+		return fmt.Errorf("modify details: %w", err)
 	}
 	return nil
 }
@@ -242,4 +263,64 @@ func anyEncArrayToStrings(arr []*anyenc.Value) []string {
 		res = append(res, string(v.GetStringBytes()))
 	}
 	return res
+}
+
+func (s *dsObjectStore) updateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) (added []string, removed []string, err error) {
+	_, err = s.links.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		// Get previous simple links for diff calculation
+		prev := anyEncArrayToStrings(val.GetArray(linkOutboundField))
+
+		// Create target ID list for diff (deduplicated for backward compatibility with simple links)
+		current := make([]string, 0, len(outgoingLinks))
+		seen := make(map[string]struct{})
+		for _, link := range outgoingLinks {
+			if _, ok := seen[link.TargetID]; !ok {
+				current = append(current, link.TargetID)
+				seen[link.TargetID] = struct{}{}
+			}
+		}
+
+		removed, added = slice.DifferenceRemovedAdded(prev, current)
+		detailedChanged := len(added)+len(removed) == 0 && isDetailedLinksChanged(val.GetArray(linkDetailedField), outgoingLinks)
+
+		// Store simple links for backward compatibility
+		val.Set(linkOutboundField, stringsToJsonArray(arena, current))
+
+		// Store detailed link information
+		detailedLinks := arena.NewArray()
+		for i, link := range outgoingLinks {
+			linkObj := arena.NewObject()
+			linkObj.Set(linkTargetField, arena.NewString(link.TargetID))
+			if link.BlockID != "" {
+				linkObj.Set(linkBlockField, arena.NewString(link.BlockID))
+			}
+			if link.RelationKey != "" {
+				linkObj.Set(linkRelationField, arena.NewString(link.RelationKey))
+			}
+			detailedLinks.SetArrayItem(i, linkObj)
+		}
+		val.Set(linkDetailedField, detailedLinks)
+
+		return val, len(added)+len(removed) > 0 || detailedChanged, nil
+	}))
+	return
+}
+
+func isDetailedLinksChanged(prevArr []*anyenc.Value, current []OutgoingLink) bool {
+	if len(prevArr) != len(current) {
+		return true
+	}
+	for i, link := range current {
+		prev := prevArr[i]
+		if !bytes.Equal(prev.GetStringBytes(linkTargetField), []byte(link.TargetID)) {
+			return true
+		}
+		if !bytes.Equal(prev.GetStringBytes(linkBlockField), []byte(link.BlockID)) {
+			return true
+		}
+		if !bytes.Equal(prev.GetStringBytes(linkRelationField), []byte(link.RelationKey)) {
+			return true
+		}
+	}
+	return false
 }

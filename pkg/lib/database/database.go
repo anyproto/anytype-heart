@@ -1,19 +1,25 @@
 package database
 
 import (
+	"fmt"
+	"math"
+	"time"
+
 	"github.com/anyproto/any-store/anyenc"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/text"
 )
 
 var log = logging.Logger("anytype-database")
 
 const (
-	RecordScoreField = "_score"
+	secondsPerDay = 86400.0
 )
 
 type Record struct {
@@ -137,7 +143,7 @@ func hasDefaultFilters(filters []FilterRequest) (bool, bool, bool) {
 	}
 	for _, filter := range filters {
 		if len(filter.NestedFilters) > 0 {
-			return hasDefaultFilters(filters[0].NestedFilters)
+			return hasDefaultFilters(filter.NestedFilters)
 		}
 		// include archived objects if we have explicit filter about it
 		if filter.RelationKey == bundle.RelationKeyIsArchived {
@@ -164,14 +170,13 @@ func injectDefaultOrder(qry Query, sorts []SortRequest) []SortRequest {
 	}
 
 	for _, sort := range sorts {
-		// include archived objects if we have explicit filter about it
-		if sort.RelationKey == RecordScoreField {
+		if sort.RelationKey == bundle.RelationKey_score || sort.RelationKey == bundle.RelationKey_final_score {
 			hasScoreSort = true
 		}
 	}
 
 	if !hasScoreSort {
-		sorts = append([]SortRequest{{RelationKey: RecordScoreField, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
+		sorts = append([]SortRequest{{RelationKey: bundle.RelationKey_final_score, Type: model.BlockContentDataviewSort_Desc}}, sorts...)
 	}
 
 	return sorts
@@ -318,8 +323,111 @@ func (r FulltextResult) Model() model.SearchMeta {
 	}
 }
 
+func (r FulltextResult) MessageModel() model.SearchMessageResult {
+	return model.SearchMessageResult{
+		ChatId:          r.Path.ObjectId,
+		MessageId:       r.Path.MessageId,
+		Score:           int64(r.Score),
+		Highlight:       r.Highlight,
+		HighlightRanges: r.HighlightRanges,
+	}
+}
+
+func FTDocumentMatchToFulltextResult(docMatch *ftsearch.DocumentMatch) (FulltextResult, error) {
+	path, err := domain.NewFromPath(docMatch.ID)
+	if err != nil {
+		return FulltextResult{}, fmt.Errorf("failed to parse ft search result: %w", err)
+	}
+	var highlight string
+	var ranges []*model.Range
+	for _, v := range docMatch.Fragments {
+		if len(v.Ranges) > 0 {
+			highlight = v.Text
+			ranges = convertToHighlightRanges(v.Ranges, highlight)
+			break
+		}
+	}
+	res := FulltextResult{
+		Path:      path,
+		Highlight: highlight,
+		Score:     docMatch.Score,
+	}
+	if highlight != "" {
+		res.Highlight, res.HighlightRanges = highlight, ranges
+	}
+
+	return res, nil
+}
+
+func convertToHighlightRanges(ranges [][]int, highlight string) []*model.Range {
+	var highlightRanges []*model.Range
+
+	byteToRuneIndex := make([]int, len(highlight)+1)
+	for i := range byteToRuneIndex {
+		byteToRuneIndex[i] = text.UTF16RuneCountString(highlight[:i])
+	}
+
+	for _, r := range ranges {
+		if len(r) == 2 {
+			fromByte := r[0]
+			toByte := r[1]
+
+			if fromByte < 0 || toByte > len(highlight) {
+				continue
+			}
+
+			fromRune := byteToRuneIndex[fromByte]
+			toRune := byteToRuneIndex[toByte]
+
+			highlightRange := &model.Range{
+				From: int32(fromRune), //nolint:gosec
+				To:   int32(toRune),   //nolint:gosec
+			}
+			highlightRanges = append(highlightRanges, highlightRange)
+		}
+	}
+
+	return highlightRanges
+}
+
 // todo: rename to SearchParams?
 type Filters struct {
 	FilterObj Filter
 	Order     Order
+}
+
+// ComputeFinalScore blends a Tantivy BM25 score with two additive signals:
+//   - recency: exponential decay on the more-recent of lastOpenedDate / lastModifiedDate (30-day half-life, [0,1])
+//   - nameBoost: 1.0 when the fulltext match landed in the "name" relation field, 0 otherwise
+//
+// Formula: ln(1+bm25) + recency + nameBoost
+// Log-compressing the BM25 score keeps recency and nameBoost as equal-weight additive signals.
+func ComputeFinalScore(bm25Score float64, details *domain.Details, nameMatch bool) float64 {
+	if details == nil {
+		return math.Log1p(bm25Score)
+	}
+	now := time.Now().Unix()
+	lastOpened := details.GetInt64(bundle.RelationKeyLastOpenedDate)
+	lastModified := details.GetInt64(bundle.RelationKeyLastModifiedDate)
+	var recency float64
+	if lastOpened > lastModified {
+		recency = recencyDecay(now, lastOpened)
+	} else {
+		recency = recencyDecay(now, lastModified)
+	}
+	nameBoost := 0.0
+	if nameMatch {
+		nameBoost = 1.0
+	}
+	return math.Log1p(bm25Score) + recency + nameBoost
+}
+
+// recencyDecay returns exp(-ln(2)/30 * age_in_days) clamped to [0,1].
+// Returns 0 when ts is zero (never opened/modified).
+func recencyDecay(nowUnix, ts int64) float64 {
+	if ts == 0 {
+		return 0
+	}
+	ageDays := float64(nowUnix-ts) / secondsPerDay
+	return math.Min(1.0, math.Exp(-math.Log(2)/30.0*ageDays))
 }

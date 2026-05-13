@@ -1,5 +1,23 @@
 package session
 
+/*
+AI generated
+
+Name: Local API Session Manager
+Scope: global
+
+## Responsibility
+- JWT token-based session management with scoped permissions
+- Challenge-response authentication for external API clients (4-digit numeric codes)
+- Session context for request/response event correlation
+
+## Documentation
+Challenge flow: StartNewChallenge generates 4-digit code displayed to user ->
+client calls SolveChallenge with code -> on success, creates session with requested scope.
+Limited to 5 tries per challenge, 50 concurrent challenges globally.
+Full scope (AccountAuth_Full) not available via challenge - only Limited and JsonAPI.
+*/
+
 import (
 	"fmt"
 	"math/rand"

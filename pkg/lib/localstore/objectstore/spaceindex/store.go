@@ -34,6 +34,20 @@ var (
 // sharedEmptyStore is a singleton used by all uninitialized proxies
 var sharedEmptyStore = &emptyStore{}
 
+// OutgoingLink represents a link from this object to another object
+type OutgoingLink struct {
+	TargetID    string // ID of the target object
+	BlockID     string // Block ID where the link originates (empty for relation links)
+	RelationKey string // Relation key (empty for block links)
+}
+
+// IncomingLink represents a link to this object from another object
+type IncomingLink struct {
+	SourceID    string // ID of the source object that links to this object
+	BlockID     string // Block ID where the link originates (empty for relation links)
+	RelationKey string // Relation key (empty for block links)
+}
+
 type Store interface {
 	SpaceId() string
 	Close() error
@@ -59,9 +73,11 @@ type Store interface {
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(ctx context.Context, id string, details *domain.Details) error
 	SubscribeForAll(callback func(rec database.Record))
+	// UpdaeObjectLinks is deprecated, use UpdateObjectLinksDetailed instead
 	UpdateObjectLinks(ctx context.Context, id string, links []string) error
+	UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
-	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error
+	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error
 
 	DeleteObject(id string) error
 	DeleteDetails(ctx context.Context, ids []string) error
@@ -73,6 +89,10 @@ type Store interface {
 
 	GetInboundLinksById(id string) ([]string, error)
 	GetOutboundLinksById(id string) ([]string, error)
+	GetOutboundLinksDetailedById(id string) ([]OutgoingLink, error)
+	GetOutboundLinksDetailedIterator(f func(id string, links []OutgoingLink) bool) error
+	GetInboundLinksDetailedById(id string) ([]IncomingLink, error)
+
 	GetWithLinksInfoById(id string) (*model.ObjectInfoWithLinks, error)
 
 	SetActiveView(objectId, blockId, viewId string) error
@@ -93,6 +113,9 @@ type Store interface {
 
 	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
+	SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error)
+	GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error)
+	ClearHeadsState(ctx context.Context) error
 
 	WriteTx(ctx context.Context) (anystore.WriteTx, error)
 }
@@ -103,8 +126,8 @@ type SourceDetailsFromID interface {
 
 type FulltextQueue interface {
 	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
-	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) error
-	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullID, error)
+	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (uint64, int, error)
+	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullTextQueuedObject, error)
 	ClearFullTextQueue(spaceIds []string) error
 }
 
@@ -372,6 +395,13 @@ func (p *storeProxy) UpdateObjectLinks(ctx context.Context, id string, links []s
 	return sharedEmptyStore.UpdateObjectLinks(ctx, id, links)
 }
 
+func (p *storeProxy) UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error {
+	if p.initialized.Load() {
+		return p.realStore.UpdateObjectLinksDetailed(ctx, id, outgoingLinks)
+	}
+	return sharedEmptyStore.UpdateObjectLinksDetailed(ctx, id, outgoingLinks)
+}
+
 func (p *storeProxy) UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error {
 	if p.initialized.Load() {
 		return p.realStore.UpdatePendingLocalDetails(id, proc)
@@ -379,11 +409,11 @@ func (p *storeProxy) UpdatePendingLocalDetails(id string, proc func(details *dom
 	return sharedEmptyStore.UpdatePendingLocalDetails(id, proc)
 }
 
-func (p *storeProxy) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error)) error {
+func (p *storeProxy) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
 	if p.initialized.Load() {
-		return p.realStore.ModifyObjectDetails(id, proc)
+		return p.realStore.ModifyObjectDetails(id, proc, upsert)
 	}
-	return sharedEmptyStore.ModifyObjectDetails(id, proc)
+	return sharedEmptyStore.ModifyObjectDetails(id, proc, upsert)
 }
 
 func (p *storeProxy) DeleteObject(id string) error {
@@ -433,6 +463,27 @@ func (p *storeProxy) GetInboundLinksById(id string) ([]string, error) {
 		return p.realStore.GetInboundLinksById(id)
 	}
 	return sharedEmptyStore.GetInboundLinksById(id)
+}
+
+func (p *storeProxy) GetOutboundLinksDetailedById(id string) ([]OutgoingLink, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetOutboundLinksDetailedById(id)
+	}
+	return sharedEmptyStore.GetOutboundLinksDetailedById(id)
+}
+
+func (p *storeProxy) GetOutboundLinksDetailedIterator(f func(id string, links []OutgoingLink) bool) error {
+	if p.initialized.Load() {
+		return p.realStore.GetOutboundLinksDetailedIterator(f)
+	}
+	return sharedEmptyStore.GetOutboundLinksDetailedIterator(f)
+}
+
+func (p *storeProxy) GetInboundLinksDetailedById(id string) ([]IncomingLink, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetInboundLinksDetailedById(id)
+	}
+	return sharedEmptyStore.GetInboundLinksDetailedById(id)
 }
 
 func (p *storeProxy) GetOutboundLinksById(id string) ([]string, error) {
@@ -552,6 +603,27 @@ func (p *storeProxy) SaveLastIndexedHeadsHash(ctx context.Context, id string, he
 		return p.realStore.SaveLastIndexedHeadsHash(ctx, id, headsHash)
 	}
 	return sharedEmptyStore.SaveLastIndexedHeadsHash(ctx, id, headsHash)
+}
+
+func (p *storeProxy) SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) error {
+	if p.initialized.Load() {
+		return p.realStore.SaveLastIndexedHeadsHashWithFtQueueCtr(ctx, id, headsHash, ftQueueCtr)
+	}
+	return sharedEmptyStore.SaveLastIndexedHeadsHashWithFtQueueCtr(ctx, id, headsHash, ftQueueCtr)
+}
+
+func (p *storeProxy) GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error) {
+	if p.initialized.Load() {
+		return p.realStore.GetHeadsWithFtQueueCtrGreaterThan(ctx, threshold)
+	}
+	return sharedEmptyStore.GetHeadsWithFtQueueCtrGreaterThan(ctx, threshold)
+}
+
+func (p *storeProxy) ClearHeadsState(ctx context.Context) error {
+	if p.initialized.Load() {
+		return p.realStore.ClearHeadsState(ctx)
+	}
+	return sharedEmptyStore.ClearHeadsState(ctx)
 }
 
 func (p *storeProxy) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
@@ -685,6 +757,19 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 	err = anystorehelper.AddIndexes(ctx, links, linksIndexes)
 	if err != nil {
 		log.Errorf("ensure links indexes: %s", err)
+	}
+
+	// Add sparse index on ftQueueCtr for efficient crash recovery queries
+	headsStateIndexes := []anystore.IndexInfo{
+		{
+			Name:   "ftQueueCtr_idx",
+			Fields: []string{ftQueueCtrField},
+			Sparse: true, // Many objects don't have FT indexing
+		},
+	}
+	err = anystorehelper.AddIndexes(ctx, headsState, headsStateIndexes)
+	if err != nil {
+		log.Errorf("ensure headsState indexes: %s", err)
 	}
 
 	s.objects = objects

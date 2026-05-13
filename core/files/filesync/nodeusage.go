@@ -164,7 +164,7 @@ func (s *spaceUsage) update(ctx context.Context) error {
 	}
 
 	newLimit := int(info.LimitBytes)
-	newUsageFromNode := int(info.SpaceUsageBytes)
+	newUsageFromNode := int(info.TotalUsageBytes)
 
 	s.limit = newLimit
 	s.usageFromNode = newUsageFromNode

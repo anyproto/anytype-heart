@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/samber/lo"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/process"
 
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/anytype/config"

@@ -1,5 +1,28 @@
 package block
 
+/*
+AI generated
+
+Name: Object Operations Facade
+Scope: global
+
+## Responsibility
+- Provides unified API for object lifecycle operations (open, close, show, duplicate, delete)
+- Handles block-level editing operations (create, update, move, split, merge, copy/paste)
+- Manages file upload/download with progress tracking
+- Coordinates workspace/space creation including one-to-one spaces
+- Exposes ObjectGetter interface for cache.Do pattern used throughout codebase
+- Tracks currently opened objects to prevent premature cache eviction
+
+## Background Tasks
+- ObjectBookmarkFetch: async bookmark content update after initial fetch
+- DownloadFile: progress reporting goroutine during file download
+
+## Documentation
+The service uses cache.Do pattern extensively - it implements ObjectGetter interface which allows
+type-safe access to smartblocks via generics. Most operations follow: resolve space -> get object from space cache -> lock -> apply operation -> unlock pattern.
+*/
+
 import (
 	"context"
 	"errors"
@@ -21,13 +44,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/detailservice"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
-	"github.com/anyproto/anytype-heart/core/block/editor/file"
+	"github.com/anyproto/anytype-heart/core/block/editor/chatobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/layout"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/history"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/process"
 	"github.com/anyproto/anytype-heart/core/block/simple/bookmark"
 	"github.com/anyproto/anytype-heart/core/block/template"
@@ -37,7 +61,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/files/fileoffloader"
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
-	"github.com/anyproto/anytype-heart/core/onetoone"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -105,7 +129,7 @@ type Service struct {
 	objectCreator        objectcreator.Service
 	templateService      template.Service
 	identityService      IdentityService
-	onetoone             onetoone.Service
+	inboxSender          inboxservice.Sender
 	resolver             idresolver.Resolver
 	spaceService         space.Service
 	tempDirProvider      core.TempDirProvider
@@ -115,6 +139,7 @@ type Service struct {
 
 	fileUploaderService fileuploader.Service
 	fileOffloader       fileoffloader.Service
+	objectGC            objectgc.ObjectGC
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
@@ -144,7 +169,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.bookmark = a.MustComponent("bookmark-importer").(bookmarksvc.Service)
 	s.identityService = app.MustComponent[IdentityService](a)
-	s.onetoone = app.MustComponent[onetoone.Service](a)
+	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
 	s.objectCreator = app.MustComponent[objectcreator.Service](a)
 	s.templateService = app.MustComponent[template.Service](a)
 	s.spaceService = a.MustComponent(space.CName).(space.Service)
@@ -156,6 +181,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.builtinObjectService = app.MustComponent[builtinObjects](a)
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
+	s.objectGC = app.MustComponent[objectgc.ObjectGC](a)
 	return
 }
 
@@ -345,7 +371,8 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 	err := s.DoFullId(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose(ctx)
 		s := b.NewState()
-		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
+		hasDiscussion := s.Details().GetString(bundle.RelationKeyDiscussionId) != ""
+		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty) && !hasDiscussion
 		return nil
 	})
 	if err != nil {
@@ -449,6 +476,42 @@ func (s *Service) SpaceInitChat(ctx context.Context, spaceId string, addAnalytic
 	return nil
 }
 
+func (s *Service) ObjectAddDiscussion(ctx context.Context, objectId string) (discussionId string, err error) {
+	spaceId, err := s.resolver.ResolveSpaceID(objectId)
+	if err != nil {
+		return "", fmt.Errorf("resolve space: %w", err)
+	}
+	spc, err := s.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return "", fmt.Errorf("get space: %w", err)
+	}
+	discussionId, err = s.objectCreator.AddDiscussionDerivedObject(ctx, spc, objectId)
+	if err != nil {
+		return "", fmt.Errorf("add discussion derived object: %w", err)
+	}
+
+	if subErr := spc.DoCtx(ctx, discussionId, func(b smartblock.SmartBlock) error {
+		storeObj, ok := b.(chatobject.StoreObject)
+		if !ok {
+			return fmt.Errorf("discussion is not a chat store object")
+		}
+		return storeObj.AddNotificationSubscriber(ctx, s.accountService.AccountID())
+	}); subErr != nil {
+		log.With(zap.String("discussionId", discussionId), zap.Error(subErr)).
+			Warn("auto-subscribe creator to discussion")
+	}
+
+	err = spc.DoCtx(ctx, objectId, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		st.SetDetail(bundle.RelationKeyDiscussionId, domain.String(discussionId))
+		return b.Apply(st, smartblock.NoHistory, smartblock.NoEvent, smartblock.KeepInternalFlags)
+	})
+	if err != nil {
+		return "", fmt.Errorf("set discussionId on parent object: %w", err)
+	}
+	return discussionId, nil
+}
+
 func (s *Service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	panic("should be removed")
 }
@@ -471,6 +534,7 @@ func (s *Service) DeleteArchivedObjects(objectIDs []string) error {
 		anySucceed  bool
 	)
 	for _, objectID := range objectIDs {
+		// todo: make batched DeleteArchivedObject
 		err := s.DeleteArchivedObject(objectID)
 		if err != nil {
 			resultError = errors.Join(resultError, err)
@@ -520,16 +584,18 @@ func (s *Service) DeleteArchivedObject(id string) (err error) {
 	if id == spc.DerivedIDs().Archive {
 		return fmt.Errorf("cannot delete archive object")
 	}
+	// we need to do it outside of cache.Do to avoid deadlock via objectgc
+	err = s.DeleteObject(id)
+	if err != nil {
+		return fmt.Errorf("delete object: %w", err)
+	}
+
 	return cache.Do(s, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
-		err = s.DeleteObject(id)
-		if err != nil {
-			return fmt.Errorf("delete object: %w", err)
-		}
 		if exists, _ := archive.HasObject(id); exists {
 			err = archive.RemoveObject(id)
 			if err != nil {
@@ -599,18 +665,6 @@ func (s *Service) Close(_ context.Context) (err error) {
 		s.componentCtxCancel()
 	}
 	return nil
-}
-
-func (s *Service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, err := s.GetObject(context.Background(), id)
-	if err != nil {
-		return err
-	}
-
-	if bb, ok := sb.(file.File); ok {
-		return apply(bb)
-	}
-	return fmt.Errorf("file non lock operation not available for this block type: %T", sb)
 }
 
 func (s *Service) ResetToState(pageID string, st *state.State) (err error) {
