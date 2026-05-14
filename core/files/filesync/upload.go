@@ -184,6 +184,14 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 
 	allocateErr := spaceLimits.allocateFile(ctx, it.Key(), blocksAvailability.bytesToUploadOrBind)
 	if allocateErr != nil {
+		var limitErr *errLimitReached
+		if !errors.As(allocateErr, &limitErr) {
+			// Transient infra failure (e.g. SpaceInfo failed). Reschedule for
+			// retry instead of marking the file as Limited.
+			it = it.Reschedule()
+			return it, fmt.Errorf("allocate file: %w", allocateErr)
+		}
+
 		it.State = FileStateLimited
 		it = it.Reschedule()
 

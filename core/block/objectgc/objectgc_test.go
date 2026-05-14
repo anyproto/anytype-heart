@@ -134,9 +134,9 @@ func TestCheckObjectsOnObjectArchived_ParentArchived_NoOtherBacklinks(t *testing
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then
+	// then: hotfix — file has empty CreatedInContextRef (collections-created), so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_ParentArchived_WithActiveBacklink(t *testing.T) {
@@ -164,9 +164,9 @@ func TestCheckObjectsOnObjectArchived_ParentArchived_OtherBacklinksAllArchived(t
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then
+	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_ParentArchived_OtherBacklinksAllDeleted(t *testing.T) {
@@ -179,9 +179,9 @@ func TestCheckObjectsOnObjectArchived_ParentArchived_OtherBacklinksAllDeleted(t 
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then
+	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentStillActive(t *testing.T) {
@@ -209,9 +209,9 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_NoOtherB
 	// when: backlinker is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "backlinker", true)
 
-	// then: file should be archived
+	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_OtherActiveBacklink(t *testing.T) {
@@ -241,9 +241,9 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_OtherBac
 	// when: backlinker is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "backlinker", true)
 
-	// then: file should be archived
+	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentMissingFromStore(t *testing.T) {
@@ -271,9 +271,9 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchivedInStore(t
 	// when: backlinker is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "backlinker", true)
 
-	// then: file archived — parent confirmed inactive
+	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentDeletedInStore(t *testing.T) {
@@ -286,9 +286,9 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentDeletedInStore(t 
 	// when: backlinker is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "backlinker", true)
 
-	// then: file archived — parent confirmed inactive (deleted)
+	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_BacklinkerArchived_NoCreatedInContext_NotArchived(t *testing.T) {
@@ -443,9 +443,9 @@ func TestCheckObjectsOnObjectArchived_NonFileObject_ParentArchived_NoOtherBackli
 	// when: parent is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then: child is archived too
+	// then: hotfix — non-file objects are NOT archived (file-only scope)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"child"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_NonFileObject_ParentArchived_WithActiveBacklink(t *testing.T) {
@@ -502,9 +502,9 @@ func TestArchiveOrphansOnLinksRemoval_NonFileObject_SkipBinForcedFalse(t *testin
 	// when: caller requests skipBin=true (as chat service does for files)
 	_, err := fx.ArchiveOrphansOnLinksRemoval(testSpaceId, "parent", []string{"child"}, true, nil)
 
-	// then: child is archived, NOT permanently deleted — skipBin overridden to false for non-files
+	// then: hotfix — non-file objects are NOT archived (file-only scope)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"child"}, fx.archiver.archivedIds)
+	assert.Empty(t, fx.archiver.archivedIds)
 }
 
 func TestCheckObjectsOnObjectArchived_SystemLayoutObject_NotGCd(t *testing.T) {
@@ -553,10 +553,10 @@ func TestArchiveOrphansOnLinksRemoval_ReturnsArchivedIds(t *testing.T) {
 	// when
 	archivedIds, err := fx.ArchiveOrphansOnLinksRemoval(testSpaceId, "page", []string{"file1"}, false, nil)
 
-	// then: file archived and returned
+	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
-	assert.ElementsMatch(t, []string{"file1"}, archivedIds)
+	assert.Empty(t, fx.archiver.archivedIds)
+	assert.Empty(t, archivedIds)
 }
 
 func TestArchiveOrphansOnLinksRemoval_ActiveBacklink_ReturnsEmpty(t *testing.T) {
@@ -574,6 +574,47 @@ func TestArchiveOrphansOnLinksRemoval_ActiveBacklink_ReturnsEmpty(t *testing.T) 
 	assert.Empty(t, archivedIds)
 }
 
+// fileObjectWithRef builds a file with a non-empty CreatedInContextRef — i.e. a file added
+// via a block (not via a collection). Under the file-only hotfix this is the only scenario
+// where archive GC currently fires.
+func fileObjectWithRef(id, createdInContext, createdInContextRef string, backlinks []string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:                  domain.String(id),
+		bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_image)),
+		bundle.RelationKeyCreatedInContext:    domain.String(createdInContext),
+		bundle.RelationKeyCreatedInContextRef: domain.String(createdInContextRef),
+		bundle.RelationKeyBacklinks:           domain.StringList(backlinks),
+	}
+}
+
+func TestArchiveOrphansOnLinksRemoval_FileWithRef_Archived(t *testing.T) {
+	// given: a file with non-empty CreatedInContextRef (block-attached file)
+	fx := newFixture(t)
+	fx.addObject(t, fileObjectWithRef("file1", "page", "block1", []string{"page"}))
+
+	// when
+	archivedIds, err := fx.ArchiveOrphansOnLinksRemoval(testSpaceId, "page", []string{"file1"}, false, nil)
+
+	// then: file is archived — non-empty ref means it is NOT a collection-created file
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
+	assert.ElementsMatch(t, []string{"file1"}, archivedIds)
+}
+
+func TestCheckObjectsOnObjectArchived_FileWithRef_ParentArchived_Archived(t *testing.T) {
+	// given: parent archived, file has a non-empty CreatedInContextRef and no other backlinks
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	fx.addObject(t, fileObjectWithRef("file1", "parent", "block1", []string{"parent"}))
+
+	// when
+	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
+
+	// then: file is archived — file layout + non-empty ref pass the hotfix gates
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"file1"}, ids)
+}
+
 // -- returned-IDs tests for CheckObjectsOnObjectArchived --
 
 func TestCheckObjectsOnObjectArchived_ReturnsArchivedIds(t *testing.T) {
@@ -585,9 +626,9 @@ func TestCheckObjectsOnObjectArchived_ReturnsArchivedIds(t *testing.T) {
 	// when
 	archivedIds, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then: file archived and returned
+	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, archivedIds)
+	assert.Empty(t, archivedIds)
 }
 
 func TestCheckObjectsOnObjectArchived_Unarchive_ReturnsRestoredIds(t *testing.T) {
@@ -699,16 +740,16 @@ func TestCheckObjectsOnObjectArchived_TwoLevelTree_BothLevelsArchived(t *testing
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then
+	// then: hotfix — non-file objects are NOT archived (file-only scope)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"child", "grandchild"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_CycleAB_TerminatesAndArchivesB(t *testing.T) {
 	// given: A.createdInContext=B, B.createdInContext=A — cycle
 	// Archiving A: BFS visits A (seed), finds B (child of A), visited={A,B}.
 	// When processing B, finds A as its child — but A is already in visited → skip.
-	// Result: B is archived, no infinite loop.
+	// (BFS termination must still hold under the file-only hotfix.)
 	fx := newFixture(t)
 	fx.addObject(t, basicObject("A", "B", []string{"B"}))
 	fx.addObject(t, basicObject("B", "A", []string{"A"}))
@@ -716,9 +757,9 @@ func TestCheckObjectsOnObjectArchived_CycleAB_TerminatesAndArchivesB(t *testing.
 	// when — must complete without hanging
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "A", true)
 
-	// then
+	// then: hotfix — non-file objects are NOT archived (file-only scope)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"B"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_GrandchildWithExternalBacklink_SubtreeExcluded(t *testing.T) {
@@ -737,10 +778,9 @@ func TestCheckObjectsOnObjectArchived_GrandchildWithExternalBacklink_SubtreeExcl
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then
+	// then: hotfix — non-file objects are NOT archived (file-only scope)
 	require.NoError(t, err)
-	// child is archived; grandchild and greatgrandchild are kept (external backlink on grandchild)
-	assert.ElementsMatch(t, []string{"child"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_SiblingCrossReference_BothArchived(t *testing.T) {
@@ -758,9 +798,9 @@ func TestCheckObjectsOnObjectArchived_SiblingCrossReference_BothArchived(t *test
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then: both siblings are archived because their only backlinks are each other (in pending set)
+	// then: hotfix — non-file objects are NOT archived (file-only scope)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"child1", "child2"}, ids)
+	assert.Empty(t, ids)
 }
 
 func TestCheckObjectsOnObjectArchived_Unarchive_MultiLevelRestored(t *testing.T) {

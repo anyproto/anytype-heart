@@ -11,7 +11,7 @@ import (
 const (
 	offset              = 0
 	limit               = 100
-	gatewayUrl          = "http://localhost:31006"
+	apiBaseUrl          = "http://127.0.0.1:31009"
 	techSpaceId         = "tech-space-id"
 	mockedSpaceId       = "mocked-space-id"
 	mockedObjectId      = "mocked-object-id"
@@ -38,7 +38,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
-	service := NewService(mwMock, gatewayUrl, techSpaceId, crossSpaceSubService)
+	service := NewService(mwMock, nil, apiBaseUrl, techSpaceId, crossSpaceSubService)
 
 	return &fixture{
 		service:              service,

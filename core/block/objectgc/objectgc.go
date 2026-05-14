@@ -118,6 +118,10 @@ func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, remo
 			Value:       domain.String(contextId),
 		},
 		{
+			RelationKey: bundle.RelationKeyCreatedInContextRef,
+			Condition:   model.BlockContentDataviewFilter_NotEmpty, // collections have empty ref
+		},
+		{
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       domain.Int64List(gcLayouts),
@@ -144,7 +148,11 @@ func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, remo
 	var toArchive []string
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
-
+		// temporarily disable non-file objects
+		if !slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))) {
+			// todo: remove when we move to orphan events
+			continue
+		}
 		// Filter out the current context and self-references from backlinks.
 		backlinks := record.Details.GetStringList(bundle.RelationKeyBacklinks)
 		activeBacklinks := lo.Filter(backlinks, func(link string, _ int) bool {
@@ -266,6 +274,10 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 					Value:       domain.String(current),
 				},
 				{
+					RelationKey: bundle.RelationKeyCreatedInContextRef,
+					Condition:   model.BlockContentDataviewFilter_NotEmpty, // collections have empty ref
+				},
+				{
 					RelationKey: bundle.RelationKeyResolvedLayout,
 					Condition:   model.BlockContentDataviewFilter_In,
 					Value:       domain.Int64List(gcLayouts),
@@ -355,8 +367,13 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 			}
 		}
 
-		for id := range candidates {
+		for id, details := range candidates {
 			visited[id] = struct{}{}
+			// temporarily disable non-file objects
+			if !slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))) {
+				// todo: remove when we move to orphan events
+				continue
+			}
 			result = append(result, id)
 			queue = append(queue, id)
 		}
@@ -379,6 +396,10 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 				RelationKey: bundle.RelationKeyCreatedInContext,
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.String(objectId),
+			},
+			{
+				RelationKey: bundle.RelationKeyCreatedInContextRef,
+				Condition:   model.BlockContentDataviewFilter_NotEmpty,
 			},
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
@@ -447,6 +468,11 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 				continue
 			}
 			visited[id] = struct{}{}
+			// temporarily disable non-file objects
+			if !slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))) {
+				// todo: remove when we move to orphan events
+				continue
+			}
 			result = append(result, id)
 		}
 	}

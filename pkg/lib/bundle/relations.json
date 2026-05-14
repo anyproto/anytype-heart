@@ -1346,11 +1346,12 @@
   {
     "description": "Object ID where the object was initially created",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "createdInContext",
     "maxCount": 1,
     "name": "Created in context",
     "readonly": true,
+    "revision": 1,
     "source": "details"
   },
   {

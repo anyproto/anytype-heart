@@ -36,6 +36,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1.Use(srv.ensureCacheInitialized())
 	v1.Use(srv.ensureAuthenticated(mw))
 
+	srv.registerFileRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerListRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerMemberRoutes(v1, eventService)
 	srv.registerObjectRoutes(v1, eventService, writeRateLimitMW)
@@ -106,6 +107,29 @@ func (srv *Server) registerAuthRoutes(router *gin.Engine) {
 		authGroup.POST("/auth/challenges", handler.CreateChallengeHandler(srv.service))
 		authGroup.POST("/auth/api_keys", handler.CreateApiKeyHandler(srv.service))
 	}
+}
+
+// registerFileRoutes registers file-related routes
+func (srv *Server) registerFileRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.POST("/spaces/:space_id/files",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("UploadFile", eventService),
+		handler.UploadFileHandler(srv.service),
+	)
+	v1.GET("/spaces/:space_id/files/:file_id",
+		ensureAnalyticsEvent("DownloadFile", eventService),
+		handler.DownloadFileHandler(srv.service),
+	)
+	// HEAD reuses the same handler; http.ServeContent omits the body and
+	// returns just the status line + headers, which is what HEAD requires.
+	v1.HEAD("/spaces/:space_id/files/:file_id",
+		handler.DownloadFileHandler(srv.service),
+	)
+	v1.DELETE("/spaces/:space_id/files/:file_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("DeleteFile", eventService),
+		handler.DeleteFileHandler(srv.service),
+	)
 }
 
 // registerListRoutes registers list-related routes

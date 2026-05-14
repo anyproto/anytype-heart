@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "e197bc55a42d31ee93e99229200a1eba2e17a73782ee719ac69579634e676051"
+const RelationChecksum = "0df340fee18663c4f1584c3116f1da177ae6fcdf96a2493e15c6ca81b7aa50c5"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -539,13 +539,13 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Object ID where the object was initially created",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brcreatedInContext",
 			Key:              "createdInContext",
 			MaxCount:         1,
 			Name:             "Created in context",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreatedInContextRef: {

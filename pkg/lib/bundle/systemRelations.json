@@ -104,5 +104,6 @@
   "pluralName",
   "lastMessageDate",
   "notificationSubscribers",
-  "templatePlaceholders"
+  "templatePlaceholders",
+  "createdInContext"
 ]
