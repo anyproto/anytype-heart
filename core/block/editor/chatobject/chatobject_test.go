@@ -176,6 +176,9 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 	source.EXPECT().ReadStoreDoc(ctx, mock.Anything, mock.Anything).Return(nil)
 	source.EXPECT().PushStoreChange(mock.Anything, mock.Anything).RunAndReturn(fx.applyToStore).Maybe()
 	source.EXPECT().SetPushChangeHook(mock.Anything)
+	// Default tests don't exercise admin/owner moderation paths; nil is fine and
+	// canModerateAt() guards against it (falls back to creator-only checks).
+	source.EXPECT().AclList().Return(nil).Maybe()
 
 	onSeenHooks := map[string]func([]string){}
 	source.EXPECT().RegisterDiffManager(mock.Anything, mock.Anything).Run(func(name string, hook func([]string)) {

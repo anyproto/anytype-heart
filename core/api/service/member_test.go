@@ -960,3 +960,13 @@ func TestSpaceService_UpdateMember(t *testing.T) {
 		require.ErrorIs(t, err, ErrMemberNotFound)
 	})
 }
+
+func TestMapMemberPermissions_Admin(t *testing.T) {
+	s := &Service{}
+	require.Equal(t, "admin", s.mapMemberPermissions(model.ParticipantPermissions_Admin))
+}
+
+func TestMapMemberRole_Admin(t *testing.T) {
+	s := &Service{}
+	require.Equal(t, model.ParticipantPermissions_Admin, s.mapMemberRole("admin"))
+}

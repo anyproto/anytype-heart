@@ -1591,6 +1591,7 @@
             "enum": [
               "viewer",
               "editor",
+              "admin",
               "owner",
               "no_permission"
             ],

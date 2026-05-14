@@ -262,6 +262,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		chatFullId:            domain.FullID{ObjectID: storeSource.Id(), SpaceID: storeSource.SpaceID()},
 		currentIdentity:       s.accountService.AccountID(),
 		myParticipantId:       myParticipantId,
+		aclList:               storeSource.AclList(),
 		reactionsCounterEpoch: s.reactionsCounterEpoch,
 	}
 
