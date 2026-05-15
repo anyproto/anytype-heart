@@ -128,9 +128,6 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 	gc := s.fileStorage.NewLocalStoreGarbageCollector()
 
 	if !includeNotPinned {
-		if werr := s.objectStore.WaitStoresLoaded(ctx); werr != nil {
-			return fmt.Errorf("wait stores loaded: %w", werr)
-		}
 		records, err := s.objectStore.QueryCrossSpace(database.Query{
 			Filters: []database.FilterRequest{
 				{
@@ -198,9 +195,6 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	record database.Record,
 	includeNotPinned bool,
 ) (uint64, error) {
-	if werr := s.objectStore.WaitStoresLoaded(ctx); werr != nil {
-		return 0, fmt.Errorf("wait stores loaded: %w", werr)
-	}
 	existingObjects, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []database.FilterRequest{
 			{

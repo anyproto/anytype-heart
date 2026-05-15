@@ -701,9 +701,6 @@ func (s *service) DeleteFileData(spaceId string, objectId string) error {
 	if err != nil {
 		return fmt.Errorf("get file id from object: %w", err)
 	}
-	if err := s.objectStore.WaitStoresLoaded(s.componentCtx); err != nil {
-		return fmt.Errorf("wait stores loaded: %w", err)
-	}
 	records, err := s.objectStore.QueryCrossSpace(database.Query{
 		Filters: []database.FilterRequest{
 			{

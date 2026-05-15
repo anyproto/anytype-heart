@@ -94,8 +94,11 @@ type ObjectStore interface {
 	OpenedSpaceIds() []string
 
 	// WaitStoresLoaded blocks until the background warm-up has opened every
-	// space in the authoritative set, or ctx is done. Lazy/Bucket-1 callers
-	// must not call this; correctness-critical callers must.
+	// space in the authoritative set, or ctx is done. The cross-space query
+	// methods (QueryCrossSpace, QueryByIdCrossSpace, ListIdsCrossSpace) and
+	// IterateSpaceIndex already wait internally, so callers normally do not
+	// need this; it is exposed for code that wants to await warm-up without
+	// issuing a query.
 	WaitStoresLoaded(ctx context.Context) error
 
 	SpaceNameGetter
@@ -216,6 +219,11 @@ func (s *dsObjectStore) StatType() string {
 }
 
 func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) error {
+	// Wait-by-default (see collectCrossSpace): never iterate a partial set
+	// of space indexes.
+	if err := s.WaitStoresLoaded(s.componentCtx); err != nil {
+		return fmt.Errorf("wait stores loaded: %w", err)
+	}
 	s.lock.Lock()
 	spaceIndexes := make([]spaceindex.Store, 0, len(s.spaceIndexes))
 	for _, store := range s.spaceIndexes {
@@ -529,6 +537,18 @@ func (s *dsObjectStore) listStores() []spaceindex.Store {
 }
 
 func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store) ([]T, error)) ([]T, error) {
+	// Wait-by-default: every cross-space query (QueryCrossSpace,
+	// QueryByIdCrossSpace, ListIdsCrossSpace) blocks until the background
+	// warm-up has opened the full authoritative space set, so callers can
+	// never silently act on a partial local view. The wait is one-time
+	// (loadedCh stays closed afterwards, so this is instant) and is bound to
+	// componentCtx because these APIs have no ctx parameter. The warm-up
+	// goroutine itself never reaches here (it uses SpaceIndex directly and
+	// its OnSpaceIndexOpened callback only does per-space subscription work),
+	// so this cannot self-deadlock.
+	if err := s.WaitStoresLoaded(s.componentCtx); err != nil {
+		return nil, fmt.Errorf("wait stores loaded: %w", err)
+	}
 	stores := s.listStores()
 
 	var result []T

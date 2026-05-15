@@ -185,9 +185,9 @@ func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFil
 }
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
-	if err := r.objectStore.WaitStoresLoaded(ctx); err != nil {
-		return fmt.Errorf("wait stores loaded: %w", err)
-	}
+	// QueryCrossSpace waits for the background warm-up internally, so by the
+	// time it returns OpenedSpaceIds() is the complete authoritative set and
+	// the per-space accounting below is exact.
 	records, err := r.objectStore.QueryCrossSpace(database.Query{
 		Filters: []database.FilterRequest{
 			{
