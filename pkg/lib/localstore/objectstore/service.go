@@ -97,6 +97,16 @@ type ObjectStore interface {
 	// currently open.
 	OpenedSpaceIds() []string
 
+	// WaitStoresLoaded blocks until the background warm-up has opened every
+	// space in the authoritative set, or ctx is done. The one-shot
+	// cross-space reads (QueryCrossSpace, QueryByIdCrossSpace,
+	// ListIdsCrossSpace) and IterateSpaceIndex already wait internally, so
+	// callers normally do not need this. NOTE: the full-text path
+	// (iterateSpacesForFulltext) and per-space SpaceIndex deliberately do
+	// not wait. Exposed for code that wants to await warm-up without
+	// issuing a query.
+	WaitStoresLoaded(ctx context.Context) error
+
 	SpaceNameGetter
 	GetSpaceViewDetails(spaceId string) (*domain.Details, error)
 	spaceresolverstore.Store
@@ -155,6 +165,14 @@ type TechSpaceIdProvider interface {
 	TechSpaceId() string
 }
 
+// spaceIdsLister enumerates every space the account has on disk, independent
+// of the (derived, possibly-incomplete) objectstore index. Satisfied by
+// space/spacecore/storage.ClientStorage. Resolved optionally: absent in
+// lightweight test/migrator app assemblies.
+type spaceIdsLister interface {
+	AllSpaceIds() (ids []string, err error)
+}
+
 type dsObjectStore struct {
 	anystoreProvider anystoreprovider.Provider
 
@@ -179,6 +197,8 @@ type dsObjectStore struct {
 	techSpaceIdProvider TechSpaceIdProvider
 
 	spaceStoreDirsCheck sync.Once
+	spaceStorageLister  spaceIdsLister
+	loadedCh            chan struct{}
 
 	lock         sync.Mutex
 	spaceIndexes map[string]spaceindex.Store
@@ -205,13 +225,18 @@ func (s *dsObjectStore) StatType() string {
 }
 
 func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) error {
+	// Wait-by-default (see collectCrossSpace): never iterate a partial set
+	// of space indexes.
+	if err := s.WaitStoresLoaded(s.componentCtx); err != nil {
+		return fmt.Errorf("wait stores loaded: %w", err)
+	}
 	s.lock.Lock()
 	spaceIndexes := make([]spaceindex.Store, 0, len(s.spaceIndexes))
 	for _, store := range s.spaceIndexes {
 		spaceIndexes = append(spaceIndexes, store)
 	}
 	s.lock.Unlock()
-	for _, store := range s.spaceIndexes {
+	for _, store := range spaceIndexes {
 		if err := f(store); err != nil {
 			return err
 		}
@@ -227,6 +252,7 @@ func New() ObjectStore {
 		subManager:         &spaceindex.SubscriptionManager{},
 		spaceIndexes:       map[string]spaceindex.Store{},
 		openedSpaceIds:     map[string]struct{}{},
+		loadedCh:           make(chan struct{}),
 	}
 }
 
@@ -241,6 +267,10 @@ func (s *dsObjectStore) Init(a *app.App) (err error) {
 	statService, _ := app.GetComponent[debugstat.StatService](a)
 	if statService != nil {
 		statService.AddProvider(s)
+	}
+
+	if lister, lerr := app.GetComponent[spaceIdsLister](a); lerr == nil {
+		s.spaceStorageLister = lister
 	}
 
 	return s.initCollections(s.componentCtx)
@@ -260,7 +290,9 @@ func (s *dsObjectStore) Run(ctx context.Context) error {
 
 	s.Store = store
 
-	return err
+	go s.backgroundWarmUp()
+
+	return nil
 }
 
 func (s *dsObjectStore) GetCommonDb() anystore.DB {
@@ -312,6 +344,12 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
+	// Cancel componentCtx so any in-flight WaitStoresLoaded (cross-space
+	// reads / IterateSpaceIndex block on it) and the background warm-up
+	// unblock on shutdown instead of hanging until the process exits.
+	if s.componentCtxCancel != nil {
+		s.componentCtxCancel()
+	}
 	return err
 }
 
@@ -435,46 +473,105 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 	return store
 }
 
-func (s *dsObjectStore) preloadExistingObjectStores() error {
-	var err error
+// preloadConcurrencyDefault is 1: warm-up opens spaces strictly one at a
+// time. This minimizes the startup disk spike and ensures warm-up holds at
+// most one per-space Init lock, so a concurrent direct SpaceIndex call for a
+// different space effectively never contends with it.
+const preloadConcurrencyDefault = 1
+
+// preloadConcurrency caps parallel per-space store opens during warm-up.
+// Variable (not const) so tests can pin it.
+var preloadConcurrency = preloadConcurrencyDefault
+
+// authoritativeSpaceIds returns the union of every space dir on disk
+// (objectstore index dirs) and every spacecore storage space id. The latter
+// is authoritative for "every space that could hold data" and is independent
+// of the objectstore index; the former covers index dirs with no matching
+// raw storage. Either source failing degrades coverage but never blocks.
+func (s *dsObjectStore) authoritativeSpaceIds() []string {
+	seen := map[string]struct{}{}
+	var ids []string
+	add := func(list []string) {
+		for _, id := range list {
+			if id == "" {
+				continue
+			}
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			ids = append(ids, id)
+		}
+	}
+	fsIds, err := s.anystoreProvider.ListSpaceIdsFromFilesystem()
+	if err != nil {
+		log.Error("list space ids from filesystem", zap.Error(err))
+	}
+	add(fsIds)
+	if s.spaceStorageLister != nil {
+		storageIds, serr := s.spaceStorageLister.AllSpaceIds()
+		if serr != nil {
+			log.Error("list space ids from spacestorage", zap.Error(serr))
+		} else {
+			add(storageIds)
+		}
+	}
+	return ids
+}
+
+// preloadExistingObjectStores opens every authoritative space's per-space DB
+// with bounded concurrency. It is the body of the background warm-up; it
+// never runs on a query hot path and never blocks Run().
+func (s *dsObjectStore) preloadExistingObjectStores() {
 	s.spaceStoreDirsCheck.Do(func() {
-		spaceIds, err := s.anystoreProvider.ListSpaceIdsFromFilesystem()
-		if err != nil {
-			log.Error("list space ids from filesystem", zap.Error(err))
-		}
-
-		var indexes []spaceindex.Store
-		s.lock.Lock()
-		for _, spaceId := range spaceIds {
-			spaceIndex := s.getOrInitSpaceIndex(spaceId)
-			indexes = append(indexes, spaceIndex)
-		}
-		s.lock.Unlock()
-
+		spaceIds := s.authoritativeSpaceIds()
+		sem := make(chan struct{}, preloadConcurrency)
 		var wg sync.WaitGroup
-		for _, index := range indexes {
+		for _, spaceId := range spaceIds {
+			select {
+			case <-s.componentCtx.Done():
+				wg.Wait()
+				return
+			case sem <- struct{}{}:
+			}
 			wg.Add(1)
-			go func() {
+			go func(spaceId string) {
 				defer wg.Done()
-				initErr := index.Init()
-				if initErr != nil {
-					log.With("error", initErr).Error("pre-init space index")
-					return
-				}
-				s.markSpaceIndexOpened(index.SpaceId())
-			}()
+				defer func() { <-sem }()
+				// SpaceIndex opens the per-space DB and, on success,
+				// calls markSpaceIndexOpened (fires OnSpaceIndexOpened).
+				// On Init error it returns an invalid store and the space
+				// is left out of OpenedSpaceIds (intended).
+				s.SpaceIndex(spaceId)
+			}(spaceId)
 		}
 		wg.Wait()
 	})
-	return err
+}
+
+// backgroundWarmUp runs the bounded preload and signals completion. Launched
+// as a goroutine from Run so component startup is never blocked.
+func (s *dsObjectStore) backgroundWarmUp() {
+	defer close(s.loadedCh)
+	s.preloadExistingObjectStores()
+}
+
+// WaitStoresLoaded blocks until the background warm-up has opened every
+// authoritative-set store, or ctx / the component context is done. Safe to
+// call from any non-Run goroutine. Designed to be extended later to also
+// await per-space indexation.
+func (s *dsObjectStore) WaitStoresLoaded(ctx context.Context) error {
+	select {
+	case <-s.loadedCh:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-s.componentCtx.Done():
+		return s.componentCtx.Err()
+	}
 }
 
 func (s *dsObjectStore) listStores() []spaceindex.Store {
-	err := s.preloadExistingObjectStores()
-	if err != nil {
-		log.Errorf("preloadExistingObjectStores: %v", err)
-	}
-
 	s.lock.Lock()
 	stores := make([]spaceindex.Store, 0, len(s.spaceIndexes))
 	for _, store := range s.spaceIndexes {
@@ -485,6 +582,18 @@ func (s *dsObjectStore) listStores() []spaceindex.Store {
 }
 
 func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store) ([]T, error)) ([]T, error) {
+	// Wait-by-default: every cross-space query (QueryCrossSpace,
+	// QueryByIdCrossSpace, ListIdsCrossSpace) blocks until the background
+	// warm-up has opened the full authoritative space set, so callers can
+	// never silently act on a partial local view. The wait is one-time
+	// (loadedCh stays closed afterwards, so this is instant) and is bound to
+	// componentCtx because these APIs have no ctx parameter. The warm-up
+	// goroutine itself never reaches here (it uses SpaceIndex directly and
+	// its OnSpaceIndexOpened callback only does per-space subscription work),
+	// so this cannot self-deadlock.
+	if err := s.WaitStoresLoaded(s.componentCtx); err != nil {
+		return nil, fmt.Errorf("wait stores loaded: %w", err)
+	}
 	stores := s.listStores()
 
 	var result []T
@@ -503,6 +612,12 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
+// iterateSpacesForFulltext deliberately does NOT wait for the warm-up
+// (unlike collectCrossSpace / IterateSpaceIndex): full-text enqueue/recheck
+// is non-destructive and self-healing — a space missed here is re-enqueued
+// when it opens / on its next indexer pass — so blocking the FT path on the
+// full authoritative set would only add startup latency for no correctness
+// gain.
 func iterateSpacesForFulltext(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
 	stores := s.listStores()
 	for _, store := range stores {
@@ -639,7 +754,7 @@ func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.
 	// Batch enqueue all missing IDs at once
 	if len(missingIds) > 0 {
 		for _, id := range missingIds {
-			index := s.getOrInitSpaceIndex(id.SpaceID)
+			index := s.SpaceIndex(id.SpaceID)
 			d, err := index.GetDetails(id.ObjectID)
 			if err != nil {
 				fmt.Printf("object %s/%s get details error: %v\n", id.SpaceID, id.ObjectID, err)

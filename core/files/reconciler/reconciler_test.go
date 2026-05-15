@@ -104,9 +104,9 @@ func TestReconcileRemoteStorage(t *testing.T) {
 
 	fx.fileStorage.EXPECT().IterateFiles(mock.Anything, mock.Anything).
 		Run(func(ctx context.Context, iterFunc func(domain.FullFileId)) {
-			iterFunc(domain.FullFileId{SpaceId: "spaceId", FileId: testFileId})
-			iterFunc(domain.FullFileId{SpaceId: "spaceId", FileId: "deletedFileId"})
-			iterFunc(domain.FullFileId{SpaceId: "spaceId", FileId: "anotherFileId"})
+			iterFunc(domain.FullFileId{SpaceId: "space1", FileId: testFileId})
+			iterFunc(domain.FullFileId{SpaceId: "space1", FileId: "deletedFileId"})
+			iterFunc(domain.FullFileId{SpaceId: "space1", FileId: "anotherFileId"})
 		}).
 		Return(nil)
 
@@ -115,7 +115,7 @@ func TestReconcileRemoteStorage(t *testing.T) {
 		"anotherFileId",
 	}
 	for _, fileId := range wantDeletedFiles {
-		fx.fileSync.EXPECT().DeleteFile("", domain.FullFileId{SpaceId: "spaceId", FileId: fileId}).Return(nil)
+		fx.fileSync.EXPECT().DeleteFile("", domain.FullFileId{SpaceId: "space1", FileId: fileId}).Return(nil)
 		ok, err := fx.deletedFiles.Has(context.Background(), fileId.String())
 		require.NoError(t, err)
 		assert.False(t, ok)
@@ -237,4 +237,54 @@ func TestRebindQueue(t *testing.T) {
 			t.Fatal("timeout")
 		}
 	}
+}
+
+func TestReconcileRemoteStorage_SkipsUnaccountedSpace(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+	require.NoError(t, fx.reconciler.Run(ctx))
+
+	const (
+		spaceA   = "spaceA"
+		keptFile = domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyaa")
+		orphanA  = domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvybb")
+		closedB  = "spaceB"
+		fileInB  = domain.FileId("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvycc")
+	)
+
+	// spaceA gets opened (StoreFixture.AddObjects opens its store) and
+	// contains one file object referencing keptFile.
+	fx.objectStore.AddObjects(t, spaceA, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:      domain.String("objA"),
+			bundle.RelationKeySpaceId: domain.String(spaceA),
+			bundle.RelationKeyFileId:  domain.String(keptFile.String()),
+		},
+	})
+
+	// Remote node reports three files: keptFile (kept), orphanA (orphan in
+	// an accounted space -> deleted), fileInB (space never opened -> skipped).
+	fx.fileStorage.EXPECT().IterateFiles(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ context.Context, cb func(domain.FullFileId)) error {
+			cb(domain.FullFileId{SpaceId: spaceA, FileId: keptFile})
+			cb(domain.FullFileId{SpaceId: spaceA, FileId: orphanA})
+			cb(domain.FullFileId{SpaceId: closedB, FileId: fileInB})
+			return nil
+		})
+
+	deleted := map[domain.FileId]struct{}{}
+	fx.fileSync.EXPECT().DeleteFile(mock.Anything, mock.Anything).RunAndReturn(
+		func(_ string, id domain.FullFileId) error {
+			deleted[id.FileId] = struct{}{}
+			return nil
+		}).Maybe()
+
+	require.NoError(t, fx.reconciler.reconcileRemoteStorage(ctx))
+
+	_, keptDeleted := deleted[keptFile]
+	_, orphanDeleted := deleted[orphanA]
+	_, bDeleted := deleted[fileInB]
+	assert.False(t, keptDeleted, "referenced file must not be deleted")
+	assert.True(t, orphanDeleted, "orphan in accounted space must be deleted")
+	assert.False(t, bDeleted, "file in unaccounted (never-opened) space must be skipped")
 }

@@ -115,6 +115,9 @@ func (s *service) onSpaceIndexOpened(spaceId string) {
 		subs = append(subs, sub)
 	}
 	s.lock.Unlock()
+	log.Debug("objectstore opened",
+		zap.String("spaceId", spaceId),
+		zap.Int("subscriptions", len(subs)))
 	for _, sub := range subs {
 		if err := sub.PromotePending(spaceId); err != nil {
 			log.Error("promote pending space",
