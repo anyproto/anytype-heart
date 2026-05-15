@@ -148,34 +148,31 @@ func (s *spaceLoader) open(ctx context.Context) (clientspace.Space, error) {
 
 func (s *spaceLoader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
 	s.mx.Lock()
-	status := s.status.GetLocalStatus()
-
-	switch status {
-	case spaceinfo.LocalStatusUnknown:
+	// Readiness is driven by the loader's own lifecycle, NOT by the client-facing persisted
+	// localStatus. localStatus may be an optimistic Ok (set before the background build
+	// finished); returning s.space here without the loadCh wait would hand back a nil space.
+	if s.loading == nil {
 		s.mx.Unlock()
-		return nil, fmt.Errorf("waitLoad for an unknown space")
-	case spaceinfo.LocalStatusLoading:
-		// loading in progress, wait channel and retry
-		waitCh := s.loading.loadCh
-		loadErr := s.loading.getLoadErr()
-		s.mx.Unlock()
-		if loadErr != nil {
-			return nil, loadErr
-		}
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-waitCh:
-		}
-		return s.WaitLoad(ctx)
-	case spaceinfo.LocalStatusMissing:
-		// local missing state means the loader ended with an error
-		err = s.loading.getLoadErr()
-	case spaceinfo.LocalStatusOk:
-		sp = s.space
-	default:
-		err = fmt.Errorf("undefined space state: %v", status)
+		return nil, fmt.Errorf("waitLoad for a not started space")
 	}
+	if s.space != nil {
+		sp = s.space
+		s.mx.Unlock()
+		return sp, nil
+	}
+	loading := s.loading
+	loadErr := loading.getLoadErr()
+	if loadErr != nil {
+		s.mx.Unlock()
+		return nil, loadErr
+	}
+	waitCh := loading.loadCh
 	s.mx.Unlock()
-	return
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-waitCh:
+	}
+	return s.WaitLoad(ctx)
 }

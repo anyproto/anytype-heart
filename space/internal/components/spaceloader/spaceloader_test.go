@@ -5,6 +5,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/stretchr/testify/mock"
@@ -15,6 +16,11 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/mock_storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
+
+// stubSpace is a minimal clientspace.Space used only as a non-nil sentinel return value.
+type stubSpace struct {
+	clientspace.Space
+}
 
 // blockingBuilder is a SpaceBuilder stub whose BuildSpace blocks until released, so the
 // synchronous status decision in startLoad can be asserted before the background goroutine runs.
@@ -125,5 +131,69 @@ func TestStartLoad_FastPath(t *testing.T) {
 		// then
 		require.True(t, containsStatus(fx.recordedStatuses(), spaceinfo.LocalStatusLoading),
 			"stale Ok without storage must publish Loading")
+	})
+}
+
+func TestWaitLoad_InternalState(t *testing.T) {
+	t.Run("loader not started returns error", func(t *testing.T) {
+		// given a loader whose background load was never started
+		s := &spaceLoader{status: mock_spacestatus.NewMockSpaceStatus(t)}
+
+		// when
+		sp, err := s.WaitLoad(context.Background())
+
+		// then
+		require.Nil(t, sp)
+		require.Error(t, err)
+	})
+
+	t.Run("optimistic Ok but build not finished blocks then returns space", func(t *testing.T) {
+		// given a loader with an in-progress build (loadCh open, space not set yet)
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusOk, true)
+		s := fx.loader
+		s.loading = &loadingSpace{loadCh: make(chan struct{})}
+
+		done := make(chan struct{})
+		var gotSp clientspace.Space
+		var gotErr error
+		go func() {
+			gotSp, gotErr = s.WaitLoad(context.Background())
+			close(done)
+		}()
+
+		// WaitLoad must still be blocked: build not finished, space nil, no error.
+		select {
+		case <-done:
+			t.Fatal("WaitLoad returned before the build finished")
+		case <-time.After(50 * time.Millisecond):
+		}
+
+		// when the build finishes successfully (mirrors loadRetry's defer ordering)
+		s.mx.Lock()
+		s.space = stubSpace{}
+		s.mx.Unlock()
+		close(s.loading.loadCh)
+
+		// then
+		<-done
+		require.NoError(t, gotErr)
+		require.NotNil(t, gotSp)
+	})
+
+	t.Run("build failed returns load error", func(t *testing.T) {
+		// given a loader whose background build finished with an error
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusOk, true)
+		s := fx.loader
+		ls := &loadingSpace{loadCh: make(chan struct{})}
+		ls.setLoadErr(errors.New("boom"))
+		close(ls.loadCh)
+		s.loading = ls
+
+		// when
+		sp, err := s.WaitLoad(context.Background())
+
+		// then
+		require.Nil(t, sp)
+		require.EqualError(t, err, "boom")
 	})
 }
