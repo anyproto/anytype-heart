@@ -108,9 +108,12 @@ func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
 		if s.remoteStatus != nil {
 			newRemote = *s.remoteStatus
 		}
+		changed := (s.localStatus != nil && newLocal != oldLocal) ||
+			(s.remoteStatus != nil && newRemote != oldRemote)
 		spaceInfoLog.With("spaceId", s.SpaceId).
 			With("localStatus", oldLocal.String()+"->"+newLocal.String()).
 			With("remoteStatus", oldRemote.String()+"->"+newRemote.String()).
+			With("changed", changed).
 			Warn("space status update in objectstore")
 	}
 	if s.localStatus != nil {
