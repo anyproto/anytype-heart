@@ -420,7 +420,11 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 	return store
 }
 
-const preloadConcurrencyDefault = 4
+// preloadConcurrencyDefault is 1: warm-up opens spaces strictly one at a
+// time. This minimizes the startup disk spike and ensures warm-up holds at
+// most one per-space Init lock, so a concurrent direct SpaceIndex call for a
+// different space effectively never contends with it.
+const preloadConcurrencyDefault = 1
 
 // preloadConcurrency caps parallel per-space store opens during warm-up.
 // Variable (not const) so tests can pin it.
