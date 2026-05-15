@@ -281,6 +281,9 @@ func (d *debug) DumpLocalstore(ctx context.Context, spaceID string, objIds []str
 	var wr io.Writer
 	m := jsonpb.Marshaler{Indent: " "}
 
+	if werr := d.store.WaitStoresLoaded(ctx); werr != nil {
+		return "", fmt.Errorf("wait stores loaded: %w", werr)
+	}
 	err = d.store.IterateSpaceIndex(func(store spaceindex.Store) error {
 		objIds, err = store.ListIds()
 		if err != nil {

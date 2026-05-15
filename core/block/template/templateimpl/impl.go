@@ -398,6 +398,9 @@ func (s *service) TemplateClone(spaceId string, id string) (templateId string, e
 }
 
 func (s *service) TemplateExportAll(ctx context.Context, path string) (string, error) {
+	if err := s.store.WaitStoresLoaded(ctx); err != nil {
+		return "", fmt.Errorf("wait stores loaded: %w", err)
+	}
 	records, err := s.store.QueryCrossSpace(database.Query{
 		Filters: []database.FilterRequest{
 			{
