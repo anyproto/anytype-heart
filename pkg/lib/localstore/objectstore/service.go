@@ -83,6 +83,16 @@ type ObjectStore interface {
 	IterateSpaceIndex(func(store spaceindex.Store) error) error
 	SpaceIndex(spaceId string) spaceindex.Store
 
+	// OnSpaceIndexOpened registers cb to be invoked once when each space's
+	// objectstore DB transitions from "not opened" to "opened" via SpaceIndex.
+	// Already-opened spaces are replayed synchronously during registration.
+	// Callbacks are invoked outside the object store's internal locks; they
+	// may safely re-enter SpaceIndex.
+	OnSpaceIndexOpened(cb func(spaceId string))
+	// OpenedSpaceIds returns a snapshot of spaces whose objectstore DB is
+	// currently open.
+	OpenedSpaceIds() []string
+
 	SpaceNameGetter
 	GetSpaceViewDetails(spaceId string) (*domain.Details, error)
 	spaceresolverstore.Store
@@ -169,6 +179,10 @@ type dsObjectStore struct {
 	lock         sync.Mutex
 	spaceIndexes map[string]spaceindex.Store
 
+	spaceOpenedLock           sync.Mutex
+	openedSpaceIds            map[string]struct{}
+	spaceIndexOpenedCallbacks []func(spaceId string)
+
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 }
@@ -208,6 +222,7 @@ func New() ObjectStore {
 		componentCtxCancel: cancel,
 		subManager:         &spaceindex.SubscriptionManager{},
 		spaceIndexes:       map[string]spaceindex.Store{},
+		openedSpaceIds:     map[string]struct{}{},
 	}
 }
 
@@ -307,7 +322,65 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 	if err != nil {
 		return spaceindex.NewInvalidStore(err)
 	}
+	s.markSpaceIndexOpened(spaceId)
 	return spaceIndex
+}
+
+func (s *dsObjectStore) OnSpaceIndexOpened(cb func(spaceId string)) {
+	s.spaceOpenedLock.Lock()
+	s.spaceIndexOpenedCallbacks = append(s.spaceIndexOpenedCallbacks, cb)
+	replay := make([]string, 0, len(s.openedSpaceIds))
+	for spaceId := range s.openedSpaceIds {
+		replay = append(replay, spaceId)
+	}
+	s.spaceOpenedLock.Unlock()
+	for _, spaceId := range replay {
+		cb(spaceId)
+	}
+}
+
+func (s *dsObjectStore) OpenedSpaceIds() []string {
+	s.spaceOpenedLock.Lock()
+	defer s.spaceOpenedLock.Unlock()
+	ids := make([]string, 0, len(s.openedSpaceIds))
+	for spaceId := range s.openedSpaceIds {
+		ids = append(ids, spaceId)
+	}
+	return ids
+}
+
+// markSpaceIndexOpened records a space as opened and fires registered
+// callbacks exactly once, on the first successful open.
+//
+// No cross-goroutine synchronization is needed here: data consistency is
+// guaranteed one layer down. spaceindex.Store.UpdateObjectDetails persists
+// to the anystore DB independently of any subscription, and when a per-space
+// subscription is later created it wires SubscribeForAll and then re-queries
+// the full store (core/subscription/service.go subscribeForQuery →
+// queryEntries, plus sortedSub.entriesBeforeStarted). So a write that races
+// the open is always recovered: either the post-wiring re-query reads it from
+// the persistent store, or SubscribeForAll (wired before that query) delivers
+// it. See TestLazySubscribe_NoDataLossUnderConcurrentOpen.
+//
+// openedSpaceIds is set before the callbacks run so that (a) the callback
+// chain's own re-entry into SpaceIndex for the same space — cross-space sub's
+// PromotePending → subscriptionservice.Search → getSpaceSubscriptions →
+// SpaceIndex — short-circuits here instead of recursing/deadlocking, and
+// (b) a listener registering during the firing still observes the space via
+// OnSpaceIndexOpened's replay.
+func (s *dsObjectStore) markSpaceIndexOpened(spaceId string) {
+	s.spaceOpenedLock.Lock()
+	if _, ok := s.openedSpaceIds[spaceId]; ok {
+		s.spaceOpenedLock.Unlock()
+		return
+	}
+	s.openedSpaceIds[spaceId] = struct{}{}
+	callbacks := slices.Clone(s.spaceIndexOpenedCallbacks)
+	s.spaceOpenedLock.Unlock()
+
+	for _, cb := range callbacks {
+		cb(spaceId)
+	}
 }
 
 func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
@@ -349,7 +422,9 @@ func (s *dsObjectStore) preloadExistingObjectStores() error {
 				initErr := index.Init()
 				if initErr != nil {
 					log.With("error", initErr).Error("pre-init space index")
+					return
 				}
+				s.markSpaceIndexOpened(index.SpaceId())
 			}()
 		}
 		wg.Wait()
@@ -381,6 +456,7 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 		if err != nil {
 			return nil, fmt.Errorf("init store: %w", err)
 		}
+		s.markSpaceIndexOpened(store.SpaceId())
 		items, err := proc(store)
 		if err != nil {
 			return nil, err
@@ -400,6 +476,7 @@ func iterateSpacesForFulltext(s *dsObjectStore, proc func(store spaceindex.Store
 		if err != nil {
 			return fmt.Errorf("init store: %w", err)
 		}
+		s.markSpaceIndexOpened(store.SpaceId())
 		err = proc(store)
 		if err != nil {
 			return err
