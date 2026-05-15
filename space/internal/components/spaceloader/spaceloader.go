@@ -104,10 +104,18 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 	if s.status.GetPersistentStatus() == spaceinfo.AccountStatusDeleted {
 		return ErrSpaceDeleted
 	}
-	info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
-	info.SetLocalStatus(spaceinfo.LocalStatusLoading)
-	if err = s.status.SetLocalInfo(info); err != nil {
-		return
+	// Fast path: a space whose store still exists on disk and was already Ok in the previous
+	// session keeps reporting Ok to clients. We still run the background build below; we just
+	// do not publish a transient Loading (which would make the client hide the space on cold
+	// start). If onLoad later fails, it sets Missing (accepted Ok->Missing regression).
+	onDiskAndOk := s.status.GetLocalStatus() == spaceinfo.LocalStatusOk &&
+		s.storageService.SpaceExists(s.status.SpaceId())
+	if !onDiskAndOk {
+		info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
+		info.SetLocalStatus(spaceinfo.LocalStatusLoading)
+		if err = s.status.SetLocalInfo(info); err != nil {
+			return
+		}
 	}
 	s.loading = s.newLoadingSpace(s.ctx, s.stopIfMandatoryFail, s.disableRemoteLoad, s.status.GetLatestAclHeadId())
 	return
