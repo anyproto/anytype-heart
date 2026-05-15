@@ -222,7 +222,7 @@ func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) 
 		spaceIndexes = append(spaceIndexes, store)
 	}
 	s.lock.Unlock()
-	for _, store := range s.spaceIndexes {
+	for _, store := range spaceIndexes {
 		if err := f(store); err != nil {
 			return err
 		}
@@ -679,7 +679,7 @@ func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.
 	// Batch enqueue all missing IDs at once
 	if len(missingIds) > 0 {
 		for _, id := range missingIds {
-			index := s.getOrInitSpaceIndex(id.SpaceID)
+			index := s.SpaceIndex(id.SpaceID)
 			d, err := index.GetDetails(id.ObjectID)
 			if err != nil {
 				fmt.Printf("object %s/%s get details error: %v\n", id.SpaceID, id.ObjectID, err)
