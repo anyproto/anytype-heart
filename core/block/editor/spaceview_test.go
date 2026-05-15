@@ -247,3 +247,80 @@ func (f *spaceViewFixture) getAccessType() spaceinfo.AccessType {
 func (f *spaceViewFixture) finish() {
 	f.ctrl.Finish()
 }
+
+// buildSpaceViewWithSeededLocalInfo constructs a SpaceView whose underlying doc already has
+// localStatus/remoteStatus persisted (simulating a reload from the object store after a
+// previous session), then runs Init exactly as the production reload path does.
+func buildSpaceViewWithSeededLocalInfo(t *testing.T, targetSpaceId string, seeded *spaceinfo.SpaceLocalInfo) *SpaceView {
+	ctrl := gomock.NewController(t)
+	tree := mock_objecttree.NewMockObjectTree(ctrl)
+
+	sb := smarttest.NewWithTree("root", tree)
+
+	sv := &SpaceView{
+		SmartBlock:    sb,
+		OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder),
+		spaceService:  &spaceServiceStub{},
+		log:           log,
+	}
+
+	changePayload := &model.ObjectChangePayload{Key: targetSpaceId}
+	marshaled, err := changePayload.Marshal()
+	require.NoError(t, err)
+	tree.EXPECT().ChangeInfo().Return(&treechangeproto.TreeChangeInfo{ChangePayload: marshaled}).AnyTimes()
+
+	initCtx := &smartblock.InitContext{IsNewObject: false}
+	if seeded != nil {
+		// Faithfully simulate production: smartblock.Init -> injectLocalDetails populates
+		// ctx.State local details from the object store BEFORE SpaceView.Init's own logic
+		// runs. smarttest.Init does not do this (in-memory, no object store), so we pre-seed
+		// the init state's local details the same way injectLocalDetails does
+		// (state local-details injection from the persisted store value).
+		seedState := sb.NewState()
+		seedState.SetLocalDetail(bundle.RelationKeySpaceLocalStatus, domain.Int64(int64(seeded.GetLocalStatus())))
+		seedState.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus, domain.Int64(int64(seeded.GetRemoteStatus())))
+		initCtx.State = seedState
+
+		// Risk gate: the persisted value MUST be visible in the state going INTO Init (this is
+		// what production's smartblock.Init->injectLocalDetails guarantees before SpaceView's
+		// own Init logic runs). If this fails, the design's Init-side preservation is not
+		// viable as written — see spec fallback note.
+		preInfo := spaceinfo.NewSpaceLocalInfoFromState(initCtx.State)
+		require.Equal(t, seeded.GetLocalStatus(), preInfo.GetLocalStatus(),
+			"persisted localStatus must be present in ctx.State at Init")
+	}
+	require.NoError(t, sv.Init(initCtx))
+
+	migration.RunMigrations(sv, initCtx)
+	require.NoError(t, sv.Apply(initCtx.State))
+	t.Cleanup(ctrl.Finish)
+	return sv
+}
+
+func TestSpaceView_Init_PreservesPersistedLocalStatus(t *testing.T) {
+	t.Run("previously Ok is preserved", func(t *testing.T) {
+		// given
+		seeded := spaceinfo.NewSpaceLocalInfo("spaceId")
+		seeded.SetLocalStatus(spaceinfo.LocalStatusOk).
+			SetRemoteStatus(spaceinfo.RemoteStatusOk)
+
+		// when
+		sv := buildSpaceViewWithSeededLocalInfo(t, "spaceId", &seeded)
+
+		// then
+		got := sv.GetLocalInfo()
+		assert.Equal(t, spaceinfo.LocalStatusOk, got.GetLocalStatus())
+		assert.Equal(t, spaceinfo.RemoteStatusOk, got.GetRemoteStatus())
+	})
+
+	t.Run("brand new spaceview defaults to Unknown", func(t *testing.T) {
+		// given no seeded local info
+		// when
+		sv := buildSpaceViewWithSeededLocalInfo(t, "spaceId", nil)
+
+		// then
+		got := sv.GetLocalInfo()
+		assert.Equal(t, spaceinfo.LocalStatusUnknown, got.GetLocalStatus())
+		assert.Equal(t, spaceinfo.RemoteStatusUnknown, got.GetRemoteStatus())
+	})
+}
