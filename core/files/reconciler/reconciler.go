@@ -185,6 +185,9 @@ func (r *reconciler) markAsReconciled(fileObjectId string, fileId domain.FullFil
 }
 
 func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
+	if err := r.objectStore.WaitStoresLoaded(ctx); err != nil {
+		return fmt.Errorf("wait stores loaded: %w", err)
+	}
 	records, err := r.objectStore.QueryCrossSpace(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -202,6 +205,11 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 		return fmt.Errorf("query file objects: %w", err)
 	}
 
+	accounted := map[string]struct{}{}
+	for _, spaceId := range r.objectStore.OpenedSpaceIds() {
+		accounted[spaceId] = struct{}{}
+	}
+
 	haveIds := map[domain.FileId]struct{}{}
 	for _, rec := range records {
 		fileId := domain.FileId(rec.Details.GetString(bundle.RelationKeyFileId))
@@ -211,6 +219,11 @@ func (r *reconciler) reconcileRemoteStorage(ctx context.Context) error {
 	}
 
 	err = r.fileStorage.IterateFiles(ctx, func(fileId domain.FullFileId) {
+		// Never treat a file as orphaned if its space was not positively
+		// accounted for (store not loaded): we cannot prove it is unreferenced.
+		if _, ok := accounted[fileId.SpaceId]; !ok {
+			return
+		}
 		if _, ok := haveIds[fileId.FileId]; !ok {
 			log.Warn("file not found in local vault, enqueue deletion", zap.String("fileId", fileId.FileId.String()))
 			err := r.fileSync.DeleteFile("", fileId)
