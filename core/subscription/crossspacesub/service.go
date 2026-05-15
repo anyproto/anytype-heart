@@ -115,7 +115,7 @@ func (s *service) onSpaceIndexOpened(spaceId string) {
 		subs = append(subs, sub)
 	}
 	s.lock.Unlock()
-	log.Warn("crossspacesub: objectstore opened",
+	log.Debug("objectstore opened",
 		zap.String("spaceId", spaceId),
 		zap.Int("subscriptions", len(subs)))
 	for _, sub := range subs {

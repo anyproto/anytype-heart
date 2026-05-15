@@ -94,10 +94,12 @@ type ObjectStore interface {
 	OpenedSpaceIds() []string
 
 	// WaitStoresLoaded blocks until the background warm-up has opened every
-	// space in the authoritative set, or ctx is done. The cross-space query
-	// methods (QueryCrossSpace, QueryByIdCrossSpace, ListIdsCrossSpace) and
-	// IterateSpaceIndex already wait internally, so callers normally do not
-	// need this; it is exposed for code that wants to await warm-up without
+	// space in the authoritative set, or ctx is done. The one-shot
+	// cross-space reads (QueryCrossSpace, QueryByIdCrossSpace,
+	// ListIdsCrossSpace) and IterateSpaceIndex already wait internally, so
+	// callers normally do not need this. NOTE: the full-text path
+	// (iterateSpacesForFulltext) and per-space SpaceIndex deliberately do
+	// not wait. Exposed for code that wants to await warm-up without
 	// issuing a query.
 	WaitStoresLoaded(ctx context.Context) error
 
@@ -338,6 +340,12 @@ func (s *dsObjectStore) initCollections(ctx context.Context) error {
 }
 
 func (s *dsObjectStore) Close(_ context.Context) (err error) {
+	// Cancel componentCtx so any in-flight WaitStoresLoaded (cross-space
+	// reads / IterateSpaceIndex block on it) and the background warm-up
+	// unblock on shutdown instead of hanging until the process exits.
+	if s.componentCtxCancel != nil {
+		s.componentCtxCancel()
+	}
 	return err
 }
 
@@ -567,6 +575,12 @@ func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store
 	return result, nil
 }
 
+// iterateSpacesForFulltext deliberately does NOT wait for the warm-up
+// (unlike collectCrossSpace / IterateSpaceIndex): full-text enqueue/recheck
+// is non-destructive and self-healing — a space missed here is re-enqueued
+// when it opens / on its next indexer pass — so blocking the FT path on the
+// full authoritative set would only add startup latency for no correctness
+// gain.
 func iterateSpacesForFulltext(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
 	stores := s.listStores()
 	for _, store := range stores {
