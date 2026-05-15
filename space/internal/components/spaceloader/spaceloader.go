@@ -30,6 +30,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/builder"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	spaceservice "github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
@@ -47,6 +48,7 @@ type SpaceLoader interface {
 type spaceLoader struct {
 	status              spacestatus.SpaceStatus
 	builder             builder.SpaceBuilder
+	storageService      storage.ClientStorage
 	loading             *loadingSpace
 	stopIfMandatoryFail bool
 	disableRemoteLoad   bool
@@ -68,6 +70,7 @@ func (s *spaceLoader) Init(a *app.App) (err error) {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.status = app.MustComponent[spacestatus.SpaceStatus](a)
 	s.builder = app.MustComponent[builder.SpaceBuilder](a)
+	s.storageService = app.MustComponent[storage.ClientStorage](a)
 	return nil
 }
 
