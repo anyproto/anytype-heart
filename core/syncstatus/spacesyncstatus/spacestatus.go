@@ -63,7 +63,7 @@ type NodeUsage interface {
 type SpaceIdGetter interface {
 	app.Component
 	TechSpaceId() string
-	AllSpaceIds() []string
+	AllLoadedSpaceIds() []string
 }
 
 type NetworkConfig interface {
@@ -122,7 +122,7 @@ func (s *spaceSyncStatus) Name() (name string) {
 }
 
 func (s *spaceSyncStatus) sendSyncEventForNewSession(ctx session.Context) error {
-	ids := s.spaceIdGetter.AllSpaceIds()
+	ids := s.spaceIdGetter.AllLoadedSpaceIds()
 	for _, id := range ids {
 		s.sendEventToSession(id, ctx.ID())
 	}
@@ -142,7 +142,7 @@ func (s *spaceSyncStatus) Run(ctx context.Context) (err error) {
 		case <-s.closeCh:
 			return
 		}
-		s.sendStartEvent(s.spaceIdGetter.AllSpaceIds())
+		s.sendStartEvent(s.spaceIdGetter.AllLoadedSpaceIds())
 		s.periodicCall.Run()
 	}()
 	return

@@ -83,6 +83,10 @@ type ObjectStore interface {
 	IterateSpaceIndex(func(store spaceindex.Store) error) error
 	SpaceIndex(spaceId string) spaceindex.Store
 
+	// DeleteSpaceIndex closes and forgets the in-memory space index and removes
+	// the space's objectstore data (index + CRDT databases and directory) from disk.
+	DeleteSpaceIndex(spaceId string) error
+
 	// OnSpaceIndexOpened registers cb to be invoked once when each space's
 	// objectstore DB transitions from "not opened" to "opened" via SpaceIndex.
 	// Already-opened spaces are replayed synchronously during registration.
@@ -324,6 +328,39 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 	}
 	s.markSpaceIndexOpened(spaceId)
 	return spaceIndex
+}
+
+// DeleteSpaceIndex closes the in-memory space index, drops it from the
+// registry (so it won't be iterated/queried cross-space anymore), forgets it
+// from the opened-spaces set, and removes the on-disk objectstore data for the
+// space via the anystore provider.
+func (s *dsObjectStore) DeleteSpaceIndex(spaceId string) error {
+	if spaceId == "" {
+		return errors.New("empty spaceId")
+	}
+
+	s.lock.Lock()
+	store, ok := s.spaceIndexes[spaceId]
+	if ok {
+		delete(s.spaceIndexes, spaceId)
+	}
+	s.lock.Unlock()
+
+	var errs error
+	if ok {
+		if err := store.Close(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("close space index: %w", err))
+		}
+	}
+
+	s.spaceOpenedLock.Lock()
+	delete(s.openedSpaceIds, spaceId)
+	s.spaceOpenedLock.Unlock()
+
+	if err := s.anystoreProvider.DeleteSpaceData(spaceId); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("delete space data: %w", err))
+	}
+	return errs
 }
 
 func (s *dsObjectStore) OnSpaceIndexOpened(cb func(spaceId string)) {

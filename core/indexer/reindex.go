@@ -840,5 +840,13 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 func (i *indexer) RemoveIndexes(spaceId string) error {
 	var flags reindexFlags
 	flags.enableAll()
-	return i.removeCommonIndexes(spaceId, nil, flags)
+	if err := i.removeCommonIndexes(spaceId, nil, flags); err != nil {
+		log.Errorf("remove common indexes on space removal: %v", err)
+	}
+	// Drop the per-space objectstore entirely: close the in-memory index and
+	// remove the on-disk objectstore/CRDT databases for the space.
+	if err := i.store.DeleteSpaceIndex(spaceId); err != nil {
+		return fmt.Errorf("delete space index: %w", err)
+	}
+	return nil
 }

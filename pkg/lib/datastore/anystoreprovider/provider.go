@@ -86,6 +86,9 @@ type Provider interface {
 
 	ListSpaceIdsFromFilesystem() ([]string, error)
 
+	// DeleteSpaceData closes all DBs (spaceIndex + CRDT) and removes the space directory from filesystem
+	DeleteSpaceData(spaceId string) error
+
 	app.ComponentRunnable
 }
 
@@ -408,6 +411,43 @@ func (s *provider) ListSpaceIdsFromFilesystem() ([]string, error) {
 		}
 	}
 	return spaceIds, err
+}
+
+// DeleteSpaceData closes the space index and CRDT databases for the given space
+// and removes the whole space directory from the filesystem. It always attempts
+// the directory removal even if closing one of the DBs fails, joining all errors.
+func (s *provider) DeleteSpaceData(spaceId string) error {
+	var errs error
+
+	// Close and forget spaceIndex DB
+	s.spaceIndexDbsLock.Lock()
+	if db, ok := s.spaceIndexDbs[spaceId]; ok {
+		if err := db.Close(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("close space index db: %w", err))
+		}
+		delete(s.spaceIndexDbs, spaceId)
+	}
+	s.spaceIndexDbsLock.Unlock()
+
+	// Close and forget CRDT DB
+	s.crtdStoreLock.Lock()
+	if crdtGetter, ok := s.crdtDbs[spaceId]; ok {
+		if db := crdtGetter.get(); db != nil {
+			if err := db.Close(); err != nil {
+				errs = errors.Join(errs, fmt.Errorf("close crdt db: %w", err))
+			}
+		}
+		delete(s.crdtDbs, spaceId)
+	}
+	s.crtdStoreLock.Unlock()
+
+	// Always attempt to remove the space directory from filesystem
+	spacePath := filepath.Join(s.objectStorePath, spaceId)
+	if err := os.RemoveAll(spacePath); err != nil {
+		errs = errors.Join(errs, fmt.Errorf("remove space directory: %w", err))
+	}
+
+	return errs
 }
 
 func (s *provider) Flush(timeout time.Duration, waitPending bool) {
