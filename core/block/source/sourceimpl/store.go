@@ -129,24 +129,27 @@ func (s *store) eachChange(ctx context.Context) func(yield func(string, readPair
 }
 
 func (s *store) initDiffManagers(ctx context.Context) error {
-	for name, manager := range s.diffManagers {
-		err := s.InitDiffManager(ctx, name, nil)
-		if err != nil {
-			return fmt.Errorf("init diff manager: %w", err)
-		}
-
+	for name := range s.diffManagers {
+		// Merge ALL persisted per-device seenHeads values into one set and
+		// apply in a SINGLE InitDiffManager/advance per counter. The previous
+		// per-value advance loop ran a full change scan + onRemove for every
+		// device value (× counters) — the cold-start regression.
+		var merged []string
 		vals, err := s.getTechSpace().KeyValueService().Get(ctx, s.seenHeadsKey(name))
 		if err != nil {
 			log.With("error", err).Error("init diff manager: get value")
-			continue
-		}
-		for _, val := range vals {
-			seenHeads, err := unmarshalSeenHeads(val.Data)
-			if err != nil {
-				log.With("error", err).Error("init diff manager: unmarshal seen heads")
-				continue
+		} else {
+			for _, val := range vals {
+				seenHeads, uerr := unmarshalSeenHeads(val.Data)
+				if uerr != nil {
+					log.With("error", uerr).Error("init diff manager: unmarshal seen heads")
+					continue
+				}
+				merged = append(merged, seenHeads...)
 			}
-			manager.wm.advance(seenHeads, s.resolvePair, s.eachChange(ctx))
+		}
+		if err := s.InitDiffManager(ctx, name, merged); err != nil {
+			return fmt.Errorf("init diff manager: %w", err)
 		}
 	}
 	return nil

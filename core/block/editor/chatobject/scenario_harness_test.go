@@ -264,9 +264,13 @@ func (e *watermarkEngine) rebuild(seen []string) {
 }
 
 func (e *watermarkEngine) applyDeviceValues(dv [][]string) {
+	// Merge device values → one advance (mirrors production initDiffManagers,
+	// which now applies the union of all per-device seenHeads in one pass).
+	var merged []string
 	for _, v := range dv {
-		e.wm.Advance(v, e.resolve, e.each)
+		merged = append(merged, v...)
 	}
+	e.wm.Advance(merged, e.resolve, e.each)
 }
 
 func (e *watermarkEngine) restart(dv [][]string) { e.rebuild(nil); e.applyDeviceValues(dv) }

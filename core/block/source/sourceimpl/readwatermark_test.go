@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDominated(t *testing.T) {
@@ -70,4 +71,29 @@ func TestWatermark_RebuildFromReducedSeenShrinksRead(t *testing.T) {
 	w2 := newWatermark(func(ids []string) { got = append(got, ids...) })
 	w2.advance([]string{"a"}, resolve, each)
 	assert.ElementsMatch(t, []string{"a"}, got, "only a is read after reduced-seen rebuild")
+}
+
+// Locks the perf-regression fix: each advance must emit only the NEWLY
+// dominated delta, never the whole dominated history again (that re-ran a
+// huge SetReadFlag id-IN query every advance — the cold-start regression).
+func TestWatermark_AdvanceEmitsOnlyDelta(t *testing.T) {
+	all := map[string]readPair{"G": {"o1", 1}, "m1": {"o2", 2}, "m2": {"o3", 3}}
+	resolve := func(id string) (readPair, bool) { p, ok := all[id]; return p, ok }
+	each := func(y func(string, readPair)) {
+		for id, p := range all {
+			y(id, p)
+		}
+	}
+	var calls [][]string
+	w := newWatermark(func(ids []string) { calls = append(calls, append([]string(nil), ids...)) })
+
+	w.advance([]string{"m1"}, resolve, each) // dominates G,m1
+	w.advance([]string{"m2"}, resolve, each) // now also m2; G,m1 already emitted
+	require.Len(t, calls, 2)
+	assert.ElementsMatch(t, []string{"G", "m1"}, calls[0])
+	assert.ElementsMatch(t, []string{"m2"}, calls[1], "second advance must emit ONLY the delta")
+
+	calls = nil
+	w.advance(nil, resolve, each) // no new seen, nothing newly dominated
+	assert.Empty(t, calls, "no new dominated ids → no onRemove call")
 }

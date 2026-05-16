@@ -29,10 +29,16 @@ type watermark struct {
 	onRemove func([]string)
 	seen     map[string]readPair // cumulative resolved seen head id -> pair
 	pending  map[string]struct{} // seen ids not yet resolvable
+	marked   map[string]struct{} // ids already emitted to onRemove (delta dedup)
 }
 
 func newWatermark(onRemove func([]string)) *watermark {
-	return &watermark{onRemove: onRemove, seen: map[string]readPair{}, pending: map[string]struct{}{}}
+	return &watermark{
+		onRemove: onRemove,
+		seen:     map[string]readPair{},
+		pending:  map[string]struct{}{},
+		marked:   map[string]struct{}{},
+	}
 }
 
 // advance accumulates newly seen ids (deferring unresolved ones), prunes the
@@ -60,9 +66,18 @@ func (w *watermark) advance(seenIds []string, resolve func(string) (readPair, bo
 	for _, p := range w.seen {
 		frontier = append(frontier, p)
 	}
+	// Emit only the newly-dominated delta: ids dominated now AND not already
+	// emitted. Re-emitting the whole dominated history every advance made
+	// onRemove -> SetReadFlag re-run a huge chunked `id IN` query each call
+	// (the dominant cold-start regression). markReadMessages is idempotent;
+	// emitting each id once is sufficient and bounds SetReadFlag to O(delta).
 	var read []string
 	eachChange(func(id string, p readPair) {
+		if _, done := w.marked[id]; done {
+			return
+		}
 		if dominated(p, frontier) {
+			w.marked[id] = struct{}{}
 			read = append(read, id)
 		}
 	})
