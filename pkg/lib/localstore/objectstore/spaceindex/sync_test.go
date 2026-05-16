@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestListIdsWithoutSyncDetails(t *testing.T) {
@@ -41,6 +42,39 @@ func TestListIdsWithoutSyncDetails(t *testing.T) {
 		ids, err := s.ListIdsWithoutSyncDetails(context.Background())
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"missingStatus", "missingAll"}, ids)
+	})
+
+	t.Run("excludes non-syncable system layouts", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			// In scope: real object, no layout set -> must be returned.
+			{
+				bundle.RelationKeyId:   domain.String("page"),
+				bundle.RelationKeyName: domain.String("foo"),
+			},
+			// In scope: basic layout -> must be returned.
+			{
+				bundle.RelationKeyId:             domain.String("basic"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+			},
+			// Out of scope: derived/system layouts -> must be skipped.
+			{
+				bundle.RelationKeyId:             domain.String("participant"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("home"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_dashboard)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("spaceView"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			},
+		})
+
+		ids, err := s.ListIdsWithoutSyncDetails(context.Background())
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"page", "basic"}, ids)
 	})
 
 	t.Run("returns empty when all objects already have sync relations", func(t *testing.T) {
