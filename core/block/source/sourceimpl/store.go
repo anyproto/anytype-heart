@@ -77,8 +77,9 @@ func (s *store) StatType() string {
 }
 
 type diffManager struct {
-	wm       *watermark
-	onRemove func(removed []string)
+	wm         *watermark
+	onRemove   func(removed []string)
+	candidates source.CandidateProvider
 }
 
 func (s *store) getTechSpace() clientspace.Space {
@@ -97,11 +98,12 @@ func (s *store) SetPushChangeHook(onPushChange source.PushChangeHook) {
 	s.onPushChange = onPushChange
 }
 
-func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []string)) {
+func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []string), candidateProvider source.CandidateProvider) {
 	if _, ok := s.diffManagers[name]; !ok {
 		s.diffManagers[name] = &diffManager{
-			onRemove: onRemoveHook,
-			wm:       newWatermark(onRemoveHook),
+			onRemove:   onRemoveHook,
+			wm:         newWatermark(onRemoveHook),
+			candidates: candidateProvider,
 		}
 	}
 }
@@ -126,6 +128,43 @@ func (s *store) eachChange(ctx context.Context) func(yield func(string, readPair
 			return true, nil
 		})
 	}
+}
+
+// boundedCandidateFallbackThreshold caps the bounded path: above this many
+// unread candidates, reverting to the single full tree stream is cheaper than
+// N point lookups. Tunable; benchmarked in the cold-start measurement task.
+const boundedCandidateFallbackThreshold = 5000
+
+// buildBoundedEachChange yields (id, pair) for each candidate id that resolves
+// in tree storage, skipping unresolved ids. Pure: no store/DB dependency.
+func buildBoundedEachChange(ids []string, resolve func(string) (readPair, bool)) func(yield func(string, readPair)) {
+	return func(yield func(string, readPair)) {
+		for _, id := range ids {
+			if p, ok := resolve(id); ok {
+				yield(id, p)
+			}
+		}
+	}
+}
+
+// eachChangeFor returns the (id, pair) stream for a diff manager: the bounded
+// unread-candidate stream when a provider is set and the candidate set is not
+// pathologically large, else the legacy full tree-change stream. Falling back
+// is correctness-safe — advance's dominated/marked logic is identical for any
+// superset of the dominated ids.
+func (s *store) eachChangeFor(ctx context.Context, manager *diffManager) func(yield func(string, readPair)) {
+	if manager.candidates == nil {
+		return s.eachChange(ctx)
+	}
+	ids, err := manager.candidates(ctx)
+	if err != nil {
+		log.With("error", err).Error("bounded candidates: fallback to full scan")
+		return s.eachChange(ctx)
+	}
+	if len(ids) > boundedCandidateFallbackThreshold {
+		return s.eachChange(ctx)
+	}
+	return buildBoundedEachChange(ids, s.resolvePair)
 }
 
 func (s *store) initDiffManagers(ctx context.Context) error {
@@ -174,7 +213,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 	// re-derives seenHeads) must yield a smaller frontier, not accumulate onto a
 	// stale one. Mirrors the old NewDiffManager rebuild.
 	manager.wm = newWatermark(manager.onRemove)
-	manager.wm.advance(seenHeads, s.resolvePair, s.eachChange(ctx))
+	manager.wm.advance(seenHeads, s.resolvePair, s.eachChangeFor(ctx, manager))
 
 	err = s.getTechSpace().KeyValueService().SubscribeForKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
 		s.ObjectTree.Lock()
@@ -185,7 +224,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 			log.Errorf("subscribe for seenHeads: %s: %v", name, err)
 			return
 		}
-		manager.wm.advance(newSeenHeads, s.resolvePair, s.eachChange(context.Background()))
+		manager.wm.advance(newSeenHeads, s.resolvePair, s.eachChangeFor(context.Background(), manager))
 	})
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
@@ -348,7 +387,7 @@ func (s *store) updateInDiffManagers(tree objecttree.ObjectTree) {}
 func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) error {
 	manager, ok := s.diffManagers[name]
 	if ok {
-		manager.wm.advance(heads, s.resolvePair, s.eachChange(ctx))
+		manager.wm.advance(heads, s.resolvePair, s.eachChangeFor(ctx, manager))
 		return s.StoreSeenHeads(ctx, name)
 	}
 	return nil
