@@ -15,6 +15,7 @@ require (
 	github.com/anyproto/go-slip10 v1.0.1
 	github.com/anyproto/goheif v0.0.0-20260216083627-c3efd00cd92e
 	github.com/anyproto/lexid v0.0.6
+	github.com/anyproto/prommy v0.0.0-20250516100316-925e788daba0
 	github.com/anyproto/tantivy-go v1.0.6
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/avast/retry-go/v4 v4.6.1
@@ -116,6 +117,7 @@ require (
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
+	modernc.org/libc v1.66.8
 	storj.io/drpc v0.0.34
 	zombiezen.com/go/sqlite v1.4.2
 )
@@ -196,6 +198,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
+	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
@@ -295,7 +298,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260209200024-4cfbd4190f57 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	lukechampine.com/blake3 v1.4.1 // indirect
-	modernc.org/libc v1.66.8 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 	modernc.org/sqlite v1.37.1 // indirect

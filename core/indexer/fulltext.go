@@ -205,6 +205,8 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 		if err != nil {
 			return nil, 0, fmt.Errorf("finish batch failed: %w", err)
 		}
+		metrics.ObjectFTDocUpdatedCounter.Add(float64(len(succeedIds)))
+
 		if ftIndexSeq > 0 {
 			// we can have 0 ftIndexSeq if all documents were filtered-out as not changed, so the batch were empty
 			// as a result of this filter-out workaround we can return newer Seq for some objects and persist them in the queue

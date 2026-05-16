@@ -214,6 +214,7 @@ func (s *treeSource) Update(ot objecttree.ObjectTree) error {
 	s.lastSnapshotId = ot.Root().Id
 	prevSnapshot := s.lastSnapshotId
 	// todo: check this one
+	metrics.ObjectChangeStateAppendedCounter.Inc()
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
 		// State will be applied later in smartblock.StateAppend
 		st, changes, sinceSnapshot, err := BuildState(s.spaceID, d.(*state.State), ot, false)
@@ -239,6 +240,7 @@ func (s *treeSource) Rebuild(ot objecttree.ObjectTree) error {
 		return nil
 	}
 
+	metrics.ObjectChangeStateRebuildCounter.Inc()
 	doc, err := s.buildState()
 	if err != nil {
 		log.With(zap.Error(err)).Debug("failed to build state")
@@ -406,7 +408,7 @@ func (s *treeSource) PushChange(params source.PushChangeParams) (id string, err 
 			Errorf("change size (%d bytes) is above the limit of %d bytes", len(data), changeSizeLimit)
 		return "", err
 	}
-
+	metrics.ObjectChangeCreatedCounter.Inc()
 	addResult, err := s.ObjectTree.AddContent(context.Background(), objecttree.SignableChangeContent{
 		Data:              data,
 		Key:               s.ObjectTree.AclList().AclState().Key(),

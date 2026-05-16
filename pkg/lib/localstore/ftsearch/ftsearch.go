@@ -33,7 +33,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/wallet"
-	"github.com/anyproto/anytype-heart/metrics"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch/tantivycheck"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -443,7 +442,6 @@ func (f *ftSearch) Index(doc SearchDoc) error {
 	if f.appClosingInitiated.Load() {
 		return ErrAppClosingInitiated
 	}
-	metrics.ObjectFTUpdatedCounter.Inc()
 	tantivyDoc, err := f.convertDoc(doc)
 	if err != nil {
 		return err
