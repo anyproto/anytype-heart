@@ -394,3 +394,22 @@ func TestClearUnreadReactions(t *testing.T) {
 		}
 	})
 }
+
+func TestGetAllUnreadMessages_PositiveEqualityEquivalence(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	fx.addMessage(t, "m_read", "o1", true, false, false)
+	fx.addMessage(t, "m_unread1", "o2", false, false, false)
+	fx.addMessage(t, "m_unread2", "o3", false, false, false)
+
+	got, err := fx.repo.GetAllUnreadMessages(ctx, chatmodel.CounterTypeMessage)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"m_unread1", "m_unread2"}, got)
+
+	// mentions path unaffected (hasMention-anchored)
+	fx.addMessage(t, "m_mention", "o4", false, true, false)
+	gotM, err := fx.repo.GetAllUnreadMessages(ctx, chatmodel.CounterTypeMention)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"m_mention"}, gotM)
+}

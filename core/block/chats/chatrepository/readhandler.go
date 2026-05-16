@@ -8,8 +8,12 @@ import (
 )
 
 var (
-	filterReadTrue  = query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)}
-	filterReadFalse = query.Not{Filter: filterReadTrue}
+	filterReadTrue = query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, true)}
+	// Positive equality (not query.Not{read==true}) so the `read` index is
+	// usable: any-store's Not.IndexBounds yields no bounds and would force a
+	// full collection scan. Complete because every message always serializes
+	// `read` as an explicit bool (chatmodel.go:461) — no missing-field docs.
+	filterReadFalse = query.Key{Path: []string{chatmodel.ReadKey}, Filter: query.NewComp(query.CompOpEq, false)}
 
 	filterHasMention        = query.Key{Path: []string{chatmodel.HasMentionKey}, Filter: query.NewComp(query.CompOpEq, true)}
 	filterMentionReadTrue   = query.And{filterHasMention, query.Key{Path: []string{chatmodel.MentionReadKey}, Filter: query.NewComp(query.CompOpEq, true)}}
