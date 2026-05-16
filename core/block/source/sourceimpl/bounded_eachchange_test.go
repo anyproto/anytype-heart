@@ -66,3 +66,28 @@ func TestBoundedVsFullStream_SameEmission(t *testing.T) {
 			"frontier %v: bounded emission must equal full emission ∩ candidates", frontier)
 	}
 }
+
+func TestBounded_CrossInvocation_EmitsOnceAfterRowAppears(t *testing.T) {
+	all := map[string]readPair{"G": {"o1", 1}, "M": {"o2", 2}}
+	resolve := func(id string) (readPair, bool) { p, ok := all[id]; return p, ok }
+
+	var got []string
+	w := newWatermark(func(ids []string) { got = append(got, ids...) })
+
+	// Invocation 1: seenHeads dominate G and M, but the "M" chat row hasn't
+	// been applied yet → candidate set is {G} only.
+	w.advance([]string{"M"}, resolve, buildBoundedEachChange([]string{"G"}, resolve))
+	assert.ElementsMatch(t, []string{"G"}, got)
+	_, marked := w.marked["M"]
+	assert.False(t, marked, "M never emitted ⇒ must not be in marked")
+
+	// Invocation 2: M's chat row now exists → candidate set includes M.
+	got = nil
+	w.advance(nil, resolve, buildBoundedEachChange([]string{"G", "M"}, resolve))
+	assert.ElementsMatch(t, []string{"M"}, got, "M emitted exactly once on the next advance")
+
+	// Invocation 3: nothing new ⇒ no re-emission.
+	got = nil
+	w.advance(nil, resolve, buildBoundedEachChange([]string{"G", "M"}, resolve))
+	assert.Empty(t, got, "no id re-emitted")
+}
