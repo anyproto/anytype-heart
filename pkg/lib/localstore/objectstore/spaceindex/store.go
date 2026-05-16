@@ -71,6 +71,14 @@ type Store interface {
 	UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
 	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error
+	// ModifyObjectDetailsCtx is like ModifyObjectDetails but runs under the
+	// provided context instead of the store component context. Pass a tx-bearing
+	// context (see WriteTx) to batch many modifications into a single write tx.
+	ModifyObjectDetailsCtx(ctx context.Context, id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error
+	// ListIdsWithoutSyncDetails returns ids of objects that are missing at least
+	// one of the relations maintained by helper.InjectsSyncDetails
+	// (SyncStatus/SyncDate/SyncError). Presence, not value, is checked.
+	ListIdsWithoutSyncDetails(ctx context.Context) ([]string, error)
 
 	DeleteObject(id string) error
 	DeleteDetails(ctx context.Context, ids []string) error

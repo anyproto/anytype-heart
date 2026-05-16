@@ -454,28 +454,62 @@ func (i *indexer) reindexChatMessagesFulltext(ctx context.Context, space clients
 	return nil
 }
 
+// addSyncDetailsBatchSize bounds how many objects share a single write tx, so
+// the (single) write connection is not held for the whole space at once.
+const addSyncDetailsBatchSize = 500
+
+// addSyncDetails ensures every object that is missing the sync relations
+// (SyncStatus/SyncDate/SyncError, see helper.InjectsSyncDetails) gets them.
+//
+// Steady state it is a single bulk query that returns nothing and writes
+// nothing. On the first-ever launch it writes the missing objects in chunked
+// shared write transactions. The whole pass runs under a non-cancelable
+// context (context.WithoutCancel) on purpose:
+//   - any-store arms a per-statement SQLite SetInterrupt goroutine/channel
+//     handshake only when ctx.Done() != nil; that handshake dominates startup
+//     scheduler-latency, and this op is bounded/internal so losing
+//     interruptibility is acceptable;
+//   - WriteTx on a non-tx ctx opens a real tx and threads the tx into
+//     txn.Context(), so ModifyObjectDetailsCtx reuses it via the savepoint
+//     path instead of a BEGIN IMMEDIATE per object.
 func (i *indexer) addSyncDetails(space clientspace.Space) {
-	typesForSyncRelations := helper.SyncRelationsSmartblockTypes()
 	syncStatus := domain.ObjectSyncStatusSynced
 	syncError := domain.SyncErrorNull
 	if i.config.IsLocalOnlyMode() {
 		syncStatus = domain.ObjectSyncStatusError
 		syncError = domain.SyncErrorNetworkError
 	}
-	ids, err := i.getIdsForTypes(space, typesForSyncRelations...)
-	if err != nil {
-		log.Debug("failed to add sync status relations", zap.Error(err))
-	}
 	store := i.store.SpaceIndex(space.Id())
-	for _, id := range ids {
-		err := space.DoLockedIfNotExists(id, func() error {
-			return store.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
-				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
-				return details, true, nil
-			}, true)
-		})
+	ctx := context.WithoutCancel(i.runCtx)
+
+	ids, err := store.ListIdsWithoutSyncDetails(ctx)
+	if err != nil {
+		log.Error("add sync details: list ids without sync details", zap.Error(err))
+		return
+	}
+
+	for start := 0; start < len(ids); start += addSyncDetailsBatchSize {
+		end := start + addSyncDetailsBatchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+		txn, err := store.WriteTx(ctx)
 		if err != nil {
-			log.Debug("failed to add sync status relations", zap.Error(err))
+			log.Error("add sync details: start write tx", zap.Error(err))
+			return
+		}
+		for _, id := range ids[start:end] {
+			lockErr := space.DoLockedIfNotExists(id, func() error {
+				return store.ModifyObjectDetailsCtx(txn.Context(), id, func(details *domain.Details) (*domain.Details, bool, error) {
+					return helper.InjectsSyncDetails(details, syncStatus, syncError), true, nil
+				}, true)
+			})
+			if lockErr != nil {
+				log.Debug("failed to add sync status relations", zap.Error(lockErr))
+			}
+		}
+		if err := txn.Commit(); err != nil {
+			log.Error("add sync details: commit write tx", zap.Error(err))
 		}
 	}
 }
