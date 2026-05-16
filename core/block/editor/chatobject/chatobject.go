@@ -204,6 +204,22 @@ func New(
 	}
 }
 
+// unreadCandidateProviderFromFn adapts an unread-id lookup into a
+// source.CandidateProvider bound to a counter type. Split from
+// unreadCandidateProvider so it is unit-testable without a real repository.
+func (s *storeObject) unreadCandidateProviderFromFn(
+	fn func(context.Context, chatmodel.CounterType) ([]string, error),
+	counterType chatmodel.CounterType,
+) source.CandidateProvider {
+	return func(ctx context.Context) ([]string, error) {
+		return fn(ctx, counterType)
+	}
+}
+
+func (s *storeObject) unreadCandidateProvider(counterType chatmodel.CounterType) source.CandidateProvider {
+	return s.unreadCandidateProviderFromFn(s.repository.GetAllUnreadMessages, counterType)
+}
+
 func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 	storeSource, ok := ctx.Source.(source.Store)
 	if !ok {
@@ -231,19 +247,19 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		if markErr != nil {
 			log.Error("mark read messages", zap.Error(markErr))
 		}
-	})
+	}, s.unreadCandidateProvider(chatmodel.CounterTypeMessage))
 	storeSource.RegisterDiffManager(diffManagerMentions, func(removed []string) {
 		markErr := s.markReadMessages(removed, chatmodel.CounterTypeMention)
 		if markErr != nil {
 			log.Error("mark read mentions", zap.Error(markErr))
 		}
-	})
+	}, s.unreadCandidateProvider(chatmodel.CounterTypeMention))
 	storeSource.RegisterDiffManager(diffManagerReactions, func(removed []string) {
 		markErr := s.markReadReactions(removed)
 		if markErr != nil {
 			log.Error("mark read reactions", zap.Error(markErr))
 		}
-	})
+	}, nil) // Phase 1: reactions keep the legacy full tree-change stream
 	err = s.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
