@@ -97,15 +97,29 @@ Verified against the source on `start-performance` and a real account DB at
 
 ## 4. Core principle
 
-`advance()`'s body (`readwatermark.go:46-87`) — frontier resolution, `prune`,
-`dominated`, `marked` dedup, `onRemove` delta emission — stays **byte-for-byte
-unchanged**. Multi-head union and the in-past-insert invariant are therefore
-preserved by construction. We change only the **source of the `(id, pair)`
-stream** passed as `eachChange`: from "every change in the tree" to "the
-bounded set of currently-unread candidates, each `AddSeq`-resolved via the same
+The watermark's **dominance / dedup / emit logic** — `resolve` of seen heads,
+`prune`, the `dominated` test, the `marked` set, and the `onRemove` delta
+emission (`readwatermark.go:46-87`) — is **unchanged**. Multi-head union and
+the in-past-insert invariant are therefore preserved by construction.
+
+Exactly one mechanical change to the engine: `advance`'s stream parameter
+contract gains the resolved frontier's `maxFrontierOrderId` (defined in §5),
+because the bounded provider needs that bound and it is only known *after*
+`resolve`+`prune` runs *inside* `advance`. Concretely, the third parameter
+changes from `func(yield func(string, readPair))` to a form that also receives
+`maxFrontierOrderId` (e.g. `func(maxFrontierOrderId string, yield func(string,
+readPair))`); the lines that compute the frontier, test `dominated`, update
+`marked`, and call `onRemove` are untouched. We change only the **source of
+the `(id, pair)` stream**: from "every change in the tree" to "the bounded set
+of currently-unread candidates, each `AddSeq`-resolved via the same
 `Storage().Get` point lookup `resolvePair` already uses".
 
 ## 5. Correctness argument (completeness)
+
+Define `maxFrontierOrderId` = the maximum `OrderId` over the pruned frontier
+pairs (`max_{H ∈ frontier} H.OrderId`). Since `dominated(x, frontier)` requires
+some head `H` with `x.OrderId ≤ H.OrderId`, any dominated change has
+`OrderId ≤ maxFrontierOrderId`.
 
 The replacement is correct iff the bounded candidate stream is a **superset of
 every id the full scan would emit**. The old scan emits `id` iff
@@ -115,11 +129,12 @@ every id the full scan would emit**. The old scan emits `id` iff
   has `OrderId ≤ maxFrontierOrderId`. The candidate query bounds by
   `_o.id ≤ maxFrontierOrderId`, so no dominated id is excluded on the OrderId
   axis.
-- For the `messages`/`mentions` counters an emittable id is a message-create
-  change ⇒ it is a row in the chat collection. If that row is already
-  `read==true` (`mentionRead==true`), re-emitting it is a no-op
-  (`SetReadFlag` is idempotent and `marked` already deduped it). Restricting
-  the candidate set to unread therefore drops only no-op emissions.
+- For the `messages`/`mentions` counters, an emittable id that actually flips
+  a counter is an unread message row (a message-create change with
+  `read==false` / `mentionRead==false`). An emittable id whose row is already
+  `read==true` is a no-op (`SetReadFlag` is idempotent and `marked` already
+  deduped it). Restricting the candidate set to unread message rows therefore
+  drops only no-op emissions.
 - The old scan also yielded non-message changes (edits, root). For
   `markReadMessages` those matched no message row (`id IN` no-op). Excluding
   them is a correctness-neutral improvement.
@@ -160,13 +175,11 @@ is an additive, online schema change.
 
 ### 6.2 Bounded candidate provider (replaces `s.eachChange`)
 
-A per-counter provider with the signature currently expected by `advance`'s
-third argument (`func(yield func(string, readPair))`). Given the resolved,
-pruned frontier (already computed inside `advance` before the stream is
-consumed), it must expose `maxFrontierOrderId`. To keep `advance`'s body
-untouched, `advance` is refactored minimally so the stream factory receives
-the frontier (the factory is built by the `store`, the engine still only calls
-`eachChange(yield)`):
+A per-counter provider passed as `advance`'s third argument, invoked by
+`advance` with `maxFrontierOrderId` (computed inside `advance` after
+`resolve`+`prune`, per §4) and the `yield` closure. The provider is
+constructed by the `store` (it closes over the chat collection and
+`Tree().Storage()`); the engine only invokes it and consumes `yield`. Steps:
 
 For `messages` / `mentions`:
 
