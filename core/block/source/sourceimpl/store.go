@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 
@@ -58,12 +57,10 @@ type StoreStat struct {
 func (s *store) ProvideStat() any {
 	stats := make([]DiffManagerStats, 0, len(s.diffManagers))
 	for name, manager := range s.diffManagers {
-		ids := manager.diffManager.GetIds()
 		stats = append(stats, DiffManagerStats{
 			DiffManagerName: name,
-			SeenHeads:       manager.diffManager.SeenHeads(),
-			AllChanges:      ids[0:min(len(ids), 1000)],
-			AllChangesCount: len(ids),
+			SeenHeads:       manager.wm.seenHeadIds(),
+			AllChangesCount: manager.wm.frontierLen(),
 		})
 	}
 	return StoreStat{
@@ -80,8 +77,8 @@ func (s *store) StatType() string {
 }
 
 type diffManager struct {
-	diffManager *objecttree.DiffManager
-	onRemove    func(removed []string)
+	wm       *watermark
+	onRemove func(removed []string)
 }
 
 func (s *store) getTechSpace() clientspace.Space {
@@ -104,7 +101,30 @@ func (s *store) RegisterDiffManager(name string, onRemoveHook func(removed []str
 	if _, ok := s.diffManagers[name]; !ok {
 		s.diffManagers[name] = &diffManager{
 			onRemove: onRemoveHook,
+			wm:       newWatermark(onRemoveHook),
 		}
+	}
+}
+
+// resolvePair looks up a change's local read coordinates (OrderId, AddSeq).
+// Uses Storage().Get (lock-free, always finds inserted changes) rather than
+// Tree().GetChange (lock-sensitive; only the in-memory attached map).
+func (s *store) resolvePair(id string) (readPair, bool) {
+	ch, err := s.treeSource.Tree().Storage().Get(context.Background(), id)
+	if err != nil {
+		return readPair{}, false
+	}
+	return readPair{OrderId: ch.OrderId, AddSeq: ch.AddSeq}, true
+}
+
+// eachChange streams every change's (id, pair) from tree storage — id/OrderId/
+// AddSeq only, no payload decode, no graph, no BuildHistoryTree.
+func (s *store) eachChange(ctx context.Context) func(yield func(string, readPair)) {
+	return func(yield func(string, readPair)) {
+		_ = s.treeSource.Tree().Storage().GetAfterOrder(ctx, "", func(_ context.Context, ch objecttree.StorageChange) (bool, error) {
+			yield(ch.Id, readPair{OrderId: ch.OrderId, AddSeq: ch.AddSeq})
+			return true, nil
+		})
 	}
 }
 
@@ -126,7 +146,7 @@ func (s *store) initDiffManagers(ctx context.Context) error {
 				log.With("error", err).Error("init diff manager: unmarshal seen heads")
 				continue
 			}
-			manager.diffManager.Remove(seenHeads)
+			manager.wm.advance(seenHeads, s.resolvePair, s.eachChange(ctx))
 		}
 	}
 	return nil
@@ -147,26 +167,11 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 		return nil
 	}
 
-	curTreeHeads := s.treeSource.Tree().Heads()
-
-	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
-		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
-			Heads:          heads,
-			Include:        true,
-			BuildEmptyData: true,
-		})
-	}
-	onRemove := func(removed []string) {
-		if manager.onRemove != nil {
-			manager.onRemove(removed)
-		}
-	}
-
-	manager.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
-	if err != nil {
-		return fmt.Errorf("init diff manager: %w", err)
-	}
-	manager.diffManager.Init()
+	// Fresh engine per init: a reduced seen set (e.g. after MarkMessagesAsUnread
+	// re-derives seenHeads) must yield a smaller frontier, not accumulate onto a
+	// stale one. Mirrors the old NewDiffManager rebuild.
+	manager.wm = newWatermark(manager.onRemove)
+	manager.wm.advance(seenHeads, s.resolvePair, s.eachChange(ctx))
 
 	err = s.getTechSpace().KeyValueService().SubscribeForKey(s.seenHeadsKey(name), name, func(key string, val keyvalueservice.Value) {
 		s.ObjectTree.Lock()
@@ -177,7 +182,7 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 			log.Errorf("subscribe for seenHeads: %s: %v", name, err)
 			return
 		}
-		manager.diffManager.Remove(newSeenHeads)
+		manager.wm.advance(newSeenHeads, s.resolvePair, s.eachChange(context.Background()))
 	})
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
@@ -308,13 +313,10 @@ func (s *store) PushStoreChange(ctx context.Context, params source.PushStoreChan
 	return changeId, err
 }
 
-func (s *store) addToDiffManagers(change *objecttree.Change) {
-	for _, m := range s.diffManagers {
-		if m.diffManager != nil {
-			m.diffManager.Add(change)
-		}
-	}
-}
+// addToDiffManagers: no-op. A freshly pushed/synced change has the newest
+// AddSeq, so it can never be dominated by an existing seen frontier ⇒ it is
+// unread by construction. No graph to maintain (watermark model).
+func (s *store) addToDiffManagers(change *objecttree.Change) {}
 
 func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 	tx, err := s.store.NewTx(ctx)
@@ -337,18 +339,13 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 	return err
 }
 
-func (s *store) updateInDiffManagers(tree objecttree.ObjectTree) {
-	for _, m := range s.diffManagers {
-		if m.diffManager != nil {
-			m.diffManager.Update(tree)
-		}
-	}
-}
+// updateInDiffManagers: no-op (watermark model — see addToDiffManagers).
+func (s *store) updateInDiffManagers(tree objecttree.ObjectTree) {}
 
 func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) error {
 	manager, ok := s.diffManagers[name]
 	if ok {
-		manager.diffManager.Remove(heads)
+		manager.wm.advance(heads, s.resolvePair, s.eachChange(ctx))
 		return s.StoreSeenHeads(ctx, name)
 	}
 	return nil
@@ -360,7 +357,7 @@ func (s *store) StoreSeenHeads(ctx context.Context, name string) error {
 		return nil
 	}
 
-	seenHeads := manager.diffManager.SeenHeads()
+	seenHeads := manager.wm.seenHeadIds()
 	raw, err := json.Marshal(seenHeads)
 	if err != nil {
 		return fmt.Errorf("marshal seen heads: %w", err)
