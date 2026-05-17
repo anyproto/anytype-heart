@@ -151,7 +151,8 @@ type service struct {
 	releasing        bool          // guarded by s.mu; true once the backlog is being drained
 	preloadOnce      sync.Once     // single release trigger (RPC | timer | dynamic fallback)
 	preloadCh        chan struct{} // closed by triggerRelease()
-	applySpaceStatusHook func(spaceViewStatus) // test seam; nil in production
+	applySpaceStatusHook func(spaceViewStatus)              // test seam; nil in production
+	startStatusHook      func(spaceinfo.SpacePersistentInfo) // test seam; nil in production
 	accountMetadataSymKey  crypto.SymKey
 	accountMetadataPayload []byte
 	repKey                 uint64
@@ -517,21 +518,43 @@ func (s *service) applySpaceStatus(spaceStatus spaceViewStatus) {
 	}
 }
 
-// ensureSpaceStarted builds a deferred (non-personal) space on demand the first
-// time it is opened. It is idempotent and a no-op once a controller exists or
-// is in flight. Synchronous on purpose: the caller (Wait/Get) should pay the
-// build latency at open time, which is exactly what this experiment measures.
+// ensureSpaceStarted promotes a deferred space on demand (Wait/Get/workspaceOpen).
+// E2: in lazy mode the watcher no longer eagerly creates controllers, so if no
+// status is cached yet we must derive+build instead of no-op (otherwise
+// waitSpace blocks until the caller ctx is cancelled). Eager mode keeps the
+// original no-op (the watcher creates the controller).
 func (s *service) ensureSpaceStarted(spaceId string) {
 	s.mu.Lock()
 	_, ctrlOk := s.spaceControllers[spaceId]
 	_, waitingOk := s.waiting[spaceId]
 	status, hasStatus := s.deferredStatuses[spaceId]
 	s.mu.Unlock()
-	if ctrlOk || waitingOk || !hasStatus {
+	if ctrlOk || waitingOk {
 		return
 	}
-	log.Warn("### lazy space build: promoting space on demand", zap.String("spaceId", spaceId))
-	s.applySpaceStatus(status)
+	if hasStatus {
+		s.applySpaceStatus(status)
+		return
+	}
+	if !s.lazyMode {
+		return
+	}
+	log.Debug("lazy space build: promoting space on demand (derived)", zap.String("spaceId", spaceId))
+	info := spaceinfo.NewSpacePersistentInfo(spaceId)
+	if s.startStatusHook != nil {
+		s.startStatusHook(info)
+		return
+	}
+	ctrl, err := s.startStatus(s.ctx, info)
+	if err != nil && !errors.Is(err, ErrSpaceDeleted) {
+		log.Warn("ensureSpaceStarted startStatus error", zap.Error(err))
+		return
+	}
+	if err == nil {
+		if err = ctrl.Update(); err != nil {
+			log.Warn("ensureSpaceStarted ctrl.Update error", zap.Error(err))
+		}
+	}
 }
 
 // triggerRelease is the single idempotent "release the deferred backlog"

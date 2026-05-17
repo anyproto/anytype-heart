@@ -193,3 +193,27 @@ func TestPreloadRemainingSpaces_Idempotent(t *testing.T) {
 		t.Fatal("preloadCh must be closed after PreloadRemainingSpaces")
 	}
 }
+
+func TestEnsureSpaceStarted_DeriveWhenNoCachedStatus(t *testing.T) {
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = true
+
+	called := make(chan string, 1)
+	s.startStatusHook = func(info spaceinfo.SpacePersistentInfo) { called <- info.SpaceID }
+
+	s.ensureSpaceStarted("not-yet-cached")
+
+	select {
+	case got := <-called:
+		assert.Equal(t, "not-yet-cached", got)
+	default:
+		t.Fatal("ensureSpaceStarted must derive+build when status not cached (E2)")
+	}
+}
+
+func TestEnsureSpaceStarted_EagerModeNoOp(t *testing.T) {
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = false
+	s.startStatusHook = func(info spaceinfo.SpacePersistentInfo) { t.Fatal("must not build in eager mode") }
+	s.ensureSpaceStarted("whatever") // no cached status, eager => preserve old no-op behavior
+}
