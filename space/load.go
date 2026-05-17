@@ -20,6 +20,9 @@ type controllerWaiter struct {
 }
 
 func (s *service) getCtrl(ctx context.Context, spaceId string) (ctrl spacecontroller.SpaceController, err error) {
+	// EXPERIMENT (lazy multi-space loading): build the space now if it was
+	// deferred at startup. Idempotent / no-op if already started.
+	s.ensureSpaceStarted(spaceId)
 	s.mu.Lock()
 	if ctrl, ok := s.spaceControllers[spaceId]; ok {
 		s.mu.Unlock()
