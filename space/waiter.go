@@ -50,9 +50,9 @@ func (w *spaceWaiter) waitSpace(ctx context.Context, spaceId string) (sp clients
 			return nil, ErrSpaceNotExists
 		}
 	}
-	// EXPERIMENT (lazy multi-space loading): the watcher no longer eagerly
-	// builds non-personal spaces, so trigger the on-demand build here before
-	// waiting for the controller to appear.
+	// Lazy multi-space loading: in lazy mode the watcher does not eagerly
+	// build deferred spaces, so promote this one on demand before waiting
+	// for its controller to appear. No-op in eager mode.
 	w.svc.ensureSpaceStarted(spaceId)
 	// we should wait a bit until the controller is created
 	for !w.svc.checkControllerExists(spaceId) {

@@ -136,23 +136,23 @@ type service struct {
 	updater             coordinatorStatusUpdater
 	spaceNameGetter     objectstore.SpaceNameGetter
 
-	personalSpaceId        string
-	techSpaceId            string
-	newAccount             bool
-	autoJoinStreamSpace    string
-	spaceControllers       map[string]spacecontroller.SpaceController
-	waiting                map[string]controllerWaiter
+	personalSpaceId     string
+	techSpaceId         string
+	newAccount          bool
+	autoJoinStreamSpace string
+	spaceControllers    map[string]spacecontroller.SpaceController
+	waiting             map[string]controllerWaiter
 	// Client-driven lazy multi-space loading (spec 2026-05-17). Latest
 	// spaceViewStatus per space, cached while deferred so the backlog can be
 	// drained later (RPC / timer / preferred-space failure).
-	deferredStatuses map[string]spaceViewStatus
-	preferredSpaceId string        // from config; "" => eager (today's behavior)
-	lazyMode         bool          // decided once in initAccount before watcher.Run()
-	releasing        bool          // guarded by s.mu; true once the backlog is being drained
-	preloadOnce      sync.Once     // single release trigger (RPC | timer | dynamic fallback)
-	preloadCh        chan struct{} // closed by triggerRelease()
-	applySpaceStatusHook func(spaceViewStatus)              // test seam; nil in production
-	startStatusHook      func(spaceinfo.SpacePersistentInfo) // test seam; nil in production
+	deferredStatuses       map[string]spaceViewStatus
+	preferredSpaceId       string                              // from config; "" => eager (today's behavior)
+	lazyMode               bool                                // decided once in initAccount before watcher.Run()
+	releasing              bool                                // guarded by s.mu; true once the backlog is being drained
+	preloadOnce            sync.Once                           // single release trigger (RPC | timer | dynamic fallback)
+	preloadCh              chan struct{}                       // closed by triggerRelease()
+	applySpaceStatusHook   func(spaceViewStatus)               // test seam; nil in production
+	startStatusHook        func(spaceinfo.SpacePersistentInfo) // test seam; nil in production
 	accountMetadataSymKey  crypto.SymKey
 	accountMetadataPayload []byte
 	repKey                 uint64
