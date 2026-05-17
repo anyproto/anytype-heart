@@ -4,7 +4,9 @@ import (
 	"context"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -222,4 +224,164 @@ func TestEnsureSpaceStarted_EagerModeNoOp(t *testing.T) {
 	s.lazyMode = false
 	s.startStatusHook = func(info spaceinfo.SpacePersistentInfo) { t.Fatal("must not build in eager mode") }
 	s.ensureSpaceStarted("whatever") // no cached status, eager => preserve old no-op behavior
+}
+
+// statusForRemote builds a spaceViewStatus with an explicit remoteStatus
+// (statusFor hardcodes RemoteStatusOk).
+func statusForRemote(spaceId string, local spaceinfo.LocalStatus, account spaceinfo.AccountStatus, remote spaceinfo.RemoteStatus) spaceViewStatus {
+	st := statusFor(spaceId, local, account)
+	st.remoteStatus = remote
+	return st
+}
+
+// TestEagerMode_NoDeferral guards the spec §9 backward-compat promise:
+// preferredSpaceId=="" (lazyMode=false) must never defer — every space builds
+// inline, byte-identical to pre-feature behavior.
+func TestEagerMode_NoDeferral(t *testing.T) {
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = false
+	s.preferredSpaceId = ""
+
+	var mu sync.Mutex
+	built := map[string]bool{}
+	s.applySpaceStatusHook = func(st spaceViewStatus) {
+		mu.Lock()
+		built[st.spaceId] = true
+		mu.Unlock()
+	}
+
+	for i := 0; i < 3; i++ {
+		s.decideAndApplySpaceStatus(statusFor("s"+strconv.Itoa(i), spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive))
+	}
+
+	s.mu.Lock()
+	assert.Empty(t, s.deferredStatuses, "eager mode must not defer any space")
+	assert.False(t, s.releasing)
+	s.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
+	for i := 0; i < 3; i++ {
+		assert.True(t, built["s"+strconv.Itoa(i)], "eager mode must build every space inline")
+	}
+}
+
+// TestOnSpaceStatusUpdated_PreferredBuildsNotDeferred closes the §8.2 positive
+// half: in lazy mode the preferred space itself builds immediately, never
+// deferred.
+func TestOnSpaceStatusUpdated_PreferredBuildsNotDeferred(t *testing.T) {
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = true
+	s.preferredSpaceId = "preferred"
+
+	built := make(chan string, 1)
+	s.applySpaceStatusHook = func(st spaceViewStatus) { built <- st.spaceId }
+
+	s.decideAndApplySpaceStatus(statusFor("preferred", spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive))
+
+	select {
+	case got := <-built:
+		assert.Equal(t, "preferred", got)
+	default:
+		t.Fatal("preferred space must build immediately, not be deferred")
+	}
+	s.mu.Lock()
+	_, deferred := s.deferredStatuses["preferred"]
+	s.mu.Unlock()
+	assert.False(t, deferred, "preferred space must never be cached as deferred")
+}
+
+// TestOnSpaceStatusUpdated_PreferredBroken_AllVariants covers every spec §3
+// dynamic-fallback trigger plus the non-trigger guards.
+func TestOnSpaceStatusUpdated_PreferredBroken_AllVariants(t *testing.T) {
+	cases := []struct {
+		name        string
+		lazyMode    bool
+		preferred   string
+		status      spaceViewStatus
+		wantRelease bool
+	}{
+		{"missing -> release", true, "preferred",
+			statusFor("preferred", spaceinfo.LocalStatusMissing, spaceinfo.AccountStatusActive), true},
+		{"removing -> release", true, "preferred",
+			statusFor("preferred", spaceinfo.LocalStatusOk, spaceinfo.AccountStatusRemoving), true},
+		{"account deleted -> release", true, "preferred",
+			statusFor("preferred", spaceinfo.LocalStatusOk, spaceinfo.AccountStatusDeleted), true},
+		{"remote deleted -> release", true, "preferred",
+			statusForRemote("preferred", spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive, spaceinfo.RemoteStatusDeleted), true},
+		{"joining -> no release", true, "preferred",
+			statusFor("preferred", spaceinfo.LocalStatusLoading, spaceinfo.AccountStatusJoining), false},
+		{"non-preferred broken -> no release", true, "preferred",
+			statusFor("other", spaceinfo.LocalStatusMissing, spaceinfo.AccountStatusActive), false},
+		{"eager mode broken -> no release", false, "preferred",
+			statusFor("preferred", spaceinfo.LocalStatusMissing, spaceinfo.AccountStatusActive), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			s := newLazyServiceForStatus(t)
+			s.lazyMode = tc.lazyMode
+			s.preferredSpaceId = tc.preferred
+
+			s.maybeReleaseOnPreferredBroken(tc.status)
+
+			released := false
+			select {
+			case <-s.preloadCh:
+				released = true
+			default:
+			}
+			assert.Equal(t, tc.wantRelease, released)
+		})
+	}
+}
+
+// TestDrainDeferred_BoundedConcurrency asserts the core feature property
+// (spec §8.5): the backlog drains with at most preloadConcurrency builds in
+// flight, replacing the unbounded ~10·N eager fan-out.
+func TestDrainDeferred_BoundedConcurrency(t *testing.T) {
+	oldK := preloadConcurrency
+	preloadConcurrency = 2
+	defer func() { preloadConcurrency = oldK }()
+
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = true
+	s.preferredSpaceId = "preferred"
+
+	var inflight, maxInflight atomic.Int32
+	release := make(chan struct{})
+	s.applySpaceStatusHook = func(st spaceViewStatus) {
+		cur := inflight.Add(1)
+		for {
+			m := maxInflight.Load()
+			if cur <= m || maxInflight.CompareAndSwap(m, cur) {
+				break
+			}
+		}
+		<-release
+		inflight.Add(-1)
+	}
+
+	s.mu.Lock()
+	for i := 0; i < 10; i++ {
+		id := "s" + strconv.Itoa(i)
+		s.deferredStatuses[id] = statusFor(id, spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive)
+	}
+	s.mu.Unlock()
+
+	done := make(chan struct{})
+	go func() { s.drainDeferred(context.Background()); close(done) }()
+
+	// The first preloadConcurrency workers must both enter and block before we
+	// release them, proving the pool actually caps concurrency.
+	require.Eventually(t, func() bool {
+		return maxInflight.Load() >= int32(preloadConcurrency)
+	}, 2*time.Second, time.Millisecond)
+	close(release)
+	<-done
+
+	assert.LessOrEqual(t, maxInflight.Load(), int32(preloadConcurrency),
+		"never more than preloadConcurrency builds in flight")
+	assert.Equal(t, int32(0), inflight.Load())
+	s.mu.Lock()
+	assert.Empty(t, s.deferredStatuses)
+	s.mu.Unlock()
 }
