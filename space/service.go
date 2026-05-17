@@ -299,6 +299,7 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 			return fmt.Errorf("create tech space for old accounts: %w", err)
 		}
 	}
+	s.lazyMode = s.computeLazyMode(ctx, s.techSpace)
 	err = s.watcher.Run()
 	if err != nil {
 		return fmt.Errorf("run watcher: %w", err)
@@ -444,6 +445,23 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 // status and pushes the persistent info into it. This is the eager-build body
 // extracted from onSpaceStatusUpdated so it can also be invoked on demand by
 // ensureSpaceStarted for deferred (non-personal) spaces.
+// computeLazyMode decides, once, whether to defer non-preferred spaces.
+// B1 (accepted): if the preferred space's view is not on this device,
+// techSpace.SpaceViewExists may do a remote lookup (<=15s) before returning
+// not-exists; that degrades to eager and is accepted for V1.
+func (s *service) computeLazyMode(ctx context.Context, techSpace *clientspace.TechSpace) bool {
+	if s.preferredSpaceId == "" ||
+		s.preferredSpaceId == s.techSpaceId ||
+		s.preferredSpaceId == addr.AnytypeMarketplaceWorkspace {
+		return false
+	}
+	if techSpace == nil {
+		return false
+	}
+	exists, err := techSpace.SpaceViewExists(ctx, s.preferredSpaceId)
+	return err == nil && exists
+}
+
 func (s *service) applySpaceStatus(spaceStatus spaceViewStatus) {
 	info := statusToInfo(spaceStatus)
 	ctrl, err := s.startStatus(s.ctx, info)
