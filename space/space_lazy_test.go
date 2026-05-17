@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -109,4 +110,74 @@ func TestOnSpaceStatusUpdated_JoiningDoesNotRelease(t *testing.T) {
 		t.Fatal("Joining must NOT trigger release")
 	default:
 	}
+}
+
+func TestDrainDeferred_BuildsSnapshotAndClears(t *testing.T) {
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = true
+	s.preferredSpaceId = "preferred"
+
+	built := make(chan string, 8)
+	s.applySpaceStatusHook = func(st spaceViewStatus) { built <- st.spaceId }
+
+	s.mu.Lock()
+	s.deferredStatuses["a"] = statusFor("a", spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive)
+	s.deferredStatuses["b"] = statusFor("b", spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive)
+	s.mu.Unlock()
+
+	s.drainDeferred(context.Background())
+
+	got := map[string]bool{}
+	for i := 0; i < 2; i++ {
+		got[<-built] = true
+	}
+	assert.True(t, got["a"] && got["b"], "drain must build every deferred space")
+
+	s.mu.Lock()
+	assert.True(t, s.releasing)
+	assert.Empty(t, s.deferredStatuses, "deferred map cleared")
+	s.mu.Unlock()
+}
+
+func TestDrainDeferred_NoStrandedRace(t *testing.T) {
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = true
+	s.preferredSpaceId = "preferred"
+
+	var mu sync.Mutex
+	built := map[string]bool{}
+	s.applySpaceStatusHook = func(st spaceViewStatus) {
+		mu.Lock()
+		built[st.spaceId] = true
+		mu.Unlock()
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 50; i++ {
+		id := "s" + strconv.Itoa(i)
+		wg.Add(1)
+		go func() { defer wg.Done(); s.applySpaceStatusForTest(statusFor(id, spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive)) }()
+	}
+	go s.drainDeferred(context.Background())
+	wg.Wait()
+	// give the drain workers time to finish building the snapshot
+	s.drainDeferred(context.Background()) // idempotent second call: drains anything cached after releasing flipped
+
+	s.mu.Lock()
+	leftover := len(s.deferredStatuses)
+	s.mu.Unlock()
+	mu.Lock()
+	defer mu.Unlock()
+	for i := 0; i < 50; i++ {
+		id := "s" + strconv.Itoa(i)
+		assert.True(t, built[id] || leftoverHas(s, id), "space "+id+" must be built or still queued, never stranded")
+	}
+	_ = leftover
+}
+
+func leftoverHas(s *service, id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, ok := s.deferredStatuses[id]
+	return ok
 }

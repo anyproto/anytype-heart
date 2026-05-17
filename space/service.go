@@ -151,6 +151,7 @@ type service struct {
 	releasing        bool          // guarded by s.mu; true once the backlog is being drained
 	preloadOnce      sync.Once     // single release trigger (RPC | timer | dynamic fallback)
 	preloadCh        chan struct{} // closed by triggerRelease()
+	applySpaceStatusHook func(spaceViewStatus) // test seam; nil in production
 	accountMetadataSymKey  crypto.SymKey
 	accountMetadataPayload []byte
 	repKey                 uint64
@@ -303,6 +304,17 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 	err = s.watcher.Run()
 	if err != nil {
 		return fmt.Errorf("run watcher: %w", err)
+	}
+	if s.lazyMode {
+		go func() {
+			select {
+			case <-s.preloadCh:
+			case <-time.After(preloadRemainingSpacesTimeout):
+			case <-s.ctx.Done():
+				return
+			}
+			s.drainDeferred(s.ctx)
+		}()
 	}
 	s.techSpace.StartSync()
 	// only persist networkId after successful space init
@@ -463,6 +475,10 @@ func (s *service) applySpaceStatusForTest(spaceStatus spaceViewStatus) {
 		return
 	}
 	s.mu.Unlock()
+	if s.applySpaceStatusHook != nil {
+		s.applySpaceStatusHook(spaceStatus)
+		return
+	}
 	s.applySpaceStatus(spaceStatus)
 }
 
@@ -532,6 +548,46 @@ func (s *service) triggerRelease() {
 func (s *service) PreloadRemainingSpaces(ctx context.Context) error {
 	s.triggerRelease()
 	return nil
+}
+
+// drainDeferred releases the deferred backlog. B2: set releasing + snapshot +
+// clear is ONE critical section, atomic w.r.t. applySpaceStatusForTest's
+// decision. Builds with bounded concurrency.
+func (s *service) drainDeferred(ctx context.Context) {
+	s.mu.Lock()
+	s.releasing = true
+	snapshot := make([]spaceViewStatus, 0, len(s.deferredStatuses))
+	for _, st := range s.deferredStatuses {
+		snapshot = append(snapshot, st)
+	}
+	s.deferredStatuses = make(map[string]spaceViewStatus)
+	s.mu.Unlock()
+
+	if len(snapshot) == 0 {
+		return
+	}
+	sem := make(chan struct{}, preloadConcurrency)
+	var wg sync.WaitGroup
+	for _, st := range snapshot {
+		select {
+		case <-ctx.Done():
+			wg.Wait()
+			return
+		default:
+		}
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(st spaceViewStatus) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			if s.applySpaceStatusHook != nil {
+				s.applySpaceStatusHook(st)
+				return
+			}
+			s.applySpaceStatus(st)
+		}(st)
+	}
+	wg.Wait()
 }
 
 func (s *service) SpaceViewSetOneToOneIdentity(spaceId string, identity string) {
