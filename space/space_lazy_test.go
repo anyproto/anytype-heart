@@ -8,6 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
@@ -180,4 +181,15 @@ func leftoverHas(s *service, id string) bool {
 	defer s.mu.Unlock()
 	_, ok := s.deferredStatuses[id]
 	return ok
+}
+
+func TestPreloadRemainingSpaces_Idempotent(t *testing.T) {
+	s := newLazyServiceForStatus(t)
+	require.NoError(t, s.PreloadRemainingSpaces(context.Background()))
+	require.NoError(t, s.PreloadRemainingSpaces(context.Background())) // must not panic on double close
+	select {
+	case <-s.preloadCh:
+	default:
+		t.Fatal("preloadCh must be closed after PreloadRemainingSpaces")
+	}
 }
