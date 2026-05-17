@@ -75,7 +75,7 @@ func TestOnSpaceStatusUpdated_Defer(t *testing.T) {
 	s.lazyMode = true
 	s.preferredSpaceId = "preferred"
 
-	s.applySpaceStatusForTest(statusFor("other", spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive))
+	s.decideAndApplySpaceStatus(statusFor("other", spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive))
 
 	s.mu.Lock()
 	_, deferred := s.deferredStatuses["other"]
@@ -159,7 +159,7 @@ func TestDrainDeferred_NoStrandedRace(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			s.applySpaceStatusForTest(statusFor(id, spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive))
+			s.decideAndApplySpaceStatus(statusFor(id, spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive))
 		}()
 	}
 	// Single release trigger, exactly as production does it (one drainDeferred

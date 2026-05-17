@@ -437,7 +437,7 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 			return
 		}
 		s.maybeReleaseOnPreferredBroken(spaceStatus)
-		s.applySpaceStatusForTest(spaceStatus)
+		s.decideAndApplySpaceStatus(spaceStatus)
 	}()
 }
 
@@ -456,11 +456,12 @@ func (s *service) maybeReleaseOnPreferredBroken(spaceStatus spaceViewStatus) {
 	}
 }
 
-// applySpaceStatusForTest is the defer-or-build decision. B2: the releasing
-// read, the deferredStatuses write, and the branch choice are ONE critical
-// section, atomic w.r.t. drainDeferred (which sets releasing+snapshots+clears
-// under the same lock). Never read under lock then branch after unlock.
-func (s *service) applySpaceStatusForTest(spaceStatus spaceViewStatus) {
+// decideAndApplySpaceStatus is the production defer-or-build decision (called
+// from onSpaceStatusUpdated). B2: the releasing read, the deferredStatuses
+// write, and the branch choice are ONE critical section, atomic w.r.t.
+// drainDeferred (which sets releasing+snapshots+clears under the same lock).
+// Never read under lock then branch after unlock.
+func (s *service) decideAndApplySpaceStatus(spaceStatus spaceViewStatus) {
 	s.mu.Lock()
 	_, alreadyStarted := s.spaceControllers[spaceStatus.spaceId]
 	_, alreadyWaiting := s.waiting[spaceStatus.spaceId]
@@ -483,10 +484,6 @@ func (s *service) applySpaceStatusForTest(spaceStatus spaceViewStatus) {
 	s.applySpaceStatus(spaceStatus)
 }
 
-// applySpaceStatus creates (idempotently) the space controller for the given
-// status and pushes the persistent info into it. This is the eager-build body
-// extracted from onSpaceStatusUpdated so it can also be invoked on demand by
-// ensureSpaceStarted for deferred (non-personal) spaces.
 // computeLazyMode decides, once, whether to defer non-preferred spaces.
 // B1 (accepted): if the preferred space's view is not on this device,
 // techSpace.SpaceViewExists may do a remote lookup (<=15s) before returning
@@ -504,7 +501,14 @@ func (s *service) computeLazyMode(ctx context.Context, techSpace *clientspace.Te
 	return err == nil && exists
 }
 
+// applySpaceStatus creates (idempotently) the space controller for the given
+// status and pushes the persistent info into it. This is the eager-build body
+// extracted from onSpaceStatusUpdated so it can also be invoked on demand by
+// ensureSpaceStarted for deferred (non-personal) spaces.
 func (s *service) applySpaceStatus(spaceStatus spaceViewStatus) {
+	if s.isClosing.Load() {
+		return
+	}
 	info := statusToInfo(spaceStatus)
 	ctrl, err := s.startStatus(s.ctx, info)
 	if err != nil && !errors.Is(err, ErrSpaceDeleted) {
@@ -574,9 +578,14 @@ func (s *service) PreloadRemainingSpaces(ctx context.Context) error {
 }
 
 // drainDeferred releases the deferred backlog. B2: set releasing + snapshot +
-// clear is ONE critical section, atomic w.r.t. applySpaceStatusForTest's
-// decision. Builds with bounded concurrency.
+// clear is ONE critical section, atomic w.r.t. decideAndApplySpaceStatus's
+// decision. Builds with bounded concurrency. Bails out if the service is
+// closing so a late timer-triggered drain cannot build controllers that
+// Close() has already stopped tracking (applySpaceStatus re-checks per build).
 func (s *service) drainDeferred(ctx context.Context) {
+	if s.isClosing.Load() {
+		return
+	}
 	s.mu.Lock()
 	s.releasing = true
 	snapshot := make([]spaceViewStatus, 0, len(s.deferredStatuses))
