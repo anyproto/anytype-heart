@@ -423,22 +423,47 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 			}
 			return
 		}
-		// EXPERIMENT (lazy multi-space loading): do not eagerly build
-		// non-personal spaces at startup. Cache the latest status so the
-		// space can be built on demand the first time it is opened
-		// (Wait/Get/workspaceOpen via ensureSpaceStarted).
-		s.mu.Lock()
-		s.deferredStatuses[spaceStatus.spaceId] = spaceStatus
-		_, alreadyStarted := s.spaceControllers[spaceStatus.spaceId]
-		_, alreadyWaiting := s.waiting[spaceStatus.spaceId]
-		s.mu.Unlock()
-		if spaceStatus.spaceId != s.personalSpaceId && !alreadyStarted && !alreadyWaiting {
-			log.Warn("### lazy space build: deferring space until it is opened",
-				zap.String("spaceId", spaceStatus.spaceId))
-			return
-		}
-		s.applySpaceStatus(spaceStatus)
+		s.maybeReleaseOnPreferredBroken(spaceStatus)
+		s.applySpaceStatusForTest(spaceStatus)
 	}()
+}
+
+// maybeReleaseOnPreferredBroken implements the B3-accepted dynamic fallback:
+// if the preferred space itself is Missing/Removing/Deleted/RemoteDeleted,
+// collapse lazy mode (release the backlog). Idempotent.
+func (s *service) maybeReleaseOnPreferredBroken(spaceStatus spaceViewStatus) {
+	if !s.lazyMode || spaceStatus.spaceId != s.preferredSpaceId {
+		return
+	}
+	if spaceStatus.localStatus == spaceinfo.LocalStatusMissing ||
+		spaceStatus.accountStatus == spaceinfo.AccountStatusRemoving ||
+		spaceStatus.accountStatus == spaceinfo.AccountStatusDeleted ||
+		spaceStatus.remoteStatus == spaceinfo.RemoteStatusDeleted {
+		s.triggerRelease()
+	}
+}
+
+// applySpaceStatusForTest is the defer-or-build decision. B2: the releasing
+// read, the deferredStatuses write, and the branch choice are ONE critical
+// section, atomic w.r.t. drainDeferred (which sets releasing+snapshots+clears
+// under the same lock). Never read under lock then branch after unlock.
+func (s *service) applySpaceStatusForTest(spaceStatus spaceViewStatus) {
+	s.mu.Lock()
+	_, alreadyStarted := s.spaceControllers[spaceStatus.spaceId]
+	_, alreadyWaiting := s.waiting[spaceStatus.spaceId]
+	shouldDefer := s.lazyMode &&
+		spaceStatus.spaceId != s.preferredSpaceId &&
+		!s.releasing &&
+		!alreadyStarted &&
+		!alreadyWaiting
+	if shouldDefer {
+		s.deferredStatuses[spaceStatus.spaceId] = spaceStatus
+		s.mu.Unlock()
+		log.Debug("lazy space build: deferring space until released", zap.String("spaceId", spaceStatus.spaceId))
+		return
+	}
+	s.mu.Unlock()
+	s.applySpaceStatus(spaceStatus)
 }
 
 // applySpaceStatus creates (idempotently) the space controller for the given
