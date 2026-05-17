@@ -157,30 +157,36 @@ func TestDrainDeferred_NoStrandedRace(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		id := "s" + strconv.Itoa(i)
 		wg.Add(1)
-		go func() { defer wg.Done(); s.applySpaceStatusForTest(statusFor(id, spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive)) }()
+		go func() {
+			defer wg.Done()
+			s.applySpaceStatusForTest(statusFor(id, spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive))
+		}()
 	}
-	go s.drainDeferred(context.Background())
-	wg.Wait()
-	// give the drain workers time to finish building the snapshot
-	s.drainDeferred(context.Background()) // idempotent second call: drains anything cached after releasing flipped
+	// Single release trigger, exactly as production does it (one drainDeferred
+	// behind the sync.Once). Join it before asserting: drainDeferred returns
+	// only after its bounded workers have built the whole snapshot, so the
+	// B2 invariant is observable deterministically rather than racing the
+	// background workers.
+	d1 := make(chan struct{})
+	go func() { s.drainDeferred(context.Background()); close(d1) }()
+	wg.Wait() // every applier's decision (defer or inline build) finished
+	<-d1      // first drain + all its workers finished
+	// Mop-up: spaces an applier deferred while the drain had already passed
+	// its snapshot see releasing==true and build inline, so nothing should
+	// remain; this second call must be a safe no-op (closes the B2 window).
+	s.drainDeferred(context.Background())
 
 	s.mu.Lock()
 	leftover := len(s.deferredStatuses)
 	s.mu.Unlock()
+	require.Zero(t, leftover, "no space may remain queued after the backlog is drained")
+
 	mu.Lock()
 	defer mu.Unlock()
 	for i := 0; i < 50; i++ {
 		id := "s" + strconv.Itoa(i)
-		assert.True(t, built[id] || leftoverHas(s, id), "space "+id+" must be built or still queued, never stranded")
+		assert.True(t, built[id], "space "+id+" must be built, never stranded")
 	}
-	_ = leftover
-}
-
-func leftoverHas(s *service, id string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	_, ok := s.deferredStatuses[id]
-	return ok
 }
 
 func TestPreloadRemainingSpaces_Idempotent(t *testing.T) {
