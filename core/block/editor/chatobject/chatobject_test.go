@@ -39,6 +39,11 @@ import (
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
 
+// candidateProviderAlias names source.CandidateProvider at package scope so
+// the RegisterDiffManager mock .Run callback can spell the type even where the
+// local mock variable shadows the `source` package identifier.
+type candidateProviderAlias = source.CandidateProvider
+
 const (
 	testSpaceId = "spaceId1"
 )
@@ -181,7 +186,7 @@ func newFixture(t *testing.T, opts ...fixtureOption) *fixture {
 	source.EXPECT().AclList().Return(nil).Maybe()
 
 	onSeenHooks := map[string]func([]string){}
-	source.EXPECT().RegisterDiffManager(mock.Anything, mock.Anything).Run(func(name string, hook func([]string)) {
+	source.EXPECT().RegisterDiffManager(mock.Anything, mock.Anything, mock.Anything).Run(func(name string, hook func([]string), _ candidateProviderAlias) {
 		onSeenHooks[name] = hook
 	}).Return()
 

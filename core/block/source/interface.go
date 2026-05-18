@@ -28,6 +28,11 @@ var (
 
 type PushChangeHook func(params PushChangeParams) (id string, err error)
 
+// CandidateProvider returns the change ids that could currently transition to
+// "read" for a diff manager (e.g. unread message ids). A nil provider means
+// the diff manager uses the legacy full tree-change stream.
+type CandidateProvider func(ctx context.Context) ([]string, error)
+
 type PushStoreChangeParams struct {
 	State   *storestate.StoreState
 	Changes []*pb.StoreChangeContent
@@ -84,7 +89,7 @@ type Store interface {
 	// must be called before ReadStoreDoc.
 	//
 	// If a head is marked as read in the diff manager, all earlier heads for that branch marked as read as well
-	RegisterDiffManager(name string, onRemoveHook func(removed []string))
+	RegisterDiffManager(name string, onRemoveHook func(removed []string), candidateProvider CandidateProvider)
 	// MarkSeenHeads marks heads as seen in a diff manager. Then the diff manager will call a hook from SetDiffManagerOnRemoveHook
 	MarkSeenHeads(ctx context.Context, name string, heads []string) error
 	// StoreSeenHeads persists current seen heads in any-store

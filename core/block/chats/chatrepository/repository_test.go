@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	anystore "github.com/anyproto/any-store"
@@ -12,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -393,4 +395,48 @@ func TestClearUnreadReactions(t *testing.T) {
 			assert.False(t, fx.getMessage(t, id).UnreadReaction, id)
 		}
 	})
+}
+
+func TestGetAllUnreadMessages_PositiveEqualityEquivalence(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	fx.addMessage(t, "m_read", "o1", true, false, false)
+	fx.addMessage(t, "m_unread1", "o2", false, false, false)
+	fx.addMessage(t, "m_unread2", "o3", false, false, false)
+
+	got, err := fx.repo.GetAllUnreadMessages(ctx, chatmodel.CounterTypeMessage)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"m_unread1", "m_unread2"}, got)
+
+	// mentions path unaffected (hasMention-anchored)
+	fx.addMessage(t, "m_mention", "o4", false, true, false)
+	gotM, err := fx.repo.GetAllUnreadMessages(ctx, chatmodel.CounterTypeMention)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"m_mention"}, gotM)
+}
+
+func TestChatCollectionHasReadAndHasMentionIndexes(t *testing.T) {
+	ctx := context.Background()
+	db, err := anystore.Open(ctx, filepath.Join(t.TempDir(), "store.db"), nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, db.Close()) })
+	coll, err := db.CreateCollection(ctx, "idxchats")
+	require.NoError(t, err)
+
+	err = anystorehelper.AddIndexes(ctx, coll, []anystore.IndexInfo{
+		{Fields: []string{"_o.id"}},
+		{Fields: []string{chatmodel.PinnedKey}, Sparse: true},
+		{Fields: []string{chatmodel.ReactionUnreadOrderIdKey}, Sparse: true},
+		{Fields: []string{chatmodel.ReadKey}},
+		{Fields: []string{chatmodel.HasMentionKey}},
+	})
+	require.NoError(t, err)
+
+	names := map[string]bool{}
+	for _, ix := range coll.GetIndexes() {
+		names[strings.Join(ix.Info().Fields, ",")] = true
+	}
+	assert.True(t, names[chatmodel.ReadKey], "expected an index on %q", chatmodel.ReadKey)
+	assert.True(t, names[chatmodel.HasMentionKey], "expected an index on %q", chatmodel.HasMentionKey)
 }

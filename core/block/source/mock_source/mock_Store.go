@@ -687,9 +687,9 @@ func (_c *MockStore_ReadStoreDoc_Call) RunAndReturn(run func(context.Context, *s
 	return _c
 }
 
-// RegisterDiffManager provides a mock function with given fields: name, onRemoveHook
-func (_m *MockStore) RegisterDiffManager(name string, onRemoveHook func([]string)) {
-	_m.Called(name, onRemoveHook)
+// RegisterDiffManager provides a mock function with given fields: name, onRemoveHook, candidateProvider
+func (_m *MockStore) RegisterDiffManager(name string, onRemoveHook func([]string), candidateProvider source.CandidateProvider) {
+	_m.Called(name, onRemoveHook, candidateProvider)
 }
 
 // MockStore_RegisterDiffManager_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RegisterDiffManager'
@@ -700,13 +700,14 @@ type MockStore_RegisterDiffManager_Call struct {
 // RegisterDiffManager is a helper method to define mock.On call
 //   - name string
 //   - onRemoveHook func([]string)
-func (_e *MockStore_Expecter) RegisterDiffManager(name interface{}, onRemoveHook interface{}) *MockStore_RegisterDiffManager_Call {
-	return &MockStore_RegisterDiffManager_Call{Call: _e.mock.On("RegisterDiffManager", name, onRemoveHook)}
+//   - candidateProvider source.CandidateProvider
+func (_e *MockStore_Expecter) RegisterDiffManager(name interface{}, onRemoveHook interface{}, candidateProvider interface{}) *MockStore_RegisterDiffManager_Call {
+	return &MockStore_RegisterDiffManager_Call{Call: _e.mock.On("RegisterDiffManager", name, onRemoveHook, candidateProvider)}
 }
 
-func (_c *MockStore_RegisterDiffManager_Call) Run(run func(name string, onRemoveHook func([]string))) *MockStore_RegisterDiffManager_Call {
+func (_c *MockStore_RegisterDiffManager_Call) Run(run func(name string, onRemoveHook func([]string), candidateProvider source.CandidateProvider)) *MockStore_RegisterDiffManager_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(func([]string)))
+		run(args[0].(string), args[1].(func([]string)), args[2].(source.CandidateProvider))
 	})
 	return _c
 }
@@ -716,7 +717,7 @@ func (_c *MockStore_RegisterDiffManager_Call) Return() *MockStore_RegisterDiffMa
 	return _c
 }
 
-func (_c *MockStore_RegisterDiffManager_Call) RunAndReturn(run func(string, func([]string))) *MockStore_RegisterDiffManager_Call {
+func (_c *MockStore_RegisterDiffManager_Call) RunAndReturn(run func(string, func([]string), source.CandidateProvider)) *MockStore_RegisterDiffManager_Call {
 	_c.Run(run)
 	return _c
 }
