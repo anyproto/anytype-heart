@@ -1021,6 +1021,54 @@ func (_c *MockSpace_DoLockedIfNotExists_Call) RunAndReturn(run func(string, func
 	return _c
 }
 
+// FilterNotExists provides a mock function with given fields: ids
+func (_m *MockSpace) FilterNotExists(ids []string) []string {
+	ret := _m.Called(ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FilterNotExists")
+	}
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func([]string) []string); ok {
+		r0 = rf(ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	return r0
+}
+
+// MockSpace_FilterNotExists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FilterNotExists'
+type MockSpace_FilterNotExists_Call struct {
+	*mock.Call
+}
+
+// FilterNotExists is a helper method to define mock.On call
+//   - ids []string
+func (_e *MockSpace_Expecter) FilterNotExists(ids interface{}) *MockSpace_FilterNotExists_Call {
+	return &MockSpace_FilterNotExists_Call{Call: _e.mock.On("FilterNotExists", ids)}
+}
+
+func (_c *MockSpace_FilterNotExists_Call) Run(run func(ids []string)) *MockSpace_FilterNotExists_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *MockSpace_FilterNotExists_Call) Return(_a0 []string) *MockSpace_FilterNotExists_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpace_FilterNotExists_Call) RunAndReturn(run func([]string) []string) *MockSpace_FilterNotExists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetAclIdentity provides a mock function with no fields
 func (_m *MockSpace) GetAclIdentity() crypto.PubKey {
 	ret := _m.Called()
