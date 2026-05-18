@@ -350,15 +350,19 @@ type spaceSubscriptions struct {
 
 func (s *spaceSubscriptions) Run() (err error) {
 	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
-	var batchErr error
+	// SubscribeForAll only stores the callback; it is invoked later, on the
+	// goroutine of whoever writes object details (sendUpdatesToSubscriptions).
+	// So there is no synchronous registration error to surface here, and the
+	// add error (only non-nil once the batch is closed or s.ctx is cancelled,
+	// i.e. on shutdown) must be handled inside the callback — capturing it in
+	// a shared variable raced concurrent writers against this goroutine.
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
-		batchErr = s.recBatch.Add(s.ctx, rec)
+		if addErr := s.recBatch.Add(s.ctx, rec); addErr != nil {
+			log.With("error", addErr).Errorf("subscribe-for-all: add record to batch")
+		}
 	})
-	if batchErr != nil {
-		return batchErr
-	}
 	go s.recordsHandler()
-	return
+	return nil
 }
 
 func (s *spaceSubscriptions) getSubscription(id string) (subscription, bool) {

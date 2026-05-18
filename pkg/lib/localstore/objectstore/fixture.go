@@ -92,7 +92,21 @@ func (w *walletStub) RepoPath() string {
 
 func (w *walletStub) Name() string { return wallet.CName }
 
+type spaceIdsListerStub struct{ ids []string }
+
+func (s *spaceIdsListerStub) AllSpaceIds() (ids []string, err error) { return s.ids, nil }
+func (s *spaceIdsListerStub) Name() string                          { return "spaceIdsListerStub" }
+func (s *spaceIdsListerStub) Init(a *app.App) error                 { return nil }
+
 func NewStoreFixture(t testing.TB) *StoreFixture {
+	return newStoreFixture(t)
+}
+
+func NewStoreFixtureWithSpaceIds(t testing.TB, ids []string) *StoreFixture {
+	return newStoreFixture(t, &spaceIdsListerStub{ids: ids})
+}
+
+func newStoreFixture(t testing.TB, extra ...app.Component) *StoreFixture {
 	ctx := context.Background()
 
 	fullText := ftsearch.TantivyNew()
@@ -109,6 +123,9 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 	testApp.Register(fullText)
 	testApp.Register(&stubDetailsFromId{})
 	testApp.Register(&stubTechSpaceIdProvider{})
+	for _, c := range extra {
+		testApp.Register(c)
+	}
 
 	err = fullText.Init(testApp)
 	require.NoError(t, err)
@@ -138,6 +155,14 @@ func NewStoreFixture(t testing.TB) *StoreFixture {
 }
 
 func (fx *StoreFixture) Init(a *app.App) (err error) {
+	return nil
+}
+
+// Run is a no-op: newStoreFixture already Init+Run the underlying
+// dsObjectStore. Registering the fixture into a second app must not invoke
+// dsObjectStore.Run a second time (component Run is a once-per-instance
+// invariant; a second close of loadedCh would panic).
+func (fx *StoreFixture) Run(ctx context.Context) error {
 	return nil
 }
 

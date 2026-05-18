@@ -40,11 +40,14 @@ type crossSpaceSubscription struct {
 	lock sync.Mutex
 	// spaceId => subId
 	perSpaceSubscriptions map[string]string
+	// spaces matched by predicate whose objectstore is not opened yet;
+	// promoted to perSpaceSubscriptions when the objectstore opens.
+	pendingSpaceIds map[string]struct{}
 	// internal sub id (bson id) => total count
 	totalCounts map[string]int64
 }
 
-func newCrossSpaceSubscription(subId string, request subscriptionservice.SubscribeRequest, eventSender event.Sender, subscriptionService subscriptionservice.Service, initialSpaceIds []string, predicate Predicate) (*crossSpaceSubscription, *subscriptionservice.SubscribeResponse, error) {
+func newCrossSpaceSubscription(subId string, request subscriptionservice.SubscribeRequest, eventSender event.Sender, subscriptionService subscriptionservice.Service, loadedSpaceIds []string, pendingSpaceIds []string, predicate Predicate) (*crossSpaceSubscription, *subscriptionservice.SubscribeResponse, error) {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	s := &crossSpaceSubscription{
 		ctx:                   ctx,
@@ -55,8 +58,12 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 		spacePredicate:        predicate,
 		subscriptionService:   subscriptionService,
 		perSpaceSubscriptions: make(map[string]string),
+		pendingSpaceIds:       make(map[string]struct{}, len(pendingSpaceIds)),
 		totalCounts:           map[string]int64{},
 		queue:                 mb.New[*pb.EventMessage](0),
+	}
+	for _, spaceId := range pendingSpaceIds {
+		s.pendingSpaceIds[spaceId] = struct{}{}
 	}
 	aggregatedResp := &subscriptionservice.SubscribeResponse{
 		SubId:    subId,
@@ -66,7 +73,7 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 	var wg sync.WaitGroup
 	var resErr error
 
-	for _, spaceId := range initialSpaceIds {
+	for _, spaceId := range loadedSpaceIds {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -161,11 +168,40 @@ func (s *crossSpaceSubscription) close() error {
 func (s *crossSpaceSubscription) AddSpace(spaceId string) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	delete(s.pendingSpaceIds, spaceId)
 	_, err := s.addSpace(spaceId, true)
 	if err != nil {
 		return fmt.Errorf("add space: %w", err)
 	}
 
+	return nil
+}
+
+// AddPending records spaceId as a pending space whose objectstore is not yet
+// opened. When the objectstore opens, PromotePending should be called to
+// upgrade it to a real per-space subscription.
+func (s *crossSpaceSubscription) AddPending(spaceId string) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if _, ok := s.perSpaceSubscriptions[spaceId]; ok {
+		return
+	}
+	s.pendingSpaceIds[spaceId] = struct{}{}
+}
+
+// PromotePending upgrades a pending space to a real per-space subscription
+// with asyncInit=true, so initial records flow as events through the internal
+// queue. A no-op if spaceId is not pending.
+func (s *crossSpaceSubscription) PromotePending(spaceId string) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if _, ok := s.pendingSpaceIds[spaceId]; !ok {
+		return nil
+	}
+	delete(s.pendingSpaceIds, spaceId)
+	if _, err := s.addSpace(spaceId, true); err != nil {
+		return fmt.Errorf("promote pending space: %w", err)
+	}
 	return nil
 }
 
@@ -198,6 +234,7 @@ func (s *crossSpaceSubscription) subscribe(spaceId string, asyncInit bool) (*sub
 func (s *crossSpaceSubscription) RemoveSpace(spaceId string) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	delete(s.pendingSpaceIds, spaceId)
 	err := s.removeSpace(spaceId)
 	if err != nil {
 		log.Error("remove space", zap.Error(err), zap.String("subId", s.subId), zap.String("spaceId", spaceId))

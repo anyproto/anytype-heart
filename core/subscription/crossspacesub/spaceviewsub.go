@@ -115,11 +115,16 @@ func (s *service) processSpaceView(details *domain.Details) {
 		s.spaceIds = append(s.spaceIds, targetId)
 	}
 
+	_, opened := s.openedSpaceIds[targetId]
 	for _, sub := range s.subscriptions {
 		if sub.spacePredicate(details) {
-			err := sub.AddSpace(targetId)
-			if err != nil {
-				log.Error("onSpaceViewSet: add space", zap.Error(err), zap.String("spaceId", targetId))
+			if opened {
+				err := sub.AddSpace(targetId)
+				if err != nil {
+					log.Error("onSpaceViewSet: add space", zap.Error(err), zap.String("spaceId", targetId))
+				}
+			} else {
+				sub.AddPending(targetId)
 			}
 		} else {
 			sub.RemoveSpace(targetId)
