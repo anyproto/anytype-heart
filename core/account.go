@@ -126,6 +126,19 @@ func (mw *Middleware) AccountStop(_ context.Context, req *pb.RpcAccountStopReque
 	}
 }
 
+func (mw *Middleware) AccountPreloadRemainingSpaces(cctx context.Context, _ *pb.RpcAccountPreloadRemainingSpacesRequest) *pb.RpcAccountPreloadRemainingSpacesResponse {
+	err := mw.applicationService.AccountPreloadRemainingSpaces(cctx)
+	code := mapErrorCode(err,
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountPreloadRemainingSpacesResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountPreloadRemainingSpacesResponse{
+		Error: &pb.RpcAccountPreloadRemainingSpacesResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
 func (mw *Middleware) AccountChangeNetworkConfigAndRestart(ctx context.Context, req *pb.RpcAccountChangeNetworkConfigAndRestartRequest) *pb.RpcAccountChangeNetworkConfigAndRestartResponse {
 	err := mw.applicationService.AccountChangeNetworkConfigAndRestart(ctx, req)
 	code := mapErrorCode(err,

@@ -129,6 +129,10 @@
     - [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request)
     - [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response)
     - [Rpc.Account.Move.Response.Error](#anytype-Rpc-Account-Move-Response-Error)
+    - [Rpc.Account.PreloadRemainingSpaces](#anytype-Rpc-Account-PreloadRemainingSpaces)
+    - [Rpc.Account.PreloadRemainingSpaces.Request](#anytype-Rpc-Account-PreloadRemainingSpaces-Request)
+    - [Rpc.Account.PreloadRemainingSpaces.Response](#anytype-Rpc-Account-PreloadRemainingSpaces-Response)
+    - [Rpc.Account.PreloadRemainingSpaces.Response.Error](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error)
     - [Rpc.Account.Recover](#anytype-Rpc-Account-Recover)
     - [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request)
     - [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response)
@@ -1535,6 +1539,7 @@
     - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
+    - [Rpc.Account.PreloadRemainingSpaces.Response.Error.Code](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
@@ -2383,6 +2388,7 @@
 | AccountMigrateCancel | [Rpc.Account.MigrateCancel.Request](#anytype-Rpc-Account-MigrateCancel-Request) | [Rpc.Account.MigrateCancel.Response](#anytype-Rpc-Account-MigrateCancel-Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
+| AccountPreloadRemainingSpaces | [Rpc.Account.PreloadRemainingSpaces.Request](#anytype-Rpc-Account-PreloadRemainingSpaces-Request) | [Rpc.Account.PreloadRemainingSpaces.Response](#anytype-Rpc-Account-PreloadRemainingSpaces-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
@@ -4486,6 +4492,57 @@ Front-end-to-middleware request to move a account to a new disk location
 
 
 
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces"></a>
+
+### Rpc.Account.PreloadRemainingSpaces
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces-Request"></a>
+
+### Rpc.Account.PreloadRemainingSpaces.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces-Response"></a>
+
+### Rpc.Account.PreloadRemainingSpaces.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.PreloadRemainingSpaces.Response.Error](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error"></a>
+
+### Rpc.Account.PreloadRemainingSpaces.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.PreloadRemainingSpaces.Response.Error.Code](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-Recover"></a>
 
 ### Rpc.Account.Recover
@@ -4682,6 +4739,7 @@ User can select an account from those, that came with an AccountAdd events
 | enableMembershipV2 | [bool](#bool) |  | if true - will run membership v2 polling loop, v2 methods will be available if false - will run membership v1 polling loop, v2 methods will return error
 
 optional, default is false |
+| preferredSpaceId | [string](#string) |  | optional. If set and resolvable, only this space &#43; tech space load eagerly at start; the rest are deferred until AccountPreloadRemainingSpaces, a 10s timer, or this space fails. Empty = today&#39;s eager behavior. |
 
 
 
@@ -24980,6 +25038,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | DefaultConfig | 0 | use network config that embedded in binary |
 | LocalOnly | 1 | disable any-sync network and use only local p2p nodes |
 | CustomConfig | 2 | use config provided in networkConfigFilePath |
+
+
+
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code"></a>
+
+### Rpc.Account.PreloadRemainingSpaces.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
 
 
 
