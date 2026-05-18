@@ -7,6 +7,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
+var spaceInfoLog = logging.Logger("space.spaceinfo")
+
 type SpaceLocalInfo struct {
 	SpaceId         string
 	localStatus     *LocalStatus
@@ -93,6 +95,27 @@ func (s *SpaceLocalInfo) SetReadLimit(limit uint32) *SpaceLocalInfo {
 
 func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
 	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceId))
+	// DEBUG (GO-7289): log every local/remote space status write that lands in the object
+	// store, with the old->new transition, so the cold-start status churn can be observed.
+	if s.localStatus != nil || s.remoteStatus != nil {
+		oldLocal := LocalStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceLocalStatus))
+		oldRemote := RemoteStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceRemoteStatus))
+		newLocal := oldLocal
+		if s.localStatus != nil {
+			newLocal = *s.localStatus
+		}
+		newRemote := oldRemote
+		if s.remoteStatus != nil {
+			newRemote = *s.remoteStatus
+		}
+		changed := (s.localStatus != nil && newLocal != oldLocal) ||
+			(s.remoteStatus != nil && newRemote != oldRemote)
+		spaceInfoLog.With("spaceId", s.SpaceId).
+			With("localStatus", oldLocal.String()+"->"+newLocal.String()).
+			With("remoteStatus", oldRemote.String()+"->"+newRemote.String()).
+			With("changed", changed).
+			Warn("space status update in objectstore")
+	}
 	if s.localStatus != nil {
 		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceLocalStatus, domain.Int64(*s.localStatus))
 	}
