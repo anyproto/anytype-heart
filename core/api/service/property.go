@@ -86,6 +86,7 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyFileVariantChecksums.String(): true,
 	bundle.RelationKeyFileVariantMills.String():     true,
 	bundle.RelationKeyFileVariantOptions.String():   true,
+	bundle.RelationKeyFileIndexingStatus.String():   true,
 }
 
 var PropertyFormatToRelationFormat = map[apimodel.PropertyFormat]model.RelationFormat{
