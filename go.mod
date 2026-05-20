@@ -8,6 +8,7 @@ require (
 	github.com/ahmetb/govvv v0.3.0
 	github.com/anyproto/any-store v0.4.6
 	github.com/anyproto/any-sync v0.12.0
+	github.com/anyproto/anytype-agent-runtime v0.1.1-0.20260428111609-64f90bdb6410
 	github.com/anyproto/anytype-publish-server/publishclient v0.0.0-20250716122732-cdcfe3a126bb
 	github.com/anyproto/anytype-push-server/pushclient v0.0.0-20250801122506-553f6c085a23
 	github.com/anyproto/go-chash v0.1.0
@@ -131,7 +132,6 @@ require (
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/alexbrainman/goissue34681 v0.0.0-20191006012335-3fc7a47baff5 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
-	github.com/anyproto/anytype-agent-runtime v0.1.1-0.20260428111609-64f90bdb6410 // indirect
 	github.com/anyproto/go-bip39 v1.0.0 // indirect
 	github.com/anyproto/go-slip21 v1.0.0 // indirect
 	github.com/anyproto/go-sqlite v1.4.2-any // indirect
@@ -333,3 +333,5 @@ replace google.golang.org/genproto/googleapis/rpc => google.golang.org/genproto/
 replace github.com/btcsuite/btcutil => github.com/btcsuite/btcd/btcutil v1.1.5
 
 replace github.com/dsoprea/go-jpeg-image-structure/v2 => github.com/dchesterton/go-jpeg-image-structure/v2 v2.0.0-20240318203529-c3eea088bd38
+
+replace github.com/anyproto/anytype-agent-runtime => ../anytype-agent-runtime
