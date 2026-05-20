@@ -1863,7 +1863,9 @@ components:
           $ref: '#/components/schemas/SortOptions'
         types:
           description: The types of objects to include in results (e.g., "page", "task",
-            "bookmark"); see ListTypes endpoint for valid values
+            "bookmark"); see ListTypes endpoint for valid values. File-layout types
+            (file, image, video, audio) are excluded by default and must be listed
+            explicitly here to be searchable.
           example:
           - page
           - task

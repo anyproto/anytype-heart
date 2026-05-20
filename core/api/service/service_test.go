@@ -233,6 +233,15 @@ func GetTestTypes() []*apimodel.Type {
 			Layout:     apimodel.ObjectLayoutAction,
 			Properties: []apimodel.Property{},
 		},
+		{
+			Id:         "type-image",
+			Key:        "image",
+			Icon:       nil,
+			Name:       "Image",
+			UniqueKey:  "ot-image",
+			Layout:     apimodel.ObjectLayoutBasic,
+			Properties: []apimodel.Property{},
+		},
 	}
 }
 
