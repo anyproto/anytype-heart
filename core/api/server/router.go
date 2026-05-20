@@ -116,6 +116,11 @@ func (srv *Server) registerChatRoutes(v1 *gin.RouterGroup, eventService apicore.
 		ensureAnalyticsEvent("ListChats", eventService),
 		handler.ListChatsHandler(srv.service),
 	)
+	v1.POST("/spaces/:space_id/chats",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("CreateChat", eventService),
+		handler.CreateChatHandler(srv.service),
+	)
 	v1.GET("/spaces/:space_id/chats/:chat_id/messages/stream",
 		ensureAnalyticsEvent("ChatMessageStream", eventService),
 		handler.ChatStreamHandler(srv.service, srv.chatSubSvc),

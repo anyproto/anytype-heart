@@ -41,11 +41,6 @@ func (srv *Server) ensureAuthenticated(mw apicore.ClientCommands) gin.HandlerFun
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			if queryToken := c.Query("token"); queryToken != "" {
-				authHeader = "Bearer " + queryToken
-			}
-		}
-		if authHeader == "" {
 			apiErr := util.CodeToApiError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error())
 			c.AbortWithStatusJSON(http.StatusUnauthorized, apiErr)
 			return

@@ -45,7 +45,7 @@ func parseHeartbeatSeconds(c *gin.Context) int {
 // ChatStreamHandler streams chat events via Server-Sent Events
 //
 //	@Summary		Subscribe to chat messages (SSE)
-//	@Description	Opens a Server-Sent Events stream for real-time chat updates. On connect, the last N messages are sent, followed by live events (message_added, message_updated, message_deleted, reactions_updated). Periodic SSE comment lines (`: heartbeat`) keep the connection alive during idle periods; per the SSE spec these are invisible to EventSource clients. Clients can tune the cadence with the Anytype-Heartbeat-Seconds header (1-60s, default 30s; out-of-range or unparsable values fall back to the default). Supports authentication via Authorization header or token query parameter.
+//	@Description	Opens a Server-Sent Events stream for real-time chat updates. On connect, the last N messages are sent, followed by live events (message_added, message_updated, message_deleted, reactions_updated). Periodic SSE comment lines (`: heartbeat`) keep the connection alive during idle periods; per the SSE spec these are invisible to EventSource clients. Clients can tune the cadence with the Anytype-Heartbeat-Seconds header (1-60s, default 30s; out-of-range or unparsable values fall back to the default).
 //	@Id				chat_message_stream
 //	@Tags			Chat
 //	@Produce		text/event-stream
@@ -53,9 +53,9 @@ func parseHeartbeatSeconds(c *gin.Context) int {
 //	@Param			Anytype-Heartbeat-Seconds	header	int		false	"Heartbeat interval in seconds (1-60, default 30)"	default(30)	minimum(1)	maximum(60)
 //	@Param			space_id					path	string	true	"The ID of the space"
 //	@Param			chat_id						path	string	true	"The ID of the chat object"
-//	@Param			limit						query	int		false	"Number of recent messages to send on connect"	default(50)
-//	@Param			token						query	string	false	"API key for authentication (alternative to Authorization header, needed for browser EventSource)"
+//	@Param			limit						query	int		false	"Number of recent messages to send on connect"	default(50)	minimum(1)	maximum(1000)
 //	@Success		200							"SSE stream of chat events"
+//	@Failure		400							{object}	util.ValidationError	"Bad request"
 //	@Failure		401							{object}	util.UnauthorizedError	"Unauthorized"
 //	@Failure		500							{object}	util.ServerError		"Internal server error"
 //	@Security		bearerauth
@@ -68,7 +68,7 @@ func ChatStreamHandler(s *service.Service, chatSubSvc apicore.ChatSubscriptionSe
 
 		limit := defaultSSELimit
 		if l := c.Query("limit"); l != "" {
-			if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 1000 {
+			if parsed, err := strconv.Atoi(l); err == nil {
 				limit = parsed
 			}
 		}

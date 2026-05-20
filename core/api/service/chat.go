@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
@@ -21,13 +22,19 @@ var (
 	ErrFailedDeleteMessage    = errors.New("failed to delete chat message")
 	ErrFailedToggleReaction   = errors.New("failed to toggle reaction")
 	ErrFailedListChats        = errors.New("failed to list chats")
+	ErrFailedCreateChat       = errors.New("failed to create chat")
 	ErrChatMessageNotFound    = errors.New("chat message not found")
 	ErrFailedReadAllMessages  = errors.New("failed to mark chat as read")
 	ErrFailedReadMessages     = errors.New("failed to mark messages as read")
 	ErrFailedReadReactions    = errors.New("failed to mark reactions as read")
 	ErrFailedSearchMessages   = errors.New("failed to search chat messages")
 	ErrInvalidReadMessageType = errors.New("invalid read message type")
+	ErrInvalidChatMessage     = errors.New("invalid chat message")
 )
+
+// chatTypeApiKey is the API-level type_key for chat objects, derived from
+// bundle.TypeKeyChatDerived ("chatDerived") via util.ToTypeApiKey.
+const chatTypeApiKey = "chat_derived"
 
 // ListChats retrieves a paginated list of chat objects in a specific space.
 func (s *Service) ListChats(ctx context.Context, spaceId string, additionalFilters []*model.BlockContentDataviewFilter, offset int, limit int) (chats []apimodel.Object, total int, hasMore bool, err error) {
@@ -68,6 +75,16 @@ func (s *Service) ListChats(ctx context.Context, spaceId string, additionalFilte
 	return chats, total, hasMore, nil
 }
 
+// CreateChat creates a new chat object in the given space. It is a thin
+// wrapper around CreateObject that hides the internal chat_derived type key.
+func (s *Service) CreateChat(ctx context.Context, spaceId string, req apimodel.CreateChatRequest) (*apimodel.ObjectWithBody, error) {
+	return s.CreateObject(ctx, spaceId, apimodel.CreateObjectRequest{
+		Name:    req.Name,
+		Icon:    req.Icon,
+		TypeKey: chatTypeApiKey,
+	})
+}
+
 func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, beforeOrderId, afterOrderId string, limit int) ([]apimodel.ChatMessage, error) {
 	resp := s.mw.ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{
 		ChatObjectId:  chatId,
@@ -87,63 +104,13 @@ func (s *Service) GetChatMessages(ctx context.Context, spaceId, chatId string, b
 
 // EnrichChatMessageCreators rewrites each message's Creator field from the raw
 // identity emitted by the middleware to the deterministic participant id, and
-// fills CreatorName by batch-querying participant objects in the space.
-// Messages with no creator are left untouched. Identities that do not resolve
-// to a participant object still receive a participant id (it is computable
-// without an RPC) but an empty CreatorName.
+// fills CreatorName from the cross-space participant subscription cache.
+// Messages with no creator are left untouched. Identities not yet observed by
+// the cache still receive a participant id (it is computable without an RPC)
+// but an empty CreatorName.
 func (s *Service) EnrichChatMessageCreators(ctx context.Context, spaceId string, msgs []apimodel.ChatMessage) {
 	if len(msgs) == 0 || spaceId == "" {
 		return
-	}
-
-	identitySet := make(map[string]struct{}, len(msgs))
-	for _, m := range msgs {
-		if m.Creator != "" {
-			identitySet[m.Creator] = struct{}{}
-		}
-	}
-	if len(identitySet) == 0 {
-		return
-	}
-
-	identities := make([]string, 0, len(identitySet))
-	for id := range identitySet {
-		identities = append(identities, id)
-	}
-
-	nameByIdentity := make(map[string]string, len(identities))
-	resp := s.mw.ObjectSearch(ctx, &pb.RpcObjectSearchRequest{
-		SpaceId: spaceId,
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyResolvedLayout.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Int64(int64(model.ObjectType_participant)),
-			},
-			{
-				RelationKey: bundle.RelationKeyIdentity.String(),
-				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       pbtypes.StringList(identities),
-			},
-		},
-		Keys: []string{
-			bundle.RelationKeyIdentity.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyGlobalName.String(),
-		},
-	})
-	if resp.Error == nil || resp.Error.Code == pb.RpcObjectSearchResponseError_NULL {
-		for _, rec := range resp.Records {
-			identity := rec.Fields[bundle.RelationKeyIdentity.String()].GetStringValue()
-			if identity == "" {
-				continue
-			}
-			name := rec.Fields[bundle.RelationKeyName.String()].GetStringValue()
-			if name == "" {
-				name = rec.Fields[bundle.RelationKeyGlobalName.String()].GetStringValue()
-			}
-			nameByIdentity[identity] = name
-		}
 	}
 
 	for i := range msgs {
@@ -152,7 +119,9 @@ func (s *Service) EnrichChatMessageCreators(ctx context.Context, spaceId string,
 			continue
 		}
 		msgs[i].Creator = domain.NewParticipantId(spaceId, identity)
-		msgs[i].CreatorName = nameByIdentity[identity]
+		if entry := s.cache.getParticipantByIdentity(spaceId, identity); entry != nil {
+			msgs[i].CreatorName = entry.Name
+		}
 	}
 }
 
@@ -165,6 +134,9 @@ func (s *Service) AddChatMessage(ctx context.Context, chatId string, req apimode
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatAddMessageResponseError_NULL {
+		if resp.Error.Code == pb.RpcChatAddMessageResponseError_BAD_INPUT {
+			return "", fmt.Errorf("%w: %s", ErrInvalidChatMessage, resp.Error.Description)
+		}
 		return "", ErrFailedAddMessage
 	}
 
@@ -181,6 +153,9 @@ func (s *Service) EditChatMessage(ctx context.Context, chatId, messageId string,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatEditMessageContentResponseError_NULL {
+		if resp.Error.Code == pb.RpcChatEditMessageContentResponseError_BAD_INPUT {
+			return fmt.Errorf("%w: %s", ErrInvalidChatMessage, resp.Error.Description)
+		}
 		return ErrFailedEditMessage
 	}
 

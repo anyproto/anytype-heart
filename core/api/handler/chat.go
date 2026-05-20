@@ -56,6 +56,53 @@ func ListChatsHandler(s *service.Service) gin.HandlerFunc {
 	}
 }
 
+// CreateChatHandler creates a new chat in a space
+//
+//	@Summary		Create chat
+//	@Description	Creates a new chat object in the specified space. This is a convenience endpoint that hides the internal `chat_derived` type key.
+//	@Id				create_chat
+//	@Tags			Chat
+//	@Accept			json
+//	@Produce		json
+//	@Param			Anytype-Version	header		string						true	"The version of the API to use"	default(2025-11-08)
+//	@Param			space_id		path		string						true	"The ID of the space"
+//	@Param			chat			body		apimodel.CreateChatRequest	true	"The chat to create"
+//	@Success		201				{object}	apimodel.ObjectResponse		"The created chat"
+//	@Failure		400				{object}	util.ValidationError		"Bad request"
+//	@Failure		401				{object}	util.UnauthorizedError		"Unauthorized"
+//	@Failure		500				{object}	util.ServerError			"Internal server error"
+//	@Security		bearerauth
+//	@Router			/v1/spaces/{space_id}/chats [post]
+func CreateChatHandler(s *service.Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		spaceId := c.Param("space_id")
+
+		var req apimodel.CreateChatRequest
+		if err := c.ShouldBindJSON(&req); err != nil {
+			apiErr := util.CodeToApiError(http.StatusBadRequest, err.Error())
+			c.JSON(http.StatusBadRequest, apiErr)
+			return
+		}
+
+		object, err := s.CreateChat(c.Request.Context(), spaceId, req)
+		code := util.MapErrorCode(err,
+			util.ErrToCode(util.ErrBad, http.StatusBadRequest),
+			util.ErrToCode(service.ErrFailedCreateObject, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedSetPropertyFeatured, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrObjectNotFound, http.StatusInternalServerError),
+			util.ErrToCode(service.ErrFailedRetrieveObject, http.StatusInternalServerError),
+		)
+
+		if code != http.StatusOK {
+			apiErr := util.CodeToApiError(code, err.Error())
+			c.JSON(code, apiErr)
+			return
+		}
+
+		c.JSON(http.StatusCreated, apimodel.ObjectResponse{Object: *object})
+	}
+}
+
 // GetChatMessagesHandler returns messages for a chat
 //
 //	@Summary		Get chat messages
@@ -68,8 +115,9 @@ func ListChatsHandler(s *service.Service) gin.HandlerFunc {
 //	@Param			chat_id			path		string							true	"The ID of the chat object"
 //	@Param			before_order_id	query		string							false	"Return messages before this order ID"
 //	@Param			after_order_id	query		string							false	"Return messages after this order ID"
-//	@Param			limit			query		int								false	"Maximum number of messages to return"	default(50)
+//	@Param			limit			query		int								false	"Maximum number of messages to return"	default(50)	minimum(1)	maximum(1000)
 //	@Success		200				{object}	apimodel.ChatMessagesResponse	"The list of messages"
+//	@Failure		400				{object}	util.ValidationError			"Bad request"
 //	@Failure		401				{object}	util.UnauthorizedError			"Unauthorized"
 //	@Failure		500				{object}	util.ServerError				"Internal server error"
 //	@Security		bearerauth
@@ -83,7 +131,7 @@ func GetChatMessagesHandler(s *service.Service) gin.HandlerFunc {
 
 		limit := defaultChatMessagesLimit
 		if l := c.Query("limit"); l != "" {
-			if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 && parsed <= 1000 {
+			if parsed, err := strconv.Atoi(l); err == nil {
 				limit = parsed
 			}
 		}
@@ -134,6 +182,7 @@ func AddChatMessageHandler(s *service.Service) gin.HandlerFunc {
 
 		messageId, err := s.AddChatMessage(c.Request.Context(), chatId, req)
 		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrInvalidChatMessage, http.StatusBadRequest),
 			util.ErrToCode(service.ErrFailedAddMessage, http.StatusInternalServerError),
 		)
 
@@ -180,6 +229,7 @@ func EditChatMessageHandler(s *service.Service) gin.HandlerFunc {
 
 		err := s.EditChatMessage(c.Request.Context(), chatId, messageId, req)
 		code := util.MapErrorCode(err,
+			util.ErrToCode(service.ErrInvalidChatMessage, http.StatusBadRequest),
 			util.ErrToCode(service.ErrFailedEditMessage, http.StatusInternalServerError),
 		)
 

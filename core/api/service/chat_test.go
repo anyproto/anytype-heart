@@ -162,6 +162,7 @@ func TestChatService_GetChatMessages(t *testing.T) {
 		fx := newFixture(t)
 
 		const creatorIdentity = "AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q"
+		fx.cacheParticipant(mockedSpaceId, creatorIdentity, "Alice")
 
 		fx.mwMock.EXPECT().ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{
 			ChatObjectId: mockedChatId,
@@ -176,20 +177,6 @@ func TestChatService_GetChatMessages(t *testing.T) {
 			},
 			Error: &pb.RpcChatGetMessagesResponseError{Code: pb.RpcChatGetMessagesResponseError_NULL},
 		})
-
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSearchRequest) bool {
-			return req.SpaceId == mockedSpaceId
-		})).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyIdentity.String(): pbtypes.String(creatorIdentity),
-						bundle.RelationKeyName.String():     pbtypes.String("Alice"),
-					},
-				},
-			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Once()
 
 		// when
 		messages, err := fx.service.GetChatMessages(ctx, mockedSpaceId, mockedChatId, "", "", 50)
@@ -209,6 +196,8 @@ func TestChatService_GetChatMessages(t *testing.T) {
 		fx := newFixture(t)
 
 		const creatorIdentity = "AAjEbEzQx9FNvf5LQFEJEGRojZt3L1MRmBFzP2Q"
+		// The participant cache stores Name pre-resolved from name | global_name.
+		fx.cacheParticipant(mockedSpaceId, creatorIdentity, "alice.any")
 
 		fx.mwMock.EXPECT().ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{
 			ChatObjectId: mockedChatId,
@@ -219,18 +208,6 @@ func TestChatService_GetChatMessages(t *testing.T) {
 			},
 			Error: &pb.RpcChatGetMessagesResponseError{Code: pb.RpcChatGetMessagesResponseError_NULL},
 		})
-
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{
-				{
-					Fields: map[string]*types.Value{
-						bundle.RelationKeyIdentity.String():   pbtypes.String(creatorIdentity),
-						bundle.RelationKeyGlobalName.String(): pbtypes.String("alice.any"),
-					},
-				},
-			},
-			Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Once()
 
 		// when
 		messages, err := fx.service.GetChatMessages(ctx, mockedSpaceId, mockedChatId, "", "", 50)
@@ -247,6 +224,7 @@ func TestChatService_GetChatMessages(t *testing.T) {
 		fx := newFixture(t)
 
 		const creatorIdentity = "AAjUnknown"
+		// Note: do not populate the participant cache; lookup returns nil.
 
 		fx.mwMock.EXPECT().ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{
 			ChatObjectId: mockedChatId,
@@ -257,11 +235,6 @@ func TestChatService_GetChatMessages(t *testing.T) {
 			},
 			Error: &pb.RpcChatGetMessagesResponseError{Code: pb.RpcChatGetMessagesResponseError_NULL},
 		})
-
-		fx.mwMock.On("ObjectSearch", mock.Anything, mock.Anything).Return(&pb.RpcObjectSearchResponse{
-			Records: []*types.Struct{},
-			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
-		}).Once()
 
 		// when
 		messages, err := fx.service.GetChatMessages(ctx, mockedSpaceId, mockedChatId, "", "", 50)

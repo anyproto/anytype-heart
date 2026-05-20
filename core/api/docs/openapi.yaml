@@ -239,6 +239,15 @@ components:
           example: 67647f5ecda913e9a2e11b26
           type: string
       type: object
+    CreateChatRequest:
+      properties:
+        icon:
+          $ref: '#/components/schemas/Icon'
+        name:
+          description: The name of the chat
+          example: My chat
+          type: string
+      type: object
     CreateObjectRequest:
       properties:
         body:
@@ -2148,11 +2157,13 @@ components:
           example: N83gJpVd9MuNRZAuJLZ7LiMntTThhPc6DtzWWVjb1M3PouVU
           type: string
         object:
-          description: The data model of the object
+          description: The space type
           enum:
-          - regular
-          - onetoone
-          example: space
+          - anytype.space
+          - anytype.chatspace
+          - anytype.onetoone
+          - anytype.techspace
+          example: anytype.space
           type: string
       type: object
     SpaceResponse:
@@ -3214,6 +3225,61 @@ paths:
       summary: List chats
       tags:
       - Chat
+    post:
+      description: Creates a new chat object in the specified space. This is a convenience
+        endpoint that hides the internal `chat_derived` type key.
+      operationId: create_chat
+      parameters:
+      - description: The version of the API to use
+        in: header
+        name: Anytype-Version
+        required: true
+        schema:
+          default: "2025-11-08"
+          type: string
+      - description: The ID of the space
+        in: path
+        name: space_id
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateChatRequest'
+        description: The chat to create
+        required: true
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ObjectResponse'
+          description: The created chat
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Bad request
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnauthorizedError'
+          description: Unauthorized
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+          description: Internal server error
+      security:
+      - bearerauth: []
+      summary: Create chat
+      tags:
+      - Chat
   /v1/spaces/{space_id}/chats/{chat_id}/messages:
     get:
       description: Retrieves a list of messages from a chat. Supports cursor-based
@@ -3254,6 +3320,8 @@ paths:
         name: limit
         schema:
           default: 50
+          maximum: 1000
+          minimum: 1
           type: integer
       responses:
         "200":
@@ -3262,6 +3330,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ChatMessagesResponse'
           description: The list of messages
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Bad request
         "401":
           content:
             application/json:
@@ -3723,8 +3797,7 @@ paths:
         lines (`: heartbeat`) keep the connection alive during idle periods; per the
         SSE spec these are invisible to EventSource clients. Clients can tune the
         cadence with the Anytype-Heartbeat-Seconds header (1-60s, default 30s; out-of-range
-        or unparsable values fall back to the default). Supports authentication via
-        Authorization header or token query parameter.'
+        or unparsable values fall back to the default).'
       operationId: chat_message_stream
       parameters:
       - description: The version of the API to use
@@ -3759,13 +3832,9 @@ paths:
         name: limit
         schema:
           default: 50
+          maximum: 1000
+          minimum: 1
           type: integer
-      - description: API key for authentication (alternative to Authorization header,
-          needed for browser EventSource)
-        in: query
-        name: token
-        schema:
-          type: string
       responses:
         "200":
           content:
@@ -3773,6 +3842,12 @@ paths:
               schema:
                 type: string
           description: SSE stream of chat events
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationError'
+          description: Bad request
         "401":
           content:
             application/json:

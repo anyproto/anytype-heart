@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/golang-lru/v2/expirable"
@@ -19,6 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+// sseSendTimeout bounds how long Flush will wait to deliver an event to a slow
+// SSE subscriber before giving up, closing its channel and dropping the
+// subscription. The handler observes the closed channel and exits the stream.
+const sseSendTimeout = time.Second
 
 type subscriptionManager struct {
 	lock sync.Mutex
@@ -303,6 +309,7 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 		s.eventSender.Broadcast(ev)
 	}
 
+	var droppedSseSubs []string
 	for _, ss := range sseSubs {
 		sseEvents := cloneEvents(events)
 		eventsSetSubIds([]string{ss.id}, sseEvents)
@@ -310,12 +317,26 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 			ContextId: s.chatId,
 			Messages:  sseEvents,
 		}
+		// Try non-blocking first to avoid the timer cost on the common path.
 		select {
 		case ss.sink <- ev:
+			continue
 		default:
 		}
+		// Slow subscriber: wait up to sseSendTimeout, then drop the
+		// subscription so we never silently lose events.
+		timer := time.NewTimer(sseSendTimeout)
+		select {
+		case ss.sink <- ev:
+			timer.Stop()
+		case <-timer.C:
+			close(ss.sink)
+			droppedSseSubs = append(droppedSseSubs, ss.id)
+		}
 	}
-
+	for _, id := range droppedSseSubs {
+		delete(s.subscriptions, id)
+	}
 }
 
 func (s *subscriptionManager) enrichWithDependencies(ev *pb.EventChatAdd) {

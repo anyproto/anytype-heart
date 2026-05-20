@@ -37,6 +37,11 @@ type ChatAttachment struct {
 	Type   string `json:"type" example:"image"`
 }
 
+type CreateChatRequest struct {
+	Name string `json:"name" example:"My chat"`                    // The name of the chat
+	Icon Icon   `json:"icon" oneOf:"EmojiIcon,FileIcon,NamedIcon"` // The icon of the chat
+}
+
 type AddChatMessageRequest struct {
 	Text             string           `json:"text" binding:"required" example:"Hello, world!"`
 	Style            string           `json:"style,omitempty" example:"paragraph"`
