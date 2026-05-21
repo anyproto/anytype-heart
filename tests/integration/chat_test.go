@@ -101,8 +101,9 @@ func newChatFixture(t *testing.T) *chatFixture {
 	evtSvc := app.MustComponent[apicore.EventService](a)
 	crossSub := app.MustComponent[apicore.CrossSpaceSubscriptionService](a)
 	chatSub := &chatSubAdapter{svc: app.MustComponent[chatsubscription.Service](a)}
+	fileObjSvc := app.MustComponent[apicore.FileObjectService](a)
 
-	srv := apiserver.NewServer(mw, acctSvc, evtSvc, crossSub, chatSub, nil, nil)
+	srv := apiserver.NewServer(mw, acctSvc, evtSvc, crossSub, chatSub, fileObjSvc, "127.0.0.1:0", nil, nil)
 	ts := httptest.NewServer(srv.Engine())
 
 	// Create a workspace-level chatDerived object. block.Service.ObjectAddChat
