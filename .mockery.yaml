@@ -271,6 +271,7 @@ packages:
       CrossSpaceSubscriptionService:
       ClientCommands:
       ChatSubscriptionService:
+      FileObjectService:
   github.com/anyproto/anytype-heart/core/api/filter:
     interfaces:
       ApiService:

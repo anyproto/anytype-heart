@@ -10,9 +10,10 @@ import (
 var log = logging.Logger("api-internal-service")
 
 type Service struct {
-	mw          apicore.ClientCommands
-	gatewayUrl  string
-	techSpaceId string
+	mw                apicore.ClientCommands
+	fileObjectService apicore.FileObjectService
+	apiBaseUrl        string
+	techSpaceId       string
 
 	crossSpaceSubService apicore.CrossSpaceSubscriptionService
 	componentCtxCancel   context.CancelFunc
@@ -21,11 +22,12 @@ type Service struct {
 	subscriptions *subscriptions
 }
 
-func NewService(mw apicore.ClientCommands, gatewayUrl string, techspaceId string, crossSpaceSubService apicore.CrossSpaceSubscriptionService) *Service {
+func NewService(mw apicore.ClientCommands, fileObjectService apicore.FileObjectService, apiBaseUrl string, techspaceId string, crossSpaceSubService apicore.CrossSpaceSubscriptionService) *Service {
 	_, cancel := context.WithCancel(context.Background())
 	s := &Service{
 		mw:                   mw,
-		gatewayUrl:           gatewayUrl,
+		fileObjectService:    fileObjectService,
+		apiBaseUrl:           apiBaseUrl,
 		techSpaceId:          techspaceId,
 		crossSpaceSubService: crossSpaceSubService,
 		componentCtxCancel:   cancel,

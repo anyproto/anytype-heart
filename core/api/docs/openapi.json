@@ -690,6 +690,31 @@
         },
         "type": "object"
       },
+      "FileUploadResponse": {
+        "properties": {
+          "extension": {
+            "description": "File extension without dot, when known",
+            "type": "string"
+          },
+          "media": {
+            "description": "MIME type (e.g. \"image/png\")",
+            "type": "string"
+          },
+          "name": {
+            "description": "Original file name as stored",
+            "type": "string"
+          },
+          "object_id": {
+            "description": "File object ID",
+            "type": "string"
+          },
+          "size_in_bytes": {
+            "description": "Size of the uploaded file",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
       "FilesFilterItem": {
         "properties": {
           "condition": {
@@ -1783,6 +1808,7 @@
             "enum": [
               "viewer",
               "editor",
+              "admin",
               "owner",
               "no_permission"
             ],
@@ -2483,7 +2509,7 @@
             "$ref": "#/components/schemas/SortOptions"
           },
           "types": {
-            "description": "The types of objects to include in results (e.g., \"page\", \"task\", \"bookmark\"); see ListTypes endpoint for valid values",
+            "description": "The types of objects to include in results (e.g., \"page\", \"task\", \"bookmark\"); see ListTypes endpoint for valid values. File-layout types (file, image, video, audio) are excluded by default and must be listed explicitly here to be searchable.",
             "example": [
               "page",
               "task",
@@ -3624,7 +3650,7 @@
     },
     "/v1/search": {
       "post": {
-        "description": "Executes a global search over all spaces accessible to the authenticated user. The request body must specify the `query` text (currently matching only name and snippet of an object), optional filters on types (e.g., \"page\", \"task\"), and sort directives (default: descending by last modified date). Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.",
+        "description": "Executes a global search over all spaces accessible to the authenticated user. The request body must specify the `query` text (currently matching only name and snippet of an object), optional filters on types (e.g., \"page\", \"task\"), and sort directives (default: descending by last modified date). File-layout objects (file, image, video, audio, pdf) are excluded from results by default; to include them, list one of the file type keys (\"file\", \"image\", \"video\", \"audio\") in the `types` field. Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.",
         "operationId": "search_global",
         "parameters": [
           {
@@ -5316,6 +5342,330 @@
         "summary": "Mark chat as read",
         "tags": [
           "Chat"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/files": {
+      "post": {
+        "description": "Uploads a file to the specified space. Accepts multipart/form-data with a file field. The file is processed and stored, then a file object is created. Returns the file object ID along with its name, MIME type and size.",
+        "operationId": "upload_file",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space to upload the file to",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "file"
+              }
+            }
+          },
+          "description": "The file to upload",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResponse"
+                }
+              }
+            },
+            "description": "File uploaded successfully"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            },
+            "description": "Forbidden — read-only space or no permission"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            },
+            "description": "Space not found"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoneError"
+                }
+              }
+            },
+            "description": "Space was deleted"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Upload file",
+        "tags": [
+          "Files"
+        ]
+      }
+    },
+    "/v1/spaces/{space_id}/files/{file_id}": {
+      "delete": {
+        "description": "Removes a file object. By default the file is moved to the bin and can be restored. Pass `skip_bin=true` to permanently delete it instead.",
+        "operationId": "delete_file",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space the file belongs to",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The file object ID",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "When true, permanently delete instead of moving to bin",
+            "in": "query",
+            "name": "skip_bin",
+            "schema": {
+              "default": false,
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "File deleted"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Bad request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Delete file",
+        "tags": [
+          "Files"
+        ]
+      },
+      "get": {
+        "description": "Streams the bytes of a file object. The response Content-Type matches the stored media type. For images, pass `width` to fetch a pre-rendered variant at that pixel width; SVGs are sanitized inline. `width` is ignored for non-image files. The id can be either a file object ID or, for images, a raw file CID.",
+        "operationId": "download_file",
+        "parameters": [
+          {
+            "description": "The version of the API to use",
+            "in": "header",
+            "name": "Anytype-Version",
+            "required": true,
+            "schema": {
+              "default": "2025-05-20",
+              "type": "string"
+            }
+          },
+          {
+            "description": "The ID of the space the file belongs to",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "The file object ID (or raw file CID for images)",
+            "in": "path",
+            "name": "file_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Optional pixel width for image variants; ignored on non-images",
+            "in": "query",
+            "name": "width",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "file"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "File contents"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            },
+            "description": "Invalid query parameters"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundError"
+                }
+              }
+            },
+            "description": "File not found"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerError"
+                }
+              }
+            },
+            "description": "Internal server error"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Download file",
+        "tags": [
+          "Files"
         ]
       }
     },
@@ -7580,7 +7930,7 @@
     },
     "/v1/spaces/{space_id}/search": {
       "post": {
-        "description": "Performs a search within a single space (specified by the `space_id` path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search `query`, `types`, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.",
+        "description": "Performs a search within a single space (specified by the `space_id` path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search `query`, `types`, and sorting preferences. File-layout objects (file, image, video, audio, pdf) are excluded from results by default; to include them, list one of the file type keys (\"file\", \"image\", \"video\", \"audio\") in the `types` field. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.",
         "operationId": "search_space",
         "parameters": [
           {

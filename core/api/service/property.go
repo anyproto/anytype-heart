@@ -74,6 +74,19 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyIconOption.String():             true,
 	bundle.RelationKeyIconName.String():               true,
 	bundle.RelationKeyPicture.String():                true,
+	// Internal file storage and encryption fields. Already Hidden=true in the bundle (so they
+	// don't reach the property cache), but kept here as defense-in-depth so a future change
+	// to either the bundle or the cache subscription cannot accidentally leak file keys / CIDs.
+	bundle.RelationKeyFileId.String():               true,
+	bundle.RelationKeyFileSourceChecksum.String():   true,
+	bundle.RelationKeyFileVariantIds.String():       true,
+	bundle.RelationKeyFileVariantPaths.String():     true,
+	bundle.RelationKeyFileVariantKeys.String():      true,
+	bundle.RelationKeyFileVariantWidths.String():    true,
+	bundle.RelationKeyFileVariantChecksums.String(): true,
+	bundle.RelationKeyFileVariantMills.String():     true,
+	bundle.RelationKeyFileVariantOptions.String():   true,
+	bundle.RelationKeyFileIndexingStatus.String():   true,
 }
 
 var PropertyFormatToRelationFormat = map[apimodel.PropertyFormat]model.RelationFormat{
