@@ -14,6 +14,11 @@ var ObjectLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_bookmark,
 	model.ObjectType_set,
 	model.ObjectType_collection,
+	model.ObjectType_chatDerived,
+}
+
+var ChatLayouts = []model.ObjectTypeLayout{
+	model.ObjectType_chatDerived,
 }
 
 var ObjectAndFileLayouts = append(append([]model.ObjectTypeLayout{}, ObjectLayouts...), domain.FileLayouts...)

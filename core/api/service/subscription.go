@@ -24,16 +24,18 @@ func (s *subscriptionTracker) close() {
 
 // subscriptions groups all subscription trackers
 type subscriptions struct {
-	properties *subscriptionTracker
-	types      *subscriptionTracker
-	tags       *subscriptionTracker
+	properties   *subscriptionTracker
+	types        *subscriptionTracker
+	tags         *subscriptionTracker
+	participants *subscriptionTracker
 }
 
 func newSubscriptions() *subscriptions {
 	return &subscriptions{
-		properties: &subscriptionTracker{},
-		types:      &subscriptionTracker{},
-		tags:       &subscriptionTracker{},
+		properties:   &subscriptionTracker{},
+		types:        &subscriptionTracker{},
+		tags:         &subscriptionTracker{},
+		participants: &subscriptionTracker{},
 	}
 }
 
@@ -46,5 +48,8 @@ func (s *subscriptions) close() {
 	}
 	if s.tags != nil {
 		s.tags.close()
+	}
+	if s.participants != nil {
+		s.participants.close()
 	}
 }

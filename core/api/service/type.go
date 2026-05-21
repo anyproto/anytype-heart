@@ -411,6 +411,8 @@ func (s *Service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout
 		return apimodel.ObjectLayoutCollection
 	case model.ObjectType_participant:
 		return apimodel.ObjectLayoutParticipant
+	case model.ObjectType_chatDerived:
+		return apimodel.ObjectLayoutChat
 	default:
 		return apimodel.ObjectLayoutBasic
 	}

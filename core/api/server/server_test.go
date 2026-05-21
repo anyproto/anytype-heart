@@ -23,6 +23,7 @@ type fixture struct {
 	accountMock          *mock_apicore.MockAccountService
 	eventMock            *mock_apicore.MockEventService
 	crossSpaceSubService *mock_apicore.MockCrossSpaceSubscriptionService
+	chatSubService       *mock_apicore.MockChatSubscriptionService
 	fileObjectMock       *mock_apicore.MockFileObjectService
 }
 
@@ -31,6 +32,7 @@ func newFixture(t *testing.T) *fixture {
 	accountMock := mock_apicore.NewMockAccountService(t)
 	eventMock := mock_apicore.NewMockEventService(t)
 	crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
+	chatSubService := mock_apicore.NewMockChatSubscriptionService(t)
 	fileObjectMock := mock_apicore.NewMockFileObjectService(t)
 
 	crossSpaceSubService.On("Subscribe", mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{}, nil).Maybe()
@@ -38,7 +40,7 @@ func newFixture(t *testing.T) *fixture {
 		TechSpaceId: mockedTechSpaceId,
 	}, nil).Once()
 
-	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, fileObjectMock, mockedListenAddr, []byte{}, []byte{})
+	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, chatSubService, fileObjectMock, mockedListenAddr, []byte{}, []byte{})
 
 	return &fixture{
 		Server:               server,
@@ -46,6 +48,7 @@ func newFixture(t *testing.T) *fixture {
 		accountMock:          accountMock,
 		eventMock:            eventMock,
 		crossSpaceSubService: crossSpaceSubService,
+		chatSubService:       chatSubService,
 		fileObjectMock:       fileObjectMock,
 	}
 }
