@@ -351,4 +351,105 @@ func TestSearchService_Search(t *testing.T) {
 		require.Equal(t, 0, total)
 		require.False(t, hasMore)
 	})
+
+	t.Run("file layouts excluded by default when types not specified", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSearchRequest) bool {
+			// Verify base layout filter does NOT include file layouts
+			if len(req.Filters) == 0 || len(req.Filters[0].NestedFilters) == 0 {
+				return false
+			}
+			layoutFilter := req.Filters[0].NestedFilters[0]
+			if layoutFilter.RelationKey != bundle.RelationKeyResolvedLayout.String() {
+				return false
+			}
+			want := pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...)
+			return assertIntListEqual(t, want, layoutFilter.Value)
+		})).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		_, _, _, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("file layouts included when image type explicitly requested", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSearchRequest) bool {
+			// Verify base layout filter includes file layouts
+			if len(req.Filters) == 0 || len(req.Filters[0].NestedFilters) == 0 {
+				return false
+			}
+			layoutFilter := req.Filters[0].NestedFilters[0]
+			if layoutFilter.RelationKey != bundle.RelationKeyResolvedLayout.String() {
+				return false
+			}
+			want := pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectAndFileLayouts)...)
+			return assertIntListEqual(t, want, layoutFilter.Value)
+		})).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		_, _, _, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Types: []string{"image"}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+
+		// then
+		require.NoError(t, err)
+	})
+
+	t.Run("non-file types do not widen layout filter", func(t *testing.T) {
+		// given
+		ctx := context.Background()
+		fx := newFixture(t)
+		fx.populateCache(mockedSpaceId)
+
+		fx.mwMock.On("ObjectSearch", mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSearchRequest) bool {
+			if len(req.Filters) == 0 || len(req.Filters[0].NestedFilters) == 0 {
+				return false
+			}
+			layoutFilter := req.Filters[0].NestedFilters[0]
+			if layoutFilter.RelationKey != bundle.RelationKeyResolvedLayout.String() {
+				return false
+			}
+			want := pbtypes.IntList(util.LayoutsToIntArgs(util.ObjectLayouts)...)
+			return assertIntListEqual(t, want, layoutFilter.Value)
+		})).Return(&pb.RpcObjectSearchResponse{
+			Records: []*types.Struct{},
+			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
+		}).Once()
+
+		// when
+		_, _, _, err := fx.service.Search(ctx, mockedSpaceId, apimodel.SearchRequest{Types: []string{"page"}, Sort: apimodel.SortOptions{PropertyKey: apimodel.LastModifiedDate, Direction: apimodel.Desc}}, offset, limit)
+
+		// then
+		require.NoError(t, err)
+	})
+}
+
+func assertIntListEqual(t *testing.T, want, got *types.Value) bool {
+	t.Helper()
+	wantList := want.GetListValue().GetValues()
+	gotList := got.GetListValue().GetValues()
+	if len(wantList) != len(gotList) {
+		return false
+	}
+	for i := range wantList {
+		if wantList[i].GetNumberValue() != gotList[i].GetNumberValue() {
+			return false
+		}
+	}
+	return true
 }

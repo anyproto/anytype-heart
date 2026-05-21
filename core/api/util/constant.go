@@ -2,6 +2,7 @@ package util
 
 import (
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -13,6 +14,21 @@ var ObjectLayouts = []model.ObjectTypeLayout{
 	model.ObjectType_bookmark,
 	model.ObjectType_set,
 	model.ObjectType_collection,
+}
+
+var ObjectAndFileLayouts = append(append([]model.ObjectTypeLayout{}, ObjectLayouts...), domain.FileLayouts...)
+
+var fileTypeUniqueKeySet = map[string]struct{}{
+	bundle.TypeKeyFile.URL():  {},
+	bundle.TypeKeyImage.URL(): {},
+	bundle.TypeKeyVideo.URL(): {},
+	bundle.TypeKeyAudio.URL(): {},
+}
+
+// IsFileTypeUniqueKey reports whether the given type unique key (e.g. "ot-image") belongs to a file-layout type.
+func IsFileTypeUniqueKey(uniqueKey string) bool {
+	_, ok := fileTypeUniqueKeySet[uniqueKey]
+	return ok
 }
 
 var MemberLayouts = []model.ObjectTypeLayout{
