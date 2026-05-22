@@ -36,6 +36,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -194,6 +195,7 @@ type SubscribeLastMessagesRequest struct {
 	WithDependencies       bool
 	OnlyLastMessage        bool
 	CouldUseSessionContext bool
+	SseSink                chan<- *pb.Event
 }
 
 type SubscribeLastMessagesResponse struct {

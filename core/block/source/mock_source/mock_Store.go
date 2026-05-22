@@ -5,8 +5,10 @@ package mock_source
 import (
 	context "context"
 
-	pb "github.com/anyproto/anytype-heart/pb"
+	list "github.com/anyproto/any-sync/commonspace/object/acl/list"
 	mock "github.com/stretchr/testify/mock"
+
+	pb "github.com/anyproto/anytype-heart/pb"
 
 	smartblock "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 
@@ -28,6 +30,53 @@ type MockStore_Expecter struct {
 
 func (_m *MockStore) EXPECT() *MockStore_Expecter {
 	return &MockStore_Expecter{mock: &_m.Mock}
+}
+
+// AclList provides a mock function with no fields
+func (_m *MockStore) AclList() list.AclList {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for AclList")
+	}
+
+	var r0 list.AclList
+	if rf, ok := ret.Get(0).(func() list.AclList); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(list.AclList)
+		}
+	}
+
+	return r0
+}
+
+// MockStore_AclList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AclList'
+type MockStore_AclList_Call struct {
+	*mock.Call
+}
+
+// AclList is a helper method to define mock.On call
+func (_e *MockStore_Expecter) AclList() *MockStore_AclList_Call {
+	return &MockStore_AclList_Call{Call: _e.mock.On("AclList")}
+}
+
+func (_c *MockStore_AclList_Call) Run(run func()) *MockStore_AclList_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_AclList_Call) Return(_a0 list.AclList) *MockStore_AclList_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockStore_AclList_Call) RunAndReturn(run func() list.AclList) *MockStore_AclList_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Close provides a mock function with no fields

@@ -71,6 +71,16 @@ const (
 	localPeerBanTTL  = 5 * time.Minute
 )
 
+// reservedCallTimeout bounds a single doNodeReserved RPC. The reserved
+// sub-connection is shared and serialized by s.mu, so a stuck call would
+// block every other metadata RPC (SpaceInfo, AccountInfo, BlocksCheck,
+// FilesInfo). All RPCs routed through doNodeReserved are metadata-only
+// and complete in well under a second on healthy infra; 15s is generous
+// headroom that still bounds queue growth when the server is degraded.
+//
+// var (not const) so tests can shorten it.
+var reservedCallTimeout = 15 * time.Second
+
 type store struct {
 	pool      pool.Pool
 	peerStore peerstore.PeerStore
@@ -137,16 +147,28 @@ func (s *store) doNodeDrpc(ctx context.Context, do func(cl fileproto.DRPCFileCli
 
 // doNodeReserved uses a lazily-acquired reserved sub-connection for small-payload operations.
 // A mutex serializes access since DRPC connections support only one concurrent stream.
-func (s *store) doNodeReserved(ctx context.Context, do func(cl fileproto.DRPCFileClient) error) error {
+//
+// The do callback receives a context bounded by reservedCallTimeout so that a single
+// stuck RPC cannot wedge every other caller queued on s.mu. On timeout we reset the
+// reserved connection so the next caller starts with a fresh sub-conn.
+func (s *store) doNodeReserved(ctx context.Context, do func(ctx context.Context, cl fileproto.DRPCFileClient) error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if err := s.ensureReservedConn(ctx); err != nil {
 		return err
 	}
-	err := do(fileproto.NewDRPCFileClient(s.reservedConn))
+	callCtx, cancel := context.WithTimeout(ctx, reservedCallTimeout)
+	defer cancel()
+	err := do(callCtx, fileproto.NewDRPCFileClient(s.reservedConn))
 	if err != nil {
-		// Connection may be broken; reset for reconnect on next call
+		// Connection may be broken (or stuck past the deadline); reset for reconnect on next call.
+		// Distinguish a deadline-induced reset from a real RPC error so we can spot it in logs:
+		// the deadline only fires when callCtx expired but the parent ctx did not.
+		if errors.Is(err, context.DeadlineExceeded) && ctx.Err() == nil {
+			log.Warn("doNodeReserved: reserved call exceeded deadline, resetting conn",
+				zap.Duration("timeout", reservedCallTimeout))
+		}
 		s.resetReservedConnLocked()
 		return err
 	}
@@ -342,7 +364,7 @@ func (s *store) CheckAvailability(ctx context.Context, spaceID string, cids []ci
 		cidsB[i] = c.Bytes()
 	}
 	var result []*fileproto.BlockAvailability
-	err := s.doNodeReserved(ctx, func(cl fileproto.DRPCFileClient) error {
+	err := s.doNodeReserved(ctx, func(ctx context.Context, cl fileproto.DRPCFileClient) error {
 		resp, err := cl.BlocksCheck(ctx, &fileproto.BlocksCheckRequest{
 			SpaceId: spaceID,
 			Cids:    cidsB,
@@ -396,7 +418,7 @@ func (s *store) DeleteFiles(ctx context.Context, spaceId string, fileIds ...doma
 // AccountInfo retrieves account-level file storage info.
 func (s *store) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {
 	var result *fileproto.AccountInfoResponse
-	err := s.doNodeReserved(ctx, func(cl fileproto.DRPCFileClient) error {
+	err := s.doNodeReserved(ctx, func(ctx context.Context, cl fileproto.DRPCFileClient) error {
 		resp, err := cl.AccountInfo(ctx, &fileproto.AccountInfoRequest{})
 		if err != nil {
 			return rpcerr.Unwrap(err)
@@ -410,7 +432,7 @@ func (s *store) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse
 // SpaceInfo retrieves space-level file storage info.
 func (s *store) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
 	var result *fileproto.SpaceInfoResponse
-	err := s.doNodeReserved(ctx, func(cl fileproto.DRPCFileClient) error {
+	err := s.doNodeReserved(ctx, func(ctx context.Context, cl fileproto.DRPCFileClient) error {
 		resp, err := cl.SpaceInfo(ctx, &fileproto.SpaceInfoRequest{
 			SpaceId: spaceId,
 		})
@@ -430,7 +452,7 @@ func (s *store) FilesInfo(ctx context.Context, spaceId string, fileIds ...domain
 		rawFileIds = append(rawFileIds, id.String())
 	}
 	var result []*fileproto.FileInfo
-	err := s.doNodeReserved(ctx, func(cl fileproto.DRPCFileClient) error {
+	err := s.doNodeReserved(ctx, func(ctx context.Context, cl fileproto.DRPCFileClient) error {
 		resp, err := cl.FilesInfo(ctx, &fileproto.FilesInfoRequest{
 			SpaceId: spaceId,
 			FileIds: rawFileIds,

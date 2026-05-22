@@ -204,7 +204,7 @@ func (s *Service) getTypeFromStruct(details *types.Struct, propertyMap map[strin
 		Key:        apiKey,
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
 		PluralName: details.Fields[bundle.RelationKeyPluralName.String()].GetStringValue(),
-		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       s.getIcon(details.Fields[bundle.RelationKeySpaceId.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), "", details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		Layout:     s.otLayoutToObjectLayout(model.ObjectTypeLayout(details.Fields[bundle.RelationKeyRecommendedLayout.String()].GetNumberValue())),
 		Properties: s.getRecommendedPropertiesFromLists(details.Fields[bundle.RelationKeyRecommendedFeaturedRelations.String()].GetListValue(), details.Fields[bundle.RelationKeyRecommendedRelations.String()].GetListValue(), propertyMap),
@@ -411,6 +411,8 @@ func (s *Service) otLayoutToObjectLayout(objectTypeLayout model.ObjectTypeLayout
 		return apimodel.ObjectLayoutCollection
 	case model.ObjectType_participant:
 		return apimodel.ObjectLayoutParticipant
+	case model.ObjectType_chatDerived:
+		return apimodel.ObjectLayoutChat
 	default:
 		return apimodel.ObjectLayoutBasic
 	}

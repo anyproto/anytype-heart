@@ -11,7 +11,7 @@ import (
 const (
 	offset              = 0
 	limit               = 100
-	gatewayUrl          = "http://localhost:31006"
+	apiBaseUrl          = "http://127.0.0.1:31009"
 	techSpaceId         = "tech-space-id"
 	mockedSpaceId       = "mocked-space-id"
 	mockedObjectId      = "mocked-object-id"
@@ -38,7 +38,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
-	service := NewService(mwMock, gatewayUrl, techSpaceId, crossSpaceSubService)
+	service := NewService(mwMock, nil, apiBaseUrl, techSpaceId, crossSpaceSubService)
 
 	return &fixture{
 		service:              service,
@@ -57,6 +57,14 @@ func (fx *fixture) populateCache(spaceId string) {
 	for _, tag := range GetTestTags() {
 		fx.service.cache.cacheTag(spaceId, tag)
 	}
+}
+
+func (fx *fixture) cacheParticipant(spaceId, identity, name string) {
+	fx.service.cache.cacheParticipant(spaceId, &participantEntry{
+		Id:       "_participant_" + spaceId + "_" + identity,
+		Identity: identity,
+		Name:     name,
+	})
 }
 
 // Common test properties
@@ -231,6 +239,15 @@ func GetTestTypes() []*apimodel.Type {
 			Name:       "Task",
 			UniqueKey:  "ot-task",
 			Layout:     apimodel.ObjectLayoutAction,
+			Properties: []apimodel.Property{},
+		},
+		{
+			Id:         "type-image",
+			Key:        "image",
+			Icon:       nil,
+			Name:       "Image",
+			UniqueKey:  "ot-image",
+			Layout:     apimodel.ObjectLayoutBasic,
 			Properties: []apimodel.Property{},
 		},
 	}

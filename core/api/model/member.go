@@ -34,6 +34,7 @@ type MemberRole string
 const (
 	MemberRoleViewer MemberRole = "viewer"
 	MemberRoleEditor MemberRole = "editor"
+	MemberRoleAdmin  MemberRole = "admin"
 )
 
 func (mr *MemberRole) UnmarshalJSON(data []byte) error {
@@ -42,7 +43,7 @@ func (mr *MemberRole) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	switch MemberRole(s) {
-	case MemberRoleViewer, MemberRoleEditor:
+	case MemberRoleViewer, MemberRoleEditor, MemberRoleAdmin:
 		*mr = MemberRole(s)
 		return nil
 	default:
@@ -56,7 +57,7 @@ type MemberResponse struct {
 
 type UpdateMemberRequest struct {
 	Status *MemberStatus `json:"status" binding:"required" enums:"active,removed,declined" example:"active"` // Status of the member
-	Role   *MemberRole   `json:"role" enums:"viewer,editor" example:"viewer"`                                // Role to assign if approving a joining member
+	Role   *MemberRole   `json:"role" enums:"viewer,editor,admin" example:"viewer"`                          // Role to assign if approving a joining member
 }
 
 type Member struct {
@@ -67,5 +68,5 @@ type Member struct {
 	Identity   string `json:"identity" example:"AAjEaEwPF4nkEh7AWkqEnzcQ8HziGB4ETjiTpvRCQvWnSMDZ"`                                                                                  // The identity of the member in the network
 	GlobalName string `json:"global_name" example:"john.any"`                                                                                                                       // The global name of the member in the network
 	Status     string `json:"status" enums:"joining,active,removed,declined,removing,canceled" example:"active"`                                                                    // The status of the member
-	Role       string `json:"role" enums:"viewer,editor,owner,no_permission" example:"owner"`                                                                                       // The role of the member
+	Role       string `json:"role" enums:"viewer,editor,admin,owner,no_permission" example:"owner"`                                                                                 // The role of the member
 }

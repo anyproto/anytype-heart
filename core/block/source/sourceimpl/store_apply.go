@@ -58,6 +58,7 @@ func (a *storeApply) applyChange(change *objecttree.Change) (err error) {
 	set := storestate.ChangeSet{
 		Id:        change.Id,
 		Order:     change.OrderId,
+		AclHeadId: change.AclHeadId,
 		Changes:   storeChange.ChangeSet,
 		Creator:   change.Identity.Account(),
 		Timestamp: change.Timestamp,

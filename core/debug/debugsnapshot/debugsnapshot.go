@@ -254,6 +254,16 @@ func ReadInfoFromZip(zipPath string) (Info, bool) {
 // --- host helpers ---
 
 func getCPUModel() string {
+	// On iOS, gopsutil's cpu.Info() reaches into IOKit
+	// (AppleARMIODevice / IORegistryEntryCreateCFProperty) to read CPU
+	// frequency. Those properties are restricted by the iOS sandbox, the
+	// IOKit call returns NULL, and the subsequent CFDataGetLength(NULL)
+	// crashes the process with EXC_BAD_ACCESS. The CPU model is cosmetic
+	// metadata for the snapshot — skip it on iOS rather than risk the
+	// crash.
+	if runtime.GOOS == "ios" {
+		return ""
+	}
 	infos, err := cpu.Info()
 	if err != nil || len(infos) == 0 {
 		return ""

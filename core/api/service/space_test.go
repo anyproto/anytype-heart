@@ -155,7 +155,7 @@ func TestSpaceService_ListSpaces(t *testing.T) {
 		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
-				File:   gatewayUrl + "/image/" + iconImage,
+				File:   apiBaseUrl + "/v1/spaces/my-space-id/files/" + iconImage,
 			},
 		}, spaces[1].Icon)
 		require.Equal(t, "gateway-url-2", spaces[1].GatewayUrl)
@@ -295,7 +295,7 @@ func TestSpaceService_GetSpace(t *testing.T) {
 		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
-				File:   gatewayUrl + "/image/" + iconImage,
+				File:   apiBaseUrl + "/v1/spaces/space-id/files/" + iconImage,
 			},
 		}, space.Icon)
 		require.Equal(t, "gateway-url", space.GatewayUrl)
@@ -448,7 +448,7 @@ func TestSpaceService_CreateSpace(t *testing.T) {
 		require.Equal(t, &apimodel.Icon{
 			WrappedIcon: apimodel.FileIcon{
 				Format: apimodel.IconFormatFile,
-				File:   gatewayUrl + "/image/" + iconImage,
+				File:   apiBaseUrl + "/v1/spaces/new-space-id/files/" + iconImage,
 			},
 		}, space.Icon)
 	})

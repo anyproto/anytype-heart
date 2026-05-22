@@ -60,6 +60,8 @@ func ConvertParticipantPermissions(permissions model.ParticipantPermissions) lis
 		return list.AclPermissionsReader
 	case model.ParticipantPermissions_Owner:
 		return list.AclPermissionsOwner
+	case model.ParticipantPermissions_Admin:
+		return list.AclPermissionsAdmin
 	default:
 		return list.AclPermissionsNone
 	}
@@ -73,6 +75,8 @@ func ConvertAclPermissions(permissions list.AclPermissions) model.ParticipantPer
 		return model.ParticipantPermissions_Reader
 	case aclrecordproto.AclUserPermissions_Owner:
 		return model.ParticipantPermissions_Owner
+	case aclrecordproto.AclUserPermissions_Admin:
+		return model.ParticipantPermissions_Admin
 	default:
 		return model.ParticipantPermissions_NoPermissions
 	}

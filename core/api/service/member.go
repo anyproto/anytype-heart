@@ -89,7 +89,7 @@ func (s *Service) ListMembers(ctx context.Context, spaceId string, additionalFil
 			Object:     "member",
 			Id:         record.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 			Name:       record.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-			Icon:       getIcon(s.gatewayUrl, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0),
+			Icon:       s.getIcon(spaceId, record.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), record.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0),
 			Identity:   record.Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 			GlobalName: record.Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 			Status:     strcase.ToSnake(model.ParticipantStatus_name[int32(record.Fields[bundle.RelationKeyParticipantStatus.String()].GetNumberValue())]),
@@ -134,7 +134,7 @@ func (s *Service) GetMember(ctx context.Context, spaceId string, memberId string
 		Object:     "member",
 		Id:         resp.Records[0].Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       resp.Records[0].Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       getIcon(s.gatewayUrl, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0),
+		Icon:       s.getIcon(spaceId, "", resp.Records[0].Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0),
 		Identity:   resp.Records[0].Fields[bundle.RelationKeyIdentity.String()].GetStringValue(),
 		GlobalName: resp.Records[0].Fields[bundle.RelationKeyGlobalName.String()].GetStringValue(),
 		Status:     strcase.ToSnake(model.ParticipantStatus_name[int32(resp.Records[0].Fields[bundle.RelationKeyParticipantStatus.String()].GetNumberValue())]),
@@ -214,6 +214,8 @@ func (s *Service) mapMemberPermissions(permissions model.ParticipantPermissions)
 		return "viewer"
 	case model.ParticipantPermissions_Writer:
 		return "editor"
+	case model.ParticipantPermissions_Admin:
+		return "admin"
 	default:
 		return strcase.ToSnake(model.ParticipantPermissions_name[int32(permissions)])
 	}
@@ -226,6 +228,8 @@ func (s *Service) mapMemberRole(role string) model.ParticipantPermissions {
 		return model.ParticipantPermissions_Reader
 	case "editor":
 		return model.ParticipantPermissions_Writer
+	case "admin":
+		return model.ParticipantPermissions_Admin
 	default:
 		return model.ParticipantPermissions_Reader
 	}
