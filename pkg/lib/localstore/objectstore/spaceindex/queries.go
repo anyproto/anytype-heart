@@ -282,12 +282,21 @@ func (s *dsObjectStore) injectRelatedObjects(
 }
 
 func matchHit(details *domain.Details, relKey domain.RelationKey, hitMap map[string]injectionHit) (injectionHit, bool) {
+	var (
+		best  injectionHit
+		found bool
+	)
 	for _, val := range details.WrapToStringList(relKey) {
-		if hit, ok := hitMap[val]; ok {
-			return hit, true
+		hit, ok := hitMap[val]
+		if !ok {
+			continue
+		}
+		if !found || hit.score > best.score || (hit.score == best.score && hit.id < best.id) {
+			best = hit
+			found = true
 		}
 	}
-	return injectionHit{}, false
+	return best, found
 }
 
 func makeInjectionRecord(source database.Record, hit injectionHit, relationKey string) database.Record {

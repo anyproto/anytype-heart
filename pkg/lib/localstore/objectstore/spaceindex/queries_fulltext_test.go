@@ -111,6 +111,56 @@ func TestInjectionRelationKey(t *testing.T) {
 	})
 }
 
+func TestMatchHit(t *testing.T) {
+	relKey := domain.RelationKey("tags")
+
+	t.Run("returns false when no value matches", func(t *testing.T) {
+		details := makeDetails(TestObject{
+			relKey: domain.StringList([]string{"x", "y"}),
+		})
+		hitMap := map[string]injectionHit{
+			"other": {id: "other", score: 1.0},
+		}
+
+		_, ok := matchHit(details, relKey, hitMap)
+		assert.False(t, ok)
+	})
+
+	t.Run("picks highest-scoring hit regardless of value order", func(t *testing.T) {
+		// given the lower-scoring hit appears first in the relation value list
+		details := makeDetails(TestObject{
+			relKey: domain.StringList([]string{"low", "high", "mid"}),
+		})
+		hitMap := map[string]injectionHit{
+			"low":  {id: "low", score: 0.5},
+			"mid":  {id: "mid", score: 1.0},
+			"high": {id: "high", score: 3.0},
+		}
+
+		hit, ok := matchHit(details, relKey, hitMap)
+
+		require.True(t, ok)
+		assert.Equal(t, "high", hit.id)
+		assert.Equal(t, 3.0, hit.score)
+	})
+
+	t.Run("ties are broken deterministically by id", func(t *testing.T) {
+		// given two hits with equal score, listed in arbitrary order
+		details := makeDetails(TestObject{
+			relKey: domain.StringList([]string{"zebra", "apple"}),
+		})
+		hitMap := map[string]injectionHit{
+			"zebra": {id: "zebra", score: 1.0},
+			"apple": {id: "apple", score: 1.0},
+		}
+
+		hit, ok := matchHit(details, relKey, hitMap)
+
+		require.True(t, ok)
+		assert.Equal(t, "apple", hit.id)
+	})
+}
+
 func TestQueryFromFulltext(t *testing.T) {
 	t.Run("returns matched objects from fulltext results", func(t *testing.T) {
 		// given
