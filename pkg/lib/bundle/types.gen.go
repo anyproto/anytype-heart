@@ -43,6 +43,7 @@ const (
 	TypeKeyProject        domain.TypeKey = "project"
 	TypeKeyChatDerived    domain.TypeKey = "chatDerived"
 	TypeKeyDiscussion     domain.TypeKey = "discussion"
+	TypeKeyCanvas         domain.TypeKey = "canvas"
 )
 
 var (
@@ -187,6 +188,20 @@ var (
 			Revision:      2,
 			Types:         []model.SmartBlockType{model.SmartBlockType_DiscussionObject},
 			Url:           TypePrefix + "discussion",
+		},
+		TypeKeyCanvas: {
+
+			Description:   "",
+			IconColor:     6,
+			IconName:      "color-wand",
+			Layout:        model.ObjectType_canvas,
+			Name:          "Canvas",
+			PluralName:    "Canvases",
+			Readonly:      true,
+			RelationLinks: []*model.RelationLink{MustGetRelationLink(RelationKeyTag)},
+			Revision:      1,
+			Types:         []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:           TypePrefix + "canvas",
 		},
 		TypeKeyFile: {
 

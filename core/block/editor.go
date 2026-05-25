@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
+	"github.com/anyproto/anytype-heart/core/block/editor/canvas"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -770,4 +771,44 @@ func widgetHasBlock(st *state.State, block *model.Block) (found bool) {
 		return true
 	})
 	return found
+}
+
+func (s *Service) CanvasNodeCreate(ctx session.Context, req pb.RpcBlockCanvasNodeCreateRequest) (id string, err error) {
+	err = cache.DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e canvas.CanvasEditor) error {
+		id, err = e.CanvasNodeCreate(st, req)
+		return err
+	})
+	return
+}
+
+func (s *Service) CanvasNodeUpdate(ctx session.Context, req pb.RpcBlockCanvasNodeUpdateRequest) error {
+	return cache.DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e canvas.CanvasEditor) error {
+		return e.CanvasNodeUpdate(st, req)
+	})
+}
+
+func (s *Service) CanvasNodeDelete(ctx session.Context, req pb.RpcBlockCanvasNodeDeleteRequest) error {
+	return cache.DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e canvas.CanvasEditor) error {
+		return e.CanvasNodeDelete(st, req)
+	})
+}
+
+func (s *Service) CanvasEdgeCreate(ctx session.Context, req pb.RpcBlockCanvasEdgeCreateRequest) (id string, err error) {
+	err = cache.DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e canvas.CanvasEditor) error {
+		id, err = e.CanvasEdgeCreate(st, req)
+		return err
+	})
+	return
+}
+
+func (s *Service) CanvasEdgeUpdate(ctx session.Context, req pb.RpcBlockCanvasEdgeUpdateRequest) error {
+	return cache.DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e canvas.CanvasEditor) error {
+		return e.CanvasEdgeUpdate(st, req)
+	})
+}
+
+func (s *Service) CanvasEdgeDelete(ctx session.Context, req pb.RpcBlockCanvasEdgeDeleteRequest) error {
+	return cache.DoStateCtx(s, ctx, req.ContextId, func(st *state.State, e canvas.CanvasEditor) error {
+		return e.CanvasEdgeDelete(st, req)
+	})
 }

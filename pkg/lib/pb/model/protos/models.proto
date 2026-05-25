@@ -133,6 +133,8 @@ message Block {
         Content.TableRow tableRow = 28;
         Content.Widget widget = 29;
         Content.Chat chat = 30;
+        Content.CanvasNode canvasNode = 31;
+        Content.CanvasEdge canvasEdge = 32;
     }
 
     message Restrictions {
@@ -653,6 +655,31 @@ message Block {
         message Chat {
 
         }
+
+        message CanvasNode {
+            enum Type {
+                Object = 0; // reference to an existing Space object
+                Text   = 1; // standalone text card
+                File   = 2; // media / file card
+                Group  = 3; // grouping rectangle
+            }
+            Type   type           = 1;
+            string targetObjectId = 2; // set when type = Object
+            string text           = 3; // set when type = Text
+            double x              = 4;
+            double y              = 5;
+            double width          = 6;
+            double height         = 7;
+            string color          = 8; // background color (Group)
+            string label          = 9; // title (Group)
+        }
+
+        message CanvasEdge {
+            string fromNodeId = 1;
+            string toNodeId   = 2;
+            string label      = 3;
+            string color      = 4;
+        }
     }
 }
 
@@ -864,6 +891,7 @@ message ObjectType {
         missingObject = 25;
         devices = 26;
         discussion = 27;
+        canvas = 28;
     }
 }
 

@@ -526,5 +526,20 @@
       "tag"
     ],
     "revision": 2
+  },
+  {
+    "id": "canvas",
+    "name": "Canvas",
+    "pluralName": "Canvases",
+    "types": [
+      "Page"
+    ],
+    "iconColor": 6,
+    "iconName": "color-wand",
+    "layout": "canvas",
+    "relations": [
+      "tag"
+    ],
+    "revision": 1
   }
 ]

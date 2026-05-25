@@ -3,6 +3,7 @@ package editor
 import (
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/editor/canvas"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/collection"
 	"github.com/anyproto/anytype-heart/core/block/editor/dataview"
@@ -63,6 +64,7 @@ type Page struct {
 
 	dataview.Dataview
 	table.TableEditor
+	canvas.CanvasEditor
 
 	objectStore       spaceindex.Store
 	fileObjectService fileobject.Service
@@ -92,9 +94,10 @@ func (f *ObjectFactory) newPage(spaceId string, sb smartblock.SmartBlock) *Page 
 			f.fileObjectService,
 		),
 		Bookmark:    bookmark.NewBookmark(sb, f.bookmarkService),
-		Dataview:    dataview.NewDataview(sb, store),
-		TableEditor: table.NewEditor(sb),
-		Collection:  collectionComponent,
+		Dataview:     dataview.NewDataview(sb, store),
+		TableEditor:  table.NewEditor(sb),
+		CanvasEditor: canvas.NewEditor(sb),
+		Collection:   collectionComponent,
 
 		objectStore:       store,
 		fileObjectService: f.fileObjectService,
@@ -250,6 +253,11 @@ func (p *Page) CreationStateMigration(ctx *smartblock.InitContext) migration.Mig
 				blockContent := template.MakeDataviewContent(true, nil, nil, nil)
 				templates = append(templates,
 					template.WithDataview(blockContent, false),
+				)
+			case model.ObjectType_canvas:
+				templates = append(templates,
+					template.WithTitle,
+					template.WithLayout(layout),
 				)
 			default:
 				templates = append(templates,

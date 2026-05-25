@@ -9483,6 +9483,152 @@ message Rpc {
         }
 
     }
+
+    message BlockCanvasNode {
+        message Create {
+            message Request {
+                string contextId = 1;
+                anytype.model.Block.Content.CanvasNode node = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                string blockId = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message Update {
+            message Request {
+                string contextId = 1;
+                string blockId = 2;
+                anytype.model.Block.Content.CanvasNode node = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message Delete {
+            message Request {
+                string contextId = 1;
+                repeated string blockIds = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+    }
+
+    message BlockCanvasEdge {
+        message Create {
+            message Request {
+                string contextId = 1;
+                anytype.model.Block.Content.CanvasEdge edge = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+                string blockId = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message Update {
+            message Request {
+                string contextId = 1;
+                string blockId = 2;
+                anytype.model.Block.Content.CanvasEdge edge = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message Delete {
+            message Request {
+                string contextId = 1;
+                repeated string blockIds = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+    }
 }
 
 message Empty {

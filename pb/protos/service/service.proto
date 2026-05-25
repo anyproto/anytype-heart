@@ -326,6 +326,13 @@ service ClientCommands {
     rpc BlockWidgetSetLimit (anytype.Rpc.BlockWidget.SetLimit.Request) returns (anytype.Rpc.BlockWidget.SetLimit.Response);
     rpc BlockWidgetSetViewId (anytype.Rpc.BlockWidget.SetViewId.Request) returns (anytype.Rpc.BlockWidget.SetViewId.Response);
 
+    rpc BlockCanvasNodeCreate (anytype.Rpc.BlockCanvasNode.Create.Request) returns (anytype.Rpc.BlockCanvasNode.Create.Response);
+    rpc BlockCanvasNodeUpdate (anytype.Rpc.BlockCanvasNode.Update.Request) returns (anytype.Rpc.BlockCanvasNode.Update.Response);
+    rpc BlockCanvasNodeDelete (anytype.Rpc.BlockCanvasNode.Delete.Request) returns (anytype.Rpc.BlockCanvasNode.Delete.Response);
+    rpc BlockCanvasEdgeCreate (anytype.Rpc.BlockCanvasEdge.Create.Request) returns (anytype.Rpc.BlockCanvasEdge.Create.Response);
+    rpc BlockCanvasEdgeUpdate (anytype.Rpc.BlockCanvasEdge.Update.Request) returns (anytype.Rpc.BlockCanvasEdge.Update.Response);
+    rpc BlockCanvasEdgeDelete (anytype.Rpc.BlockCanvasEdge.Delete.Request) returns (anytype.Rpc.BlockCanvasEdge.Delete.Response);
+
 
     // Other specific block commands
     // ***
