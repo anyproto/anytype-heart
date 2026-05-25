@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func newFilters(t *testing.T, s *StoreFixture, filters []database.FilterRequest, sorts []database.SortRequest) database.Filters {
@@ -290,6 +291,100 @@ func TestQueryFromFulltext(t *testing.T) {
 		require.Len(t, recs, 1)
 		assert.Equal(t, "obj1", recs[0].Details.GetString(bundle.RelationKeyId))
 		assert.Equal(t, "priority", recs[0].Meta.RelationKey)
+	})
+
+	t.Run("injected record carries hit score and recomputed final_score", func(t *testing.T) {
+		// given
+		s := NewStoreFixture(t)
+		tagObj := TestObject{
+			bundle.RelationKeyId:             domain.String("tag1"),
+			bundle.RelationKeyName:           domain.String("Priority"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:    domain.String("priority"),
+		}
+		obj1 := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("Task 1"),
+			domain.RelationKey("priority"):   domain.StringList([]string{"tag1"}),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{tagObj, obj1})
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.5},
+		}
+		params := newFilters(t, s, []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_NotIn,
+				Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
+			},
+		}, nil)
+
+		// when
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Priority")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, recs, 1)
+		injected := recs[0]
+		assert.Equal(t, "obj1", injected.Details.GetString(bundle.RelationKeyId))
+		assert.Equal(t, 1.5, injected.Details.GetFloat64(bundle.RelationKey_score))
+		// final_score is recomputed from the hit score against the injected record details (no name match path)
+		assert.InDelta(t,
+			database.ComputeFinalScore(1.5, injected.Details, false),
+			injected.Details.GetFloat64(bundle.RelationKey_final_score),
+			1e-9,
+		)
+	})
+
+	t.Run("injected Meta.RelationDetails is filtered to whitelisted keys", func(t *testing.T) {
+		// given a tag with extra fields that should NOT leak into RelationDetails
+		s := NewStoreFixture(t)
+		tagObj := TestObject{
+			bundle.RelationKeyId:                  domain.String("tag1"),
+			bundle.RelationKeyName:                domain.String("Urgent"),
+			bundle.RelationKeyType:                domain.String("optionType"),
+			bundle.RelationKeyResolvedLayout:      domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:         domain.String("priority"),
+			bundle.RelationKeyRelationOptionColor: domain.String("red"),
+			bundle.RelationKeyDescription:         domain.String("should not be included"),
+		}
+		obj1 := TestObject{
+			bundle.RelationKeyId:             domain.String("obj1"),
+			bundle.RelationKeyName:           domain.String("Task 1"),
+			domain.RelationKey("priority"):   domain.StringList([]string{"tag1"}),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{tagObj, obj1})
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+		}
+		params := newFilters(t, s, []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_NotIn,
+				Value:       domain.Int64List([]int64{int64(model.ObjectType_relationOption)}),
+			},
+		}, nil)
+
+		// when
+		recs, err := s.QueryFromFulltext(results, params, 0, 0, "Urgent")
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, recs, 1)
+		assert.Equal(t, "priority", recs[0].Meta.RelationKey)
+
+		wantRelDetails := pbtypes.StructFilterKeys(makeDetails(tagObj).ToProto(), []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyType.String(),
+			bundle.RelationKeyResolvedLayout.String(),
+			bundle.RelationKeyRelationOptionColor.String(),
+		})
+		assert.Equal(t, wantRelDetails, recs[0].Meta.RelationDetails)
 	})
 
 	t.Run("injects objects found by type name", func(t *testing.T) {

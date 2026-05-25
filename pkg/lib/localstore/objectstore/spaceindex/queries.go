@@ -245,10 +245,15 @@ func (s *dsObjectStore) injectRelatedObjects(
 		}
 
 		hitMap := make(map[string]injectionHit, len(hits))
-		values := make([]domain.Value, 0, len(hits))
 		for i := range hits {
-			hitMap[hits[i].id] = hits[i]
-			values = append(values, domain.String(hits[i].id))
+			existing, ok := hitMap[hits[i].id]
+			if !ok || hits[i].score > existing.score {
+				hitMap[hits[i].id] = hits[i]
+			}
+		}
+		values := make([]domain.Value, 0, len(hitMap))
+		for id := range hitMap {
+			values = append(values, domain.String(id))
 		}
 
 		queryLimit := uint(0)
