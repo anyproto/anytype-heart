@@ -294,33 +294,42 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 	if spaceId == "" {
 		return nil, fmt.Errorf("spaceId is empty")
 	}
+	// Open the per-space store BEFORE taking s.lock. SpaceIndex can be the
+	// first open of this space and then synchronously fires OnSpaceIndexOpened,
+	// whose cross-space-subscription callback re-enters subscriptionService.Search
+	// on this same goroutine (Search -> Unsubscribe / getSpaceSubscriptions ->
+	// s.lock). Holding s.lock across SpaceIndex would self-deadlock on this
+	// non-reentrant mutex. See TestLazySubscribe_SearchFirstOpenerDoesNotDeadlock.
+	// SpaceIndex is idempotent, so a concurrent/re-entrant open is safe.
+	index := s.objectStore.SpaceIndex(spaceId)
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	spaceSubs, ok := s.spaceSubs[spaceId]
-	if !ok {
-		cache := newCache()
-		spaceSubs = &spaceSubscriptions{
-			cache:             cache,
-			subscriptionKeys:  make([]string, 0, 20),
-			subscriptions:     make(map[string]subscription, 20),
-			customOutput:      map[string]*internalSubOutput{},
-			recBatch:          mb.New[database.Record](0),
-			objectStore:       s.objectStore.SpaceIndex(spaceId),
-			kanban:            s.kanban,
-			collectionService: s.collectionService,
-			eventSender:       s.eventSender,
-			ctxBuf:            &opCtx{spaceId: spaceId, c: cache},
-			arenaPool:         s.arenaPool,
-		}
-		spaceSubs.ds = newDependencyService(spaceSubs)
-		spaceSubs.initDebugger()
-		err := spaceSubs.Run()
-		if err != nil {
-			return nil, fmt.Errorf("run space subscriptions: %w", err)
-		}
-		s.spaceSubs[spaceId] = spaceSubs
+	// The re-entrant open above may already have created the spaceSubscriptions.
+	if spaceSubs, ok := s.spaceSubs[spaceId]; ok {
+		return spaceSubs, nil
 	}
+	cache := newCache()
+	spaceSubs := &spaceSubscriptions{
+		cache:             cache,
+		subscriptionKeys:  make([]string, 0, 20),
+		subscriptions:     make(map[string]subscription, 20),
+		customOutput:      map[string]*internalSubOutput{},
+		recBatch:          mb.New[database.Record](0),
+		objectStore:       index,
+		kanban:            s.kanban,
+		collectionService: s.collectionService,
+		eventSender:       s.eventSender,
+		ctxBuf:            &opCtx{spaceId: spaceId, c: cache},
+		arenaPool:         s.arenaPool,
+	}
+	spaceSubs.ds = newDependencyService(spaceSubs)
+	spaceSubs.initDebugger()
+	if err := spaceSubs.Run(); err != nil {
+		return nil, fmt.Errorf("run space subscriptions: %w", err)
+	}
+	s.spaceSubs[spaceId] = spaceSubs
 	return spaceSubs, nil
 }
 

@@ -585,6 +585,51 @@ func TestSubscribeWithPredicate(t *testing.T) {
 	})
 }
 
+// TestLazySubscribe_SearchFirstOpenerDoesNotDeadlock guards against a
+// self-deadlock: subscription.getSpaceSubscriptions holds the service lock
+// across objectStore.SpaceIndex; when that SpaceIndex is the first open of a
+// space pending in a cross-space subscription, its OnSpaceIndexOpened callback
+// re-enters subscriptionService.Search on the same goroutine, which tries to
+// re-acquire the same (non-reentrant) lock.
+func TestLazySubscribe_SearchFirstOpenerDoesNotDeadlock(t *testing.T) {
+	fx := newFixture(t)
+
+	// Spaceview for space1 exists; space1's objectstore stays closed.
+	fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+		givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+	})
+	time.Sleep(500 * time.Millisecond) // let the tech-space sub propagate
+
+	// Cross-space subscription: space1 matches the predicate but is not open,
+	// so it is recorded as pending.
+	resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
+	require.NoError(t, err)
+	sub := fx.subscriptions[resp.SubId]
+	require.NotNil(t, sub)
+	sub.lock.Lock()
+	_, pending := sub.pendingSpaceIds["space1"]
+	sub.lock.Unlock()
+	require.True(t, pending, "space1 must be pending for this repro")
+
+	// Make subscriptionService.Search the FIRST opener of space1.
+	done := make(chan error, 1)
+	go func() {
+		_, e := fx.subscriptionService.Search(subscriptionservice.SubscribeRequest{
+			SubId:             "ui-sub-space1",
+			SpaceId:           "space1",
+			NoDepSubscription: true,
+			Keys:              []string{bundle.RelationKeyId.String()},
+		})
+		done <- e
+	}()
+	select {
+	case e := <-done:
+		require.NoError(t, e)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Search(space1) deadlocked: getSpaceSubscriptions holds the service lock across SpaceIndex, whose OnSpaceIndexOpened callback re-enters the subscription service")
+	}
+}
+
 func TestLazySubscribe(t *testing.T) {
 	t.Run("subscribe returns only loaded spaces initially", func(t *testing.T) {
 		fx := newFixture(t)
