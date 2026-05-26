@@ -476,12 +476,19 @@ func (i *indexer) ftInit() error {
 			if err != nil {
 				return err
 			}
-			// query objects that are existing in the store
-			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
-			err = i.store.EnqueueAllForFulltextIndexing(i.runCtx)
-			if err != nil {
-				return err
-			}
+			// EnqueueAllForFulltextIndexing waits for the objectstore warm-up
+			// so the rebuild covers every space, not just those already open.
+			// Run it off the Run path: ftInit is called synchronously from
+			// StartFullTextIndex (component Run), and blocking on warm-up here
+			// would stall startup / workspace open. The FT loop (started right
+			// after) drains the queue as it fills. Objects not yet in the
+			// store are indexed later via reindexOutdatedObjects or on
+			// receiving via any-sync.
+			go func() {
+				if enqErr := i.store.EnqueueAllForFulltextIndexing(i.runCtx); enqErr != nil {
+					log.Errorf("enqueue all for fulltext indexing: %v", enqErr)
+				}
+			}()
 		}
 	}
 	return nil
