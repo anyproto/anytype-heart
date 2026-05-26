@@ -103,6 +103,14 @@ func (s *invalidStore) ModifyObjectDetails(id string, proc func(details *domain.
 	return s.err
 }
 
+func (s *invalidStore) ModifyObjectDetailsCtx(ctx context.Context, id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
+	return s.err
+}
+
+func (s *invalidStore) ListIdsWithoutSyncDetails(ctx context.Context) ([]string, error) {
+	return nil, s.err
+}
+
 func (s *invalidStore) DeleteObject(id string) error {
 	return s.err
 }
@@ -226,7 +234,6 @@ func (s *invalidStore) GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, th
 func (s *invalidStore) ClearHeadsState(ctx context.Context) error {
 	return s.err
 }
-
 
 func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return nil, s.err

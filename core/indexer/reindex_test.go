@@ -197,6 +197,7 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 			spc := mock_space.NewMockSpace(t)
 			spc.EXPECT().Id().Return(space)
 			spc.EXPECT().Storage().Return(storage).Maybe()
+			spc.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe() // addSyncDetails: nothing to backfill in this test
 			fx.sourceFx.EXPECT().IDsListerBySmartblockType(mock.Anything, mock.Anything).Return(idsLister{Ids: []string{}}, nil).Maybe()
 
 			// when
@@ -304,6 +305,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().Storage().Return(storage).Maybe()
+		space1.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe() // addSyncDetails: nothing to backfill in this test
 
 		// when
 		err = fx.ReindexSpace(space1)
@@ -345,6 +347,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId2)
 		space1.EXPECT().Storage().Return(storage).Maybe()
+		space1.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe() // addSyncDetails: nothing to backfill in this test
 		// when
 		err = fx.ReindexSpace(space1)
 		assert.NoError(t, err)
@@ -367,86 +370,155 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 }
 
 func TestReindex_addSyncRelations(t *testing.T) {
-	t.Run("addSyncRelations local only", func(t *testing.T) {
-		// given
-		const spaceId1 = "spaceId1"
-		fx := newFixture(t)
+	const spaceId1 = "spaceId1"
 
-		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
-			{
-				bundle.RelationKeyId:        domain.String("1"),
-				bundle.RelationKeyIsDeleted: domain.Bool(true),
-			},
-			{
-				bundle.RelationKeyId:        domain.String("2"),
-				bundle.RelationKeyIsDeleted: domain.Bool(true),
-			},
-		})
-
+	// newSpace returns a space whose FilterNotExists treats every id as
+	// not-in-cache (so writes hit the store) and which therefore must never
+	// be asked to take the per-object cache lock: DoLockedIfNotExists is left
+	// unexpected on purpose so a regression that re-nests the cache lock
+	// inside the write tx (the GO-7291 ABBA deadlock) fails the test.
+	newSpace := func(t *testing.T) *mock_space.MockSpace {
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
+		space1.EXPECT().FilterNotExists(mock.Anything).
+			RunAndReturn(func(ids []string) []string { return ids }).Maybe()
+		return space1
+	}
 
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypePage).Return(idsLister{Ids: []string{"1", "2"}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeRelation).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeRelationOption).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeFileObject).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeObjectType).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeTemplate).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeProfilePage).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatDerivedObject).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeDiscussionObject).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatObjectDeprecated).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeSpaceView).Return(idsLister{Ids: []string{}}, nil)
+	t.Run("first run writes sync details for objects missing them", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.config.NetworkMode = pb.RpcAccount_DefaultConfig
+		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
+			{bundle.RelationKeyId: domain.String("1"), bundle.RelationKeyName: domain.String("a")},
+			{bundle.RelationKeyId: domain.String("2"), bundle.RelationKeyName: domain.String("b")},
+		})
 
-		space1.EXPECT().DoLockedIfNotExists("1", mock.AnythingOfType("func() error")).Return(nil)
-		space1.EXPECT().DoLockedIfNotExists("2", mock.AnythingOfType("func() error")).Return(nil)
+		fx.addSyncDetails(newSpace(t))
 
-		// when
-		fx.addSyncDetails(space1)
-
-		// then
+		for _, id := range []string{"1", "2"} {
+			got, err := fx.objectStore.GetDetails(spaceId1, id)
+			require.NoError(t, err)
+			assert.True(t, got.Has(bundle.RelationKeySyncStatus))
+			assert.Equal(t, int64(domain.ObjectSyncStatusSynced), got.GetInt64(bundle.RelationKeySyncStatus))
+			assert.Equal(t, int64(domain.SyncErrorNull), got.GetInt64(bundle.RelationKeySyncError))
+			assert.NotZero(t, got.GetInt64(bundle.RelationKeySyncDate))
+		}
 	})
 
-	t.Run("addSyncRelations", func(t *testing.T) {
-		// given
-		const spaceId1 = "spaceId1"
-		fx := newFixture(t)
+	t.Run("local only mode writes error status", func(t *testing.T) {
+		fx := newFixture(t) // default fixture config is LocalOnly
+		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
+			{bundle.RelationKeyId: domain.String("1"), bundle.RelationKeyName: domain.String("a")},
+		})
 
+		fx.addSyncDetails(newSpace(t))
+
+		got, err := fx.objectStore.GetDetails(spaceId1, "1")
+		require.NoError(t, err)
+		assert.Equal(t, int64(domain.ObjectSyncStatusError), got.GetInt64(bundle.RelationKeySyncStatus))
+		assert.Equal(t, int64(domain.SyncErrorNetworkError), got.GetInt64(bundle.RelationKeySyncError))
+	})
+
+	t.Run("repeat run is a no-op when sync details already present", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.config.NetworkMode = pb.RpcAccount_DefaultConfig
 		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
 			{
-				bundle.RelationKeyId:        domain.String("1"),
-				bundle.RelationKeyIsDeleted: domain.Bool(true),
-			},
-			{
-				bundle.RelationKeyId:        domain.String("2"),
-				bundle.RelationKeyIsDeleted: domain.Bool(true),
+				bundle.RelationKeyId:         domain.String("1"),
+				bundle.RelationKeyName:       domain.String("a"),
+				bundle.RelationKeySyncStatus: domain.Int64(int64(domain.ObjectSyncStatusSynced)),
+				bundle.RelationKeySyncDate:   domain.Int64(123), // sentinel; must not be bumped
+				bundle.RelationKeySyncError:  domain.Int64(int64(domain.SyncErrorNull)),
 			},
 		})
 
 		space1 := mock_space.NewMockSpace(t)
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
+		// Nothing is missing, so the filtered set must be empty and no
+		// object must be touched. DoLockedIfNotExists is left unexpected:
+		// addSyncDetails must never take the per-object cache lock.
+		space1.EXPECT().FilterNotExists(mock.Anything).
+			RunAndReturn(func(ids []string) []string {
+				assert.Empty(t, ids, "repeat run must find nothing missing")
+				return ids
+			}).Maybe()
 
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypePage).Return(idsLister{Ids: []string{"1", "2"}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeRelation).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeRelationOption).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeFileObject).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeObjectType).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeTemplate).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeProfilePage).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatDerivedObject).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeDiscussionObject).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeChatObjectDeprecated).Return(idsLister{Ids: []string{}}, nil)
-		fx.sourceFx.EXPECT().IDsListerBySmartblockType(space1, coresb.SmartBlockTypeSpaceView).Return(idsLister{Ids: []string{}}, nil)
-
-		space1.EXPECT().DoLockedIfNotExists("1", mock.AnythingOfType("func() error")).Return(nil)
-		space1.EXPECT().DoLockedIfNotExists("2", mock.AnythingOfType("func() error")).Return(nil)
-
-		fx.config.NetworkMode = pb.RpcAccount_DefaultConfig
-
-		// when
 		fx.addSyncDetails(space1)
+
+		got, err := fx.objectStore.GetDetails(spaceId1, "1")
+		require.NoError(t, err)
+		assert.Equal(t, int64(123), got.GetInt64(bundle.RelationKeySyncDate))
+	})
+
+	t.Run("missing relation is added without overwriting existing ones", func(t *testing.T) {
+		fx := newFixture(t)
+		fx.config.NetworkMode = pb.RpcAccount_DefaultConfig
+		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:         domain.String("1"),
+				bundle.RelationKeyName:       domain.String("a"),
+				bundle.RelationKeySyncStatus: domain.Int64(int64(domain.ObjectSyncStatusSyncing)),
+				bundle.RelationKeySyncDate:   domain.Int64(777),
+				// SyncError is missing
+			},
+		})
+
+		fx.addSyncDetails(newSpace(t))
+
+		got, err := fx.objectStore.GetDetails(spaceId1, "1")
+		require.NoError(t, err)
+		// Existing values preserved: InjectsSyncDetails is only-if-absent.
+		assert.Equal(t, int64(domain.ObjectSyncStatusSyncing), got.GetInt64(bundle.RelationKeySyncStatus))
+		assert.Equal(t, int64(777), got.GetInt64(bundle.RelationKeySyncDate))
+		// Missing one is added.
+		assert.True(t, got.Has(bundle.RelationKeySyncError))
+		assert.Equal(t, int64(domain.SyncErrorNull), got.GetInt64(bundle.RelationKeySyncError))
+	})
+
+	t.Run("re-filters every batch so an id cached mid-run is skipped", func(t *testing.T) {
+		// Two single-id batches. The first id is not cached and must be
+		// written; the second becomes cached between batches (it gets
+		// loaded by a concurrent object load) and must be skipped. This
+		// only holds if FilterNotExists is called per batch, after the
+		// previous batch's write tx has been committed and released.
+		old := addSyncDetailsBatchSize
+		addSyncDetailsBatchSize = 1
+		t.Cleanup(func() { addSyncDetailsBatchSize = old })
+
+		fx := newFixture(t)
+		fx.config.NetworkMode = pb.RpcAccount_DefaultConfig
+		fx.objectStore.AddObjects(t, spaceId1, []objectstore.TestObject{
+			{bundle.RelationKeyId: domain.String("1"), bundle.RelationKeyName: domain.String("a")},
+			{bundle.RelationKeyId: domain.String("2"), bundle.RelationKeyName: domain.String("b")},
+		})
+
+		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().Id().Return(spaceId1)
+		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
+		var calls int
+		space1.EXPECT().FilterNotExists(mock.Anything).
+			RunAndReturn(func(ids []string) []string {
+				calls++
+				require.Len(t, ids, 1, "must be filtered one batch at a time")
+				if ids[0] == "2" {
+					return nil // "2" got loaded into the cache before its batch
+				}
+				return ids
+			})
+
+		fx.addSyncDetails(space1)
+
+		assert.Equal(t, 2, calls, "FilterNotExists must be called once per batch")
+
+		got1, err := fx.objectStore.GetDetails(spaceId1, "1")
+		require.NoError(t, err)
+		assert.True(t, got1.Has(bundle.RelationKeySyncStatus), "uncached id is written")
+
+		got2, err := fx.objectStore.GetDetails(spaceId1, "2")
+		require.NoError(t, err)
+		assert.False(t, got2.Has(bundle.RelationKeySyncStatus), "id cached mid-run is skipped")
 	})
 }
 

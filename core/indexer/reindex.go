@@ -454,28 +454,86 @@ func (i *indexer) reindexChatMessagesFulltext(ctx context.Context, space clients
 	return nil
 }
 
+// addSyncDetailsBatchSize bounds how many objects share a single write tx, so
+// the (single) write connection is not held for the whole space at once. It is
+// a var (not a const) only so tests can shrink it to exercise multi-batch
+// re-filtering.
+var addSyncDetailsBatchSize = 500
+
+// addSyncDetails ensures every object that is missing the sync relations
+// (SyncStatus/SyncDate/SyncError, see helper.InjectsSyncDetails) gets them.
+//
+// Steady state it is a single bulk query that returns nothing and writes
+// nothing. On the first-ever launch it writes the missing objects in chunked
+// shared write transactions. The whole pass runs under a non-cancelable
+// context (context.WithoutCancel) on purpose:
+//   - any-store arms a per-statement SQLite SetInterrupt goroutine/channel
+//     handshake only when ctx.Done() != nil; that handshake dominates startup
+//     scheduler-latency, and this op is bounded/internal so losing
+//     interruptibility is acceptable;
+//   - WriteTx on a non-tx ctx opens a real tx and threads the tx into
+//     txn.Context(), so ModifyObjectDetailsCtx reuses it via the savepoint
+//     path instead of a BEGIN IMMEDIATE per object.
+//
+// The not-in-cache check is done per batch via space.FilterNotExists, which
+// acquires and releases the object-cache mutex before that batch's write tx is
+// opened. It must NOT be done per-id inside the write tx (the old
+// space.DoLockedIfNotExists path): that nests the cache mutex inside the
+// any-store write connection, the reverse of the order taken by object loads
+// (cache mutex -> write conn), and deadlocks on cold start (GO-7291).
+// Re-filtering each batch keeps the stale window to a single batch instead of
+// the whole run. The residual window — an id loaded after its batch filter but
+// before its write — is benign: SyncStatus/SyncDate/SyncError are local-only
+// relations the syncstatus service continuously republishes for loaded
+// objects, so a stale baseline write is superseded.
 func (i *indexer) addSyncDetails(space clientspace.Space) {
-	typesForSyncRelations := helper.SyncRelationsSmartblockTypes()
 	syncStatus := domain.ObjectSyncStatusSynced
 	syncError := domain.SyncErrorNull
 	if i.config.IsLocalOnlyMode() {
 		syncStatus = domain.ObjectSyncStatusError
 		syncError = domain.SyncErrorNetworkError
 	}
-	ids, err := i.getIdsForTypes(space, typesForSyncRelations...)
-	if err != nil {
-		log.Debug("failed to add sync status relations", zap.Error(err))
-	}
 	store := i.store.SpaceIndex(space.Id())
-	for _, id := range ids {
-		err := space.DoLockedIfNotExists(id, func() error {
-			return store.ModifyObjectDetails(id, func(details *domain.Details) (*domain.Details, bool, error) {
-				details = helper.InjectsSyncDetails(details, syncStatus, syncError)
-				return details, true, nil
-			}, true)
-		})
+	ctx := context.WithoutCancel(i.runCtx)
+
+	ids, err := store.ListIdsWithoutSyncDetails(ctx)
+	if err != nil {
+		log.Error("add sync details: list ids without sync details", zap.Error(err))
+		return
+	}
+
+	if len(ids) > 0 {
+		fmt.Printf("### addSyncDetails: backfilling sync details for %d objects in space %s\n", len(ids), space.Id())
+	}
+
+	for start := 0; start < len(ids); start += addSyncDetailsBatchSize {
+		end := start + addSyncDetailsBatchSize
+		if end > len(ids) {
+			end = len(ids)
+		}
+		// Filter out ids loaded/loading in the object cache and release the
+		// cache mutex before opening the write tx (see the function doc).
+		// Re-done every batch so an id loaded while earlier batches were
+		// committing is re-checked against the cache, not written stale.
+		batch := space.FilterNotExists(ids[start:end])
+		if len(batch) == 0 {
+			continue
+		}
+		txn, err := store.WriteTx(ctx)
 		if err != nil {
-			log.Debug("failed to add sync status relations", zap.Error(err))
+			log.Error("add sync details: start write tx", zap.Error(err))
+			return
+		}
+		for _, id := range batch {
+			modErr := store.ModifyObjectDetailsCtx(txn.Context(), id, func(details *domain.Details) (*domain.Details, bool, error) {
+				return helper.InjectsSyncDetails(details, syncStatus, syncError), true, nil
+			}, true)
+			if modErr != nil {
+				log.Debug("failed to add sync status relations", zap.Error(modErr))
+			}
+		}
+		if err := txn.Commit(); err != nil {
+			log.Error("add sync details: commit write tx", zap.Error(err))
 		}
 	}
 }
