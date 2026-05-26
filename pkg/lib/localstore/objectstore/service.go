@@ -65,10 +65,10 @@ var (
 )
 
 type CrossSpace interface {
-	QueryCrossSpace(q database.Query) (records []database.Record, err error)
-	QueryByIdCrossSpace(ids []string) (records []database.Record, err error)
+	QueryCrossSpace(ctx context.Context, q database.Query) (records []database.Record, err error)
+	QueryByIdCrossSpace(ctx context.Context, ids []string) (records []database.Record, err error)
 
-	ListIdsCrossSpace() ([]string, error)
+	ListIdsCrossSpace(ctx context.Context) ([]string, error)
 	EnqueueAllForFulltextIndexing(ctx context.Context) error
 	BatchProcessFullTextQueue(spaceIds func() []string, limit uint, processIds domain.FullTextProcessFunc) error
 
@@ -80,7 +80,7 @@ type CrossSpace interface {
 type ObjectStore interface {
 	app.ComponentRunnable
 
-	IterateSpaceIndex(func(store spaceindex.Store) error) error
+	IterateSpaceIndex(ctx context.Context, f func(store spaceindex.Store) error) error
 	SpaceIndex(spaceId string) spaceindex.Store
 
 	// OnSpaceIndexOpened registers cb to be invoked once when each space's
@@ -208,7 +208,7 @@ type dsObjectStore struct {
 }
 
 func (s *dsObjectStore) ProvideStat() any {
-	count, _ := s.ListIdsCrossSpace()
+	count, _ := s.ListIdsCrossSpace(s.componentCtx)
 	return len(count)
 }
 
@@ -220,10 +220,10 @@ func (s *dsObjectStore) StatType() string {
 	return CName
 }
 
-func (s *dsObjectStore) IterateSpaceIndex(f func(store spaceindex.Store) error) error {
+func (s *dsObjectStore) IterateSpaceIndex(ctx context.Context, f func(store spaceindex.Store) error) error {
 	// Wait-by-default (see collectCrossSpace): never iterate a partial set
 	// of space indexes.
-	if err := s.WaitStoresLoaded(s.componentCtx); err != nil {
+	if err := s.WaitStoresLoaded(ctx); err != nil {
 		return fmt.Errorf("wait stores loaded: %w", err)
 	}
 	s.lock.Lock()
@@ -436,11 +436,13 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 	return store
 }
 
-// preloadConcurrencyDefault is 1: warm-up opens spaces strictly one at a
-// time. This minimizes the startup disk spike and ensures warm-up holds at
-// most one per-space Init lock, so a concurrent direct SpaceIndex call for a
-// different space effectively never contends with it.
-const preloadConcurrencyDefault = 1
+// preloadConcurrencyDefault bounds parallel per-space store opens during
+// warm-up. >1 so a single slow/stuck space Init does not serialize the rest
+// of the warm-up (cross-space reads block until the whole authoritative set
+// is open; serializing on a bad space would stall all of them). Direct
+// SpaceIndex calls are unaffected (own goroutine, not semaphore-gated) and
+// share the idempotent per-space Init lock only for the same space.
+const preloadConcurrencyDefault = 4
 
 // preloadConcurrency caps parallel per-space store opens during warm-up.
 // Variable (not const) so tests can pin it.
@@ -544,17 +546,17 @@ func (s *dsObjectStore) listStores() []spaceindex.Store {
 	return stores
 }
 
-func collectCrossSpace[T any](s *dsObjectStore, proc func(store spaceindex.Store) ([]T, error)) ([]T, error) {
+func collectCrossSpace[T any](ctx context.Context, s *dsObjectStore, proc func(store spaceindex.Store) ([]T, error)) ([]T, error) {
 	// Wait-by-default: every cross-space query (QueryCrossSpace,
 	// QueryByIdCrossSpace, ListIdsCrossSpace) blocks until the background
 	// warm-up has opened the full authoritative space set, so callers can
 	// never silently act on a partial local view. The wait is one-time
-	// (loadedCh stays closed afterwards, so this is instant) and is bound to
-	// componentCtx because these APIs have no ctx parameter. The warm-up
-	// goroutine itself never reaches here (it uses SpaceIndex directly and
-	// its OnSpaceIndexOpened callback only does per-space subscription work),
-	// so this cannot self-deadlock.
-	if err := s.WaitStoresLoaded(s.componentCtx); err != nil {
+	// (loadedCh stays closed afterwards, so this is instant) and honors the
+	// caller's ctx (cancellation/timeout of the request aborts the wait).
+	// The warm-up goroutine itself never reaches here (it uses SpaceIndex
+	// directly and its OnSpaceIndexOpened callback only does per-space
+	// subscription work), so this cannot self-deadlock.
+	if err := s.WaitStoresLoaded(ctx); err != nil {
 		return nil, fmt.Errorf("wait stores loaded: %w", err)
 	}
 	stores := s.listStores()
@@ -600,13 +602,19 @@ func iterateSpacesForFulltext(s *dsObjectStore, proc func(store spaceindex.Store
 	return nil
 }
 
-func (s *dsObjectStore) ListIdsCrossSpace() ([]string, error) {
-	return collectCrossSpace(s, func(store spaceindex.Store) ([]string, error) {
+func (s *dsObjectStore) ListIdsCrossSpace(ctx context.Context) ([]string, error) {
+	return collectCrossSpace(ctx, s, func(store spaceindex.Store) ([]string, error) {
 		return store.ListIds()
 	})
 }
 
 func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error {
+	// Full FT rebuild must cover every space, not just those already open,
+	// so wait for the warm-up here (unlike the rest of the FT path, which
+	// stays lazy — see iterateSpacesForFulltext).
+	if err := s.WaitStoresLoaded(ctx); err != nil {
+		return fmt.Errorf("wait stores loaded: %w", err)
+	}
 	txn, err := s.fulltextQueue.WriteTx(ctx)
 	if err != nil {
 		return fmt.Errorf("start write tx: %w", err)
@@ -734,14 +742,14 @@ func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.
 	return checked, enqueued, nil
 }
 
-func (s *dsObjectStore) QueryByIdCrossSpace(ids []string) ([]database.Record, error) {
-	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
+func (s *dsObjectStore) QueryByIdCrossSpace(ctx context.Context, ids []string) ([]database.Record, error) {
+	return collectCrossSpace(ctx, s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.QueryByIds(ids)
 	})
 }
 
-func (s *dsObjectStore) QueryCrossSpace(q database.Query) ([]database.Record, error) {
-	return collectCrossSpace(s, func(store spaceindex.Store) ([]database.Record, error) {
+func (s *dsObjectStore) QueryCrossSpace(ctx context.Context, q database.Query) ([]database.Record, error) {
+	return collectCrossSpace(ctx, s, func(store spaceindex.Store) ([]database.Record, error) {
 		return store.Query(q)
 	})
 }

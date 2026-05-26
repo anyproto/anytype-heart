@@ -42,7 +42,7 @@ func (d *debug) DebugRouter(r chi.Router) {
 func (d *debug) debugListParticipants(req *http.Request) ([]debugParticipant, error) {
 	participantsByIdentity := make(map[string]*debugParticipant)
 
-	err := d.store.IterateSpaceIndex(func(store spaceindex.Store) error {
+	err := d.store.IterateSpaceIndex(req.Context(), func(store spaceindex.Store) error {
 		records, err := store.Query(database.Query{
 			Filters: []database.FilterRequest{
 				{
@@ -100,7 +100,7 @@ func (d *debug) debugListParticipants(req *http.Request) ([]debugParticipant, er
 func (d *debug) debugListSystemObjects(req *http.Request) ([]debugSpaceSystemObjects, error) {
 	var result []debugSpaceSystemObjects
 
-	err := d.store.IterateSpaceIndex(func(store spaceindex.Store) error {
+	err := d.store.IterateSpaceIndex(req.Context(), func(store spaceindex.Store) error {
 		spaceId := store.SpaceId()
 		spc, err := d.spaceService.Get(context.Background(), spaceId)
 		if err != nil {

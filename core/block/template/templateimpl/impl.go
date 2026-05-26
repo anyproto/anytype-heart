@@ -398,7 +398,7 @@ func (s *service) TemplateClone(spaceId string, id string) (templateId string, e
 }
 
 func (s *service) TemplateExportAll(ctx context.Context, path string) (string, error) {
-	records, err := s.store.QueryCrossSpace(database.Query{
+	records, err := s.store.QueryCrossSpace(ctx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyIsArchived,
