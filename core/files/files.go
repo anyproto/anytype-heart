@@ -159,6 +159,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 			addLock.Unlock()
 			return nil, err
 		}
+		addLock.Unlock()
 		return res, nil
 	}
 	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, addNodeResult.variant, addNodeResult.filePairNode, opts)
