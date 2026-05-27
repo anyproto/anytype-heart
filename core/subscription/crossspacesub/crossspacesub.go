@@ -86,7 +86,12 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 
 			resp, err := s.subscribe(spaceId, false)
 			if err != nil {
-				resErr = err
+				// resErr is shared across the per-space goroutines; guard it
+				// with the same lock as the aggregation below and join so a
+				// concurrent failure is not lost to last-writer-wins.
+				s.lock.Lock()
+				resErr = errors.Join(resErr, err)
+				s.lock.Unlock()
 				return
 			}
 
