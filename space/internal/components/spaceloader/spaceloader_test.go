@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -35,20 +36,30 @@ func (b *blockingBuilder) BuildSpace(ctx context.Context, _ bool) (clientspace.S
 	return nil, errors.New("build stopped by test")
 }
 
-// loaderTestFixture records every localStatus written via SetLocalInfo so assertions do not
+// loaderTestFixture records every SpaceLocalInfo written via SetLocalInfo so assertions do not
 // depend on testify expectation precedence (the background goroutine writes Missing on cleanup).
 type loaderTestFixture struct {
-	loader      *spaceLoader
-	status      *mock_spacestatus.MockSpaceStatus
-	mu          sync.Mutex
-	setStatuses []spaceinfo.LocalStatus
+	loader   *spaceLoader
+	status   *mock_spacestatus.MockSpaceStatus
+	mu       sync.Mutex
+	setInfos []spaceinfo.SpaceLocalInfo
 }
 
 func (f *loaderTestFixture) recordedStatuses() []spaceinfo.LocalStatus {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	out := make([]spaceinfo.LocalStatus, len(f.setStatuses))
-	copy(out, f.setStatuses)
+	out := make([]spaceinfo.LocalStatus, len(f.setInfos))
+	for i, info := range f.setInfos {
+		out[i] = info.GetLocalStatus()
+	}
+	return out
+}
+
+func (f *loaderTestFixture) recordedInfos() []spaceinfo.SpaceLocalInfo {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	out := make([]spaceinfo.SpaceLocalInfo, len(f.setInfos))
+	copy(out, f.setInfos)
 	return out
 }
 
@@ -65,7 +76,7 @@ func newLoaderForTest(t *testing.T, localStatus spaceinfo.LocalStatus, spaceExis
 	fx := &loaderTestFixture{status: status}
 	status.EXPECT().SetLocalInfo(mock.Anything).RunAndReturn(func(info spaceinfo.SpaceLocalInfo) error {
 		fx.mu.Lock()
-		fx.setStatuses = append(fx.setStatuses, info.GetLocalStatus())
+		fx.setInfos = append(fx.setInfos, info)
 		fx.mu.Unlock()
 		return nil
 	}).Maybe()
@@ -104,9 +115,11 @@ func TestStartLoad_FastPath(t *testing.T) {
 		// when
 		require.NoError(t, fx.loader.startLoad(fx.loader.ctx))
 
-		// then: startLoad must NOT have published a transient Loading
-		require.False(t, containsStatus(fx.recordedStatuses(), spaceinfo.LocalStatusLoading),
-			"fast path must not publish Loading")
+		// then: the fast path must issue NO SetLocalInfo write at all (not just "no Loading").
+		// A spurious SetLocalInfo with a freshly-built SpaceLocalInfo would carry localStatus=Ok
+		// but unset remoteStatus/limits, silently clobbering the persisted values; require.Empty
+		// pins that startLoad leaves the optimistic Ok completely untouched.
+		require.Empty(t, fx.recordedStatuses(), "fast path must not write any localStatus")
 	})
 
 	t.Run("Unknown status sets Loading", func(t *testing.T) {
@@ -195,5 +208,80 @@ func TestWaitLoad_InternalState(t *testing.T) {
 		// then
 		require.Nil(t, sp)
 		require.EqualError(t, err, "boom")
+	})
+
+	t.Run("context cancelled mid-wait returns ctx error", func(t *testing.T) {
+		// given a loader with an in-progress build (loadCh open, space not set yet). This is the
+		// path Close() relies on: it cancels the ctx then WaitLoads while the build is running.
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusOk, true)
+		s := fx.loader
+		s.loading = &loadingSpace{loadCh: make(chan struct{})}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		var gotSp clientspace.Space
+		var gotErr error
+		go func() {
+			gotSp, gotErr = s.WaitLoad(ctx)
+			close(done)
+		}()
+
+		// WaitLoad must be blocked on the loadCh: build not finished, space nil, no error.
+		select {
+		case <-done:
+			t.Fatal("WaitLoad returned before the build finished or ctx was cancelled")
+		case <-time.After(50 * time.Millisecond):
+		}
+
+		// when the caller cancels the context (build never finishes; loadCh stays open)
+		cancel()
+
+		// then WaitLoad returns promptly with the ctx error and no space
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("WaitLoad did not return after ctx cancellation")
+		}
+		require.Nil(t, gotSp)
+		require.ErrorIs(t, gotErr, context.Canceled)
+	})
+}
+
+// TestOnLoad_AfterFastPath covers the spec's most safety-critical claim: after the fast path
+// leaves an optimistic Ok, the background build's onLoad still drives the final status. onLoad
+// is unchanged by this PR but was previously unreachable by any test (blockingBuilder never
+// releases before assertions run), so the Ok->Missing flip and the idempotent-Ok no-op were
+// unverified. These call onLoad directly to pin both branches deterministically.
+func TestOnLoad_AfterFastPath(t *testing.T) {
+	t.Run("build success keeps localStatus Ok and leaves remoteStatus untouched", func(t *testing.T) {
+		// given a fast-path space already optimistically Ok with a persisted remoteStatus
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusOk, true)
+
+		// when the background build succeeds
+		require.NoError(t, fx.loader.onLoad(stubSpace{}, nil))
+
+		// then onLoad sets localStatus=Ok and does NOT write remoteStatus (it is left unset on
+		// the SpaceLocalInfo, so SetLocalInfo->UpdateDetails preserves the persisted value).
+		infos := fx.recordedInfos()
+		require.Len(t, infos, 1)
+		assert.Equal(t, spaceinfo.LocalStatusOk, infos[0].GetLocalStatus())
+		assert.Equal(t, spaceinfo.RemoteStatusUnknown, infos[0].GetRemoteStatus(),
+			"onLoad success must not overwrite the persisted remoteStatus")
+		// the built space becomes available to open-on-demand callers
+		assert.Equal(t, stubSpace{}, fx.loader.space)
+	})
+
+	t.Run("build failure flips an optimistic Ok to Missing", func(t *testing.T) {
+		// given a fast-path space already optimistically Ok
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusOk, true)
+
+		// when the background build fails (the accepted Ok->Missing regression)
+		require.NoError(t, fx.loader.onLoad(nil, errors.New("build failed")))
+
+		// then the recorded status sequence ends in Missing and no space is stored
+		statuses := fx.recordedStatuses()
+		require.NotEmpty(t, statuses)
+		assert.Equal(t, spaceinfo.LocalStatusMissing, statuses[len(statuses)-1])
+		assert.Nil(t, fx.loader.space)
 	})
 }

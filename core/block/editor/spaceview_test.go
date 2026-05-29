@@ -191,7 +191,12 @@ func (s *spaceServiceStub) OnWorkspaceChanged(spaceId string, details *domain.De
 func (s *spaceServiceStub) SpaceViewSetOneToOneIdentity(spaceId string, identity string) {
 }
 
-func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
+// initSpaceViewTest is the single shared construction path for SpaceView tests: it builds the
+// smarttest tree + SpaceView, optionally seeds persisted local/remote status (simulating a reload
+// from disk), then runs Init / migrations / Apply. Both NewSpaceViewTest (brand-new object) and
+// buildSpaceViewWithSeededLocalInfo (reload-from-disk) delegate here so the construction lives in
+// one place.
+func initSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree, isNewObject bool, seeded *spaceinfo.SpaceLocalInfo) (*SpaceView, error) {
 	sb := smarttest.NewWithTree("root", tree)
 	a := &SpaceView{
 		SmartBlock:    sb,
@@ -200,9 +205,6 @@ func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.
 		log:           log,
 	}
 
-	initCtx := &smartblock.InitContext{
-		IsNewObject: true,
-	}
 	changePayload := &model.ObjectChangePayload{
 		Key: targetSpaceId,
 	}
@@ -211,7 +213,29 @@ func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.
 	changeInfo := &treechangeproto.TreeChangeInfo{
 		ChangePayload: marshaled,
 	}
-	tree.EXPECT().ChangeInfo().Return(changeInfo)
+	tree.EXPECT().ChangeInfo().Return(changeInfo).AnyTimes()
+
+	initCtx := &smartblock.InitContext{
+		IsNewObject: isNewObject,
+	}
+	if seeded != nil {
+		seedState := sb.NewState()
+		seedState.SetLocalDetail(bundle.RelationKeySpaceLocalStatus, domain.Int64(int64(seeded.GetLocalStatus())))
+		seedState.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus, domain.Int64(int64(seeded.GetRemoteStatus())))
+		initCtx.State = seedState
+
+		// NOTE: this only verifies our own hand-seeded state, NOT the real cross-layer carry. In
+		// production the persisted spaceLocalStatus reaches ctx.State via
+		// smartblock.Init->injectLocalDetails, which copies it because spaceLocalStatus is a
+		// source=derived relation (see relations.json / bundle.LocalAndDerivedRelationKeys). The
+		// smarttest harness has no object store and does not run injectLocalDetails, so that carry
+		// is *assumed here* (verified once, manually) rather than exercised by this test. The
+		// assertion below just pins our setup precondition so the post-Init assertion is meaningful.
+		preInfo := spaceinfo.NewSpaceLocalInfoFromState(initCtx.State)
+		require.Equal(t, seeded.GetLocalStatus(), preInfo.GetLocalStatus(),
+			"seeded localStatus must be present in ctx.State going into Init (setup precondition)")
+	}
+
 	if err := a.Init(initCtx); err != nil {
 		return nil, err
 	}
@@ -220,6 +244,10 @@ func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.
 		return nil, err
 	}
 	return a, nil
+}
+
+func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
+	return initSpaceViewTest(t, targetSpaceId, tree, true, nil)
 }
 
 type spaceViewFixture struct {
@@ -250,50 +278,15 @@ func (f *spaceViewFixture) finish() {
 
 // buildSpaceViewWithSeededLocalInfo constructs a SpaceView whose underlying doc already has
 // localStatus/remoteStatus persisted (simulating a reload from the object store after a
-// previous session), then runs Init exactly as the production reload path does.
+// previous session), then runs Init exactly as the production reload path does. It delegates to
+// initSpaceViewTest so SpaceView construction stays defined in one place.
 func buildSpaceViewWithSeededLocalInfo(t *testing.T, targetSpaceId string, seeded *spaceinfo.SpaceLocalInfo) *SpaceView {
 	ctrl := gomock.NewController(t)
+	t.Cleanup(ctrl.Finish)
 	tree := mock_objecttree.NewMockObjectTree(ctrl)
 
-	sb := smarttest.NewWithTree("root", tree)
-
-	sv := &SpaceView{
-		SmartBlock:    sb,
-		OrderSettable: order.NewOrderSettable(sb, bundle.RelationKeySpaceOrder),
-		spaceService:  &spaceServiceStub{},
-		log:           log,
-	}
-
-	changePayload := &model.ObjectChangePayload{Key: targetSpaceId}
-	marshaled, err := changePayload.Marshal()
+	sv, err := initSpaceViewTest(t, targetSpaceId, tree, false, seeded)
 	require.NoError(t, err)
-	tree.EXPECT().ChangeInfo().Return(&treechangeproto.TreeChangeInfo{ChangePayload: marshaled}).AnyTimes()
-
-	initCtx := &smartblock.InitContext{IsNewObject: false}
-	if seeded != nil {
-		// Faithfully simulate production: smartblock.Init -> injectLocalDetails populates
-		// ctx.State local details from the object store BEFORE SpaceView.Init's own logic
-		// runs. smarttest.Init does not do this (in-memory, no object store), so we pre-seed
-		// the init state's local details the same way injectLocalDetails does
-		// (state local-details injection from the persisted store value).
-		seedState := sb.NewState()
-		seedState.SetLocalDetail(bundle.RelationKeySpaceLocalStatus, domain.Int64(int64(seeded.GetLocalStatus())))
-		seedState.SetLocalDetail(bundle.RelationKeySpaceRemoteStatus, domain.Int64(int64(seeded.GetRemoteStatus())))
-		initCtx.State = seedState
-
-		// Risk gate: the persisted value MUST be visible in the state going INTO Init (this is
-		// what production's smartblock.Init->injectLocalDetails guarantees before SpaceView's
-		// own Init logic runs). If this fails, the design's Init-side preservation is not
-		// viable as written — see spec fallback note.
-		preInfo := spaceinfo.NewSpaceLocalInfoFromState(initCtx.State)
-		require.Equal(t, seeded.GetLocalStatus(), preInfo.GetLocalStatus(),
-			"persisted localStatus must be present in ctx.State at Init")
-	}
-	require.NoError(t, sv.Init(initCtx))
-
-	migration.RunMigrations(sv, initCtx)
-	require.NoError(t, sv.Apply(initCtx.State))
-	t.Cleanup(ctrl.Finish)
 	return sv
 }
 

@@ -98,6 +98,12 @@ func (s *spaceLoader) Close(ctx context.Context) (err error) {
 }
 
 func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
+	// Probe the on-disk store BEFORE taking s.mx: SpaceExists performs blocking I/O (an os.Stat
+	// on anystorage, a synchronized SQL query on sqlitestorage) and depends only on the immutable
+	// SpaceId, so keeping it out of the critical section avoids stalling concurrent
+	// WaitLoad/onLoad/Close callers that also contend for s.mx.
+	onDisk := s.storageService.SpaceExists(s.status.SpaceId())
+
 	s.mx.Lock()
 	defer s.mx.Unlock()
 
@@ -108,8 +114,7 @@ func (s *spaceLoader) startLoad(ctx context.Context) (err error) {
 	// session keeps reporting Ok to clients. We still run the background build below; we just
 	// do not publish a transient Loading (which would make the client hide the space on cold
 	// start). If onLoad later fails, it sets Missing (accepted Ok->Missing regression).
-	onDiskAndOk := s.status.GetLocalStatus() == spaceinfo.LocalStatusOk &&
-		s.storageService.SpaceExists(s.status.SpaceId())
+	onDiskAndOk := s.status.GetLocalStatus() == spaceinfo.LocalStatusOk && onDisk
 	if !onDiskAndOk {
 		info := spaceinfo.NewSpaceLocalInfo(s.status.SpaceId())
 		info.SetLocalStatus(spaceinfo.LocalStatusLoading)
