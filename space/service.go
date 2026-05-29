@@ -70,6 +70,10 @@ var log = logger.NewNamed(CName)
 var (
 	waitSpaceDelay        = 500 * time.Millisecond
 	loadTechSpaceDeadline = 15 * time.Second
+	// Tunables for client-driven lazy multi-space loading. Vars (not consts) so
+	// tests and benchmarks can override them.
+	preloadRemainingSpacesTimeout = 10 * time.Second
+	preloadConcurrency            = 2
 )
 
 var (
@@ -145,9 +149,12 @@ type service struct {
 	// Client-driven lazy multi-space loading (spec 2026-05-17). Latest
 	// spaceViewStatus per space, cached while deferred so the backlog can be
 	// drained later (RPC / timer / preferred-space failure).
-	deferredStatuses       map[string]spaceViewStatus
-	preferredSpaceId       string                              // from config; "" => eager (today's behavior)
-	lazyMode               bool                                // decided once in initAccount before watcher.Run()
+	deferredStatuses map[string]spaceViewStatus
+	preferredSpaceId string // from config; "" => eager (today's behavior)
+	// lazyMode is set exactly once in initAccount before watcher.Run() and is
+	// never mutated afterwards, so it is safe to read without s.mu (the
+	// happens-before from watcher.Run() / goroutine spawn covers all readers).
+	lazyMode               bool
 	releasing              bool                                // guarded by s.mu; true once the backlog is being drained
 	preloadOnce            sync.Once                           // single release trigger (RPC | timer | dynamic fallback)
 	preloadCh              chan struct{}                       // closed by triggerRelease()
@@ -515,8 +522,14 @@ func (s *service) applySpaceStatus(spaceStatus spaceViewStatus) {
 		log.Warn("startStatus error", zap.Error(err))
 		return
 	}
-	err = ctrl.Update()
+	// startStatus returns (nil, err) on any factory error, so guard against a
+	// nil ctrl when err is ErrSpaceDeleted (mirrors ensureSpaceStarted) to
+	// avoid a nil-pointer deref now that this body is also invoked from
+	// drainDeferred workers and on-demand promotion.
 	if err != nil {
+		return
+	}
+	if err = ctrl.Update(); err != nil {
 		log.Warn("ctrl.Update error", zap.Error(err))
 		return
 	}
@@ -532,6 +545,12 @@ func (s *service) ensureSpaceStarted(spaceId string) {
 	_, ctrlOk := s.spaceControllers[spaceId]
 	_, waitingOk := s.waiting[spaceId]
 	status, hasStatus := s.deferredStatuses[spaceId]
+	if hasStatus {
+		// Remove it from the backlog so a later drainDeferred does not snapshot
+		// and rebuild it; the delete shares this critical section with
+		// drainDeferred's snapshot+clear so the entry cannot be lost.
+		delete(s.deferredStatuses, spaceId)
+	}
 	s.mu.Unlock()
 	if ctrlOk || waitingOk {
 		return
@@ -544,7 +563,14 @@ func (s *service) ensureSpaceStarted(spaceId string) {
 		return
 	}
 	log.Debug("lazy space build: promoting space on demand (derived)", zap.String("spaceId", spaceId))
-	info := spaceinfo.NewSpacePersistentInfo(spaceId)
+	// Resolve the real persistent space-view info (EncodedKey/guestKey,
+	// accountStatus, aclHeadId) instead of building from a zero value. A
+	// zero-value info has EncodedKey=="", which startStatus dispatches to
+	// NewShareableSpace (load.go), so a guest/streamable space would be
+	// permanently built as the wrong controller type with no signing key and
+	// would never self-correct. statusToInfo carries the same fields for the
+	// cached-status path; here we read them from the space view directly.
+	info := s.resolveDerivedInfo(spaceId)
 	if s.startStatusHook != nil {
 		s.startStatusHook(info)
 		return
@@ -559,6 +585,29 @@ func (s *service) ensureSpaceStarted(spaceId string) {
 			log.Warn("ensureSpaceStarted ctrl.Update error", zap.Error(err))
 		}
 	}
+}
+
+// resolveDerivedInfo reads the persistent space-view info (account status,
+// aclHeadId, encoded guest key) for a space promoted on demand before any
+// status was cached. Preserving EncodedKey is what lets startStatus pick the
+// correct controller type (NewStreamableSpace for guest/stream spaces vs
+// NewShareableSpace), mirroring statusToInfo for the cached-status path. If the
+// view cannot be read we fall back to a zero-value info (best effort, same as
+// the previous behavior) and let the later watcher update reconcile it.
+func (s *service) resolveDerivedInfo(spaceId string) spaceinfo.SpacePersistentInfo {
+	info := spaceinfo.NewSpacePersistentInfo(spaceId)
+	if s.techSpace == nil {
+		return info
+	}
+	err := s.techSpace.DoSpaceView(s.ctx, spaceId, func(spaceView techspace.SpaceView) error {
+		info = spaceView.GetPersistentInfo()
+		return nil
+	})
+	if err != nil {
+		log.Warn("ensureSpaceStarted resolve persistent info", zap.String("spaceId", spaceId), zap.Error(err))
+		return spaceinfo.NewSpacePersistentInfo(spaceId)
+	}
+	return info
 }
 
 // triggerRelease is the single idempotent "release the deferred backlog"
@@ -805,10 +854,3 @@ func joinSpaceStream(ctx context.Context, spaceService *service, aclJoiner AclJo
 
 	return aclJoiner.Join(ctx, spaceId, networkId, inviteCid, inviteSymKey)
 }
-
-// Tunables for client-driven lazy multi-space loading. Vars (not consts) so
-// tests and benchmarks can override them.
-var (
-	preloadRemainingSpacesTimeout = 10 * time.Second
-	preloadConcurrency            = 2
-)

@@ -14,7 +14,10 @@ import (
 
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spacecontroller/mock_spacecontroller"
+	"github.com/anyproto/anytype-heart/space/spacefactory/mock_spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
+	"github.com/anyproto/anytype-heart/space/techspace"
 	"github.com/anyproto/anytype-heart/space/techspace/mock_techspace"
 )
 
@@ -384,4 +387,121 @@ func TestDrainDeferred_BoundedConcurrency(t *testing.T) {
 	s.mu.Lock()
 	assert.Empty(t, s.deferredStatuses)
 	s.mu.Unlock()
+}
+
+// newLazyServiceWithSpaceView wires a tech space whose DoSpaceView returns a
+// space view carrying the given persistent info, so the on-demand derive path
+// can resolve real EncodedKey/accountStatus/aclHeadId instead of a zero value.
+func newLazyServiceWithSpaceView(t *testing.T, spaceId string, info spaceinfo.SpacePersistentInfo) *service {
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = true
+
+	view := mock_techspace.NewMockSpaceView(t)
+	view.EXPECT().GetPersistentInfo().Return(info)
+	ts := mock_techspace.NewMockTechSpace(t)
+	ts.EXPECT().DoSpaceView(mock.Anything, spaceId, mock.Anything).
+		RunAndReturn(func(_ context.Context, _ string, apply func(techspace.SpaceView) error) error {
+			return apply(view)
+		})
+	s.techSpace = &clientspace.TechSpace{TechSpace: ts}
+	return s
+}
+
+// TestEnsureSpaceStarted_DerivePreservesGuestKey is the regression for the
+// top medium finding: a guest/streamable space promoted on demand (no cached
+// status yet) must keep its EncodedKey/guestKey, accountStatus and aclHeadId so
+// startStatus dispatches to NewStreamableSpace rather than building a keyless
+// shareable controller. Before the fix the derive path passed a zero-value
+// SpacePersistentInfo (EncodedKey==""), so this asserts the resolved info.
+func TestEnsureSpaceStarted_DerivePreservesGuestKey(t *testing.T) {
+	const spaceId = "stream.space"
+	want := spaceinfo.NewSpacePersistentInfo(spaceId)
+	want.SetAccountStatus(spaceinfo.AccountStatusActive).
+		SetAclHeadId("acl-head-1").
+		SetEncodedKey("guest-priv-key")
+
+	s := newLazyServiceWithSpaceView(t, spaceId, want)
+
+	got := make(chan spaceinfo.SpacePersistentInfo, 1)
+	s.startStatusHook = func(info spaceinfo.SpacePersistentInfo) { got <- info }
+
+	s.ensureSpaceStarted(spaceId)
+
+	select {
+	case info := <-got:
+		assert.Equal(t, spaceId, info.SpaceID)
+		assert.Equal(t, "guest-priv-key", info.EncodedKey,
+			"derived promotion must preserve guestKey so it builds as a streamable space")
+		assert.Equal(t, "acl-head-1", info.AclHeadId)
+		assert.Equal(t, spaceinfo.AccountStatusActive, info.GetAccountStatus())
+	default:
+		t.Fatal("ensureSpaceStarted must derive+build when status not cached (E2)")
+	}
+}
+
+// TestEnsureSpaceStarted_DeriveBuildsStreamableNotShareable drives the real
+// startStatus dispatch (no startStatusHook) and asserts the on-demand promotion
+// of a guest space chooses the streamable factory, never the shareable one.
+func TestEnsureSpaceStarted_DeriveBuildsStreamableNotShareable(t *testing.T) {
+	const spaceId = "stream.space"
+	info := spaceinfo.NewSpacePersistentInfo(spaceId)
+	info.SetAccountStatus(spaceinfo.AccountStatusActive).
+		SetEncodedKey("guest-priv-key")
+
+	s := newLazyServiceWithSpaceView(t, spaceId, info)
+	s.personalSpaceId = "personal.id" // ensure the personal-space branch is not taken
+
+	factory := mock_spacefactory.NewMockSpaceFactory(t)
+	ctrl := mock_spacecontroller.NewMockSpaceController(t)
+	ctrl.EXPECT().Update().Return(nil)
+	factory.EXPECT().
+		NewStreamableSpace(mock.Anything, spaceId, mock.MatchedBy(func(i spaceinfo.SpacePersistentInfo) bool {
+			return i.EncodedKey == "guest-priv-key"
+		}), mock.Anything).
+		Return(ctrl, nil)
+	// NewShareableSpace is intentionally NOT expected: the mock fails the test
+	// if it is called, locking in that a guest space is never mis-built.
+	s.factory = factory
+
+	s.ensureSpaceStarted(spaceId)
+
+	s.mu.Lock()
+	_, built := s.spaceControllers[spaceId]
+	s.mu.Unlock()
+	assert.True(t, built, "streamable controller must be registered after on-demand promotion")
+}
+
+// TestEnsureSpaceStarted_CachedStatusRemovedFromBacklog locks in that promoting
+// a cached deferred space on demand removes it from deferredStatuses so a later
+// drainDeferred does not snapshot and rebuild it.
+func TestEnsureSpaceStarted_CachedStatusRemovedFromBacklog(t *testing.T) {
+	const spaceId = "cached"
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = true
+	s.preferredSpaceId = "preferred"
+	s.personalSpaceId = "personal.id"
+
+	factory := mock_spacefactory.NewMockSpaceFactory(t)
+	ctrl := mock_spacecontroller.NewMockSpaceController(t)
+	ctrl.EXPECT().Update().Return(nil)
+	// A cached status with an empty guestKey builds as a shareable space; the
+	// mock fails if it is called more than once, proving no redundant rebuild.
+	factory.EXPECT().NewShareableSpace(mock.Anything, spaceId, mock.Anything).Return(ctrl, nil).Once()
+	s.factory = factory
+
+	s.mu.Lock()
+	s.deferredStatuses[spaceId] = statusFor(spaceId, spaceinfo.LocalStatusOk, spaceinfo.AccountStatusActive)
+	s.mu.Unlock()
+
+	s.ensureSpaceStarted(spaceId)
+
+	s.mu.Lock()
+	_, stillDeferred := s.deferredStatuses[spaceId]
+	_, built := s.spaceControllers[spaceId]
+	s.mu.Unlock()
+	assert.True(t, built, "cached deferred space must be built on demand")
+	assert.False(t, stillDeferred, "promoted space must be removed from the deferred backlog")
+
+	// A later drain must not rebuild it (NewShareableSpace.Once() would fail).
+	s.drainDeferred(context.Background())
 }
