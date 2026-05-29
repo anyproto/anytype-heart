@@ -46,8 +46,9 @@ type store struct {
 type DiffManagerStats struct {
 	DiffManagerName string   `json:"diffManagerName"`
 	SeenHeads       []string `json:"seenHeads"`
-	AllChanges      []string `json:"allChanges"`
-	AllChangesCount int      `json:"allChangesCount"`
+	// SeenFrontierCount is the size of the pruned resolved seen frontier
+	// (len(w.seen), typically 1-2 heads) — NOT a total change count.
+	SeenFrontierCount int `json:"seenFrontierCount"`
 }
 
 type StoreStat struct {
@@ -58,9 +59,9 @@ func (s *store) ProvideStat() any {
 	stats := make([]DiffManagerStats, 0, len(s.diffManagers))
 	for name, manager := range s.diffManagers {
 		stats = append(stats, DiffManagerStats{
-			DiffManagerName: name,
-			SeenHeads:       manager.wm.seenHeadIds(),
-			AllChangesCount: manager.wm.frontierLen(),
+			DiffManagerName:   name,
+			SeenHeads:         manager.wm.seenHeadIds(),
+			SeenFrontierCount: manager.wm.frontierLen(),
 		})
 	}
 	return StoreStat{
@@ -123,10 +124,16 @@ func (s *store) resolvePair(id string) (readPair, bool) {
 // AddSeq only, no payload decode, no graph, no BuildHistoryTree.
 func (s *store) eachChange(ctx context.Context) func(yield func(string, readPair)) {
 	return func(yield func(string, readPair)) {
-		_ = s.treeSource.Tree().Storage().GetAfterOrder(ctx, "", func(_ context.Context, ch objecttree.StorageChange) (bool, error) {
+		err := s.treeSource.Tree().Storage().GetAfterOrder(ctx, "", func(_ context.Context, ch objecttree.StorageChange) (bool, error) {
 			yield(ch.Id, readPair{OrderId: ch.OrderId, AddSeq: ch.AddSeq})
 			return true, nil
 		})
+		if err != nil {
+			// A truncated change stream silently under-emits reads (some
+			// messages stay unread). Log so the failure is observable, matching
+			// the sibling fallback path in eachChangeFor.
+			log.With("error", err).Error("eachChange: tree storage scan")
+		}
 	}
 }
 
@@ -374,15 +381,28 @@ func (s *store) update(ctx context.Context, tree objecttree.ObjectTree) error {
 	}
 	err = tx.Commit()
 
-	s.updateInDiffManagers(tree)
+	s.updateInDiffManagers(ctx)
 	if err == nil {
 		s.onUpdateHook()
 	}
 	return err
 }
 
-// updateInDiffManagers: no-op (watermark model — see addToDiffManagers).
-func (s *store) updateInDiffManagers(tree objecttree.ObjectTree) {}
+// updateInDiffManagers re-runs advance(nil, ...) for every counter after a tree
+// sync. A freshly synced change has the newest AddSeq and can never be dominated
+// by an existing seen frontier (so the change itself stays unread by
+// construction — see addToDiffManagers), but a previously synced *peer* seenHead
+// may have been deferred to w.pending because its change was not yet local. When
+// that change finally lands here, re-advancing re-resolves the pending head and
+// marks its now-dominated ancestors read. This restores the old
+// objecttree.DiffManager.Update re-resolution semantics that the watermark model
+// otherwise drops, fixing cross-device unread counts that would otherwise stay
+// stale until the next reload / local read / peer update.
+func (s *store) updateInDiffManagers(ctx context.Context) {
+	for _, manager := range s.diffManagers {
+		manager.wm.advance(nil, s.resolvePair, s.eachChangeFor(ctx, manager))
+	}
+}
 
 func (s *store) MarkSeenHeads(ctx context.Context, name string, heads []string) error {
 	manager, ok := s.diffManagers[name]

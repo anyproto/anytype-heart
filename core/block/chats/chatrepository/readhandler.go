@@ -38,7 +38,9 @@ func (h readMessagesHandler) getReadFilter(value bool) query.Filter {
 	if value {
 		return filterReadTrue
 	}
-	// NOT (read == true) to also match documents where the read field is missing
+	// read == false. Every message always serializes `read` as an explicit bool
+	// (chatmodel.go Marshal), so there are no missing-field docs to match — see
+	// the filterReadFalse declaration above.
 	return filterReadFalse
 }
 
