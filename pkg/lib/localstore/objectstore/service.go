@@ -64,6 +64,11 @@ var (
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
+// ErrSpaceDeleted is returned (wrapped in an invalid store) by SpaceIndex when
+// the space is being or has been removed via DeleteSpaceIndex, so callers do
+// not resurrect the just-deleted store/DB/directory.
+var ErrSpaceDeleted = errors.New("space index is deleted")
+
 type CrossSpace interface {
 	QueryCrossSpace(ctx context.Context, q database.Query) (records []database.Record, err error)
 	QueryByIdCrossSpace(ctx context.Context, ids []string) (records []database.Record, err error)
@@ -202,6 +207,20 @@ type dsObjectStore struct {
 
 	lock         sync.Mutex
 	spaceIndexes map[string]spaceindex.Store
+	// deletedSpaceIds is a tombstone set guarded by lock. A space is added
+	// here at the very start of DeleteSpaceIndex (before the store is closed
+	// and its files removed) so that any concurrent getOrInitSpaceIndex /
+	// SpaceIndex refuses to recreate the store/DB/dir for a space that is
+	// being or has been deleted (TOCTOU resurrection guard).
+	deletedSpaceIds map[string]struct{}
+	// crossSpaceInflight counts cross-space / full-text iterations that have
+	// snapshotted the spaceIndexes registry and are still operating on the
+	// snapshotted stores OUTSIDE lock. DeleteSpaceIndex waits (via
+	// crossSpaceDrained) for this to reach zero before it closes a store and
+	// removes its files, so an in-flight iterator can never use-after-close a
+	// store whose anystore DB files were just os.RemoveAll'd.
+	crossSpaceInflight int
+	crossSpaceDrained  *sync.Cond
 
 	spaceOpenedLock           sync.Mutex
 	openedSpaceIds            map[string]struct{}
@@ -230,12 +249,8 @@ func (s *dsObjectStore) IterateSpaceIndex(ctx context.Context, f func(store spac
 	if err := s.WaitStoresLoaded(ctx); err != nil {
 		return fmt.Errorf("wait stores loaded: %w", err)
 	}
-	s.lock.Lock()
-	spaceIndexes := make([]spaceindex.Store, 0, len(s.spaceIndexes))
-	for _, store := range s.spaceIndexes {
-		spaceIndexes = append(spaceIndexes, store)
-	}
-	s.lock.Unlock()
+	spaceIndexes := s.beginCrossSpaceIteration()
+	defer s.endCrossSpaceIteration()
 	for _, store := range spaceIndexes {
 		if err := f(store); err != nil {
 			return err
@@ -246,14 +261,17 @@ func (s *dsObjectStore) IterateSpaceIndex(ctx context.Context, f func(store spac
 
 func New() ObjectStore {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &dsObjectStore{
+	s := &dsObjectStore{
 		componentCtx:       ctx,
 		componentCtxCancel: cancel,
 		subManager:         &spaceindex.SubscriptionManager{},
 		spaceIndexes:       map[string]spaceindex.Store{},
+		deletedSpaceIds:    map[string]struct{}{},
 		openedSpaceIds:     map[string]struct{}{},
 		loadedCh:           make(chan struct{}),
 	}
+	s.crossSpaceDrained = sync.NewCond(&s.lock)
+	return s
 }
 
 func (s *dsObjectStore) Init(a *app.App) (err error) {
@@ -358,8 +376,14 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 		return spaceindex.NewInvalidStore(errors.New("empty spaceId"))
 	}
 	s.lock.Lock()
-	spaceIndex := s.getOrInitSpaceIndex(spaceId)
+	spaceIndex, ok := s.getOrInitSpaceIndex(spaceId)
 	s.lock.Unlock()
+	if !ok {
+		// Space is tombstoned (being / already deleted): refuse to reopen it
+		// so a racing caller cannot resurrect the store/DB/directory that
+		// DeleteSpaceIndex is removing.
+		return spaceindex.NewInvalidStore(ErrSpaceDeleted)
+	}
 	err := spaceIndex.Init()
 	if err != nil {
 		return spaceindex.NewInvalidStore(err)
@@ -372,15 +396,44 @@ func (s *dsObjectStore) SpaceIndex(spaceId string) spaceindex.Store {
 // registry (so it won't be iterated/queried cross-space anymore), forgets it
 // from the opened-spaces set, and removes the on-disk objectstore data for the
 // space via the anystore provider.
+//
+// Concurrency: the space is tombstoned first (under s.lock) so that any racing
+// SpaceIndex / cross-space iteration refuses to reopen it (preventing TOCTOU
+// resurrection of the DB/dir, and preventing markSpaceIndexOpened from re-adding
+// it to openedSpaceIds). We then wait for all in-flight cross-space iterations
+// that may already hold a reference to this store to drain before closing it and
+// removing its files, preventing a use-after-close / removed-file access from
+// those background loops.
+//
+// Remaining barrier work (documented, not yet covered): direct callers of
+// SpaceIndex(spaceId) that capture the returned store and keep using it across
+// this call (e.g. core/indexer/fulltext.go prepareSearchDocs) are not part of
+// the cross-space in-flight set, so a reference obtained in the narrow window
+// just before the tombstone could still be used while the DB is closed. Fully
+// closing that window requires a per-store "closing" RWMutex read-held by every
+// spaceindex query/write entrypoint and write-held by Close; that larger
+// refactor is deferred. The tombstone already prevents the more damaging
+// resurrection/leak, and the drain barrier covers the always-running
+// cross-space/FT iterators that are the most frequent racers.
 func (s *dsObjectStore) DeleteSpaceIndex(spaceId string) error {
 	if spaceId == "" {
 		return errors.New("empty spaceId")
 	}
 
 	s.lock.Lock()
+	// Tombstone first so concurrent getOrInitSpaceIndex/markSpaceIndexOpened
+	// short-circuit and cannot resurrect the space.
+	s.deletedSpaceIds[spaceId] = struct{}{}
 	store, ok := s.spaceIndexes[spaceId]
 	if ok {
 		delete(s.spaceIndexes, spaceId)
+	}
+	// Wait for in-flight cross-space iterations to finish: any snapshot that
+	// captured this store before the tombstone must release it before we close
+	// the store and remove its files. New iterations started after the
+	// tombstone exclude this space (it is no longer in s.spaceIndexes).
+	for s.crossSpaceInflight > 0 {
+		s.crossSpaceDrained.Wait()
 	}
 	s.lock.Unlock()
 
@@ -397,6 +450,19 @@ func (s *dsObjectStore) DeleteSpaceIndex(spaceId string) error {
 
 	if err := s.anystoreProvider.DeleteSpaceData(spaceId); err != nil {
 		errs = errors.Join(errs, fmt.Errorf("delete space data: %w", err))
+	}
+
+	// Lift the tombstone once the on-disk data is fully removed. At this point
+	// the store is closed and DeleteSpaceData's os.RemoveAll has completed, so a
+	// subsequent SpaceIndex(spaceId) can only create a brand-new empty store/DB
+	// (e.g. when the same space is re-joined within the session) — there is no
+	// removed-files window left to race. We keep the tombstone on error so a
+	// failed delete (retried by the offloader every 20s) still refuses re-opens
+	// until the removal actually succeeds.
+	if errs == nil {
+		s.lock.Lock()
+		delete(s.deletedSpaceIds, spaceId)
+		s.lock.Unlock()
 	}
 	return errs
 }
@@ -444,6 +510,18 @@ func (s *dsObjectStore) OpenedSpaceIds() []string {
 // (b) a listener registering during the firing still observes the space via
 // OnSpaceIndexOpened's replay.
 func (s *dsObjectStore) markSpaceIndexOpened(spaceId string) {
+	// Refuse to (re-)mark a tombstoned space as opened. collectCrossSpace /
+	// iterateSpacesForFulltext call this on a store captured from a registry
+	// snapshot; without this guard a snapshot taken just before
+	// DeleteSpaceIndex could re-add the deleted space to openedSpaceIds and
+	// re-fire OnSpaceIndexOpened for a space whose data was just removed.
+	s.lock.Lock()
+	_, deleted := s.deletedSpaceIds[spaceId]
+	s.lock.Unlock()
+	if deleted {
+		return
+	}
+
 	s.spaceOpenedLock.Lock()
 	if _, ok := s.openedSpaceIds[spaceId]; ok {
 		s.spaceOpenedLock.Unlock()
@@ -458,7 +536,15 @@ func (s *dsObjectStore) markSpaceIndexOpened(spaceId string) {
 	}
 }
 
-func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
+// getOrInitSpaceIndex returns the in-memory store for spaceId, creating it on
+// demand. Must be called with s.lock held. The returned bool is false when the
+// space is tombstoned (being / already deleted via DeleteSpaceIndex): in that
+// case no store is created and the caller must NOT open the space, otherwise it
+// would resurrect the just-removed DB/directory.
+func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) (spaceindex.Store, bool) {
+	if _, deleted := s.deletedSpaceIds[spaceId]; deleted {
+		return nil, false
+	}
 	store, ok := s.spaceIndexes[spaceId]
 	if !ok {
 		store = spaceindex.New(s.componentCtx, spaceId, spaceindex.Deps{
@@ -470,7 +556,7 @@ func (s *dsObjectStore) getOrInitSpaceIndex(spaceId string) spaceindex.Store {
 		})
 		s.spaceIndexes[spaceId] = store
 	}
-	return store
+	return store, true
 }
 
 // preloadConcurrencyDefault bounds parallel per-space store opens during
@@ -573,14 +659,33 @@ func (s *dsObjectStore) WaitStoresLoaded(ctx context.Context) error {
 	}
 }
 
-func (s *dsObjectStore) listStores() []spaceindex.Store {
+// beginCrossSpaceIteration snapshots the currently-registered space indexes
+// and registers an in-flight cross-space iteration. The snapshot and the
+// counter increment happen atomically under s.lock so that DeleteSpaceIndex,
+// which sets a tombstone and then waits for crossSpaceInflight to reach zero,
+// can never close a store (and os.RemoveAll its DB files) while a snapshot that
+// already captured that store is still being iterated. Every call MUST be
+// paired with exactly one deferred endCrossSpaceIteration.
+func (s *dsObjectStore) beginCrossSpaceIteration() []spaceindex.Store {
 	s.lock.Lock()
 	stores := make([]spaceindex.Store, 0, len(s.spaceIndexes))
 	for _, store := range s.spaceIndexes {
 		stores = append(stores, store)
 	}
+	s.crossSpaceInflight++
 	s.lock.Unlock()
 	return stores
+}
+
+// endCrossSpaceIteration releases an in-flight cross-space iteration and wakes
+// any DeleteSpaceIndex waiting for the iterations to drain.
+func (s *dsObjectStore) endCrossSpaceIteration() {
+	s.lock.Lock()
+	s.crossSpaceInflight--
+	if s.crossSpaceInflight == 0 {
+		s.crossSpaceDrained.Broadcast()
+	}
+	s.lock.Unlock()
 }
 
 func collectCrossSpace[T any](ctx context.Context, s *dsObjectStore, proc func(store spaceindex.Store) ([]T, error)) ([]T, error) {
@@ -596,7 +701,8 @@ func collectCrossSpace[T any](ctx context.Context, s *dsObjectStore, proc func(s
 	if err := s.WaitStoresLoaded(ctx); err != nil {
 		return nil, fmt.Errorf("wait stores loaded: %w", err)
 	}
-	stores := s.listStores()
+	stores := s.beginCrossSpaceIteration()
+	defer s.endCrossSpaceIteration()
 
 	var result []T
 	for _, store := range stores {
@@ -621,7 +727,8 @@ func collectCrossSpace[T any](ctx context.Context, s *dsObjectStore, proc func(s
 // full authoritative set would only add startup latency for no correctness
 // gain.
 func iterateSpacesForFulltext(s *dsObjectStore, proc func(store spaceindex.Store) error) error {
-	stores := s.listStores()
+	stores := s.beginCrossSpaceIteration()
+	defer s.endCrossSpaceIteration()
 	for _, store := range stores {
 		if store.SpaceId() == s.techSpaceId || store.SpaceId() == addr.AnytypeMarketplaceWorkspace {
 			continue

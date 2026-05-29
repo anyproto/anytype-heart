@@ -43,6 +43,11 @@ const CName = "anystore-provider"
 
 var log = logging.LoggerNotSugared(CName)
 
+// ErrSpaceDeleted is returned when a space's databases are being removed via
+// DeleteSpaceData and a caller tries to (re)open them, which would resurrect
+// the just-removed on-disk directory.
+var ErrSpaceDeleted = errors.New("space data is deleted")
+
 type systemKeys struct {
 }
 
@@ -110,6 +115,14 @@ type provider struct {
 	spaceIndexDbsLock sync.Mutex
 	spaceIndexDbs     map[string]anystore.DB
 
+	// deletedSpaceIds tombstones spaces while DeleteSpaceData is closing their
+	// DBs and removing their files, so GetSpaceIndexDb / GetCrdtDb / a
+	// previously handed-out AnystoreGetter.Wait refuse to reopen (and recreate
+	// the on-disk dir for) a space that is being deleted. Guarded by its own
+	// lock to avoid ordering constraints with the per-map locks above.
+	deletedSpaceIdsLock sync.Mutex
+	deletedSpaceIds     map[string]struct{}
+
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
@@ -122,9 +135,10 @@ type provider struct {
 
 func New() Provider {
 	return &provider{
-		crdtDbs:        map[string]*AnystoreGetter{},
-		spaceIndexDbs:  map[string]anystore.DB{},
-		anyStoreConfig: &anystore.Config{},
+		crdtDbs:         map[string]*AnystoreGetter{},
+		spaceIndexDbs:   map[string]anystore.DB{},
+		deletedSpaceIds: map[string]struct{}{},
+		anyStoreConfig:  &anystore.Config{},
 	}
 }
 
@@ -267,6 +281,13 @@ func (s *provider) GetSystemCollection() anystore.Collection {
 	return s.systemCollection
 }
 
+func (s *provider) isSpaceDeleted(spaceId string) bool {
+	s.deletedSpaceIdsLock.Lock()
+	defer s.deletedSpaceIdsLock.Unlock()
+	_, ok := s.deletedSpaceIds[spaceId]
+	return ok
+}
+
 func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 	s.spaceIndexDbsLock.Lock()
 	defer s.spaceIndexDbsLock.Unlock()
@@ -274,6 +295,11 @@ func (s *provider) GetSpaceIndexDb(spaceId string) (anystore.DB, error) {
 	db, ok := s.spaceIndexDbs[spaceId]
 	if ok {
 		return db, nil
+	}
+
+	// Refuse to recreate the DB/dir for a space that is being deleted.
+	if s.isSpaceDeleted(spaceId) {
+		return nil, ErrSpaceDeleted
 	}
 
 	db, err := openDatabaseWithReinit(s.componentCtx, s.getAnyStoreConfig(), filepath.Join(s.objectStorePath, spaceId, "objects.db"), s.reporter)
@@ -295,6 +321,10 @@ type AnystoreGetter struct {
 
 	lock sync.Mutex
 	db   anystore.DB
+	// deleted is set by DeleteSpaceData; once set, Wait refuses to (re)open the
+	// crdt.db so a getter handed out before deletion cannot resurrect the
+	// just-removed directory and leak an untracked DB handle.
+	deleted bool
 }
 
 func (g *AnystoreGetter) get() anystore.DB {
@@ -307,6 +337,10 @@ func (g *AnystoreGetter) get() anystore.DB {
 func (g *AnystoreGetter) Wait() (anystore.DB, error) {
 	g.lock.Lock()
 	defer g.lock.Unlock()
+
+	if g.deleted {
+		return nil, ErrSpaceDeleted
+	}
 
 	if g.db != nil {
 		return g.db, nil
@@ -338,6 +372,9 @@ func (s *provider) GetCrdtDb(spaceId string) *AnystoreGetter {
 		config:          s.getAnyStoreConfig(),
 		objectStorePath: s.objectStorePath,
 		reporter:        s.reporter,
+		// A getter created for a space currently being deleted must not reopen
+		// the crdt.db; mark it deleted so Wait short-circuits.
+		deleted: s.isSpaceDeleted(spaceId),
 	}
 	s.crdtDbs[spaceId] = db
 	return db
@@ -381,16 +418,23 @@ func (s *provider) Close(ctx context.Context) error {
 	s.spaceIndexDbsLock.Unlock()
 
 	s.crtdStoreLock.Lock()
-	closeChan = make(chan error, len(s.crdtDbs))
-	for spaceId, store := range s.crdtDbs {
-		db := store.get()
-		go func(spaceId string, db anystore.DB) {
-			if db != nil {
-				closeChan <- db.Close()
-			}
-		}(spaceId, db)
+	// Only count getters whose DB was actually opened: an AnystoreGetter
+	// registered via GetCrdtDb but never Wait()-ed has a nil db, so its
+	// goroutine would never send and the receive loop below would deadlock if
+	// we counted it.
+	var openCrdtDbs []anystore.DB
+	for _, store := range s.crdtDbs {
+		if db := store.get(); db != nil {
+			openCrdtDbs = append(openCrdtDbs, db)
+		}
 	}
-	for i := 0; i < len(s.crdtDbs); i++ {
+	closeChan = make(chan error, len(openCrdtDbs))
+	for _, db := range openCrdtDbs {
+		go func(db anystore.DB) {
+			closeChan <- db.Close()
+		}(db)
+	}
+	for i := 0; i < len(openCrdtDbs); i++ {
 		err = errors.Join(err, <-closeChan)
 	}
 	s.crdtDbs = map[string]*AnystoreGetter{}
@@ -416,35 +460,64 @@ func (s *provider) ListSpaceIdsFromFilesystem() ([]string, error) {
 // DeleteSpaceData closes the space index and CRDT databases for the given space
 // and removes the whole space directory from the filesystem. It always attempts
 // the directory removal even if closing one of the DBs fails, joining all errors.
+//
+// The space is tombstoned for the duration so that a concurrent GetSpaceIndexDb
+// / GetCrdtDb / a previously handed-out AnystoreGetter.Wait cannot reopen (and
+// recreate the just-removed directory of) the space mid-deletion. DBs are
+// captured under the per-map locks and Closed outside them: db.Close blocks
+// unbounded acquiring the write connection, so closing under the lock would
+// stall every concurrent GetSpaceIndexDb/GetCrdtDb/Flush.
 func (s *provider) DeleteSpaceData(spaceId string) error {
 	var errs error
 
-	// Close and forget spaceIndex DB
+	s.deletedSpaceIdsLock.Lock()
+	s.deletedSpaceIds[spaceId] = struct{}{}
+	s.deletedSpaceIdsLock.Unlock()
+
+	// Capture and forget the spaceIndex DB under the lock, close it outside.
 	s.spaceIndexDbsLock.Lock()
-	if db, ok := s.spaceIndexDbs[spaceId]; ok {
-		if err := db.Close(); err != nil {
-			errs = errors.Join(errs, fmt.Errorf("close space index db: %w", err))
-		}
+	indexDb, hasIndexDb := s.spaceIndexDbs[spaceId]
+	if hasIndexDb {
 		delete(s.spaceIndexDbs, spaceId)
 	}
 	s.spaceIndexDbsLock.Unlock()
-
-	// Close and forget CRDT DB
-	s.crtdStoreLock.Lock()
-	if crdtGetter, ok := s.crdtDbs[spaceId]; ok {
-		if db := crdtGetter.get(); db != nil {
-			if err := db.Close(); err != nil {
-				errs = errors.Join(errs, fmt.Errorf("close crdt db: %w", err))
-			}
+	if hasIndexDb {
+		if err := indexDb.Close(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("close space index db: %w", err))
 		}
+	}
+
+	// Capture and forget the CRDT DB under the lock, mark the getter deleted so
+	// a concurrent holder's Wait short-circuits, then close it outside the lock.
+	s.crtdStoreLock.Lock()
+	var crdtDb anystore.DB
+	if crdtGetter, ok := s.crdtDbs[spaceId]; ok {
+		crdtGetter.lock.Lock()
+		crdtGetter.deleted = true
+		crdtDb = crdtGetter.db
+		crdtGetter.lock.Unlock()
 		delete(s.crdtDbs, spaceId)
 	}
 	s.crtdStoreLock.Unlock()
+	if crdtDb != nil {
+		if err := crdtDb.Close(); err != nil {
+			errs = errors.Join(errs, fmt.Errorf("close crdt db: %w", err))
+		}
+	}
 
 	// Always attempt to remove the space directory from filesystem
 	spacePath := filepath.Join(s.objectStorePath, spaceId)
 	if err := os.RemoveAll(spacePath); err != nil {
 		errs = errors.Join(errs, fmt.Errorf("remove space directory: %w", err))
+	}
+
+	// Lift the tombstone once removal succeeded so the same space can be
+	// re-joined later in the session. Keep it on error so a retried delete
+	// still refuses re-opens until removal actually succeeds.
+	if errs == nil {
+		s.deletedSpaceIdsLock.Lock()
+		delete(s.deletedSpaceIds, spaceId)
+		s.deletedSpaceIdsLock.Unlock()
 	}
 
 	return errs
