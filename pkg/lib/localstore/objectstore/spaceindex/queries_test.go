@@ -916,6 +916,21 @@ func TestQueryAndCount(t *testing.T) {
 		require.Len(t, recs, 1)
 	})
 
+	t.Run("unbounded query with offset returns total without counting", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+		})
+
+		// limit 0 means unbounded, so all records from the offset are returned -> total = offset + len
+		recs, total, err := s.QueryAndCount(database.Query{Offset: 1})
+		require.NoError(t, err)
+		require.Len(t, recs, 2)
+		require.Equal(t, 3, total)
+	})
+
 	t.Run("partial page returns total without counting", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		s.AddObjects(t, []TestObject{

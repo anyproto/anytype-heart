@@ -82,9 +82,12 @@ func (s *dsObjectStore) QueryAndCount(q database.Query) (records []database.Reco
 		return nil, 0, fmt.Errorf("query any store: %w", err)
 	}
 
-	// When the page is not full we have reached the end of the result set, so the total is known
-	// without a separate count: it's the offset plus the number of records on this (last) page.
-	if q.Limit > 0 && len(records) > 0 && len(records) < q.Limit {
+	// When the page reached the end of the result set, the total is known without a separate count:
+	// it's the offset plus the number of records on this final page. The page reaches the end when the
+	// query is unbounded (limit 0) or returned fewer records than the limit. We additionally require
+	// len > 0 (or a zero offset) to rule out an offset that overshot the result set, which is
+	// indistinguishable from an empty match without counting.
+	if (q.Limit == 0 || len(records) < q.Limit) && (len(records) > 0 || q.Offset == 0) {
 		return records, q.Offset + len(records), nil
 	}
 
