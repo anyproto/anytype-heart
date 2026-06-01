@@ -916,6 +916,53 @@ func TestQueryAndCount(t *testing.T) {
 		require.Len(t, recs, 1)
 	})
 
+	t.Run("partial page returns total without counting", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+		})
+
+		// limit is larger than the result set, so the page is not full and total is known without a count
+		recs, total, err := s.QueryAndCount(database.Query{Limit: 10})
+		require.NoError(t, err)
+		require.Len(t, recs, 3)
+		require.Equal(t, 3, total)
+	})
+
+	t.Run("offset into last partial page returns correct total", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+		})
+
+		// page [offset:offset+limit] = records[2:4] -> 1 record, not full -> total = offset + len = 3
+		recs, total, err := s.QueryAndCount(database.Query{Limit: 2, Offset: 2})
+		require.NoError(t, err)
+		require.Len(t, recs, 1)
+		require.Equal(t, 3, total)
+	})
+
+	t.Run("full page triggers count for the rest", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+			makeObjectWithName("id4", "name4"),
+			makeObjectWithName("id5", "name5"),
+		})
+
+		// page is full (len == limit), so there may be more -> count the full set
+		recs, total, err := s.QueryAndCount(database.Query{Limit: 2})
+		require.NoError(t, err)
+		require.Len(t, recs, 2)
+		require.Equal(t, 5, total)
+	})
+
 	t.Run("fulltext is not supported", func(t *testing.T) {
 		s := NewStoreFixture(t)
 		_, _, err := s.QueryAndCount(database.Query{TextQuery: "foo"})
