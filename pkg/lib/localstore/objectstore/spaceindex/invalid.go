@@ -51,6 +51,10 @@ func (s *invalidStore) QueryRaw(f *database.Filters, limit int, offset int) (rec
 	return nil, s.err
 }
 
+func (s *invalidStore) QueryAndCount(q database.Query) (records []database.Record, total int, err error) {
+	return nil, 0, s.err
+}
+
 func (s *invalidStore) QueryByIds(ids []string) (records []database.Record, err error) {
 	return nil, s.err
 }

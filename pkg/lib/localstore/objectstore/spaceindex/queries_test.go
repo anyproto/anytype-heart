@@ -874,6 +874,55 @@ func TestQuery(t *testing.T) {
 	})
 }
 
+func TestQueryAndCount(t *testing.T) {
+	t.Run("count all without limit", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+		})
+
+		recs, total, err := s.QueryAndCount(database.Query{})
+		require.NoError(t, err)
+		require.Len(t, recs, 3)
+		require.Equal(t, 3, total)
+	})
+
+	t.Run("total ignores limit and offset, records respect them", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "match"),
+			makeObjectWithName("id2", "match"),
+			makeObjectWithName("id3", "match"),
+			makeObjectWithName("id4", "other"),
+		})
+
+		recs, total, err := s.QueryAndCount(database.Query{
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyName,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.String("match"),
+				},
+			},
+			Limit:  1,
+			Offset: 1,
+		})
+		require.NoError(t, err)
+		// total counts all matching objects, ignoring limit/offset
+		require.Equal(t, 3, total)
+		// records respect limit/offset
+		require.Len(t, recs, 1)
+	})
+
+	t.Run("fulltext is not supported", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		_, _, err := s.QueryAndCount(database.Query{TextQuery: "foo"})
+		require.Error(t, err)
+	})
+}
+
 func TestQueryObjectIds(t *testing.T) {
 	t.Run("no filters", func(t *testing.T) {
 		s := NewStoreFixture(t)

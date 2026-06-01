@@ -44,6 +44,40 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 	return recs, err
 }
 
+// QueryAndCount runs the query (respecting limit/offset) and additionally returns the total number
+// of objects matching the filters, ignoring limit/offset. The filters are compiled only once and
+// reused for both the limited query and the count. It applies the same implicit filters as Query
+// (isArchived/isDeleted/objectType). Fulltext queries are not supported.
+func (s *dsObjectStore) QueryAndCount(q database.Query) ([]database.Record, int, error) {
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	collatorBuffer := s.collatorBufferPool.get()
+	defer s.collatorBufferPool.put(collatorBuffer)
+
+	q.TextQuery = strings.TrimSpace(q.TextQuery)
+	if q.TextQuery != "" {
+		return nil, 0, fmt.Errorf("QueryAndCount does not support fulltext queries")
+	}
+
+	filters, err := database.NewFilters(q, s, arena, collatorBuffer)
+	if err != nil {
+		return nil, 0, fmt.Errorf("new filters: %w", err)
+	}
+
+	records, err := s.QueryRaw(filters, q.Limit, q.Offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query raw: %w", err)
+	}
+
+	// Count the full result set reusing the already-compiled filters, without materializing or sorting.
+	total, err := s.objects.Find(filters.FilterObj.AnystoreFilter()).Count(s.componentCtx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("count objects: %w", err)
+	}
+	return records, total, nil
+}
+
 func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
 	anystoreFilter := filter.AnystoreFilter()
 	var sortsArg []any
