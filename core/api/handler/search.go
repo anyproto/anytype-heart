@@ -14,7 +14,7 @@ import (
 // GlobalSearchHandler searches and retrieves objects across all spaces
 //
 //	@Summary		Search objects across all spaces
-//	@Description	Executes a global search over all spaces accessible to the authenticated user. The request body must specify the `query` text (currently matching only name and snippet of an object), optional filters on types (e.g., "page", "task"), and sort directives (default: descending by last modified date). Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.
+//	@Description	Executes a global search over all spaces accessible to the authenticated user. The request body must specify the `query` text (currently matching only name and snippet of an object), optional filters on types (e.g., "page", "task"), and sort directives (default: descending by last modified date). File-layout objects (file, image, video, audio, pdf) are excluded from results by default; to include them, list one of the file type keys ("file", "image", "video", "audio") in the `types` field. Pagination is controlled via `offset` and `limit` query parameters to facilitate lazy loading in client UIs. The response returns a unified list of matched objects with their metadata and properties.
 //	@Id				search_global
 //	@Tags			Search
 //	@Accept			json
@@ -60,7 +60,7 @@ func GlobalSearchHandler(s *service.Service) gin.HandlerFunc {
 // SearchHandler searches and retrieves objects within a space
 //
 //	@Summary		Search objects within a space
-//	@Description	Performs a search within a single space (specified by the `space_id` path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search `query`, `types`, and sorting preferences. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.
+//	@Description	Performs a search within a single space (specified by the `space_id` path parameter). Like the global search, it accepts pagination parameters and a JSON payload containing the search `query`, `types`, and sorting preferences. File-layout objects (file, image, video, audio, pdf) are excluded from results by default; to include them, list one of the file type keys ("file", "image", "video", "audio") in the `types` field. The search is limited to the provided space and returns a list of objects that match the query. This allows clients to implement space‑specific filtering without having to process extraneous results.
 //	@Id				search_space
 //	@Tags			Search
 //	@Accept			json

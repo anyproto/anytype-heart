@@ -48,7 +48,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 				Type:        model.BlockContentDataviewSort_Desc,
 				IncludeTime: true,
 			}},
+			Offset:    int32(offset),
+			Limit:     int32(limit + 1),
+			NeedTotal: true,
 		}).Return(&pb.RpcObjectSearchResponse{
+			Total: 1,
 			Records: []*types.Struct{
 				{
 					Fields: map[string]*types.Value{
@@ -156,7 +160,11 @@ func TestObjectService_ListObjects(t *testing.T) {
 				Type:        model.BlockContentDataviewSort_Desc,
 				IncludeTime: true,
 			}},
+			Offset:    int32(offset),
+			Limit:     int32(limit + 1),
+			NeedTotal: true,
 		}).Return(&pb.RpcObjectSearchResponse{
+			Total:   0,
 			Records: []*types.Struct{},
 			Error:   &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_NULL},
 		}).Once()
