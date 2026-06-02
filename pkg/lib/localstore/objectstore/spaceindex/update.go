@@ -184,6 +184,15 @@ func (s *dsObjectStore) UpdatePendingLocalDetails(id string, proc func(details *
 // ModifyObjectDetails updates details in store using modification function `proc`.
 // When upsert is true, the object is created if it does not exist; when false, missing objects are silently skipped.
 func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
+	return s.ModifyObjectDetailsCtx(s.componentCtx, id, proc, upsert)
+}
+
+// ModifyObjectDetailsCtx is like ModifyObjectDetails but runs under the
+// provided context instead of the store component context. Pass a tx-bearing
+// context (see WriteTx) to batch many modifications into a single write tx and,
+// when the context is non-cancelable, to skip any-store's per-statement
+// SQLite interrupt handshake.
+func (s *dsObjectStore) ModifyObjectDetailsCtx(ctx context.Context, id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
 	if proc == nil {
 		return nil
 	}
@@ -223,9 +232,9 @@ func (s *dsObjectStore) ModifyObjectDetails(id string, proc func(details *domain
 	})
 	var err error
 	if upsert {
-		_, err = s.objects.UpsertId(s.componentCtx, id, modifier)
+		_, err = s.objects.UpsertId(ctx, id, modifier)
 	} else {
-		_, err = s.objects.UpdateId(s.componentCtx, id, modifier)
+		_, err = s.objects.UpdateId(ctx, id, modifier)
 		if errors.Is(err, anystore.ErrDocNotFound) {
 			return nil
 		}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/hashicorp/golang-lru/v2/expirable"
@@ -19,6 +20,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+// sseSendTimeout bounds how long Flush will wait to deliver an event to a slow
+// SSE subscriber before giving up, closing its channel and dropping the
+// subscription. The handler observes the closed channel and exits the stream.
+const sseSendTimeout = time.Second
 
 type subscriptionManager struct {
 	lock sync.Mutex
@@ -56,6 +62,9 @@ type subscription struct {
 	// couldUseSessionContext determines if client could receive events synchronously in API responses
 	couldUseSessionContext bool
 
+	// sseSink, when set, receives events directly instead of going through the event sender
+	sseSink chan<- *pb.Event
+
 	state *messagesState
 }
 
@@ -79,6 +88,7 @@ func (s *subscriptionManager) subscribe(req SubscribeLastMessagesRequest, initia
 		id:                     req.SubId,
 		withDependencies:       req.WithDependencies,
 		couldUseSessionContext: req.CouldUseSessionContext,
+		sseSink:                req.SseSink,
 		state:                  st,
 	}
 	s.chatStateUpdated = false
@@ -262,8 +272,15 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 
 	var syncSubIds []string
 	var asyncSubIds []string
+	type sseSub struct {
+		id   string
+		sink chan<- *pb.Event
+	}
+	var sseSubs []sseSub
 	for _, sub := range s.subscriptions {
-		if sub.couldUseSessionContext && s.sessionContext != nil {
+		if sub.sseSink != nil {
+			sseSubs = append(sseSubs, sseSub{id: sub.id, sink: sub.sseSink})
+		} else if sub.couldUseSessionContext && s.sessionContext != nil {
 			syncSubIds = append(syncSubIds, sub.id)
 		} else {
 			asyncSubIds = append(asyncSubIds, sub.id)
@@ -292,6 +309,34 @@ func (s *subscriptionManager) Flush(reloadStateIfNeeded bool) {
 		s.eventSender.Broadcast(ev)
 	}
 
+	var droppedSseSubs []string
+	for _, ss := range sseSubs {
+		sseEvents := cloneEvents(events)
+		eventsSetSubIds([]string{ss.id}, sseEvents)
+		ev := &pb.Event{
+			ContextId: s.chatId,
+			Messages:  sseEvents,
+		}
+		// Try non-blocking first to avoid the timer cost on the common path.
+		select {
+		case ss.sink <- ev:
+			continue
+		default:
+		}
+		// Slow subscriber: wait up to sseSendTimeout, then drop the
+		// subscription so we never silently lose events.
+		timer := time.NewTimer(sseSendTimeout)
+		select {
+		case ss.sink <- ev:
+			timer.Stop()
+		case <-timer.C:
+			close(ss.sink)
+			droppedSseSubs = append(droppedSseSubs, ss.id)
+		}
+	}
+	for _, id := range droppedSseSubs {
+		delete(s.subscriptions, id)
+	}
 }
 
 func (s *subscriptionManager) enrichWithDependencies(ev *pb.EventChatAdd) {

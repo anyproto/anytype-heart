@@ -59,6 +59,14 @@ func (fx *fixture) populateCache(spaceId string) {
 	}
 }
 
+func (fx *fixture) cacheParticipant(spaceId, identity, name string) {
+	fx.service.cache.cacheParticipant(spaceId, &participantEntry{
+		Id:       "_participant_" + spaceId + "_" + identity,
+		Identity: identity,
+		Name:     name,
+	})
+}
+
 // Common test properties
 func GetTestProperties() []*apimodel.Property {
 	return []*apimodel.Property{
@@ -231,6 +239,15 @@ func GetTestTypes() []*apimodel.Type {
 			Name:       "Task",
 			UniqueKey:  "ot-task",
 			Layout:     apimodel.ObjectLayoutAction,
+			Properties: []apimodel.Property{},
+		},
+		{
+			Id:         "type-image",
+			Key:        "image",
+			Icon:       nil,
+			Name:       "Image",
+			UniqueKey:  "ot-image",
+			Layout:     apimodel.ObjectLayoutBasic,
 			Properties: []apimodel.Property{},
 		},
 	}

@@ -18951,6 +18951,7 @@ deprecated in favor of SearchWithMeta
 
 DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
+| needTotal | [bool](#bool) |  | when true, response.total is filled with the count of all objects matching the filters, ignoring limit/offset |
 
 
 
@@ -18967,6 +18968,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Search.Response.Error](#anytype-Rpc-Object-Search-Response-Error) |  |  |
 | records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| total | [int64](#int64) |  | total number of objects matching the filters, ignoring limit/offset; filled only when request.needTotal is true |
 
 
 

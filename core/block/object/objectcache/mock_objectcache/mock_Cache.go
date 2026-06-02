@@ -620,6 +620,54 @@ func (_c *MockCache_DoLockedIfNotExists_Call) RunAndReturn(run func(string, func
 	return _c
 }
 
+// FilterNotExists provides a mock function with given fields: ids
+func (_m *MockCache) FilterNotExists(ids []string) []string {
+	ret := _m.Called(ids)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FilterNotExists")
+	}
+
+	var r0 []string
+	if rf, ok := ret.Get(0).(func([]string) []string); ok {
+		r0 = rf(ids)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	return r0
+}
+
+// MockCache_FilterNotExists_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FilterNotExists'
+type MockCache_FilterNotExists_Call struct {
+	*mock.Call
+}
+
+// FilterNotExists is a helper method to define mock.On call
+//   - ids []string
+func (_e *MockCache_Expecter) FilterNotExists(ids interface{}) *MockCache_FilterNotExists_Call {
+	return &MockCache_FilterNotExists_Call{Call: _e.mock.On("FilterNotExists", ids)}
+}
+
+func (_c *MockCache_FilterNotExists_Call) Run(run func(ids []string)) *MockCache_FilterNotExists_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].([]string))
+	})
+	return _c
+}
+
+func (_c *MockCache_FilterNotExists_Call) Return(_a0 []string) *MockCache_FilterNotExists_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCache_FilterNotExists_Call) RunAndReturn(run func([]string) []string) *MockCache_FilterNotExists_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetObject provides a mock function with given fields: ctx, id
 func (_m *MockCache) GetObject(ctx context.Context, id string) (smartblock.SmartBlock, error) {
 	ret := _m.Called(ctx, id)
