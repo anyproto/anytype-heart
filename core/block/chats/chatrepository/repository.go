@@ -509,21 +509,34 @@ type GetMessagesRequest struct {
 }
 
 func (s *repository) GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error) {
-	var qry anystore.Query
+	var filters query.And
 	if req.AfterOrderId != "" {
 		operator := query.CompOpGt
 		if req.IncludeBoundary {
 			operator = query.CompOpGte
 		}
-		qry = s.collection.Find(query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.AfterOrderId)}).Sort(ascOrder).Limit(uint(req.Limit))
-	} else if req.BeforeOrderId != "" {
+		filters = append(filters, query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.AfterOrderId)})
+	}
+	if req.BeforeOrderId != "" {
 		operator := query.CompOpLt
 		if req.IncludeBoundary {
 			operator = query.CompOpLte
 		}
-		qry = s.collection.Find(query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.BeforeOrderId)}).Sort(descOrder).Limit(uint(req.Limit))
+		filters = append(filters, query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(operator, req.BeforeOrderId)})
+	}
+
+	// Sort ASC only when paginating forward from AfterOrderId alone; otherwise
+	// DESC returns the most recent N within the range / chat.
+	sortOrder := descOrder
+	if req.AfterOrderId != "" && req.BeforeOrderId == "" {
+		sortOrder = ascOrder
+	}
+
+	var qry anystore.Query
+	if len(filters) == 0 {
+		qry = s.collection.Find(nil).Sort(sortOrder).Limit(uint(req.Limit))
 	} else {
-		qry = s.collection.Find(nil).Sort(descOrder).Limit(uint(req.Limit))
+		qry = s.collection.Find(filters).Sort(sortOrder).Limit(uint(req.Limit))
 	}
 
 	msgs, err := s.queryMessages(ctx, qry)

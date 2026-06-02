@@ -49,6 +49,10 @@ type Store interface {
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
+	// QueryAndCount runs the query (with limit/offset) and additionally returns the total number of
+	// objects matching the filters, ignoring limit/offset. The filters are compiled only once.
+	// It applies the same implicit filters as Query. Fulltext queries are not supported.
+	QueryAndCount(q database.Query) (records []database.Record, total int, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIds(ids []string) (records []database.Record, err error)
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
@@ -71,6 +75,14 @@ type Store interface {
 	UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
 	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error
+	// ModifyObjectDetailsCtx is like ModifyObjectDetails but runs under the
+	// provided context instead of the store component context. Pass a tx-bearing
+	// context (see WriteTx) to batch many modifications into a single write tx.
+	ModifyObjectDetailsCtx(ctx context.Context, id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error
+	// ListIdsWithoutSyncDetails returns ids of objects that are missing at least
+	// one of the relations maintained by helper.InjectsSyncDetails
+	// (SyncStatus/SyncDate/SyncError). Presence, not value, is checked.
+	ListIdsWithoutSyncDetails(ctx context.Context) ([]string, error)
 
 	DeleteObject(id string) error
 	DeleteDetails(ctx context.Context, ids []string) error
