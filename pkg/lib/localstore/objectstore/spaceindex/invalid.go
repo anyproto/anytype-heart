@@ -51,6 +51,10 @@ func (s *invalidStore) QueryRaw(f *database.Filters, limit int, offset int) (rec
 	return nil, s.err
 }
 
+func (s *invalidStore) QueryAndCount(q database.Query) (records []database.Record, total int, err error) {
+	return nil, 0, s.err
+}
+
 func (s *invalidStore) QueryByIds(ids []string) (records []database.Record, err error) {
 	return nil, s.err
 }
@@ -101,6 +105,14 @@ func (s *invalidStore) UpdatePendingLocalDetails(id string, proc func(details *d
 
 func (s *invalidStore) ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
 	return s.err
+}
+
+func (s *invalidStore) ModifyObjectDetailsCtx(ctx context.Context, id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error {
+	return s.err
+}
+
+func (s *invalidStore) ListIdsWithoutSyncDetails(ctx context.Context) ([]string, error) {
+	return nil, s.err
 }
 
 func (s *invalidStore) DeleteObject(id string) error {
@@ -226,7 +238,6 @@ func (s *invalidStore) GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, th
 func (s *invalidStore) ClearHeadsState(ctx context.Context) error {
 	return s.err
 }
-
 
 func (s *invalidStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	return nil, s.err
