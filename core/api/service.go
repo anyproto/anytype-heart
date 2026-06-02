@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -50,6 +51,7 @@ type apiService struct {
 	accountService       apicore.AccountService
 	eventService         apicore.EventService
 	crossSpaceSubService apicore.CrossSpaceSubscriptionService
+	chatSubService       apicore.ChatSubscriptionService
 	fileObjectService    apicore.FileObjectService
 
 	listenAddr string
@@ -88,6 +90,7 @@ func (s *apiService) Init(a *app.App) error {
 	s.accountService = a.MustComponent(account.CName).(account.Service)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	s.crossSpaceSubService = a.MustComponent(crossspacesub.CName).(apicore.CrossSpaceSubscriptionService)
+	s.chatSubService = &chatSubAdapter{svc: a.MustComponent(chatsubscription.CName).(chatsubscription.Service)}
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
 	return nil
 }
@@ -121,6 +124,7 @@ func (s *apiService) startServer() error {
 		s.accountService,
 		s.eventService,
 		s.crossSpaceSubService,
+		s.chatSubService,
 		s.fileObjectService,
 		s.listenAddr,
 		openapiYAML,

@@ -17,7 +17,7 @@ import (
 )
 
 func (s *Service) InitializeAllCaches() error {
-	// Initialize the cross-space subscriptions for types, properties, and tags
+	// Initialize the cross-space subscriptions for types, properties, tags, and participants
 	if err := s.subscribeToCrossSpaceProperties(); err != nil {
 		return fmt.Errorf("failed to subscribe to cross-space properties: %w", err)
 	}
@@ -28,6 +28,10 @@ func (s *Service) InitializeAllCaches() error {
 
 	if err := s.subscribeToCrossSpaceTags(); err != nil {
 		return fmt.Errorf("failed to subscribe to cross-space tags: %w", err)
+	}
+
+	if err := s.subscribeToCrossSpaceParticipants(); err != nil {
+		return fmt.Errorf("failed to subscribe to cross-space participants: %w", err)
 	}
 
 	return nil
@@ -218,6 +222,65 @@ func (s *Service) subscribeToCrossSpaceTags() error {
 	return nil
 }
 
+// subscribeToCrossSpaceParticipants subscribes to active-participant changes
+// across all spaces so chat creator enrichment can resolve identity -> name
+// from a local cache instead of issuing an ObjectSearch per request.
+func (s *Service) subscribeToCrossSpaceParticipants() error {
+	if s.subscriptions.participants.queue != nil {
+		return nil
+	}
+
+	s.subscriptions.participants.queue = mb.New[*pb.EventMessage](0)
+
+	filters := []database.FilterRequest{
+		{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(int64(model.ObjectType_participant)),
+		},
+		{
+			RelationKey: bundle.RelationKeyParticipantStatus,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(int64(model.ParticipantStatus_Active)),
+		},
+	}
+
+	resp, err := s.crossSpaceSubService.Subscribe(subscription.SubscribeRequest{
+		SubId:   "api.participants.crossspace",
+		Filters: filters,
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyIdentity.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyGlobalName.String(),
+			bundle.RelationKeySpaceId.String(),
+		},
+		NoDepSubscription: true,
+		InternalQueue:     s.subscriptions.participants.queue,
+	}, crossspacesub.NoOpPredicate())
+
+	if err != nil {
+		return fmt.Errorf("failed to subscribe to cross-space participants: %w", err)
+	}
+
+	s.subscriptions.participants.subId = resp.SubId
+
+	for _, record := range resp.Records {
+		entry := participantEntryFromDetails(record)
+		if entry == nil {
+			continue
+		}
+		s.cache.cacheParticipant(record.GetString(bundle.RelationKeySpaceId), entry)
+	}
+
+	s.subscriptions.participants.objSub = objectsubscription.NewFromQueue(s.subscriptions.participants.queue, s.createParticipantSubscriptionParams(), resp.Records)
+	if err := s.subscriptions.participants.objSub.(*objectsubscription.ObjectSubscription[*participantWithSpace]).Run(); err != nil {
+		return fmt.Errorf("failed to run participant object subscription: %w", err)
+	}
+
+	return nil
+}
+
 type propertyWithSpace struct {
 	details *domain.Details
 	spaceId string
@@ -342,6 +405,69 @@ func (s *Service) createTagSubscriptionParams() objectsubscription.SubscriptionP
 	}
 }
 
+type participantWithSpace struct {
+	details *domain.Details
+	spaceId string
+}
+
+// participantEntryFromDetails extracts the participant fields used for chat
+// creator enrichment. Returns nil if there is no usable identity.
+func participantEntryFromDetails(details *domain.Details) *participantEntry {
+	identity := details.GetString(bundle.RelationKeyIdentity)
+	if identity == "" {
+		return nil
+	}
+	name := details.GetString(bundle.RelationKeyName)
+	if name == "" {
+		name = details.GetString(bundle.RelationKeyGlobalName)
+	}
+	return &participantEntry{
+		Id:       details.GetString(bundle.RelationKeyId),
+		Identity: identity,
+		Name:     name,
+	}
+}
+
+// createParticipantSubscriptionParams creates the subscription parameters for participants
+func (s *Service) createParticipantSubscriptionParams() objectsubscription.SubscriptionParams[*participantWithSpace] {
+	return objectsubscription.SubscriptionParams[*participantWithSpace]{
+		SetDetails: func(details *domain.Details) (id string, entry *participantWithSpace) {
+			spaceId := details.GetString(bundle.RelationKeySpaceId)
+			if p := participantEntryFromDetails(details); p != nil {
+				s.cache.cacheParticipant(spaceId, p)
+			}
+			return details.GetString(bundle.RelationKeyId), &participantWithSpace{
+				details: details,
+				spaceId: spaceId,
+			}
+		},
+		UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, curEntry *participantWithSpace) *participantWithSpace {
+			for _, kv := range keyValues {
+				curEntry.details.Set(domain.RelationKey(kv.Key), kv.Value)
+			}
+			if p := participantEntryFromDetails(curEntry.details); p != nil {
+				s.cache.cacheParticipant(curEntry.spaceId, p)
+			}
+			return curEntry
+		},
+		RemoveKeys: func(keys []string, curEntry *participantWithSpace) *participantWithSpace {
+			for _, key := range keys {
+				curEntry.details.Delete(domain.RelationKey(key))
+			}
+			if p := participantEntryFromDetails(curEntry.details); p != nil {
+				s.cache.cacheParticipant(curEntry.spaceId, p)
+			}
+			return curEntry
+		},
+		OnRemoved: func(id string, entry *participantWithSpace) {
+			identity := entry.details.GetString(bundle.RelationKeyIdentity)
+			if identity != "" {
+				s.cache.removeParticipant(entry.spaceId, identity)
+			}
+		},
+	}
+}
+
 // Stop unsubscribes from all cross-space subscriptions and cleans up
 func (s *Service) Stop() {
 	if s.componentCtxCancel != nil {
@@ -367,6 +493,12 @@ func (s *Service) Stop() {
 	if s.subscriptions.tags.subId != "" {
 		if err := s.crossSpaceSubService.Unsubscribe(s.subscriptions.tags.subId); err != nil {
 			log.Errorf("Failed to unsubscribe from cross-space tags: %v", err)
+		}
+	}
+
+	if s.subscriptions.participants.subId != "" {
+		if err := s.crossSpaceSubService.Unsubscribe(s.subscriptions.participants.subId); err != nil {
+			log.Errorf("Failed to unsubscribe from cross-space participants: %v", err)
 		}
 	}
 
