@@ -874,6 +874,117 @@ func TestQuery(t *testing.T) {
 	})
 }
 
+func TestQueryAndCount(t *testing.T) {
+	t.Run("count all without limit", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+		})
+
+		recs, total, err := s.QueryAndCount(database.Query{})
+		require.NoError(t, err)
+		require.Len(t, recs, 3)
+		require.Equal(t, 3, total)
+	})
+
+	t.Run("total ignores limit and offset, records respect them", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "match"),
+			makeObjectWithName("id2", "match"),
+			makeObjectWithName("id3", "match"),
+			makeObjectWithName("id4", "other"),
+		})
+
+		recs, total, err := s.QueryAndCount(database.Query{
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyName,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.String("match"),
+				},
+			},
+			Limit:  1,
+			Offset: 1,
+		})
+		require.NoError(t, err)
+		// total counts all matching objects, ignoring limit/offset
+		require.Equal(t, 3, total)
+		// records respect limit/offset
+		require.Len(t, recs, 1)
+	})
+
+	t.Run("unbounded query with offset returns total without counting", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+		})
+
+		// limit 0 means unbounded, so all records from the offset are returned -> total = offset + len
+		recs, total, err := s.QueryAndCount(database.Query{Offset: 1})
+		require.NoError(t, err)
+		require.Len(t, recs, 2)
+		require.Equal(t, 3, total)
+	})
+
+	t.Run("partial page returns total without counting", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+		})
+
+		// limit is larger than the result set, so the page is not full and total is known without a count
+		recs, total, err := s.QueryAndCount(database.Query{Limit: 10})
+		require.NoError(t, err)
+		require.Len(t, recs, 3)
+		require.Equal(t, 3, total)
+	})
+
+	t.Run("offset into last partial page returns correct total", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+		})
+
+		// page [offset:offset+limit] = records[2:4] -> 1 record, not full -> total = offset + len = 3
+		recs, total, err := s.QueryAndCount(database.Query{Limit: 2, Offset: 2})
+		require.NoError(t, err)
+		require.Len(t, recs, 1)
+		require.Equal(t, 3, total)
+	})
+
+	t.Run("full page triggers count for the rest", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+			makeObjectWithName("id3", "name3"),
+			makeObjectWithName("id4", "name4"),
+			makeObjectWithName("id5", "name5"),
+		})
+
+		// page is full (len == limit), so there may be more -> count the full set
+		recs, total, err := s.QueryAndCount(database.Query{Limit: 2})
+		require.NoError(t, err)
+		require.Len(t, recs, 2)
+		require.Equal(t, 5, total)
+	})
+
+	t.Run("fulltext is not supported", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		_, _, err := s.QueryAndCount(database.Query{TextQuery: "foo"})
+		require.Error(t, err)
+	})
+}
+
 func TestQueryObjectIds(t *testing.T) {
 	t.Run("no filters", func(t *testing.T) {
 		s := NewStoreFixture(t)
