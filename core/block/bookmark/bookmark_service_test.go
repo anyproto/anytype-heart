@@ -33,6 +33,29 @@ func (ds *detailsSetter) SetDetails(session.Context, string, []domain.Detail) er
 	return nil
 }
 
+// recordingDetailsSetter captures the per-object detail updates so tests can
+// assert exactly which relations were written.
+type recordingDetailsSetter struct {
+	calls map[string][]domain.Detail
+}
+
+func (ds *recordingDetailsSetter) SetDetails(_ session.Context, objectId string, details []domain.Detail) error {
+	if ds.calls == nil {
+		ds.calls = map[string][]domain.Detail{}
+	}
+	ds.calls[objectId] = append(ds.calls[objectId], details...)
+	return nil
+}
+
+func (ds *recordingDetailsSetter) valueFor(objectId string, key domain.RelationKey) (domain.Value, bool) {
+	for _, d := range ds.calls[objectId] {
+		if d.Key == key {
+			return d.Value, true
+		}
+	}
+	return domain.Value{}, false
+}
+
 type fixture struct {
 	s *service
 
@@ -118,6 +141,50 @@ func TestService_CreateBookmarkObject(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, "bk", id)
+	})
+}
+
+func TestService_updateFilesCreatedInContext(t *testing.T) {
+	// Regression for GO-6052: bookmark image files must get both CreatedInContext
+	// AND a non-empty CreatedInContextRef set so that object GC cascade-archives them
+	// when the bookmark is archived/deleted. The GC query (core/block/objectgc) gates
+	// on a non-empty CreatedInContextRef, so setting only CreatedInContext is not enough.
+	t.Run("sets CreatedInContext and CreatedInContextRef on icon and picture files", func(t *testing.T) {
+		// given
+		ds := &recordingDetailsSetter{}
+		s := &service{detailsSetter: ds}
+		const bk = "bookmark-object-id"
+		content := &bookmark.ObjectContent{BookmarkContent: &model.BlockContentBookmark{
+			ImageHash:   "picture-file-id",
+			FaviconHash: "icon-file-id",
+		}}
+
+		// when
+		s.updateFilesCreatedInContext(bk, content)
+
+		// then
+		for _, fileId := range []string{"picture-file-id", "icon-file-id"} {
+			ctx, ok := ds.valueFor(fileId, bundle.RelationKeyCreatedInContext)
+			assert.True(t, ok, "CreatedInContext must be set for %s", fileId)
+			assert.Equal(t, bk, ctx.String())
+
+			ref, ok := ds.valueFor(fileId, bundle.RelationKeyCreatedInContextRef)
+			assert.True(t, ok, "CreatedInContextRef must be set for %s", fileId)
+			assert.Equal(t, bk, ref.String(), "CreatedInContextRef must be non-empty for GC to cascade-archive")
+		}
+	})
+
+	t.Run("no files - nothing is written", func(t *testing.T) {
+		// given
+		ds := &recordingDetailsSetter{}
+		s := &service{detailsSetter: ds}
+		content := &bookmark.ObjectContent{BookmarkContent: &model.BlockContentBookmark{}}
+
+		// when
+		s.updateFilesCreatedInContext("bookmark-object-id", content)
+
+		// then
+		assert.Empty(t, ds.calls)
 	})
 }
 

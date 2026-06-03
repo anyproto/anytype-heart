@@ -255,6 +255,13 @@ func (s *service) updateFilesCreatedInContext(bookmarkObjectId string, content *
 	for _, fileId := range fileIds {
 		err := s.detailsSetter.SetDetails(nil, fileId, []domain.Detail{
 			{Key: bundle.RelationKeyCreatedInContext, Value: domain.String(bookmarkObjectId)},
+			// The bookmark references these files via the iconImage/picture object
+			// relations rather than via a block, so the in-context reference is the
+			// bookmark object itself. A non-empty CreatedInContextRef is required for
+			// object GC to cascade-archive these files when the bookmark is archived or
+			// deleted (see core/block/objectgc: the GC query gates on a non-empty
+			// CreatedInContextRef to leave collection-linked files untouched).
+			{Key: bundle.RelationKeyCreatedInContextRef, Value: domain.String(bookmarkObjectId)},
 		})
 		if err != nil {
 			log.Errorf("update CreatedInContext for file %s: %s", fileId, err)
