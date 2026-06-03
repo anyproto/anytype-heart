@@ -1282,6 +1282,88 @@ func TestService_Search(t *testing.T) {
 		assert.Len(t, sub.Dependencies, 0)
 		assert.Len(t, sub.Records, 0)
 	})
+	t.Run("relation source includes objects whose type recommends the relation", func(t *testing.T) {
+		// given
+		fx := newFixtureWithRealObjectStore(t)
+		defer fx.a.Close(context.Background())
+		defer fx.ctrl.Finish()
+
+		relationKey := "done"
+		relationUK, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relationKey)
+		require.NoError(t, err)
+
+		projectTypeUK, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, "project")
+		require.NoError(t, err)
+
+		noteTypeUK, err := domain.NewUniqueKey(smartblock.SmartBlockTypeObjectType, "note")
+		require.NoError(t, err)
+
+		fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			// Relation object
+			{
+				bundle.RelationKeyId:             domain.String("rel-done-id"),
+				bundle.RelationKeyUniqueKey:      domain.String(relationUK.Marshal()),
+				bundle.RelationKeyRelationKey:    domain.String(relationKey),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			},
+			// Type "Project" that recommends the "done" relation
+			{
+				bundle.RelationKeyId:                   domain.String("type-project-id"),
+				bundle.RelationKeyUniqueKey:            domain.String(projectTypeUK.Marshal()),
+				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedRelations: domain.StringList([]string{"rel-done-id"}),
+			},
+			// Type "Note" that does NOT recommend the "done" relation
+			{
+				bundle.RelationKeyId:             domain.String("type-note-id"),
+				bundle.RelationKeyUniqueKey:      domain.String(noteTypeUK.Marshal()),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			// Project object WITHOUT the "done" key in details (the bug case)
+			{
+				bundle.RelationKeyId:             domain.String("project1"),
+				bundle.RelationKeyName:           domain.String("Project 1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyType:           domain.String("type-project-id"),
+			},
+			// Project object WITH the "done" key set (backward compat)
+			{
+				bundle.RelationKeyId:             domain.String("project2"),
+				bundle.RelationKeyName:           domain.String("Project 2"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyType:           domain.String("type-project-id"),
+				domain.RelationKey(relationKey):  domain.Bool(true),
+			},
+			// Note object WITHOUT the "done" key (negative case — should not match)
+			{
+				bundle.RelationKeyId:             domain.String("note1"),
+				bundle.RelationKeyName:           domain.String("Note 1"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+				bundle.RelationKeyType:           domain.String("type-note-id"),
+			},
+		})
+
+		// when
+		resp, err := fx.Search(SubscribeRequest{
+			SpaceId:           testSpaceId,
+			SubId:             "test-rel-source",
+			Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+			Source:            []string{relationUK.Marshal()},
+			NoDepSubscription: true,
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, resp.Records, 2)
+
+		ids := make([]string, len(resp.Records))
+		for i, r := range resp.Records {
+			ids[i] = r.GetString(bundle.RelationKeyId)
+		}
+		assert.Contains(t, ids, "project1")
+		assert.Contains(t, ids, "project2")
+		assert.NotContains(t, ids, "note1")
+	})
 }
 
 func addTestObjects(t *testing.T, source string, relationKey domain.RelationKey, option1, option2, testSpaceId string, fx *fixtureRealStore) error {

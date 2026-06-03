@@ -98,7 +98,6 @@ type SubscribeResponse struct {
 type Service interface {
 	Search(req SubscribeRequest) (resp *SubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
-	SubscribeIds(subId string, ids []string) (records []*domain.Details, err error)
 	SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error)
@@ -229,10 +228,6 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 		return nil, err
 	}
 	return spaceSubs.SubscribeIdsReq(req)
-}
-
-func (s *service) SubscribeIds(subId string, ids []string) (records []*domain.Details, err error) {
-	return
 }
 
 func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
@@ -936,8 +931,8 @@ func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(c
 }
 
 func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filter, error) {
-	var relTypeFilter database.FiltersOr
 	var (
+		relTypeFilter  database.FiltersOr
 		relKeys        []string
 		typeUniqueKeys []string
 	)
@@ -974,11 +969,71 @@ func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filte
 	}
 
 	for _, relKey := range relKeys {
-		relTypeFilter = append(relTypeFilter, database.FilterExists{
+		existsFilter := database.FilterExists{
 			Key: domain.RelationKey(relKey),
-		})
+		}
+
+		typeIds, err := s.typesRecommendingRelation(relKey)
+		if err != nil || len(typeIds) == 0 {
+			relTypeFilter = append(relTypeFilter, existsFilter)
+			continue
+		}
+
+		nestedTypeFilter, err := database.MakeFilter("", database.FilterRequest{
+			RelationKey: bundle.RelationKeyType,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.StringList(typeIds),
+		}, s.objectStore)
+		if err != nil {
+			relTypeFilter = append(relTypeFilter, existsFilter)
+			continue
+		}
+
+		relTypeFilter = append(relTypeFilter, database.FiltersOr{existsFilter, nestedTypeFilter})
 	}
 	return relTypeFilter, nil
+}
+
+func (s *spaceSubscriptions) typesRecommendingRelation(relKey string) ([]string, error) {
+	uk, err := domain.NewUniqueKey(smartblock.SmartBlockTypeRelation, relKey)
+	if err != nil {
+		return nil, fmt.Errorf("create relation unique key: %w", err)
+	}
+	relDetails, err := s.objectStore.GetObjectByUniqueKey(uk)
+	if err != nil {
+		return nil, fmt.Errorf("get relation object: %w", err)
+	}
+	relId := relDetails.GetString(bundle.RelationKeyId)
+	if relId == "" {
+		return nil, fmt.Errorf("relation object has no id")
+	}
+
+	records, err := s.objectStore.QueryRaw(&database.Filters{
+		FilterObj: database.FiltersAnd{
+			database.FilterEq{
+				Key:   bundle.RelationKeyResolvedLayout,
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: domain.Int64(int64(model.ObjectType_objectType)),
+			},
+			database.FiltersOr{
+				database.FilterAllIn{Key: bundle.RelationKeyRecommendedRelations, Strings: []string{relId}},
+				database.FilterAllIn{Key: bundle.RelationKeyRecommendedFeaturedRelations, Strings: []string{relId}},
+				database.FilterAllIn{Key: bundle.RelationKeyRecommendedFileRelations, Strings: []string{relId}},
+				database.FilterAllIn{Key: bundle.RelationKeyRecommendedHiddenRelations, Strings: []string{relId}},
+			},
+		},
+	}, 0, 0)
+	if err != nil {
+		return nil, fmt.Errorf("query types recommending relation: %w", err)
+	}
+
+	var typeIds []string
+	for _, rec := range records {
+		if typeId := rec.Details.GetString(bundle.RelationKeyId); typeId != "" {
+			typeIds = append(typeIds, typeId)
+		}
+	}
+	return typeIds, nil
 }
 
 func (s *spaceSubscriptions) depIdsFromFilter(filters []database.FilterRequest) (depIds []string) {
