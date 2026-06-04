@@ -253,10 +253,13 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		}
 	}
 
-	// No eager full-object warm-up here on purpose: previews/last-messages
-	// and unread counters are served from the durable CRDT store, and
-	// any-sync opens the chat object on demand (periodic headsync / peer
-	// push) to apply remote changes.
+	// No eager full-object warm-up here on purpose (GO-7302): SubscribeLastMessages
+	// must not open chat trees on app start. Previews/last-messages and unread
+	// counters are served from the durable CRDT store (the persisted repository
+	// read above), and any-sync opens the chat object on demand — per-space
+	// diffsync pulls a chat tree only when its heads diverge (head-syncing chats
+	// first, see block.Service.GetPriorityIds), and peer push applies remote
+	// changes.
 	//
 	// Force-opening every chat object here was costly: a cold open that
 	// misses the object ocache runs any-sync BuildObjectTree, which reads

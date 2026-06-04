@@ -783,6 +783,39 @@ func (s *service) AllLoadedSpaceIds() (ids []string) {
 	return
 }
 
+// syncAllHeadsParallelism bounds how many spaces are loaded+head-synced at once
+// so a foreground resume doesn't load every space simultaneously.
+const syncAllHeadsParallelism = 10
+
+// SyncAllSpaceHeads triggers an immediate head-sync (diff) round for every space,
+// loading spaces that aren't currently loaded. Used on app foreground (GO-7302) to
+// refresh all spaces promptly after a wakeup instead of waiting for each space's
+// next periodic diffsync tick. Runs in the background and does not block the caller.
+func (s *service) SyncAllSpaceHeads(ctx context.Context) {
+	ids := s.AllSpaceIds()
+	go func() {
+		sem := make(chan struct{}, syncAllHeadsParallelism)
+		var wg sync.WaitGroup
+		for _, id := range ids {
+			sem <- struct{}{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() { <-sem }()
+				sp, err := s.Get(s.ctx, id)
+				if err != nil {
+					log.Warn("sync all space heads: get space", zap.String("spaceId", id), zap.Error(err))
+					return
+				}
+				if err := sp.CommonSpace().SyncHeads(s.ctx); err != nil {
+					log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
+				}
+			}()
+		}
+		wg.Wait()
+	}()
+}
+
 func (s *service) TechSpaceId() string {
 	return s.techSpaceId
 }

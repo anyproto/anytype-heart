@@ -41,7 +41,18 @@ type openedObjectRefresher interface {
 	RefreshOpenedObjects(ctx context.Context)
 }
 
-const networkInvalid = time.Second * 10
+type spaceHeadSyncer interface {
+	app.Component
+	SyncAllSpaceHeads(ctx context.Context)
+}
+
+// On foreground resume we throttle work by how long the app was backgrounded:
+// flush the connection pool only after a longer idle, and kick an immediate
+// head-sync for all spaces after an even longer one (GO-7302).
+const (
+	poolFlushAfter = time.Second * 15
+	syncHeadsAfter = time.Second * 20
+)
 
 type networkState struct {
 	networkState          model.DeviceNetworkType
@@ -53,6 +64,7 @@ type networkState struct {
 	onNetworkUpdateHooks []func(network model.DeviceNetworkType)
 	hookMu               sync.Mutex
 	pool                 pool.Service
+	spaceSyncer          spaceHeadSyncer
 }
 
 var getTime = time.Now // for testing purposes
@@ -70,11 +82,16 @@ func (n *networkState) StateChange(state int) {
 	n.hookMu.Unlock()
 	if oldState != curState && curState == domain.CompStateAppWentForeground {
 		ctx := context.Background()
-		if timePassed > networkInvalid {
+		// Anchor log for measuring how fast per-space diffsync reacts to a wakeup (GO-7302).
+		log.Info("app went foreground", zap.Duration("backgroundedFor", timePassed))
+		if timePassed > poolFlushAfter {
 			err := n.pool.Flush(ctx)
 			if err != nil {
 				log.Debug("failed to flush pool on network state change", zap.Error(err))
 			}
+		}
+		if timePassed > syncHeadsAfter {
+			n.spaceSyncer.SyncAllSpaceHeads(ctx)
 		}
 		n.objectsRefresher.RefreshOpenedObjects(ctx)
 	}
@@ -87,6 +104,7 @@ func New() NetworkState {
 func (n *networkState) Init(a *app.App) (err error) {
 	n.pool = app.MustComponent[pool.Service](a)
 	n.objectsRefresher = app.MustComponent[openedObjectRefresher](a)
+	n.spaceSyncer = app.MustComponent[spaceHeadSyncer](a)
 	return
 }
 
