@@ -883,6 +883,52 @@ func (_c *MockService_PersonalSpaceId_Call) RunAndReturn(run func() string) *Moc
 	return _c
 }
 
+// PreloadRemainingSpaces provides a mock function with given fields: ctx
+func (_m *MockService) PreloadRemainingSpaces(ctx context.Context) error {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PreloadRemainingSpaces")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(ctx)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_PreloadRemainingSpaces_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PreloadRemainingSpaces'
+type MockService_PreloadRemainingSpaces_Call struct {
+	*mock.Call
+}
+
+// PreloadRemainingSpaces is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockService_Expecter) PreloadRemainingSpaces(ctx interface{}) *MockService_PreloadRemainingSpaces_Call {
+	return &MockService_PreloadRemainingSpaces_Call{Call: _e.mock.On("PreloadRemainingSpaces", ctx)}
+}
+
+func (_c *MockService_PreloadRemainingSpaces_Call) Run(run func(ctx context.Context)) *MockService_PreloadRemainingSpaces_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockService_PreloadRemainingSpaces_Call) Return(_a0 error) *MockService_PreloadRemainingSpaces_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_PreloadRemainingSpaces_Call) RunAndReturn(run func(context.Context) error) *MockService_PreloadRemainingSpaces_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *MockService) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
