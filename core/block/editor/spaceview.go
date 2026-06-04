@@ -91,9 +91,16 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 		SetAclHeadId(info.GetAclHeadId()).
 		SetEncodedKey(info.EncodedKey)
 	s.setSpacePersistentInfo(ctx.State, newInfo)
+	// Preserve the localStatus/remoteStatus persisted from the previous session instead of
+	// force-resetting to Unknown. A spaceview reloaded from disk that was Ok stays Ok so the
+	// client list does not churn on cold start; the spaceLoader remains the sole authority for
+	// status transitions. Brand-new spaceviews have no persisted value and default to Unknown
+	// (SpaceLocalInfo.GetLocalStatus/GetRemoteStatus return Unknown when unset). Explicit reset
+	// paths (spacefactory recreate, joiner rejoin) still set Unknown themselves.
+	prevLocalInfo := spaceinfo.NewSpaceLocalInfoFromState(ctx.State)
 	localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
-	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
-		SetRemoteStatus(spaceinfo.RemoteStatusUnknown).
+	localInfo.SetLocalStatus(prevLocalInfo.GetLocalStatus()).
+		SetRemoteStatus(prevLocalInfo.GetRemoteStatus()).
 		UpdateDetails(ctx.State).
 		Log(log)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)
