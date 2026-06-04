@@ -27,9 +27,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/hashicorp/golang-lru/v2/expirable"
-	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
@@ -93,7 +91,6 @@ type service struct {
 	eventSender       event.Sender
 	repositoryService chatrepository.Service
 	accountService    AccountService
-	objectGetter      cache.ObjectWaitGetter
 
 	lock     sync.Mutex
 	managers map[string]*futures.Future[*subscriptionManager]
@@ -113,7 +110,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	s.repositoryService = app.MustComponent[chatrepository.Service](a)
 	s.accountService = app.MustComponent[AccountService](a)
-	s.objectGetter = app.MustComponent[cache.ObjectWaitGetter](a)
 	return nil
 }
 
@@ -257,13 +253,10 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		}
 	}
 
-	// Warm up cache
-	go func() {
-		_, err = s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
-		if err != nil {
-			log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
-		}
-	}()
+	// Chat trees are never warmed up here (GO-7302): SubscribeLastMessages must not open
+	// chat trees on app start. Message data is served from the persisted repository above
+	// and refreshed by per-space diffsync, which pulls a chat tree only when its heads
+	// diverge (head-syncing chats first, see block.Service.GetPriorityIds).
 
 	return &SubscribeLastMessagesResponse{
 		Messages:        messages,

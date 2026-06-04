@@ -291,3 +291,50 @@ func TestTreeSyncer(t *testing.T) {
 		<-ch
 	})
 }
+
+func TestPrioritizeFront(t *testing.T) {
+	t.Run("hot ids move to front in priority order, rest keep original order", func(t *testing.T) {
+		// given
+		existing := []string{"a", "b", "c", "d", "e"}
+		priority := []string{"d", "b"}
+		want := []string{"d", "b", "a", "c", "e"}
+
+		// when
+		got := prioritizeFront(existing, priority)
+
+		// then
+		require.Equal(t, want, got)
+	})
+
+	t.Run("priority ids absent from existing are ignored", func(t *testing.T) {
+		// given
+		existing := []string{"a", "b", "c"}
+		priority := []string{"z", "b", "y"}
+		want := []string{"b", "a", "c"}
+
+		// when
+		got := prioritizeFront(existing, priority)
+
+		// then
+		require.Equal(t, want, got)
+	})
+
+	t.Run("empty priority keeps original order", func(t *testing.T) {
+		// given
+		existing := []string{"a", "b", "c"}
+
+		// when
+		got := prioritizeFront(existing, nil)
+
+		// then
+		require.Equal(t, []string{"a", "b", "c"}, got)
+	})
+
+	t.Run("empty existing returns empty", func(t *testing.T) {
+		// when
+		got := prioritizeFront(nil, []string{"a"})
+
+		// then
+		require.Empty(t, got)
+	})
+}

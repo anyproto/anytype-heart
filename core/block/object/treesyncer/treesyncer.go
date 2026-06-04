@@ -69,6 +69,15 @@ type SyncDetailsUpdater interface {
 	UpdateSpaceDetails(existing, missing []string, spaceId string)
 }
 
+// PriorityProvider supplies tree ids that should be head-synced first within a
+// diffsync cycle (GO-7302). It is optional: when no registered component
+// implements it, existing trees keep their diff order. GetPriorityIds is queried
+// once per SyncAll so priority can track navigation (e.g. the currently-open
+// chat). Only ids that are also in the diff's existing set take effect.
+type PriorityProvider interface {
+	GetPriorityIds(spaceId string) []string
+}
+
 type treeSyncer struct {
 	sync.Mutex
 	mainCtx            context.Context
@@ -87,6 +96,7 @@ type treeSyncer struct {
 	peerManager        peermanager.PeerManager
 	syncedTreeRemover  SyncedTreeRemover
 	syncDetailsUpdater SyncDetailsUpdater
+	priority           PriorityProvider
 }
 
 func NewTreeSyncer(spaceId string) treesyncer.TreeSyncer {
@@ -119,6 +129,10 @@ func (t *treeSyncer) Init(a *app.App) (err error) {
 	t.nodeConf = app.MustComponent[nodeconf.NodeConf](a)
 	t.syncedTreeRemover = app.MustComponent[SyncedTreeRemover](a)
 	t.syncDetailsUpdater = app.MustComponent[SyncDetailsUpdater](a)
+	// optional: head-sync ordering hook (GO-7302). Absent -> diff order kept.
+	if pp, err := app.GetComponent[PriorityProvider](a); err == nil {
+		t.priority = pp
+	}
 	return nil
 }
 
@@ -197,7 +211,13 @@ func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing
 		}
 		t.headPools[peerId] = headExec
 	}
-	for _, id := range existing {
+	// The head pool has a single FIFO worker, so enqueue order is processing
+	// order: bump priority trees to the front so they head-sync first (GO-7302).
+	headIds := existing
+	if t.priority != nil {
+		headIds = prioritizeFront(existing, t.priority.GetPriorityIds(t.spaceId))
+	}
+	for _, id := range headIds {
 		idCopy := id
 		err = headExec.tryAdd(idCopy, func() {
 			t.updateTree(p, idCopy)
@@ -300,6 +320,43 @@ func (t *treeSyncer) updateTree(p peer.Peer, id string) {
 		return
 	}
 	t.pingTree(p, tr)
+}
+
+// prioritizeFront reorders ids so that those present in priority come first, in
+// the order given by priority, followed by the remaining ids in their original
+// relative order. Priority entries not present in ids are ignored. The head pool
+// drains FIFO on a single worker, so this fully determines processing order.
+func prioritizeFront(ids, priority []string) []string {
+	if len(priority) == 0 || len(ids) == 0 {
+		return ids
+	}
+	idSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+	hot := make(map[string]struct{}, len(priority))
+	front := make([]string, 0, len(priority))
+	for _, id := range priority {
+		if _, ok := idSet[id]; !ok {
+			continue
+		}
+		if _, dup := hot[id]; dup {
+			continue
+		}
+		hot[id] = struct{}{}
+		front = append(front, id)
+	}
+	if len(front) == 0 {
+		return ids
+	}
+	result := make([]string, 0, len(ids))
+	result = append(result, front...)
+	for _, id := range ids {
+		if _, ok := hot[id]; !ok {
+			result = append(result, id)
+		}
+	}
+	return result
 }
 
 func (t *treeSyncer) pingTree(p peer.Peer, tr objecttree.ObjectTree) {
