@@ -2,6 +2,8 @@ package crossspacesub
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -581,6 +583,354 @@ func TestSubscribeWithPredicate(t *testing.T) {
 		}
 		assert.Equal(t, want, msgs)
 	})
+}
+
+// TestLazySubscribe_SearchFirstOpenerDoesNotDeadlock guards against a
+// self-deadlock: subscription.getSpaceSubscriptions holds the service lock
+// across objectStore.SpaceIndex; when that SpaceIndex is the first open of a
+// space pending in a cross-space subscription, its OnSpaceIndexOpened callback
+// re-enters subscriptionService.Search on the same goroutine, which tries to
+// re-acquire the same (non-reentrant) lock.
+func TestLazySubscribe_SearchFirstOpenerDoesNotDeadlock(t *testing.T) {
+	fx := newFixture(t)
+
+	// Spaceview for space1 exists; space1's objectstore stays closed.
+	fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+		givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+	})
+	time.Sleep(500 * time.Millisecond) // let the tech-space sub propagate
+
+	// Cross-space subscription: space1 matches the predicate but is not open,
+	// so it is recorded as pending.
+	resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
+	require.NoError(t, err)
+	sub := fx.subscriptions[resp.SubId]
+	require.NotNil(t, sub)
+	sub.lock.Lock()
+	_, pending := sub.pendingSpaceIds["space1"]
+	sub.lock.Unlock()
+	require.True(t, pending, "space1 must be pending for this repro")
+
+	// Make subscriptionService.Search the FIRST opener of space1.
+	done := make(chan error, 1)
+	go func() {
+		_, e := fx.subscriptionService.Search(subscriptionservice.SubscribeRequest{
+			SubId:             "ui-sub-space1",
+			SpaceId:           "space1",
+			NoDepSubscription: true,
+			Keys:              []string{bundle.RelationKeyId.String()},
+		})
+		done <- e
+	}()
+	select {
+	case e := <-done:
+		require.NoError(t, e)
+	case <-time.After(5 * time.Second):
+		t.Fatal("Search(space1) deadlocked: getSpaceSubscriptions holds the service lock across SpaceIndex, whose OnSpaceIndexOpened callback re-enters the subscription service")
+	}
+}
+
+func TestLazySubscribe(t *testing.T) {
+	t.Run("subscribe returns only loaded spaces initially", func(t *testing.T) {
+		fx := newFixture(t)
+
+		// Three matching spaceviews, but only space1 and space2 have data
+		// added (which opens their objectstores). space3 stays closed.
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView2", "space2", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+			givenSpaceViewObject("spaceView3", "space3", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		obj2 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant2"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+		fx.objectStore.AddObjects(t, "space2", []objectstore.TestObject{obj2})
+
+		// Let the tech-space sub propagate all three spaceview details
+		time.Sleep(500 * time.Millisecond)
+
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+
+		// Only space1 and space2 are opened, so only their records appear
+		recordIds := make([]string, len(resp.Records))
+		for i, r := range resp.Records {
+			recordIds[i] = r.GetString(bundle.RelationKeyId)
+		}
+		slices.Sort(recordIds)
+		assert.Equal(t, []string{"participant1", "participant2"}, recordIds)
+
+		// space3 must be tracked as pending on the subscription
+		sub := fx.subscriptions[resp.SubId]
+		require.NotNil(t, sub)
+		sub.lock.Lock()
+		_, isPending := sub.pendingSpaceIds["space3"]
+		_, isSubscribed := sub.perSpaceSubscriptions["space3"]
+		sub.lock.Unlock()
+		assert.True(t, isPending, "space3 should be pending")
+		assert.False(t, isSubscribed, "space3 should not have a per-space subscription yet")
+	})
+
+	t.Run("pending space promotes on open", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		// Spaceview exists for space1, but space1's objectstore stays closed
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		time.Sleep(200 * time.Millisecond)
+
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
+		require.NoError(t, err)
+		assert.Empty(t, resp.Records)
+
+		// Confirm space1 is pending and not subscribed before open
+		sub := fx.subscriptions[resp.SubId]
+		require.NotNil(t, sub)
+		sub.lock.Lock()
+		_, pendingBefore := sub.pendingSpaceIds["space1"]
+		_, subscribedBefore := sub.perSpaceSubscriptions["space1"]
+		sub.lock.Unlock()
+		assert.True(t, pendingBefore)
+		assert.False(t, subscribedBefore)
+
+		// Open space1's objectstore by adding an object — this should
+		// fire the callback, promote space1 from pending, and stream
+		// the new record as Add+DetailsSet+Counters events.
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+
+		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+
+		want := []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+			makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 1, "space1"),
+		}
+		assert.Equal(t, want, msgs)
+
+		sub.lock.Lock()
+		_, pendingAfter := sub.pendingSpaceIds["space1"]
+		_, subscribedAfter := sub.perSpaceSubscriptions["space1"]
+		sub.lock.Unlock()
+		assert.False(t, pendingAfter, "space1 should no longer be pending")
+		assert.True(t, subscribedAfter, "space1 should now have a per-space subscription")
+	})
+
+	t.Run("spaceview removed before space opens drops pending entry", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		time.Sleep(200 * time.Millisecond)
+
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
+		require.NoError(t, err)
+		assert.Empty(t, resp.Records)
+
+		sub := fx.subscriptions[resp.SubId]
+		require.NotNil(t, sub)
+		sub.lock.Lock()
+		_, pendingBefore := sub.pendingSpaceIds["space1"]
+		sub.lock.Unlock()
+		require.True(t, pendingBefore)
+
+		// Flip the spaceview status to Deleted: the tech-space filter
+		// excludes deleted statuses, so the spaceview is removed and
+		// space1 should be dropped from pending without emitting events.
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceDeleted, model.SpaceStatus_Unknown),
+		})
+		time.Sleep(200 * time.Millisecond)
+
+		sub.lock.Lock()
+		_, pendingAfter := sub.pendingSpaceIds["space1"]
+		_, subscribedAfter := sub.perSpaceSubscriptions["space1"]
+		sub.lock.Unlock()
+		assert.False(t, pendingAfter, "pending entry should be cleared on spaceview removal")
+		assert.False(t, subscribedAfter)
+
+		// No events expected within the window
+		_, err = fx.eventQueue.NewCond().WithMin(1).Wait(ctx)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+
+	t.Run("new matching spaceview waits when space is closed", func(t *testing.T) {
+		fx := newFixture(t)
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		defer cancel()
+
+		// Subscribe with no matching spaceviews yet
+		resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
+		require.NoError(t, err)
+		assert.Empty(t, resp.Records)
+
+		// Add a spaceview pointing to space1 — but do NOT open space1
+		fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+		})
+		time.Sleep(200 * time.Millisecond)
+
+		sub := fx.subscriptions[resp.SubId]
+		require.NotNil(t, sub)
+		sub.lock.Lock()
+		_, pending := sub.pendingSpaceIds["space1"]
+		_, subscribed := sub.perSpaceSubscriptions["space1"]
+		sub.lock.Unlock()
+		assert.True(t, pending, "dynamically added spaceview should land in pending")
+		assert.False(t, subscribed)
+
+		// Open space1 by adding an object — promotion + events follow
+		obj1 := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("participant1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}
+		fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj1})
+
+		msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+		require.NoError(t, err)
+		want := []*pb.EventMessage{
+			makeDetailsSetEvent(resp.SubId, obj1.Details().ToProto(), "space1"),
+			makeAddEvent(resp.SubId, obj1.Id(), "space1"),
+			makeCountersEvent(resp.SubId, 1, "space1"),
+		}
+		assert.Equal(t, want, msgs)
+	})
+}
+
+// TestLazySubscribe_NoDataLossUnderConcurrentOpen reproduces the exact race
+// the goroutine-id machinery was meant to guard: for a space that is pending
+// in a cross-space subscription, its objectstore is opened concurrently from
+// multiple goroutines while another goroutine is hammering writes into it.
+//
+// The data-loss hypothesis: a write that lands after the store is open but
+// before the per-space subscription's SubscribeForAll is wired is dropped.
+// If the subscription service's "persist, then re-query after wiring"
+// design holds, every written object must still be delivered to the
+// cross-space subscription regardless of interleaving.
+//
+// Run with -race and -count to exercise many interleavings.
+func TestLazySubscribe_NoDataLossUnderConcurrentOpen(t *testing.T) {
+	const (
+		numSpaces      = 24
+		objectsPerSpc  = 40
+		drainTimeout   = 20 * time.Second
+		settleSpaceViw = 500 * time.Millisecond
+	)
+
+	fx := newFixture(t)
+
+	// Register spaceviews for every space, but do NOT open the spaces yet.
+	spaceViews := make([]objectstore.TestObject, 0, numSpaces)
+	for k := 0; k < numSpaces; k++ {
+		spaceViews = append(spaceViews, givenSpaceViewObject(
+			fmt.Sprintf("sv-%d", k), fmt.Sprintf("space-%d", k),
+			model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok))
+	}
+	fx.objectStore.AddObjects(t, techSpaceId, spaceViews)
+
+	// Let the tech-space monitor process all spaceviews into the sub's
+	// pending set before we subscribe.
+	time.Sleep(settleSpaceViw)
+
+	resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Empty(t, resp.Records, "all spaces start pending (none opened yet)")
+
+	// Build the expected set of object ids.
+	expected := make(map[string]struct{}, numSpaces*objectsPerSpc)
+	for k := 0; k < numSpaces; k++ {
+		for i := 0; i < objectsPerSpc; i++ {
+			expected[fmt.Sprintf("p-%d-%d", k, i)] = struct{}{}
+		}
+	}
+
+	var writeErrs sync.Map // id -> error
+	var wg sync.WaitGroup
+
+	for k := 0; k < numSpaces; k++ {
+		spaceId := fmt.Sprintf("space-%d", k)
+
+		// Opener: contends on the first open so the wiring callback may run
+		// on this goroutine while the writer races ahead on its own.
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := 0; j < 64; j++ {
+				_ = fx.objectStore.SpaceIndex(spaceId)
+			}
+		}()
+
+		// Writer: writes objectsPerSpc participant objects as fast as
+		// possible, re-fetching the store each iteration (the first such
+		// call may itself trigger the open + callback).
+		wg.Add(1)
+		go func(k int) {
+			defer wg.Done()
+			for i := 0; i < objectsPerSpc; i++ {
+				id := fmt.Sprintf("p-%d-%d", k, i)
+				obj := objectstore.TestObject{
+					bundle.RelationKeyId:             domain.String(id),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+				}
+				store := fx.objectStore.SpaceIndex(spaceId)
+				if werr := store.UpdateObjectDetails(context.Background(), id, obj.Details()); werr != nil {
+					writeErrs.Store(id, werr)
+				}
+			}
+		}(k)
+	}
+	wg.Wait()
+
+	writeErrs.Range(func(key, value any) bool {
+		t.Errorf("write failed for %v: %v", key, value)
+		return true
+	})
+
+	// Drain delivered SubscriptionAdd events for our cross-space subId and
+	// collect the set of object ids that actually reached the subscription.
+	delivered := make(map[string]struct{}, len(expected))
+	ctx, cancel := context.WithTimeout(context.Background(), drainTimeout)
+	defer cancel()
+	for len(delivered) < len(expected) {
+		msgs, werr := fx.eventQueue.NewCond().WithMin(1).Wait(ctx)
+		if werr != nil {
+			break // timeout: stop draining, report below
+		}
+		for _, msg := range msgs {
+			if add := msg.GetSubscriptionAdd(); add != nil && add.SubId == resp.SubId {
+				delivered[add.Id] = struct{}{}
+			}
+		}
+	}
+
+	var missing []string
+	for id := range expected {
+		if _, ok := delivered[id]; !ok {
+			missing = append(missing, id)
+		}
+	}
+	slices.Sort(missing)
+	assert.Emptyf(t, missing,
+		"DATA LOSS: %d/%d objects never reached the cross-space subscription: %v",
+		len(missing), len(expected), missing)
 }
 
 func TestUnsubscribe(t *testing.T) {
