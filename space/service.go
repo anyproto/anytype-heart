@@ -791,8 +791,31 @@ const syncAllHeadsParallelism = 10
 // loading spaces that aren't currently loaded. Used on app foreground (GO-7302) to
 // refresh all spaces promptly after a wakeup instead of waiting for each space's
 // next periodic diffsync tick. Runs in the background and does not block the caller.
+// prioritizeSpaceId moves preferred to the front of ids (when present) so it is
+// head-synced first; the remaining ids keep their order.
+func prioritizeSpaceId(ids []string, preferred string) []string {
+	if preferred == "" {
+		return ids
+	}
+	rest := make([]string, 0, len(ids))
+	found := false
+	for _, id := range ids {
+		if id == preferred {
+			found = true
+			continue
+		}
+		rest = append(rest, id)
+	}
+	if !found {
+		return ids
+	}
+	return append([]string{preferred}, rest...)
+}
+
 func (s *service) SyncAllSpaceHeads(ctx context.Context) {
-	ids := s.AllSpaceIds()
+	// Sync the space the client opened (passed via accountSelect as PreferredSpaceId)
+	// first, so the active space refreshes ahead of the rest on a foreground resume.
+	ids := prioritizeSpaceId(s.AllSpaceIds(), s.preferredSpaceId)
 	go func() {
 		sem := make(chan struct{}, syncAllHeadsParallelism)
 		var wg sync.WaitGroup
