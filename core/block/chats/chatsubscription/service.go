@@ -27,6 +27,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/hashicorp/golang-lru/v2/expirable"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
@@ -273,6 +274,11 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 	// multi-space loading. (This is the base any-sync tree build, distinct
 	// from and unaffected by the GO-7290 read-counter DiffManager rework,
 	// which removed a separate BuildHistoryTree pass.)
+
+	log.Warn("[chatpreview-diag] SubscribeLastMessages",
+		zap.String("chatId", req.ChatObjectId),
+		zap.String("spaceId", spaceId),
+		zap.Int("messages", len(messages)))
 
 	return &SubscribeLastMessagesResponse{
 		Messages:        messages,

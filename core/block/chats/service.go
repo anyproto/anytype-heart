@@ -234,6 +234,18 @@ func (s *service) SubscribeToMessagePreviews(ctx context.Context, subId string) 
 	}
 	wg.Wait()
 
+	withMessage := 0
+	for _, p := range result.Previews {
+		if p.Message != nil {
+			withMessage++
+		}
+	}
+	log.Warn("[chatpreview-diag] SubscribeToMessagePreviews done",
+		zap.String("subId", subId),
+		zap.Int("discovered", len(s.allChatObjectIds)),
+		zap.Int("previews", len(result.Previews)),
+		zap.Int("withMessage", withMessage))
+
 	return result, nil
 }
 
@@ -289,6 +301,7 @@ func (s *service) Run(ctx context.Context) error {
 			_ = s.objectStore.BindSpaceId(s.componentCtx, spaceId, chatId)
 			s.allChatObjectIds[chatId] = spaceId
 		}
+		log.Warn("[chatpreview-diag] discovered chat objects at Run", zap.Int("count", len(resp.Records)))
 		go s.monitorMessagePreviews()
 	}()
 
@@ -304,6 +317,7 @@ func (s *service) monitorMessagePreviews() {
 			// todo: GO-6824 remove this hack after we do a proper recover of bind collection.
 			_ = s.objectStore.BindSpaceId(s.componentCtx, spaceId, add.Id)
 			s.allChatObjectIds[add.Id] = spaceId
+			log.Warn("[chatpreview-diag] OnAdd chat object", zap.String("spaceId", spaceId), zap.String("chatId", add.Id), zap.Int("activeSubs", len(s.subscriptionIds)))
 
 			if len(s.subscriptionIds) == 0 {
 				return
@@ -361,6 +375,7 @@ func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId st
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
 	}
+	log.Warn("[chatpreview-diag] onChatAddedAsync", zap.String("spaceId", spaceId), zap.String("chatId", chatObjectId), zap.Int("messages", len(resp.Messages)))
 
 	mngr, err := s.chatSubscriptionService.GetManager(spaceId, chatObjectId)
 	if err != nil {
