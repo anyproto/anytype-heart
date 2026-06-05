@@ -116,6 +116,35 @@ type fixture struct {
 	lock sync.Mutex
 	// recorded actions (subscribe/unsubscribe) per chat object, in temporal order
 	actions map[string][]recordedAction
+	// broadcasts captured from the event sender
+	broadcasts []*pb.Event
+	// when true, SubscribeLastMessages returns no messages (simulates a chat
+	// whose message store is not loaded yet). Set before start().
+	subscribeReturnsNoMessages bool
+}
+
+// waitForBroadcasts polls until pred reports satisfied for the captured
+// broadcasts, returning the snapshot it matched on. Fails on timeout.
+func (fx *fixture) waitForBroadcasts(t *testing.T, pred func([]*pb.Event) bool) []*pb.Event {
+	timer := time.NewTimer(time.Second)
+	ticker := time.NewTicker(2 * time.Millisecond)
+	for {
+		select {
+		case <-timer.C:
+			fx.lock.Lock()
+			snapshot := append([]*pb.Event(nil), fx.broadcasts...)
+			fx.lock.Unlock()
+			t.Fatalf("wait for broadcasts: timeout, got %d events: %v", len(snapshot), snapshot)
+			return nil
+		case <-ticker.C:
+		}
+		fx.lock.Lock()
+		snapshot := append([]*pb.Event(nil), fx.broadcasts...)
+		fx.lock.Unlock()
+		if pred(snapshot) {
+			return snapshot
+		}
+	}
 }
 
 func (fx *fixture) recordAction(chatObjectId string, a recordedAction) {
@@ -153,7 +182,6 @@ func newFixture(t *testing.T) *fixture {
 	idResolver := mock_idresolver.NewMockResolver(t)
 	idResolver.EXPECT().ResolveSpaceID(mock.Anything).Return("", nil).Maybe()
 	eventSender := mock_event.NewMockSender(t)
-	eventSender.EXPECT().Broadcast(mock.Anything).Maybe()
 	detailService := mock_detailservice.NewMockService(t)
 	ftSearch := mock_ftsearch.NewMockFTSearch(t)
 
@@ -166,6 +194,11 @@ func newFixture(t *testing.T) *fixture {
 		objectStore:          objectStore,
 		actions:              map[string][]recordedAction{},
 	}
+	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
+		fx.lock.Lock()
+		fx.broadcasts = append(fx.broadcasts, e)
+		fx.lock.Unlock()
+	}).Maybe()
 
 	ctx := context.Background()
 	a := new(app.App)
@@ -231,6 +264,14 @@ func (fx *fixture) expectSubscribe(t *testing.T) {
 			actionType: actionTypeSubscribe,
 			subId:      req.SubId,
 		})
+		if fx.subscribeReturnsNoMessages {
+			// Message store not loaded yet: no messages available.
+			return &chatsubscription.SubscribeLastMessagesResponse{
+				Messages:     nil,
+				ChatState:    givenLastState(),
+				Dependencies: nil,
+			}, nil
+		}
 		return &chatsubscription.SubscribeLastMessagesResponse{
 			Messages:     givenLastMessages(),
 			ChatState:    givenLastState(),
@@ -464,6 +505,145 @@ func TestSubscribeToMessagePreviews(t *testing.T) {
 				},
 			},
 		})
+	})
+}
+
+// TestSubscribeToMessagePreviews_ChatAddedAfterSubscribe reproduces the
+// "onChatAdded hook" deficiency on develop.
+//
+// A chat object that appears AFTER SubscribeToMessagePreviews is backfilled via
+// the onChatAddedAsync hook (monitorMessagePreviews.OnAdd). The initial RPC
+// response delivers a full ChatPreview that includes the message Dependencies
+// (creator/attachments). The async hook must deliver an equivalent preview, but
+// it broadcasts an EventChatAdd with Dependencies left nil — so a late-joining
+// chat's preview arrives without its sender/attachment metadata.
+func TestSubscribeToMessagePreviews_ChatAddedAfterSubscribe(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	// No chats exist at subscription time.
+	fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+		Records: []*domain.Details{},
+	}, nil).Maybe()
+
+	// onChatAddedAsync needs a manager for the late chat.
+	fx.assertSendEvents(t, []string{"chat1"})
+
+	fx.start(t)
+
+	// Subscribe first: previews is empty.
+	resp, err := fx.SubscribeToMessagePreviews(ctx, "previewSub1")
+	require.NoError(t, err)
+	require.Empty(t, resp.Previews)
+
+	// Now a chat appears (cross-space sub OnAdd, forwarded to the internal queue).
+	err = fx.chatObjectsSubQueue.Add(ctx, &pb.EventMessage{
+		SpaceId: "space1",
+		Value: &pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				Id: "chat1",
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	// The hook fires: SubscribeLastMessages is invoked for chat1 under previewSub1.
+	fx.waitForActions(t, map[string][]recordedAction{
+		"chat1": {{actionType: actionTypeSubscribe, subId: "previewSub1"}},
+	})
+
+	// The client receives an EventChatAdd carrying the last message...
+	events := fx.waitForBroadcasts(t, func(evs []*pb.Event) bool {
+		for _, e := range evs {
+			for _, m := range e.Messages {
+				if m.GetChatAdd() != nil {
+					return true
+				}
+			}
+		}
+		return false
+	})
+
+	var chatAdd *pb.EventChatAdd
+	for _, e := range events {
+		for _, m := range e.Messages {
+			if ca := m.GetChatAdd(); ca != nil {
+				chatAdd = ca
+			}
+		}
+	}
+	require.NotNil(t, chatAdd, "client must receive a ChatAdd for the late-added chat")
+	require.Equal(t, "messageId1", chatAdd.Id)
+
+	// ...but, unlike the initial ChatPreview response, the message Dependencies
+	// (creator/attachments) are dropped on the async backfill path.
+	// givenDependencies() returns one dep (depId1) for messageId1.
+	require.NotEmpty(t, chatAdd.Dependencies,
+		"late-added chat preview must carry message dependencies, like the initial SubscribeToMessagePreviews response")
+}
+
+// TestSubscribeToMessagePreviews_ChatAddedAfterSubscribe_StoreNotReady documents
+// the reactive contract for a chat backfilled while its message store is not
+// loaded yet.
+//
+// onChatAddedAsync has no last message to send immediately, but it still
+// registers subId on the chat's subscription manager via SubscribeLastMessages.
+// The actual message is then delivered reactively, not by polling: once the chat
+// object finishes loading it calls subscription.Flush, and the manager emits the
+// last message (with dependencies) to subId. So the chats service's only
+// obligation here is to establish that subscription, which it must do even when
+// no message is available yet.
+func TestSubscribeToMessagePreviews_ChatAddedAfterSubscribe_StoreNotReady(t *testing.T) {
+	fx := newFixture(t)
+	ctx := context.Background()
+
+	// The late chat's message store is not loaded yet: no message available.
+	fx.subscribeReturnsNoMessages = true
+
+	// No chats exist at subscription time.
+	fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+		Records: []*domain.Details{},
+	}, nil).Maybe()
+
+	// onChatAddedAsync needs a manager for the late chat.
+	fx.assertSendEvents(t, []string{"chat1"})
+
+	fx.start(t)
+
+	resp, err := fx.SubscribeToMessagePreviews(ctx, "previewSub1")
+	require.NoError(t, err)
+	require.Empty(t, resp.Previews)
+
+	// A chat appears after subscribe; its message store is not ready yet.
+	err = fx.chatObjectsSubQueue.Add(ctx, &pb.EventMessage{
+		SpaceId: "space1",
+		Value: &pb.EventMessageValueOfSubscriptionAdd{
+			SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+				Id: "chat1",
+			},
+		},
+	})
+	require.NoError(t, err)
+
+	// The chat's message subscription must still be registered (so the reactive
+	// Flush can deliver the message once the store loads), even though there is
+	// no message to send right now.
+	fx.waitForActions(t, map[string][]recordedAction{
+		"chat1": {{actionType: actionTypeSubscribe, subId: "previewSub1"}},
+	})
+
+	// The hook completes by broadcasting a ChatStateUpdate; the last message
+	// itself arrives later via the reactive Flush path (not exercised here, as
+	// the manager is mocked).
+	fx.waitForBroadcasts(t, func(evs []*pb.Event) bool {
+		for _, e := range evs {
+			for _, m := range e.Messages {
+				if m.GetChatStateUpdate() != nil {
+					return true
+				}
+			}
+		}
+		return false
 	})
 }
 
