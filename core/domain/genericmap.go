@@ -264,8 +264,8 @@ func (d *GenericMap[K]) CopyOnlyKeys(keys ...K) *GenericMap[K] {
 		return NewGenericMap[K]()
 	}
 	newData := make(map[K]Value, len(keys))
-	for k, v := range d.data {
-		if slices.Contains(keys, k) {
+	for _, k := range keys {
+		if v, ok := d.data[k]; ok {
 			newData[k] = v
 		}
 	}
