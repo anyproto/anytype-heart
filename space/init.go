@@ -2,10 +2,10 @@ package space
 
 import (
 	"context"
-
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 )
 
+// initMarketplaceSpace sets up the virtual marketplace space. It lives
+// outside the controller registry (like tech space): Get special-cases it.
 func (s *service) initMarketplaceSpace(ctx context.Context) error {
 	ctrl, err := s.factory.CreateMarketplaceSpace(ctx)
 	if err != nil {
@@ -15,7 +15,7 @@ func (s *service) initMarketplaceSpace(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.registerCtrl(addr.AnytypeMarketplaceWorkspace, ctrl)
+	s.marketplaceCtrl = ctrl
 	return nil
 }
 

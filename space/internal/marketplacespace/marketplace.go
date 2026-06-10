@@ -74,10 +74,6 @@ func (s *spaceController) WaitLoad(context.Context) (sp clientspace.Space, err e
 	return s.vs, nil
 }
 
-func (s *spaceController) Current() any {
-	return s
-}
-
 func (s *spaceController) SpaceId() string {
 	return addr.AnytypeMarketplaceWorkspace
 }

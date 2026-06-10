@@ -132,10 +132,6 @@ func (s *spaceController) Mode() mode.Mode {
 	return s.rec.getMode()
 }
 
-func (s *spaceController) Current() any {
-	return s.rec.getProcess()
-}
-
 func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	err := s.status.SetPersistentInfo(info)
 	if err != nil {

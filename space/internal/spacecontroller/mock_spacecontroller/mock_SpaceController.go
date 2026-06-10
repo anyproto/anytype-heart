@@ -73,53 +73,6 @@ func (_c *MockSpaceController_Close_Call) RunAndReturn(run func(context.Context)
 	return _c
 }
 
-// Current provides a mock function with no fields
-func (_m *MockSpaceController) Current() interface{} {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Current")
-	}
-
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func() interface{}); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
-	}
-
-	return r0
-}
-
-// MockSpaceController_Current_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Current'
-type MockSpaceController_Current_Call struct {
-	*mock.Call
-}
-
-// Current is a helper method to define mock.On call
-func (_e *MockSpaceController_Expecter) Current() *MockSpaceController_Current_Call {
-	return &MockSpaceController_Current_Call{Call: _e.mock.On("Current")}
-}
-
-func (_c *MockSpaceController_Current_Call) Run(run func()) *MockSpaceController_Current_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockSpaceController_Current_Call) Return(_a0 interface{}) *MockSpaceController_Current_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MockSpaceController_Current_Call) RunAndReturn(run func() interface{}) *MockSpaceController_Current_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Demand provides a mock function with no fields
 func (_m *MockSpaceController) Demand() {
 	_m.Called()

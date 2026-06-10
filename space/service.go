@@ -145,6 +145,7 @@ type service struct {
 	newAccount          bool
 	autoJoinStreamSpace string
 	spaceControllers    map[string]spacecontroller.SpaceController
+	marketplaceCtrl     spacecontroller.SpaceController
 	// regChanged is closed and replaced (under s.mu) whenever the registry
 	// changes; waitCtrl blocks on it instead of polling.
 	regChanged chan struct{}
@@ -401,6 +402,12 @@ func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space
 	if spaceId == s.techSpaceId {
 		return s.getTechSpace(ctx)
 	}
+	if spaceId == addr.AnytypeMarketplaceWorkspace {
+		if s.marketplaceCtrl == nil {
+			return nil, ErrSpaceNotExists
+		}
+		return s.marketplaceCtrl.WaitLoad(ctx)
+	}
 	ctrl, err := s.getCtrl(ctx, spaceId)
 	if err != nil {
 		return nil, err
@@ -603,9 +610,12 @@ func (s *service) Close(ctx context.Context) error {
 	}
 	s.isClosing.Store(true)
 	s.mu.Lock()
-	ctrls := make([]spacecontroller.SpaceController, 0, len(s.spaceControllers))
+	ctrls := make([]spacecontroller.SpaceController, 0, len(s.spaceControllers)+1)
 	for _, ctrl := range s.spaceControllers {
 		ctrls = append(ctrls, ctrl)
+	}
+	if s.marketplaceCtrl != nil {
+		ctrls = append(ctrls, s.marketplaceCtrl)
 	}
 	s.mu.Unlock()
 
@@ -632,24 +642,18 @@ func (s *service) AllSpaceIds() (ids []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id := range s.spaceControllers {
-		if id == addr.AnytypeMarketplaceWorkspace {
-			continue
-		}
 		ids = append(ids, id)
 	}
 	return
 }
 
-// AllLoadedSpaceIds returns IDs of spaces that are fully loaded (in ModeLoading state).
-// Excludes marketplace space and spaces that are being offloaded, deleted, or joining.
+// AllLoadedSpaceIds returns IDs of spaces that are loading or loaded.
+// Excludes dormant spaces and spaces that are offloading or joining.
 func (s *service) AllLoadedSpaceIds() (ids []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id, c := range s.spaceControllers {
 		if c.Mode() != mode.ModeLoading {
-			continue
-		}
-		if id == addr.AnytypeMarketplaceWorkspace {
 			continue
 		}
 		ids = append(ids, id)

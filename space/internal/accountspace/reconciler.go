@@ -134,12 +134,6 @@ func (r *reconciler) getMode() mode.Mode {
 	return r.mode
 }
 
-func (r *reconciler) getProcess() mode.Process {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return r.current
-}
-
 // waitConverged blocks until the actual state equals the current target and
 // returns the running process. It fails with the real transition error if the
 // reconciler is stuck in a failed state, or when the caller ctx is done or

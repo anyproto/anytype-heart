@@ -291,14 +291,6 @@ type fixture struct {
 	objectStore        *objectstore.StoreFixture
 }
 
-type lwMock struct {
-	sp clientspace.Space
-}
-
-func (l lwMock) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
-	return l.sp, nil
-}
-
 func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, fx *fixture)) {
 	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacedomain.SpaceTypeRegular).Return(fx.spaceId, nil).Times(1)
 	fx.spaceCore.EXPECT().DeriveID(mock.Anything, spacedomain.SpaceTypeTech).Return("techSpaceId", nil).Times(1)

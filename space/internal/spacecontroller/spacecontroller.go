@@ -21,7 +21,6 @@ type SpaceController interface {
 	// returning the real load error on failure.
 	WaitLoad(ctx context.Context) (clientspace.Space, error)
 	Mode() mode.Mode
-	Current() any
 	Update() error
 	SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error
 	SetLocalInfo(ctx context.Context, status spaceinfo.SpaceLocalInfo) error
