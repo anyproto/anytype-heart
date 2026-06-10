@@ -11,10 +11,12 @@ Scope: global
 - Orchestrates space creation, loading, joining, and deletion
 - Maintains registry of active space controllers
 - Handles account initialization (new vs existing accounts, tech space creation)
+- Triggers an on-demand head-sync round across all spaces (SyncAllSpaceHeads, used on app foreground)
 
 ## Background Tasks
 - spaceWatcher: subscribes to space view changes in tech space, triggers controller updates (onSpaceStatusUpdated)
 - tryToJoinSpaceStream: retries joining stream space with exponential backoff when autoJoinStreamSpace is configured
+- SyncAllSpaceHeads: spawns a bounded-parallelism goroutine batch that runs a head-sync diff round for each actively loaded space
 
 ## Documentation
 Space startup flow:
@@ -54,6 +56,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
@@ -510,6 +513,64 @@ func (s *service) AllSpaceIds() (ids []string) {
 	defer s.mu.Unlock()
 	for id := range s.spaceControllers {
 		if id == addr.AnytypeMarketplaceWorkspace {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return
+}
+
+// syncAllHeadsParallelism bounds how many spaces are head-synced at once so a
+// foreground resume doesn't hit every space simultaneously.
+const syncAllHeadsParallelism = 10
+
+// SyncAllSpaceHeads triggers an immediate head-sync (diff) round for every
+// actively loaded space. Used on app foreground (GO-7302) to refresh all spaces
+// promptly after a wakeup instead of waiting for each space's next periodic
+// diffsync tick. Runs in the background and does not block the caller; spaces
+// that are offloaded, deleted or still initializing are skipped.
+func (s *service) SyncAllSpaceHeads() {
+	if s.isClosing.Load() {
+		return
+	}
+	ids := s.activeSpaceIds()
+	go func() {
+		sem := make(chan struct{}, syncAllHeadsParallelism)
+		var wg sync.WaitGroup
+		for _, id := range ids {
+			sem <- struct{}{}
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() { <-sem }()
+				sp, err := s.Get(s.ctx, id)
+				if err != nil {
+					if s.ctx.Err() == nil {
+						log.Warn("sync all space heads: get space", zap.String("spaceId", id), zap.Error(err))
+					}
+					return
+				}
+				if err := sp.CommonSpace().SyncHeads(s.ctx); err != nil && s.ctx.Err() == nil {
+					log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
+				}
+			}()
+		}
+		wg.Wait()
+	}()
+}
+
+// activeSpaceIds returns ids of spaces whose controllers are in loading mode —
+// the only ones that can serve a head-sync round. Offloaded, deleted and
+// not-yet-started spaces are skipped so a foreground resume doesn't produce a
+// warning per inactive space.
+func (s *service) activeSpaceIds() (ids []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, ctrl := range s.spaceControllers {
+		if id == addr.AnytypeMarketplaceWorkspace {
+			continue
+		}
+		if ctrl.Mode() != mode.ModeLoading {
 			continue
 		}
 		ids = append(ids, id)

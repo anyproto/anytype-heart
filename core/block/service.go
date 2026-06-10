@@ -13,6 +13,7 @@ Scope: global
 - Coordinates workspace/space creation including one-to-one spaces
 - Exposes ObjectGetter interface for cache.Do pattern used throughout codebase
 - Tracks currently opened objects to prevent premature cache eviction
+- Supplies priority tree ids for per-space diffsync (chats first, then opened objects) via GetPriorityIds, backed by lazily-started per-space chat-id subscriptions
 
 ## Background Tasks
 - ObjectBookmarkFetch: async bookmark content update after initial fetch
@@ -63,6 +64,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileuploader"
 	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/core"
@@ -111,6 +114,7 @@ func New() *Service {
 			objects: make(map[string]string),
 			lock:    &sync.Mutex{},
 		},
+		chatSubs: map[string]*objectsubscription.ObjectSubscription[int64]{},
 	}
 	return s
 }
@@ -143,6 +147,15 @@ type Service struct {
 
 	predefinedObjectWasMissing bool
 	openedObjs                 *openedObjects
+
+	// chatSubs holds a lazily-started, per-space internal subscription tracking
+	// chat object ids and their resolved layout. It feeds GetPriorityIds so
+	// diffsync can head-sync chats first (chatDerived before discussion) without
+	// re-querying the store each cycle (GO-7302).
+	subscriptionService subscription.Service
+	chatSubsMu          sync.Mutex
+	chatSubs            map[string]*objectsubscription.ObjectSubscription[int64]
+	chatSubsClosed      bool
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -182,6 +195,7 @@ func (s *Service) Init(a *app.App) (err error) {
 	s.detailsService = app.MustComponent[detailservice.Service](a)
 	s.accountService = app.MustComponent[account.Service](a)
 	s.objectGC = app.MustComponent[objectgc.ObjectGC](a)
+	s.subscriptionService = app.MustComponent[subscription.Service](a)
 	return
 }
 
@@ -392,6 +406,116 @@ func (s *Service) CloseBlock(ctx session.Context, id domain.FullID) error {
 
 func (s *Service) GetOpenedObjects() []lo.Entry[string, string] {
 	return mutex.WithLock(s.openedObjs.lock, func() []lo.Entry[string, string] { return lo.Entries[string, string](s.openedObjs.objects) })
+}
+
+// chatPrioritySubParams tracks each chat object's resolved layout so
+// GetPriorityIds can order chatDerived chats (space-level chats) ahead of
+// discussion objects.
+var chatPrioritySubParams = objectsubscription.SubscriptionParams[int64]{
+	SetDetails: func(details *domain.Details) (string, int64) {
+		return details.GetString(bundle.RelationKeyId), details.GetInt64(bundle.RelationKeyResolvedLayout)
+	},
+	UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, layout int64) int64 {
+		for _, kv := range keyValues {
+			if kv.Key == bundle.RelationKeyResolvedLayout.String() {
+				layout = kv.Value.Int64()
+			}
+		}
+		return layout
+	},
+	RemoveKeys: func(keys []string, layout int64) int64 {
+		return layout
+	},
+}
+
+// GetPriorityIds returns tree ids that diffsync should head-sync first for the
+// space: chatDerived chats, then discussion objects, then objects the user
+// currently has open. The tree syncer (GO-7302) intersects this with its diff
+// set and moves the matches to the front of the single-worker head queue, so the
+// order here is the sync priority order. An object appearing in more than one
+// group is listed once, in the highest-priority group.
+//
+// Chat ids and layouts are read from a lazily-started, per-space internal
+// subscription so we don't re-query the store on every diffsync cycle.
+func (s *Service) GetPriorityIds(spaceId string) []string {
+	var chats, discussions []string
+	seen := map[string]struct{}{}
+	if sub := s.chatIdsSub(spaceId); sub != nil {
+		sub.Iterate(func(id string, layout int64) bool {
+			seen[id] = struct{}{}
+			if layout == int64(model.ObjectType_chatDerived) {
+				chats = append(chats, id)
+			} else {
+				discussions = append(discussions, id)
+			}
+			return true
+		})
+	}
+	ids := append(chats, discussions...)
+	for _, opened := range s.GetOpenedObjects() {
+		if opened.Value != spaceId {
+			continue
+		}
+		if _, ok := seen[opened.Key]; ok {
+			continue
+		}
+		ids = append(ids, opened.Key)
+	}
+	return ids
+}
+
+// chatIdsSub returns the per-space chat subscription, starting it on first use.
+// The subscription requests only the id and resolved layout and stays live, so
+// repeated reads are in-memory. Returns nil if the subscription can't be started
+// or the service is closing (so a diffsync racing Close can't re-create a
+// subscription that would never be released).
+func (s *Service) chatIdsSub(spaceId string) *objectsubscription.ObjectSubscription[int64] {
+	s.chatSubsMu.Lock()
+	defer s.chatSubsMu.Unlock()
+	if s.chatSubsClosed {
+		return nil
+	}
+	if sub, ok := s.chatSubs[spaceId]; ok {
+		return sub
+	}
+	sub := objectsubscription.New(s.subscriptionService, subscription.SubscribeRequest{
+		SpaceId:           spaceId,
+		SubId:             "block-chat-priority-" + spaceId,
+		Internal:          true,
+		NoDepSubscription: true,
+		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyResolvedLayout.String()},
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List([]model.ObjectTypeLayout{model.ObjectType_chatDerived, model.ObjectType_discussion}),
+			},
+		},
+	}, chatPrioritySubParams)
+	if err := sub.Run(); err != nil {
+		log.With("spaceId", spaceId).Errorf("run chat priority subscription: %v", err)
+		return nil
+	}
+	s.chatSubs[spaceId] = sub
+	return sub
+}
+
+// ReleasePriorityIds drops the per-space chat-id subscription backing
+// GetPriorityIds. The space's tree syncer calls it on close so subscriptions
+// don't outlive their space (unload, deletion); a later GetPriorityIds for the
+// same space lazily restarts the subscription.
+func (s *Service) ReleasePriorityIds(spaceId string) {
+	s.chatSubsMu.Lock()
+	defer s.chatSubsMu.Unlock()
+	sub, ok := s.chatSubs[spaceId]
+	if !ok {
+		return
+	}
+	delete(s.chatSubs, spaceId)
+	if err := s.subscriptionService.Unsubscribe("block-chat-priority-" + spaceId); err != nil {
+		log.With("spaceId", spaceId).Errorf("unsubscribe chat priority subscription: %v", err)
+	}
+	sub.Close()
 }
 
 func (s *Service) SpaceInstallBundledObject(
@@ -664,6 +788,13 @@ func (s *Service) Close(_ context.Context) (err error) {
 	if s.componentCtxCancel != nil {
 		s.componentCtxCancel()
 	}
+	s.chatSubsMu.Lock()
+	s.chatSubsClosed = true
+	for _, sub := range s.chatSubs {
+		sub.Close()
+	}
+	s.chatSubs = map[string]*objectsubscription.ObjectSubscription[int64]{}
+	s.chatSubsMu.Unlock()
 	return nil
 }
 
