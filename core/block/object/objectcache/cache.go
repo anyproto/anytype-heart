@@ -2,6 +2,7 @@ package objectcache
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -51,6 +52,7 @@ type Cache interface {
 	GetObject(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 	GetObjectWithTimeout(ctx context.Context, id string) (sb smartblock.SmartBlock, err error)
 	DoLockedIfNotExists(objectID string, proc func() error) error
+	FilterNotExists(ids []string) []string
 	Remove(ctx context.Context, objectID string) error
 	TryRemove(objectId string) (bool, error)
 	CloseBlocks()
@@ -171,6 +173,33 @@ func (c *objectCache) GetObjectWithTimeout(ctx context.Context, id string) (sb s
 
 func (c *objectCache) DoLockedIfNotExists(objectID string, proc func() error) error {
 	return c.cache.DoLockedIfNotExists(objectID, proc)
+}
+
+// FilterNotExists returns the subset of ids that are not present in the cache
+// (neither loaded nor currently loading), preserving input order.
+//
+// Unlike DoLockedIfNotExists it never holds the cache mutex across a callback,
+// so callers can safely use it to pre-filter ids and then perform store writes
+// (e.g. inside a write transaction) without nesting the cache lock and the
+// any-store write connection — the lock-order inversion that otherwise
+// deadlocks against object loads. It uses an already-cancelled context so
+// ocache.Pick returns immediately: an absent id yields ErrNotExists; a
+// loaded/loading id yields nil or context.Canceled. Only ErrNotExists is
+// treated as "not in cache", matching DoLockedIfNotExists semantics (a loading
+// entry counts as existing and is skipped).
+func (c *objectCache) FilterNotExists(ids []string) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	notExists := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if _, err := c.cache.Pick(ctx, id); errors.Is(err, ocache.ErrNotExists) {
+			notExists = append(notExists, id)
+		}
+	}
+	return notExists
 }
 
 func (c *objectCache) CloseBlocks() {

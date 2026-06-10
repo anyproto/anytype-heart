@@ -650,6 +650,7 @@ func (u *uploader) addFile(ctx context.Context) (addResult *files.AddResult, err
 		}
 		return entry.result, nil
 	}
+
 	if u.getReader == nil {
 		err = fmt.Errorf("uploader: empty source for upload")
 		return
@@ -733,6 +734,7 @@ func (u *uploader) addFile(ctx context.Context) (addResult *files.AddResult, err
 			return nil, fmt.Errorf("add file to storage: %w", err)
 		}
 	}
+
 	addResult.Batch = batch
 	return addResult, nil
 }
@@ -756,7 +758,11 @@ func (u *uploader) processAddedFile(ctx context.Context, addResult *files.AddRes
 	result.Name = u.name
 	// we still can have orphan blocks if app is killed in the middle of commit, but os.Rename syscalls are very fast
 	addResult.Commit()
+
+	addResult.Lock()
+	// to avoid race cond with multiple calls to Upload leading to multiple objects created
 	fileObjectId, fileObjectDetails, err := u.getOrCreateFileObject(ctx, addResult)
+	addResult.Unlock()
 	if err != nil {
 		return UploadResult{Err: err}
 	}

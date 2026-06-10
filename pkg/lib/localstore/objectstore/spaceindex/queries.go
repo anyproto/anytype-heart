@@ -1,6 +1,7 @@
 package spaceindex
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -44,7 +45,62 @@ func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 	return recs, err
 }
 
-func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
+// QueryAndCount runs the query (respecting limit/offset) and additionally returns the total number
+// of objects matching the filters, ignoring limit/offset. The filters are compiled only once and
+// reused for both the limited query and the count, and both reads run in a single read transaction
+// so the page and the total reflect a consistent snapshot. It applies the same implicit filters as
+// Query (isArchived/isDeleted/objectType). Fulltext queries are not supported.
+func (s *dsObjectStore) QueryAndCount(q database.Query) (records []database.Record, total int, err error) {
+	arena := s.arenaPool.Get()
+	defer s.arenaPool.Put(arena)
+
+	collatorBuffer := s.collatorBufferPool.get()
+	defer s.collatorBufferPool.put(collatorBuffer)
+
+	q.TextQuery = strings.TrimSpace(q.TextQuery)
+	if q.TextQuery != "" {
+		return nil, 0, fmt.Errorf("QueryAndCount does not support fulltext queries")
+	}
+
+	filters, err := database.NewFilters(q, s, arena, collatorBuffer)
+	if err != nil {
+		return nil, 0, fmt.Errorf("new filters: %w", err)
+	}
+
+	tx, err := s.db.ReadTx(s.componentCtx)
+	if err != nil {
+		return nil, 0, fmt.Errorf("read tx: %w", err)
+	}
+	defer func() {
+		if cmErr := tx.Commit(); cmErr != nil && err == nil {
+			records, total, err = nil, 0, fmt.Errorf("commit read tx: %w", cmErr)
+		}
+	}()
+
+	records, err = s.queryAnyStore(tx.Context(), filters.FilterObj, filters.Order, uint(q.Limit), uint(q.Offset))
+	if err != nil {
+		return nil, 0, fmt.Errorf("query any store: %w", err)
+	}
+
+	// When the page reached the end of the result set, the total is known without a separate count:
+	// it's the offset plus the number of records on this final page. The page reaches the end when the
+	// query is unbounded (limit 0) or returned fewer records than the limit. We additionally require
+	// len > 0 (or a zero offset) to rule out an offset that overshot the result set, which is
+	// indistinguishable from an empty match without counting.
+	if (q.Limit == 0 || len(records) < q.Limit) && (len(records) > 0 || q.Offset == 0) {
+		return records, q.Offset + len(records), nil
+	}
+
+	// Otherwise count the full result set, reusing the already-compiled filters and the same read
+	// transaction, without materializing or sorting.
+	total, err = s.objects.Find(filters.FilterObj.AnystoreFilter()).Count(tx.Context())
+	if err != nil {
+		return nil, 0, fmt.Errorf("count objects: %w", err)
+	}
+	return records, total, nil
+}
+
+func (s *dsObjectStore) queryAnyStore(ctx context.Context, filter database.Filter, order database.Order, limit uint, offset uint) ([]database.Record, error) {
 	anystoreFilter := filter.AnystoreFilter()
 	var sortsArg []any
 	if order != nil {
@@ -62,7 +118,7 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 			dur := time.Since(now)
 			if dur.Milliseconds() > 100 {
 				explain := ""
-				if exp, expErr := query.Explain(s.componentCtx); expErr == nil {
+				if exp, expErr := query.Explain(ctx); expErr == nil {
 					for _, idx := range exp.Indexes {
 						if idx.Used {
 							explain += fmt.Sprintf("index: %s %d ", idx.Name, idx.Weight)
@@ -76,7 +132,7 @@ func (s *dsObjectStore) queryAnyStore(filter database.Filter, order database.Ord
 			}
 		}
 	}()
-	iter, err := query.Iter(s.componentCtx)
+	iter, err := query.Iter(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("find: %w", err)
 	}
@@ -104,7 +160,7 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	if filters == nil || filters.FilterObj == nil {
 		return nil, fmt.Errorf("filter cannot be nil or unitialized")
 	}
-	return s.queryAnyStore(filters.FilterObj, filters.Order, uint(limit), uint(offset))
+	return s.queryAnyStore(s.componentCtx, filters.FilterObj, filters.Order, uint(limit), uint(offset))
 }
 
 type injectionHit struct {
@@ -289,7 +345,7 @@ func (s *dsObjectStore) injectRelatedObjects(
 		if !unlimited {
 			queryLimit = uint(budget) //nolint:gosec
 		}
-		recs, err := s.queryAnyStore(database.FiltersAnd{database.FilterIn{Key: relKey, Value: values}, params.FilterObj}, params.Order, queryLimit, 0)
+		recs, err := s.queryAnyStore(s.componentCtx, database.FiltersAnd{database.FilterIn{Key: relKey, Value: values}, params.FilterObj}, params.Order, queryLimit, 0)
 		if err != nil {
 			log.Errorf("inject related objects by %s: %v", relKey, err)
 			continue
@@ -479,7 +535,7 @@ func (s *dsObjectStore) performFulltextFallback(q database.Query, filters *datab
 	}
 
 	// Query anystore
-	records, err := s.queryAnyStore(combinedFilter, order, uint(q.Limit), uint(q.Offset))
+	records, err := s.queryAnyStore(s.componentCtx, combinedFilter, order, uint(q.Limit), uint(q.Offset))
 	if err != nil {
 		return nil, fmt.Errorf("fulltext fallback query: %w", err)
 	}
