@@ -61,10 +61,13 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 }
 
 func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
-	detCopy := details.Copy()
-	detCopy.SetString(bundle.RelationKeyId, id)
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+	if s.onChangeCallback == nil && len(s.subscriptions) == 0 {
+		return
+	}
+	detCopy := details.Copy()
+	detCopy.SetString(bundle.RelationKeyId, id)
 	if s.onChangeCallback != nil {
 		s.onChangeCallback(database.Record{
 			Details: detCopy,
