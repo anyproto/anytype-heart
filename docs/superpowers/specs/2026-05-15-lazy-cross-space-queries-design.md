@@ -1,7 +1,8 @@
 # Lazy cross-space objectstore queries
 
 Date: 2026-05-15
-Status: Draft (pending review)
+Status: Implemented (with one deviation: one-shot cross-space reads ended up **wait-by-default**
+rather than lazy — the bucket-1/bucket-2 split below was superseded during review, see §2/§5)
 Issue: GO-7288
 
 ## Problem
@@ -39,9 +40,10 @@ pre-existing data-loss risk that the lazy change *widens*. It is addressed defen
 - Remove the startup disk spike: no synchronous parallel open of all spaces on the
   cross-space query hot path.
 - Component `Run()` methods must not block on store loading; app start time unaffected.
-- Cross-space queries that can tolerate a partial, self-healing result run lazily.
-- Cross-space callers that require completeness for correctness get an explicit, opt-in
-  wait that resolves against an **authoritative** space set (not an objectstore-derived one).
+- One-shot cross-space reads wait for the warm-up by default (honoring the caller's ctx),
+  so no caller can silently act on a partial view. The wait resolves against an
+  **authoritative** space set (not an objectstore-derived one). Only the full-text
+  iteration path, per-space `SpaceIndex`, and the subscription path stay lazy.
 - No behavior change for the already-safe subscription consumers.
 
 ## Non-goals
@@ -68,8 +70,10 @@ partial-then-growing result, **no change needed**: `api/service/cache.go` (×3),
 
 **Direct one-shot queries** — split:
 
-Bucket 1 — `accept-lazy` (self-heals or best-effort, on/near startup), **no change needed**;
-they converge as stores open via the background warm-up:
+Bucket 1 — `accept-lazy` (self-heals or best-effort, on/near startup). *(Superseded: the
+final implementation makes these wait too — see §2 — because the wait is one-time, honors
+ctx, and removes the need for per-caller safety analysis. The table is kept as the record
+of why lazy would also have been safe for them.)*
 
 | Site | Why safe |
 |---|---|
@@ -112,12 +116,20 @@ Keep the function but change how and when it runs:
   store with bounded concurrency, calls `markSpaceIndexOpened` per store (existing path), and
   marks itself complete (closes a `loaded` channel) when the full set is done.
 
-### 2. `collectCrossSpace` / `listStores`: lazy by default
+### 2. `collectCrossSpace` / `listStores`: wait by default *(superseded the original lazy design)*
 
-`listStores()` no longer triggers a synchronous full preload. It returns only the
-currently-open `s.spaceIndexes`. The `sync.Once`-guarded eager preload is removed from the
-hot path. Result: Bucket-1 callers see only already-open spaces and self-heal as the
-background warm-up (and normal space activity) opens more.
+`listStores()` no longer triggers a synchronous full preload; it returns the currently-open
+`s.spaceIndexes`, and the `sync.Once`-guarded eager preload is removed from the hot path.
+
+**Final implementation (deviation from the original draft):** instead of letting bucket-1
+callers run lazily over that partial set, `collectCrossSpace` calls `WaitStoresLoaded(ctx)`
+first — so every one-shot cross-space read (`QueryCrossSpace`, `QueryByIdCrossSpace`,
+`ListIdsCrossSpace`, and `IterateSpaceIndex`) takes a `ctx` and blocks until the
+authoritative set is open. The wait is one-time (instant once warm-up finished) and honors
+caller cancellation, so the startup spike stays gone while no caller can silently act on a
+partial view. Exceptions that stay lazy: `iterateSpacesForFulltext` (self-healing,
+documented at the function), per-space `SpaceIndex`, and the `crossspacesub` subscription
+path (pending spaces promoted via `OnSpaceIndexOpened` events rather than blocking).
 
 ### 3. Authoritative space set (Refinement R1)
 
@@ -161,11 +173,12 @@ without changing the signature or callers.
 `QueryCrossSpace`. Chosen: explicit `WaitStoresLoaded(ctx)` — clearer call sites, reusable
 by `IterateSpaceIndex`/`ListIdsCrossSpace` callers, no query-struct plumbing.)
 
-### 5. Bucket-2 callers: opt into the wait
+### 5. Bucket-2 callers *(superseded: wait is built into the queries)*
 
-Each Bucket-2 site calls `s.objectStore.WaitStoresLoaded(ctx)` immediately before its
-cross-space query and propagates any error. All are user/GC/RPC-triggered, so blocking on
-the bounded warm-up is acceptable and never touches startup:
+The original draft had each Bucket-2 site call `s.objectStore.WaitStoresLoaded(ctx)` before
+its cross-space query. With wait-by-default (§2) the explicit calls were dropped: these
+sites just pass their `ctx` to the query, and the wait happens inside
+`collectCrossSpace`/`IterateSpaceIndex`, propagating cancellation errors the same way:
 
 - `fileobject/service.go:704` `DeleteFileData`
 - `fileoffloader/offloader.go:131` `offloadAllFiles`
@@ -199,11 +212,11 @@ app start
               for each, bounded(preloadConcurrency): Init() + markSpaceIndexOpened()
               when all done: close(loadedCh)
 
-Bucket-1 query  ──▶ collectCrossSpace ──▶ listStores() = currently-open stores (partial OK, self-heals)
+one-shot cross-space read (QueryCrossSpace / QueryByIdCrossSpace / ListIdsCrossSpace / IterateSpaceIndex)
+  └─ WaitStoresLoaded(ctx) inside collectCrossSpace ── blocks on loadedCh ──▶ full authoritative set open
+        └─ query all stores  (reconciler also per-space scoped on OpenedSpaceIds)
 
-Bucket-2 op (user/GC/RPC)
-  └─ WaitStoresLoaded(ctx)  ── blocks on loadedCh ──▶ full authoritative set open
-        └─ cross-space query  (reconciler also per-space scoped on OpenedSpaceIds)
+FT enqueue/recheck  ──▶ iterateSpacesForFulltext ──▶ currently-open stores (partial OK, self-heals)
 ```
 
 ## Error handling
@@ -229,7 +242,8 @@ Bucket-2 op (user/GC/RPC)
   `ctx.Err()` on cancellation; completes even when one store `Init()` fails.
 - Authoritative set = union of spacecore storage ids and objectstore fs ids (cover the
   divergence case: id present in one source only).
-- Bucket-1 lazy query returns partial results before warm-up completes and converges after.
+- One-shot cross-space reads block until warm-up completes (wait-by-default) and honor
+  caller ctx cancellation; the FT iteration path returns partial results and converges.
 - Reconciler: a space absent from `OpenedSpaceIds()` never has its remote files enqueued
   for deletion, even when present in remote `IterateFiles` (regression test for the
   pre-existing data-loss bug).

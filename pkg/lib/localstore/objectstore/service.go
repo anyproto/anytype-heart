@@ -632,8 +632,14 @@ func (s *dsObjectStore) preloadExistingObjectStores() {
 				// SpaceIndex opens the per-space DB and, on success,
 				// calls markSpaceIndexOpened (fires OnSpaceIndexOpened).
 				// On Init error it returns an invalid store and the space
-				// is left out of OpenedSpaceIds (intended).
-				s.SpaceIndex(spaceId)
+				// is left out of OpenedSpaceIds (intended). Init on the
+				// returned store is idempotent and recovers that error so
+				// the warm-up failure is diagnosable; later cross-space
+				// reads hitting the bad store surface the same error.
+				if initErr := s.SpaceIndex(spaceId).Init(); initErr != nil {
+					log.Error("warm-up: init space index",
+						zap.String("spaceId", spaceId), zap.Error(initErr))
+				}
 			}(spaceId)
 		}
 		wg.Wait()

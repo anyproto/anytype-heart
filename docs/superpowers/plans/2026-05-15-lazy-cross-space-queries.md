@@ -6,6 +6,15 @@
 
 **Architecture:** `preloadExistingObjectStores` becomes a bounded-concurrency warm-up launched in a background goroutine from `Run()` (never blocking it), iterating the union of `spaceStorage.AllSpaceIds()` and the objectstore filesystem dirs. `collectCrossSpace`/`listStores` no longer force a synchronous full preload (Bucket-1 callers self-heal). A new `ObjectStore.WaitStoresLoaded(ctx)` lets Bucket-2 (destructive/RPC) callers block until warm-up completes; the reconciler additionally per-space-scopes on `OpenedSpaceIds()`.
 
+> **Superseded during review (final implementation):** the Bucket-1 lazy-query behavior was
+> replaced by **wait-by-default** — `collectCrossSpace` and `IterateSpaceIndex` call
+> `WaitStoresLoaded(ctx)` internally, every one-shot cross-space read takes a `ctx`
+> (`QueryCrossSpace(ctx, …)`, `QueryByIdCrossSpace(ctx, …)`, `ListIdsCrossSpace(ctx)`), and
+> the explicit per-caller `WaitStoresLoaded` calls in the tasks below were dropped in favor
+> of threading ctx into the query APIs. Only `iterateSpacesForFulltext`, per-space
+> `SpaceIndex`, and the subscription path stay lazy. The task list below is the historical
+> execution record; see the spec (§2/§5) for the final design.
+
 **Tech Stack:** Go, any-sync `app` component framework, testify, mockery.
 
 **Spec:** `docs/superpowers/specs/2026-05-15-lazy-cross-space-queries-design.md`
