@@ -178,7 +178,9 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 		})
 		s.parentFilter.IDs = idsForParentFilter
 
-		ctx.entries = append(ctx.entries, parentEntries...)
+		for _, e := range parentEntries {
+			ctx.appendEntry(e)
+		}
 		s.parent.onChange(ctx)
 	}
 }

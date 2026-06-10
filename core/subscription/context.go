@@ -58,11 +58,19 @@ type opCtx struct {
 	entries  []*entry
 	groups   []opGroup
 
+	// entriesIdx indexes entries by id; built lazily on the first getEntry call
+	// (entries are assigned wholesale at the start of a batch) and kept in sync
+	// by appendEntry afterwards
+	entriesIdx      map[string]int
+	entriesIdxValid bool
+
 	keysBuf []struct {
 		id     string
 		subIds []string
 		keys   []domain.RelationKey
 	}
+	// keysBufIdx indexes keysBuf by id
+	keysBufIdx map[string]int
 
 	c *cache
 }
@@ -163,16 +171,8 @@ func (ctx *opCtx) apply() {
 // EventMessageValueOfObjectDetailsSet
 func (ctx *opCtx) detailsEvents() {
 	var msgs []*pb.EventMessage
-	var getEntry = func(id string) *entry {
-		for _, e := range ctx.entries {
-			if e.id == id {
-				return e
-			}
-		}
-		return nil
-	}
 	for _, info := range ctx.keysBuf {
-		curr := getEntry(info.id)
+		curr := ctx.getEntry(info.id)
 		if curr == nil {
 			log.Errorf("entry present in changes but not in list: %v", info.id)
 			continue
@@ -324,40 +324,57 @@ func (ctx *opCtx) groupEventsDetailsAmend(v *pb.EventObjectDetailsAmend) {
 }
 
 func (ctx *opCtx) collectKeys(id string, subId string, keys []domain.RelationKey) {
-	var found bool
-	for i, kb := range ctx.keysBuf {
-		if kb.id == id {
-			found = true
-			for _, k := range keys {
-				if slice.FindPos(ctx.keysBuf[i].keys, k) == -1 {
-					ctx.keysBuf[i].keys = append(ctx.keysBuf[i].keys, k)
-				}
+	if i, ok := ctx.keysBufIdx[id]; ok {
+		kb := ctx.keysBuf[i]
+		for _, k := range keys {
+			if slice.FindPos(ctx.keysBuf[i].keys, k) == -1 {
+				ctx.keysBuf[i].keys = append(ctx.keysBuf[i].keys, k)
 			}
-			if slice.FindPos(kb.subIds, subId) == -1 {
-				ctx.keysBuf[i].subIds = append(kb.subIds, subId)
-				sort.Strings(ctx.keysBuf[i].subIds)
-			}
-			break
 		}
+		if slice.FindPos(kb.subIds, subId) == -1 {
+			ctx.keysBuf[i].subIds = append(kb.subIds, subId)
+			sort.Strings(ctx.keysBuf[i].subIds)
+		}
+		return
 	}
-	if !found {
-		keysCopy := make([]domain.RelationKey, len(keys))
-		copy(keysCopy, keys)
-		ctx.keysBuf = append(ctx.keysBuf, struct {
-			id     string
-			subIds []string
-			keys   []domain.RelationKey
-		}{id: id, keys: keysCopy, subIds: []string{subId}})
+	keysCopy := make([]domain.RelationKey, len(keys))
+	copy(keysCopy, keys)
+	ctx.keysBuf = append(ctx.keysBuf, struct {
+		id     string
+		subIds []string
+		keys   []domain.RelationKey
+	}{id: id, keys: keysCopy, subIds: []string{subId}})
+	if ctx.keysBufIdx == nil {
+		ctx.keysBufIdx = make(map[string]int)
 	}
+	ctx.keysBufIdx[id] = len(ctx.keysBuf) - 1
 }
 
 func (ctx *opCtx) getEntry(id string) *entry {
-	for _, e := range ctx.entries {
-		if e.id == id {
-			return e
+	if !ctx.entriesIdxValid {
+		if ctx.entriesIdx == nil {
+			ctx.entriesIdx = make(map[string]int, len(ctx.entries))
+		} else {
+			clear(ctx.entriesIdx)
 		}
+		for i, e := range ctx.entries {
+			ctx.entriesIdx[e.id] = i
+		}
+		ctx.entriesIdxValid = true
+	}
+	if i, ok := ctx.entriesIdx[id]; ok {
+		return ctx.entries[i]
 	}
 	return nil
+}
+
+// appendEntry must be used to add entries after batch processing has started,
+// so that the id index stays in sync
+func (ctx *opCtx) appendEntry(e *entry) {
+	ctx.entries = append(ctx.entries, e)
+	if ctx.entriesIdxValid {
+		ctx.entriesIdx[e.id] = len(ctx.entries) - 1
+	}
 }
 
 func (ctx *opCtx) reset() {
@@ -368,6 +385,8 @@ func (ctx *opCtx) reset() {
 	ctx.keysBuf = ctx.keysBuf[:0]
 	ctx.entries = ctx.entries[:0]
 	ctx.groups = ctx.groups[:0]
+	ctx.entriesIdxValid = false
+	clear(ctx.keysBufIdx)
 	if ctx.outputs == nil {
 		ctx.outputs = map[string][]*pb.EventMessage{
 			defaultOutput: nil,

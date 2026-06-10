@@ -86,7 +86,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 				missIds = append(missIds, id)
 			}
 			if e != nil {
-				ctx.entries = append(ctx.entries, e)
+				ctx.appendEntry(e)
 			}
 		}
 		if e != nil {
@@ -100,7 +100,7 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 		}
 		for _, r := range records {
 			e := newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details)
-			ctx.entries = append(ctx.entries, e)
+			ctx.appendEntry(e)
 			depEntries = append(depEntries, e)
 		}
 	}
