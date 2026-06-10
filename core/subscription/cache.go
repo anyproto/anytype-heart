@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"maps"
+	"slices"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/util/slice"
@@ -17,34 +18,35 @@ type entry struct {
 	id   string
 	data *domain.Details
 
+	// subIsActive and subFullDetailsSent are allocated lazily on the first SetSub:
+	// an entry is created for every record passing through the change pipeline,
+	// and most of them never join any subscription
 	subIds             []string
 	subIsActive        map[string]bool
 	subFullDetailsSent map[string]bool
 }
 
 func newEntry(id string, data *domain.Details) *entry {
-	return &entry{id: id, data: data, subIsActive: make(map[string]bool), subFullDetailsSent: make(map[string]bool)}
+	return &entry{id: id, data: data}
 }
 
 func (e *entry) Copy() *entry {
-	newSubIds := make([]string, len(e.subIds))
-	copy(newSubIds, e.subIds)
-	newSubIsActive := make(map[string]bool, len(e.subIsActive))
-	maps.Copy(newSubIsActive, e.subIsActive)
-	newSubFullDetailsSent := make(map[string]bool, len(e.subIsActive))
-	maps.Copy(newSubFullDetailsSent, e.subFullDetailsSent)
 	return &entry{
 		id:                 e.id,
 		data:               e.data,
-		subIds:             newSubIds,
-		subIsActive:        newSubIsActive,
-		subFullDetailsSent: newSubFullDetailsSent,
+		subIds:             slices.Clone(e.subIds),
+		subIsActive:        maps.Clone(e.subIsActive),
+		subFullDetailsSent: maps.Clone(e.subFullDetailsSent),
 	}
 }
 
 // SetSub marks provided subscription for the entry as active (within the current pagination window) or inactive
 func (e *entry) SetSub(subId string, isActive bool, isFullDetailSent bool) {
 	if pos := slice.FindPos(e.subIds, subId); pos == -1 {
+		if e.subIsActive == nil {
+			e.subIsActive = make(map[string]bool, 1)
+			e.subFullDetailsSent = make(map[string]bool, 1)
+		}
 		e.subIds = append(e.subIds, subId)
 		e.subIsActive[subId] = isActive
 		e.subFullDetailsSent[subId] = isFullDetailSent
