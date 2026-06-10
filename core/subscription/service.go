@@ -853,14 +853,8 @@ func (s *spaceSubscriptions) SubscriptionIDs() []string {
 
 func (s *spaceSubscriptions) recordsHandler() {
 	var entries []*entry
-	nilIfExists := func(id string) {
-		for i, e := range entries {
-			if e != nil && e.id == id {
-				entries[i] = nil
-				return
-			}
-		}
-	}
+	// id -> index of the latest entry for this id within the current batch
+	entryIdx := make(map[string]int)
 	for {
 		records, err := s.recBatch.Wait(s.ctx)
 		if err != nil {
@@ -872,8 +866,11 @@ func (s *spaceSubscriptions) recordsHandler() {
 		for _, rec := range records {
 			id := rec.Details.GetString(bundle.RelationKeyId)
 			// nil previous version
-			nilIfExists(id)
+			if i, ok := entryIdx[id]; ok {
+				entries[i] = nil
+			}
 			entries = append(entries, newEntry(id, rec.Details))
+			entryIdx[id] = len(entries) - 1
 		}
 		// filter nil entries
 		filtered := entries[:0]
@@ -887,6 +884,7 @@ func (s *spaceSubscriptions) recordsHandler() {
 			time.Sleep(batchTime)
 		}
 		entries = entries[:0]
+		clear(entryIdx)
 	}
 }
 
