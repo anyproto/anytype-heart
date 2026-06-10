@@ -43,7 +43,9 @@ type openedObjectRefresher interface {
 
 type spaceHeadSyncer interface {
 	app.Component
-	SyncAllSpaceHeads(ctx context.Context)
+	// SyncAllSpaceHeads is fire-and-forget: the head-sync runs in the background
+	// on the syncer's own lifecycle context.
+	SyncAllSpaceHeads()
 }
 
 // On foreground resume we throttle work by how long the app was backgrounded:
@@ -91,7 +93,7 @@ func (n *networkState) StateChange(state int) {
 			}
 		}
 		if timePassed > syncHeadsAfter {
-			n.spaceSyncer.SyncAllSpaceHeads(ctx)
+			n.spaceSyncer.SyncAllSpaceHeads()
 		}
 		n.objectsRefresher.RefreshOpenedObjects(ctx)
 	}

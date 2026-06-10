@@ -154,6 +154,7 @@ type Service struct {
 	subscriptionService subscription.Service
 	chatSubsMu          sync.Mutex
 	chatSubs            map[string]*objectsubscription.ObjectSubscription[struct{}]
+	chatSubsClosed      bool
 
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
@@ -438,10 +439,15 @@ func (s *Service) GetPriorityIds(spaceId string) []string {
 
 // chatIdsSub returns the per-space chat-id subscription, starting it on first
 // use. The subscription requests only the id field and stays live, so repeated
-// reads are in-memory. Returns nil if the subscription can't be started.
+// reads are in-memory. Returns nil if the subscription can't be started or the
+// service is closing (so a diffsync racing Close can't re-create a subscription
+// that would never be released).
 func (s *Service) chatIdsSub(spaceId string) *objectsubscription.ObjectSubscription[struct{}] {
 	s.chatSubsMu.Lock()
 	defer s.chatSubsMu.Unlock()
+	if s.chatSubsClosed {
+		return nil
+	}
 	if sub, ok := s.chatSubs[spaceId]; ok {
 		return sub
 	}
@@ -465,6 +471,24 @@ func (s *Service) chatIdsSub(spaceId string) *objectsubscription.ObjectSubscript
 	}
 	s.chatSubs[spaceId] = sub
 	return sub
+}
+
+// ReleasePriorityIds drops the per-space chat-id subscription backing
+// GetPriorityIds. The space's tree syncer calls it on close so subscriptions
+// don't outlive their space (unload, deletion); a later GetPriorityIds for the
+// same space lazily restarts the subscription.
+func (s *Service) ReleasePriorityIds(spaceId string) {
+	s.chatSubsMu.Lock()
+	defer s.chatSubsMu.Unlock()
+	sub, ok := s.chatSubs[spaceId]
+	if !ok {
+		return
+	}
+	delete(s.chatSubs, spaceId)
+	if err := s.subscriptionService.Unsubscribe("block-chat-priority-" + spaceId); err != nil {
+		log.With("spaceId", spaceId).Errorf("unsubscribe chat priority subscription: %v", err)
+	}
+	sub.Close()
 }
 
 func (s *Service) SpaceInstallBundledObject(
@@ -738,6 +762,7 @@ func (s *Service) Close(_ context.Context) (err error) {
 		s.componentCtxCancel()
 	}
 	s.chatSubsMu.Lock()
+	s.chatSubsClosed = true
 	for _, sub := range s.chatSubs {
 		sub.Close()
 	}

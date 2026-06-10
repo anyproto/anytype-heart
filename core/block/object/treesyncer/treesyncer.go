@@ -74,8 +74,11 @@ type SyncDetailsUpdater interface {
 // implements it, existing trees keep their diff order. GetPriorityIds is queried
 // once per SyncAll so priority can track navigation (e.g. the currently-open
 // chat). Only ids that are also in the diff's existing set take effect.
+// ReleasePriorityIds is called when the space's tree syncer closes so the
+// provider can drop per-space resources backing GetPriorityIds.
 type PriorityProvider interface {
 	GetPriorityIds(spaceId string) []string
+	ReleasePriorityIds(spaceId string)
 }
 
 type treeSyncer struct {
@@ -157,6 +160,9 @@ func (t *treeSyncer) Close(ctx context.Context) (err error) {
 	}
 	for _, pool := range t.requestPools {
 		pool.close()
+	}
+	if t.priority != nil {
+		t.priority.ReleasePriorityIds(t.spaceId)
 	}
 	return nil
 }

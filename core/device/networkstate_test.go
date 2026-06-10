@@ -25,7 +25,7 @@ type spaceSyncerStub struct {
 	called int
 }
 
-func (s *spaceSyncerStub) SyncAllSpaceHeads(context.Context) {
+func (s *spaceSyncerStub) SyncAllSpaceHeads() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.called++

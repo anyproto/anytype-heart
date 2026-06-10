@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/objectsubscription"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -68,5 +70,33 @@ func TestService_GetPriorityIds(t *testing.T) {
 
 		// then: only the two chats, no foreign opened object
 		assert.ElementsMatch(t, []string{"chatA", "chatB"}, got)
+	})
+
+	t.Run("ReleasePriorityIds unsubscribes and drops the space subscription", func(t *testing.T) {
+		// given
+		svc := newService([]string{"chatA"}, map[string]string{})
+		subService := mock_subscription.NewMockService(t)
+		subService.EXPECT().Unsubscribe("block-chat-priority-" + spaceId).Return(nil)
+		svc.subscriptionService = subService
+
+		// when
+		svc.ReleasePriorityIds(spaceId)
+
+		// then: the subscription is gone; releasing again is a no-op
+		assert.Empty(t, svc.chatSubs)
+		svc.ReleasePriorityIds(spaceId)
+	})
+
+	t.Run("after Close no subscription is restarted", func(t *testing.T) {
+		// given
+		svc := newService([]string{"chatA"}, map[string]string{"page1": spaceId})
+		require.NoError(t, svc.Close(context.Background()))
+
+		// when: a diffsync cycle racing shutdown asks for priority ids
+		got := svc.GetPriorityIds(spaceId)
+
+		// then: chat subs are closed and not re-created, opened objects still listed
+		assert.Equal(t, []string{"page1"}, got)
+		assert.Empty(t, svc.chatSubs)
 	})
 }
