@@ -570,7 +570,16 @@ func (s *service) ensureSpaceStarted(spaceId string) {
 	// permanently built as the wrong controller type with no signing key and
 	// would never self-correct. statusToInfo carries the same fields for the
 	// cached-status path; here we read them from the space view directly.
-	info := s.resolveDerivedInfo(spaceId)
+	info, ok := s.resolveDerivedInfo(spaceId)
+	if !ok {
+		// The space view is absent (unknown id / not synced yet) or unreadable.
+		// Do not build from zero-value info: the failed build would poison
+		// s.waiting (startStatus caches the error, so a later Join/InviteJoin
+		// of this id fails for the rest of the session) and Get would return a
+		// techspace error instead of ErrSpaceNotExists. Bail out and let the
+		// caller fail with ErrSpaceNotExists, same as eager mode.
+		return
+	}
 	if s.startStatusHook != nil {
 		s.startStatusHook(info)
 		return
@@ -591,13 +600,13 @@ func (s *service) ensureSpaceStarted(spaceId string) {
 // aclHeadId, encoded guest key) for a space promoted on demand before any
 // status was cached. Preserving EncodedKey is what lets startStatus pick the
 // correct controller type (NewStreamableSpace for guest/stream spaces vs
-// NewShareableSpace), mirroring statusToInfo for the cached-status path. If the
-// view cannot be read we fall back to a zero-value info (best effort, same as
-// the previous behavior) and let the later watcher update reconcile it.
-func (s *service) resolveDerivedInfo(spaceId string) spaceinfo.SpacePersistentInfo {
-	info := spaceinfo.NewSpacePersistentInfo(spaceId)
+// NewShareableSpace), mirroring statusToInfo for the cached-status path.
+// Returns ok=false when the view cannot be read (no view for this id, or a
+// transient techspace error); the caller must not build in that case.
+func (s *service) resolveDerivedInfo(spaceId string) (info spaceinfo.SpacePersistentInfo, ok bool) {
+	info = spaceinfo.NewSpacePersistentInfo(spaceId)
 	if s.techSpace == nil {
-		return info
+		return info, false
 	}
 	err := s.techSpace.DoSpaceView(s.ctx, spaceId, func(spaceView techspace.SpaceView) error {
 		info = spaceView.GetPersistentInfo()
@@ -605,9 +614,9 @@ func (s *service) resolveDerivedInfo(spaceId string) spaceinfo.SpacePersistentIn
 	})
 	if err != nil {
 		log.Warn("ensureSpaceStarted resolve persistent info", zap.String("spaceId", spaceId), zap.Error(err))
-		return spaceinfo.NewSpacePersistentInfo(spaceId)
+		return spaceinfo.NewSpacePersistentInfo(spaceId), false
 	}
-	return info
+	return info, true
 }
 
 // triggerRelease is the single idempotent "release the deferred backlog"

@@ -2,6 +2,7 @@ package space
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -206,8 +207,7 @@ func TestPreloadRemainingSpaces_Idempotent(t *testing.T) {
 }
 
 func TestEnsureSpaceStarted_DeriveWhenNoCachedStatus(t *testing.T) {
-	s := newLazyServiceForStatus(t)
-	s.lazyMode = true
+	s := newLazyServiceWithSpaceView(t, "not-yet-cached", spaceinfo.NewSpacePersistentInfo("not-yet-cached"))
 
 	called := make(chan string, 1)
 	s.startStatusHook = func(info spaceinfo.SpacePersistentInfo) { called <- info.SpaceID }
@@ -504,4 +504,50 @@ func TestEnsureSpaceStarted_CachedStatusRemovedFromBacklog(t *testing.T) {
 
 	// A later drain must not rebuild it (NewShareableSpace.Once() would fail).
 	s.drainDeferred(context.Background())
+}
+
+// TestEnsureSpaceStarted_UnresolvableViewDoesNotBuild is the regression for the
+// high review finding: in lazy mode, promoting a space whose space view cannot
+// be resolved (not synced yet, unknown id, or a transient techspace error) must
+// NOT build a controller from zero-value info. Building would (1) replace
+// Get's ErrSpaceNotExists with a techspace error, (2) permanently poison
+// s.waiting with the failed build so a later Join/InviteJoin of that space id
+// fails for the rest of the session, and (3) on a transient error mis-build a
+// guest space as a keyless shareable controller.
+func TestEnsureSpaceStarted_UnresolvableViewDoesNotBuild(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		err  error
+	}{
+		{"view not exists", techspace.ErrSpaceViewNotExists},
+		{"transient resolve error", errors.New("objectstore closed")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const spaceId = "unknown.space"
+			s := newLazyServiceForStatus(t)
+			s.lazyMode = true
+			s.personalSpaceId = "personal.id"
+
+			ts := mock_techspace.NewMockTechSpace(t)
+			ts.EXPECT().DoSpaceView(mock.Anything, spaceId, mock.Anything).Return(tc.err)
+			s.techSpace = &clientspace.TechSpace{TechSpace: ts}
+
+			// No expectations: the mock fails the test if any factory method is
+			// called, locking in that an unresolvable space is never built.
+			s.factory = mock_spacefactory.NewMockSpaceFactory(t)
+
+			s.ensureSpaceStarted(spaceId)
+
+			s.mu.Lock()
+			_, built := s.spaceControllers[spaceId]
+			_, waiting := s.waiting[spaceId]
+			s.mu.Unlock()
+			assert.False(t, built, "unresolvable space must not be built")
+			assert.False(t, waiting, "unresolvable space must not poison the waiting map")
+
+			// Get must keep returning ErrSpaceNotExists, exactly as eager mode does.
+			_, err := s.getCtrl(context.Background(), spaceId)
+			require.ErrorIs(t, err, ErrSpaceNotExists)
+		})
+	}
 }
