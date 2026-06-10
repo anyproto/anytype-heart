@@ -11,10 +11,12 @@ Scope: global
 - Orchestrates space creation, loading, joining, and deletion
 - Maintains registry of active space controllers
 - Handles account initialization (new vs existing accounts, tech space creation)
+- Triggers an on-demand head-sync round across all spaces (SyncAllSpaceHeads, used on app foreground)
 
 ## Background Tasks
 - spaceWatcher: subscribes to space view changes in tech space, triggers controller updates (onSpaceStatusUpdated)
 - tryToJoinSpaceStream: retries joining stream space with exponential backoff when autoJoinStreamSpace is configured
+- SyncAllSpaceHeads: spawns a bounded-parallelism goroutine batch that loads each space and runs a head-sync diff round
 
 ## Documentation
 Space startup flow:

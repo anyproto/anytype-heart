@@ -10,7 +10,7 @@ Scope: global
 - Tracks current network type (WiFi/Cellular/NotConnected) set by client
 - Tracks app foreground/background state transitions
 - Notifies registered hooks when network type changes
-- On foreground resume: flushes connection pool if backgrounded >10s, refreshes opened objects
+- On foreground resume: refreshes opened objects; flushes connection pool if backgrounded >15s; triggers an immediate head-sync of all spaces if backgrounded >20s
 */
 
 import (

@@ -188,6 +188,15 @@ func (t *treeSyncer) ShouldSync(peerId string) bool {
 }
 
 func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing []string) (err error) {
+	// Resolve priority order before taking the lock: the first GetPriorityIds call
+	// per space may run a store query (lazy subscription start), and blocking I/O
+	// must not happen under the treesyncer mutex. The head pool has a single FIFO
+	// worker, so enqueue order is processing order: priority trees go to the front
+	// so they head-sync first (GO-7302).
+	headIds := existing
+	if t.priority != nil {
+		headIds = prioritizeFront(existing, t.priority.GetPriorityIds(t.spaceId))
+	}
 	t.Lock()
 	defer t.Unlock()
 	peerId := p.Id()
@@ -210,12 +219,6 @@ func (t *treeSyncer) SyncAll(ctx context.Context, p peer.Peer, existing, missing
 			headExec.run()
 		}
 		t.headPools[peerId] = headExec
-	}
-	// The head pool has a single FIFO worker, so enqueue order is processing
-	// order: bump priority trees to the front so they head-sync first (GO-7302).
-	headIds := existing
-	if t.priority != nil {
-		headIds = prioritizeFront(existing, t.priority.GetPriorityIds(t.spaceId))
 	}
 	for _, id := range headIds {
 		idCopy := id

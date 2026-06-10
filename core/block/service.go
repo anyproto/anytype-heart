@@ -13,6 +13,7 @@ Scope: global
 - Coordinates workspace/space creation including one-to-one spaces
 - Exposes ObjectGetter interface for cache.Do pattern used throughout codebase
 - Tracks currently opened objects to prevent premature cache eviction
+- Supplies priority tree ids for per-space diffsync (chats first, then opened objects) via GetPriorityIds, backed by lazily-started per-space chat-id subscriptions
 
 ## Background Tasks
 - ObjectBookmarkFetch: async bookmark content update after initial fetch
