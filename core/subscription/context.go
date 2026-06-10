@@ -72,12 +72,56 @@ type opCtx struct {
 	// keysBufIdx indexes keysBuf by id
 	keysBufIdx map[string]int
 
+	// subKeys is shared with spaceSubscriptions (guarded by its lock): subscription
+	// id -> relation keys retained in cached entries for that subscription
+	subKeys map[string][]domain.RelationKey
+
 	c *cache
 }
 
 const defaultOutput = "_default"
 
+// projectEntries trims the details of entries that are about to be cached down
+// to the union of relation keys required by their subscriptions: this is the
+// long-lived memory of the subscription system, there is no point retaining
+// keys nobody reads. Entries with a subscription missing from the registry are
+// kept intact (fail-safe)
+func (ctx *opCtx) projectEntries() {
+	for _, e := range ctx.entries {
+		subIds := e.SubIds()
+		if len(subIds) == 0 {
+			continue
+		}
+		totalKeys := 0
+		unknownSub := false
+		for _, subId := range subIds {
+			keys, ok := ctx.subKeys[subId]
+			if !ok {
+				unknownSub = true
+				break
+			}
+			totalKeys += len(keys)
+		}
+		if unknownSub {
+			continue
+		}
+		projected := domain.NewDetailsWithSize(totalKeys)
+		for _, subId := range subIds {
+			for _, k := range ctx.subKeys[subId] {
+				if v, ok := e.data.TryGet(k); ok {
+					projected.Set(k, v)
+				}
+			}
+		}
+		e.data = projected
+	}
+}
+
 func (ctx *opCtx) apply() {
+	// trim entries before diffing and caching, so both the amend events diff and
+	// the cache operate on the retained key set
+	ctx.projectEntries()
+
 	addEvent := func(subId string, ev *pb.EventMessage) {
 		_, ok := ctx.outputs[subId]
 		if ok {

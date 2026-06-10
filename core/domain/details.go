@@ -62,6 +62,34 @@ func NewDetailsFromAnyEnc(v *anyenc.Value) (*Details, error) {
 	return res, visitErr
 }
 
+// NewDetailsFromAnyEncWithKeys decodes only the listed keys of the document.
+// A nil keys map decodes everything, same as NewDetailsFromAnyEnc
+func NewDetailsFromAnyEncWithKeys(v *anyenc.Value, keys map[string]struct{}) (*Details, error) {
+	if keys == nil {
+		return NewDetailsFromAnyEnc(v)
+	}
+	obj, err := v.Object()
+	if err != nil {
+		return nil, fmt.Errorf("is object: %w", err)
+	}
+	res := NewDetailsWithSize(len(keys))
+	var visitErr error
+	obj.Visit(func(k []byte, v *anyenc.Value) {
+		if visitErr != nil {
+			return
+		}
+		if _, ok := keys[string(k)]; !ok {
+			return
+		}
+		// key is copied
+		err := setValueFromAnyEnc(res, RelationKey(k), v)
+		if err != nil {
+			visitErr = fmt.Errorf("key %s: %w", k, err)
+		}
+	})
+	return res, visitErr
+}
+
 func setValueFromAnyEnc[T ~string](d *GenericMap[T], key T, val *anyenc.Value) error {
 	switch val.Type() {
 	case anyenc.TypeNumber:

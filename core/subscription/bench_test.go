@@ -3,6 +3,7 @@ package subscription
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"testing"
 
 	"github.com/anyproto/any-sync/app"
@@ -171,8 +172,33 @@ func BenchmarkSubscriptionSearch(b *testing.B) {
 					b.Fatal("no records")
 				}
 			}
+			b.StopTimer()
+			reportRetainedHeap(b, fx)
 		})
 	}
+}
+
+// reportRetainedHeap reports how much detail data the last subscription keeps
+// in the entry cache: the average number of detail keys per cached entry and
+// the process heap after GC
+func reportRetainedHeap(b *testing.B, fx *benchFixture) {
+	fx.lock.Lock()
+	spaceSubs := fx.spaceSubs[testSpaceId]
+	fx.lock.Unlock()
+	spaceSubs.m.Lock()
+	var totalKeys, entries int
+	for _, e := range spaceSubs.cache.entries {
+		entries++
+		totalKeys += e.data.Len()
+	}
+	spaceSubs.m.Unlock()
+	if entries > 0 {
+		b.ReportMetric(float64(totalKeys)/float64(entries), "keys/entry")
+	}
+	runtime.GC()
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	b.ReportMetric(float64(m.HeapAlloc)/(1<<20), "heap-MB")
 }
 
 // BenchmarkSubscriptionOnChange measures processing of a batch of changed records

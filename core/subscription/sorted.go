@@ -167,7 +167,7 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	s.onSklChange(ctx)
 
 	if s.parent != nil {
-		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter})
+		parentEntries, err := queryEntries(s.objectStore, &database.Filters{FilterObj: s.parent.filter}, nil)
 		if err != nil {
 			panic(err)
 		}

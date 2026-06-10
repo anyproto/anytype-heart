@@ -26,6 +26,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -311,17 +312,19 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 		return spaceSubs, nil
 	}
 	cache := newCache()
+	subKeys := make(map[string][]domain.RelationKey, 20)
 	spaceSubs := &spaceSubscriptions{
 		cache:             cache,
 		subscriptionKeys:  make([]string, 0, 20),
 		subscriptions:     make(map[string]subscription, 20),
+		subKeys:           subKeys,
 		customOutput:      map[string]*internalSubOutput{},
 		recBatch:          mb.New[database.Record](0),
 		objectStore:       index,
 		kanban:            s.kanban,
 		collectionService: s.collectionService,
 		eventSender:       s.eventSender,
-		ctxBuf:            &opCtx{spaceId: spaceId, c: cache},
+		ctxBuf:            &opCtx{spaceId: spaceId, c: cache, subKeys: subKeys},
 		arenaPool:         s.arenaPool,
 	}
 	spaceSubs.ds = newDependencyService(spaceSubs)
@@ -336,6 +339,11 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 type spaceSubscriptions struct {
 	subscriptionKeys []string
 	subscriptions    map[string]subscription
+	// subKeys maps subscription id to the relation keys retained in cached
+	// entries for it; entries are projected to the union over their
+	// subscriptions on every change batch (see opCtx.projectEntries).
+	// Guarded by m
+	subKeys map[string][]domain.RelationKey
 
 	customOutput map[string]*internalSubOutput
 	recBatch     *mb.MB[database.Record]
@@ -397,7 +405,25 @@ func (s *spaceSubscriptions) setSubscription(id string, sub subscription) {
 
 func (s *spaceSubscriptions) deleteSubscription(id string) {
 	delete(s.subscriptions, id)
+	s.deregisterSubKeys(id)
 	s.subscriptionKeys = slice.RemoveMut(s.subscriptionKeys, id)
+}
+
+// registerSubKeys must be called under s.m
+func (s *spaceSubscriptions) registerSubKeys(subId string, keys []domain.RelationKey) {
+	if s.subKeys == nil {
+		s.subKeys = make(map[string][]domain.RelationKey)
+		if s.ctxBuf != nil && s.ctxBuf.subKeys == nil {
+			s.ctxBuf.subKeys = s.subKeys
+		}
+	}
+	s.subKeys[subId] = keys
+}
+
+// deregisterSubKeys must be called under s.m
+func (s *spaceSubscriptions) deregisterSubKeys(subId string) {
+	delete(s.subKeys, subId)
+	delete(s.subKeys, subId+"/dep")
 }
 
 func (s *spaceSubscriptions) iterateSubscriptions(proc func(sub subscription)) {
@@ -436,8 +462,13 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 		f.FilterObj = database.FiltersAnd{f.FilterObj, sourceFilter}
 	}
 
+	requiredKeys := s.requiredKeysForRequest(req)
+	keySet := make(map[string]struct{}, len(requiredKeys))
+	for _, k := range requiredKeys {
+		keySet[string(k)] = struct{}{}
+	}
 	qryEntries := func() ([]*entry, error) {
-		return queryEntries(s.objectStore, f)
+		return queryEntries(s.objectStore, f, keySet)
 	}
 
 	s.m.Lock()
@@ -456,20 +487,65 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 	}
 
 	if req.CollectionId != "" {
-		return s.subscribeForCollection(req, f, filterDepIds)
+		return s.subscribeForCollection(req, f, filterDepIds, requiredKeys)
 	}
-	return s.subscribeForQuery(req, f, qryEntries, filterDepIds)
+	return s.subscribeForQuery(req, f, qryEntries, filterDepIds, requiredKeys)
+}
+
+// requiredKeysForRequest returns the relation keys that must be retained in
+// cached entries of this subscription: requested keys, sort keys and filter
+// keys (filters can be re-evaluated against retained data on collection
+// updates), plus id. When sorting by an object-format relation, name and
+// orderId of the dependent objects are retained too, as the dependency
+// subscription orders by them (see dependencyService.depSubKeys)
+func (s *spaceSubscriptions) requiredKeysForRequest(req SubscribeRequest) []domain.RelationKey {
+	res := make([]domain.RelationKey, 0, len(req.Keys)+len(req.Sorts)+len(req.Filters)+3)
+	seen := make(map[domain.RelationKey]struct{}, cap(res))
+	add := func(k domain.RelationKey) {
+		if k == "" {
+			return
+		}
+		// nested keys like "type.uniqueKey" address other objects; retain the head segment
+		if i := strings.IndexByte(string(k), '.'); i >= 0 {
+			k = k[:i]
+		}
+		if _, ok := seen[k]; !ok {
+			seen[k] = struct{}{}
+			res = append(res, k)
+		}
+	}
+	add(bundle.RelationKeyId)
+	for _, k := range req.Keys {
+		add(domain.RelationKey(k))
+	}
+	var addFilters func(filters []database.FilterRequest)
+	addFilters = func(filters []database.FilterRequest) {
+		for _, f := range filters {
+			add(f.RelationKey)
+			addFilters(f.NestedFilters)
+		}
+	}
+	addFilters(req.Filters)
+	for _, srt := range req.Sorts {
+		add(srt.RelationKey)
+		if s.ds.isRelationObject(srt.RelationKey) {
+			add(bundle.RelationKeyName)
+			add(bundle.RelationKeyOrderId)
+		}
+	}
+	return res
 }
 
 // subscribeForQuery creates a new sorted subscription for the given query.
 // Caller must hold s.m locked; this method temporarily unlocks it during the query and re-locks before returning.
-func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, queryEntries func() ([]*entry, error), filterDepIds []string) (*SubscribeResponse, error) {
+func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database.Filters, queryEntries func() ([]*entry, error), filterDepIds []string, requiredKeys []domain.RelationKey) (*SubscribeResponse, error) {
 	sub := s.newSortedSub(req.SubId, slice.StringsInto[domain.RelationKey](req.Keys), f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	if req.NoDepSubscription {
 		sub.disableDep = true
 	} else {
 		sub.forceSubIds = filterDepIds
 	}
+	s.registerSubKeys(sub.id, requiredKeys)
 	s.setSubscription(sub.id, sub)
 
 	// FIXME Nested subscriptions disabled now. We should enable them only by client's request
@@ -481,6 +557,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 			f, ok := nestedFilter.(*database.FilterNestedIn)
 			if ok {
 				childSub := s.newSortedSub(req.SubId+fmt.Sprintf("-nested-%d", nestedCount), []domain.RelationKey{bundle.RelationKeyId}, f.FilterForNestedObjects, nil, 0, 0)
+				s.registerSubKeys(childSub.id, []domain.RelationKey{bundle.RelationKeyId})
 				err := initSubEntries(s.objectStore, &database.Filters{FilterObj: f.FilterForNestedObjects}, childSub)
 				if err != nil {
 					return fmt.Errorf("init nested sub %s entries: %w", childSub.id, err)
@@ -569,7 +646,7 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 }
 
 func initSubEntries(objectStore spaceindex.Store, f *database.Filters, sub *sortedSub) error {
-	entries, err := queryEntries(objectStore, f)
+	entries, err := queryEntries(objectStore, f, nil)
 	if err != nil {
 		return err
 	}
@@ -581,11 +658,12 @@ func initSubEntries(objectStore spaceindex.Store, f *database.Filters, sub *sort
 
 // queryEntries streams matching documents directly into entries, skipping the
 // intermediate records slice and the store-side sort: the subscription orders
-// entries itself in the skip-list
-func queryEntries(objectStore spaceindex.Store, f *database.Filters) ([]*entry, error) {
+// entries itself in the skip-list. A non-nil keys set limits decoding to those
+// keys, the rest of the document is never materialized
+func queryEntries(objectStore spaceindex.Store, f *database.Filters, keys map[string]struct{}) ([]*entry, error) {
 	var entries []*entry
 	err := objectStore.QueryRawIterate(f.FilterObj, func(doc *anyenc.Value) error {
-		details, err := domain.NewDetailsFromAnyEnc(doc)
+		details, err := domain.NewDetailsFromAnyEncWithKeys(doc, keys)
 		if err != nil {
 			return fmt.Errorf("unmarshal details: %w", err)
 		}
@@ -598,8 +676,8 @@ func queryEntries(objectStore spaceindex.Store, f *database.Filters) ([]*entry, 
 	return entries, nil
 }
 
-func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*SubscribeResponse, error) {
-	sub, err := s.newCollectionSub(req, f, filterDepIds)
+func (s *spaceSubscriptions) subscribeForCollection(req SubscribeRequest, f *database.Filters, filterDepIds []string, requiredKeys []domain.RelationKey) (*SubscribeResponse, error) {
+	sub, err := s.newCollectionSub(req, f, filterDepIds, requiredKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -646,6 +724,7 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 
 	s.m.Lock()
 	sub := s.newIdsSub(req.SubId, slice.StringsInto[domain.RelationKey](req.Keys), req.NoDepSubscription)
+	s.registerSubKeys(req.SubId, s.requiredKeysForRequest(SubscribeRequest{Keys: req.Keys}))
 	sub.addIds(req.Ids)
 	s.m.Unlock()
 
@@ -769,6 +848,10 @@ func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.Rp
 		} else {
 			sub = s.newGroupSub(subId, domain.RelationKey(req.RelationKey), flt, groups)
 		}
+		s.registerSubKeys(subId, s.requiredKeysForRequest(SubscribeRequest{
+			Keys:    []string{req.RelationKey},
+			Filters: req.Filters,
+		}))
 
 		entries := make([]*entry, 0, len(tagGrouper.Records))
 		for _, r := range tagGrouper.Records {
@@ -849,6 +932,7 @@ func (s *spaceSubscriptions) UnsubscribeAll() (err error) {
 	}
 	s.subscriptions = make(map[string]subscription)
 	s.subscriptionKeys = s.subscriptionKeys[:0]
+	clear(s.subKeys)
 	return
 }
 
@@ -1024,5 +1108,6 @@ func (s *spaceSubscriptions) Close(ctx context.Context) (err error) {
 		delete(s.subscriptions, subId)
 	}
 	s.subscriptionKeys = s.subscriptionKeys[:0]
+	clear(s.subKeys)
 	return
 }

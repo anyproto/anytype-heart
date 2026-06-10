@@ -119,10 +119,37 @@ func (c *cache) Get(id string) *entry {
 
 func (c *cache) GetOrSet(e *entry) *entry {
 	if res, ok := c.entries[e.id]; ok {
+		res.mergeMissingData(e.data)
 		return res
 	}
 	c.entries[e.id] = e
 	return e
+}
+
+// mergeMissingData adds keys absent in the entry data: a cached entry is
+// projected to the keys of its subscriptions, while a newly subscribing one may
+// need more of them. Existing values win, since cache content is kept current
+// by change batches. Copy-on-write, so aliased readers of the old map are
+// unaffected
+func (e *entry) mergeMissingData(src *domain.Details) {
+	if src == nil || e.data == nil {
+		if e.data == nil {
+			e.data = src
+		}
+		return
+	}
+	var merged *domain.Details
+	for k, v := range src.Iterate() {
+		if !e.data.Has(k) {
+			if merged == nil {
+				merged = e.data.Copy()
+			}
+			merged.Set(k, v)
+		}
+	}
+	if merged != nil {
+		e.data = merged
+	}
 }
 
 func (c *cache) Set(e *entry) {

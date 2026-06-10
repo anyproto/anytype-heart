@@ -91,12 +91,20 @@ func (c *collectionObserver) close() {
 	c.collectionService.UnsubscribeFromCollection(c.collectionID, c.subID)
 }
 
+// listEntries reads the collection objects from the store rather than from the
+// entry cache: cached entries are projected to the keys of their subscriptions
+// and may lack keys this subscription filters or sorts by
 func (c *collectionObserver) listEntries() []*entry {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	entries := c.spaceSubscription.fetchEntries(c.ids)
-	res := make([]*entry, len(entries))
-	copy(res, entries)
+	recs, err := c.objectStore.QueryByIds(c.ids)
+	if err != nil {
+		log.Error("collection observer: can't query by ids:", err)
+	}
+	res := make([]*entry, 0, len(recs))
+	for _, rec := range recs {
+		res = append(res, newEntry(rec.Details.GetString(bundle.RelationKeyId), rec.Details))
+	}
 	return res
 }
 
@@ -114,7 +122,18 @@ func (c *collectionObserver) updateIds(ids []string) {
 	}
 	c.ids = ids
 	c.lock.Unlock()
-	entries := c.spaceSubscription.fetchEntriesLocked(append(removed, added...))
+	// removed objects may be gone from the store, so take them from the entry
+	// cache; added ones must come from the store with full details, because
+	// cached entries are projected to the keys of other subscriptions and may
+	// lack keys this subscription filters by
+	entries := c.spaceSubscription.fetchEntriesLocked(removed)
+	if recs, err := c.objectStore.QueryByIds(added); err != nil {
+		log.Error("collection observer: can't query added ids:", err)
+	} else {
+		for _, rec := range recs {
+			entries = append(entries, newEntry(rec.Details.GetString(bundle.RelationKeyId), rec.Details))
+		}
+	}
 	for _, e := range entries {
 		err := c.recBatch.Add(context.Background(), database.Record{
 			Details: e.data,
@@ -193,7 +212,7 @@ func (c *collectionSub) reorder(ctx *opCtx, depDetails []*domain.Details) {
 	c.sortedSub.reorder(ctx, depDetails)
 }
 
-func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.Filters, filterDepIds []string) (*collectionSub, error) {
+func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.Filters, filterDepIds []string, requiredKeys []domain.RelationKey) (*collectionSub, error) {
 	obs, err := s.newCollectionObserver(req.SpaceId, req.CollectionId, req.SubId)
 	if err != nil {
 		return nil, err
@@ -209,6 +228,7 @@ func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.
 	if !ssub.disableDep {
 		ssub.forceSubIds = filterDepIds
 	}
+	s.registerSubKeys(ssub.id, requiredKeys)
 
 	sub := &collectionSub{
 		sortedSub: ssub,
@@ -219,6 +239,9 @@ func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.
 	filtered := entries[:0]
 	for _, e := range entries {
 		if f.FilterObj.FilterObject(e.data) {
+			// filters were evaluated against the full details; retain only the
+			// keys the subscription needs before the entry enters the cache
+			e.data = e.data.CopyOnlyKeys(requiredKeys...)
 			filtered = append(filtered, e)
 		}
 	}

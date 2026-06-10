@@ -31,9 +31,10 @@ func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries,
 	depSubKeys := ds.depSubKeys(subId, keys)
 	depSub := ds.s.newSimpleSub(subId, depSubKeys, true)
 	depSub.forceIds = filterDepIds
+	ds.s.registerSubKeys(subId, append(slices.Clone(depSubKeys), bundle.RelationKeyId))
 	parentSubId := strings.TrimSuffix(subId, "/dep")
 	depIds := ds.depIdsByEntries(parentSubId, activeEntries, depKeys, depSub.forceIds)
-	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, depIds)
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries, subKeys: ds.s.subKeys}, depIds)
 	depSub.init(depEntries)
 	return depSub
 }

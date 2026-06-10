@@ -15,22 +15,32 @@ import (
 
 func Test_newCollectionObserver(t *testing.T) {
 	spaceId := "spaceId"
-	t.Run("fetch entries from cache", func(t *testing.T) {
+	t.Run("removed ids are fetched from cache, added ids from store", func(t *testing.T) {
 		// given
 		collectionService := NewMockCollectionService(t)
 		collectionID := "collectionId"
 		subId := "subId"
 		ch := make(chan []string)
-		collectionService.EXPECT().SubscribeForCollection(collectionID, subId).Return([]string{"id"}, ch, nil)
+		collectionService.EXPECT().SubscribeForCollection(collectionID, subId).Return([]string{"id0"}, ch, nil)
 		store := spaceindex.NewStoreFixture(t)
+		// id0 is part of the collection, so its (projected) entry sits in the cache;
+		// it may be already deleted from the store, but its removal must still be observed
 		cache := newCache()
-		cache.Set(&entry{id: "id1", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId: domain.String("id1"),
+		cache.Set(&entry{id: "id0", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId: domain.String("id0"),
 		})})
-
-		cache.Set(&entry{id: "id2", data: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyId: domain.String("id2"),
-		})})
+		// added objects are read from the store: cached entries are projected to other
+		// subscriptions' keys and could lack keys this subscription filters by
+		store.AddObjects(t, []spaceindex.TestObject{
+			{
+				bundle.RelationKeyId:      domain.String("id1"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+			{
+				bundle.RelationKeyId:      domain.String("id2"),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+		})
 		batcher := mb.New[database.Record](0)
 		c := &spaceSubscriptions{
 			collectionService: collectionService,
@@ -44,10 +54,9 @@ func Test_newCollectionObserver(t *testing.T) {
 
 		// then
 		assert.NoError(t, err)
-		expectedIds := []string{"id1", "id2"}
-		ch <- expectedIds
+		ch <- []string{"id1", "id2"}
 		close(observer.closeCh)
-		msgs, err := batcher.NewCond().WithMin(2).Wait(context.Background())
+		msgs, err := batcher.NewCond().WithMin(3).Wait(context.Background())
 		assert.NoError(t, err)
 
 		var receivedIds []string
@@ -55,7 +64,7 @@ func Test_newCollectionObserver(t *testing.T) {
 			id := msg.Details.GetString(bundle.RelationKeyId)
 			receivedIds = append(receivedIds, id)
 		}
-		assert.Equal(t, expectedIds, receivedIds)
+		assert.Equal(t, []string{"id0", "id1", "id2"}, receivedIds)
 		err = batcher.Close()
 		assert.NoError(t, err)
 	})
