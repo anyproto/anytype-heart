@@ -357,13 +357,7 @@ func (s *service) onChatAdded(chatObjectId string, subId string) (*chatsubscript
 }
 
 func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId string) error {
-	resp, err := s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
-		ChatObjectId:     chatObjectId,
-		SubId:            subId,
-		Limit:            1,
-		WithDependencies: true,
-		OnlyLastMessage:  true,
-	})
+	resp, err := s.onChatAdded(chatObjectId, subId)
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
 	}
@@ -373,23 +367,21 @@ func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId st
 		return fmt.Errorf("get manager: %w", err)
 	}
 	mngr.Lock()
-	defer mngr.Unlock()
+	chatState := mngr.GetChatState()
+	mngr.Unlock()
 
 	events := make([]*pb.EventMessage, 0, 2)
 	if len(resp.Messages) > 0 {
-		msg := resp.Messages[0]
-		events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatAdd{
-			ChatAdd: &pb.EventChatAdd{
-				Id:           msg.Id,
-				OrderId:      msg.OrderId,
-				AfterOrderId: resp.PreviousOrderId,
-				Message:      msg.ChatMessage,
-				SubIds:       []string{subId},
-			},
-		}))
+		events = append(events, newChatAddEvent(spaceId, subId, resp))
 	}
+	// If the chat's message store is not loaded yet there is no last message to
+	// preview right now — and that is fine, no polling needed. onChatAdded above
+	// registered subId on the chat's subscription manager, so when the chat
+	// object finishes loading it calls Flush() and the manager reactively emits
+	// the last message (with dependencies) to subId. See
+	// chatobject.onInit -> subscription.Flush and subscriptionManager.Flush.
 	events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
-		State:  mngr.GetChatState(),
+		State:  chatState,
 		SubIds: []string{subId},
 	}}))
 	s.eventSender.Broadcast(&pb.Event{
@@ -398,6 +390,24 @@ func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId st
 	})
 
 	return nil
+}
+
+// newChatAddEvent builds the ChatAdd preview event for a chat backfilled into an
+// existing previews subscription, carrying the message dependencies
+// (creator/attachments) so it is as complete as the chats returned by
+// SubscribeToMessagePreviews itself and the reactive Flush path.
+func newChatAddEvent(spaceId string, subId string, resp *chatsubscription.SubscribeLastMessagesResponse) *pb.EventMessage {
+	msg := resp.Messages[0]
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfChatAdd{
+		ChatAdd: &pb.EventChatAdd{
+			Id:           msg.Id,
+			OrderId:      msg.OrderId,
+			AfterOrderId: resp.PreviousOrderId,
+			Message:      msg.ChatMessage,
+			SubIds:       []string{subId},
+			Dependencies: domain.DetailsListToProtos(resp.Dependencies[msg.Id]),
+		},
+	})
 }
 
 func (s *service) onChatRemoved(chatObjectId string, subId string) error {

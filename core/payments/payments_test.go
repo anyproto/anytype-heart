@@ -136,6 +136,33 @@ func (fx *fixture) finish(t *testing.T) {
 	assert.NoError(t, fx.a.Close(ctx))
 }
 
+func TestFetchV2Products_Timeout(t *testing.T) {
+	fx := newFixture(t)
+	defer fx.finish(t)
+
+	old := getProductsTimeout
+	getProductsTimeout = 50 * time.Millisecond
+	defer func() { getProductsTimeout = old }()
+
+	fx.ppclient2.EXPECT().GetProducts(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(callCtx context.Context, _ *psp.MembershipV2_GetProductsRequest) (*psp.MembershipV2_GetProductsResponse, error) {
+			select {
+			case <-callCtx.Done(): // production wrapped ctx with getProductsTimeout
+				return nil, callCtx.Err()
+			case <-time.After(2 * time.Second): // safety net: proves the deadline did NOT propagate
+				return nil, errors.New("ctx was not bounded by getProductsTimeout")
+			}
+		})
+
+	start := time.Now()
+	_, err := fx.fetchV2Products(context.Background())
+	elapsed := time.Since(start)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, context.DeadlineExceeded)
+	assert.Less(t, elapsed, time.Second, "should return shortly after the deadline, not hang")
+}
+
 // TestGetSubscriptionStatus tests the cache-only RPC method
 func TestGetStatus(t *testing.T) {
 	t.Run("return default if cache is empty (cache-only RPC)", func(t *testing.T) {
