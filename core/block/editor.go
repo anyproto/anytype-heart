@@ -7,14 +7,15 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/bookmark"
+	"github.com/anyproto/anytype-heart/core/block/editor/canvas"
 	"github.com/anyproto/anytype-heart/core/block/editor/clipboard"
 	"github.com/anyproto/anytype-heart/core/block/editor/file"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/editor/stext"
-	"github.com/anyproto/anytype-heart/core/block/editor/canvas"
 	"github.com/anyproto/anytype-heart/core/block/editor/table"
 	"github.com/anyproto/anytype-heart/core/block/editor/widget"
+	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/simple/link"
@@ -771,6 +772,62 @@ func widgetHasBlock(st *state.State, block *model.Block) (found bool) {
 		return true
 	})
 	return found
+}
+
+func (s *Service) CanvasNodeCreateWithObject(
+	ctx context.Context,
+	sctx session.Context,
+	req pb.RpcBlockCanvasNodeCreateWithObjectRequest,
+) (blockId string, targetId string, objectDetails *domain.Details, err error) {
+	if req.Node == nil {
+		return "", "", nil, fmt.Errorf("node is required")
+	}
+
+	node := req.Node
+	node.Type = model.BlockContentCanvasNode_Object
+
+	// Accept existing object ID from either the top-level convenience field or node.TargetObjectId.
+	existingId := req.TargetObjectId
+	if existingId == "" {
+		existingId = node.TargetObjectId
+	}
+
+	if existingId != "" {
+		targetId = existingId
+		node.TargetObjectId = targetId
+		objectDetails, err = s.objectStore.SpaceIndex(req.SpaceId).GetDetails(targetId)
+		if err != nil {
+			return "", "", nil, fmt.Errorf("get object details: %w", err)
+		}
+	} else {
+		objectTypeKey, err := domain.GetTypeKeyFromRawUniqueKey(req.ObjectTypeUniqueKey)
+		if err != nil {
+			objectTypeKey = bundle.TypeKeyPage
+		}
+		createReq := objectcreator.CreateObjectRequest{
+			Details:       domain.NewDetailsFromProto(req.Details),
+			InternalFlags: req.InternalFlags,
+			ObjectTypeKey: objectTypeKey,
+			TemplateId:    req.TemplateId,
+		}
+		targetId, objectDetails, err = s.objectCreator.CreateObject(ctx, req.SpaceId, createReq)
+		if err != nil {
+			return "", "", nil, fmt.Errorf("create object: %w", err)
+		}
+		node.TargetObjectId = targetId
+	}
+
+	err = cache.DoStateCtx(s, sctx, req.ContextId, func(st *state.State, e canvas.CanvasEditor) error {
+		blockId, err = e.CanvasNodeCreate(st, pb.RpcBlockCanvasNodeCreateRequest{
+			ContextId: req.ContextId,
+			Node:      node,
+		})
+		return err
+	})
+	if err != nil {
+		return "", "", nil, fmt.Errorf("create canvas node: %w", err)
+	}
+	return blockId, targetId, objectDetails, nil
 }
 
 func (s *Service) CanvasNodeCreate(ctx session.Context, req pb.RpcBlockCanvasNodeCreateRequest) (id string, err error) {

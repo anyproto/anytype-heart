@@ -291,6 +291,10 @@
     - [Rpc.BlockCanvasNode.Create.Request](#anytype-Rpc-BlockCanvasNode-Create-Request)
     - [Rpc.BlockCanvasNode.Create.Response](#anytype-Rpc-BlockCanvasNode-Create-Response)
     - [Rpc.BlockCanvasNode.Create.Response.Error](#anytype-Rpc-BlockCanvasNode-Create-Response-Error)
+    - [Rpc.BlockCanvasNode.CreateWithObject](#anytype-Rpc-BlockCanvasNode-CreateWithObject)
+    - [Rpc.BlockCanvasNode.CreateWithObject.Request](#anytype-Rpc-BlockCanvasNode-CreateWithObject-Request)
+    - [Rpc.BlockCanvasNode.CreateWithObject.Response](#anytype-Rpc-BlockCanvasNode-CreateWithObject-Response)
+    - [Rpc.BlockCanvasNode.CreateWithObject.Response.Error](#anytype-Rpc-BlockCanvasNode-CreateWithObject-Response-Error)
     - [Rpc.BlockCanvasNode.Delete](#anytype-Rpc-BlockCanvasNode-Delete)
     - [Rpc.BlockCanvasNode.Delete.Request](#anytype-Rpc-BlockCanvasNode-Delete-Request)
     - [Rpc.BlockCanvasNode.Delete.Response](#anytype-Rpc-BlockCanvasNode-Delete-Response)
@@ -1601,6 +1605,7 @@
     - [Rpc.BlockCanvasEdge.Delete.Response.Error.Code](#anytype-Rpc-BlockCanvasEdge-Delete-Response-Error-Code)
     - [Rpc.BlockCanvasEdge.Update.Response.Error.Code](#anytype-Rpc-BlockCanvasEdge-Update-Response-Error-Code)
     - [Rpc.BlockCanvasNode.Create.Response.Error.Code](#anytype-Rpc-BlockCanvasNode-Create-Response-Error-Code)
+    - [Rpc.BlockCanvasNode.CreateWithObject.Response.Error.Code](#anytype-Rpc-BlockCanvasNode-CreateWithObject-Response-Error-Code)
     - [Rpc.BlockCanvasNode.Delete.Response.Error.Code](#anytype-Rpc-BlockCanvasNode-Delete-Response-Error-Code)
     - [Rpc.BlockCanvasNode.Update.Response.Error.Code](#anytype-Rpc-BlockCanvasNode-Update-Response-Error-Code)
     - [Rpc.BlockDataview.CreateFromExistingObject.Response.Error.Code](#anytype-Rpc-BlockDataview-CreateFromExistingObject-Response-Error-Code)
@@ -2634,6 +2639,13 @@
 | BlockWidgetSetLayout | [Rpc.BlockWidget.SetLayout.Request](#anytype-Rpc-BlockWidget-SetLayout-Request) | [Rpc.BlockWidget.SetLayout.Response](#anytype-Rpc-BlockWidget-SetLayout-Response) |  |
 | BlockWidgetSetLimit | [Rpc.BlockWidget.SetLimit.Request](#anytype-Rpc-BlockWidget-SetLimit-Request) | [Rpc.BlockWidget.SetLimit.Response](#anytype-Rpc-BlockWidget-SetLimit-Response) |  |
 | BlockWidgetSetViewId | [Rpc.BlockWidget.SetViewId.Request](#anytype-Rpc-BlockWidget-SetViewId-Request) | [Rpc.BlockWidget.SetViewId.Response](#anytype-Rpc-BlockWidget-SetViewId-Response) |  |
+| BlockCanvasNodeCreate | [Rpc.BlockCanvasNode.Create.Request](#anytype-Rpc-BlockCanvasNode-Create-Request) | [Rpc.BlockCanvasNode.Create.Response](#anytype-Rpc-BlockCanvasNode-Create-Response) |  |
+| BlockCanvasNodeUpdate | [Rpc.BlockCanvasNode.Update.Request](#anytype-Rpc-BlockCanvasNode-Update-Request) | [Rpc.BlockCanvasNode.Update.Response](#anytype-Rpc-BlockCanvasNode-Update-Response) |  |
+| BlockCanvasNodeDelete | [Rpc.BlockCanvasNode.Delete.Request](#anytype-Rpc-BlockCanvasNode-Delete-Request) | [Rpc.BlockCanvasNode.Delete.Response](#anytype-Rpc-BlockCanvasNode-Delete-Response) |  |
+| BlockCanvasNodeCreateWithObject | [Rpc.BlockCanvasNode.CreateWithObject.Request](#anytype-Rpc-BlockCanvasNode-CreateWithObject-Request) | [Rpc.BlockCanvasNode.CreateWithObject.Response](#anytype-Rpc-BlockCanvasNode-CreateWithObject-Response) |  |
+| BlockCanvasEdgeCreate | [Rpc.BlockCanvasEdge.Create.Request](#anytype-Rpc-BlockCanvasEdge-Create-Request) | [Rpc.BlockCanvasEdge.Create.Response](#anytype-Rpc-BlockCanvasEdge-Create-Response) |  |
+| BlockCanvasEdgeUpdate | [Rpc.BlockCanvasEdge.Update.Request](#anytype-Rpc-BlockCanvasEdge-Update-Request) | [Rpc.BlockCanvasEdge.Update.Response](#anytype-Rpc-BlockCanvasEdge-Update-Response) |  |
+| BlockCanvasEdgeDelete | [Rpc.BlockCanvasEdge.Delete.Request](#anytype-Rpc-BlockCanvasEdge-Delete-Request) | [Rpc.BlockCanvasEdge.Delete.Response](#anytype-Rpc-BlockCanvasEdge-Delete-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -6916,6 +6928,75 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockCanvasNode.Create.Response.Error.Code](#anytype-Rpc-BlockCanvasNode-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockCanvasNode-CreateWithObject"></a>
+
+### Rpc.BlockCanvasNode.CreateWithObject
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockCanvasNode-CreateWithObject-Request"></a>
+
+### Rpc.BlockCanvasNode.CreateWithObject.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | canvas object id |
+| spaceId | [string](#string) |  | space id |
+| node | [model.Block.Content.CanvasNode](#anytype-model-Block-Content-CanvasNode) |  | node position/size/type |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | new object fields (used when targetObjectId is empty)
+
+new object details |
+| templateId | [string](#string) |  | optional template |
+| objectTypeUniqueKey | [string](#string) |  | object type key |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| targetObjectId | [string](#string) |  | existing object id; skips creation when set |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockCanvasNode-CreateWithObject-Response"></a>
+
+### Rpc.BlockCanvasNode.CreateWithObject.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockCanvasNode.CreateWithObject.Response.Error](#anytype-Rpc-BlockCanvasNode-CreateWithObject-Response-Error) |  |  |
+| blockId | [string](#string) |  | canvas node block id |
+| targetId | [string](#string) |  | referenced object id |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  | referenced object details |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockCanvasNode-CreateWithObject-Response-Error"></a>
+
+### Rpc.BlockCanvasNode.CreateWithObject.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockCanvasNode.CreateWithObject.Response.Error.Code](#anytype-Rpc-BlockCanvasNode-CreateWithObject-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -25922,6 +26003,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockCanvasNode-Create-Response-Error-Code"></a>
 
 ### Rpc.BlockCanvasNode.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-BlockCanvasNode-CreateWithObject-Response-Error-Code"></a>
+
+### Rpc.BlockCanvasNode.CreateWithObject.Response.Error.Code
 
 
 | Name | Number | Description |

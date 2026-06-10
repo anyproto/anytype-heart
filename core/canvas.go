@@ -3,9 +3,42 @@ package core
 import (
 	"context"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/core/block"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 )
+
+func (mw *Middleware) BlockCanvasNodeCreateWithObject(cctx context.Context, req *pb.RpcBlockCanvasNodeCreateWithObjectRequest) *pb.RpcBlockCanvasNodeCreateWithObjectResponse {
+	ctx := mw.newContext(cctx)
+	response := func(code pb.RpcBlockCanvasNodeCreateWithObjectResponseErrorCode, blockId, targetId string, objectDetails *types.Struct, err error) *pb.RpcBlockCanvasNodeCreateWithObjectResponse {
+		m := &pb.RpcBlockCanvasNodeCreateWithObjectResponse{
+			Error:    &pb.RpcBlockCanvasNodeCreateWithObjectResponseError{Code: code},
+			BlockId:  blockId,
+			TargetId: targetId,
+			Details:  objectDetails,
+		}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		} else {
+			m.Event = mw.getResponseEvent(ctx)
+		}
+		return m
+	}
+	var (
+		blockId, targetId string
+		objectDetails     *domain.Details
+	)
+	err := mw.doBlockService(func(bs *block.Service) (err error) {
+		blockId, targetId, objectDetails, err = bs.CanvasNodeCreateWithObject(cctx, ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockCanvasNodeCreateWithObjectResponseError_UNKNOWN_ERROR, "", "", nil, err)
+	}
+	return response(pb.RpcBlockCanvasNodeCreateWithObjectResponseError_NULL, blockId, targetId, objectDetails.ToProto(), nil)
+}
 
 func (mw *Middleware) BlockCanvasNodeCreate(cctx context.Context, req *pb.RpcBlockCanvasNodeCreateRequest) *pb.RpcBlockCanvasNodeCreateResponse {
 	ctx := mw.newContext(cctx)

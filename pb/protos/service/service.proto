@@ -329,6 +329,7 @@ service ClientCommands {
     rpc BlockCanvasNodeCreate (anytype.Rpc.BlockCanvasNode.Create.Request) returns (anytype.Rpc.BlockCanvasNode.Create.Response);
     rpc BlockCanvasNodeUpdate (anytype.Rpc.BlockCanvasNode.Update.Request) returns (anytype.Rpc.BlockCanvasNode.Update.Response);
     rpc BlockCanvasNodeDelete (anytype.Rpc.BlockCanvasNode.Delete.Request) returns (anytype.Rpc.BlockCanvasNode.Delete.Response);
+    rpc BlockCanvasNodeCreateWithObject (anytype.Rpc.BlockCanvasNode.CreateWithObject.Request) returns (anytype.Rpc.BlockCanvasNode.CreateWithObject.Response);
     rpc BlockCanvasEdgeCreate (anytype.Rpc.BlockCanvasEdge.Create.Request) returns (anytype.Rpc.BlockCanvasEdge.Create.Response);
     rpc BlockCanvasEdgeUpdate (anytype.Rpc.BlockCanvasEdge.Update.Request) returns (anytype.Rpc.BlockCanvasEdge.Update.Response);
     rpc BlockCanvasEdgeDelete (anytype.Rpc.BlockCanvasEdge.Delete.Request) returns (anytype.Rpc.BlockCanvasEdge.Delete.Response);

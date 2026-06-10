@@ -79,6 +79,7 @@ import (
 	"github.com/anyproto/anytype-heart/util/uri"
 
 	_ "github.com/anyproto/anytype-heart/core/block/editor/table"
+	_ "github.com/anyproto/anytype-heart/core/block/simple/canvas"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/file"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/link"
 	_ "github.com/anyproto/anytype-heart/core/block/simple/widget"

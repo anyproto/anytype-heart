@@ -512,6 +512,11 @@ func (bi *BasicInput) SetWorkspace(workspace string) {
 }
 
 func Prepare[T BasicInputtable](prep T, f func(T) error) error {
+	// Ensure sufficient arguments are provided to prevent index out of bounds panic
+	if len(os.Args) < 3 {
+		return fmt.Errorf("insufficient arguments provided. Usage: <executable> <configPath> <times>")
+	}
+
 	configPath := os.Args[1]
 	err := AssertFileExists(configPath)
 	if err != nil {

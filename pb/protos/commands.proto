@@ -9555,6 +9555,39 @@ message Rpc {
                 }
             }
         }
+
+        message CreateWithObject {
+            message Request {
+                string contextId = 1;                                         // canvas object id
+                string spaceId = 2;                                           // space id
+                anytype.model.Block.Content.CanvasNode node = 3;              // node position/size/type
+                // new object fields (used when targetObjectId is empty)
+                google.protobuf.Struct details = 4;                           // new object details
+                string templateId = 5;                                        // optional template
+                string objectTypeUniqueKey = 6;                               // object type key
+                repeated anytype.model.InternalFlag internalFlags = 7;
+                string targetObjectId = 8;                                    // existing object id; skips creation when set
+            }
+
+            message Response {
+                Error error = 1;
+                string blockId = 2;                                           // canvas node block id
+                string targetId = 3;                                          // referenced object id
+                ResponseEvent event = 4;
+                google.protobuf.Struct details = 5;                           // referenced object details
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
     }
 
     message BlockCanvasEdge {

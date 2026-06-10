@@ -36,7 +36,7 @@ func NewResults(networkMode string) internal.PerfResult {
 
 func main() {
 	prep := NewInput()
-	err := internal.Prepare(prep, nil)
+	err := internal.Prepare(prep, nil) // hata burada
 	if err != nil {
 		fmt.Println("Error preparing the environment:", err)
 		os.Exit(1)
