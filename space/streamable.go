@@ -2,37 +2,31 @@ package space
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
 )
 
+// AddStreamable is unidirectional: it creates the space view carrying the
+// guest key and waits for the watcher-registered controller, which the view's
+// EncodedKey makes streamable.
 func (s *service) AddStreamable(ctx context.Context, id string, guestKey crypto.PrivKey) (err error) {
-	s.mu.Lock()
-	waiter, exists := s.waiting[id]
-	if exists {
-		s.mu.Unlock()
-		<-waiter.wait
-		return waiter.err
+	if s.isClosing.Load() {
+		return ErrSpaceIsClosing
 	}
-	wait := make(chan struct{})
-	s.waiting[id] = controllerWaiter{
-		wait: wait,
-	}
-	s.mu.Unlock()
-	ctrl, err := s.factory.CreateStreamableSpace(ctx, guestKey, id, s.accountMetadataPayload)
+	exists, err := s.techSpace.SpaceViewExists(ctx, id)
 	if err != nil {
-		s.mu.Lock()
-		close(wait)
-		s.waiting[id] = controllerWaiter{
-			wait: wait,
-			err:  err,
+		return fmt.Errorf("check space view: %w", err)
+	}
+	if !exists {
+		if err := s.factory.CreateStreamableSpace(ctx, guestKey, id); err != nil {
+			return err
 		}
-		s.mu.Unlock()
+	}
+	ctrl, err := s.waitCtrl(ctx, id)
+	if err != nil {
 		return err
 	}
-	s.mu.Lock()
-	close(wait)
-	s.spaceControllers[ctrl.SpaceId()] = ctrl
-	s.mu.Unlock()
+	ctrl.Demand()
 	return nil
 }

@@ -15,14 +15,7 @@ func (s *service) initMarketplaceSpace(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	wait := make(chan struct{})
-	close(wait)
-	s.waiting[addr.AnytypeMarketplaceWorkspace] = controllerWaiter{
-		wait: wait,
-	}
-	s.spaceControllers[addr.AnytypeMarketplaceWorkspace] = ctrl
+	s.registerCtrl(addr.AnytypeMarketplaceWorkspace, ctrl)
 	return nil
 }
 

@@ -315,11 +315,23 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 	if expectOldAccount == nil {
 		fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: ts}, nil)
 		prCtrl := mock_spacecontroller.NewMockSpaceController(t)
-		prCtrl.EXPECT().SpaceId().Return(fx.spaceId)
+		prCtrl.EXPECT().SpaceId().Return(fx.spaceId).Maybe()
 		commonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
 		commonSpace.EXPECT().Id().Return(fx.spaceId).AnyTimes()
 		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
-		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, mock.Anything, mock.Anything).Return(prCtrl, nil)
+		// the factory creates only the space view; the watcher picks the view
+		// up and registers the controller (the first space id equals the
+		// personal space id, so it dispatches to NewPersonalSpace)
+		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, fx.spaceId, mock.Anything).RunAndReturn(
+			func(_ context.Context, id string, _ *spaceinfo.SpaceDescription) error {
+				fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{
+					givenSpaceViewObject("spaceView.first", id, "creator", spaceinfo.AccountStatusUnknown, spaceinfo.RemoteStatusUnknown, spaceinfo.LocalStatusUnknown, ""),
+				})
+				return nil
+			})
+		fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+		prCtrl.EXPECT().Start(mock.Anything).Return(nil)
+		prCtrl.EXPECT().Update().Return(nil).Maybe()
 		clientSpace.EXPECT().Id().Return(fx.spaceId)
 		prCtrl.EXPECT().WaitLoad(mock.Anything).Return(clientSpace, nil)
 		prCtrl.EXPECT().Close(mock.Anything).Return(nil)

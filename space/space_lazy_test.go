@@ -56,7 +56,8 @@ func newLazyServiceForStatus(t *testing.T) *service {
 	s := New().(*service)
 	s.ctx = context.Background()
 	s.spaceControllers = map[string]spacecontroller.SpaceController{}
-	s.waiting = map[string]controllerWaiter{}
+	s.regChanged = make(chan struct{})
+	s.regErr = map[string]error{}
 	s.preloadCh = make(chan struct{})
 	s.personalSpaceId = "personal.id"
 	return s

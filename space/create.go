@@ -58,86 +58,48 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 		err = fmt.Errorf("spacecore: create onetoone: %w", err)
 		return
 	}
-	s.mu.Lock()
-	wait := make(chan struct{})
-	s.waiting[coreSpace.Id()] = controllerWaiter{
-		wait: wait,
-	}
-	s.mu.Unlock()
 
 	participantData := spaceinfo.OneToOneParticipantData{
 		Identity:           bobProfile.IdentityProfile.Identity,
 		RequestMetadataKey: bobProfile.RequestMetadata,
 	}
-	ctrl, err := s.factory.CreateOneToOneSpace(ctx, coreSpace.Id(), description, participantData)
-	if err != nil {
-		s.mu.Lock()
-		close(wait)
-		s.waiting[coreSpace.Id()] = controllerWaiter{
-			wait: wait,
-			err:  err,
-		}
-		s.mu.Unlock()
-		err = fmt.Errorf("factory: create onetoone: %w", err)
-		return nil, err
+	if err = s.factory.CreateOneToOneSpace(ctx, coreSpace.Id(), description, participantData); err != nil {
+		return nil, fmt.Errorf("factory: create onetoone: %w", err)
 	}
 
-	sp, err = ctrl.WaitLoad(ctx)
-	s.mu.Lock()
-	close(wait)
+	ctrl, err := s.waitCtrl(ctx, coreSpace.Id())
 	if err != nil {
-		s.waiting[coreSpace.Id()] = controllerWaiter{
-			wait: wait,
-			err:  err,
-		}
-		s.mu.Unlock()
-		err = fmt.Errorf("loader: create onetoone: %w", err)
-		return nil, err
+		return nil, fmt.Errorf("wait controller: create onetoone: %w", err)
 	}
-	s.spaceControllers[ctrl.SpaceId()] = ctrl
-	s.mu.Unlock()
+	sp, err = s.waitLoad(ctx, ctrl)
+	if err != nil {
+		return nil, fmt.Errorf("loader: create onetoone: %w", err)
+	}
 
 	s.updater.UpdateCoordinatorStatus()
 
 	return
 }
 
+// create makes a new shareable space: storage and space view first, then the
+// watcher registers the controller and we wait for the space to load.
 func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescription) (sp clientspace.Space, err error) {
 	var spaceType = spacedomain.SpaceTypeRegular
 	coreSpace, err := s.spaceCore.Create(ctx, spaceType, s.repKey, s.AccountMetadataPayload())
 	if err != nil {
 		return nil, err
 	}
-	s.mu.Lock()
-	wait := make(chan struct{})
-	s.waiting[coreSpace.Id()] = controllerWaiter{
-		wait: wait,
-	}
-	s.mu.Unlock()
-	ctrl, err := s.factory.CreateShareableSpace(ctx, coreSpace.Id(), description)
-	if err != nil {
-		s.mu.Lock()
-		close(wait)
-		s.waiting[coreSpace.Id()] = controllerWaiter{
-			wait: wait,
-			err:  err,
-		}
-		s.mu.Unlock()
+	if err = s.factory.CreateShareableSpace(ctx, coreSpace.Id(), description); err != nil {
 		return nil, err
 	}
-	sp, err = ctrl.WaitLoad(ctx)
-	s.mu.Lock()
-	close(wait)
+	ctrl, err := s.waitCtrl(ctx, coreSpace.Id())
 	if err != nil {
-		s.waiting[coreSpace.Id()] = controllerWaiter{
-			wait: wait,
-			err:  err,
-		}
-		s.mu.Unlock()
+		return nil, fmt.Errorf("wait controller: %w", err)
+	}
+	sp, err = s.waitLoad(ctx, ctrl)
+	if err != nil {
 		return nil, err
 	}
-	s.spaceControllers[ctrl.SpaceId()] = ctrl
-	s.mu.Unlock()
 	s.updater.UpdateCoordinatorStatus()
 	return
 }

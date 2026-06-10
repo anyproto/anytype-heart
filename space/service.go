@@ -70,7 +70,6 @@ const CName = "client.space"
 var log = logger.NewNamed(CName)
 
 var (
-	waitSpaceDelay        = 500 * time.Millisecond
 	loadTechSpaceDeadline = 15 * time.Second
 	// preloadRemainingSpacesTimeout bounds how long lazy mode defers loading
 	// the non-preferred spaces. Var (not const) so tests can override it.
@@ -146,8 +145,13 @@ type service struct {
 	newAccount          bool
 	autoJoinStreamSpace string
 	spaceControllers    map[string]spacecontroller.SpaceController
-	waiting             map[string]controllerWaiter
-	preferredSpaceId    string // from config; "" => eager (load all at startup)
+	// regChanged is closed and replaced (under s.mu) whenever the registry
+	// changes; waitCtrl blocks on it instead of polling.
+	regChanged chan struct{}
+	// regErr holds the last registration error per space id; cleared when the
+	// next registration attempt starts, so failures are retryable.
+	regErr           map[string]error
+	preferredSpaceId string // from config; "" => eager (load all at startup)
 	// lazyMode is set exactly once in initAccount before watcher.Run() and is
 	// never mutated afterwards, so it is safe to read without s.mu (the
 	// happens-before from watcher.Run() / goroutine spawn covers all readers).
@@ -200,7 +204,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
 	s.identityService = app.MustComponent[dependencies.IdentityService](a)
 	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
-	s.waiting = make(map[string]controllerWaiter)
+	s.regChanged = make(chan struct{})
+	s.regErr = make(map[string]error)
 	s.preferredSpaceId = s.config.PreferredSpaceId
 	s.preloadCh = make(chan struct{})
 	s.techSpaceReady = make(chan struct{})
@@ -339,6 +344,12 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("init tech space: %w", err)
 	}
+	// the watcher must run before the first space is created: controllers are
+	// registered exclusively through space view events
+	err = s.watcher.Run()
+	if err != nil {
+		return fmt.Errorf("run watcher: %w", err)
+	}
 	if s.autoJoinStreamSpace == "" {
 		firstSpace, err := s.create(ctx, nil)
 		if err != nil {
@@ -358,10 +369,6 @@ func (s *service) createAccount(ctx context.Context) (err error) {
 		s.tryToJoinSpaceStream()
 	}
 
-	err = s.watcher.Run()
-	if err != nil {
-		return fmt.Errorf("run watcher: %w", err)
-	}
 	s.techSpace.StartSync()
 	// only persist networkId after successful space init
 	err = s.config.PersistAccountNetworkId()
@@ -384,9 +391,10 @@ func (s *service) Create(ctx context.Context, description *spaceinfo.SpaceDescri
 
 }
 
+// Wait returns the space once it is loaded. Since controller registration is
+// event-driven (getCtrl waits on the registry), this is the same as Get.
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
-	waiter := newSpaceWaiter(s, s.ctx, waitSpaceDelay)
-	return waiter.waitSpace(ctx, spaceId)
+	return s.Get(ctx, spaceId)
 }
 
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
