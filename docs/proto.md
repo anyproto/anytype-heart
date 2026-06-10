@@ -4978,6 +4978,7 @@ Block commands
 | contextId | [string](#string) |  |  |
 | blocks | [model.Block](#anytype-model-Block) | repeated |  |
 | selectedTextRange | [model.Range](#anytype-model-Range) |  |  |
+| selectedTextRangeLastBlock | [model.Range](#anytype-model-Range) |  | optional. when set and the request contains multiple blocks, selectedTextRange is applied to the first block and selectedTextRangeLastBlock to the last block. {0,0} range means the whole block |
 
 
 
@@ -5176,6 +5177,7 @@ common simple block command
 | contextId | [string](#string) |  |  |
 | blocks | [model.Block](#anytype-model-Block) | repeated |  |
 | selectedTextRange | [model.Range](#anytype-model-Range) |  |  |
+| selectedTextRangeLastBlock | [model.Range](#anytype-model-Range) |  | optional. when set and the request contains multiple blocks, selectedTextRange is applied to the first block and selectedTextRangeLastBlock to the last block. {0,0} range means the whole block |
 
 
 
