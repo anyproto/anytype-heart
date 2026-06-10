@@ -11,6 +11,7 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
+	"github.com/anyproto/any-store/query"
 	"github.com/samber/lo"
 	"golang.org/x/exp/slices"
 	"golang.org/x/text/collate"
@@ -698,6 +699,8 @@ func (s *dsObjectStore) QueryObjectIds(q database.Query) (ids []string, total in
 }
 
 func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err error) {
+	detailsById := make(map[string]*domain.Details, len(ids))
+	storeIds := make([]string, 0, len(ids))
 	for _, id := range ids {
 		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(id); err == nil {
@@ -711,23 +714,58 @@ func (s *dsObjectStore) QueryByIds(ids []string) (records []database.Record, err
 					continue
 				}
 				details.SetString(bundle.RelationKeyId, id)
-				records = append(records, database.Record{Details: details})
+				detailsById[id] = details
 				continue
 			}
 		}
-		doc, err := s.objects.FindId(s.componentCtx, id)
-		if err != nil {
-			log.With("id", id).Infof("QueryByIds failed to find id: %s", err.Error())
-			continue
-		}
-		details, err := domain.NewDetailsFromAnyEnc(doc.Value())
-		if err != nil {
-			log.With("id", id).Errorf("QueryByIds failed to extract details: %s", err.Error())
-			continue
-		}
-		records = append(records, database.Record{Details: details})
+		storeIds = append(storeIds, id)
 	}
-	return
+
+	if len(storeIds) > 0 {
+		// fetch all indexable objects in a single query instead of per-id lookups
+		arena := s.arenaPool.Get()
+		defer func() {
+			arena.Reset()
+			s.arenaPool.Put(arena)
+		}()
+		inVals := make([]*anyenc.Value, 0, len(storeIds))
+		for _, id := range storeIds {
+			inVals = append(inVals, arena.NewString(id))
+		}
+		filter := query.Key{
+			Path:   []string{bundle.RelationKeyId.String()},
+			Filter: query.NewInValue(inVals...),
+		}
+		iter, err := s.objects.Find(filter).Iter(s.componentCtx)
+		if err != nil {
+			return nil, fmt.Errorf("find by ids: %w", err)
+		}
+		defer iter.Close()
+		for iter.Next() {
+			doc, err := iter.Doc()
+			if err != nil {
+				return nil, fmt.Errorf("get doc: %w", err)
+			}
+			details, err := domain.NewDetailsFromAnyEnc(doc.Value())
+			if err != nil {
+				log.Errorf("QueryByIds failed to extract details: %s", err.Error())
+				continue
+			}
+			detailsById[details.GetString(bundle.RelationKeyId)] = details
+		}
+		if err = iter.Err(); err != nil {
+			return nil, fmt.Errorf("iterate by ids: %w", err)
+		}
+	}
+
+	// keep the order of the requested ids, skipping missing ones
+	records = make([]database.Record, 0, len(detailsById))
+	for _, id := range ids {
+		if details, ok := detailsById[id]; ok {
+			records = append(records, database.Record{Details: details})
+		}
+	}
+	return records, nil
 }
 
 func (s *dsObjectStore) QueryByIdsAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, closeFunc func(), err error) {
