@@ -485,7 +485,8 @@ func (i *indexer) ftInit() error {
 			// store are indexed later via reindexOutdatedObjects or on
 			// receiving via any-sync.
 			go func() {
-				if enqErr := i.store.EnqueueAllForFulltextIndexing(i.runCtx); enqErr != nil {
+				enqErr := i.store.EnqueueAllForFulltextIndexing(i.runCtx)
+				if enqErr != nil && !errors.Is(enqErr, context.Canceled) {
 					log.Errorf("enqueue all for fulltext indexing: %v", enqErr)
 				}
 			}()
