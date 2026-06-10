@@ -218,9 +218,10 @@ Notes:
   `pastMsg` (the count identity uses the live collection, Theorem 1); the fold
   just labels the delete change like any other (its own labels are needed if it
   ever becomes a seen head).
-- Reactions: **out of scope** — the reactions counter keeps its existing path;
-  its dedup semantics ("messages with unread reactions") don't fit cardinality
-  labels cleanly.
+- Reactions: covered in **§14 (Stage 4)**. Reaction changes are folded like any
+  other change; the sidecar gains a `pastReact` column (counted reaction-add
+  events in the strict past). The dedup-to-messages machinery is §14's — only
+  the *deduped count* needs more than label arithmetic.
 
 ---
 
@@ -329,6 +330,10 @@ The CORE works with zero labels — that makes the rollout safely incremental:
   runs in CORE mode.
 - **Stage 3 (cutover):** counters served by D; bool kept one release as a
   divergence-logging shadow; then D3 deletions land.
+- **Stage 4 (reactions, §14):** the reaction counter moves onto the same
+  machinery (event sidecar + refcounted unread-message set), retiring the
+  per-message mutable reaction-unread state and `ClearUnreadReactions`.
+  Independent of Stages 1–3; does not block them.
 
 ---
 
@@ -429,5 +434,115 @@ without the O(tree) cold-start rebuild (~18.6 s) that motivated its removal.
   orders beyond that.
 - **R4 — D1 dependency**: §10's guard is mandatory in the first shipped stage,
   not a follow-up.
-- **R5 — reactions** stay on the legacy path; aligning them with D (or with the
-  watermark cleanup) is a separate design.
+- **R5 — reactions** are covered by §14 (Stage 4). Residual risk lives in the
+  two semantics pins (S1 event definition, S2 counted predicate) — both must be
+  resolved against current behavior **before** implementing Stage 4; the §14
+  machinery is otherwise the same as the message counter's.
+
+---
+
+## 14. Reactions counter (Stage 4)
+
+The reaction counter ("messages with at least one unread reaction",
+deduplicated per message) moves onto the same CORE machinery, with one extra
+sidecar row type and one honest limitation: **the deduped count is not pure
+label arithmetic**, because count-distinct over targets does not fold into
+cardinalities. Everything else carries over verbatim.
+
+### 14.1 Today's surfaces (develop base — what Stage 4 retires)
+
+Per-message mutable unread-reaction state cleared by
+`ClearUnreadReactions(maxOrderId)` (`repository.go:710-733` — the known
+over-clear hazard), `GetNewestUnreadReactionOrderId` recompute scans
+(`repository.go:734`; consumed by the subscription's `UnreadReactionOrderId`,
+`chatsubscription/manager.go:217-222,506,570`), `GetAllUnreadReactionChangeIds`,
+and the `diffManagerReactions` full-tree stream. The apply-time add/remove
+transition detection in `handleReactionsModify`
+(`chathandler.go:245-270` — `wasPresent`/`isPresent` → `onReactionAdded`)
+**stays**: it is exactly the event source §14.3 logs.
+
+### 14.2 Model
+
+- **Counted entity:** a *reaction event* `r` — a counted reaction-add detected
+  at apply — with coordinates `(g(r), msgId(r), reactor(r), emoji(r))`.
+- **Counter:** `|{ live messages m : ∃ counted reaction event r → m, ¬read*(r) }|`
+  against the reactions frontier `F_r` (the existing `diffManagerReactions`
+  seen-heads set, kept as-is).
+- **Decomposition (Theorem 1, verbatim):** `r` unread ⟺ `g(r) > maxF_r` or
+  `r ∈ bandSet_r(F_r)`. Reaction events are changes; nothing in §2 is
+  message-specific. Theorem 3's O(1) maintenance applies unchanged.
+
+### 14.3 Storage and flows
+
+**Event rows** — sibling sidecar collection in crdt.db, immutable, local-only,
+never deleted (they must survive message deletion; liveness is checked at
+count time against the `chats` collection):
+
+```
+reactevents: { changeId, o, msgId, reactor, emoji, op (add|remove) }
+index: (o)
+```
+
+Written from the existing apply-time transition detection (`onReactionAdded`
+and its remove counterpart). The `readlabels` fold (§3) gains a `pastReact`
+column: counted reaction-**add** events in the strict past.
+
+**Unread set** — cached, device-local, persisted (the `bandSet` pattern):
+
+```
+unreadReactionMsgs: { msgId → refcount of unread counted events }
+counter = |keys(unreadReactionMsgs) ∩ live messages|
+```
+
+- **Frontier change (`F_r`):** zero-certificate first —
+  `unreadAddEvents = addEventRank(∞) − pastReact(H*) − [H* itself a counted add]`
+  over the create universe of event rows (sound upper bound by the Theorem 2
+  argument: un-reacts and message deletes only shrink the live set). If 0 →
+  counter is 0, done. Else one indexed scan of event rows with `o > maxF_r`
+  plus the band walk for `F_r`, refcounted into the map. O(events since the
+  read point), once, then cached.
+- **Event arrives:** O(1) — add → `refcount++` (Theorem 3: it cannot be covered
+  by a resolved head); remove → `refcount−−` under net-state semantics (S1);
+  message delete → drop the key.
+- **Subscription:** `UnreadReactionOrderId` (newest unread event's `g`) is read
+  off the cached map — the `GetNewestUnreadReactionOrderId` repo scan goes away.
+
+### 14.4 Semantics pins (resolve against current behavior BEFORE Stage 4)
+
+- **S1 — event definition.** Two options with different convergence strength:
+  **(a) content-based toggle-event** (any peer toggle on a counted message is
+  notify-worthy, add and remove alike): a pure function of the change content →
+  *fully* replica-invariant, the strongest convergence. **(b) apply-time
+  add-detection** (today's `onReactionAdded`): matches current behavior
+  exactly, but the add/remove classification of two *concurrent toggles of the
+  same (emoji, identity)* depends on local apply order — a pre-existing corner
+  of the current system that (b) inherits and (a) eliminates. Decide after
+  checking what the toggle change op actually carries (full reactions state vs
+  delta). The per-device counter is internally consistent either way (cert and
+  set derive from the same local event log); cross-device convergence is exactly
+  as strong as the chosen event definition.
+- **S2 — counted predicate.** Peer reactor only (`reactor ≠ me`); whose
+  messages count (all vs own-only is a product choice — match current); the
+  existing `reactionsCounterEpoch` cutoff stays (change `Timestamp` is in the
+  signed change → replica-invariant → convergent).
+
+### 14.5 Tests (additions to §11)
+
+8. **Reactions differential** — random event logs + frontier moves: cached
+   refcount map ≡ brute-force recompute from the event rows; counter matches
+   the legacy `ClearUnreadReactions` path on linear histories (where legacy is
+   correct), and documents the over-clear divergence where legacy is not.
+9. **Reactions cross-device gate** — the per-device-tree harness (§11.1) with
+   concurrent reaction events: equal counters on both devices under S1(a);
+   under S1(b), equal except the documented concurrent-toggle corner.
+10. **Lifecycle** — un-react retraction per S1, message-delete drops the key,
+    epoch cutoff respected, event rows survive message deletion.
+
+### 14.6 Cost
+
+Zero-certificate O(1); recompute O(unread events since the read point), once
+per frontier change, cached + persisted; O(1) per arriving event; ~40 B per
+reaction event in the sidecar. Retired: the per-message mutable
+reaction-unread writes, `ClearUnreadReactions`'s clear-storms (and over-clear
+bug), the `GetNewestUnreadReactionOrderId` scans, and the last full-tree diff
+manager stream.
