@@ -225,7 +225,11 @@ func injectionRelationKey(details *domain.Details, path domain.ObjectPath) (doma
 	case model.ObjectType_objectType:
 		return bundle.RelationKeyType, true
 	case model.ObjectType_relationOption:
-		return domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey)), true
+		relKey := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
+		if relKey == "" {
+			return "", false
+		}
+		return relKey, true
 	default:
 		return "", false
 	}
@@ -239,10 +243,35 @@ func (s *dsObjectStore) injectRelatedObjects(
 	seen map[string]struct{},
 	records []database.Record,
 ) []database.Record {
+	// process groups with the best-scoring hits first so that a limited budget
+	// is spent deterministically (map iteration order is randomized)
+	type scoredGroup struct {
+		relKey domain.RelationKey
+		hits   []injectionHit
+		best   float64
+	}
+	sortedGroups := make([]scoredGroup, 0, len(groups))
 	for relKey, hits := range groups {
+		best := hits[0].score
+		for _, hit := range hits[1:] {
+			if hit.score > best {
+				best = hit.score
+			}
+		}
+		sortedGroups = append(sortedGroups, scoredGroup{relKey: relKey, hits: hits, best: best})
+	}
+	sort.Slice(sortedGroups, func(i, j int) bool {
+		if sortedGroups[i].best != sortedGroups[j].best {
+			return sortedGroups[i].best > sortedGroups[j].best
+		}
+		return sortedGroups[i].relKey < sortedGroups[j].relKey
+	})
+
+	for _, group := range sortedGroups {
 		if !unlimited && budget <= 0 {
 			break
 		}
+		relKey, hits := group.relKey, group.hits
 
 		hitMap := make(map[string]injectionHit, len(hits))
 		for i := range hits {
@@ -323,7 +352,6 @@ func makeInjectionRecord(source database.Record, hit injectionHit, relationKey s
 		},
 	}
 }
-
 
 func (s *dsObjectStore) performQuery(q database.Query) (records []database.Record, err error) {
 	arena := s.arenaPool.Get()

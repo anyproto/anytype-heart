@@ -2,6 +2,7 @@ package spaceindex
 
 import (
 	"math"
+	"sort"
 	"testing"
 	"time"
 
@@ -91,6 +92,14 @@ func TestInjectionRelationKey(t *testing.T) {
 		key, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
 		require.True(t, ok)
 		assert.Equal(t, bundle.RelationKeyType, key)
+	})
+
+	t.Run("skips relationOption without relation key", func(t *testing.T) {
+		details := makeDetails(TestObject{
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+		})
+		_, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
+		assert.False(t, ok)
 	})
 
 	t.Run("returns custom relation key for relationOption layout", func(t *testing.T) {
@@ -1012,6 +1021,56 @@ func TestQueryFromFulltext(t *testing.T) {
 			recs[1].Details.GetString(bundle.RelationKeyId),
 		}
 		assert.NotContains(t, gotIds, "tagged1")
+	})
+
+	t.Run("higher-scoring group wins injection budget deterministically", func(t *testing.T) {
+		// given two injection groups (tag relation and type) competing for a single budget slot
+		s := NewStoreFixture(t)
+		tagObj := TestObject{
+			bundle.RelationKeyId:             domain.String("tag1"),
+			bundle.RelationKeyName:           domain.String("Match"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+			bundle.RelationKeyRelationKey:    domain.String("color"),
+		}
+		typeObj := TestObject{
+			bundle.RelationKeyId:             domain.String("type1"),
+			bundle.RelationKeyName:           domain.String("Match"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		}
+		taggedObj := TestObject{
+			bundle.RelationKeyId:             domain.String("objA"),
+			bundle.RelationKeyName:           domain.String("Tagged"),
+			domain.RelationKey("color"):      domain.StringList([]string{"tag1"}),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		typedObj := TestObject{
+			bundle.RelationKeyId:             domain.String("objB"),
+			bundle.RelationKeyName:           domain.String("Typed"),
+			bundle.RelationKeyType:           domain.String("type1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}
+		s.AddObjects(t, []TestObject{tagObj, typeObj, taggedObj, typedObj})
+
+		results := []database.FulltextResult{
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 2.0},
+			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+		}
+
+		// when — limit=3: tag1 and type1 fill 2 slots, budget=1; the "color" group
+		// has the higher-scoring hit, so objA must be injected, never objB
+		want := []string{"objA", "tag1", "type1"}
+		for i := 0; i < 20; i++ {
+			recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Match")
+
+			// then
+			require.NoError(t, err)
+			got := make([]string, 0, len(recs))
+			for _, rec := range recs {
+				got = append(got, rec.Details.GetString(bundle.RelationKeyId))
+			}
+			sort.Strings(got)
+			require.Equal(t, want, got, "iteration %d: injection must be deterministic", i)
+		}
 	})
 
 	t.Run("archived tag does not inject results", func(t *testing.T) {
