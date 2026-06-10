@@ -54,7 +54,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/aclobjectmanager"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
-	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
@@ -262,7 +261,7 @@ func (s *service) createTechSpaceForOldAccounts(ctx context.Context) (err error)
 		return fmt.Errorf("init tech space: %w", err)
 	}
 	// skipping check for space view because we don't have it
-	ctx = context.WithValue(ctx, personalspace.SkipCheckSpaceViewKey, true)
+	ctx = context.WithValue(ctx, spacefactory.SkipCheckSpaceViewKey, true)
 	_, err = s.startStatus(ctx, spaceinfo.NewSpacePersistentInfo(s.personalSpaceId))
 	if err != nil {
 		return fmt.Errorf("start personal space: %w", err)

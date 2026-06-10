@@ -1,4 +1,7 @@
-package shareablespace
+// Package accountspace provides the single SpaceController implementation for
+// all account spaces (personal, shareable, streamable, one-to-one). Kind
+// differences are expressed as Descriptor data, not separate controller types.
+package accountspace
 
 import (
 	"context"
@@ -6,6 +9,7 @@ import (
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
+	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
@@ -19,7 +23,26 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-var log = logger.NewNamed("common.space.shareablespace")
+var log = logger.NewNamed("common.space.accountspace")
+
+// Descriptor carries everything kind-specific about a space controller.
+type Descriptor struct {
+	SpaceId string
+	// Status seeds lastUpdatedStatus so the first Update() after Start()
+	// doesn't re-run the transition Start() already performed.
+	Status spaceinfo.AccountStatus
+	// IsPersonal makes the loader stop on mandatory-objects failure and is
+	// reported to spaceloader (stopIfMandatoryFail).
+	IsPersonal bool
+	// GuestKey, when set, makes the space load with a guest signing key
+	// (streamable spaces).
+	GuestKey      crypto.PrivKey
+	OwnerMetadata []byte
+	// ExtraLoaderComponents returns components registered into each loading
+	// app in addition to the standard set. Called once per loading transition
+	// so components are always fresh (e.g. personalmigration).
+	ExtraLoaderComponents func() []app.Component
+}
 
 type statusUpdater interface {
 	UpdateCoordinatorStatus()
@@ -27,6 +50,7 @@ type statusUpdater interface {
 
 type spaceController struct {
 	spaceId           string
+	desc              Descriptor
 	app               *app.App
 	status            spacestatus.SpaceStatus
 	lastUpdatedStatus spaceinfo.AccountStatus
@@ -46,18 +70,16 @@ func makeStatusApp(a *app.App, spaceId string) (*app.App, error) {
 	return newApp, nil
 }
 
-func NewSpaceController(
-	spaceId string,
-	info spaceinfo.SpacePersistentInfo,
-	a *app.App) (spacecontroller.SpaceController, error) {
-	newApp, err := makeStatusApp(a, spaceId)
+func NewSpaceController(desc Descriptor, a *app.App) (spacecontroller.SpaceController, error) {
+	newApp, err := makeStatusApp(a, desc.SpaceId)
 	if err != nil {
 		return nil, err
 	}
 	s := &spaceController{
-		spaceId:           spaceId,
+		spaceId:           desc.SpaceId,
+		desc:              desc,
 		status:            newApp.MustComponent(spacestatus.CName).(spacestatus.SpaceStatus),
-		lastUpdatedStatus: info.GetAccountStatus(),
+		lastUpdatedStatus: desc.Status,
 		app:               newApp,
 	}
 
@@ -65,7 +87,7 @@ func NewSpaceController(
 	if updater, ok := a.Component(deletioncontroller.CName).(statusUpdater); ok {
 		s.updater = updater
 	}
-	sm, err := mode.NewStateMachine(s, log.With(zap.String("spaceId", spaceId)))
+	sm, err := mode.NewStateMachine(s, log.With(zap.String("spaceId", desc.SpaceId)))
 	if err != nil {
 		return nil, err
 	}
@@ -83,20 +105,8 @@ func (s *spaceController) Start(ctx context.Context) error {
 			s.updater.UpdateCoordinatorStatus()
 		}
 	}()
-	switch s.status.GetPersistentStatus() {
-	case spaceinfo.AccountStatusDeleted:
-		_, err := s.sm.ChangeMode(mode.ModeOffloading)
-		return err
-	case spaceinfo.AccountStatusJoining:
-		_, err := s.sm.ChangeMode(mode.ModeJoining)
-		return err
-	case spaceinfo.AccountStatusRemoving:
-		_, err := s.sm.ChangeMode(mode.ModeOffloading)
-		return err
-	default:
-		_, err := s.sm.ChangeMode(mode.ModeLoading)
-		return err
-	}
+	_, err := s.sm.ChangeMode(modeOfStatus(s.status.GetPersistentStatus()))
+	return err
 }
 
 func (s *spaceController) Mode() mode.Mode {
@@ -128,29 +138,35 @@ func (s *spaceController) Update() error {
 	}
 	s.lastUpdatedStatus = status
 	s.mx.Unlock()
-	updateStatus := func(mode mode.Mode) error {
-		_, err := s.sm.ChangeMode(mode)
-		return err
-	}
+	_, err := s.sm.ChangeMode(modeOfStatus(status))
+	return err
+}
+
+// modeOfStatus is the single AccountStatus -> Mode mapping for all space kinds.
+func modeOfStatus(status spaceinfo.AccountStatus) mode.Mode {
 	switch status {
-	case spaceinfo.AccountStatusDeleted:
-		return updateStatus(mode.ModeOffloading)
+	case spaceinfo.AccountStatusDeleted, spaceinfo.AccountStatusRemoving:
+		return mode.ModeOffloading
 	case spaceinfo.AccountStatusJoining:
-		return updateStatus(mode.ModeJoining)
-	case spaceinfo.AccountStatusRemoving:
-		return updateStatus(mode.ModeOffloading)
+		return mode.ModeJoining
 	default:
-		return updateStatus(mode.ModeLoading)
+		return mode.ModeLoading
 	}
 }
 
 func (s *spaceController) Process(md mode.Mode) mode.Process {
 	switch md {
-	case mode.ModeInitial:
-		return initial.New()
 	case mode.ModeLoading:
+		var extraComps []app.Component
+		if s.desc.ExtraLoaderComponents != nil {
+			extraComps = s.desc.ExtraLoaderComponents()
+		}
 		return loader.New(s.app, loader.Params{
-			SpaceId: s.spaceId,
+			SpaceId:         s.spaceId,
+			IsPersonal:      s.desc.IsPersonal,
+			OwnerMetadata:   s.desc.OwnerMetadata,
+			GuestKey:        s.desc.GuestKey,
+			AdditionalComps: extraComps,
 		})
 	case mode.ModeOffloading:
 		return offloader.New(s.app)

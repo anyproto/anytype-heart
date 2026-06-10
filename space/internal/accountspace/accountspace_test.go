@@ -1,4 +1,4 @@
-package shareablespace
+package accountspace
 
 import (
 	"context"

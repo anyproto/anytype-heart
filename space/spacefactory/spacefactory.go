@@ -36,12 +36,11 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/space/clientspace"
+	"github.com/anyproto/anytype-heart/space/internal/accountspace"
 	dependencies "github.com/anyproto/anytype-heart/space/internal/components/dependencies"
+	"github.com/anyproto/anytype-heart/space/internal/components/personalmigration"
 	"github.com/anyproto/anytype-heart/space/internal/marketplacespace"
-	"github.com/anyproto/anytype-heart/space/internal/personalspace"
-	"github.com/anyproto/anytype-heart/space/internal/shareablespace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
-	"github.com/anyproto/anytype-heart/space/internal/streamablespace"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
@@ -67,6 +66,18 @@ type SpaceFactory interface {
 }
 
 const CName = "client.space.spacefactory"
+
+type ctxKey int
+
+// SkipCheckSpaceViewKey, when set to true in ctx, makes NewPersonalSpace create
+// the personal space view unconditionally instead of probing for it first.
+// Used when restoring old accounts that never had a space view.
+const SkipCheckSpaceViewKey ctxKey = iota
+
+func shouldCheckSpaceView(ctx context.Context) bool {
+	skip, ok := ctx.Value(SkipCheckSpaceViewKey).(bool)
+	return !ok || !skip
+}
 
 type spaceFactory struct {
 	app             *app.App
@@ -116,12 +127,7 @@ func (s *spaceFactory) CreatePersonalSpace(ctx context.Context, metadata []byte)
 		}
 		return nil, err
 	}
-	ctrl, err := personalspace.NewSpaceController(ctx, coreSpace.Id(), metadata, s.app)
-	if err != nil {
-		return nil, err
-	}
-	err = ctrl.Start(ctx)
-	return ctrl, err
+	return s.newPersonalController(ctx, coreSpace.Id(), metadata)
 }
 
 func (s *spaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (ctrl spacecontroller.SpaceController, err error) {
@@ -129,7 +135,42 @@ func (s *spaceFactory) NewPersonalSpace(ctx context.Context, metadata []byte) (c
 	if err != nil {
 		return nil, err
 	}
-	ctrl, err = personalspace.NewSpaceController(ctx, id, metadata, s.app)
+	if err = s.ensurePersonalSpaceView(ctx, id); err != nil {
+		return nil, err
+	}
+	return s.newPersonalController(ctx, id, metadata)
+}
+
+// ensurePersonalSpaceView creates the personal space view if it is missing.
+// Old accounts predate space views, so the view may need to be created on
+// first start; the spacestatus component requires it to exist.
+func (s *spaceFactory) ensurePersonalSpaceView(ctx context.Context, id string) error {
+	var (
+		exists bool
+		err    error
+	)
+	if shouldCheckSpaceView(ctx) {
+		exists, err = s.techSpace.SpaceViewExists(ctx, id)
+	}
+	if !exists || err != nil {
+		info := spaceinfo.NewSpacePersistentInfo(id)
+		info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
+		if err := s.techSpace.SpaceViewCreate(ctx, id, false, info, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *spaceFactory) newPersonalController(ctx context.Context, id string, metadata []byte) (spacecontroller.SpaceController, error) {
+	ctrl, err := accountspace.NewSpaceController(accountspace.Descriptor{
+		SpaceId:       id,
+		IsPersonal:    true,
+		OwnerMetadata: metadata,
+		ExtraLoaderComponents: func() []app.Component {
+			return []app.Component{personalmigration.New()}
+		},
+	}, s.app)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +251,14 @@ func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.Te
 }
 
 func (s *spaceFactory) NewShareableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error) {
-	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
+	return s.newShareableController(ctx, id, info)
+}
+
+func (s *spaceFactory) newShareableController(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error) {
+	ctrl, err := accountspace.NewSpaceController(accountspace.Descriptor{
+		SpaceId: id,
+		Status:  info.GetAccountStatus(),
+	}, s.app)
 	if err != nil {
 		return nil, err
 	}
@@ -230,12 +278,7 @@ func (s *spaceFactory) CreateInvitingSpace(ctx context.Context, id, aclHeadId st
 			return nil, err
 		}
 	}
-	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
-	if err != nil {
-		return nil, err
-	}
-	err = ctrl.Start(ctx)
-	return ctrl, err
+	return s.newShareableController(ctx, id, info)
 }
 
 func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error) {
@@ -250,12 +293,7 @@ func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId stri
 			return nil, err
 		}
 	}
-	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
-	if err != nil {
-		return nil, err
-	}
-	err = ctrl.Start(ctx)
-	return ctrl, err
+	return s.newShareableController(ctx, id, info)
 }
 
 // creates regular shared space
@@ -273,12 +311,7 @@ func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string, spac
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, spaceDesc); err != nil {
 		return nil, err
 	}
-	ctrl, err := shareablespace.NewSpaceController(id, info, s.app)
-	if err != nil {
-		return nil, err
-	}
-	err = ctrl.Start(ctx)
-	return ctrl, err
+	return s.newShareableController(ctx, id, info)
 }
 
 func (s *spaceFactory) CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error) {
@@ -300,7 +333,14 @@ func (s *spaceFactory) NewStreamableSpace(ctx context.Context, id string, info s
 		info.EncodedKey,
 		crypto.UnmarshalEd25519PrivateKey,
 		nil)
-	ctrl, err := streamablespace.NewSpaceController(ctx, id, decodedSignKey, metadata, s.app)
+	if err != nil {
+		return nil, fmt.Errorf("decode streamable space key: %w", err)
+	}
+	ctrl, err := accountspace.NewSpaceController(accountspace.Descriptor{
+		SpaceId:       id,
+		GuestKey:      decodedSignKey,
+		OwnerMetadata: metadata,
+	}, s.app)
 	if err != nil {
 		return nil, err
 	}
@@ -361,12 +401,7 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, spaceId string, 
 		}
 	}
 
-	ctrl, err := shareablespace.NewSpaceController(spaceId, info, s.app)
-	if err != nil {
-		return nil, err
-	}
-	err = ctrl.Start(ctx)
-	return ctrl, err
+	return s.newShareableController(ctx, spaceId, info)
 }
 
 func (s *spaceFactory) Name() (name string) {
