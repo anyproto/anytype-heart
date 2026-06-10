@@ -140,6 +140,12 @@ func (s *spaceLoader) onLoad(sp clientspace.Space, loadErr error) (err error) {
 	case errors.Is(loadErr, spaceservice.ErrSpaceIsDeleted):
 		info.SetLocalStatus(spaceinfo.LocalStatusMissing).
 			SetRemoteStatus(spaceinfo.RemoteStatusDeleted)
+	case errors.Is(loadErr, context.Canceled), errors.Is(loadErr, context.DeadlineExceeded):
+		// The component context was cancelled (Close/shutdown), so the background build was
+		// interrupted rather than genuinely failing. Persisting Missing here would knock a healthy
+		// space off the optimistic-Ok fast path on the next cold start, so leave the persisted
+		// status untouched and let the next session re-evaluate it.
+		return nil
 	default:
 		info.SetLocalStatus(spaceinfo.LocalStatusMissing)
 	}

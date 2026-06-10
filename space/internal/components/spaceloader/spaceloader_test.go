@@ -3,6 +3,7 @@ package spaceloader
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -282,6 +283,20 @@ func TestOnLoad_AfterFastPath(t *testing.T) {
 		statuses := fx.recordedStatuses()
 		require.NotEmpty(t, statuses)
 		assert.Equal(t, spaceinfo.LocalStatusMissing, statuses[len(statuses)-1])
+		assert.Nil(t, fx.loader.space)
+	})
+
+	t.Run("shutdown cancellation must not persist Missing", func(t *testing.T) {
+		// given a fast-path space already optimistically Ok whose Close() cancelled the build
+		fx := newLoaderForTest(t, spaceinfo.LocalStatusOk, true)
+
+		// when the background build is interrupted by context cancellation (clean shutdown), even
+		// when wrapped by intermediate layers
+		require.NoError(t, fx.loader.onLoad(nil, fmt.Errorf("build space: %w", context.Canceled)))
+
+		// then onLoad writes NO status: persisting Missing would knock the healthy space off the
+		// optimistic-Ok fast path on the next cold start.
+		require.Empty(t, fx.recordedStatuses(), "shutdown cancellation must leave persisted status untouched")
 		assert.Nil(t, fx.loader.space)
 	})
 }

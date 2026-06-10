@@ -95,8 +95,9 @@ func (s *SpaceLocalInfo) SetReadLimit(limit uint32) *SpaceLocalInfo {
 
 func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
 	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceId))
-	// DEBUG (GO-7289): log every local/remote space status write that lands in the object
-	// store, with the old->new transition, so the cold-start status churn can be observed.
+	// Log local/remote status transitions at the single chokepoint every status write passes
+	// through, so cold-start status churn (GO-7289) can be diagnosed. Only emitted when a value
+	// actually changes, to avoid noise from idempotent re-writes.
 	if s.localStatus != nil || s.remoteStatus != nil {
 		oldLocal := LocalStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceLocalStatus))
 		oldRemote := RemoteStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceRemoteStatus))
@@ -110,11 +111,12 @@ func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
 		}
 		changed := (s.localStatus != nil && newLocal != oldLocal) ||
 			(s.remoteStatus != nil && newRemote != oldRemote)
-		spaceInfoLog.With("spaceId", s.SpaceId).
-			With("localStatus", oldLocal.String()+"->"+newLocal.String()).
-			With("remoteStatus", oldRemote.String()+"->"+newRemote.String()).
-			With("changed", changed).
-			Warn("space status update in objectstore")
+		if changed {
+			spaceInfoLog.With("spaceId", s.SpaceId).
+				With("localStatus", oldLocal.String()+"->"+newLocal.String()).
+				With("remoteStatus", oldRemote.String()+"->"+newRemote.String()).
+				Debug("space status transition in objectstore")
+		}
 	}
 	if s.localStatus != nil {
 		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceLocalStatus, domain.Int64(*s.localStatus))
