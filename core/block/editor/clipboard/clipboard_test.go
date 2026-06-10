@@ -1769,6 +1769,252 @@ func Test_CopyAndCutText(t *testing.T) {
 
 }
 
+func Test_CopyAndCutMultiBlockRange(t *testing.T) {
+	givenSbWithThreeTextBlocks := func(t *testing.T) (*smarttest.SmartTest, []*model.Block) {
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		blocks := []*model.Block{
+			givenTextBlockWithMarks("1", "first block", nil),
+			givenTextBlockWithMarks("2", "middle block", nil),
+			givenTextBlockWithMarks("3", "last block", nil),
+		}
+		for _, b := range blocks {
+			insertBlock(s, b, "")
+		}
+		require.NoError(t, sb.Apply(s))
+		return sb, blocks
+	}
+
+	t.Run("copy - partial first and last block", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, htmlSlot, anySlot, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{From: 6, To: 11},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "block\nmiddle block\nlast", textSlot)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "block", anySlot[0].GetText().Text)
+		assert.Equal(t, "middle block", anySlot[1].GetText().Text)
+		assert.Equal(t, "last", anySlot[2].GetText().Text)
+		assert.NotEmpty(t, htmlSlot)
+
+		// document is not modified
+		assert.Equal(t, "first block", sb.Pick("1").Model().GetText().Text)
+		assert.Equal(t, "middle block", sb.Pick("2").Model().GetText().Text)
+		assert.Equal(t, "last block", sb.Pick("3").Model().GetText().Text)
+	})
+
+	t.Run("copy - marks are shifted to the range start", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		blocks := []*model.Block{
+			givenTextBlockWithMarks("1", "first block", []*model.BlockContentTextMark{
+				{Range: &model.Range{From: 6, To: 11}, Type: model.BlockContentTextMark_Bold},
+			}),
+			givenTextBlockWithMarks("2", "last block", []*model.BlockContentTextMark{
+				{Range: &model.Range{From: 0, To: 4}, Type: model.BlockContentTextMark_Italic},
+			}),
+		}
+		for _, b := range blocks {
+			insertBlock(s, b, "")
+		}
+		require.NoError(t, sb.Apply(s))
+		cb := newFixture(t, sb)
+		want := []*model.BlockContentTextMark{
+			{Range: &model.Range{From: 0, To: 5}, Type: model.BlockContentTextMark_Bold},
+		}
+
+		// when
+		_, _, anySlot, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{From: 6, To: 11},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, anySlot, 2)
+		assert.Equal(t, want, anySlot[0].GetText().Marks.Marks)
+		assert.Equal(t, []*model.BlockContentTextMark{
+			{Range: &model.Range{From: 0, To: 4}, Type: model.BlockContentTextMark_Italic},
+		}, anySlot[1].GetText().Marks.Marks)
+	})
+
+	t.Run("copy - zero ranges mean whole blocks", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, anySlot, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{},
+			SelectedTextRangeLastBlock: &model.Range{},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first block\nmiddle block\nlast block", textSlot)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "first block", anySlot[0].GetText().Text)
+		assert.Equal(t, "last block", anySlot[2].GetText().Text)
+	})
+
+	t.Run("copy - last block range only", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, _, err := cb.Copy(nil, pb.RpcBlockCopyRequest{
+			Blocks:                     blocks,
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first block\nmiddle block\nlast", textSlot)
+	})
+
+	t.Run("cut - partial first and last block", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{From: 6, To: 11},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 5},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "block\nmiddle block\nlast ", textSlot)
+		require.Len(t, anySlot, 3)
+		assert.Equal(t, "block", anySlot[0].GetText().Text)
+		assert.Equal(t, "middle block", anySlot[1].GetText().Text)
+		assert.Equal(t, "last ", anySlot[2].GetText().Text)
+		assert.NotEmpty(t, htmlSlot)
+
+		// partially selected blocks keep the rest of their text, the middle block is removed
+		assert.Equal(t, "first ", sb.Pick("1").Model().GetText().Text)
+		assert.Nil(t, sb.Pick("2"))
+		assert.Equal(t, "block", sb.Pick("3").Model().GetText().Text)
+	})
+
+	t.Run("cut - zero ranges cut whole blocks", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, anySlot, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:                     blocks,
+			SelectedTextRange:          &model.Range{},
+			SelectedTextRangeLastBlock: &model.Range{},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first block\nmiddle block\nlast block", textSlot)
+		require.Len(t, anySlot, 3)
+		assert.Nil(t, sb.Pick("1"))
+		assert.Nil(t, sb.Pick("2"))
+		assert.Nil(t, sb.Pick("3"))
+	})
+
+	t.Run("cut - backward compatibility: no last block range cuts whole blocks", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:            blocks,
+			SelectedTextRange: &model.Range{From: 6, To: 11},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first block\nmiddle block\nlast block", textSlot)
+		assert.Nil(t, sb.Pick("1"))
+		assert.Nil(t, sb.Pick("2"))
+		assert.Nil(t, sb.Pick("3"))
+	})
+
+	t.Run("cut - single block ignores last block range", func(t *testing.T) {
+		// given
+		sb, blocks := givenSbWithThreeTextBlocks(t)
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, _, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:                     blocks[:1],
+			SelectedTextRange:          &model.Range{From: 0, To: 5},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "first", textSlot)
+		assert.Equal(t, " block", sb.Pick("1").Model().GetText().Text)
+	})
+
+	t.Run("cut - non-text first block is cut whole", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
+		s := sb.NewState()
+		fileBlock := &model.Block{
+			Id:      "1",
+			Content: &model.BlockContentOfFile{File: &model.BlockContentFile{Name: "image"}},
+		}
+		insertBlock(s, fileBlock, "")
+		textBlock := givenTextBlockWithMarks("2", "last block", nil)
+		insertBlock(s, textBlock, "")
+		require.NoError(t, sb.Apply(s))
+		cb := newFixture(t, sb)
+
+		// when
+		textSlot, _, anySlot, err := cb.Cut(nil, pb.RpcBlockCutRequest{
+			Blocks:                     []*model.Block{fileBlock, textBlock},
+			SelectedTextRange:          &model.Range{},
+			SelectedTextRangeLastBlock: &model.Range{From: 0, To: 4},
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "last", textSlot)
+		require.Len(t, anySlot, 2)
+		assert.Nil(t, sb.Pick("1"))
+		assert.Equal(t, " block", sb.Pick("2").Model().GetText().Text)
+	})
+}
+
+func givenTextBlockWithMarks(id string, text string, marks []*model.BlockContentTextMark) *model.Block {
+	return &model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  text,
+				Marks: &model.BlockContentTextMarks{Marks: marks},
+			},
+		},
+	}
+}
+
 func givenRow3Level1NumberedBlock(s *state.State) *model.Block {
 	numberedBlock := givenNumberedBlock("3", "C-1")
 	insertBlock(s, numberedBlock, "")

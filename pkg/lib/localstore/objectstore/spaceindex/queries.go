@@ -163,14 +163,19 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	return s.queryAnyStore(s.componentCtx, filters.FilterObj, filters.Order, uint(limit), uint(offset))
 }
 
+type injectionHit struct {
+	id      string
+	details *domain.Details
+	score   float64
+}
+
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
 	records := make([]database.Record, 0, len(results))
 	upperBound := offset + limit
 	resultObjectMap := make(map[string]struct{})
-	// we assume that results are already sorted by score DESC.
-	// this means we use a map to ignore duplicates without checking the score
+	injectionGroups := map[domain.RelationKey][]injectionHit{}
+
 	for _, res := range results {
-		// Don't use spaceID because expected objects are virtual
 		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
 			if _, indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 				details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
@@ -229,32 +234,20 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 			}
 		}
 
-		injectLimit := 0
-		if upperBound > len(records) {
-			injectLimit = upperBound - len(records)
-		} else if upperBound > 0 {
-			continue // len(recs) >= upperBound > 0, so we can stop collecting new records
+		if relKey, ok := injectionRelationKey(details, res.Path); ok {
+			injectionGroups[relKey] = append(injectionGroups[relKey], injectionHit{
+				id:      details.GetString(bundle.RelationKeyId),
+				details: details,
+				score:   res.Score,
+			})
 		}
-		// fulltext does not search by names of objects in tag/status/object details,
-		// so we need to query those objects that have objects got by fulltext as values in their details
-		injectedResults := s.getObjectsWithObjectInRelation(details, res.Score, res.Path, injectLimit, params)
-		if len(injectedResults) == 0 {
-			continue
-		}
-		// for now, we only allow one injected result per object
-		// this may happen when we for example have a match in the different tags of the same object,
-		// or we may already have a better match for the same object but in block
-		injectedResults = lo.Filter(injectedResults, func(item database.Record, _ int) bool {
-			id := item.Details.GetString(bundle.RelationKeyId)
-			if _, ok := resultObjectMap[id]; !ok {
-				resultObjectMap[id] = struct{}{}
-				return true
-			}
-			return false
-		})
-
-		records = append(records, injectedResults...)
 	}
+
+	budget := 0
+	if upperBound > 0 && upperBound > len(records) {
+		budget = upperBound - len(records)
+	}
+	records = s.injectRelatedObjects(injectionGroups, budget, upperBound == 0, params, resultObjectMap, records)
 
 	if offset >= len(records) {
 		return nil, nil
@@ -273,78 +266,147 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	return records[offset:], nil
 }
 
-// getObjectsWithObjectInRelation returns objects that have a relation with the given object in the value, while also matching the given filters
-func (s *dsObjectStore) getObjectsWithObjectInRelation(details *domain.Details, score float64, path domain.ObjectPath, limit int, params database.Filters) []database.Record {
+func injectionRelationKey(details *domain.Details, path domain.ObjectPath) (domain.RelationKey, bool) {
 	if path.RelationKey != bundle.RelationKeyName.String() && path.RelationKey != bundle.RelationKeyPluralName.String() {
-		// inject only in case we match the name
-		return nil
+		return "", false
 	}
-
-	var (
-		relationKey string
-		err         error
-		id          = details.GetString(bundle.RelationKeyId)
-		isDeleted   = details.GetBool(bundle.RelationKeyIsDeleted)
-		isArchived  = details.GetBool(bundle.RelationKeyIsArchived)
-	)
-
-	if isDeleted || isArchived {
-		return nil
+	if details.GetBool(bundle.RelationKeyIsDeleted) || details.GetBool(bundle.RelationKeyIsArchived) {
+		return "", false
 	}
-
 	//nolint:gosec
 	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	switch layout {
-	case model.ObjectType_relationOption:
-		relationKey = details.GetString(bundle.RelationKeyRelationKey)
-	case model.ObjectType_objectType:
-		relationKey = bundle.RelationKeyType.String()
 	case model.ObjectType_basic, model.ObjectType_note, model.ObjectType_profile, model.ObjectType_todo, model.ObjectType_participant:
-		relationKey = bundle.RelationKeyLinks.String()
-	default:
-		return nil
-	}
-
-	recs, err := s.queryAnyStore(s.componentCtx, database.FiltersAnd{
-		database.FilterAllIn{Key: domain.RelationKey(relationKey), Strings: []string{id}},
-		params.FilterObj,
-	}, params.Order, uint(limit), 0) //nolint:gosec
-	if err != nil {
-		log.Errorf("queryAnyStore failed to get objects with object in relation: %v", err)
-		return nil
-	}
-
-	injectedResults := make([]database.Record, 0, len(recs))
-	for _, rec := range recs {
-		relDetails := pbtypes.StructFilterKeys(details.ToProto(), []string{
-			bundle.RelationKeyId.String(),
-			bundle.RelationKeyName.String(),
-			bundle.RelationKeyType.String(),
-			bundle.RelationKeyResolvedLayout.String(),
-			bundle.RelationKeyRelationOptionColor.String(),
-		})
-		metaInj := model.SearchMeta{
-			RelationKey:     relationKey,
-			RelationDetails: relDetails,
+		return bundle.RelationKeyLinks, true
+	case model.ObjectType_objectType:
+		return bundle.RelationKeyType, true
+	case model.ObjectType_relationOption:
+		relKey := domain.RelationKey(details.GetString(bundle.RelationKeyRelationKey))
+		if relKey == "" {
+			return "", false
 		}
+		return relKey, true
+	default:
+		return "", false
+	}
+}
 
-		detailsCopy := rec.Details.Copy()
-		// set the same score as original object
-		detailsCopy.SetFloat64(bundle.RelationKey_score, score)
-		// nameMatch=false: injected objects are found via relation (links/type/priority),
-		// not because their own name matched the query.
-		detailsCopy.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(score, detailsCopy, false))
-		injectedResults = append(injectedResults, database.Record{
-			Details: detailsCopy,
-			Meta:    metaInj,
-		})
+func (s *dsObjectStore) injectRelatedObjects(
+	groups map[domain.RelationKey][]injectionHit,
+	budget int,
+	unlimited bool,
+	params database.Filters,
+	seen map[string]struct{},
+	records []database.Record,
+) []database.Record {
+	// process groups with the best-scoring hits first so that a limited budget
+	// is spent deterministically (map iteration order is randomized)
+	type scoredGroup struct {
+		relKey domain.RelationKey
+		hits   []injectionHit
+		best   float64
+	}
+	sortedGroups := make([]scoredGroup, 0, len(groups))
+	for relKey, hits := range groups {
+		best := hits[0].score
+		for _, hit := range hits[1:] {
+			if hit.score > best {
+				best = hit.score
+			}
+		}
+		sortedGroups = append(sortedGroups, scoredGroup{relKey: relKey, hits: hits, best: best})
+	}
+	sort.Slice(sortedGroups, func(i, j int) bool {
+		if sortedGroups[i].best != sortedGroups[j].best {
+			return sortedGroups[i].best > sortedGroups[j].best
+		}
+		return sortedGroups[i].relKey < sortedGroups[j].relKey
+	})
 
-		if len(injectedResults) == limit {
+	for _, group := range sortedGroups {
+		if !unlimited && budget <= 0 {
 			break
 		}
-	}
+		relKey, hits := group.relKey, group.hits
 
-	return injectedResults
+		hitMap := make(map[string]injectionHit, len(hits))
+		for i := range hits {
+			existing, ok := hitMap[hits[i].id]
+			if !ok || hits[i].score > existing.score {
+				hitMap[hits[i].id] = hits[i]
+			}
+		}
+		values := make([]domain.Value, 0, len(hitMap))
+		for id := range hitMap {
+			values = append(values, domain.String(id))
+		}
+
+		queryLimit := uint(0)
+		if !unlimited {
+			queryLimit = uint(budget) //nolint:gosec
+		}
+		recs, err := s.queryAnyStore(s.componentCtx, database.FiltersAnd{database.FilterIn{Key: relKey, Value: values}, params.FilterObj}, params.Order, queryLimit, 0)
+		if err != nil {
+			log.Errorf("inject related objects by %s: %v", relKey, err)
+			continue
+		}
+
+		for _, rec := range recs {
+			if !unlimited && budget <= 0 {
+				break
+			}
+			id := rec.Details.GetString(bundle.RelationKeyId)
+			if _, ok := seen[id]; ok {
+				continue
+			}
+			hit, ok := matchHit(rec.Details, relKey, hitMap)
+			if !ok {
+				continue
+			}
+			seen[id] = struct{}{}
+			budget--
+			records = append(records, makeInjectionRecord(rec, hit, string(relKey)))
+		}
+	}
+	return records
+}
+
+func matchHit(details *domain.Details, relKey domain.RelationKey, hitMap map[string]injectionHit) (injectionHit, bool) {
+	var (
+		best  injectionHit
+		found bool
+	)
+	for _, val := range details.WrapToStringList(relKey) {
+		hit, ok := hitMap[val]
+		if !ok {
+			continue
+		}
+		if !found || hit.score > best.score || (hit.score == best.score && hit.id < best.id) {
+			best = hit
+			found = true
+		}
+	}
+	return best, found
+}
+
+func makeInjectionRecord(source database.Record, hit injectionHit, relationKey string) database.Record {
+	relDetails := pbtypes.StructFilterKeys(hit.details.ToProto(), []string{
+		bundle.RelationKeyId.String(),
+		bundle.RelationKeyName.String(),
+		bundle.RelationKeyType.String(),
+		bundle.RelationKeyResolvedLayout.String(),
+		bundle.RelationKeyRelationOptionColor.String(),
+	})
+	detailsCopy := source.Details.Copy()
+	detailsCopy.SetFloat64(bundle.RelationKey_score, hit.score)
+	detailsCopy.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(hit.score, detailsCopy, false))
+	return database.Record{
+		Details: detailsCopy,
+		Meta: model.SearchMeta{
+			RelationKey:     relationKey,
+			RelationDetails: relDetails,
+		},
+	}
 }
 
 func (s *dsObjectStore) performQuery(q database.Query) (records []database.Record, err error) {
