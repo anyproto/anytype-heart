@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 func newDependencyService(s *spaceSubscriptions) *dependencyService {
@@ -51,18 +50,25 @@ func (ds *dependencyService) refillSubscription(ctx *opCtx, subId string, depSub
 func (ds *dependencyService) depIdsByEntries(
 	subId string, entries []*entry, depKeys []domain.RelationKey, forceIds []string,
 ) (depIds []string) {
-	depIds = forceIds
+	// clone to avoid appending into the caller's backing array
+	depIds = slices.Clone(forceIds)
+	seen := make(map[string]struct{}, len(forceIds))
+	for _, id := range forceIds {
+		seen[id] = struct{}{}
+	}
 	for _, e := range entries {
 		for _, k := range depKeys {
 			isSortKey := ds.sorts.isSortKey(subId, k)
 			for _, depId := range e.data.WrapToStringList(k) {
-				if depId != "" {
-					if slice.FindPos(depIds, depId) == -1 && depId != e.id {
-						depIds = append(depIds, depId)
-					}
-					if isSortKey {
-						ds.addDepOrderObject(depId, subId)
-					}
+				if depId == "" {
+					continue
+				}
+				if _, ok := seen[depId]; !ok && depId != e.id {
+					seen[depId] = struct{}{}
+					depIds = append(depIds, depId)
+				}
+				if isSortKey {
+					ds.addDepOrderObject(depId, subId)
 				}
 			}
 		}
