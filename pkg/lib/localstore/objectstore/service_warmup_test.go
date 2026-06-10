@@ -59,3 +59,22 @@ func TestPreloadConcurrencyOne_LoadsAll(t *testing.T) {
 		assert.Truef(t, ok, "space %s should be opened with concurrency=1", id)
 	}
 }
+
+// A warm-up aborted by shutdown must not report the stores as loaded:
+// WaitStoresLoaded returning nil over a partial store set would let
+// destructive cross-space callers (e.g. file GC marking) act on partial data
+// in the shutdown window. Aborted waiters must get an error instead.
+func TestBackgroundWarmUp_AbortedByShutdownDoesNotReportLoaded(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // component already shutting down before the warm-up runs
+	s := &dsObjectStore{
+		loadedCh:     make(chan struct{}),
+		componentCtx: ctx,
+	}
+
+	s.backgroundWarmUp()
+
+	err := s.WaitStoresLoaded(context.Background())
+	assert.ErrorIs(t, err, context.Canceled,
+		"aborted warm-up must surface an error, not report a partial set as loaded")
+}

@@ -489,6 +489,9 @@ func (s *dsObjectStore) authoritativeSpaceIds() []string {
 // never runs on a query hot path and never blocks Run().
 func (s *dsObjectStore) preloadExistingObjectStores() {
 	s.spaceStoreDirsCheck.Do(func() {
+		if s.componentCtx.Err() != nil {
+			return // shutting down: don't bother listing/opening anything
+		}
 		spaceIds := s.authoritativeSpaceIds()
 		sem := make(chan struct{}, preloadConcurrency)
 		var wg sync.WaitGroup
@@ -516,9 +519,18 @@ func (s *dsObjectStore) preloadExistingObjectStores() {
 
 // backgroundWarmUp runs the bounded preload and signals completion. Launched
 // as a goroutine from Run so component startup is never blocked.
+//
+// loadedCh is only closed when the preload actually covered the full
+// authoritative set. A warm-up aborted by shutdown must NOT signal "loaded":
+// WaitStoresLoaded returning nil over a partial store set would let
+// destructive cross-space callers act on partial data. Aborted waiters
+// unblock through the componentCtx case of WaitStoresLoaded, with an error.
 func (s *dsObjectStore) backgroundWarmUp() {
-	defer close(s.loadedCh)
 	s.preloadExistingObjectStores()
+	if s.componentCtx.Err() != nil {
+		return
+	}
+	close(s.loadedCh)
 }
 
 // WaitStoresLoaded blocks until the background warm-up has opened every

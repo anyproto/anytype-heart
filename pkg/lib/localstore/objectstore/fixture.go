@@ -95,8 +95,8 @@ func (w *walletStub) Name() string { return wallet.CName }
 type spaceIdsListerStub struct{ ids []string }
 
 func (s *spaceIdsListerStub) AllSpaceIds() (ids []string, err error) { return s.ids, nil }
-func (s *spaceIdsListerStub) Name() string                          { return "spaceIdsListerStub" }
-func (s *spaceIdsListerStub) Init(a *app.App) error                 { return nil }
+func (s *spaceIdsListerStub) Name() string                           { return "spaceIdsListerStub" }
+func (s *spaceIdsListerStub) Init(a *app.App) error                  { return nil }
 
 func NewStoreFixture(t testing.TB) *StoreFixture {
 	return newStoreFixture(t)
