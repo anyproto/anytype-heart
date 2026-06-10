@@ -161,3 +161,17 @@ type StaticSourceParams struct {
 	State     *state.State
 	CreatorId string
 }
+
+// ReadCoreSnapshotProvider exposes, under the object-tree lock, the inputs the
+// causal-ordinal read model (Option D) needs for one counter: the diff
+// manager's seen heads (the read frontier), the current tree heads, and
+// change-meta resolution from tree storage. The resolve callback is valid only
+// inside f — it reads tree storage and must not be retained (the tree lock is
+// released when f returns).
+//
+// Implemented by the sourceimpl store; consumers type-assert. Kept off the
+// Store interface so existing mocks stay untouched while the read model runs
+// in shadow.
+type ReadCoreSnapshotProvider interface {
+	ReadCoreSnapshot(name string, f func(frontier []string, localHeads []string, resolve func(id string) (prevIds []string, orderId string, ok bool))) bool
+}
