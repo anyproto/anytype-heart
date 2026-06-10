@@ -332,3 +332,27 @@ func (v *VirtualWidgetObject) Unlink(ctx session.Context, ids ...string) (err er
 	widget.UnlinkWithWrapper(st, ids...)
 	return v.Apply(st)
 }
+
+// Update overrides basic.Updatable so block mutations (e.g. BlockWidgetSetLayout,
+// SetLimit, SetViewId) are applied through v.Apply — the override that diffs the
+// pre/post state and pushes the per-entry delta to the CRDT store.
+//
+// basic.Update calls its embedded SmartBlock.Apply directly, which bypasses
+// VirtualWidgetObject.Apply. Without this override a layout/limit/viewId change
+// would mutate only the in-memory block state and never reach the store; the
+// next store-triggered rebuildAll (e.g. after a reorder) would then overwrite
+// the in-memory value with the stale store value, and the change would not
+// survive a restart.
+func (v *VirtualWidgetObject) Update(ctx session.Context, apply func(b simple.Block) error, blockIds ...string) (err error) {
+	st := v.NewStateCtx(ctx)
+	for _, id := range blockIds {
+		b := st.Get(id)
+		if b == nil {
+			return smartblock.ErrSimpleBlockNotFound
+		}
+		if err = apply(b); err != nil {
+			return err
+		}
+	}
+	return v.Apply(st)
+}
