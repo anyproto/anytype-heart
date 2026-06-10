@@ -579,14 +579,21 @@ func initSubEntries(objectStore spaceindex.Store, f *database.Filters, sub *sort
 	return nil
 }
 
+// queryEntries streams matching documents directly into entries, skipping the
+// intermediate records slice and the store-side sort: the subscription orders
+// entries itself in the skip-list
 func queryEntries(objectStore spaceindex.Store, f *database.Filters) ([]*entry, error) {
-	records, err := objectStore.QueryRaw(f, 0, 0)
+	var entries []*entry
+	err := objectStore.QueryRawIterate(f.FilterObj, func(doc *anyenc.Value) error {
+		details, err := domain.NewDetailsFromAnyEnc(doc)
+		if err != nil {
+			return fmt.Errorf("unmarshal details: %w", err)
+		}
+		entries = append(entries, newEntry(details.GetString(bundle.RelationKeyId), details))
+		return nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("objectStore query error: %w", err)
-	}
-	entries := make([]*entry, 0, len(records))
-	for _, r := range records {
-		entries = append(entries, newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details))
 	}
 	return entries, nil
 }

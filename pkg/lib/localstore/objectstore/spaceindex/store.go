@@ -54,6 +54,10 @@ type Store interface {
 	// It applies the same implicit filters as Query. Fulltext queries are not supported.
 	QueryAndCount(q database.Query) (records []database.Record, total int, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
+	// QueryRawIterate streams raw anyenc documents matching the filter, without sorting
+	// and without materializing them into records. The document is only valid within
+	// the callback; decode or copy what is needed
+	QueryRawIterate(filter database.Filter, proc func(doc *anyenc.Value) error) error
 	QueryByIds(ids []string) (records []database.Record, err error)
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIds(q database.Query) (ids []string, total int, err error)

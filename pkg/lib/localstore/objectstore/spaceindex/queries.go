@@ -163,6 +163,33 @@ func (s *dsObjectStore) QueryRaw(filters *database.Filters, limit int, offset in
 	return s.queryAnyStore(s.componentCtx, filters.FilterObj, filters.Order, uint(limit), uint(offset))
 }
 
+func (s *dsObjectStore) QueryRawIterate(filter database.Filter, proc func(doc *anyenc.Value) error) error {
+	if filter == nil {
+		return fmt.Errorf("filter cannot be nil")
+	}
+	iter, err := s.objects.Find(filter.AnystoreFilter()).Iter(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("find: %w", err)
+	}
+	defer iter.Close()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("get doc: %w", err)
+		}
+		err = proc(doc.Value())
+		if err != nil {
+			return fmt.Errorf("process doc: %w", err)
+		}
+	}
+	err = iter.Err()
+	if err != nil {
+		return fmt.Errorf("iterate: %w", err)
+	}
+	return nil
+}
+
 type injectionHit struct {
 	id      string
 	details *domain.Details
