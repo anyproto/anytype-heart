@@ -54,6 +54,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/personalspace"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
@@ -509,6 +510,23 @@ func (s *service) AllSpaceIds() (ids []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	for id := range s.spaceControllers {
+		if id == addr.AnytypeMarketplaceWorkspace {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return
+}
+
+// AllLoadedSpaceIds returns IDs of spaces that are fully loaded (in ModeLoading state).
+// Excludes marketplace space and spaces that are being offloaded, deleted, or joining.
+func (s *service) AllLoadedSpaceIds() (ids []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, c := range s.spaceControllers {
+		if c.Mode() != mode.ModeLoading {
+			continue
+		}
 		if id == addr.AnytypeMarketplaceWorkspace {
 			continue
 		}
