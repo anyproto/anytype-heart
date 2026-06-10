@@ -38,6 +38,9 @@ type ChatHandler struct {
 	reactionsCounterEpoch int64
 	// forceNotRead forces handler to mark all messages as not read. It's useful for unit testing
 	forceNotRead bool
+	// readCore receives Theorem-3 incremental band updates for the
+	// causal-ordinal read model; nil-safe (unset in bare handler tests).
+	readCore *readCoreManager
 }
 
 // canModerateAt reports whether the change author had Owner or Admin permission
@@ -104,6 +107,10 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	}
 	msg.HasMention = isMentioned
 	msg.OrderId = ch.Change.Order
+
+	if d.readCore != nil {
+		d.readCore.onMessageCreated(ch.Change.Id, msg.OrderId, msg.Creator, msg.HasMention)
+	}
 
 	prevOrderId, err := d.repository.GetPrevOrderId(ctx, ch.Change.Order)
 	if err != nil {
@@ -183,6 +190,10 @@ func (d *ChatHandler) BeforeDelete(ctx context.Context, ch storestate.ChangeOp) 
 	if err = d.indexerStore.AddChatMessageDeleteToIndexQueue(context.Background(), d.chatFullId, messageId); err != nil {
 		log.With(zap.String("chatId", d.chatFullId.ObjectID), zap.String("messageId", messageId), zap.Error(err)).
 			Error("failed to add message to fulltext delete queue")
+	}
+
+	if d.readCore != nil {
+		d.readCore.onMessageDeleted(messageId)
 	}
 
 	return storestate.DeleteModeDelete, nil

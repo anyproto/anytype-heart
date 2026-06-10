@@ -30,16 +30,41 @@ func (s *storeObject) computeReadCoreCount(ctx context.Context, counterType chat
 	if !isProvider {
 		return 0, 0, false, nil
 	}
-	var band chatmodel.BandResult
-	if !provider.ReadCoreSnapshot(counterType.DiffManagerName(), func(frontier, localHeads []string, resolve func(id string) ([]string, string, bool)) {
-		band = chatmodel.ComputeBand(frontier, localHeads, func(id string) (chatmodel.ChangeMeta, bool) {
+	var (
+		maxF     string
+		bandIds  []string
+		walked   bool
+		walkRes  chatmodel.BandResult
+		frontier []string
+	)
+	if !provider.ReadCoreSnapshot(counterType.DiffManagerName(), func(rawFrontier, localHeads []string, resolve func(id string) ([]string, string, bool)) {
+		frontier = append([]string(nil), rawFrontier...)
+		// Cached state is reused when the frontier is unchanged and fully
+		// resolved — then the band was kept current incrementally (Theorem 3)
+		// and no walk happens at all.
+		if s.readCore != nil {
+			if mF, ids, hit := s.readCore.cachedCut(counterType, rawFrontier); hit {
+				maxF, bandIds = mF, ids
+				return
+			}
+		}
+		walkRes = chatmodel.ComputeBand(rawFrontier, localHeads, func(id string) (chatmodel.ChangeMeta, bool) {
 			prevIds, orderId, rok := resolve(id)
 			return chatmodel.ChangeMeta{PrevIds: prevIds, OrderId: orderId}, rok
 		})
+		maxF, bandIds = walkRes.MaxFrontierOrderId, walkRes.Candidates
+		walked = true
 	}) {
 		return 0, 0, false, nil
 	}
-	coreCount, err = s.repository.CountCoreUnread(ctx, counterType, band.MaxFrontierOrderId, band.Candidates, s.accountService.AccountID())
+	// Cache bookkeeping strictly outside the tree lock: persistence does db
+	// writes, and the stale check reads the cold-start copy.
+	if walked && s.readCore != nil {
+		s.readCore.logIfStale(ctx, counterType, walkRes, frontier)
+		s.readCore.refresh(counterType, frontier, walkRes)
+		s.readCore.persistDirty(ctx)
+	}
+	coreCount, err = s.repository.CountCoreUnread(ctx, counterType, maxF, bandIds, s.accountService.AccountID())
 	if err != nil {
 		return 0, 0, false, fmt.Errorf("count core unread: %w", err)
 	}

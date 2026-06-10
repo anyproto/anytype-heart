@@ -18,15 +18,17 @@ import (
 // and ALSO exposes the snapshot).
 type fakeReadCoreProvider struct {
 	*mock_source.MockStore
-	frontier   []string
-	localHeads []string
-	metas      map[string]chatmodel.ChangeMeta
-	calls      int
+	frontier     []string
+	localHeads   []string
+	metas        map[string]chatmodel.ChangeMeta
+	calls        int
+	resolveCalls int
 }
 
 func (f *fakeReadCoreProvider) ReadCoreSnapshot(name string, fn func(frontier []string, localHeads []string, resolve func(id string) ([]string, string, bool))) bool {
 	f.calls++
 	fn(f.frontier, f.localHeads, func(id string) ([]string, string, bool) {
+		f.resolveCalls++
 		m, ok := f.metas[id]
 		return m.PrevIds, m.OrderId, ok
 	})
@@ -113,4 +115,50 @@ func TestComputeReadCoreCount_AgreeAndDiverge(t *testing.T) {
 		assert.Equal(t, 0, boolN)
 		assert.NotEqual(t, core, boolN, "the divergence the shadow logs")
 	})
+}
+
+// TestComputeReadCoreCount_CacheAndIncremental pins the runtime-flow contract
+// (spec §5): the walk runs only when the frontier changes; between frontier
+// changes the band is maintained incrementally (Theorem 3) and queries reuse
+// the cache — observed here via the provider's resolve-call counter.
+func TestComputeReadCoreCount_CacheAndIncremental(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	prov := canonicalProviderDag(fx.source)
+	fx.storeSource = prov
+	fx.addPeerRowWithRead(t, "a1", "o02", "alice", false)
+	fx.addPeerRowWithRead(t, "b1", "o03", "bob", true)
+
+	// first call: cold in-process state -> walks
+	core, _, ok, err := fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, 1, core, "band{a1}")
+	assert.Positive(t, prov.resolveCalls, "first call must walk")
+
+	// second call, same frontier: cache hit, zero walking
+	walked := prov.resolveCalls
+	core, _, _, err = fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
+	require.NoError(t, err)
+	assert.Equal(t, 1, core)
+	assert.Equal(t, walked, prov.resolveCalls, "unchanged frontier must not re-walk")
+
+	// a late in-past insert arrives: the tree gains the change, the handler
+	// fires the Theorem-3 hook — the count updates with STILL no walk
+	prov.metas["p0"] = chatmodel.ChangeMeta{PrevIds: []string{"G"}, OrderId: "o01x"}
+	prov.localHeads = []string{"a1", "b1", "p0"}
+	fx.addPeerRowWithRead(t, "p0", "o01x", "carol", false)
+	fx.readCore.onMessageCreated("p0", "o01x", "carol", false)
+
+	core, _, _, err = fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
+	require.NoError(t, err)
+	assert.Equal(t, 2, core, "band{a1,p0} after the incremental append")
+	assert.Equal(t, walked, prov.resolveCalls, "incremental maintenance must not trigger a walk")
+
+	// frontier advances (user read a1 too): cache miss -> one fresh walk
+	prov.frontier = []string{"a1", "b1"}
+	core, _, _, err = fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
+	require.NoError(t, err)
+	assert.Greater(t, prov.resolveCalls, walked, "frontier change must re-walk")
+	assert.Equal(t, 1, core, "only the in-past insert p0 stays unread")
 }
