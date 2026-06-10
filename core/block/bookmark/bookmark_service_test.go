@@ -149,6 +149,8 @@ func TestService_updateFilesCreatedInContext(t *testing.T) {
 	// AND a non-empty CreatedInContextRef set so that object GC cascade-archives them
 	// when the bookmark is archived/deleted. The GC query (core/block/objectgc) gates
 	// on a non-empty CreatedInContextRef, so setting only CreatedInContext is not enough.
+	// CreatedInContextRef holds the relation key the bookmark links the file through
+	// (picture/iconImage), not the bookmark object id.
 	t.Run("sets CreatedInContext and CreatedInContextRef on icon and picture files", func(t *testing.T) {
 		// given
 		ds := &recordingDetailsSetter{}
@@ -158,19 +160,23 @@ func TestService_updateFilesCreatedInContext(t *testing.T) {
 			ImageHash:   "picture-file-id",
 			FaviconHash: "icon-file-id",
 		}}
+		wantRef := map[string]domain.RelationKey{
+			"picture-file-id": bundle.RelationKeyPicture,
+			"icon-file-id":    bundle.RelationKeyIconImage,
+		}
 
 		// when
 		s.updateFilesCreatedInContext(bk, content)
 
 		// then
-		for _, fileId := range []string{"picture-file-id", "icon-file-id"} {
+		for fileId, relationKey := range wantRef {
 			ctx, ok := ds.valueFor(fileId, bundle.RelationKeyCreatedInContext)
 			assert.True(t, ok, "CreatedInContext must be set for %s", fileId)
 			assert.Equal(t, bk, ctx.String())
 
 			ref, ok := ds.valueFor(fileId, bundle.RelationKeyCreatedInContextRef)
 			assert.True(t, ok, "CreatedInContextRef must be set for %s", fileId)
-			assert.Equal(t, bk, ref.String(), "CreatedInContextRef must be non-empty for GC to cascade-archive")
+			assert.Equal(t, relationKey.String(), ref.String(), "CreatedInContextRef must be the relation key the file is linked through, for GC to cascade-archive")
 		}
 	})
 

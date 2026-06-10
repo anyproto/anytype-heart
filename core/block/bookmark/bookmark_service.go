@@ -244,27 +244,30 @@ func (s *service) updateFilesCreatedInContext(bookmarkObjectId string, content *
 		return
 	}
 
-	fileIds := []string{}
-	if content.BookmarkContent.ImageHash != "" {
-		fileIds = append(fileIds, content.BookmarkContent.ImageHash)
-	}
-	if content.BookmarkContent.FaviconHash != "" {
-		fileIds = append(fileIds, content.BookmarkContent.FaviconHash)
+	// The bookmark references these files via object relations (iconImage/picture)
+	// rather than via a block, so the in-context reference is the relation key the
+	// file is linked through. A non-empty CreatedInContextRef is required for object
+	// GC to cascade-archive these files when the bookmark is archived or deleted
+	// (see core/block/objectgc: the GC query gates on a non-empty CreatedInContextRef
+	// to leave collection-linked files untouched).
+	files := []struct {
+		fileId      string
+		relationKey domain.RelationKey
+	}{
+		{content.BookmarkContent.ImageHash, bundle.RelationKeyPicture},
+		{content.BookmarkContent.FaviconHash, bundle.RelationKeyIconImage},
 	}
 
-	for _, fileId := range fileIds {
-		err := s.detailsSetter.SetDetails(nil, fileId, []domain.Detail{
+	for _, f := range files {
+		if f.fileId == "" {
+			continue
+		}
+		err := s.detailsSetter.SetDetails(nil, f.fileId, []domain.Detail{
 			{Key: bundle.RelationKeyCreatedInContext, Value: domain.String(bookmarkObjectId)},
-			// The bookmark references these files via the iconImage/picture object
-			// relations rather than via a block, so the in-context reference is the
-			// bookmark object itself. A non-empty CreatedInContextRef is required for
-			// object GC to cascade-archive these files when the bookmark is archived or
-			// deleted (see core/block/objectgc: the GC query gates on a non-empty
-			// CreatedInContextRef to leave collection-linked files untouched).
-			{Key: bundle.RelationKeyCreatedInContextRef, Value: domain.String(bookmarkObjectId)},
+			{Key: bundle.RelationKeyCreatedInContextRef, Value: domain.String(f.relationKey.String())},
 		})
 		if err != nil {
-			log.Errorf("update CreatedInContext for file %s: %s", fileId, err)
+			log.Errorf("update CreatedInContext for file %s: %s", f.fileId, err)
 		}
 	}
 }
