@@ -114,7 +114,7 @@ func New() *Service {
 			objects: make(map[string]string),
 			lock:    &sync.Mutex{},
 		},
-		chatSubs: map[string]*objectsubscription.ObjectSubscription[struct{}]{},
+		chatSubs: map[string]*objectsubscription.ObjectSubscription[int64]{},
 	}
 	return s
 }
@@ -149,11 +149,12 @@ type Service struct {
 	openedObjs                 *openedObjects
 
 	// chatSubs holds a lazily-started, per-space internal subscription tracking
-	// chat object ids (id field only). It feeds GetPriorityIds so diffsync can
-	// head-sync chats first without re-querying the store each cycle (GO-7302).
+	// chat object ids and their resolved layout. It feeds GetPriorityIds so
+	// diffsync can head-sync chats first (chatDerived before discussion) without
+	// re-querying the store each cycle (GO-7302).
 	subscriptionService subscription.Service
 	chatSubsMu          sync.Mutex
-	chatSubs            map[string]*objectsubscription.ObjectSubscription[struct{}]
+	chatSubs            map[string]*objectsubscription.ObjectSubscription[int64]
 	chatSubsClosed      bool
 
 	componentCtx       context.Context
@@ -407,24 +408,50 @@ func (s *Service) GetOpenedObjects() []lo.Entry[string, string] {
 	return mutex.WithLock(s.openedObjs.lock, func() []lo.Entry[string, string] { return lo.Entries[string, string](s.openedObjs.objects) })
 }
 
+// chatPrioritySubParams tracks each chat object's resolved layout so
+// GetPriorityIds can order chatDerived chats (space-level chats) ahead of
+// discussion objects.
+var chatPrioritySubParams = objectsubscription.SubscriptionParams[int64]{
+	SetDetails: func(details *domain.Details) (string, int64) {
+		return details.GetString(bundle.RelationKeyId), details.GetInt64(bundle.RelationKeyResolvedLayout)
+	},
+	UpdateKeys: func(keyValues []objectsubscription.RelationKeyValue, layout int64) int64 {
+		for _, kv := range keyValues {
+			if kv.Key == bundle.RelationKeyResolvedLayout.String() {
+				layout = kv.Value.Int64()
+			}
+		}
+		return layout
+	},
+	RemoveKeys: func(keys []string, layout int64) int64 {
+		return layout
+	},
+}
+
 // GetPriorityIds returns tree ids that diffsync should head-sync first for the
-// space: chat objects, then objects the user currently has open. The tree syncer
-// (GO-7302) intersects this with its diff set and moves the matches to the front
-// of the single-worker head queue, so the order here is the sync priority order.
-// An object that is both a chat and currently open is listed once (under chats).
+// space: chatDerived chats, then discussion objects, then objects the user
+// currently has open. The tree syncer (GO-7302) intersects this with its diff
+// set and moves the matches to the front of the single-worker head queue, so the
+// order here is the sync priority order. An object appearing in more than one
+// group is listed once, in the highest-priority group.
 //
-// Chat ids are read from a lazily-started, per-space internal subscription
-// (id field only) so we don't re-query the store on every diffsync cycle.
+// Chat ids and layouts are read from a lazily-started, per-space internal
+// subscription so we don't re-query the store on every diffsync cycle.
 func (s *Service) GetPriorityIds(spaceId string) []string {
-	var ids []string
+	var chats, discussions []string
 	seen := map[string]struct{}{}
 	if sub := s.chatIdsSub(spaceId); sub != nil {
-		sub.Iterate(func(id string, _ struct{}) bool {
+		sub.Iterate(func(id string, layout int64) bool {
 			seen[id] = struct{}{}
-			ids = append(ids, id)
+			if layout == int64(model.ObjectType_chatDerived) {
+				chats = append(chats, id)
+			} else {
+				discussions = append(discussions, id)
+			}
 			return true
 		})
 	}
+	ids := append(chats, discussions...)
 	for _, opened := range s.GetOpenedObjects() {
 		if opened.Value != spaceId {
 			continue
@@ -437,12 +464,12 @@ func (s *Service) GetPriorityIds(spaceId string) []string {
 	return ids
 }
 
-// chatIdsSub returns the per-space chat-id subscription, starting it on first
-// use. The subscription requests only the id field and stays live, so repeated
-// reads are in-memory. Returns nil if the subscription can't be started or the
-// service is closing (so a diffsync racing Close can't re-create a subscription
-// that would never be released).
-func (s *Service) chatIdsSub(spaceId string) *objectsubscription.ObjectSubscription[struct{}] {
+// chatIdsSub returns the per-space chat subscription, starting it on first use.
+// The subscription requests only the id and resolved layout and stays live, so
+// repeated reads are in-memory. Returns nil if the subscription can't be started
+// or the service is closing (so a diffsync racing Close can't re-create a
+// subscription that would never be released).
+func (s *Service) chatIdsSub(spaceId string) *objectsubscription.ObjectSubscription[int64] {
 	s.chatSubsMu.Lock()
 	defer s.chatSubsMu.Unlock()
 	if s.chatSubsClosed {
@@ -451,12 +478,12 @@ func (s *Service) chatIdsSub(spaceId string) *objectsubscription.ObjectSubscript
 	if sub, ok := s.chatSubs[spaceId]; ok {
 		return sub
 	}
-	sub := objectsubscription.NewIdSubscription(s.subscriptionService, subscription.SubscribeRequest{
+	sub := objectsubscription.New(s.subscriptionService, subscription.SubscribeRequest{
 		SpaceId:           spaceId,
 		SubId:             "block-chat-priority-" + spaceId,
 		Internal:          true,
 		NoDepSubscription: true,
-		Keys:              []string{bundle.RelationKeyId.String()},
+		Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyResolvedLayout.String()},
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
@@ -464,7 +491,7 @@ func (s *Service) chatIdsSub(spaceId string) *objectsubscription.ObjectSubscript
 				Value:       domain.Int64List([]model.ObjectTypeLayout{model.ObjectType_chatDerived, model.ObjectType_discussion}),
 			},
 		},
-	})
+	}, chatPrioritySubParams)
 	if err := sub.Run(); err != nil {
 		log.With("spaceId", spaceId).Errorf("run chat priority subscription: %v", err)
 		return nil
@@ -766,7 +793,7 @@ func (s *Service) Close(_ context.Context) (err error) {
 	for _, sub := range s.chatSubs {
 		sub.Close()
 	}
-	s.chatSubs = map[string]*objectsubscription.ObjectSubscription[struct{}]{}
+	s.chatSubs = map[string]*objectsubscription.ObjectSubscription[int64]{}
 	s.chatSubsMu.Unlock()
 	return nil
 }
