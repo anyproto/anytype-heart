@@ -61,6 +61,8 @@ func (s *spaceController) Mode() mode.Mode {
 	return mode.ModeLoading
 }
 
+func (s *spaceController) Demand() {}
+
 func (s *spaceController) WaitLoad(context.Context) (sp clientspace.Space, err error) {
 	s.reindexOnce.Do(func() {
 		// TODO: GO-3557 Need to confirm moving ReindexMarketplaceSpace from Start to WaitLoad with mcrakhman

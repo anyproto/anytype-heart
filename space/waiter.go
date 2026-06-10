@@ -21,7 +21,6 @@ type waiterService interface {
 	TechSpace() *clientspace.TechSpace
 	Get(ctx context.Context, spaceId string) (clientspace.Space, error)
 	checkControllerExists(spaceId string) bool
-	ensureSpaceStarted(spaceId string)
 }
 
 type spaceWaiter struct {
@@ -50,10 +49,6 @@ func (w *spaceWaiter) waitSpace(ctx context.Context, spaceId string) (sp clients
 			return nil, ErrSpaceNotExists
 		}
 	}
-	// Lazy multi-space loading: in lazy mode the watcher does not eagerly
-	// build deferred spaces, so promote this one on demand before waiting
-	// for its controller to appear. No-op in eager mode.
-	w.svc.ensureSpaceStarted(spaceId)
 	// we should wait a bit until the controller is created
 	for !w.svc.checkControllerExists(spaceId) {
 		select {

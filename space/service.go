@@ -72,10 +72,9 @@ var log = logger.NewNamed(CName)
 var (
 	waitSpaceDelay        = 500 * time.Millisecond
 	loadTechSpaceDeadline = 15 * time.Second
-	// Tunables for client-driven lazy multi-space loading. Vars (not consts) so
-	// tests and benchmarks can override them.
+	// preloadRemainingSpacesTimeout bounds how long lazy mode defers loading
+	// the non-preferred spaces. Var (not const) so tests can override it.
 	preloadRemainingSpacesTimeout = 10 * time.Second
-	preloadConcurrency            = 2
 )
 
 var (
@@ -148,20 +147,17 @@ type service struct {
 	autoJoinStreamSpace string
 	spaceControllers    map[string]spacecontroller.SpaceController
 	waiting             map[string]controllerWaiter
-	// Client-driven lazy multi-space loading (spec 2026-05-17). Latest
-	// spaceViewStatus per space, cached while deferred so the backlog can be
-	// drained later (RPC / timer / preferred-space failure).
-	deferredStatuses map[string]spaceViewStatus
-	preferredSpaceId string // from config; "" => eager (today's behavior)
+	preferredSpaceId    string // from config; "" => eager (load all at startup)
 	// lazyMode is set exactly once in initAccount before watcher.Run() and is
 	// never mutated afterwards, so it is safe to read without s.mu (the
 	// happens-before from watcher.Run() / goroutine spawn covers all readers).
-	lazyMode               bool
-	releasing              bool                                // guarded by s.mu; true once the backlog is being drained
-	preloadOnce            sync.Once                           // single release trigger (RPC | timer | dynamic fallback)
-	preloadCh              chan struct{}                       // closed by triggerRelease()
-	applySpaceStatusHook   func(spaceViewStatus)               // test seam; nil in production
-	startStatusHook        func(spaceinfo.SpacePersistentInfo) // test seam; nil in production
+	lazyMode bool
+	// released is true once the lazy backlog has been released (RPC | timer |
+	// preferred-space fallback); registrations after that demand immediately.
+	// Guarded by s.mu.
+	released               bool
+	preloadOnce            sync.Once     // single release trigger
+	preloadCh              chan struct{} // closed by triggerRelease()
 	accountMetadataSymKey  crypto.SymKey
 	accountMetadataPayload []byte
 	repKey                 uint64
@@ -205,7 +201,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.identityService = app.MustComponent[dependencies.IdentityService](a)
 	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
 	s.waiting = make(map[string]controllerWaiter)
-	s.deferredStatuses = make(map[string]spaceViewStatus)
 	s.preferredSpaceId = s.config.PreferredSpaceId
 	s.preloadCh = make(chan struct{})
 	s.techSpaceReady = make(chan struct{})
@@ -323,7 +318,7 @@ func (s *service) initAccount(ctx context.Context) (err error) {
 			case <-s.ctx.Done():
 				return
 			}
-			s.drainDeferred(s.ctx)
+			s.releaseAll()
 		}()
 	}
 	s.techSpace.StartSync()
@@ -446,7 +441,7 @@ func (s *service) onSpaceStatusUpdated(spaceStatus spaceViewStatus) {
 			return
 		}
 		s.maybeReleaseOnPreferredBroken(spaceStatus)
-		s.decideAndApplySpaceStatus(spaceStatus)
+		s.applySpaceStatus(spaceStatus)
 	}()
 }
 
@@ -463,34 +458,6 @@ func (s *service) maybeReleaseOnPreferredBroken(spaceStatus spaceViewStatus) {
 		spaceStatus.remoteStatus == spaceinfo.RemoteStatusDeleted {
 		s.triggerRelease()
 	}
-}
-
-// decideAndApplySpaceStatus is the production defer-or-build decision (called
-// from onSpaceStatusUpdated). B2: the releasing read, the deferredStatuses
-// write, and the branch choice are ONE critical section, atomic w.r.t.
-// drainDeferred (which sets releasing+snapshots+clears under the same lock).
-// Never read under lock then branch after unlock.
-func (s *service) decideAndApplySpaceStatus(spaceStatus spaceViewStatus) {
-	s.mu.Lock()
-	_, alreadyStarted := s.spaceControllers[spaceStatus.spaceId]
-	_, alreadyWaiting := s.waiting[spaceStatus.spaceId]
-	shouldDefer := s.lazyMode &&
-		spaceStatus.spaceId != s.preferredSpaceId &&
-		!s.releasing &&
-		!alreadyStarted &&
-		!alreadyWaiting
-	if shouldDefer {
-		s.deferredStatuses[spaceStatus.spaceId] = spaceStatus
-		s.mu.Unlock()
-		log.Debug("lazy space build: deferring space until released", zap.String("spaceId", spaceStatus.spaceId))
-		return
-	}
-	s.mu.Unlock()
-	if s.applySpaceStatusHook != nil {
-		s.applySpaceStatusHook(spaceStatus)
-		return
-	}
-	s.applySpaceStatus(spaceStatus)
 }
 
 // computeLazyMode decides, once, whether to defer non-preferred spaces.
@@ -511,9 +478,9 @@ func (s *service) computeLazyMode(ctx context.Context, techSpace *clientspace.Te
 }
 
 // applySpaceStatus creates (idempotently) the space controller for the given
-// status and pushes the persistent info into it. This is the eager-build body
-// extracted from onSpaceStatusUpdated so it can also be invoked on demand by
-// ensureSpaceStarted for deferred (non-personal) spaces.
+// status and pushes the persistent info into it. In lazy mode non-preferred
+// controllers register dormant: they offload/join according to their status
+// but do not load until demanded (Get/Wait/preload release).
 func (s *service) applySpaceStatus(spaceStatus spaceViewStatus) {
 	if s.isClosing.Load() {
 		return
@@ -525,9 +492,7 @@ func (s *service) applySpaceStatus(spaceStatus spaceViewStatus) {
 		return
 	}
 	// startStatus returns (nil, err) on any factory error, so guard against a
-	// nil ctrl when err is ErrSpaceDeleted (mirrors ensureSpaceStarted) to
-	// avoid a nil-pointer deref now that this body is also invoked from
-	// drainDeferred workers and on-demand promotion.
+	// nil ctrl when err is ErrSpaceDeleted.
 	if err != nil {
 		return
 	}
@@ -537,93 +502,9 @@ func (s *service) applySpaceStatus(spaceStatus spaceViewStatus) {
 	}
 }
 
-// ensureSpaceStarted promotes a deferred space on demand (Wait/Get/workspaceOpen).
-// E2: in lazy mode the watcher no longer eagerly creates controllers, so if no
-// status is cached yet we must derive+build instead of no-op (otherwise
-// waitSpace blocks until the caller ctx is cancelled). Eager mode keeps the
-// original no-op (the watcher creates the controller).
-func (s *service) ensureSpaceStarted(spaceId string) {
-	s.mu.Lock()
-	_, ctrlOk := s.spaceControllers[spaceId]
-	_, waitingOk := s.waiting[spaceId]
-	status, hasStatus := s.deferredStatuses[spaceId]
-	if hasStatus {
-		// Remove it from the backlog so a later drainDeferred does not snapshot
-		// and rebuild it; the delete shares this critical section with
-		// drainDeferred's snapshot+clear so the entry cannot be lost.
-		delete(s.deferredStatuses, spaceId)
-	}
-	s.mu.Unlock()
-	if ctrlOk || waitingOk {
-		return
-	}
-	if hasStatus {
-		s.applySpaceStatus(status)
-		return
-	}
-	if !s.lazyMode {
-		return
-	}
-	log.Debug("lazy space build: promoting space on demand (derived)", zap.String("spaceId", spaceId))
-	// Resolve the real persistent space-view info (EncodedKey/guestKey,
-	// accountStatus, aclHeadId) instead of building from a zero value. A
-	// zero-value info has EncodedKey=="", which startStatus dispatches to
-	// NewShareableSpace (load.go), so a guest/streamable space would be
-	// permanently built as the wrong controller type with no signing key and
-	// would never self-correct. statusToInfo carries the same fields for the
-	// cached-status path; here we read them from the space view directly.
-	info, ok := s.resolveDerivedInfo(spaceId)
-	if !ok {
-		// The space view is absent (unknown id / not synced yet) or unreadable.
-		// Do not build from zero-value info: the failed build would poison
-		// s.waiting (startStatus caches the error, so a later Join/InviteJoin
-		// of this id fails for the rest of the session) and Get would return a
-		// techspace error instead of ErrSpaceNotExists. Bail out and let the
-		// caller fail with ErrSpaceNotExists, same as eager mode.
-		return
-	}
-	if s.startStatusHook != nil {
-		s.startStatusHook(info)
-		return
-	}
-	ctrl, err := s.startStatus(s.ctx, info)
-	if err != nil && !errors.Is(err, ErrSpaceDeleted) {
-		log.Warn("ensureSpaceStarted startStatus error", zap.Error(err))
-		return
-	}
-	if err == nil {
-		if err = ctrl.Update(); err != nil {
-			log.Warn("ensureSpaceStarted ctrl.Update error", zap.Error(err))
-		}
-	}
-}
-
-// resolveDerivedInfo reads the persistent space-view info (account status,
-// aclHeadId, encoded guest key) for a space promoted on demand before any
-// status was cached. Preserving EncodedKey is what lets startStatus pick the
-// correct controller type (NewStreamableSpace for guest/stream spaces vs
-// NewShareableSpace), mirroring statusToInfo for the cached-status path.
-// Returns ok=false when the view cannot be read (no view for this id, or a
-// transient techspace error); the caller must not build in that case.
-func (s *service) resolveDerivedInfo(spaceId string) (info spaceinfo.SpacePersistentInfo, ok bool) {
-	info = spaceinfo.NewSpacePersistentInfo(spaceId)
-	if s.techSpace == nil {
-		return info, false
-	}
-	err := s.techSpace.DoSpaceView(s.ctx, spaceId, func(spaceView techspace.SpaceView) error {
-		info = spaceView.GetPersistentInfo()
-		return nil
-	})
-	if err != nil {
-		log.Warn("ensureSpaceStarted resolve persistent info", zap.String("spaceId", spaceId), zap.Error(err))
-		return spaceinfo.NewSpacePersistentInfo(spaceId), false
-	}
-	return info, true
-}
-
-// triggerRelease is the single idempotent "release the deferred backlog"
-// signal, shared by the AccountPreloadRemainingSpaces RPC, the safety timer,
-// and the preferred-space dynamic fallback.
+// triggerRelease is the single idempotent "release the lazy backlog" signal,
+// shared by the AccountPreloadRemainingSpaces RPC, the safety timer, and the
+// preferred-space dynamic fallback.
 func (s *service) triggerRelease() {
 	s.preloadOnce.Do(func() {
 		close(s.preloadCh)
@@ -631,55 +512,30 @@ func (s *service) triggerRelease() {
 }
 
 // PreloadRemainingSpaces releases spaces deferred by lazy mode. Idempotent and
-// safe to call before any status is cached.
+// safe to call at any time.
 func (s *service) PreloadRemainingSpaces(ctx context.Context) error {
 	s.triggerRelease()
 	return nil
 }
 
-// drainDeferred releases the deferred backlog. B2: set releasing + snapshot +
-// clear is ONE critical section, atomic w.r.t. decideAndApplySpaceStatus's
-// decision. Builds with bounded concurrency. Bails out if the service is
-// closing so a late timer-triggered drain cannot build controllers that
-// Close() has already stopped tracking (applySpaceStatus re-checks per build).
-func (s *service) drainDeferred(ctx context.Context) {
+// releaseAll demands every registered space. Registrations that race with the
+// release are covered by startStatus: it re-checks released after inserting
+// the controller, so a controller is either in the snapshot taken here or
+// demands itself.
+func (s *service) releaseAll() {
 	if s.isClosing.Load() {
 		return
 	}
 	s.mu.Lock()
-	s.releasing = true
-	snapshot := make([]spaceViewStatus, 0, len(s.deferredStatuses))
-	for _, st := range s.deferredStatuses {
-		snapshot = append(snapshot, st)
+	s.released = true
+	ctrls := make([]spacecontroller.SpaceController, 0, len(s.spaceControllers))
+	for _, ctrl := range s.spaceControllers {
+		ctrls = append(ctrls, ctrl)
 	}
-	s.deferredStatuses = make(map[string]spaceViewStatus)
 	s.mu.Unlock()
-
-	if len(snapshot) == 0 {
-		return
+	for _, ctrl := range ctrls {
+		ctrl.Demand()
 	}
-	sem := make(chan struct{}, preloadConcurrency)
-	var wg sync.WaitGroup
-	for _, st := range snapshot {
-		select {
-		case <-ctx.Done():
-			wg.Wait()
-			return
-		default:
-		}
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(st spaceViewStatus) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			if s.applySpaceStatusHook != nil {
-				s.applySpaceStatusHook(st)
-				return
-			}
-			s.applySpaceStatus(st)
-		}(st)
-	}
-	wg.Wait()
 }
 
 func (s *service) SpaceViewSetOneToOneIdentity(spaceId string, identity string) {

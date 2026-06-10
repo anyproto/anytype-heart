@@ -104,8 +104,6 @@ func (w *waiterStub) Get(ctx context.Context, spaceId string) (clientspace.Space
 	return w.clientSpace, nil
 }
 
-func (w *waiterStub) ensureSpaceStarted(spaceId string) {}
-
 func (w *waiterStub) checkControllerExists(spaceId string) bool {
 	defer func() {
 		w.cntr++

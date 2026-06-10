@@ -5,12 +5,14 @@ package accountspace
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/util/crypto"
 	"go.uber.org/zap"
 
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
@@ -81,6 +83,9 @@ func NewSpaceController(desc Descriptor, a *app.App) (spacecontroller.SpaceContr
 		s.updater = updater
 	}
 	s.rec = newReconciler(s, log.With(zap.String("spaceId", desc.SpaceId)))
+	// seed the desired status so deletion/joining converge in the background
+	// even when the space is never demanded (deletion outranks demand)
+	s.rec.setStatus(s.status.GetPersistentStatus())
 	return s, nil
 }
 
@@ -100,6 +105,27 @@ func (s *spaceController) Start(ctx context.Context) error {
 	s.rec.setInputs(s.status.GetPersistentStatus(), true)
 	_, err := s.rec.waitConverged(ctx)
 	return err
+}
+
+// Demand marks the space as wanted-loaded; loading happens in the background.
+func (s *spaceController) Demand() {
+	s.rec.setDemand()
+}
+
+// WaitLoad demands the space and blocks until it is fully loaded. It fails
+// with the real load error, with ErrModeUnreachable when the space status
+// dictates another mode (offloading/joining), or on ctx/close.
+func (s *spaceController) WaitLoad(ctx context.Context) (clientspace.Space, error) {
+	s.rec.setDemand()
+	proc, err := s.rec.waitMode(ctx, mode.ModeLoading)
+	if err != nil {
+		return nil, err
+	}
+	ld, ok := proc.(loader.LoadWaiter)
+	if !ok {
+		return nil, fmt.Errorf("loading process does not support WaitLoad")
+	}
+	return ld.WaitLoad(ctx)
 }
 
 func (s *spaceController) Mode() mode.Mode {

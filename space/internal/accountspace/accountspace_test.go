@@ -117,6 +117,33 @@ func TestSpaceController_StartFailureSurfacesErrorAndRetries(t *testing.T) {
 	}, time.Second, 5*time.Millisecond)
 }
 
+func TestSpaceController_DormantStaysIdleUntilDemand(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
+	defer fx.stop()
+	// registration alone (no Start) must not load anything
+	time.Sleep(50 * time.Millisecond)
+	require.Equal(t, mode.ModeInitial, fx.ctrl.Mode())
+	require.Empty(t, fx.reg.snapshot())
+
+	fx.ctrl.Demand()
+	fx.waitModes(t, mode.ModeLoading)
+}
+
+func TestSpaceController_DormantOffloadsWithoutDemand(t *testing.T) {
+	// deletion outranks demand: a never-demanded space still offloads
+	fx := newFixture(t, spaceinfo.AccountStatusDeleted)
+	defer fx.stop()
+	fx.waitModes(t, mode.ModeOffloading)
+}
+
+func TestSpaceController_WaitLoadFailsWhenOffloading(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusDeleted)
+	defer fx.stop()
+	fx.waitModes(t, mode.ModeOffloading)
+	_, err := fx.ctrl.WaitLoad(context.Background())
+	require.ErrorIs(t, err, ErrModeUnreachable)
+}
+
 func TestSpaceController_CloseUnblocksWaiters(t *testing.T) {
 	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
 	fx.f.blockLoading = make(chan struct{})
@@ -377,6 +404,8 @@ func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 		app:     &app.App{},
 	}
 	controller.rec = newReconciler(f, log)
+	// mirror NewSpaceController: seed the desired status at registration
+	controller.rec.setStatus(s.GetPersistentStatus())
 	s.persistentUpdater = func(status spaceinfo.AccountStatus) {
 		go func() {
 			err := controller.Update()

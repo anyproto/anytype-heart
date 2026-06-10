@@ -120,6 +120,7 @@ func TestService_Init(t *testing.T) {
 			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+			prCtrl.EXPECT().Start(mock.Anything).Return(nil)
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
@@ -131,6 +132,7 @@ func TestService_Init(t *testing.T) {
 			fx.factory.EXPECT().CreateAndSetTechSpace(mock.Anything).Return(&clientspace.TechSpace{TechSpace: fx.techSpace}, nil)
 			prCtrl := mock_spacecontroller.NewMockSpaceController(t)
 			fx.factory.EXPECT().NewPersonalSpace(mock.Anything, mock.Anything).Return(prCtrl, nil)
+			prCtrl.EXPECT().Start(mock.Anything).Return(nil)
 			prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 			fx.techSpace.EXPECT().StartSync()
 		})
@@ -318,9 +320,8 @@ func (fx *fixture) expectRun(t *testing.T, expectOldAccount func(t *testing.T, f
 		commonSpace.EXPECT().Id().Return(fx.spaceId).AnyTimes()
 		fx.spaceCore.EXPECT().Create(mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&spacecore.AnySpace{Space: commonSpace}, nil)
 		fx.factory.EXPECT().CreateShareableSpace(mock.Anything, mock.Anything, mock.Anything).Return(prCtrl, nil)
-		lw := lwMock{clientSpace}
 		clientSpace.EXPECT().Id().Return(fx.spaceId)
-		prCtrl.EXPECT().Current().Return(lw)
+		prCtrl.EXPECT().WaitLoad(mock.Anything).Return(clientSpace, nil)
 		prCtrl.EXPECT().Close(mock.Anything).Return(nil)
 		ts.EXPECT().StartSync()
 	} else {
@@ -408,6 +409,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		personalCtrl.EXPECT().SpaceId().Return(fx.spaceId).Maybe()
 		personalCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 		fx.factory.EXPECT().NewPersonalSpace(mock.Anything, fx.service.accountMetadataPayload).Return(personalCtrl, nil)
+		personalCtrl.EXPECT().Start(mock.Anything).Return(nil)
 		personalCtrl.EXPECT().Update().Run(func() {
 			close(done)
 		}).Return(nil).Once()
@@ -431,6 +433,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		shareableCtrl.EXPECT().SpaceId().Return(shareableSpaceId).Maybe()
 		shareableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 		fx.factory.EXPECT().NewShareableSpace(mock.Anything, shareableSpaceId, mock.Anything).Return(shareableCtrl, nil)
+		shareableCtrl.EXPECT().Start(mock.Anything).Return(nil)
 		shareableCtrl.EXPECT().Update().Run(func() {
 			close(done)
 		}).Return(nil).Once()
@@ -454,6 +457,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		streamableCtrl.EXPECT().SpaceId().Return(streamableSpaceId).Maybe()
 		streamableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 		fx.factory.EXPECT().NewStreamableSpace(mock.Anything, streamableSpaceId, mock.Anything, fx.service.accountMetadataPayload).Return(streamableCtrl, nil)
+		streamableCtrl.EXPECT().Start(mock.Anything).Return(nil)
 		streamableCtrl.EXPECT().Update().Run(func() {
 			close(done)
 		}).Return(nil).Once()
@@ -505,6 +509,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		shareableCtrl.EXPECT().SpaceId().Return(alreadyDeletedSpaceId).Maybe()
 		shareableCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 		fx.factory.EXPECT().NewShareableSpace(mock.Anything, alreadyDeletedSpaceId, mock.Anything).Return(shareableCtrl, nil)
+		shareableCtrl.EXPECT().Start(mock.Anything).Return(nil)
 		shareableCtrl.EXPECT().Update().Run(func() {
 			close(done)
 		}).Return(nil).Once()
@@ -543,6 +548,7 @@ func TestService_onSpaceStatusUpdated(t *testing.T) {
 		updateErrorCtrl.EXPECT().SpaceId().Return(updateErrorSpaceId).Maybe()
 		updateErrorCtrl.EXPECT().Close(mock.Anything).Return(nil).Maybe()
 		fx.factory.EXPECT().NewShareableSpace(mock.Anything, updateErrorSpaceId, mock.Anything).Return(updateErrorCtrl, nil)
+		updateErrorCtrl.EXPECT().Start(mock.Anything).Return(nil)
 		updateErrorCtrl.EXPECT().Update().Return(fmt.Errorf("update error"))
 
 		fx.objectStore.AddObjects(t, fx.service.techSpaceId, []objectstore.TestObject{

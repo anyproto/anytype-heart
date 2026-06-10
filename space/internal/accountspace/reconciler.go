@@ -3,6 +3,7 @@ package accountspace
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-sync/app/logger"
@@ -12,7 +13,13 @@ import (
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
 
-var ErrCtrlClosed = errors.New("space controller is closed")
+var (
+	ErrCtrlClosed = errors.New("space controller is closed")
+	// ErrModeUnreachable is returned by waits whose wanted mode is not the
+	// current target (e.g. WaitLoad on a space whose status dictates
+	// offloading).
+	ErrModeUnreachable = errors.New("mode unreachable")
+)
 
 type processFactory interface {
 	Process(md mode.Mode) mode.Process
@@ -97,9 +104,28 @@ func (r *reconciler) setInputs(status spaceinfo.AccountStatus, demand bool) {
 
 func (r *reconciler) setStatus(status spaceinfo.AccountStatus) {
 	r.mu.Lock()
-	demand := r.demand
+	if r.status == status {
+		r.mu.Unlock()
+		return
+	}
+	r.status = status
+	r.failedErr = nil
+	r.broadcastLocked()
 	r.mu.Unlock()
-	r.setInputs(status, demand)
+	r.wakeUp()
+}
+
+func (r *reconciler) setDemand() {
+	r.mu.Lock()
+	if r.demand {
+		r.mu.Unlock()
+		return
+	}
+	r.demand = true
+	r.failedErr = nil
+	r.broadcastLocked()
+	r.mu.Unlock()
+	r.wakeUp()
 }
 
 func (r *reconciler) getMode() mode.Mode {
@@ -128,6 +154,40 @@ func (r *reconciler) waitConverged(ctx context.Context) (mode.Process, error) {
 			return nil, err
 		}
 		if target := computeTarget(r.status, r.demand); r.mode == target {
+			p := r.current
+			r.mu.Unlock()
+			return p, nil
+		}
+		ch := r.changed
+		r.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-r.ctx.Done():
+			return nil, ErrCtrlClosed
+		case <-ch:
+		}
+	}
+}
+
+// waitMode blocks until the actual state equals want and returns the running
+// process. It fails fast with ErrModeUnreachable when want is not the current
+// target, with the real transition error when the reconciler is parked in a
+// failed state, and with ErrCtrlClosed / ctx.Err on shutdown or cancellation.
+func (r *reconciler) waitMode(ctx context.Context, want mode.Mode) (mode.Process, error) {
+	for {
+		r.mu.Lock()
+		if r.failedErr != nil {
+			err := r.failedErr
+			r.mu.Unlock()
+			return nil, err
+		}
+		if target := computeTarget(r.status, r.demand); target != want {
+			cur := r.mode
+			r.mu.Unlock()
+			return nil, fmt.Errorf("space is %s, target %s, want %s: %w", cur, target, want, ErrModeUnreachable)
+		}
+		if r.mode == want {
 			p := r.current
 			r.mu.Unlock()
 			return p, nil

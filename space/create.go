@@ -10,7 +10,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/loader"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -83,7 +82,7 @@ func (s *service) CreateOneToOne(ctx context.Context, description *spaceinfo.Spa
 		return nil, err
 	}
 
-	sp, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
+	sp, err = ctrl.WaitLoad(ctx)
 	s.mu.Lock()
 	close(wait)
 	if err != nil {
@@ -126,7 +125,7 @@ func (s *service) create(ctx context.Context, description *spaceinfo.SpaceDescri
 		s.mu.Unlock()
 		return nil, err
 	}
-	sp, err = ctrl.Current().(loader.LoadWaiter).WaitLoad(ctx)
+	sp, err = ctrl.WaitLoad(ctx)
 	s.mu.Lock()
 	close(wait)
 	if err != nil {
