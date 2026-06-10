@@ -23,10 +23,12 @@ type fakeReadCoreProvider struct {
 	metas        map[string]chatmodel.ChangeMeta
 	calls        int
 	resolveCalls int
+	names        []string // diff manager names the snapshot was asked for
 }
 
 func (f *fakeReadCoreProvider) ReadCoreSnapshot(name string, fn func(frontier []string, localHeads []string, resolve func(id string) ([]string, string, bool))) bool {
 	f.calls++
+	f.names = append(f.names, name)
 	fn(f.frontier, f.localHeads, func(id string) ([]string, string, bool) {
 		f.resolveCalls++
 		m, ok := f.metas[id]
@@ -35,15 +37,17 @@ func (f *fakeReadCoreProvider) ReadCoreSnapshot(name string, fn func(frontier []
 	return true
 }
 
-func (fx *fixture) addPeerRowWithRead(t *testing.T, id, orderId, creator string, read bool) {
+func (fx *fixture) addPeerRowWithRead(t *testing.T, id, orderId, creator string, read, hasMention bool) {
 	t.Helper()
 	msg := &chatmodel.Message{ChatMessage: &model.ChatMessage{
-		Id:      id,
-		OrderId: orderId,
-		Creator: creator,
-		Read:    read,
-		Message: &model.ChatMessageMessageContent{Text: id},
+		Id:          id,
+		OrderId:     orderId,
+		Creator:     creator,
+		Read:        read,
+		MentionRead: read,
+		Message:     &model.ChatMessageMessageContent{Text: id},
 	}}
+	msg.HasMention = hasMention
 	require.NoError(t, fx.repository.AddTestMessage(context.Background(), msg))
 }
 
@@ -92,8 +96,8 @@ func TestComputeReadCoreCount_AgreeAndDiverge(t *testing.T) {
 	t.Run("agree", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.storeSource = canonicalProviderDag(fx.source)
-		fx.addPeerRowWithRead(t, "a1", "o02", "alice", false) // unread, matches read*
-		fx.addPeerRowWithRead(t, "b1", "o03", "bob", true)    // covered by frontier
+		fx.addPeerRowWithRead(t, "a1", "o02", "alice", false, false) // unread, matches read*
+		fx.addPeerRowWithRead(t, "b1", "o03", "bob", true, false)    // covered by frontier
 
 		core, boolN, ok, err := fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
 		require.NoError(t, err)
@@ -105,8 +109,8 @@ func TestComputeReadCoreCount_AgreeAndDiverge(t *testing.T) {
 	t.Run("diverge", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.storeSource = canonicalProviderDag(fx.source)
-		fx.addPeerRowWithRead(t, "a1", "o02", "alice", true) // wrongly flagged read
-		fx.addPeerRowWithRead(t, "b1", "o03", "bob", true)
+		fx.addPeerRowWithRead(t, "a1", "o02", "alice", true, false) // wrongly flagged read
+		fx.addPeerRowWithRead(t, "b1", "o03", "bob", true, false)
 
 		core, boolN, ok, err := fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
 		require.NoError(t, err)
@@ -126,8 +130,8 @@ func TestComputeReadCoreCount_CacheAndIncremental(t *testing.T) {
 	fx := newFixture(t)
 	prov := canonicalProviderDag(fx.source)
 	fx.storeSource = prov
-	fx.addPeerRowWithRead(t, "a1", "o02", "alice", false)
-	fx.addPeerRowWithRead(t, "b1", "o03", "bob", true)
+	fx.addPeerRowWithRead(t, "a1", "o02", "alice", false, false)
+	fx.addPeerRowWithRead(t, "b1", "o03", "bob", true, false)
 
 	// first call: cold in-process state -> walks
 	core, _, ok, err := fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
@@ -147,8 +151,8 @@ func TestComputeReadCoreCount_CacheAndIncremental(t *testing.T) {
 	// fires the Theorem-3 hook — the count updates with STILL no walk
 	prov.metas["p0"] = chatmodel.ChangeMeta{PrevIds: []string{"G"}, OrderId: "o01x"}
 	prov.localHeads = []string{"a1", "b1", "p0"}
-	fx.addPeerRowWithRead(t, "p0", "o01x", "carol", false)
-	fx.readCore.onMessageCreated("p0", "o01x", "carol", false)
+	fx.addPeerRowWithRead(t, "p0", "o01x", "carol", false, false)
+	fx.readCore.onMessageCreated("p0", "o01x", "carol")
 
 	core, _, _, err = fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
 	require.NoError(t, err)
@@ -161,4 +165,35 @@ func TestComputeReadCoreCount_CacheAndIncremental(t *testing.T) {
 	require.NoError(t, err)
 	assert.Greater(t, prov.resolveCalls, walked, "frontier change must re-walk")
 	assert.Equal(t, 1, core, "only the in-past insert p0 stays unread")
+}
+
+// TestComputeReadCoreCount_MentionIsFilterOverMessageFrontier pins D4: the
+// mention counter shares THE (message) frontier — the snapshot is taken from
+// the messages diff manager even for the mention counter, and the mention
+// count is the same unread set filtered by hasMention. "Message read but its
+// mention unread" cannot exist.
+func TestComputeReadCoreCount_MentionIsFilterOverMessageFrontier(t *testing.T) {
+	ctx := context.Background()
+	fx := newFixture(t)
+	prov := canonicalProviderDag(fx.source)
+	fx.storeSource = prov
+	fx.addPeerRowWithRead(t, "a1", "o02", "alice", false, true) // unread mention in the band
+	fx.addPeerRowWithRead(t, "b1", "o03", "bob", true, false)   // covered plain message
+
+	core, boolN, ok, err := fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMention)
+	require.NoError(t, err)
+	require.True(t, ok)
+	assert.Equal(t, 1, core, "mention count = unread ∧ hasMention over the shared band")
+	assert.Equal(t, 1, boolN, "legacy mentionRead flags agree in the aligned state")
+	for _, name := range prov.names {
+		assert.Equal(t, chatmodel.CounterTypeMessage.DiffManagerName(), name,
+			"D4: even the mention counter snapshots the MESSAGE frontier")
+	}
+
+	// the same band serves the message counter without re-walking
+	walked := prov.resolveCalls
+	coreMsg, _, _, err := fx.computeReadCoreCount(ctx, chatmodel.CounterTypeMessage)
+	require.NoError(t, err)
+	assert.Equal(t, 1, coreMsg, "message counter sees the mention row too")
+	assert.Equal(t, walked, prov.resolveCalls, "one shared frontier -> one shared cache, no second walk")
 }

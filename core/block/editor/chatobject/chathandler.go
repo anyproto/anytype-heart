@@ -109,7 +109,7 @@ func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) 
 	msg.OrderId = ch.Change.Order
 
 	if d.readCore != nil {
-		d.readCore.onMessageCreated(ch.Change.Id, msg.OrderId, msg.Creator, msg.HasMention)
+		d.readCore.onMessageCreated(ch.Change.Id, msg.OrderId, msg.Creator)
 	}
 
 	prevOrderId, err := d.repository.GetPrevOrderId(ctx, ch.Change.Order)

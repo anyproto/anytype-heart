@@ -43,6 +43,24 @@ Decisions this spec rests on:
 - **D3:** the mutable per-message `read`/`mentionRead` bools and `SetReadFlag`
   are removed; read status is computed. `AddSeq` remains only as the replay
   cursor; it is no longer a read-model axis.
+- **D4 (product, 2026-06-10): one frontier, counters are filters.** Reading a
+  message reads everything attached to it (its mention, its reactions). There
+  is exactly ONE read frontier — the message frontier; the mention counter is
+  the same unread set filtered by `hasMention` (and Stage 4's reaction counter
+  is the same frontier filtered through reaction events). "Message read but
+  its mention unread" is unrepresentable by construction. The independent
+  mention diff manager (`diffManagerMentions`) and its seen-heads KV entry are
+  retired at cutover; until then the shadow measures how far the two legacy
+  frontiers drift apart in practice (expected: negligible — clients advance
+  both with the same ranges).
+- **D5 (product, 2026-06-10): `MarkMessagesAsUnread` is deprecated** (unused
+  by clients) and is NOT implemented in the computed model; the RPC is removed
+  at cutover (Stage 3). Consequence: the frontier is **monotone** — it only
+  grows — which removes every regression flow, regression event, and
+  regression-related cache invalidation from this design, and with them the
+  three known bool-vs-CORE divergence classes the legacy flow produced
+  (own-messages-flipped-unread, the g-prefix frontier swallow, and the
+  mention/messages diff-manager hardcode bug in `reading.go`).
 
 Notation (as in the companion docs): `≺`/`⪯` causal order; `X ∥ Y` concurrent;
 `g(X)` = OrderId (replica-invariant order); `F` = seen-head frontier (synced as a
@@ -268,8 +286,9 @@ marshal time (own messages: always read).
 merges); apply Theorem 3's O(1) `bandSet` rule; if the change is a delete of a
 band member, remove it from `bandIds`.
 
-**Frontier changes** (`MarkSeenHeads` advance, markunread re-seed, a pending
-head attaching, cross-device KV update):
+**Frontier changes** (`MarkSeenHeads` advance, a pending head attaching,
+cross-device KV update — the frontier is monotone per D5, there is no
+regression flow):
 1. Resolve heads (unresolved → pending, omitted — the existing safe over-count,
    `readwatermark.go:54-59`).
 2. Compute `maxF`; run the certificate (Theorem 2). If 0 → `bandIds = ∅`, done.
@@ -279,12 +298,12 @@ head attaching, cross-device KV update):
    lookups — paid once per frontier change, then cached. (The certificate makes
    the expensive case rare: a huge-tail cold frontier with `bandCreated = 0`
    skips the walk entirely.)
-4. Persist the cache; emit transition events:
-   - read-advance `F_old → F_new`: newly-read =
-     `(band_old ∖ band_new) ∪ (range (maxF_old, maxF_new] ∖ band_new)`
-   - markunread regression: newly-unread =
-     `(band_new ∖ band_old) ∪ (range (maxF_new, maxF_old] ∖ band_old)`
+4. Persist the cache; emit transition events. The frontier is monotone (D5),
+   so the only transition is the read-advance `F_old → F_new`: newly-read =
+   `(band_old ∖ band_new) ∪ (range (maxF_old, maxF_new] ∖ band_new)`.
    One range scan + two tiny set diffs — replaces `SetReadFlag.idsModified`.
+   (Newly-UNREAD events come only from arrivals — the Theorem-3 appends and
+   the tail — never from frontier movement.)
 
 **Unlabeled head** (legacy change, backfill not done): skip the certificate,
 run the walk (CORE mode) — still exact and convergent, just not O(1).
@@ -303,7 +322,10 @@ run the walk (CORE mode) — still exact and convergent, just not O(1).
    `OrderId`/`HasMention` stamping; sidecar writes in the same tx as doc writes.
 3. **Repository**: `unreadCount`/`unreadIds`/status from §5's query path;
    frontier-cache read/write; certificate query on the sidecar.
-4. **Removed** (after cutover soak): `read`/`mentionRead` bools + their indexes,
+4. **Removed** (after cutover soak): `MarkMessagesAsUnread` + its RPC chain
+   (D5; delete `reading.go:56-104` including its diff-manager hardcode bug),
+   the independent mention diff manager + its seen-heads KV entry (D4),
+   `read`/`mentionRead` bools + their indexes,
    `SetReadFlag`, `getReadFilter` paths, `firstAddSeq` field + index,
    `GetUnreadMessagesComputed`, `GetReadFrontier`/`ReadFrontierProvider`, the
    AddSeq conjunct of `dominated` (the watermark object may remain solely as the
@@ -339,10 +361,17 @@ The CORE works with zero labels — that makes the rollout safely incremental:
 
 ## 8. Mention counter
 
-Identical machinery with the `hasMention` filter and its **own frontier**
-(`diffManagerMentions`) → own `maxF`, own `bandIds`, `pastMention` label.
-Mention immutability post-create (§3) makes the fold exact. Own mentions are
-excluded by the counted predicate (own messages are never counted).
+**A filter, not a dimension (D4).** The mention counter shares THE frontier
+(the message frontier), the same `maxF`, the same band; the only difference is
+the `hasMention` predicate applied at query time (`CountCoreUnread`'s counter
+filter) — so mention-unread ⟺ unread ∧ hasMention, and "message read but its
+mention unread" cannot exist. One cached state serves both counters. The
+`pastMention` label remains (it feeds the mention zero-certificate), and
+mention immutability post-create (§3) keeps it exact. Own mentions are
+excluded by the counted predicate (own messages are never counted). The legacy
+independent mention diff manager exists only as the bool path's shadow oracle
+until cutover; the shadow soak doubles as the measurement of how far the two
+legacy frontiers actually drift in the wild.
 
 ---
 
@@ -395,8 +424,9 @@ New, in priority order:
    certificate soundness: `bandCreated(H*) = 0 ⟹ band = ∅` (Theorem 2).
 4. **Theorem 3 unit** — attach-after-resolve never needs an ancestry check;
    in-past insert lands in `bandSet`; delete removes it.
-5. **Frontier flows** — advance / markunread / pending-head-attach event diffs
-   match `SetReadFlag.idsModified` semantics (S-cat17 class).
+5. **Frontier flows** — advance / pending-head-attach event diffs match
+   `SetReadFlag.idsModified` semantics (the frontier is monotone per D5;
+   regression flows no longer exist).
 6. **Snapshot guard** — synthetic non-genesis snapshot → label-untrusted mode,
    over-count direction, loud log.
 7. **Sign-off flip** — `S-concurrent-merge`/`S-cat12`/`S-cat19` → MATCH;
@@ -426,9 +456,10 @@ without the O(tree) cold-start rebuild (~18.6 s) that motivated its removal.
   the subtlest code; pin with the Theorem 4 property test before relying on it.
   (Stage 1 doesn't need it — CORE has no fold.)
 - **R2 — frontier-change walk worst case** is O(unread + band) when the
-  certificate is non-zero on a huge-tail frontier (e.g. markunread-to-ancient in
-  a 100k chat with concurrency below the cut). Once per frontier change, cached;
-  still ≪ O(tree). Accepted.
+  certificate is non-zero on a huge-tail frontier (e.g. a long-dormant chat
+  with concurrency below the old cut). Once per frontier change, cached;
+  still ≪ O(tree). Accepted. (With D5 the frontier is monotone, so the
+  ancient-frontier case arises only from dormancy, never from regression.)
 - **R3 — sidecar growth** is unbounded-with-history by design (labels must
   outlive deletes). Acceptable at ~5 MB/100k; revisit only if chat trees grow
   orders beyond that.
@@ -466,8 +497,14 @@ transition detection in `handleReactionsModify`
 - **Counted entity:** a *reaction event* `r` — a counted reaction-add detected
   at apply — with coordinates `(g(r), msgId(r), reactor(r), emoji(r))`.
 - **Counter:** `|{ live messages m : ∃ counted reaction event r → m, ¬read*(r) }|`
-  against the reactions frontier `F_r` (the existing `diffManagerReactions`
-  seen-heads set, kept as-is).
+  against the reactions frontier `F_r`. **Per D4, `F_r` = THE frontier** (the
+  message frontier): reading a message reads its reactions, and reading any
+  newer message causally covers older reaction events automatically (every
+  later change links all heads). The legacy `diffManagerReactions` survives
+  only as the bool-era oracle until Stage 4 lands. Client-flow note for
+  cutover: "viewed the chat" must advance the frontier to the currently
+  visible heads (any change type), so a reaction that is itself a tree head
+  is covered when seen.
 - **Decomposition (Theorem 1, verbatim):** `r` unread ⟺ `g(r) > maxF_r` or
   `r ∈ bandSet_r(F_r)`. Reaction events are changes; nothing in §2 is
   message-specific. Theorem 3's O(1) maintenance applies unchanged.

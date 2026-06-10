@@ -37,13 +37,15 @@ func (s *storeObject) computeReadCoreCount(ctx context.Context, counterType chat
 		walkRes  chatmodel.BandResult
 		frontier []string
 	)
-	if !provider.ReadCoreSnapshot(counterType.DiffManagerName(), func(rawFrontier, localHeads []string, resolve func(id string) ([]string, string, bool)) {
+	// D4: one frontier — both counters are served from the MESSAGE diff
+	// manager's seen heads; the mention distinction is a query-time filter.
+	if !provider.ReadCoreSnapshot(chatmodel.CounterTypeMessage.DiffManagerName(), func(rawFrontier, localHeads []string, resolve func(id string) ([]string, string, bool)) {
 		frontier = append([]string(nil), rawFrontier...)
 		// Cached state is reused when the frontier is unchanged and fully
 		// resolved — then the band was kept current incrementally (Theorem 3)
 		// and no walk happens at all.
 		if s.readCore != nil {
-			if mF, ids, hit := s.readCore.cachedCut(counterType, rawFrontier); hit {
+			if mF, ids, hit := s.readCore.cachedCut(rawFrontier); hit {
 				maxF, bandIds = mF, ids
 				return
 			}
@@ -60,8 +62,8 @@ func (s *storeObject) computeReadCoreCount(ctx context.Context, counterType chat
 	// Cache bookkeeping strictly outside the tree lock: persistence does db
 	// writes, and the stale check reads the cold-start copy.
 	if walked && s.readCore != nil {
-		s.readCore.logIfStale(ctx, counterType, walkRes, frontier)
-		s.readCore.refresh(counterType, frontier, walkRes)
+		s.readCore.logIfStale(ctx, walkRes, frontier)
+		s.readCore.refresh(frontier, walkRes)
 		s.readCore.persistDirty(ctx)
 	}
 	coreCount, err = s.repository.CountCoreUnread(ctx, counterType, maxF, bandIds, s.accountService.AccountID())
