@@ -56,7 +56,7 @@ func (s *service) startIndexMigration() error {
 }
 
 func (s *service) listNonIndexedFiles() ([]database.Record, error) {
-	return s.objectStore.QueryCrossSpace(database.Query{
+	return s.objectStore.QueryCrossSpace(s.componentCtx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,

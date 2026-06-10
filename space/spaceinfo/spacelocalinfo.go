@@ -136,6 +136,34 @@ func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
 	return s
 }
 
+// Equal reports whether every field set on s already matches the corresponding
+// detail in details. Unset (nil) fields are ignored, mirroring UpdateDetails.
+// It lets callers skip a no-op state apply when the status hasn't changed.
+func (s *SpaceLocalInfo) Equal(details *domain.Details) bool {
+	if details == nil {
+		return false
+	}
+	if details.GetString(bundle.RelationKeyTargetSpaceId) != s.SpaceId {
+		return false
+	}
+	if s.localStatus != nil && details.GetInt64(bundle.RelationKeySpaceLocalStatus) != int64(*s.localStatus) {
+		return false
+	}
+	if s.remoteStatus != nil && details.GetInt64(bundle.RelationKeySpaceRemoteStatus) != int64(*s.remoteStatus) {
+		return false
+	}
+	if s.shareableStatus != nil && details.GetInt64(bundle.RelationKeySpaceShareableStatus) != int64(*s.shareableStatus) {
+		return false
+	}
+	if s.writeLimit != nil && details.GetInt64(bundle.RelationKeyWritersLimit) != int64(*s.writeLimit) {
+		return false
+	}
+	if s.readLimit != nil && details.GetInt64(bundle.RelationKeyReadersLimit) != int64(*s.readLimit) {
+		return false
+	}
+	return true
+}
+
 func (s *SpaceLocalInfo) Log(log *logging.Sugared) *SpaceLocalInfo {
 	log = log.With("spaceId", s.SpaceId)
 	if s.localStatus != nil {

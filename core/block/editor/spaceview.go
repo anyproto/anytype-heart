@@ -135,6 +135,11 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 }
 
 func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
+	// Skip the no-op state apply when nothing changed: on app start this path is
+	// hit ~1300 times, almost always with values identical to what's stored.
+	if info.Equal(s.LocalDetails()) {
+		return nil
+	}
 	st := s.NewState()
 	info.UpdateDetails(st).Log(log)
 	s.updateAccessType(st)
@@ -265,6 +270,9 @@ func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 }
 
 func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
+	if info.Equal(s.CombinedDetails()) {
+		return nil
+	}
 	st := s.NewState()
 	s.setSpacePersistentInfo(st, info)
 	return s.Apply(st)

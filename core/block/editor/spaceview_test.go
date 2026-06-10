@@ -114,6 +114,49 @@ func TestSpaceView_Info(t *testing.T) {
 	})
 }
 
+func TestSpaceView_Info_SkipUnchanged(t *testing.T) {
+	t.Run("local info", func(t *testing.T) {
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		info := spaceinfo.NewSpaceLocalInfo("spaceId")
+		info.SetLocalStatus(spaceinfo.LocalStatusOk).
+			SetRemoteStatus(spaceinfo.RemoteStatusOk).
+			SetShareableStatus(spaceinfo.ShareableStatusShareable)
+		require.NoError(t, fx.SetSpaceLocalInfo(info))
+
+		// Re-applying the same info is a no-op but must keep the stored values.
+		require.NoError(t, fx.SetSpaceLocalInfo(info))
+		cur := fx.GetLocalInfo()
+		require.Equal(t, spaceinfo.LocalStatusOk, cur.GetLocalStatus())
+		require.Equal(t, spaceinfo.RemoteStatusOk, cur.GetRemoteStatus())
+		require.Equal(t, spaceinfo.ShareableStatusShareable, cur.GetShareableStatus())
+
+		// A real change still goes through.
+		changed := spaceinfo.NewSpaceLocalInfo("spaceId")
+		changed.SetLocalStatus(spaceinfo.LocalStatusLoading)
+		require.NoError(t, fx.SetSpaceLocalInfo(changed))
+		cur = fx.GetLocalInfo()
+		require.Equal(t, spaceinfo.LocalStatusLoading, cur.GetLocalStatus())
+	})
+	t.Run("persistent info", func(t *testing.T) {
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		info := spaceinfo.NewSpacePersistentInfo("spaceId")
+		info.SetAccountStatus(spaceinfo.AccountStatusActive)
+		require.NoError(t, fx.SetSpacePersistentInfo(info))
+
+		require.NoError(t, fx.SetSpacePersistentInfo(info))
+		cur := fx.GetPersistentInfo()
+		require.Equal(t, spaceinfo.AccountStatusActive, cur.GetAccountStatus())
+
+		changed := spaceinfo.NewSpacePersistentInfo("spaceId")
+		changed.SetAccountStatus(spaceinfo.AccountStatusDeleted)
+		require.NoError(t, fx.SetSpacePersistentInfo(changed))
+		cur = fx.GetPersistentInfo()
+		require.Equal(t, spaceinfo.AccountStatusDeleted, cur.GetAccountStatus())
+	})
+}
+
 func TestSpaceView_SharedSpacesLimit(t *testing.T) {
 	fx := newSpaceViewFixture(t)
 	defer fx.finish()

@@ -777,6 +777,23 @@ func (s *service) AllSpaceIds() (ids []string) {
 	return
 }
 
+// AllLoadedSpaceIds returns IDs of spaces that are fully loaded (in ModeLoading state).
+// Excludes marketplace space and spaces that are being offloaded, deleted, or joining.
+func (s *service) AllLoadedSpaceIds() (ids []string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for id, c := range s.spaceControllers {
+		if c.Mode() != mode.ModeLoading {
+			continue
+		}
+		if id == addr.AnytypeMarketplaceWorkspace {
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return
+}
+
 // syncAllHeadsParallelism bounds how many spaces are head-synced at once so a
 // foreground resume doesn't hit every space simultaneously.
 const syncAllHeadsParallelism = 10
@@ -784,13 +801,14 @@ const syncAllHeadsParallelism = 10
 // SyncAllSpaceHeads triggers an immediate head-sync (diff) round for every
 // actively loaded space. Used on app foreground (GO-7302) to refresh all spaces
 // promptly after a wakeup instead of waiting for each space's next periodic
-// diffsync tick. Runs in the background and does not block the caller; spaces
-// that are offloaded, deleted or still initializing are skipped.
+// diffsync tick. Runs in the background and does not block the caller; only
+// loaded spaces (AllLoadedSpaceIds) can serve a head-sync round — skipping
+// offloaded/deleted/initializing ones avoids a warning per inactive space.
 func (s *service) SyncAllSpaceHeads() {
 	if s.isClosing.Load() {
 		return
 	}
-	ids := s.activeSpaceIds()
+	ids := s.AllLoadedSpaceIds()
 	go func() {
 		sem := make(chan struct{}, syncAllHeadsParallelism)
 		var wg sync.WaitGroup
@@ -814,25 +832,6 @@ func (s *service) SyncAllSpaceHeads() {
 		}
 		wg.Wait()
 	}()
-}
-
-// activeSpaceIds returns ids of spaces whose controllers are in loading mode —
-// the only ones that can serve a head-sync round. Offloaded, deleted and
-// not-yet-started spaces are skipped so a foreground resume doesn't produce a
-// warning per inactive space.
-func (s *service) activeSpaceIds() (ids []string) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	for id, ctrl := range s.spaceControllers {
-		if id == addr.AnytypeMarketplaceWorkspace {
-			continue
-		}
-		if ctrl.Mode() != mode.ModeLoading {
-			continue
-		}
-		ids = append(ids, id)
-	}
-	return
 }
 
 func (s *service) TechSpaceId() string {

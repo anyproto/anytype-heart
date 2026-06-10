@@ -345,7 +345,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if existingFile, err := s.getFileVariantBySourceChecksum(mill.ID(), conf.checksum, opts); err == nil {
+	if existingFile, err := s.getFileVariantBySourceChecksum(ctx, mill.ID(), conf.checksum, opts); err == nil {
 		existingRes, err := newExistingFileResult(existingFile)
 		if err == nil {
 			return existingRes, nil
@@ -364,7 +364,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if existingFile, variant, err := s.getFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
+	if existingFile, variant, err := s.getFileVariantByChecksum(ctx, mill.ID(), variantChecksum); err == nil {
 		if variant.Source == conf.checksum {
 			// we may have same variant checksum for different files
 			// e.g. empty image exif with the same resolution

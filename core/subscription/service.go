@@ -294,33 +294,42 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 	if spaceId == "" {
 		return nil, fmt.Errorf("spaceId is empty")
 	}
+	// Open the per-space store BEFORE taking s.lock. SpaceIndex can be the
+	// first open of this space and then synchronously fires OnSpaceIndexOpened,
+	// whose cross-space-subscription callback re-enters subscriptionService.Search
+	// on this same goroutine (Search -> Unsubscribe / getSpaceSubscriptions ->
+	// s.lock). Holding s.lock across SpaceIndex would self-deadlock on this
+	// non-reentrant mutex. See TestLazySubscribe_SearchFirstOpenerDoesNotDeadlock.
+	// SpaceIndex is idempotent, so a concurrent/re-entrant open is safe.
+	index := s.objectStore.SpaceIndex(spaceId)
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	spaceSubs, ok := s.spaceSubs[spaceId]
-	if !ok {
-		cache := newCache()
-		spaceSubs = &spaceSubscriptions{
-			cache:             cache,
-			subscriptionKeys:  make([]string, 0, 20),
-			subscriptions:     make(map[string]subscription, 20),
-			customOutput:      map[string]*internalSubOutput{},
-			recBatch:          mb.New[database.Record](0),
-			objectStore:       s.objectStore.SpaceIndex(spaceId),
-			kanban:            s.kanban,
-			collectionService: s.collectionService,
-			eventSender:       s.eventSender,
-			ctxBuf:            &opCtx{spaceId: spaceId, c: cache},
-			arenaPool:         s.arenaPool,
-		}
-		spaceSubs.ds = newDependencyService(spaceSubs)
-		spaceSubs.initDebugger()
-		err := spaceSubs.Run()
-		if err != nil {
-			return nil, fmt.Errorf("run space subscriptions: %w", err)
-		}
-		s.spaceSubs[spaceId] = spaceSubs
+	// The re-entrant open above may already have created the spaceSubscriptions.
+	if spaceSubs, ok := s.spaceSubs[spaceId]; ok {
+		return spaceSubs, nil
 	}
+	cache := newCache()
+	spaceSubs := &spaceSubscriptions{
+		cache:             cache,
+		subscriptionKeys:  make([]string, 0, 20),
+		subscriptions:     make(map[string]subscription, 20),
+		customOutput:      map[string]*internalSubOutput{},
+		recBatch:          mb.New[database.Record](0),
+		objectStore:       index,
+		kanban:            s.kanban,
+		collectionService: s.collectionService,
+		eventSender:       s.eventSender,
+		ctxBuf:            &opCtx{spaceId: spaceId, c: cache},
+		arenaPool:         s.arenaPool,
+	}
+	spaceSubs.ds = newDependencyService(spaceSubs)
+	spaceSubs.initDebugger()
+	if err := spaceSubs.Run(); err != nil {
+		return nil, fmt.Errorf("run space subscriptions: %w", err)
+	}
+	s.spaceSubs[spaceId] = spaceSubs
 	return spaceSubs, nil
 }
 
@@ -350,15 +359,19 @@ type spaceSubscriptions struct {
 
 func (s *spaceSubscriptions) Run() (err error) {
 	s.ctx, s.cancelCtx = context.WithCancel(context.Background())
-	var batchErr error
+	// SubscribeForAll only stores the callback; it is invoked later, on the
+	// goroutine of whoever writes object details (sendUpdatesToSubscriptions).
+	// So there is no synchronous registration error to surface here, and the
+	// add error (only non-nil once the batch is closed or s.ctx is cancelled,
+	// i.e. on shutdown) must be handled inside the callback — capturing it in
+	// a shared variable raced concurrent writers against this goroutine.
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
-		batchErr = s.recBatch.Add(s.ctx, rec)
+		if addErr := s.recBatch.Add(s.ctx, rec); addErr != nil {
+			log.With("error", addErr).Errorf("subscribe-for-all: add record to batch")
+		}
 	})
-	if batchErr != nil {
-		return batchErr
-	}
 	go s.recordsHandler()
-	return
+	return nil
 }
 
 func (s *spaceSubscriptions) getSubscription(id string) (subscription, bool) {
