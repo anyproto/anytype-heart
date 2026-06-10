@@ -219,7 +219,7 @@ func (ctx *opCtx) appendObjectDetailsSetMessage(msgs []*pb.EventMessage, curr *e
 	msgs = append(msgs, event.NewMessage(ctx.spaceId, &pb.EventMessageValueOfObjectDetailsSet{
 		ObjectDetailsSet: &pb.EventObjectDetailsSet{
 			Id:      curr.id,
-			Details: curr.data.CopyOnlyKeys(keys...).ToProto(),
+			Details: curr.data.ToProtoOnlyKeys(keys...),
 			SubIds:  subIds,
 		},
 	},

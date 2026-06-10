@@ -319,6 +319,23 @@ func (d *GenericMap[K]) ToProto() *types.Struct {
 	return res
 }
 
+// ToProtoOnlyKeys is equivalent to CopyOnlyKeys(keys...).ToProto() without the
+// intermediate map copy
+func (d *GenericMap[K]) ToProtoOnlyKeys(keys ...K) *types.Struct {
+	res := &types.Struct{
+		Fields: make(map[string]*types.Value, len(keys)),
+	}
+	if d == nil {
+		return res
+	}
+	for _, k := range keys {
+		if v, ok := d.data[k]; ok {
+			res.Fields[string(k)] = v.ToProto()
+		}
+	}
+	return res
+}
+
 func (d *GenericMap[K]) ToAnyEnc(arena *anyenc.Arena) *anyenc.Value {
 	obj := arena.NewObject()
 	for k, v := range d.Iterate() {
