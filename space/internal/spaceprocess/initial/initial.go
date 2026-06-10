@@ -20,7 +20,3 @@ func (i *initial) Start(ctx context.Context) error {
 func (i *initial) Close(ctx context.Context) error {
 	return nil
 }
-
-func (i *initial) CanTransition(next mode.Mode) bool {
-	return true
-}

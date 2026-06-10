@@ -25,7 +25,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
-	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -89,10 +88,6 @@ func (o *spaceOffloader) Close(ctx context.Context) (err error) {
 		<-ol.loadCh
 	}
 	return nil
-}
-
-func (o *spaceOffloader) CanTransition(next mode.Mode) bool {
-	return false
 }
 
 func (o *spaceOffloader) onOffload(id string, offloadErr error) {

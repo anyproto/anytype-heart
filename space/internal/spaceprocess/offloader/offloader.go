@@ -37,10 +37,6 @@ func (o *offloader) Start(ctx context.Context) error {
 	return o.app.Start(ctx)
 }
 
-func (o *offloader) CanTransition(next mode.Mode) bool {
-	return true
-}
-
 func (o *offloader) WaitOffload(ctx context.Context) error {
 	return o.spaceOffloader.WaitOffload(ctx)
 }

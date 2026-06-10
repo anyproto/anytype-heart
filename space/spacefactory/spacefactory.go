@@ -251,13 +251,12 @@ func (s *spaceFactory) LoadAndSetTechSpace(ctx context.Context) (*clientspace.Te
 }
 
 func (s *spaceFactory) NewShareableSpace(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error) {
-	return s.newShareableController(ctx, id, info)
+	return s.newShareableController(ctx, id)
 }
 
-func (s *spaceFactory) newShareableController(ctx context.Context, id string, info spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error) {
+func (s *spaceFactory) newShareableController(ctx context.Context, id string) (spacecontroller.SpaceController, error) {
 	ctrl, err := accountspace.NewSpaceController(accountspace.Descriptor{
 		SpaceId: id,
-		Status:  info.GetAccountStatus(),
 	}, s.app)
 	if err != nil {
 		return nil, err
@@ -278,7 +277,7 @@ func (s *spaceFactory) CreateInvitingSpace(ctx context.Context, id, aclHeadId st
 			return nil, err
 		}
 	}
-	return s.newShareableController(ctx, id, info)
+	return s.newShareableController(ctx, id)
 }
 
 func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId string) (sp spacecontroller.SpaceController, err error) {
@@ -293,7 +292,7 @@ func (s *spaceFactory) CreateActiveSpace(ctx context.Context, id, aclHeadId stri
 			return nil, err
 		}
 	}
-	return s.newShareableController(ctx, id, info)
+	return s.newShareableController(ctx, id)
 }
 
 // creates regular shared space
@@ -311,7 +310,7 @@ func (s *spaceFactory) CreateShareableSpace(ctx context.Context, id string, spac
 	if err := s.techSpace.SpaceViewCreate(ctx, id, true, info, spaceDesc); err != nil {
 		return nil, err
 	}
-	return s.newShareableController(ctx, id, info)
+	return s.newShareableController(ctx, id)
 }
 
 func (s *spaceFactory) CreateStreamableSpace(ctx context.Context, privKey crypto.PrivKey, id string, metadata []byte) (spacecontroller.SpaceController, error) {
@@ -401,7 +400,7 @@ func (s *spaceFactory) CreateOneToOneSpace(ctx context.Context, spaceId string, 
 		}
 	}
 
-	return s.newShareableController(ctx, spaceId, info)
+	return s.newShareableController(ctx, spaceId)
 }
 
 func (s *spaceFactory) Name() (name string) {

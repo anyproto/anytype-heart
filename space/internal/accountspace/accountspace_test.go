@@ -2,6 +2,7 @@ package accountspace
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -25,10 +26,8 @@ func TestSpaceController_InvitingLoading(t *testing.T) {
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeJoining, fx.ctrl.Mode())
-	time.Sleep(100 * time.Millisecond)
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeJoining, mode.ModeLoading}, fx.reg.modes)
+	// the joining stub flips the status to Active, which must converge to loading
+	fx.waitModes(t, mode.ModeJoining, mode.ModeLoading)
 }
 
 func TestSpaceController_LoadingDeleting(t *testing.T) {
@@ -38,14 +37,11 @@ func TestSpaceController_LoadingDeleting(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeLoading, fx.ctrl.Mode())
 	err = fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusDeleted))
-	err = fx.ctrl.Update()
 	require.NoError(t, err)
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeLoading, mode.ModeOffloading}, fx.reg.modes)
+	fx.waitModes(t, mode.ModeLoading, mode.ModeOffloading)
 }
 
-func TestSpaceController_LoadingDeletingMultipleWaiters(t *testing.T) {
+func TestSpaceController_LoadingDeletingMultipleUpdates(t *testing.T) {
 	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
 	defer fx.stop()
 	err := fx.ctrl.Start(context.Background())
@@ -61,9 +57,7 @@ func TestSpaceController_LoadingDeletingMultipleWaiters(t *testing.T) {
 		}()
 	}
 	wg.Wait()
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeLoading, mode.ModeOffloading}, fx.reg.modes)
+	fx.waitModes(t, mode.ModeLoading, mode.ModeOffloading)
 }
 
 func TestSpaceController_Deleting(t *testing.T) {
@@ -72,23 +66,90 @@ func TestSpaceController_Deleting(t *testing.T) {
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
-	time.Sleep(100 * time.Millisecond)
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeOffloading}, fx.reg.modes)
+	fx.waitModes(t, mode.ModeOffloading)
 }
 
-func TestSpaceController_DeletingInvalid(t *testing.T) {
+func TestSpaceController_DeletedThenActiveReloads(t *testing.T) {
+	// offloading is not terminal: when the status returns to Active
+	// (e.g. CancelLeave), the reconciler loads the space again
 	fx := newFixture(t, spaceinfo.AccountStatusDeleted)
 	defer fx.stop()
 	err := fx.ctrl.Start(context.Background())
 	require.NoError(t, err)
 	require.Equal(t, mode.ModeOffloading, fx.ctrl.Mode())
 	err = fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusActive))
-	require.Error(t, err)
-	fx.reg.Lock()
-	defer fx.reg.Unlock()
-	require.Equal(t, []mode.Mode{mode.ModeOffloading}, fx.reg.modes)
+	require.NoError(t, err)
+	fx.waitModes(t, mode.ModeOffloading, mode.ModeLoading)
+}
+
+func TestSpaceController_LatestWinsCoalescing(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
+	defer fx.stop()
+	err := fx.ctrl.Start(context.Background())
+	require.NoError(t, err)
+	// rapid flips must converge on the last written status without losing it
+	for i := 0; i < 5; i++ {
+		require.NoError(t, fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusDeleted)))
+		require.NoError(t, fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusActive)))
+	}
+	require.NoError(t, fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusDeleted)))
+	require.Eventually(t, func() bool {
+		return fx.ctrl.Mode() == mode.ModeOffloading
+	}, time.Second, 5*time.Millisecond)
+}
+
+func TestSpaceController_StartFailureSurfacesErrorAndRetries(t *testing.T) {
+	startErr := errors.New("process start failed")
+	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
+	defer fx.stop()
+	fx.f.failLoading.Store(&startErr)
+
+	err := fx.ctrl.Start(context.Background())
+	require.ErrorIs(t, err, startErr)
+	require.Equal(t, mode.ModeInitial, fx.ctrl.Mode())
+
+	// next input change clears the failure and retries
+	fx.f.failLoading.Store(nil)
+	err = fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusActive))
+	require.NoError(t, err)
+	require.Eventually(t, func() bool {
+		return fx.ctrl.Mode() == mode.ModeLoading
+	}, time.Second, 5*time.Millisecond)
+}
+
+func TestSpaceController_CloseUnblocksWaiters(t *testing.T) {
+	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
+	fx.f.blockLoading = make(chan struct{})
+
+	startDone := make(chan error, 1)
+	go func() {
+		startDone <- fx.ctrl.Start(context.Background())
+	}()
+	// wait until the loading process is blocked in Start
+	require.Eventually(t, func() bool {
+		return fx.f.loadingStarted.Load()
+	}, time.Second, time.Millisecond)
+
+	closeDone := make(chan error, 1)
+	go func() {
+		closeDone <- fx.ctrl.Close(context.Background())
+	}()
+	close(fx.f.blockLoading)
+
+	select {
+	case err := <-startDone:
+		// either outcome is fine (converged just before close, or unblocked by
+		// close), but the waiter must not hang
+		_ = err
+	case <-time.After(time.Second):
+		t.Fatal("Start blocked after Close")
+	}
+	select {
+	case err := <-closeDone:
+		require.NoError(t, err)
+	case <-time.After(time.Second):
+		t.Fatal("Close hung")
+	}
 }
 
 func makePersistentInfo(spaceId string, status spaceinfo.AccountStatus) spaceinfo.SpacePersistentInfo {
@@ -106,6 +167,12 @@ func (m *modeRegister) register(mode mode.Mode) {
 	m.Lock()
 	m.modes = append(m.modes, mode)
 	m.Unlock()
+}
+
+func (m *modeRegister) snapshot() []mode.Mode {
+	m.Lock()
+	defer m.Unlock()
+	return append([]mode.Mode{}, m.modes...)
 }
 
 type spaceStatusStub struct {
@@ -212,52 +279,36 @@ func (s *spaceStatusStub) GetSpaceView() techspace.SpaceView {
 
 var _ spacestatus.SpaceStatus = (*spaceStatusStub)(nil)
 
-type inviting struct {
-	inviteReceived atomic.Bool
-	status         spacestatus.SpaceStatus
-	reg            *modeRegister
+type joining struct {
+	status spacestatus.SpaceStatus
+	reg    *modeRegister
 }
 
-func newInviting(status spacestatus.SpaceStatus, reg *modeRegister) mode.Process {
-	return &inviting{
-		status: status,
-		reg:    reg,
-	}
-}
-
-func (i *inviting) Start(ctx context.Context) error {
+func (i *joining) Start(ctx context.Context) error {
 	go func() {
-		i.inviteReceived.Store(true)
 		_ = i.status.SetPersistentStatus(spaceinfo.AccountStatusActive)
 	}()
 	i.reg.register(mode.ModeJoining)
 	return nil
 }
 
-func (i *inviting) Close(ctx context.Context) error {
+func (i *joining) Close(ctx context.Context) error {
 	return nil
 }
 
-func (i *inviting) CanTransition(next mode.Mode) bool {
-	if next == mode.ModeLoading && !i.inviteReceived.Load() {
-		return false
-	}
-	return true
-}
-
 type loading struct {
-	status spacestatus.SpaceStatus
-	reg    *modeRegister
-}
-
-func newLoading(status spacestatus.SpaceStatus, reg *modeRegister) mode.Process {
-	return &loading{
-		status: status,
-		reg:    reg,
-	}
+	f   *factory
+	reg *modeRegister
 }
 
 func (l *loading) Start(ctx context.Context) error {
+	l.f.loadingStarted.Store(true)
+	if l.f.blockLoading != nil {
+		<-l.f.blockLoading
+	}
+	if errp := l.f.failLoading.Load(); errp != nil && *errp != nil {
+		return *errp
+	}
 	l.reg.register(mode.ModeLoading)
 	return nil
 }
@@ -266,20 +317,8 @@ func (l *loading) Close(ctx context.Context) error {
 	return nil
 }
 
-func (l *loading) CanTransition(next mode.Mode) bool {
-	return true
-}
-
 type offloading struct {
-	status spacestatus.SpaceStatus
-	reg    *modeRegister
-}
-
-func newOffloading(status spacestatus.SpaceStatus, reg *modeRegister) mode.Process {
-	return &offloading{
-		status: status,
-		reg:    reg,
-	}
+	reg *modeRegister
 }
 
 func (l *offloading) Start(ctx context.Context) error {
@@ -291,32 +330,32 @@ func (l *offloading) Close(ctx context.Context) error {
 	return nil
 }
 
-func (l *offloading) CanTransition(next mode.Mode) bool {
-	return false
-}
-
 type factory struct {
 	status spacestatus.SpaceStatus
 	reg    *modeRegister
+
+	failLoading    atomic.Pointer[error]
+	blockLoading   chan struct{}
+	loadingStarted atomic.Bool
 }
 
-func (f factory) Process(md mode.Mode) mode.Process {
+func (f *factory) Process(md mode.Mode) mode.Process {
 	switch md {
 	case mode.ModeInitial:
 		return initial.New()
 	case mode.ModeJoining:
-		return newInviting(f.status, f.reg)
+		return &joining{status: f.status, reg: f.reg}
 	case mode.ModeLoading:
-		return newLoading(f.status, f.reg)
+		return &loading{f: f, reg: f.reg}
 	case mode.ModeOffloading:
-		return newOffloading(f.status, f.reg)
+		return &offloading{reg: f.reg}
 	default:
 		panic("unhandled default case")
 	}
 }
 
 type fixture struct {
-	f    factory
+	f    *factory
 	s    *spaceStatusStub
 	ctrl *spaceController
 	reg  *modeRegister
@@ -328,19 +367,16 @@ func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 		spaceId:       "spaceId",
 		accountStatus: startStatus,
 	}
-	f := factory{
+	f := &factory{
 		status: s,
 		reg:    reg,
 	}
-	sm, err := mode.NewStateMachine(f, log)
-	require.NoError(t, err)
 	controller := &spaceController{
-		spaceId:           "spaceId",
-		status:            s,
-		app:               &app.App{},
-		lastUpdatedStatus: startStatus,
-		sm:                sm,
+		spaceId: "spaceId",
+		status:  s,
+		app:     &app.App{},
 	}
+	controller.rec = newReconciler(f, log)
 	s.persistentUpdater = func(status spaceinfo.AccountStatus) {
 		go func() {
 			err := controller.Update()
@@ -348,15 +384,29 @@ func newFixture(t *testing.T, startStatus spaceinfo.AccountStatus) *fixture {
 		}()
 	}
 	return &fixture{
-		f: factory{
-			status: s,
-		},
+		f:    f,
 		s:    s,
 		ctrl: controller,
 		reg:  reg,
 	}
 }
 
+// waitModes asserts the registered mode sequence converges to want.
+func (fx *fixture) waitModes(t *testing.T, want ...mode.Mode) {
+	require.Eventually(t, func() bool {
+		got := fx.reg.snapshot()
+		if len(got) != len(want) {
+			return false
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				return false
+			}
+		}
+		return true
+	}, time.Second, 5*time.Millisecond, "modes: %v", fx.reg.snapshot())
+}
+
 func (fx *fixture) stop() {
-	fx.ctrl.sm.Close()
+	fx.ctrl.rec.close(context.Background())
 }

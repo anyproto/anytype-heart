@@ -5,7 +5,6 @@ package accountspace
 
 import (
 	"context"
-	"sync"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/app/logger"
@@ -28,9 +27,6 @@ var log = logger.NewNamed("common.space.accountspace")
 // Descriptor carries everything kind-specific about a space controller.
 type Descriptor struct {
 	SpaceId string
-	// Status seeds lastUpdatedStatus so the first Update() after Start()
-	// doesn't re-run the transition Start() already performed.
-	Status spaceinfo.AccountStatus
 	// IsPersonal makes the loader stop on mandatory-objects failure and is
 	// reported to spaceloader (stopIfMandatoryFail).
 	IsPersonal bool
@@ -49,15 +45,13 @@ type statusUpdater interface {
 }
 
 type spaceController struct {
-	spaceId           string
-	desc              Descriptor
-	app               *app.App
-	status            spacestatus.SpaceStatus
-	lastUpdatedStatus spaceinfo.AccountStatus
-	updater           statusUpdater
-	mx                sync.Mutex
+	spaceId string
+	desc    Descriptor
+	app     *app.App
+	status  spacestatus.SpaceStatus
+	updater statusUpdater
 
-	sm *mode.StateMachine
+	rec *reconciler
 }
 
 func makeStatusApp(a *app.App, spaceId string) (*app.App, error) {
@@ -76,22 +70,17 @@ func NewSpaceController(desc Descriptor, a *app.App) (spacecontroller.SpaceContr
 		return nil, err
 	}
 	s := &spaceController{
-		spaceId:           desc.SpaceId,
-		desc:              desc,
-		status:            newApp.MustComponent(spacestatus.CName).(spacestatus.SpaceStatus),
-		lastUpdatedStatus: desc.Status,
-		app:               newApp,
+		spaceId: desc.SpaceId,
+		desc:    desc,
+		status:  newApp.MustComponent(spacestatus.CName).(spacestatus.SpaceStatus),
+		app:     newApp,
 	}
 
 	// this is done for tests to not complicate them :-)
 	if updater, ok := a.Component(deletioncontroller.CName).(statusUpdater); ok {
 		s.updater = updater
 	}
-	sm, err := mode.NewStateMachine(s, log.With(zap.String("spaceId", desc.SpaceId)))
-	if err != nil {
-		return nil, err
-	}
-	s.sm = sm
+	s.rec = newReconciler(s, log.With(zap.String("spaceId", desc.SpaceId)))
 	return s, nil
 }
 
@@ -99,22 +88,26 @@ func (s *spaceController) SpaceId() string {
 	return s.spaceId
 }
 
+// Start demands the space and blocks until the reconciler converges on the
+// first target (loading/joining/offloading started), returning the real
+// transition error on failure.
 func (s *spaceController) Start(ctx context.Context) error {
 	defer func() {
 		if s.updater != nil {
 			s.updater.UpdateCoordinatorStatus()
 		}
 	}()
-	_, err := s.sm.ChangeMode(modeOfStatus(s.status.GetPersistentStatus()))
+	s.rec.setInputs(s.status.GetPersistentStatus(), true)
+	_, err := s.rec.waitConverged(ctx)
 	return err
 }
 
 func (s *spaceController) Mode() mode.Mode {
-	return s.sm.GetMode()
+	return s.rec.getMode()
 }
 
 func (s *spaceController) Current() any {
-	return s.sm.GetProcess()
+	return s.rec.getProcess()
 }
 
 func (s *spaceController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
@@ -129,29 +122,11 @@ func (s *spaceController) SetLocalInfo(ctx context.Context, info spaceinfo.Space
 	return s.status.SetLocalInfo(info)
 }
 
+// Update pushes the latest persistent status into the reconciler. It never
+// blocks on the resulting transition; convergence is observed via Wait*.
 func (s *spaceController) Update() error {
-	s.mx.Lock()
-	status := s.status.GetPersistentStatus()
-	if s.lastUpdatedStatus == status {
-		s.mx.Unlock()
-		return nil
-	}
-	s.lastUpdatedStatus = status
-	s.mx.Unlock()
-	_, err := s.sm.ChangeMode(modeOfStatus(status))
-	return err
-}
-
-// modeOfStatus is the single AccountStatus -> Mode mapping for all space kinds.
-func modeOfStatus(status spaceinfo.AccountStatus) mode.Mode {
-	switch status {
-	case spaceinfo.AccountStatusDeleted, spaceinfo.AccountStatusRemoving:
-		return mode.ModeOffloading
-	case spaceinfo.AccountStatusJoining:
-		return mode.ModeJoining
-	default:
-		return mode.ModeLoading
-	}
+	s.rec.setStatus(s.status.GetPersistentStatus())
+	return nil
 }
 
 func (s *spaceController) Process(md mode.Mode) mode.Process {
@@ -182,7 +157,7 @@ func (s *spaceController) Process(md mode.Mode) mode.Process {
 }
 
 func (s *spaceController) Close(ctx context.Context) error {
-	s.sm.Close()
+	s.rec.close(ctx)
 	// this closes status
 	return s.app.Close(ctx)
 }

@@ -61,10 +61,6 @@ func (l *loader) Close(ctx context.Context) error {
 	return l.app.Close(ctx)
 }
 
-func (l *loader) CanTransition(next mode.Mode) bool {
-	return true
-}
-
 // wait load starts this spaceloader sub app component
 func (l *loader) WaitLoad(ctx context.Context) (sp clientspace.Space, err error) {
 	spaceLoader := app.MustComponent[spaceloader.SpaceLoader](l.app)
