@@ -40,8 +40,8 @@ type crossSpaceSubscription struct {
 	lock sync.Mutex
 	// spaceId => subId (only finalized, real subscriptions)
 	perSpaceSubscriptions map[string]string
-	// spaceId => reservation token of an in-flight subscribe (see
-	// ensureSpaceSubscribed). The token identifies the owning call so a
+	// spaceId => reservation token of an in-flight subscribe (see reserve /
+	// completeReservation). The token identifies the owning call so a
 	// concurrent RemoveSpace/AddSpace cannot be mistaken for our own slot.
 	inflightSpaceIds map[string]uint64
 	reservationSeq   uint64
@@ -177,10 +177,11 @@ func (s *crossSpaceSubscription) close() error {
 }
 
 func (s *crossSpaceSubscription) AddSpace(spaceId string) error {
-	s.lock.Lock()
-	delete(s.pendingSpaceIds, spaceId)
-	s.lock.Unlock()
-	if err := s.ensureSpaceSubscribed(spaceId); err != nil {
+	token, ok := s.reserve(spaceId, false)
+	if !ok {
+		return nil
+	}
+	if err := s.completeReservation(spaceId, token); err != nil {
 		return fmt.Errorf("add space: %w", err)
 	}
 	return nil
@@ -207,15 +208,11 @@ func (s *crossSpaceSubscription) AddPending(spaceId string) {
 // with asyncInit=true, so initial records flow as events through the internal
 // queue. A no-op if spaceId is not pending.
 func (s *crossSpaceSubscription) PromotePending(spaceId string) error {
-	s.lock.Lock()
-	if _, ok := s.pendingSpaceIds[spaceId]; !ok {
-		s.lock.Unlock()
+	token, ok := s.reserve(spaceId, true)
+	if !ok {
 		return nil
 	}
-	delete(s.pendingSpaceIds, spaceId)
-	s.lock.Unlock()
-
-	if err := s.ensureSpaceSubscribed(spaceId); err != nil {
+	if err := s.completeReservation(spaceId, token); err != nil {
 		// Restore pending so a later objectstore open retries the promote,
 		// unless the space is already subscribed or another subscribe is in
 		// flight (that one will establish it).
@@ -231,36 +228,50 @@ func (s *crossSpaceSubscription) PromotePending(spaceId string) error {
 	return nil
 }
 
-// ensureSpaceSubscribed subscribes spaceId unless it is already subscribed or
-// a subscribe is in flight.
+// reserve atomically claims the right to subscribe spaceId, consuming its
+// pending entry in the same critical section. The atomicity matters: if the
+// pending-consume and the claim were separate critical sections, a
+// RemoveSpace between them would find nothing to cancel (no pending entry,
+// no reservation, no sub) and the subscribe would then resurrect the
+// just-removed space. With fromPending, the claim is only made if spaceId is
+// still pending. ok is false when there is nothing to do: not pending (with
+// fromPending), already subscribed, or another subscribe in flight.
+func (s *crossSpaceSubscription) reserve(spaceId string, fromPending bool) (token uint64, ok bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if fromPending {
+		if _, pending := s.pendingSpaceIds[spaceId]; !pending {
+			return 0, false
+		}
+	}
+	delete(s.pendingSpaceIds, spaceId)
+	if _, subscribed := s.perSpaceSubscriptions[spaceId]; subscribed {
+		return 0, false
+	}
+	if _, inflight := s.inflightSpaceIds[spaceId]; inflight {
+		return 0, false
+	}
+	s.reservationSeq++
+	s.inflightSpaceIds[spaceId] = s.reservationSeq
+	return s.reservationSeq, true
+}
+
+// completeReservation subscribes spaceId and finalizes the reservation
+// claimed by reserve().
 //
 // subscribe() re-enters the subscription service (Search), which can call
 // back into this subscription (objectstore open -> PromotePending). Holding
 // s.lock across that call is the GO-7288 ABBA deadlock (subscription-service
 // lock <-> s.lock), so the Search runs with s.lock released.
 //
-// Concurrency is serialized by a per-call reservation token in
-// inflightSpaceIds (claimed under s.lock); perSpaceSubscriptions only ever
-// holds finalized real subIds. After Search returns we finalize only if our
-// exact token is still the inflight reservation. A RemoveSpace (or a
-// superseding reservation) that races an in-flight subscribe deletes/replaces
-// the token; we detect token mismatch and roll back the just-created sub
-// instead of overwriting the live one or leaking it.
-func (s *crossSpaceSubscription) ensureSpaceSubscribed(spaceId string) error {
-	s.lock.Lock()
-	if _, ok := s.perSpaceSubscriptions[spaceId]; ok { // already subscribed
-		s.lock.Unlock()
-		return nil
-	}
-	if _, ok := s.inflightSpaceIds[spaceId]; ok { // another subscribe in flight
-		s.lock.Unlock()
-		return nil
-	}
-	s.reservationSeq++
-	token := s.reservationSeq
-	s.inflightSpaceIds[spaceId] = token
-	s.lock.Unlock()
-
+// perSpaceSubscriptions only ever holds finalized real subIds. After Search
+// returns we finalize only if our exact token is still the inflight
+// reservation and the cross-space subscription is still open. A RemoveSpace
+// that races the in-flight subscribe deletes the token, and a close() means
+// nothing would ever unsubscribe what we just created; in both cases the
+// freshly created sub is rolled back instead of overwriting a live one or
+// leaking it.
+func (s *crossSpaceSubscription) completeReservation(spaceId string, token uint64) error {
 	resp, err := s.subscribe(spaceId, true)
 
 	s.lock.Lock()
@@ -273,20 +284,51 @@ func (s *crossSpaceSubscription) ensureSpaceSubscribed(spaceId string) error {
 		s.lock.Unlock()
 		return err
 	}
-	if !ours {
-		// RemoveSpace cancelled this reservation (or it was superseded)
-		// while we were subscribing: roll back the freshly created sub
-		// instead of leaving it dangling/untracked.
+	closed := s.ctx.Err() != nil
+	if !ours || closed {
 		s.lock.Unlock()
-		if _, uerr := s.subscriptionService.UnsubscribeAndReturnIds(spaceId, resp.SubId); uerr != nil {
-			log.Error("rollback subscription after concurrent remove",
-				zap.String("subId", s.subId), zap.String("spaceId", spaceId), zap.Error(uerr))
-		}
+		s.rollbackSubscription(spaceId, resp.SubId)
 		return nil
 	}
 	s.perSpaceSubscriptions[spaceId] = resp.SubId
 	s.lock.Unlock()
 	return nil
+}
+
+// rollbackSubscription unsubscribes a freshly created per-space subscription
+// that lost its reservation (concurrent RemoveSpace) or finalized after
+// close(). Like removeSpace, it emits SubscriptionRemove for the ids the sub
+// had already delivered through its async-init events — without them the
+// client keeps ghost records of a removed space — plus a zeroing counters
+// event. After close() the queue is gone and the client unsubscribed, so
+// failing to enqueue is fine.
+func (s *crossSpaceSubscription) rollbackSubscription(spaceId string, subId string) {
+	ids, err := s.subscriptionService.UnsubscribeAndReturnIds(spaceId, subId)
+	if err != nil {
+		log.Error("rollback per-space subscription",
+			zap.String("subId", s.subId), zap.String("spaceId", spaceId), zap.Error(err))
+		return
+	}
+	msgs := make([]*pb.EventMessage, 0, len(ids)+1)
+	for _, id := range ids {
+		msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionRemove{
+			SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
+				SubId: s.subId,
+				Id:    id,
+			},
+		}))
+	}
+	msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
+		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
+			SubId: subId,
+			Total: 0,
+		},
+	}))
+	if aerr := s.queue.Add(s.ctx, msgs...); aerr != nil &&
+		!errors.Is(aerr, mb.ErrClosed) && !errors.Is(aerr, context.Canceled) {
+		log.Error("rollback subscription: send removal events",
+			zap.String("subId", s.subId), zap.String("spaceId", spaceId), zap.Error(aerr))
+	}
 }
 
 func (s *crossSpaceSubscription) subscribe(spaceId string, asyncInit bool) (*subscriptionservice.SubscribeResponse, error) {
