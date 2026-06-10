@@ -52,7 +52,9 @@ Decisions this spec rests on:
   mention diff manager (`diffManagerMentions`) and its seen-heads KV entry are
   retired at cutover; until then the shadow measures how far the two legacy
   frontiers drift apart in practice (expected: negligible — clients advance
-  both with the same ranges).
+  both with the same ranges). Product confirmation (2026-06-10): clients
+  expose a single "readAll" action — there is no separate per-counter read
+  flow whose behavior the collapse could change.
 - **D5 (product, 2026-06-10): `MarkMessagesAsUnread` is deprecated** (unused
   by clients) and is NOT implemented in the computed model; the RPC is removed
   at cutover (Stage 3). Consequence: the frontier is **monotone** — it only
