@@ -25,9 +25,11 @@ type TreeJson struct {
 }
 
 type JsonChange struct {
-	Id     string               `json:"id"`
-	Ord    int                  `json:"ord"`
-	Change MarshalledJsonChange `json:"change"`
+	Id        string               `json:"id"`
+	Ord       int                  `json:"ord"`
+	Identity  string               `json:"identity"`
+	Timestamp int64                `json:"timestamp"`
+	Change    MarshalledJsonChange `json:"change"`
 }
 
 type MarshalledJsonChange struct {
@@ -87,10 +89,16 @@ func (t *treeImporter) Json() (treeJson TreeJson, err error) {
 			return true
 		}
 		model := change.Model.(*pb.Change)
+		identity := ""
+		if change.Identity != nil {
+			identity = change.Identity.Account()
+		}
 		ch := JsonChange{
-			Id:     change.Id,
-			Ord:    i,
-			Change: MarshalledJsonChange{JsonString: pbtypes.Sprint(model)},
+			Id:        change.Id,
+			Ord:       i,
+			Identity:  identity,
+			Timestamp: change.Timestamp,
+			Change:    MarshalledJsonChange{JsonString: pbtypes.Sprint(model)},
 		}
 		treeJson.Changes = append(treeJson.Changes, ch)
 		return true
