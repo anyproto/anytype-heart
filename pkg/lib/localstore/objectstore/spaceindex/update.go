@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -43,12 +44,11 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 		isModified = true
 		return newVal, true, nil
 	}))
-	if isModified {
-		s.sendUpdatesToSubscriptions(id, details)
-	}
-
 	if err != nil {
 		return fmt.Errorf("upsert details: %w", err)
+	}
+	if isModified {
+		s.sendUpdatesToSubscriptions(ctx, id, details)
 	}
 
 	return nil
@@ -60,11 +60,35 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	s.lock.Unlock()
 }
 
-func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.Details) {
-	detCopy := details.Copy()
-	detCopy.SetString(bundle.RelationKeyId, id)
+// txNotifications buffers subscription notifications raised inside a write
+// transaction. They are flushed only on successful commit (see notifyingTx):
+// firing them earlier would announce writes that are not yet visible to
+// readers — or never will be, if the tx rolls back. A subscriber that wires
+// its callback and then re-queries the store could otherwise permanently miss
+// a write that was notified before wiring but committed after the re-query.
+type txNotifications struct {
+	mu      sync.Mutex
+	pending []database.Record
+}
+
+type txNotificationsKey struct{}
+
+func (s *dsObjectStore) sendUpdatesToSubscriptions(ctx context.Context, id string, details *domain.Details) {
+	if buf, ok := ctx.Value(txNotificationsKey{}).(*txNotifications); ok && buf != nil {
+		detCopy := details.Copy()
+		detCopy.SetString(bundle.RelationKeyId, id)
+		buf.mu.Lock()
+		buf.pending = append(buf.pending, database.Record{Details: detCopy})
+		buf.mu.Unlock()
+		return
+	}
 	s.lock.RLock()
 	defer s.lock.RUnlock()
+	if s.onChangeCallback == nil && len(s.subscriptions) == 0 {
+		return
+	}
+	detCopy := details.Copy()
+	detCopy.SetString(bundle.RelationKeyId, id)
 	if s.onChangeCallback != nil {
 		s.onChangeCallback(database.Record{
 			Details: detCopy,
@@ -72,6 +96,25 @@ func (s *dsObjectStore) sendUpdatesToSubscriptions(id string, details *domain.De
 	}
 	for _, sub := range s.subscriptions {
 		_ = sub.PublishAsync(id, detCopy)
+	}
+}
+
+func (s *dsObjectStore) flushTxNotifications(buf *txNotifications) {
+	buf.mu.Lock()
+	pending := buf.pending
+	buf.pending = nil
+	buf.mu.Unlock()
+
+	s.lock.RLock()
+	defer s.lock.RUnlock()
+	for _, rec := range pending {
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		if s.onChangeCallback != nil {
+			s.onChangeCallback(rec)
+		}
+		for _, sub := range s.subscriptions {
+			_ = sub.PublishAsync(id, rec.Details)
+		}
 	}
 }
 
@@ -201,7 +244,12 @@ func (s *dsObjectStore) ModifyObjectDetailsCtx(ctx context.Context, id string, p
 		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
+	// notifyDetails is captured by the modifier and sent only after the write
+	// op succeeds: notifying from inside ModifyFunc would announce a write
+	// that may still fail or, under a write tx, not be committed yet
+	var notifyDetails *domain.Details
 	modifier := query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		notifyDetails = nil
 		inputDetails, err := domain.NewDetailsFromAnyEnc(val)
 		if err != nil {
 			return nil, false, fmt.Errorf("get old details: json to proto: %w", err)
@@ -227,7 +275,7 @@ func (s *dsObjectStore) ModifyObjectDetailsCtx(ctx context.Context, id string, p
 		if len(diff) == 0 {
 			return nil, false, nil
 		}
-		s.sendUpdatesToSubscriptions(id, newDetails)
+		notifyDetails = newDetails
 		return jsonVal, true, nil
 	})
 	var err error
@@ -241,6 +289,9 @@ func (s *dsObjectStore) ModifyObjectDetailsCtx(ctx context.Context, id string, p
 	}
 	if err != nil {
 		return fmt.Errorf("modify details: %w", err)
+	}
+	if notifyDetails != nil {
+		s.sendUpdatesToSubscriptions(ctx, id, notifyDetails)
 	}
 	return nil
 }

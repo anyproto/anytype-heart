@@ -216,7 +216,35 @@ type LinksUpdateInfo struct {
 var _ Store = (*dsObjectStore)(nil)
 
 func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
-	return s.db.WriteTx(ctx)
+	tx, err := s.db.WriteTx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &notifyingTx{WriteTx: tx, store: s, notifications: &txNotifications{}}, nil
+}
+
+// notifyingTx defers subscription notifications raised by writes inside the
+// tx until the tx commits. Without it a notification would announce a write
+// that is not yet visible to readers — or never will be, on rollback.
+type notifyingTx struct {
+	anystore.WriteTx
+	store         *dsObjectStore
+	notifications *txNotifications
+}
+
+// Context returns the tx-bearing context with the notification buffer
+// attached, so detail writes running under this tx (see
+// sendUpdatesToSubscriptions) buffer instead of firing.
+func (t *notifyingTx) Context() context.Context {
+	return context.WithValue(t.WriteTx.Context(), txNotificationsKey{}, t.notifications)
+}
+
+func (t *notifyingTx) Commit() error {
+	err := t.WriteTx.Commit()
+	if err == nil {
+		t.store.flushTxNotifications(t.notifications)
+	}
+	return err
 }
 
 func (s *dsObjectStore) initCollections(ctx context.Context) error {
