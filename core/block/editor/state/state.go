@@ -121,7 +121,6 @@ type State struct {
 	fileKeys          []pb.ChangeFileKeys // Deprecated
 	details           *domain.Details
 	localDetails      *domain.Details
-	relationLinks     pbtypes.RelationLinks
 	notifications     map[string]*model.Notification
 	deviceStore       map[string]*model.DeviceInfo
 
@@ -175,11 +174,9 @@ func (s *State) filterRelations(filters *Filters) {
 	resultDetails := domain.NewDetails()
 	layout, _ := s.Layout()
 	relationKeys := filters.RelationsWhiteList[layout]
-	var updatedRelationLinks pbtypes.RelationLinks
 	for key, value := range s.details.Iterate() {
 		if slices.Contains(relationKeys, key) {
 			resultDetails.Set(key, value)
-			updatedRelationLinks = append(updatedRelationLinks, s.relationLinks.Get(key.String()))
 			continue
 		}
 	}
@@ -191,7 +188,6 @@ func (s *State) filterRelations(filters *Filters) {
 	for key, value := range s.localDetails.Iterate() {
 		if slices.Contains(relationKeys, key) {
 			resultLocalDetails.Set(key, value)
-			updatedRelationLinks = append(updatedRelationLinks, s.relationLinks.Get(key.String()))
 			continue
 		}
 	}
@@ -199,7 +195,6 @@ func (s *State) filterRelations(filters *Filters) {
 	if resultLocalDetails.Len() == 0 {
 		s.localDetails = nil
 	}
-	s.relationLinks = updatedRelationLinks
 }
 
 func (s *State) MigrationVersion() uint32 {
@@ -700,40 +695,6 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 		})})
 	}
 
-	if s.parent != nil && s.relationLinks != nil {
-		added, removed := s.relationLinks.Diff(s.parent.relationLinks)
-
-		if len(added)+len(removed) > 0 {
-			action.RelationLinks = &undo.RelationLinks{
-				Before: s.parent.relationLinks,
-				After:  s.relationLinks,
-			}
-		}
-
-		if len(removed) > 0 {
-			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
-				event.NewMessage(s.SpaceID(), &pb.EventMessageValueOfObjectRelationsRemove{
-					ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
-						Id:           s.RootId(),
-						RelationKeys: removed,
-					},
-				},
-				),
-			})...)
-		}
-		if len(added) > 0 {
-			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
-				event.NewMessage(s.SpaceID(), &pb.EventMessageValueOfObjectRelationsAmend{
-					ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
-						Id:            s.RootId(),
-						RelationLinks: added,
-					},
-				},
-				),
-			})...)
-		}
-	}
-
 	// generate changes
 	s.fillChanges(msgs)
 
@@ -790,10 +751,6 @@ func (s *State) apply(spaceId string, fast, one, withLayouts bool) (msgs []simpl
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 
-	if s.parent != nil && s.relationLinks != nil {
-		s.parent.relationLinks = s.relationLinks
-	}
-
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
 		if diff, keysToUnset := domain.StructDiff(prev, s.localDetails); diff != nil || len(keysToUnset) != 0 {
@@ -847,10 +804,6 @@ func (s *State) intermediateApply() {
 	}
 	if s.localDetails != nil {
 		s.parent.localDetails = s.localDetails
-	}
-
-	if s.relationLinks != nil {
-		s.parent.relationLinks = s.relationLinks
 	}
 
 	if s.objectTypeKeys != nil {
@@ -956,10 +909,6 @@ func (s *State) StringDebug() string {
 	buf := bytes.NewBuffer(nil)
 	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
 	fmt.Fprintf(buf, "ObjectTypeKeys: %v\n", s.ObjectTypeKeys())
-	fmt.Fprintf(buf, "Relations:\n")
-	for _, rel := range s.relationLinks {
-		fmt.Fprintf(buf, "\t%v\n", rel)
-	}
 
 	fmt.Fprintf(buf, "\nDetails:\n")
 	arena := &anyenc.Arena{}
@@ -986,12 +935,12 @@ func (s *State) StringDebug() string {
 	return buf.String()
 }
 
-// SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
-// TODO: GO-4284 remove
+// SetDetailAndBundledRelation sets the detail value.
+//
+// Deprecated: GO-4284 object-level relationLinks were removed; this is now a thin alias
+// for SetDetail kept to avoid churn at call sites. Prefer SetDetail directly.
 func (s *State) SetDetailAndBundledRelation(key domain.RelationKey, value domain.Value) {
-	s.AddBundledRelationLinks(key)
 	s.SetDetail(key, value)
-	return
 }
 
 func (s *State) SetAlign(align model.BlockAlign, ids ...string) (err error) {
@@ -1323,7 +1272,6 @@ func (s *State) Copy() *State {
 		rootId:                   s.rootId,
 		details:                  s.Details().Copy(),
 		localDetails:             s.LocalDetails().Copy(),
-		relationLinks:            s.getRelationLinks(), // Get methods copy inside
 		objectTypeKeys:           objTypes,
 		noObjectType:             s.noObjectType,
 		migrationVersion:         s.migrationVersion,
@@ -1688,45 +1636,9 @@ func (s *State) SetContext(context session.Context) {
 	s.ctx = context
 }
 
-// deprecated
-func (s *State) AddRelationLinks(links ...*model.RelationLink) {
-	relLinks := s.getRelationLinks()
-	for _, l := range links {
-		if !relLinks.Has(l.Key) {
-			relLinks = append(relLinks, l)
-		}
-	}
-	s.relationLinks = relLinks
-}
-
-// TODO: GO-4284 remove
-func (s *State) PickRelationLinks() pbtypes.RelationLinks {
-	return s.pickRelationLinks()
-}
-
-// TODO: GO-4284 remove
-func (s *State) pickRelationLinks() pbtypes.RelationLinks {
-	if s.relationLinks != nil {
-		return s.relationLinks
-	}
-	if s.parent != nil {
-		return s.parent.pickRelationLinks()
-	}
-	return nil
-}
-
-// TODO: GO-4284 remove
-func (s *State) getRelationLinks() pbtypes.RelationLinks {
-	if s.relationLinks != nil {
-		return s.relationLinks
-	}
-	if s.parent != nil {
-		parentLinks := s.parent.pickRelationLinks()
-		s.relationLinks = parentLinks.Copy()
-		return s.relationLinks
-	}
-	return nil
-}
+// Deprecated: GO-4284 object-level relationLinks were removed; this is now a no-op kept
+// to avoid churn at call sites. Relations are tracked by details keys.
+func (s *State) AddRelationLinks(links ...*model.RelationLink) {}
 
 func (s *State) Descendants(rootId string) []simple.Block {
 	var (
@@ -1795,20 +1707,9 @@ func (s *State) SelectRoots(ids []string) []string {
 	return res
 }
 
-// TODO: GO-4284 remove
-func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {
-	existingLinks := s.pickRelationLinks()
-
-	var links []*model.RelationLink
-	for _, key := range keys {
-		if !existingLinks.Has(key.String()) {
-			links = append(links, bundle.MustGetRelationLink(key))
-		}
-	}
-	if len(links) > 0 {
-		s.AddRelationLinks(links...)
-	}
-}
+// Deprecated: GO-4284 object-level relationLinks were removed; this is now a no-op kept
+// to avoid churn at call sites. Relations are tracked by details keys.
+func (s *State) AddBundledRelationLinks(keys ...domain.RelationKey) {}
 
 func (s *State) GetNotificationById(id string) *model.Notification {
 	iterState := s.findStateWithNonEmptyNotifications()

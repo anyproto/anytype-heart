@@ -18,7 +18,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/anystorehelper"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("objectstore.spaceindex")
@@ -107,7 +106,6 @@ type Store interface {
 	GetRelationLink(key string) (*model.RelationLink, error)
 	FetchRelationByKey(key string) (relation *relationutils.Relation, err error)
 	FetchRelationByKeys(keys ...domain.RelationKey) (relations relationutils.Relations, err error)
-	FetchRelationByLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error)
 	ListAllRelations() (relations relationutils.Relations, err error)
 	GetRelationById(id string) (relation *model.Relation, err error)
 	GetRelationByKey(key string) (*model.Relation, error)

@@ -561,7 +561,6 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, customName, st.Details().GetString(bundle.RelationKeyName), "custom name should take precedence over template name")
-		assert.True(t, st.PickRelationLinks().Has(bundle.RelationKeyName.String()), "Name relation link should exist")
 	})
 
 	t.Run("prefill type Empty with custom details - custom name is applied", func(t *testing.T) {
@@ -578,7 +577,6 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 		// then
 		assert.NoError(t, err)
 		assert.Equal(t, customName, st.Details().GetString(bundle.RelationKeyName), "custom name should be applied when prefill type is Empty")
-		assert.True(t, st.PickRelationLinks().Has(bundle.RelationKeyName.String()), "Name relation link should exist")
 	})
 
 	t.Run("prefill type FromTemplateName with empty name in details - template name should be preserved", func(t *testing.T) {
@@ -623,7 +621,6 @@ func TestService_TemplateNamePrefill(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, blankTemplateId, st.RootId())
 		assert.Equal(t, customName, st.Details().GetString(bundle.RelationKeyName), "custom name should be applied to blank template")
-		assert.True(t, st.PickRelationLinks().Has(bundle.RelationKeyName.String()), "Name relation link should exist")
 	})
 
 	t.Run("blank template with empty name in details - name should remain empty", func(t *testing.T) {

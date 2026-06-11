@@ -11,7 +11,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 func (s *dsObjectStore) GetRelationLink(key string) (*model.RelationLink, error) {
@@ -90,14 +89,6 @@ func (s *dsObjectStore) FetchRelationByKeys(keys ...domain.RelationKey) (relatio
 		relations = append(relations, relationutils.RelationFromDetails(rec.Details))
 	}
 	return
-}
-
-func (s *dsObjectStore) FetchRelationByLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
-	keys := make([]domain.RelationKey, 0, len(links))
-	for _, l := range links {
-		keys = append(keys, domain.RelationKey(l.Key))
-	}
-	return s.FetchRelationByKeys(keys...)
 }
 
 func (s *dsObjectStore) GetRelationById(id string) (*model.Relation, error) {

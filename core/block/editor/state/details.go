@@ -8,7 +8,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
@@ -162,19 +161,6 @@ func (s *State) SetLocalDetail(key domain.RelationKey, value domain.Value) {
 // details removers
 
 func (s *State) RemoveRelation(keys ...domain.RelationKey) {
-	// TODO: GO-4284 remove logic regarding relationLinks
-	relLinks := s.getRelationLinks()
-	relLinksFiltered := make(pbtypes.RelationLinks, 0, len(relLinks))
-	for _, link := range relLinks {
-		if slice.FindPos(keys, domain.RelationKey(link.Key)) >= 0 {
-			continue
-		}
-		relLinksFiltered = append(relLinksFiltered, &model.RelationLink{
-			Key:    link.Key,
-			Format: link.Format,
-		})
-	}
-	s.relationLinks = relLinksFiltered
 	// remove detail value
 	s.RemoveDetail(keys...)
 	// remove from the list of featured relations

@@ -82,7 +82,6 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot, opts ...Snap
 		rootId:                   rootId,
 		blocks:                   blocks,
 		details:                  details,
-		relationLinks:            snapshot.Data.RelationLinks,
 		objectTypeKeys:           migrateObjectTypeIDsToKeys(snapshot.Data.ObjectTypes),
 		fileKeys:                 fileKeys,
 		store:                    snapshot.Data.Collections,
@@ -277,17 +276,14 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	return nil
 }
 
+// changeRelationAdd is kept for backward compatibility to parse RelationAdd changes from
+// existing trees. Object-level relationLinks were removed (GO-4284), so it is a no-op.
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
-	rl := s.getRelationLinks()
-	for _, r := range add.RelationLinks {
-		if !rl.Has(r.Key) {
-			rl = rl.Append(r)
-		}
-	}
-	s.relationLinks = rl
 	return nil
 }
 
+// changeRelationRemove parses a legacy RelationRemove change. Relations are now tracked by
+// details, so removing the relation removes its detail value (and featured entry).
 func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
 	s.RemoveRelation(slice.StringsInto[domain.RelationKey](rem.RelationKey)...)
 	return nil
@@ -467,8 +463,7 @@ func (s *State) GetChanges() []*pb.ChangeContent {
 
 func (s *State) fillChanges(msgs []simple.EventMessage) {
 	var updMsgs = make([]*pb.EventMessage, 0, len(msgs))
-	var delIds, delRelIds []string
-	var newRelLinks pbtypes.RelationLinks
+	var delIds []string
 	var structMsgs = make([]*pb.EventBlockSetChildrenIds, 0, len(msgs))
 	var b1, b2 []byte
 	for i, msg := range msgs {
@@ -547,10 +542,6 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataViewGroupOrderUpdate:
 			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfObjectRelationsAmend:
-			newRelLinks = append(newRelLinks, msg.Msg.GetObjectRelationsAmend().RelationLinks...)
-		case *pb.EventMessageValueOfObjectRelationsRemove:
-			delRelIds = append(delRelIds, msg.Msg.GetObjectRelationsRemove().RelationKeys...)
 		case *pb.EventMessageValueOfBlockDataViewObjectOrderUpdate:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewViewUpdate:
@@ -580,30 +571,6 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			},
 		})
 	}
-	if len(newRelLinks) > 0 {
-		filteredRelationsLinks := s.filterLocalAndDerivedRelations(newRelLinks)
-		if len(filteredRelationsLinks) > 0 {
-			cb.AddChange(&pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfRelationAdd{
-					RelationAdd: &pb.ChangeRelationAdd{
-						RelationLinks: filteredRelationsLinks,
-					},
-				},
-			})
-		}
-	}
-	if len(delRelIds) > 0 {
-		filteredRelationsKeys := s.filterLocalAndDerivedRelationsByKey(delRelIds)
-		if len(filteredRelationsKeys) > 0 {
-			cb.AddChange(&pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfRelationRemove{
-					RelationRemove: &pb.ChangeRelationRemove{
-						RelationKey: filteredRelationsKeys,
-					},
-				},
-			})
-		}
-	}
 	if len(updMsgs) > 0 {
 		cb.AddChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfBlockUpdate{
@@ -621,26 +588,6 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.diffFileInfo()...)
 	s.changes = append(s.changes, s.makeNotificationChanges()...)
 	s.changes = append(s.changes, s.makeDeviceInfoChanges()...)
-}
-
-func (s *State) filterLocalAndDerivedRelations(newRelLinks pbtypes.RelationLinks) pbtypes.RelationLinks {
-	var relLinksWithoutLocal pbtypes.RelationLinks
-	for _, link := range newRelLinks {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(link.Key)) {
-			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
-		}
-	}
-	return relLinksWithoutLocal
-}
-
-func (s *State) filterLocalAndDerivedRelationsByKey(relationKeys []string) []string {
-	var relKeysWithoutLocal []string
-	for _, key := range relationKeys {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
-			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
-		}
-	}
-	return relKeysWithoutLocal
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {

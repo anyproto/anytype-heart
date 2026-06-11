@@ -227,7 +227,6 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 			Format: model.RelationFormat_object,
 		},
 	}
-	stateWithLinks.AddRelationLinks(relations...)
 	stateWithLinks.AddDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
 		"relation1": domain.String("image_with_cute_kitten"),
 		"relation2": domain.String("Important"),
@@ -259,10 +258,6 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	t.Run("save backlinks", func(t *testing.T) {
 		st := stateWithLinks.Copy()
 		st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList([]string{"link1"}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyBacklinks.String(),
-			Format: model.RelationFormat_object,
-		})
 		objectIDs := DependentObjectIDs(st, converter, fetcher, Flags{Details: true})
 		assert.Len(t, objectIDs, 1)
 		assert.Contains(t, objectIDs, "link1")
@@ -270,16 +265,12 @@ func TestState_DepSmartIdsLinksAndRelations(t *testing.T) {
 	t.Run("skip backlinks", func(t *testing.T) {
 		st := stateWithLinks.Copy()
 		st.SetDetail(bundle.RelationKeyBacklinks, domain.StringList([]string{"link1"}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyBacklinks.String(),
-			Format: model.RelationFormat_object,
-		})
 		objectIDs := DependentObjectIDs(st, converter, fetcher, Flags{Details: true, NoBackLinks: true})
 		assert.Len(t, objectIDs, 0)
 	})
 }
 
-func buildStateWithLinks() *state.State {
+func buildStateWithLinks() (*state.State, []*model.RelationLink) {
 	stateWithLinks := state.NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
 			Id:          "root",
@@ -344,21 +335,20 @@ func buildStateWithLinks() *state.State {
 			Format: model.RelationFormat_date,
 		},
 	}
-	stateWithLinks.AddRelationLinks(relations...)
 	stateWithLinks.SetDetail("relation1", domain.StringList([]string{"file"}))
 	stateWithLinks.SetDetail("relation2", domain.StringList([]string{"option1"}))
 	stateWithLinks.SetDetail("relation3", domain.StringList([]string{"option2"}))
 	stateWithLinks.SetDetail("relation4", domain.StringList([]string{"option3"}))
 	stateWithLinks.SetDetail("relation5", domain.Int64(time.Now().Unix()))
 
-	return stateWithLinks
+	return stateWithLinks, relations
 }
 
 func TestState_DepSmartIdsLinksDetailsAndRelations(t *testing.T) {
 	// given
-	stateWithLinks := buildStateWithLinks()
+	stateWithLinks, relations := buildStateWithLinks()
 	converter := &fakeConverter{}
-	fetcher := setupFetcher(t, stateWithLinks.PickRelationLinks())
+	fetcher := setupFetcher(t, relations)
 
 	t.Run("blocks option is turned on: get ids from blocks", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{Blocks: true})
@@ -395,7 +385,6 @@ func TestState_DepSmartIdsLinksCreatorModifierWorkspace(t *testing.T) {
 			Format: model.RelationFormat_object,
 		},
 	}
-	stateWithLinks.AddRelationLinks(relations...)
 	stateWithLinks.SetDetail("relation1", domain.Int64(time.Now().Unix()))
 	stateWithLinks.SetDetail(bundle.RelationKeyCreatedDate, domain.Int64(time.Now().Unix()))
 	stateWithLinks.SetDetail(bundle.RelationKeyCreator, domain.String("creator"))
@@ -419,7 +408,7 @@ func TestState_DepSmartIdsObjectTypes(t *testing.T) {
 	stateWithLinks := state.NewDoc("root", nil).(*state.State)
 	stateWithLinks.SetObjectTypeKey(bundle.TypeKeyPage)
 	converter := &fakeConverter{}
-	fetcher := setupFetcher(t, stateWithLinks.PickRelationLinks())
+	fetcher := setupFetcher(t, nil)
 
 	t.Run("all options are turned off", func(t *testing.T) {
 		objectIDs := DependentObjectIDs(stateWithLinks, converter, fetcher, Flags{})
@@ -440,9 +429,9 @@ func TestDependentObjectIDsPerSpace(t *testing.T) {
 		spc2 = "space2"
 		spc3 = "space3"
 	)
-	st := buildStateWithLinks()
+	st, relations := buildStateWithLinks()
 	converter := &fakeConverter{}
-	fetcher := setupFetcher(t, st.PickRelationLinks())
+	fetcher := setupFetcher(t, relations)
 	resolver := &fakeSpaceIdResolver{idsToSpaceIds: map[string]string{
 		"objectID":  spc1,
 		"objectID2": spc2,

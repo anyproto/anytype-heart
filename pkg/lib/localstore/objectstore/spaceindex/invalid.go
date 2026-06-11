@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 type invalidStore struct {
@@ -188,10 +187,6 @@ func (s *invalidStore) FetchRelationByKey(key string) (relation *relationutils.R
 }
 
 func (s *invalidStore) FetchRelationByKeys(keys ...domain.RelationKey) (relations relationutils.Relations, err error) {
-	return nil, s.err
-}
-
-func (s *invalidStore) FetchRelationByLinks(links pbtypes.RelationLinks) (relations relationutils.Relations, err error) {
 	return nil, s.err
 }
 
