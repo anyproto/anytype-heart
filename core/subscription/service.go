@@ -198,9 +198,41 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 		return nil, fmt.Errorf("compile filters: %w", err)
 	}
 
-	old, token, err := s.claimSlot(spec.subId)
+	res, err := s.subscribe(spec, filters, idx)
 	if err != nil {
 		return nil, err
+	}
+
+	records := res.records
+	if !spec.ordered {
+		// ordered snapshots are already the window; unordered ones are
+		// truncated for one-shot consumers (objectgraph) only
+		records = truncateRecords(records, spec.offset, spec.limit)
+	}
+	return &SubscribeResponse{
+		SubId:   spec.subId,
+		Records: records,
+		Counters: &pb.EventObjectSubscriptionCounters{
+			SubId: spec.subId,
+			Total: int64(res.total),
+		},
+		Output: res.sub.queue,
+	}, nil
+}
+
+type subscribeResult struct {
+	sub     *coreSub
+	records []*domain.Details
+	total   int
+}
+
+// subscribe is the shared core of Search and SubscribeIdsReq: claim the
+// subId slot, replace any previous owner, build the sub (including scope
+// sources), install it with its snapshot, finalize the slot
+func (s *service) subscribe(spec subSpec, filters *database.Filters, idx spaceindex.Store) (subscribeResult, error) {
+	old, token, err := s.claimSlot(spec.subId)
+	if err != nil {
+		return subscribeResult{}, err
 	}
 	if old != nil {
 		// same-subId resubscribe replaces the subscription silently: no
@@ -208,6 +240,65 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 		s.teardown(old)
 	}
 
+	sub := buildCoreSub(spec, filters)
+
+	fail := func(err error) (subscribeResult, error) {
+		s.releaseSlot(spec.subId, token)
+		if sub.collection != nil {
+			sub.collection.stop()
+		}
+		if sub.queueOwned {
+			_ = sub.queue.Close()
+		}
+		return subscribeResult{}, err
+	}
+
+	if spec.collectionId != "" {
+		if s.collectionService == nil {
+			return fail(errors.New("collection service is not available"))
+		}
+		initialIds, ch, err := s.collectionService.SubscribeForCollection(spec.collectionId, spec.subId)
+		if err != nil {
+			return fail(fmt.Errorf("subscribe for collection %s: %w", spec.collectionId, err))
+		}
+		sub.setScopeIds(initialIds)
+		sub.collection = newCollectionWatcher(s, sub, spec.collectionId, spec.subId, ch)
+	}
+
+	var (
+		records []*domain.Details
+		total   int
+	)
+	for {
+		st := s.getOrCreateSpace(spec.spaceId, idx)
+		if st == nil {
+			return fail(errors.New("subscription service is closed"))
+		}
+		sub.space = st
+		records, total, err = st.install(sub, spec.asyncInit)
+		if errors.Is(err, errSpaceStopped) {
+			continue
+		}
+		break
+	}
+	if err != nil {
+		return fail(fmt.Errorf("subscribe %s: %w", spec.subId, err))
+	}
+	sub.space.notify()
+
+	if !s.finalizeSlot(spec.subId, token, sub) {
+		// a concurrent Search or Unsubscribe won the slot; the snapshot in
+		// the result is still valid, the subscription itself is gone
+		s.teardown(sub)
+		return subscribeResult{sub: sub, records: records, total: total}, nil
+	}
+	if sub.collection != nil {
+		sub.collection.start()
+	}
+	return subscribeResult{sub: sub, records: records, total: total}, nil
+}
+
+func buildCoreSub(spec subSpec, filters *database.Filters) *coreSub {
 	sub := &coreSub{
 		subId:   spec.subId,
 		spaceId: spec.spaceId,
@@ -220,13 +311,19 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 		sub.ordered = true
 		sub.limit = spec.limit
 		sub.offset = spec.offset
-		if len(spec.sorts) > 0 {
+		if len(spec.sorts) > 0 && filters != nil {
 			sub.order = filters.Order
 			sub.sortKeys = make([]domain.RelationKey, 0, len(spec.sorts))
 			for _, s := range spec.sorts {
 				sub.sortKeys = append(sub.sortKeys, s.RelationKey)
 			}
 		}
+	}
+	if spec.scopeIds != nil {
+		sub.setScopeIds(spec.scopeIds)
+		sub.scopeRequestOrder = spec.scopeRequestOrder
+		// ids subscriptions have no counters semantics (contract §3.6)
+		sub.noCounters = spec.scopeRequestOrder
 	}
 	if spec.internal {
 		if spec.queue != nil {
@@ -236,53 +333,7 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 			sub.queueOwned = true
 		}
 	}
-
-	var (
-		records []*domain.Details
-		total   int
-	)
-	for {
-		st := s.getOrCreateSpace(spec.spaceId, idx)
-		if st == nil {
-			err = errors.New("subscription service is closed")
-			break
-		}
-		sub.space = st
-		records, total, err = st.install(sub, spec.asyncInit)
-		if errors.Is(err, errSpaceStopped) {
-			continue
-		}
-		break
-	}
-	if err != nil {
-		s.releaseSlot(spec.subId, token)
-		if sub.queueOwned {
-			_ = sub.queue.Close()
-		}
-		return nil, fmt.Errorf("subscribe %s: %w", spec.subId, err)
-	}
-	sub.space.notify()
-
-	if !s.finalizeSlot(spec.subId, token, sub) {
-		// a concurrent Search or Unsubscribe won the slot; the snapshot in
-		// the response is still valid, the subscription itself is gone
-		s.teardown(sub)
-	}
-
-	if !spec.ordered {
-		// ordered snapshots are already the window; unordered ones are
-		// truncated for one-shot consumers (objectgraph) only
-		records = truncateRecords(records, spec.offset, spec.limit)
-	}
-	return &SubscribeResponse{
-		SubId:   spec.subId,
-		Records: records,
-		Counters: &pb.EventObjectSubscriptionCounters{
-			SubId: spec.subId,
-			Total: int64(total),
-		},
-		Output: sub.queue,
-	}, nil
+	return sub
 }
 
 func (s *service) compileFilters(spec subSpec, idx spaceindex.Store) (*database.Filters, error) {
@@ -353,10 +404,14 @@ func (s *service) getOrCreateSpace(spaceId string, idx spaceindex.Store) *spaceS
 	return st
 }
 
-// teardown detaches a subscription: out of its space, engine-owned queue
-// closed (caller-provided queues are never touched — crossspacesub shares one
-// queue across all its per-space subscriptions), empty space states dropped
+// teardown detaches a subscription: collection watcher stopped, out of its
+// space, engine-owned queue closed (caller-provided queues are never touched
+// — crossspacesub shares one queue across all its per-space subscriptions),
+// empty space states dropped
 func (s *service) teardown(sub *coreSub) {
+	if sub.collection != nil {
+		sub.collection.stop()
+	}
 	empty := sub.space.removeSub(sub)
 	if sub.queueOwned {
 		_ = sub.queue.Close()
@@ -427,7 +482,19 @@ func (s *service) SubscriptionIDs() []string {
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
-	return nil, ErrNotImplemented
+	spec, err := normalizeSubscribeIds(req)
+	if err != nil {
+		return nil, fmt.Errorf("normalize subscribe ids request: %w", err)
+	}
+	idx := s.store.SpaceIndex(spec.spaceId)
+	res, err := s.subscribe(spec, nil, idx)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.RpcObjectSubscribeIdsResponse{
+		SubId:   spec.subId,
+		Records: domain.DetailsListToProtos(res.records),
+	}, nil
 }
 
 func (s *service) SubscribeIds(subId string, ids []string) (records []*domain.Details, err error) {

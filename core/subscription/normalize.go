@@ -32,6 +32,12 @@ type subSpec struct {
 	// the full set.
 	ordered bool
 
+	// scope gating: explicit ids (SubscribeIds, request-order Add events)
+	// or a live collection membership stream
+	scopeIds          []string
+	scopeRequestOrder bool
+	collectionId      string
+
 	internal  bool
 	asyncInit bool
 	queue     *mb.MB[*pb.EventMessage] // caller-provided internal queue, may be nil
@@ -68,18 +74,42 @@ func normalizeSearch(req SubscribeRequest) (subSpec, error) {
 	// AfterId/BeforeId are dead request cursors: the client has always sent
 	// them empty and no engine ever read them. Ignored by design.
 	return subSpec{
-		subId:     subId,
-		spaceId:   req.SpaceId,
-		keys:      normalizeKeys(req.Keys),
-		filters:   req.Filters,
-		sorts:     req.Sorts,
-		source:    req.Source,
-		ordered:   ordered,
-		internal:  req.Internal,
-		asyncInit: req.AsyncInit,
-		queue:     req.InternalQueue,
-		limit:     limit,
-		offset:    offset,
+		subId:        subId,
+		spaceId:      req.SpaceId,
+		keys:         normalizeKeys(req.Keys),
+		filters:      req.Filters,
+		sorts:        req.Sorts,
+		source:       req.Source,
+		ordered:      ordered,
+		collectionId: req.CollectionId,
+		internal:     req.Internal,
+		asyncInit:    req.AsyncInit,
+		queue:        req.InternalQueue,
+		limit:        limit,
+		offset:       offset,
+	}, nil
+}
+
+// normalizeSubscribeIds maps the explicit-id-list RPC onto the core
+// primitive: a fixed id scope in request order, no filters at all (explicit
+// ids are tracked even when archived or deleted), no ordering or counters
+func normalizeSubscribeIds(req pb.RpcObjectSubscribeIdsRequest) (subSpec, error) {
+	if req.SpaceId == "" {
+		return subSpec{}, errors.New("spaceId is required")
+	}
+	if len(req.Ids) == 0 {
+		return subSpec{}, errors.New("ids are required")
+	}
+	subId := req.SubId
+	if subId == "" {
+		subId = bson.NewObjectId().Hex()
+	}
+	return subSpec{
+		subId:             subId,
+		spaceId:           req.SpaceId,
+		keys:              normalizeKeys(req.Keys),
+		scopeIds:          req.Ids,
+		scopeRequestOrder: true,
 	}, nil
 }
 

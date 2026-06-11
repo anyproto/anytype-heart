@@ -28,7 +28,8 @@ const testSpaceId = "space1"
 
 type engineFixture struct {
 	Service
-	objectStore *objectstore.StoreFixture
+	objectStore       *objectstore.StoreFixture
+	collectionService *MockCollectionService
 	// broadcastEvents collects every pb.Event the engine broadcasts; one
 	// element per Broadcast call so payload grouping is assertable
 	broadcastEvents *mb.MB[*pb.Event]
@@ -45,11 +46,12 @@ func newEngineFixture(t *testing.T) *engineFixture {
 	}).Maybe()
 
 	objectStore := objectstore.NewStoreFixture(t)
+	collService := NewMockCollectionService(t)
 	s := New()
 
 	a.Register(objectStore)
 	a.Register(kanban.New())
-	a.Register(&collectionServiceMock{MockCollectionService: NewMockCollectionService(t)})
+	a.Register(&collectionServiceMock{MockCollectionService: collService})
 	a.Register(testutil.PrepareMock(ctx, a, eventSender))
 	a.Register(s)
 	require.NoError(t, a.Start(ctx))
@@ -61,9 +63,10 @@ func newEngineFixture(t *testing.T) *engineFixture {
 	})
 
 	return &engineFixture{
-		Service:         s,
-		objectStore:     objectStore,
-		broadcastEvents: broadcastEvents,
+		Service:           s,
+		objectStore:       objectStore,
+		collectionService: collService,
+		broadcastEvents:   broadcastEvents,
 	}
 }
 

@@ -226,7 +226,12 @@ func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.D
 		return nil, 0, errSpaceStopped
 	}
 
-	queryResult, err := st.idx.QueryRaw(sub.filters, 0, 0)
+	var queryResult []database.Record
+	if sub.scopeSet != nil {
+		queryResult, err = st.scopedQuery(sub)
+	} else {
+		queryResult, err = st.idx.QueryRaw(sub.filters, 0, 0)
+	}
 	if err != nil {
 		return nil, 0, err
 	}
@@ -315,6 +320,112 @@ func (st *spaceState) installOrdered(sub *coreSub, queryResult []database.Record
 		records = append(records, p.entry.prev)
 	}
 	return records
+}
+
+// scopedQuery fetches a scope-gated sub's candidates by id, in scope order,
+// keeping only records that pass the sub's filters (ids subscriptions have
+// none). Bounded by the scope size.
+func (st *spaceState) scopedQuery(sub *coreSub) ([]database.Record, error) {
+	fetched, err := st.idx.QueryByIds(sub.scope)
+	if err != nil {
+		return nil, err
+	}
+	byId := make(map[string]database.Record, len(fetched))
+	for _, rec := range fetched {
+		if rec.Details == nil {
+			continue
+		}
+		byId[rec.Details.GetString(bundle.RelationKeyId)] = rec
+	}
+	records := make([]database.Record, 0, len(fetched))
+	for _, id := range sub.scope {
+		rec, ok := byId[id]
+		if !ok {
+			continue
+		}
+		if !sub.matches(id, rec.Details) {
+			continue
+		}
+		records = append(records, rec)
+	}
+	return records, nil
+}
+
+// setScope replaces a sub's id scope (collection membership stream) and
+// turns the difference into enter/leave transitions through the regular
+// apply path. Entering objects' details come from one batched store read.
+func (st *spaceState) setScope(sub *coreSub, ids []string) {
+	st.mu.Lock()
+	defer func() {
+		st.mu.Unlock()
+		st.notify()
+	}()
+	if st.stopped || !st.hasSub(sub) {
+		return
+	}
+
+	newSet := make(map[string]struct{}, len(ids))
+	newIdx := make(map[string]int, len(ids))
+	for i, id := range ids {
+		newSet[id] = struct{}{}
+		newIdx[id] = i
+	}
+	var added []string
+	for _, id := range ids {
+		if _, ok := sub.scopeSet[id]; !ok {
+			added = append(added, id)
+		}
+	}
+	var removed []string
+	for _, id := range sub.scope {
+		if _, ok := newSet[id]; !ok {
+			removed = append(removed, id)
+		}
+	}
+	sub.scope = ids
+	sub.scopeSet = newSet
+	sub.scopeIdx = newIdx
+	if len(added) == 0 && len(removed) == 0 {
+		return
+	}
+
+	var addedRecords []database.Record
+	if len(added) > 0 {
+		var err error
+		addedRecords, err = st.idx.QueryByIds(added)
+		if err != nil {
+			log.Errorf("subscription %s: fetch scope additions: %v", sub.subId, err)
+		}
+	}
+
+	var batch opBatch
+	for _, id := range removed {
+		// out of scope now: a nil-details apply is a non-match, i.e. a leave
+		sub.apply(id, nil, &batch)
+	}
+	for _, rec := range addedRecords {
+		if rec.Details == nil {
+			continue
+		}
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+		sub.apply(id, rec.Details, &batch)
+	}
+	sub.finalize(&batch)
+	if len(batch.ops) > 0 {
+		st.outbox = append(st.outbox, batch.ops)
+	}
+}
+
+func (st *spaceState) hasSub(sub *coreSub) bool {
+	for _, s := range st.subs {
+		if s == sub {
+			return true
+		}
+	}
+	return false
 }
 
 // removeSub detaches the sub from the space; returns whether the space is

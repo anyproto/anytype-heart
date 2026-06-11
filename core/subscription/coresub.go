@@ -40,6 +40,16 @@ type coreSub struct {
 	limit    int // 0 = unbounded window
 	offset   int
 
+	// scope is an optional id whitelist gating membership: fixed for ids
+	// subscriptions (in request order), mutable for collection-backed subs.
+	// scopeRequestOrder makes Add events use the nearest preceding present
+	// scope id as afterId (ids subscriptions' request-order semantics).
+	scope             []string
+	scopeSet          map[string]struct{}
+	scopeIdx          map[string]int
+	scopeRequestOrder bool
+	collection        *collectionWatcher
+
 	// members is the full matching set (ids only); vis holds the visible
 	// members' state; win additionally orders them for ordered subs
 	members map[string]struct{}
@@ -56,8 +66,11 @@ type coreSub struct {
 	detailOps    []subOp
 	needsRequery bool
 
-	// detailEventsOnly suppresses Add/Remove/Position/Counters (dep subs)
+	// detailEventsOnly suppresses Add/Remove/Position/Counters (dep subs);
+	// noCounters suppresses only Counters (ids subscriptions have no
+	// counters semantics)
 	detailEventsOnly bool
+	noCounters       bool
 
 	// queue is the delivery target for internal subs; nil means broadcast.
 	// queueOwned distinguishes engine-created queues (closed on teardown)
@@ -73,6 +86,18 @@ type visEntry struct {
 	id       string
 	prev     *domain.Details // projection to the requested keys
 	sortVals *domain.Details // sort keys only; nil when order == nil
+}
+
+// setScopeIds replaces the scope index structures; called before install or
+// under the space mutex (setScope)
+func (c *coreSub) setScopeIds(ids []string) {
+	c.scope = ids
+	c.scopeSet = make(map[string]struct{}, len(ids))
+	c.scopeIdx = make(map[string]int, len(ids))
+	for i, id := range ids {
+		c.scopeSet[id] = struct{}{}
+		c.scopeIdx[id] = i
+	}
 }
 
 func (c *coreSub) newVisEntry(id string, details *domain.Details) *visEntry {
@@ -95,12 +120,42 @@ func (c *coreSub) cmpEntries(a, b *visEntry) int {
 	return strings.Compare(a.id, b.id)
 }
 
+// matches is the membership predicate: scope whitelist (when present) and
+// compiled filters (when present — ids subscriptions have none: explicit ids
+// are tracked even when archived or deleted)
+func (c *coreSub) matches(id string, details *domain.Details) bool {
+	if c.scopeSet != nil {
+		if _, ok := c.scopeSet[id]; !ok {
+			return false
+		}
+	}
+	if c.filters != nil && c.filters.FilterObj != nil {
+		return c.filters.FilterObj.FilterObject(details)
+	}
+	return true
+}
+
+// scopeAfterId returns the nearest preceding scope id that is currently
+// visible — the request-order afterId for ids subscriptions
+func (c *coreSub) scopeAfterId(id string) string {
+	idx, ok := c.scopeIdx[id]
+	if !ok {
+		return ""
+	}
+	for i := idx - 1; i >= 0; i-- {
+		if _, present := c.vis[c.scope[i]]; present {
+			return c.scope[i]
+		}
+	}
+	return ""
+}
+
 // apply evaluates one feed update against the sub and appends the resulting
 // transition ops. details == nil means the object is gone from the store
 // (hard delete observed via re-fetch miss) and is treated as a non-match.
 // Runs under the space mutex.
 func (c *coreSub) apply(id string, details *domain.Details, out *opBatch) {
-	matched := details != nil && c.filters.FilterObj != nil && c.filters.FilterObj.FilterObject(details)
+	matched := details != nil && c.matches(id, details)
 	_, isMember := c.members[id]
 	if c.ordered {
 		c.applyOrdered(id, details, matched, isMember)
@@ -113,7 +168,11 @@ func (c *coreSub) apply(id string, details *domain.Details, out *opBatch) {
 		c.vis[id] = &visEntry{id: id, prev: proj}
 		out.append(subOp{sub: c, kind: opSet, id: id, details: proj})
 		if !c.detailEventsOnly {
-			out.append(subOp{sub: c, kind: opAdd, id: id})
+			var afterId string
+			if c.scopeRequestOrder {
+				afterId = c.scopeAfterId(id)
+			}
+			out.append(subOp{sub: c, kind: opAdd, id: id, afterId: afterId})
 		}
 	case !matched && isMember:
 		delete(c.members, id)
@@ -301,11 +360,20 @@ func (c *coreSub) evictOverflow() {
 // space mutex; reading newer store state than the intake queue has delivered
 // is safe because batch processing is diff-based and idempotent.
 func (c *coreSub) requeryWindow() {
-	fetch := 0 // everything
-	if c.limit > 0 {
-		fetch = c.offset + c.limit + requeryMargin
+	var (
+		records []database.Record
+		err     error
+	)
+	if c.scopeSet != nil {
+		// scoped sets are bounded by the scope; fetch by ids and filter
+		records, err = c.space.scopedQuery(c)
+	} else {
+		fetch := 0 // everything
+		if c.limit > 0 {
+			fetch = c.offset + c.limit + requeryMargin
+		}
+		records, err = c.space.idx.QueryRaw(c.filters, fetch, 0)
 	}
-	records, err := c.space.idx.QueryRaw(c.filters, fetch, 0)
 	if err != nil {
 		log.Errorf("subscription %s: window re-query: %v", c.subId, err)
 		return
@@ -375,7 +443,7 @@ func (c *coreSub) finalize(out *opBatch) {
 	}
 	if total := len(c.members); total != c.lastTotal {
 		c.lastTotal = total
-		if !c.detailEventsOnly {
+		if !c.detailEventsOnly && !c.noCounters {
 			out.append(subOp{sub: c, kind: opCounters, total: int64(total)})
 		}
 	}
