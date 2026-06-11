@@ -77,10 +77,11 @@ type spaceState struct {
 	idx     spaceindex.Store
 	svc     *service
 
-	mu      sync.Mutex
-	subs    []*coreSub
-	outbox  [][]subOp
-	stopped bool
+	mu         sync.Mutex
+	subs       []*coreSub
+	groupsSubs []*groupsSub
+	outbox     [][]subOp
+	stopped    bool
 
 	intake   *intakeQueue
 	wakeCh   chan struct{}
@@ -157,16 +158,42 @@ func (st *spaceState) processBatch(items []feedItem) {
 	var batch opBatch
 	for _, it := range items {
 		for _, sub := range st.subs {
+			sub.checkOrderDep(it.details)
 			sub.apply(it.id, it.details, &batch)
+		}
+		for _, g := range st.groupsSubs {
+			g.checkItem(it.id, it.details)
+		}
+	}
+	// parents first (their windows must be final before dep sets derive from
+	// them), then dep scope updates, then the dep children — so dep events
+	// land in the same batch payload as the parent change that caused them
+	for _, sub := range st.subs {
+		if !sub.isDepChild {
+			sub.finalize(&batch)
 		}
 	}
 	for _, sub := range st.subs {
-		sub.finalize(&batch)
+		if sub.depTracker != nil && sub.depDirty {
+			sub.depDirty = false
+			st.applyScopeChange(sub.depTracker.child, sub.depTracker.computeDepIds(), &batch)
+		}
+	}
+	for _, sub := range st.subs {
+		if sub.isDepChild {
+			sub.finalize(&batch)
+		}
 	}
 	if len(batch.ops) > 0 {
 		st.outbox = append(st.outbox, batch.ops)
 	}
+	dirtyGroups := st.collectDirtyGroups()
 	st.mu.Unlock()
+
+	// group recomputation queries the store; run it off the space mutex
+	for _, g := range dirtyGroups {
+		g.recompute()
+	}
 }
 
 // refetchDegraded restores full details for id-only intake entries with one
@@ -217,13 +244,13 @@ var errSpaceStopped = errors.New("space state stopped")
 // install registers the sub and takes its snapshot atomically with respect to
 // the worker (st.mu is held across the store query — the no-data-loss
 // invariant, see newSpaceState). Returns the visible snapshot (the window for
-// ordered subs, everything for unordered ones); for asyncInit the snapshot is
-// appended to the outbox as events instead.
-func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.Details, total int, err error) {
+// ordered subs, everything for unordered ones) plus the dep child's snapshot;
+// for asyncInit the snapshot is appended to the outbox as events instead.
+func (st *spaceState) install(sub *coreSub, asyncInit bool) (records, depRecords []*domain.Details, total int, err error) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
 	if st.stopped {
-		return nil, 0, errSpaceStopped
+		return nil, nil, 0, errSpaceStopped
 	}
 
 	var queryResult []database.Record
@@ -233,7 +260,7 @@ func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.D
 		queryResult, err = st.idx.QueryRaw(sub.filters, 0, 0)
 	}
 	if err != nil {
-		return nil, 0, err
+		return nil, nil, 0, err
 	}
 
 	if sub.ordered {
@@ -257,6 +284,10 @@ func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.D
 	sub.lastTotal = len(sub.members)
 	st.subs = append(st.subs, sub)
 
+	if sub.depTracker != nil {
+		depRecords = st.installDepChild(sub.depTracker)
+	}
+
 	if asyncInit {
 		// the snapshot flows as events through the queue; an empty snapshot
 		// emits nothing, not even Counters{0}
@@ -272,7 +303,87 @@ func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.D
 		}
 		records = nil
 	}
-	return records, len(sub.members), nil
+	return records, depRecords, len(sub.members), nil
+}
+
+// installDepChild seeds and registers the hidden "{subId}/dep" sub from the
+// freshly installed parent. A dep snapshot failure degrades to an empty dep
+// set (entries arrive via the feed) instead of failing the subscription.
+// Runs under the space mutex.
+func (st *spaceState) installDepChild(tracker *depTracker) (depRecords []*domain.Details) {
+	child := tracker.child
+	child.space = st
+	child.setScopeIds(tracker.computeDepIds())
+	queryResult, err := st.scopedQuery(child)
+	if err != nil {
+		log.Errorf("subscription %s: dep snapshot: %v", child.subId, err)
+		queryResult = nil
+	}
+	depRecords = make([]*domain.Details, 0, len(queryResult))
+	for _, rec := range queryResult {
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+		proj := projectDetails(rec.Details, child.keys)
+		child.members[id] = struct{}{}
+		child.vis[id] = &visEntry{id: id, prev: proj}
+		depRecords = append(depRecords, proj)
+	}
+	child.lastTotal = len(child.members)
+	st.subs = append(st.subs, child)
+	return depRecords
+}
+
+// installGroups registers a groups adapter and seeds its member relevance
+// set (id → grouped value) so checkItem can detect leaves and value changes
+func (st *spaceState) installGroups(g *groupsSub) error {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.stopped {
+		return errSpaceStopped
+	}
+	matchFilters := &database.Filters{FilterObj: g.match}
+	records, err := st.idx.QueryRaw(matchFilters, 0, 0)
+	if err != nil {
+		return err
+	}
+	g.members = make(map[string]domain.Value, len(records))
+	for _, rec := range records {
+		if rec.Details == nil {
+			continue
+		}
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+		g.members[id] = rec.Details.Get(g.relationKey)
+	}
+	st.groupsSubs = append(st.groupsSubs, g)
+	return nil
+}
+
+func (st *spaceState) removeGroupsSub(g *groupsSub) (empty bool) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	for i, cur := range st.groupsSubs {
+		if cur == g {
+			st.groupsSubs = append(st.groupsSubs[:i], st.groupsSubs[i+1:]...)
+			break
+		}
+	}
+	return len(st.subs) == 0 && len(st.groupsSubs) == 0
+}
+
+func (st *spaceState) collectDirtyGroups() []*groupsSub {
+	var res []*groupsSub
+	for _, g := range st.groupsSubs {
+		if g.dirty {
+			g.dirty = false
+			res = append(res, g)
+		}
+	}
+	return res
 }
 
 // installOrdered seeds the full member set and the ordered window from the
@@ -353,7 +464,7 @@ func (st *spaceState) scopedQuery(sub *coreSub) ([]database.Record, error) {
 
 // setScope replaces a sub's id scope (collection membership stream) and
 // turns the difference into enter/leave transitions through the regular
-// apply path. Entering objects' details come from one batched store read.
+// apply path
 func (st *spaceState) setScope(sub *coreSub, ids []string) {
 	st.mu.Lock()
 	defer func() {
@@ -363,12 +474,22 @@ func (st *spaceState) setScope(sub *coreSub, ids []string) {
 	if st.stopped || !st.hasSub(sub) {
 		return
 	}
+	var batch opBatch
+	st.applyScopeChange(sub, ids, &batch)
+	sub.finalize(&batch)
+	if len(batch.ops) > 0 {
+		st.outbox = append(st.outbox, batch.ops)
+	}
+}
 
+// applyScopeChange diffs the sub's scope against the new id list and feeds
+// the difference through the regular apply path; entering objects' details
+// come from one batched store read. Runs under the space mutex; the caller
+// finalizes the sub.
+func (st *spaceState) applyScopeChange(sub *coreSub, ids []string, batch *opBatch) {
 	newSet := make(map[string]struct{}, len(ids))
-	newIdx := make(map[string]int, len(ids))
-	for i, id := range ids {
+	for _, id := range ids {
 		newSet[id] = struct{}{}
-		newIdx[id] = i
 	}
 	var added []string
 	for _, id := range ids {
@@ -382,9 +503,7 @@ func (st *spaceState) setScope(sub *coreSub, ids []string) {
 			removed = append(removed, id)
 		}
 	}
-	sub.scope = ids
-	sub.scopeSet = newSet
-	sub.scopeIdx = newIdx
+	sub.setScopeIds(ids)
 	if len(added) == 0 && len(removed) == 0 {
 		return
 	}
@@ -398,10 +517,9 @@ func (st *spaceState) setScope(sub *coreSub, ids []string) {
 		}
 	}
 
-	var batch opBatch
 	for _, id := range removed {
 		// out of scope now: a nil-details apply is a non-match, i.e. a leave
-		sub.apply(id, nil, &batch)
+		sub.apply(id, nil, batch)
 	}
 	for _, rec := range addedRecords {
 		if rec.Details == nil {
@@ -411,11 +529,7 @@ func (st *spaceState) setScope(sub *coreSub, ids []string) {
 		if id == "" {
 			continue
 		}
-		sub.apply(id, rec.Details, &batch)
-	}
-	sub.finalize(&batch)
-	if len(batch.ops) > 0 {
-		st.outbox = append(st.outbox, batch.ops)
+		sub.apply(id, rec.Details, batch)
 	}
 }
 
@@ -433,13 +547,20 @@ func (st *spaceState) hasSub(sub *coreSub) bool {
 func (st *spaceState) removeSub(sub *coreSub) (empty bool) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
+	st.removeSubLocked(sub)
+	if sub.depTracker != nil {
+		st.removeSubLocked(sub.depTracker.child)
+	}
+	return len(st.subs) == 0 && len(st.groupsSubs) == 0
+}
+
+func (st *spaceState) removeSubLocked(sub *coreSub) {
 	for i, s := range st.subs {
 		if s == sub {
 			st.subs = append(st.subs[:i], st.subs[i+1:]...)
-			break
+			return
 		}
 	}
-	return len(st.subs) == 0
 }
 
 // markStopped flags the state as defunct if it has no subscriptions; a
@@ -447,7 +568,7 @@ func (st *spaceState) removeSub(sub *coreSub) (empty bool) {
 func (st *spaceState) markStopped() bool {
 	st.mu.Lock()
 	defer st.mu.Unlock()
-	if len(st.subs) > 0 || st.stopped {
+	if len(st.subs) > 0 || len(st.groupsSubs) > 0 || st.stopped {
 		return false
 	}
 	st.stopped = true

@@ -38,6 +38,9 @@ type subSpec struct {
 	scopeRequestOrder bool
 	collectionId      string
 
+	// withDeps enables render-dependency tracking ({subId}/dep)
+	withDeps bool
+
 	internal  bool
 	asyncInit bool
 	queue     *mb.MB[*pb.EventMessage] // caller-provided internal queue, may be nil
@@ -82,6 +85,7 @@ func normalizeSearch(req SubscribeRequest) (subSpec, error) {
 		source:       req.Source,
 		ordered:      ordered,
 		collectionId: req.CollectionId,
+		withDeps:     !req.NoDepSubscription,
 		internal:     req.Internal,
 		asyncInit:    req.AsyncInit,
 		queue:        req.InternalQueue,
@@ -110,6 +114,7 @@ func normalizeSubscribeIds(req pb.RpcObjectSubscribeIdsRequest) (subSpec, error)
 		keys:              normalizeKeys(req.Keys),
 		scopeIds:          req.Ids,
 		scopeRequestOrder: true,
+		withDeps:          !req.NoDepSubscription,
 	}, nil
 }
 

@@ -72,6 +72,17 @@ type coreSub struct {
 	detailEventsOnly bool
 	noCounters       bool
 
+	// render dependencies: the tracker owns the hidden child sub under
+	// "{subId}/dep"; depDirty marks that the dep id set may have changed
+	// this batch; isDepChild marks the child itself (finalized after its
+	// parent so dep scope changes land in the same batch)
+	depTracker *depTracker
+	depDirty   bool
+	isDepChild bool
+	// orderDepBuf is a reusable argument buffer for per-item UpdateOrderMap
+	// probes (checkOrderDep), avoiding a slice allocation per feed item
+	orderDepBuf [1]*domain.Details
+
 	// queue is the delivery target for internal subs; nil means broadcast.
 	// queueOwned distinguishes engine-created queues (closed on teardown)
 	// from caller-provided ones (never touched, e.g. crossspacesub's shared
@@ -166,6 +177,7 @@ func (c *coreSub) apply(id string, details *domain.Details, out *opBatch) {
 		proj := projectDetails(details, c.keys)
 		c.members[id] = struct{}{}
 		c.vis[id] = &visEntry{id: id, prev: proj}
+		c.depDirty = c.depTracker != nil
 		out.append(subOp{sub: c, kind: opSet, id: id, details: proj})
 		if !c.detailEventsOnly {
 			var afterId string
@@ -177,6 +189,7 @@ func (c *coreSub) apply(id string, details *domain.Details, out *opBatch) {
 	case !matched && isMember:
 		delete(c.members, id)
 		delete(c.vis, id)
+		c.depDirty = c.depTracker != nil
 		if !c.detailEventsOnly {
 			out.append(subOp{sub: c, kind: opRemove, id: id})
 		}
@@ -187,12 +200,32 @@ func (c *coreSub) apply(id string, details *domain.Details, out *opBatch) {
 			return
 		}
 		e.prev = next
+		if c.depTracker != nil && c.depTracker.amendTouchesDepKeys(amend, unset) {
+			c.depDirty = true
+		}
 		if len(amend) > 0 {
 			out.append(subOp{sub: c, kind: opAmend, id: id, amend: amend})
 		}
 		if len(unset) > 0 {
 			out.append(subOp{sub: c, kind: opUnset, id: id, unset: unset})
 		}
+	}
+}
+
+// checkOrderDep offers a feed item to the compiled order's dependency maps
+// (object/file sorts depend on target names, tag/status sorts on option
+// objects; the order map knows exactly which ids it depends on). A reported
+// change means the comparator shifted under the window: rebuild it via the
+// re-query, which re-sorts with the updated map and emits the resulting
+// Position events. Covers the contract's "rename the assignee you sort by".
+func (c *coreSub) checkOrderDep(details *domain.Details) {
+	if c.order == nil || details == nil {
+		return
+	}
+	c.orderDepBuf[0] = details
+	if c.order.UpdateOrderMap(c.orderDepBuf[:]) {
+		c.beginBatch()
+		c.needsRequery = true
 	}
 }
 
@@ -309,6 +342,9 @@ func (c *coreSub) orderedStay(id string, details *domain.Details) {
 		return
 	}
 	e.prev = next
+	if c.depTracker != nil && c.depTracker.amendTouchesDepKeys(amend, unset) {
+		c.depDirty = true
+	}
 	if len(amend) > 0 {
 		c.detailOps = append(c.detailOps, subOp{sub: c, kind: opAmend, id: id, amend: amend})
 	}
@@ -433,7 +469,12 @@ func (c *coreSub) finalize(out *opBatch) {
 			c.requeryWindow()
 		}
 		if !c.detailEventsOnly {
+			opsBefore := len(out.ops)
 			c.windowDiffOps(out)
+			if len(out.ops) > opsBefore && c.depTracker != nil {
+				// window membership changed: dep set derives from it
+				c.depDirty = true
+			}
 		}
 		c.oldWin = nil
 	}

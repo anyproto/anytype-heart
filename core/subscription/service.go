@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
+	"github.com/globalsign/mgo/bson"
 	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -105,10 +106,11 @@ type CollectionService interface {
 // (with a unique token) before building its subscription and finalizes it
 // only if its token still owns the slot — the single serialization point for
 // replace-on-resubscribe, concurrent same-subId subscribes and racing
-// unsubscribes.
+// unsubscribes. A slot owns either a core subscription or a groups adapter.
 type subSlot struct {
-	token uint64
-	sub   *coreSub // nil while the owning Search is still building
+	token  uint64
+	sub    *coreSub // nil while the owning Search is still building
+	groups *groupsSub
 }
 
 type service struct {
@@ -210,8 +212,9 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 		records = truncateRecords(records, spec.offset, spec.limit)
 	}
 	return &SubscribeResponse{
-		SubId:   spec.subId,
-		Records: records,
+		SubId:        spec.subId,
+		Records:      records,
+		Dependencies: res.depRecords,
 		Counters: &pb.EventObjectSubscriptionCounters{
 			SubId: spec.subId,
 			Total: int64(res.total),
@@ -221,24 +224,23 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 }
 
 type subscribeResult struct {
-	sub     *coreSub
-	records []*domain.Details
-	total   int
+	sub        *coreSub
+	records    []*domain.Details
+	depRecords []*domain.Details
+	total      int
 }
 
 // subscribe is the shared core of Search and SubscribeIdsReq: claim the
 // subId slot, replace any previous owner, build the sub (including scope
-// sources), install it with its snapshot, finalize the slot
+// sources and dep tracking), install it with its snapshot, finalize the slot
 func (s *service) subscribe(spec subSpec, filters *database.Filters, idx spaceindex.Store) (subscribeResult, error) {
 	old, token, err := s.claimSlot(spec.subId)
 	if err != nil {
 		return subscribeResult{}, err
 	}
-	if old != nil {
-		// same-subId resubscribe replaces the subscription silently: no
-		// Remove events, the response supersedes the client's list
-		s.teardown(old)
-	}
+	// same-subId resubscribe replaces the subscription silently: no Remove
+	// events, the response supersedes the client's list
+	s.teardownSlot(old)
 
 	sub := buildCoreSub(spec, filters)
 
@@ -264,10 +266,14 @@ func (s *service) subscribe(spec subSpec, filters *database.Filters, idx spacein
 		sub.setScopeIds(initialIds)
 		sub.collection = newCollectionWatcher(s, sub, spec.collectionId, spec.subId, ch)
 	}
+	if spec.withDeps {
+		sub.depTracker = newDepTracker(sub, spec, idx)
+	}
 
 	var (
-		records []*domain.Details
-		total   int
+		records    []*domain.Details
+		depRecords []*domain.Details
+		total      int
 	)
 	for {
 		st := s.getOrCreateSpace(spec.spaceId, idx)
@@ -275,7 +281,7 @@ func (s *service) subscribe(spec subSpec, filters *database.Filters, idx spacein
 			return fail(errors.New("subscription service is closed"))
 		}
 		sub.space = st
-		records, total, err = st.install(sub, spec.asyncInit)
+		records, depRecords, total, err = st.install(sub, spec.asyncInit)
 		if errors.Is(err, errSpaceStopped) {
 			continue
 		}
@@ -286,16 +292,17 @@ func (s *service) subscribe(spec subSpec, filters *database.Filters, idx spacein
 	}
 	sub.space.notify()
 
-	if !s.finalizeSlot(spec.subId, token, sub) {
+	res := subscribeResult{sub: sub, records: records, depRecords: depRecords, total: total}
+	if !s.finalizeSlot(spec.subId, token, sub, nil) {
 		// a concurrent Search or Unsubscribe won the slot; the snapshot in
 		// the result is still valid, the subscription itself is gone
 		s.teardown(sub)
-		return subscribeResult{sub: sub, records: records, total: total}, nil
+		return res, nil
 	}
 	if sub.collection != nil {
 		sub.collection.start()
 	}
-	return subscribeResult{sub: sub, records: records, total: total}, nil
+	return res, nil
 }
 
 func buildCoreSub(spec subSpec, filters *database.Filters) *coreSub {
@@ -357,21 +364,32 @@ func (s *service) compileFilters(spec subSpec, idx spaceindex.Store) (*database.
 
 // claimSlot atomically claims the subId slot, returning the previous owner
 // (to tear down) and the claim token to finalize with
-func (s *service) claimSlot(subId string) (old *coreSub, token uint64, err error) {
+func (s *service) claimSlot(subId string) (old *subSlot, token uint64, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed {
 		return nil, 0, errors.New("subscription service is closed")
 	}
-	if slot, ok := s.slots[subId]; ok {
-		old = slot.sub
-	}
+	old = s.slots[subId]
 	s.seq++
 	s.slots[subId] = &subSlot{token: s.seq}
 	return old, s.seq, nil
 }
 
-func (s *service) finalizeSlot(subId string, token uint64, sub *coreSub) bool {
+// teardownSlot releases whatever a previously owned slot held
+func (s *service) teardownSlot(slot *subSlot) {
+	if slot == nil {
+		return
+	}
+	if slot.sub != nil {
+		s.teardown(slot.sub)
+	}
+	if slot.groups != nil {
+		s.teardownGroups(slot.groups)
+	}
+}
+
+func (s *service) finalizeSlot(subId string, token uint64, sub *coreSub, groups *groupsSub) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	slot, ok := s.slots[subId]
@@ -379,6 +397,7 @@ func (s *service) finalizeSlot(subId string, token uint64, sub *coreSub) bool {
 		return false
 	}
 	slot.sub = sub
+	slot.groups = groups
 	return true
 }
 
@@ -441,11 +460,9 @@ func (s *service) Unsubscribe(subIds ...string) (err error) {
 		slot := s.slots[subId]
 		delete(s.slots, subId)
 		s.mu.Unlock()
-		// a nil slot.sub means an in-flight Search owns it; deleting the
+		// an empty slot means an in-flight Search owns it; deleting the
 		// slot makes its finalize fail and tear the fresh sub down itself
-		if slot != nil && slot.sub != nil {
-			s.teardown(slot.sub)
-		}
+		s.teardownSlot(slot)
 	}
 	return nil
 }
@@ -474,7 +491,7 @@ func (s *service) SubscriptionIDs() []string {
 	defer s.mu.Unlock()
 	ids := make([]string, 0, len(s.slots))
 	for subId, slot := range s.slots {
-		if slot.sub != nil {
+		if slot.sub != nil || slot.groups != nil {
 			ids = append(ids, subId)
 		}
 	}
@@ -492,8 +509,9 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 		return nil, err
 	}
 	return &pb.RpcObjectSubscribeIdsResponse{
-		SubId:   spec.subId,
-		Records: domain.DetailsListToProtos(res.records),
+		SubId:        spec.subId,
+		Records:      domain.DetailsListToProtos(res.records),
+		Dependencies: domain.DetailsListToProtos(res.depRecords),
 	}, nil
 }
 
@@ -502,7 +520,103 @@ func (s *service) SubscribeIds(subId string, ids []string) (records []*domain.De
 }
 
 func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
-	return nil, ErrNotImplemented
+	if req.SpaceId == "" {
+		return nil, errors.New("spaceId is required")
+	}
+	if req.RelationKey == "" {
+		return nil, errors.New("relationKey is required")
+	}
+	if s.kanban == nil {
+		return nil, errors.New("kanban service is not available")
+	}
+	subId := req.SubId
+	if subId == "" {
+		subId = bson.NewObjectId().Hex()
+	}
+
+	grouper, err := s.kanban.Grouper(req.SpaceId, req.RelationKey)
+	if err != nil {
+		return nil, fmt.Errorf("get grouper: %w", err)
+	}
+	idx := s.store.SpaceIndex(req.SpaceId)
+
+	filterRequests := req.Filters
+	sourceFilters, err := resolveSources(idx, req.Source)
+	if err != nil {
+		return nil, fmt.Errorf("resolve sources: %w", err)
+	}
+	if len(sourceFilters) > 0 {
+		filterRequests = append(slices.Clone(filterRequests), sourceFilters...)
+	}
+	// the kanban groupers mutate the filters they are given, so every
+	// recomputation compiles a fresh copy
+	compile := func() (*database.Filters, error) {
+		return database.NewFilters(database.Query{
+			SpaceId: req.SpaceId,
+			Filters: filterRequests,
+		}, idx, &anyenc.Arena{}, &collate.Buffer{})
+	}
+	matchFilters, err := compile()
+	if err != nil {
+		return nil, fmt.Errorf("compile filters: %w", err)
+	}
+
+	old, token, err := s.claimSlot(subId)
+	if err != nil {
+		return nil, err
+	}
+	s.teardownSlot(old)
+
+	g := &groupsSub{
+		subId:       subId,
+		spaceId:     req.SpaceId,
+		relationKey: domain.RelationKey(req.RelationKey),
+		grouper:     grouper,
+		svc:         s,
+		compile:     compile,
+		match:       matchFilters.FilterObj,
+	}
+
+	fail := func(err error) (*pb.RpcObjectGroupsSubscribeResponse, error) {
+		s.releaseSlot(subId, token)
+		return nil, err
+	}
+
+	for {
+		st := s.getOrCreateSpace(req.SpaceId, idx)
+		if st == nil {
+			return fail(errors.New("subscription service is closed"))
+		}
+		g.space = st
+		err = st.installGroups(g)
+		if errors.Is(err, errSpaceStopped) {
+			continue
+		}
+		break
+	}
+	if err != nil {
+		return fail(fmt.Errorf("subscribe groups %s: %w", subId, err))
+	}
+
+	groups, err := g.init()
+	if err != nil {
+		s.teardownGroups(g)
+		return fail(fmt.Errorf("compute groups %s: %w", subId, err))
+	}
+
+	if !s.finalizeSlot(subId, token, nil, g) {
+		s.teardownGroups(g)
+	}
+	return &pb.RpcObjectGroupsSubscribeResponse{
+		SubId:  subId,
+		Groups: groups,
+	}, nil
+}
+
+func (s *service) teardownGroups(g *groupsSub) {
+	if g.space.removeGroupsSub(g) {
+		s.maybeDropSpace(g.space)
+	}
 }
 
 func (s *service) UnsubscribeAll() (err error) {
