@@ -10,8 +10,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/participants"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/tests/blockbuilder"
@@ -19,6 +21,34 @@ import (
 )
 
 var ctx = context.Background()
+
+func TestRemoveAclIndexes(t *testing.T) {
+	t.Run("clears participant records and the processed acl head marker", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		spaceIndex := fx.store.SpaceIndex("spaceId1")
+		participantId := domain.NewParticipantId("spaceId1", "identity1")
+		err := spaceIndex.UpdateObjectDetails(ctx, participantId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName:           domain.String("John"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+		}))
+		require.NoError(t, err)
+		err = spaceIndex.SaveLastIndexedHeadsHash(ctx, participants.AclHeadMarkerId, "aclHeadId")
+		require.NoError(t, err)
+
+		// when
+		err = fx.RemoveAclIndexes("spaceId1")
+
+		// then
+		require.NoError(t, err)
+		marker, err := spaceIndex.GetLastIndexedHeadsHash(ctx, participants.AclHeadMarkerId)
+		require.NoError(t, err)
+		assert.Empty(t, marker)
+		details, err := spaceIndex.GetDetails(participantId)
+		require.NoError(t, err)
+		assert.Zero(t, details.Len())
+	})
+}
 
 func TestIndexer(t *testing.T) {
 	space := mock_clientspace.NewMockSpace(t)

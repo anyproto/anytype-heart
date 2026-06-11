@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/participants"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -171,6 +172,12 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 	err = i.ftsearch.BatchDeleteObjects(ids)
 	if err != nil {
 		return fmt.Errorf("remove acl: %w", err)
+	}
+
+	// the records are wiped, so the next space load must run full ACL processing
+	err = store.SaveLastIndexedHeadsHash(i.runCtx, participants.AclHeadMarkerId, "")
+	if err != nil {
+		return fmt.Errorf("clear participants acl head marker: %w", err)
 	}
 
 	return store.DeleteDetails(i.runCtx, ids)

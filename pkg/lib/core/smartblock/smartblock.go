@@ -108,3 +108,9 @@ func (sbt SmartBlockType) Indexable() (fulltext, details, outgoingLinks bool) {
 		return true, true, true
 	}
 }
+
+// FulltextDetailsOnly reports whether fulltext docs for this type are derived from
+// objectstore details only, so the fulltext indexer must not load the object.
+func (sbt SmartBlockType) FulltextDetailsOnly() bool {
+	return sbt == SmartBlockTypeParticipant
+}
