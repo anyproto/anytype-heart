@@ -101,6 +101,19 @@ type visEntry struct {
 	sortVals *domain.Details // sort keys only; nil when order == nil
 }
 
+// setWindow installs seeded, sorted window entries (prev projections already
+// set) and returns their projections in window order
+func (c *coreSub) setWindow(entries []*visEntry) (records []*domain.Details) {
+	c.win = entries
+	c.vis = make(map[string]*visEntry, len(entries))
+	records = make([]*domain.Details, 0, len(entries))
+	for _, e := range entries {
+		c.vis[e.id] = e
+		records = append(records, e.prev)
+	}
+	return records
+}
+
 // setScopeIds replaces the scope index structures; called before install or
 // under the space mutex (setScope)
 func (c *coreSub) setScopeIds(ids []string) {

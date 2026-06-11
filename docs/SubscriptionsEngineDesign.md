@@ -267,9 +267,12 @@ Slide-in/slide-out caused by *other* objects' changes falls out of the same diff
    freshly built sub (dep child and watchers included). `Unsubscribe` racing a claim cancels
    the placeholder, which the builder detects on finalize. The slot is the single
    serialization point — no cross-space double-locking.
-6. Under the space mutex: install the sub, run the snapshot query (`QueryAndCount` for
-   windowed, `Query` otherwise, `QueryByIds` for scoped), initialize members + window +
-   visible `prev` projections, take total.
+6. Under the space mutex: install the sub and **stream** the snapshot
+   (`QueryIterateRaw`; `QueryByIds` for scoped subs): each matching row's full details live
+   only for one callback — membership costs an id-set entry, ordered subs keep sort values,
+   and full projections are retained only for the window, maintained during the stream by a
+   bounded top-(offset+limit) heap that drops evicted candidates' details immediately. Peak
+   snapshot memory is O(set × entry) + O(window × details) instead of O(set × details).
    Holding the mutex across the query is the no-data-loss invariant ("wire SubscribeForAll,
    then re-query", now guaranteed post-commit by the §2 store fix): the feed is wired before
    the query; concurrent writes either land in the query result or sit in the intake queue;

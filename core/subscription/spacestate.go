@@ -254,34 +254,21 @@ func (st *spaceState) install(sub *coreSub, asyncInit bool) (records, depRecords
 		return nil, nil, 0, errSpaceStopped
 	}
 
-	var queryResult []database.Record
 	if sub.scopeSet != nil {
+		// scoped sets are bounded by the scope: fetching by ids is cheap
+		var queryResult []database.Record
 		queryResult, err = st.scopedQuery(sub)
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("snapshot query: %w", err)
+		}
+		records = st.seedFromRecords(sub, queryResult)
 	} else {
-		// full scan without sort pushdown: ordered subs re-sort with their
-		// own comparator anyway, so a SQL ORDER BY would only sort twice
-		queryResult, err = st.idx.QueryRaw(&database.Filters{FilterObj: sub.filters.FilterObj}, 0, 0)
-	}
-	if err != nil {
-		return nil, nil, 0, fmt.Errorf("snapshot query: %w", err)
-	}
-
-	if sub.ordered {
-		records = st.installOrdered(sub, queryResult)
-	} else {
-		records = make([]*domain.Details, 0, len(queryResult))
-		for _, rec := range queryResult {
-			if rec.Details == nil {
-				continue
-			}
-			id := rec.Details.GetString(bundle.RelationKeyId)
-			if id == "" {
-				continue
-			}
-			proj := projectDetails(rec.Details, sub.keys)
-			sub.members[id] = struct{}{}
-			sub.vis[id] = &visEntry{id: id, prev: proj}
-			records = append(records, proj)
+		// stream the snapshot: a full materialization would pin every
+		// matching object's complete details at once (O(set × ~2KB)), while
+		// the engine retains only ids, sort values and the visible window
+		records, err = st.seedStreaming(sub)
+		if err != nil {
+			return nil, nil, 0, fmt.Errorf("snapshot query: %w", err)
 		}
 	}
 	sub.lastTotal = len(sub.members)
@@ -389,12 +376,129 @@ func (st *spaceState) collectDirtyGroups() []*groupsSub {
 	return res
 }
 
-// installOrdered seeds the full member set and the ordered window from the
-// snapshot, sorted with cmpEntries — the authoritative comparator, with the
-// id tiebreak — UNCONDITIONALLY: the snapshot arrives in store scan order
-// (index-grouped, not id-ordered), and the live binary-search bookkeeping is
-// only correct over a window the engine's own comparator produced. This
-// includes no-sort client subs, where cmpEntries degrades to the id compare.
+// seedFromRecords seeds a sub from a materialized snapshot (the scoped
+// path, bounded by the scope size)
+func (st *spaceState) seedFromRecords(sub *coreSub, queryResult []database.Record) (records []*domain.Details) {
+	if sub.ordered {
+		return st.installOrdered(sub, queryResult)
+	}
+	records = make([]*domain.Details, 0, len(queryResult))
+	for _, rec := range queryResult {
+		if rec.Details == nil {
+			continue
+		}
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+		proj := projectDetails(rec.Details, sub.keys)
+		sub.members[id] = struct{}{}
+		sub.vis[id] = &visEntry{id: id, prev: proj}
+		records = append(records, proj)
+	}
+	return records
+}
+
+// seedStreaming seeds a sub from a streamed snapshot: each matching row's
+// full details live only for the duration of one callback. Unordered subs
+// project immediately (the projection is the retained state anyway); ordered
+// subs go through seedStreamingOrdered. Runs under the space mutex.
+func (st *spaceState) seedStreaming(sub *coreSub) (records []*domain.Details, err error) {
+	// no sort pushdown: ordering (when any) is established by the engine's
+	// own comparator below
+	filters := &database.Filters{FilterObj: sub.filters.FilterObj}
+	if sub.ordered {
+		return st.seedStreamingOrdered(sub, filters)
+	}
+	err = st.idx.QueryIterateRaw(filters, func(details *domain.Details) error {
+		id := details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			return nil
+		}
+		proj := projectDetails(details, sub.keys)
+		sub.members[id] = struct{}{}
+		sub.vis[id] = &visEntry{id: id, prev: proj}
+		records = append(records, proj)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return records, nil
+}
+
+// seedStreamingOrdered seeds the full member id set and the sorted window.
+// With a bounded window only the current top offset+limit candidates retain
+// their full details (a max-heap evicts the worst candidate as better rows
+// stream in), so peak memory is O(set × entry) + O(window × details) instead
+// of O(set × details). cmpEntries — the authoritative comparator with the id
+// tiebreak — establishes the order unconditionally; the store streams in
+// scan order, which is meaningless to the engine.
+func (st *spaceState) seedStreamingOrdered(sub *coreSub, filters *database.Filters) ([]*domain.Details, error) {
+	if sub.limit == 0 {
+		// unbounded window: everything is visible, project per row
+		var entries []*visEntry
+		err := st.idx.QueryIterateRaw(filters, func(details *domain.Details) error {
+			id := details.GetString(bundle.RelationKeyId)
+			if id == "" {
+				return nil
+			}
+			sub.members[id] = struct{}{}
+			e := sub.newVisEntry(id, details)
+			e.prev = projectDetails(details, sub.keys)
+			entries = append(entries, e)
+			return nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		sort.SliceStable(entries, func(i, j int) bool { return sub.cmpEntries(entries[i], entries[j]) < 0 })
+		if sub.offset > 0 {
+			if sub.offset >= len(entries) {
+				entries = nil
+			} else {
+				entries = entries[sub.offset:]
+			}
+		}
+		return sub.setWindow(entries), nil
+	}
+
+	top := newTopKWindow(sub.offset+sub.limit, sub.cmpEntries)
+	err := st.idx.QueryIterateRaw(filters, func(details *domain.Details) error {
+		id := details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			return nil
+		}
+		sub.members[id] = struct{}{}
+		top.offer(sub.newVisEntry(id, details), details)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	pairs := top.sorted()
+	if sub.offset > 0 {
+		if sub.offset >= len(pairs) {
+			pairs = nil
+		} else {
+			pairs = pairs[sub.offset:]
+		}
+	}
+	entries := make([]*visEntry, 0, len(pairs))
+	for _, p := range pairs {
+		p.entry.prev = projectDetails(p.details, sub.keys)
+		entries = append(entries, p.entry)
+	}
+	return sub.setWindow(entries), nil
+}
+
+// installOrdered seeds the full member set and the ordered window from a
+// materialized snapshot (scoped path), sorted with cmpEntries — the
+// authoritative comparator, with the id tiebreak — UNCONDITIONALLY: the
+// snapshot arrives in store scan order (index-grouped, not id-ordered), and
+// the live binary-search bookkeeping is only correct over a window the
+// engine's own comparator produced. This includes no-sort client subs, where
+// cmpEntries degrades to the id compare.
 func (st *spaceState) installOrdered(sub *coreSub, queryResult []database.Record) (records []*domain.Details) {
 	type pair struct {
 		entry   *visEntry
@@ -434,6 +538,72 @@ func (st *spaceState) installOrdered(sub *coreSub, queryResult []database.Record
 		records = append(records, p.entry.prev)
 	}
 	return records
+}
+
+// topKWindow keeps the k lowest-ranked candidates seen so far in a max-heap
+// (current worst at the root), so during a streamed snapshot only window
+// candidates retain their full details — an evicted row drops its details
+// reference immediately. cmp is total (id tiebreak), so there are no ties.
+type topKWindow struct {
+	k     int
+	cmp   func(a, b *visEntry) int
+	pairs []windowPair
+}
+
+type windowPair struct {
+	entry   *visEntry
+	details *domain.Details
+}
+
+func newTopKWindow(k int, cmp func(a, b *visEntry) int) *topKWindow {
+	return &topKWindow{k: k, cmp: cmp, pairs: make([]windowPair, 0, k)}
+}
+
+func (t *topKWindow) offer(e *visEntry, details *domain.Details) {
+	if len(t.pairs) < t.k {
+		t.pairs = append(t.pairs, windowPair{entry: e, details: details})
+		t.up(len(t.pairs) - 1)
+		return
+	}
+	if t.cmp(e, t.pairs[0].entry) >= 0 {
+		return // ranks at or beyond the current worst candidate
+	}
+	t.pairs[0] = windowPair{entry: e, details: details}
+	t.down(0)
+}
+
+// sorted destroys the heap and returns the candidates in ascending rank
+func (t *topKWindow) sorted() []windowPair {
+	sort.Slice(t.pairs, func(i, j int) bool { return t.cmp(t.pairs[i].entry, t.pairs[j].entry) < 0 })
+	return t.pairs
+}
+
+func (t *topKWindow) up(i int) {
+	for i > 0 {
+		parent := (i - 1) / 2
+		if t.cmp(t.pairs[i].entry, t.pairs[parent].entry) <= 0 {
+			return
+		}
+		t.pairs[i], t.pairs[parent] = t.pairs[parent], t.pairs[i]
+		i = parent
+	}
+}
+
+func (t *topKWindow) down(i int) {
+	for {
+		largest := i
+		if l := 2*i + 1; l < len(t.pairs) && t.cmp(t.pairs[l].entry, t.pairs[largest].entry) > 0 {
+			largest = l
+		}
+		if r := 2*i + 2; r < len(t.pairs) && t.cmp(t.pairs[r].entry, t.pairs[largest].entry) > 0 {
+			largest = r
+		}
+		if largest == i {
+			return
+		}
+		t.pairs[i], t.pairs[largest] = t.pairs[largest], t.pairs[i]
+		i = largest
+	}
 }
 
 // scopedQuery fetches a scope-gated sub's candidates by id, in scope order,

@@ -795,6 +795,39 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain
 	return
 }
 
+// QueryIterateRaw streams every record matching the precompiled filters
+// without materializing the result set (no implicit filters, no sorts):
+// each row's details are alive only for the duration of the callback. proc
+// returning an error stops the iteration.
+func (s *dsObjectStore) QueryIterateRaw(f *database.Filters, proc func(details *domain.Details) error) error {
+	if f == nil || f.FilterObj == nil {
+		return fmt.Errorf("filter cannot be nil or unitialized")
+	}
+	iter, err := s.objects.Find(f.FilterObj.AnystoreFilter()).Iter(s.componentCtx)
+	if err != nil {
+		return fmt.Errorf("find: %w", err)
+	}
+	defer iter.Close()
+
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("get doc: %w", err)
+		}
+		details, err := domain.NewDetailsFromAnyEnc(doc.Value())
+		if err != nil {
+			return fmt.Errorf("json to proto: %w", err)
+		}
+		if err = proc(details); err != nil {
+			return err
+		}
+	}
+	if err = iter.Err(); err != nil {
+		return fmt.Errorf("iterate: %w", err)
+	}
+	return nil
+}
+
 func (s *dsObjectStore) IterateAll(proc func(doc *anyenc.Value) error) error {
 	iter, err := s.objects.Find(nil).Iter(s.componentCtx)
 	if err != nil {

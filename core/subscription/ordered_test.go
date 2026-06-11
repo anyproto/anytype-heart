@@ -141,6 +141,32 @@ func TestOrderedSnapshot(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, []string{"p2", "p1"}, recordIds(resp.Records))
 	})
+
+	t.Run("limit 0 with offset skips the head", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("p1", "charlie"),
+			givenNamedParticipant("p2", "alice"),
+			givenNamedParticipant("p3", "bob"),
+		})
+
+		resp, err := fx.Search(givenOrderedRequest(0, 1))
+		require.NoError(t, err)
+		assert.Equal(t, []string{"p3", "p1"}, recordIds(resp.Records))
+		assert.Equal(t, int64(3), resp.Counters.Total)
+	})
+
+	t.Run("offset beyond the set yields an empty window", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("p1", "alice"),
+		})
+
+		resp, err := fx.Search(givenOrderedRequest(2, 5))
+		require.NoError(t, err)
+		assert.Empty(t, resp.Records)
+		assert.Equal(t, int64(1), resp.Counters.Total)
+	})
 }
 
 func TestOrderedWindowEvents(t *testing.T) {

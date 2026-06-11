@@ -58,6 +58,10 @@ type Store interface {
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIds(q database.Query) (ids []string, total int, err error)
 	QueryIterate(q database.Query, proc func(details *domain.Details)) error
+	// QueryIterateRaw streams every record matching the precompiled filters
+	// without materializing the result set (no implicit filters, no sorts).
+	// proc returning an error stops the iteration.
+	QueryIterateRaw(f *database.Filters, proc func(details *domain.Details) error) error
 	IterateAll(proc func(doc *anyenc.Value) error) error
 	HasIds(ids []string) (exists []string, err error)
 	GetInfosByIds(ids []string) ([]*database.ObjectInfo, error)

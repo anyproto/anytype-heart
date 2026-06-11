@@ -148,6 +148,27 @@ func BenchmarkSubscribeSnapshot10k(b *testing.B) {
 	}
 }
 
+func BenchmarkSubscribeWindowed10k(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchObjects(b, fx, 10000)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		req := benchRequest("bench-windowed", false)
+		req.Limit = 100
+		req.Sorts = []database.SortRequest{
+			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
+		}
+		resp, err := fx.Search(req)
+		if err != nil {
+			b.Fatal(err)
+		}
+		if len(resp.Records) != 100 {
+			b.Fatalf("unexpected window size %d", len(resp.Records))
+		}
+	}
+}
+
 func BenchmarkChangeBatch(b *testing.B) {
 	fx := newBenchFixture(b)
 	seedBenchObjects(b, fx, 1000)
