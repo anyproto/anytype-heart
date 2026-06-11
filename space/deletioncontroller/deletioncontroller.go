@@ -42,6 +42,9 @@ const (
 type DeletionController interface {
 	app.ComponentRunnable
 	AddSpaceToDelete(spaceId string)
+	// RemoveSpaceToDelete cancels a pending coordinator deletion for the
+	// space, e.g. when the user restores it (CancelLeave) and it reloads.
+	RemoveSpaceToDelete(spaceId string)
 	UpdateCoordinatorStatus()
 }
 
@@ -84,6 +87,12 @@ func (d *deletionController) AddSpaceToDelete(spaceId string) {
 	defer d.mx.Unlock()
 	d.toDelete[spaceId] = struct{}{}
 	d.updater.notify()
+}
+
+func (d *deletionController) RemoveSpaceToDelete(spaceId string) {
+	d.mx.Lock()
+	defer d.mx.Unlock()
+	delete(d.toDelete, spaceId)
 }
 
 func (d *deletionController) UpdateCoordinatorStatus() {

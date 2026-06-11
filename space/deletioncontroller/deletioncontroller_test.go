@@ -71,6 +71,33 @@ func TestDeletionController_Loop(t *testing.T) {
 		require.NoError(t, err)
 		require.NotContains(t, fx.toDelete, "spaceId1")
 	})
+	t.Run("removed space is not deleted", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.AddSpaceToDelete("spaceId1")
+		// the space was restored (e.g. CancelLeave) before the loop ran
+		fx.RemoveSpaceToDelete("spaceId1")
+		payloads := []*coordinatorproto.SpaceStatusPayload{
+			{
+				Status:      coordinatorproto.SpaceStatus_SpaceStatusCreated,
+				Permissions: coordinatorproto.SpacePermissions_SpacePermissionsOwner,
+				IsShared:    false,
+			},
+		}
+		fx.mockSpaceManager.EXPECT().AllSpaceIds().Return([]string{"spaceId1"})
+		fx.mockClient.EXPECT().StatusCheckMany(ctx, []string{"spaceId1"}).Return(payloads, nil, nil)
+		status := spaceinfo.NewSpaceLocalInfo("spaceId1")
+		status.
+			SetRemoteStatus(spaceinfo.RemoteStatusOk).
+			SetShareableStatus(spaceinfo.ShareableStatusNotShareable)
+		fx.mockSpaceManager.EXPECT().UpdateRemoteStatus(ctx, spaceinfo.SpaceRemoteStatusInfo{
+			IsOwned:   true,
+			LocalInfo: status,
+		}).Return(nil)
+		// no Delete expectation: deleting the restored space fails the test
+		err := fx.loopIterate(ctx)
+		require.NoError(t, err)
+	})
 	t.Run("nil limits", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)

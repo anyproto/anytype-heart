@@ -5,8 +5,11 @@ package mock_spacecontroller
 import (
 	context "context"
 
-	mode "github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
+	clientspace "github.com/anyproto/anytype-heart/space/clientspace"
+
 	mock "github.com/stretchr/testify/mock"
+
+	mode "github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 
 	spaceinfo "github.com/anyproto/anytype-heart/space/spaceinfo"
 )
@@ -70,50 +73,35 @@ func (_c *MockSpaceController_Close_Call) RunAndReturn(run func(context.Context)
 	return _c
 }
 
-// Current provides a mock function with no fields
-func (_m *MockSpaceController) Current() interface{} {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for Current")
-	}
-
-	var r0 interface{}
-	if rf, ok := ret.Get(0).(func() interface{}); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(interface{})
-		}
-	}
-
-	return r0
+// Demand provides a mock function with no fields
+func (_m *MockSpaceController) Demand() {
+	_m.Called()
 }
 
-// MockSpaceController_Current_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Current'
-type MockSpaceController_Current_Call struct {
+// MockSpaceController_Demand_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Demand'
+type MockSpaceController_Demand_Call struct {
 	*mock.Call
 }
 
-// Current is a helper method to define mock.On call
-func (_e *MockSpaceController_Expecter) Current() *MockSpaceController_Current_Call {
-	return &MockSpaceController_Current_Call{Call: _e.mock.On("Current")}
+// Demand is a helper method to define mock.On call
+func (_e *MockSpaceController_Expecter) Demand() *MockSpaceController_Demand_Call {
+	return &MockSpaceController_Demand_Call{Call: _e.mock.On("Demand")}
 }
 
-func (_c *MockSpaceController_Current_Call) Run(run func()) *MockSpaceController_Current_Call {
+func (_c *MockSpaceController_Demand_Call) Run(run func()) *MockSpaceController_Demand_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockSpaceController_Current_Call) Return(_a0 interface{}) *MockSpaceController_Current_Call {
-	_c.Call.Return(_a0)
+func (_c *MockSpaceController_Demand_Call) Return() *MockSpaceController_Demand_Call {
+	_c.Call.Return()
 	return _c
 }
 
-func (_c *MockSpaceController_Current_Call) RunAndReturn(run func() interface{}) *MockSpaceController_Current_Call {
-	_c.Call.Return(run)
+func (_c *MockSpaceController_Demand_Call) RunAndReturn(run func()) *MockSpaceController_Demand_Call {
+	_c.Run(run)
 	return _c
 }
 
@@ -478,6 +466,111 @@ func (_c *MockSpaceController_Update_Call) Return(_a0 error) *MockSpaceControlle
 }
 
 func (_c *MockSpaceController_Update_Call) RunAndReturn(run func() error) *MockSpaceController_Update_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WaitLoad provides a mock function with given fields: ctx
+func (_m *MockSpaceController) WaitLoad(ctx context.Context) (clientspace.Space, error) {
+	ret := _m.Called(ctx)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitLoad")
+	}
+
+	var r0 clientspace.Space
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context) (clientspace.Space, error)); ok {
+		return rf(ctx)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context) clientspace.Space); ok {
+		r0 = rf(ctx)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(clientspace.Space)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context) error); ok {
+		r1 = rf(ctx)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockSpaceController_WaitLoad_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitLoad'
+type MockSpaceController_WaitLoad_Call struct {
+	*mock.Call
+}
+
+// WaitLoad is a helper method to define mock.On call
+//   - ctx context.Context
+func (_e *MockSpaceController_Expecter) WaitLoad(ctx interface{}) *MockSpaceController_WaitLoad_Call {
+	return &MockSpaceController_WaitLoad_Call{Call: _e.mock.On("WaitLoad", ctx)}
+}
+
+func (_c *MockSpaceController_WaitLoad_Call) Run(run func(ctx context.Context)) *MockSpaceController_WaitLoad_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MockSpaceController_WaitLoad_Call) Return(_a0 clientspace.Space, _a1 error) *MockSpaceController_WaitLoad_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockSpaceController_WaitLoad_Call) RunAndReturn(run func(context.Context) (clientspace.Space, error)) *MockSpaceController_WaitLoad_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// WaitMode provides a mock function with given fields: ctx, m
+func (_m *MockSpaceController) WaitMode(ctx context.Context, m mode.Mode) error {
+	ret := _m.Called(ctx, m)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitMode")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, mode.Mode) error); ok {
+		r0 = rf(ctx, m)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockSpaceController_WaitMode_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitMode'
+type MockSpaceController_WaitMode_Call struct {
+	*mock.Call
+}
+
+// WaitMode is a helper method to define mock.On call
+//   - ctx context.Context
+//   - m mode.Mode
+func (_e *MockSpaceController_Expecter) WaitMode(ctx interface{}, m interface{}) *MockSpaceController_WaitMode_Call {
+	return &MockSpaceController_WaitMode_Call{Call: _e.mock.On("WaitMode", ctx, m)}
+}
+
+func (_c *MockSpaceController_WaitMode_Call) Run(run func(ctx context.Context, m mode.Mode)) *MockSpaceController_WaitMode_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(mode.Mode))
+	})
+	return _c
+}
+
+func (_c *MockSpaceController_WaitMode_Call) Return(_a0 error) *MockSpaceController_WaitMode_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockSpaceController_WaitMode_Call) RunAndReturn(run func(context.Context, mode.Mode) error) *MockSpaceController_WaitMode_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -81,7 +81,3 @@ func (i *joiner) Start(ctx context.Context) error {
 func (i *joiner) Close(ctx context.Context) error {
 	return i.app.Close(ctx)
 }
-
-func (i *joiner) CanTransition(next mode.Mode) bool {
-	return true
-}

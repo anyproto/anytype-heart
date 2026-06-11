@@ -193,6 +193,39 @@ func (_c *MockDeletionController_Name_Call) RunAndReturn(run func() string) *Moc
 	return _c
 }
 
+// RemoveSpaceToDelete provides a mock function with given fields: spaceId
+func (_m *MockDeletionController) RemoveSpaceToDelete(spaceId string) {
+	_m.Called(spaceId)
+}
+
+// MockDeletionController_RemoveSpaceToDelete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RemoveSpaceToDelete'
+type MockDeletionController_RemoveSpaceToDelete_Call struct {
+	*mock.Call
+}
+
+// RemoveSpaceToDelete is a helper method to define mock.On call
+//   - spaceId string
+func (_e *MockDeletionController_Expecter) RemoveSpaceToDelete(spaceId interface{}) *MockDeletionController_RemoveSpaceToDelete_Call {
+	return &MockDeletionController_RemoveSpaceToDelete_Call{Call: _e.mock.On("RemoveSpaceToDelete", spaceId)}
+}
+
+func (_c *MockDeletionController_RemoveSpaceToDelete_Call) Run(run func(spaceId string)) *MockDeletionController_RemoveSpaceToDelete_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockDeletionController_RemoveSpaceToDelete_Call) Return() *MockDeletionController_RemoveSpaceToDelete_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockDeletionController_RemoveSpaceToDelete_Call) RunAndReturn(run func(string)) *MockDeletionController_RemoveSpaceToDelete_Call {
+	_c.Run(run)
+	return _c
+}
+
 // Run provides a mock function with given fields: ctx
 func (_m *MockDeletionController) Run(ctx context.Context) error {
 	ret := _m.Called(ctx)
