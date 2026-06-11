@@ -285,6 +285,106 @@ func TestOrderedWindowEvents(t *testing.T) {
 	})
 }
 
+// TestNoSortOrderedWindow pins the regression where a no-sort client
+// subscription (ordered, comparator = bare id) kept its window in store scan
+// order: an In-filter on an indexed key makes the snapshot come back
+// index-grouped rather than id-ordered, and the binary-search bookkeeping
+// then missed entries on removal — the client kept dead rows forever.
+func TestNoSortOrderedWindow(t *testing.T) {
+	fx := newEngineFixture(t)
+	mkObj := func(id string, layout model.ObjectTypeLayout) objectstore.TestObject {
+		return objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String(id),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(layout)),
+		}
+	}
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		mkObj("a", model.ObjectType_participant),
+		mkObj("b", model.ObjectType_basic),
+		mkObj("c", model.ObjectType_participant),
+	})
+
+	req := SubscribeRequest{
+		SpaceId:           testSpaceId,
+		SubId:             "nosort-sub",
+		NoDepSubscription: true, // non-internal, no sorts → ordered by bare id
+		Keys:              []string{bundle.RelationKeyId.String()},
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List([]int64{int64(model.ObjectType_participant), int64(model.ObjectType_basic)}),
+			},
+		},
+	}
+	resp, err := fx.Search(req)
+	require.NoError(t, err)
+	// the window must follow the engine's comparator (id order), not the
+	// index-grouped scan order of the snapshot query
+	require.Equal(t, []string{"a", "b", "c"}, recordIds(resp.Records))
+
+	// b stops matching: its Remove must be found and emitted
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		mkObj("b", model.ObjectType_todo),
+	})
+
+	msgs := drainBroadcast(t, fx, 2)
+	var removed []string
+	for _, msg := range msgs {
+		if r := msg.GetSubscriptionRemove(); r != nil {
+			removed = append(removed, r.Id)
+		}
+	}
+	assert.Equal(t, []string{"b"}, removed)
+}
+
+// TestNoSortWindowedRequery covers the no-sort window's underflow re-query:
+// the SQL LIMIT cut must follow the id order (the engine's comparator for
+// no-sort subs), not store scan order, or the wrong successor slides in.
+func TestNoSortWindowedRequery(t *testing.T) {
+	fx := newEngineFixture(t)
+	mkObj := func(id string, layout model.ObjectTypeLayout) objectstore.TestObject {
+		return objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String(id),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(layout)),
+		}
+	}
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		mkObj("a", model.ObjectType_participant),
+		mkObj("b", model.ObjectType_basic),
+		mkObj("c", model.ObjectType_participant),
+		mkObj("d", model.ObjectType_basic),
+	})
+
+	req := SubscribeRequest{
+		SpaceId:           testSpaceId,
+		SubId:             "nosort-window-sub",
+		NoDepSubscription: true,
+		Limit:             2,
+		Keys:              []string{bundle.RelationKeyId.String()},
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List([]int64{int64(model.ObjectType_participant), int64(model.ObjectType_basic)}),
+			},
+		},
+	}
+	resp, err := fx.Search(req)
+	require.NoError(t, err)
+	require.Equal(t, []string{"a", "b"}, recordIds(resp.Records))
+	require.Equal(t, int64(4), resp.Counters.Total)
+
+	// a leaves the window: the re-queried successor must be c (next in id
+	// order), pulled through the underflow path
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		mkObj("a", model.ObjectType_todo),
+	})
+
+	client := newClientList([]string{"a", "b"})
+	client.waitConvergeBroadcast(t, fx, []string{"b", "c"}, "no-sort underflow")
+}
+
 // TestOrderedWindowReplay drives a windowed sorted subscription through a
 // deterministic random workload and replays every emitted event on a
 // simulated client list using the dispatcher's application rules. After each
@@ -430,6 +530,24 @@ func (c *clientList) position(t *testing.T, id, afterId string, isAdding bool) {
 	} else if oldIndex != newIndex {
 		c.list = slices.Delete(c.list, oldIndex, oldIndex+1)
 		c.list = slices.Insert(c.list, newIndex, id)
+	}
+}
+
+func (c *clientList) waitConvergeBroadcast(t *testing.T, fx *engineFixture, expected []string, msgFmt string, args ...any) {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for !slices.Equal(c.list, expected) {
+		remaining := time.Until(deadline)
+		require.Positivef(t, remaining, "client list %v never converged to %v: "+msgFmt, append([]any{c.list, expected}, args...)...)
+		ctx, cancel := context.WithTimeout(context.Background(), remaining)
+		events, err := fx.broadcastEvents.NewCond().WithMin(1).Wait(ctx)
+		cancel()
+		require.NoErrorf(t, err, "waiting events: client %v, expected %v: "+msgFmt, append([]any{c.list, expected}, args...)...)
+		for _, e := range events {
+			for _, msg := range e.Messages {
+				c.apply(t, msg)
+			}
+		}
 	}
 }
 

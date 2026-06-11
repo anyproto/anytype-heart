@@ -130,7 +130,7 @@ func encodeOp(op *subOp) *pb.EventMessage {
 func deliverOps(ctx context.Context, sender eventSender, ops []subOp) {
 	var broadcast []*pb.EventMessage
 	var queues []*mb.MB[*pb.EventMessage]
-	queued := map[*mb.MB[*pb.EventMessage]][]*pb.EventMessage{}
+	var queued map[*mb.MB[*pb.EventMessage]][]*pb.EventMessage // lazy: most batches are broadcast-only
 
 	for i := range ops {
 		op := &ops[i]
@@ -144,6 +144,9 @@ func deliverOps(ctx context.Context, sender eventSender, ops []subOp) {
 			msg := encodeOp(op)
 			if msg == nil {
 				continue
+			}
+			if queued == nil {
+				queued = make(map[*mb.MB[*pb.EventMessage]][]*pb.EventMessage)
 			}
 			if _, ok := queued[q]; !ok {
 				queues = append(queues, q)

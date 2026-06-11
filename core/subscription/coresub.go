@@ -1,9 +1,11 @@
 package subscription
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 
+	"github.com/anyproto/any-store/query"
 	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -408,7 +410,21 @@ func (c *coreSub) requeryWindow() {
 		if c.limit > 0 {
 			fetch = c.offset + c.limit + requeryMargin
 		}
-		records, err = c.space.idx.QueryRaw(c.filters, fetch, 0)
+		// The SQL LIMIT cut must approximate cmpEntries' order. For no-sort
+		// subs the comparator IS the id order, so push the id sort — exact.
+		// For sorted subs push the compiled order: ties are truncated in
+		// store order, the margin absorbs small tie groups, and the
+		// in-memory re-sort below fixes the order within the fetch. (A
+		// compound order+id pushdown would be exact, but anystore's planner
+		// silently drops mixed custom+field sorts — probed, not supported.)
+		fetchOrder := c.filters.Order
+		if c.order == nil {
+			fetchOrder = idTiebreakOrder{}
+		}
+		records, err = c.space.idx.QueryRaw(&database.Filters{
+			FilterObj: c.filters.FilterObj,
+			Order:     fetchOrder,
+		}, fetch, 0)
 	}
 	if err != nil {
 		log.Errorf("subscription %s: window re-query: %v", c.subId, err)
@@ -436,9 +452,9 @@ func (c *coreSub) requeryWindow() {
 		}
 		entries = append(entries, e)
 	}
-	if c.order != nil {
-		sort.SliceStable(entries, func(i, j int) bool { return c.cmpEntries(entries[i], entries[j]) < 0 })
-	}
+	// unconditional: cmpEntries (with its id tiebreak) is the authoritative
+	// order even when the sub has no sorts — see installOrdered
+	sort.SliceStable(entries, func(i, j int) bool { return c.cmpEntries(entries[i], entries[j]) < 0 })
 	if c.offset > 0 {
 		if c.offset >= len(entries) {
 			entries = nil
@@ -457,6 +473,47 @@ func (c *coreSub) requeryWindow() {
 }
 
 const requeryMargin = 8
+
+// idTiebreakOrder pushes the bare id sort down to the store — the exact SQL
+// counterpart of cmpEntries for no-sort subs. inner is reserved for a future
+// compound pushdown; anystore currently drops mixed custom+field sorts, so
+// it stays nil in practice.
+type idTiebreakOrder struct {
+	inner database.Order
+}
+
+var anystoreIdSort = func() query.Sort {
+	s, err := query.ParseSort("id")
+	if err != nil {
+		panic(fmt.Errorf("parse id sort: %w", err))
+	}
+	return s
+}()
+
+func (t idTiebreakOrder) Compare(a, b *domain.Details) int {
+	if t.inner != nil {
+		return t.inner.Compare(a, b)
+	}
+	return 0
+}
+
+func (t idTiebreakOrder) UpdateOrderMap(depDetails []*domain.Details) bool {
+	if t.inner != nil {
+		return t.inner.UpdateOrderMap(depDetails)
+	}
+	return false
+}
+
+func (t idTiebreakOrder) AnystoreSort() query.Sort {
+	if t.inner == nil {
+		return anystoreIdSort
+	}
+	inner := t.inner.AnystoreSort()
+	if inner == nil {
+		return anystoreIdSort
+	}
+	return query.Sorts{inner, anystoreIdSort}
+}
 
 // finalize turns the batch's accumulated state into events: the window-diff
 // script for ordered subs, pending detail ops, and a trailing Counters when
@@ -543,9 +600,11 @@ func (c *coreSub) memberIds() []string {
 	return ids
 }
 
-// projectDetails copies only the requested keys out of full details
+// projectDetails copies only the requested keys out of full details. Sized
+// to the key count: a projection is retained per visible member per sub, so
+// default-sized maps would waste empty buckets at full-space scale.
 func projectDetails(details *domain.Details, keys []domain.RelationKey) *domain.Details {
-	proj := domain.NewDetails()
+	proj := domain.NewDetailsWithSize(len(keys))
 	for _, k := range keys {
 		if v, ok := details.TryGet(k); ok {
 			proj.Set(k, v)

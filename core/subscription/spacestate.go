@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"errors"
+	"fmt"
 	"sort"
 	"sync"
 
@@ -257,10 +258,12 @@ func (st *spaceState) install(sub *coreSub, asyncInit bool) (records, depRecords
 	if sub.scopeSet != nil {
 		queryResult, err = st.scopedQuery(sub)
 	} else {
-		queryResult, err = st.idx.QueryRaw(sub.filters, 0, 0)
+		// full scan without sort pushdown: ordered subs re-sort with their
+		// own comparator anyway, so a SQL ORDER BY would only sort twice
+		queryResult, err = st.idx.QueryRaw(&database.Filters{FilterObj: sub.filters.FilterObj}, 0, 0)
 	}
 	if err != nil {
-		return nil, nil, 0, err
+		return nil, nil, 0, fmt.Errorf("snapshot query: %w", err)
 	}
 
 	if sub.ordered {
@@ -346,7 +349,7 @@ func (st *spaceState) installGroups(g *groupsSub) error {
 	matchFilters := &database.Filters{FilterObj: g.match}
 	records, err := st.idx.QueryRaw(matchFilters, 0, 0)
 	if err != nil {
-		return err
+		return fmt.Errorf("groups member query: %w", err)
 	}
 	g.members = make(map[string]domain.Value, len(records))
 	for _, rec := range records {
@@ -387,9 +390,11 @@ func (st *spaceState) collectDirtyGroups() []*groupsSub {
 }
 
 // installOrdered seeds the full member set and the ordered window from the
-// snapshot. The compiled order pre-ranks the query result; cmpEntries (the
-// authoritative comparator, with the id tiebreak) re-sorts so live binary
-// searches can never disagree with the snapshot.
+// snapshot, sorted with cmpEntries — the authoritative comparator, with the
+// id tiebreak — UNCONDITIONALLY: the snapshot arrives in store scan order
+// (index-grouped, not id-ordered), and the live binary-search bookkeeping is
+// only correct over a window the engine's own comparator produced. This
+// includes no-sort client subs, where cmpEntries degrades to the id compare.
 func (st *spaceState) installOrdered(sub *coreSub, queryResult []database.Record) (records []*domain.Details) {
 	type pair struct {
 		entry   *visEntry
@@ -407,11 +412,9 @@ func (st *spaceState) installOrdered(sub *coreSub, queryResult []database.Record
 		sub.members[id] = struct{}{}
 		pairs = append(pairs, pair{entry: sub.newVisEntry(id, rec.Details), details: rec.Details})
 	}
-	if sub.order != nil {
-		sort.SliceStable(pairs, func(i, j int) bool {
-			return sub.cmpEntries(pairs[i].entry, pairs[j].entry) < 0
-		})
-	}
+	sort.SliceStable(pairs, func(i, j int) bool {
+		return sub.cmpEntries(pairs[i].entry, pairs[j].entry) < 0
+	})
 	start := sub.offset
 	if start > len(pairs) {
 		start = len(pairs)
@@ -439,7 +442,7 @@ func (st *spaceState) installOrdered(sub *coreSub, queryResult []database.Record
 func (st *spaceState) scopedQuery(sub *coreSub) ([]database.Record, error) {
 	fetched, err := st.idx.QueryByIds(sub.scope)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query scope ids: %w", err)
 	}
 	byId := make(map[string]database.Record, len(fetched))
 	for _, rec := range fetched {
@@ -576,9 +579,16 @@ func (st *spaceState) markStopped() bool {
 }
 
 // shutdown unhooks the feed and stops the worker. Must not be called with
-// st.mu held.
+// st.mu held. Safe only when no concurrent Search can create a fresh state
+// for the same space (service Close, after the closed flag is set); the
+// last-sub teardown path must unhook under the registry lock instead — see
+// maybeDropSpace.
 func (st *spaceState) shutdown() {
 	st.idx.SubscribeForAll(nil)
+	st.stopWorker()
+}
+
+func (st *spaceState) stopWorker() {
 	close(st.closedCh)
 	st.wg.Wait()
 }

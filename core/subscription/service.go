@@ -173,7 +173,15 @@ func (s *service) Close(ctx context.Context) error {
 		st.shutdown()
 	}
 	for _, slot := range slots {
-		if slot.sub != nil && slot.sub.queueOwned {
+		if slot.sub == nil {
+			continue
+		}
+		// collection watchers would otherwise outlive the service, blocked
+		// on a channel only UnsubscribeFromCollection closes
+		if slot.sub.collection != nil {
+			slot.sub.collection.stop()
+		}
+		if slot.sub.queueOwned {
 			_ = slot.sub.queue.Close()
 		}
 	}
@@ -438,7 +446,10 @@ func (s *service) teardown(sub *coreSub) {
 
 // maybeDropSpace removes a subscription-less space state: feed unhooked,
 // worker stopped. A Search that raced us retries against a fresh state (see
-// install's errSpaceStopped).
+// install's errSpaceStopped). The feed MUST be unhooked while s.mu is held:
+// released earlier, a concurrent Search could create and wire a fresh
+// spaceState for the same space, and this unhook would then silently sever
+// the fresh state's feed forever.
 func (s *service) maybeDropSpace(st *spaceState) {
 	s.mu.Lock()
 	if s.spaces[st.spaceId] != st || !st.markStopped() {
@@ -446,8 +457,9 @@ func (s *service) maybeDropSpace(st *spaceState) {
 		return
 	}
 	delete(s.spaces, st.spaceId)
+	st.idx.SubscribeForAll(nil)
 	s.mu.Unlock()
-	st.shutdown()
+	st.stopWorker()
 }
 
 func (s *service) Unsubscribe(subIds ...string) (err error) {
