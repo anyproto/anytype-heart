@@ -2,6 +2,8 @@ package subscription
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -11,8 +13,49 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
+
+// TestConcurrentSearch runs concurrent subscriptions with object-relation sorts
+// on one space: required-keys computation touches the dependency service
+// relation format cache and must stay under the space lock (run with -race)
+func TestConcurrentSearch(t *testing.T) {
+	fx := NewInternalTestService(t)
+	fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:      domain.String("obj1"),
+			bundle.RelationKeyName:    domain.String("first"),
+			bundle.RelationKeyCreator: domain.StringList([]string{"creator1"}),
+		},
+		{
+			bundle.RelationKeyId:   domain.String("creator1"),
+			bundle.RelationKeyName: domain.String("creator"),
+		},
+	})
+
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, err := fx.Search(SubscribeRequest{
+				SpaceId: testSpaceId,
+				SubId:   fmt.Sprintf("concurrent-%d", i),
+				Sorts: []database.SortRequest{{
+					RelationKey: bundle.RelationKeyCreator,
+					Type:        model.BlockContentDataviewSort_Asc,
+					Format:      model.RelationFormat_object,
+				}},
+				Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+				Internal: true,
+			})
+			assert.NoError(t, err)
+		}(i)
+	}
+	wg.Wait()
+}
 
 // TestEntryProjection verifies that cached entries retain only the union of
 // keys required by their subscriptions and that events stay complete for every
@@ -139,4 +182,64 @@ func TestEntryProjection(t *testing.T) {
 		msgs2, err := resp2.Output.NewCond().WithMin(1).Wait(ctx2)
 		assert.Error(t, err, "no events expected for sub-description, got %v", msgs2)
 	})
+}
+
+// TestDepEntriesRegainProjectedKeys verifies that a dependency entry served
+// from the cache is refreshed from the store when another subscription's
+// projection trimmed away keys this subscription needs.
+func TestDepEntriesRegainProjectedKeys(t *testing.T) {
+	fx := NewInternalTestService(t)
+	fx.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:                  domain.String("opt1"),
+			bundle.RelationKeyName:                domain.String("urgent"),
+			bundle.RelationKeyRelationKey:         domain.String(bundle.RelationKeyTag.String()),
+			bundle.RelationKeyRelationOptionColor: domain.String("red"),
+		},
+		{
+			bundle.RelationKeyId:   domain.String("task1"),
+			bundle.RelationKeyName: domain.String("task"),
+			bundle.RelationKeyTag:  domain.StringList([]string{"opt1"}),
+		},
+	})
+
+	// the first subscription caches opt1 projected to {id, name}
+	respA, err := fx.Search(SubscribeRequest{
+		SpaceId: testSpaceId,
+		SubId:   "sub-option",
+		Filters: []database.FilterRequest{{
+			RelationKey: bundle.RelationKeyId,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String("opt1"),
+		}},
+		Keys:     []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+		Internal: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, respA.Records, 1)
+
+	// the second subscription depends on opt1 via tag and requests its color:
+	// the projected cache entry must be refreshed from the store
+	respB, err := fx.Search(SubscribeRequest{
+		SpaceId: testSpaceId,
+		SubId:   "sub-task",
+		Filters: []database.FilterRequest{{
+			RelationKey: bundle.RelationKeyId,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.String("task1"),
+		}},
+		Keys: []string{
+			bundle.RelationKeyId.String(),
+			bundle.RelationKeyName.String(),
+			bundle.RelationKeyTag.String(),
+			bundle.RelationKeyRelationOptionColor.String(),
+		},
+		Internal: true,
+	})
+	require.NoError(t, err)
+	require.Len(t, respB.Records, 1)
+	require.Len(t, respB.Dependencies, 1)
+	dep := respB.Dependencies[0]
+	assert.Equal(t, "opt1", dep.GetString(bundle.RelationKeyId))
+	assert.Equal(t, "red", dep.GetString(bundle.RelationKeyRelationOptionColor))
 }

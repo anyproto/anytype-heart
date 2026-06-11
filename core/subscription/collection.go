@@ -120,19 +120,35 @@ func (c *collectionObserver) updateIds(ids []string) {
 	}
 	c.ids = ids
 	c.lock.Unlock()
-	// removed objects may be gone from the store, so take them from the entry
-	// cache; added ones must come from the store with full details, because
-	// cached entries are projected to the keys of other subscriptions and may
-	// lack keys this subscription filters by
-	entries := c.spaceSubscription.fetchEntriesLocked(removed)
-	if recs, err := c.objectStore.QueryByIds(added); err != nil {
-		log.Error("collection observer: can't query added ids:", err)
-	} else {
-		for _, rec := range recs {
-			entries = append(entries, newEntry(rec.Details.GetString(bundle.RelationKeyId), rec.Details))
+	// the pushed records are re-evaluated against the filters of every
+	// subscription of the space, so they must carry full store details: cached
+	// entries are projected to their subscriptions' keys and could make
+	// unrelated filters misfire. Only removed objects missing from the store
+	// (deleted) fall back to their cached entry, just to trigger the removal
+	changedIds := append(removed, added...)
+	recs, err := c.objectStore.QueryByIds(changedIds)
+	if err != nil {
+		log.Error("collection observer: can't query by ids:", err)
+	}
+	storeEntries := make(map[string]*entry, len(recs))
+	for _, rec := range recs {
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		storeEntries[id] = newEntry(id, rec.Details)
+	}
+	var missingRemoved []string
+	for _, id := range removed {
+		if _, ok := storeEntries[id]; !ok {
+			missingRemoved = append(missingRemoved, id)
 		}
 	}
-	for _, e := range entries {
+	for _, e := range c.spaceSubscription.fetchEntriesLocked(missingRemoved) {
+		storeEntries[e.id] = e
+	}
+	for _, id := range changedIds {
+		e, ok := storeEntries[id]
+		if !ok {
+			continue
+		}
 		err := c.recBatch.Add(database.Record{
 			Details: e.data,
 		})
@@ -226,7 +242,9 @@ func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.
 	if !ssub.disableDep {
 		ssub.forceSubIds = filterDepIds
 	}
-	s.registerSubKeys(ssub.id, requiredKeys)
+	if requiredKeys != nil {
+		s.registerSubKeys(ssub.id, requiredKeys)
+	}
 
 	sub := &collectionSub{
 		sortedSub: ssub,
@@ -237,9 +255,11 @@ func (s *spaceSubscriptions) newCollectionSub(req SubscribeRequest, f *database.
 	filtered := entries[:0]
 	for _, e := range entries {
 		if f.FilterObj.FilterObject(e.data) {
-			// filters were evaluated against the full details; retain only the
-			// keys the subscription needs before the entry enters the cache
-			e.data = e.data.CopyOnlyKeys(requiredKeys...)
+			if requiredKeys != nil {
+				// filters were evaluated against the full details; retain only the
+				// keys the subscription needs before the entry enters the cache
+				e.data = e.data.CopyOnlyKeys(requiredKeys...)
+			}
 			filtered = append(filtered, e)
 		}
 	}

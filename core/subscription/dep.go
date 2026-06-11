@@ -31,10 +31,12 @@ func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries,
 	depSubKeys := ds.depSubKeys(subId, keys)
 	depSub := ds.s.newSimpleSub(subId, depSubKeys, true)
 	depSub.forceIds = filterDepIds
-	ds.s.registerSubKeys(subId, append(slices.Clone(depSubKeys), bundle.RelationKeyId))
+	if len(depSubKeys) > 0 {
+		ds.s.registerSubKeys(subId, append(slices.Clone(depSubKeys), bundle.RelationKeyId))
+	}
 	parentSubId := strings.TrimSuffix(subId, "/dep")
 	depIds := ds.depIdsByEntries(parentSubId, activeEntries, depKeys, depSub.forceIds)
-	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries, subKeys: ds.s.subKeys}, depIds)
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries, subKeys: ds.s.subKeys}, subId, depSubKeys, depIds)
 	depSub.init(depEntries)
 	return depSub
 }
@@ -42,7 +44,7 @@ func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries,
 func (ds *dependencyService) refillSubscription(ctx *opCtx, subId string, depSub *simpleSub, entries []*entry, depKeys []domain.RelationKey) {
 	depIds := ds.depIdsByEntries(subId, entries, depKeys, depSub.forceIds)
 	if !depSub.isEqualIds(depIds) {
-		depEntries := ds.depEntriesByEntries(ctx, depIds)
+		depEntries := ds.depEntriesByEntries(ctx, depSub.id, depSub.keys, depIds)
 		depSub.refill(ctx, depEntries)
 	}
 	return
@@ -77,11 +79,17 @@ func (ds *dependencyService) depIdsByEntries(
 	return
 }
 
-func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (depEntries []*entry) {
+// depEntriesByEntries resolves dependent entries for subId, which must end up
+// holding the given keys. A cached entry may be projected to the keys of other
+// subscriptions: when it does not belong to subId yet and lacks some of the
+// keys, the object is re-read from the store and the missing keys are merged in
+func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, subId string, keys []domain.RelationKey, depIds []string) (depEntries []*entry) {
 	if len(depIds) == 0 {
 		return
 	}
 	var missIds []string
+	// cached entries projected below the required keys, to refresh from the store
+	var staleEntries map[string]*entry
 	for _, id := range depIds {
 		var e *entry
 
@@ -89,6 +97,15 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 		if e = ctx.getEntry(id); e == nil {
 			if e = ds.s.cache.Get(id); e != nil {
 				e = e.Copy()
+				// an entry already in this subscription retains its keys by
+				// construction: absent ones are genuinely absent in the store
+				if !e.IsInSub(subId) && !entryDataHasKeys(e.data, keys) {
+					if staleEntries == nil {
+						staleEntries = map[string]*entry{}
+					}
+					staleEntries[id] = e
+					missIds = append(missIds, id)
+				}
 			} else {
 				missIds = append(missIds, id)
 			}
@@ -106,12 +123,26 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (d
 			log.Errorf("can't query by id: %v", err)
 		}
 		for _, r := range records {
-			e := newEntry(r.Details.GetString(bundle.RelationKeyId), r.Details)
+			id := r.Details.GetString(bundle.RelationKeyId)
+			if stale, ok := staleEntries[id]; ok {
+				stale.mergeMissingData(r.Details)
+				continue
+			}
+			e := newEntry(id, r.Details)
 			ctx.appendEntry(e)
 			depEntries = append(depEntries, e)
 		}
 	}
 	return
+}
+
+func entryDataHasKeys(data *domain.Details, keys []domain.RelationKey) bool {
+	for _, k := range keys {
+		if !data.Has(k) {
+			return false
+		}
+	}
+	return true
 }
 
 func (ds *dependencyService) addDepOrderObject(dependentObjectId, subId string) {

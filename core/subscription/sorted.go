@@ -249,7 +249,9 @@ func (s *sortedSub) onSklChange(ctx *opCtx) {
 	}
 
 	wasAddOrRemove, added, removed := s.diff.diff(ctx, s.id, s.keys)
-	s.ds.depEntriesByEntries(ctx, added)
+	// pull the entries added to this subscription into the context, so their
+	// details events can be built; the keys must cover this subscription's keys
+	s.ds.depEntriesByEntries(ctx, s.id, s.keys, added)
 
 	hasChanges := false
 	for _, e := range ctx.entries {

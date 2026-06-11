@@ -453,25 +453,34 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 		return nil, fmt.Errorf("new database filters: %w", err)
 	}
 
+	var sourceKeys []domain.RelationKey
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		sourceFilter, keys, err := s.filtersFromSource(req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
 		f.FilterObj = database.FiltersAnd{f.FilterObj, sourceFilter}
-	}
-
-	requiredKeys := s.requiredKeysForRequest(req)
-	keySet := make(map[string]struct{}, len(requiredKeys))
-	for _, k := range requiredKeys {
-		keySet[string(k)] = struct{}{}
-	}
-	qryEntries := func() ([]*entry, error) {
-		return queryEntries(s.objectStore, f, keySet)
+		sourceKeys = keys
 	}
 
 	s.m.Lock()
 	defer s.m.Unlock()
+
+	// requiredKeys stays nil for requests without keys: such subscriptions are
+	// not registered for projection and their entries keep full details.
+	// Computed under s.m: it touches the dependency service relation format cache
+	var requiredKeys []domain.RelationKey
+	var keySet map[string]struct{}
+	if len(req.Keys) > 0 {
+		requiredKeys = s.requiredKeysForRequest(req, sourceKeys)
+		keySet = make(map[string]struct{}, len(requiredKeys))
+		for _, k := range requiredKeys {
+			keySet[string(k)] = struct{}{}
+		}
+	}
+	qryEntries := func() ([]*entry, error) {
+		return queryEntries(s.objectStore, f, keySet)
+	}
 
 	filterDepIds := s.depIdsFromFilter(req.Filters)
 	if existing, ok := s.getSubscription(req.SubId); ok {
@@ -492,13 +501,14 @@ func (s *spaceSubscriptions) Search(req SubscribeRequest) (*SubscribeResponse, e
 }
 
 // requiredKeysForRequest returns the relation keys that must be retained in
-// cached entries of this subscription: requested keys, sort keys and filter
+// cached entries of this subscription: requested keys, sort, filter and source
 // keys (filters can be re-evaluated against retained data on collection
 // updates), plus id. When sorting by an object-format relation, name and
 // orderId of the dependent objects are retained too, as the dependency
-// subscription orders by them (see dependencyService.depSubKeys)
-func (s *spaceSubscriptions) requiredKeysForRequest(req SubscribeRequest) []domain.RelationKey {
-	res := make([]domain.RelationKey, 0, len(req.Keys)+len(req.Sorts)+len(req.Filters)+3)
+// subscription orders by them (see dependencyService.depSubKeys).
+// Must be called under s.m: it touches the dependency service relation format cache
+func (s *spaceSubscriptions) requiredKeysForRequest(req SubscribeRequest, extraKeys []domain.RelationKey) []domain.RelationKey {
+	res := make([]domain.RelationKey, 0, len(req.Keys)+len(req.Sorts)+len(req.Filters)+len(extraKeys)+3)
 	seen := make(map[domain.RelationKey]struct{}, cap(res))
 	add := func(k domain.RelationKey) {
 		if k == "" {
@@ -516,6 +526,9 @@ func (s *spaceSubscriptions) requiredKeysForRequest(req SubscribeRequest) []doma
 	add(bundle.RelationKeyId)
 	for _, k := range req.Keys {
 		add(domain.RelationKey(k))
+	}
+	for _, k := range extraKeys {
+		add(k)
 	}
 	var addFilters func(filters []database.FilterRequest)
 	addFilters = func(filters []database.FilterRequest) {
@@ -544,7 +557,9 @@ func (s *spaceSubscriptions) subscribeForQuery(req SubscribeRequest, f *database
 	} else {
 		sub.forceSubIds = filterDepIds
 	}
-	s.registerSubKeys(sub.id, requiredKeys)
+	if requiredKeys != nil {
+		s.registerSubKeys(sub.id, requiredKeys)
+	}
 	s.setSubscription(sub.id, sub)
 
 	// FIXME Nested subscriptions disabled now. We should enable them only by client's request
@@ -723,7 +738,9 @@ func (s *spaceSubscriptions) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest
 
 	s.m.Lock()
 	sub := s.newIdsSub(req.SubId, slice.StringsInto[domain.RelationKey](req.Keys), req.NoDepSubscription)
-	s.registerSubKeys(req.SubId, s.requiredKeysForRequest(SubscribeRequest{Keys: req.Keys}))
+	if len(req.Keys) > 0 {
+		s.registerSubKeys(req.SubId, s.requiredKeysForRequest(SubscribeRequest{Keys: req.Keys}, nil))
+	}
 	sub.addIds(req.Ids)
 	s.m.Unlock()
 
@@ -789,12 +806,14 @@ func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.Rp
 		return nil, err
 	}
 
+	var sourceKeys []domain.RelationKey
 	if len(req.Source) > 0 {
-		sourceFilter, err := s.filtersFromSource(req.Source)
+		sourceFilter, keys, err := s.filtersFromSource(req.Source)
 		if err != nil {
 			return nil, fmt.Errorf("can't make filter from source: %w", err)
 		}
 		flt.FilterObj = database.FiltersAnd{flt.FilterObj, sourceFilter}
+		sourceKeys = keys
 	}
 
 	var colObserver *collectionObserver
@@ -850,7 +869,7 @@ func (s *spaceSubscriptions) SubscribeGroups(req SubscribeGroupsRequest) (*pb.Rp
 		s.registerSubKeys(subId, s.requiredKeysForRequest(SubscribeRequest{
 			Keys:    []string{req.RelationKey},
 			Filters: req.Filters,
-		}))
+		}, sourceKeys))
 
 		entries := make([]*entry, 0, len(tagGrouper.Records))
 		for _, r := range tagGrouper.Records {
@@ -1017,11 +1036,14 @@ func (s *spaceSubscriptions) onChangeWithinContext(entries []*entry, proc func(c
 	return dur
 }
 
-func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filter, error) {
+// filtersFromSource also returns the relation keys the produced filter reads,
+// so they can be retained in projected entries
+func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filter, []domain.RelationKey, error) {
 	var relTypeFilter database.FiltersOr
 	var (
 		relKeys        []string
 		typeUniqueKeys []string
+		filterKeys     []domain.RelationKey
 	)
 
 	var err error
@@ -1032,7 +1054,7 @@ func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filte
 			log.Info("Using object id instead of uniqueKey is deprecated in the Source")
 			uk, err = s.objectStore.GetUniqueKeyById(source)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 		switch uk.SmartblockType() {
@@ -1050,17 +1072,19 @@ func (s *spaceSubscriptions) filtersFromSource(sources []string) (database.Filte
 			Value:       domain.StringList(typeUniqueKeys),
 		}, s.objectStore)
 		if err != nil {
-			return nil, fmt.Errorf("make nested filter: %w", err)
+			return nil, nil, fmt.Errorf("make nested filter: %w", err)
 		}
 		relTypeFilter = append(relTypeFilter, nestedFiler)
+		filterKeys = append(filterKeys, bundle.RelationKeyType)
 	}
 
 	for _, relKey := range relKeys {
 		relTypeFilter = append(relTypeFilter, database.FilterExists{
 			Key: domain.RelationKey(relKey),
 		})
+		filterKeys = append(filterKeys, domain.RelationKey(relKey))
 	}
-	return relTypeFilter, nil
+	return relTypeFilter, filterKeys, nil
 }
 
 func (s *spaceSubscriptions) depIdsFromFilter(filters []database.FilterRequest) (depIds []string) {
