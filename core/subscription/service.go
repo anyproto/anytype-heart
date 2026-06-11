@@ -3,26 +3,36 @@ package subscription
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
+	"sync"
 
+	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-sync/app"
 	"github.com/cheggaaa/mb/v3"
+	"golang.org/x/text/collate"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/event"
+	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
-// The subscription engine has been removed and awaits a from-scratch
-// reimplementation. The contract it must fulfill — derived from how the
-// desktop client and anytype-heart's own services consume subscriptions —
-// is documented in docs/Subscriptions.md. This file keeps the public API
-// surface so that consumers compile; every method returns
-// ErrNotImplemented (queries) or is a no-op (teardown).
+// The subscription engine: a live-query service over object details. The
+// behavioral contract is docs/Subscriptions.md; the architecture is
+// docs/SubscriptionsEngineDesign.md — one core primitive (scope + filters +
+// order/window over a per-space store feed) surrounded by adapters.
 
 const CName = "subscription"
 
-// ErrNotImplemented is returned by every query method until the subscription
-// engine is reimplemented
+var log = logging.Logger("anytype-mw-subscription")
+
+// ErrNotImplemented is returned by query surfaces that are not reimplemented
+// yet (groups and ids subscriptions arrive in later phases)
 var ErrNotImplemented = errors.New("subscriptions are not implemented")
 
 func New() Service {
@@ -91,13 +101,49 @@ type CollectionService interface {
 	UnsubscribeFromCollection(collectionID string, subscriptionID string) error
 }
 
-type service struct{}
+// subSlot is the registry entry for one subId. A Search claims the slot
+// (with a unique token) before building its subscription and finalizes it
+// only if its token still owns the slot — the single serialization point for
+// replace-on-resubscribe, concurrent same-subId subscribes and racing
+// unsubscribes.
+type subSlot struct {
+	token uint64
+	sub   *coreSub // nil while the owning Search is still building
+}
+
+type service struct {
+	store       objectstore.ObjectStore
+	eventSender event.Sender
+	// soft dependencies: resolved by type if registered; their absence only
+	// fails the requests that need them
+	kanban            kanban.Service
+	collectionService CollectionService
+
+	componentCtx    context.Context
+	componentCancel context.CancelFunc
+
+	mu     sync.Mutex
+	slots  map[string]*subSlot
+	spaces map[string]*spaceState
+	seq    uint64
+	closed bool
+}
 
 func (s *service) Name() string {
 	return CName
 }
 
 func (s *service) Init(a *app.App) (err error) {
+	s.store = app.MustComponent[objectstore.ObjectStore](a)
+	s.eventSender = app.MustComponent[event.Sender](a)
+	// the acceptance fixtures register these under arbitrary component names
+	// (or not at all), so: by type, non-panicking
+	s.kanban, _ = app.GetComponent[kanban.Service](a)
+	s.collectionService, _ = app.GetComponent[CollectionService](a)
+
+	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
+	s.slots = make(map[string]*subSlot)
+	s.spaces = make(map[string]*spaceState)
 	return nil
 }
 
@@ -106,11 +152,259 @@ func (s *service) Run(ctx context.Context) (err error) {
 }
 
 func (s *service) Close(ctx context.Context) error {
+	s.componentCancel()
+
+	s.mu.Lock()
+	s.closed = true
+	spaces := make([]*spaceState, 0, len(s.spaces))
+	for _, st := range s.spaces {
+		spaces = append(spaces, st)
+	}
+	slots := make([]*subSlot, 0, len(s.slots))
+	for _, slot := range s.slots {
+		slots = append(slots, slot)
+	}
+	s.spaces = make(map[string]*spaceState)
+	s.slots = make(map[string]*subSlot)
+	s.mu.Unlock()
+
+	for _, st := range spaces {
+		st.mu.Lock()
+		st.stopped = true
+		st.mu.Unlock()
+		st.shutdown()
+	}
+	for _, slot := range slots {
+		if slot.sub != nil && slot.sub.queueOwned {
+			_ = slot.sub.queue.Close()
+		}
+	}
 	return nil
 }
 
 func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err error) {
-	return nil, ErrNotImplemented
+	spec, err := normalizeSearch(req)
+	if err != nil {
+		return nil, fmt.Errorf("normalize subscribe request: %w", err)
+	}
+
+	// Resolve the space index before taking any engine lock: the first open
+	// of a space fires OnSpaceIndexOpened synchronously, which re-enters
+	// Search on this goroutine (crossspacesub pending-space promotion).
+	idx := s.store.SpaceIndex(spec.spaceId)
+
+	filters, err := s.compileFilters(spec, idx)
+	if err != nil {
+		return nil, fmt.Errorf("compile filters: %w", err)
+	}
+
+	old, token, err := s.claimSlot(spec.subId)
+	if err != nil {
+		return nil, err
+	}
+	if old != nil {
+		// same-subId resubscribe replaces the subscription silently: no
+		// Remove events, the response supersedes the client's list
+		s.teardown(old)
+	}
+
+	sub := &coreSub{
+		subId:   spec.subId,
+		spaceId: spec.spaceId,
+		keys:    spec.keys,
+		filters: filters,
+		members: make(map[string]*domain.Details),
+	}
+	if spec.internal {
+		if spec.queue != nil {
+			sub.queue = spec.queue
+		} else {
+			sub.queue = mb.New[*pb.EventMessage](0)
+			sub.queueOwned = true
+		}
+	}
+
+	var (
+		records []*domain.Details
+		total   int
+	)
+	for {
+		st := s.getOrCreateSpace(spec.spaceId, idx)
+		if st == nil {
+			err = errors.New("subscription service is closed")
+			break
+		}
+		sub.space = st
+		records, total, err = st.install(sub, spec.asyncInit)
+		if errors.Is(err, errSpaceStopped) {
+			continue
+		}
+		break
+	}
+	if err != nil {
+		s.releaseSlot(spec.subId, token)
+		if sub.queueOwned {
+			_ = sub.queue.Close()
+		}
+		return nil, fmt.Errorf("subscribe %s: %w", spec.subId, err)
+	}
+	sub.space.notify()
+
+	if !s.finalizeSlot(spec.subId, token, sub) {
+		// a concurrent Search or Unsubscribe won the slot; the snapshot in
+		// the response is still valid, the subscription itself is gone
+		s.teardown(sub)
+	}
+
+	return &SubscribeResponse{
+		SubId:   spec.subId,
+		Records: truncateRecords(records, spec.offset, spec.limit),
+		Counters: &pb.EventObjectSubscriptionCounters{
+			SubId: spec.subId,
+			Total: int64(total),
+		},
+		Output: sub.queue,
+	}, nil
+}
+
+func (s *service) compileFilters(spec subSpec, idx spaceindex.Store) (*database.Filters, error) {
+	filters := spec.filters
+	sourceFilters, err := resolveSources(idx, spec.source)
+	if err != nil {
+		return nil, fmt.Errorf("resolve sources: %w", err)
+	}
+	if len(sourceFilters) > 0 {
+		filters = append(slices.Clone(filters), sourceFilters...)
+	}
+	// NewFilters owns default-filter injection (isArchived/isDeleted/type
+	// with the Condition-None opt-out), so snapshot queries and live matching
+	// can never disagree
+	return database.NewFilters(database.Query{
+		SpaceId: spec.spaceId,
+		Filters: filters,
+	}, idx, &anyenc.Arena{}, &collate.Buffer{})
+}
+
+// claimSlot atomically claims the subId slot, returning the previous owner
+// (to tear down) and the claim token to finalize with
+func (s *service) claimSlot(subId string) (old *coreSub, token uint64, err error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil, 0, errors.New("subscription service is closed")
+	}
+	if slot, ok := s.slots[subId]; ok {
+		old = slot.sub
+	}
+	s.seq++
+	s.slots[subId] = &subSlot{token: s.seq}
+	return old, s.seq, nil
+}
+
+func (s *service) finalizeSlot(subId string, token uint64, sub *coreSub) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	slot, ok := s.slots[subId]
+	if !ok || slot.token != token {
+		return false
+	}
+	slot.sub = sub
+	return true
+}
+
+func (s *service) releaseSlot(subId string, token uint64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if slot, ok := s.slots[subId]; ok && slot.token == token {
+		delete(s.slots, subId)
+	}
+}
+
+func (s *service) getOrCreateSpace(spaceId string, idx spaceindex.Store) *spaceState {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil
+	}
+	if st, ok := s.spaces[spaceId]; ok {
+		return st
+	}
+	st := newSpaceState(s, spaceId, idx)
+	s.spaces[spaceId] = st
+	return st
+}
+
+// teardown detaches a subscription: out of its space, engine-owned queue
+// closed (caller-provided queues are never touched — crossspacesub shares one
+// queue across all its per-space subscriptions), empty space states dropped
+func (s *service) teardown(sub *coreSub) {
+	empty := sub.space.removeSub(sub)
+	if sub.queueOwned {
+		_ = sub.queue.Close()
+	}
+	if empty {
+		s.maybeDropSpace(sub.space)
+	}
+}
+
+// maybeDropSpace removes a subscription-less space state: feed unhooked,
+// worker stopped. A Search that raced us retries against a fresh state (see
+// install's errSpaceStopped).
+func (s *service) maybeDropSpace(st *spaceState) {
+	s.mu.Lock()
+	if s.spaces[st.spaceId] != st || !st.markStopped() {
+		s.mu.Unlock()
+		return
+	}
+	delete(s.spaces, st.spaceId)
+	s.mu.Unlock()
+	st.shutdown()
+}
+
+func (s *service) Unsubscribe(subIds ...string) (err error) {
+	for _, subId := range subIds {
+		s.mu.Lock()
+		slot := s.slots[subId]
+		delete(s.slots, subId)
+		s.mu.Unlock()
+		// a nil slot.sub means an in-flight Search owns it; deleting the
+		// slot makes its finalize fail and tear the fresh sub down itself
+		if slot != nil && slot.sub != nil {
+			s.teardown(slot.sub)
+		}
+	}
+	return nil
+}
+
+func (s *service) UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error) {
+	s.mu.Lock()
+	slot := s.slots[subId]
+	if slot == nil || slot.sub == nil {
+		s.mu.Unlock()
+		return nil, fmt.Errorf("subscription %s not found", subId)
+	}
+	sub := slot.sub
+	delete(s.slots, subId)
+	s.mu.Unlock()
+
+	sub.space.mu.Lock()
+	ids := sub.memberIds()
+	sub.space.mu.Unlock()
+
+	s.teardown(sub)
+	return ids, nil
+}
+
+func (s *service) SubscriptionIDs() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	ids := make([]string, 0, len(s.slots))
+	for subId, slot := range s.slots {
+		if slot.sub != nil {
+			ids = append(ids, subId)
+		}
+	}
+	return ids
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
@@ -125,18 +419,6 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 	return nil, ErrNotImplemented
 }
 
-func (s *service) Unsubscribe(subIds ...string) (err error) {
-	return nil
-}
-
-func (s *service) UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error) {
-	return nil, ErrNotImplemented
-}
-
 func (s *service) UnsubscribeAll() (err error) {
-	return nil
-}
-
-func (s *service) SubscriptionIDs() []string {
 	return nil
 }

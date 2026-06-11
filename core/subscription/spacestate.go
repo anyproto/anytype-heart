@@ -1,0 +1,296 @@
+package subscription
+
+import (
+	"errors"
+	"sync"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+)
+
+// intakeDetailsLimit bounds how many full-details payloads the coalescing
+// queue may pin at once. Beyond it new entries are recorded id-only and
+// re-fetched in a batch when the worker drains — diff-based processing makes
+// the re-fetch safe (same or newer state), and an id missing on re-fetch
+// means the object was hard-deleted.
+const intakeDetailsLimit = 2048
+
+type feedItem struct {
+	id      string
+	details *domain.Details // nil: degraded entry, re-fetch on drain
+}
+
+// intakeQueue is the feed→worker hand-off: coalescing by id (the feed
+// carries full state, so a newer snapshot safely replaces a pending one),
+// FIFO by first appearance, never blocking the writer goroutine.
+type intakeQueue struct {
+	mu      sync.Mutex
+	pending map[string]*domain.Details
+	order   []string
+}
+
+func newIntakeQueue() *intakeQueue {
+	return &intakeQueue{pending: make(map[string]*domain.Details)}
+}
+
+func (q *intakeQueue) add(id string, details *domain.Details) {
+	q.mu.Lock()
+	if _, ok := q.pending[id]; !ok {
+		q.order = append(q.order, id)
+		if len(q.pending) >= intakeDetailsLimit {
+			details = nil
+		}
+	}
+	q.pending[id] = details
+	q.mu.Unlock()
+}
+
+func (q *intakeQueue) drain() []feedItem {
+	q.mu.Lock()
+	if len(q.order) == 0 {
+		q.mu.Unlock()
+		return nil
+	}
+	items := make([]feedItem, 0, len(q.order))
+	for _, id := range q.order {
+		items = append(items, feedItem{id: id, details: q.pending[id]})
+	}
+	// replace, not clear: a map that once ballooned never shrinks its buckets
+	q.pending = make(map[string]*domain.Details)
+	q.order = nil
+	q.mu.Unlock()
+	return items
+}
+
+// spaceState is the per-space hub: it owns the store-feed wiring, the intake
+// queue, the worker goroutine, the space's subscriptions and the outbox.
+//
+// Locking: st.mu guards subs/outbox/stopped and all coreSub state. Feed
+// callbacks never take it (intake has its own small mutex). No engine lock is
+// ever held across store.SpaceIndex() — the index handle is resolved before
+// the state is created and captured here.
+type spaceState struct {
+	spaceId string
+	idx     spaceindex.Store
+	svc     *service
+
+	mu      sync.Mutex
+	subs    []*coreSub
+	outbox  [][]subOp
+	stopped bool
+
+	intake   *intakeQueue
+	wakeCh   chan struct{}
+	closedCh chan struct{}
+	wg       sync.WaitGroup
+}
+
+func newSpaceState(svc *service, spaceId string, idx spaceindex.Store) *spaceState {
+	st := &spaceState{
+		spaceId:  spaceId,
+		idx:      idx,
+		svc:      svc,
+		intake:   newIntakeQueue(),
+		wakeCh:   make(chan struct{}, 1),
+		closedCh: make(chan struct{}),
+	}
+	// wire the feed before anything can query: a subscription installed
+	// later re-queries the store under st.mu, so every write is either in
+	// its query result or already in the intake queue (no-data-loss
+	// invariant; the store defers tx notifications to commit)
+	idx.SubscribeForAll(st.onFeed)
+	st.wg.Add(1)
+	go st.run()
+	return st
+}
+
+// onFeed runs on writer goroutines: enqueue and signal, nothing else
+func (st *spaceState) onFeed(rec database.Record) {
+	if rec.Details == nil {
+		return
+	}
+	id := rec.Details.GetString(bundle.RelationKeyId)
+	if id == "" {
+		return
+	}
+	st.intake.add(id, rec.Details)
+	st.notify()
+}
+
+func (st *spaceState) notify() {
+	select {
+	case st.wakeCh <- struct{}{}:
+	default:
+	}
+}
+
+func (st *spaceState) run() {
+	defer st.wg.Done()
+	for {
+		select {
+		case <-st.closedCh:
+			return
+		case <-st.wakeCh:
+		}
+		for {
+			items := st.intake.drain()
+			if len(items) == 0 {
+				break
+			}
+			st.processBatch(items)
+		}
+		st.drainOutbox()
+	}
+}
+
+func (st *spaceState) processBatch(items []feedItem) {
+	st.refetchDegraded(items)
+
+	st.mu.Lock()
+	if st.stopped {
+		st.mu.Unlock()
+		return
+	}
+	var batch opBatch
+	for _, it := range items {
+		for _, sub := range st.subs {
+			sub.apply(it.id, it.details, &batch)
+		}
+	}
+	for _, sub := range st.subs {
+		sub.finalize(&batch)
+	}
+	if len(batch.ops) > 0 {
+		st.outbox = append(st.outbox, batch.ops)
+	}
+	st.mu.Unlock()
+}
+
+// refetchDegraded restores full details for id-only intake entries with one
+// batched store read. Runs before taking st.mu.
+func (st *spaceState) refetchDegraded(items []feedItem) {
+	var missing []string
+	for _, it := range items {
+		if it.details == nil {
+			missing = append(missing, it.id)
+		}
+	}
+	if len(missing) == 0 {
+		return
+	}
+	records, err := st.idx.QueryByIds(missing)
+	if err != nil {
+		log.Errorf("subscription space %s: re-fetch degraded intake: %v", st.spaceId, err)
+		return
+	}
+	byId := make(map[string]*domain.Details, len(records))
+	for _, rec := range records {
+		if rec.Details == nil {
+			continue
+		}
+		byId[rec.Details.GetString(bundle.RelationKeyId)] = rec.Details
+	}
+	for i := range items {
+		if items[i].details == nil {
+			// stays nil when the object vanished from the store: apply()
+			// treats that as a non-match, i.e. a leave for tracking subs
+			items[i].details = byId[items[i].id]
+		}
+	}
+}
+
+func (st *spaceState) drainOutbox() {
+	st.mu.Lock()
+	groups := st.outbox
+	st.outbox = nil
+	st.mu.Unlock()
+	for _, ops := range groups {
+		deliverOps(st.svc.componentCtx, st.svc.eventSender, ops)
+	}
+}
+
+var errSpaceStopped = errors.New("space state stopped")
+
+// install registers the sub and takes its snapshot atomically with respect to
+// the worker (st.mu is held across the store query — the no-data-loss
+// invariant, see newSpaceState). Returns the snapshot in query order; for
+// asyncInit the snapshot is appended to the outbox as events instead.
+func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.Details, total int, err error) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if st.stopped {
+		return nil, 0, errSpaceStopped
+	}
+
+	queryResult, err := st.idx.QueryRaw(sub.filters, 0, 0)
+	if err != nil {
+		return nil, 0, err
+	}
+	records = make([]*domain.Details, 0, len(queryResult))
+	for _, rec := range queryResult {
+		if rec.Details == nil {
+			continue
+		}
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+		proj := projectDetails(rec.Details, sub.keys)
+		sub.members[id] = proj
+		records = append(records, proj)
+	}
+	st.subs = append(st.subs, sub)
+
+	if asyncInit {
+		// the snapshot flows as events through the queue; an empty snapshot
+		// emits nothing, not even Counters{0}
+		if len(records) > 0 {
+			var batch opBatch
+			for _, proj := range records {
+				id := proj.GetString(bundle.RelationKeyId)
+				batch.append(subOp{sub: sub, kind: opSet, id: id, details: proj})
+				batch.append(subOp{sub: sub, kind: opAdd, id: id})
+			}
+			batch.append(subOp{sub: sub, kind: opCounters, total: int64(len(sub.members))})
+			st.outbox = append(st.outbox, batch.ops)
+		}
+		records = nil
+	}
+	return records, len(sub.members), nil
+}
+
+// removeSub detaches the sub from the space; returns whether the space is
+// left without subscriptions
+func (st *spaceState) removeSub(sub *coreSub) (empty bool) {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	for i, s := range st.subs {
+		if s == sub {
+			st.subs = append(st.subs[:i], st.subs[i+1:]...)
+			break
+		}
+	}
+	return len(st.subs) == 0
+}
+
+// markStopped flags the state as defunct if it has no subscriptions; a
+// concurrent install observing the flag retries with a fresh state
+func (st *spaceState) markStopped() bool {
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if len(st.subs) > 0 || st.stopped {
+		return false
+	}
+	st.stopped = true
+	return true
+}
+
+// shutdown unhooks the feed and stops the worker. Must not be called with
+// st.mu held.
+func (st *spaceState) shutdown() {
+	st.idx.SubscribeForAll(nil)
+	close(st.closedCh)
+	st.wg.Wait()
+}
