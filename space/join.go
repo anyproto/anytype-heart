@@ -91,10 +91,13 @@ func (s *service) ensureSpaceView(ctx context.Context, id string, info spaceinfo
 // on (e.g. the join was already accepted), which is success for the intent.
 func (s *service) waitIntentMode(ctx context.Context, ctrl spacecontroller.SpaceController, m mode.Mode) error {
 	err := ctrl.WaitMode(ctx, m)
-	if err != nil && !errors.Is(err, accountspace.ErrModeUnreachable) {
-		return err
+	switch {
+	case err == nil, errors.Is(err, accountspace.ErrModeUnreachable):
+		return nil
+	case errors.Is(err, accountspace.ErrCtrlClosed):
+		return ErrSpaceIsClosing
 	}
-	return nil
+	return err
 }
 
 func (s *service) CancelLeave(ctx context.Context, id string) error {
