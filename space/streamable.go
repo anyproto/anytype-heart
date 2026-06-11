@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	"github.com/anyproto/any-sync/util/crypto"
+
+	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 )
 
 // AddStreamable is unidirectional: it creates the space view carrying the
@@ -28,5 +30,5 @@ func (s *service) AddStreamable(ctx context.Context, id string, guestKey crypto.
 		return err
 	}
 	ctrl.Demand()
-	return nil
+	return s.waitIntentMode(ctx, ctrl, mode.ModeLoading)
 }

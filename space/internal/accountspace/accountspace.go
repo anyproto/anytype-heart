@@ -128,6 +128,13 @@ func (s *spaceController) WaitLoad(ctx context.Context) (clientspace.Space, erro
 	return ld.WaitLoad(ctx)
 }
 
+// WaitMode blocks until the process for mode m is running, failing with the
+// real transition error or ErrModeUnreachable when the target differs.
+func (s *spaceController) WaitMode(ctx context.Context, m mode.Mode) error {
+	_, err := s.rec.waitMode(ctx, m)
+	return err
+}
+
 func (s *spaceController) Mode() mode.Mode {
 	return s.rec.getMode()
 }

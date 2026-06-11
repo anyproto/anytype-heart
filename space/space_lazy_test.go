@@ -58,6 +58,7 @@ func newLazyServiceForStatus(t *testing.T) *service {
 	s.spaceControllers = map[string]spacecontroller.SpaceController{}
 	s.regChanged = make(chan struct{})
 	s.regErr = map[string]error{}
+	s.constructing = map[string]chan struct{}{}
 	s.preloadCh = make(chan struct{})
 	s.personalSpaceId = "personal.id"
 	return s
@@ -221,6 +222,42 @@ func TestStartStatus_RegisterReleaseRace(t *testing.T) {
 		id := "s" + strconv.Itoa(i)
 		_, ok := demanded.Load(id)
 		assert.True(t, ok, "space "+id+" must be demanded, never stranded dormant")
+	}
+}
+
+// TestStartStatus_SingleFlight: concurrent registrations for the same id must
+// construct exactly one controller; the losers wait and reuse it.
+func TestStartStatus_SingleFlight(t *testing.T) {
+	const n = 20
+	s := newLazyServiceForStatus(t)
+	s.lazyMode = true // dormant path: no Start expectations needed
+	s.preferredSpaceId = "preferred"
+
+	factory := mock_spacefactory.NewMockSpaceFactory(t)
+	ctrl := mock_spacecontroller.NewMockSpaceController(t)
+	started := make(chan struct{})
+	factory.EXPECT().NewShareableSpace(mock.Anything, "same", mock.Anything).RunAndReturn(
+		func(context.Context, string, spaceinfo.SpacePersistentInfo) (spacecontroller.SpaceController, error) {
+			<-started // hold every racer in the construction window
+			return ctrl, nil
+		}).Once() // a second construction fails the test
+	s.factory = factory
+
+	var wg sync.WaitGroup
+	results := make([]spacecontroller.SpaceController, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			got, err := s.startStatus(context.Background(), spaceinfo.NewSpacePersistentInfo("same"))
+			require.NoError(t, err)
+			results[i] = got
+		}(i)
+	}
+	close(started)
+	wg.Wait()
+	for i := 0; i < n; i++ {
+		assert.Same(t, ctrl, results[i])
 	}
 }
 

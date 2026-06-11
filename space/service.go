@@ -151,7 +151,9 @@ type service struct {
 	regChanged chan struct{}
 	// regErr holds the last registration error per space id; cleared when the
 	// next registration attempt starts, so failures are retryable.
-	regErr           map[string]error
+	regErr map[string]error
+	// constructing single-flights controller construction per space id.
+	constructing     map[string]chan struct{}
 	preferredSpaceId string // from config; "" => eager (load all at startup)
 	// lazyMode is set exactly once in initAccount before watcher.Run() and is
 	// never mutated afterwards, so it is safe to read without s.mu (the
@@ -207,6 +209,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
 	s.regChanged = make(chan struct{})
 	s.regErr = make(map[string]error)
+	s.constructing = make(map[string]chan struct{})
 	s.preferredSpaceId = s.config.PreferredSpaceId
 	s.preloadCh = make(chan struct{})
 	s.techSpaceReady = make(chan struct{})
@@ -392,27 +395,57 @@ func (s *service) Create(ctx context.Context, description *spaceinfo.SpaceDescri
 
 }
 
-// Wait returns the space once it is loaded. Since controller registration is
-// event-driven (getCtrl waits on the registry), this is the same as Get.
+// Wait returns the space once it is loaded, waiting (event-driven) for its
+// controller to be registered when the space view exists but the watcher has
+// not picked it up yet.
 func (s *service) Wait(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
-	return s.Get(ctx, spaceId)
+	if spaceId == s.techSpaceId {
+		return s.getTechSpace(ctx)
+	}
+	if spaceId == addr.AnytypeMarketplaceWorkspace {
+		return s.getMarketplace(ctx)
+	}
+	if ctrl, err := s.getCtrl(spaceId); err == nil {
+		return s.waitLoad(ctx, ctrl)
+	}
+	if s.techSpace == nil {
+		return nil, ErrSpaceNotExists
+	}
+	exists, err := s.techSpace.SpaceViewExists(ctx, spaceId)
+	if err != nil {
+		return nil, fmt.Errorf("check space view: %w", err)
+	}
+	if !exists {
+		return nil, ErrSpaceNotExists
+	}
+	ctrl, err := s.waitCtrl(ctx, spaceId)
+	if err != nil {
+		return nil, err
+	}
+	return s.waitLoad(ctx, ctrl)
 }
 
+// Get returns the space once it is loaded. Unlike Wait it never blocks on
+// controller registration (no view lookup, no I/O for unknown ids).
 func (s *service) Get(ctx context.Context, spaceId string) (sp clientspace.Space, err error) {
 	if spaceId == s.techSpaceId {
 		return s.getTechSpace(ctx)
 	}
 	if spaceId == addr.AnytypeMarketplaceWorkspace {
-		if s.marketplaceCtrl == nil {
-			return nil, ErrSpaceNotExists
-		}
-		return s.marketplaceCtrl.WaitLoad(ctx)
+		return s.getMarketplace(ctx)
 	}
-	ctrl, err := s.getCtrl(ctx, spaceId)
+	ctrl, err := s.getCtrl(spaceId)
 	if err != nil {
 		return nil, err
 	}
 	return s.waitLoad(ctx, ctrl)
+}
+
+func (s *service) getMarketplace(ctx context.Context) (clientspace.Space, error) {
+	if s.marketplaceCtrl == nil {
+		return nil, ErrSpaceNotExists
+	}
+	return s.marketplaceCtrl.WaitLoad(ctx)
 }
 
 func (s *service) UpdateSharedLimits(ctx context.Context, limits int) error {

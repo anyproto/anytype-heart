@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/spacestatus"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/initial"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
@@ -115,6 +116,56 @@ func TestSpaceController_StartFailureSurfacesErrorAndRetries(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return fx.ctrl.Mode() == mode.ModeLoading
 	}, time.Second, 5*time.Millisecond)
+}
+
+// Regression: an input change racing a failing transition must not be lost to
+// the recorded failure — the reconciler retries against the fresh inputs.
+func TestSpaceController_InputDuringFailingTransitionIsNotLost(t *testing.T) {
+	startErr := errors.New("loading start failed")
+	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
+	defer fx.stop()
+	fx.f.failLoading.Store(&startErr)
+	fx.f.blockLoading = make(chan struct{})
+
+	go func() {
+		_ = fx.ctrl.Start(context.Background())
+	}()
+	// loading.Start is now blocked and will fail when released
+	require.Eventually(t, func() bool {
+		return fx.f.loadingStarted.Load()
+	}, time.Second, time.Millisecond)
+
+	// the status flips to Deleted while the failing transition is in flight
+	require.NoError(t, fx.ctrl.SetPersistentInfo(context.Background(), makePersistentInfo("spaceId", spaceinfo.AccountStatusDeleted)))
+	close(fx.f.blockLoading)
+
+	// the deletion must win: the controller converges to offloading instead
+	// of parking in the failed state
+	require.Eventually(t, func() bool {
+		return fx.ctrl.Mode() == mode.ModeOffloading
+	}, time.Second, 5*time.Millisecond)
+}
+
+// Regression: a repeated demand (user retry via Get/WaitLoad) clears a parked
+// failure even though demand was already set.
+func TestSpaceController_RepeatedDemandClearsParkedFailure(t *testing.T) {
+	startErr := errors.New("process start failed")
+	fx := newFixture(t, spaceinfo.AccountStatusUnknown)
+	defer fx.stop()
+	fx.f.failLoading.Store(&startErr)
+
+	err := fx.ctrl.Start(context.Background())
+	require.ErrorIs(t, err, startErr)
+	require.Equal(t, mode.ModeInitial, fx.ctrl.Mode())
+
+	// the failure cause is gone; a retry through WaitLoad must succeed even
+	// though neither status nor the demand flag changes value
+	fx.f.failLoading.Store(nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, err = fx.ctrl.WaitLoad(ctx)
+	require.NoError(t, err)
+	require.Equal(t, mode.ModeLoading, fx.ctrl.Mode())
 }
 
 func TestSpaceController_DormantStaysIdleUntilDemand(t *testing.T) {
@@ -342,6 +393,10 @@ func (l *loading) Start(ctx context.Context) error {
 
 func (l *loading) Close(ctx context.Context) error {
 	return nil
+}
+
+func (l *loading) WaitLoad(ctx context.Context) (clientspace.Space, error) {
+	return nil, nil
 }
 
 type offloading struct {

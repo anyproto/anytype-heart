@@ -58,49 +58,61 @@ func (s *service) waitCtrl(ctx context.Context, id string) (spacecontroller.Spac
 	}
 }
 
-// getCtrl returns the controller for the space, waiting for its registration
-// when the space view exists but the watcher has not registered it yet.
-func (s *service) getCtrl(ctx context.Context, spaceId string) (ctrl spacecontroller.SpaceController, err error) {
+// getCtrl returns the controller for the space without blocking on
+// registration: a plain map lookup (plus the last registration error). Wait
+// is the blocking variant.
+func (s *service) getCtrl(spaceId string) (ctrl spacecontroller.SpaceController, err error) {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if ctrl, ok := s.spaceControllers[spaceId]; ok {
-		s.mu.Unlock()
 		return ctrl, nil
 	}
 	if err, ok := s.regErr[spaceId]; ok {
-		s.mu.Unlock()
 		return nil, err
 	}
-	s.mu.Unlock()
-	if s.techSpace == nil {
-		return nil, ErrSpaceNotExists
-	}
-	exists, err := s.techSpace.SpaceViewExists(ctx, spaceId)
-	if err != nil {
-		return nil, fmt.Errorf("check space view: %w", err)
-	}
-	if !exists {
-		return nil, ErrSpaceNotExists
-	}
-	return s.waitCtrl(ctx, spaceId)
+	return nil, ErrSpaceNotExists
 }
 
-// startStatus registers a controller for the space (idempotently). It is only
-// called from the watcher (serialized per space view) and from account init,
-// so a space is never constructed twice concurrently. Whether the space also
-// starts loading is the lazy-mode demand decision: eager mode and the
-// preferred space demand immediately; other spaces stay dormant until
-// released or fetched via Get/Wait. Status-driven work (offloading, joining)
-// proceeds regardless of demand.
+// startStatus registers a controller for the space (idempotently and
+// single-flight per id: a concurrent call for the same id waits for the
+// first). Whether the space also starts loading is the lazy-mode demand
+// decision: eager mode and the preferred space demand immediately; other
+// spaces stay dormant until released or fetched via Get/Wait. Status-driven
+// work (offloading, joining) proceeds regardless of demand.
 func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersistentInfo) (ctrl spacecontroller.SpaceController, err error) {
-	s.mu.Lock()
-	if ctrl, ok := s.spaceControllers[info.SpaceID]; ok {
+	for {
+		s.mu.Lock()
+		if ctrl, ok := s.spaceControllers[info.SpaceID]; ok {
+			s.mu.Unlock()
+			return ctrl, nil
+		}
+		building, inFlight := s.constructing[info.SpaceID]
+		if !inFlight {
+			break // still holding s.mu
+		}
 		s.mu.Unlock()
-		return ctrl, nil
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-s.ctx.Done():
+			return nil, ErrSpaceIsClosing
+		case <-building:
+		}
+		// re-check: either the controller is registered now or the attempt
+		// failed and we become the next attempt
 	}
+	building := make(chan struct{})
+	s.constructing[info.SpaceID] = building
 	// a new attempt supersedes a previous failure
 	delete(s.regErr, info.SpaceID)
 	demandNow := !s.lazyMode || s.released || info.SpaceID == s.preferredSpaceId
 	s.mu.Unlock()
+	defer func() {
+		s.mu.Lock()
+		delete(s.constructing, info.SpaceID)
+		close(building)
+		s.mu.Unlock()
+	}()
 	if info.SpaceID == s.personalSpaceId {
 		ctrl, err = s.factory.NewPersonalSpace(ctx, s.accountMetadataPayload)
 	} else if info.EncodedKey == "" {
@@ -116,6 +128,16 @@ func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersisten
 		}
 	}
 	s.mu.Lock()
+	if err == nil && s.isClosing.Load() {
+		// Close() may have snapshotted the registry already; do not insert a
+		// controller it will never close
+		err = ErrSpaceIsClosing
+		s.mu.Unlock()
+		if closeErr := ctrl.Close(ctx); closeErr != nil {
+			log.Warn("close controller registered during shutdown", zap.Error(closeErr))
+		}
+		s.mu.Lock()
+	}
 	if err != nil {
 		s.regErr[info.SpaceID] = err
 		s.registryChangedLocked()
@@ -138,8 +160,11 @@ func (s *service) startStatus(ctx context.Context, info spaceinfo.SpacePersisten
 func (s *service) waitLoad(ctx context.Context, ctrl spacecontroller.SpaceController) (sp clientspace.Space, err error) {
 	sp, err = ctrl.WaitLoad(ctx)
 	if err != nil {
-		if errors.Is(err, accountspace.ErrModeUnreachable) {
+		switch {
+		case errors.Is(err, accountspace.ErrModeUnreachable):
 			return nil, fmt.Errorf("failed to load space, mode is %d: %w", ctrl.Mode(), ErrFailedToLoad)
+		case errors.Is(err, accountspace.ErrCtrlClosed):
+			return nil, ErrSpaceIsClosing
 		}
 		return nil, convertSpaceError(err)
 	}

@@ -87,6 +87,11 @@ func (o *spaceOffloader) Close(ctx context.Context) (err error) {
 	if ol != nil {
 		<-ol.loadCh
 	}
+	// The offloading process closes only when the target moves away from
+	// offloading (the space is being restored) or at shutdown. Cancel the
+	// pending coordinator deletion so a restored space is not remote-deleted;
+	// at shutdown the in-memory queue dies anyway.
+	o.delController.RemoveSpaceToDelete(o.status.SpaceId())
 	return nil
 }
 

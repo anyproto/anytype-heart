@@ -280,10 +280,10 @@ func (s *spaceFactory) NewStreamableSpace(ctx context.Context, id string, info s
 	}, s.app)
 }
 
+// CreateMarketplaceSpace constructs the marketplace controller; the caller
+// starts it (initMarketplaceSpace).
 func (s *spaceFactory) CreateMarketplaceSpace(ctx context.Context) (sp spacecontroller.SpaceController, err error) {
-	ctrl := marketplacespace.NewSpaceController(s.app, s.personalSpaceId)
-	err = ctrl.Start(ctx)
-	return ctrl, err
+	return marketplacespace.NewSpaceController(s.app, s.personalSpaceId), nil
 }
 
 // CreateOneToOneSpace marks the one-to-one space storage and creates or

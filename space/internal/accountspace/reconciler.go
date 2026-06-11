@@ -56,6 +56,10 @@ type reconciler struct {
 	demand  bool                    // desired: someone wants the space loaded
 	current mode.Process            // actual: running process
 	mode    mode.Mode               // actual: its mode
+	// gen counts input changes; a failing transition only parks failedErr if
+	// no input changed while it ran, so an input change never loses its
+	// effect to a concurrently recorded failure.
+	gen uint64
 	// failedErr holds the last transition error. While set, the loop does not
 	// retry; any input change clears it (no error outlives an input change).
 	failedErr error
@@ -87,17 +91,26 @@ func newReconciler(factory processFactory, log logger.CtxLogger) *reconciler {
 	return r
 }
 
+// inputChangedLocked records an input change: bumps the generation (so an
+// in-flight failing transition does not park), clears any parked failure, and
+// wakes the loop and the waiters. Must be called with r.mu held; callers must
+// wakeUp() after unlocking.
+func (r *reconciler) inputChangedLocked() {
+	r.gen++
+	r.failedErr = nil
+	r.broadcastLocked()
+}
+
 // setInputs updates the desired state; no-op if nothing changed.
 func (r *reconciler) setInputs(status spaceinfo.AccountStatus, demand bool) {
 	r.mu.Lock()
-	if r.status == status && r.demand == demand {
+	if r.status == status && r.demand == demand && r.failedErr == nil {
 		r.mu.Unlock()
 		return
 	}
 	r.status = status
 	r.demand = demand
-	r.failedErr = nil
-	r.broadcastLocked()
+	r.inputChangedLocked()
 	r.mu.Unlock()
 	r.wakeUp()
 }
@@ -109,21 +122,22 @@ func (r *reconciler) setStatus(status spaceinfo.AccountStatus) {
 		return
 	}
 	r.status = status
-	r.failedErr = nil
-	r.broadcastLocked()
+	r.inputChangedLocked()
 	r.mu.Unlock()
 	r.wakeUp()
 }
 
+// setDemand marks the space wanted-loaded. A repeated demand on an already
+// demanded space clears a parked failure (a user retry must retry), but is a
+// no-op otherwise.
 func (r *reconciler) setDemand() {
 	r.mu.Lock()
-	if r.demand {
+	if r.demand && r.failedErr == nil {
 		r.mu.Unlock()
 		return
 	}
 	r.demand = true
-	r.failedErr = nil
-	r.broadcastLocked()
+	r.inputChangedLocked()
 	r.mu.Unlock()
 	r.wakeUp()
 }
@@ -264,6 +278,7 @@ func (r *reconciler) reconcile() {
 		}
 		cur := r.current
 		curMode := r.mode
+		startGen := r.gen
 		r.mu.Unlock()
 
 		r.log.Debug("transition", zap.Stringer("from", curMode), zap.Stringer("to", target))
@@ -274,9 +289,16 @@ func (r *reconciler) reconcile() {
 		err := next.Start(r.ctx)
 
 		r.mu.Lock()
+		parked := false
 		if err != nil {
 			r.log.Error("failed to start process", zap.Stringer("mode", target), zap.Error(err))
-			r.failedErr = err
+			// park only if no input changed while the transition ran; an input
+			// change that raced the failure must keep its effect, so the loop
+			// retries against the fresh inputs instead
+			if r.gen == startGen {
+				r.failedErr = err
+				parked = true
+			}
 			r.current = r.factory.Process(mode.ModeInitial)
 			r.mode = mode.ModeInitial
 		} else {
@@ -285,7 +307,7 @@ func (r *reconciler) reconcile() {
 		}
 		r.broadcastLocked()
 		r.mu.Unlock()
-		if err != nil {
+		if parked {
 			return
 		}
 	}
