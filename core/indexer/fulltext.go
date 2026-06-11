@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
@@ -135,7 +134,7 @@ func (i *indexer) activeSpaces() []string {
 func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
 
-	var processQueuedObjects = func(objects []domain.FullTextQueuedObject) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
+	var processQueuedObjects = func(objects []domain.FullTextQueuedObject) (succeed []domain.FullTextQueuedObject, ftIndexSeq uint64, err error) {
 		if len(objects) == 0 {
 			return nil, 0, nil
 		}
@@ -163,7 +162,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				}
 			}
 
-			removedDocIds := make([]string, len(object.DeletedMsgIds))
+			removedDocIds := make([]string, 0, len(object.DeletedMsgIds))
 			if !isChat {
 				objDocs, removedDocIds, err = i.filterOutNotChangedDocuments(object.ObjectId, objDocs)
 			}
@@ -198,7 +197,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				}
 			}
 
-			succeedIds = append(succeedIds, object.FullId())
+			succeed = append(succeed, object)
 		}
 
 		ftIndexSeq, err = batcher.Finish()
@@ -211,7 +210,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 			// but it's not a big problem, in case of db corruption we may just try to reindex more objects than needed
 			i.ftsearchLastIndexSeq = ftIndexSeq
 		}
-		return succeedIds, i.ftsearchLastIndexSeq, nil
+		return succeed, i.ftsearchLastIndexSeq, nil
 	}
 
 	err := i.store.BatchProcessFullTextQueue(i.activeSpaces, ftBatchLimit, processQueuedObjects)
@@ -241,7 +240,9 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 		// no need to query fields if we have no documents to compare (means the whole object is deleted)
 		fields = []string{"Title", "Text"}
 	}
+	seenIds := make(map[string]struct{})
 	err = i.ftsearch.Iterate(id, fields, func(doc *ftsearch.SearchDoc) bool {
+		seenIds[doc.Id] = struct{}{}
 		newDocIndex := slice.Find(newDocs, func(d ftsearch.SearchDoc) bool {
 			return d.Id == doc.Id
 		})
@@ -262,9 +263,7 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	}
 
 	for _, doc := range newDocs {
-		if !slices.ContainsFunc(changedDocs, func(d ftsearch.SearchDoc) bool {
-			return d.Id == doc.Id
-		}) {
+		if _, exists := seenIds[doc.Id]; !exists {
 			// doc is new as it doesn't exist in the index
 			changedDocs = append(changedDocs, doc)
 		}

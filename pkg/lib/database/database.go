@@ -325,9 +325,11 @@ func (r FulltextResult) Model() model.SearchMeta {
 
 func (r FulltextResult) MessageModel() model.SearchMessageResult {
 	return model.SearchMessageResult{
-		ChatId:          r.Path.ObjectId,
-		MessageId:       r.Path.MessageId,
-		Score:           int64(r.Score),
+		ChatId:    r.Path.ObjectId,
+		MessageId: r.Path.MessageId,
+		// the proto field is an integer; round instead of truncating so that
+		// sub-integer BM25 scores don't all collapse to the same value
+		Score:           int64(math.Round(r.Score)),
 		Highlight:       r.Highlight,
 		HighlightRanges: r.HighlightRanges,
 	}

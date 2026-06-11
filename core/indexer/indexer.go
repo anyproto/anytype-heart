@@ -162,6 +162,9 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 			},
 		},
 	})
+	if err != nil {
+		return fmt.Errorf("query participant ids: %w", err)
+	}
 	err = i.store.ClearFullTextQueue([]string{spaceId})
 	if err != nil {
 		return fmt.Errorf("remove fts: %w", err)

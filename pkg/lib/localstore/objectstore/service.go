@@ -31,6 +31,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 
 	anystore "github.com/anyproto/any-store"
@@ -53,7 +54,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/keyvaluestore"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 var log = logging.Logger("anytype-localstore")
@@ -118,7 +118,7 @@ type ObjectStore interface {
 	CrossSpace
 
 	FtQueueReconcileWithSeq(ctx context.Context, ftIndexSeq uint64) error
-	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
+	FtQueueMarkAsIndexed(objects []domain.FullTextQueuedObject, ftIndexSeq uint64) error
 
 	AddFileKeys(fileKeys ...domain.FileEncryptionKeys) error
 	GetFileKeys(fileId domain.FileId) (map[string]string, error)
@@ -132,7 +132,7 @@ type IndexerStore interface {
 	AddChatMessageToIndexQueue(ctx context.Context, chatId domain.FullID, orderId string) error
 	AddChatMessageDeleteToIndexQueue(ctx context.Context, chatId domain.FullID, messageId string) error
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullTextQueuedObject, error)
-	FtQueueMarkAsIndexed(ids []domain.FullID, ftIndexSeq uint64) error
+	FtQueueMarkAsIndexed(objects []domain.FullTextQueuedObject, ftIndexSeq uint64) error
 
 	// ClearFullTextQueue cleans the pending . Pass nil to clear all spaces.
 	ClearFullTextQueue(spaceIds []string) error
@@ -791,6 +791,9 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 	const maxErrorsToLog = 5
 	var loggedErrors int
 
+	// one generation for the whole rebuild pass is enough: it only has to differ
+	// from generations captured by listings that happened before this enqueue
+	gen := GenerateFTQueueCounter()
 	err = iterateSpacesForFulltext(s, func(store spaceindex.Store) error {
 		err := store.IterateAll(func(doc *anyenc.Value) error {
 			id := doc.GetString(idKey)
@@ -801,6 +804,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 			obj.Set(idKey, arena.NewString(id))
 			obj.Set(spaceIdKey, arena.NewString(spaceId))
 			obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
+			obj.Set(ftGenKey, arena.NewNumberFloat64(float64(gen)))
 			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
 			if err != nil {
 				if loggedErrors < maxErrorsToLog {
@@ -848,53 +852,98 @@ func isFtIndexable(id string, value *anyenc.Value) bool {
 	return false
 }
 
-// RunFTConsistencyCheck checks all objects in the object store against the full-text index
-// and enqueues any missing objects for FT indexing. This is a lightweight consistency check
+const (
+	// ftConsistencyListLimit bounds the per-space FT doc id listing. A space
+	// with more docs gets its orphan GC skipped (we can't tell orphans from
+	// docs beyond the page) but the missing-check still runs.
+	ftConsistencyListLimit = 1_000_000
+	// ftOrphanGCLimit caps how many orphaned objects a single check deletes,
+	// as a safety valve against a runaway deletion; the rest is collected on
+	// the next check.
+	ftOrphanGCLimit = 50_000
+)
+
+// RunFTConsistencyCheck checks all objects in the object store against the full-text index,
+// enqueues missing objects for FT indexing and garbage-collects FT documents whose object
+// (or space) no longer exists in the store. This is a lightweight consistency check
 // that doesn't load objects into cache.
 func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.FTSearch) (checked, enqueued int, err error) {
-	// First, get all indexed object IDs from FT in one pass
-	indexedIds, err := fts.ListAllObjectIds()
-	if err != nil {
-		return 0, 0, fmt.Errorf("list indexed object ids: %w", err)
-	}
+	var (
+		missingIds      []domain.FullID
+		orphanObjectIds []string
+	)
 
-	var missingIds []domain.FullID
-
-	// Iterate all objects in object store and check against indexed IDs
 	var spaces, objs int
 	err = iterateSpacesForFulltext(s, func(store spaceindex.Store) error {
 		spaces++
-		return store.IterateAll(func(doc *anyenc.Value) error {
+		spaceId := store.SpaceId()
+
+		// collect object ids present in the FT index for this space
+		ftDocIds, err := fts.ListIdsBySpace(spaceId, ftConsistencyListLimit)
+		if err != nil {
+			return fmt.Errorf("list ft ids for space: %w", err)
+		}
+		listingComplete := len(ftDocIds) < ftConsistencyListLimit
+		ftObjectIds := make(map[string]struct{})
+		for _, docId := range ftDocIds {
+			if idx := strings.Index(docId, "/"); idx > 0 {
+				ftObjectIds[docId[:idx]] = struct{}{}
+			} else {
+				ftObjectIds[docId] = struct{}{}
+			}
+		}
+
+		storeIds := make(map[string]struct{})
+		err = store.IterateAll(func(doc *anyenc.Value) error {
 			objs++
 			id := doc.GetString(idKey)
-			spaceId := store.SpaceId()
+			storeIds[id] = struct{}{}
 			if !isFtIndexable(id, doc) {
 				return nil
 			}
 
 			checked++
-			if _, exists := indexedIds[id]; !exists {
+			if _, exists := ftObjectIds[id]; !exists {
 				missingIds = append(missingIds, domain.FullID{ObjectID: id, SpaceID: spaceId})
 			}
 			return nil
 		})
+		if err != nil {
+			return fmt.Errorf("iterate space objects: %w", err)
+		}
+
+		// FT docs whose object is gone from the store are orphans. Only spaces
+		// iterated here are considered — docs of not-yet-loaded spaces are never
+		// touched — and only when the FT listing was complete.
+		if listingComplete {
+			for objectId := range ftObjectIds {
+				if _, exists := storeIds[objectId]; !exists {
+					orphanObjectIds = append(orphanObjectIds, objectId)
+				}
+			}
+		} else {
+			log.With("spaceId", spaceId).Warn("ft consistency check: doc listing truncated, skipping orphan gc for space")
+		}
+		return nil
 	})
-	fmt.Printf("checked %d objects in %d spaces, found %d missing\n", objs, spaces, len(missingIds))
+	log.With("objects", objs).With("spaces", spaces).With("missing", len(missingIds)).With("orphans", len(orphanObjectIds)).
+		Debug("ft consistency check: iteration finished")
 	if err != nil {
 		return checked, 0, fmt.Errorf("iterate objects: %w", err)
 	}
 
+	if len(orphanObjectIds) > 0 {
+		if len(orphanObjectIds) > ftOrphanGCLimit {
+			log.With("orphans", len(orphanObjectIds)).Warn("ft consistency check: orphan count exceeds gc limit, deleting partially")
+			orphanObjectIds = orphanObjectIds[:ftOrphanGCLimit]
+		}
+		if err = fts.BatchDeleteObjects(orphanObjectIds); err != nil {
+			return checked, 0, fmt.Errorf("delete orphaned ft docs: %w", err)
+		}
+	}
+
 	// Batch enqueue all missing IDs at once
 	if len(missingIds) > 0 {
-		for _, id := range missingIds {
-			index := s.SpaceIndex(id.SpaceID)
-			d, err := index.GetDetails(id.ObjectID)
-			if err != nil {
-				fmt.Printf("object %s/%s get details error: %v\n", id.SpaceID, id.ObjectID, err)
-			} else {
-				fmt.Printf("object %s/%s missisng details: %+v\n", id.SpaceID, id.ObjectID, pbtypes.Sprint(d.ToProto()))
-			}
-		}
 		_, enqueued, err = s.AddToIndexQueue(ctx, missingIds...)
 		if err != nil {
 			return checked, 0, fmt.Errorf("batch enqueue: %w", err)

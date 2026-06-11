@@ -901,10 +901,46 @@ func (i *indexer) RemoveIndexes(spaceId string) error {
 	if err := i.removeCommonIndexes(spaceId, nil, flags); err != nil {
 		log.Errorf("remove common indexes on space removal: %v", err)
 	}
+	// Remove the space's full-text documents and pending queue entries.
+	// Failures are logged, not returned: leftover docs are only re-collected if
+	// the same space is offloaded again (the consistency check's orphan GC
+	// iterates store spaces, and this space's store is deleted right below).
+	if err := i.store.ClearFullTextQueue([]string{spaceId}); err != nil {
+		log.Errorf("clear fulltext queue on space removal: %v", err)
+	}
+	if err := i.removeFullTextIndexes(spaceId); err != nil {
+		log.Errorf("remove fulltext docs on space removal: %v", err)
+	}
 	// Drop the per-space objectstore entirely: close the in-memory index and
 	// remove the on-disk objectstore/CRDT databases for the space.
 	if err := i.store.DeleteSpaceIndex(spaceId); err != nil {
 		return fmt.Errorf("delete space index: %w", err)
 	}
 	return nil
+}
+
+// removeFullTextIndexes deletes all full-text documents belonging to the
+// space. ListIdsBySpace returns one page at a time, so loop until empty; the
+// iteration cap only guards against an unforeseen non-progressing loop.
+func (i *indexer) removeFullTextIndexes(spaceId string) error {
+	const maxIterations = 1000
+	for iteration := 0; iteration < maxIterations; iteration++ {
+		ids, err := i.ftsearch.ListIdsBySpace(spaceId, 0)
+		if err != nil {
+			return fmt.Errorf("list space doc ids: %w", err)
+		}
+		if len(ids) == 0 {
+			return nil
+		}
+		batcher := i.ftsearch.NewAutoBatcher()
+		for _, id := range ids {
+			if err = batcher.DeleteDoc(id); err != nil {
+				return fmt.Errorf("delete doc: %w", err)
+			}
+		}
+		if _, err = batcher.Finish(); err != nil {
+			return fmt.Errorf("finish delete batch: %w", err)
+		}
+	}
+	return fmt.Errorf("space docs still present after %d delete iterations", maxIterations)
 }

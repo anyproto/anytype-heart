@@ -1,6 +1,7 @@
 package spaceindex
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"sort"
@@ -31,14 +32,36 @@ var pluralNameId = domain.ObjectPath{
 }.String()
 
 var (
-	ftHits   atomic.Int64
-	ftMisses atomic.Int64
+	ftHits                atomic.Int64
+	ftMisses              atomic.Int64
+	ftCandidatesTruncated atomic.Int64
 )
 
 const (
 	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
 	minFulltextScore = 0.02
+	// ftCandidatesMin/Max bound the tantivy docs limit derived from the request's
+	// offset+limit. Filters are applied after the fulltext search, so the
+	// candidate set must be larger than the requested page.
+	ftCandidatesMin = 100
+	ftCandidatesMax = 1000
 )
+
+// ftCandidatesLimit derives the tantivy docs limit from the requested page.
+// Without an explicit limit the request wants everything, so use the cap.
+func ftCandidatesLimit(q database.Query) int {
+	if q.Limit <= 0 {
+		return ftCandidatesMax
+	}
+	limit := q.Offset + q.Limit
+	if limit < ftCandidatesMin {
+		return ftCandidatesMin
+	}
+	if limit > ftCandidatesMax {
+		return ftCandidatesMax
+	}
+	return limit
+}
 
 func (s *dsObjectStore) Query(q database.Query) ([]database.Record, error) {
 	recs, err := s.performQuery(q)
@@ -422,14 +445,15 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
 	if q.TextQuery != "" {
+		ftLimit := ftCandidatesLimit(q)
 		var fulltextResults []database.FulltextResult
 		if q.PrefixNameQuery {
-			fulltextResults, err = s.performFulltextSearch(func() (results []*ftsearch.DocumentMatch, err error) {
-				return s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery)
+			fulltextResults, err = s.performFulltextSearch(ftLimit, func() (results []*ftsearch.DocumentMatch, err error) {
+				return s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery, ftLimit)
 			})
 		} else {
-			fulltextResults, err = s.performFulltextSearch(func() (results []*ftsearch.DocumentMatch, err error) {
-				return s.fts.Search(q.SpaceId, q.TextQuery)
+			fulltextResults, err = s.performFulltextSearch(ftLimit, func() (results []*ftsearch.DocumentMatch, err error) {
+				return s.fts.Search(q.SpaceId, q.TextQuery, ftLimit)
 			})
 		}
 
@@ -448,17 +472,24 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 	return s.QueryRaw(filters, q.Limit, q.Offset)
 }
 
-func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch.DocumentMatch, err error)) ([]database.FulltextResult, error) {
+func (s *dsObjectStore) performFulltextSearch(limit int, search func() (results []*ftsearch.DocumentMatch, err error)) ([]database.FulltextResult, error) {
 	ftsResults, err := search()
 	if err != nil {
 		return nil, fmt.Errorf("fullText search: %w", err)
+	}
+	if limit > 0 && len(ftsResults) >= limit {
+		// telemetry for the candidate cap: post-filtering may starve the page
+		ftCandidatesTruncated.Add(1)
+		log.With("limit", limit).Debug("fulltext candidate set truncated by docs limit")
 	}
 
 	var resultsByObjectId = make(map[string][]*ftsearch.DocumentMatch)
 	for _, result := range ftsResults {
 		path, err := domain.NewFromPath(result.ID)
 		if err != nil {
-			return nil, fmt.Errorf("fullText search: %w", err)
+			// a malformed doc id must not fail the whole search
+			log.Errorf("fullText search: skip invalid doc id: %v", err)
+			continue
 		}
 		if _, ok := resultsByObjectId[path.ObjectId]; !ok {
 			resultsByObjectId[path.ObjectId] = make([]*ftsearch.DocumentMatch, 0, 1)
@@ -479,7 +510,7 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 				// Usually, blocks are naturally longer than relations and will have a lower score
 				return strings.Compare(b.ID, a.ID)
 			}
-			return int(b.Score - a.Score)
+			return cmp.Compare(b.Score, a.Score)
 		})
 	}
 
@@ -620,6 +651,7 @@ func (s *dsObjectStore) logFallbackDiagnostics(spaceId string, textQuery string,
 		With("oldestLastModified", oldestLastModified).
 		With("newestLastModified", newestLastModified).
 		With("ftHitsCnt", ftHits.Load()).
+		With("ftTruncatedCnt", ftCandidatesTruncated.Load()).
 		With("ftMissesCnt", ftMisses.Load()).
 		With("ftOldestSegment", ftReport.OldestSegmentModTime.Unix()).
 		With("ftNewestSegment", ftReport.NewestSegmentModTime.Unix()).

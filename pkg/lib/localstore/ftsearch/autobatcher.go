@@ -102,12 +102,39 @@ func (f *ftSearch) ListByIdPrefix(prefix string) ([]string, error) {
 		SetQueryFromJson(&query).
 		SetWithHighlights(false).
 		AddField(fieldIdRaw, 1.0).
-		SetDocsLimit(10000).
+		SetDocsLimit(docLimit).
 		Build()
 
 	results, err := f.index.SearchFastFieldJson(sCtx, fieldIdRaw)
 	if err != nil {
 		return nil, fmt.Errorf("search ids by id prefix: %w", err)
+	}
+	var ids = make([]string, 0, len(results.Values))
+	for _, id := range results.Values {
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// ListIdsBySpace returns up to limit document ids belonging to the given
+// space. Callers that need the full set must either pass a limit high enough
+// or process the page (e.g. delete the docs) and call again until an empty
+// page is returned.
+func (f *ftSearch) ListIdsBySpace(spaceId string, limit int) ([]string, error) {
+	if limit <= 0 {
+		limit = docLimit
+	}
+	query := tantivy.NewQueryBuilder().Query(tantivy.Must, fieldSpace, spaceId, tantivy.TermQuery, 1.0).Build()
+	sCtx := tantivy.NewSearchContextBuilder().
+		SetQueryFromJson(&query).
+		SetWithHighlights(false).
+		AddField(fieldIdRaw, 1.0).
+		SetDocsLimit(uintptr(limit)).
+		Build()
+
+	results, err := f.index.SearchFastFieldJson(sCtx, fieldIdRaw)
+	if err != nil {
+		return nil, fmt.Errorf("search ids by space: %w", err)
 	}
 	var ids = make([]string, 0, len(results.Values))
 	for _, id := range results.Values {

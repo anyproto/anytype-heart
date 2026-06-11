@@ -23,6 +23,7 @@ When chats are added/removed, preview subscriptions are automatically updated an
 */
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -841,7 +842,19 @@ func (s *service) ReadReaction(ctx context.Context, chatObjectId string) error {
 }
 
 func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
-	ftResults, err := s.ftSearch.Search(req.SpaceId, req.FullText)
+	// candidate budget: Limit == 0 means "no limit", so let the ftsearch default
+	// apply; otherwise request at least the default page so sorting by keys
+	// other than score stays consistent across shallow pages
+	ftLimit := 0
+	if req.Limit > 0 {
+		ftLimit = int(req.Offset) + int(req.Limit)
+		if ftLimit < 100 {
+			ftLimit = 100
+		}
+	}
+	// the search is scoped to the chat's message docs so messages don't compete
+	// with the rest of the space for the candidate limit
+	ftResults, err := s.ftSearch.SearchChat(req.SpaceId, req.ChatId, req.FullText, ftLimit)
 	if err != nil {
 		return nil, fmt.Errorf("search ft: %w", err)
 	}
@@ -872,6 +885,9 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	}
 
 	results := make([]*model.SearchMessageResult, 0, len(messages))
+	// keep the original float BM25 scores for sorting: the proto Score field is
+	// an integer and loses sub-integer differences
+	scores := make(map[string]float64, len(messages))
 	for _, message := range messages {
 		docMatch := ftResultsMap[message.Id]
 		ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
@@ -881,13 +897,17 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 
 		result := ftResult.MessageModel()
 		result.Message = message.ChatMessage
+		scores[result.MessageId] = ftResult.Score
 
 		results = append(results, &result)
 	}
 
-	slices.SortFunc(results, getComparator(req.Sorts))
+	slices.SortFunc(results, getComparator(req.Sorts, scores))
 
-	if req.Offset > 0 && len(results) >= int(req.Offset) {
+	if req.Offset > 0 {
+		if int(req.Offset) >= len(results) {
+			return nil, nil
+		}
 		results = results[req.Offset:]
 	}
 
@@ -898,23 +918,23 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	return results, nil
 }
 
-func getComparator(sorts []*model.SearchMessageSort) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {
-	return func(a *model.SearchMessageResult, b *model.SearchMessageResult) (cmp int) {
+func getComparator(sorts []*model.SearchMessageSort, scores map[string]float64) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {
+	return func(a *model.SearchMessageResult, b *model.SearchMessageResult) (res int) {
 		for _, sort := range sorts {
 			switch sort.Key {
 			case model.SearchMessageSort_ORDER_ID:
-				cmp = strings.Compare(a.Message.OrderId, b.Message.OrderId)
+				res = strings.Compare(a.Message.OrderId, b.Message.OrderId)
 			case model.SearchMessageSort_SCORE:
-				cmp = int(a.Score - b.Score)
+				res = cmp.Compare(scores[a.MessageId], scores[b.MessageId])
 			case model.SearchMessageSort_CREATED_AT:
-				cmp = int(a.Message.CreatedAt - b.Message.CreatedAt)
+				res = cmp.Compare(a.Message.CreatedAt, b.Message.CreatedAt)
 			case model.SearchMessageSort_MODIFIED_AT:
-				cmp = int(a.Message.ModifiedAt - b.Message.ModifiedAt)
+				res = cmp.Compare(a.Message.ModifiedAt, b.Message.ModifiedAt)
 			}
 			if sort.Type == model.SearchMessageSort_Desc {
-				cmp = -cmp
+				res = -res
 			}
-			if cmp != 0 {
+			if res != 0 {
 				return
 			}
 		}
