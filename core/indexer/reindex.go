@@ -738,20 +738,15 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	if err != nil {
 		return
 	}
+	indexedHashes, err := store.ListLastIndexedHeadsHashes(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("list last indexed heads hashes: %w", err)
+	}
 	var idsToReindex []string
 	for _, entry := range entries {
-		// todo: make it more effective
-		id := entry.Id
-		logErr := func(err error) {
-			log.With("tree", entry.Id).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
-		}
-		lastHash, err := store.GetLastIndexedHeadsHash(ctx, id)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		if lastHash == "" || lastHash != headsHash(entry.Heads) {
-			idsToReindex = append(idsToReindex, id)
+		// an id missing from indexedHashes yields "", which never matches a real hash
+		if indexedHashes[entry.Id] != headsHash(entry.Heads) {
+			idsToReindex = append(idsToReindex, entry.Id)
 		}
 	}
 	if len(idsToReindex) == 0 {
@@ -854,6 +849,14 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 
 func (i *indexer) saveLatestChecksums(spaceID string) error {
 	checksums := i.getLatestChecksums(spaceID == addr.AnytypeMarketplaceWorkspace)
+	stored, err := i.store.GetChecksums(spaceID)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("get stored checksums: %w", err)
+	}
+	// this runs on every space load; skip the write tx when nothing changed
+	if stored != nil && *stored == checksums {
+		return nil
+	}
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 
