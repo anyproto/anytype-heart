@@ -319,7 +319,7 @@ func (s *service) getSpaceSubscriptions(spaceId string) (*spaceSubscriptions, er
 		subscriptions:     make(map[string]subscription, 20),
 		subKeys:           subKeys,
 		customOutput:      map[string]*internalSubOutput{},
-		recBatch:          mb.New[database.Record](0),
+		recBatch:          newRecordsBuffer(),
 		objectStore:       index,
 		kanban:            s.kanban,
 		collectionService: s.collectionService,
@@ -346,7 +346,7 @@ type spaceSubscriptions struct {
 	subKeys map[string][]domain.RelationKey
 
 	customOutput map[string]*internalSubOutput
-	recBatch     *mb.MB[database.Record]
+	recBatch     *recordsBuffer
 
 	// Deps
 	objectStore       spaceindex.Store
@@ -370,11 +370,10 @@ func (s *spaceSubscriptions) Run() (err error) {
 	// SubscribeForAll only stores the callback; it is invoked later, on the
 	// goroutine of whoever writes object details (sendUpdatesToSubscriptions).
 	// So there is no synchronous registration error to surface here, and the
-	// add error (only non-nil once the batch is closed or s.ctx is cancelled,
-	// i.e. on shutdown) must be handled inside the callback — capturing it in
-	// a shared variable raced concurrent writers against this goroutine.
+	// add error (only non-nil once the buffer is closed, i.e. on shutdown)
+	// must be handled inside the callback
 	s.objectStore.SubscribeForAll(func(rec database.Record) {
-		if addErr := s.recBatch.Add(s.ctx, rec); addErr != nil {
+		if addErr := s.recBatch.Add(rec); addErr != nil {
 			log.With("error", addErr).Errorf("subscribe-for-all: add record to batch")
 		}
 	})
@@ -944,38 +943,19 @@ func (s *spaceSubscriptions) SubscriptionIDs() []string {
 
 func (s *spaceSubscriptions) recordsHandler() {
 	var entries []*entry
-	// id -> index of the latest entry for this id within the current batch
-	entryIdx := make(map[string]int)
 	for {
+		// the buffer coalesces by object id, so the batch holds one latest record per object
 		records, err := s.recBatch.Wait(s.ctx)
 		if err != nil {
 			return
 		}
-		if len(records) == 0 {
-			return
-		}
+		entries = entries[:0]
 		for _, rec := range records {
-			id := rec.Details.GetString(bundle.RelationKeyId)
-			// nil previous version
-			if i, ok := entryIdx[id]; ok {
-				entries[i] = nil
-			}
-			entries = append(entries, newEntry(id, rec.Details))
-			entryIdx[id] = len(entries) - 1
+			entries = append(entries, newEntry(rec.Details.GetString(bundle.RelationKeyId), rec.Details))
 		}
-		// filter nil entries
-		filtered := entries[:0]
-		for _, e := range entries {
-			if e != nil {
-				filtered = append(filtered, e)
-			}
-		}
-		log.Debugf("batch rewrite: %d->%d", len(entries), len(filtered))
-		if s.onChange(filtered) < batchTime {
+		if s.onChange(entries) < batchTime {
 			time.Sleep(batchTime)
 		}
-		entries = entries[:0]
-		clear(entryIdx)
 	}
 }
 

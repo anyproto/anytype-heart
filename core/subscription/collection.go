@@ -1,13 +1,11 @@
 package subscription
 
 import (
-	"context"
 	"fmt"
 	"sync"
 
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/cheggaaa/mb/v3"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -31,7 +29,7 @@ type collectionObserver struct {
 	cache             *cache
 	objectStore       spaceindex.Store
 	collectionService CollectionService
-	recBatch          *mb.MB[database.Record]
+	recBatch          *recordsBuffer
 	recBatchMutex     sync.Mutex
 
 	spaceSubscription *spaceSubscriptions
@@ -135,11 +133,11 @@ func (c *collectionObserver) updateIds(ids []string) {
 		}
 	}
 	for _, e := range entries {
-		err := c.recBatch.Add(context.Background(), database.Record{
+		err := c.recBatch.Add(database.Record{
 			Details: e.data,
 		})
 		if err != nil {
-			log.Info("failed to add entities to mb: ", err)
+			log.Info("failed to add entities to records buffer: ", err)
 		}
 	}
 }

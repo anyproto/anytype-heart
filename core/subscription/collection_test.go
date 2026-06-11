@@ -3,15 +3,28 @@ package subscription
 import (
 	"context"
 	"testing"
+	"time"
 
-	"github.com/cheggaaa/mb/v3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 )
+
+func waitRecords(t *testing.T, b *recordsBuffer, min int) []database.Record {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var out []database.Record
+	for len(out) < min {
+		batch, err := b.Wait(ctx)
+		require.NoError(t, err)
+		out = append(out, batch...)
+	}
+	return out
+}
 
 func Test_newCollectionObserver(t *testing.T) {
 	spaceId := "spaceId"
@@ -41,7 +54,7 @@ func Test_newCollectionObserver(t *testing.T) {
 				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 		})
-		batcher := mb.New[database.Record](0)
+		batcher := newRecordsBuffer()
 		c := &spaceSubscriptions{
 			collectionService: collectionService,
 			objectStore:       store,
@@ -56,8 +69,7 @@ func Test_newCollectionObserver(t *testing.T) {
 		assert.NoError(t, err)
 		ch <- []string{"id1", "id2"}
 		close(observer.closeCh)
-		msgs, err := batcher.NewCond().WithMin(3).Wait(context.Background())
-		assert.NoError(t, err)
+		msgs := waitRecords(t, batcher, 3)
 
 		var receivedIds []string
 		for _, msg := range msgs {
@@ -65,8 +77,7 @@ func Test_newCollectionObserver(t *testing.T) {
 			receivedIds = append(receivedIds, id)
 		}
 		assert.Equal(t, []string{"id0", "id1", "id2"}, receivedIds)
-		err = batcher.Close()
-		assert.NoError(t, err)
+		batcher.Close()
 	})
 	t.Run("fetch entries from object store", func(t *testing.T) {
 		// given
@@ -87,7 +98,7 @@ func Test_newCollectionObserver(t *testing.T) {
 				bundle.RelationKeySpaceId: domain.String(spaceId),
 			},
 		})
-		batcher := mb.New[database.Record](0)
+		batcher := newRecordsBuffer()
 		c := &spaceSubscriptions{
 			collectionService: collectionService,
 			objectStore:       store,
@@ -103,8 +114,7 @@ func Test_newCollectionObserver(t *testing.T) {
 		expectedIds := []string{"id1", "id2"}
 		ch <- expectedIds
 		close(observer.closeCh)
-		msgs, err := batcher.NewCond().WithMin(2).Wait(context.Background())
-		assert.NoError(t, err)
+		msgs := waitRecords(t, batcher, 2)
 
 		var receivedIds []string
 		for _, msg := range msgs {
@@ -112,7 +122,6 @@ func Test_newCollectionObserver(t *testing.T) {
 			receivedIds = append(receivedIds, id)
 		}
 		assert.Equal(t, expectedIds, receivedIds)
-		err = batcher.Close()
-		assert.NoError(t, err)
+		batcher.Close()
 	})
 }
