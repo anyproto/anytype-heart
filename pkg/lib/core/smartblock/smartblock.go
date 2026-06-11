@@ -109,8 +109,12 @@ func (sbt SmartBlockType) Indexable() (fulltext, details, outgoingLinks bool) {
 	}
 }
 
-// FulltextDetailsOnly reports whether fulltext docs for this type are derived from
-// objectstore details only, so the fulltext indexer must not load the object.
-func (sbt SmartBlockType) FulltextDetailsOnly() bool {
+// DetailsStoreOwned reports whether the object's details live in the objectstore and
+// are written there directly by dedicated writers (see core/participants), with the
+// smartblock state being only a derived view. For such types the indexer must never
+// write details from smartblock state (it would overwrite the store with a stale
+// view), and fulltext docs are derived from the store details without loading the
+// object.
+func (sbt SmartBlockType) DetailsStoreOwned() bool {
 	return sbt == SmartBlockTypeParticipant
 }

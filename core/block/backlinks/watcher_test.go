@@ -167,6 +167,37 @@ func TestWatcher_updateAccumulatedBacklinks(t *testing.T) {
 		assert.Empty(t, details.GetStringList(bundle.RelationKeyBacklinks), "ghost object objB must not be indexed with backlinks in the store")
 	})
 
+	t.Run("store-owned participant is updated directly in the store, bypassing the object cache", func(t *testing.T) {
+		// given
+		f := newFixture(t, time.Second)
+		participantId := domain.NewParticipantId(spaceId, "identity1")
+		f.store.AddObjects(t, spaceId, []spaceindex.TestObject{{
+			bundle.RelationKeyId:      domain.String(participantId),
+			bundle.RelationKeySpaceId: domain.String(spaceId),
+			bundle.RelationKeyName:    domain.String("John"),
+		}})
+
+		spc := mock_clientspace.NewMockSpace(t)
+		f.spaceService.EXPECT().Get(mock.Anything, spaceId).Return(spc, nil)
+		spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{})
+		// no DoLockedIfNotExists / Do expectations: the watcher must not go through
+		// the object cache for store-owned objects — a cached stale smartblock state
+		// would be written back over the record
+
+		f.watcher.accumulatedBacklinks = map[domain.FullID]*backLinksUpdate{
+			{ObjectID: participantId, SpaceID: spaceId}: {added: []string{"objA"}},
+		}
+
+		// when
+		f.watcher.updateAccumulatedBacklinks()
+
+		// then
+		details, err := f.store.SpaceIndex(spaceId).GetDetails(participantId)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"objA"}, details.GetStringList(bundle.RelationKeyBacklinks))
+		assert.Equal(t, "John", details.GetString(bundle.RelationKeyName))
+	})
+
 	t.Run("no errors", func(t *testing.T) {
 		// given
 		f := newFixture(t, time.Second)

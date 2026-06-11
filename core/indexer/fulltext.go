@@ -284,9 +284,9 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 		return
 	}
 
-	// store-only objects (e.g. participants): fulltext docs derive from details alone,
+	// store-owned objects (e.g. participants): fulltext docs derive from details alone,
 	// loading them into the object cache would build a smartblock for nothing
-	if sbType, sbTypeErr := typeprovider.SmartblockTypeFromID(object.ObjectId); sbTypeErr == nil && sbType.FulltextDetailsOnly() {
+	if sbType, sbTypeErr := typeprovider.SmartblockTypeFromID(object.ObjectId); sbTypeErr == nil && sbType.DetailsStoreOwned() {
 		if err != nil {
 			return nil, false, fmt.Errorf("get details for details-only fulltext: %w", err)
 		}

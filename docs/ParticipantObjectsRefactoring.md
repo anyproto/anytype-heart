@@ -446,6 +446,32 @@ Post-review fixes (general-purpose agent review of the diff):
   before writing — moving writes outside the lock had opened a narrow
   registration-vs-broadcast window where a stale snapshot could land last.
 
+Second review round (details-consistency focus) — the critical fix:
+- The smartblock→indexer full-replace write-back (`Apply`/`StateAppend` → `runIndexer`
+  → `UpdateObjectDetails` with the state's `CombinedDetails`) was still alive for
+  participants, making stale cached state the one writer that could move a record
+  *backward*: triggered on every ObjectOpen apply, by the backlinks watcher's
+  cached-object fallback (its `injectDerivedDetails` refreshes only backlinks, the
+  rest of the state is stale), and by the layout syncer. ACL-key reverts would even
+  survive restarts because the Phase-3 marker skips reprocessing. Fixed by renaming
+  `FulltextDetailsOnly()` → `DetailsStoreOwned()` (one property: the store record is
+  the source of truth, smartblock state is a derived view) and guarding
+  `indexer.Index()` to never write details from state for such types; the backlinks
+  watcher now modifies store-owned records directly instead of falling back to the
+  object cache (with the indexer guard, the cached path would otherwise stop
+  persisting participant backlinks). Side effect: the first-open "record enrichment"
+  (template/state-only keys like `layout`, `featuredRelations`, `snippet` leaking
+  into the store) is gone — records now have exactly the producer-written shape.
+- Verified consistent and ruled out in the same review: sync-status injection
+  (participants excluded via `nonSyncableLayouts` and layout checks), readonlyfixer /
+  systemobjectreviser / object-context migrations (none touch participants),
+  `migration.RunMigrations` (participant editor registers no migrations),
+  reindex paths (tree-based iteration; `removeParticipants` and `ClearHeadsState`
+  both clear the ACL marker → full reprocessing), `type` detail staleness (derived
+  per-space ids are deterministic), and the `upsert` flag semantics of develop's
+  `ModifyObjectDetails` (update-only path skips missing docs without error;
+  subscription events always carry full merged details).
+
 ## 12. Open questions
 
 1. Component placement: extend `participantwatcher` in place vs. new `participantstore`

@@ -50,6 +50,39 @@ func TestRemoveAclIndexes(t *testing.T) {
 	})
 }
 
+func TestIndexStoreOwnedDetails(t *testing.T) {
+	t.Run("participant details are not written back from smartblock state", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		space := mock_clientspace.NewMockSpace(t)
+		space.EXPECT().Id().Return("spaceId1").Maybe()
+		spaceIndex := fx.store.SpaceIndex("spaceId1")
+		participantId := domain.NewParticipantId("spaceId1", "identity1")
+		err := spaceIndex.UpdateObjectDetails(ctx, participantId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String("fresh name"),
+		}))
+		require.NoError(t, err)
+
+		// when: a stale smartblock state reaches the indexer (e.g. open-time apply)
+		err = fx.Index(smartblock.DocInfo{
+			Id:             participantId,
+			Space:          space,
+			SmartblockType: coresb.SmartBlockTypeParticipant,
+			Heads:          []string{"head"},
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyId:   domain.String(participantId),
+				bundle.RelationKeyName: domain.String("stale name"),
+			}),
+		})
+
+		// then: the store record is owned by dedicated writers and stays untouched
+		require.NoError(t, err)
+		details, err := spaceIndex.GetDetails(participantId)
+		require.NoError(t, err)
+		assert.Equal(t, "fresh name", details.GetString(bundle.RelationKeyName))
+	})
+}
+
 func TestIndexer(t *testing.T) {
 	space := mock_clientspace.NewMockSpace(t)
 	space.EXPECT().Id().Return("spaceId1").Maybe()

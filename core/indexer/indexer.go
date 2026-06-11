@@ -189,6 +189,12 @@ func (i *indexer) isFulltextEnabled(space smartblock.Space) bool {
 }
 
 func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+	if info.SmartblockType.DetailsStoreOwned() {
+		// store-owned objects (participants) are written to the object index directly
+		// by their dedicated writers; the smartblock state is only a derived view and
+		// may be stale, so writing it back here would corrupt the record
+		return nil
+	}
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {
