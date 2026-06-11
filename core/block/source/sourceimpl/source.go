@@ -122,11 +122,19 @@ func unmarshalChange(treeChange *objecttree.Change, data []byte, needSnapshot bo
 	}
 }
 
-// NewUnmarshalTreeChange creates UnmarshalChange func that unmarshalls snapshot only for the first change and ignores it for following. It saves some memory
+// NewUnmarshalTreeChange creates UnmarshalChange func that unmarshalls snapshot only for the first change
+// and for snapshot changes, ignoring it for the rest. It saves some memory.
+// Snapshot changes must keep their snapshot: the unmarshalled result is cached as Change.Model and the raw
+// data is discarded by objecttree, so a snapshot change that later becomes the tree root after an in-memory
+// reduce would otherwise be left without snapshot data, failing any subsequent state rebuild.
 func NewUnmarshalTreeChange() objecttree.ChangeConvertFunc {
 	var changeCount atomic.Int32
 	return func(treeChange *objecttree.Change, data []byte) (result any, err error) {
-		return unmarshalChange(treeChange, data, changeCount.CompareAndSwap(0, 1))
+		needSnapshot := changeCount.CompareAndSwap(0, 1)
+		if treeChange.IsSnapshot {
+			needSnapshot = true
+		}
+		return unmarshalChange(treeChange, data, needSnapshot)
 	}
 }
 
@@ -212,15 +220,18 @@ func (s *treeSource) Tree() objecttree.ObjectTree {
 func (s *treeSource) Update(ot objecttree.ObjectTree) error {
 	// here it should work, because we always have the most common snapshot of the changes in tree
 	s.lastSnapshotId = ot.Root().Id
-	prevSnapshot := s.lastSnapshotId
-	// todo: check this one
 	err := s.receiver.StateAppend(func(d state.Doc) (st *state.State, changes []*pb.ChangeContent, err error) {
+		var (
+			sinceSnapshot   int
+			snapshotApplied bool
+		)
 		// State will be applied later in smartblock.StateAppend
-		st, changes, sinceSnapshot, err := BuildState(s.spaceID, d.(*state.State), ot, false)
+		st, changes, sinceSnapshot, snapshotApplied, err = BuildState(s.spaceID, d.(*state.State), ot, false)
 		if err != nil {
 			return
 		}
-		if prevSnapshot != s.lastSnapshotId {
+		if snapshotApplied {
+			// the batch contained a snapshot change, so the count restarts from it
 			s.changesSinceSnapshot = sinceSnapshot
 		} else {
 			s.changesSinceSnapshot += sinceSnapshot
@@ -229,7 +240,8 @@ func (s *treeSource) Update(ot objecttree.ObjectTree) error {
 	})
 
 	if err != nil {
-		log.With(zap.Error(err)).Debug("failed to append the state and send it to receiver")
+		// the live state is now behind the tree heads and will stay stale until the next update or reopen
+		log.With("objectID", s.id).With(zap.Error(err)).Error("failed to append the state and send it to receiver")
 	}
 	return nil
 }
@@ -241,13 +253,14 @@ func (s *treeSource) Rebuild(ot objecttree.ObjectTree) error {
 
 	doc, err := s.buildState()
 	if err != nil {
-		log.With(zap.Error(err)).Debug("failed to build state")
+		// the live state is now behind the tree heads and will stay stale until the next update or reopen
+		log.With("objectID", s.id).With(zap.Error(err)).Error("failed to build state")
 		return nil
 	}
 	st := doc.(*state.State)
 	err = s.receiver.StateRebuild(st)
 	if err != nil {
-		log.With(zap.Error(err)).Debug("failed to send the state to receiver")
+		log.With("objectID", s.id).With(zap.Error(err)).Error("failed to send the state to receiver")
 	}
 	return nil
 }
@@ -284,7 +297,7 @@ func (s *treeSource) readDoc(receiver source.ChangeReceiver) (doc state.Doc, err
 }
 
 func (s *treeSource) buildState() (doc state.Doc, err error) {
-	st, _, changesAppliedSinceSnapshot, err := BuildState(s.spaceID, nil, s.ObjectTree, true)
+	st, _, changesAppliedSinceSnapshot, _, err := BuildState(s.spaceID, nil, s.ObjectTree, true)
 	if err != nil {
 		return
 	}
@@ -602,7 +615,10 @@ func cleanUpChange(objectId string, change *objecttree.Change, model *pb.Change)
 	}
 }
 
-func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, applyState bool) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, err error) {
+// BuildState builds or appends the state from the object tree. changesAppliedSinceSnapshot counts the changes
+// applied after the last snapshot change; snapshotApplied reports whether a snapshot change was encountered,
+// meaning the returned counter restarts from that snapshot instead of continuing the caller's count.
+func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableObjectTree, applyState bool) (st *state.State, appliedContent []*pb.ChangeContent, changesAppliedSinceSnapshot int, snapshotApplied bool, err error) {
 	var (
 		startId string
 		count   int
@@ -663,6 +679,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			if startId == change.Id {
 				if st == nil {
 					changesAppliedSinceSnapshot = 0
+					snapshotApplied = true
 					st, iterErr = state.NewDocFromSnapshot(ot.Id(), model.Snapshot, state.WithChangeId(startId), state.WithInternalKey(uniqueKeyInternalKey))
 					if iterErr != nil {
 						return false
@@ -675,6 +692,7 @@ func BuildState(spaceId string, initState *state.State, ot objecttree.ReadableOb
 			}
 			if model.Snapshot != nil {
 				changesAppliedSinceSnapshot = 0
+				snapshotApplied = true
 			} else {
 				changesAppliedSinceSnapshot++
 			}
