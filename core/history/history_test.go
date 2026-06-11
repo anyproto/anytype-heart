@@ -706,9 +706,11 @@ func TestHistory_DiffVersions(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, changes, 4)
+		// GO-4284: relation-link add/remove changes no longer surface in diffs;
+		// only the two detail changes (set "key", unset "key2") remain.
+		assert.Len(t, changes, 2)
 	})
-	t.Run("object diff -local relations changes", func(t *testing.T) {
+	t.Run("object diff - relation-link-only changes produce no diff", func(t *testing.T) {
 		// given
 		accountKeys, _ := accountdata.NewRandom()
 		account := accountKeys.SignKey.GetPublic()
@@ -761,11 +763,9 @@ func TestHistory_DiffVersions(t *testing.T) {
 
 		// then
 		assert.Nil(t, err)
-		assert.Len(t, changes, 2)
-		assert.Len(t, changes[1].GetObjectRelationsAmend().RelationLinks, 1)
-		assert.Equal(t, changes[1].GetObjectRelationsAmend().RelationLinks[0].Key, relationKey)
-		assert.Len(t, changes[0].GetObjectRelationsRemove().RelationKeys, 1)
-		assert.Equal(t, changes[0].GetObjectRelationsRemove().RelationKeys[0], relationKey1)
+		// GO-4284: changes that only add/remove relation links (no detail values)
+		// no longer produce diff events.
+		assert.Len(t, changes, 0)
 	})
 
 	t.Run("object diff - no changes", func(t *testing.T) {

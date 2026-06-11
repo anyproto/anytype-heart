@@ -201,7 +201,6 @@ func (oc *ObjectCreator) injectImportDetails(sn *common.Snapshot, origin objecto
 
 	sn.Snapshot.Data.Details.SetInt64(bundle.RelationKeyOrigin, int64(origin.Origin))
 	sn.Snapshot.Data.Details.SetInt64(bundle.RelationKeyImportType, int64(origin.ImportType))
-	// we don't need to inject relatonLinks, they will be automatically injected for bundled relations
 }
 
 func (oc *ObjectCreator) updateExistingObject(st *state.State, oldIDtoNew map[string]string, newID string) *domain.Details {
