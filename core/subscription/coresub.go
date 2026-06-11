@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 
@@ -340,14 +341,22 @@ func (c *coreSub) orderedStay(id string, details *domain.Details) {
 		newSort := projectDetails(details, c.sortKeys)
 		if !newSort.Equal(e.sortVals) {
 			c.beginBatch()
-			c.removeWin(e)
-			e.sortVals = newSort
-			pos := c.searchWin(e)
-			c.insertWin(pos, e)
-			// landing last with members beyond the window leaves its true
-			// rank relative to them unknown
-			if pos == len(c.win)-1 && len(c.members) > len(c.win) {
+			if c.offset > 0 {
+				// offset windows rebuild via re-query for EVERY order
+				// mutation, the visible-member reposition included: a member
+				// moving above the offset boundary stays in the local window
+				// while the true occupant (rank offset-1) is unknown
 				c.needsRequery = true
+			} else {
+				c.removeWin(e)
+				e.sortVals = newSort
+				pos := c.searchWin(e)
+				c.insertWin(pos, e)
+				// landing last with members beyond the window leaves its
+				// true rank relative to them unknown
+				if pos == len(c.win)-1 && len(c.members) > len(c.win) {
+					c.needsRequery = true
+				}
 			}
 		}
 	}
@@ -444,6 +453,7 @@ func (c *coreSub) requeryWindow() {
 		return
 	}
 	entries := make([]*visEntry, 0, len(records))
+	var readmitted []string
 	for _, rec := range records {
 		if rec.Details == nil {
 			continue
@@ -462,6 +472,16 @@ func (c *coreSub) requeryWindow() {
 			e.prev = old.prev // preserve diff baseline for stayed members
 		} else {
 			e.prev = projectDetails(rec.Details, c.keys)
+			// an id that was visible at batch start but lost its vis entry
+			// mid-batch (left, then re-matched in newer store state read by
+			// this re-query) re-enters with a baseline the client never saw:
+			// the window diff will find it in both old and new windows and
+			// emit nothing, and later feed updates diff against the already
+			// fresh baseline — only a forced Set resyncs the client.
+			// (oldWin is still set here: finalize clears it after the diff.)
+			if slices.Contains(c.oldWin, id) {
+				readmitted = append(readmitted, id)
+			}
 		}
 		entries = append(entries, e)
 	}
@@ -482,6 +502,11 @@ func (c *coreSub) requeryWindow() {
 	c.vis = make(map[string]*visEntry, len(entries))
 	for _, e := range entries {
 		c.vis[e.id] = e
+	}
+	for _, id := range readmitted {
+		if e := c.vis[id]; e != nil {
+			c.detailOps = append(c.detailOps, subOp{sub: c, kind: opSet, id: id, details: e.prev})
+		}
 	}
 }
 
@@ -604,12 +629,16 @@ func (c *coreSub) windowDiffOps(out *opBatch) {
 	}
 }
 
-// memberIds snapshots the current member id set. Runs under the space mutex.
+// memberIds snapshots the current member id set, sorted: consumers
+// synthesize Remove events from it (crossspacesub space removal), and a
+// deterministic order beats leaking map iteration randomness. Runs under
+// the space mutex.
 func (c *coreSub) memberIds() []string {
 	ids := make([]string, 0, len(c.members))
 	for id := range c.members {
 		ids = append(ids, id)
 	}
+	sort.Strings(ids)
 	return ids
 }
 

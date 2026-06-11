@@ -108,11 +108,25 @@ func normalizeSubscribeIds(req pb.RpcObjectSubscribeIdsRequest) (subSpec, error)
 	if subId == "" {
 		subId = bson.NewObjectId().Hex()
 	}
+	// dedupe preserving first occurrence: the scoped snapshot iterates the
+	// scope list, so duplicates would yield duplicate records
+	ids := make([]string, 0, len(req.Ids))
+	seen := make(map[string]struct{}, len(req.Ids))
+	for _, id := range req.Ids {
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
 	return subSpec{
 		subId:             subId,
 		spaceId:           req.SpaceId,
 		keys:              normalizeKeys(req.Keys),
-		scopeIds:          req.Ids,
+		scopeIds:          ids,
 		scopeRequestOrder: true,
 		withDeps:          !req.NoDepSubscription,
 	}, nil
@@ -176,6 +190,12 @@ func resolveSources(idx spaceindex.Store, source []string) ([]database.FilterReq
 			return nil, fmt.Errorf("source %s is neither an object type nor a relation", entry)
 		}
 		relationKeys = append(relationKeys, relation.Key)
+	}
+
+	if len(typeIds) == 0 && len(relationKeys) == 0 {
+		// a non-empty Source that resolves to nothing must not silently
+		// degrade into an unscoped full-space subscription
+		return nil, fmt.Errorf("source resolves to no types or relations: %v", source)
 	}
 
 	var alternatives []database.FilterRequest

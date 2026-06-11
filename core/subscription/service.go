@@ -420,7 +420,19 @@ func (s *service) getOrCreateSpace(spaceId string, idx spaceindex.Store) *spaceS
 		return nil
 	}
 	if st, ok := s.spaces[spaceId]; ok {
-		return st
+		if st.idx == idx {
+			return st
+		}
+		// the space's store was deleted and re-created: the cached state is
+		// wired to a dead store and its subscriptions are already
+		// event-dead. Orphan it (its teardown paths stay valid — removeSub
+		// works on a stopped state, maybeDropSpace skips states no longer
+		// in the registry) and build a fresh state on the new index.
+		st.mu.Lock()
+		st.stopped = true
+		st.mu.Unlock()
+		go st.stopWorker()
+		delete(s.spaces, spaceId)
 	}
 	st := newSpaceState(s, spaceId, idx)
 	s.spaces[spaceId] = st
@@ -428,20 +440,27 @@ func (s *service) getOrCreateSpace(spaceId string, idx spaceindex.Store) *spaceS
 }
 
 // teardown detaches a subscription: collection watcher stopped, out of its
-// space, engine-owned queue closed (caller-provided queues are never touched
-// — crossspacesub shares one queue across all its per-space subscriptions),
-// empty space states dropped
+// space (with the outbox remnant flushed), engine-owned queue closed
+// (caller-provided queues are never touched — crossspacesub shares one queue
+// across all its per-space subscriptions), empty space states dropped
 func (s *service) teardown(sub *coreSub) {
+	s.teardownReturnIds(sub)
+}
+
+// teardownReturnIds additionally returns the member ids snapshotted in the
+// same critical section that detached the sub — see spaceState.detachSub
+func (s *service) teardownReturnIds(sub *coreSub) []string {
 	if sub.collection != nil {
 		sub.collection.stop()
 	}
-	empty := sub.space.removeSub(sub)
+	ids, empty := sub.space.detachSub(sub)
 	if sub.queueOwned {
 		_ = sub.queue.Close()
 	}
 	if empty {
 		s.maybeDropSpace(sub.space)
 	}
+	return ids
 }
 
 // maybeDropSpace removes a subscription-less space state: feed unhooked,
@@ -486,12 +505,10 @@ func (s *service) UnsubscribeAndReturnIds(spaceId string, subId string) ([]strin
 	delete(s.slots, subId)
 	s.mu.Unlock()
 
-	sub.space.mu.Lock()
-	ids := sub.memberIds()
-	sub.space.mu.Unlock()
-
-	s.teardown(sub)
-	return ids, nil
+	// the ids must come from the same critical section that detaches the
+	// sub: snapshotting them separately leaves a gap in which the worker
+	// can still deliver membership events the returned list doesn't reflect
+	return s.teardownReturnIds(sub), nil
 }
 
 func (s *service) SubscriptionIDs() []string {
@@ -552,7 +569,10 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 	if len(sourceFilters) > 0 {
 		filterRequests = append(slices.Clone(filterRequests), sourceFilters...)
 	}
-	if req.CollectionId != "" && s.collectionService != nil {
+	if req.CollectionId != "" && s.collectionService == nil {
+		return nil, errors.New("collection service is not available")
+	}
+	if req.CollectionId != "" {
 		// collection scoping for groups is a snapshot: the grouper computes
 		// from store queries, so membership is folded in as an id filter
 		// taken at subscribe time (group sets refresh on re-subscribe)
@@ -636,6 +656,7 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 }
 
 func (s *service) teardownGroups(g *groupsSub) {
+	g.markDead()
 	if g.space.removeGroupsSub(g) {
 		s.maybeDropSpace(g.space)
 	}

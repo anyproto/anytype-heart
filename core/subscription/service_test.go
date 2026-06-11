@@ -2,6 +2,8 @@ package subscription
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -385,6 +387,71 @@ func TestUnsubscribe(t *testing.T) {
 		require.NoError(t, fx.Unsubscribe("test-sub"))
 		require.NoError(t, queue.Add(context.Background(), &pb.EventMessage{}))
 	})
+}
+
+// TestUnsubscribeAndReturnIdsConsistency pins the ghost-record invariant:
+// every membership event for the sub is delivered before
+// UnsubscribeAndReturnIds returns, and the returned ids reflect exactly the
+// tracked set those events produced — crossspacesub synthesizes Remove
+// events from the list, so a stale Add delivered later (or an id missing
+// from the list whose Add was delivered) resurrects a ghost record.
+func TestUnsubscribeAndReturnIdsConsistency(t *testing.T) {
+	fx := newEngineFixture(t)
+	queue := mb.New[*pb.EventMessage](0)
+
+	for gen := 0; gen < 30; gen++ {
+		subId := fmt.Sprintf("uari-%d", gen)
+		req := givenParticipantRequest()
+		req.SubId = subId
+		req.InternalQueue = queue
+		req.AsyncInit = true
+		_, err := fx.Search(req)
+		require.NoError(t, err)
+
+		var wg sync.WaitGroup
+		for w := 0; w < 3; w++ {
+			wg.Add(1)
+			go func(w int) {
+				defer wg.Done()
+				for i := 0; i < 4; i++ {
+					id := fmt.Sprintf("obj-%d-%d-%d", gen, w, i)
+					fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{givenParticipant(id)})
+				}
+			}(w)
+		}
+		time.Sleep(time.Duration(gen%3) * time.Millisecond)
+
+		ids, err := fx.UnsubscribeAndReturnIds(testSpaceId, subId)
+		require.NoError(t, err)
+		wg.Wait()
+
+		returned := make(map[string]struct{}, len(ids))
+		for _, id := range ids {
+			returned[id] = struct{}{}
+		}
+		tracked := make(map[string]struct{})
+		for _, msg := range queue.GetAll() {
+			if add := msg.GetSubscriptionAdd(); add != nil {
+				require.Equal(t, subId, add.SubId)
+				tracked[add.Id] = struct{}{}
+			}
+			if rem := msg.GetSubscriptionRemove(); rem != nil {
+				delete(tracked, rem.Id)
+			}
+		}
+		for id := range tracked {
+			_, ok := returned[id]
+			require.Truef(t, ok, "gen %d: Add(%s) was delivered but the id is not in the returned list — ghost record", gen, id)
+		}
+
+		// nothing for this generation may arrive after the call returned
+		time.Sleep(10 * time.Millisecond)
+		for _, msg := range queue.GetAll() {
+			if add := msg.GetSubscriptionAdd(); add != nil {
+				require.NotEqualf(t, subId, add.SubId, "gen %d: stale Add delivered after UnsubscribeAndReturnIds returned", gen)
+			}
+		}
+	}
 }
 
 func TestUnsubscribeAndReturnIds(t *testing.T) {

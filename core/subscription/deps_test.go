@@ -168,6 +168,43 @@ func TestDependencies(t *testing.T) {
 		assert.Equal(t, []string{"dep-parent/dep"}, amend.SubIds)
 	})
 
+	t.Run("collection scope change delivers new deps in the same batch", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenAssigneeRelation(),
+			givenPerson("alice", "Alice"),
+			givenPerson("bob", "Bob"),
+			givenTask("task1", "task one", "alice"),
+			givenTask("task2", "task two", "bob"),
+		})
+		ch := make(chan []string, 4)
+		fx.collectionService.EXPECT().SubscribeForCollection("coll1", "dep-parent").Return([]string{"task1"}, ch, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", "dep-parent").Return(nil)
+
+		req := givenDepRequest()
+		req.CollectionId = "coll1"
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+		require.Len(t, resp.Dependencies, 1)
+		require.Equal(t, "alice", resp.Dependencies[0].GetString(bundle.RelationKeyId))
+
+		// task2 joins the collection: bob's /dep DetailsSet must arrive with
+		// the membership events, not wait for unrelated feed activity
+		ch <- []string{"task1", "task2"}
+
+		var sawDepSet bool
+		for !sawDepSet {
+			msgs := waitMessages(t, resp.Output, 1)
+			for _, msg := range msgs {
+				if set := msg.GetObjectDetailsSet(); set != nil && set.Id == "bob" {
+					assert.Equal(t, []string{"dep-parent/dep"}, set.SubIds)
+					sawDepSet = true
+				}
+			}
+		}
+		require.NoError(t, fx.Unsubscribe("dep-parent"))
+	})
+
 	t.Run("renaming the dep you sort by reorders the parent", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{

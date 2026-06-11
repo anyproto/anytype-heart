@@ -44,8 +44,9 @@ func TestSubscribeIds(t *testing.T) {
 		resp, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
 			SpaceId: testSpaceId,
 			SubId:   "ids-sub",
-			Ids:     []string{"p2", "missing", "p1"},
-			Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+			// the duplicate p2 must not yield a duplicate record
+			Ids:  []string{"p2", "missing", "p1", "p2"},
+			Keys: []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
 		})
 		require.NoError(t, err)
 

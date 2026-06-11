@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -124,6 +125,40 @@ func TestSubscribeGroups(t *testing.T) {
 		gone := givenStatusOption("opt-done", "Done")
 		gone[bundle.RelationKeyIsDeleted] = domain.Bool(true)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{gone})
+
+		events := waitGroupEvents(t, fx, 1)
+		require.Len(t, events, 1)
+		assert.True(t, events[0].Remove)
+		require.NotNil(t, events[0].Group)
+		assert.Equal(t, "opt-done", events[0].Group.Id)
+	})
+
+	t.Run("a hard-deleted option emits a group remove event", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenStatusRelation(),
+			givenStatusOption("opt-todo", "Todo"),
+			givenStatusOption("opt-done", "Done"),
+		})
+
+		// real kanban requests filter by layout, so option objects are never
+		// match-set members; a hard delete tombstones the option down to
+		// {id, isDeleted} — only the tracked option set can identify it
+		_, err := fx.SubscribeGroups(SubscribeGroupsRequest{
+			SpaceId:     testSpaceId,
+			SubId:       "groups-sub",
+			RelationKey: statusKey,
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.Int64(int64(model.ObjectType_todo)),
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		require.NoError(t, fx.objectStore.SpaceIndex(testSpaceId).DeleteObject("opt-done"))
 
 		events := waitGroupEvents(t, fx, 1)
 		require.Len(t, events, 1)

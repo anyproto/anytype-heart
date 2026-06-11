@@ -285,6 +285,29 @@ func TestOrderedWindowEvents(t *testing.T) {
 		require.NotNil(t, msgs[0].GetObjectDetailsAmend())
 	})
 
+	t.Run("in-window member moving above the offset boundary", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("p1", "b"),
+			givenNamedParticipant("p2", "c"),
+			givenNamedParticipant("p3", "d"),
+			givenNamedParticipant("p4", "e"),
+		})
+		resp, err := fx.Search(givenOrderedRequest(2, 1))
+		require.NoError(t, err)
+		require.Equal(t, []string{"p2", "p3"}, recordIds(resp.Records))
+
+		// p3 renames to rank first: full order p3,p1,p2,p4 → the window
+		// (offset 1, limit 2) must become [p1, p2] — p3 moved above the
+		// boundary and the true occupant p1 slides in
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("p3", "a"),
+		})
+
+		client := newClientList([]string{"p2", "p3"})
+		client.waitConverge(t, resp.Output, []string{"p1", "p2"}, "offset window move-up")
+	})
+
 	t.Run("entering before an offset window shifts it", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -409,6 +432,59 @@ func TestNoSortWindowedRequery(t *testing.T) {
 
 	client := newClientList([]string{"a", "b"})
 	client.waitConvergeBroadcast(t, fx, []string{"b", "c"}, "no-sort underflow")
+}
+
+// TestRequeryReadmissionResync pins the regression where an object that left
+// the window mid-batch and was re-admitted by the same batch's window
+// re-query (which reads newer store state) silently lost its detail-diff
+// baseline: the window diff saw identical windows and the later feed update
+// diffed against the already-fresh projection — the client kept the
+// pre-transition details forever. The fix emits a forced DetailsSet.
+func TestRequeryReadmissionResync(t *testing.T) {
+	fx := newEngineFixture(t)
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		givenNamedParticipant("p1", "a1"),
+		givenNamedParticipant("p2", "a2"),
+		givenNamedParticipant("p3", "a3"),
+	})
+	resp, err := fx.Search(givenOrderedRequest(2, 0))
+	require.NoError(t, err)
+	require.Equal(t, []string{"p1", "p2"}, recordIds(resp.Records))
+
+	svc := fx.Service.(*service)
+	svc.mu.Lock()
+	st := svc.spaces[testSpaceId]
+	svc.mu.Unlock()
+	require.NotNil(t, st)
+
+	// drive the interleaving deterministically: stop the worker, advance the
+	// store past the leave (the re-query will read this newer state), then
+	// apply the stale leave batch by hand
+	st.stopWorker()
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		givenNamedParticipant("p1", "a0"),
+	})
+	stale := givenNamedParticipant("p1", "a1")
+	stale[bundle.RelationKeyResolvedLayout] = domain.Int64(int64(model.ObjectType_basic))
+	st.processBatch([]feedItem{{id: "p1", details: stale.Details()}})
+	st.drainOutbox()
+
+	// the leave evicted p1's vis entry; the re-query re-admitted it with the
+	// newer details — the client must learn "a0" via the forced Set
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		remaining := time.Until(deadline)
+		require.Positive(t, remaining, "client never learned p1's post-readmission details")
+		ctx, cancel := context.WithTimeout(context.Background(), remaining)
+		msg, err := resp.Output.WaitOne(ctx)
+		cancel()
+		require.NoError(t, err)
+		if set := msg.GetObjectDetailsSet(); set != nil && set.Id == "p1" {
+			details := domain.NewDetailsFromProto(set.Details)
+			require.Equal(t, "a0", details.GetString(bundle.RelationKeyName))
+			return
+		}
+	}
 }
 
 // TestOrderedWindowReplay drives a windowed sorted subscription through a

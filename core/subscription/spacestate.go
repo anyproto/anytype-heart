@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // intakeDetailsLimit bounds how many full-details payloads the coalescing
@@ -39,11 +40,20 @@ func newIntakeQueue() *intakeQueue {
 
 func (q *intakeQueue) add(id string, details *domain.Details) {
 	q.mu.Lock()
-	if _, ok := q.pending[id]; !ok {
-		q.order = append(q.order, id)
-		if len(q.pending) >= intakeDetailsLimit {
-			details = nil
+	if prev, ok := q.pending[id]; ok {
+		if prev == nil {
+			// already degraded: the drain re-fetches the newest committed
+			// state anyway; re-pinning details here would re-break the bound
+			q.mu.Unlock()
+			return
 		}
+		q.pending[id] = details
+		q.mu.Unlock()
+		return
+	}
+	q.order = append(q.order, id)
+	if len(q.pending) >= intakeDetailsLimit {
+		details = nil
 	}
 	q.pending[id] = details
 	q.mu.Unlock()
@@ -83,6 +93,14 @@ type spaceState struct {
 	groupsSubs []*groupsSub
 	outbox     [][]subOp
 	stopped    bool
+	stopOnce   sync.Once
+
+	// deliverMu is held across outbox delivery so teardown can wait out an
+	// in-flight delivery: without the barrier, events for a just-removed sub
+	// could reach consumers after teardown returned — crossspacesub
+	// synthesizes Remove events from UnsubscribeAndReturnIds' member list,
+	// and a stale Add delivered after them resurrects a ghost record
+	deliverMu sync.Mutex
 
 	intake   *intakeQueue
 	wakeCh   chan struct{}
@@ -149,10 +167,14 @@ func (st *spaceState) run() {
 }
 
 func (st *spaceState) processBatch(items []feedItem) {
-	st.refetchDegraded(items)
+	items = st.refetchDegraded(items)
 
 	st.mu.Lock()
 	if st.stopped {
+		st.mu.Unlock()
+		return
+	}
+	if len(items) == 0 {
 		st.mu.Unlock()
 		return
 	}
@@ -198,8 +220,11 @@ func (st *spaceState) processBatch(items []feedItem) {
 }
 
 // refetchDegraded restores full details for id-only intake entries with one
-// batched store read. Runs before taking st.mu.
-func (st *spaceState) refetchDegraded(items []feedItem) {
+// batched store read; on a read error the still-degraded items are dropped
+// from the batch — missing one update (the next change heals it) beats
+// treating every degraded id as hard-deleted and evicting members wholesale.
+// Runs before taking st.mu.
+func (st *spaceState) refetchDegraded(items []feedItem) []feedItem {
 	var missing []string
 	for _, it := range items {
 		if it.details == nil {
@@ -207,12 +232,18 @@ func (st *spaceState) refetchDegraded(items []feedItem) {
 		}
 	}
 	if len(missing) == 0 {
-		return
+		return items
 	}
 	records, err := st.idx.QueryByIds(missing)
 	if err != nil {
 		log.Errorf("subscription space %s: re-fetch degraded intake: %v", st.spaceId, err)
-		return
+		kept := items[:0]
+		for _, it := range items {
+			if it.details != nil {
+				kept = append(kept, it)
+			}
+		}
+		return kept
 	}
 	byId := make(map[string]*domain.Details, len(records))
 	for _, rec := range records {
@@ -228,9 +259,12 @@ func (st *spaceState) refetchDegraded(items []feedItem) {
 			items[i].details = byId[items[i].id]
 		}
 	}
+	return items
 }
 
 func (st *spaceState) drainOutbox() {
+	st.deliverMu.Lock()
+	defer st.deliverMu.Unlock()
 	st.mu.Lock()
 	groups := st.outbox
 	st.outbox = nil
@@ -349,6 +383,35 @@ func (st *spaceState) installGroups(g *groupsSub) error {
 		}
 		g.members[id] = rec.Details.Get(g.relationKey)
 	}
+
+	// seed the known option ids: hard deletes tombstone options down to
+	// {id, isDeleted}, so checkItem can only recognize them by this set
+	optionFilters := &database.Filters{FilterObj: database.FiltersAnd{
+		database.FilterEq{
+			Key:   bundle.RelationKeyResolvedLayout,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.Int64(int64(model.ObjectType_relationOption)),
+		},
+		database.FilterEq{
+			Key:   bundle.RelationKeyRelationKey,
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: domain.String(string(g.relationKey)),
+		},
+	}}
+	options, err := st.idx.QueryRaw(optionFilters, 0, 0)
+	if err != nil {
+		return fmt.Errorf("groups option query: %w", err)
+	}
+	g.options = make(map[string]struct{}, len(options))
+	for _, rec := range options {
+		if rec.Details == nil {
+			continue
+		}
+		if id := rec.Details.GetString(bundle.RelationKeyId); id != "" {
+			g.options[id] = struct{}{}
+		}
+	}
+
 	st.groupsSubs = append(st.groupsSubs, g)
 	return nil
 }
@@ -650,6 +713,14 @@ func (st *spaceState) setScope(sub *coreSub, ids []string) {
 	var batch opBatch
 	st.applyScopeChange(sub, ids, &batch)
 	sub.finalize(&batch)
+	// scope changes can introduce members with new dependencies; without
+	// recomputing here their /dep DetailsSet would wait for the next
+	// unrelated feed activity in the space
+	if sub.depTracker != nil && sub.depDirty {
+		sub.depDirty = false
+		st.applyScopeChange(sub.depTracker.child, sub.depTracker.computeDepIds(), &batch)
+		sub.depTracker.child.finalize(&batch)
+	}
 	if len(batch.ops) > 0 {
 		st.outbox = append(st.outbox, batch.ops)
 	}
@@ -718,13 +789,34 @@ func (st *spaceState) hasSub(sub *coreSub) bool {
 // removeSub detaches the sub from the space; returns whether the space is
 // left without subscriptions
 func (st *spaceState) removeSub(sub *coreSub) (empty bool) {
-	st.mu.Lock()
-	defer st.mu.Unlock()
-	st.removeSubLocked(sub)
+	_, empty = st.detachSub(sub)
+	return empty
+}
+
+// detachSub removes the sub (and its dep child) and snapshots its member ids
+// in ONE critical section — after it no op for the sub can ever be created —
+// then flushes the outbox so every already-produced event is delivered
+// before returning. The combination makes the returned ids authoritative for
+// consumers that synthesize Remove events from them (crossspacesub space
+// removal): the client's tracked set at that point is exactly the member
+// set, no stale Add or Remove can arrive later to contradict it.
+func (st *spaceState) detachSub(sub *coreSub) (memberIds []string, empty bool) {
+	var child *coreSub
 	if sub.depTracker != nil {
-		st.removeSubLocked(sub.depTracker.child)
+		child = sub.depTracker.child
 	}
-	return len(st.subs) == 0 && len(st.groupsSubs) == 0
+	st.mu.Lock()
+	st.removeSubLocked(sub)
+	if child != nil {
+		st.removeSubLocked(child)
+	}
+	memberIds = sub.memberIds()
+	empty = len(st.subs) == 0 && len(st.groupsSubs) == 0
+	st.mu.Unlock()
+	// flush: delivers the sub's pending remnant and, via deliverMu, waits
+	// out any delivery already in flight on the worker
+	st.drainOutbox()
+	return memberIds, empty
 }
 
 func (st *spaceState) removeSubLocked(sub *coreSub) {
@@ -759,6 +851,8 @@ func (st *spaceState) shutdown() {
 }
 
 func (st *spaceState) stopWorker() {
-	close(st.closedCh)
+	st.stopOnce.Do(func() {
+		close(st.closedCh)
+	})
 	st.wg.Wait()
 }

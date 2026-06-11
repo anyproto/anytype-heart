@@ -35,15 +35,29 @@ type groupsSub struct {
 	// match is a privately compiled filter for relevance checks only
 	match database.Filter
 
-	// members maps matching object id → its grouped-key value; maintained
-	// under the space mutex by checkItem, so only changes that can affect
-	// groups mark the sub dirty
+	// members maps matching object id → its grouped-key value; options
+	// tracks known relationOption ids of the grouped relation — a hard
+	// delete tombstones an option down to {id, isDeleted}, dropping the
+	// layout and relationKey that would otherwise identify it. Both are
+	// maintained under the space mutex by checkItem, so only changes that
+	// can affect groups mark the sub dirty.
 	members map[string]domain.Value
+	options map[string]struct{}
 	dirty   bool // guarded by the space mutex
 
-	// recomputeMu serializes recomputations (worker vs initial subscribe)
+	// recomputeMu serializes recomputations (worker vs initial subscribe);
+	// dead stops a recompute that lost a race against teardown from
+	// broadcasting groups for a subscription that no longer exists
 	recomputeMu sync.Mutex
+	dead        bool
 	current     map[string]*model.BlockContentDataviewGroup
+}
+
+// markDead prevents any further group broadcasts; called by teardown
+func (g *groupsSub) markDead() {
+	g.recomputeMu.Lock()
+	g.dead = true
+	g.recomputeMu.Unlock()
 }
 
 // checkItem flags relevance of one feed item. Runs under the space mutex.
@@ -53,12 +67,30 @@ func (g *groupsSub) checkItem(id string, details *domain.Details) {
 			delete(g.members, id)
 			g.dirty = true
 		}
+		if _, ok := g.options[id]; ok {
+			delete(g.options, id)
+			g.dirty = true
+		}
 		return
 	}
 	if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_relationOption) &&
 		details.GetString(bundle.RelationKeyRelationKey) == string(g.relationKey) {
+		if details.GetBool(bundle.RelationKeyIsDeleted) {
+			delete(g.options, id)
+		} else {
+			g.options[id] = struct{}{}
+		}
 		g.dirty = true
 		return
+	}
+	if details.GetBool(bundle.RelationKeyIsDeleted) {
+		// a hard delete tombstones the object down to {id, isDeleted}: only
+		// the tracked option set can still identify a deleted option
+		if _, ok := g.options[id]; ok {
+			delete(g.options, id)
+			g.dirty = true
+			return
+		}
 	}
 	matched := g.match != nil && g.match.FilterObject(details)
 	oldVal, wasMember := g.members[id]
@@ -110,6 +142,9 @@ func (g *groupsSub) init() ([]*model.BlockContentDataviewGroup, error) {
 func (g *groupsSub) recompute() {
 	g.recomputeMu.Lock()
 	defer g.recomputeMu.Unlock()
+	if g.dead {
+		return
+	}
 	groups, err := g.computeGroups()
 	if err != nil {
 		log.Errorf("groups subscription %s: recompute: %v", g.subId, err)
