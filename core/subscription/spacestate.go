@@ -2,6 +2,7 @@ package subscription
 
 import (
 	"errors"
+	"sort"
 	"sync"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -215,8 +216,9 @@ var errSpaceStopped = errors.New("space state stopped")
 
 // install registers the sub and takes its snapshot atomically with respect to
 // the worker (st.mu is held across the store query — the no-data-loss
-// invariant, see newSpaceState). Returns the snapshot in query order; for
-// asyncInit the snapshot is appended to the outbox as events instead.
+// invariant, see newSpaceState). Returns the visible snapshot (the window for
+// ordered subs, everything for unordered ones); for asyncInit the snapshot is
+// appended to the outbox as events instead.
 func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.Details, total int, err error) {
 	st.mu.Lock()
 	defer st.mu.Unlock()
@@ -228,19 +230,26 @@ func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.D
 	if err != nil {
 		return nil, 0, err
 	}
-	records = make([]*domain.Details, 0, len(queryResult))
-	for _, rec := range queryResult {
-		if rec.Details == nil {
-			continue
+
+	if sub.ordered {
+		records = st.installOrdered(sub, queryResult)
+	} else {
+		records = make([]*domain.Details, 0, len(queryResult))
+		for _, rec := range queryResult {
+			if rec.Details == nil {
+				continue
+			}
+			id := rec.Details.GetString(bundle.RelationKeyId)
+			if id == "" {
+				continue
+			}
+			proj := projectDetails(rec.Details, sub.keys)
+			sub.members[id] = struct{}{}
+			sub.vis[id] = &visEntry{id: id, prev: proj}
+			records = append(records, proj)
 		}
-		id := rec.Details.GetString(bundle.RelationKeyId)
-		if id == "" {
-			continue
-		}
-		proj := projectDetails(rec.Details, sub.keys)
-		sub.members[id] = proj
-		records = append(records, proj)
 	}
+	sub.lastTotal = len(sub.members)
 	st.subs = append(st.subs, sub)
 
 	if asyncInit {
@@ -259,6 +268,53 @@ func (st *spaceState) install(sub *coreSub, asyncInit bool) (records []*domain.D
 		records = nil
 	}
 	return records, len(sub.members), nil
+}
+
+// installOrdered seeds the full member set and the ordered window from the
+// snapshot. The compiled order pre-ranks the query result; cmpEntries (the
+// authoritative comparator, with the id tiebreak) re-sorts so live binary
+// searches can never disagree with the snapshot.
+func (st *spaceState) installOrdered(sub *coreSub, queryResult []database.Record) (records []*domain.Details) {
+	type pair struct {
+		entry   *visEntry
+		details *domain.Details
+	}
+	pairs := make([]pair, 0, len(queryResult))
+	for _, rec := range queryResult {
+		if rec.Details == nil {
+			continue
+		}
+		id := rec.Details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			continue
+		}
+		sub.members[id] = struct{}{}
+		pairs = append(pairs, pair{entry: sub.newVisEntry(id, rec.Details), details: rec.Details})
+	}
+	if sub.order != nil {
+		sort.SliceStable(pairs, func(i, j int) bool {
+			return sub.cmpEntries(pairs[i].entry, pairs[j].entry) < 0
+		})
+	}
+	start := sub.offset
+	if start > len(pairs) {
+		start = len(pairs)
+	}
+	end := len(pairs)
+	if sub.limit > 0 && start+sub.limit < end {
+		end = start + sub.limit
+	}
+	window := pairs[start:end]
+
+	sub.win = make([]*visEntry, 0, len(window))
+	records = make([]*domain.Details, 0, len(window))
+	for _, p := range window {
+		p.entry.prev = projectDetails(p.details, sub.keys)
+		sub.win = append(sub.win, p.entry)
+		sub.vis[p.entry.id] = p.entry
+		records = append(records, p.entry.prev)
+	}
+	return records
 }
 
 // removeSub detaches the sub from the space; returns whether the space is

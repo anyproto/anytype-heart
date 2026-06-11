@@ -23,13 +23,19 @@ type subSpec struct {
 	spaceId string
 	keys    []domain.RelationKey
 	filters []database.FilterRequest
+	sorts   []database.SortRequest
 	source  []string
+
+	// ordered: server-side ordering with a maintained window — every client
+	// (non-internal) request and any request with sorts. For unordered subs
+	// limit/offset truncate the snapshot only; live tracking always covers
+	// the full set.
+	ordered bool
 
 	internal  bool
 	asyncInit bool
 	queue     *mb.MB[*pb.EventMessage] // caller-provided internal queue, may be nil
 
-	// snapshot truncation only; live tracking always covers the full set
 	limit, offset int
 }
 
@@ -55,6 +61,10 @@ func normalizeSearch(req SubscribeRequest) (subSpec, error) {
 	if offset < 0 {
 		return subSpec{}, fmt.Errorf("negative offset: %d", offset)
 	}
+	ordered := len(req.Sorts) > 0 || !req.Internal
+	if req.AsyncInit && ordered {
+		return subSpec{}, errors.New("asyncInit does not support sorted subscriptions")
+	}
 	// AfterId/BeforeId are dead request cursors: the client has always sent
 	// them empty and no engine ever read them. Ignored by design.
 	return subSpec{
@@ -62,7 +72,9 @@ func normalizeSearch(req SubscribeRequest) (subSpec, error) {
 		spaceId:   req.SpaceId,
 		keys:      normalizeKeys(req.Keys),
 		filters:   req.Filters,
+		sorts:     req.Sorts,
 		source:    req.Source,
+		ordered:   ordered,
 		internal:  req.Internal,
 		asyncInit: req.AsyncInit,
 		queue:     req.InternalQueue,

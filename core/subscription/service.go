@@ -213,7 +213,20 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 		spaceId: spec.spaceId,
 		keys:    spec.keys,
 		filters: filters,
-		members: make(map[string]*domain.Details),
+		members: make(map[string]struct{}),
+		vis:     make(map[string]*visEntry),
+	}
+	if spec.ordered {
+		sub.ordered = true
+		sub.limit = spec.limit
+		sub.offset = spec.offset
+		if len(spec.sorts) > 0 {
+			sub.order = filters.Order
+			sub.sortKeys = make([]domain.RelationKey, 0, len(spec.sorts))
+			for _, s := range spec.sorts {
+				sub.sortKeys = append(sub.sortKeys, s.RelationKey)
+			}
+		}
 	}
 	if spec.internal {
 		if spec.queue != nil {
@@ -256,9 +269,14 @@ func (s *service) Search(req SubscribeRequest) (resp *SubscribeResponse, err err
 		s.teardown(sub)
 	}
 
+	if !spec.ordered {
+		// ordered snapshots are already the window; unordered ones are
+		// truncated for one-shot consumers (objectgraph) only
+		records = truncateRecords(records, spec.offset, spec.limit)
+	}
 	return &SubscribeResponse{
 		SubId:   spec.subId,
-		Records: truncateRecords(records, spec.offset, spec.limit),
+		Records: records,
 		Counters: &pb.EventObjectSubscriptionCounters{
 			SubId: spec.subId,
 			Total: int64(total),
@@ -282,6 +300,7 @@ func (s *service) compileFilters(spec subSpec, idx spaceindex.Store) (*database.
 	return database.NewFilters(database.Query{
 		SpaceId: spec.spaceId,
 		Filters: filters,
+		Sorts:   spec.sorts,
 	}, idx, &anyenc.Arena{}, &collate.Buffer{})
 }
 

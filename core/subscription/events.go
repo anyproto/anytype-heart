@@ -22,6 +22,7 @@ const (
 	opSet opKind = iota
 	opAdd
 	opRemove
+	opPosition
 	opAmend
 	opUnset
 	opCounters
@@ -78,6 +79,14 @@ func encodeOp(op *subOp) *pb.EventMessage {
 			SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
 				Id:    op.id,
 				SubId: subId,
+			},
+		})
+	case opPosition:
+		return event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionPosition{
+			SubscriptionPosition: &pb.EventObjectSubscriptionPosition{
+				Id:      op.id,
+				AfterId: op.afterId,
+				SubId:   subId,
 			},
 		})
 	case opAmend:
