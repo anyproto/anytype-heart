@@ -17,10 +17,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // The subscription engine: a live-query service over object details. The
@@ -31,10 +33,6 @@ import (
 const CName = "subscription"
 
 var log = logging.Logger("anytype-mw-subscription")
-
-// ErrNotImplemented is returned by query surfaces that are not reimplemented
-// yet (groups and ids subscriptions arrive in later phases)
-var ErrNotImplemented = errors.New("subscriptions are not implemented")
 
 func New() Service {
 	return &service{}
@@ -87,11 +85,9 @@ type SubscribeGroupsRequest struct {
 type Service interface {
 	Search(req SubscribeRequest) (resp *SubscribeResponse, err error)
 	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
-	SubscribeIds(subId string, ids []string) (records []*domain.Details, err error)
 	SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAndReturnIds(spaceId string, subId string) ([]string, error)
-	UnsubscribeAll() (err error)
 	SubscriptionIDs() []string
 
 	app.ComponentRunnable
@@ -515,10 +511,6 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	}, nil
 }
 
-func (s *service) SubscribeIds(subId string, ids []string) (records []*domain.Details, err error) {
-	return nil, ErrNotImplemented
-}
-
 func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	if req.SpaceId == "" {
 		return nil, errors.New("spaceId is required")
@@ -547,6 +539,24 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 	}
 	if len(sourceFilters) > 0 {
 		filterRequests = append(slices.Clone(filterRequests), sourceFilters...)
+	}
+	if req.CollectionId != "" && s.collectionService != nil {
+		// collection scoping for groups is a snapshot: the grouper computes
+		// from store queries, so membership is folded in as an id filter
+		// taken at subscribe time (group sets refresh on re-subscribe)
+		snapId := subId + "/groups-collection"
+		ids, _, err := s.collectionService.SubscribeForCollection(req.CollectionId, snapId)
+		if uerr := s.collectionService.UnsubscribeFromCollection(req.CollectionId, snapId); uerr != nil {
+			log.Warnf("groups subscription %s: release collection snapshot: %v", subId, uerr)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("collection snapshot for groups %s: %w", req.CollectionId, err)
+		}
+		filterRequests = append(slices.Clone(filterRequests), database.FilterRequest{
+			RelationKey: bundle.RelationKeyId,
+			Condition:   model.BlockContentDataviewFilter_In,
+			Value:       domain.StringList(ids),
+		})
 	}
 	// the kanban groupers mutate the filters they are given, so every
 	// recomputation compiles a fresh copy
@@ -617,8 +627,4 @@ func (s *service) teardownGroups(g *groupsSub) {
 	if g.space.removeGroupsSub(g) {
 		s.maybeDropSpace(g.space)
 	}
-}
-
-func (s *service) UnsubscribeAll() (err error) {
-	return nil
 }

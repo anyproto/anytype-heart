@@ -754,14 +754,20 @@ func (exIn *FilterOptionsEqual) FilterObject(g *domain.Details) bool {
 		return slices.Contains(exIn.Value, val)
 	}
 	if val, ok := g.TryStringList(exIn.Key); ok {
-		onlyOptions := lo.Filter(val, func(v string, _ int) bool {
-			_, ok := exIn.Options[v]
-			return ok
-		})
-		if len(onlyOptions) != len(exIn.Value) {
-			return false
+		// count option values and require each to be expected — equivalent
+		// to collecting them into a fresh slice and set-comparing, without
+		// allocating per evaluation (this runs per update per subscription)
+		var optionCount int
+		for _, v := range val {
+			if _, isOption := exIn.Options[v]; !isOption {
+				continue
+			}
+			if !slices.Contains(exIn.Value, v) {
+				return false
+			}
+			optionCount++
 		}
-		return lo.Every(onlyOptions, exIn.Value)
+		return optionCount == len(exIn.Value)
 	}
 	return false
 }

@@ -330,29 +330,31 @@ from changed members and calls `setScope` — new dep ids produce `DetailsSet` u
 subId via the normal scope-mutation path.
 
 **Order deps** (what keeps the sort correct): orders over object/file/tag/status relations
-compare via an id→text `OrderMap` (`database.KeyOrder`). The adapter watches, against every
-feed item of the space (an O(1) lookup, no extra subscription): (a) ids referenced in
-*window members'* sort-key values (a small reverse index targetId → member ids), and (b)
-`relationOption` objects of the sort relations — covering tag/status sorts, which render
-deps never see. On a hit: `Order.UpdateOrderMap(changed)`; if it reports a change → re-sort
-the window, **resync via the §5.2 margin re-query** (the fresh store query also catches
-boundary crossings caused by out-of-window members' dep changes), emit the window diff.
-Residual staleness — an out-of-window member whose dep rename should push it *into* the
-window — is repaired at the next re-query and accepted as a documented edge (the contract's
-§3.5 case, a renamed assignee visibly mis-sorting the list, is fully covered).
+compare via an id→text `OrderMap` (`database.KeyOrder`) — and the OrderMap already knows
+exactly which target objects and relation options it depends on. So instead of a separate
+reverse index, every feed item is simply offered to the sub's compiled order via
+`Order.UpdateOrderMap([item])` — one map lookup for irrelevant items, a no-op for orders
+without maps *(as built; simpler than the reviewed design)*. A reported change means the
+comparator shifted under the window: rebuild via the §5.2 re-query, which re-sorts with the
+updated map (the fresh store query also catches boundary crossings caused by out-of-window
+members' dep changes) and emits the window diff. The contract's §3.5 case — a renamed
+assignee visibly mis-sorting the list — is covered including boundary crossings.
 
 The core knows nothing about relation formats.
 
 ### 7.2 Groups (`groups.go`) — `SubscribeGroups`
 
-Adapter over one hidden unordered core sub with Go-callback delivery (request filters, keys
-= `[relationKey]`) plus a relevance check on `relationOption` objects of the relation. The
-kanban `Grouper` and the `spaceindex.Store` handle are captured once at `SubscribeGroups`
-time *(rev, S4: no `store.SpaceIndex()` re-entry from worker context)*; each recompute runs
-on the worker **after** the mutex is released (dirty-flag pass, §4.2) and compiles a fresh
-`database.Filters` because `GroupTag.InitGroups` mutates the filters it is given *(rev,
-S4)*. Recompute → `MakeDataViewGroups()` → diff group ids → emit
-`SubscriptionGroups{group, remove}` per delta. Response = initial groups. Groups subs are
+The adapter owns no core sub at all *(as built)*: it keeps a private relevance map
+(matching object id → grouped-key value) fed by the batch loop, and marks itself dirty when
+an object enters/leaves the match set, a member's grouped value changes, or a
+`relationOption` of the relation changes (tag/status groups derive from option objects).
+Dirty adapters recompute on the worker **after** the space mutex is released (the grouper
+queries the store) with a freshly compiled `database.Filters` each time — the kanban
+groupers mutate the filters they are given *(rev, S4)*. Recompute → `MakeDataViewGroups()`
+→ diff group ids → broadcast `SubscriptionGroups{group, remove}` per delta. Response =
+initial groups. `CollectionId` scoping is a **subscribe-time snapshot** folded in as an
+id filter (the grouper computes from store queries, so live collection membership cannot
+scope it; group sets refresh on re-subscribe — documented limitation). Groups subs are
 rare (one per kanban view); recomputation is one store query.
 
 ### 7.3 Collections (`collections.go`) — `CollectionId`

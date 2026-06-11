@@ -134,16 +134,22 @@ func deliverOps(ctx context.Context, sender eventSender, ops []subOp) {
 
 	for i := range ops {
 		op := &ops[i]
-		msg := encodeOp(op)
-		if msg == nil {
-			continue
-		}
 		if q := op.sub.queue; q != nil {
+			if op.sub.queueOwned && q.Len() > maxInternalQueueLen {
+				log.Errorf("subscription %s: internal queue overflow (>%d messages), closing — consumer stalled",
+					op.sub.subId, maxInternalQueueLen)
+				_ = q.Close()
+				continue
+			}
+			msg := encodeOp(op)
+			if msg == nil {
+				continue
+			}
 			if _, ok := queued[q]; !ok {
 				queues = append(queues, q)
 			}
 			queued[q] = append(queued[q], msg)
-		} else {
+		} else if msg := encodeOp(op); msg != nil {
 			broadcast = append(broadcast, msg)
 		}
 	}
@@ -158,6 +164,13 @@ func deliverOps(ctx context.Context, sender eventSender, ops []subOp) {
 		}
 	}
 }
+
+// maxInternalQueueLen is the kill watermark for engine-owned internal queues:
+// transition events cannot be coalesced after encoding, so a consumer this
+// far behind is broken and its queue would otherwise grow without bound.
+// Closing the queue terminates the consumer's read loop; caller-provided
+// queues are never policed.
+const maxInternalQueueLen = 50000
 
 // eventSender is the broadcast half of event.Sender the engine needs
 type eventSender interface {
