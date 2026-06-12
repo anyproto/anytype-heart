@@ -40,25 +40,30 @@ var (
 const (
 	// minFulltextScore trim fulltext results with score lower than this value in case there are no highlight ranges available
 	minFulltextScore = 0.02
-	// ftCandidatesMin/Max bound the tantivy docs limit derived from the request's
-	// offset+limit. Filters are applied after the fulltext search, so the
-	// candidate set must be larger than the requested page.
+	// ftCandidatesMin is the docs budget of the first fulltext round. It doubles
+	// as the noise gate: BM25 scores aren't comparable across queries, so "the
+	// top N most promising matches" is the only workable relevance cutoff.
 	ftCandidatesMin = 100
-	ftCandidatesMax = 1000
+	// ftCandidatesHardLimit bounds budget escalation. Escalation only happens
+	// when store-level filters starved the requested page, so the common query
+	// never pays for it.
+	ftCandidatesHardLimit = 2000
 )
 
-// ftCandidatesLimit derives the tantivy docs limit from the requested page.
-// Without an explicit limit the request wants everything, so use the cap.
+// ftCandidatesLimit derives the initial tantivy docs budget from the requested
+// page. Without an explicit limit the request gets a single conservative round:
+// "everything" combined with fulltext means "the relevant matches", not the
+// whole index.
 func ftCandidatesLimit(q database.Query) int {
 	if q.Limit <= 0 {
-		return ftCandidatesMax
+		return ftCandidatesMin
 	}
 	limit := q.Offset + q.Limit
 	if limit < ftCandidatesMin {
 		return ftCandidatesMin
 	}
-	if limit > ftCandidatesMax {
-		return ftCandidatesMax
+	if limit > ftCandidatesHardLimit {
+		return ftCandidatesHardLimit
 	}
 	return limit
 }
@@ -193,6 +198,32 @@ type injectionHit struct {
 }
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
+	records, err := s.queryFromFulltextRecords(results, params, limit, offset, ftsSearch)
+	if err != nil {
+		return nil, err
+	}
+	return paginateRecords(records, offset, limit), nil
+}
+
+// paginateRecords applies offset/limit to the final, sorted record list.
+func paginateRecords(records []database.Record, offset int, limit int) []database.Record {
+	if offset >= len(records) {
+		return nil
+	}
+	if limit > 0 {
+		upperBound := offset + limit
+		if upperBound > len(records) {
+			upperBound = len(records)
+		}
+		return records[offset:upperBound]
+	}
+	return records[offset:]
+}
+
+// queryFromFulltextRecords resolves fulltext candidates to filtered, sorted
+// records WITHOUT applying offset/limit, so callers can tell whether the
+// candidate set produced enough results to fill the requested page.
+func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
 	records := make([]database.Record, 0, len(results))
 	upperBound := offset + limit
 	resultObjectMap := make(map[string]struct{})
@@ -272,21 +303,12 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	}
 	records = s.injectRelatedObjects(injectionGroups, budget, upperBound == 0, params, resultObjectMap, records)
 
-	if offset >= len(records) {
-		return nil, nil
-	}
 	if params.Order != nil {
 		sort.Slice(records, func(i, j int) bool {
 			return params.Order.Compare(records[i].Details, records[j].Details) == -1
 		})
 	}
-	if limit > 0 {
-		if upperBound > len(records) {
-			upperBound = len(records)
-		}
-		return records[offset:upperBound], nil
-	}
-	return records[offset:], nil
+	return records, nil
 }
 
 func injectionRelationKey(details *domain.Details, path domain.ObjectPath) (domain.RelationKey, bool) {
@@ -445,18 +467,36 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 		return nil, fmt.Errorf("new filters: %w", err)
 	}
 	if q.TextQuery != "" {
-		ftLimit := ftCandidatesLimit(q)
-		var fulltextResults []database.FulltextResult
-		if q.PrefixNameQuery {
-			fulltextResults, err = s.performFulltextSearch(ftLimit, func() (results []*ftsearch.DocumentMatch, err error) {
-				return s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery, ftLimit)
-			})
-		} else {
-			fulltextResults, err = s.performFulltextSearch(ftLimit, func() (results []*ftsearch.DocumentMatch, err error) {
-				return s.fts.Search(q.SpaceId, q.TextQuery, ftLimit)
-			})
-		}
+		return s.performFulltextQuery(q, filters)
+	}
+	return s.QueryRaw(filters, q.Limit, q.Offset)
+}
 
+// performFulltextQuery runs the fulltext pipeline, escalating the candidate
+// budget until the requested page is filled. Store-level filters and the
+// doc→object grouping run AFTER the fulltext search, so a fixed candidate cap
+// can starve a page even though more matches exist; clients interpret a short
+// page as "no more results", which must therefore be true. The common query is
+// served by the first round; extra rounds only run for queries that
+// demonstrably starved, and stop as soon as the index is exhausted (tantivy
+// returned fewer docs than the budget) or the hard limit is reached.
+func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database.Filters) ([]database.Record, error) {
+	search := func(limit int) ([]*ftsearch.DocumentMatch, error) {
+		if q.PrefixNameQuery {
+			return s.fts.NamePrefixSearch(q.SpaceId, q.TextQuery, limit)
+		}
+		return s.fts.Search(q.SpaceId, q.TextQuery, limit)
+	}
+
+	needed := 0
+	if q.Limit > 0 {
+		needed = q.Offset + q.Limit
+	}
+	ftLimit := ftCandidatesLimit(q)
+	for {
+		fulltextResults, ftDocs, err := s.performFulltextSearch(func() ([]*ftsearch.DocumentMatch, error) {
+			return search(ftLimit)
+		})
 		if err != nil {
 			return nil, fmt.Errorf("perform fulltext search: %w", err)
 		}
@@ -465,22 +505,40 @@ func (s *dsObjectStore) performQuery(q database.Query) (records []database.Recor
 		if len(fulltextResults) == 0 {
 			return s.performFulltextFallback(q, filters)
 		}
-		ftHits.Add(1)
 
-		return s.QueryFromFulltext(fulltextResults, *filters, q.Limit, q.Offset, q.TextQuery)
+		records, err := s.queryFromFulltextRecords(fulltextResults, *filters, q.Limit, q.Offset, q.TextQuery)
+		if err != nil {
+			return nil, err
+		}
+
+		pageFilled := needed == 0 || len(records) >= needed
+		indexExhausted := ftDocs < ftLimit
+		if pageFilled || indexExhausted || ftLimit >= ftCandidatesHardLimit {
+			if !pageFilled && !indexExhausted {
+				// the page stays underfilled although more matches exist:
+				// the client will read it as the end of the results
+				ftCandidatesTruncated.Add(1)
+				log.With("limit", ftLimit).With("records", len(records)).With("needed", needed).
+					Warn("fulltext page underfilled at the candidate hard limit")
+			}
+			ftHits.Add(1)
+			return paginateRecords(records, q.Offset, q.Limit), nil
+		}
+
+		ftLimit *= 2
+		if ftLimit > ftCandidatesHardLimit {
+			ftLimit = ftCandidatesHardLimit
+		}
 	}
-	return s.QueryRaw(filters, q.Limit, q.Offset)
 }
 
-func (s *dsObjectStore) performFulltextSearch(limit int, search func() (results []*ftsearch.DocumentMatch, err error)) ([]database.FulltextResult, error) {
+// performFulltextSearch groups raw doc matches per object and converts them to
+// fulltext results; ftDocs is the raw doc count, used by the caller to detect
+// whether the index was exhausted (ftDocs < requested budget).
+func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch.DocumentMatch, err error)) ([]database.FulltextResult, int, error) {
 	ftsResults, err := search()
 	if err != nil {
-		return nil, fmt.Errorf("fullText search: %w", err)
-	}
-	if limit > 0 && len(ftsResults) >= limit {
-		// telemetry for the candidate cap: post-filtering may starve the page
-		ftCandidatesTruncated.Add(1)
-		log.With("limit", limit).Debug("fulltext candidate set truncated by docs limit")
+		return nil, 0, fmt.Errorf("fullText search: %w", err)
 	}
 
 	var resultsByObjectId = make(map[string][]*ftsearch.DocumentMatch)
@@ -531,7 +589,7 @@ func (s *dsObjectStore) performFulltextSearch(limit int, search func() (results 
 	for _, docMatch := range objectResults {
 		result, err := database.FTDocumentMatchToFulltextResult(docMatch)
 		if err != nil {
-			return nil, fmt.Errorf("fullText search: %w", err)
+			return nil, 0, fmt.Errorf("fullText search: %w", err)
 		}
 		if result.Score < minFulltextScore && len(result.HighlightRanges) == 0 {
 			continue
@@ -540,7 +598,7 @@ func (s *dsObjectStore) performFulltextSearch(limit int, search func() (results 
 
 	}
 
-	return results, nil
+	return results, len(ftsResults), nil
 }
 
 func (s *dsObjectStore) performFulltextFallback(q database.Query, filters *database.Filters) ([]database.Record, error) {

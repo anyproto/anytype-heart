@@ -14,20 +14,40 @@ multiple slots). Everything downstream operates on that truncated set:
 
 ## Design (this pass)
 
-### 1. Caller-controlled docs limit
+### 1. Caller-controlled docs limit + page-filling escalation
 
 ```
 Search(spaceId, query string, limit int)            // limit <= 0 → default
 NamePrefixSearch(spaceId, query string, limit int)
 ```
 
-- `performQuery` derives the limit from the request:
-  `ftLimit = clamp(q.Offset + q.Limit, defaultFtLimit, maxFtLimit)` with
-  `defaultFtLimit = 100`, `maxFtLimit = 1000`; `q.Limit <= 0` (no limit) → `maxFtLimit`.
-  The grouping/filtering pipeline stays unchanged but operates on an adequate candidate set.
-- Multiply the budget when filters are present? No — keep it simple and observable: a counter
-  (`ftMisses`-style) records when the tantivy result count == ftLimit AND the post-filter output
-  came up short of `q.Limit`; that telemetry informs whether pushdown (below) is needed.
+The 100-doc cap was a deliberate noise gate: BM25 scores aren't comparable across queries, so
+"top N most promising" is the only workable relevance cutoff, and it also bounded the pool the
+additive recency/name boosts can re-rank plus the per-candidate anystore reads. Those properties
+must be preserved.
+
+At the same time clients universally treat a page shorter than the requested limit as the end of
+the result set — and with post-FT filtering and doc→object grouping, a fixed cap makes short
+pages lie (observed: desktop requests limit=100, gets 86 because filters consumed candidates,
+stops paginating although more matches exist).
+
+Resolution — **escalate-on-starvation** (`performFulltextQuery`):
+
+- round 1 budget: `clamp(offset+limit, 100, 2000)`; `q.Limit <= 0` → a single conservative
+  100-doc round ("everything" + fulltext means "the relevant matches", not the whole index);
+- if the post-filter record count < `offset+limit` AND tantivy returned a full budget of docs
+  (more matches exist), double the budget and re-run, up to `ftCandidatesHardLimit = 2000`;
+- stop as soon as the page is filled or tantivy returns fewer docs than the budget (index
+  exhausted for this query).
+
+This restores the client contract — a short page again means "no more results" — with no proto
+or client changes. The common query is still a single 100-doc round; only demonstrably starved
+queries pay for more. `ftCandidatesTruncated` counts pages that stayed underfilled at the hard
+limit (the only case where a short page can still lie), feeding the pushdown decision below.
+
+A `hasMore` response flag was considered and rejected for now: it requires proto + all-client
+changes, and without server-side escalation it cannot even guarantee progress on the next
+offset request — escalation is needed first either way.
 
 ### 2. Chat-scoped message search
 
