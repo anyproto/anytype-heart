@@ -23,6 +23,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/dateutil"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -274,6 +275,18 @@ func (w *watcher) updateBackLinksInObject(id domain.FullID, backlinksUpdate *bac
 	}
 
 	if shouldIndexBacklinks(spaceDerivedIds, id.ObjectID) {
+		if sbType, sbTypeErr := typeprovider.SmartblockTypeFromID(id.ObjectID); sbTypeErr == nil && sbType.DetailsStoreOwned() {
+			// store-owned objects (participants): the record in the object index is the
+			// source of truth and the smartblock-state fallback below would write a
+			// stale view back, so always modify the store directly
+			err = w.store.SpaceIndex(id.SpaceID).ModifyObjectDetails(id.ObjectID, func(details *domain.Details) (*domain.Details, bool, error) {
+				return updateBacklinks(details, backlinksUpdate)
+			}, false)
+			if err != nil {
+				return fmt.Errorf("update backlinks of store-owned object: %w", err)
+			}
+			return nil
+		}
 		// filter-out backlinks in system objects
 		err = spc.DoLockedIfNotExists(id.ObjectID, func() error {
 			return w.store.SpaceIndex(id.SpaceID).ModifyObjectDetails(id.ObjectID, func(details *domain.Details) (*domain.Details, bool, error) {

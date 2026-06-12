@@ -154,6 +154,50 @@ func TestPrepareSearchDocument_Success(t *testing.T) {
 	assert.Equal(t, "spaceId1", docs[0].SpaceId)
 }
 
+func TestPrepareSearchDocument_ParticipantDetailsOnly(t *testing.T) {
+	indexerFx := newFixture(t)
+	participantId := domain.NewParticipantId("spaceId1", "identity1")
+	err := indexerFx.store.SpaceIndex("spaceId1").UpdateObjectDetails(context.Background(), participantId, domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:           domain.String("John"),
+		bundle.RelationKeyDescription:    domain.String("desc"),
+		bundle.RelationKeyGlobalName:     domain.String("john.any"),
+		bundle.RelationKeyIdentity:       domain.String("identity1"),
+		bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+	}))
+	require.NoError(t, err)
+
+	// no GetObjectByFullID expectation is set: loading the participant into the
+	// object cache would fail the test
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: participantId, SpaceId: "spaceId1"})
+	require.NoError(t, err)
+	require.Len(t, docs, 2)
+
+	byId := make(map[string]ftsearch.SearchDoc, len(docs))
+	for _, doc := range docs {
+		byId[doc.Id] = doc
+	}
+	nameDoc, ok := byId[domain.NewObjectPathWithRelation(participantId, bundle.RelationKeyName.String()).String()]
+	require.True(t, ok)
+	assert.Equal(t, "John", nameDoc.Title)
+	assert.Empty(t, nameDoc.Text)
+	assert.Equal(t, "spaceId1", nameDoc.SpaceId)
+
+	descDoc, ok := byId[domain.NewObjectPathWithRelation(participantId, bundle.RelationKeyDescription.String()).String()]
+	require.True(t, ok)
+	assert.Equal(t, "desc", descDoc.Text)
+	assert.Empty(t, descDoc.Title)
+}
+
+func TestPrepareSearchDocument_ParticipantMissingRecord(t *testing.T) {
+	indexerFx := newFixture(t)
+	participantId := domain.NewParticipantId("spaceId1", "identity1")
+
+	docs, _, err := indexerFx.prepareSearchDocs(context.Background(), domain.FullTextQueuedObject{ObjectId: participantId, SpaceId: "spaceId1"})
+
+	require.NoError(t, err)
+	assert.Empty(t, docs)
+}
+
 func TestPrepareSearchDocument_Empty_NotIndexing(t *testing.T) {
 	indexerFx := newFixture(t)
 	smartTest := smarttest.New("objectId1")

@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/participants"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
@@ -176,6 +177,12 @@ func (i *indexer) RemoveAclIndexes(spaceId string) (err error) {
 		return fmt.Errorf("remove acl: %w", err)
 	}
 
+	// the records are wiped, so the next space load must run full ACL processing
+	err = store.SaveLastIndexedHeadsHash(i.runCtx, participants.AclHeadMarkerId, "")
+	if err != nil {
+		return fmt.Errorf("clear participants acl head marker: %w", err)
+	}
+
 	return store.DeleteDetails(i.runCtx, ids)
 }
 
@@ -185,6 +192,12 @@ func (i *indexer) isFulltextEnabled(space smartblock.Space) bool {
 }
 
 func (i *indexer) Index(info smartblock.DocInfo, options ...smartblock.IndexOption) error {
+	if info.SmartblockType.DetailsStoreOwned() {
+		// store-owned objects (participants) are written to the object index directly
+		// by their dedicated writers; the smartblock state is only a derived view and
+		// may be stale, so writing it back here would corrupt the record
+		return nil
+	}
 	i.lock.Lock()
 	spaceInd, ok := i.spaceIndexers[info.Space.Id()]
 	if !ok {

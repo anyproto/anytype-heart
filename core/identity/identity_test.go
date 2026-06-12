@@ -4,26 +4,26 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"slices"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/accountdata"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
 	mock_nameserviceclient "github.com/anyproto/any-sync/nameservice/nameserviceclient/mock"
 	"github.com/anyproto/any-sync/nameservice/nameserviceproto"
 	"github.com/anyproto/any-sync/util/crypto"
-	"github.com/cheggaaa/mb/v3"
 	"github.com/gogo/protobuf/proto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl/mock_fileacl"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -38,6 +38,7 @@ type fixture struct {
 	spaceService      *mock_space.MockService
 	accountService    *mock_account.MockService
 	nsClient          *mock_nameserviceclient.MockAnyNsClientService
+	objectStore       *objectstore.StoreFixture
 }
 
 const (
@@ -96,10 +97,36 @@ func newFixture(t *testing.T, testObserverPeriod time.Duration) *fixture {
 		accountService:    accountService,
 		coordinatorClient: identityRepoClient,
 		nsClient:          nsClient,
+		objectStore:       objectStore,
 	}
 	go fx.observeIdentitiesLoop()
 
 	return fx
+}
+
+// addParticipant pre-creates a participant record: the identity fan-out is
+// update-only, records are created by the ACL processing path
+func (fx *fixture) addParticipant(t *testing.T, spaceId, identity string) {
+	fx.objectStore.AddObjects(t, spaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:             domain.String(domain.NewParticipantId(spaceId, identity)),
+		bundle.RelationKeySpaceId:        domain.String(spaceId),
+		bundle.RelationKeyIdentity:       domain.String(identity),
+		bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_participant),
+	}})
+}
+
+func (fx *fixture) participantDetails(t *testing.T, spaceId, identity string) *domain.Details {
+	details, err := fx.objectStore.SpaceIndex(spaceId).GetDetails(domain.NewParticipantId(spaceId, identity))
+	require.NoError(t, err)
+	return details
+}
+
+func (fx *fixture) participantHasName(spaceId, identity, name string) bool {
+	details, err := fx.objectStore.SpaceIndex(spaceId).GetDetails(domain.NewParticipantId(spaceId, identity))
+	if err != nil {
+		return false
+	}
+	return details.GetString(bundle.RelationKeyName) == name
 }
 
 func marshalProfile(t *testing.T, profile *model.IdentityProfile, key crypto.SymKey) []byte {
@@ -200,18 +227,14 @@ func TestIdentityProfileCache(t *testing.T) {
 		err = fx.service.identityGlobalNameCacheStore.Set(context.Background(), identity, globalName)
 		require.NoError(t, err)
 
-		var (
-			gotIdentity string
-			gotProfile  *model.IdentityProfile
-		)
-		err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(callbackIdentity string, profile *model.IdentityProfile) {
-			gotIdentity = callbackIdentity
-			gotProfile = profile
-		})
+		fx.addParticipant(t, spaceId, identity)
+		err = fx.RegisterIdentity(spaceId, identity, profileSymKey)
 		require.NoError(t, err)
 
-		assert.Equal(t, identity, gotIdentity)
-		assert.Equal(t, wantProfile, gotProfile)
+		// the cached profile is fanned out into the participant record synchronously
+		details := fx.participantDetails(t, spaceId, identity)
+		assert.Equal(t, wantProfile.Name, details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, globalName, details.GetString(bundle.RelationKeyGlobalName))
 	})
 
 	t.Run("with available cache and unavailable identity repo, use cache instead of remote service", func(t *testing.T) {
@@ -236,26 +259,77 @@ func TestIdentityProfileCache(t *testing.T) {
 		err = fx.service.identityGlobalNameCacheStore.Set(context.Background(), identity, globalName)
 		require.NoError(t, err)
 
-		var called uint64
-		err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(callbackIdentity string, profile *model.IdentityProfile) {
-			atomic.AddUint64(&called, 1)
-			assert.Equal(t, identity, callbackIdentity)
-			assert.Equal(t, wantProfile, profile)
-		})
+		fx.addParticipant(t, spaceId, identity)
+		err = fx.RegisterIdentity(spaceId, identity, profileSymKey)
 		require.NoError(t, err)
 
 		err = fx.service.identityProfileCacheStore.Set(context.Background(), identity, wantData)
 		require.NoError(t, err)
 
-		time.Sleep(testObserverPeriod * 2)
-		assert.Equal(t, uint64(1), atomic.LoadUint64(&called))
+		// the observe loop falls back to the cache store and fans out into the record
+		require.Eventually(t, func() bool {
+			return fx.participantHasName(spaceId, identity, wantProfile.Name)
+		}, time.Second, testObserverPeriod)
+	})
+}
+
+func TestEncryptionKeyPersistence(t *testing.T) {
+	t.Run("nil key resolves from the persisted store after restart", func(t *testing.T) {
+		// given
+		fx := newFixture(t, time.Minute)
+		identity := "identity1"
+		profileSymKey, err := crypto.NewRandomAES()
+		require.NoError(t, err)
+		require.NoError(t, fx.RegisterIdentity("space1", identity, profileSymKey))
+
+		// simulate a restart: the in-memory key cache is gone, only commonDb persists
+		fx.lock.Lock()
+		fx.identityEncryptionKeys = make(map[string]crypto.SymKey)
+		fx.lock.Unlock()
+
+		// when
+		err = fx.RegisterIdentity("space2", identity, nil)
+
+		// then
+		require.NoError(t, err)
+		gotKey, err := fx.GetMetadataKey(identity)
+		require.NoError(t, err)
+		assert.True(t, profileSymKey.Equals(gotKey))
+	})
+
+	t.Run("nil key for unknown identity fails", func(t *testing.T) {
+		// given
+		fx := newFixture(t, time.Minute)
+
+		// when
+		err := fx.RegisterIdentity("space1", "unknownIdentity", nil)
+
+		// then
+		require.Error(t, err)
+	})
+
+	t.Run("own identity key is derived and persisted on nil key", func(t *testing.T) {
+		// given
+		fx := newFixture(t, time.Minute)
+		accKeys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		fx.accountService.EXPECT().Keys().Return(accKeys).Maybe()
+		fx.myIdentity = accKeys.SignKey.GetPublic().Account()
+
+		// when
+		err = fx.RegisterIdentity("space1", fx.myIdentity, nil)
+
+		// then
+		require.NoError(t, err)
+		persisted, err := fx.identityEncryptionKeyStore.Get(context.Background(), fx.myIdentity)
+		require.NoError(t, err)
+		_, wantKey, err := domain.DeriveAccountMetadata(accKeys.SignKey)
+		require.NoError(t, err)
+		assert.True(t, wantKey.Equals(persisted))
 	})
 }
 
 func TestObservers(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
 	testObserverPeriod := 10 * time.Millisecond
 	fx := newFixture(t, testObserverPeriod)
 
@@ -271,10 +345,8 @@ func TestObservers(t *testing.T) {
 	}
 	wantData := marshalProfile(t, wantProfile, profileSymKey)
 
-	callbackCalls := mb.New[*model.IdentityProfile](0)
-	err = fx.RegisterIdentity(spaceId, identity, profileSymKey, func(gotIdentity string, gotProfile *model.IdentityProfile) {
-		callbackCalls.Add(ctx, gotProfile)
-	})
+	fx.addParticipant(t, spaceId, identity)
+	err = fx.RegisterIdentity(spaceId, identity, profileSymKey)
 	require.NoError(t, err)
 
 	time.Sleep(testObserverPeriod * 2)
@@ -287,6 +359,11 @@ func TestObservers(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	// the profile from the identity repo is fanned out into the participant record
+	require.Eventually(t, func() bool {
+		return fx.participantHasName(spaceId, identity, "name1")
+	}, time.Second, testObserverPeriod)
+
 	t.Run("change profile's name", func(t *testing.T) {
 		wantProfile2 := &model.IdentityProfile{
 			Identity:    identity,
@@ -296,7 +373,6 @@ func TestObservers(t *testing.T) {
 		}
 		wantData2 := marshalProfile(t, wantProfile2, profileSymKey)
 
-		time.Sleep(testObserverPeriod * 2)
 		err = fx.identityRepoClient.IdentityRepoPut(context.Background(), identity, []*identityrepoproto.Data{
 			{
 				Kind: identityRepoDataKind,
@@ -304,44 +380,25 @@ func TestObservers(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
+
+		require.Eventually(t, func() bool {
+			return fx.participantHasName(spaceId, identity, "name1 edited")
+		}, time.Second, testObserverPeriod)
+		details := fx.participantDetails(t, spaceId, identity)
+		assert.Equal(t, "my description", details.GetString(bundle.RelationKeyDescription))
+		assert.Equal(t, globalName, details.GetString(bundle.RelationKeyGlobalName))
 	})
 
-	gotCalls, err := callbackCalls.NewCond().WithMin(2).WithMax(2).Wait(ctx)
-	require.NoError(t, err)
-
-	wantCalls := []*model.IdentityProfile{
-		{
-			Identity:   identity,
-			Name:       "name1",
-			GlobalName: globalName,
-		},
-		{
-			Identity:    identity,
-			Name:        "name1 edited",
-			Description: "my description",
-			GlobalName:  globalName,
-		},
-	}
-	assert.Equal(t, wantCalls, gotCalls)
-
-	secondCallbackCalls := mb.New[*model.IdentityProfile](0)
-	t.Run("callback should be called at least once for each observer", func(t *testing.T) {
-		err = fx.RegisterIdentity("space2", identity, profileSymKey, func(gotIdentity string, gotProfile *model.IdentityProfile) {
-			secondCallbackCalls.Add(ctx, gotProfile)
-		})
+	t.Run("a newly registered space gets the current profile", func(t *testing.T) {
+		fx.addParticipant(t, "space2", identity)
+		err = fx.RegisterIdentity("space2", identity, profileSymKey)
 		require.NoError(t, err)
+
+		// the in-memory cached profile is fanned out synchronously on registration
+		details := fx.participantDetails(t, "space2", identity)
+		assert.Equal(t, "name1 edited", details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "my description", details.GetString(bundle.RelationKeyDescription))
 	})
-
-	for {
-		gotCalls, err = secondCallbackCalls.NewCond().WithMin(1).WithMax(1).Wait(ctx)
-		require.NoError(t, err)
-
-		// Eventually we have to receive last profile edit
-		ok := proto.Equal(wantCalls[1], gotCalls[0])
-		if ok {
-			break
-		}
-	}
 }
 
 func TestGetIdentitiesDataFromRepo(t *testing.T) {
@@ -361,10 +418,7 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 		testObserverPeriod := time.Minute
 		fx := newFixture(t, testObserverPeriod)
 		nsServiceResult := make([]*nameserviceproto.NameByAddressResponse, 0, 100)
-		var (
-			wg                                 sync.WaitGroup
-			allIdentities, processedIdentities []string
-		)
+		var allIdentities []string
 		for i := 0; i < 100; i++ {
 			identity := fmt.Sprintf("identity%d", i)
 			allIdentities = append(allIdentities, identity)
@@ -384,16 +438,9 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			wg.Add(1)
-			fx.identityObservers[identity] = map[string]*observer{
-				"test": {
-					callback: func(identity string, profile *model.IdentityProfile) {
-						processedIdentities = append(processedIdentities, identity)
-						wg.Done()
-					},
-				},
-			}
+			fx.identityObservers[identity] = map[string]struct{}{"test": {}}
 			fx.identityEncryptionKeys[identity] = profileSymKey
+			fx.addParticipant(t, "test", identity)
 			nsServiceResult = append(nsServiceResult, &nameserviceproto.NameByAddressResponse{
 				Found: false,
 				Name:  "",
@@ -405,20 +452,16 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 		fx.identityForceUpdate <- struct{}{}
 
 		// then
-		wg.Wait()
-		slices.Sort(allIdentities)
-		slices.Sort(processedIdentities)
-		assert.Equal(t, allIdentities, processedIdentities)
+		require.Eventually(t, func() bool {
+			return allParticipantsHaveName(fx, "test", allIdentities, "name1")
+		}, 5*time.Second, 10*time.Millisecond)
 	})
 	t.Run("receive more than 100 identities", func(t *testing.T) {
 		// given
 		testObserverPeriod := time.Duration(math.MaxInt) // make sure observing won't run by ticker
 		fx := newFixture(t, testObserverPeriod)
 		nsServiceResult := make([]*nameserviceproto.NameByAddressResponse, 0, 100)
-		var (
-			wg                                 sync.WaitGroup
-			allIdentities, processedIdentities []string
-		)
+		var allIdentities []string
 		for i := 0; i < 500; i++ {
 			identity := fmt.Sprintf("identity%d", i)
 			allIdentities = append(allIdentities, identity)
@@ -438,16 +481,9 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			wg.Add(1)
-			fx.identityObservers[identity] = map[string]*observer{
-				"test": {
-					callback: func(identity string, profile *model.IdentityProfile) {
-						processedIdentities = append(processedIdentities, identity)
-						wg.Done()
-					},
-				},
-			}
+			fx.identityObservers[identity] = map[string]struct{}{"test": {}}
 			fx.identityEncryptionKeys[identity] = profileSymKey
+			fx.addParticipant(t, "test", identity)
 			nsServiceResult = append(nsServiceResult, &nameserviceproto.NameByAddressResponse{
 				Found: false,
 				Name:  "",
@@ -459,20 +495,16 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 		fx.identityForceUpdate <- struct{}{}
 
 		// then
-		wg.Wait()
-		slices.Sort(allIdentities)
-		slices.Sort(processedIdentities)
-		assert.Equal(t, allIdentities, processedIdentities)
+		require.Eventually(t, func() bool {
+			return allParticipantsHaveName(fx, "test", allIdentities, "name1")
+		}, 5*time.Second, 10*time.Millisecond)
 	})
 	t.Run("partly receive identity from coordinator, but it failed at some point - use cache for such identities", func(t *testing.T) {
 		// given
 		testObserverPeriod := time.Duration(math.MaxInt) // make sure observing won't run by ticker
 		fx := newFixture(t, testObserverPeriod)
 		nsServiceResult := make([]*nameserviceproto.NameByAddressResponse, 0, 100)
-		var (
-			wg                                 sync.WaitGroup
-			allIdentities, processedIdentities []string
-		)
+		var allIdentities []string
 		for i := 0; i < 500; i++ {
 			identity := fmt.Sprintf("identity%d", i)
 			allIdentities = append(allIdentities, identity)
@@ -491,16 +523,10 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 					Data: wantData,
 				},
 			})
-			wg.Add(1)
-			fx.identityObservers[identity] = map[string]*observer{
-				"test": {
-					callback: func(identity string, profile *model.IdentityProfile) {
-						processedIdentities = append(processedIdentities, identity)
-						wg.Done()
-					},
-				},
-			}
+			require.NoError(t, err)
+			fx.identityObservers[identity] = map[string]struct{}{"test": {}}
 			fx.identityEncryptionKeys[identity] = profileSymKey
+			fx.addParticipant(t, "test", identity)
 			nsServiceResult = append(nsServiceResult, &nameserviceproto.NameByAddressResponse{
 				Found: false,
 				Name:  "",
@@ -524,9 +550,17 @@ func TestGetIdentitiesDataFromRepo(t *testing.T) {
 		fx.identityForceUpdate <- struct{}{}
 
 		// then
-		wg.Wait()
-		slices.Sort(allIdentities)
-		slices.Sort(processedIdentities)
-		assert.Equal(t, allIdentities, processedIdentities)
+		require.Eventually(t, func() bool {
+			return allParticipantsHaveName(fx, "test", allIdentities, "name1")
+		}, 5*time.Second, 10*time.Millisecond)
 	})
+}
+
+func allParticipantsHaveName(fx *fixture, spaceId string, identities []string, name string) bool {
+	for _, identity := range identities {
+		if !fx.participantHasName(spaceId, identity, name) {
+			return false
+		}
+	}
+	return true
 }

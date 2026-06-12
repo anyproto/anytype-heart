@@ -16,6 +16,11 @@ Scope: space
 Called by aclobjectmanager for each account in ACL state. WatchParticipant registers
 an identity observer that triggers updateParticipantFromIdentity on profile changes.
 On Close, unregisters all identity observers for the space.
+
+Participant objects are store-only: all writes go directly to the per-space object
+index (ModifyObjectDetails merge), never through a smartblock. The merge fires
+subscription events only on real changes; fulltext indexing is enqueued only when
+name or description changed (the only participant keys producing fulltext docs).
 */
 
 import (
@@ -33,10 +38,11 @@ import (
 	"github.com/anyproto/any-sync/util/crypto/cryptoproto"
 	"go.uber.org/zap"
 
-	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/participants"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -54,12 +60,17 @@ type ParticipantWatcher interface {
 	app.ComponentRunnable
 	WatchParticipant(ctx context.Context, space clientspace.Space, accState list.AccountState) error
 	UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error
-}
-
-type participant interface {
-	ModifyIdentityDetails(profile *model.IdentityProfile) (err error)
-	ModifyProfileDetails(profileDetails *domain.Details) (err error)
-	ModifyParticipantAclState(accState spaceinfo.ParticipantAclInfo) (err error)
+	// WatchPersistedParticipants registers all participant identities found in the
+	// space's object index for identity tracking, using previously persisted
+	// encryption keys. Used on the skip path when the ACL head hasn't changed since
+	// the last full processing; an error means the caller must fall back to full
+	// ACL processing.
+	WatchPersistedParticipants(ctx context.Context, space clientspace.Space) error
+	// GetProcessedAclHeadId returns the ACL head the participants of the space were
+	// last fully processed for; empty when never processed
+	GetProcessedAclHeadId(ctx context.Context, space clientspace.Space) string
+	// SetProcessedAclHeadId persists the ACL head after a full participants processing pass
+	SetProcessedAclHeadId(ctx context.Context, space clientspace.Space, headId string) error
 }
 
 var _ ParticipantWatcher = (*participantWatcher)(nil)
@@ -150,12 +161,7 @@ func (p *participantWatcher) WatchParticipant(ctx context.Context, space clients
 		return
 	}
 
-	err = p.identityService.RegisterIdentity(space.Id(), state.PubKey.Account(), key, func(identity string, profile *model.IdentityProfile) {
-		err := p.updateParticipantFromIdentity(space, identity, profile)
-		if err != nil {
-			log.Error("error updating participant from identity", zap.Error(err))
-		}
-	})
+	err = p.identityService.RegisterIdentity(space.Id(), state.PubKey.Account(), key)
 	if err != nil {
 		return err
 	}
@@ -181,32 +187,123 @@ func (p *participantWatcher) Close(ctx context.Context) (err error) {
 	return
 }
 
-func (p *participantWatcher) UpdateAccountParticipantFromProfile(ctx context.Context, space clientspace.Space) error {
-	myIdentity, _, profileDetails := p.identityService.GetMyProfileDetails(ctx)
-	id := domain.NewParticipantId(space.Id(), myIdentity)
-	return space.Do(id, func(sb smartblock.SmartBlock) error {
-		return sb.(participant).ModifyProfileDetails(profileDetails)
-	})
-}
-
 func (p *participantWatcher) UpdateParticipantFromAclState(ctx context.Context, space clientspace.Space, accState list.AccountState) error {
 	id := domain.NewParticipantId(space.Id(), accState.PubKey.Account())
-	return space.Do(id, func(sb smartblock.SmartBlock) error {
-		return sb.(participant).ModifyParticipantAclState(spaceinfo.ParticipantAclInfo{
-			Id:          id,
-			SpaceId:     space.Id(),
-			Identity:    accState.PubKey.Account(),
-			Permissions: convertPermissions(accState.Permissions),
-			Status:      convertStatus(accState.Status),
-		})
+	details, err := p.buildAclDetails(spaceinfo.ParticipantAclInfo{
+		Id:          id,
+		SpaceId:     space.Id(),
+		Identity:    accState.PubKey.Account(),
+		Permissions: convertPermissions(accState.Permissions),
+		Status:      convertStatus(accState.Status),
 	})
+	if err != nil {
+		return fmt.Errorf("build participant acl details: %w", err)
+	}
+	return p.modifyParticipant(ctx, space, id, details)
 }
 
-func (p *participantWatcher) updateParticipantFromIdentity(space clientspace.Space, identity string, profile *model.IdentityProfile) (err error) {
-	id := domain.NewParticipantId(space.Id(), identity)
-	return space.Do(id, func(sb smartblock.SmartBlock) error {
-		return sb.(participant).ModifyIdentityDetails(profile)
+// modifyParticipant merges newDetails into the participant record in the per-space
+// object index. Participants have no smartblock state: the store is the only
+// persistence, and subscription events fire from the store merge itself.
+func (p *participantWatcher) modifyParticipant(ctx context.Context, space clientspace.Space, id string, newDetails *domain.Details) error {
+	baseDetails, err := p.buildBaseDetails(ctx, space, id)
+	if err != nil {
+		return fmt.Errorf("build participant base details: %w", err)
+	}
+	return participants.ModifyDetails(ctx, p.objectStore, space.Id(), id, baseDetails, newDetails)
+}
+
+// buildBaseDetails returns the details every participant record must carry; they are
+// written once on record creation (parity with the former smartblock Init + template).
+func (p *participantWatcher) buildBaseDetails(ctx context.Context, space clientspace.Space, id string) (*domain.Details, error) {
+	typeId, err := space.GetTypeIdByKey(ctx, bundle.TypeKeyParticipant)
+	if err != nil {
+		return nil, fmt.Errorf("get participant type id: %w", err)
+	}
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyId, id)
+	details.SetString(bundle.RelationKeySpaceId, space.Id())
+	details.SetString(bundle.RelationKeyType, typeId)
+	details.SetString(bundle.RelationKeyCreator, addr.AnytypeProfileId)
+	details.SetInt64(bundle.RelationKeyResolvedLayout, int64(model.ObjectType_participant))
+	details.SetInt64(bundle.RelationKeyLayoutAlign, int64(model.Block_AlignCenter))
+	details.SetBool(bundle.RelationKeyIsReadonly, true)
+	details.SetBool(bundle.RelationKeyIsArchived, false)
+	details.SetBool(bundle.RelationKeyIsHidden, false)
+	return details, nil
+}
+
+func (p *participantWatcher) buildAclDetails(info spaceinfo.ParticipantAclInfo) (*domain.Details, error) {
+	details := domain.NewDetails()
+	details.SetString(bundle.RelationKeyId, info.Id)
+	details.SetString(bundle.RelationKeyIdentity, info.Identity)
+	details.SetString(bundle.RelationKeySpaceId, info.SpaceId)
+	details.SetString(bundle.RelationKeyLastModifiedBy, info.Id)
+	details.SetInt64(bundle.RelationKeyParticipantPermissions, int64(info.Permissions))
+	details.SetInt64(bundle.RelationKeyParticipantStatus, int64(info.Status))
+	details.SetBool(bundle.RelationKeyIsHiddenDiscovery, info.Status != model.ParticipantStatus_Active)
+	if p.myParticipantId(info.SpaceId) == info.Id {
+		accountObjectId, err := p.techSpace.AccountObjectId()
+		if err != nil {
+			return nil, fmt.Errorf("get account object id: %w", err)
+		}
+		details.SetString(bundle.RelationKeyIdentityProfileLink, accountObjectId)
+	}
+	return details, nil
+}
+
+func (p *participantWatcher) WatchPersistedParticipants(ctx context.Context, space clientspace.Space) error {
+	records, err := p.objectStore.SpaceIndex(space.Id()).Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_participant)),
+			},
+		},
 	})
+	if err != nil {
+		return fmt.Errorf("query participants: %w", err)
+	}
+	p.mx.Lock()
+	defer p.mx.Unlock()
+	for _, record := range records {
+		identity := record.Details.GetString(bundle.RelationKeyIdentity)
+		if identity == "" {
+			continue
+		}
+		if _, exists := p.addedParticipants[identity]; exists {
+			continue
+		}
+		// nil key: reuse the key persisted during the last full ACL processing pass
+		err = p.identityService.RegisterIdentity(space.Id(), identity, nil)
+		if err != nil {
+			return fmt.Errorf("register identity %s with persisted key: %w", identity, err)
+		}
+		p.addedParticipants[identity] = struct{}{}
+	}
+	return nil
+}
+
+func (p *participantWatcher) GetProcessedAclHeadId(ctx context.Context, space clientspace.Space) string {
+	headId, err := p.objectStore.SpaceIndex(space.Id()).GetLastIndexedHeadsHash(ctx, participants.AclHeadMarkerId)
+	if err != nil {
+		log.Warn("get processed acl head id", zap.Error(err))
+		return ""
+	}
+	return headId
+}
+
+func (p *participantWatcher) SetProcessedAclHeadId(ctx context.Context, space clientspace.Space, headId string) error {
+	err := p.objectStore.SpaceIndex(space.Id()).SaveLastIndexedHeadsHash(ctx, participants.AclHeadMarkerId, headId)
+	if err != nil {
+		return fmt.Errorf("save processed acl head id: %w", err)
+	}
+	return nil
+}
+
+func (p *participantWatcher) myParticipantId(spaceId string) string {
+	return domain.NewParticipantId(spaceId, p.accountService.Account().SignKey.GetPublic().Account())
 }
 
 func (p *participantWatcher) Run(ctx context.Context) error {

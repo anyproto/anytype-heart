@@ -29,6 +29,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
@@ -281,6 +282,17 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 		return
 	}
 
+	// store-owned objects (e.g. participants): fulltext docs derive from details alone,
+	// loading them into the object cache would build a smartblock for nothing
+	if sbType, sbTypeErr := typeprovider.SmartblockTypeFromID(object.ObjectId); sbTypeErr == nil && sbType.DetailsStoreOwned() {
+		if err != nil {
+			return nil, false, fmt.Errorf("get details for details-only fulltext: %w", err)
+		}
+		// an empty record means the object is gone from the store: no docs are
+		// returned and filterOutNotChangedDocuments drops the stale ones
+		return i.prepareDetailsOnlySearchDocs(object.SpaceId, object.ObjectId, details), false, nil
+	}
+
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
 
 	if object.MsgOrderId != "" || len(object.DeletedMsgIds) > 0 {
@@ -322,6 +334,14 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 	}
 
 	return docs, isChat, nil
+}
+
+// prepareDetailsOnlySearchDocs builds fulltext docs from objectstore details without
+// loading the object, applying the same relation-doc filtering as the smartblock path.
+func (i *indexer) prepareDetailsOnlySearchDocs(spaceId, objectId string, details *domain.Details) []ftsearch.SearchDoc {
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
+	return i.prepareRelationSearchDocsFromDetails(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, layout, details)
 }
 
 func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
@@ -369,7 +389,22 @@ func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullT
 
 func (i *indexer) prepareRelationSearchDocs(fullId domain.FullID, sb smartblock.SmartBlock) (docs []ftsearch.SearchDoc) {
 	layout, _ := sb.Layout()
-	for key, value := range sb.Details().Iterate() {
+	docs = i.prepareRelationSearchDocsFromDetails(fullId, layout, sb.Details())
+
+	if layout == model.ObjectType_note {
+		snippet := sb.LocalDetails().GetString(bundle.RelationKeySnippet)
+		docs = append(docs, ftsearch.SearchDoc{
+			Id:      domain.NewObjectPathWithRelation(fullId.ObjectID, bundle.RelationKeySnippet.String()).String(),
+			SpaceId: fullId.SpaceID,
+			Text:    snippet,
+		})
+	}
+
+	return docs
+}
+
+func (i *indexer) prepareRelationSearchDocsFromDetails(fullId domain.FullID, layout model.ObjectTypeLayout, details *domain.Details) (docs []ftsearch.SearchDoc) {
+	for key, value := range details.Iterate() {
 		format, err := i.formatFetcher.GetRelationFormatByKey(fullId.SpaceID, key)
 		if err == nil && !isIndexableFormat(format) {
 			continue
@@ -401,15 +436,6 @@ func (i *indexer) prepareRelationSearchDocs(fullId domain.FullID, sb smartblock.
 		}
 
 		docs = append(docs, doc)
-	}
-
-	if layout == model.ObjectType_note {
-		snippet := sb.LocalDetails().GetString(bundle.RelationKeySnippet)
-		docs = append(docs, ftsearch.SearchDoc{
-			Id:      domain.NewObjectPathWithRelation(fullId.ObjectID, bundle.RelationKeySnippet.String()).String(),
-			SpaceId: fullId.SpaceID,
-			Text:    snippet,
-		})
 	}
 
 	return docs
