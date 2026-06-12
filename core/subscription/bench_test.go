@@ -222,6 +222,101 @@ func BenchmarkLimitZeroSteadyState(b *testing.B) {
 	}
 }
 
+const benchTagOptions = 20
+
+// seedBenchTagWorld seeds a tag relation, benchTagOptions options and n
+// tagged todo objects (one tag each, round-robin)
+func seedBenchTagWorld(tb testing.TB, fx *benchFixture, n int) {
+	objs := make([]objectstore.TestObject, 0, n+benchTagOptions+1)
+	objs = append(objs, givenTagRelation())
+	for i := 0; i < benchTagOptions; i++ {
+		objs = append(objs, givenTagOption(fmt.Sprintf("t%02d", i)))
+	}
+	for i := 0; i < n; i++ {
+		objs = append(objs, givenTaggedTask(fmt.Sprintf("task-%05d", i), fmt.Sprintf("t%02d", i%benchTagOptions)))
+	}
+	fx.objectStore.AddObjects(tb, testSpaceId, objs)
+}
+
+func benchGroupsRequest() SubscribeGroupsRequest {
+	return SubscribeGroupsRequest{
+		SpaceId:     testSpaceId,
+		SubId:       "bench-groups",
+		RelationKey: tagKey,
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_todo)),
+			},
+		},
+	}
+}
+
+// BenchmarkSubscribeGroups1k measures the kanban groups subscribe path:
+// grouper resolution, member + option relevance seeding, the grouper's own
+// store query and the initial group computation. Same subId per iteration —
+// replace-on-resubscribe is the client's real re-subscribe pattern.
+func BenchmarkSubscribeGroups1k(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchTagWorld(b, fx, 1000)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		resp, err := fx.SubscribeGroups(benchGroupsRequest())
+		if err != nil {
+			b.Fatal(err)
+		}
+		if len(resp.Groups) != benchTagOptions+1 { // + the no-value column
+			b.Fatalf("unexpected group count %d", len(resp.Groups))
+		}
+	}
+}
+
+// BenchmarkGroupsRecompute1k measures the full per-change cost of a live
+// groups subscription: the relevance check marking it dirty plus the
+// off-mutex recomputation (grouper store query + group diff) a member's
+// grouped-value change triggers.
+func BenchmarkGroupsRecompute1k(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchTagWorld(b, fx, 1000)
+	if _, err := fx.SubscribeGroups(benchGroupsRequest()); err != nil {
+		b.Fatal(err)
+	}
+	st := fx.spaceState(b)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		// alternate the tag so the relevance check sees a real value change
+		obj := givenTaggedTask("task-00000", fmt.Sprintf("t%02d", i%benchTagOptions))
+		items := []feedItem{{id: "task-00000", details: obj.Details()}}
+		b.StartTimer()
+		st.processBatch(items)
+	}
+}
+
+// BenchmarkGroupsMissPath measures the relevance check for feed items a
+// groups subscription does not care about — the cost every irrelevant
+// update in the space pays per groups sub
+func BenchmarkGroupsMissPath(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchTagWorld(b, fx, 1000)
+	if _, err := fx.SubscribeGroups(benchGroupsRequest()); err != nil {
+		b.Fatal(err)
+	}
+	st := fx.spaceState(b)
+
+	// a participant: wrong layout for the member filter, not an option
+	items := []feedItem{{id: "miss-object", details: benchDetails(0, model.ObjectType_participant)}}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		st.processBatch(items)
+	}
+}
+
 func BenchmarkWindowShift500(b *testing.B) {
 	fx := newBenchFixture(b)
 	seedBenchObjects(b, fx, 5000)
