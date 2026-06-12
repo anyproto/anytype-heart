@@ -134,30 +134,23 @@ func deliverOps(ctx context.Context, sender eventSender, ops []subOp) {
 
 	for i := range ops {
 		op := &ops[i]
-		if q := op.sub.queue; q != nil {
-			if queued == nil {
-				queued = make(map[*mb.MB[*pb.EventMessage]][]*pb.EventMessage)
+		q := op.sub.queue
+		if q == nil {
+			if msg := encodeOp(op); msg != nil {
+				broadcast = append(broadcast, msg)
 			}
-			if _, ok := queued[q]; !ok {
-				// once per queue per batch: the length cannot grow during
-				// the loop (this batch's Add happens after it)
-				if op.sub.queueOwned && q.Len() > maxInternalQueueLen {
-					// Close is the latch: it errors on an already-closed
-					// queue, so the kill is logged exactly once
-					if q.Close() == nil {
-						log.Errorf("subscription %s: internal queue overflow (>%d messages), closing — consumer stalled",
-							op.sub.subId, maxInternalQueueLen)
-					}
-				}
-				queues = append(queues, q)
-			}
-			msg := encodeOp(op)
-			if msg == nil {
-				continue
-			}
+			continue
+		}
+		if queued == nil {
+			queued = make(map[*mb.MB[*pb.EventMessage]][]*pb.EventMessage)
+		}
+		if _, ok := queued[q]; !ok {
+			maybeKillOverflowed(op.sub, q)
+			queues = append(queues, q)
+			queued[q] = nil // marks the queue seen even before its first message
+		}
+		if msg := encodeOp(op); msg != nil {
 			queued[q] = append(queued[q], msg)
-		} else if msg := encodeOp(op); msg != nil {
-			broadcast = append(broadcast, msg)
 		}
 	}
 
@@ -165,10 +158,28 @@ func deliverOps(ctx context.Context, sender eventSender, ops []subOp) {
 		sender.Broadcast(&pb.Event{Messages: broadcast})
 	}
 	for _, q := range queues {
+		if len(queued[q]) == 0 {
+			continue
+		}
 		if err := q.Add(ctx, queued[q]...); err != nil &&
 			!errors.Is(err, mb.ErrClosed) && !errors.Is(err, context.Canceled) {
 			log.Warnf("subscription: enqueue events: %v", err)
 		}
+	}
+}
+
+// maybeKillOverflowed closes an engine-owned queue whose consumer has fallen
+// hopelessly behind. Checked once per queue per batch — the length cannot
+// grow during the delivery loop, this batch's Add happens after it. Close is
+// the latch: it errors on an already-closed queue, so the kill is logged
+// exactly once. Caller-provided queues are never policed.
+func maybeKillOverflowed(sub *coreSub, q *mb.MB[*pb.EventMessage]) {
+	if !sub.queueOwned || q.Len() <= maxInternalQueueLen {
+		return
+	}
+	if q.Close() == nil {
+		log.Errorf("subscription %s: internal queue overflow (>%d messages), closing — consumer stalled",
+			sub.subId, maxInternalQueueLen)
 	}
 }
 

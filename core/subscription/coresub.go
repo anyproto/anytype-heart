@@ -356,27 +356,7 @@ func (c *coreSub) orderedStay(id string, details *domain.Details) {
 	}
 
 	if c.order != nil {
-		newSort := projectDetails(details, c.sortKeys)
-		if !newSort.Equal(e.sortVals) {
-			c.beginBatch()
-			if c.offset > 0 {
-				// offset windows rebuild via re-query for EVERY order
-				// mutation, the visible-member reposition included: a member
-				// moving above the offset boundary stays in the local window
-				// while the true occupant (rank offset-1) is unknown
-				c.needsRequery = true
-			} else {
-				c.removeWin(e)
-				e.sortVals = newSort
-				pos := c.searchWin(e)
-				c.insertWin(pos, e)
-				// landing last with members beyond the window leaves its
-				// true rank relative to them unknown
-				if pos == len(c.win)-1 && len(c.members) > len(c.win) {
-					c.needsRequery = true
-				}
-			}
-		}
+		c.repositionOnSortChange(e, details)
 	}
 
 	next, amend, unset := diffProject(e.prev, details, c.keys)
@@ -392,6 +372,33 @@ func (c *coreSub) orderedStay(id string, details *domain.Details) {
 	}
 	if len(unset) > 0 {
 		c.detailOps = append(c.detailOps, subOp{sub: c, kind: opUnset, id: id, unset: unset})
+	}
+}
+
+// repositionOnSortChange moves a visible entry to its new rank when a detail
+// change altered its sort projection
+func (c *coreSub) repositionOnSortChange(e *visEntry, details *domain.Details) {
+	newSort := projectDetails(details, c.sortKeys)
+	if newSort.Equal(e.sortVals) {
+		return
+	}
+	c.beginBatch()
+	if c.offset > 0 {
+		// offset windows rebuild via re-query for EVERY order mutation, the
+		// visible-member reposition included: a member moving above the
+		// offset boundary stays in the local window while the true occupant
+		// (rank offset-1) is unknown
+		c.needsRequery = true
+		return
+	}
+	c.removeWin(e)
+	e.sortVals = newSort
+	pos := c.searchWin(e)
+	c.insertWin(pos, e)
+	// landing last with members beyond the window leaves its true rank
+	// relative to them unknown
+	if pos == len(c.win)-1 && len(c.members) > len(c.win) {
+		c.needsRequery = true
 	}
 }
 
@@ -612,28 +619,7 @@ func (t idTiebreakOrder) AnystoreSort() query.Sort {
 // the total changed
 func (c *coreSub) finalize(out *opBatch) {
 	if c.ordered && c.batchActive {
-		requeryOk := true
-		if c.needsRequery {
-			requeryOk = c.requeryWindow()
-			if requeryOk {
-				c.needsRequery = false
-			}
-		}
-		if requeryOk {
-			c.batchActive = false
-			if !c.detailEventsOnly {
-				opsBefore := len(out.ops)
-				c.windowDiffOps(out)
-				if len(out.ops) > opsBefore && c.depTracker != nil {
-					// window membership changed: dep set derives from it
-					c.depDirty = true
-				}
-			}
-			c.oldWin = nil
-		}
-		// on a failed re-query keep batchActive/oldWin/needsRequery: the
-		// next batch retries with the client's actual list still being the
-		// diff baseline; offset windows rely entirely on the re-query
+		c.finalizeWindow(out)
 	}
 	if len(c.detailOps) > 0 {
 		out.ops = append(out.ops, c.detailOps...)
@@ -645,6 +631,30 @@ func (c *coreSub) finalize(out *opBatch) {
 			out.append(subOp{sub: c, kind: opCounters, total: int64(total)})
 		}
 	}
+}
+
+// finalizeWindow closes an active ordered batch: it runs the pending
+// re-query if one is needed, then emits the window-diff script. On a failed
+// re-query batchActive/oldWin/needsRequery are kept: the next batch retries
+// with the client's actual list still being the diff baseline; offset
+// windows rely entirely on the re-query.
+func (c *coreSub) finalizeWindow(out *opBatch) {
+	if c.needsRequery {
+		if !c.requeryWindow() {
+			return
+		}
+		c.needsRequery = false
+	}
+	c.batchActive = false
+	if !c.detailEventsOnly {
+		opsBefore := len(out.ops)
+		c.windowDiffOps(out)
+		if len(out.ops) > opsBefore && c.depTracker != nil {
+			// window membership changed: dep set derives from it
+			c.depDirty = true
+		}
+	}
+	c.oldWin = nil
 }
 
 // windowDiffOps emits a script that replays the old window into the new one

@@ -138,8 +138,12 @@ func (s *service) Init(a *app.App) (err error) {
 	s.eventSender = app.MustComponent[event.Sender](a)
 	// the acceptance fixtures register these under arbitrary component names
 	// (or not at all), so: by type, non-panicking
-	s.kanban, _ = app.GetComponent[kanban.Service](a)
-	s.collectionService, _ = app.GetComponent[CollectionService](a)
+	if kanbanService, err := app.GetComponent[kanban.Service](a); err == nil {
+		s.kanban = kanbanService
+	}
+	if collectionService, err := app.GetComponent[CollectionService](a); err == nil {
+		s.collectionService = collectionService
+	}
 
 	s.componentCtx, s.componentCancel = context.WithCancel(context.Background())
 	s.slots = make(map[string]*subSlot)
@@ -342,21 +346,7 @@ func buildCoreSub(spec subSpec, filters *database.Filters) *coreSub {
 		sub.offset = spec.offset
 		if len(spec.sorts) > 0 && filters != nil {
 			sub.order = filters.Order
-			sub.sortKeys = make([]domain.RelationKey, 0, len(spec.sorts)+2)
-			var sortsByName bool
-			for _, s := range spec.sorts {
-				sub.sortKeys = append(sub.sortKeys, s.RelationKey)
-				if s.RelationKey == bundle.RelationKeyName {
-					sortsByName = true
-				}
-			}
-			if sortsByName {
-				// the text comparator substitutes a note's snippet for its
-				// name (KeyOrder.trySubstituteSnippet) — it reads these two
-				// keys, so sort projections must carry them or in-memory
-				// ordering diverges from the store's
-				sub.sortKeys = append(sub.sortKeys, bundle.RelationKeyResolvedLayout, bundle.RelationKeySnippet)
-			}
+			sub.sortKeys = sortProjectionKeys(spec.sorts)
 		}
 	}
 	if spec.scopeIds != nil {
@@ -374,6 +364,27 @@ func buildCoreSub(spec subSpec, filters *database.Filters) *coreSub {
 		}
 	}
 	return sub
+}
+
+// sortProjectionKeys returns the relation keys a sort projection must carry
+// for the in-memory comparator to agree with the store's ordering
+func sortProjectionKeys(sorts []database.SortRequest) []domain.RelationKey {
+	keys := make([]domain.RelationKey, 0, len(sorts)+2)
+	var sortsByName bool
+	for _, s := range sorts {
+		keys = append(keys, s.RelationKey)
+		if s.RelationKey == bundle.RelationKeyName {
+			sortsByName = true
+		}
+	}
+	if sortsByName {
+		// the text comparator substitutes a note's snippet for its name
+		// (KeyOrder.trySubstituteSnippet) — it reads these two keys, so sort
+		// projections must carry them or in-memory ordering diverges from
+		// the store's
+		keys = append(keys, bundle.RelationKeyResolvedLayout, bundle.RelationKeySnippet)
+	}
+	return keys
 }
 
 func (s *service) compileFilters(spec subSpec, idx spaceindex.Store) (*database.Filters, error) {
@@ -468,7 +479,7 @@ func (s *service) getOrCreateSpace(spaceId string, idx spaceindex.Store) *spaceS
 		}
 		// the space's store was deleted and re-created: the cached state is
 		// wired to a dead store and its subscriptions are already
-		// event-dead. Orphan it (its teardown paths stay valid — removeSub
+		// event-dead. Orphan it (its teardown paths stay valid — detachSub
 		// works on a stopped state, maybeDropSpace skips states no longer
 		// in the registry) and build a fresh state on the new index. The
 		// old feed is unhooked and the undelivered outbox dropped so a
@@ -588,6 +599,57 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb
 	}, nil
 }
 
+// compileGroupsFilters compiles a fresh filter object for one groups
+// recomputation; source filters are AND-composed onto the compiled object
+// (see compileFilters for why)
+func compileGroupsFilters(spaceId string, filterRequests, sourceFilters []database.FilterRequest, idx spaceindex.Store) (*database.Filters, error) {
+	filters, err := database.NewFilters(database.Query{
+		SpaceId: spaceId,
+		Filters: slices.Clone(filterRequests),
+	}, idx, &anyenc.Arena{}, &collate.Buffer{})
+	if err != nil {
+		return nil, err
+	}
+	if len(sourceFilters) > 0 {
+		sourceObj, err := database.MakeFilters(sourceFilters, idx)
+		if err != nil {
+			return nil, fmt.Errorf("compile source filters: %w", err)
+		}
+		filters.FilterObj = database.FiltersAnd{filters.FilterObj, sourceObj}
+	}
+	return filters, nil
+}
+
+// collectionSnapshotIds reads a point-in-time membership snapshot of the
+// collection: subscribe, take the ids, immediately unsubscribe. The editor
+// broadcasts on the returned unbuffered channel while holding the collection
+// object's lock — the very lock the unsubscribe needs — so the channel is
+// drained until the unsubscribe closes it, or both sides deadlock
+// permanently.
+func (s *service) collectionSnapshotIds(collectionId, subId string) ([]string, error) {
+	snapId := fmt.Sprintf("%s/groups-snap-%s", subId, bson.NewObjectId().Hex())
+	ids, ch, err := s.collectionService.SubscribeForCollection(collectionId, snapId)
+	var drained chan struct{}
+	if ch != nil {
+		drained = make(chan struct{})
+		go func() {
+			defer close(drained)
+			for range ch {
+			}
+		}()
+	}
+	uerr := s.collectionService.UnsubscribeFromCollection(collectionId, snapId)
+	if uerr != nil {
+		log.Warnf("groups subscription %s: release collection snapshot: %v", subId, uerr)
+	} else if drained != nil {
+		<-drained
+	}
+	if err != nil {
+		return nil, fmt.Errorf("collection snapshot for groups %s: %w", collectionId, err)
+	}
+	return ids, nil
+}
+
 func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 	if req.SpaceId == "" {
 		return nil, errors.New("spaceId is required")
@@ -621,29 +683,9 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 		// collection scoping for groups is a snapshot: the grouper computes
 		// from store queries, so membership is folded in as an id filter
 		// taken at subscribe time (group sets refresh on re-subscribe)
-		snapId := fmt.Sprintf("%s/groups-snap-%s", subId, bson.NewObjectId().Hex())
-		ids, ch, err := s.collectionService.SubscribeForCollection(req.CollectionId, snapId)
-		// the editor broadcasts on this unbuffered channel while holding the
-		// collection object's lock — the very lock the unsubscribe needs.
-		// Drain until the unsubscribe closes the channel, or both sides
-		// deadlock permanently.
-		var drained chan struct{}
-		if ch != nil {
-			drained = make(chan struct{})
-			go func() {
-				defer close(drained)
-				for range ch {
-				}
-			}()
-		}
-		uerr := s.collectionService.UnsubscribeFromCollection(req.CollectionId, snapId)
-		if uerr != nil {
-			log.Warnf("groups subscription %s: release collection snapshot: %v", subId, uerr)
-		} else if drained != nil {
-			<-drained
-		}
+		ids, err := s.collectionSnapshotIds(req.CollectionId, subId)
 		if err != nil {
-			return nil, fmt.Errorf("collection snapshot for groups %s: %w", req.CollectionId, err)
+			return nil, err
 		}
 		filterRequests = append(filterRequests, database.FilterRequest{
 			RelationKey: bundle.RelationKeyId,
@@ -652,24 +694,10 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 		})
 	}
 	// the kanban groupers mutate the filters they are given, so every
-	// recomputation compiles a fresh copy; source filters are AND-composed
-	// onto the compiled object (see compileFilters for why)
+	// recomputation compiles a fresh copy; idx is captured by reference so
+	// recomputes after a space re-resolve use the current index
 	compile := func() (*database.Filters, error) {
-		filters, err := database.NewFilters(database.Query{
-			SpaceId: req.SpaceId,
-			Filters: slices.Clone(filterRequests),
-		}, idx, &anyenc.Arena{}, &collate.Buffer{})
-		if err != nil {
-			return nil, err
-		}
-		if len(sourceFilters) > 0 {
-			sourceObj, err := database.MakeFilters(sourceFilters, idx)
-			if err != nil {
-				return nil, fmt.Errorf("compile source filters: %w", err)
-			}
-			filters.FilterObj = database.FiltersAnd{filters.FilterObj, sourceObj}
-		}
-		return filters, nil
+		return compileGroupsFilters(req.SpaceId, filterRequests, sourceFilters, idx)
 	}
 	matchFilters, err := compile()
 	if err != nil {

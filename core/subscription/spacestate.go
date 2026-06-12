@@ -517,31 +517,7 @@ func (st *spaceState) seedStreaming(sub *coreSub) (records []*domain.Details, er
 // scan order, which is meaningless to the engine.
 func (st *spaceState) seedStreamingOrdered(sub *coreSub, filters *database.Filters) ([]*domain.Details, error) {
 	if sub.limit == 0 {
-		// unbounded window: everything is visible, project per row
-		var entries []*visEntry
-		err := st.idx.QueryIterateRaw(filters, func(details *domain.Details) error {
-			id := details.GetString(bundle.RelationKeyId)
-			if id == "" {
-				return nil
-			}
-			sub.members[id] = struct{}{}
-			e := sub.newVisEntry(id, details)
-			e.prev = projectDetails(details, sub.keys)
-			entries = append(entries, e)
-			return nil
-		})
-		if err != nil {
-			return nil, err
-		}
-		sort.SliceStable(entries, func(i, j int) bool { return sub.cmpEntries(entries[i], entries[j]) < 0 })
-		if sub.offset > 0 {
-			if sub.offset >= len(entries) {
-				entries = nil
-			} else {
-				entries = entries[sub.offset:]
-			}
-		}
-		return sub.setWindow(entries), nil
+		return st.seedStreamingUnbounded(sub, filters)
 	}
 
 	top := newTopKWindow(sub.offset+sub.limit, sub.cmpEntries)
@@ -569,6 +545,35 @@ func (st *spaceState) seedStreamingOrdered(sub *coreSub, filters *database.Filte
 	for _, p := range pairs {
 		p.entry.prev = projectDetails(p.details, sub.keys)
 		entries = append(entries, p.entry)
+	}
+	return sub.setWindow(entries), nil
+}
+
+// seedStreamingUnbounded seeds a limit-0 window: everything is visible, so
+// every row is projected as it streams
+func (st *spaceState) seedStreamingUnbounded(sub *coreSub, filters *database.Filters) ([]*domain.Details, error) {
+	var entries []*visEntry
+	err := st.idx.QueryIterateRaw(filters, func(details *domain.Details) error {
+		id := details.GetString(bundle.RelationKeyId)
+		if id == "" {
+			return nil
+		}
+		sub.members[id] = struct{}{}
+		e := sub.newVisEntry(id, details)
+		e.prev = projectDetails(details, sub.keys)
+		entries = append(entries, e)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.SliceStable(entries, func(i, j int) bool { return sub.cmpEntries(entries[i], entries[j]) < 0 })
+	if sub.offset > 0 {
+		if sub.offset >= len(entries) {
+			entries = nil
+		} else {
+			entries = entries[sub.offset:]
+		}
 	}
 	return sub.setWindow(entries), nil
 }
@@ -802,13 +807,6 @@ func (st *spaceState) hasSub(sub *coreSub) bool {
 		}
 	}
 	return false
-}
-
-// removeSub detaches the sub from the space; returns whether the space is
-// left without subscriptions
-func (st *spaceState) removeSub(sub *coreSub) (empty bool) {
-	_, empty = st.detachSub(sub)
-	return empty
 }
 
 // detachSub removes the sub (and its dep child) and snapshots its member ids

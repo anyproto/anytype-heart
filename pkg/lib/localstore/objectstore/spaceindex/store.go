@@ -255,7 +255,7 @@ func (t *notifyingTx) Context() context.Context {
 func (t *notifyingTx) Commit() error {
 	// a finished tx makes Commit a nil-returning no-op (rollback-then-commit
 	// pattern); flushing then would announce rolled-back writes
-	alreadyDone := t.WriteTx.Done()
+	alreadyDone := t.Done()
 	err := t.WriteTx.Commit()
 	if err == nil && !alreadyDone && !t.nested {
 		t.store.flushTxNotifications(t.notifications)
