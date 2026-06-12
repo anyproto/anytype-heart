@@ -408,7 +408,10 @@ func ComputeFinalScore(bm25Score float64, details *domain.Details, nameMatch boo
 	if details == nil {
 		return math.Log1p(bm25Score)
 	}
-	now := time.Now().Unix()
+	// hour granularity: the recency signal must be stable between consecutive
+	// page requests, or the re-ranked result order drifts mid-pagination and
+	// pages overlap; with a 30-day half-life the precision loss is negligible
+	now := time.Now().Truncate(time.Hour).Unix()
 	lastOpened := details.GetInt64(bundle.RelationKeyLastOpenedDate)
 	lastModified := details.GetInt64(bundle.RelationKeyLastModifiedDate)
 	var recency float64

@@ -2,7 +2,9 @@ package spaceindex
 
 import (
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -98,4 +100,82 @@ func TestFulltextQueryFillsThePage(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, records, 20)
 	})
+}
+
+// Offset pagination is only sound when the result order does not depend on
+// the candidate budget (which grows with the requested offset). The
+// final-score boosts may therefore re-rank only a fixed head of the BM25
+// order: re-ranking the whole budget-dependent pool would let a
+// recency-boosted tail candidate jump into an earlier page, shifting
+// everything below it and producing duplicates on the next page.
+func TestFulltextPaginationConsistency(t *testing.T) {
+	// given: 150 matching objects with descending BM25 scores (longer titles
+	// score lower); one deep-tail object is freshly modified, so a global
+	// re-rank would promote it across pages
+	fx := NewStoreFixture(t)
+	const (
+		total    = 150
+		pageSize = 20
+		recentId = "obj140"
+	)
+	objects := make([]TestObject, 0, total)
+	batcher := fx.fts.NewAutoBatcher()
+	for i := 0; i < total; i++ {
+		id := fmt.Sprintf("obj%03d", i)
+		title := "apple" + strings.Repeat(" filler", i/5)
+		obj := TestObject{
+			bundle.RelationKeyId:   domain.String(id),
+			bundle.RelationKeyName: domain.String(title),
+		}
+		if id == recentId {
+			obj[bundle.RelationKeyLastModifiedDate] = domain.Int64(time.Now().Unix())
+		}
+		objects = append(objects, obj)
+		require.NoError(t, batcher.UpsertDoc(ftsearch.SearchDoc{
+			Id:      id + "/r/name",
+			SpaceId: "test",
+			Title:   title,
+		}))
+	}
+	_, err := batcher.Finish()
+	require.NoError(t, err)
+	fx.AddObjects(t, objects)
+
+	query := func(limit, offset int) []string {
+		records, err := fx.Query(database.Query{
+			SpaceId:   "test",
+			TextQuery: "apple",
+			Limit:     limit,
+			Offset:    offset,
+		})
+		require.NoError(t, err)
+		ids := make([]string, 0, len(records))
+		for _, r := range records {
+			ids = append(ids, r.Details.GetString(bundle.RelationKeyId))
+		}
+		return ids
+	}
+
+	// when: one big page vs. many small pages (each request computes a
+	// different candidate budget)
+	full := query(total, 0)
+	require.Len(t, full, total)
+
+	var paged []string
+	for offset := 0; ; offset += pageSize {
+		page := query(pageSize, offset)
+		if len(page) == 0 {
+			break
+		}
+		paged = append(paged, page...)
+	}
+
+	// then: pagination yields exactly the same sequence — no duplicates, no
+	// gaps, no order drift between requests
+	assert.Equal(t, full, paged)
+
+	// and the boosted deep-tail object stays in the BM25 tail instead of
+	// jumping into the first page past candidates of earlier requests
+	assert.NotContains(t, full[:pageSize], recentId)
+	assert.Contains(t, full, recentId)
 }

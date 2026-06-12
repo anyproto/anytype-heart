@@ -53,6 +53,11 @@ const (
 	// when store-level filters starved the requested page, so the common query
 	// never pays for it.
 	ftCandidatesHardLimit = 2000
+	// ftRerankPoolSize is the fixed number of top-BM25 objects whose order the
+	// additive final-score boosts (recency, name match) may rearrange. It must
+	// NOT depend on the requested page: re-ranking a budget-dependent pool
+	// makes offset pagination return duplicates (see queryFromFulltextRecords).
+	ftRerankPoolSize = ftCandidatesMin
 )
 
 // ftCandidatesLimit derives the initial tantivy docs budget from the requested
@@ -228,10 +233,51 @@ func paginateRecords(records []database.Record, offset int, limit int) []databas
 // queryFromFulltextRecords resolves fulltext candidates to filtered, sorted
 // records WITHOUT applying offset/limit, so callers can tell whether the
 // candidate set produced enough results to fill the requested page.
+//
+// The ordering is two-tier to keep offset pagination consistent: the
+// final-score sort (BM25 + recency/name boosts) is applied only to the first
+// ftRerankPoolSize candidates — a fixed pool that does not depend on the
+// requested page — while everything beyond stays in BM25 order. The BM25
+// object order is prefix-stable under candidate-budget growth (a bigger top-K
+// only appends lower-scoring objects), so re-ranking a fixed head keeps the
+// whole sequence stable across requests with different offsets; re-ranking
+// the entire budget-dependent pool would let a boosted tail candidate jump
+// into an earlier page and produce duplicates on the next one.
 func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
-	records := make([]database.Record, 0, len(results))
 	upperBound := offset + limit
-	resultObjectMap := make(map[string]struct{})
+	pool := ftRerankPoolSize
+	if pool > len(results) {
+		pool = len(results)
+	}
+	seen := make(map[string]struct{})
+
+	// head: resolve, collect related-object injections, re-rank by final score
+	records, injectionGroups := s.resolveFulltextResults(results[:pool], params, ftsSearch, seen, true)
+	budget := 0
+	if upperBound > 0 && upperBound > len(records) {
+		budget = upperBound - len(records)
+	}
+	records = s.injectRelatedObjects(injectionGroups, budget, upperBound == 0, params, seen, records)
+	if params.Order != nil {
+		// stable: equal final scores keep their BM25 order, so the result is
+		// deterministic across requests
+		sort.SliceStable(records, func(i, j int) bool {
+			return params.Order.Compare(records[i].Details, records[j].Details) == -1
+		})
+	}
+
+	// tail: BM25 order as returned by the index, no re-ranking, no injections
+	tail, _ := s.resolveFulltextResults(results[pool:], params, ftsSearch, seen, false)
+	return append(records, tail...), nil
+}
+
+// resolveFulltextResults resolves fulltext candidates to filtered records,
+// preserving the input order. seen is shared between calls to dedupe objects;
+// related-object injection hits are collected only when collectInjections is
+// set.
+func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult, params database.Filters, ftsSearch string, seen map[string]struct{}, collectInjections bool) ([]database.Record, map[domain.RelationKey][]injectionHit) {
+	records := make([]database.Record, 0, len(results))
+	resultObjectMap := seen
 	injectionGroups := map[domain.RelationKey][]injectionHit{}
 
 	for _, res := range results {
@@ -293,27 +339,18 @@ func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResu
 			}
 		}
 
-		if relKey, ok := injectionRelationKey(details, res.Path); ok {
-			injectionGroups[relKey] = append(injectionGroups[relKey], injectionHit{
-				id:      details.GetString(bundle.RelationKeyId),
-				details: details,
-				score:   res.Score,
-			})
+		if collectInjections {
+			if relKey, ok := injectionRelationKey(details, res.Path); ok {
+				injectionGroups[relKey] = append(injectionGroups[relKey], injectionHit{
+					id:      details.GetString(bundle.RelationKeyId),
+					details: details,
+					score:   res.Score,
+				})
+			}
 		}
 	}
 
-	budget := 0
-	if upperBound > 0 && upperBound > len(records) {
-		budget = upperBound - len(records)
-	}
-	records = s.injectRelatedObjects(injectionGroups, budget, upperBound == 0, params, resultObjectMap, records)
-
-	if params.Order != nil {
-		sort.Slice(records, func(i, j int) bool {
-			return params.Order.Compare(records[i].Details, records[j].Details) == -1
-		})
-	}
-	return records, nil
+	return records, injectionGroups
 }
 
 func injectionRelationKey(details *domain.Details, path domain.ObjectPath) (domain.RelationKey, bool) {
@@ -587,6 +624,12 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 	}
 
 	sort.Slice(objectResults, func(i, j int) bool {
+		// deterministic id tiebreak: the object order must be prefix-stable
+		// across requests with different candidate budgets, or offset
+		// pagination breaks at tie boundaries
+		if objectResults[i].Score == objectResults[j].Score {
+			return objectResults[i].ID < objectResults[j].ID
+		}
 		return objectResults[i].Score > objectResults[j].Score
 	})
 

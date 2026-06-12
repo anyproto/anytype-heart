@@ -53,6 +53,34 @@ A `hasMore` response flag was considered and rejected for now: it requires proto
 changes, and without server-side escalation it cannot even guarantee progress on the next
 offset request — escalation is needed first either way.
 
+### 1b. Two-tier ordering: pagination-stable re-ranking
+
+Escalation introduces a second hazard: the final order is `_final_score` (BM25 + recency/name
+boosts), but the candidate pool depends on the budget, which grows with the offset. Re-ranking
+the WHOLE pool means a recency-boosted tail candidate can jump into an earlier page on the next
+request, shifting everything below it — duplicates on page N+1, and some results never returned
+at all. Offset pagination is only sound over a prefix-stable order: growing the window must
+append, never reorder.
+
+Resolution (`queryFromFulltextRecords`):
+
+- the BM25 *object* order is prefix-stable under budget growth (a larger top-K only appends
+  objects with lower best-doc scores; ties broken deterministically by object id);
+- the final-score boosts re-rank ONLY the first `ftRerankPoolSize = 100` objects — a fixed pool
+  independent of the requested page, which is exactly the pool the original hard cap gave them;
+  the head sort is stable so equal scores keep their BM25 order;
+- everything beyond the head stays in BM25 order; related-object injections are derived from
+  head hits only;
+- the recency decay clock is truncated to the hour so the head order cannot drift between two
+  consecutive page requests.
+
+Result: the full sequence `rerank(top-100) ++ bm25-tail` is identical for every budget, so
+pages from different requests never overlap (`TestFulltextPaginationConsistency` pins
+pages == slices of one big query). Remaining caveat, shared with all offset pagination over a
+live database: an index commit between two page requests can still shift results; the complete
+cure would be a server-side search-session snapshot (cursor), kept as a possible follow-up.
+Clients de-duplicating by id remain a cheap belt.
+
 ### 2. Chat-scoped message search
 
 Chat docs are `chatId/m/msgId`. Scope the tantivy query instead of post-filtering:
