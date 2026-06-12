@@ -207,8 +207,54 @@ type injectionHit struct {
 	score   float64
 }
 
+// ftDropStats classifies fulltext candidates rejected on the store side.
+// Ideally the FT index never contains objects that every search filters out:
+// `missing` and `deleted` are true index anomalies (stale docs the deletion
+// fixes / orphan GC should eliminate), while `archived`/`hidden` are expected
+// drops — those objects must stay searchable for explicit-filter searches
+// (e.g. the bin) — that still explain why candidate escalation fires.
+type ftDropStats struct {
+	missing  int // doc in FT but object absent from the store
+	deleted  int // isDeleted objects must not have FT docs at all
+	archived int
+	hidden   int
+	other    int // legitimate client filters (type, layout, ...)
+
+	missingSample []string
+	deletedSample []string
+}
+
+const ftDropSampleLimit = 5
+
+func (s *ftDropStats) dropped() int {
+	return s.missing + s.deleted + s.archived + s.hidden + s.other
+}
+
+func (s *ftDropStats) recordMissing(id string) {
+	s.missing++
+	if len(s.missingSample) < ftDropSampleLimit {
+		s.missingSample = append(s.missingSample, id)
+	}
+}
+
+func (s *ftDropStats) recordFiltered(id string, details *domain.Details) {
+	switch {
+	case details.GetBool(bundle.RelationKeyIsDeleted):
+		s.deleted++
+		if len(s.deletedSample) < ftDropSampleLimit {
+			s.deletedSample = append(s.deletedSample, id)
+		}
+	case details.GetBool(bundle.RelationKeyIsArchived):
+		s.archived++
+	case details.GetBool(bundle.RelationKeyIsHidden) || details.GetBool(bundle.RelationKeyIsHiddenDiscovery):
+		s.hidden++
+	default:
+		s.other++
+	}
+}
+
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
-	records, err := s.queryFromFulltextRecords(results, params, ftsSearch)
+	records, _, err := s.queryFromFulltextRecords(results, params, ftsSearch)
 	if err != nil {
 		return nil, err
 	}
@@ -248,15 +294,16 @@ func paginateRecords(records []database.Record, offset int, limit int) []databas
 // budget boundary enter the set in tantivy's internal doc order, so a larger
 // budget can insert a tied object mid-order (the id tiebreak only orders the
 // objects it can see). Exact float ties at the boundary are rare; accepted.
-func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, ftsSearch string) ([]database.Record, error) {
+func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, ftsSearch string) ([]database.Record, *ftDropStats, error) {
 	pool := ftRerankPoolSize
 	if pool > len(results) {
 		pool = len(results)
 	}
 	seen := make(map[string]struct{})
+	stats := &ftDropStats{}
 
 	// head: resolve, collect related-object injections, re-rank by final score
-	records, injectionGroups := s.resolveFulltextResults(results[:pool], params, ftsSearch, seen, true)
+	records, injectionGroups := s.resolveFulltextResults(results[:pool], params, ftsSearch, seen, true, stats)
 	// the injection budget is a request-independent constant: deriving it from
 	// the requested page would make the injected set (and thus the re-ranked
 	// head order) differ between offsets, breaking pagination consistency
@@ -270,15 +317,15 @@ func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResu
 	}
 
 	// tail: BM25 order as returned by the index, no re-ranking, no injections
-	tail, _ := s.resolveFulltextResults(results[pool:], params, ftsSearch, seen, false)
-	return append(records, tail...), nil
+	tail, _ := s.resolveFulltextResults(results[pool:], params, ftsSearch, seen, false, stats)
+	return append(records, tail...), stats, nil
 }
 
 // resolveFulltextResults resolves fulltext candidates to filtered records,
 // preserving the input order. seen is shared between calls to dedupe objects;
 // related-object injection hits are collected only when collectInjections is
-// set.
-func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult, params database.Filters, ftsSearch string, seen map[string]struct{}, collectInjections bool) ([]database.Record, map[domain.RelationKey][]injectionHit) {
+// set; candidates rejected on the store side are classified into stats.
+func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult, params database.Filters, ftsSearch string, seen map[string]struct{}, collectInjections bool, stats *ftDropStats) ([]database.Record, map[domain.RelationKey][]injectionHit) {
 	records := make([]database.Record, 0, len(results))
 	resultObjectMap := seen
 	injectionGroups := map[domain.RelationKey][]injectionHit{}
@@ -292,6 +339,7 @@ func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult
 				})
 				if err != nil {
 					log.Errorf("QueryFromFulltext failed to GetDetailsFromIdBasedSource id: %s", res.Path.ObjectId)
+					stats.recordMissing(res.Path.ObjectId)
 					continue
 				}
 				details.SetString(bundle.RelationKeyId, res.Path.ObjectId)
@@ -301,18 +349,24 @@ func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult
 				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
 					records = append(records, rec)
+				} else {
+					stats.recordFiltered(res.Path.ObjectId, details)
 				}
 				continue
 			}
 		}
 		doc, err := s.objects.FindId(s.componentCtx, res.Path.ObjectId)
 		if err != nil {
-			log.Errorf("QueryByIds failed to find id: %s", res.Path.ObjectId)
+			// aggregated into stats and reported by performFulltextQuery: a doc
+			// in the FT index without a store object is a stale-index anomaly
+			log.With("id", res.Path.ObjectId).Debugf("fulltext candidate not found in store")
+			stats.recordMissing(res.Path.ObjectId)
 			continue
 		}
 		details, err := domain.NewDetailsFromAnyEnc(doc.Value())
 		if err != nil {
 			log.Errorf("QueryByIds failed to extract details: %s", res.Path.ObjectId)
+			stats.recordMissing(res.Path.ObjectId)
 			continue
 		}
 		details.SetFloat64(bundle.RelationKey_score, res.Score)
@@ -340,6 +394,8 @@ func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult
 				records = append(records, rec)
 				resultObjectMap[res.Path.ObjectId] = struct{}{}
 			}
+		} else {
+			stats.recordFiltered(res.Path.ObjectId, details)
 		}
 
 		if collectInjections {
@@ -551,7 +607,7 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 			return s.performFulltextFallback(q, filters)
 		}
 
-		records, err := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery)
+		records, dropStats, err := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery)
 		if err != nil {
 			return nil, err
 		}
@@ -570,6 +626,7 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 				log.With("limit", ftLimit).With("records", len(records)).With("needed", needed).
 					Warn("fulltext page underfilled at the candidate hard limit")
 			}
+			logFtDropStats(dropStats, q, ftLimit, ftDocs, len(records))
 			ftHits.Add(1)
 			return paginateRecords(records, q.Offset, q.Limit), nil
 		}
@@ -578,6 +635,34 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 		if ftLimit > ftCandidatesHardLimit {
 			ftLimit = ftCandidatesHardLimit
 		}
+	}
+}
+
+// logFtDropStats reports, once per search request (final escalation round, so
+// the full candidate set), why FT candidates were rejected on the store side.
+// missing/deleted candidates are stale-index anomalies and logged at Warn so
+// they are visible in production logs; expected drops (archived, hidden,
+// client filters) are Debug.
+func logFtDropStats(stats *ftDropStats, q database.Query, ftLimit, ftDocs, recordsCount int) {
+	if stats == nil || stats.dropped() == 0 {
+		return
+	}
+	l := log.With("spaceId", q.SpaceId).
+		With("queryLen", len(q.TextQuery)).
+		With("ftBudget", ftLimit).
+		With("ftDocs", ftDocs).
+		With("records", recordsCount).
+		With("droppedMissing", stats.missing).
+		With("droppedDeleted", stats.deleted).
+		With("droppedArchived", stats.archived).
+		With("droppedHidden", stats.hidden).
+		With("droppedOther", stats.other)
+	if stats.missing > 0 || stats.deleted > 0 {
+		l.With("missingSample", stats.missingSample).
+			With("deletedSample", stats.deletedSample).
+			Warn("fulltext index contains stale objects rejected by the store")
+	} else {
+		l.Debug("fulltext candidates dropped by store filters")
 	}
 }
 

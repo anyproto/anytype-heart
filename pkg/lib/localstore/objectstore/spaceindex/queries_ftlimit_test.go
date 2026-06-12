@@ -102,6 +102,54 @@ func TestFulltextQueryFillsThePage(t *testing.T) {
 	})
 }
 
+// Drop stats classify why FT candidates were rejected on the store side:
+// missing/deleted are stale-index anomalies, archived/hidden/other are
+// expected filter drops. The classification drives the production telemetry
+// used to verify the FT index converges to a filter-consistent state.
+func TestFulltextDropStatsClassification(t *testing.T) {
+	// given: one candidate per category
+	fx := NewStoreFixture(t)
+	fx.AddObjects(t, []TestObject{
+		{
+			bundle.RelationKeyId:   domain.String("keptObj"),
+			bundle.RelationKeyName: domain.String("kept"),
+		},
+		{
+			bundle.RelationKeyId:        domain.String("deletedObj"),
+			bundle.RelationKeyIsDeleted: domain.Bool(true),
+		},
+		{
+			bundle.RelationKeyId:         domain.String("archivedObj"),
+			bundle.RelationKeyIsArchived: domain.Bool(true),
+		},
+		// missingObj is deliberately absent from the store
+	})
+
+	results := []database.FulltextResult{
+		{Path: domain.ObjectPath{ObjectId: "keptObj", RelationKey: "name"}, Score: 4.0},
+		{Path: domain.ObjectPath{ObjectId: "deletedObj", RelationKey: "name"}, Score: 3.0},
+		{Path: domain.ObjectPath{ObjectId: "archivedObj", RelationKey: "name"}, Score: 2.0},
+		{Path: domain.ObjectPath{ObjectId: "missingObj", RelationKey: "name"}, Score: 1.0},
+	}
+	// nil filters get the default isArchived/isDeleted exclusions injected
+	params := newFilters(t, fx, nil, nil)
+
+	// when
+	records, stats, err := fx.queryFromFulltextRecords(results, params, "kept")
+
+	// then
+	require.NoError(t, err)
+	require.Len(t, records, 1)
+	assert.Equal(t, "keptObj", records[0].Details.GetString(bundle.RelationKeyId))
+	assert.Equal(t, 1, stats.missing)
+	assert.Equal(t, 1, stats.deleted)
+	assert.Equal(t, 1, stats.archived)
+	assert.Equal(t, 0, stats.hidden)
+	assert.Equal(t, 0, stats.other)
+	assert.Equal(t, []string{"missingObj"}, stats.missingSample)
+	assert.Equal(t, []string{"deletedObj"}, stats.deletedSample)
+}
+
 // Offset pagination is only sound when the result order does not depend on
 // the candidate budget (which grows with the requested offset). The
 // final-score boosts may therefore re-rank only a fixed head of the BM25
