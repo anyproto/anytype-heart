@@ -123,8 +123,10 @@ func (s *dsObjectStore) flushTxNotifications(buf *txNotifications) {
 
 	for _, id := range pending {
 		details, err := s.GetDetails(id)
-		if err != nil {
-			// deleted later in the tx, or unreadable: nothing to announce
+		// GetDetails returns EMPTY details with a nil error for an absent
+		// doc — an id deleted later in the same tx must not be announced as
+		// a degenerate {id}-only record
+		if err != nil || details == nil || details.Len() == 0 {
 			continue
 		}
 		details.SetString(bundle.RelationKeyId, id)

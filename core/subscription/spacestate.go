@@ -28,6 +28,13 @@ type feedItem struct {
 // intakeQueue is the feed→worker hand-off: coalescing by id (the feed
 // carries full state, so a newer snapshot safely replaces a pending one),
 // FIFO by first appearance, never blocking the writer goroutine.
+//
+// Known assumption: per-id callback order matches commit order. The store
+// does not strictly guarantee it (concurrent same-id writers announce under
+// a shared RLock; the tx flush re-reads then announces without one), so a
+// rare inversion can coalesce older state over newer. Same-id writes are
+// serialized by object locks upstream in practice, ordered subs self-heal
+// via re-queries, and the next write heals the rest.
 type intakeQueue struct {
 	mu      sync.Mutex
 	pending map[string]*domain.Details

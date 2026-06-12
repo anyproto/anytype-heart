@@ -300,6 +300,7 @@ func (c *coreSub) orderedEnter(id string, details *domain.Details) {
 	e.prev = projectDetails(details, c.keys)
 	c.insertWin(pos, e)
 	c.evictOverflow()
+	c.maybeResyncHeldId(e)
 }
 
 func (c *coreSub) orderedLeave(id string) {
@@ -338,6 +339,7 @@ func (c *coreSub) orderedStay(id string, details *domain.Details) {
 			e := c.newVisEntry(id, details)
 			e.prev = projectDetails(details, c.keys)
 			c.insertWin(c.searchWin(e), e)
+			c.maybeResyncHeldId(e)
 			return
 		}
 		// a sort-relevant change may move an outside member into the window
@@ -349,6 +351,7 @@ func (c *coreSub) orderedStay(id string, details *domain.Details) {
 		probe.prev = projectDetails(details, c.keys)
 		c.insertWin(c.searchWin(probe), probe)
 		c.evictOverflow()
+		c.maybeResyncHeldId(probe)
 		return
 	}
 
@@ -392,6 +395,23 @@ func (c *coreSub) orderedStay(id string, details *domain.Details) {
 	}
 }
 
+// maybeResyncHeldId handles an entry INSERTED into the window while its id
+// is still listed in oldWin: the client holds the id from before (its Remove
+// was withheld during a failed-requery blackout, or it was evicted and
+// re-inserted within one batch after its own item rebuilt the baseline), so
+// the window diff will find it on both sides and emit nothing while the
+// fresh baseline suppresses future Amends — only a forced Set resyncs the
+// client. No-op in the common case (oldWin empty or id not held).
+func (c *coreSub) maybeResyncHeldId(e *visEntry) {
+	if len(c.oldWin) == 0 || !slices.Contains(c.oldWin, e.id) {
+		return
+	}
+	c.detailOps = append(c.detailOps, subOp{sub: c, kind: opSet, id: e.id, details: e.prev})
+	if c.depTracker != nil {
+		c.depDirty = true
+	}
+}
+
 // searchWin returns the insertion position for e
 func (c *coreSub) searchWin(e *visEntry) int {
 	return sort.Search(len(c.win), func(i int) bool {
@@ -416,7 +436,20 @@ func (c *coreSub) removeWin(e *visEntry) {
 		pos++
 	}
 	if pos == len(c.win) {
-		return
+		// comparator drift (an object-format order's in-Compare store lookup
+		// failing once and succeeding later) can strand the entry outside
+		// the search range — fall back to a full scan rather than leave a
+		// ghost the client would render forever
+		pos = -1
+		for i, cur := range c.win {
+			if cur == e {
+				pos = i
+				break
+			}
+		}
+		if pos == -1 {
+			return
+		}
 	}
 	c.win = append(c.win[:pos], c.win[pos+1:]...)
 	delete(c.vis, e.id)
