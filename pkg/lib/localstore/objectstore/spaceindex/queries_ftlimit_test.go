@@ -22,9 +22,9 @@ func TestFtCandidatesLimit(t *testing.T) {
 	}{
 		{"no limit gets one conservative round", 0, 0, ftCandidatesMin},
 		{"small page is padded to the minimum", 10, 0, ftCandidatesMin},
-		{"offset counts towards the budget", 50, 80, 130},
-		{"big page is granted upfront", 900, 500, 1400},
-		{"budget is capped by the hard limit", 1900, 500, ftCandidatesHardLimit},
+		{"offset counts towards the multiplied budget", 50, 80, 260},
+		{"big page is granted upfront with headroom", 400, 300, 1400},
+		{"budget is capped by the hard limit", 900, 500, ftCandidatesHardLimit},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := ftCandidatesLimit(database.Query{Limit: tc.limit, Offset: tc.offset})
@@ -39,12 +39,14 @@ func TestFtCandidatesLimit(t *testing.T) {
 // genuinely exhausted — otherwise filtered-out candidates produce a short page
 // while more matches exist.
 func TestFulltextQueryFillsThePage(t *testing.T) {
-	// given: 150 objects matching the query, 60 of them filtered out by the
-	// default isArchived filter; only 90 results actually exist
+	// given: 250 objects matching the query, 170 of them filtered out by the
+	// default isArchived filter; only 80 results actually exist. The counts are
+	// chosen so even the multiplied first-round budget (2x the page) cannot
+	// fill the page and escalation must kick in.
 	fx := NewStoreFixture(t)
 	const (
-		total    = 150
-		archived = 60
+		total    = 250
+		archived = 170
 	)
 	objects := make([]TestObject, 0, total)
 	batcher := fx.fts.NewAutoBatcher()
@@ -69,7 +71,7 @@ func TestFulltextQueryFillsThePage(t *testing.T) {
 	fx.AddObjects(t, objects)
 
 	t.Run("page is filled past the first candidate round", func(t *testing.T) {
-		// when: the first 100-doc candidate round can contain at most 90
+		// when: the first round (2x100 = 200 docs) can contain at most 80
 		// non-archived objects, so filling a 100-record page needs escalation
 		records, err := fx.Query(database.Query{
 			SpaceId:   "test",
@@ -92,8 +94,8 @@ func TestFulltextQueryFillsThePage(t *testing.T) {
 			Offset:    60,
 		})
 
-		// then: 90 results exist, the page covers 60..89
+		// then: 80 results exist, the page covers 60..79
 		require.NoError(t, err)
-		assert.Len(t, records, 30)
+		assert.Len(t, records, 20)
 	})
 }

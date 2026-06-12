@@ -44,6 +44,11 @@ const (
 	// as the noise gate: BM25 scores aren't comparable across queries, so "the
 	// top N most promising matches" is the only workable relevance cutoff.
 	ftCandidatesMin = 100
+	// ftCandidatesMultiplier pads the first round over the requested page:
+	// grouping and filters almost always trim some candidates, so an unpadded
+	// budget would need an extra escalation round (and re-resolution of all
+	// candidates) for nearly every full page.
+	ftCandidatesMultiplier = 2
 	// ftCandidatesHardLimit bounds budget escalation. Escalation only happens
 	// when store-level filters starved the requested page, so the common query
 	// never pays for it.
@@ -58,7 +63,7 @@ func ftCandidatesLimit(q database.Query) int {
 	if q.Limit <= 0 {
 		return ftCandidatesMin
 	}
-	limit := q.Offset + q.Limit
+	limit := ftCandidatesMultiplier * (q.Offset + q.Limit)
 	if limit < ftCandidatesMin {
 		return ftCandidatesMin
 	}

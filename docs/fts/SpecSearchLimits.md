@@ -33,8 +33,12 @@ stops paginating although more matches exist).
 
 Resolution — **escalate-on-starvation** (`performFulltextQuery`):
 
-- round 1 budget: `clamp(offset+limit, 100, 2000)`; `q.Limit <= 0` → a single conservative
-  100-doc round ("everything" + fulltext means "the relevant matches", not the whole index);
+- round 1 budget: `clamp(2*(offset+limit), 100, 2000)` — the 2x headroom exists because grouping
+  and filters almost always trim some candidates, so an unpadded budget would need an escalation
+  round (re-resolving every candidate) for nearly every full page; when few matches exist tantivy
+  returns the same docs regardless of budget, so the padding costs nothing there.
+  `q.Limit <= 0` → a single conservative 100-doc round ("everything" + fulltext means "the
+  relevant matches", not the whole index);
 - if the post-filter record count < `offset+limit` AND tantivy returned a full budget of docs
   (more matches exist), double the budget and re-run, up to `ftCandidatesHardLimit = 2000`;
 - stop as soon as the page is filled or tantivy returns fewer docs than the budget (index
