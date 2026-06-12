@@ -603,24 +603,7 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 	}
 	observers[spaceId] = struct{}{}
 
-	var profile *model.IdentityProfile
-	if identity == s.myIdentity {
-		profile = s.ownProfileSubscription.prepareIdentityProfile()
-	} else if inMemory, ok := s.identityProfileCache[identity]; ok {
-		// the in-memory profile is always at least as fresh as the persisted one
-		profile = inMemory
-	} else if cachedProfile != nil {
-		extracted, _, exErr := extractProfile(cachedProfile, encryptionKey)
-		if exErr == nil {
-			if cachedGlobalName != "" {
-				extracted.GlobalName = cachedGlobalName
-			}
-			s.identityProfileCache[identity] = extracted
-			profile = extracted
-		} else {
-			log.Warn("register identity: extract profile", zap.Error(exErr))
-		}
-	}
+	profile := s.currentProfile(identity, cachedProfile, cachedGlobalName, encryptionKey)
 	s.lock.Unlock()
 
 	if profile != nil {
@@ -637,6 +620,32 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 	default:
 	}
 	return nil
+}
+
+// currentProfile returns the freshest known profile of the identity: the own profile
+// for the own identity, the in-memory cached one (always at least as fresh as the
+// persisted one), or the persisted one decrypted with the given key. Returns nil when
+// no profile is known yet. Must be called under s.lock.
+func (s *service) currentProfile(identity string, cachedProfile *identityrepoproto.DataWithIdentity, cachedGlobalName string, encryptionKey crypto.SymKey) *model.IdentityProfile {
+	if identity == s.myIdentity {
+		return s.ownProfileSubscription.prepareIdentityProfile()
+	}
+	if inMemory, ok := s.identityProfileCache[identity]; ok {
+		return inMemory
+	}
+	if cachedProfile == nil {
+		return nil
+	}
+	extracted, _, err := extractProfile(cachedProfile, encryptionKey)
+	if err != nil {
+		log.Warn("register identity: extract profile", zap.Error(err))
+		return nil
+	}
+	if cachedGlobalName != "" {
+		extracted.GlobalName = cachedGlobalName
+	}
+	s.identityProfileCache[identity] = extracted
+	return extracted
 }
 
 // resolveEncryptionKey reconciles the given key with the in-memory and persisted ones;

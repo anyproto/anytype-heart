@@ -341,6 +341,7 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 // prepareDetailsOnlySearchDocs builds fulltext docs from objectstore details without
 // loading the object, applying the same relation-doc filtering as the smartblock path.
 func (i *indexer) prepareDetailsOnlySearchDocs(spaceId, objectId string, details *domain.Details) []ftsearch.SearchDoc {
+	//nolint:gosec
 	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	return i.prepareRelationSearchDocsFromDetails(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, layout, details)
 }
