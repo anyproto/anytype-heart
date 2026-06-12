@@ -33,6 +33,7 @@ func (s *dsObjectStore) UpdateObjectDetails(ctx context.Context, id string, deta
 
 	arena := s.arenaPool.Get()
 	defer func() {
+		arena.Reset()
 		s.arenaPool.Put(arena)
 	}()
 	newVal := details.ToAnyEnc(arena)
@@ -60,26 +61,40 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 	s.lock.Unlock()
 }
 
-// txNotifications buffers subscription notifications raised inside a write
+// txNotifications buffers the ids of objects written inside a write
 // transaction. They are flushed only on successful commit (see notifyingTx):
-// firing them earlier would announce writes that are not yet visible to
-// readers — or never will be, if the tx rolls back. A subscriber that wires
-// its callback and then re-queries the store could otherwise permanently miss
-// a write that was notified before wiring but committed after the re-query.
+// firing earlier would announce writes that are not yet visible to readers —
+// or never will be, if the tx rolls back. A subscriber that wires its
+// callback and then re-queries the store could otherwise permanently miss a
+// write that was notified before wiring but committed after the re-query.
+//
+// Only ids are buffered; the flush re-reads the committed details. Delivering
+// the write-time values instead would race a concurrent post-commit writer of
+// the same id: its (newer) notification could be overtaken by our (older)
+// buffered one, leaving subscribers regressed until the next write.
 type txNotifications struct {
 	mu      sync.Mutex
-	pending []database.Record
+	pending []string
+	seen    map[string]struct{}
+}
+
+func (b *txNotifications) add(id string) {
+	b.mu.Lock()
+	if b.seen == nil {
+		b.seen = make(map[string]struct{})
+	}
+	if _, ok := b.seen[id]; !ok {
+		b.seen[id] = struct{}{}
+		b.pending = append(b.pending, id)
+	}
+	b.mu.Unlock()
 }
 
 type txNotificationsKey struct{}
 
 func (s *dsObjectStore) sendUpdatesToSubscriptions(ctx context.Context, id string, details *domain.Details) {
 	if buf, ok := ctx.Value(txNotificationsKey{}).(*txNotifications); ok && buf != nil {
-		detCopy := details.Copy()
-		detCopy.SetString(bundle.RelationKeyId, id)
-		buf.mu.Lock()
-		buf.pending = append(buf.pending, database.Record{Details: detCopy})
-		buf.mu.Unlock()
+		buf.add(id)
 		return
 	}
 	s.lock.RLock()
@@ -103,18 +118,24 @@ func (s *dsObjectStore) flushTxNotifications(buf *txNotifications) {
 	buf.mu.Lock()
 	pending := buf.pending
 	buf.pending = nil
+	buf.seen = nil
 	buf.mu.Unlock()
 
-	s.lock.RLock()
-	defer s.lock.RUnlock()
-	for _, rec := range pending {
-		id := rec.Details.GetString(bundle.RelationKeyId)
+	for _, id := range pending {
+		details, err := s.GetDetails(id)
+		if err != nil {
+			// deleted later in the tx, or unreadable: nothing to announce
+			continue
+		}
+		details.SetString(bundle.RelationKeyId, id)
+		s.lock.RLock()
 		if s.onChangeCallback != nil {
-			s.onChangeCallback(rec)
+			s.onChangeCallback(database.Record{Details: details})
 		}
 		for _, sub := range s.subscriptions {
-			_ = sub.PublishAsync(id, rec.Details)
+			_ = sub.PublishAsync(id, details)
 		}
+		s.lock.RUnlock()
 	}
 }
 

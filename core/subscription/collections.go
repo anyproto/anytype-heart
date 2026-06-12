@@ -89,7 +89,12 @@ func (w *collectionWatcher) stop() {
 
 	if w.svc.collectionService != nil {
 		if err := w.svc.collectionService.UnsubscribeFromCollection(w.collectionId, w.subId); err != nil {
-			log.Warnf("subscription %s: unsubscribe from collection %s: %v", w.subId, w.collectionId, err)
+			// the channel may still be registered: leave the drain consumer
+			// running (it exits if the channel ever closes) — a leaked
+			// goroutine beats an editor wedged on a blocking send into a
+			// channel nobody reads
+			log.Warnf("subscription %s: unsubscribe from collection %s failed, leaving drain running: %v", w.subId, w.collectionId, err)
+			return
 		}
 	}
 	close(w.done)

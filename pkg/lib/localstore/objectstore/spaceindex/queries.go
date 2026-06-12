@@ -796,12 +796,13 @@ func (s *dsObjectStore) QueryIterate(q database.Query, proc func(details *domain
 }
 
 // QueryIterateRaw streams every record matching the precompiled filters
-// without materializing the result set (no implicit filters, no sorts):
-// each row's details are alive only for the duration of the callback. proc
-// returning an error stops the iteration.
+// without materializing the result set (no implicit filters, no sorts). The
+// callee owns each row's details (they are deep-copied off the iterator's
+// buffers and may be retained); the iterator itself holds no row past its
+// callback. proc returning an error stops the iteration.
 func (s *dsObjectStore) QueryIterateRaw(f *database.Filters, proc func(details *domain.Details) error) error {
 	if f == nil || f.FilterObj == nil {
-		return fmt.Errorf("filter cannot be nil or unitialized")
+		return fmt.Errorf("filter cannot be nil or uninitialized")
 	}
 	iter, err := s.objects.Find(f.FilterObj.AnystoreFilter()).Iter(s.componentCtx)
 	if err != nil {

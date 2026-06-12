@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -186,8 +187,8 @@ func TestCollectionScope(t *testing.T) {
 			givenNamedParticipant("p3", "cara"),
 		})
 		ch := make(chan []string, 4)
-		fx.collectionService.EXPECT().SubscribeForCollection("coll1", "coll-sub").Return([]string{"p3", "p1"}, ch, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", "coll-sub").Return(nil)
+		fx.collectionService.EXPECT().SubscribeForCollection("coll1", mock.Anything).Return([]string{"p3", "p1"}, ch, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", mock.Anything).Return(nil)
 
 		req := givenParticipantRequest()
 		req.SubId = "coll-sub"
@@ -230,8 +231,8 @@ func TestCollectionScope(t *testing.T) {
 			givenNamedParticipant("p3", "c"),
 		})
 		ch := make(chan []string, 4)
-		fx.collectionService.EXPECT().SubscribeForCollection("coll1", "coll-win").Return([]string{"p3", "p1", "p2"}, ch, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", "coll-win").Return(nil)
+		fx.collectionService.EXPECT().SubscribeForCollection("coll1", mock.Anything).Return([]string{"p3", "p1", "p2"}, ch, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", mock.Anything).Return(nil)
 
 		req := givenParticipantRequest()
 		req.SubId = "coll-win"
@@ -263,8 +264,8 @@ func TestCollectionScope(t *testing.T) {
 			obj,
 		})
 		ch := make(chan []string, 4)
-		fx.collectionService.EXPECT().SubscribeForCollection("coll1", "coll-sub").Return([]string{"p1", "p2"}, ch, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", "coll-sub").Return(nil)
+		fx.collectionService.EXPECT().SubscribeForCollection("coll1", mock.Anything).Return([]string{"p1", "p2"}, ch, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", mock.Anything).Return(nil)
 
 		req := givenParticipantRequest()
 		req.SubId = "coll-sub"

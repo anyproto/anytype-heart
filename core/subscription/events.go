@@ -135,21 +135,25 @@ func deliverOps(ctx context.Context, sender eventSender, ops []subOp) {
 	for i := range ops {
 		op := &ops[i]
 		if q := op.sub.queue; q != nil {
-			if op.sub.queueOwned && q.Len() > maxInternalQueueLen {
-				log.Errorf("subscription %s: internal queue overflow (>%d messages), closing — consumer stalled",
-					op.sub.subId, maxInternalQueueLen)
-				_ = q.Close()
-				continue
-			}
-			msg := encodeOp(op)
-			if msg == nil {
-				continue
-			}
 			if queued == nil {
 				queued = make(map[*mb.MB[*pb.EventMessage]][]*pb.EventMessage)
 			}
 			if _, ok := queued[q]; !ok {
+				// once per queue per batch: the length cannot grow during
+				// the loop (this batch's Add happens after it)
+				if op.sub.queueOwned && q.Len() > maxInternalQueueLen {
+					// Close is the latch: it errors on an already-closed
+					// queue, so the kill is logged exactly once
+					if q.Close() == nil {
+						log.Errorf("subscription %s: internal queue overflow (>%d messages), closing — consumer stalled",
+							op.sub.subId, maxInternalQueueLen)
+					}
+				}
 				queues = append(queues, q)
+			}
+			msg := encodeOp(op)
+			if msg == nil {
+				continue
 			}
 			queued[q] = append(queued[q], msg)
 		} else if msg := encodeOp(op); msg != nil {

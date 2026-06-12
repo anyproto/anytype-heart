@@ -58,7 +58,9 @@ type SubscribeRequest struct {
 
 	// Internal indicates that subscription will send events into message queue instead of global client's event system
 	Internal bool
-	// InternalQueue is used when Internal flag is set to true. If it's nil, new queue will be created
+	// InternalQueue is used when Internal flag is set to true. If it's nil, new queue will be created.
+	// Caller-provided queues MUST be unbounded (mb.New(0)): delivery happens on the space worker,
+	// and a full bounded queue would stall every subscription of that space.
 	InternalQueue *mb.MB[*pb.EventMessage]
 	AsyncInit     bool
 }
@@ -249,12 +251,19 @@ func (s *service) subscribe(spec subSpec, filters *database.Filters, idx spacein
 	sub := buildCoreSub(spec, filters)
 
 	fail := func(err error) (subscribeResult, error) {
-		s.releaseSlot(spec.subId, token)
 		if sub.collection != nil {
 			sub.collection.stop()
 		}
+		// stop the watcher before releasing the slot: a re-claimed subId
+		// must not race our editor unregistration
+		s.releaseSlot(spec.subId, token)
 		if sub.queueOwned {
 			_ = sub.queue.Close()
+		}
+		if sub.space != nil {
+			// a space state created just for this failed subscribe would
+			// otherwise idle with a worker and a wired feed
+			s.maybeDropSpace(sub.space)
 		}
 		return subscribeResult{}, err
 	}
@@ -263,12 +272,17 @@ func (s *service) subscribe(spec subSpec, filters *database.Filters, idx spacein
 		if s.collectionService == nil {
 			return fail(errors.New("collection service is not available"))
 		}
-		initialIds, ch, err := s.collectionService.SubscribeForCollection(spec.collectionId, spec.subId)
+		// the editor's registry is keyed by (collectionId, subscriptionId)
+		// and returns the EXISTING channel on a duplicate key — a unique
+		// per-claim registration id keeps concurrent same-subId generations
+		// from sharing (and closing) each other's channel
+		registrationId := fmt.Sprintf("%s/c%d", spec.subId, token)
+		initialIds, ch, err := s.collectionService.SubscribeForCollection(spec.collectionId, registrationId)
 		if err != nil {
 			return fail(fmt.Errorf("subscribe for collection %s: %w", spec.collectionId, err))
 		}
 		sub.setScopeIds(initialIds)
-		sub.collection = newCollectionWatcher(s, sub, spec.collectionId, spec.subId, ch)
+		sub.collection = newCollectionWatcher(s, sub, spec.collectionId, registrationId, ch)
 	}
 	if spec.withDeps {
 		sub.depTracker = newDepTracker(sub, spec, idx)
@@ -280,6 +294,10 @@ func (s *service) subscribe(spec subSpec, filters *database.Filters, idx spacein
 		total      int
 	)
 	for {
+		// re-resolve per attempt: the space may have been deleted and
+		// re-created since this call started, and a stale handle must not
+		// orphan a healthy state built on the current one
+		idx = s.store.SpaceIndex(spec.spaceId)
 		st := s.getOrCreateSpace(spec.spaceId, idx)
 		if st == nil {
 			return fail(errors.New("subscription service is closed"))
@@ -324,9 +342,20 @@ func buildCoreSub(spec subSpec, filters *database.Filters) *coreSub {
 		sub.offset = spec.offset
 		if len(spec.sorts) > 0 && filters != nil {
 			sub.order = filters.Order
-			sub.sortKeys = make([]domain.RelationKey, 0, len(spec.sorts))
+			sub.sortKeys = make([]domain.RelationKey, 0, len(spec.sorts)+2)
+			var sortsByName bool
 			for _, s := range spec.sorts {
 				sub.sortKeys = append(sub.sortKeys, s.RelationKey)
+				if s.RelationKey == bundle.RelationKeyName {
+					sortsByName = true
+				}
+			}
+			if sortsByName {
+				// the text comparator substitutes a note's snippet for its
+				// name (KeyOrder.trySubstituteSnippet) — it reads these two
+				// keys, so sort projections must carry them or in-memory
+				// ordering diverges from the store's
+				sub.sortKeys = append(sub.sortKeys, bundle.RelationKeyResolvedLayout, bundle.RelationKeySnippet)
 			}
 		}
 	}
@@ -348,22 +377,36 @@ func buildCoreSub(spec subSpec, filters *database.Filters) *coreSub {
 }
 
 func (s *service) compileFilters(spec subSpec, idx spaceindex.Store) (*database.Filters, error) {
-	filters := spec.filters
+	// NewFilters owns default-filter injection (isArchived/isDeleted/type
+	// with the Condition-None opt-out), so snapshot queries and live matching
+	// can never disagree. The clone is unconditional: injection appends into
+	// the slice it is given, and crossspacesub reuses one request across
+	// concurrent per-space subscribes.
+	filters, err := database.NewFilters(database.Query{
+		SpaceId: spec.spaceId,
+		Filters: slices.Clone(spec.filters),
+		Sorts:   spec.sorts,
+	}, idx, &anyenc.Arena{}, &collate.Buffer{})
+	if err != nil {
+		return nil, err
+	}
+	// source filters are AND-composed onto the compiled object instead of
+	// being appended to the request: their Or-tree would otherwise make the
+	// injector's default-filter detection drop flags it had already
+	// accumulated from the caller's flat filters (breaking the
+	// Condition-None opt-out)
 	sourceFilters, err := resolveSources(idx, spec.source)
 	if err != nil {
 		return nil, fmt.Errorf("resolve sources: %w", err)
 	}
 	if len(sourceFilters) > 0 {
-		filters = append(slices.Clone(filters), sourceFilters...)
+		sourceObj, err := database.MakeFilters(sourceFilters, idx)
+		if err != nil {
+			return nil, fmt.Errorf("compile source filters: %w", err)
+		}
+		filters.FilterObj = database.FiltersAnd{filters.FilterObj, sourceObj}
 	}
-	// NewFilters owns default-filter injection (isArchived/isDeleted/type
-	// with the Condition-None opt-out), so snapshot queries and live matching
-	// can never disagree
-	return database.NewFilters(database.Query{
-		SpaceId: spec.spaceId,
-		Filters: filters,
-		Sorts:   spec.sorts,
-	}, idx, &anyenc.Arena{}, &collate.Buffer{})
+	return filters, nil
 }
 
 // claimSlot atomically claims the subId slot, returning the previous owner
@@ -427,10 +470,15 @@ func (s *service) getOrCreateSpace(spaceId string, idx spaceindex.Store) *spaceS
 		// wired to a dead store and its subscriptions are already
 		// event-dead. Orphan it (its teardown paths stay valid — removeSub
 		// works on a stopped state, maybeDropSpace skips states no longer
-		// in the registry) and build a fresh state on the new index.
+		// in the registry) and build a fresh state on the new index. The
+		// old feed is unhooked and the undelivered outbox dropped so a
+		// surviving handle can neither pump a dead intake nor deliver stale
+		// events arbitrarily late.
 		st.mu.Lock()
 		st.stopped = true
+		st.outbox = nil
 		st.mu.Unlock()
+		st.idx.SubscribeForAll(nil)
 		go st.stopWorker()
 		delete(s.spaces, spaceId)
 	}
@@ -561,13 +609,10 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 	}
 	idx := s.store.SpaceIndex(req.SpaceId)
 
-	filterRequests := req.Filters
+	filterRequests := slices.Clone(req.Filters)
 	sourceFilters, err := resolveSources(idx, req.Source)
 	if err != nil {
 		return nil, fmt.Errorf("resolve sources: %w", err)
-	}
-	if len(sourceFilters) > 0 {
-		filterRequests = append(slices.Clone(filterRequests), sourceFilters...)
 	}
 	if req.CollectionId != "" && s.collectionService == nil {
 		return nil, errors.New("collection service is not available")
@@ -576,27 +621,55 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 		// collection scoping for groups is a snapshot: the grouper computes
 		// from store queries, so membership is folded in as an id filter
 		// taken at subscribe time (group sets refresh on re-subscribe)
-		snapId := subId + "/groups-collection"
-		ids, _, err := s.collectionService.SubscribeForCollection(req.CollectionId, snapId)
-		if uerr := s.collectionService.UnsubscribeFromCollection(req.CollectionId, snapId); uerr != nil {
+		snapId := fmt.Sprintf("%s/groups-snap-%s", subId, bson.NewObjectId().Hex())
+		ids, ch, err := s.collectionService.SubscribeForCollection(req.CollectionId, snapId)
+		// the editor broadcasts on this unbuffered channel while holding the
+		// collection object's lock — the very lock the unsubscribe needs.
+		// Drain until the unsubscribe closes the channel, or both sides
+		// deadlock permanently.
+		var drained chan struct{}
+		if ch != nil {
+			drained = make(chan struct{})
+			go func() {
+				defer close(drained)
+				for range ch {
+				}
+			}()
+		}
+		uerr := s.collectionService.UnsubscribeFromCollection(req.CollectionId, snapId)
+		if uerr != nil {
 			log.Warnf("groups subscription %s: release collection snapshot: %v", subId, uerr)
+		} else if drained != nil {
+			<-drained
 		}
 		if err != nil {
 			return nil, fmt.Errorf("collection snapshot for groups %s: %w", req.CollectionId, err)
 		}
-		filterRequests = append(slices.Clone(filterRequests), database.FilterRequest{
+		filterRequests = append(filterRequests, database.FilterRequest{
 			RelationKey: bundle.RelationKeyId,
 			Condition:   model.BlockContentDataviewFilter_In,
 			Value:       domain.StringList(ids),
 		})
 	}
 	// the kanban groupers mutate the filters they are given, so every
-	// recomputation compiles a fresh copy
+	// recomputation compiles a fresh copy; source filters are AND-composed
+	// onto the compiled object (see compileFilters for why)
 	compile := func() (*database.Filters, error) {
-		return database.NewFilters(database.Query{
+		filters, err := database.NewFilters(database.Query{
 			SpaceId: req.SpaceId,
-			Filters: filterRequests,
+			Filters: slices.Clone(filterRequests),
 		}, idx, &anyenc.Arena{}, &collate.Buffer{})
+		if err != nil {
+			return nil, err
+		}
+		if len(sourceFilters) > 0 {
+			sourceObj, err := database.MakeFilters(sourceFilters, idx)
+			if err != nil {
+				return nil, fmt.Errorf("compile source filters: %w", err)
+			}
+			filters.FilterObj = database.FiltersAnd{filters.FilterObj, sourceObj}
+		}
+		return filters, nil
 	}
 	matchFilters, err := compile()
 	if err != nil {
@@ -621,10 +694,14 @@ func (s *service) SubscribeGroups(req SubscribeGroupsRequest) (*pb.RpcObjectGrou
 
 	fail := func(err error) (*pb.RpcObjectGroupsSubscribeResponse, error) {
 		s.releaseSlot(subId, token)
+		if g.space != nil {
+			s.maybeDropSpace(g.space)
+		}
 		return nil, err
 	}
 
 	for {
+		idx = s.store.SpaceIndex(req.SpaceId)
 		st := s.getOrCreateSpace(req.SpaceId, idx)
 		if st == nil {
 			return fail(errors.New("subscription service is closed"))

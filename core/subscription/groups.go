@@ -73,24 +73,21 @@ func (g *groupsSub) checkItem(id string, details *domain.Details) {
 		}
 		return
 	}
-	if details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_relationOption) &&
-		details.GetString(bundle.RelationKeyRelationKey) == string(g.relationKey) {
-		if details.GetBool(bundle.RelationKeyIsDeleted) {
-			delete(g.options, id)
-		} else {
-			g.options[id] = struct{}{}
-		}
+	isLiveOption := details.GetInt64(bundle.RelationKeyResolvedLayout) == int64(model.ObjectType_relationOption) &&
+		details.GetString(bundle.RelationKeyRelationKey) == string(g.relationKey) &&
+		!details.GetBool(bundle.RelationKeyIsDeleted)
+	if isLiveOption {
+		g.options[id] = struct{}{}
 		g.dirty = true
 		return
 	}
-	if details.GetBool(bundle.RelationKeyIsDeleted) {
-		// a hard delete tombstones the object down to {id, isDeleted}: only
-		// the tracked option set can still identify a deleted option
-		if _, ok := g.options[id]; ok {
-			delete(g.options, id)
-			g.dirty = true
-			return
-		}
+	if _, ok := g.options[id]; ok {
+		// a tracked option that no longer qualifies: soft/hard deleted (a
+		// hard delete tombstones it down to {id, isDeleted}), re-keyed to
+		// another relation, or converted away from the option layout
+		delete(g.options, id)
+		g.dirty = true
+		return
 	}
 	matched := g.match != nil && g.match.FilterObject(details)
 	oldVal, wasMember := g.members[id]
@@ -142,7 +139,12 @@ func (g *groupsSub) init() ([]*model.BlockContentDataviewGroup, error) {
 func (g *groupsSub) recompute() {
 	g.recomputeMu.Lock()
 	defer g.recomputeMu.Unlock()
-	if g.dead {
+	if g.dead || g.current == nil {
+		// not initialized yet: the sub is live in the feed before init()
+		// snapshots the baseline — broadcasting now would announce the
+		// whole group set as "added" ahead of the subscribe response.
+		// Loss-free: init's own computation runs after this change
+		// committed and picks it up.
 		return
 	}
 	groups, err := g.computeGroups()

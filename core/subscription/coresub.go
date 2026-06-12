@@ -115,16 +115,23 @@ func (c *coreSub) setWindow(entries []*visEntry) (records []*domain.Details) {
 	return records
 }
 
-// setScopeIds replaces the scope index structures; called before install or
-// under the space mutex (setScope)
+// setScopeIds replaces the scope index structures, deduplicating on first
+// occurrence — collection lists can carry duplicates, and a duplicate id
+// would seed twin window entries that break the comparator's total-order
+// invariant. Called before install or under the space mutex (setScope).
 func (c *coreSub) setScopeIds(ids []string) {
-	c.scope = ids
+	scope := make([]string, 0, len(ids))
 	c.scopeSet = make(map[string]struct{}, len(ids))
 	c.scopeIdx = make(map[string]int, len(ids))
-	for i, id := range ids {
+	for _, id := range ids {
+		if _, ok := c.scopeSet[id]; ok {
+			continue
+		}
+		c.scopeIdx[id] = len(scope)
 		c.scopeSet[id] = struct{}{}
-		c.scopeIdx[id] = i
+		scope = append(scope, id)
 	}
+	c.scope = scope
 }
 
 func (c *coreSub) newVisEntry(id string, details *domain.Details) *visEntry {
@@ -320,9 +327,17 @@ func (c *coreSub) orderedStay(id string, details *domain.Details) {
 			c.needsRequery = true
 			return
 		}
-		// invariant for offset==0: an underfull window holds every member,
-		// so an invisible member implies a full window
+		// for offset==0 an underfull window normally holds every member, so
+		// an invisible matching member here means the invariant was broken
+		// cross-batch (a re-query read newer store state and dropped the
+		// member's vis entry while a coalesced re-match was still queued).
+		// Without repair the member would be absorbed out of the window
+		// forever — treat it as an enter.
 		if !c.windowFull() {
+			c.beginBatch()
+			e := c.newVisEntry(id, details)
+			e.prev = projectDetails(details, c.keys)
+			c.insertWin(c.searchWin(e), e)
 			return
 		}
 		// a sort-relevant change may move an outside member into the window
@@ -419,7 +434,7 @@ func (c *coreSub) evictOverflow() {
 // windows and for underflows where the successor is unknown. Runs under the
 // space mutex; reading newer store state than the intake queue has delivered
 // is safe because batch processing is diff-based and idempotent.
-func (c *coreSub) requeryWindow() {
+func (c *coreSub) requeryWindow() (ok bool) {
 	var (
 		records []database.Record
 		err     error
@@ -450,7 +465,7 @@ func (c *coreSub) requeryWindow() {
 	}
 	if err != nil {
 		log.Errorf("subscription %s: window re-query: %v", c.subId, err)
-		return
+		return false
 	}
 	entries := make([]*visEntry, 0, len(records))
 	var readmitted []string
@@ -508,6 +523,12 @@ func (c *coreSub) requeryWindow() {
 			c.detailOps = append(c.detailOps, subOp{sub: c, kind: opSet, id: id, details: e.prev})
 		}
 	}
+	if len(readmitted) > 0 && c.depTracker != nil {
+		// a re-admitted baseline may carry different dep-key values than
+		// the dep set last saw, and no amend will ever report them
+		c.depDirty = true
+	}
+	return true
 }
 
 const requeryMargin = 8
@@ -558,20 +579,28 @@ func (t idTiebreakOrder) AnystoreSort() query.Sort {
 // the total changed
 func (c *coreSub) finalize(out *opBatch) {
 	if c.ordered && c.batchActive {
-		c.batchActive = false
+		requeryOk := true
 		if c.needsRequery {
-			c.needsRequery = false
-			c.requeryWindow()
-		}
-		if !c.detailEventsOnly {
-			opsBefore := len(out.ops)
-			c.windowDiffOps(out)
-			if len(out.ops) > opsBefore && c.depTracker != nil {
-				// window membership changed: dep set derives from it
-				c.depDirty = true
+			requeryOk = c.requeryWindow()
+			if requeryOk {
+				c.needsRequery = false
 			}
 		}
-		c.oldWin = nil
+		if requeryOk {
+			c.batchActive = false
+			if !c.detailEventsOnly {
+				opsBefore := len(out.ops)
+				c.windowDiffOps(out)
+				if len(out.ops) > opsBefore && c.depTracker != nil {
+					// window membership changed: dep set derives from it
+					c.depDirty = true
+				}
+			}
+			c.oldWin = nil
+		}
+		// on a failed re-query keep batchActive/oldWin/needsRequery: the
+		// next batch retries with the client's actual list still being the
+		// diff baseline; offset windows rely entirely on the re-query
 	}
 	if len(c.detailOps) > 0 {
 		out.ops = append(out.ops, c.detailOps...)

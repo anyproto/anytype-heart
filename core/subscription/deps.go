@@ -65,7 +65,11 @@ func newDepTracker(parent *coreSub, spec subSpec, idx spaceindex.Store) *depTrac
 		vis:              make(map[string]*visEntry),
 		detailEventsOnly: true,
 		isDepChild:       true,
-		queue:            parent.queue, // parent's delivery; parent owns the queue
+		queue:            parent.queue,
+		// mirror the parent's ownership so dep traffic counts against the
+		// queue overflow watermark; teardown still closes the queue only
+		// through the parent, so no double-close
+		queueOwned: parent.queueOwned,
 	}
 	child.setScopeIds(nil)
 	return &depTracker{
@@ -86,8 +90,16 @@ func collectFilterDepIds(filters []database.FilterRequest, idx spaceindex.Store)
 	var walk func(fs []database.FilterRequest)
 	walk = func(fs []database.FilterRequest) {
 		for _, f := range fs {
-			if len(f.NestedFilters) > 0 {
+			// mirror the compiler's branch/leaf discriminator: an Operator
+			// makes it a branch (leaf fields ignored), otherwise it is a
+			// leaf even if NestedFilters is populated
+			if f.Operator != model.BlockContentDataviewFilter_No {
 				walk(f.NestedFilters)
+				continue
+			}
+			if f.Condition == model.BlockContentDataviewFilter_None {
+				// disabled leaf: the compiler drops it, so its values never
+				// filter anything and must not become deps
 				continue
 			}
 			if f.RelationKey == "" || f.RelationKey == bundle.RelationKeyId {

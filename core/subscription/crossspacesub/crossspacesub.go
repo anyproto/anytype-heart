@@ -320,7 +320,10 @@ func (s *crossSpaceSubscription) rollbackSubscription(spaceId string, subId stri
 	}
 	msgs = append(msgs, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
 		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
-			SubId: subId,
+			// the cross-space subId, not the internal one: patchEvent feeds
+			// counters through updateTotalCount keyed by SubId, and the
+			// internal id would re-insert the per-space total just removed
+			SubId: s.subId,
 			Total: 0,
 		},
 	}))
@@ -380,7 +383,10 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 		total := s.removeTotalCount(subId)
 		err = s.queue.Add(s.ctx, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
 			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
-				SubId: subId,
+				// the cross-space subId: keyed by the internal id, patchEvent's
+				// updateTotalCount would re-insert the per-space total this
+				// removal just deleted, double-counting every later total
+				SubId: s.subId,
 				Total: total,
 			},
 		},
@@ -397,6 +403,11 @@ func (s *crossSpaceSubscription) updateTotalCount(internalSubId string, perSpace
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
+	if internalSubId == s.subId {
+		// a synthesized counters event (space removal/rollback) — already
+		// aggregated, nothing per-space to record
+		return s.getTotalCount()
+	}
 	s.totalCounts[internalSubId] = perSpaceTotal
 
 	return s.getTotalCount()

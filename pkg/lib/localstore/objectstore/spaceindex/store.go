@@ -222,7 +222,15 @@ var _ Store = (*dsObjectStore)(nil)
 func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
 	tx, err := s.db.WriteTx(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("begin write tx: %w", err)
+	}
+	if parent, ok := ctx.Value(txNotificationsKey{}).(*txNotifications); ok && parent != nil {
+		// nested (savepoint) tx: notifications belong to the ROOT tx's
+		// buffer and must flush only on the root commit — a savepoint
+		// release is not durability. (A rolled-back savepoint can leave
+		// already-buffered notifications behind; acceptable: phantom
+		// notifications self-heal, lost ones would not.)
+		return &notifyingTx{WriteTx: tx, store: s, notifications: parent, nested: true}, nil
 	}
 	return &notifyingTx{WriteTx: tx, store: s, notifications: &txNotifications{}}, nil
 }
@@ -234,6 +242,7 @@ type notifyingTx struct {
 	anystore.WriteTx
 	store         *dsObjectStore
 	notifications *txNotifications
+	nested        bool
 }
 
 // Context returns the tx-bearing context with the notification buffer
@@ -244,8 +253,11 @@ func (t *notifyingTx) Context() context.Context {
 }
 
 func (t *notifyingTx) Commit() error {
+	// a finished tx makes Commit a nil-returning no-op (rollback-then-commit
+	// pattern); flushing then would announce rolled-back writes
+	alreadyDone := t.WriteTx.Done()
 	err := t.WriteTx.Commit()
-	if err == nil {
+	if err == nil && !alreadyDone && !t.nested {
 		t.store.flushTxNotifications(t.notifications)
 	}
 	return err

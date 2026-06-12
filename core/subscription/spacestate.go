@@ -161,6 +161,10 @@ func (st *spaceState) run() {
 				break
 			}
 			st.processBatch(items)
+			// deliver per batch: under a sustained feed the inner loop may
+			// not see an empty intake for a long time, and the outbox would
+			// otherwise accumulate unbounded while consumers starve
+			st.drainOutbox()
 		}
 		st.drainOutbox()
 	}
@@ -396,6 +400,12 @@ func (st *spaceState) installGroups(g *groupsSub) error {
 			Key:   bundle.RelationKeyRelationKey,
 			Cond:  model.BlockContentDataviewFilter_Equal,
 			Value: domain.String(string(g.relationKey)),
+		},
+		// consistent with checkItem's live-option predicate
+		database.FilterEq{
+			Key:   bundle.RelationKeyIsDeleted,
+			Cond:  model.BlockContentDataviewFilter_NotEqual,
+			Value: domain.Bool(true),
 		},
 	}}
 	options, err := st.idx.QueryRaw(optionFilters, 0, 0)

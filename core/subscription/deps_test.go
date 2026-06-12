@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -178,8 +179,8 @@ func TestDependencies(t *testing.T) {
 			givenTask("task2", "task two", "bob"),
 		})
 		ch := make(chan []string, 4)
-		fx.collectionService.EXPECT().SubscribeForCollection("coll1", "dep-parent").Return([]string{"task1"}, ch, nil)
-		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", "dep-parent").Return(nil)
+		fx.collectionService.EXPECT().SubscribeForCollection("coll1", mock.Anything).Return([]string{"task1"}, ch, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", mock.Anything).Return(nil)
 
 		req := givenDepRequest()
 		req.CollectionId = "coll1"

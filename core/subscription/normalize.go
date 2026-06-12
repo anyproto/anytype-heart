@@ -16,6 +16,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// maxWindowBound caps client-controlled limit/offset so window arithmetic
+// (offset+limit+margin) and the top-K heap allocation can never overflow
+const maxWindowBound = 1 << 30
+
 // subSpec is a normalized subscribe request: validated, subId assigned,
 // keys deduplicated with id ensured, ready for filter compilation
 type subSpec struct {
@@ -62,17 +66,27 @@ func normalizeSearch(req SubscribeRequest) (subSpec, error) {
 	if subId == "" {
 		subId = bson.NewObjectId().Hex()
 	}
+	// bounds-check the int64s BEFORE conversion: a huge client-sent limit
+	// would overflow window arithmetic (offset+limit+margin) or the top-K
+	// heap allocation, and int() truncates silently on 32-bit builds
+	if req.Limit < 0 || req.Limit > maxWindowBound {
+		return subSpec{}, fmt.Errorf("limit out of range: %d", req.Limit)
+	}
+	if req.Offset < 0 || req.Offset > maxWindowBound {
+		return subSpec{}, fmt.Errorf("offset out of range: %d", req.Offset)
+	}
 	limit := int(req.Limit)
-	if limit < 0 {
-		return subSpec{}, fmt.Errorf("negative limit: %d", limit)
-	}
 	offset := int(req.Offset)
-	if offset < 0 {
-		return subSpec{}, fmt.Errorf("negative offset: %d", offset)
-	}
 	ordered := len(req.Sorts) > 0 || !req.Internal
 	if req.AsyncInit && ordered {
 		return subSpec{}, errors.New("asyncInit does not support sorted subscriptions")
+	}
+	withDeps := !req.NoDepSubscription
+	if req.AsyncInit {
+		// the dep snapshot would bypass the event stream the consumer reads
+		// (deps return in-band while the main snapshot flows as events);
+		// no asyncInit consumer uses deps — crossspacesub rejects them
+		withDeps = false
 	}
 	// AfterId/BeforeId are dead request cursors: the client has always sent
 	// them empty and no engine ever read them. Ignored by design.
@@ -85,7 +99,7 @@ func normalizeSearch(req SubscribeRequest) (subSpec, error) {
 		source:       req.Source,
 		ordered:      ordered,
 		collectionId: req.CollectionId,
-		withDeps:     !req.NoDepSubscription,
+		withDeps:     withDeps,
 		internal:     req.Internal,
 		asyncInit:    req.AsyncInit,
 		queue:        req.InternalQueue,
@@ -100,9 +114,6 @@ func normalizeSearch(req SubscribeRequest) (subSpec, error) {
 func normalizeSubscribeIds(req pb.RpcObjectSubscribeIdsRequest) (subSpec, error) {
 	if req.SpaceId == "" {
 		return subSpec{}, errors.New("spaceId is required")
-	}
-	if len(req.Ids) == 0 {
-		return subSpec{}, errors.New("ids are required")
 	}
 	subId := req.SubId
 	if subId == "" {
@@ -121,6 +132,11 @@ func normalizeSubscribeIds(req pb.RpcObjectSubscribeIdsRequest) (subSpec, error)
 		}
 		seen[id] = struct{}{}
 		ids = append(ids, id)
+	}
+	// after filtering, so an all-blank list doesn't slip through as an
+	// empty-scope subscription
+	if len(ids) == 0 {
+		return subSpec{}, errors.New("ids are required")
 	}
 	return subSpec{
 		subId:             subId,
@@ -187,7 +203,7 @@ func resolveSources(idx spaceindex.Store, source []string) ([]database.FilterReq
 		}
 		relation, err := idx.GetRelationById(entry)
 		if err != nil {
-			return nil, fmt.Errorf("source %s is neither an object type nor a relation", entry)
+			return nil, fmt.Errorf("source %s is neither an object type nor a relation: %w", entry, err)
 		}
 		relationKeys = append(relationKeys, relation.Key)
 	}
