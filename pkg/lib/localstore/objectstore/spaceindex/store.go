@@ -137,7 +137,7 @@ type SourceDetailsFromID interface {
 }
 
 type FulltextQueue interface {
-	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
+	FtQueueMarkAsIndexed(objects []domain.FullTextQueuedObject, state uint64) error
 	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (uint64, int, error)
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullTextQueuedObject, error)
 	ClearFullTextQueue(spaceIds []string) error

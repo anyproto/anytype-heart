@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
@@ -37,13 +36,12 @@ import (
 const maxErrorsPerSession = 100
 
 var (
-	ftIndexInterval                     = 10 * time.Second
-	ftMaxIndexInterval                  = time.Second * 60
-	ftIndexForceMinInterval             = time.Second * 10
-	ftInconsistencyCheckStartDelay      = time.Second * 10
-	ftBatchLimit                   uint = 1000
-	ftBlockMaxSize                      = 1024 * 1024
-	maxErrSent                     atomic.Int32
+	ftIndexInterval              = 10 * time.Second
+	ftMaxIndexInterval           = time.Second * 60
+	ftIndexForceMinInterval      = time.Second * 10
+	ftBatchLimit            uint = 1000
+	ftBlockMaxSize               = 1024 * 1024
+	maxErrSent              atomic.Int32
 )
 
 var filesLayouts = map[model.ObjectTypeLayout]struct{}{
@@ -135,7 +133,7 @@ func (i *indexer) activeSpaces() []string {
 func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
 
-	var processQueuedObjects = func(objects []domain.FullTextQueuedObject) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
+	var processQueuedObjects = func(objects []domain.FullTextQueuedObject) (succeed []domain.FullTextQueuedObject, ftIndexSeq uint64, err error) {
 		if len(objects) == 0 {
 			return nil, 0, nil
 		}
@@ -163,7 +161,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				}
 			}
 
-			removedDocIds := make([]string, len(object.DeletedMsgIds))
+			removedDocIds := make([]string, 0, len(object.DeletedMsgIds))
 			if !isChat {
 				objDocs, removedDocIds, err = i.filterOutNotChangedDocuments(object.ObjectId, objDocs)
 			}
@@ -198,7 +196,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				}
 			}
 
-			succeedIds = append(succeedIds, object.FullId())
+			succeed = append(succeed, object)
 		}
 
 		ftIndexSeq, err = batcher.Finish()
@@ -211,7 +209,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 			// but it's not a big problem, in case of db corruption we may just try to reindex more objects than needed
 			i.ftsearchLastIndexSeq = ftIndexSeq
 		}
-		return succeedIds, i.ftsearchLastIndexSeq, nil
+		return succeed, i.ftsearchLastIndexSeq, nil
 	}
 
 	err := i.store.BatchProcessFullTextQueue(i.activeSpaces, ftBatchLimit, processQueuedObjects)
@@ -241,7 +239,9 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 		// no need to query fields if we have no documents to compare (means the whole object is deleted)
 		fields = []string{"Title", "Text"}
 	}
+	seenIds := make(map[string]struct{})
 	err = i.ftsearch.Iterate(id, fields, func(doc *ftsearch.SearchDoc) bool {
+		seenIds[doc.Id] = struct{}{}
 		newDocIndex := slice.Find(newDocs, func(d ftsearch.SearchDoc) bool {
 			return d.Id == doc.Id
 		})
@@ -262,9 +262,7 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	}
 
 	for _, doc := range newDocs {
-		if !slices.ContainsFunc(changedDocs, func(d ftsearch.SearchDoc) bool {
-			return d.Id == doc.Id
-		}) {
+		if _, exists := seenIds[doc.Id]; !exists {
 			// doc is new as it doesn't exist in the index
 			changedDocs = append(changedDocs, doc)
 		}
@@ -520,22 +518,39 @@ func (i *indexer) maybeRunFTConsistencyCheck(ctx context.Context) {
 		return
 	}
 
+	// The check iterates only spaces registered so far; running it against a
+	// partial registry would permanently skip the not-yet-opened spaces and
+	// could misclassify their docs. Probe the warm-up without blocking the FT
+	// loop: if stores are still loading, retry at a later queue drain.
+	waitCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	err = i.store.WaitStoresLoaded(waitCtx)
+	cancel()
+	if err != nil {
+		i.ftConsistencyCheckDone.Store(false)
+		return
+	}
+
 	start := time.Now()
-	checked, enqueued, err := i.store.RunFTConsistencyCheck(i.runCtx, i.ftsearch)
+	checked, enqueued, complete, err := i.store.RunFTConsistencyCheck(i.runCtx, i.ftsearch)
 	if err != nil {
 		log.Errorf("ft consistency check failed: %v", err)
 		return
 	}
 
-	// Update counter only on success
-	err = i.store.SetFTRecheckCounter(i.runCtx, ForceFTRecheckCounter)
-	if err != nil {
-		log.Errorf("save ft recheck counter: %v", err)
-		return
+	// Persist the counter only when the whole index was covered; an incomplete
+	// run (truncated listing, skipped space, capped orphan GC) must be retried
+	// next session, otherwise the remainder is never collected — the counter
+	// gate short-circuits every future run.
+	if complete {
+		err = i.store.SetFTRecheckCounter(i.runCtx, ForceFTRecheckCounter)
+		if err != nil {
+			log.Errorf("save ft recheck counter: %v", err)
+			return
+		}
 	}
 
-	var l = log.With("checked", checked, "enqueued", enqueued, "duration", time.Since(start))
-	if enqueued > 0 {
+	var l = log.With("checked", checked, "enqueued", enqueued, "complete", complete, "duration", time.Since(start))
+	if enqueued > 0 || !complete {
 		l.Warn("ft consistency check completed")
 	} else {
 		l.Info("ft consistency check completed")
