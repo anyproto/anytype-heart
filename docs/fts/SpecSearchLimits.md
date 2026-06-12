@@ -87,6 +87,11 @@ Three subtleties found by adversarial review, all required for the invariant to 
 - **Request-independent injections**: the related-object injection budget is a constant
   (`ftRerankPoolSize`), never derived from offset/limit, so the injected set (and thus the head
   order) is the same for every page.
+- **Lazy tail resolution**: the head must always be resolved in full (re-ranking can move any of
+  its objects into the page), but the tail is already in final order, so candidates beyond
+  `offset+limit` surviving records are not read from the store at all. Early exit yields a
+  prefix of the same sequence, so consistency is unaffected; the per-search store reads are
+  ~`max(head, needed + drops)` instead of the whole candidate budget.
 
 Result: the full sequence `rerank(top-100) ++ bm25-tail` is identical for every budget, so
 pages from different requests never overlap (`TestFulltextPaginationConsistency` pins

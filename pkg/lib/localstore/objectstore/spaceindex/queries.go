@@ -254,7 +254,11 @@ func (s *ftDropStats) recordFiltered(id string, details *domain.Details) {
 }
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
-	records, _, err := s.queryFromFulltextRecords(results, params, ftsSearch)
+	needed := 0
+	if limit > 0 {
+		needed = offset + limit
+	}
+	records, _, err := s.queryFromFulltextRecords(results, params, ftsSearch, needed)
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +298,7 @@ func paginateRecords(records []database.Record, offset int, limit int) []databas
 // budget boundary enter the set in tantivy's internal doc order, so a larger
 // budget can insert a tied object mid-order (the id tiebreak only orders the
 // objects it can see). Exact float ties at the boundary are rare; accepted.
-func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, ftsSearch string) ([]database.Record, *ftDropStats, error) {
+func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, ftsSearch string, needed int) ([]database.Record, *ftDropStats, error) {
 	pool := ftRerankPoolSize
 	if pool > len(results) {
 		pool = len(results)
@@ -302,8 +306,10 @@ func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResu
 	seen := make(map[string]struct{})
 	stats := &ftDropStats{}
 
-	// head: resolve, collect related-object injections, re-rank by final score
-	records, injectionGroups := s.resolveFulltextResults(results[:pool], params, ftsSearch, seen, true, stats)
+	// head: resolve, collect related-object injections, re-rank by final score.
+	// The head is always resolved in full — re-ranking can move any of its
+	// objects into the requested page
+	records, injectionGroups := s.resolveFulltextResults(results[:pool], params, ftsSearch, seen, true, stats, 0)
 	// the injection budget is a request-independent constant: deriving it from
 	// the requested page would make the injected set (and thus the re-ranked
 	// head order) differ between offsets, breaking pagination consistency
@@ -316,21 +322,37 @@ func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResu
 		})
 	}
 
-	// tail: BM25 order as returned by the index, no re-ranking, no injections
-	tail, _ := s.resolveFulltextResults(results[pool:], params, ftsSearch, seen, false, stats)
-	return append(records, tail...), stats, nil
+	// tail: BM25 order as returned by the index, no re-ranking, no injections.
+	// Already in final order, so resolve lazily: stop as soon as the requested
+	// page is covered (needed == 0 means everything). Early exit yields a
+	// prefix of the same sequence, so pagination consistency is preserved.
+	if needed == 0 || len(records) < needed {
+		tailMax := 0
+		if needed > 0 {
+			tailMax = needed - len(records)
+		}
+		tail, _ := s.resolveFulltextResults(results[pool:], params, ftsSearch, seen, false, stats, tailMax)
+		records = append(records, tail...)
+	}
+	return records, stats, nil
 }
 
 // resolveFulltextResults resolves fulltext candidates to filtered records,
 // preserving the input order. seen is shared between calls to dedupe objects;
 // related-object injection hits are collected only when collectInjections is
-// set; candidates rejected on the store side are classified into stats.
-func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult, params database.Filters, ftsSearch string, seen map[string]struct{}, collectInjections bool, stats *ftDropStats) ([]database.Record, map[domain.RelationKey][]injectionHit) {
+// set; candidates rejected on the store side are classified into stats (only
+// candidates actually resolved are classified). maxRecords > 0 stops the
+// resolution once that many records were produced, skipping the store reads
+// for the remaining candidates.
+func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult, params database.Filters, ftsSearch string, seen map[string]struct{}, collectInjections bool, stats *ftDropStats, maxRecords int) ([]database.Record, map[domain.RelationKey][]injectionHit) {
 	records := make([]database.Record, 0, len(results))
 	resultObjectMap := seen
 	injectionGroups := map[domain.RelationKey][]injectionHit{}
 
 	for _, res := range results {
+		if maxRecords > 0 && len(records) >= maxRecords {
+			break
+		}
 		if sbt, err := typeprovider.SmartblockTypeFromID(res.Path.ObjectId); err == nil {
 			if _, indexDetails, _ := sbt.Indexable(); !indexDetails && s.sourceService != nil {
 				details, err := s.sourceService.DetailsFromIdBasedSource(domain.FullID{
@@ -607,7 +629,7 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 			return s.performFulltextFallback(q, filters)
 		}
 
-		records, dropStats, err := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery)
+		records, dropStats, err := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery, needed)
 		if err != nil {
 			return nil, err
 		}

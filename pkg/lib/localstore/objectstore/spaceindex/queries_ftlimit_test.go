@@ -135,7 +135,7 @@ func TestFulltextDropStatsClassification(t *testing.T) {
 	params := newFilters(t, fx, nil, nil)
 
 	// when
-	records, stats, err := fx.queryFromFulltextRecords(results, params, "kept")
+	records, stats, err := fx.queryFromFulltextRecords(results, params, "kept", 0)
 
 	// then
 	require.NoError(t, err)
@@ -148,6 +148,55 @@ func TestFulltextDropStatsClassification(t *testing.T) {
 	assert.Equal(t, 0, stats.other)
 	assert.Equal(t, []string{"missingObj"}, stats.missingSample)
 	assert.Equal(t, []string{"deletedObj"}, stats.deletedSample)
+}
+
+// The tail beyond the re-rank head is already in final order, so it must be
+// resolved lazily: once the requested page is covered, the remaining tail
+// candidates must not cost store reads.
+func TestFulltextTailResolvedLazily(t *testing.T) {
+	// given: 100 head objects + 5 tail objects; the tail objects are archived,
+	// so stats.archived counts exactly the tail candidates that were resolved
+	fx := NewStoreFixture(t)
+	const headSize = 100 // = ftRerankPoolSize
+	objects := make([]TestObject, 0, headSize+5)
+	results := make([]database.FulltextResult, 0, headSize+5)
+	for i := 0; i < headSize+5; i++ {
+		id := fmt.Sprintf("obj%03d", i)
+		obj := TestObject{
+			bundle.RelationKeyId:   domain.String(id),
+			bundle.RelationKeyName: domain.String("match"),
+		}
+		if i >= headSize {
+			obj[bundle.RelationKeyIsArchived] = domain.Bool(true)
+		}
+		objects = append(objects, obj)
+		results = append(results, database.FulltextResult{
+			Path:  domain.ObjectPath{ObjectId: id, RelationKey: "name"},
+			Score: float64(headSize+5-i) / 10,
+		})
+	}
+	fx.AddObjects(t, objects)
+	params := newFilters(t, fx, nil, nil)
+
+	t.Run("tail is skipped when the head covers the page", func(t *testing.T) {
+		// when: the fully-resolved head (100 records) already covers needed=10
+		records, stats, err := fx.queryFromFulltextRecords(results, params, "match", 10)
+
+		// then: no tail candidate was resolved
+		require.NoError(t, err)
+		assert.Len(t, records, headSize)
+		assert.Equal(t, 0, stats.archived, "tail candidates must not be resolved when the page is covered")
+	})
+
+	t.Run("tail is resolved when everything is requested", func(t *testing.T) {
+		// when
+		records, stats, err := fx.queryFromFulltextRecords(results, params, "match", 0)
+
+		// then: tail resolved, its archived candidates classified and dropped
+		require.NoError(t, err)
+		assert.Len(t, records, headSize)
+		assert.Equal(t, 5, stats.archived)
+	})
 }
 
 // Offset pagination is only sound when the result order does not depend on
