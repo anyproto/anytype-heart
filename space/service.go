@@ -541,7 +541,7 @@ func (s *service) applySpaceStatus(spaceStatus spaceViewStatus) {
 // ensureSpaceStarted promotes a deferred space on demand (Wait/Get/workspaceOpen).
 // E2: in lazy mode the watcher no longer eagerly creates controllers, so if no
 // status is cached yet we must derive+build instead of no-op (otherwise
-// waitSpace blocks until the caller ctx is cancelled). Eager mode keeps the
+// waitSpace blocks until the caller ctx is canceled). Eager mode keeps the
 // original no-op (the watcher creates the controller).
 func (s *service) ensureSpaceStarted(spaceId string) {
 	s.mu.Lock()

@@ -1063,7 +1063,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "file").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "file", mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 11.11,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1125,7 +1125,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "test").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "test", mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1195,7 +1195,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "query").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1278,7 +1278,7 @@ func TestService_Search(t *testing.T) {
 				},
 			})
 		}
-		fx.ftSearch.EXPECT().Search(spaceId, "text").Return(ftResults, nil)
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything).Return(ftResults, nil)
 
 		mockChatObj := mock_chatobject.NewMockStoreObject(t)
 		mockChatObj.EXPECT().Lock().Return()
@@ -1320,7 +1320,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "search").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "search", mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1398,7 +1398,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "msg").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "msg", mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1470,7 +1470,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "text").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "text", mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1543,7 +1543,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "test").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "test", mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 5.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1625,7 +1625,7 @@ func TestService_Search(t *testing.T) {
 		}, nil).Maybe()
 
 		// FTSearch returns results from multiple chats
-		fx.ftSearch.EXPECT().Search(spaceId, "query").Return([]*ftsearch.DocumentMatch{
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "query", mock.Anything).Return([]*ftsearch.DocumentMatch{
 			{
 				Score: 10.0,
 				ID:    domain.NewObjectPathWithMessage(chatId, "msg1").String(),
@@ -1690,7 +1690,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "error").Return(nil, fmt.Errorf("search index error"))
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "error", mock.Anything).Return(nil, fmt.Errorf("search index error"))
 
 		fx.start(t)
 
@@ -1716,7 +1716,7 @@ func TestService_Search(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		fx.ftSearch.EXPECT().Search(spaceId, "").Return([]*ftsearch.DocumentMatch{}, nil)
+		fx.ftSearch.EXPECT().SearchChat(spaceId, chatId, "", mock.Anything).Return([]*ftsearch.DocumentMatch{}, nil)
 
 		mockChatObj := mock_chatobject.NewMockStoreObject(t)
 		mockChatObj.EXPECT().Lock().Return()

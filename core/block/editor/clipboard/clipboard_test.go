@@ -1376,16 +1376,16 @@ func TestPasteIntoEmptyStyledBlock(t *testing.T) {
 			require.NotNil(t, targetBlock, "target block should not be deleted")
 			assert.Equal(t, tc.style, targetBlock.Model().GetText().Style, "target block style should be preserved")
 			
-			// For multi-block paste: target stays empty, blocks inserted separately
-			// For single-block paste: text merges into target (intoBlock mode)
+			// The empty focused block is reused for the first paste line (both for
+			// single- and multi-block paste) instead of being left as a stray empty
+			// paragraph above the pasted content; remaining paste blocks are inserted
+			// below. The block keeps its own style.
+			assert.Equal(t, tc.pasteBlocks[0].GetText().Text, targetBlock.Model().GetText().Text, "first paste text should be merged into target")
 			if len(tc.pasteBlocks) > 1 {
-				assert.Equal(t, "", targetBlock.Model().GetText().Text, "target block should remain empty for multi-block paste")
-				require.NotEmpty(t, blockIds, "pasted blocks should be inserted")
-				firstPasteBlock := sb.Doc.Pick(blockIds[0])
-				require.NotNil(t, firstPasteBlock, "first paste block should exist in state")
-				assert.Equal(t, tc.pasteBlocks[0].GetText().Text, firstPasteBlock.Model().GetText().Text, "first paste block text should be preserved")
-			} else {
-				assert.Equal(t, tc.pasteBlocks[0].GetText().Text, targetBlock.Model().GetText().Text, "single block text should merge into target")
+				require.NotEmpty(t, blockIds, "remaining paste blocks should be inserted")
+				lastPasteBlock := sb.Doc.Pick(blockIds[len(blockIds)-1])
+				require.NotNil(t, lastPasteBlock, "last paste block should exist in state")
+				assert.Equal(t, tc.pasteBlocks[len(tc.pasteBlocks)-1].GetText().Text, lastPasteBlock.Model().GetText().Text, "remaining paste block text should be preserved")
 			}
 		})
 	}
