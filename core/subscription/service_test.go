@@ -389,6 +389,64 @@ func TestUnsubscribe(t *testing.T) {
 	})
 }
 
+// TestMultipleSubscriptionsFanOut pins per-subscription isolation when one
+// change fans out: every internal queue gets its own correctly projected
+// sequence, broadcast subs get theirs, and a change outside a sub's
+// requested keys stays silent for that sub only
+func TestMultipleSubscriptionsFanOut(t *testing.T) {
+	fx := newEngineFixture(t)
+
+	wide := givenParticipantRequest()
+	wide.SubId = "wide-sub" // keys: id, layout, name
+	wideResp, err := fx.Search(wide)
+	require.NoError(t, err)
+
+	narrow := givenParticipantRequest()
+	narrow.SubId = "narrow-sub"
+	narrow.Keys = []string{bundle.RelationKeyId.String()}
+	narrowResp, err := fx.Search(narrow)
+	require.NoError(t, err)
+
+	client := givenParticipantRequest()
+	client.SubId = "client-sub"
+	client.Internal = false
+	_, err = fx.Search(client)
+	require.NoError(t, err)
+
+	obj := givenParticipant("p1")
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+
+	// each internal queue receives its own projected sequence
+	wideMsgs := waitMessages(t, wideResp.Output, 3)
+	require.NotNil(t, wideMsgs[0].GetObjectDetailsSet())
+	assert.Equal(t, []string{"wide-sub"}, wideMsgs[0].GetObjectDetailsSet().SubIds)
+
+	narrowMsgs := waitMessages(t, narrowResp.Output, 3)
+	require.NotNil(t, narrowMsgs[0].GetObjectDetailsSet())
+	assert.Equal(t, []string{"narrow-sub"}, narrowMsgs[0].GetObjectDetailsSet().SubIds)
+	narrowSet := domain.NewDetailsFromProto(narrowMsgs[0].GetObjectDetailsSet().Details)
+	assert.False(t, narrowSet.Has(bundle.RelationKeyResolvedLayout), "narrow sub must get only its requested keys")
+
+	// the broadcast sub got the same logical change under its own subId
+	var clientAdds []string
+	for _, msg := range drainBroadcast(t, fx, 3) {
+		if add := msg.GetSubscriptionAdd(); add != nil {
+			assert.Equal(t, "client-sub", add.SubId)
+			clientAdds = append(clientAdds, add.Id)
+		}
+	}
+	assert.Equal(t, []string{"p1"}, clientAdds)
+
+	// a name change is outside the narrow sub's keys: only wide and client
+	// subs hear about it
+	obj[bundle.RelationKeyName] = domain.String("Polly")
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+
+	wideMsgs = waitMessages(t, wideResp.Output, 1)
+	require.NotNil(t, wideMsgs[0].GetObjectDetailsAmend())
+	assertNoMessages(t, narrowResp.Output)
+}
+
 // TestUnsubscribeAndReturnIdsConsistency pins the ghost-record invariant:
 // every membership event for the sub is delivered before
 // UnsubscribeAndReturnIds returns, and the returned ids reflect exactly the

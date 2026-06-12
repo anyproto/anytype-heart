@@ -56,6 +56,127 @@ func waitGroupEvents(t *testing.T, fx *engineFixture, min int) []*pb.EventObject
 	return res
 }
 
+const tagKey = "taskTag"
+
+func givenTagRelation() objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String("rel-taskTag"),
+		bundle.RelationKeyRelationKey:    domain.String(tagKey),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		bundle.RelationKeyUniqueKey:      domain.String("rel-" + tagKey),
+	}
+}
+
+func givenTagOption(id string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String(id),
+		bundle.RelationKeyName:           domain.String(id),
+		bundle.RelationKeyRelationKey:    domain.String(tagKey),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+	}
+}
+
+func givenTaggedTask(id string, tags ...string) objectstore.TestObject {
+	obj := objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String(id),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+	}
+	if len(tags) > 0 {
+		obj[tagKey] = domain.StringList(tags)
+	}
+	return obj
+}
+
+func tagSets(groups []*model.BlockContentDataviewGroup) [][]string {
+	res := make([][]string, 0, len(groups))
+	for _, g := range groups {
+		if tag := g.GetTag(); tag != nil {
+			res = append(res, tag.Ids)
+		}
+	}
+	return res
+}
+
+// TestSubscribeGroupsTags covers multi-value (tag) kanban groups: single-tag
+// columns come from option objects, combination columns from members' tag
+// lists, and both must track member mutations live
+func TestSubscribeGroupsTags(t *testing.T) {
+	fx := newEngineFixture(t)
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		givenTagRelation(),
+		givenTagOption("t1"),
+		givenTagOption("t2"),
+		givenTagOption("t3"),
+		givenTaggedTask("r1", "t1"),
+		givenTaggedTask("r2", "t2"),
+		givenTaggedTask("r3", "t1", "t2", "t3"),
+	})
+
+	resp, err := fx.SubscribeGroups(SubscribeGroupsRequest{
+		SpaceId:     testSpaceId,
+		SubId:       "tag-groups",
+		RelationKey: tagKey,
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Int64(int64(model.ObjectType_todo)),
+			},
+		},
+	})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, [][]string{
+		{}, // the no-value column
+		{"t1"}, {"t2"}, {"t3"},
+		{"t1", "t2", "t3"}, // r3's combination
+	}, tagSets(resp.Groups))
+
+	t.Run("shrinking a member's tag list swaps the combination group", func(t *testing.T) {
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenTaggedTask("r3", "t1", "t2"),
+		})
+
+		events := waitGroupEvents(t, fx, 2)
+		require.Len(t, events, 2)
+		var added, removed [][]string
+		for _, e := range events {
+			require.NotNil(t, e.Group.GetTag())
+			if e.Remove {
+				removed = append(removed, e.Group.GetTag().Ids)
+			} else {
+				added = append(added, e.Group.GetTag().Ids)
+			}
+		}
+		assert.Equal(t, [][]string{{"t1", "t2", "t3"}}, removed)
+		assert.Equal(t, [][]string{{"t1", "t2"}}, added)
+	})
+
+	t.Run("a new option adds its single-tag group", func(t *testing.T) {
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenTagOption("t4"),
+		})
+
+		events := waitGroupEvents(t, fx, 1)
+		require.Len(t, events, 1)
+		assert.False(t, events[0].Remove)
+		require.NotNil(t, events[0].Group.GetTag())
+		assert.Equal(t, []string{"t4"}, events[0].Group.GetTag().Ids)
+	})
+
+	t.Run("clearing the last multi-tag member removes the combination", func(t *testing.T) {
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenTaggedTask("r3"),
+		})
+
+		events := waitGroupEvents(t, fx, 1)
+		require.Len(t, events, 1)
+		assert.True(t, events[0].Remove)
+		require.NotNil(t, events[0].Group.GetTag())
+		assert.Equal(t, []string{"t1", "t2"}, events[0].Group.GetTag().Ids)
+	})
+}
+
 func TestSubscribeGroups(t *testing.T) {
 	t.Run("status groups come from relation options", func(t *testing.T) {
 		fx := newEngineFixture(t)

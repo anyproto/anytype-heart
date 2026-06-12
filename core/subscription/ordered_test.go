@@ -156,6 +156,52 @@ func TestOrderedSnapshot(t *testing.T) {
 		assert.Equal(t, int64(3), resp.Counters.Total)
 	})
 
+	t.Run("emptyPlacement End sorts keyless members last", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("p1", "b"),
+			givenParticipant("p2"), // no name
+			givenNamedParticipant("p3", "a"),
+		})
+
+		req := givenOrderedRequest(0, 0)
+		req.Sorts[0].EmptyPlacement = model.BlockContentDataviewSort_End
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+		require.Equal(t, []string{"p3", "p1", "p2"}, recordIds(resp.Records))
+
+		// the keyless member gains a name ranking it first
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("p2", "0"),
+		})
+		client := newClientList(recordIds(resp.Records))
+		client.waitConverge(t, resp.Output, []string{"p2", "p3", "p1"}, "emptyPlacement reorder")
+	})
+
+	t.Run("emptyPlacement End window underflow pulls the keyless successor", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("p1", "a"),
+			givenNamedParticipant("p2", "b"),
+			givenParticipant("p3"), // no name: ranks last under End
+		})
+
+		req := givenOrderedRequest(2, 0)
+		req.Sorts[0].EmptyPlacement = model.BlockContentDataviewSort_End
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+		require.Equal(t, []string{"p1", "p2"}, recordIds(resp.Records))
+
+		// p1 leaves: the re-query must pull p3 in, still respecting the
+		// emptyPlacement order (comparator and store pushdown must agree)
+		obj := givenNamedParticipant("p1", "a")
+		obj[bundle.RelationKeyResolvedLayout] = domain.Int64(int64(model.ObjectType_basic))
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+
+		client := newClientList([]string{"p1", "p2"})
+		client.waitConverge(t, resp.Output, []string{"p2", "p3"}, "emptyPlacement underflow")
+	})
+
 	t.Run("offset beyond the set yields an empty window", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{

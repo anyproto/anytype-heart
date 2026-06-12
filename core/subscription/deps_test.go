@@ -205,6 +205,54 @@ func TestDependencies(t *testing.T) {
 		require.NoError(t, fx.Unsubscribe("dep-parent"))
 	})
 
+	t.Run("renaming the status option you sort by reorders the parent", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		statusTask := func(id, option string) objectstore.TestObject {
+			return objectstore.TestObject{
+				bundle.RelationKeyId:             domain.String(id),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_todo)),
+				statusKey:                        domain.String(option),
+			}
+		}
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenStatusRelation(),
+			givenStatusOption("opt-a", "Alpha"),
+			givenStatusOption("opt-b", "Beta"),
+			statusTask("t1", "opt-a"),
+			statusTask("t2", "opt-b"),
+		})
+
+		req := SubscribeRequest{
+			SpaceId:           testSpaceId,
+			SubId:             "status-sorted",
+			Internal:          true,
+			NoDepSubscription: true,
+			Keys:              []string{bundle.RelationKeyId.String(), statusKey},
+			Sorts: []database.SortRequest{
+				{RelationKey: statusKey, Type: model.BlockContentDataviewSort_Asc},
+			},
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyResolvedLayout,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.Int64(int64(model.ObjectType_todo)),
+				},
+			},
+		}
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+		require.Equal(t, []string{"t1", "t2"}, recordIds(resp.Records))
+
+		// Alpha → Zed: status sorts compare option names via the order map,
+		// so t1 must move after t2
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenStatusOption("opt-a", "Zed"),
+		})
+
+		client := newClientList([]string{"t1", "t2"})
+		client.waitConverge(t, resp.Output, []string{"t2", "t1"}, "status option reorder")
+	})
+
 	t.Run("renaming the dep you sort by reorders the parent", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{

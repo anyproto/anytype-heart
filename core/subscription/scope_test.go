@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
@@ -87,6 +88,58 @@ func TestSubscribeIds(t *testing.T) {
 		assert.Equal(t, "p1", add.AfterId)
 	})
 
+	t.Run("ids subscription with dependencies", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenAssigneeRelation(),
+			givenPerson("alice", "Alice"),
+			givenPerson("bob", "Bob"),
+			givenTask("task1", "task one", "alice"),
+		})
+
+		resp, err := fx.SubscribeIdsReq(pb.RpcObjectSubscribeIdsRequest{
+			SpaceId: testSpaceId,
+			SubId:   "ids-dep-sub",
+			Ids:     []string{"task1", "task2"},
+			Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), assigneeKey},
+		})
+		require.NoError(t, err)
+		require.Len(t, resp.Dependencies, 1)
+		assert.Equal(t, "alice", pbtypes.GetString(resp.Dependencies[0], bundle.RelationKeyId.String()))
+
+		t.Run("dep rename arrives under the dep subId", func(t *testing.T) {
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+				givenPerson("alice", "Alice Renamed"),
+			})
+			msgs := drainBroadcast(t, fx, 1)
+			amend := msgs[0].GetObjectDetailsAmend()
+			require.NotNil(t, amend)
+			assert.Equal(t, "alice", amend.Id)
+			assert.Equal(t, []string{"ids-dep-sub/dep"}, amend.SubIds)
+		})
+
+		t.Run("a late-indexed id brings its dep along", func(t *testing.T) {
+			fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+				givenTask("task2", "task two", "bob"),
+			})
+			var sawTask, sawDep bool
+			for !sawTask || !sawDep {
+				for _, msg := range drainBroadcast(t, fx, 1) {
+					if set := msg.GetObjectDetailsSet(); set != nil {
+						switch set.Id {
+						case "task2":
+							assert.Equal(t, []string{"ids-dep-sub"}, set.SubIds)
+							sawTask = true
+						case "bob":
+							assert.Equal(t, []string{"ids-dep-sub/dep"}, set.SubIds)
+							sawDep = true
+						}
+					}
+				}
+			}
+		})
+	})
+
 	t.Run("explicit ids stay tracked through soft deletion", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -112,6 +165,15 @@ func TestSubscribeIds(t *testing.T) {
 		require.NotNil(t, amend)
 		require.Len(t, amend.Details, 1)
 		assert.Equal(t, bundle.RelationKeyIsDeleted.String(), amend.Details[0].Key)
+
+		// objects outside the requested id list stay silent
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("unlisted", "noise"),
+		})
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+		_, err = fx.broadcastEvents.NewCond().WithMin(1).Wait(ctx)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
 	})
 }
 
@@ -158,6 +220,38 @@ func TestCollectionScope(t *testing.T) {
 		t.Run("unsubscribe releases the collection subscription", func(t *testing.T) {
 			require.NoError(t, fx.Unsubscribe("coll-sub"))
 		})
+	})
+
+	t.Run("collection-scoped ordered window with limit", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenNamedParticipant("p1", "a"),
+			givenNamedParticipant("p2", "b"),
+			givenNamedParticipant("p3", "c"),
+		})
+		ch := make(chan []string, 4)
+		fx.collectionService.EXPECT().SubscribeForCollection("coll1", "coll-win").Return([]string{"p3", "p1", "p2"}, ch, nil)
+		fx.collectionService.EXPECT().UnsubscribeFromCollection("coll1", "coll-win").Return(nil)
+
+		req := givenParticipantRequest()
+		req.SubId = "coll-win"
+		req.CollectionId = "coll1"
+		req.Limit = 2
+		req.Sorts = []database.SortRequest{
+			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
+		}
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"p1", "p2"}, recordIds(resp.Records))
+		assert.Equal(t, int64(3), resp.Counters.Total)
+
+		// p1 leaves the collection: the scoped re-query pulls p3 into the
+		// window in sort order
+		ch <- []string{"p3", "p2"}
+		client := newClientList([]string{"p1", "p2"})
+		client.waitConverge(t, resp.Output, []string{"p2", "p3"}, "collection window shift")
+
+		require.NoError(t, fx.Unsubscribe("coll-win"))
 	})
 
 	t.Run("non-matching collection members stay excluded", func(t *testing.T) {
