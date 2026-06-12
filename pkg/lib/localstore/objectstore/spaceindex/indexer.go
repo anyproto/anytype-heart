@@ -2,15 +2,15 @@ package spaceindex
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"sort"
-	"strconv"
+	"strings"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
 	"github.com/anyproto/any-store/query"
-	"github.com/cespare/xxhash/v2"
 )
 
 const headsStateField = "h"
@@ -92,7 +92,7 @@ func (s *dsObjectStore) SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Conte
 
 // HashIds returns a stable fingerprint of a set of ids, insensitive to order and duplicates.
 // Non-empty even for an empty list, so an absent reconcile marker is distinguishable from a
-// recorded one. A zero byte separates the ids to keep distinct sets from colliding.
+// recorded one.
 func HashIds(ids []string) string {
 	uniq := make([]string, 0, len(ids))
 	seen := make(map[string]struct{}, len(ids))
@@ -103,12 +103,8 @@ func HashIds(ids []string) string {
 		}
 	}
 	sort.Strings(uniq)
-	digest := xxhash.New()
-	for _, id := range uniq {
-		_, _ = digest.WriteString(id)
-		_, _ = digest.Write([]byte{0})
-	}
-	return strconv.FormatUint(digest.Sum64(), 16)
+	sum := sha256.Sum256([]byte(strings.Join(uniq, ",")))
+	return fmt.Sprintf("%x", sum)
 }
 
 // GetReconcileMarker returns the tree-heads fingerprint (HashIds of the heads) persisted by the
