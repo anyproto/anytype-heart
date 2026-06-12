@@ -1,8 +1,10 @@
 package editor
 
 import (
+	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
@@ -85,5 +87,69 @@ func TestArchive_UnArchive(t *testing.T) {
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
 		require.Len(t, chIds, 1)
+	})
+}
+
+func TestArchive_ReconcileInStore(t *testing.T) {
+	// the editors are built without Init so the hook does not spawn a racing background reconcile
+	t.Run("archive writes marker after successful reconcile", func(t *testing.T) {
+		// given
+		sb := smarttest.New("root")
+		store := spaceindex.NewStoreFixture(t)
+		a := &Archive{
+			SmartBlock:  sb,
+			Collection:  blockcollection.NewCollection(sb, store),
+			objectStore: store,
+		}
+		want := spaceindex.HashLinksList([]string{"obj1", "obj2"})
+
+		// when
+		a.reconcileInStore([]string{"obj1", "obj2"})
+
+		// then
+		got, err := store.GetLastReconciledLinksHash(context.Background(), "root")
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("marker follows the latest reconciled set", func(t *testing.T) {
+		// given
+		sb := smarttest.New("root")
+		store := spaceindex.NewStoreFixture(t)
+		a := &Archive{
+			SmartBlock:  sb,
+			Collection:  blockcollection.NewCollection(sb, store),
+			objectStore: store,
+		}
+		a.reconcileInStore([]string{"obj1"})
+		want := spaceindex.HashLinksList(nil)
+
+		// when
+		a.reconcileInStore(nil)
+
+		// then
+		got, err := store.GetLastReconciledLinksHash(context.Background(), "root")
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("dashboard writes marker after successful reconcile", func(t *testing.T) {
+		// given
+		sb := smarttest.New("home")
+		store := spaceindex.NewStoreFixture(t)
+		d := &Dashboard{
+			SmartBlock:  sb,
+			Collection:  blockcollection.NewCollection(sb, store),
+			objectStore: store,
+		}
+		want := spaceindex.HashLinksList([]string{"fav1"})
+
+		// when
+		d.reconcileInStore([]string{"fav1"})
+
+		// then
+		got, err := store.GetLastReconciledLinksHash(context.Background(), "home")
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
 	})
 }

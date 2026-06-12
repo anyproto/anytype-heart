@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"time"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/headsync"
+	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -223,9 +225,11 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if !disableRemoteLoad {
 		loadCtx = peer.CtxWithPeerId(ctx, peer.CtxResponsiblePeers)
 	}
-	s.loadMandatoryObjectsErr = s.LoadObjects(loadCtx, s.derivedIDs.IDs())
-	if s.loadMandatoryObjectsErr != nil {
-		return
+	if missing := s.missingMandatoryObjects(ctx); len(missing) > 0 {
+		s.loadMandatoryObjectsErr = s.LoadObjects(loadCtx, missing)
+		if s.loadMandatoryObjectsErr != nil {
+			return
+		}
 	}
 	go s.tryLoadBundledAndInstallIfMissing(disableRemoteLoad)
 
@@ -243,6 +247,33 @@ func (s *space) mandatoryObjectsLoad(ctx context.Context, disableRemoteLoad bool
 	if !disableRemoteLoad {
 		s.common.TreeSyncer().StartSync()
 	}
+}
+
+// missingMandatoryObjects probes headstorage for the mandatory derived objects and returns
+// the ids whose trees are locally absent or marked deleted. Present trees are intentionally
+// NOT opened: building 4-5 smartblocks per space on every load dominated startup I/O, while
+// steady-state consumers read these objects from the objectstore index and open them lazily.
+// Stale-index recovery is reindexOutdatedObjects' job, not this one. Consequences of the
+// deferred open (editor state migrations, archive/home reconciliation, workspace->spaceview
+// push) are documented in docs/SpaceLoadOptimization.md §5.2.
+//
+// Deleted entries and probe errors are reported as missing so LoadObjects surfaces the same
+// outcome as the previous load-everything path (incl. the deleted-profile workaround in
+// loadObjectsAsync). The one accepted difference: a tree that is present but unreadable now
+// fails on first open instead of failing the space load.
+func (s *space) missingMandatoryObjects(ctx context.Context) (missing []string) {
+	headStorage := s.Storage().HeadStorage()
+	for _, id := range s.derivedIDs.IDs() {
+		entry, err := headStorage.GetEntry(ctx, id)
+		if err != nil || entry.DeletedStatus != headstorage.DeletedStatusNotDeleted {
+			if err != nil && !errors.Is(err, anystore.ErrDocNotFound) && !errors.Is(err, context.Canceled) {
+				log.Warn("mandatory object probe failed",
+					zap.String("spaceId", s.Id()), zap.String("objectId", id), zap.Error(err))
+			}
+			missing = append(missing, id)
+		}
+	}
+	return missing
 }
 
 func (s *space) Id() string {

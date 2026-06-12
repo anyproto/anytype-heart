@@ -278,8 +278,56 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	}
 
 	go i.addSyncDetails(space)
+	go i.reconcileLinkDerivedDetails(space)
 
 	return i.saveLatestChecksums(space.Id())
+}
+
+// reconcileLinkDerivedDetails verifies, without building trees, that the local details derived
+// from the Home and Archive link collections (isFavorite/isArchived) still match the trees, and
+// re-runs the authoritative editor reconcile when the proof is missing or stale. The proof is a
+// links fingerprint persisted after each completed reconcile (SaveLastReconciledLinksHash); it
+// goes stale when a crash or error hits the window between a tree apply being indexed and the
+// per-object detail writes completing. Opening the object runs the editor reconcile
+// (Archive.Init/Dashboard.Init) and refreshes the marker.
+func (i *indexer) reconcileLinkDerivedDetails(space clientspace.Space) {
+	store := i.store.SpaceIndex(space.Id())
+	derivedIds := space.DerivedIDs()
+	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
+	for _, objectId := range []string{derivedIds.Home, derivedIds.Archive} {
+		if objectId == "" {
+			continue
+		}
+		l := log.With("spaceId", space.Id(), "objectId", objectId)
+		// a tree that is not local yet is fetched by the mandatory-objects load, which opens
+		// it and thereby reconciles; probing here avoids a spurious failed open
+		if has, err := space.Storage().HasTree(i.runCtx, objectId); err != nil || !has {
+			continue
+		}
+		links, err := store.GetOutboundLinksById(objectId)
+		if err != nil {
+			l.Errorf("reconcile link-derived details: get outbound links: %v", err)
+			continue
+		}
+		marker, err := store.GetLastReconciledLinksHash(i.runCtx, objectId)
+		if err != nil {
+			l.Errorf("reconcile link-derived details: get marker: %v", err)
+			continue
+		}
+		if marker == spaceindex.HashLinksList(links) {
+			continue
+		}
+		if marker == "" {
+			// no reconcile recorded yet: first load since the marker was introduced
+			l.Info("link-derived details reconcile marker absent, reconciling")
+		} else {
+			l.Warn("link-derived details out of sync with object tree, reconciling")
+		}
+		// opening the object runs the editor reconcile, which rewrites the marker
+		if err = space.DoCtx(ctx, objectId, func(smartblock.SmartBlock) error { return nil }); err != nil {
+			l.Errorf("reconcile link-derived details: open object: %v", err)
+		}
+	}
 }
 
 func (i *indexer) cleanChatCollection(ctx context.Context, db anystore.DB, chatId string, colName string) error {

@@ -1,10 +1,10 @@
 package editor
 
 import (
-	"errors"
-
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"context"
+	"fmt"
+	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
@@ -79,15 +79,22 @@ func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
 	if err != nil {
 		return
 	}
-
-	go func() {
-		uErr := p.updateInStore(favoritedIds)
-		if uErr != nil {
-			log.Errorf("favorite: can't update in store: %v", uErr)
-		}
-	}()
-
+	go p.reconcileInStore(favoritedIds)
 	return nil
+}
+
+// reconcileInStore aligns isFavorite details with the home tree and, once every write
+// succeeded, persists a links fingerprint that lets the indexer prove on the next space load
+// that no reconcile is needed without building this tree (reconcileLinkDerivedDetails).
+func (p *Dashboard) reconcileInStore(favoritedIds []string) {
+	if err := p.updateInStore(favoritedIds); err != nil {
+		// no marker write: the next space load triggers reconciliation again
+		log.Errorf("favorite: can't update in store: %v", err)
+		return
+	}
+	if err := p.objectStore.SaveLastReconciledLinksHash(context.Background(), p.Id(), spaceindex.HashLinksList(favoritedIds)); err != nil {
+		log.Errorf("favorite: can't save reconcile marker: %v", err)
+	}
 }
 
 func (p *Dashboard) updateInStore(favoritedIds []string) error {
@@ -101,7 +108,7 @@ func (p *Dashboard) updateInStore(favoritedIds []string) error {
 		},
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("query favorited objects: %w", err)
 	}
 	var storeFavoritedIds = make([]string, 0, len(records))
 	for _, rec := range records {
@@ -109,41 +116,36 @@ func (p *Dashboard) updateInStore(favoritedIds []string) error {
 	}
 
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeFavoritedIds, favoritedIds)
-	for _, removedId := range removedIds {
-		go func(id string) {
-			if err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
-				if current == nil {
-					current = domain.NewDetails()
-				}
-				current.SetBool(bundle.RelationKeyIsFavorite, false)
-				return current, nil
-			}); err != nil {
-				logFavoriteError(err)
+	var (
+		wg     sync.WaitGroup
+		failed atomic.Int32
+	)
+	setIsFavorite := func(id string, isFavorite bool) {
+		defer wg.Done()
+		err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
+			if current == nil {
+				current = domain.NewDetails()
 			}
-		}(removedId)
+			current.SetBool(bundle.RelationKeyIsFavorite, isFavorite)
+			return current, nil
+		})
+		// a missing or deleted target has no details to carry the flag; not a failure
+		if err != nil && !isMissingObjectError(err) {
+			log.Errorf("favorite: can't set detail to object: %v", err)
+			failed.Add(1)
+		}
+	}
+	for _, removedId := range removedIds {
+		wg.Add(1)
+		go setIsFavorite(removedId, false)
 	}
 	for _, addedId := range addedIds {
-		go func(id string) {
-			if err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
-				if current == nil {
-					current = domain.NewDetails()
-				}
-				current.SetBool(bundle.RelationKeyIsFavorite, true)
-				return current, nil
-			}); err != nil {
-				logFavoriteError(err)
-			}
-		}(addedId)
+		wg.Add(1)
+		go setIsFavorite(addedId, true)
+	}
+	wg.Wait()
+	if n := failed.Load(); n > 0 {
+		return fmt.Errorf("set isFavorite detail: %d objects failed", n)
 	}
 	return nil
-}
-
-func logFavoriteError(err error) {
-	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return
-	}
-	if errors.Is(err, treestorage.ErrUnknownTreeId) {
-		return
-	}
-	log.Errorf("favorite: can't set detail to object: %v", err)
 }

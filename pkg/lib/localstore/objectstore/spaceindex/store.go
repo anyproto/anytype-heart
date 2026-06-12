@@ -119,6 +119,8 @@ type Store interface {
 	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
 	SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error)
+	GetLastReconciledLinksHash(ctx context.Context, id string) (hash string, err error)
+	SaveLastReconciledLinksHash(ctx context.Context, id string, hash string) error
 	GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error)
 	ClearHeadsState(ctx context.Context) error
 

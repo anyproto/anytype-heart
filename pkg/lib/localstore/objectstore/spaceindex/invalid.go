@@ -223,6 +223,14 @@ func (s *invalidStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (
 	return "", s.err
 }
 
+func (s *invalidStore) GetLastReconciledLinksHash(ctx context.Context, id string) (hash string, err error) {
+	return "", s.err
+}
+
+func (s *invalidStore) SaveLastReconciledLinksHash(ctx context.Context, id string, hash string) error {
+	return s.err
+}
+
 func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
 	return s.err
 }

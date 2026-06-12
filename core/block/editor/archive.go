@@ -1,7 +1,11 @@
 package editor
 
 import (
+	"context"
 	"errors"
+	"fmt"
+	"sync"
+	"sync/atomic"
 
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
@@ -77,13 +81,22 @@ func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	if err != nil {
 		return
 	}
-	go func() {
-		uErr := p.updateInStore(archivedIds)
-		if uErr != nil {
-			log.Errorf("archive: can't update in store: %v", uErr)
-		}
-	}()
+	go p.reconcileInStore(archivedIds)
 	return nil
+}
+
+// reconcileInStore aligns isArchived details with the archive tree and, once every write
+// succeeded, persists a links fingerprint that lets the indexer prove on the next space load
+// that no reconcile is needed without building this tree (reconcileLinkDerivedDetails).
+func (p *Archive) reconcileInStore(archivedIds []string) {
+	if err := p.updateInStore(archivedIds); err != nil {
+		// no marker write: the next space load triggers reconciliation again
+		log.Errorf("archive: can't update in store: %v", err)
+		return
+	}
+	if err := p.objectStore.SaveLastReconciledLinksHash(context.Background(), p.Id(), spaceindex.HashLinksList(archivedIds)); err != nil {
+		log.Errorf("archive: can't save reconcile marker: %v", err)
+	}
 }
 
 func (p *Archive) updateInStore(archivedIds []string) error {
@@ -95,7 +108,7 @@ func (p *Archive) updateInStore(archivedIds []string) error {
 		},
 	}}, 0, 0)
 	if err != nil {
-		return err
+		return fmt.Errorf("query archived objects: %w", err)
 	}
 
 	var storeArchivedIds = make([]string, 0, len(records))
@@ -104,41 +117,40 @@ func (p *Archive) updateInStore(archivedIds []string) error {
 	}
 
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)
-	for _, removedId := range removedIds {
-		go func(id string) {
-			if err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
-				if current == nil {
-					current = domain.NewDetails()
-				}
-				current.SetBool(bundle.RelationKeyIsArchived, false)
-				return current, nil
-			}); err != nil {
-				logArchiveError(err)
+	var (
+		wg     sync.WaitGroup
+		failed atomic.Int32
+	)
+	setIsArchived := func(id string, isArchived bool) {
+		defer wg.Done()
+		err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
+			if current == nil {
+				current = domain.NewDetails()
 			}
-		}(removedId)
+			current.SetBool(bundle.RelationKeyIsArchived, isArchived)
+			return current, nil
+		})
+		// a missing or deleted target has no details to carry the flag; not a failure
+		if err != nil && !isMissingObjectError(err) {
+			log.Errorf("archive: can't set detail to object: %v", err)
+			failed.Add(1)
+		}
+	}
+	for _, removedId := range removedIds {
+		wg.Add(1)
+		go setIsArchived(removedId, false)
 	}
 	for _, addedId := range addedIds {
-		go func(id string) {
-			if err := p.ModifyLocalDetails(id, func(current *domain.Details) (*domain.Details, error) {
-				if current == nil {
-					current = domain.NewDetails()
-				}
-				current.SetBool(bundle.RelationKeyIsArchived, true)
-				return current, nil
-			}); err != nil {
-				logArchiveError(err)
-			}
-		}(addedId)
+		wg.Add(1)
+		go setIsArchived(addedId, true)
+	}
+	wg.Wait()
+	if n := failed.Load(); n > 0 {
+		return fmt.Errorf("set isArchived detail: %d objects failed", n)
 	}
 	return nil
 }
 
-func logArchiveError(err error) {
-	if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
-		return
-	}
-	if errors.Is(err, treestorage.ErrUnknownTreeId) {
-		return
-	}
-	log.Errorf("archive: can't set detail to object: %v", err)
+func isMissingObjectError(err error) bool {
+	return errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, treestorage.ErrUnknownTreeId)
 }
