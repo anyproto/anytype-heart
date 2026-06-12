@@ -200,20 +200,26 @@ Behavior changes (accepted, reviewed 2026-06-12):
    explicit trigger (e.g. probe a persisted version detail and force one open).
 3. ~~Open-time self-heals stop running~~ — mitigated by the **link-derived details reconcile
    marker**: `Archive`/`Dashboard` reconciles (`isArchived`/`isFavorite` vs the tree links) are
-   now awaitable, and on full success persist `HashLinksList(treeLinkIds)` (order/duplicate
-   insensitive, xxhash) into the object's `headsState` doc (`SaveLastReconciledLinksHash`).
-   On every space load `indexer.reconcileLinkDerivedDetails` compares that marker against the
-   hash of the *indexed* outbound links (valid stand-in for the tree under the happy-path
-   heads==lastIndexed invariant; verified order-preserving end to end) — two point reads per
-   space, no tree builds, no detail scans. A mismatch (crash/error between tree apply+index and
-   the detail writes) logs a WARN and opens the object once, which re-runs the authoritative
-   tree-based editor reconcile and refreshes the marker; an absent marker (first run after
-   upgrade, store wipe) logs INFO and does the same. The store links are deliberately only a
-   *trigger*, never a write source: outbound links may be a superset of link blocks (mentions,
-   file/dataview targets in legacy objects), and only the editors' `GetIds()` is authoritative.
-   The remaining un-healed crash window is the `Workspaces.Init` name/icon push to the
-   spaceview — accepted (self-heals on next workspace open or change; cheap follow-up:
-   compare workspace vs spaceview store details).
+   now awaitable, serialized per editor with stale-snapshot supersede (`reconcileRunner` — a
+   superseded reconcile must not revert details or persist an outdated marker), and on full
+   success persist a fingerprint of the **tree heads** the reconcile ran against
+   (`HashIds(tree.Heads())`, xxhash, order/duplicate insensitive) into the object's
+   `headsState` doc (`SaveReconcileMarker`). On every space load
+   `indexer.reconcileLinkDerivedDetails` compares the marker against the hash of the current
+   headstorage entry heads — two point reads per object, no tree builds, no detail scans.
+   Heads are the right anchor because headstorage advances at apply commit and is maintained
+   for every object under every lifecycle; outbound links are NOT (links are never indexed for
+   Home/Archive: `Indexable()` returns indexLinks=false for them, so a links-based trigger
+   would misfire forever — caught in review). Any tree change whose reconcile did not complete
+   leaves the marker stale: the next load logs a WARN ("link-derived details out of sync") and
+   opens the object once, re-running the authoritative tree-based editor reconcile and
+   refreshing the marker; an absent marker (first run after upgrade, store wipe,
+   ClearHeadsState) logs INFO and does the same — one-time burn-in per space. Known remaining
+   gaps, both accepted: (a) writers that set `isFavorite`/`isArchived` details directly
+   without touching the trees (e.g. Notion import) are no longer cleaned at next start — the
+   flags now persist until the next favorite/archive operation in that space re-runs the full
+   diff; (b) the `Workspaces.Init` name/icon push to the spaceview (self-heals on next
+   workspace open or change; cheap follow-up: compare workspace vs spaceview store details).
 
 ### 5.3 W3/W4/W5 — Gate install pass and migration runner on `systemObjectsHash`
 

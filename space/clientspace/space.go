@@ -266,7 +266,7 @@ func (s *space) missingMandatoryObjects(ctx context.Context) (missing []string) 
 	for _, id := range s.derivedIDs.IDs() {
 		entry, err := headStorage.GetEntry(ctx, id)
 		if err != nil || entry.DeletedStatus != headstorage.DeletedStatusNotDeleted {
-			if err != nil && !errors.Is(err, anystore.ErrDocNotFound) && !errors.Is(err, context.Canceled) {
+			if err != nil && !errors.Is(err, anystore.ErrDocNotFound) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 				log.Warn("mandatory object probe failed",
 					zap.String("spaceId", s.Id()), zap.String("objectId", id), zap.Error(err))
 			}

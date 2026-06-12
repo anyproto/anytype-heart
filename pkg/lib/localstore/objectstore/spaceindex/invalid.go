@@ -223,11 +223,11 @@ func (s *invalidStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (
 	return "", s.err
 }
 
-func (s *invalidStore) GetLastReconciledLinksHash(ctx context.Context, id string) (hash string, err error) {
+func (s *invalidStore) GetReconcileMarker(ctx context.Context, id string) (marker string, err error) {
 	return "", s.err
 }
 
-func (s *invalidStore) SaveLastReconciledLinksHash(ctx context.Context, id string, hash string) error {
+func (s *invalidStore) SaveReconcileMarker(ctx context.Context, id string, marker string) error {
 	return s.err
 }
 

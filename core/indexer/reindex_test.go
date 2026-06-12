@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage/mock_headstorage"
 	"github.com/stretchr/testify/assert"
@@ -564,10 +565,24 @@ func TestReconcileLinkDerivedDetails(t *testing.T) {
 		archiveId = "archive1"
 	)
 	derivedIds := threads.DerivedSmartblockIds{Home: homeId, Archive: archiveId}
+	headsEntries := map[string]headstorage.HeadsEntry{
+		homeId:    {Id: homeId, Heads: []string{"homeHead1", "homeHead2"}, CommonSnapshot: "cs"},
+		archiveId: {Id: archiveId, Heads: []string{"archiveHead1"}, CommonSnapshot: "cs"},
+	}
 
-	newSpaceMock := func(t *testing.T, treesExist bool) *mock_space.MockSpace {
+	newSpaceMock := func(t *testing.T, entries map[string]headstorage.HeadsEntry) *mock_space.MockSpace {
+		ctrl := gomock.NewController(t)
+		headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+		headStorage.EXPECT().GetEntry(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
+			func(_ context.Context, id string) (headstorage.HeadsEntry, error) {
+				entry, ok := entries[id]
+				if !ok {
+					return headstorage.HeadsEntry{}, anystore.ErrDocNotFound
+				}
+				return entry, nil
+			})
 		storage := mock_anystorage.NewMockClientSpaceStorage(t)
-		storage.EXPECT().HasTree(mock.Anything, mock.Anything).Return(treesExist, nil).Maybe()
+		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
 		spc := mock_space.NewMockSpace(t)
 		spc.EXPECT().Id().Return(spaceId).Maybe()
 		spc.EXPECT().DerivedIDs().Return(derivedIds).Maybe()
@@ -579,13 +594,11 @@ func TestReconcileLinkDerivedDetails(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		store := fx.store.SpaceIndex(spaceId)
-		require.NoError(t, store.UpdateObjectLinks(ctx, homeId, []string{"fav1", "fav2"}))
-		// marker is order-insensitive
-		require.NoError(t, store.SaveLastReconciledLinksHash(ctx, homeId, spaceindex.HashLinksList([]string{"fav2", "fav1"})))
-		// archive has no links doc: reconciled-empty marker matches
-		require.NoError(t, store.SaveLastReconciledLinksHash(ctx, archiveId, spaceindex.HashLinksList(nil)))
+		// marker is order-insensitive over heads
+		require.NoError(t, store.SaveReconcileMarker(ctx, homeId, spaceindex.HashIds([]string{"homeHead2", "homeHead1"})))
+		require.NoError(t, store.SaveReconcileMarker(ctx, archiveId, spaceindex.HashIds([]string{"archiveHead1"})))
 		// no DoCtx expectation: any open fails the test
-		spc := newSpaceMock(t, true)
+		spc := newSpaceMock(t, headsEntries)
 
 		// when
 		fx.reconcileLinkDerivedDetails(spc)
@@ -595,10 +608,9 @@ func TestReconcileLinkDerivedDetails(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		store := fx.store.SpaceIndex(spaceId)
-		require.NoError(t, store.UpdateObjectLinks(ctx, homeId, []string{"fav1"}))
-		require.NoError(t, store.SaveLastReconciledLinksHash(ctx, homeId, spaceindex.HashLinksList([]string{"fav1", "fav2"})))
-		require.NoError(t, store.SaveLastReconciledLinksHash(ctx, archiveId, spaceindex.HashLinksList(nil)))
-		spc := newSpaceMock(t, true)
+		require.NoError(t, store.SaveReconcileMarker(ctx, homeId, spaceindex.HashIds([]string{"oldHead"})))
+		require.NoError(t, store.SaveReconcileMarker(ctx, archiveId, spaceindex.HashIds([]string{"archiveHead1"})))
+		spc := newSpaceMock(t, headsEntries)
 		spc.EXPECT().DoCtx(mock.Anything, homeId, mock.Anything).Return(nil).Once()
 
 		// when
@@ -608,7 +620,7 @@ func TestReconcileLinkDerivedDetails(t *testing.T) {
 	t.Run("absent marker triggers reconcile", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		spc := newSpaceMock(t, true)
+		spc := newSpaceMock(t, headsEntries)
 		spc.EXPECT().DoCtx(mock.Anything, homeId, mock.Anything).Return(nil).Once()
 		spc.EXPECT().DoCtx(mock.Anything, archiveId, mock.Anything).Return(nil).Once()
 
@@ -619,7 +631,19 @@ func TestReconcileLinkDerivedDetails(t *testing.T) {
 	t.Run("tree not local: skipped, mandatory load path reconciles instead", func(t *testing.T) {
 		// given
 		fx := newFixture(t)
-		spc := newSpaceMock(t, false)
+		spc := newSpaceMock(t, nil)
+
+		// when
+		fx.reconcileLinkDerivedDetails(spc)
+	})
+
+	t.Run("deleted tree: skipped", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		spc := newSpaceMock(t, map[string]headstorage.HeadsEntry{
+			homeId:    {Id: homeId, Heads: []string{"homeHead1"}, DeletedStatus: headstorage.DeletedStatusDeleted},
+			archiveId: {Id: archiveId, Heads: []string{"archiveHead1"}, DeletedStatus: headstorage.DeletedStatusQueued},
+		})
 
 		// when
 		fx.reconcileLinkDerivedDetails(spc)

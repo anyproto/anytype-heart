@@ -2,13 +2,9 @@ package editor
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
-
-	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
-	"github.com/anyproto/any-sync/commonspace/spacestorage"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
@@ -30,6 +26,7 @@ type Archive struct {
 	smartblock.SmartBlock
 	blockcollection.Collection
 	objectStore spaceindex.Store
+	reconcile   reconcileRunner
 }
 
 func NewArchive(
@@ -77,24 +74,44 @@ func (p *Archive) StateMigrations() migration.Migrations {
 }
 
 func (p *Archive) updateObjects(_ smartblock.ApplyInfo) (err error) {
+	// snapshot under the smartblock lock: seq order matches apply order and the marker
+	// describes exactly the tree state the ids were read from
 	archivedIds, err := p.GetIds()
 	if err != nil {
 		return
 	}
-	go p.reconcileInStore(archivedIds)
+	marker := headsMarker(p)
+	seq := p.reconcile.nextSeq()
+	go p.reconcile.run(seq, func() {
+		p.reconcileInStore(archivedIds, marker)
+	})
 	return nil
 }
 
+// headsMarker fingerprints the current tree heads of a link-collection editor; empty when the
+// object has no tree (virtual objects, tests), in which case no marker is persisted.
+func headsMarker(sb smartblock.SmartBlock) string {
+	tree := sb.Tree()
+	if tree == nil {
+		return ""
+	}
+	return spaceindex.HashIds(tree.Heads())
+}
+
 // reconcileInStore aligns isArchived details with the archive tree and, once every write
-// succeeded, persists a links fingerprint that lets the indexer prove on the next space load
-// that no reconcile is needed without building this tree (reconcileLinkDerivedDetails).
-func (p *Archive) reconcileInStore(archivedIds []string) {
+// succeeded, persists the heads fingerprint of the reconciled tree state so the indexer can
+// prove on the next space load that no reconcile is needed without building this tree
+// (reconcileLinkDerivedDetails).
+func (p *Archive) reconcileInStore(archivedIds []string, marker string) {
 	if err := p.updateInStore(archivedIds); err != nil {
 		// no marker write: the next space load triggers reconciliation again
 		log.Errorf("archive: can't update in store: %v", err)
 		return
 	}
-	if err := p.objectStore.SaveLastReconciledLinksHash(context.Background(), p.Id(), spaceindex.HashLinksList(archivedIds)); err != nil {
+	if marker == "" {
+		return
+	}
+	if err := p.objectStore.SaveReconcileMarker(context.Background(), p.Id(), marker); err != nil {
 		log.Errorf("archive: can't save reconcile marker: %v", err)
 	}
 }
@@ -149,8 +166,4 @@ func (p *Archive) updateInStore(archivedIds []string) error {
 		return fmt.Errorf("set isArchived detail: %d objects failed", n)
 	}
 	return nil
-}
-
-func isMissingObjectError(err error) bool {
-	return errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) || errors.Is(err, treestorage.ErrUnknownTreeId)
 }

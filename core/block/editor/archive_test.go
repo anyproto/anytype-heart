@@ -101,18 +101,18 @@ func TestArchive_ReconcileInStore(t *testing.T) {
 			Collection:  blockcollection.NewCollection(sb, store),
 			objectStore: store,
 		}
-		want := spaceindex.HashLinksList([]string{"obj1", "obj2"})
+		want := spaceindex.HashIds([]string{"head1"})
 
 		// when
-		a.reconcileInStore([]string{"obj1", "obj2"})
+		a.reconcileInStore([]string{"obj1", "obj2"}, want)
 
 		// then
-		got, err := store.GetLastReconciledLinksHash(context.Background(), "root")
+		got, err := store.GetReconcileMarker(context.Background(), "root")
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})
 
-	t.Run("marker follows the latest reconciled set", func(t *testing.T) {
+	t.Run("empty marker is not persisted", func(t *testing.T) {
 		// given
 		sb := smarttest.New("root")
 		store := spaceindex.NewStoreFixture(t)
@@ -121,16 +121,14 @@ func TestArchive_ReconcileInStore(t *testing.T) {
 			Collection:  blockcollection.NewCollection(sb, store),
 			objectStore: store,
 		}
-		a.reconcileInStore([]string{"obj1"})
-		want := spaceindex.HashLinksList(nil)
 
-		// when
-		a.reconcileInStore(nil)
+		// when: an object without a tree (virtual, tests) yields an empty marker
+		a.reconcileInStore([]string{"obj1"}, "")
 
 		// then
-		got, err := store.GetLastReconciledLinksHash(context.Background(), "root")
+		got, err := store.GetReconcileMarker(context.Background(), "root")
 		require.NoError(t, err)
-		assert.Equal(t, want, got)
+		assert.Empty(t, got)
 	})
 
 	t.Run("dashboard writes marker after successful reconcile", func(t *testing.T) {
@@ -142,13 +140,13 @@ func TestArchive_ReconcileInStore(t *testing.T) {
 			Collection:  blockcollection.NewCollection(sb, store),
 			objectStore: store,
 		}
-		want := spaceindex.HashLinksList([]string{"fav1"})
+		want := spaceindex.HashIds([]string{"head1"})
 
 		// when
-		d.reconcileInStore([]string{"fav1"})
+		d.reconcileInStore([]string{"fav1"}, want)
 
 		// then
-		got, err := store.GetLastReconciledLinksHash(context.Background(), "home")
+		got, err := store.GetReconcileMarker(context.Background(), "home")
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
 	})

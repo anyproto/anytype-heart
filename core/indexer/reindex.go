@@ -286,10 +286,11 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 // reconcileLinkDerivedDetails verifies, without building trees, that the local details derived
 // from the Home and Archive link collections (isFavorite/isArchived) still match the trees, and
 // re-runs the authoritative editor reconcile when the proof is missing or stale. The proof is a
-// links fingerprint persisted after each completed reconcile (SaveLastReconciledLinksHash); it
-// goes stale when a crash or error hits the window between a tree apply being indexed and the
-// per-object detail writes completing. Opening the object runs the editor reconcile
-// (Archive.Init/Dashboard.Init) and refreshes the marker.
+// fingerprint of the tree heads persisted after each completed reconcile (SaveReconcileMarker);
+// headstorage advances at apply commit, so any tree change whose reconcile did not complete
+// (crash or error between apply and the per-object detail writes) leaves the marker stale.
+// Opening the object runs the editor reconcile (Archive.Init/Dashboard.Init), which refreshes
+// the marker.
 func (i *indexer) reconcileLinkDerivedDetails(space clientspace.Space) {
 	store := i.store.SpaceIndex(space.Id())
 	derivedIds := space.DerivedIDs()
@@ -300,21 +301,22 @@ func (i *indexer) reconcileLinkDerivedDetails(space clientspace.Space) {
 		}
 		l := log.With("spaceId", space.Id(), "objectId", objectId)
 		// a tree that is not local yet is fetched by the mandatory-objects load, which opens
-		// it and thereby reconciles; probing here avoids a spurious failed open
-		if has, err := space.Storage().HasTree(i.runCtx, objectId); err != nil || !has {
+		// it and thereby reconciles; same for the deleted-tree edge handled there
+		entry, err := space.Storage().HeadStorage().GetEntry(i.runCtx, objectId)
+		if err != nil || entry.DeletedStatus != headstorage.DeletedStatusNotDeleted {
+			if err != nil && !errors.Is(err, anystore.ErrDocNotFound) && !errors.Is(err, context.Canceled) {
+				l.Warnf("reconcile link-derived details: get heads entry: %v", err)
+			}
 			continue
 		}
-		links, err := store.GetOutboundLinksById(objectId)
+		marker, err := store.GetReconcileMarker(i.runCtx, objectId)
 		if err != nil {
-			l.Errorf("reconcile link-derived details: get outbound links: %v", err)
+			if !errors.Is(err, context.Canceled) {
+				l.Errorf("reconcile link-derived details: get marker: %v", err)
+			}
 			continue
 		}
-		marker, err := store.GetLastReconciledLinksHash(i.runCtx, objectId)
-		if err != nil {
-			l.Errorf("reconcile link-derived details: get marker: %v", err)
-			continue
-		}
-		if marker == spaceindex.HashLinksList(links) {
+		if marker == spaceindex.HashIds(entry.Heads) {
 			continue
 		}
 		if marker == "" {

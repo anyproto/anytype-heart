@@ -29,6 +29,7 @@ type Dashboard struct {
 	blockcollection.Collection
 
 	objectStore spaceindex.Store
+	reconcile   reconcileRunner
 }
 
 func (f *ObjectFactory) newDashboard(sb smartblock.SmartBlock, objectStore spaceindex.Store) *Dashboard {
@@ -75,24 +76,34 @@ func (p *Dashboard) StateMigrations() migration.Migrations {
 }
 
 func (p *Dashboard) updateObjects(info smartblock.ApplyInfo) (err error) {
+	// snapshot under the smartblock lock: seq order matches apply order and the marker
+	// describes exactly the tree state the ids were read from
 	favoritedIds, err := p.GetIds()
 	if err != nil {
 		return
 	}
-	go p.reconcileInStore(favoritedIds)
+	marker := headsMarker(p)
+	seq := p.reconcile.nextSeq()
+	go p.reconcile.run(seq, func() {
+		p.reconcileInStore(favoritedIds, marker)
+	})
 	return nil
 }
 
 // reconcileInStore aligns isFavorite details with the home tree and, once every write
-// succeeded, persists a links fingerprint that lets the indexer prove on the next space load
-// that no reconcile is needed without building this tree (reconcileLinkDerivedDetails).
-func (p *Dashboard) reconcileInStore(favoritedIds []string) {
+// succeeded, persists the heads fingerprint of the reconciled tree state so the indexer can
+// prove on the next space load that no reconcile is needed without building this tree
+// (reconcileLinkDerivedDetails).
+func (p *Dashboard) reconcileInStore(favoritedIds []string, marker string) {
 	if err := p.updateInStore(favoritedIds); err != nil {
 		// no marker write: the next space load triggers reconciliation again
 		log.Errorf("favorite: can't update in store: %v", err)
 		return
 	}
-	if err := p.objectStore.SaveLastReconciledLinksHash(context.Background(), p.Id(), spaceindex.HashLinksList(favoritedIds)); err != nil {
+	if marker == "" {
+		return
+	}
+	if err := p.objectStore.SaveReconcileMarker(context.Background(), p.Id(), marker); err != nil {
 		log.Errorf("favorite: can't save reconcile marker: %v", err)
 	}
 }

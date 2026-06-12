@@ -66,11 +66,10 @@ func (s *dsObjectStore) SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Conte
 	return err
 }
 
-// HashLinksList returns a stable fingerprint of a set of linked object ids, insensitive to
-// order and duplicates (the link-derived details reconcile is a set diff, so reordering
-// favorites must not look like a change). Non-empty even for an empty list, so an absent
-// marker is distinguishable from a reconciled-empty one.
-func HashLinksList(ids []string) string {
+// HashIds returns a stable fingerprint of a set of ids, insensitive to order and duplicates.
+// Non-empty even for an empty list, so an absent reconcile marker is distinguishable from a
+// recorded one. A zero byte separates the ids to keep distinct sets from colliding.
+func HashIds(ids []string) string {
 	uniq := make([]string, 0, len(ids))
 	seen := make(map[string]struct{}, len(ids))
 	for _, id := range ids {
@@ -83,14 +82,16 @@ func HashLinksList(ids []string) string {
 	digest := xxhash.New()
 	for _, id := range uniq {
 		_, _ = digest.WriteString(id)
-		_, _ = digest.WriteString("/")
+		_, _ = digest.Write([]byte{0})
 	}
 	return strconv.FormatUint(digest.Sum64(), 16)
 }
 
-// GetLastReconciledLinksHash returns the links fingerprint persisted by the last completed
-// link-derived details reconcile of the object (Home/Archive), or empty if none was recorded.
-func (s *dsObjectStore) GetLastReconciledLinksHash(ctx context.Context, id string) (hash string, err error) {
+// GetReconcileMarker returns the tree-heads fingerprint (HashIds of the heads) persisted by the
+// last completed link-derived details reconcile of the object (Home/Archive), or empty if none
+// was recorded. While the object's headstorage heads still hash to this value, the tree has not
+// changed since that reconcile, so isFavorite/isArchived details are provably in sync.
+func (s *dsObjectStore) GetReconcileMarker(ctx context.Context, id string) (marker string, err error) {
 	doc, err := s.headsState.FindId(ctx, id)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return "", nil
@@ -101,14 +102,14 @@ func (s *dsObjectStore) GetLastReconciledLinksHash(ctx context.Context, id strin
 	return string(doc.Value().GetStringBytes(lastReconciledLinksField)), nil
 }
 
-// SaveLastReconciledLinksHash records that the link-derived details (isFavorite/isArchived)
-// were fully reconciled against the links fingerprinted by hash (see HashLinksList).
-func (s *dsObjectStore) SaveLastReconciledLinksHash(ctx context.Context, id string, hash string) error {
+// SaveReconcileMarker records that the link-derived details (isFavorite/isArchived) were fully
+// reconciled against the tree state whose heads are fingerprinted by marker (see HashIds).
+func (s *dsObjectStore) SaveReconcileMarker(ctx context.Context, id string, marker string) error {
 	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
-		if val != nil && val.GetString(lastReconciledLinksField) == hash {
+		if val != nil && val.GetString(lastReconciledLinksField) == marker {
 			return val, false, nil
 		}
-		val.Set(lastReconciledLinksField, arena.NewString(hash))
+		val.Set(lastReconciledLinksField, arena.NewString(marker))
 		return val, true, nil
 	}))
 	return err
