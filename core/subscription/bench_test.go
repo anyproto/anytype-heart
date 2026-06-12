@@ -329,6 +329,226 @@ func BenchmarkOrderedOutOfWindowUpdate(b *testing.B) {
 	}
 }
 
+// BenchmarkRealisticSpaceUpdate models the contract's real shape — §3.10:
+// every update is evaluated against every subscription of the space, dozens
+// of them. 20k mixed objects; 4 limit-0 singletons, 15 typeCheck-style
+// limit-1 client subs, 4 sorted 100-row views and one deps-enabled view.
+// Measured: one sort-relevant update fanned out across all 24 subs.
+func BenchmarkRealisticSpaceUpdate(b *testing.B) {
+	fx := newBenchFixture(b)
+	layouts := []model.ObjectTypeLayout{
+		model.ObjectType_participant, model.ObjectType_basic,
+		model.ObjectType_todo, model.ObjectType_note,
+	}
+	objs := make([]objectstore.TestObject, 0, 20101)
+	objs = append(objs, givenAssigneeRelation())
+	for i := 0; i < 100; i++ {
+		objs = append(objs, givenPerson(fmt.Sprintf("person-%03d", i), fmt.Sprintf("Person %03d", i)))
+	}
+	for i := 0; i < 20000; i++ {
+		obj := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String(fmt.Sprintf("obj-%06d", i)),
+			bundle.RelationKeyName:           domain.String(fmt.Sprintf("name-%06d", i)),
+			bundle.RelationKeyType:           domain.String(fmt.Sprintf("type-%02d", i%15)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(layouts[i%4])),
+		}
+		if i%4 == 2 { // todos carry an assignee for the deps view
+			obj[assigneeKey] = domain.StringList([]string{fmt.Sprintf("person-%03d", i%100)})
+		}
+		objs = append(objs, obj)
+	}
+	fx.objectStore.AddObjects(b, testSpaceId, objs)
+
+	layoutFilter := func(l model.ObjectTypeLayout) []database.FilterRequest {
+		return []database.FilterRequest{{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(int64(l)),
+		}}
+	}
+	subscribe := func(req SubscribeRequest) {
+		if _, err := fx.Search(req); err != nil {
+			b.Fatal(err)
+		}
+	}
+	for i, l := range layouts { // limit-0 internal singletons
+		subscribe(SubscribeRequest{
+			SpaceId: testSpaceId, SubId: fmt.Sprintf("singleton-%d", i),
+			Internal: true, NoDepSubscription: true,
+			Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+			Filters: layoutFilter(l),
+		})
+	}
+	for i := 0; i < 15; i++ { // typeCheck-style limit-1 client subs
+		subscribe(SubscribeRequest{
+			SpaceId: testSpaceId, SubId: fmt.Sprintf("typecheck-%02d", i),
+			NoDepSubscription: true, Limit: 1,
+			Keys: []string{bundle.RelationKeyId.String()},
+			Filters: []database.FilterRequest{{
+				RelationKey: bundle.RelationKeyType,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(fmt.Sprintf("type-%02d", i)),
+			}},
+		})
+	}
+	for i := 0; i < 4; i++ { // sorted 100-row views
+		subscribe(SubscribeRequest{
+			SpaceId: testSpaceId, SubId: fmt.Sprintf("view-%d", i),
+			NoDepSubscription: true, Limit: 100,
+			Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+			Sorts:   []database.SortRequest{{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc}},
+			Filters: layoutFilter(model.ObjectType_participant),
+		})
+	}
+	subscribe(SubscribeRequest{ // one deps-enabled view
+		SpaceId: testSpaceId, SubId: "deps-view", Limit: 100,
+		Keys:    []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String(), assigneeKey},
+		Sorts:   []database.SortRequest{{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc}},
+		Filters: layoutFilter(model.ObjectType_todo),
+	})
+	st := fx.spaceState(b)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		// a participant rename: amends in its singleton, boundary probes in
+		// the sorted views, misses everywhere else
+		details := objectstore.TestObject{
+			bundle.RelationKeyId:             domain.String("obj-010000"),
+			bundle.RelationKeyName:           domain.String(fmt.Sprintf("renamed-%06d", i)),
+			bundle.RelationKeyType:           domain.String("type-10"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		}.Details()
+		items := []feedItem{{id: "obj-010000", details: details}}
+		st.drainOutbox()
+		b.StartTimer()
+		st.processBatch(items)
+	}
+}
+
+// benchFeedStorm drives a write storm through the REAL pipeline — feed
+// callback, coalescing intake (id-only degradation above 2048 pending),
+// worker, outbox, queue delivery — and waits for a sentinel member's events
+// to prove everything before it was delivered. ns/op is per storm.
+func benchFeedStorm(b *testing.B, stormSize int) {
+	fx := newBenchFixture(b)
+	seedBenchObjects(b, fx, stormSize)
+	req := benchRequest("storm-sub", true)
+	resp, err := fx.Search(req)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < stormSize; j++ {
+			details := benchDetails(j, model.ObjectType_participant)
+			details.SetString(bundle.RelationKeyName, fmt.Sprintf("storm-%d-%06d", i, j))
+			idx := fx.objectStore.SpaceIndex(testSpaceId)
+			if err := idx.UpdateObjectDetails(context.Background(), details.GetString(bundle.RelationKeyId), details); err != nil {
+				b.Fatal(err)
+			}
+		}
+		// sentinel: a new member whose Add, by FIFO, proves the storm drained
+		sentinel := givenParticipant(fmt.Sprintf("sentinel-%d", i))
+		fx.objectStore.AddObjects(b, testSpaceId, []objectstore.TestObject{sentinel})
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		for {
+			msg, err := resp.Output.WaitOne(ctx)
+			if err != nil {
+				cancel()
+				b.Fatal(err)
+			}
+			if add := msg.GetSubscriptionAdd(); add != nil && add.Id == sentinel.Id() {
+				break
+			}
+		}
+		cancel()
+	}
+}
+
+func BenchmarkFeedStorm1k(b *testing.B) { benchFeedStorm(b, 1000) }
+
+// BenchmarkFeedStorm5kDegraded crosses the 2048-pending intake threshold:
+// later entries degrade to id-only and the worker re-fetches them in
+// batches on drain
+func BenchmarkFeedStorm5kDegraded(b *testing.B) { benchFeedStorm(b, 5000) }
+
+// seedBenchAssigneeWorld: m persons and n todos sorted by an object-format
+// relation — the comparator that goes through an OrderMap (and may lazily
+// query the store for unseen target ids inside Compare)
+func seedBenchAssigneeWorld(tb testing.TB, fx *benchFixture, n, m int) {
+	objs := make([]objectstore.TestObject, 0, n+m+1)
+	objs = append(objs, givenAssigneeRelation())
+	for i := 0; i < m; i++ {
+		objs = append(objs, givenPerson(fmt.Sprintf("person-%03d", i), fmt.Sprintf("Person %03d", i)))
+	}
+	for i := 0; i < n; i++ {
+		objs = append(objs, givenTask(fmt.Sprintf("task-%05d", i), fmt.Sprintf("task %05d", i), fmt.Sprintf("person-%03d", i%m)))
+	}
+	fx.objectStore.AddObjects(tb, testSpaceId, objs)
+}
+
+func benchAssigneeSortedSub(b *testing.B, fx *benchFixture) *spaceState {
+	req := SubscribeRequest{
+		SpaceId: testSpaceId, SubId: "assignee-sorted",
+		NoDepSubscription: true, Limit: 100,
+		Keys:  []string{bundle.RelationKeyId.String(), assigneeKey},
+		Sorts: []database.SortRequest{{RelationKey: assigneeKey, Type: model.BlockContentDataviewSort_Asc}},
+		Filters: []database.FilterRequest{{
+			RelationKey: bundle.RelationKeyResolvedLayout,
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       domain.Int64(int64(model.ObjectType_todo)),
+		}},
+	}
+	if _, err := fx.Search(req); err != nil {
+		b.Fatal(err)
+	}
+	return fx.spaceState(b)
+}
+
+// BenchmarkObjectSortReorder100 reassigns a window member under an
+// object-format sort: the reposition compares through the OrderMap
+// (collation of target names, lazy store lookups for unseen ids)
+func BenchmarkObjectSortReorder100(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchAssigneeWorld(b, fx, 5000, 200)
+	st := benchAssigneeSortedSub(b, fx)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		task := givenTask("task-00000", "task 00000", fmt.Sprintf("person-%03d", i%200))
+		items := []feedItem{{id: "task-00000", details: task.Details()}}
+		st.drainOutbox()
+		b.StartTimer()
+		st.processBatch(items)
+	}
+}
+
+// BenchmarkOrderDepRenameRequery renames a person tasks are sorted by: the
+// order-dep probe reports the order map shifted and the window rebuilds via
+// the bounded re-query — the §3.5 "rename the assignee you sort by" cost
+func BenchmarkOrderDepRenameRequery(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchAssigneeWorld(b, fx, 5000, 200)
+	st := benchAssigneeSortedSub(b, fx)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		person := givenPerson("person-000", fmt.Sprintf("Renamed %06d", i))
+		items := []feedItem{{id: "person-000", details: person.Details()}}
+		st.drainOutbox()
+		b.StartTimer()
+		st.processBatch(items)
+	}
+}
+
 const benchTagOptions = 20
 
 // seedBenchTagWorld seeds a tag relation, benchTagOptions options and n
