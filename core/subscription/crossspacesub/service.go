@@ -132,8 +132,13 @@ func (s *service) Close(ctx context.Context) error {
 	s.componentCtxCancel()
 	s.lock.Lock()
 	err := s.subscriptionService.Unsubscribe(s.spaceViewsSubId)
-	s.lock.Unlock()
+	// snapshot under the lock: a Subscribe racing shutdown mutates the map
+	subIds := make([]string, 0, len(s.subscriptions))
 	for subId := range s.subscriptions {
+		subIds = append(subIds, subId)
+	}
+	s.lock.Unlock()
+	for _, subId := range subIds {
 		_ = s.Unsubscribe(subId)
 	}
 	return err

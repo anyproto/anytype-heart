@@ -16,7 +16,6 @@ import (
 	time2 "github.com/anyproto/anytype-heart/util/time"
 )
 
-
 // contextTimeTolerance is the maximum allowed time difference (in seconds) between a file's
 // creation and a potential context (block link or chat message). This accounts for the fact
 // that file objects are created before the containing block/message is finalized.
@@ -93,6 +92,11 @@ func (s *service) runObjectContextMigration(ctx context.Context, spaceId string,
 	l.With(zap.Int("count", len(fileRecords))).Debug("found files without context")
 
 	if len(fileRecords) == 0 {
+		// persist the marker even with nothing to migrate, otherwise file-less spaces
+		// re-enter the RunMigrationsWhenIdle polling loop on every load
+		if err := s.markFileContextMigrationDone(workspaceId); err != nil {
+			l.Warn("failed to mark migration done", zap.Error(err))
+		}
 		return nil
 	}
 

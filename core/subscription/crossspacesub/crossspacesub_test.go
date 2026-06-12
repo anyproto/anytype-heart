@@ -263,7 +263,9 @@ func TestEnsureSpaceSubscribed_rollbackEmitsRemovalEvents(t *testing.T) {
 		}
 	}
 	assert.ElementsMatch(t, []string{"obj1", "obj2"}, removedIds)
-	assert.Equal(t, []string{"sub-A"}, counterSubIds)
+	// the cross-space subId: a counters event keyed by the internal subId
+	// would make patchEvent re-insert the per-space total into totalCounts
+	assert.Equal(t, []string{"cs"}, counterSubIds)
 }
 
 // close() racing an in-flight subscribe must not finalize the subscription:

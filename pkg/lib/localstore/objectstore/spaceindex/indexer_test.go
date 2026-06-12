@@ -31,6 +31,31 @@ func TestHeadsHash(t *testing.T) {
 		assert.Equal(t, want, got)
 	})
 
+	t.Run("list all hashes on empty store", func(t *testing.T) {
+		s := NewStoreFixture(t)
+
+		got, err := s.ListLastIndexedHeadsHashes(ctx)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("list all hashes", func(t *testing.T) {
+		s := NewStoreFixture(t)
+
+		require.NoError(t, s.SaveLastIndexedHeadsHash(ctx, "id1", "hash1"))
+		require.NoError(t, s.SaveLastIndexedHeadsHash(ctx, "id2", "hash2"))
+		require.NoError(t, s.SaveLastIndexedHeadsHashWithFtQueueCtr(ctx, "id3", "hash3", 42))
+		want := map[string]string{
+			"id1": "hash1",
+			"id2": "hash2",
+			"id3": "hash3",
+		}
+
+		got, err := s.ListLastIndexedHeadsHashes(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
 	t.Run("clear heads state removes all hashes", func(t *testing.T) {
 		s := NewStoreFixture(t)
 

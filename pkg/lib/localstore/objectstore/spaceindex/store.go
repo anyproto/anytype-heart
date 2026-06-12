@@ -58,6 +58,10 @@ type Store interface {
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIds(q database.Query) (ids []string, total int, err error)
 	QueryIterate(q database.Query, proc func(details *domain.Details)) error
+	// QueryIterateRaw streams every record matching the precompiled filters
+	// without materializing the result set (no implicit filters, no sorts).
+	// proc returning an error stops the iteration.
+	QueryIterateRaw(f *database.Filters, proc func(details *domain.Details) error) error
 	IterateAll(proc func(doc *anyenc.Value) error) error
 	HasIds(ids []string) (exists []string, err error)
 	GetInfosByIds(ids []string) ([]*database.ObjectInfo, error)
@@ -117,6 +121,7 @@ type Store interface {
 	GetObjectType(id string) (*model.ObjectType, error)
 
 	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
+	ListLastIndexedHeadsHashes(ctx context.Context) (map[string]string, error)
 	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
 	SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error)
 	GetReconcileMarker(ctx context.Context, id string) (marker string, err error)
@@ -217,7 +222,47 @@ type LinksUpdateInfo struct {
 var _ Store = (*dsObjectStore)(nil)
 
 func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
-	return s.db.WriteTx(ctx)
+	tx, err := s.db.WriteTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin write tx: %w", err)
+	}
+	if parent, ok := ctx.Value(txNotificationsKey{}).(*txNotifications); ok && parent != nil {
+		// nested (savepoint) tx: notifications belong to the ROOT tx's
+		// buffer and must flush only on the root commit — a savepoint
+		// release is not durability. (A rolled-back savepoint can leave
+		// already-buffered notifications behind; acceptable: phantom
+		// notifications self-heal, lost ones would not.)
+		return &notifyingTx{WriteTx: tx, store: s, notifications: parent, nested: true}, nil
+	}
+	return &notifyingTx{WriteTx: tx, store: s, notifications: &txNotifications{}}, nil
+}
+
+// notifyingTx defers subscription notifications raised by writes inside the
+// tx until the tx commits. Without it a notification would announce a write
+// that is not yet visible to readers — or never will be, on rollback.
+type notifyingTx struct {
+	anystore.WriteTx
+	store         *dsObjectStore
+	notifications *txNotifications
+	nested        bool
+}
+
+// Context returns the tx-bearing context with the notification buffer
+// attached, so detail writes running under this tx (see
+// sendUpdatesToSubscriptions) buffer instead of firing.
+func (t *notifyingTx) Context() context.Context {
+	return context.WithValue(t.WriteTx.Context(), txNotificationsKey{}, t.notifications)
+}
+
+func (t *notifyingTx) Commit() error {
+	// a finished tx makes Commit a nil-returning no-op (rollback-then-commit
+	// pattern); flushing then would announce rolled-back writes
+	alreadyDone := t.Done()
+	err := t.WriteTx.Commit()
+	if err == nil && !alreadyDone && !t.nested {
+		t.store.flushTxNotifications(t.notifications)
+	}
+	return err
 }
 
 func (s *dsObjectStore) initCollections(ctx context.Context) error {

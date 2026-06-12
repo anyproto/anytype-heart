@@ -1,14 +1,20 @@
 package migration
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/detailservice/mock_detailservice"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 )
 
 func TestService_findBestContext(t *testing.T) {
@@ -294,4 +300,93 @@ func TestNew(t *testing.T) {
 
 	assert.NotNil(t, service)
 	assert.Equal(t, CName, service.Name())
+}
+
+func TestRunMigrationsWhenIdleGate(t *testing.T) {
+	const (
+		spaceId     = "space1"
+		workspaceId = "workspace1"
+	)
+
+	t.Run("returns without polling when migration version is current", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                     domain.String(workspaceId),
+				bundle.RelationKeySpaceId:                domain.String(spaceId),
+				bundle.RelationKeyMigrationObjectContext: domain.Int64(domain.MigrationObjectContextVersion),
+			},
+		})
+		// only objectStore is set: entering the polling loop would panic on the nil deps
+		s := &service{objectStore: store}
+
+		// when
+		done := make(chan struct{})
+		go func() {
+			s.RunMigrationsWhenIdle(spaceId, threads.DerivedSmartblockIds{Workspace: workspaceId})
+			close(done)
+		}()
+
+		// then
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("RunMigrationsWhenIdle did not return for an already-migrated space")
+		}
+	})
+
+	t.Run("gate is open when migration version is older", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                     domain.String(workspaceId),
+				bundle.RelationKeySpaceId:                domain.String(spaceId),
+				bundle.RelationKeyMigrationObjectContext: domain.Int64(domain.MigrationObjectContextVersion - 1),
+			},
+		})
+		s := &service{objectStore: store}
+
+		// then
+		assert.False(t, s.isObjectContextMigrationDone(store.SpaceIndex(spaceId), workspaceId))
+	})
+
+	t.Run("gate is open when workspace is not indexed", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		s := &service{objectStore: store}
+
+		// then
+		assert.False(t, s.isObjectContextMigrationDone(store.SpaceIndex(spaceId), workspaceId))
+	})
+}
+
+func TestRunObjectContextMigrationWithoutFiles(t *testing.T) {
+	const (
+		spaceId     = "space1"
+		workspaceId = "workspace1"
+	)
+
+	t.Run("marks migration done when no files need migration", func(t *testing.T) {
+		// given
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, spaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:      domain.String(workspaceId),
+				bundle.RelationKeySpaceId: domain.String(spaceId),
+			},
+		})
+		detailsService := mock_detailservice.NewMockService(t)
+		detailsService.EXPECT().SetDetails(mock.Anything, workspaceId, []domain.Detail{
+			{Key: bundle.RelationKeyMigrationObjectContext, Value: domain.Int64(domain.MigrationObjectContextVersion)},
+		}).Return(nil)
+		s := &service{objectStore: store, detailsService: detailsService}
+
+		// when
+		err := s.runObjectContextMigration(context.Background(), spaceId, workspaceId)
+
+		// then
+		require.NoError(t, err)
+	})
 }
