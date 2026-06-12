@@ -6,12 +6,14 @@ import (
 
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage/mock_headstorage"
+	"github.com/anyproto/any-sync/commonspace/headsync/statestorage/mock_statestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -547,4 +549,146 @@ type idsLister struct {
 
 func (l idsLister) ListIds() ([]string, error) {
 	return l.Ids, nil
+}
+
+func TestReindexOutdatedObjects(t *testing.T) {
+	const spaceId = "space1"
+
+	t.Run("only objects with stale or missing indexed hash are reindexed", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		store := fx.store.SpaceIndex(spaceId)
+
+		require.NoError(t, store.SaveLastIndexedHeadsHash(ctx, "objUpToDate", headsHash([]string{"head1"})))
+		require.NoError(t, store.SaveLastIndexedHeadsHash(ctx, "objStale", "staleHash"))
+
+		entries := []headstorage.HeadsEntry{
+			{Id: "objUpToDate", Heads: []string{"head1"}, CommonSnapshot: "cs"},
+			{Id: "objStale", Heads: []string{"head2"}, CommonSnapshot: "cs"},
+			{Id: "objNeverIndexed", Heads: []string{"head3"}, CommonSnapshot: "cs"},
+			{Id: "settingsId", Heads: []string{"head4"}, CommonSnapshot: "cs"},
+			{Id: "aclId", Heads: []string{"head5"}},
+		}
+
+		ctrl := gomock.NewController(t)
+		headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+		headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, _ headstorage.IterOpts, iter headstorage.EntryIterator) error {
+				for _, entry := range entries {
+					if cont, err := iter(entry); !cont || err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+		stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
+		stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
+		storage := mock_anystorage.NewMockClientSpaceStorage(t)
+		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
+		storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
+
+		var reindexed []string
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId).Maybe()
+		spc.EXPECT().Storage().Return(storage).Maybe()
+		spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, _ func(smartblock.SmartBlock) error) error {
+			reindexed = append(reindexed, id)
+			return nil
+		})
+
+		// when
+		total, success, err := fx.reindexOutdatedObjects(ctx, spc)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, 2, total)
+		assert.Equal(t, 2, success)
+		assert.ElementsMatch(t, []string{"objStale", "objNeverIndexed"}, reindexed)
+	})
+
+	t.Run("nothing to reindex when all hashes match", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		store := fx.store.SpaceIndex(spaceId)
+
+		require.NoError(t, store.SaveLastIndexedHeadsHash(ctx, "obj1", headsHash([]string{"head1"})))
+
+		ctrl := gomock.NewController(t)
+		headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+		headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, _ headstorage.IterOpts, iter headstorage.EntryIterator) error {
+				_, err := iter(headstorage.HeadsEntry{Id: "obj1", Heads: []string{"head1"}, CommonSnapshot: "cs"})
+				return err
+			})
+		stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
+		stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
+		storage := mock_anystorage.NewMockClientSpaceStorage(t)
+		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
+		storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
+
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId).Maybe()
+		spc.EXPECT().Storage().Return(storage).Maybe()
+
+		// when
+		total, success, err := fx.reindexOutdatedObjects(ctx, spc)
+
+		// then
+		require.NoError(t, err)
+		assert.Zero(t, total)
+		assert.Zero(t, success)
+	})
+}
+
+func TestSaveLatestChecksums(t *testing.T) {
+	const spaceId = "space1"
+
+	t.Run("writes checksums when none are stored", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		want := fx.getLatestChecksums(false)
+
+		// when
+		err := fx.saveLatestChecksums(spaceId)
+
+		// then
+		require.NoError(t, err)
+		got, err := fx.store.GetChecksums(spaceId)
+		require.NoError(t, err)
+		assert.Equal(t, &want, got)
+	})
+
+	t.Run("idempotent when stored checksums are up to date", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		want := fx.getLatestChecksums(false)
+		require.NoError(t, fx.saveLatestChecksums(spaceId))
+
+		// when
+		err := fx.saveLatestChecksums(spaceId)
+
+		// then
+		require.NoError(t, err)
+		got, err := fx.store.GetChecksums(spaceId)
+		require.NoError(t, err)
+		assert.Equal(t, &want, got)
+	})
+
+	t.Run("overwrites stale checksums", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		stale := fx.getLatestChecksums(false)
+		stale.ObjectsForceReindexCounter--
+		require.NoError(t, fx.store.SaveChecksums(spaceId, &stale))
+		want := fx.getLatestChecksums(false)
+
+		// when
+		err := fx.saveLatestChecksums(spaceId)
+
+		// then
+		require.NoError(t, err)
+		got, err := fx.store.GetChecksums(spaceId)
+		require.NoError(t, err)
+		assert.Equal(t, &want, got)
+	})
 }

@@ -223,6 +223,10 @@ func (s *invalidStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (
 	return "", s.err
 }
 
+func (s *invalidStore) ListLastIndexedHeadsHashes(ctx context.Context) (map[string]string, error) {
+	return nil, s.err
+}
+
 func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
 	return s.err
 }

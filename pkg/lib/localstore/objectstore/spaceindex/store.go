@@ -117,6 +117,7 @@ type Store interface {
 	GetObjectType(id string) (*model.ObjectType, error)
 
 	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
+	ListLastIndexedHeadsHashes(ctx context.Context) (map[string]string, error)
 	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
 	SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error)
 	GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error)

@@ -111,12 +111,15 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 		return false, fmt.Errorf("failed to unmarshal unique key '%s': %w", uniqueKeyRaw, err)
 	}
 
-	bundleObject, isSystem := getBundleObjectDetails(uk)
-	if bundleObject == nil {
+	// compare raw bundle revision first: constructing full bundled details for every
+	// type/relation on every space load is pure waste when nothing changed
+	bundleRevision, isBundled := getBundleObjectRevision(uk)
+	if !isBundled || bundleRevision <= localObject.GetInt64(revisionKey) {
 		return false, nil
 	}
 
-	if bundleObject.GetInt64(revisionKey) <= localObject.GetInt64(revisionKey) {
+	bundleObject, isSystem := getBundleObjectDetails(uk)
+	if bundleObject == nil {
 		return false, nil
 	}
 	details := buildDiffDetails(bundleObject, localObject, isSystem)
@@ -155,6 +158,27 @@ func reviseObject(ctx context.Context, log logger.CtxLogger, space dependencies.
 		}
 	}
 	return true, nil
+}
+
+// getBundleObjectRevision returns the revision of the bundled counterpart without building
+// its details. Mirrors getBundleObjectDetails: ok is false for non-bundled types and
+// non-system relations, which are not revisable.
+func getBundleObjectRevision(uk domain.UniqueKey) (revision int64, ok bool) {
+	switch uk.SmartblockType() {
+	case coresb.SmartBlockTypeObjectType:
+		objectType, err := bundle.GetType(domain.TypeKey(uk.InternalKey()))
+		if err != nil {
+			return 0, false
+		}
+		return objectType.Revision, true
+	case coresb.SmartBlockTypeRelation:
+		if !isSystemRelation(uk) {
+			return 0, false
+		}
+		return bundle.MustGetRelation(domain.RelationKey(uk.InternalKey())).Revision, true
+	default:
+		return 0, false
+	}
 }
 
 // getBundleObjectDetails returns nil if the object with provided unique key is not either system relation or bundled type

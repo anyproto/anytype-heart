@@ -36,6 +36,30 @@ func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string,
 	return err
 }
 
+// ListLastIndexedHeadsHashes returns the last indexed heads hash for every object in a single
+// collection scan. Callers that need the whole space (reindexOutdatedObjects) must use this
+// instead of per-id GetLastIndexedHeadsHash lookups, which cost one statement per object.
+func (s *dsObjectStore) ListLastIndexedHeadsHashes(ctx context.Context) (map[string]string, error) {
+	iter, err := s.headsState.Find(nil).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find heads state entries: %w", err)
+	}
+	defer iter.Close()
+
+	hashes := make(map[string]string)
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		hashes[doc.Value().GetString("id")] = doc.Value().GetString(headsStateField)
+	}
+	if err = iter.Err(); err != nil {
+		return nil, fmt.Errorf("iterate heads state entries: %w", err)
+	}
+	return hashes, nil
+}
+
 // SaveLastIndexedHeadsHashWithFtQueueCtr saves the heads hash along with the FT queue counter.
 // The ftQueueCtr is used for crash recovery: if the common DB (FT queue) doesn't flush before crash,
 // we can detect objects with ftQueueCtr > persisted counter and re-add them to the queue.
