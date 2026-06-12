@@ -905,14 +905,17 @@ func (i *indexer) RemoveIndexes(spaceId string) error {
 		log.Errorf("remove common indexes on space removal: %v", err)
 	}
 	// Remove the space's full-text documents and pending queue entries.
-	// Failures are logged, not returned: leftover docs are only re-collected if
-	// the same space is offloaded again (the consistency check's orphan GC
-	// iterates store spaces, and this space's store is deleted right below).
+	// Errors propagate so the space offloader retries the offload (every 20s,
+	// and again after restart): the local status is only marked Missing after
+	// RemoveIndexes succeeds, and the FT removal is idempotent (it deletes
+	// whatever docs still exist). Swallowing a failure here would persist the
+	// leftovers forever — the orphan GC cannot collect docs of a space whose
+	// store is deleted right below.
 	if err := i.store.ClearFullTextQueue([]string{spaceId}); err != nil {
-		log.Errorf("clear fulltext queue on space removal: %v", err)
+		return fmt.Errorf("clear fulltext queue on space removal: %w", err)
 	}
 	if err := i.removeFullTextIndexes(spaceId); err != nil {
-		log.Errorf("remove fulltext docs on space removal: %v", err)
+		return fmt.Errorf("remove fulltext docs on space removal: %w", err)
 	}
 	// Drop the per-space objectstore entirely: close the in-memory index and
 	// remove the on-disk objectstore/CRDT databases for the space.

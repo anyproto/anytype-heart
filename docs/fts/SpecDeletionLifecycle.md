@@ -53,9 +53,12 @@ ListIdsBySpace(spaceId string) ([]string, error)   // Must TermQuery(SpaceID) + 
    the index itself); repeat until empty.
 3. Existing objectstore cleanup (unchanged).
 
-Failure mode: if deletion is interrupted, leftover docs are re-collected next time the space is
-offloaded, or by orphan GC (below). No ordering hazard: by this point the space is not searchable
-through the store anyway (results without details get dropped per record).
+Failure mode: FT-removal errors propagate out of `RemoveIndexes`, so the space offloader's retry
+loop (every 20s, and re-offload after restart — `LocalStatusMissing` is only persisted on
+success) re-runs the idempotent removal until it completes. A quit mid-removal therefore
+self-heals; the orphan GC can NOT serve as backstop here, since it never iterates a space whose
+store was deleted. No ordering hazard: by this point the space is not searchable through the
+store anyway (results without details get dropped per record).
 
 ### 3. Orphan GC in the consistency check
 
