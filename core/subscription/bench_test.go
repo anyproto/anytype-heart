@@ -222,6 +222,113 @@ func BenchmarkLimitZeroSteadyState(b *testing.B) {
 	}
 }
 
+// benchOrderedSub subscribes name-sorted with the given limit and returns
+// the space state for direct batch driving
+func benchOrderedSub(b *testing.B, fx *benchFixture, limit int64) *spaceState {
+	req := benchRequest("bench-ordered", false)
+	req.Limit = limit
+	req.Keys = append(req.Keys, bundle.RelationKeyDescription.String())
+	req.Sorts = []database.SortRequest{
+		{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
+	}
+	if _, err := fx.Search(req); err != nil {
+		b.Fatal(err)
+	}
+	return fx.spaceState(b)
+}
+
+// BenchmarkOrderedAmend500 measures a requested non-sort key change on a
+// window member: diff + Amend emission, no ordering work
+func BenchmarkOrderedAmend500(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchObjects(b, fx, 10000)
+	st := benchOrderedSub(b, fx, 500)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		details := benchDetails(250, model.ObjectType_participant) // window member
+		details.SetString(bundle.RelationKeyDescription, fmt.Sprintf("changed %d", i))
+		items := []feedItem{{id: details.GetString(bundle.RelationKeyId), details: details}}
+		st.drainOutbox()
+		b.StartTimer()
+		st.processBatch(items)
+	}
+}
+
+// BenchmarkOrderedReorder500 measures an in-window reposition: a sort-key
+// change that moves a member within the window incrementally (binary-search
+// remove/insert plus the window-diff script), no store re-query
+func BenchmarkOrderedReorder500(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchObjects(b, fx, 10000)
+	st := benchOrderedSub(b, fx, 500)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		details := benchDetails(250, model.ObjectType_participant)
+		// alternate between two interior window ranks (window = names
+		// 000000..000499): position ~100 and ~400, never first or last
+		if i%2 == 0 {
+			details.SetString(bundle.RelationKeyName, "name-000100a")
+		} else {
+			details.SetString(bundle.RelationKeyName, "name-000400a")
+		}
+		items := []feedItem{{id: details.GetString(bundle.RelationKeyId), details: details}}
+		st.drainOutbox()
+		b.StartTimer()
+		st.processBatch(items)
+	}
+}
+
+// BenchmarkOrderedReorder10kFullList is the same reposition on a limit-0
+// subscription: the window is all 10k members, so this prices the slice
+// surgery and the diff-script walk at full-list scale
+func BenchmarkOrderedReorder10kFullList(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchObjects(b, fx, 10000)
+	st := benchOrderedSub(b, fx, 0)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		details := benchDetails(5000, model.ObjectType_participant)
+		if i%2 == 0 {
+			details.SetString(bundle.RelationKeyName, "name-002000a")
+		} else {
+			details.SetString(bundle.RelationKeyName, "name-008000a")
+		}
+		items := []feedItem{{id: details.GetString(bundle.RelationKeyId), details: details}}
+		st.drainOutbox()
+		b.StartTimer()
+		st.processBatch(items)
+	}
+}
+
+// BenchmarkOrderedOutOfWindowUpdate measures the bookkeeping tax for an
+// update to a member beyond the window: a boundary probe (one sort-key
+// projection + compare), no events
+func BenchmarkOrderedOutOfWindowUpdate(b *testing.B) {
+	fx := newBenchFixture(b)
+	seedBenchObjects(b, fx, 10000)
+	st := benchOrderedSub(b, fx, 500)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		details := benchDetails(9000, model.ObjectType_participant) // far beyond the window
+		details.SetString(bundle.RelationKeyDescription, fmt.Sprintf("changed %d", i))
+		items := []feedItem{{id: details.GetString(bundle.RelationKeyId), details: details}}
+		b.StartTimer()
+		st.processBatch(items)
+	}
+}
+
 const benchTagOptions = 20
 
 // seedBenchTagWorld seeds a tag relation, benchTagOptions options and n
