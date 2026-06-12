@@ -184,6 +184,63 @@ func TestSendUpdatesToSubscriptions(t *testing.T) {
 		s.AddObjects(t, []TestObject{updatedObj})
 		assert.Equal(t, 1, called)
 	})
+
+	t.Run("writes in a tx notify only after commit, in write order", func(t *testing.T) {
+		s := NewStoreFixture(t)
+
+		var got []string
+		s.SubscribeForAll(func(rec database.Record) {
+			got = append(got, rec.Details.GetString(bundle.RelationKeyName))
+		})
+
+		txn, err := s.WriteTx(context.Background())
+		require.NoError(t, err)
+		defer txn.Rollback()
+
+		err = s.UpdateObjectDetails(txn.Context(), "id1", makeDetails(makeObjectWithName("id1", "first")))
+		require.NoError(t, err)
+		err = s.ModifyObjectDetailsCtx(txn.Context(), "id2", func(d *domain.Details) (*domain.Details, bool, error) {
+			d.SetString(bundle.RelationKeyName, "second")
+			return d, true, nil
+		}, true)
+		require.NoError(t, err)
+
+		assert.Empty(t, got, "no notifications before commit")
+
+		require.NoError(t, txn.Commit())
+		assert.Equal(t, []string{"first", "second"}, got)
+	})
+
+	t.Run("rolled back tx discards notifications", func(t *testing.T) {
+		s := NewStoreFixture(t)
+
+		s.SubscribeForAll(func(rec database.Record) {
+			require.Fail(t, "phantom notification for a rolled back write")
+		})
+
+		txn, err := s.WriteTx(context.Background())
+		require.NoError(t, err)
+
+		err = s.UpdateObjectDetails(txn.Context(), "id1", makeDetails(makeObjectWithName("id1", "foo")))
+		require.NoError(t, err)
+		require.NoError(t, txn.Rollback())
+	})
+
+	t.Run("DeleteObject notifies with the tombstone after commit", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{makeObjectWithName("id1", "foo")})
+
+		var got []*domain.Details
+		s.SubscribeForAll(func(rec database.Record) {
+			got = append(got, rec.Details)
+		})
+
+		require.NoError(t, s.DeleteObject("id1"))
+
+		require.Len(t, got, 1)
+		assert.True(t, got[0].GetBool(bundle.RelationKeyIsDeleted))
+		assert.Equal(t, "id1", got[0].GetString(bundle.RelationKeyId))
+	})
 }
 
 func TestUpdatePendingLocalDetails(t *testing.T) {
