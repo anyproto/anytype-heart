@@ -102,6 +102,38 @@ func TestFulltextQueryFillsThePage(t *testing.T) {
 	})
 }
 
+// The name boost and injection eligibility must derive from the object's BEST
+// doc (budget-stable), not from the representative doc: the pluralName
+// preference switches the representative once the pluralName doc enters the
+// candidate budget, and a budget-dependent NameMatch would shift the object's
+// final score (±1.0) between page requests, breaking pagination consistency.
+func TestFulltextNameMatchBudgetStable(t *testing.T) {
+	fx := NewStoreFixture(t)
+	nameDoc := &ftsearch.DocumentMatch{Score: 3.0, ID: "obj1/r/name"}
+	pluralDoc := &ftsearch.DocumentMatch{Score: 1.0, ID: "obj1/r/pluralName"}
+
+	searchReturning := func(docs ...*ftsearch.DocumentMatch) func() ([]*ftsearch.DocumentMatch, error) {
+		return func() ([]*ftsearch.DocumentMatch, error) { return docs, nil }
+	}
+
+	// small budget: only the name doc is in the candidate set
+	small, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc))
+	require.NoError(t, err)
+	require.Len(t, small, 1)
+
+	// bigger budget: the pluralName doc enters and becomes the representative
+	big, _, err := fx.performFulltextSearch(true, searchReturning(nameDoc, pluralDoc))
+	require.NoError(t, err)
+	require.Len(t, big, 1)
+
+	// the representative doc may differ, but score and name boost must not
+	assert.Equal(t, small[0].Score, big[0].Score, "object score must be budget-stable")
+	assert.Equal(t, small[0].NameMatch, big[0].NameMatch, "name boost must be budget-stable")
+	assert.True(t, big[0].NameMatch)
+	assert.Equal(t, bundle.RelationKeyPluralName.String(), big[0].Path.RelationKey,
+		"representative doc keeps the pluralName preference for metadata")
+}
+
 // The tail beyond the re-rank head is already in final order, so it must be
 // resolved lazily: once the requested page is covered, the remaining
 // candidates must not cost store reads.

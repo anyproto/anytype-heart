@@ -10,10 +10,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 )
 
-// Repro for: FtQueueMarkAsIndexed overwrites the whole queue document with
-// {id, spaceId, seq}, erasing fields written concurrently while the batch was
-// being processed. A chat message deletion (or new message orderId) queued
-// between ListIdsFromFullTextQueue and FtQueueMarkAsIndexed is silently lost.
+// Pins the fix for: FtQueueMarkAsIndexed used to overwrite the whole queue
+// document with {id, spaceId, seq}, erasing fields written concurrently while
+// the batch was processed — a chat message deletion (or new message orderId)
+// queued between listing and marking was silently lost.
 func TestFtQueueMarkAsIndexedPreservesConcurrentUpdates(t *testing.T) {
 	ctx := context.Background()
 	chatId := domain.FullID{ObjectID: "chat1", SpaceID: "space1"}

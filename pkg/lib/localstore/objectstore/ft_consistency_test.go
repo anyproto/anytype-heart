@@ -2,6 +2,7 @@ package objectstore
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -48,12 +49,13 @@ func TestRunFTConsistencyCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		checked, enqueued, err := s.RunFTConsistencyCheck(ctx, s.FullText)
+		checked, enqueued, complete, err := s.RunFTConsistencyCheck(ctx, s.FullText)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, 2, checked)
 		assert.Equal(t, 1, enqueued)
+		assert.True(t, complete)
 
 		queued, err := s.ListIdsFromFullTextQueue([]string{"space1"}, 0)
 		require.NoError(t, err)
@@ -96,10 +98,11 @@ func TestRunFTConsistencyCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		_, _, err = s.RunFTConsistencyCheck(ctx, s.FullText)
+		_, _, complete, err := s.RunFTConsistencyCheck(ctx, s.FullText)
 
 		// then
 		require.NoError(t, err)
+		assert.True(t, complete)
 		leftoverDocs, err := s.FullText.ListIdsBySpace("space1", 0)
 		require.NoError(t, err)
 		assert.ElementsMatch(t, []string{"aliveObj/r/name"}, leftoverDocs,
@@ -121,13 +124,48 @@ func TestRunFTConsistencyCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		_, _, err = s.RunFTConsistencyCheck(ctx, s.FullText)
+		_, _, complete, err := s.RunFTConsistencyCheck(ctx, s.FullText)
 
 		// then
 		require.NoError(t, err)
+		assert.False(t, complete, "a skipped space must mark the run incomplete so it is retried next session")
 		docs, err := s.FullText.ListIdsBySpace("space1", 0)
 		require.NoError(t, err)
 		assert.Len(t, docs, 1, "ft docs of an empty store must not be collected as orphans")
+	})
+
+	t.Run("orphan gc is skipped when the store is implausibly sparse", func(t *testing.T) {
+		// given: a store with a single object while the FT index holds many —
+		// the signature of a wiped store mid-rebuild, not of genuine orphans
+		s := NewStoreFixture(t)
+		s.AddObjects(t, "space1", []TestObject{
+			{
+				bundle.RelationKeyId:      domain.String("survivor"),
+				bundle.RelationKeySpaceId: domain.String("space1"),
+				bundle.RelationKeyName:    domain.String("survivor"),
+			},
+		})
+		batcher := s.FullText.NewAutoBatcher()
+		const ftObjects = 15 // > ftOrphanStoreRatio * 1 store object
+		for i := 0; i < ftObjects; i++ {
+			require.NoError(t, batcher.UpsertDoc(ftsearch.SearchDoc{
+				Id:      fmt.Sprintf("obj%d/r/name", i),
+				SpaceId: "space1",
+				Title:   "object",
+			}))
+		}
+		_, err := batcher.Finish()
+		require.NoError(t, err)
+
+		// when
+		_, _, complete, err := s.RunFTConsistencyCheck(ctx, s.FullText)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, complete)
+		docs, err := s.FullText.ListIdsBySpace("space1", 0)
+		require.NoError(t, err)
+		assert.Len(t, docs, ftObjects, "docs of an implausibly sparse store must not be collected")
 	})
 
 	t.Run("docs of not-iterated spaces are never touched", func(t *testing.T) {
@@ -151,7 +189,7 @@ func TestRunFTConsistencyCheck(t *testing.T) {
 		require.NoError(t, err)
 
 		// when
-		_, _, err = s.RunFTConsistencyCheck(ctx, s.FullText)
+		_, _, _, err = s.RunFTConsistencyCheck(ctx, s.FullText)
 
 		// then
 		require.NoError(t, err)

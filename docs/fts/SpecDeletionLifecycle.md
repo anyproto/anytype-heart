@@ -83,12 +83,19 @@ Safety valves (hardened after adversarial review):
 - the check only runs once the objectstore warm-up finished (probed non-blockingly from the FT
   loop; retried at a later queue drain otherwise) — running against a partial space registry
   would permanently skip not-yet-opened spaces;
-- orphan GC is skipped for a space whose store is EMPTY while its FT docs exist (far more likely
-  a wiped/not-yet-rebuilt store than 100% genuine orphans);
+- orphan GC is skipped for a space whose store is implausibly sparse next to its FT docs
+  (`ftObjects > 10x storeObjects`, covering the fully-wiped case too) — far more likely a
+  wiped/not-yet-rebuilt store than genuine orphans;
 - soft-deleted objects keep store stubs (`isDeleted=true`); those are treated as absent so their
   leftover FT docs — the main historical leak — stay collectable;
 - a single GC pass is capped (50k objects) and deletions are chunked (1000 objects per
-  ftsearch-lock acquisition); remaining orphans get collected next session.
+  ftsearch-lock acquisition);
+- the check reports `complete=false` on any partial coverage (truncated listing, skipped sparse
+  space, capped GC) and the recheck counter is NOT persisted then, so the next session retries
+  until the whole index was covered — otherwise the counter gate would silence the remainder
+  forever;
+- the store iteration observes ctx cancellation (per space and every 1000 objects), so app
+  shutdown is not blocked by a full sweep.
 
 Activation: `ForceFTRecheckCounter` bumped 0 → 1 (GO-7316) — without the bump the whole
 consistency check, backfill and orphan GC are unreachable for existing users.

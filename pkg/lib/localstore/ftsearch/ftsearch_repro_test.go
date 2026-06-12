@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Repro for: BatchDeleteObjects is called with bare object ids (e.g. by
-// indexer.RemoveAclIndexes), but tantivy deletes by exact term on IdRaw, which
-// stores full doc paths ("objectId/r/relationKey"). A bare object id term
-// matches nothing, so the object's docs survive the delete.
+// Pins the fix for: BatchDeleteObjects used to receive bare object ids (e.g.
+// from indexer.RemoveAclIndexes) while tantivy deletes by exact term on IdRaw,
+// which stores full doc paths ("objectId/r/relationKey") — so the delete
+// matched nothing and the object's docs survived.
 func TestBatchDeleteObjectsDeletesAllDocsOfObject(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "")
 	fixture := newFixture(tmpDir, t)
@@ -106,11 +106,9 @@ func TestListIdsBySpace(t *testing.T) {
 	assert.Len(t, ids, 1)
 }
 
-// Repro for: Search caps results at 100 docs (SetDocsLimit(100)) before any
-// objectstore-level filtering happens downstream. Matches beyond the cap are
-// silently dropped, which breaks recall for filtered searches, pagination
-// beyond the cap, and chat search (messages compete with all other docs for
-// the same 100 slots).
+// Pins the fix for: Search was hard-capped at 100 docs before any
+// objectstore-level filtering downstream, silently dropping matches beyond the
+// cap; the limit is caller-controlled now.
 func TestSearchReturnsAllMatches(t *testing.T) {
 	tmpDir, _ := os.MkdirTemp("", "")
 	fixture := newFixture(tmpDir, t)

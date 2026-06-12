@@ -31,6 +31,11 @@ var pluralNameId = domain.ObjectPath{
 	RelationKey: bundle.RelationKeyPluralName.String(),
 }.String()
 
+var nameId = domain.ObjectPath{
+	ObjectId:    "",
+	RelationKey: bundle.RelationKeyName.String(),
+}.String()
+
 var (
 	ftHits                atomic.Int64
 	ftMisses              atomic.Int64
@@ -60,10 +65,12 @@ const (
 	ftRerankPoolSize = ftCandidatesMin
 )
 
-// ftCandidatesLimit derives the initial tantivy docs budget from the requested
-// page. Without an explicit limit the request gets a single conservative round:
-// "everything" combined with fulltext means "the relevant matches", not the
-// whole index.
+// ftCandidatesLimit derives the INITIAL tantivy docs budget from the requested
+// page. Without an explicit limit the request starts with one conservative
+// 100-doc round ("everything" combined with fulltext means "the relevant
+// matches", not the whole index); note the escalation loop can still grow any
+// request's budget to materialize the full re-rank head, which must be the
+// same object set for every request.
 func ftCandidatesLimit(q database.Query) int {
 	if q.Limit <= 0 {
 		return ftCandidatesMin
@@ -217,10 +224,7 @@ func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, par
 	if limit > 0 {
 		needed = offset + limit
 	}
-	records, err := s.queryFromFulltextRecords(results, params, ftsSearch, needed)
-	if err != nil {
-		return nil, err
-	}
+	records := s.queryFromFulltextRecords(results, params, ftsSearch, needed)
 	return paginateRecords(records, offset, limit), nil
 }
 
@@ -257,7 +261,7 @@ func paginateRecords(records []database.Record, offset int, limit int) []databas
 // budget boundary enter the set in tantivy's internal doc order, so a larger
 // budget can insert a tied object mid-order (the id tiebreak only orders the
 // objects it can see). Exact float ties at the boundary are rare; accepted.
-func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, ftsSearch string, needed int) ([]database.Record, error) {
+func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, ftsSearch string, needed int) []database.Record {
 	pool := ftRerankPoolSize
 	if pool > len(results) {
 		pool = len(results)
@@ -271,7 +275,7 @@ func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResu
 	// the injection budget is a request-independent constant: deriving it from
 	// the requested page would make the injected set (and thus the re-ranked
 	// head order) differ between offsets, breaking pagination consistency
-	records = s.injectRelatedObjects(injectionGroups, ftRerankPoolSize, false, params, seen, records)
+	records = s.injectRelatedObjects(injectionGroups, ftRerankPoolSize, params, seen, records)
 	if params.Order != nil {
 		// stable: equal final scores keep their BM25 order, so the result is
 		// deterministic across requests
@@ -292,7 +296,7 @@ func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResu
 		tail, _ := s.resolveFulltextResults(results[pool:], params, ftsSearch, seen, false, tailMax)
 		records = append(records, tail...)
 	}
-	return records, nil
+	return records
 }
 
 // resolveFulltextResults resolves fulltext candidates to filtered records,
@@ -321,7 +325,7 @@ func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult
 				}
 				details.SetString(bundle.RelationKeyId, res.Path.ObjectId)
 				details.SetFloat64(bundle.RelationKey_score, res.Score)
-				details.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(res.Score, details, res.Path.RelationKey == bundle.RelationKeyName.String()))
+				details.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(res.Score, details, res.NameMatch))
 				rec := database.Record{Details: details}
 				if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
 					resultObjectMap[res.Path.ObjectId] = struct{}{}
@@ -343,7 +347,7 @@ func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult
 			continue
 		}
 		details.SetFloat64(bundle.RelationKey_score, res.Score)
-		details.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(res.Score, details, res.Path.RelationKey == bundle.RelationKeyName.String()))
+		details.SetFloat64(bundle.RelationKey_final_score, database.ComputeFinalScore(res.Score, details, res.NameMatch))
 
 		rec := database.Record{Details: details}
 		if params.FilterObj == nil || params.FilterObj.FilterObject(rec.Details) {
@@ -370,7 +374,11 @@ func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult
 		}
 
 		if collectInjections {
-			if relKey, ok := injectionRelationKey(details, res.Path); ok {
+			// gate on the budget-stable NameMatch, not on the representative
+			// doc's relation key: the pluralName preference can switch the
+			// representative when the budget grows, and a budget-dependent
+			// injection set would perturb the re-ranked head between requests
+			if relKey, ok := injectionRelationKey(details, res.NameMatch); ok {
 				injectionGroups[relKey] = append(injectionGroups[relKey], injectionHit{
 					id:      details.GetString(bundle.RelationKeyId),
 					details: details,
@@ -383,8 +391,8 @@ func (s *dsObjectStore) resolveFulltextResults(results []database.FulltextResult
 	return records, injectionGroups
 }
 
-func injectionRelationKey(details *domain.Details, path domain.ObjectPath) (domain.RelationKey, bool) {
-	if path.RelationKey != bundle.RelationKeyName.String() && path.RelationKey != bundle.RelationKeyPluralName.String() {
+func injectionRelationKey(details *domain.Details, nameMatch bool) (domain.RelationKey, bool) {
+	if !nameMatch {
 		return "", false
 	}
 	if details.GetBool(bundle.RelationKeyIsDeleted) || details.GetBool(bundle.RelationKeyIsArchived) {
@@ -411,7 +419,6 @@ func injectionRelationKey(details *domain.Details, path domain.ObjectPath) (doma
 func (s *dsObjectStore) injectRelatedObjects(
 	groups map[domain.RelationKey][]injectionHit,
 	budget int,
-	unlimited bool,
 	params database.Filters,
 	seen map[string]struct{},
 	records []database.Record,
@@ -441,7 +448,7 @@ func (s *dsObjectStore) injectRelatedObjects(
 	})
 
 	for _, group := range sortedGroups {
-		if !unlimited && budget <= 0 {
+		if budget <= 0 {
 			break
 		}
 		relKey, hits := group.relKey, group.hits
@@ -458,10 +465,7 @@ func (s *dsObjectStore) injectRelatedObjects(
 			values = append(values, domain.String(id))
 		}
 
-		queryLimit := uint(0)
-		if !unlimited {
-			queryLimit = uint(budget) //nolint:gosec
-		}
+		queryLimit := uint(budget) //nolint:gosec
 		recs, err := s.queryAnyStore(s.componentCtx, database.FiltersAnd{database.FilterIn{Key: relKey, Value: values}, params.FilterObj}, params.Order, queryLimit, 0)
 		if err != nil {
 			log.Errorf("inject related objects by %s: %v", relKey, err)
@@ -469,7 +473,7 @@ func (s *dsObjectStore) injectRelatedObjects(
 		}
 
 		for _, rec := range recs {
-			if !unlimited && budget <= 0 {
+			if budget <= 0 {
 				break
 			}
 			id := rec.Details.GetString(bundle.RelationKeyId)
@@ -578,10 +582,7 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 			return s.performFulltextFallback(q, filters)
 		}
 
-		records, err := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery, needed)
-		if err != nil {
-			return nil, err
-		}
+		records := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery, needed)
 
 		pageFilled := needed == 0 || len(records) >= needed
 		// the re-rank head must be the same object set for every request, or
@@ -653,6 +654,7 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 
 	// select only the best block/relation result for each object
 	var objectResults = make([]*ftsearch.DocumentMatch, 0, len(resultsByObjectId))
+	bestDocByChosenId := make(map[string]string, len(resultsByObjectId))
 	for _, objectPerBlockResults := range resultsByObjectId {
 		if len(objectPerBlockResults) == 0 {
 			continue
@@ -668,6 +670,7 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 			chosen = &clone
 		}
 		objectResults = append(objectResults, chosen)
+		bestDocByChosenId[chosen.ID] = objectPerBlockResults[0].ID
 	}
 
 	sort.Slice(objectResults, func(i, j int) bool {
@@ -686,6 +689,11 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 		if err != nil {
 			return nil, 0, fmt.Errorf("fullText search: %w", err)
 		}
+		// the name boost must derive from the budget-stable BEST doc, not from
+		// the representative doc: the pluralName preference can switch the
+		// representative when the budget grows, and a budget-dependent boost
+		// would reorder the re-ranked head between page requests
+		result.NameMatch = isNameDocId(bestDocByChosenId[docMatch.ID])
 		if enforceMinScore && result.Score < minFulltextScore && len(result.HighlightRanges) == 0 {
 			continue
 		}
@@ -694,6 +702,12 @@ func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func(
 	}
 
 	return results, len(ftsResults), nil
+}
+
+// isNameDocId reports whether the doc id is the object's name or pluralName
+// relation doc.
+func isNameDocId(docId string) bool {
+	return strings.HasSuffix(docId, nameId) || strings.HasSuffix(docId, pluralNameId)
 }
 
 func (s *dsObjectStore) performFulltextFallback(q database.Query, filters *database.Filters) ([]database.Record, error) {

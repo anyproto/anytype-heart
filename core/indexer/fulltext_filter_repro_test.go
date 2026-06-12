@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/ftsearch"
 )
 
-// Repro for: filterOutNotChangedDocuments never filters anything. Unchanged
+// Pins the fix for: filterOutNotChangedDocuments never filtered anything. Unchanged
 // docs found in the index are skipped from changedDocs during Iterate, but the
 // final loop re-adds every new doc that is not already in changedDocs —
 // including those unchanged ones. As a result every object update re-indexes

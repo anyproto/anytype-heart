@@ -312,6 +312,12 @@ type FulltextResult struct {
 	Highlight       string
 	HighlightRanges []*model.Range
 	Score           float64
+	// NameMatch reports whether the object's BEST-scoring doc is a name (or
+	// pluralName) match. It deliberately does not depend on Path: the
+	// representative doc can change with the candidate budget (pluralName
+	// preference), and the final-score name boost must stay budget-stable or
+	// offset pagination drifts between requests.
+	NameMatch bool
 }
 
 func (r FulltextResult) Model() model.SearchMeta {

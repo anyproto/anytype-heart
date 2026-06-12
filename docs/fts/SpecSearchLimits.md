@@ -37,8 +37,9 @@ Resolution — **escalate-on-starvation** (`performFulltextQuery`):
   and filters almost always trim some candidates, so an unpadded budget would need an escalation
   round (re-resolving every candidate) for nearly every full page; when few matches exist tantivy
   returns the same docs regardless of budget, so the padding costs nothing there.
-  `q.Limit <= 0` → a single conservative 100-doc round ("everything" + fulltext means "the
-  relevant matches", not the whole index);
+  `q.Limit <= 0` starts with a single conservative 100-doc round ("everything" + fulltext means
+  "the relevant matches", not the whole index) — though head materialization (below) can still
+  escalate any request until 100 objects are collected or the index is exhausted;
 - if the post-filter record count < `offset+limit` AND tantivy returned a full budget of docs
   (more matches exist), double the budget and re-run, up to `ftCandidatesHardLimit = 2000`;
 - stop as soon as the page is filled or tantivy returns fewer docs than the budget (index
@@ -86,7 +87,16 @@ Three subtleties found by adversarial review, all required for the invariant to 
   down the order.
 - **Request-independent injections**: the related-object injection budget is a constant
   (`ftRerankPoolSize`), never derived from offset/limit, so the injected set (and thus the head
-  order) is the same for every page.
+  order) is the same for every page. Deliberate behavior change: `limit=0` requests previously
+  got UNLIMITED injections (e.g. all instances of a type found by name); they now get at most
+  the constant budget — page consistency requires one injection set for all requests, and
+  listing a type's instances should use a type-filtered query, not fulltext injection.
+- **Budget-stable name boost & injection eligibility**: the +1.0 name boost and the
+  injection gate derive from the object's BEST-scoring doc (`FulltextResult.NameMatch`), not
+  from the representative doc — the pluralName preference switches the representative once the
+  pluralName doc enters the budget, and a budget-dependent boost (±1.0) or injection set would
+  reorder the head between requests. Side effect: pluralName best-docs now get the name boost
+  (previously only `name` did — the old inconsistency noted in SpecScoringAndIndexLayout.md).
 - **Lazy tail resolution**: the head must always be resolved in full (re-ranking can move any of
   its objects into the page), but the tail is already in final order, so candidates beyond
   `offset+limit` surviving records are not read from the store at all. Early exit yields a

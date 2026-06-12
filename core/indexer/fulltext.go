@@ -531,21 +531,26 @@ func (i *indexer) maybeRunFTConsistencyCheck(ctx context.Context) {
 	}
 
 	start := time.Now()
-	checked, enqueued, err := i.store.RunFTConsistencyCheck(i.runCtx, i.ftsearch)
+	checked, enqueued, complete, err := i.store.RunFTConsistencyCheck(i.runCtx, i.ftsearch)
 	if err != nil {
 		log.Errorf("ft consistency check failed: %v", err)
 		return
 	}
 
-	// Update counter only on success
-	err = i.store.SetFTRecheckCounter(i.runCtx, ForceFTRecheckCounter)
-	if err != nil {
-		log.Errorf("save ft recheck counter: %v", err)
-		return
+	// Persist the counter only when the whole index was covered; an incomplete
+	// run (truncated listing, skipped space, capped orphan GC) must be retried
+	// next session, otherwise the remainder is never collected — the counter
+	// gate short-circuits every future run.
+	if complete {
+		err = i.store.SetFTRecheckCounter(i.runCtx, ForceFTRecheckCounter)
+		if err != nil {
+			log.Errorf("save ft recheck counter: %v", err)
+			return
+		}
 	}
 
-	var l = log.With("checked", checked, "enqueued", enqueued, "duration", time.Since(start))
-	if enqueued > 0 {
+	var l = log.With("checked", checked, "enqueued", enqueued, "complete", complete, "duration", time.Since(start))
+	if enqueued > 0 || !complete {
 		l.Warn("ft consistency check completed")
 	} else {
 		l.Info("ft consistency check completed")

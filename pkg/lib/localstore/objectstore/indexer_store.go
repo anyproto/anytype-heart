@@ -44,8 +44,10 @@ var emptyBuffer = make([]byte, 8)
 var ftQueueCounter atomic.Uint64
 
 // GenerateFTQueueCounter returns next monotonic counter (unixTs*10000 + seqNum)
-// Uses lock-free CAS loop for thread safety
-// IMPORTANT NOTE: WILL sleep in case of > 10000 ops/sec
+// Uses lock-free CAS loop for thread safety. The timestamp component is
+// advanced synthetically on sequence exhaustion or a backwards clock step, so
+// the call never sleeps and never goes backwards; consumers only rely on
+// ordering, not on wall-clock accuracy.
 func GenerateFTQueueCounter() uint64 {
 	for {
 		current := ftQueueCounter.Load()
@@ -63,11 +65,14 @@ func GenerateFTQueueCounter() uint64 {
 
 		if now == currentTs {
 			if currentSeq >= 9999 {
-				// Wait for next second
-				time.Sleep(time.Until(time.Unix(now+1, 0)))
-				continue // retry with new timestamp
+				// sequence exhausted within this (possibly pinned) second:
+				// borrow the next second instead of sleeping — sleeping until a
+				// PINNED future timestamp would stall callers for the whole
+				// clock-step duration
+				newVal = uint64(currentTs+1) * 10000
+			} else {
+				newVal = current + 1
 			}
-			newVal = current + 1
 		} else {
 			newVal = uint64(now) * 10000
 		}

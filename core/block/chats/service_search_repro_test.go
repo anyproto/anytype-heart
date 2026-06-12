@@ -18,10 +18,10 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// Repro for: chat search scores are float BM25 values but get truncated to
-// int64 in MessageModel (Score: int64(r.Score)), and the SCORE comparator then
-// computes int(a.Score - b.Score). Scores that differ by less than 1.0 compare
-// as equal, so sorting by score is broken for typical BM25 values.
+// Pins the fix for: chat search scores are float BM25 values but were
+// truncated to int64 in MessageModel, and the SCORE comparator computed
+// int(a.Score - b.Score) — scores differing by less than 1.0 compared as
+// equal, so sorting by score was broken for typical BM25 values.
 func TestService_SearchScoreSorting(t *testing.T) {
 	chatId := "chat1"
 	spaceId := "space1"
@@ -82,9 +82,9 @@ func TestService_SearchScoreSorting(t *testing.T) {
 	})
 }
 
-// Repro for: offset is only applied when len(results) >= offset. Paginating
-// past the last page returns the full first page again instead of an empty
-// result, so clients can never detect the end of the result set.
+// Pins the fix for: offset used to be applied only when len(results) >=
+// offset, so paginating past the last page returned the full first page again
+// and clients could never detect the end of the result set.
 func TestService_SearchOffsetBeyondEnd(t *testing.T) {
 	chatId := "chat1"
 	spaceId := "space1"
