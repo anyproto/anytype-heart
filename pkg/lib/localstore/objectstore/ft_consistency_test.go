@@ -69,6 +69,67 @@ func TestRunFTConsistencyCheck(t *testing.T) {
 		assert.Len(t, keptDocs, 1, "consistent object's docs must be kept")
 	})
 
+	t.Run("soft-deleted store stubs do not shield their ft docs", func(t *testing.T) {
+		// given: a soft-deleted object keeps a store stub (isDeleted=true) but
+		// its leftover FT docs are garbage and must be collected
+		s := NewStoreFixture(t)
+		s.AddObjects(t, "space1", []TestObject{
+			{
+				bundle.RelationKeyId:      domain.String("aliveObj"),
+				bundle.RelationKeySpaceId: domain.String("space1"),
+				bundle.RelationKeyName:    domain.String("alive"),
+			},
+			{
+				bundle.RelationKeyId:        domain.String("softDeletedObj"),
+				bundle.RelationKeySpaceId:   domain.String("space1"),
+				bundle.RelationKeyIsDeleted: domain.Bool(true),
+			},
+		})
+		batcher := s.FullText.NewAutoBatcher()
+		require.NoError(t, batcher.UpsertDoc(ftsearch.SearchDoc{
+			Id: "aliveObj/r/name", SpaceId: "space1", Title: "alive",
+		}))
+		require.NoError(t, batcher.UpsertDoc(ftsearch.SearchDoc{
+			Id: "softDeletedObj/r/name", SpaceId: "space1", Title: "leftover",
+		}))
+		_, err := batcher.Finish()
+		require.NoError(t, err)
+
+		// when
+		_, _, err = s.RunFTConsistencyCheck(ctx, s.FullText)
+
+		// then
+		require.NoError(t, err)
+		leftoverDocs, err := s.FullText.ListIdsBySpace("space1", 0)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"aliveObj/r/name"}, leftoverDocs,
+			"soft-deleted object's ft docs must be garbage-collected, alive object's kept")
+	})
+
+	t.Run("orphan gc is skipped when the store is empty", func(t *testing.T) {
+		// given: a space whose store exists but holds no objects (e.g. wiped or
+		// not yet rebuilt) while the FT index still has its docs — deleting
+		// them all would be a destructive misclassification
+		s := NewStoreFixture(t)
+		// registers the (empty) space store
+		_ = s.SpaceIndex("space1")
+		batcher := s.FullText.NewAutoBatcher()
+		require.NoError(t, batcher.UpsertDoc(ftsearch.SearchDoc{
+			Id: "obj1/r/name", SpaceId: "space1", Title: "object",
+		}))
+		_, err := batcher.Finish()
+		require.NoError(t, err)
+
+		// when
+		_, _, err = s.RunFTConsistencyCheck(ctx, s.FullText)
+
+		// then
+		require.NoError(t, err)
+		docs, err := s.FullText.ListIdsBySpace("space1", 0)
+		require.NoError(t, err)
+		assert.Len(t, docs, 1, "ft docs of an empty store must not be collected as orphans")
+	})
+
 	t.Run("docs of not-iterated spaces are never touched", func(t *testing.T) {
 		// given: docs in FT for a space that has no store (not loaded/iterated)
 		s := NewStoreFixture(t)

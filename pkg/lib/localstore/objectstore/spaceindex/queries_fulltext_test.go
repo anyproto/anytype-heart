@@ -957,17 +957,19 @@ func TestQueryFromFulltext(t *testing.T) {
 			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
 		}
 
-		// when — limit=3 → upperBound=3
-		// After tag1 added: len(records)=1, upperBound(3) > 1 → injectLimit = 3-1 = 2
-		// Only 2 of 5 tagged objects are injected
+		// when — the injection budget is request-independent, so all 5 tagged
+		// objects join the sequence; the page is produced by slicing it
 		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Priority")
 
-		// then — tag1 + 2 injected = 3 total
+		// then — page of 3 out of tag1 + 5 injected
 		require.NoError(t, err)
 		assert.Len(t, recs, 3)
 	})
 
-	t.Run("injection is skipped when limit is already reached by direct results", func(t *testing.T) {
+	t.Run("injection is independent of the requested page", func(t *testing.T) {
+		// Injections must not depend on limit/offset: a page-derived injection
+		// budget would make different offsets paginate different sequences,
+		// producing duplicates across pages.
 		// given
 		s := NewStoreFixture(t)
 
@@ -1004,23 +1006,23 @@ func TestQueryFromFulltext(t *testing.T) {
 		params := newFilters(t, s, nil, []database.SortRequest{
 			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
 		})
+		// full sequence sorted by name: tagged1 (injected), tag1, obj1, obj2
+		want := []string{"tagged1", "tag1", "obj1", "obj2"}
 
-		// when — limit=2 → upperBound=2
-		// After obj1: len=1, 2>1 → injectLimit=1 (basic, no linkers → no injection)
-		// After obj2: len=2, !(2>2), 2>0 → continue (injection skipped)
-		// After tag1: len=3, !(2>3), 2>0 → continue (injection skipped)
-		// records=[obj1,obj2,tag1], sorted by name=[tag1,obj1,obj2], sliced to 2=[tag1,obj1]
-		// tagged1 would sort first ("AAA") if injected, but injection was skipped
-		recs, err := s.QueryFromFulltext(results, params, 2, 0, "test")
-
-		// then
+		// when: pages with different limits/offsets
+		page1, err := s.QueryFromFulltext(results, params, 2, 0, "test")
 		require.NoError(t, err)
-		require.Len(t, recs, 2)
-		gotIds := []string{
-			recs[0].Details.GetString(bundle.RelationKeyId),
-			recs[1].Details.GetString(bundle.RelationKeyId),
+		page2, err := s.QueryFromFulltext(results, params, 2, 2, "test")
+		require.NoError(t, err)
+
+		// then: pages are consistent prefixes/slices of the same sequence
+		var got []string
+		for _, recs := range [][]database.Record{page1, page2} {
+			for _, rec := range recs {
+				got = append(got, rec.Details.GetString(bundle.RelationKeyId))
+			}
 		}
-		assert.NotContains(t, gotIds, "tagged1")
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("higher-scoring group wins injection budget deterministically", func(t *testing.T) {

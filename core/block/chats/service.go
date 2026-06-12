@@ -842,9 +842,12 @@ func (s *service) ReadReaction(ctx context.Context, chatObjectId string) error {
 }
 
 func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
-	// candidate budget: Limit == 0 means "no limit", so let the ftsearch default
-	// apply; otherwise request at least the default page so sorting by keys
-	// other than score stays consistent across shallow pages
+	// candidate budget: Limit == 0 falls back to the ftsearch default (one
+	// 100-doc page); otherwise request at least the default page so sorting by
+	// keys other than score stays consistent across shallow pages. Known
+	// limitation: once offset+limit crosses the shared candidate budget, pages
+	// sorted by non-score keys are computed over different BM25-truncated sets
+	// and may overlap — deep chat-search pagination needs a cursor to be exact.
 	ftLimit := 0
 	if req.Limit > 0 {
 		ftLimit = int(req.Offset) + int(req.Limit)

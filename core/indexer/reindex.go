@@ -59,7 +59,10 @@ const (
 
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
 	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
-	ForceFTRecheckCounter int32 = 0
+	// Bumped to 1 for GO-7316: backfill objects missed by the FT queue and
+	// garbage-collect orphaned FT docs accumulated by the old broken deletion
+	// paths (bare-id deletes, no cleanup on space offload).
+	ForceFTRecheckCounter int32 = 1
 
 	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
 	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it

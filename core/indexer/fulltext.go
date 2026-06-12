@@ -36,13 +36,12 @@ import (
 const maxErrorsPerSession = 100
 
 var (
-	ftIndexInterval                     = 10 * time.Second
-	ftMaxIndexInterval                  = time.Second * 60
-	ftIndexForceMinInterval             = time.Second * 10
-	ftInconsistencyCheckStartDelay      = time.Second * 10
-	ftBatchLimit                   uint = 1000
-	ftBlockMaxSize                      = 1024 * 1024
-	maxErrSent                     atomic.Int32
+	ftIndexInterval              = 10 * time.Second
+	ftMaxIndexInterval           = time.Second * 60
+	ftIndexForceMinInterval      = time.Second * 10
+	ftBatchLimit            uint = 1000
+	ftBlockMaxSize               = 1024 * 1024
+	maxErrSent              atomic.Int32
 )
 
 var filesLayouts = map[model.ObjectTypeLayout]struct{}{
@@ -516,6 +515,18 @@ func (i *indexer) maybeRunFTConsistencyCheck(ctx context.Context) {
 
 	// Mark as started (prevent concurrent runs)
 	if !i.ftConsistencyCheckDone.CompareAndSwap(false, true) {
+		return
+	}
+
+	// The check iterates only spaces registered so far; running it against a
+	// partial registry would permanently skip the not-yet-opened spaces and
+	// could misclassify their docs. Probe the warm-up without blocking the FT
+	// loop: if stores are still loading, retry at a later queue drain.
+	waitCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	err = i.store.WaitStoresLoaded(waitCtx)
+	cancel()
+	if err != nil {
+		i.ftConsistencyCheckDone.Store(false)
 		return
 	}
 

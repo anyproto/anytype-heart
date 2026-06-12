@@ -897,6 +897,11 @@ func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.
 		err = store.IterateAll(func(doc *anyenc.Value) error {
 			objs++
 			id := doc.GetString(idKey)
+			if doc.GetBool(bundle.RelationKeyIsDeleted.String()) {
+				// soft-deleted objects keep a store stub; their leftover FT
+				// docs are garbage and must stay collectable as orphans
+				return nil
+			}
 			storeIds[id] = struct{}{}
 			if !isFtIndexable(id, doc) {
 				return nil
@@ -915,14 +920,20 @@ func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.
 		// FT docs whose object is gone from the store are orphans. Only spaces
 		// iterated here are considered — docs of not-yet-loaded spaces are never
 		// touched — and only when the FT listing was complete.
-		if listingComplete {
+		switch {
+		case !listingComplete:
+			log.With("spaceId", spaceId).Warn("ft consistency check: doc listing truncated, skipping orphan gc for space")
+		case len(storeIds) == 0 && len(ftObjectIds) > 0:
+			// an entirely empty store next to a populated FT index is far more
+			// likely a wiped/not-yet-rebuilt store than 100% genuine orphans
+			log.With("spaceId", spaceId).With("ftObjects", len(ftObjectIds)).
+				Warn("ft consistency check: store is empty, skipping orphan gc for space")
+		default:
 			for objectId := range ftObjectIds {
 				if _, exists := storeIds[objectId]; !exists {
 					orphanObjectIds = append(orphanObjectIds, objectId)
 				}
 			}
-		} else {
-			log.With("spaceId", spaceId).Warn("ft consistency check: doc listing truncated, skipping orphan gc for space")
 		}
 		return nil
 	})
@@ -937,8 +948,17 @@ func (s *dsObjectStore) RunFTConsistencyCheck(ctx context.Context, fts ftsearch.
 			log.With("orphans", len(orphanObjectIds)).Warn("ft consistency check: orphan count exceeds gc limit, deleting partially")
 			orphanObjectIds = orphanObjectIds[:ftOrphanGCLimit]
 		}
-		if err = fts.BatchDeleteObjects(orphanObjectIds); err != nil {
-			return checked, 0, fmt.Errorf("delete orphaned ft docs: %w", err)
+		// chunked: each BatchDeleteObjects call holds the ftsearch write lock,
+		// so one huge call would block searches for its whole duration
+		const orphanDeleteChunk = 1000
+		for start := 0; start < len(orphanObjectIds); start += orphanDeleteChunk {
+			end := start + orphanDeleteChunk
+			if end > len(orphanObjectIds) {
+				end = len(orphanObjectIds)
+			}
+			if err = fts.BatchDeleteObjects(orphanObjectIds[start:end]); err != nil {
+				return checked, 0, fmt.Errorf("delete orphaned ft docs: %w", err)
+			}
 		}
 	}
 

@@ -75,8 +75,20 @@ Memory: per-space id sets instead of today's global `ListAllObjectIds` map; drop
 `ListAllObjectIds` once both callers are migrated (its 1e9-docs listing is one of the memory
 spikes). Deletion happens object-by-object through the same primitive as (1).
 
-Safety valve: log orphan count and cap a single GC pass (e.g. 50k docs) to bound a runaway
-deletion caused by a future regression; remaining orphans get collected next session.
+Safety valves (hardened after adversarial review):
+
+- the check only runs once the objectstore warm-up finished (probed non-blockingly from the FT
+  loop; retried at a later queue drain otherwise) — running against a partial space registry
+  would permanently skip not-yet-opened spaces;
+- orphan GC is skipped for a space whose store is EMPTY while its FT docs exist (far more likely
+  a wiped/not-yet-rebuilt store than 100% genuine orphans);
+- soft-deleted objects keep store stubs (`isDeleted=true`); those are treated as absent so their
+  leftover FT docs — the main historical leak — stay collectable;
+- a single GC pass is capped (50k objects) and deletions are chunked (1000 objects per
+  ftsearch-lock acquisition); remaining orphans get collected next session.
+
+Activation: `ForceFTRecheckCounter` bumped 0 → 1 (GO-7316) — without the bump the whole
+consistency check, backfill and orphan GC are unreachable for existing users.
 
 ## Compatibility
 

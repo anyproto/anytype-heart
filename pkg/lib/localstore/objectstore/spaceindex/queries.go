@@ -208,7 +208,7 @@ type injectionHit struct {
 }
 
 func (s *dsObjectStore) QueryFromFulltext(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
-	records, err := s.queryFromFulltextRecords(results, params, limit, offset, ftsSearch)
+	records, err := s.queryFromFulltextRecords(results, params, ftsSearch)
 	if err != nil {
 		return nil, err
 	}
@@ -243,8 +243,12 @@ func paginateRecords(records []database.Record, offset int, limit int) []databas
 // whole sequence stable across requests with different offsets; re-ranking
 // the entire budget-dependent pool would let a boosted tail candidate jump
 // into an earlier page and produce duplicates on the next one.
-func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, limit int, offset int, ftsSearch string) ([]database.Record, error) {
-	upperBound := offset + limit
+//
+// Known residual edge: docs with EXACTLY equal BM25 scores straddling the
+// budget boundary enter the set in tantivy's internal doc order, so a larger
+// budget can insert a tied object mid-order (the id tiebreak only orders the
+// objects it can see). Exact float ties at the boundary are rare; accepted.
+func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResult, params database.Filters, ftsSearch string) ([]database.Record, error) {
 	pool := ftRerankPoolSize
 	if pool > len(results) {
 		pool = len(results)
@@ -253,11 +257,10 @@ func (s *dsObjectStore) queryFromFulltextRecords(results []database.FulltextResu
 
 	// head: resolve, collect related-object injections, re-rank by final score
 	records, injectionGroups := s.resolveFulltextResults(results[:pool], params, ftsSearch, seen, true)
-	budget := 0
-	if upperBound > 0 && upperBound > len(records) {
-		budget = upperBound - len(records)
-	}
-	records = s.injectRelatedObjects(injectionGroups, budget, upperBound == 0, params, seen, records)
+	// the injection budget is a request-independent constant: deriving it from
+	// the requested page would make the injected set (and thus the re-ranked
+	// head order) differ between offsets, breaking pagination consistency
+	records = s.injectRelatedObjects(injectionGroups, ftRerankPoolSize, false, params, seen, records)
 	if params.Order != nil {
 		// stable: equal final scores keep their BM25 order, so the result is
 		// deterministic across requests
@@ -536,7 +539,7 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 	}
 	ftLimit := ftCandidatesLimit(q)
 	for {
-		fulltextResults, ftDocs, err := s.performFulltextSearch(func() ([]*ftsearch.DocumentMatch, error) {
+		fulltextResults, ftDocs, err := s.performFulltextSearch(!q.PrefixNameQuery, func() ([]*ftsearch.DocumentMatch, error) {
 			return search(ftLimit)
 		})
 		if err != nil {
@@ -548,14 +551,18 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 			return s.performFulltextFallback(q, filters)
 		}
 
-		records, err := s.queryFromFulltextRecords(fulltextResults, *filters, q.Limit, q.Offset, q.TextQuery)
+		records, err := s.queryFromFulltextRecords(fulltextResults, *filters, q.TextQuery)
 		if err != nil {
 			return nil, err
 		}
 
 		pageFilled := needed == 0 || len(records) >= needed
+		// the re-rank head must be the same object set for every request, or
+		// offset pagination drifts: keep escalating until the full head pool
+		// is materialized (or the index has no more docs to offer)
+		headMaterialized := len(fulltextResults) >= ftRerankPoolSize
 		indexExhausted := ftDocs < ftLimit
-		if pageFilled || indexExhausted || ftLimit >= ftCandidatesHardLimit {
+		if (pageFilled && headMaterialized) || indexExhausted || ftLimit >= ftCandidatesHardLimit {
 			if !pageFilled && !indexExhausted {
 				// the page stays underfilled although more matches exist:
 				// the client will read it as the end of the results
@@ -576,8 +583,11 @@ func (s *dsObjectStore) performFulltextQuery(q database.Query, filters *database
 
 // performFulltextSearch groups raw doc matches per object and converts them to
 // fulltext results; ftDocs is the raw doc count, used by the caller to detect
-// whether the index was exhausted (ftDocs < requested budget).
-func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch.DocumentMatch, err error)) ([]database.FulltextResult, int, error) {
+// whether the index was exhausted (ftDocs < requested budget). enforceMinScore
+// drops near-zero-score results without highlights — it must be disabled for
+// the prefix-name path, which runs without highlight generation and would lose
+// legitimate low-scoring prefix matches.
+func (s *dsObjectStore) performFulltextSearch(enforceMinScore bool, search func() (results []*ftsearch.DocumentMatch, err error)) ([]database.FulltextResult, int, error) {
 	ftsResults, err := search()
 	if err != nil {
 		return nil, 0, fmt.Errorf("fullText search: %w", err)
@@ -620,7 +630,17 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 		if len(objectPerBlockResults) == 0 {
 			continue
 		}
-		objectResults = append(objectResults, preferPluralNameRelation(objectPerBlockResults))
+		chosen := preferPluralNameRelation(objectPerBlockResults)
+		if chosen.Score != objectPerBlockResults[0].Score {
+			// the object must be ORDERED by its best doc score: the preferred
+			// pluralName doc can enter the candidate set at a lower BM25 rank
+			// when the budget grows, and letting it lower the object's
+			// representative score would reorder pages between requests
+			clone := *chosen
+			clone.Score = objectPerBlockResults[0].Score
+			chosen = &clone
+		}
+		objectResults = append(objectResults, chosen)
 	}
 
 	sort.Slice(objectResults, func(i, j int) bool {
@@ -639,7 +659,7 @@ func (s *dsObjectStore) performFulltextSearch(search func() (results []*ftsearch
 		if err != nil {
 			return nil, 0, fmt.Errorf("fullText search: %w", err)
 		}
-		if result.Score < minFulltextScore && len(result.HighlightRanges) == 0 {
+		if enforceMinScore && result.Score < minFulltextScore && len(result.HighlightRanges) == 0 {
 			continue
 		}
 		results = append(results, result)

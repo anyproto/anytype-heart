@@ -179,3 +179,72 @@ func TestFulltextPaginationConsistency(t *testing.T) {
 	assert.NotContains(t, full[:pageSize], recentId)
 	assert.Contains(t, full, recentId)
 }
+
+// The re-rank head must be the same object set for every request. When objects
+// have multiple matching docs, a doc-count budget yields fewer objects than
+// docs, so a small request could otherwise re-rank a smaller head than a
+// larger request and the two would paginate different sequences.
+func TestFulltextPaginationConsistencyMultiDoc(t *testing.T) {
+	// given: 120 objects × 2 docs = 240 docs; a 100-doc round yields only ~50
+	// objects, so materializing the 100-object head requires escalation even
+	// for a small first page
+	fx := NewStoreFixture(t)
+	const (
+		total    = 120
+		pageSize = 15
+	)
+	objects := make([]TestObject, 0, total)
+	batcher := fx.fts.NewAutoBatcher()
+	for i := 0; i < total; i++ {
+		id := fmt.Sprintf("obj%03d", i)
+		title := "apple" + strings.Repeat(" filler", i/4)
+		objects = append(objects, TestObject{
+			bundle.RelationKeyId:   domain.String(id),
+			bundle.RelationKeyName: domain.String(title),
+		})
+		require.NoError(t, batcher.UpsertDoc(ftsearch.SearchDoc{
+			Id:      id + "/r/name",
+			SpaceId: "test",
+			Title:   title,
+		}))
+		require.NoError(t, batcher.UpsertDoc(ftsearch.SearchDoc{
+			Id:      id + "/b/block1",
+			SpaceId: "test",
+			Text:    "apple in a block " + title,
+		}))
+	}
+	_, err := batcher.Finish()
+	require.NoError(t, err)
+	fx.AddObjects(t, objects)
+
+	query := func(limit, offset int) []string {
+		records, err := fx.Query(database.Query{
+			SpaceId:   "test",
+			TextQuery: "apple",
+			Limit:     limit,
+			Offset:    offset,
+		})
+		require.NoError(t, err)
+		ids := make([]string, 0, len(records))
+		for _, r := range records {
+			ids = append(ids, r.Details.GetString(bundle.RelationKeyId))
+		}
+		return ids
+	}
+
+	// when
+	full := query(total, 0)
+	require.Len(t, full, total)
+
+	var paged []string
+	for offset := 0; ; offset += pageSize {
+		page := query(pageSize, offset)
+		if len(page) == 0 {
+			break
+		}
+		paged = append(paged, page...)
+	}
+
+	// then
+	assert.Equal(t, full, paged)
+}

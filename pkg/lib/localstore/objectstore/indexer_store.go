@@ -53,6 +53,12 @@ func GenerateFTQueueCounter() uint64 {
 		currentSeq := current % 10000
 
 		now := time.Now().Unix()
+		if now < currentTs {
+			// the wall clock stepped backwards: stay monotonic, the generation
+			// check in FtQueueMarkAsIndexed relies on fresh counters never
+			// colliding with previously issued ones
+			now = currentTs
+		}
 		var newVal uint64
 
 		if now == currentTs {
@@ -292,7 +298,7 @@ func (s *dsObjectStore) BatchProcessFullTextQueue(spaceIds func() []string, limi
 		}
 		if len(succeedIds) == 0 {
 			// special case to prevent infinite loop
-			return fmt.Errorf("all ids failed to process cappedToLimit: %v", len(ids) == int(limit))
+			return fmt.Errorf("all ids failed to process (batch capped to limit: %v)", len(ids) == int(limit))
 		}
 		err = s.FtQueueMarkAsIndexed(succeedIds, ftIndexSeq)
 		if err != nil {

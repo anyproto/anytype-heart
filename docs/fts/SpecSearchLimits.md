@@ -74,12 +74,32 @@ Resolution (`queryFromFulltextRecords`):
 - the recency decay clock is truncated to the hour so the head order cannot drift between two
   consecutive page requests.
 
+Three subtleties found by adversarial review, all required for the invariant to actually hold:
+
+- **Head materialization**: the head must be the same OBJECT set for every request, so escalation
+  also continues until ≥ `ftRerankPoolSize` objects were collected (or the index is exhausted) —
+  a doc-count budget can yield fewer objects than docs when objects have several matching docs
+  (`TestFulltextPaginationConsistencyMultiDoc`).
+- **Object score = best doc score**: `preferPluralNameRelation` may choose a lower-scoring
+  pluralName doc as the object's representative; the object is still ORDERED by its best doc's
+  BM25 score, otherwise a budget increase that pulls in the pluralName doc would move the object
+  down the order.
+- **Request-independent injections**: the related-object injection budget is a constant
+  (`ftRerankPoolSize`), never derived from offset/limit, so the injected set (and thus the head
+  order) is the same for every page.
+
 Result: the full sequence `rerank(top-100) ++ bm25-tail` is identical for every budget, so
 pages from different requests never overlap (`TestFulltextPaginationConsistency` pins
-pages == slices of one big query). Remaining caveat, shared with all offset pagination over a
-live database: an index commit between two page requests can still shift results; the complete
-cure would be a server-side search-session snapshot (cursor), kept as a possible follow-up.
-Clients de-duplicating by id remain a cheap belt.
+pages == slices of one big query). Remaining caveats: docs with EXACTLY equal BM25 scores
+straddling the budget boundary can still insert mid-order (tantivy truncates by internal doc
+order before the Go id tiebreak sees them — rare, accepted), and, shared with all offset
+pagination over a live database, an index commit between two page requests can shift results;
+the complete cure would be a server-side search-session snapshot (cursor), kept as a possible
+follow-up. Clients de-duplicating by id remain a cheap belt.
+
+Also note: the prefix-name path (`NamePrefixSearch`) runs without highlight generation, so the
+`minFulltextScore`-without-highlights drop is disabled for it — low-scoring prefix matches used
+to survive via their highlight ranges and must not silently disappear.
 
 ### 2. Chat-scoped message search
 
