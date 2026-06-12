@@ -98,14 +98,27 @@ func (mw *Middleware) WorkspaceOpen(cctx context.Context, req *pb.RpcWorkspaceOp
 	}
 
 	err = mw.doBlockService(func(bs *block.Service) error {
+		// in-memory read: spaceviews are permanently resident in the tech space object
+		// cache (SpaceView.TryClose forbids eviction)
 		var spaceType model.SpaceType
 		err = cache.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
 			spaceType = sv.GetSpaceDescription().SpaceType
-			return sv.UpdateLastOpenedDate()
+			return nil
 		})
 		if err != nil {
 			return err
 		}
+		// the lastOpenedDate write competes for the single store write connection (busy
+		// during the startup storm); nothing in the response depends on it, so it must
+		// not block WorkspaceOpen
+		go func() {
+			err := cache.Do[*editor.SpaceView](bs, info.SpaceViewId, func(sv *editor.SpaceView) error {
+				return sv.UpdateLastOpenedDate()
+			})
+			if err != nil {
+				log.With("spaceViewId", info.SpaceViewId).With("error", err).Warn("failed to update last opened date")
+			}
+		}()
 		if spaceType == model.SpaceType_SpaceTypeOneToOne {
 			// migration for existing users
 			err = bs.SpaceInitChat(cctx, req.SpaceId, false)

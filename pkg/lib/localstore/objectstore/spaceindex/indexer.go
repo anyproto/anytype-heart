@@ -2,8 +2,11 @@ package spaceindex
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"sort"
+	"strings"
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-store/anyenc"
@@ -12,6 +15,7 @@ import (
 
 const headsStateField = "h"
 const ftQueueCtrField = "ftQueueCtr" // FT queue counter for crash recovery consistency
+const lastReconciledLinksField = "lr"
 
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
 func (s *dsObjectStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error) {
@@ -36,6 +40,30 @@ func (s *dsObjectStore) SaveLastIndexedHeadsHash(ctx context.Context, id string,
 	return err
 }
 
+// ListLastIndexedHeadsHashes returns the last indexed heads hash for every object in a single
+// collection scan. Callers that need the whole space (reindexOutdatedObjects) must use this
+// instead of per-id GetLastIndexedHeadsHash lookups, which cost one statement per object.
+func (s *dsObjectStore) ListLastIndexedHeadsHashes(ctx context.Context) (map[string]string, error) {
+	iter, err := s.headsState.Find(nil).Iter(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("find heads state entries: %w", err)
+	}
+	defer iter.Close()
+
+	hashes := make(map[string]string)
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return nil, fmt.Errorf("get doc: %w", err)
+		}
+		hashes[doc.Value().GetString("id")] = doc.Value().GetString(headsStateField)
+	}
+	if err = iter.Err(); err != nil {
+		return nil, fmt.Errorf("iterate heads state entries: %w", err)
+	}
+	return hashes, nil
+}
+
 // SaveLastIndexedHeadsHashWithFtQueueCtr saves the heads hash along with the FT queue counter.
 // The ftQueueCtr is used for crash recovery: if the common DB (FT queue) doesn't flush before crash,
 // we can detect objects with ftQueueCtr > persisted counter and re-add them to the queue.
@@ -57,6 +85,51 @@ func (s *dsObjectStore) SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Conte
 		if ftQueueCtr > 0 {
 			val.Set(ftQueueCtrField, arena.NewNumberFloat64(float64(ftQueueCtr)))
 		}
+		return val, true, nil
+	}))
+	return err
+}
+
+// HashIds returns a stable fingerprint of a set of ids, insensitive to order and duplicates.
+// Non-empty even for an empty list, so an absent reconcile marker is distinguishable from a
+// recorded one.
+func HashIds(ids []string) string {
+	uniq := make([]string, 0, len(ids))
+	seen := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		if _, ok := seen[id]; !ok {
+			seen[id] = struct{}{}
+			uniq = append(uniq, id)
+		}
+	}
+	sort.Strings(uniq)
+	sum := sha256.Sum256([]byte(strings.Join(uniq, ",")))
+	return fmt.Sprintf("%x", sum)
+}
+
+// GetReconcileMarker returns the tree-heads fingerprint (HashIds of the heads) persisted by the
+// last completed link-derived details reconcile of the object (Home/Archive), or empty if none
+// was recorded. While the object's headstorage heads still hash to this value, the tree has not
+// changed since that reconcile, so isFavorite/isArchived details are provably in sync.
+func (s *dsObjectStore) GetReconcileMarker(ctx context.Context, id string) (marker string, err error) {
+	doc, err := s.headsState.FindId(ctx, id)
+	if errors.Is(err, anystore.ErrDocNotFound) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return string(doc.Value().GetStringBytes(lastReconciledLinksField)), nil
+}
+
+// SaveReconcileMarker records that the link-derived details (isFavorite/isArchived) were fully
+// reconciled against the tree state whose heads are fingerprinted by marker (see HashIds).
+func (s *dsObjectStore) SaveReconcileMarker(ctx context.Context, id string, marker string) error {
+	_, err := s.headsState.UpsertId(ctx, id, query.ModifyFunc(func(arena *anyenc.Arena, val *anyenc.Value) (*anyenc.Value, bool, error) {
+		if val != nil && val.GetString(lastReconciledLinksField) == marker {
+			return val, false, nil
+		}
+		val.Set(lastReconciledLinksField, arena.NewString(marker))
 		return val, true, nil
 	}))
 	return err

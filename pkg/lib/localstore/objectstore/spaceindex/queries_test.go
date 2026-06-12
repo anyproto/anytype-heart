@@ -1025,6 +1025,63 @@ func TestQueryObjectIds(t *testing.T) {
 	})
 }
 
+func TestQueryIterateRaw(t *testing.T) {
+	arena := &anyenc.Arena{}
+
+	t.Run("with nil filter expect error", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		err := s.QueryIterateRaw(nil, func(details *domain.Details) error { return nil })
+		require.Error(t, err)
+	})
+
+	t.Run("streams matching records", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		obj1 := makeObjectWithNameAndDescription("id1", "name1", "foo")
+		obj2 := makeObjectWithNameAndDescription("id2", "name2", "bar")
+		obj3 := makeObjectWithNameAndDescription("id3", "name3", "foo")
+		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
+
+		flt, err := database.NewFilters(database.Query{
+			Filters: []database.FilterRequest{
+				{
+					RelationKey: bundle.RelationKeyDescription,
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       domain.String("foo"),
+				},
+			},
+		}, s, arena, &collate.Buffer{})
+		require.NoError(t, err)
+
+		var ids []string
+		err = s.QueryIterateRaw(flt, func(details *domain.Details) error {
+			ids = append(ids, details.GetString(bundle.RelationKeyId))
+			return nil
+		})
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"id1", "id3"}, ids)
+	})
+
+	t.Run("proc error stops the iteration", func(t *testing.T) {
+		s := NewStoreFixture(t)
+		s.AddObjects(t, []TestObject{
+			makeObjectWithName("id1", "name1"),
+			makeObjectWithName("id2", "name2"),
+		})
+
+		flt, err := database.NewFilters(database.Query{}, s, arena, &collate.Buffer{})
+		require.NoError(t, err)
+
+		wantErr := fmt.Errorf("stop")
+		var seen int
+		err = s.QueryIterateRaw(flt, func(details *domain.Details) error {
+			seen++
+			return wantErr
+		})
+		require.ErrorIs(t, err, wantErr)
+		assert.Equal(t, 1, seen)
+	})
+}
+
 func TestQueryRaw(t *testing.T) {
 	arena := &anyenc.Arena{}
 

@@ -281,8 +281,58 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	}
 
 	go i.addSyncDetails(space)
+	go i.reconcileLinkDerivedDetails(space)
 
 	return i.saveLatestChecksums(space.Id())
+}
+
+// reconcileLinkDerivedDetails verifies, without building trees, that the local details derived
+// from the Home and Archive link collections (isFavorite/isArchived) still match the trees, and
+// re-runs the authoritative editor reconcile when the proof is missing or stale. The proof is a
+// fingerprint of the tree heads persisted after each completed reconcile (SaveReconcileMarker);
+// headstorage advances at apply commit, so any tree change whose reconcile did not complete
+// (crash or error between apply and the per-object detail writes) leaves the marker stale.
+// Opening the object runs the editor reconcile (Archive.Init/Dashboard.Init), which refreshes
+// the marker.
+func (i *indexer) reconcileLinkDerivedDetails(space clientspace.Space) {
+	store := i.store.SpaceIndex(space.Id())
+	derivedIds := space.DerivedIDs()
+	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
+	for _, objectId := range []string{derivedIds.Home, derivedIds.Archive} {
+		if objectId == "" {
+			continue
+		}
+		l := log.With("spaceId", space.Id(), "objectId", objectId)
+		// a tree that is not local yet is fetched by the mandatory-objects load, which opens
+		// it and thereby reconciles; same for the deleted-tree edge handled there
+		entry, err := space.Storage().HeadStorage().GetEntry(i.runCtx, objectId)
+		if err != nil || entry.DeletedStatus != headstorage.DeletedStatusNotDeleted {
+			if err != nil && !errors.Is(err, anystore.ErrDocNotFound) && !errors.Is(err, context.Canceled) {
+				l.Warnf("reconcile link-derived details: get heads entry: %v", err)
+			}
+			continue
+		}
+		marker, err := store.GetReconcileMarker(i.runCtx, objectId)
+		if err != nil {
+			if !errors.Is(err, context.Canceled) {
+				l.Errorf("reconcile link-derived details: get marker: %v", err)
+			}
+			continue
+		}
+		if marker == spaceindex.HashIds(entry.Heads) {
+			continue
+		}
+		if marker == "" {
+			// no reconcile recorded yet: first load since the marker was introduced
+			l.Info("link-derived details reconcile marker absent, reconciling")
+		} else {
+			l.Warn("link-derived details out of sync with object tree, reconciling")
+		}
+		// opening the object runs the editor reconcile, which rewrites the marker
+		if err = space.DoCtx(ctx, objectId, func(smartblock.SmartBlock) error { return nil }); err != nil {
+			l.Errorf("reconcile link-derived details: open object: %v", err)
+		}
+	}
 }
 
 func (i *indexer) cleanChatCollection(ctx context.Context, db anystore.DB, chatId string, colName string) error {
@@ -741,20 +791,15 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	if err != nil {
 		return
 	}
+	indexedHashes, err := store.ListLastIndexedHeadsHashes(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("list last indexed heads hashes: %w", err)
+	}
 	var idsToReindex []string
 	for _, entry := range entries {
-		// todo: make it more effective
-		id := entry.Id
-		logErr := func(err error) {
-			log.With("tree", entry.Id).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
-		}
-		lastHash, err := store.GetLastIndexedHeadsHash(ctx, id)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		if lastHash == "" || lastHash != headsHash(entry.Heads) {
-			idsToReindex = append(idsToReindex, id)
+		// an id missing from indexedHashes yields "", which never matches a real hash
+		if indexedHashes[entry.Id] != headsHash(entry.Heads) {
+			idsToReindex = append(idsToReindex, entry.Id)
 		}
 	}
 	if len(idsToReindex) == 0 {
@@ -857,6 +902,14 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 
 func (i *indexer) saveLatestChecksums(spaceID string) error {
 	checksums := i.getLatestChecksums(spaceID == addr.AnytypeMarketplaceWorkspace)
+	stored, err := i.store.GetChecksums(spaceID)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("get stored checksums: %w", err)
+	}
+	// this runs on every space load; skip the write tx when nothing changed
+	if stored != nil && *stored == checksums {
+		return nil
+	}
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 

@@ -4,14 +4,17 @@ import (
 	"context"
 	"testing"
 
+	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage"
 	"github.com/anyproto/any-sync/commonspace/headsync/headstorage/mock_headstorage"
+	"github.com/anyproto/any-sync/commonspace/headsync/statestorage/mock_statestorage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/block/editor"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache/mock_objectcache"
 	"github.com/anyproto/anytype-heart/core/block/source"
@@ -22,7 +25,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/threads"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	mock_space "github.com/anyproto/anytype-heart/space/clientspace/mock_clientspace"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage/mock_anystorage"
@@ -195,6 +200,7 @@ func TestIndexer_ReindexSpace_RemoveParticipants(t *testing.T) {
 			store := fx.store.SpaceIndex(space)
 
 			spc := mock_space.NewMockSpace(t)
+			spc.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe() // reconcileLinkDerivedDetails: nothing to check
 			spc.EXPECT().Id().Return(space)
 			spc.EXPECT().Storage().Return(storage).Maybe()
 			spc.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe() // addSyncDetails: nothing to backfill in this test
@@ -303,6 +309,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		require.Equal(t, trash, archiveLinks)
 
 		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe() // reconcileLinkDerivedDetails: nothing to check
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().Storage().Return(storage).Maybe()
 		space1.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe() // addSyncDetails: nothing to backfill in this test
@@ -345,6 +352,7 @@ func TestIndexer_ReindexSpace_EraseLinks(t *testing.T) {
 		require.Equal(t, obj3links, storedObj3links)
 
 		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe() // reconcileLinkDerivedDetails: nothing to check
 		space1.EXPECT().Id().Return(spaceId2)
 		space1.EXPECT().Storage().Return(storage).Maybe()
 		space1.EXPECT().FilterNotExists(mock.Anything).Return(nil).Maybe() // addSyncDetails: nothing to backfill in this test
@@ -379,6 +387,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 	// inside the write tx (the GO-7291 ABBA deadlock) fails the test.
 	newSpace := func(t *testing.T) *mock_space.MockSpace {
 		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe() // reconcileLinkDerivedDetails: nothing to check
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
 		space1.EXPECT().FilterNotExists(mock.Anything).
@@ -434,6 +443,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		})
 
 		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe() // reconcileLinkDerivedDetails: nothing to check
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
 		// Nothing is missing, so the filtered set must be empty and no
@@ -495,6 +505,7 @@ func TestReindex_addSyncRelations(t *testing.T) {
 		})
 
 		space1 := mock_space.NewMockSpace(t)
+		space1.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{}).Maybe() // reconcileLinkDerivedDetails: nothing to check
 		space1.EXPECT().Id().Return(spaceId1)
 		space1.EXPECT().StoredIds().Return([]string{}).Maybe()
 		var calls int
@@ -547,4 +558,238 @@ type idsLister struct {
 
 func (l idsLister) ListIds() ([]string, error) {
 	return l.Ids, nil
+}
+
+func TestReconcileLinkDerivedDetails(t *testing.T) {
+	const (
+		spaceId   = "space1"
+		homeId    = "home1"
+		archiveId = "archive1"
+	)
+	derivedIds := threads.DerivedSmartblockIds{Home: homeId, Archive: archiveId}
+	headsEntries := map[string]headstorage.HeadsEntry{
+		homeId:    {Id: homeId, Heads: []string{"homeHead1", "homeHead2"}, CommonSnapshot: "cs"},
+		archiveId: {Id: archiveId, Heads: []string{"archiveHead1"}, CommonSnapshot: "cs"},
+	}
+
+	newSpaceMock := func(t *testing.T, entries map[string]headstorage.HeadsEntry) *mock_space.MockSpace {
+		ctrl := gomock.NewController(t)
+		headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+		headStorage.EXPECT().GetEntry(gomock.Any(), gomock.Any()).AnyTimes().DoAndReturn(
+			func(_ context.Context, id string) (headstorage.HeadsEntry, error) {
+				entry, ok := entries[id]
+				if !ok {
+					return headstorage.HeadsEntry{}, anystore.ErrDocNotFound
+				}
+				return entry, nil
+			})
+		storage := mock_anystorage.NewMockClientSpaceStorage(t)
+		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId).Maybe()
+		spc.EXPECT().DerivedIDs().Return(derivedIds).Maybe()
+		spc.EXPECT().Storage().Return(storage).Maybe()
+		return spc
+	}
+
+	t.Run("in sync: no objects are opened", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		store := fx.store.SpaceIndex(spaceId)
+		// marker is order-insensitive over heads
+		require.NoError(t, store.SaveReconcileMarker(ctx, homeId, spaceindex.HashIds([]string{"homeHead2", "homeHead1"})))
+		require.NoError(t, store.SaveReconcileMarker(ctx, archiveId, spaceindex.HashIds([]string{"archiveHead1"})))
+		// no DoCtx expectation: any open fails the test
+		spc := newSpaceMock(t, headsEntries)
+
+		// when
+		fx.reconcileLinkDerivedDetails(spc)
+	})
+
+	t.Run("stale marker triggers reconcile of that object only", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		store := fx.store.SpaceIndex(spaceId)
+		require.NoError(t, store.SaveReconcileMarker(ctx, homeId, spaceindex.HashIds([]string{"oldHead"})))
+		require.NoError(t, store.SaveReconcileMarker(ctx, archiveId, spaceindex.HashIds([]string{"archiveHead1"})))
+		spc := newSpaceMock(t, headsEntries)
+		spc.EXPECT().DoCtx(mock.Anything, homeId, mock.Anything).Return(nil).Once()
+
+		// when
+		fx.reconcileLinkDerivedDetails(spc)
+	})
+
+	t.Run("absent marker triggers reconcile", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		spc := newSpaceMock(t, headsEntries)
+		spc.EXPECT().DoCtx(mock.Anything, homeId, mock.Anything).Return(nil).Once()
+		spc.EXPECT().DoCtx(mock.Anything, archiveId, mock.Anything).Return(nil).Once()
+
+		// when
+		fx.reconcileLinkDerivedDetails(spc)
+	})
+
+	t.Run("tree not local: skipped, mandatory load path reconciles instead", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		spc := newSpaceMock(t, nil)
+
+		// when
+		fx.reconcileLinkDerivedDetails(spc)
+	})
+
+	t.Run("deleted tree: skipped", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		spc := newSpaceMock(t, map[string]headstorage.HeadsEntry{
+			homeId:    {Id: homeId, Heads: []string{"homeHead1"}, DeletedStatus: headstorage.DeletedStatusDeleted},
+			archiveId: {Id: archiveId, Heads: []string{"archiveHead1"}, DeletedStatus: headstorage.DeletedStatusQueued},
+		})
+
+		// when
+		fx.reconcileLinkDerivedDetails(spc)
+	})
+}
+
+func TestReindexOutdatedObjects(t *testing.T) {
+	const spaceId = "space1"
+
+	t.Run("only objects with stale or missing indexed hash are reindexed", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		store := fx.store.SpaceIndex(spaceId)
+
+		require.NoError(t, store.SaveLastIndexedHeadsHash(ctx, "objUpToDate", headsHash([]string{"head1"})))
+		require.NoError(t, store.SaveLastIndexedHeadsHash(ctx, "objStale", "staleHash"))
+
+		entries := []headstorage.HeadsEntry{
+			{Id: "objUpToDate", Heads: []string{"head1"}, CommonSnapshot: "cs"},
+			{Id: "objStale", Heads: []string{"head2"}, CommonSnapshot: "cs"},
+			{Id: "objNeverIndexed", Heads: []string{"head3"}, CommonSnapshot: "cs"},
+			{Id: "settingsId", Heads: []string{"head4"}, CommonSnapshot: "cs"},
+			{Id: "aclId", Heads: []string{"head5"}},
+		}
+
+		ctrl := gomock.NewController(t)
+		headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+		headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, _ headstorage.IterOpts, iter headstorage.EntryIterator) error {
+				for _, entry := range entries {
+					if cont, err := iter(entry); !cont || err != nil {
+						return err
+					}
+				}
+				return nil
+			})
+		stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
+		stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
+		storage := mock_anystorage.NewMockClientSpaceStorage(t)
+		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
+		storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
+
+		var reindexed []string
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId).Maybe()
+		spc.EXPECT().Storage().Return(storage).Maybe()
+		spc.EXPECT().Do(mock.Anything, mock.Anything).RunAndReturn(func(id string, _ func(smartblock.SmartBlock) error) error {
+			reindexed = append(reindexed, id)
+			return nil
+		})
+
+		// when
+		total, success, err := fx.reindexOutdatedObjects(ctx, spc)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, 2, total)
+		assert.Equal(t, 2, success)
+		assert.ElementsMatch(t, []string{"objStale", "objNeverIndexed"}, reindexed)
+	})
+
+	t.Run("nothing to reindex when all hashes match", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		store := fx.store.SpaceIndex(spaceId)
+
+		require.NoError(t, store.SaveLastIndexedHeadsHash(ctx, "obj1", headsHash([]string{"head1"})))
+
+		ctrl := gomock.NewController(t)
+		headStorage := mock_headstorage.NewMockHeadStorage(ctrl)
+		headStorage.EXPECT().IterateEntries(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(
+			func(_ context.Context, _ headstorage.IterOpts, iter headstorage.EntryIterator) error {
+				_, err := iter(headstorage.HeadsEntry{Id: "obj1", Heads: []string{"head1"}, CommonSnapshot: "cs"})
+				return err
+			})
+		stateStorage := mock_statestorage.NewMockStateStorage(ctrl)
+		stateStorage.EXPECT().SettingsId().AnyTimes().Return("settingsId")
+		storage := mock_anystorage.NewMockClientSpaceStorage(t)
+		storage.EXPECT().HeadStorage().Return(headStorage).Maybe()
+		storage.EXPECT().StateStorage().Return(stateStorage).Maybe()
+
+		spc := mock_space.NewMockSpace(t)
+		spc.EXPECT().Id().Return(spaceId).Maybe()
+		spc.EXPECT().Storage().Return(storage).Maybe()
+
+		// when
+		total, success, err := fx.reindexOutdatedObjects(ctx, spc)
+
+		// then
+		require.NoError(t, err)
+		assert.Zero(t, total)
+		assert.Zero(t, success)
+	})
+}
+
+func TestSaveLatestChecksums(t *testing.T) {
+	const spaceId = "space1"
+
+	t.Run("writes checksums when none are stored", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		want := fx.getLatestChecksums(false)
+
+		// when
+		err := fx.saveLatestChecksums(spaceId)
+
+		// then
+		require.NoError(t, err)
+		got, err := fx.store.GetChecksums(spaceId)
+		require.NoError(t, err)
+		assert.Equal(t, &want, got)
+	})
+
+	t.Run("idempotent when stored checksums are up to date", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		want := fx.getLatestChecksums(false)
+		require.NoError(t, fx.saveLatestChecksums(spaceId))
+
+		// when
+		err := fx.saveLatestChecksums(spaceId)
+
+		// then
+		require.NoError(t, err)
+		got, err := fx.store.GetChecksums(spaceId)
+		require.NoError(t, err)
+		assert.Equal(t, &want, got)
+	})
+
+	t.Run("overwrites stale checksums", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		stale := fx.getLatestChecksums(false)
+		stale.ObjectsForceReindexCounter--
+		require.NoError(t, fx.store.SaveChecksums(spaceId, &stale))
+		want := fx.getLatestChecksums(false)
+
+		// when
+		err := fx.saveLatestChecksums(spaceId)
+
+		// then
+		require.NoError(t, err)
+		got, err := fx.store.GetChecksums(spaceId)
+		require.NoError(t, err)
+		assert.Equal(t, &want, got)
+	})
 }
