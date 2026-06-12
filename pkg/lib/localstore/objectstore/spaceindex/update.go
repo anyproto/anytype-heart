@@ -68,10 +68,13 @@ func (s *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
 // callback and then re-queries the store could otherwise permanently miss a
 // write that was notified before wiring but committed after the re-query.
 //
-// Only ids are buffered; the flush re-reads the committed details. Delivering
-// the write-time values instead would race a concurrent post-commit writer of
-// the same id: its (newer) notification could be overtaken by our (older)
-// buffered one, leaving subscribers regressed until the next write.
+// Only ids are buffered; the flush re-reads the committed details. This is
+// what makes the machinery simple and right: rolled-back savepoint writes
+// and ids deleted later in the tx announce nothing, a same-id write chain
+// announces its final state once, and an indexer batch buffers ids instead
+// of pinning a full details copy per write. (It also makes the flush robust
+// to notification reordering — moot while same-id writes stay single-writer
+// sequenced, which any-store and the upstream object locks guarantee.)
 type txNotifications struct {
 	mu      sync.Mutex
 	pending []string
