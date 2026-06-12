@@ -109,10 +109,7 @@ func (f *ftSearch) ListByIdPrefix(prefix string) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("search ids by id prefix: %w", err)
 	}
-	var ids = make([]string, 0, len(results.Values))
-	for _, id := range results.Values {
-		ids = append(ids, id)
-	}
+	ids := append([]string(nil), results.Values...)
 	return ids, nil
 }
 
@@ -136,10 +133,7 @@ func (f *ftSearch) ListIdsBySpace(spaceId string, limit int) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("search ids by space: %w", err)
 	}
-	var ids = make([]string, 0, len(results.Values))
-	for _, id := range results.Values {
-		ids = append(ids, id)
-	}
+	ids := append([]string(nil), results.Values...)
 	return ids, nil
 }
 

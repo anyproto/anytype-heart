@@ -362,7 +362,7 @@ func (s *spaceSubscriptions) Run() (err error) {
 	// SubscribeForAll only stores the callback; it is invoked later, on the
 	// goroutine of whoever writes object details (sendUpdatesToSubscriptions).
 	// So there is no synchronous registration error to surface here, and the
-	// add error (only non-nil once the batch is closed or s.ctx is cancelled,
+	// add error (only non-nil once the batch is closed or s.ctx is canceled,
 	// i.e. on shutdown) must be handled inside the callback — capturing it in
 	// a shared variable raced concurrent writers against this goroutine.
 	s.objectStore.SubscribeForAll(func(rec database.Record) {

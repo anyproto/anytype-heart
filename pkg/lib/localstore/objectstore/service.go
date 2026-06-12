@@ -233,7 +233,10 @@ type dsObjectStore struct {
 }
 
 func (s *dsObjectStore) ProvideStat() any {
-	count, _ := s.ListIdsCrossSpace(s.componentCtx)
+	count, err := s.ListIdsCrossSpace(s.componentCtx)
+	if err != nil {
+		return 0
+	}
 	return len(count)
 }
 
