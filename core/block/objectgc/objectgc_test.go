@@ -37,7 +37,7 @@ func newFixture(t *testing.T) *fixture {
 		participantProvider: &mockParticipantProvider{},
 	}
 	return &fixture{
-		objectGC:   gc,
+		objectGC: gc,
 		store:    store,
 		archiver: archiver,
 	}
@@ -918,4 +918,3 @@ func TestFilterExplicitIds_RemovesFromOrphansDetected(t *testing.T) {
 	assert.ElementsMatch(t, []string{"a", "c"}, msg.ObjectOrphansDetected.ObjectIds)
 	assert.Equal(t, "ctx", msg.ObjectOrphansDetected.ContextId)
 }
-

@@ -42,10 +42,10 @@ func newObjectGCCallRecorder() *objectGCCallRecorder {
 	}
 }
 
-func (r *objectGCCallRecorder) Init(_ *app.App) error                                  { return nil }
-func (r *objectGCCallRecorder) Name() string                                            { return "test-objectgc" }
-func (r *objectGCCallRecorder) Run(_ context.Context) error                             { return nil }
-func (r *objectGCCallRecorder) Close(_ context.Context) error                           { return nil }
+func (r *objectGCCallRecorder) Init(_ *app.App) error         { return nil }
+func (r *objectGCCallRecorder) Name() string                  { return "test-objectgc" }
+func (r *objectGCCallRecorder) Run(_ context.Context) error   { return nil }
+func (r *objectGCCallRecorder) Close(_ context.Context) error { return nil }
 func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_, _ string, _ bool) (objectgc.OrphanCandidates, error) {
 	return objectgc.OrphanCandidates{}, nil
 }
