@@ -147,8 +147,10 @@ bool skipCascade = 3;
   unchanged (the pending set is the union of `Files` + `Candidates`, i.e. "what would be gone
   if the whole subtree were archived").
 - `ArchiveOrphansOnLinksRemoval(...)` — keep archiving level-1 orphan files internally (as
-  today) and return them as `Files`; collect the rest of the subtree's orphans into
-  `Candidates`. (Descent through orphaned target objects so the user sees the full subtree.)
+  today) and return them as `Files`; collect the orphaned removed-link objects into
+  `Candidates`. (Link removal is **one level** — only the directly removed link targets are
+  evaluated; orphaned target objects are surfaced as candidates but their subtrees are not
+  descended, since the target objects are not themselves being archived.)
 - Restore path (`restoreObjectsOnUnarchive` / `collectOrphanedForRestore` /
   `RestoreOrphansOnLinksAdded`) — scope to **level-1 files only** (add file-layout +
   level guard); never restore objects implicitly.

@@ -62,6 +62,14 @@ func (r *recordingGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string,
 	return objectgc.OrphanCandidates{Files: []string{"f1"}, Candidates: []string{"c1"}}, nil
 }
 
+// perContextGCStub returns candidates keyed to the object being archived, so per-context event
+// routing can be verified.
+type perContextGCStub struct{ fileGCStub }
+
+func (p *perContextGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{Candidates: []string{"c-" + objectId}}, nil
+}
+
 func TestSetIsArchived_SkipCascade_NoGC(t *testing.T) {
 	binId := "bin"
 	fx := newFixture(t)
@@ -122,6 +130,40 @@ func TestSetIsArchived_EmitsOrphansDetected(t *testing.T) {
 	assert.Equal(t, "obj1", found.ContextId)
 	assert.Equal(t, pb.EventObjectOrphansDetected_archive, found.Trigger)
 	assert.ElementsMatch(t, []string{"c1"}, found.ObjectIds)
+}
+
+func TestSetListIsArchived_EmitsPerContextOrphansDetected(t *testing.T) {
+	binId := "bin"
+	fx := newFixture(t)
+	fx.Service.(*service).objectGC = &perContextGCStub{}
+	sb := smarttest.New(binId)
+	sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+	fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+		{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+		{bundle.RelationKeyId: domain.String("obj2"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+	})
+	fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		if objectId == binId {
+			return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
+		}
+		return smarttest.New(objectId), nil
+	})
+	sctx := session.NewContext(session.WithSession("tok"))
+
+	// when: archive two objects in one batch
+	err := fx.SetListIsArchived(sctx, context.Background(), []string{"obj1", "obj2"}, true, false)
+	require.NoError(t, err)
+
+	// then: one OrphansDetected event per originating context, each with its own candidates
+	byContext := map[string][]string{}
+	for _, m := range sctx.GetMessages() {
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectOrphansDetected); ok {
+			byContext[v.ObjectOrphansDetected.ContextId] = v.ObjectOrphansDetected.ObjectIds
+		}
+	}
+	assert.Equal(t, []string{"c-obj1"}, byContext["obj1"])
+	assert.Equal(t, []string{"c-obj2"}, byContext["obj2"])
 }
 
 type fixture struct {

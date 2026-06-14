@@ -12,14 +12,17 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/simple"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // objectGCCallRecorder records calls to ArchiveOrphansOnLinksRemoval and RestoreOrphansOnLinksAdded
 // via buffered channels so goroutine timing works in tests.
 type objectGCCallRecorder struct {
-	removedCh  chan linksRemovalCall
-	restoredCh chan linksRestoredCall
+	removedCh          chan linksRemovalCall
+	restoredCh         chan linksRestoredCall
+	candidatesToReturn []string // orphan candidates ArchiveOrphansOnLinksRemoval returns
 }
 
 type linksRemovalCall struct {
@@ -51,7 +54,7 @@ func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_, _ string, _ bool)
 }
 func (r *objectGCCallRecorder) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) (objectgc.OrphanCandidates, error) {
 	r.removedCh <- linksRemovalCall{spaceId: spaceId, contextId: contextId, links: removedLinks, skipBin: skipBin}
-	return objectgc.OrphanCandidates{}, nil
+	return objectgc.OrphanCandidates{Candidates: r.candidatesToReturn}, nil
 }
 func (r *objectGCCallRecorder) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	r.restoredCh <- linksRestoredCall{spaceId: spaceId, contextId: contextId, links: addedLinks}
@@ -141,4 +144,33 @@ func TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timeout: ArchiveOrphansOnLinksRemoval was not called")
 	}
+}
+
+// TestPerformGCOnLinksRemoval_EmitsOrphansDetected verifies that orphan-object candidates from a
+// link removal are appended to the session as an OrphansDetected event (trigger=linkRemoval).
+func TestPerformGCOnLinksRemoval_EmitsOrphansDetected(t *testing.T) {
+	objectId := "root"
+	fx := newFixture(objectId, t)
+	fx.init(t, []*model.Block{{Id: objectId}})
+
+	recorder := newObjectGCCallRecorder()
+	recorder.candidatesToReturn = []string{"orphanObj"}
+	fx.objectGC = recorder
+
+	sctx := session.NewContext()
+
+	// when: GC runs on link removal with a session context (called synchronously)
+	fx.performGCOnLinksRemoval(sctx, testSpaceId, objectId, []string{"file1"})
+
+	// then: an OrphansDetected message (trigger=linkRemoval) was appended to the session
+	var found *pb.EventObjectOrphansDetected
+	for _, m := range sctx.GetMessages() {
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectOrphansDetected); ok {
+			found = v.ObjectOrphansDetected
+		}
+	}
+	require.NotNil(t, found)
+	assert.Equal(t, objectId, found.ContextId)
+	assert.Equal(t, pb.EventObjectOrphansDetected_linkRemoval, found.Trigger)
+	assert.ElementsMatch(t, []string{"orphanObj"}, found.ObjectIds)
 }

@@ -134,7 +134,7 @@ func TestCheckObjectsOnObjectArchived_ParentArchived_NoOtherBacklinks(t *testing
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then: hotfix — file has empty CreatedInContextRef (collections-created), so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
 	assert.Empty(t, ids)
 }
@@ -164,7 +164,7 @@ func TestCheckObjectsOnObjectArchived_ParentArchived_OtherBacklinksAllArchived(t
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
 	assert.Empty(t, ids)
 }
@@ -179,7 +179,7 @@ func TestCheckObjectsOnObjectArchived_ParentArchived_OtherBacklinksAllDeleted(t 
 	// when
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
 	assert.Empty(t, ids)
 }
@@ -209,7 +209,7 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_NoOtherB
 	// when: backlinker is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "backlinker", true)
 
-	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
 	assert.Empty(t, ids)
 }
@@ -241,7 +241,7 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchived_OtherBac
 	// when: backlinker is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "backlinker", true)
 
-	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
 	assert.Empty(t, ids)
 }
@@ -271,7 +271,7 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentArchivedInStore(t
 	// when: backlinker is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "backlinker", true)
 
-	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
 	assert.Empty(t, ids)
 }
@@ -286,7 +286,7 @@ func TestCheckObjectsOnObjectArchived_BacklinkerArchived_ParentDeletedInStore(t 
 	// when: backlinker is archived
 	ids, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "backlinker", true)
 
-	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
 	assert.Empty(t, ids)
 }
@@ -558,7 +558,7 @@ func TestArchiveOrphansOnLinksRemoval_ReturnsArchivedIds(t *testing.T) {
 	// when
 	archivedIds, err := fx.ArchiveOrphansOnLinksRemoval(testSpaceId, "page", []string{"file1"}, false, nil)
 
-	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
 	assert.Empty(t, fx.archiver.archivedIds)
 	assert.Empty(t, archivedIds)
@@ -580,8 +580,7 @@ func TestArchiveOrphansOnLinksRemoval_ActiveBacklink_ReturnsEmpty(t *testing.T) 
 }
 
 // fileObjectWithRef builds a file with a non-empty CreatedInContextRef — i.e. a file added
-// via a block (not via a collection). Under the file-only hotfix this is the only scenario
-// where archive GC currently fires.
+// via a block (not via a collection) — eligible for GC since it passes the CreatedInContextRef gate.
 func fileObjectWithRef(id, createdInContext, createdInContextRef string, backlinks []string) objectstore.TestObject {
 	return objectstore.TestObject{
 		bundle.RelationKeyId:                  domain.String(id),
@@ -635,18 +634,19 @@ func TestCheckObjectsOnObjectArchived_FileWithRef_ParentArchived_Archived(t *tes
 
 // -- returned-IDs tests for CheckObjectsOnObjectArchived --
 
-func TestCheckObjectsOnObjectArchived_ReturnsArchivedIds(t *testing.T) {
-	// given: parent archived, file has no other backlinks
+func TestCheckObjectsOnObjectArchived_NoRefFile_NotCollected(t *testing.T) {
+	// given: parent archived, file has no other backlinks but an empty CreatedInContextRef
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
 	fx.addObject(t, fileObject("file1", "parent", []string{"parent"}))
 
 	// when
-	archivedIds, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
+	res, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// then: hotfix — file has empty CreatedInContextRef, so it is NOT archived
+	// then: file has empty CreatedInContextRef (collection-created) — excluded by the ref gate
 	require.NoError(t, err)
-	assert.Empty(t, archivedIds)
+	assert.Empty(t, res.Files)
+	assert.Empty(t, res.Candidates)
 }
 
 func TestCheckObjectsOnObjectArchived_Unarchive_ReturnsRestoredIds(t *testing.T) {
