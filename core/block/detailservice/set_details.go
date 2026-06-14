@@ -62,7 +62,7 @@ func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	return nil
 }
 
-func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error {
+func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -74,7 +74,7 @@ func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objec
 	if objectId == spc.DerivedIDs().Archive {
 		return fmt.Errorf("can't archive archive itself")
 	}
-	return s.setIsArchivedForObjects(sctx, ctx, spaceID, []string{objectId}, isArchived)
+	return s.setIsArchivedForObjects(sctx, ctx, spaceID, []string{objectId}, isArchived, skipCascade)
 }
 
 func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
@@ -114,7 +114,7 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 	return resultError
 }
 
-func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error {
+func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool, skipCascade bool) error {
 	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
 		return fmt.Errorf("partition object ids by spaces: %w", err)
@@ -125,7 +125,7 @@ func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, o
 		anySucceed bool
 	)
 	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
-		err = s.setIsArchivedForObjects(sctx, ctx, spaceId, objectIdsOfThisSpace, isArchived)
+		err = s.setIsArchivedForObjects(sctx, ctx, spaceId, objectIdsOfThisSpace, isArchived, skipCascade)
 		if err != nil {
 			log.Error("failed to set isArchived to objects", zap.String("spaceId", spaceId),
 				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
@@ -213,7 +213,12 @@ func (s *service) partitionObjectIdsBySpaceId(objectIds []string) (map[string][]
 	return res, nil
 }
 
-func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
+func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Context, spaceId string, objectIds []string, isArchived bool, skipCascade bool) error {
+	if skipCascade {
+		// pure archive — no orphan cascade (no file auto-archive, no events); reuse the NoGC path.
+		return s.setIsArchivedForObjectsNoGC(ctx, spaceId, objectIds, isArchived)
+	}
+
 	spc, err := s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)

@@ -423,7 +423,7 @@ func (oc *ObjectCreator) setFavorite(snapshot *common.StateSnapshot, newID strin
 func (oc *ObjectCreator) setArchived(ctx context.Context, snapshot *common.StateSnapshot, newID string) {
 	isArchive := snapshot.Details.GetBool(bundle.RelationKeyIsArchived)
 	if isArchive {
-		err := oc.detailsService.SetIsArchived(nil, ctx, newID, true)
+		err := oc.detailsService.SetIsArchived(nil, ctx, newID, true, false)
 		if err != nil {
 			log.With(zap.String("object id", newID)).
 				Errorf("failed to set isFavorite when importing object %s: %s", newID, err)

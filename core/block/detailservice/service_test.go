@@ -50,6 +50,44 @@ func (f *fileGCStub) RestoreOrphansOnLinksAdded(spaceId, contextId string, added
 	return nil, nil
 }
 
+// recordingGCStub records whether the GC was consulted and would otherwise produce orphans.
+type recordingGCStub struct {
+	fileGCStub
+	checkCalled bool
+}
+
+func (r *recordingGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (objectgc.OrphanCandidates, error) {
+	r.checkCalled = true
+	return objectgc.OrphanCandidates{Files: []string{"f1"}, Candidates: []string{"c1"}}, nil
+}
+
+func TestSetIsArchived_SkipCascade_NoGC(t *testing.T) {
+	binId := "bin"
+	fx := newFixture(t)
+	gc := &recordingGCStub{}
+	fx.Service.(*service).objectGC = gc
+	sb := smarttest.New(binId)
+	sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+	fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+		{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+	})
+	fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		if objectId == binId {
+			return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
+		}
+		return smarttest.New(objectId), nil
+	})
+
+	// when: archive with skipCascade=true
+	err := fx.SetIsArchived(nil, context.Background(), "obj1", true, true)
+
+	// then: object archived, but GC was never consulted (no cascade)
+	require.NoError(t, err)
+	assert.Len(t, sb.Blocks(), 2)
+	assert.False(t, gc.checkCalled, "GC must not run when skipCascade=true")
+}
+
 type fixture struct {
 	Service
 	getter       *mock_cache.MockObjectGetter
@@ -414,7 +452,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -438,7 +476,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true, false)
 
 		// then
 		assert.Error(t, err)
@@ -463,7 +501,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 
 		// when
-		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true, false)
 
 		// then
 		assert.Error(t, err)
@@ -495,7 +533,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -523,7 +561,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, false)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, false, false)
 
 		// then
 		assert.NoError(t, err)
@@ -548,7 +586,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -566,7 +604,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true, false)
 
 		// then
 		assert.Error(t, err)

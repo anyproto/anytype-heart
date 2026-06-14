@@ -82,7 +82,7 @@ func (c *dummyConfig) Name() string {
 
 type dummyObjectArchiver struct{}
 
-func (a *dummyObjectArchiver) SetListIsArchived(_ session.Context, _ context.Context, _ []string, _ bool) error {
+func (a *dummyObjectArchiver) SetListIsArchived(_ session.Context, _ context.Context, _ []string, _ bool, _ bool) error {
 	return nil
 }
 

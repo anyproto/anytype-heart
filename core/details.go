@@ -115,7 +115,7 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetIsArchived(sctx, cctx, req.ContextId, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetIsArchived(sctx, cctx, req.ContextId, req.IsArchived, req.SkipCascade)
 	if err != nil {
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
@@ -133,7 +133,7 @@ func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcO
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetListIsArchived(sctx, cctx, req.ObjectIds, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetListIsArchived(sctx, cctx, req.ObjectIds, req.IsArchived, req.SkipCascade)
 	if err != nil {
 		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
