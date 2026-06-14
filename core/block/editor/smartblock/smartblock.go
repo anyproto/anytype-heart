@@ -1653,13 +1653,31 @@ func (sb *smartBlock) performGCOnLinksRemoval(sctx session.Context, spaceId, con
 	if err != nil {
 		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}
-	if sctx != nil && len(res.Files) > 0 {
+	if sctx != nil {
 		msgs := sctx.GetMessages()
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectAutoArchive{
-				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: res.Files},
-			},
-		})
-		sctx.SetMessages(contextId, msgs)
+		changed := false
+		if len(res.Files) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoArchive{
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: res.Files},
+				},
+			})
+			changed = true
+		}
+		if len(res.Candidates) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectOrphansDetected{
+					ObjectOrphansDetected: &pb.EventObjectOrphansDetected{
+						ObjectIds: res.Candidates,
+						ContextId: contextId,
+						Trigger:   pb.EventObjectOrphansDetected_linkRemoval,
+					},
+				},
+			})
+			changed = true
+		}
+		if changed {
+			sctx.SetMessages(contextId, msgs)
+		}
 	}
 }

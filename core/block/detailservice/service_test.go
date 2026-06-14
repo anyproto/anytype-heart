@@ -20,6 +20,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -86,6 +87,41 @@ func TestSetIsArchived_SkipCascade_NoGC(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, sb.Blocks(), 2)
 	assert.False(t, gc.checkCalled, "GC must not run when skipCascade=true")
+}
+
+func TestSetIsArchived_EmitsOrphansDetected(t *testing.T) {
+	binId := "bin"
+	fx := newFixture(t)
+	fx.Service.(*service).objectGC = &recordingGCStub{}
+	sb := smarttest.New(binId)
+	sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+	fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+		{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+	})
+	fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		if objectId == binId {
+			return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
+		}
+		return smarttest.New(objectId), nil
+	})
+	sctx := session.NewContext(session.WithSession("tok"))
+
+	// when: archive with cascade enabled
+	err := fx.SetIsArchived(sctx, context.Background(), "obj1", true, false)
+	require.NoError(t, err)
+
+	// then: an OrphansDetected event is emitted with the candidates and originating context
+	var found *pb.EventObjectOrphansDetected
+	for _, m := range sctx.GetMessages() {
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectOrphansDetected); ok {
+			found = v.ObjectOrphansDetected
+		}
+	}
+	require.NotNil(t, found)
+	assert.Equal(t, "obj1", found.ContextId)
+	assert.Equal(t, pb.EventObjectOrphansDetected_archive, found.Trigger)
+	assert.ElementsMatch(t, []string{"c1"}, found.ObjectIds)
 }
 
 type fixture struct {

@@ -224,11 +224,11 @@ func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Cont
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	gcIds := s.triggerGCOnArchive(spaceId, objectIds, isArchived)
-	s.appendGCEvent(sctx, gcIds, objectIds, isArchived)
+	gcFiles, candidatesByContext := s.triggerGCOnArchive(spaceId, objectIds, isArchived)
+	s.appendGCEvents(sctx, gcFiles, candidatesByContext, objectIds, isArchived)
 
-	// Merge explicit IDs and GC-collected children so they are all archived in one operation.
-	allIds := append(objectIds, gcIds...)
+	// Merge explicit IDs and GC-collected files so they are all archived in one operation.
+	allIds := append(objectIds, gcFiles...)
 
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
@@ -322,40 +322,70 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 // triggerGCOnArchive runs GC for all children of objectIds that have no other backlinks.
 // It returns the IDs of objects that were archived or restored; the caller is responsible
 // for emitting events and filtering explicit IDs from the session context.
-func (s *service) triggerGCOnArchive(spaceId string, objectIds []string, isArchived bool) []string {
+// triggerGCOnArchive runs GC for each objectId and returns the aggregated level-1 files to
+// archive plus, keyed by originating object, the orphan candidates to surface to the user.
+func (s *service) triggerGCOnArchive(spaceId string, objectIds []string, isArchived bool) (files []string, candidatesByContext map[string][]string) {
 	if len(objectIds) == 0 {
-		return nil
+		return nil, nil
 	}
-	var allFiles []string
+	candidatesByContext = make(map[string][]string)
 	for _, objId := range objectIds {
 		res, err := s.objectGC.CheckObjectsOnObjectArchived(spaceId, objId, isArchived)
 		if err != nil {
 			log.Error("GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
 			continue
 		}
-		allFiles = append(allFiles, res.Files...)
+		files = append(files, res.Files...)
+		if len(res.Candidates) > 0 {
+			candidatesByContext[objId] = res.Candidates
+		}
 	}
-	return allFiles
+	return files, candidatesByContext
 }
 
-// appendGCEvent emits a single auto-archive or auto-restore event for gcIds into sctx,
-// then strips explicitIds from all GC events so user-requested objects are not double-reported.
-func (s *service) appendGCEvent(sctx session.Context, gcIds []string, explicitIds []string, isArchived bool) {
-	if sctx != nil && len(gcIds) > 0 {
-		msgs := sctx.GetMessages()
+// appendGCEvents emits the file auto-archive/restore event plus one OrphansDetected event per
+// originating context, then strips explicitIds so user-requested objects are not double-reported.
+func (s *service) appendGCEvents(sctx session.Context, gcFiles []string, candidatesByContext map[string][]string, explicitIds []string, isArchived bool) {
+	if sctx == nil {
+		return
+	}
+	msgs := sctx.GetMessages()
+	changed := false
+	if len(gcFiles) > 0 {
 		if isArchived {
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectAutoArchive{
-					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: gcIds},
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: gcFiles},
 				},
 			})
 		} else {
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectAutoRestore{
-					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: gcIds},
+					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: gcFiles},
 				},
 			})
 		}
+		changed = true
+	}
+	// OrphansDetected is only emitted on the archive direction.
+	if isArchived {
+		for contextId, candidates := range candidatesByContext {
+			if len(candidates) == 0 {
+				continue
+			}
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectOrphansDetected{
+					ObjectOrphansDetected: &pb.EventObjectOrphansDetected{
+						ObjectIds: candidates,
+						ContextId: contextId,
+						Trigger:   pb.EventObjectOrphansDetected_archive,
+					},
+				},
+			})
+			changed = true
+		}
+	}
+	if changed {
 		sctx.SetMessages(sctx.ObjectID(), msgs)
 	}
 	objectgc.FilterExplicitIds(sctx, explicitIds)
