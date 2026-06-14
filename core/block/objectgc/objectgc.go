@@ -25,12 +25,32 @@ const CName = "core.block.objectgc"
 
 type ObjectGC interface {
 	app.ComponentRunnable
-	// CheckObjectsOnObjectArchived finds objects that should be archived or restored when objectId changes state.
-	// the caller is responsible for actual archive-object operation
-	CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error)
+	// CheckObjectsOnObjectArchived finds orphans when objectId is archived/unarchived.
+	// On archive it returns level-1 orphan files (Files) and all other orphans (Candidates).
+	// On unarchive it returns the restored files in Files; Candidates is always empty.
+	// The caller archives Files and emits an OrphansDetected event for Candidates.
+	CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (OrphanCandidates, error)
 
-	ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error)
+	// ArchiveOrphansOnLinksRemoval archives orphaned removed-link files (returned in Files) and
+	// returns orphaned removed-link objects as Candidates for user confirmation.
+	ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) (OrphanCandidates, error)
 	RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error)
+}
+
+// OrphanCandidates splits the orphans discovered for an archive/delete/link-removal operation
+// into the files that are auto-archived (direct children of the operation target) and everything
+// else that must be surfaced to the user for explicit confirmation.
+type OrphanCandidates struct {
+	Files      []string // level-1 orphan files → auto-archived (+ ObjectAutoArchive event)
+	Candidates []string // objects (any level) + files (level >= 2) → OrphansDetected event
+}
+
+func makeFileLayouts() []int64 {
+	layouts := make([]int64, 0, len(domain.FileLayouts))
+	for _, layout := range domain.FileLayouts {
+		layouts = append(layouts, int64(layout))
+	}
+	return layouts
 }
 
 // ObjectDeleter is an interface to delete objects by their full ID
@@ -89,12 +109,13 @@ func (gc *objectGC) Close(ctx context.Context) error {
 	return nil
 }
 
-// ArchiveOrphansOnLinksRemoval checks if any of the removed links are objects that should be garbage collected.
+// ArchiveOrphansOnLinksRemoval checks if any of the removed links are orphans that should be
+// garbage collected. Orphaned removed-link files are archived (or deleted) and returned in Files;
+// orphaned removed-link objects are returned in Candidates for user confirmation, never archived.
 // If onlyBlockIds is provided, it will only process objects created in those specific block IDs.
-// It returns the IDs of objects that were archived; the caller is responsible for emitting any events.
-func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
+func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) (OrphanCandidates, error) {
 	if len(removedLinks) == 0 {
-		return nil, nil
+		return OrphanCandidates{}, nil
 	}
 
 	log.Debugf("checking %d removed links from context %s", len(removedLinks), contextId)
@@ -142,59 +163,54 @@ func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, remo
 		Filters: filters,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query objects: %w", err)
+		return OrphanCandidates{}, fmt.Errorf("query objects: %w", err)
 	}
 
-	var toArchive []string
+	var res OrphanCandidates
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
-		// temporarily disable non-file objects
-		if !slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))) {
-			// todo: remove when we move to orphan events
-			continue
-		}
+
 		// Filter out the current context and self-references from backlinks.
 		backlinks := record.Details.GetStringList(bundle.RelationKeyBacklinks)
 		activeBacklinks := lo.Filter(backlinks, func(link string, _ int) bool {
 			return link != contextId && link != id
 		})
-
 		if len(activeBacklinks) > 0 {
 			log.With("id", id).With("links", len(activeBacklinks)).Debugf("object has active backlinks, keeping")
 			continue
 		}
 
-		// Object has no active backlinks and was created in this context - can be deleted or archived.
-		shouldSkipBin := skipBin
-		// Per-layout override: non-objects must never be permanently deleted.
-		layout := model.ObjectTypeLayout(int32(record.Details.GetInt64(bundle.RelationKeyResolvedLayout)))
+		layout := model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))
 		if !slices.Contains(domain.FileLayouts, layout) {
-			shouldSkipBin = false
+			// orphaned removed-link object → surfaced for user confirmation, never auto-archived
+			res.Candidates = append(res.Candidates, id)
+			continue
 		}
+
+		// orphaned removed-link file (direct target == level 1) → archive or delete
+		shouldSkipBin := skipBin
 		if shouldSkipBin {
-			// Additional safety: only permanently delete if the object was created by the current user.
+			// Additional safety: only permanently delete if the file was created by the current user.
 			fileCreator := record.Details.GetString(bundle.RelationKeyCreator)
-			myParticipantId := gc.participantProvider.MyParticipantId(spaceId)
-			if fileCreator != myParticipantId {
-				log.With("id", id).Debugf("object was created by another user - archiving instead of deleting")
+			if fileCreator != gc.participantProvider.MyParticipantId(spaceId) {
+				log.With("id", id).Debugf("file created by another user - archiving instead of deleting")
 				shouldSkipBin = false
 			}
 		}
-
 		if shouldSkipBin {
-			log.With("id", id).Debugf("deleting orphaned object created in context %s", contextId)
+			log.With("id", id).Debugf("deleting orphaned file created in context %s", contextId)
 			if err := gc.deleteObject(spaceId, id); err != nil {
 				log.With("id", id).Errorf("failed to delete object: %v", err)
 			}
 		} else {
-			log.With("id", id).Debugf("archiving orphaned object created in context %s", contextId)
-			toArchive = append(toArchive, id)
+			log.With("id", id).Debugf("archiving orphaned file created in context %s", contextId)
+			res.Files = append(res.Files, id)
 		}
 	}
-	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, toArchive, true); err != nil {
-		return nil, fmt.Errorf("archive objects: %w", err)
+	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, res.Files, true); err != nil {
+		return OrphanCandidates{}, fmt.Errorf("archive objects: %w", err)
 	}
-	return toArchive, nil
+	return res, nil
 }
 
 func (gc *objectGC) deleteObject(spaceId, id string) error {
@@ -219,17 +235,17 @@ func (gc *objectGC) deleteObject(spaceId, id string) error {
 //
 // Unarchive direction (isArchived=false): only Query 1 runs, restoring objects whose parent is being unarchived,
 // provided they have no other backlinks besides the parent itself.
-func (gc *objectGC) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
+func (gc *objectGC) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (OrphanCandidates, error) {
 	log.Debugf("checking objects on object archived: %s isArchived=%v", objectId, isArchived)
 	idx := gc.objectStore.SpaceIndex(spaceId)
 
 	d, err := idx.GetDetails(objectId)
 	if err != nil {
-		return nil, fmt.Errorf("get details of object: %w", err)
+		return OrphanCandidates{}, fmt.Errorf("get details of object: %w", err)
 	}
 	if !slices.Contains(domain.GCEligibleLayouts, model.ObjectTypeLayout(int32(d.GetInt64(bundle.RelationKeyResolvedLayout)))) {
 		// system/unsupported objects can't have GC-tracked children
-		return nil, nil
+		return OrphanCandidates{}, nil
 	}
 
 	// make sure we have all backlinks updates flushed to the store
@@ -238,7 +254,11 @@ func (gc *objectGC) CheckObjectsOnObjectArchived(spaceId, objectId string, isArc
 	gcLayouts := makeGCEligibleLayouts()
 
 	if !isArchived {
-		return gc.restoreObjectsOnUnarchive(idx, objectId, gcLayouts)
+		files, err := gc.restoreObjectsOnUnarchive(idx, objectId, gcLayouts)
+		if err != nil {
+			return OrphanCandidates{}, err
+		}
+		return OrphanCandidates{Files: files}, nil
 	}
 	return gc.archiveOrphanedObjects(idx, objectId, gcLayouts)
 }
@@ -254,12 +274,12 @@ func (gc *objectGC) CheckObjectsOnObjectArchived(spaceId, objectId string, isArc
 // After the BFS (Query 1 / parent case), a second pass (Query 2 / backlinker case) runs once
 // to collect objects that reference objectId as a backlink but have a different parent context,
 // applying the same confirmed-inactive parent safety gate as archiveOrphanedObjects previously did.
-func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
+func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string, gcLayouts []int64) (OrphanCandidates, error) {
 	// visited doubles as the pending set — anything added to the result is also in visited.
 	visited := map[string]struct{}{objectId: {}}
 	queue := []string{objectId}
 	head := 0
-	var result []string
+	var res OrphanCandidates
 
 	for head < len(queue) {
 		current := queue[head]
@@ -285,7 +305,7 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("query children of %s: %w", current, err)
+			return OrphanCandidates{}, fmt.Errorf("query children of %s: %w", current, err)
 		}
 		if len(childRecords) == 0 {
 			continue
@@ -323,7 +343,7 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 
 		activeIds, err := gc.queryActiveIds(idx, linksToCheck)
 		if err != nil {
-			return nil, fmt.Errorf("query active backlinks for children of %s: %w", current, err)
+			return OrphanCandidates{}, fmt.Errorf("query active backlinks for children of %s: %w", current, err)
 		}
 
 		// Iteratively remove candidates that have active backlinks outside (visited ∪ candidates).
@@ -369,13 +389,18 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 
 		for id, details := range candidates {
 			visited[id] = struct{}{}
-			// temporarily disable non-file objects
-			if !slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))) {
-				// todo: remove when we move to orphan events
-				continue
+			isFile := slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)))
+			if current == objectId && isFile {
+				// level-1 orphan file → auto-archived
+				res.Files = append(res.Files, id)
+			} else {
+				// objects (any level) + files at level >= 2 → user confirmation
+				res.Candidates = append(res.Candidates, id)
 			}
-			result = append(result, id)
-			queue = append(queue, id)
+			if !isFile {
+				// descend through objects only; files have no createdInContext children
+				queue = append(queue, id)
+			}
 		}
 	}
 
@@ -409,7 +434,7 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query backlinker objects: %w", err)
+		return OrphanCandidates{}, fmt.Errorf("query backlinker objects: %w", err)
 	}
 
 	if len(backlinkRecords) > 0 {
@@ -435,7 +460,7 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 
 		activeIds, err := gc.queryActiveIds(idx, idsToCheck)
 		if err != nil {
-			return nil, fmt.Errorf("query active ids for backlinker objects: %w", err)
+			return OrphanCandidates{}, fmt.Errorf("query active ids for backlinker objects: %w", err)
 		}
 
 		for _, record := range backlinkRecords {
@@ -468,117 +493,80 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 				continue
 			}
 			visited[id] = struct{}{}
-			// temporarily disable non-file objects
-			if !slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))) {
-				// todo: remove when we move to orphan events
-				continue
-			}
-			result = append(result, id)
+			// backlinker orphans are never direct children of the root → user confirmation
+			res.Candidates = append(res.Candidates, id)
 		}
 	}
 
-	return result, nil
+	return res, nil
 }
 
 // archiveOrphanedObjects collects all orphaned objects via BFS and returns their IDs.
 // It is a pure read operation — no state changes occur. The caller is responsible for
 // archiving the returned IDs and emitting any events.
-func (gc *objectGC) archiveOrphanedObjects(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
-	toArchive, err := gc.collectOrphanedObjects(idx, objectId, gcLayouts)
+func (gc *objectGC) archiveOrphanedObjects(idx spaceindex.Store, objectId string, gcLayouts []int64) (OrphanCandidates, error) {
+	res, err := gc.collectOrphanedObjects(idx, objectId, gcLayouts)
 	if err != nil {
-		return nil, fmt.Errorf("collect orphaned objects: %w", err)
+		return OrphanCandidates{}, fmt.Errorf("collect orphaned objects: %w", err)
 	}
-	return toArchive, nil
+	return res, nil
 }
 
-// collectOrphanedForRestore performs a BFS over archived children of objectId and returns the
-// flat list of object IDs that should be unarchived alongside it. The BFS queries archived
-// objects explicitly (overriding the default isArchived=false implicit filter) and stops when a
-// child has backlinks outside the pending set (meaning something else still references it).
-func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
-	visited := map[string]struct{}{objectId: {}}
-	queue := []string{objectId}
-	head := 0
-	var result []string
-
-	for head < len(queue) {
-		current := queue[head]
-		head++
-
-		records, err := idx.Query(database.Query{
-			Filters: []database.FilterRequest{
-				{
-					RelationKey: bundle.RelationKeyCreatedInContext,
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       domain.String(current),
-				},
-				{
-					RelationKey: bundle.RelationKeyResolvedLayout,
-					Condition:   model.BlockContentDataviewFilter_In,
-					Value:       domain.Int64List(gcLayouts),
-				},
-				{
-					// Explicit IsArchived == true suppresses the default implicit filter,
-					// allowing archived objects to appear in results.
-					RelationKey: bundle.RelationKeyIsArchived,
-					Condition:   model.BlockContentDataviewFilter_Equal,
-					Value:       domain.Bool(true),
-				},
+// collectOrphanedForRestore returns the archived level-1 file children of objectId that have no
+// backlinks outside the restore batch (i.e. nothing else still references them). Objects are
+// never auto-restored — the user restores them manually from the bin.
+func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId string, _ []int64) ([]string, error) {
+	records, err := idx.Query(database.Query{
+		Filters: []database.FilterRequest{
+			{
+				RelationKey: bundle.RelationKeyCreatedInContext,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.String(objectId),
 			},
-		})
-		if err != nil {
-			return nil, fmt.Errorf("query archived children of %s: %w", current, err)
-		}
+			{
+				RelationKey: bundle.RelationKeyResolvedLayout,
+				Condition:   model.BlockContentDataviewFilter_In,
+				Value:       domain.Int64List(makeFileLayouts()),
+			},
+			{
+				// Explicit IsArchived == true suppresses the default implicit filter,
+				// allowing archived objects to appear in results.
+				RelationKey: bundle.RelationKeyIsArchived,
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       domain.Bool(true),
+			},
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query archived child files of %s: %w", objectId, err)
+	}
 
-		// Build a per-level candidates map so that archived siblings which mutually
-		// reference each other are treated as a batch and restored together — mirroring
-		// the archive direction's candidates treatment.
-		candidates := make(map[string]*domain.Details, len(records))
-		for _, record := range records {
-			id := record.Details.GetString(bundle.RelationKeyId)
-			if _, seen := visited[id]; seen {
+	// pending = objectId ∪ all candidate files (siblings are restored together).
+	// A file with a backlink outside the pending set is still referenced elsewhere — keep it archived.
+	pending := map[string]struct{}{objectId: {}}
+	for _, record := range records {
+		pending[record.Details.GetString(bundle.RelationKeyId)] = struct{}{}
+	}
+
+	var result []string
+	for _, record := range records {
+		id := record.Details.GetString(bundle.RelationKeyId)
+		hasExternal := false
+		for _, link := range record.Details.GetStringList(bundle.RelationKeyBacklinks) {
+			if link == id {
 				continue
 			}
-			candidates[id] = record.Details
-		}
-
-		// Iteratively remove candidates that have backlinks outside (visited ∪ candidates).
-		// Evicted candidates are NOT added to activeIds here because archived objects are
-		// not "active" in the usual sense — they are simply not being restored.
-		for {
-			changed := false
-			for id, details := range candidates {
-				hasExternal := false
-				for _, link := range details.GetStringList(bundle.RelationKeyBacklinks) {
-					if link == id {
-						continue
-					}
-					if _, inVisited := visited[link]; inVisited {
-						continue
-					}
-					if _, inCandidates := candidates[link]; inCandidates {
-						continue // sibling candidate — treated as in-batch
-					}
-					hasExternal = true
-					break
-				}
-				if hasExternal {
-					log.Debugf("collectOrphanedForRestore: object %s has external backlinks, keeping archived", id)
-					delete(candidates, id)
-					changed = true
-					break
-				}
+			if _, inPending := pending[link]; inPending {
+				continue
 			}
-			if !changed {
-				break
-			}
+			hasExternal = true
+			break
 		}
-
-		for id := range candidates {
-			visited[id] = struct{}{}
-			result = append(result, id)
-			queue = append(queue, id)
+		if hasExternal {
+			log.Debugf("collectOrphanedForRestore: file %s has external backlinks, keeping archived", id)
+			continue
 		}
+		result = append(result, id)
 	}
 	return result, nil
 }
@@ -624,11 +612,11 @@ func (gc *objectGC) queryActiveIds(idx spaceindex.Store, ids map[string]struct{}
 	return active, nil
 }
 
-// RestoreOrphansOnLinksAdded unarchives objects that were previously GC'd when links are re-added
-// to a context object (e.g. via undo). For each added link that is an archived object whose
-// CreatedInContext matches the context, the object is restored unconditionally — the active link
-// in the page is sufficient justification to unarchive it.
-// RestoreOrphansOnLinksAdded returns the IDs of objects that were restored; the caller emits events.
+// RestoreOrphansOnLinksAdded unarchives files that were previously GC'd when links are re-added
+// to a context object (e.g. via undo). For each added link that is an archived file whose
+// CreatedInContext matches the context, the file is restored unconditionally — the active link
+// in the page is sufficient justification to unarchive it. Objects are never auto-restored.
+// RestoreOrphansOnLinksAdded returns the IDs of files that were restored; the caller emits events.
 func (gc *objectGC) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	if len(addedLinks) == 0 {
 		return nil, nil
@@ -639,9 +627,7 @@ func (gc *objectGC) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedL
 	gc.backlinksWatcher.FlushUpdates()
 	idx := gc.objectStore.SpaceIndex(spaceId)
 
-	gcLayouts := makeGCEligibleLayouts()
-
-	// Find archived objects among the added links that belong to this context.
+	// Find archived files among the added links that belong to this context.
 	// Explicit IsArchived == true suppresses the implicit IsArchived != true default filter.
 	records, err := idx.Query(database.Query{
 		Filters: []database.FilterRequest{
@@ -658,7 +644,7 @@ func (gc *objectGC) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedL
 			{
 				RelationKey: bundle.RelationKeyResolvedLayout,
 				Condition:   model.BlockContentDataviewFilter_In,
-				Value:       domain.Int64List(gcLayouts),
+				Value:       domain.Int64List(makeFileLayouts()),
 			},
 			{
 				RelationKey: bundle.RelationKeyIsArchived,
@@ -748,6 +734,24 @@ func FilterExplicitIds(sctx session.Context, ids []string) {
 				result = append(result, &pb.EventMessage{
 					Value: &pb.EventMessageValueOfObjectAutoRestore{
 						ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: filtered},
+					},
+				})
+			}
+		case *pb.EventMessageValueOfObjectOrphansDetected:
+			filtered := filterExcluded(v.ObjectOrphansDetected.ObjectIds, exclude)
+			if len(filtered) == len(v.ObjectOrphansDetected.ObjectIds) {
+				result = append(result, msg)
+				continue
+			}
+			changed = true
+			if len(filtered) > 0 {
+				result = append(result, &pb.EventMessage{
+					Value: &pb.EventMessageValueOfObjectOrphansDetected{
+						ObjectOrphansDetected: &pb.EventObjectOrphansDetected{
+							ObjectIds: filtered,
+							ContextId: v.ObjectOrphansDetected.ContextId,
+							Trigger:   v.ObjectOrphansDetected.Trigger,
+						},
 					},
 				})
 			}

@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -39,11 +40,11 @@ func (f *fileGCStub) Name() string                    { return "fileGCStub" }
 func (f *fileGCStub) Init(a *app.App) error           { return nil }
 func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
 func (f *fileGCStub) Close(ctx context.Context) error { return nil }
-func (f *fileGCStub) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
-	return nil, nil
+func (f *fileGCStub) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
-func (f *fileGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
-	return nil, nil
+func (f *fileGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
 func (f *fileGCStub) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	return nil, nil

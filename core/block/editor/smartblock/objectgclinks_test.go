@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -45,12 +46,12 @@ func (r *objectGCCallRecorder) Init(_ *app.App) error                           
 func (r *objectGCCallRecorder) Name() string                                            { return "test-objectgc" }
 func (r *objectGCCallRecorder) Run(_ context.Context) error                             { return nil }
 func (r *objectGCCallRecorder) Close(_ context.Context) error                           { return nil }
-func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_, _ string, _ bool) ([]string, error) {
-	return nil, nil
+func (r *objectGCCallRecorder) CheckObjectsOnObjectArchived(_, _ string, _ bool) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
-func (r *objectGCCallRecorder) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) ([]string, error) {
+func (r *objectGCCallRecorder) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, _ []string) (objectgc.OrphanCandidates, error) {
 	r.removedCh <- linksRemovalCall{spaceId: spaceId, contextId: contextId, links: removedLinks, skipBin: skipBin}
-	return nil, nil
+	return objectgc.OrphanCandidates{}, nil
 }
 func (r *objectGCCallRecorder) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	r.restoredCh <- linksRestoredCall{spaceId: spaceId, contextId: contextId, links: addedLinks}

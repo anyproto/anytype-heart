@@ -321,16 +321,16 @@ func (s *service) triggerGCOnArchive(spaceId string, objectIds []string, isArchi
 	if len(objectIds) == 0 {
 		return nil
 	}
-	var allAffected []string
+	var allFiles []string
 	for _, objId := range objectIds {
-		ids, err := s.objectGC.CheckObjectsOnObjectArchived(spaceId, objId, isArchived)
+		res, err := s.objectGC.CheckObjectsOnObjectArchived(spaceId, objId, isArchived)
 		if err != nil {
 			log.Error("GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
 			continue
 		}
-		allAffected = append(allAffected, ids...)
+		allFiles = append(allFiles, res.Files...)
 	}
-	return allAffected
+	return allFiles
 }
 
 // appendGCEvent emits a single auto-archive or auto-restore event for gcIds into sctx,
