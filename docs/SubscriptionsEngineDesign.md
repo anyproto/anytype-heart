@@ -235,12 +235,19 @@ Updates interact with the window through boundary comparisons *(rev)*:
 - member of the window with changed sort values → reposition by binary search;
 - out-of-window member whose update doesn't cross the boundary → id-set bookkeeping only.
 
-After the batch, compare `oldWindow`/`newWindow` id sequences and emit a script that
-replays correctly on the client: simulate the client list starting from `oldWindow`; emit
-`Remove` for old∖new; walk `newWindow` left→right keeping the previous id: missing →
-`DetailsSet` + `Add{afterId: prev}`; present but out of relative order →
-`Position{afterId: prev}`. O(W²) worst case on ≤500-element windows, O(diff) typical.
-Slide-in/slide-out caused by *other* objects' changes falls out of the same diff
+After the batch, compare `oldWindow`/`newWindow` id sequences and emit a **minimal**
+script that replays correctly on the client: emit `Remove` for old∖new; the survivors
+whose new positions form a longest increasing subsequence (taken in old order) are
+**anchors** that keep their relative order and emit nothing; every other survivor — and
+every entering id — emits one event anchored to its `newWindow` left neighbour: entering →
+`DetailsSet` + `Add{afterId: prev}`, moved survivor → `Position{afterId: prev}`. This
+**names the moved object(s)**, not the ones they displace, and emits exactly
+|survivors| − |LCS(old,new)| `Position` events — the provable minimum. O(W·logW) via a
+patience-sort LIS on ≤500-element windows. The `afterId` is always the left neighbour,
+appended in a strictly earlier iteration, so it is already present in the client list when
+its op applies (the weaker, sufficient invariant — contract line 204); it need not have
+reached its final absolute index, since the client inserts relative to `afterId`'s current
+slot. Slide-in/slide-out caused by *other* objects' changes falls out of the same diff
 (contract §3.3, server-side window).
 
 ## 6. Lifecycle
