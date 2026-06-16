@@ -650,55 +650,114 @@ func (c *coreSub) finalizeWindow(out *opBatch) {
 		opsBefore := len(out.ops)
 		c.windowDiffOps(out)
 		if len(out.ops) > opsBefore && c.depTracker != nil {
-			// window membership changed: dep set derives from it
+			// window changed (membership and/or order): the dep set derives
+			// from window membership, so recompute. A pure reorder over-triggers
+			// here, but computeDepIds diffs idempotently and emits nothing when
+			// membership is unchanged; the trigger never under-fires.
 			c.depDirty = true
 		}
 	}
 	c.oldWin = nil
 }
 
-// windowDiffOps emits a script that replays the old window into the new one
-// on a client applying membership events in order: removals first, then a
-// left-to-right walk emitting Add (preceded by its DetailsSet) for new ids
-// and Position for misplaced ones. Simulating the client list guarantees
-// every emitted afterId already sits at its final position — an afterId
-// absent from the client list would corrupt it.
+// windowDiffOps emits the minimal reorder script that replays the old window
+// into the new one. Ids leaving the window emit Remove (first, so the client
+// drops them before any positional op); ids entering emit Set+Add anchored to
+// their new-window left neighbor; surviving ids that do NOT lie on the longest
+// increasing subsequence of their new positions emit a single Position, also
+// anchored to that left neighbor. The LIS members are anchors — already in
+// correct relative order — and emit nothing, so the script NAMES THE MOVERS,
+// not the objects they displace, and emits exactly |stayed|-|LIS| Position
+// events: the provable minimum (|window| - |LCS(old,new)|).
+//
+// Invariant: every emitted afterId is already present in the client's list
+// when its op applies. The client applies removals first, then Add/Position in
+// emit order; the afterId for the entry at new index i is always c.win[i-1].id,
+// whose op (if any) was appended in a strictly earlier iteration, so the
+// predecessor is already in the list. (This is the weaker-but-sufficient
+// invariant the dispatcher actually relies on — position() inserts relative to
+// afterId's current slot, not a final absolute index — so an anchor need not
+// have reached its final position before it is used as an afterId.)
 func (c *coreSub) windowDiffOps(out *opBatch) {
 	newPos := make(map[string]int, len(c.win))
 	for i, e := range c.win {
 		newPos[e.id] = i
 	}
-	sim := make([]string, 0, len(c.win)+len(c.oldWin))
+	oldSet := make(map[string]struct{}, len(c.oldWin))
+	stayedOld := make([]string, 0, len(c.oldWin))
 	for _, id := range c.oldWin {
+		oldSet[id] = struct{}{}
 		if _, ok := newPos[id]; ok {
-			sim = append(sim, id)
+			stayedOld = append(stayedOld, id)
 		} else {
 			out.append(subOp{sub: c, kind: opRemove, id: id})
 		}
 	}
+	// anchors = survivors whose new positions form a longest increasing
+	// subsequence (taken in old order); they keep their relative order so no
+	// event is needed. Window ids are deduplicated (setScopeIds) and the
+	// comparator is a total order, so seq holds distinct values and the strict
+	// LIS is well defined.
+	seq := make([]int, len(stayedOld))
+	for i, id := range stayedOld {
+		seq[i] = newPos[id]
+	}
+	anchor := make(map[string]struct{}, len(stayedOld))
+	for _, k := range longestIncreasingSubseq(seq) {
+		anchor[stayedOld[k]] = struct{}{}
+	}
 	prev := ""
-	for i, e := range c.win {
-		pos := -1
-		for j := i; j < len(sim); j++ { // sim[:i] == window[:i] by construction
-			if sim[j] == e.id {
-				pos = j
-				break
-			}
-		}
-		switch {
-		case pos == -1:
+	for _, e := range c.win {
+		if _, ok := oldSet[e.id]; !ok {
 			out.append(subOp{sub: c, kind: opSet, id: e.id, details: e.prev})
 			out.append(subOp{sub: c, kind: opAdd, id: e.id, afterId: prev})
-			sim = append(sim, "")
-			copy(sim[i+1:], sim[i:])
-			sim[i] = e.id
-		case pos != i:
+		} else if _, ok := anchor[e.id]; !ok {
 			out.append(subOp{sub: c, kind: opPosition, id: e.id, afterId: prev})
-			copy(sim[i+1:pos+1], sim[i:pos])
-			sim[i] = e.id
 		}
 		prev = e.id
 	}
+}
+
+// longestIncreasingSubseq returns the indices into a of a longest strictly
+// increasing subsequence (patience sorting with predecessor links, O(n log n)).
+// a holds distinct values (window ids are deduplicated and the comparator is a
+// total order), so the strict LIS is well defined. The returned indices are in
+// descending order; callers use them only for set membership.
+func longestIncreasingSubseq(a []int) []int {
+	n := len(a)
+	if n == 0 {
+		return nil
+	}
+	tails := make([]int, 0, n) // tails[k] = index of the smallest tail of an increasing subseq of length k+1
+	prevIdx := make([]int, n)
+	for i := range prevIdx {
+		prevIdx[i] = -1
+	}
+	for i := 0; i < n; i++ {
+		// lower_bound: first tail whose value >= a[i] (strictly increasing)
+		lo, hi := 0, len(tails)
+		for lo < hi {
+			mid := int(uint(lo+hi) >> 1)
+			if a[tails[mid]] < a[i] {
+				lo = mid + 1
+			} else {
+				hi = mid
+			}
+		}
+		if lo > 0 {
+			prevIdx[i] = tails[lo-1]
+		}
+		if lo == len(tails) {
+			tails = append(tails, i)
+		} else {
+			tails[lo] = i
+		}
+	}
+	res := make([]int, 0, len(tails))
+	for k := tails[len(tails)-1]; k != -1; k = prevIdx[k] {
+		res = append(res, k)
+	}
+	return res
 }
 
 // memberIds snapshots the current member id set, sorted: consumers
