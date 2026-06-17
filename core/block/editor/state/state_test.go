@@ -2251,88 +2251,6 @@ func TestState_ApplyChangeIgnoreErrDetailsUnset(t *testing.T) {
 	})
 }
 
-func TestState_ApplyChangeIgnoreErrRelationAdd(t *testing.T) {
-	st := NewDoc("root", map[string]simple.Block{
-		"root": simple.New(&model.Block{
-			Id: "root",
-		}),
-	}).(*State)
-
-	t.Run("apply RelationAdd change: add new relation", func(t *testing.T) {
-		// given
-		change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfRelationAdd{
-			RelationAdd: &pb.ChangeRelationAdd{
-				RelationLinks: []*model.RelationLink{
-					{
-						Key:    "relation1",
-						Format: model.RelationFormat_longtext,
-					},
-				},
-			},
-		}}
-
-		// when
-		st.ApplyChangeIgnoreErr(change)
-
-		// then
-		assert.Contains(t, st.relationLinks, &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
-	})
-
-	t.Run("apply RelationAdd change: add already existing relation - no changes", func(t *testing.T) {
-		// given
-		change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfRelationAdd{
-			RelationAdd: &pb.ChangeRelationAdd{
-				RelationLinks: []*model.RelationLink{
-					{
-						Key:    "relation1",
-						Format: model.RelationFormat_longtext,
-					},
-				},
-			},
-		}}
-
-		// when
-		st.ApplyChangeIgnoreErr(change)
-
-		// then
-		assert.Contains(t, st.relationLinks, &model.RelationLink{Key: "relation1", Format: model.RelationFormat_longtext})
-	})
-}
-
-func TestState_ApplyChangeIgnoreErrRelationRemove(t *testing.T) {
-	t.Run("apply RelationRemove change: remove relations", func(t *testing.T) {
-		// given
-		st := NewDoc("root", map[string]simple.Block{
-			"root": simple.New(&model.Block{
-				Id: "root",
-			}),
-		}).(*State)
-
-		st.AddRelationLinks([]*model.RelationLink{
-			{
-				Key:    "relation1",
-				Format: model.RelationFormat_longtext,
-			},
-			{
-				Key:    "relation2",
-				Format: model.RelationFormat_shorttext,
-			},
-		}...)
-		originLength := len(st.relationLinks)
-		change := &pb.ChangeContent{Value: &pb.ChangeContentValueOfRelationRemove{
-			RelationRemove: &pb.ChangeRelationRemove{
-				RelationKey: []string{"relation1", "relation2"},
-			},
-		}}
-
-		// when
-		st.ApplyChangeIgnoreErr(change)
-
-		// then
-		assert.Len(t, st.relationLinks, originLength-2)
-	})
-}
-
 func TestState_ApplyChangeIgnoreErrObjectTypeAdd(t *testing.T) {
 	st := NewDoc("root", map[string]simple.Block{
 		"root": simple.New(&model.Block{
@@ -2807,128 +2725,6 @@ func TestState_SetDeviceName(t *testing.T) {
 	})
 }
 
-func TestAddBundledRealtionLinks(t *testing.T) {
-	t.Run("with relationLinks in state", func(t *testing.T) {
-		t.Run("empty", func(t *testing.T) {
-			st := &State{
-				relationLinks: []*model.RelationLink{},
-			}
-			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyIconOption)
-
-			want := &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-					{
-						Key:    bundle.RelationKeyIconOption.String(),
-						Format: model.RelationFormat_number,
-					},
-				},
-			}
-
-			assert.Equal(t, want, st)
-		})
-		t.Run("one already exists, one not", func(t *testing.T) {
-			st := &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-				},
-			}
-			st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyIconOption)
-
-			want := &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-					{
-						Key:    bundle.RelationKeyIconOption.String(),
-						Format: model.RelationFormat_number,
-					},
-				},
-			}
-
-			assert.Equal(t, want, st)
-		})
-	})
-	t.Run("with relationLinks only in parent state", func(t *testing.T) {
-		st := &State{
-			relationLinks: nil,
-			parent: &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-				},
-			},
-		}
-		st.AddBundledRelationLinks(bundle.RelationKeyName, bundle.RelationKeyIconOption)
-
-		want := &State{
-			relationLinks: []*model.RelationLink{
-				{
-					Key:    bundle.RelationKeyName.String(),
-					Format: model.RelationFormat_shorttext,
-				},
-				{
-					Key:    bundle.RelationKeyIconOption.String(),
-					Format: model.RelationFormat_number,
-				},
-			},
-			parent: &State{
-				relationLinks: []*model.RelationLink{
-					{
-						Key:    bundle.RelationKeyName.String(),
-						Format: model.RelationFormat_shorttext,
-					},
-				},
-			},
-		}
-
-		assert.Equal(t, want, st)
-	})
-}
-
-func TestState_AddRelationLinks(t *testing.T) {
-	t.Run("add new link", func(t *testing.T) {
-		// given
-		s := &State{}
-		newLink := &model.RelationLink{
-			Key:    "newLink",
-			Format: model.RelationFormat_shorttext,
-		}
-
-		// when
-		s.AddRelationLinks(newLink)
-
-		// then
-		assert.True(t, s.relationLinks.Has("newLink"))
-	})
-	t.Run("add existing link", func(t *testing.T) {
-		// given
-		s := &State{}
-		newLink := &model.RelationLink{
-			Key:    "existingLink",
-			Format: model.RelationFormat_shorttext,
-		}
-
-		// when
-		s.AddRelationLinks(newLink)
-		s.AddRelationLinks(newLink)
-
-		// then
-		assert.True(t, s.relationLinks.Has("existingLink"))
-		assert.Len(t, s.relationLinks, 1)
-	})
-}
-
 func TestFilter(t *testing.T) {
 	t.Run("remove blocks", func(t *testing.T) {
 		// given
@@ -2942,24 +2738,6 @@ func TestFilter(t *testing.T) {
 			bundle.RelationKeyAssignee:       domain.String("assignee"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyCoverType.String(),
-			Format: model.RelationFormat_number,
-		},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyName.String(),
-				Format: model.RelationFormat_longtext,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyAssignee.String(),
-				Format: model.RelationFormat_object,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyResolvedLayout.String(),
-				Format: model.RelationFormat_number,
-			},
-		)
-
 		// when
 		filteredState := st.Filter(&Filters{RemoveBlocks: true})
 
@@ -2979,24 +2757,6 @@ func TestFilter(t *testing.T) {
 			bundle.RelationKeyAssignee:       domain.String("assignee"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyCoverType.String(),
-			Format: model.RelationFormat_number,
-		},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyName.String(),
-				Format: model.RelationFormat_longtext,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyAssignee.String(),
-				Format: model.RelationFormat_object,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyResolvedLayout.String(),
-				Format: model.RelationFormat_number,
-			},
-		)
-
 		// when
 		filteredState := st.Filter(&Filters{RelationsWhiteList: map[model.ObjectTypeLayout][]domain.RelationKey{
 			model.ObjectType_todo: {bundle.RelationKeyAssignee},
@@ -3005,8 +2765,6 @@ func TestFilter(t *testing.T) {
 		// then
 		assert.Equal(t, filteredState.details.Len(), 1)
 		assert.Equal(t, filteredState.localDetails.Len(), 0)
-		assert.Len(t, filteredState.relationLinks, 1)
-		assert.Equal(t, bundle.RelationKeyAssignee.String(), filteredState.relationLinks[0].Key)
 	})
 	t.Run("empty white list relations", func(t *testing.T) {
 		// given
@@ -3020,24 +2778,6 @@ func TestFilter(t *testing.T) {
 			bundle.RelationKeyAssignee:       domain.String("assignee"),
 			bundle.RelationKeyResolvedLayout: domain.Int64(model.ObjectType_todo),
 		}))
-		st.AddRelationLinks(&model.RelationLink{
-			Key:    bundle.RelationKeyCoverType.String(),
-			Format: model.RelationFormat_number,
-		},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyName.String(),
-				Format: model.RelationFormat_longtext,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyAssignee.String(),
-				Format: model.RelationFormat_object,
-			},
-			&model.RelationLink{
-				Key:    bundle.RelationKeyResolvedLayout.String(),
-				Format: model.RelationFormat_number,
-			},
-		)
-
 		// when
 		filteredState := st.Filter(&Filters{RelationsWhiteList: map[model.ObjectTypeLayout][]domain.RelationKey{
 			model.ObjectType_todo: {},
@@ -3046,6 +2786,5 @@ func TestFilter(t *testing.T) {
 		// then
 		assert.Equal(t, filteredState.details.Len(), 0)
 		assert.Equal(t, filteredState.localDetails.Len(), 0)
-		assert.Len(t, filteredState.relationLinks, 0)
 	})
 }

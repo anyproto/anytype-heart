@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -52,7 +51,6 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
-	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 const CName = "history"
@@ -329,7 +327,6 @@ func filterHistoryEvents(msg []simple.EventMessage) []*pb.EventMessage {
 func isSuitableChange(message simple.EventMessage) bool {
 	return isDataviewChange(message) ||
 		isDetailsChange(message) ||
-		isRelationsChange(message) ||
 		isBlockPropertiesChange(message) ||
 		isSimpleBlockChange(message) ||
 		isBasicBlockChange(message)
@@ -346,39 +343,6 @@ func isDataviewChange(message simple.EventMessage) bool {
 		message.Msg.GetBlockDataViewGroupOrderUpdate() != nil ||
 		message.Msg.GetBlockDataviewViewUpdate() != nil ||
 		message.Msg.GetBlockDataviewTargetObjectIdSet() != nil
-}
-
-func isRelationsChange(message simple.EventMessage) bool {
-	filterLocalAndDerivedRelations(message.Msg.GetObjectRelationsAmend())
-	filterLocalAndDerivedRelationsByKey(message.Msg.GetObjectRelationsRemove())
-	return (message.Msg.GetObjectRelationsAmend() != nil && len(message.Msg.GetObjectRelationsAmend().RelationLinks) > 0) ||
-		(message.Msg.GetObjectRelationsRemove() != nil && len(message.Msg.GetObjectRelationsRemove().RelationKeys) > 0)
-}
-
-func filterLocalAndDerivedRelationsByKey(removedRelations *pb.EventObjectRelationsRemove) {
-	if removedRelations == nil {
-		return
-	}
-	var relKeysWithoutLocal []string
-	for _, key := range removedRelations.RelationKeys {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(key)) {
-			relKeysWithoutLocal = append(relKeysWithoutLocal, key)
-		}
-	}
-	removedRelations.RelationKeys = relKeysWithoutLocal
-}
-
-func filterLocalAndDerivedRelations(addedRelations *pb.EventObjectRelationsAmend) {
-	if addedRelations == nil {
-		return
-	}
-	var relLinksWithoutLocal pbtypes.RelationLinks
-	for _, link := range addedRelations.RelationLinks {
-		if !slices.Contains(bundle.LocalAndDerivedRelationKeys, domain.RelationKey(link.Key)) {
-			relLinksWithoutLocal = relLinksWithoutLocal.Append(link)
-		}
-	}
-	addedRelations.RelationLinks = relLinksWithoutLocal
 }
 
 func isDetailsChange(message simple.EventMessage) bool {

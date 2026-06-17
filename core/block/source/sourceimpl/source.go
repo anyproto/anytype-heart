@@ -444,9 +444,7 @@ func (s *treeSource) buildChange(params source.PushChangeParams) (c *pb.Change) 
 				Details:     params.State.Details().ToProto(),
 				ObjectTypes: domain.MarshalTypeKeys(params.State.ObjectTypeKeys()),
 				Collections: params.State.Store(),
-				// TODO: GO-4284 We need to use PickRelationLinks here because we build a state.
-				// Changes on RelationLinks could go to old clients
-				RelationLinks:            params.State.PickRelationLinks(),
+				// GO-4284: object-level relationLinks were removed; snapshots no longer carry them.
 				Key:                      params.State.UniqueKeyInternal(),
 				OriginalCreatedTimestamp: params.State.OriginalCreatedTimestamp(),
 				FileInfo:                 params.State.GetFileInfo().ToModel(),
