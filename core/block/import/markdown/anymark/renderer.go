@@ -169,31 +169,7 @@ func (r *Renderer) renderHTMLBlock(_ util.BufWriter,
 	// </details>) as Markdown into child blocks, nest them, then close the Toggle.
 	// Without this the block would be silently dropped (M3).
 	if summary, inner, remainder, ok := parseSelfContainedDetails(raw); ok {
-		r.OpenToggleBlock(summary)
-		inner = strings.TrimSpace(inner)
-		if inner != "" {
-			children, _, err := MarkdownToBlocks([]byte(inner), r.GetBaseFilepath(), r.GetAllFileShortPaths())
-			if err != nil {
-				log.Errorf("failed to parse inner content of self-contained <details>: %v", err)
-			} else {
-				r.AppendChildBlocks(children)
-			}
-		}
-		r.CloseToggleBlock()
-		// goldmark's HTML block (type 6) ends at a blank line, NOT at the matched
-		// </details>. So any content after the matched close lives in this SAME
-		// HTMLBlock and must be emitted as SIBLINGS at this level (not children of
-		// the toggle we just closed), otherwise it is silently lost (Major 1). The
-		// remainder may itself contain another tight <details>, which is handled by
-		// routing it back through the normal MarkdownToBlocks parse.
-		if remainder = strings.TrimSpace(remainder); remainder != "" {
-			siblings, _, err := MarkdownToBlocks([]byte(remainder), r.GetBaseFilepath(), r.GetAllFileShortPaths())
-			if err != nil {
-				log.Errorf("failed to parse trailing content after self-contained <details>: %v", err)
-			} else {
-				r.AppendSiblingBlocks(siblings)
-			}
-		}
+		r.handleSelfContainedDetails(summary, inner, remainder)
 		return ast.WalkContinue, nil
 	}
 
@@ -225,6 +201,40 @@ func (r *Renderer) renderHTMLBlock(_ util.BufWriter,
 
 	// Other HTML blocks are not rendered.
 	return ast.WalkContinue, nil
+}
+
+// handleSelfContainedDetails materializes a self-contained <details>...</details>
+// block into a Toggle: the inner content (between </summary> and the matched
+// </details>) becomes child blocks, and any remainder folded into the same HTML
+// block by goldmark (its block ends at a blank line, not at </details>) is
+// emitted as SIBLINGS so it is not lost (Major 1). The remainder may itself
+// contain another tight <details>, handled by routing it back through the normal
+// MarkdownToBlocks parse.
+func (r *Renderer) handleSelfContainedDetails(summary, inner, remainder string) {
+	r.OpenToggleBlock(summary)
+	if inner = strings.TrimSpace(inner); inner != "" {
+		if children := r.parseMarkdownBlocks(inner, "inner content of self-contained <details>"); children != nil {
+			r.AppendChildBlocks(children)
+		}
+	}
+	r.CloseToggleBlock()
+	if remainder = strings.TrimSpace(remainder); remainder != "" {
+		if siblings := r.parseMarkdownBlocks(remainder, "trailing content after self-contained <details>"); siblings != nil {
+			r.AppendSiblingBlocks(siblings)
+		}
+	}
+}
+
+// parseMarkdownBlocks parses md into blocks using the renderer's base filepath
+// and file short paths, logging (and returning nil) on error. context describes
+// the source for the error message.
+func (r *Renderer) parseMarkdownBlocks(md, context string) []*model.Block {
+	blocks, _, err := MarkdownToBlocks([]byte(md), r.GetBaseFilepath(), r.GetAllFileShortPaths())
+	if err != nil {
+		log.Errorf("failed to parse %s: %v", context, err)
+		return nil
+	}
+	return blocks
 }
 
 func rawHTMLBlockText(source []byte, node ast.Node) string {
@@ -339,11 +349,13 @@ func matchingDetailsClose(s string) (start int, end int) {
 		end   int
 		isEnd bool
 	}
-	var toks []tok
-	for _, loc := range reDetailsOpen.FindAllStringIndex(masked, -1) {
+	opens := reDetailsOpen.FindAllStringIndex(masked, -1)
+	ends := reDetailsEnd.FindAllStringIndex(masked, -1)
+	toks := make([]tok, 0, len(opens)+len(ends))
+	for _, loc := range opens {
 		toks = append(toks, tok{idx: loc[0], end: loc[1], isEnd: false})
 	}
-	for _, loc := range reDetailsEnd.FindAllStringIndex(masked, -1) {
+	for _, loc := range ends {
 		toks = append(toks, tok{idx: loc[0], end: loc[1], isEnd: true})
 	}
 	// Sort tokens by position (simple insertion sort; lists are tiny).
@@ -387,102 +399,14 @@ func maskCodeRegions(s string) string {
 	out := []byte(s)
 	n := len(out)
 
-	maskRange := func(from, to int) {
-		for i := from; i < to && i < n; i++ {
-			if out[i] != '\n' {
-				out[i] = ' '
-			}
-		}
-	}
-
 	i := 0
 	atLineStart := true
 	for i < n {
 		if atLineStart {
-			// Detect a fence opener at the start of this line (allow up to 3 spaces).
-			lineStart := i
-			j := i
-			spaces := 0
-			for j < n && out[j] == ' ' && spaces < 4 {
-				j++
-				spaces++
-			}
-			if spaces < 4 && j < n && (out[j] == '`' || out[j] == '~') {
-				fenceChar := out[j]
-				runLen := 0
-				k := j
-				for k < n && out[k] == fenceChar {
-					k++
-					runLen++
-				}
-				if runLen >= 3 {
-					// Find the end of this fenced block: scan subsequent lines for a
-					// closing fence (same char, run >= runLen, no trailing non-space
-					// for backtick fences with info strings is not required to close).
-					// First, advance to end of the opening fence line.
-					lineEnd := indexByteFrom(out, '\n', k)
-					blockStart := lineStart
-					var blockEnd int
-					if lineEnd < 0 {
-						blockEnd = n
-					} else {
-						blockEnd = lineEnd + 1
-						// Now scan following lines.
-						closed := false
-						for blockEnd < n {
-							ls := blockEnd
-							le := indexByteFrom(out, '\n', ls)
-							var lineLimit int
-							if le < 0 {
-								lineLimit = n
-							} else {
-								lineLimit = le
-							}
-							// Inspect this line for a closing fence.
-							p := ls
-							sp := 0
-							for p < lineLimit && out[p] == ' ' && sp < 4 {
-								p++
-								sp++
-							}
-							clRun := 0
-							for p < lineLimit && out[p] == fenceChar {
-								p++
-								clRun++
-							}
-							// A closing fence: same char, run >= opening run, and only
-							// spaces after it on the line.
-							onlySpaces := true
-							for q := p; q < lineLimit; q++ {
-								if out[q] != ' ' && out[q] != '\t' {
-									onlySpaces = false
-									break
-								}
-							}
-							if sp < 4 && clRun >= runLen && onlySpaces {
-								if le < 0 {
-									blockEnd = n
-								} else {
-									blockEnd = le + 1
-								}
-								closed = true
-								break
-							}
-							if le < 0 {
-								blockEnd = n
-								break
-							}
-							blockEnd = le + 1
-						}
-						if !closed {
-							blockEnd = n
-						}
-					}
-					maskRange(blockStart, blockEnd)
-					i = blockEnd
-					atLineStart = true
-					continue
-				}
+			if blockEnd, ok := maskFencedBlock(out, i); ok {
+				i = blockEnd
+				atLineStart = true
+				continue
 			}
 		}
 
@@ -491,37 +415,7 @@ func maskCodeRegions(s string) string {
 			atLineStart = true
 			i++
 		case '`':
-			// Inline code span: run of N backticks .. matching run of N backticks.
-			runLen := 0
-			start := i
-			for i < n && out[i] == '`' {
-				i++
-				runLen++
-			}
-			// Find a closing run of exactly runLen backticks.
-			closeAt := -1
-			for p := i; p < n; {
-				if out[p] == '`' {
-					cl := 0
-					q := p
-					for q < n && out[q] == '`' {
-						q++
-						cl++
-					}
-					if cl == runLen {
-						closeAt = q
-						break
-					}
-					p = q
-				} else {
-					p++
-				}
-			}
-			if closeAt >= 0 {
-				maskRange(start, closeAt)
-				i = closeAt
-			}
-			// If unterminated, leave as-is (goldmark treats it as literal backticks).
+			i = maskInlineCodeSpan(out, i)
 			atLineStart = false
 		default:
 			atLineStart = false
@@ -529,6 +423,159 @@ func maskCodeRegions(s string) string {
 		}
 	}
 	return string(out)
+}
+
+// maskRange replaces every non-newline byte in out[from:to) with a space,
+// preserving newlines (and thus byte offsets and line structure).
+func maskRange(out []byte, from, to int) {
+	n := len(out)
+	for i := from; i < to && i < n; i++ {
+		if out[i] != '\n' {
+			out[i] = ' '
+		}
+	}
+}
+
+// fenceRun reports the fence character and run length of a fence at line offset
+// lineStart in out, allowing up to 3 leading spaces (goldmark's rule). ok is
+// true only when a run of >= 3 identical fence chars (` or ~) is found; bodyEnd
+// is the offset just past that run. When ok is false the other results are
+// meaningless.
+func fenceRun(out []byte, lineStart int) (fenceChar byte, runLen, bodyEnd int, ok bool) {
+	n := len(out)
+	j := lineStart
+	spaces := 0
+	for j < n && out[j] == ' ' && spaces < 4 {
+		j++
+		spaces++
+	}
+	if spaces >= 4 || j >= n || (out[j] != '`' && out[j] != '~') {
+		return 0, 0, 0, false
+	}
+	fenceChar = out[j]
+	k := j
+	for k < n && out[k] == fenceChar {
+		k++
+		runLen++
+	}
+	if runLen < 3 {
+		return 0, 0, 0, false
+	}
+	return fenceChar, runLen, k, true
+}
+
+// isClosingFence reports whether the line out[ls:lineLimit) is a closing fence
+// for an opening fence of fenceChar with run length openRun: same char, run
+// length >= openRun, and only spaces/tabs after the run.
+func isClosingFence(out []byte, ls, lineLimit int, fenceChar byte, openRun int) bool {
+	p := ls
+	sp := 0
+	for p < lineLimit && out[p] == ' ' && sp < 4 {
+		p++
+		sp++
+	}
+	if sp >= 4 {
+		return false
+	}
+	clRun := 0
+	for p < lineLimit && out[p] == fenceChar {
+		p++
+		clRun++
+	}
+	if clRun < openRun {
+		return false
+	}
+	for q := p; q < lineLimit; q++ {
+		if out[q] != ' ' && out[q] != '\t' {
+			return false
+		}
+	}
+	return true
+}
+
+// maskFencedBlock checks whether a fenced code block (``` or ~~~) opens at line
+// offset lineStart and, if so, masks the whole block (open fence line through
+// the closing fence line, or end of input if unterminated) and returns the
+// offset just past the block with ok=true. When no fence opens it returns
+// ok=false and leaves out unchanged.
+func maskFencedBlock(out []byte, lineStart int) (blockEnd int, ok bool) {
+	fenceChar, runLen, bodyEnd, ok := fenceRun(out, lineStart)
+	if !ok {
+		return 0, false
+	}
+	n := len(out)
+	// Advance past the opening fence line.
+	lineEnd := indexByteFrom(out, '\n', bodyEnd)
+	if lineEnd < 0 {
+		blockEnd = n
+	} else {
+		blockEnd = lineEnd + 1
+		blockEnd = scanToFenceClose(out, blockEnd, fenceChar, runLen)
+	}
+	maskRange(out, lineStart, blockEnd)
+	return blockEnd, true
+}
+
+// scanToFenceClose scans lines starting at offset start for the closing fence of
+// an open fence (fenceChar, openRun) and returns the offset just past the block
+// (the byte after the newline of the closing line, or end of input if no close
+// is found).
+func scanToFenceClose(out []byte, start int, fenceChar byte, openRun int) int {
+	n := len(out)
+	blockEnd := start
+	for blockEnd < n {
+		ls := blockEnd
+		le := indexByteFrom(out, '\n', ls)
+		lineLimit := le
+		if le < 0 {
+			lineLimit = n
+		}
+		if isClosingFence(out, ls, lineLimit, fenceChar, openRun) {
+			if le < 0 {
+				return n
+			}
+			return le + 1
+		}
+		if le < 0 {
+			return n
+		}
+		blockEnd = le + 1
+	}
+	return blockEnd
+}
+
+// maskInlineCodeSpan masks an inline code span starting at offset start (where
+// out[start] == '`'): a run of N backticks closed by the next run of exactly N
+// backticks. It returns the offset to continue scanning from. If the span is
+// unterminated nothing is masked and scanning continues just past the opening
+// run (goldmark treats it as literal backticks).
+func maskInlineCodeSpan(out []byte, start int) int {
+	n := len(out)
+	runLen := 0
+	i := start
+	for i < n && out[i] == '`' {
+		i++
+		runLen++
+	}
+	// Find a closing run of exactly runLen backticks.
+	for p := i; p < n; {
+		if out[p] != '`' {
+			p++
+			continue
+		}
+		cl := 0
+		q := p
+		for q < n && out[q] == '`' {
+			q++
+			cl++
+		}
+		if cl == runLen {
+			maskRange(out, start, q)
+			return q
+		}
+		p = q
+	}
+	return i
 }
 
 func indexByteFrom(b []byte, c byte, from int) int {
