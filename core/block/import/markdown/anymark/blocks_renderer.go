@@ -199,6 +199,45 @@ func (r *blocksRenderer) AppendChildBlocks(children []*model.Block) {
 	}
 }
 
+// AppendSiblingBlocks adds an already-parsed block tree (e.g. the content that
+// goldmark folded into a self-contained <details>...</details> HTML block AFTER
+// the matched </details>) to the output WITHOUT nesting it under any currently
+// open container. The blocks are emitted as siblings at the same level as the
+// details block itself, preserving their own internal parent/child structure.
+// This is used to recover trailing content that would otherwise be lost because
+// a goldmark HTML block ends at a blank line, not at </details> (Major 1).
+func (r *blocksRenderer) AppendSiblingBlocks(siblings []*model.Block) {
+	if len(siblings) == 0 {
+		return
+	}
+
+	// Determine the open container (if any) so we explicitly avoid nesting under
+	// it: when this remainder lives inside an OUTER still-open <details> (the
+	// recursive case), the siblings belong to that outer toggle and must be
+	// attached to it, just like AppendChildBlocks does for direct children.
+	var parentBlock *textBlock
+	for i := len(r.openedTextBlocks) - 1; i >= 0; i-- {
+		if isBlockCanHaveChild(r.openedTextBlocks[i].Block) {
+			parentBlock = r.openedTextBlocks[i]
+			break
+		}
+	}
+
+	referenced := make(map[string]bool)
+	for _, b := range siblings {
+		for _, cID := range b.ChildrenIds {
+			referenced[cID] = true
+		}
+	}
+
+	for _, b := range siblings {
+		r.blocks = append(r.blocks, b)
+		if parentBlock != nil && !referenced[b.Id] {
+			parentBlock.ChildrenIds = append(parentBlock.ChildrenIds, b.Id)
+		}
+	}
+}
+
 func (r *blocksRenderer) GetBlocks() []*model.Block {
 	r.blocks = preprocessBlocks(r.blocks)
 	return r.blocks

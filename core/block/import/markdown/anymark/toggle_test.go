@@ -1,6 +1,7 @@
 package anymark
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,6 +13,26 @@ import (
 func blockByText(blocks []*model.Block, text string) *model.Block {
 	for _, b := range blocks {
 		if t := b.GetText(); t != nil && t.Text == text {
+			return b
+		}
+	}
+	return nil
+}
+
+// blockContaining returns the first block whose text contains the given substring.
+func blockContaining(blocks []*model.Block, substr string) *model.Block {
+	for _, b := range blocks {
+		if t := b.GetText(); t != nil && strings.Contains(t.Text, substr) {
+			return b
+		}
+	}
+	return nil
+}
+
+// codeBlockContaining returns the first Code-styled block whose text contains substr.
+func codeBlockContaining(blocks []*model.Block, substr string) *model.Block {
+	for _, b := range blocks {
+		if t := b.GetText(); t != nil && t.Style == model.BlockContentText_Code && strings.Contains(t.Text, substr) {
 			return b
 		}
 	}
@@ -228,6 +249,163 @@ func TestMarkdownToBlocks_TightDetailsToggle(t *testing.T) {
 		require.NotNil(t, deep, "expected deep child, got: %+v", blocks)
 		assert.Contains(t, inner.ChildrenIds, deep.Id,
 			"deep child must be nested under inner toggle, got: %+v", blocks)
+	})
+}
+
+// Major 1: a tight <details>...</details> block ends (for goldmark) at a blank
+// line, not at </details>. So content AFTER the matched </details> lives inside
+// the SAME HTMLBlock and was silently dropped. The trailing content must be
+// emitted as following SIBLING blocks (not nested under the toggle).
+func TestMarkdownToBlocks_TightDetailsTrailingContent(t *testing.T) {
+	t.Run("single trailing line after close is kept as a sibling", func(t *testing.T) {
+		md := "<details>\n<summary>S</summary>\nChild\n</details>\nTRAILING\n"
+
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		toggle := blockByText(blocks, "S")
+		require.NotNil(t, toggle, "expected a toggle block 'S', got: %+v", blocks)
+		assert.Equal(t, model.BlockContentText_Toggle, toggle.GetText().Style)
+
+		child := blockByText(blocks, "Child")
+		require.NotNil(t, child, "expected child 'Child', got: %+v", blocks)
+		assert.Contains(t, toggle.ChildrenIds, child.Id,
+			"child must be nested under the toggle, got: %+v", blocks)
+
+		trailing := blockByText(blocks, "TRAILING")
+		require.NotNil(t, trailing, "expected trailing sibling 'TRAILING', got: %+v", blocks)
+		assert.NotContains(t, toggle.ChildrenIds, trailing.Id,
+			"trailing content must be a sibling, NOT nested under the toggle, got: %+v", blocks)
+	})
+
+	t.Run("multiple trailing lines after close are all kept", func(t *testing.T) {
+		md := "<details>\n<summary>S</summary>\nChild\n</details>\nFirstTrail\n\nSecondTrail\n"
+
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		toggle := blockByText(blocks, "S")
+		require.NotNil(t, toggle, "expected a toggle block 'S', got: %+v", blocks)
+
+		child := blockByText(blocks, "Child")
+		require.NotNil(t, child, "expected child 'Child', got: %+v", blocks)
+		assert.Contains(t, toggle.ChildrenIds, child.Id)
+
+		first := blockByText(blocks, "FirstTrail")
+		second := blockByText(blocks, "SecondTrail")
+		require.NotNil(t, first, "expected trailing 'FirstTrail', got: %+v", blocks)
+		require.NotNil(t, second, "expected trailing 'SecondTrail', got: %+v", blocks)
+		assert.NotContains(t, toggle.ChildrenIds, first.Id)
+		assert.NotContains(t, toggle.ChildrenIds, second.Id)
+	})
+
+	t.Run("inner tight details followed by sibling text inside outer", func(t *testing.T) {
+		md := "<details>\n<summary>Outer</summary>\n<details>\n<summary>Inner</summary>\nDeep\n</details>\nInnerSibling\n</details>\n"
+
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		outer := blockByText(blocks, "Outer")
+		require.NotNil(t, outer, "expected outer toggle, got: %+v", blocks)
+		inner := blockByText(blocks, "Inner")
+		require.NotNil(t, inner, "expected inner toggle, got: %+v", blocks)
+		assert.Contains(t, outer.ChildrenIds, inner.Id,
+			"inner toggle must be nested under outer, got: %+v", blocks)
+
+		deep := blockByText(blocks, "Deep")
+		require.NotNil(t, deep, "expected deep child, got: %+v", blocks)
+		assert.Contains(t, inner.ChildrenIds, deep.Id,
+			"deep child must be nested under inner toggle, got: %+v", blocks)
+
+		// "InnerSibling" appears after the inner </details> but before the outer
+		// </details>, so it is a sibling of the inner toggle, nested under outer.
+		sibling := blockByText(blocks, "InnerSibling")
+		require.NotNil(t, sibling, "expected inner sibling 'InnerSibling', got: %+v", blocks)
+		assert.Contains(t, outer.ChildrenIds, sibling.Id,
+			"inner sibling must be nested under outer toggle, got: %+v", blocks)
+		assert.NotContains(t, inner.ChildrenIds, sibling.Id,
+			"inner sibling must NOT be nested under inner toggle, got: %+v", blocks)
+	})
+}
+
+// Major 2: matchingDetailsClose did a raw regex scan, so a </details> inside a
+// fenced code block or inline code span was mistaken for the real close. The
+// toggle then got zero children and the real content after the true close was
+// lost. Code regions must be ignored when finding the matching close.
+func TestMarkdownToBlocks_TightDetailsCodeFenceClose(t *testing.T) {
+	t.Run("fenced code block containing literal </details> is preserved", func(t *testing.T) {
+		// The first </details> is inside a ``` fence and must NOT be the close.
+		md := "<details>\n<summary>S</summary>\n```\n</details>\n```\nrealchild\n</details>\n"
+
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		toggle := blockByText(blocks, "S")
+		require.NotNil(t, toggle, "expected a toggle block 'S', got: %+v", blocks)
+		assert.Equal(t, model.BlockContentText_Toggle, toggle.GetText().Style)
+
+		// The fenced code block (which contains the literal "</details>" text) must
+		// be nested under the toggle as a code block.
+		code := codeBlockContaining(blocks, "</details>")
+		require.NotNil(t, code, "expected code block with literal '</details>', got: %+v", blocks)
+		assert.Contains(t, toggle.ChildrenIds, code.Id,
+			"code block must be nested under the toggle, got: %+v", blocks)
+
+		realchild := blockByText(blocks, "realchild")
+		require.NotNil(t, realchild, "expected 'realchild' after fence, got: %+v", blocks)
+		assert.Contains(t, toggle.ChildrenIds, realchild.Id,
+			"realchild must be nested under the toggle, got: %+v", blocks)
+	})
+
+	t.Run("tilde fenced code block containing literal </details> is preserved", func(t *testing.T) {
+		md := "<details>\n<summary>S</summary>\n~~~\n</details>\n~~~\nrealchild\n</details>\n"
+
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		toggle := blockByText(blocks, "S")
+		require.NotNil(t, toggle, "expected a toggle block 'S', got: %+v", blocks)
+
+		code := codeBlockContaining(blocks, "</details>")
+		require.NotNil(t, code, "expected code block with literal '</details>', got: %+v", blocks)
+		assert.Contains(t, toggle.ChildrenIds, code.Id)
+
+		realchild := blockByText(blocks, "realchild")
+		require.NotNil(t, realchild, "expected 'realchild' after fence, got: %+v", blocks)
+		assert.Contains(t, toggle.ChildrenIds, realchild.Id)
+	})
+
+	t.Run("inline code span containing </details> is not the close", func(t *testing.T) {
+		// The first </details> appears in an inline code span `</details>` and must
+		// NOT be treated as the close; the real close is the last line. goldmark
+		// joins the two consecutive child lines into a single paragraph (soft break),
+		// so the inner content is one nested block carrying both the inline code
+		// span and the realchild text - the key point is that NONE of it is lost.
+		md := "<details>\n<summary>S</summary>\nuse `</details>` here\nrealchild\n</details>\n"
+
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		toggle := blockByText(blocks, "S")
+		require.NotNil(t, toggle, "expected a toggle block 'S', got: %+v", blocks)
+		assert.Equal(t, model.BlockContentText_Toggle, toggle.GetText().Style)
+
+		inner := blockContaining(blocks, "</details>")
+		require.NotNil(t, inner, "expected a nested block carrying the inline </details>, got: %+v", blocks)
+		assert.Contains(t, inner.GetText().Text, "realchild",
+			"the realchild text after the inline span must not be lost, got: %+v", blocks)
+		assert.Contains(t, toggle.ChildrenIds, inner.Id,
+			"inner content must be nested under the toggle, got: %+v", blocks)
+		// The inline code span must be marked as a Keyboard (inline code) mark.
+		require.NotNil(t, inner.GetText().Marks)
+		hasKeyboard := false
+		for _, m := range inner.GetText().Marks.Marks {
+			if m.Type == model.BlockContentTextMark_Keyboard {
+				hasKeyboard = true
+			}
+		}
+		assert.True(t, hasKeyboard,
+			"the </details> inline span must remain an inline-code mark, got: %+v", blocks)
 	})
 }
 
