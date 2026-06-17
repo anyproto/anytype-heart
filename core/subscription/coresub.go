@@ -662,56 +662,68 @@ func (c *coreSub) finalizeWindow(out *opBatch) {
 
 // windowDiffOps emits the minimal reorder script that replays the old window
 // into the new one. Ids leaving the window emit Remove (first, so the client
-// drops them before any positional op); ids entering emit Set+Add anchored to
-// their new-window left neighbor; surviving ids that do NOT lie on the longest
-// increasing subsequence of their new positions emit a single Position, also
-// anchored to that left neighbor. The LIS members are anchors — already in
-// correct relative order — and emit nothing, so the script NAMES THE MOVERS,
-// not the objects they displace, and emits exactly |stayed|-|LIS| Position
-// events: the provable minimum (|window| - |LCS(old,new)|).
+// drops them before any positional op); ids entering emit Set+Add; surviving
+// ids that do NOT lie on the longest increasing subsequence of their new
+// positions emit a single Position. The LIS members are anchors — they keep
+// their relative order — and emit nothing, so the script NAMES THE MOVERS, not
+// the objects they displace, and emits exactly |stayed|-|LIS| Position events:
+// the provable minimum (|window| - |LCS(old,new)|).
 //
-// Invariant: every emitted afterId is already present in the client's list
-// when its op applies. The client applies removals first, then Add/Position in
-// emit order; the afterId for the entry at new index i is always c.win[i-1].id,
-// whose op (if any) was appended in a strictly earlier iteration, so the
-// predecessor is already in the list. (This is the weaker-but-sufficient
-// invariant the dispatcher actually relies on — position() inserts relative to
-// afterId's current slot, not a final absolute index — so an anchor need not
-// have reached its final position before it is used as an afterId.)
+// Every entering/moved id is placed immediately after its new-window left
+// neighbour (afterId; "" means head). Convergence is by RELATIVE order, not
+// absolute index: the client inserts each id just after its left neighbour's
+// CURRENT slot, and because ids are emitted left-to-right that neighbour is
+// either an untouched anchor or an id placed in an earlier iteration — so the
+// afterId is always already in the client's list when the op applies (the
+// invariant the dispatcher relies on; an anchor need not have reached its final
+// absolute index first). Once every non-anchor sits after its final predecessor
+// and the anchors hold their order, the list equals newWin.
+//
+// Precondition: window ids are unique (setScopeIds dedups; the comparator is a
+// total order) — a duplicate id would make the strict LIS ill-defined.
 func (c *coreSub) windowDiffOps(out *opBatch) {
 	newPos := make(map[string]int, len(c.win))
 	for i, e := range c.win {
 		newPos[e.id] = i
 	}
-	oldSet := make(map[string]struct{}, len(c.oldWin))
+	// stayed[p] marks the new-window slot of an id also present in the old
+	// window; the remaining c.win slots are entering ids. Leavers Remove now.
+	stayed := make([]bool, len(c.win))
 	stayedOld := make([]string, 0, len(c.oldWin))
 	for _, id := range c.oldWin {
-		oldSet[id] = struct{}{}
-		if _, ok := newPos[id]; ok {
+		if p, ok := newPos[id]; ok {
+			stayed[p] = true
 			stayedOld = append(stayedOld, id)
 		} else {
 			out.append(subOp{sub: c, kind: opRemove, id: id})
 		}
 	}
 	// anchors = survivors whose new positions form a longest increasing
-	// subsequence (taken in old order); they keep their relative order so no
-	// event is needed. Window ids are deduplicated (setScopeIds) and the
-	// comparator is a total order, so seq holds distinct values and the strict
-	// LIS is well defined.
-	seq := make([]int, len(stayedOld))
-	for i, id := range stayedOld {
-		seq[i] = newPos[id]
-	}
-	anchor := make(map[string]struct{}, len(stayedOld))
-	for _, k := range longestIncreasingSubseq(seq) {
-		anchor[stayedOld[k]] = struct{}{}
+	// subsequence (taken in old order): they already hold their relative order.
+	// Marked by new-window index so the emit loop is a slice test, not a map
+	// lookup; the LIS scratch is skipped entirely for 0/1 survivors.
+	isAnchor := make([]bool, len(c.win))
+	switch {
+	case len(stayedOld) == 1:
+		isAnchor[newPos[stayedOld[0]]] = true // a lone survivor never moves
+	case len(stayedOld) > 1:
+		seq := make([]int, len(stayedOld))
+		for i, id := range stayedOld {
+			seq[i] = newPos[id]
+		}
+		for _, k := range longestIncreasingSubseq(seq) {
+			isAnchor[newPos[stayedOld[k]]] = true
+		}
 	}
 	prev := ""
-	for _, e := range c.win {
-		if _, ok := oldSet[e.id]; !ok {
+	for i, e := range c.win {
+		switch {
+		case isAnchor[i]:
+			// already in correct relative order — no event
+		case !stayed[i]:
 			out.append(subOp{sub: c, kind: opSet, id: e.id, details: e.prev})
 			out.append(subOp{sub: c, kind: opAdd, id: e.id, afterId: prev})
-		} else if _, ok := anchor[e.id]; !ok {
+		default:
 			out.append(subOp{sub: c, kind: opPosition, id: e.id, afterId: prev})
 		}
 		prev = e.id
