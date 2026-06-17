@@ -2,6 +2,7 @@ package anymark
 
 import (
 	"bytes"
+	"html"
 	"net/url"
 	"path/filepath"
 	"regexp"
@@ -192,7 +193,6 @@ var (
 	reDetailsOpen = regexp.MustCompile(`(?is)<details\b[^>]*>`)
 	reSummary     = regexp.MustCompile(`(?is)<summary\b[^>]*>(.*?)</summary>`)
 	reDetailsEnd  = regexp.MustCompile(`(?is)</details\s*>`)
-	reHTMLTag     = regexp.MustCompile(`(?is)<[^>]+>`)
 )
 
 // parseDetailsSummary reports whether raw opens a (not self-closed) <details>
@@ -205,8 +205,13 @@ func parseDetailsSummary(raw string) (string, bool) {
 	}
 	summary := ""
 	if m := reSummary.FindStringSubmatch(raw); len(m) > 1 {
-		summary = strings.TrimSpace(reHTMLTag.ReplaceAllString(m[1], ""))
-		summary = Unescape(summary)
+		// The exporter HTML-escapes the summary text, so the captured content is
+		// the escaped plain text of the toggle title (e.g. "&lt;/details&gt;" for
+		// a literal "</details>"). Decode HTML entities to recover the original
+		// text exactly. We intentionally do NOT strip tag-shaped substrings here:
+		// since the content is escaped, any '<'/'>' belong to the user's title and
+		// stripping them would silently drop text.
+		summary = strings.TrimSpace(html.UnescapeString(m[1]))
 	}
 	return summary, true
 }

@@ -55,6 +55,26 @@ func TestMarkdownToBlocks_DetailsToggle(t *testing.T) {
 		assert.Contains(t, toggle.ChildrenIds, second.Id)
 	})
 
+	t.Run("escaped summary entities decode to original text", func(t *testing.T) {
+		// The exporter HTML-escapes the summary, so </details>, <, >, & arrive
+		// as entities. The importer must decode them back and keep the child
+		// nested (the opener line must no longer contain a literal </details>).
+		md := "<details>\n<summary>Sneaky &lt;/details&gt; a &lt; b &amp;&amp; c &gt; d text</summary>\n\nHidden content\n\n</details>\n"
+
+		blocks, _, err := MarkdownToBlocks([]byte(md), "", nil)
+		require.NoError(t, err)
+
+		const want = "Sneaky </details> a < b && c > d text"
+		toggle := blockByText(blocks, want)
+		require.NotNil(t, toggle, "expected toggle with decoded summary, got: %+v", blocks)
+		assert.Equal(t, model.BlockContentText_Toggle, toggle.GetText().Style)
+
+		child := blockByText(blocks, "Hidden content")
+		require.NotNil(t, child, "expected child block, got: %+v", blocks)
+		assert.Contains(t, toggle.ChildrenIds, child.Id,
+			"child must be nested under the toggle, got: %+v", blocks)
+	})
+
 	t.Run("plain blockquote still parses to Quote", func(t *testing.T) {
 		md := "> A real quote\n"
 

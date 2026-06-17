@@ -545,7 +545,16 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 		in.listNumber = 0
 	}
 
-	buf.WriteString(in.indent)
+	// Toggle blocks are emitted as an HTML <details> element at column 0 (see the
+	// Toggle case below): the indent prefix is intentionally skipped here so the
+	// opener is not indented (a >=4-space indent would make goldmark parse the
+	// whole element as an indented code block on re-import, and a smaller indent
+	// leaks indentation characters — e.g. the figure-space from a Checkbox parent
+	// — into the child text). Nesting is reconstructed by the importer's
+	// open/close <details> stack, not by markdown indentation.
+	if text.Style != model.BlockContentText_Toggle {
+		buf.WriteString(in.indent)
+	}
 
 	switch text.Style {
 	case model.BlockContentText_Header1, model.BlockContentText_ToggleHeader1, model.BlockContentText_Title:
@@ -584,20 +593,26 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 	case model.BlockContentText_Toggle:
 		// Toggle blocks are exported as an HTML <details>/<summary> element so that
 		// they round-trip back to a Toggle on import (and don't collide with Quote's
-		// "> " blockquote marker). Children are rendered nested inside the element.
+		// "> " blockquote marker).
+		//
+		// The whole element (opener, <summary>, children, closer) is written at
+		// column 0 regardless of the toggle's parent indent: markdown indentation
+		// is NOT used to convey nesting here (the importer rebuilds it from the
+		// open/close <details> stack). Indenting the opener by >=4 spaces would make
+		// goldmark treat it as an indented code block and collapse the toggle;
+		// smaller indents would leak into child text. So children are rendered with
+		// a reset (empty) indent too.
+		//
+		// The summary text is HTML-escaped so that characters that are significant
+		// to the HTML parser ('<', '>', '&') — including a literal "</details>" in
+		// the title — survive the round-trip. The importer unescapes them back.
+		childIn := &renderState{}
 		buf.WriteString("<details>\n")
-		buf.WriteString(in.indent)
 		buf.WriteString("<summary>")
-		buf.WriteString(strings.ReplaceAll(text.Text, "\n", " "))
+		buf.WriteString(html.EscapeString(strings.ReplaceAll(text.Text, "\n", " ")))
 		buf.WriteString("</summary>\n\n")
-		// Children are rendered between the <summary> and </details> tags. Nesting
-		// is conveyed by the <details> wrapper itself, so children keep the current
-		// indent: an extra Markdown indent would either trip the 4-space
-		// indented-code-block rule or leak indentation characters into the child
-		// text on re-import.
-		h.renderChildren(buf, in, b)
+		h.renderChildren(buf, childIn, b)
 		buf.WriteString("\n")
-		buf.WriteString(in.indent)
 		buf.WriteString("</details>\n\n")
 	case model.BlockContentText_Code:
 		buf.WriteString("```\n") // nolint:errcheck
