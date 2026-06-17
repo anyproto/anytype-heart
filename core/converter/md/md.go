@@ -553,7 +553,7 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 	// — into the child text). Nesting is reconstructed by the importer's
 	// open/close <details> stack, not by markdown indentation.
 	if text.Style != model.BlockContentText_Toggle {
-		buf.WriteString(in.indent)
+		buf.WriteString(in.indent) // nolint:errcheck
 	}
 
 	switch text.Style {
@@ -607,13 +607,13 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 		// to the HTML parser ('<', '>', '&') — including a literal "</details>" in
 		// the title — survive the round-trip. The importer unescapes them back.
 		childIn := &renderState{}
-		buf.WriteString("<details>\n")
-		buf.WriteString("<summary>")
-		buf.WriteString(html.EscapeString(strings.ReplaceAll(text.Text, "\n", " ")))
-		buf.WriteString("</summary>\n\n")
+		buf.WriteString("<details>\n")                                               // nolint:errcheck
+		buf.WriteString("<summary>")                                                 // nolint:errcheck
+		buf.WriteString(html.EscapeString(strings.ReplaceAll(text.Text, "\n", " "))) // nolint:errcheck
+		buf.WriteString("</summary>\n\n")                                            // nolint:errcheck
 		h.renderChildren(buf, childIn, b)
-		buf.WriteString("\n")
-		buf.WriteString("</details>\n\n")
+		buf.WriteString("\n")             // nolint:errcheck
+		buf.WriteString("</details>\n\n") // nolint:errcheck
 	case model.BlockContentText_Code:
 		buf.WriteString("```\n") // nolint:errcheck
 		txt := strings.ReplaceAll(text.Text, "```", "\\`\\`\\`")
