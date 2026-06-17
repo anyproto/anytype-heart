@@ -38,7 +38,7 @@ func TestInjectionRelationKey(t *testing.T) {
 		details := makeDetails(TestObject{
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 		})
-		_, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: "description"})
+		_, ok := injectionRelationKey(details, false)
 		assert.False(t, ok)
 	})
 
@@ -47,7 +47,7 @@ func TestInjectionRelationKey(t *testing.T) {
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 			bundle.RelationKeyIsDeleted:      domain.Bool(true),
 		})
-		_, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
+		_, ok := injectionRelationKey(details, true)
 		assert.False(t, ok)
 	})
 
@@ -56,7 +56,7 @@ func TestInjectionRelationKey(t *testing.T) {
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 			bundle.RelationKeyIsArchived:     domain.Bool(true),
 		})
-		_, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
+		_, ok := injectionRelationKey(details, true)
 		assert.False(t, ok)
 	})
 
@@ -64,7 +64,7 @@ func TestInjectionRelationKey(t *testing.T) {
 		details := makeDetails(TestObject{
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_set)),
 		})
-		_, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
+		_, ok := injectionRelationKey(details, true)
 		assert.False(t, ok)
 	})
 
@@ -79,7 +79,7 @@ func TestInjectionRelationKey(t *testing.T) {
 			details := makeDetails(TestObject{
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(layout)),
 			})
-			key, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
+			key, ok := injectionRelationKey(details, true)
 			require.True(t, ok)
 			assert.Equal(t, bundle.RelationKeyLinks, key)
 		})
@@ -89,7 +89,7 @@ func TestInjectionRelationKey(t *testing.T) {
 		details := makeDetails(TestObject{
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
 		})
-		key, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
+		key, ok := injectionRelationKey(details, true)
 		require.True(t, ok)
 		assert.Equal(t, bundle.RelationKeyType, key)
 	})
@@ -98,7 +98,7 @@ func TestInjectionRelationKey(t *testing.T) {
 		details := makeDetails(TestObject{
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 		})
-		_, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
+		_, ok := injectionRelationKey(details, true)
 		assert.False(t, ok)
 	})
 
@@ -107,16 +107,17 @@ func TestInjectionRelationKey(t *testing.T) {
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
 			bundle.RelationKeyRelationKey:    domain.String("priority"),
 		})
-		key, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyName.String()})
+		key, ok := injectionRelationKey(details, true)
 		require.True(t, ok)
 		assert.Equal(t, domain.RelationKey("priority"), key)
 	})
 
-	t.Run("works with pluralName path", func(t *testing.T) {
+	t.Run("works with pluralName-derived name match", func(t *testing.T) {
 		details := makeDetails(TestObject{
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
 		})
-		_, ok := injectionRelationKey(details, domain.ObjectPath{RelationKey: bundle.RelationKeyPluralName.String()})
+		// NameMatch is true for both name and pluralName best docs
+		_, ok := injectionRelationKey(details, true)
 		assert.True(t, ok)
 	})
 }
@@ -188,8 +189,8 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.5},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.5, NameMatch: true},
 		}
 
 		// when
@@ -220,8 +221,8 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.5},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.5, NameMatch: true},
 		}
 		params := newFilters(t, s, []database.FilterRequest{
 			{
@@ -251,7 +252,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
 			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "description"}, Score: 0.5},
 		}
 
@@ -282,7 +283,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 		params := newFilters(t, s, []database.FilterRequest{
 			{
@@ -320,7 +321,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.5},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.5, NameMatch: true},
 		}
 		params := newFilters(t, s, []database.FilterRequest{
 			{
@@ -368,7 +369,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 		params := newFilters(t, s, []database.FilterRequest{
 			{
@@ -419,7 +420,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{typeObj, obj1, obj2})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 0.9},
+			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 0.9, NameMatch: true},
 		}
 		params := newFilters(t, s, []database.FilterRequest{
 			{
@@ -462,7 +463,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{linkedObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "linked1", RelationKey: bundle.RelationKeyName.String()}, Score: 0.8},
+			{Path: domain.ObjectPath{ObjectId: "linked1", RelationKey: bundle.RelationKeyName.String()}, Score: 0.8, NameMatch: true},
 		}
 
 		// when
@@ -527,9 +528,9 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "obj3", RelationKey: "name"}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj3", RelationKey: "name"}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -579,7 +580,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -611,9 +612,9 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, obj3})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.9},
-			{Path: domain.ObjectPath{ObjectId: "obj3", RelationKey: "name"}, Score: 0.8},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 0.9, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj3", RelationKey: "name"}, Score: 0.8, NameMatch: true},
 		}
 		params := newFilters(t, s, nil, []database.SortRequest{
 			{
@@ -652,8 +653,8 @@ func TestQueryFromFulltext(t *testing.T) {
 
 		// obj1 appears both as direct result and as injected result from tag
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -712,7 +713,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.14},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.14, NameMatch: true},
 		}
 
 		// when
@@ -810,9 +811,9 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, typeObj, directObj, otherObj})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "direct1", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.5},
-			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "direct1", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.5, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -854,8 +855,8 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "nonexistent", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "nonexistent", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -886,7 +887,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -921,7 +922,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, objects)
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when — no limit (upperBound = 0, injectLimit stays 0 = unlimited)
@@ -954,20 +955,22 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, objects)
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
-		// when — limit=3 → upperBound=3
-		// After tag1 added: len(records)=1, upperBound(3) > 1 → injectLimit = 3-1 = 2
-		// Only 2 of 5 tagged objects are injected
+		// when — the injection budget is request-independent, so all 5 tagged
+		// objects join the sequence; the page is produced by slicing it
 		recs, err := s.QueryFromFulltext(results, emptyFilters(t, s), 3, 0, "Priority")
 
-		// then — tag1 + 2 injected = 3 total
+		// then — page of 3 out of tag1 + 5 injected
 		require.NoError(t, err)
 		assert.Len(t, recs, 3)
 	})
 
-	t.Run("injection is skipped when limit is already reached by direct results", func(t *testing.T) {
+	t.Run("injection is independent of the requested page", func(t *testing.T) {
+		// Injections must not depend on limit/offset: a page-derived injection
+		// budget would make different offsets paginate different sequences,
+		// producing duplicates across pages.
 		// given
 		s := NewStoreFixture(t)
 
@@ -996,31 +999,31 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{obj1, obj2, tagObj, taggedObj})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0},
-			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "name"}, Score: 3.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "obj2", RelationKey: "name"}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		params := newFilters(t, s, nil, []database.SortRequest{
 			{RelationKey: bundle.RelationKeyName, Type: model.BlockContentDataviewSort_Asc},
 		})
+		// full sequence sorted by name: tagged1 (injected), tag1, obj1, obj2
+		want := []string{"tagged1", "tag1", "obj1", "obj2"}
 
-		// when — limit=2 → upperBound=2
-		// After obj1: len=1, 2>1 → injectLimit=1 (basic, no linkers → no injection)
-		// After obj2: len=2, !(2>2), 2>0 → continue (injection skipped)
-		// After tag1: len=3, !(2>3), 2>0 → continue (injection skipped)
-		// records=[obj1,obj2,tag1], sorted by name=[tag1,obj1,obj2], sliced to 2=[tag1,obj1]
-		// tagged1 would sort first ("AAA") if injected, but injection was skipped
-		recs, err := s.QueryFromFulltext(results, params, 2, 0, "test")
-
-		// then
+		// when: pages with different limits/offsets
+		page1, err := s.QueryFromFulltext(results, params, 2, 0, "test")
 		require.NoError(t, err)
-		require.Len(t, recs, 2)
-		gotIds := []string{
-			recs[0].Details.GetString(bundle.RelationKeyId),
-			recs[1].Details.GetString(bundle.RelationKeyId),
+		page2, err := s.QueryFromFulltext(results, params, 2, 2, "test")
+		require.NoError(t, err)
+
+		// then: pages are consistent prefixes/slices of the same sequence
+		var got []string
+		for _, recs := range [][]database.Record{page1, page2} {
+			for _, rec := range recs {
+				got = append(got, rec.Details.GetString(bundle.RelationKeyId))
+			}
 		}
-		assert.NotContains(t, gotIds, "tagged1")
+		assert.Equal(t, want, got)
 	})
 
 	t.Run("higher-scoring group wins injection budget deterministically", func(t *testing.T) {
@@ -1052,8 +1055,8 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, typeObj, taggedObj, typedObj})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 2.0},
-			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 2.0, NameMatch: true},
+			{Path: domain.ObjectPath{ObjectId: "type1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when — limit=3: tag1 and type1 fill 2 slots, budget=1; the "color" group
@@ -1092,7 +1095,7 @@ func TestQueryFromFulltext(t *testing.T) {
 		s.AddObjects(t, []TestObject{tagObj, obj1})
 
 		results := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0},
+			{Path: domain.ObjectPath{ObjectId: "tag1", RelationKey: bundle.RelationKeyName.String()}, Score: 1.0, NameMatch: true},
 		}
 
 		// when
@@ -1147,7 +1150,7 @@ func TestQueryFromFulltext_FinalScore(t *testing.T) {
 
 		score := 2.77
 		nameResults := []database.FulltextResult{
-			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: bundle.RelationKeyName.String()}, Score: score},
+			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: bundle.RelationKeyName.String()}, Score: score, NameMatch: true},
 		}
 		otherResults := []database.FulltextResult{
 			{Path: domain.ObjectPath{ObjectId: "obj1", RelationKey: "description"}, Score: score},

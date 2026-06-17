@@ -53,6 +53,8 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockSpace.EXPECT().IsOneToOne().Return(false).Maybe()
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
+		fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Once()
+		fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, acl.Head().Id).Return(nil).Once()
 		fx.mockStatus.EXPECT().SetOwner(acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
 			RunAndReturn(func(_ context.Context, space clientspace.Space, state list.AccountState) error {
@@ -95,6 +97,8 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().SetOwner(a.ActualAccounts()["a"].Acl.AclState().Identity().Account(), mock.Anything).Return(nil)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
+		fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Once()
+		fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, acl.Head().Id).Return(nil).Once()
 		var callCounter atomic.Bool
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
 			RunAndReturn(func(_ context.Context, space clientspace.Space, state list.AccountState) error {
@@ -142,6 +146,8 @@ func TestAclObjectManager(t *testing.T) {
 		fx.mockSpace.EXPECT().IsOneToOne().Return(false).Maybe()
 		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
 		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
+		fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return("").Once()
+		fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, acl.Head().Id).Return(nil).Once()
 		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).
 			RunAndReturn(func(_ context.Context, space clientspace.Space, state list.AccountState) error {
 				require.True(t, state.PubKey.Equals(a.ActualAccounts()["a"].Keys.SignKey.GetPublic()))
@@ -160,6 +166,75 @@ func TestAclObjectManager(t *testing.T) {
 		defer fx.aclObjectManager.mx.Unlock()
 		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
 		require.Equal(t, fx.aclObjectManager, acl.updater)
+	})
+	t.Run("skip member processing when persisted acl head matches", func(t *testing.T) {
+		a := list.NewAclExecutor("spaceId")
+		cmds := []string{
+			"a.init::a",
+			"a.invite::invId",
+			"b.join::invId",
+			"a.approve::b,r",
+		}
+		for _, cmd := range cmds {
+			err := a.Execute(cmd)
+			require.NoError(t, err)
+		}
+		acl := &syncAclStub{AclList: a.ActualAccounts()["a"].Acl}
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockSpace.EXPECT().Id().Return("spaceId")
+		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("")
+		fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return(acl.Head().Id).Once()
+		fx.mockParticipantWatcher.EXPECT().WatchPersistedParticipants(mock.Anything, fx.mockSpace).Return(nil).Once()
+		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+		fx.mockAclNotification.EXPECT().AddRecords(acl, mock.Anything, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
+		// no UpdateParticipantFromAclState / WatchParticipant / SetOwner / SetAclInfo
+		// expectations: the strict mocks verify the per-member path is not entered
+		fx.run(t)
+		<-fx.aclObjectManager.wait
+		fx.aclObjectManager.mx.Lock()
+		defer fx.aclObjectManager.mx.Unlock()
+		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
+		require.Equal(t, fx.aclObjectManager, acl.updater)
+	})
+	t.Run("fall back to full processing when persisted watch fails", func(t *testing.T) {
+		a := list.NewAclExecutor("spaceId")
+		cmds := []string{
+			"a.init::a",
+		}
+		for _, cmd := range cmds {
+			err := a.Execute(cmd)
+			require.NoError(t, err)
+		}
+		acl := &syncAclStub{AclList: a.ActualAccounts()["a"].Acl}
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.mockLoader.EXPECT().WaitLoad(mock.Anything).Return(fx.mockSpace, nil)
+		fx.mockSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockSpace.EXPECT().Id().Return("spaceId")
+		fx.mockSpace.EXPECT().IsOneToOne().Return(false).Maybe()
+		fx.mockCommonSpace.EXPECT().Acl().AnyTimes().Return(acl)
+		fx.mockCommonSpace.EXPECT().Id().AnyTimes().Return("spaceId")
+		fx.mockStatus.EXPECT().GetLatestAclHeadId().Return("").Times(2)
+		fx.mockParticipantWatcher.EXPECT().GetProcessedAclHeadId(mock.Anything, fx.mockSpace).Return(acl.Head().Id).Once()
+		fx.mockParticipantWatcher.EXPECT().WatchPersistedParticipants(mock.Anything, fx.mockSpace).Return(context.DeadlineExceeded).Once()
+		fx.mockParticipantWatcher.EXPECT().SetProcessedAclHeadId(mock.Anything, fx.mockSpace, acl.Head().Id).Return(nil).Once()
+		fx.mockStatus.EXPECT().SetOwner(acl.AclState().Identity().Account(), mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().UpdateParticipantFromAclState(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockParticipantWatcher.EXPECT().WatchParticipant(mock.Anything, fx.mockSpace, mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().SetAclInfo(true, nil, nil, mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().SetMyParticipantStatus(mock.Anything).Return(nil)
+		fx.mockStatus.EXPECT().GetLocalStatus().Return(spaceinfo.LocalStatusOk)
+		fx.mockAclNotification.EXPECT().AddRecords(acl, list.AclPermissionsOwner, "spaceId", spaceinfo.AccountStatusActive, spaceinfo.LocalStatusOk)
+		fx.run(t)
+		<-fx.aclObjectManager.wait
+		fx.aclObjectManager.mx.Lock()
+		defer fx.aclObjectManager.mx.Unlock()
+		require.Equal(t, acl.Head().Id, fx.aclObjectManager.lastIndexed)
 	})
 }
 

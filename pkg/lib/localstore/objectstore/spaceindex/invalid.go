@@ -231,6 +231,14 @@ func (s *invalidStore) ListLastIndexedHeadsHashes(ctx context.Context) (map[stri
 	return nil, s.err
 }
 
+func (s *invalidStore) GetReconcileMarker(ctx context.Context, id string) (marker string, err error) {
+	return "", s.err
+}
+
+func (s *invalidStore) SaveReconcileMarker(ctx context.Context, id string, marker string) error {
+	return s.err
+}
+
 func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {
 	return s.err
 }

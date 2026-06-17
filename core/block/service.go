@@ -451,7 +451,8 @@ func (s *Service) GetPriorityIds(spaceId string) []string {
 			return true
 		})
 	}
-	ids := append(chats, discussions...)
+	chats = append(chats, discussions...)
+	ids := chats
 	for _, opened := range s.GetOpenedObjects() {
 		if opened.Value != spaceId {
 			continue
