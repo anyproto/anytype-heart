@@ -163,6 +163,42 @@ func (r *blocksRenderer) CloseToggleBlock() {
 	r.CloseTextBlock(model.BlockContentText_Toggle)
 }
 
+// AppendChildBlocks adds an already-parsed block tree (e.g. the inner content of
+// a self-contained <details>...</details> HTML block parsed via MarkdownToBlocks)
+// to the output and nests its top-level blocks under the currently open
+// container block (the nearest opened block that can hold children, i.e. the
+// Toggle we just opened). The passed-in blocks already encode their own internal
+// parent/child relationships via ChildrenIds; only the roots (blocks not
+// referenced as a child of any other passed-in block) are attached to the open
+// container so the whole subtree nests correctly.
+func (r *blocksRenderer) AppendChildBlocks(children []*model.Block) {
+	if len(children) == 0 {
+		return
+	}
+
+	var parentBlock *textBlock
+	for i := len(r.openedTextBlocks) - 1; i >= 0; i-- {
+		if isBlockCanHaveChild(r.openedTextBlocks[i].Block) {
+			parentBlock = r.openedTextBlocks[i]
+			break
+		}
+	}
+
+	referenced := make(map[string]bool)
+	for _, b := range children {
+		for _, cID := range b.ChildrenIds {
+			referenced[cID] = true
+		}
+	}
+
+	for _, b := range children {
+		r.blocks = append(r.blocks, b)
+		if parentBlock != nil && !referenced[b.Id] {
+			parentBlock.ChildrenIds = append(parentBlock.ChildrenIds, b.Id)
+		}
+	}
+}
+
 func (r *blocksRenderer) GetBlocks() []*model.Block {
 	r.blocks = preprocessBlocks(r.blocks)
 	return r.blocks
@@ -363,7 +399,20 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	}
 
 	if parentBlock != nil {
+		// A Toggle parent must never absorb a child's text. A Toggle gets its own
+		// title from the <summary> (set on OpenToggleBlock); its children always
+		// arrive as separate blocks to be nested. When the summary is empty the
+		// Toggle's Text == "", which would otherwise trigger the merge below and
+		// steal the first child's text, dropping the nesting (M2). Other container
+		// styles (Quote/list/checkbox) legitimately rely on this merge to lift the
+		// text of their first paragraph child into themselves, so we only special-
+		// case Toggle here.
+		parentIsToggle := false
+		if pt := parentBlock.GetText(); pt != nil && pt.Style == model.BlockContentText_Toggle {
+			parentIsToggle = true
+		}
 		if parentText := parentBlock.GetText(); parentText != nil && parentText.Text == "" &&
+			!parentIsToggle &&
 			!isBlockCanHaveChild(closingBlock.Block) && t.Text != "" {
 			parentText.Marks = t.Marks
 			parentText.Checked = t.Checked

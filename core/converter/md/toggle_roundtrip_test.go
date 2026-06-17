@@ -221,6 +221,37 @@ func TestMD_SiblingAfterToggleRoundTrip(t *testing.T) {
 		"sibling must NOT be nested under the toggle, parsed:\n%+v", parsed)
 }
 
+// M2: an empty-summary (untitled) Toggle must round-trip with its child still
+// nested. The exporter emits <summary></summary>, and previously the importer's
+// parent-merge branch absorbed the first child's text into the empty toggle and
+// dropped the nesting.
+func TestMD_EmptySummaryToggleRoundTrip(t *testing.T) {
+	blocks := map[string]simple.Block{
+		"root":    simple.New(&model.Block{Id: "root", ChildrenIds: []string{"toggle1"}}),
+		"toggle1": newTextBlock("toggle1", "", model.BlockContentText_Toggle, "child1"),
+		"child1":  newTextBlock("child1", "Hidden content", model.BlockContentText_Paragraph),
+	}
+
+	md, parsed := roundTrip(t, blocks)
+	assert.Contains(t, md, "<summary></summary>", "exporter must emit an empty summary, got:\n%s", md)
+
+	var toggle *model.Block
+	for _, b := range parsed {
+		if tb := b.GetText(); tb != nil && tb.Style == model.BlockContentText_Toggle {
+			toggle = b
+			break
+		}
+	}
+	require.NotNil(t, toggle, "expected a toggle block, parsed:\n%+v", parsed)
+	assert.Equal(t, "", toggle.GetText().Text,
+		"empty-summary toggle must stay empty (no absorbed child text), parsed:\n%+v", parsed)
+
+	child := findBlockByText(parsed, "Hidden content")
+	require.NotNil(t, child, "expected the child block, parsed:\n%+v", parsed)
+	assert.Contains(t, toggle.ChildrenIds, child.Id,
+		"child must remain nested under the empty-summary toggle, parsed:\n%+v", parsed)
+}
+
 // TestMD_ToggleRoundTrip is the core TDD test: build a Toggle+child tree,
 // render to markdown, parse it back via anymark, and assert the result is a
 // Toggle with the child nested under it.
