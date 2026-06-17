@@ -576,11 +576,29 @@ func (h *MD) renderText(buf writer, in *renderState, b *model.Block) {
 		}
 		renderText()
 		h.renderChildren(buf, in.AddSpace(), b)
-	case model.BlockContentText_Quote, model.BlockContentText_Toggle:
+	case model.BlockContentText_Quote:
 		buf.WriteString("> ")
 		buf.WriteString(strings.ReplaceAll(text.Text, "\n", "   \n> "))
 		buf.WriteString("   \n\n")
 		h.renderChildren(buf, in, b)
+	case model.BlockContentText_Toggle:
+		// Toggle blocks are exported as an HTML <details>/<summary> element so that
+		// they round-trip back to a Toggle on import (and don't collide with Quote's
+		// "> " blockquote marker). Children are rendered nested inside the element.
+		buf.WriteString("<details>\n")
+		buf.WriteString(in.indent)
+		buf.WriteString("<summary>")
+		buf.WriteString(strings.ReplaceAll(text.Text, "\n", " "))
+		buf.WriteString("</summary>\n\n")
+		// Children are rendered between the <summary> and </details> tags. Nesting
+		// is conveyed by the <details> wrapper itself, so children keep the current
+		// indent: an extra Markdown indent would either trip the 4-space
+		// indented-code-block rule or leak indentation characters into the child
+		// text on re-import.
+		h.renderChildren(buf, in, b)
+		buf.WriteString("\n")
+		buf.WriteString(in.indent)
+		buf.WriteString("</details>\n\n")
 	case model.BlockContentText_Code:
 		buf.WriteString("```\n") // nolint:errcheck
 		txt := strings.ReplaceAll(text.Text, "```", "\\`\\`\\`")

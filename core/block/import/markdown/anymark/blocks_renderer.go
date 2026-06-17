@@ -137,6 +137,32 @@ func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle, fie
 	r.openedTextBlocks = append(r.openedTextBlocks, &textBlock{Block: newBlock})
 }
 
+// OpenToggleBlock opens a Toggle text block (e.g. from a <details>/<summary>
+// element) with its summary text already set. The summary text is stored in the
+// model Text field (not only the text buffer) so that subsequently closed child
+// blocks are appended as children instead of having their text merged into the
+// still-empty toggle (see CloseTextBlock's parent-merge branch).
+func (r *blocksRenderer) OpenToggleBlock(summary string) {
+	r.curStyledBlock = model.BlockContentText_Toggle
+
+	newBlock := model.Block{
+		Id: bson.NewObjectId().Hex(),
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  summary,
+				Style: model.BlockContentText_Toggle,
+			},
+		},
+	}
+
+	r.openedTextBlocks = append(r.openedTextBlocks, &textBlock{Block: newBlock, textBuffer: summary})
+}
+
+// CloseToggleBlock closes the most recently opened Toggle block.
+func (r *blocksRenderer) CloseToggleBlock() {
+	r.CloseTextBlock(model.BlockContentText_Toggle)
+}
+
 func (r *blocksRenderer) GetBlocks() []*model.Block {
 	r.blocks = preprocessBlocks(r.blocks)
 	return r.blocks
