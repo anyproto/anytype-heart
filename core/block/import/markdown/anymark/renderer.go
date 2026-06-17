@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -154,8 +155,64 @@ func (r *Renderer) renderHTMLBlock(_ util.BufWriter,
 	source []byte,
 	node ast.Node,
 	entering bool) (ast.WalkStatus, error) {
-	// Do not render
+	if !entering {
+		return ast.WalkContinue, nil
+	}
+
+	raw := rawHTMLBlockText(source, node)
+
+	// A <details> element (with a <summary>) is the export encoding for a Toggle
+	// block. We open a Toggle here so the blocks parsed between this opening
+	// <details> and the closing </details> become its children, then close it on
+	// </details>. This mirrors the md exporter's <details>/<summary> output.
+	if summary, ok := parseDetailsSummary(raw); ok {
+		r.OpenToggleBlock(summary)
+		return ast.WalkContinue, nil
+	}
+	if isDetailsClose(raw) {
+		r.CloseToggleBlock()
+		return ast.WalkContinue, nil
+	}
+
+	// Other HTML blocks are not rendered.
 	return ast.WalkContinue, nil
+}
+
+func rawHTMLBlockText(source []byte, node ast.Node) string {
+	var buf bytes.Buffer
+	lines := node.Lines()
+	for i := 0; i < lines.Len(); i++ {
+		line := lines.At(i)
+		buf.Write(line.Value(source))
+	}
+	return buf.String()
+}
+
+var (
+	reDetailsOpen = regexp.MustCompile(`(?is)<details\b[^>]*>`)
+	reSummary     = regexp.MustCompile(`(?is)<summary\b[^>]*>(.*?)</summary>`)
+	reDetailsEnd  = regexp.MustCompile(`(?is)</details\s*>`)
+	reHTMLTag     = regexp.MustCompile(`(?is)<[^>]+>`)
+)
+
+// parseDetailsSummary reports whether raw opens a (not self-closed) <details>
+// element, and if so returns the plain text of its <summary>, if present. A
+// block that both opens and closes <details> is not treated as an opener,
+// because there would be no following children to nest and no separate close.
+func parseDetailsSummary(raw string) (string, bool) {
+	if !reDetailsOpen.MatchString(raw) || reDetailsEnd.MatchString(raw) {
+		return "", false
+	}
+	summary := ""
+	if m := reSummary.FindStringSubmatch(raw); len(m) > 1 {
+		summary = strings.TrimSpace(reHTMLTag.ReplaceAllString(m[1], ""))
+		summary = Unescape(summary)
+	}
+	return summary, true
+}
+
+func isDetailsClose(raw string) bool {
+	return reDetailsEnd.MatchString(raw) && !reDetailsOpen.MatchString(raw)
 }
 
 func (r *Renderer) renderList(_ util.BufWriter,
