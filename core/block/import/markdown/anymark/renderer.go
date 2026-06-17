@@ -162,12 +162,46 @@ func (r *Renderer) renderHTMLBlock(_ util.BufWriter,
 
 	raw := rawHTMLBlockText(source, node)
 
+	// A self-contained <details>...</details> block (no blank line between the
+	// <summary> and the children) is emitted by goldmark as a SINGLE HTMLBlock
+	// containing the whole element. Parse it fully here: open a Toggle from the
+	// <summary>, parse the inner content (between </summary> and the matching
+	// </details>) as Markdown into child blocks, nest them, then close the Toggle.
+	// Without this the block would be silently dropped (M3).
+	if summary, inner, ok := parseSelfContainedDetails(raw); ok {
+		r.OpenToggleBlock(summary)
+		inner = strings.TrimSpace(inner)
+		if inner != "" {
+			children, _, err := MarkdownToBlocks([]byte(inner), r.GetBaseFilepath(), r.GetAllFileShortPaths())
+			if err != nil {
+				log.Errorf("failed to parse inner content of self-contained <details>: %v", err)
+			} else {
+				r.AppendChildBlocks(children)
+			}
+		}
+		r.CloseToggleBlock()
+		return ast.WalkContinue, nil
+	}
+
 	// A <details> element (with a <summary>) is the export encoding for a Toggle
 	// block. We open a Toggle here so the blocks parsed between this opening
 	// <details> and the closing </details> become its children, then close it on
 	// </details>. This mirrors the md exporter's <details>/<summary> output.
 	if summary, ok := parseDetailsSummary(raw); ok {
 		r.OpenToggleBlock(summary)
+		// goldmark folds a tight first line of children into the opener HTMLBlock
+		// (e.g. "<details>\n<summary>S</summary>\nFirst\n"). That trailing content
+		// after </summary> would otherwise be lost, so parse it as children here.
+		// Subsequent loosely-separated blocks still nest via the open Toggle and
+		// the closing </details> still closes it.
+		if inner := strings.TrimSpace(detailsOpenerTrailingContent(raw)); inner != "" {
+			children, _, err := MarkdownToBlocks([]byte(inner), r.GetBaseFilepath(), r.GetAllFileShortPaths())
+			if err != nil {
+				log.Errorf("failed to parse trailing content of <details> opener: %v", err)
+			} else {
+				r.AppendChildBlocks(children)
+			}
+		}
 		return ast.WalkContinue, nil
 	}
 	if isDetailsClose(raw) {
@@ -218,6 +252,89 @@ func parseDetailsSummary(raw string) (string, bool) {
 
 func isDetailsClose(raw string) bool {
 	return reDetailsEnd.MatchString(raw) && !reDetailsOpen.MatchString(raw)
+}
+
+// parseSelfContainedDetails reports whether raw is a single self-contained
+// <details>...</details> block (it both opens and closes <details>). If so it
+// returns the decoded <summary> text and the inner content between the
+// </summary> and the </details> that closes the OUTER <details> (depth-aware, so
+// a nested <details> inside the content is kept intact for recursive parsing).
+func parseSelfContainedDetails(raw string) (summary string, inner string, ok bool) {
+	openLoc := reDetailsOpen.FindStringIndex(raw)
+	if openLoc == nil || !reDetailsEnd.MatchString(raw) {
+		return "", "", false
+	}
+
+	// Decode the (HTML-escaped) summary, mirroring parseDetailsSummary.
+	if m := reSummary.FindStringSubmatch(raw); len(m) > 1 {
+		summary = strings.TrimSpace(html.UnescapeString(m[1]))
+	}
+
+	// Locate the body start: just after the first </summary> if present,
+	// otherwise just after the opening <details ...> tag.
+	bodyStart := openLoc[1]
+	if sumLoc := reSummary.FindStringIndex(raw); sumLoc != nil {
+		bodyStart = sumLoc[1]
+	}
+
+	// Find the </details> that closes the OUTER <details> by tracking depth over
+	// the remaining open/close tags after the body start.
+	body := raw[bodyStart:]
+	closeRel := matchingDetailsClose(body)
+	if closeRel < 0 {
+		// Shouldn't happen given reDetailsEnd matched, but be safe.
+		return summary, strings.TrimSpace(body), true
+	}
+	return summary, body[:closeRel], true
+}
+
+// detailsOpenerTrailingContent returns any content that appears after the
+// </summary> in a <details> opener HTMLBlock that does NOT contain a </details>.
+// goldmark folds a tight first child line into this opener block; that content
+// would otherwise be lost.
+func detailsOpenerTrailingContent(raw string) string {
+	sumLoc := reSummary.FindStringIndex(raw)
+	if sumLoc == nil {
+		return ""
+	}
+	return raw[sumLoc[1]:]
+}
+
+// matchingDetailsClose returns the byte offset (within s) of the </details> tag
+// that closes the outer <details>, accounting for nested <details> elements. It
+// scans for <details ...> openers and </details> closers, incrementing/
+// decrementing depth; the close at depth 0 is the match. Returns -1 if none.
+func matchingDetailsClose(s string) int {
+	type tok struct {
+		idx   int
+		end   int
+		isEnd bool
+	}
+	var toks []tok
+	for _, loc := range reDetailsOpen.FindAllStringIndex(s, -1) {
+		toks = append(toks, tok{idx: loc[0], end: loc[1], isEnd: false})
+	}
+	for _, loc := range reDetailsEnd.FindAllStringIndex(s, -1) {
+		toks = append(toks, tok{idx: loc[0], end: loc[1], isEnd: true})
+	}
+	// Sort tokens by position (simple insertion sort; lists are tiny).
+	for i := 1; i < len(toks); i++ {
+		for j := i; j > 0 && toks[j-1].idx > toks[j].idx; j-- {
+			toks[j-1], toks[j] = toks[j], toks[j-1]
+		}
+	}
+	depth := 0
+	for _, tk := range toks {
+		if tk.isEnd {
+			if depth == 0 {
+				return tk.idx
+			}
+			depth--
+		} else {
+			depth++
+		}
+	}
+	return -1
 }
 
 func (r *Renderer) renderList(_ util.BufWriter,
