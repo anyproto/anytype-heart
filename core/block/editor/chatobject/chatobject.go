@@ -99,6 +99,7 @@ type storeObject struct {
 	subscription            chatsubscription.Manager
 	crdtDb                  anystore.DB
 	chatHandler             *ChatHandler
+	readCore                *readCoreManager
 	repository              chatrepository.Repository
 	detailsComponent        *detailsComponent
 	statService             debugstat.StatService
@@ -255,6 +256,11 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		return fmt.Errorf("get subscription manager: %w", err)
 	}
 
+	// The cache manager is inert until the causal-ordinal shadow runs its
+	// first walk (no db collection is created, the handler hooks are cheap
+	// no-ops), so it costs nothing while readCoreShadowEnabled is off.
+	s.readCore = newReadCoreManager(s.crdtDb, storeSource.Id(), s.accountService.AccountID())
+
 	s.chatHandler = &ChatHandler{
 		repository:            s.repository,
 		subscription:          s.subscription,
@@ -264,6 +270,7 @@ func (s *storeObject) Init(ctx *smartblock.InitContext) error {
 		myParticipantId:       myParticipantId,
 		aclList:               storeSource.AclList(),
 		reactionsCounterEpoch: s.reactionsCounterEpoch,
+		readCore:              s.readCore,
 	}
 
 	stateStore, err := storestate.New(ctx.Ctx, s.Id(), s.crdtDb, s.chatHandler, storestate.DefaultHandler{Name: EditorCollectionName, ModifyMode: storestate.ModifyModeUpsert})

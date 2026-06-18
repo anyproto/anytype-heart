@@ -174,6 +174,14 @@ type Repository interface {
 	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
 	GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error)
+	// CountCoreUnread counts unread per the causal-ordinal CORE decomposition
+	// (Option D spec Theorem 1): counted live messages past the frontier cut
+	// (indexed _o.id range) plus counted live band members. Counted = peer
+	// (creator != myIdentity) matching the counter's filter — explicit here,
+	// unlike the bool path where own messages are excluded by being inserted
+	// read=true. Empty maxFrontierOrderId means no resolved frontier: every
+	// counted message is unread and the band must be empty.
+	CountCoreUnread(ctx context.Context, counterType chatmodel.CounterType, maxFrontierOrderId string, bandCandidates []string, myIdentity string) (int, error)
 	GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error)
 	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) ([]string, error)
 	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
@@ -426,6 +434,45 @@ func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatm
 		msgIds = append(msgIds, doc.Value().GetString("id"))
 	}
 	return msgIds, iter.Err()
+}
+
+func (s *repository) CountCoreUnread(ctx context.Context, counterType chatmodel.CounterType, maxFrontierOrderId string, bandCandidates []string, myIdentity string) (int, error) {
+	handler := newReadHandler(counterType)
+	counted := query.And{
+		query.Not{Filter: query.Key{Path: []string{chatmodel.CreatorKey}, Filter: query.NewComp(query.CompOpEq, myIdentity)}},
+	}
+	if mf := handler.getMessagesFilter(); mf != nil {
+		counted = append(counted, mf)
+	}
+
+	tail := counted
+	if maxFrontierOrderId != "" {
+		tail = append(append(query.And{}, counted...),
+			query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGt, maxFrontierOrderId)})
+	}
+	count, err := s.collection.Find(tail).Count(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("count tail: %w", err)
+	}
+
+	// Band members exist only below a resolved cut; with no cut the tail above
+	// already covered everything.
+	if maxFrontierOrderId != "" && len(bandCandidates) > 0 {
+		arena := s.arenaPool.Get()
+		defer s.arenaPool.Put(arena)
+		vals := make([]*anyenc.Value, 0, len(bandCandidates))
+		for _, id := range bandCandidates {
+			vals = append(vals, arena.NewString(id))
+		}
+		band := append(append(query.And{}, counted...),
+			query.Key{Path: []string{"id"}, Filter: query.NewInValue(vals...)})
+		bandCount, err := s.collection.Find(band).Count(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("count band: %w", err)
+		}
+		count += bandCount
+	}
+	return count, nil
 }
 
 func (s *repository) GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error) {

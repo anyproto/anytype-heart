@@ -125,6 +125,7 @@ func (s *storeObject) markReadMessages(changeIds []string, counterType chatmodel
 		s.subscription.Flush(false)
 		s.triggerParentUnreadUpdate()
 	}
+	s.shadowReadCoreCount(s.componentCtx, counterType)
 	return nil
 }
 

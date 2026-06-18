@@ -186,6 +186,31 @@ func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []st
 	return
 }
 
+// ReadCoreSnapshot implements source.ReadCoreSnapshotProvider: it hands f the
+// causal-ordinal read model's inputs for one diff manager — seen heads
+// (frontier), current tree heads, and change-meta resolution — all under the
+// object-tree lock, mirroring the seen-heads KV subscription's locking
+// discipline (tree storage reads share a parser and are only safe under the
+// tree lock). Returns false when the diff manager is absent or uninitialized.
+func (s *store) ReadCoreSnapshot(name string, f func(frontier []string, localHeads []string, resolve func(id string) (prevIds []string, orderId string, ok bool))) bool {
+	manager, ok := s.diffManagers[name]
+	if !ok || manager.diffManager == nil {
+		return false
+	}
+	s.ObjectTree.Lock()
+	defer s.ObjectTree.Unlock()
+	storage := s.ObjectTree.Storage()
+	ctx := context.Background()
+	f(manager.diffManager.SeenHeads(), s.ObjectTree.Heads(), func(id string) ([]string, string, bool) {
+		ch, err := storage.Get(ctx, id)
+		if err != nil {
+			return nil, "", false
+		}
+		return ch.PrevIds, ch.OrderId, true
+	})
+	return true
+}
+
 func (s *store) ReadDoc(ctx context.Context, receiver source.ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s.receiver = receiver
 	setter, ok := s.ObjectTree.(synctree.ListenerSetter)
