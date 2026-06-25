@@ -177,6 +177,17 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, spaceViewP
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	// Resubscribe with an existing subId replaces the previous subscription:
+	// close it first so its run loop, queue, and per-space subscriptions are
+	// released. Otherwise the old instance keeps broadcasting under the same
+	// subId (leak + duplicate events). close() does not take s.lock. (GO-7336)
+	if existing, ok := s.subscriptions[req.SubId]; ok {
+		if cerr := existing.close(); cerr != nil {
+			log.Error("close existing subscription on resubscribe",
+				zap.String("subId", req.SubId), zap.Error(cerr))
+		}
+		delete(s.subscriptions, req.SubId)
+	}
 	var loadedIds, pendingIds []string
 	for spaceViewId, details := range s.spaceViewDetails {
 		if spaceViewPredicate(details) {

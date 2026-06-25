@@ -1086,3 +1086,39 @@ func givenSpaceViewObjectWithCreator(id string, targetSpaceId string, spaceStatu
 		bundle.RelationKeyCreator:            domain.String(creator),
 	}
 }
+
+func TestSubscribe_resubscribeReplacesOldSub(t *testing.T) {
+	fx := newFixture(t)
+
+	fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+		givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+	})
+
+	req := givenRequest()
+	req.SubId = "fixed-sub-id"
+	_, err := fx.Subscribe(req, NoOpPredicate())
+	require.NoError(t, err)
+
+	fx.service.lock.Lock()
+	oldSub := fx.service.subscriptions[req.SubId]
+	fx.service.lock.Unlock()
+	require.NotNil(t, oldSub)
+	require.NoError(t, oldSub.ctx.Err(), "old sub must be live before resubscribe")
+
+	// resubscribe with the SAME subId
+	_, err = fx.Subscribe(req, NoOpPredicate())
+	require.NoError(t, err)
+
+	fx.service.lock.Lock()
+	newSub := fx.service.subscriptions[req.SubId]
+	n := len(fx.service.subscriptions)
+	fx.service.lock.Unlock()
+
+	require.NotNil(t, newSub)
+	assert.NotSame(t, oldSub, newSub, "resubscribe must create a fresh sub instance")
+	assert.Equal(t, 1, n, "exactly one sub registered for the subId")
+	// the previous sub must be closed (ctx cancelled) so its run loop, queue,
+	// and per-space subscriptions are released instead of leaking and
+	// double-broadcasting under the same subId.
+	assert.Error(t, oldSub.ctx.Err(), "old sub must be closed on resubscribe")
+}
