@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/cheggaaa/mb/v3"
 	"go.uber.org/zap"
@@ -37,6 +38,11 @@ type crossSpaceSubscription struct {
 	ctxCancel context.CancelFunc
 	queue     *mb.MB[*pb.EventMessage]
 
+	clk          clock
+	createdAt    time.Time
+	initialGrace time.Duration
+	window       time.Duration
+
 	lock sync.Mutex
 	// spaceId => subId (only finalized, real subscriptions)
 	perSpaceSubscriptions map[string]string
@@ -52,7 +58,7 @@ type crossSpaceSubscription struct {
 	totalCounts map[string]int64
 }
 
-func newCrossSpaceSubscription(subId string, request subscriptionservice.SubscribeRequest, eventSender event.Sender, subscriptionService subscriptionservice.Service, loadedSpaceIds []string, pendingSpaceIds []string, predicate Predicate) (*crossSpaceSubscription, *subscriptionservice.SubscribeResponse, error) {
+func newCrossSpaceSubscription(subId string, request subscriptionservice.SubscribeRequest, eventSender event.Sender, subscriptionService subscriptionservice.Service, loadedSpaceIds []string, pendingSpaceIds []string, predicate Predicate, clk clock, grace, window time.Duration) (*crossSpaceSubscription, *subscriptionservice.SubscribeResponse, error) {
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	s := &crossSpaceSubscription{
 		ctx:                   ctx,
@@ -67,6 +73,9 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 		pendingSpaceIds:       make(map[string]struct{}, len(pendingSpaceIds)),
 		totalCounts:           map[string]int64{},
 		queue:                 mb.New[*pb.EventMessage](0),
+		clk:                   clk,
+		initialGrace:          grace,
+		window:                window,
 	}
 	for _, spaceId := range pendingSpaceIds {
 		s.pendingSpaceIds[spaceId] = struct{}{}
@@ -107,10 +116,24 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 	}
 	wg.Wait()
 
+	// anchor the grace as late as the server can — close to when the response
+	// is sent — so the initial-grace budget is not eaten by the synchronous
+	// loaded-space subscribes above.
+	s.createdAt = s.clk.now()
 	return s, aggregatedResp, resErr
 }
 
 func (s *crossSpaceSubscription) run(internalQueue *mb.MB[*pb.EventMessage]) {
+	if internalQueue != nil {
+		s.runNested(internalQueue)
+		return
+	}
+	s.runBroadcast()
+}
+
+// runNested forwards each patched message to the parent queue (unchanged
+// behavior for nested cross-space subscriptions).
+func (s *crossSpaceSubscription) runNested(internalQueue *mb.MB[*pb.EventMessage]) {
 	for {
 		msgs, err := s.queue.Wait(s.ctx)
 		if errors.Is(err, context.Canceled) {
@@ -121,18 +144,63 @@ func (s *crossSpaceSubscription) run(internalQueue *mb.MB[*pb.EventMessage]) {
 		}
 		for _, msg := range msgs {
 			s.patchEvent(msg)
-			if internalQueue != nil {
-				err = internalQueue.Add(s.ctx, msg)
-				if err != nil {
-					log.Error("add to internal queue", zap.Error(err), zap.String("subId", s.subId))
-				}
+			if aerr := internalQueue.Add(s.ctx, msg); aerr != nil {
+				log.Error("add to internal queue", zap.Error(aerr), zap.String("subId", s.subId))
 			}
 		}
+	}
+}
 
-		if internalQueue == nil {
-			s.eventSender.Broadcast(&pb.Event{
-				Messages: msgs,
-			})
+// runBroadcast coalesces patched messages and broadcasts them, holding the
+// first emission for the initial grace. A drainer goroutine converts the
+// blocking queue into a channel so the loop can select message-vs-timer.
+func (s *crossSpaceSubscription) runBroadcast() {
+	msgCh := make(chan []*pb.EventMessage)
+	go s.drain(msgCh)
+
+	c := newCoalescer(s.createdAt, s.initialGrace, s.window, maxFlushSize)
+	flush := func() {
+		for _, batch := range c.ready(s.clk.now()) {
+			s.eventSender.Broadcast(&pb.Event{Messages: batch})
+		}
+	}
+	for {
+		var timerC <-chan time.Time
+		if d := c.nextDeadline(); !d.IsZero() {
+			timerC = s.clk.after(d.Sub(s.clk.now()))
+		}
+		select {
+		case <-s.ctx.Done():
+			return
+		case msgs, ok := <-msgCh:
+			if !ok {
+				return
+			}
+			for _, m := range msgs {
+				s.patchEvent(m)
+			}
+			c.push(s.clk.now(), msgs)
+			flush()
+		case <-timerC:
+			flush()
+		}
+	}
+}
+
+// drain reads bounded batches from the queue and hands them to runBroadcast,
+// stopping when the queue closes or the subscription is cancelled.
+func (s *crossSpaceSubscription) drain(out chan<- []*pb.EventMessage) {
+	defer close(out)
+	cond := s.queue.NewCond().WithMax(maxFlushSize)
+	for {
+		msgs, err := s.queue.WaitCond(s.ctx, cond)
+		if err != nil {
+			return
+		}
+		select {
+		case out <- msgs:
+		case <-s.ctx.Done():
+			return
 		}
 	}
 }
