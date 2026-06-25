@@ -1124,3 +1124,45 @@ func TestSubscribe_resubscribeReplacesOldSub(t *testing.T) {
 	assert.ErrorIs(t, oldSub.queue.Add(context.Background(), addMsg("x")), mb.ErrClosed,
 		"old sub queue must be closed on resubscribe")
 }
+
+// End-to-end: coalescing/grace is actually wired through service.Subscribe (clk,
+// window, createdAt). With a non-zero window and an injected clock, a promoted
+// space's events are held until the clock advances, then broadcast in one go.
+func TestService_coalescesThroughRealSubscribe(t *testing.T) {
+	fx := newFixture(t)
+	fc := newFakeClock()
+	fx.service.clk = fc
+	fx.service.initialGrace = 0
+	fx.service.window = 50 * time.Millisecond
+
+	fx.objectStore.AddObjects(t, techSpaceId, []objectstore.TestObject{
+		givenSpaceViewObject("spaceView1", "space1", model.SpaceStatus_SpaceActive, model.SpaceStatus_Ok),
+	})
+	resp, err := fx.Subscribe(givenRequest(), NoOpPredicate())
+	require.NoError(t, err)
+
+	obj := objectstore.TestObject{
+		bundle.RelationKeyId:             domain.String("participant1"),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+	}
+	fx.objectStore.AddObjects(t, "space1", []objectstore.TestObject{obj})
+
+	// the events reach the coalescer and arm the window timer, but are NOT
+	// broadcast until the clock advances past the window.
+	require.Eventually(t, func() bool { return fc.numWaiters() >= 1 }, 2*time.Second, time.Millisecond)
+	assert.Equal(t, 0, fx.eventQueue.Len(), "events held by the coalescing window, not yet broadcast")
+
+	fc.advance(50 * time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	msgs, err := fx.eventQueue.NewCond().WithMin(3).Wait(ctx)
+	require.NoError(t, err)
+	found := false
+	for _, m := range msgs {
+		if a := m.GetSubscriptionAdd(); a != nil && a.Id == "participant1" && a.SubId == resp.SubId {
+			found = true
+		}
+	}
+	assert.True(t, found, "participant1 add broadcast under the cross-space subId after the window")
+}

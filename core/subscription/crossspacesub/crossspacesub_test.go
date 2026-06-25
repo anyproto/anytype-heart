@@ -620,8 +620,9 @@ func TestClose_unsubscribesPerSpaceSubsAndClosesQueue(t *testing.T) {
 		"close must close the queue")
 }
 
-// close() during the initial grace stops the run loop and drops the buffer
-// without broadcasting. GO-7334.
+// A ctx-cancel (close) during the initial grace drops the buffered events
+// without broadcasting. (The broadcaster join itself is covered by
+// TestRunBroadcast_closeWaitsForInflightBroadcast.) GO-7334.
 func TestRunBroadcast_closeMidWindowDropsBuffer(t *testing.T) {
 	ms := mock_subscription.NewMockService(t)
 	s := newBareCrossSpaceSub(t, ms)
@@ -640,4 +641,107 @@ func TestRunBroadcast_closeMidWindowDropsBuffer(t *testing.T) {
 		"grace timer armed (message buffered, not yet flushed)")
 
 	require.NoError(t, s.close()) // joins the run loop; buffer dropped, nothing broadcast
+}
+
+// close() must wait for an in-flight Broadcast to finish (join) so the old
+// generation cannot emit a tail under the subId after its successor starts.
+// GO-7336.
+func TestRunBroadcast_closeWaitsForInflightBroadcast(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	fc := newFakeClock()
+	s.clk = fc
+	s.initialGrace = 0
+	s.window = 50 * time.Millisecond
+	s.createdAt = fc.now()
+
+	enterBroadcast := make(chan struct{})
+	releaseBroadcast := make(chan struct{})
+	var broadcasts int32
+	sender := mock_event.NewMockSender(t)
+	sender.EXPECT().Broadcast(mock.Anything).Run(func(*pb.Event) {
+		if atomic.AddInt32(&broadcasts, 1) == 1 {
+			close(enterBroadcast)
+			<-releaseBroadcast
+		}
+	}).Maybe()
+	s.eventSender = sender
+	go s.run(nil)
+
+	require.NoError(t, s.queue.Add(context.Background(), addMsg("a")))
+	require.Eventually(t, func() bool { return fc.numWaiters() >= 1 }, time.Second, time.Millisecond)
+	fc.advance(50 * time.Millisecond) // fire the window timer -> flush -> Broadcast blocks
+	<-enterBroadcast                  // the Broadcast is now in flight, blocked
+
+	closed := make(chan struct{})
+	go func() { _ = s.close(); close(closed) }()
+
+	select {
+	case <-closed:
+		t.Fatal("close() returned before the in-flight Broadcast completed (join missing)")
+	case <-time.After(100 * time.Millisecond):
+	}
+	close(releaseBroadcast)
+	select {
+	case <-closed:
+	case <-time.After(time.Second):
+		t.Fatal("close() did not return after the Broadcast completed")
+	}
+	assert.Equal(t, int32(1), atomic.LoadInt32(&broadcasts), "exactly one broadcast; none after close")
+}
+
+// The flush timer must re-arm for a second wave after the buffer drained on the
+// first — guards the deadline-change re-arm logic across cycles. GO-7334.
+func TestRunBroadcast_reArmsTimerAcrossFlushCycles(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	fc := newFakeClock()
+	s.clk = fc
+	s.initialGrace = 0
+	s.window = 50 * time.Millisecond
+	s.createdAt = fc.now()
+
+	var mu sync.Mutex
+	var batches int
+	sender := mock_event.NewMockSender(t)
+	sender.EXPECT().Broadcast(mock.Anything).Run(func(*pb.Event) {
+		mu.Lock()
+		batches++
+		mu.Unlock()
+	}).Maybe()
+	s.eventSender = sender
+	go s.run(nil)
+
+	flushWave := func(id string, want int) {
+		require.NoError(t, s.queue.Add(context.Background(), addMsg(id)))
+		require.Eventually(t, func() bool { return fc.numWaiters() >= 1 }, time.Second, time.Millisecond)
+		fc.advance(50 * time.Millisecond)
+		require.Eventually(t, func() bool { mu.Lock(); defer mu.Unlock(); return batches == want },
+			time.Second, time.Millisecond)
+	}
+	flushWave("a", 1)
+	flushWave("b", 2) // second wave only broadcasts if the timer re-armed after cycle 1
+}
+
+// The synchronous install-time total record plus a later async snapshot counter
+// for the same internal sub must not double-count (absolute, last-wins).
+func TestPromotePending_syncTotalIdempotentWithAsyncCounter(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms, "space1")
+	ms.EXPECT().Search(mock.Anything).Return(&subscriptionservice.SubscribeResponse{
+		SubId:    "sub-A",
+		Counters: &pb.EventObjectSubscriptionCounters{Total: 5},
+	}, nil)
+	require.NoError(t, s.PromotePending("space1"))
+
+	// the async snapshot counter for the same sub is patched afterwards
+	counter := event.NewMessage("space1", &pb.EventMessageValueOfSubscriptionCounters{
+		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{SubId: "sub-A", Total: 5},
+	})
+	s.patchEvent(counter)
+
+	s.lock.Lock()
+	total := s.getTotalCount()
+	s.lock.Unlock()
+	assert.Equal(t, int64(5), total, "sync record + async counter must not double-count")
 }

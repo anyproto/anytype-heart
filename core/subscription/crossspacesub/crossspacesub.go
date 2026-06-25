@@ -183,6 +183,9 @@ func (s *crossSpaceSubscription) runBroadcast() {
 
 	c := newCoalescer(s.createdAt, s.initialGrace, s.window, maxFlushSize)
 	flush := func() {
+		if s.ctx.Err() != nil {
+			return // closed: don't broadcast a stale tail (close() also joins us)
+		}
 		for _, batch := range c.ready(s.clk.now()) {
 			log.Debug("crossspacesub broadcast flush",
 				zap.String("subId", s.subId), zap.Int("messages", len(batch)))
@@ -280,9 +283,11 @@ func (s *crossSpaceSubscription) patchEvent(msg *pb.EventMessage) {
 // engine. The per-space subs use a caller-provided queue, so closing the queue
 // alone does NOT release them — only UnsubscribeAndReturnIds does; without this
 // they would leak (slots, pinned objects, per-change CPU) on every
-// Unsubscribe/resubscribe. Callers hold the service lock; UnsubscribeAndReturnIds
-// takes only the engine lock (service-lock -> engine-lock is the established
-// order via onSpaceIndexOpened), so this is deadlock-free.
+// Unsubscribe/resubscribe. Callers hold the service lock; the unsubscribe loop
+// runs with the per-sub lock released and only reaches the engine lock, which
+// never calls back into this service (no onSpaceIndexOpened off the unsubscribe
+// path). The service-lock -> engine-lock order is the one the monitor already
+// establishes, so this is deadlock-free.
 func (s *crossSpaceSubscription) close() error {
 	s.ctxCancel()
 	// Join the run goroutine only if it actually started, so close() works on a
@@ -429,17 +434,24 @@ func (s *crossSpaceSubscription) completeReservation(spaceId string, token uint6
 	}
 	s.perSpaceSubscriptions[spaceId] = resp.SubId
 	s.activeInternalSubs[resp.SubId] = struct{}{}
-	s.lock.Unlock()
-	// Record the per-space total synchronously, mirroring the loaded-space path
-	// in newCrossSpaceSubscription. The async-init snapshot's counter is
-	// delivered later through the queue, and the GO-7337 active-sub gate would
-	// drop it if it were patched before activeInternalSubs was set above —
-	// leaving the aggregate permanently undercounted. updateTotalCount is
-	// idempotent (absolute, last-wins), so a later async counter just rewrites
-	// the same value.
+	// Record the install-time total under the SAME lock as the active-set, so the
+	// two are atomic. The async-init snapshot's counter is delivered later
+	// through the queue; the GO-7337 active-sub gate would drop it if it were
+	// patched before activeInternalSubs was set, leaving the aggregate
+	// undercounted. Recording it here (a raw absolute write, not updateTotalCount
+	// which re-locks) fixes that. It must be inside the critical section: a live
+	// counter the run goroutine processes is then strictly ordered after this
+	// (and correctly overwrites it with the fresher absolute value) or before it
+	// (gated out as not-yet-active). Writing after the unlock would let this
+	// stale install-time value clobber a fresher live counter.
+	// Residual (negligible): a live counter processed in the tiny window before
+	// the active-set above is dropped, so only the install-time total is
+	// restored — a transient undercount for a just-promoted space that then goes
+	// quiet; the next counter for it corrects it.
 	if resp.Counters != nil {
-		s.updateTotalCount(resp.SubId, resp.Counters.Total)
+		s.totalCounts[resp.SubId] = resp.Counters.Total
 	}
+	s.lock.Unlock()
 	return nil
 }
 
