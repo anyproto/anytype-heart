@@ -45,7 +45,7 @@ type ObserverFunc func(key string, val Value)
 type Value struct {
 	Key            string
 	Data           []byte
-	TimestampMilli int
+	TimestampMicro int64
 }
 
 type subscription struct {
@@ -177,7 +177,7 @@ func decodeKeyValue(decryptor keyvaluestorage.Decryptor, kv innerstorage.KeyValu
 	return Value{
 		Key:            clientKey,
 		Data:           value,
-		TimestampMilli: kv.TimestampMilli,
+		TimestampMicro: kv.TimestampMicro,
 	}, nil
 }
 
