@@ -135,7 +135,7 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 	es.ServerMutex.Unlock()
 
 	// A reconnect with the same token supersedes the old session (its stream is
-	// cancelled by gRPC); stop the old drain goroutine so it does not leak.
+	// canceled by gRPC); stop the old drain goroutine so it does not leak.
 	if old != nil {
 		old.sender.close()
 	}
