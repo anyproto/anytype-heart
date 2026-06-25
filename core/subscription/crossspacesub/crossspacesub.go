@@ -56,6 +56,11 @@ type crossSpaceSubscription struct {
 	pendingSpaceIds map[string]struct{}
 	// internal sub id (bson id) => total count
 	totalCounts map[string]int64
+	// internal sub ids whose counters may still be aggregated. A per-space sub
+	// is added when finalized and removed when its space is removed/rolled
+	// back, so a counter still queued for a removed space cannot resurrect its
+	// total (GO-7337).
+	activeInternalSubs map[string]struct{}
 }
 
 func newCrossSpaceSubscription(subId string, request subscriptionservice.SubscribeRequest, eventSender event.Sender, subscriptionService subscriptionservice.Service, loadedSpaceIds []string, pendingSpaceIds []string, predicate Predicate, clk clock, grace, window time.Duration) (*crossSpaceSubscription, *subscriptionservice.SubscribeResponse, error) {
@@ -72,6 +77,7 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 		inflightSpaceIds:      make(map[string]uint64),
 		pendingSpaceIds:       make(map[string]struct{}, len(pendingSpaceIds)),
 		totalCounts:           map[string]int64{},
+		activeInternalSubs:    map[string]struct{}{},
 		queue:                 mb.New[*pb.EventMessage](0),
 		clk:                   clk,
 		initialGrace:          grace,
@@ -106,6 +112,7 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 
 			s.lock.Lock()
 			s.perSpaceSubscriptions[spaceId] = resp.SubId
+			s.activeInternalSubs[resp.SubId] = struct{}{}
 			aggregatedResp.Records = append(aggregatedResp.Records, resp.Records...)
 			aggregatedResp.Dependencies = append(aggregatedResp.Dependencies, resp.Dependencies...)
 			aggregatedResp.Counters.Total += resp.Counters.Total
@@ -359,6 +366,7 @@ func (s *crossSpaceSubscription) completeReservation(spaceId string, token uint6
 		return nil
 	}
 	s.perSpaceSubscriptions[spaceId] = resp.SubId
+	s.activeInternalSubs[resp.SubId] = struct{}{}
 	s.lock.Unlock()
 	return nil
 }
@@ -448,6 +456,9 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 			}
 		}
 
+		// mark inactive before draining its total so any counter for this
+		// internal sub still queued ahead is ignored when patched (GO-7337)
+		delete(s.activeInternalSubs, subId)
 		total := s.removeTotalCount(subId)
 		err = s.queue.Add(s.ctx, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
 			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
@@ -474,6 +485,11 @@ func (s *crossSpaceSubscription) updateTotalCount(internalSubId string, perSpace
 	if internalSubId == s.subId {
 		// a synthesized counters event (space removal/rollback) — already
 		// aggregated, nothing per-space to record
+		return s.getTotalCount()
+	}
+	if _, active := s.activeInternalSubs[internalSubId]; !active {
+		// counter for a removed/rolled-back per-space sub: ignore so a stale
+		// queued counter cannot resurrect the removed space's total (GO-7337)
 		return s.getTotalCount()
 	}
 	s.totalCounts[internalSubId] = perSpaceTotal
