@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
@@ -32,6 +33,7 @@ func newBareCrossSpaceSub(t *testing.T, ms subscriptionservice.Service, pending 
 		inflightSpaceIds:      map[string]uint64{},
 		pendingSpaceIds:       map[string]struct{}{},
 		totalCounts:           map[string]int64{},
+		activeInternalSubs:    map[string]struct{}{},
 		queue:                 mb.New[*pb.EventMessage](0),
 		clk:                   realClock{},
 	}
@@ -461,4 +463,39 @@ func (c *fakeClock) numWaiters() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return len(c.waiters)
+}
+
+func countersValue(m *pb.EventMessage) (int64, bool) {
+	if c := m.GetSubscriptionCounters(); c != nil {
+		return c.Total, true
+	}
+	return 0, false
+}
+
+// A per-space counter still queued when its space is removed must not resurrect
+// the removed space's total. GO-7337.
+func TestPatchEvent_removedSpaceCounterDoesNotResurrectTotal(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	s.perSpaceSubscriptions["space1"] = "sub-A"
+	s.activeInternalSubs["sub-A"] = struct{}{}
+	ms.EXPECT().UnsubscribeAndReturnIds("space1", "sub-A").Return([]string{"obj1", "obj2"}, nil)
+
+	// 1) per-space A's initial counter is still queued (unpatched)
+	queuedCounter := event.NewMessage("space1", &pb.EventMessageValueOfSubscriptionCounters{
+		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{SubId: "sub-A", Total: 2},
+	})
+
+	// 2) space removed: marks sub-A inactive and zeroes its total
+	s.RemoveSpace("space1")
+
+	// 3) the stale queued counter is now patched
+	s.patchEvent(queuedCounter)
+
+	total, ok := countersValue(queuedCounter)
+	require.True(t, ok)
+	assert.Equal(t, int64(0), total, "removed space's queued counter must not re-add its total")
+	s.lock.Lock()
+	assert.Equal(t, int64(0), s.getTotalCount())
+	s.lock.Unlock()
 }
