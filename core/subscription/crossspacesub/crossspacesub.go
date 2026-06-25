@@ -168,6 +168,8 @@ func (s *crossSpaceSubscription) runBroadcast() {
 	c := newCoalescer(s.createdAt, s.initialGrace, s.window, maxFlushSize)
 	flush := func() {
 		for _, batch := range c.ready(s.clk.now()) {
+			log.Debug("crossspacesub broadcast flush",
+				zap.String("subId", s.subId), zap.Int("messages", len(batch)))
 			s.eventSender.Broadcast(&pb.Event{Messages: batch})
 		}
 	}
@@ -195,7 +197,7 @@ func (s *crossSpaceSubscription) runBroadcast() {
 }
 
 // drain reads bounded batches from the queue and hands them to runBroadcast,
-// stopping when the queue closes or the subscription is cancelled.
+// stopping when the queue closes or the subscription is canceled.
 func (s *crossSpaceSubscription) drain(out chan<- []*pb.EventMessage) {
 	defer close(out)
 	cond := s.queue.NewCond().WithMax(maxFlushSize)
