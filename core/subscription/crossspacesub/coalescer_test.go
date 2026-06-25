@@ -76,7 +76,18 @@ func TestCoalescer(t *testing.T) {
 		assert.Nil(t, c.ready(t0), "must hold during grace")
 		assert.Nil(t, c.ready(t0.Add(grace-time.Millisecond)), "still within grace")
 		out := c.ready(t0.Add(grace))
+		require.Len(t, out, 1, "single broadcast batch")
 		assert.Equal(t, 3, flatLen(out), "flush at grace deadline")
+	})
+
+	t.Run("late first event flushes after only window, not grace", func(t *testing.T) {
+		c := newCoalescer(t0, grace, window, maxFlushSize)
+		late := t0.Add(grace + time.Second) // first event arrives well after grace
+		c.push(late, adds(2))
+		assert.Nil(t, c.ready(late), "held only for the window from the first message")
+		out := c.ready(late.Add(window))
+		require.Len(t, out, 1)
+		assert.Equal(t, 2, flatLen(out))
 	})
 
 	t.Run("large first wave still held for grace (M1 regression)", func(t *testing.T) {
@@ -96,6 +107,7 @@ func TestCoalescer(t *testing.T) {
 		c2.push(t0.Add(window/2), adds(3)) // second wave inside the window
 		assert.Nil(t, c2.ready(t0.Add(window/2)))
 		out := c2.ready(t0.Add(window))
+		require.Len(t, out, 1, "both waves coalesced into a single broadcast batch")
 		assert.Equal(t, 5, flatLen(out), "both waves in one flush")
 	})
 

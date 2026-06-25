@@ -35,6 +35,9 @@ type coalescer struct {
 }
 
 func newCoalescer(createdAt time.Time, grace, window time.Duration, maxFlush int) *coalescer {
+	if maxFlush <= 0 {
+		maxFlush = maxFlushSize // guard: a non-positive cap would spin the chunk loop
+	}
 	return &coalescer{createdAt: createdAt, grace: grace, window: window, maxFlush: maxFlush}
 }
 
@@ -98,7 +101,11 @@ func (c *coalescer) nextDeadline() time.Time { return c.deadline }
 // coalesceCounters drops every SubscriptionCounters message except the last and
 // appends that survivor at the tail. After patchEvent each counters message
 // carries the cross-space subId and an absolute aggregate total, so only the
-// latest matters; its position relative to adds/removes is irrelevant.
+// latest matters; its position relative to adds/removes is irrelevant. With ≤1
+// counters message it returns the input unchanged (no relocation). It runs per
+// emitted chunk, so a flush split across multiple Broadcasts can carry one
+// counters message per chunk — each self-consistent, last-wins across the
+// ordered Broadcasts.
 func coalesceCounters(msgs []*pb.EventMessage) []*pb.EventMessage {
 	last := -1
 	count := 0

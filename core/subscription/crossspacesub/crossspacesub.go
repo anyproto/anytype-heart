@@ -37,6 +37,13 @@ type crossSpaceSubscription struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	queue     *mb.MB[*pb.EventMessage]
+	// started is closed when the run goroutine begins; done is closed when it
+	// exits. close() waits on done (only if started) so a replaced/unsubscribed
+	// subscription stops broadcasting before its successor starts — no stale
+	// tail under the same subId. close() always cancels ctx first, so a run that
+	// begins after the started check exits without broadcasting anyway.
+	started chan struct{}
+	done    chan struct{}
 
 	clk          clock
 	createdAt    time.Time
@@ -79,6 +86,8 @@ func newCrossSpaceSubscription(subId string, request subscriptionservice.Subscri
 		totalCounts:           map[string]int64{},
 		activeInternalSubs:    map[string]struct{}{},
 		queue:                 mb.New[*pb.EventMessage](0),
+		started:               make(chan struct{}),
+		done:                  make(chan struct{}),
 		clk:                   clk,
 		initialGrace:          grace,
 		window:                window,
@@ -141,13 +150,18 @@ func (s *crossSpaceSubscription) run(internalQueue *mb.MB[*pb.EventMessage]) {
 // runNested forwards each patched message to the parent queue (unchanged
 // behavior for nested cross-space subscriptions).
 func (s *crossSpaceSubscription) runNested(internalQueue *mb.MB[*pb.EventMessage]) {
+	close(s.started)
+	defer close(s.done)
 	for {
 		msgs, err := s.queue.Wait(s.ctx)
-		if errors.Is(err, context.Canceled) {
-			return
-		}
 		if err != nil {
-			log.Error("wait messages", zap.Error(err), zap.String("subId", s.subId))
+			// exit on any error; only close/cancel are reachable here (close()
+			// cancels ctx before closing the queue), but returning avoids a
+			// tight error-logging spin if Wait ever yields a sticky error.
+			if !errors.Is(err, context.Canceled) {
+				log.Error("wait messages", zap.Error(err), zap.String("subId", s.subId))
+			}
+			return
 		}
 		for _, msg := range msgs {
 			s.patchEvent(msg)
@@ -162,6 +176,8 @@ func (s *crossSpaceSubscription) runNested(internalQueue *mb.MB[*pb.EventMessage
 // first emission for the initial grace. A drainer goroutine converts the
 // blocking queue into a channel so the loop can select message-vs-timer.
 func (s *crossSpaceSubscription) runBroadcast() {
+	close(s.started)
+	defer close(s.done)
 	msgCh := make(chan []*pb.EventMessage)
 	go s.drain(msgCh)
 
@@ -173,10 +189,20 @@ func (s *crossSpaceSubscription) runBroadcast() {
 			s.eventSender.Broadcast(&pb.Event{Messages: batch})
 		}
 	}
+	// Re-arm the flush timer only when the deadline actually changes (it changes
+	// at most once per flush cycle: empty->armed on the first buffered message,
+	// armed->cleared when the buffer drains). Re-creating it every loop
+	// iteration would orphan a timer per message during a burst.
+	var timerC <-chan time.Time
+	var armed time.Time
 	for {
-		var timerC <-chan time.Time
-		if d := c.nextDeadline(); !d.IsZero() {
-			timerC = s.clk.after(d.Sub(s.clk.now()))
+		if d := c.nextDeadline(); !d.Equal(armed) {
+			armed = d
+			if d.IsZero() {
+				timerC = nil
+			} else {
+				timerC = s.clk.after(d.Sub(s.clk.now()))
+			}
 		}
 		select {
 		case <-s.ctx.Done():
@@ -248,9 +274,43 @@ func (s *crossSpaceSubscription) patchEvent(msg *pb.EventMessage) {
 	matcher.Match(msg)
 }
 
+// close tears the subscription down: it stops the run goroutine (and waits for
+// it, so no stale tail is broadcast under this subId), closes the queue, and
+// unsubscribes every finalized per-space subscription from the underlying
+// engine. The per-space subs use a caller-provided queue, so closing the queue
+// alone does NOT release them — only UnsubscribeAndReturnIds does; without this
+// they would leak (slots, pinned objects, per-change CPU) on every
+// Unsubscribe/resubscribe. Callers hold the service lock; UnsubscribeAndReturnIds
+// takes only the engine lock (service-lock -> engine-lock is the established
+// order via onSpaceIndexOpened), so this is deadlock-free.
 func (s *crossSpaceSubscription) close() error {
 	s.ctxCancel()
-	return s.queue.Close()
+	// Join the run goroutine only if it actually started, so close() works on a
+	// subscription whose run() was never launched (e.g. unit tests, or an error
+	// before `go run`). ctx is already canceled, so a run beginning after this
+	// check exits without broadcasting.
+	select {
+	case <-s.started:
+		<-s.done
+	default:
+	}
+	err := s.queue.Close()
+
+	s.lock.Lock()
+	perSpace := s.perSpaceSubscriptions
+	s.perSpaceSubscriptions = map[string]string{}
+	s.activeInternalSubs = map[string]struct{}{}
+	s.inflightSpaceIds = map[string]uint64{}
+	s.pendingSpaceIds = map[string]struct{}{}
+	s.lock.Unlock()
+
+	for spaceId, internalSubId := range perSpace {
+		if _, uerr := s.subscriptionService.UnsubscribeAndReturnIds(spaceId, internalSubId); uerr != nil {
+			log.Error("close: unsubscribe per-space subscription",
+				zap.String("subId", s.subId), zap.String("spaceId", spaceId), zap.Error(uerr))
+		}
+	}
+	return err
 }
 
 func (s *crossSpaceSubscription) AddSpace(spaceId string) error {
@@ -370,6 +430,16 @@ func (s *crossSpaceSubscription) completeReservation(spaceId string, token uint6
 	s.perSpaceSubscriptions[spaceId] = resp.SubId
 	s.activeInternalSubs[resp.SubId] = struct{}{}
 	s.lock.Unlock()
+	// Record the per-space total synchronously, mirroring the loaded-space path
+	// in newCrossSpaceSubscription. The async-init snapshot's counter is
+	// delivered later through the queue, and the GO-7337 active-sub gate would
+	// drop it if it were patched before activeInternalSubs was set above —
+	// leaving the aggregate permanently undercounted. updateTotalCount is
+	// idempotent (absolute, last-wins), so a later async counter just rewrites
+	// the same value.
+	if resp.Counters != nil {
+		s.updateTotalCount(resp.SubId, resp.Counters.Total)
+	}
 	return nil
 }
 
@@ -379,7 +449,10 @@ func (s *crossSpaceSubscription) completeReservation(spaceId string, token uint6
 // had already delivered through its async-init events — without them the
 // client keeps ghost records of a removed space — plus a zeroing counters
 // event. After close() the queue is gone and the client unsubscribed, so
-// failing to enqueue is fine.
+// failing to enqueue is fine. A rolled-back sub is never added to
+// activeInternalSubs (completeReservation only marks it active on the finalize
+// path), so any async-init counter still queued for it is ignored by the
+// updateTotalCount gate — no resurrection (GO-7337).
 func (s *crossSpaceSubscription) rollbackSubscription(spaceId string, subId string) {
 	ids, err := s.subscriptionService.UnsubscribeAndReturnIds(spaceId, subId)
 	if err != nil {
@@ -429,7 +502,9 @@ func (s *crossSpaceSubscription) RemoveSpace(spaceId string) {
 	defer s.lock.Unlock()
 	delete(s.pendingSpaceIds, spaceId)
 	err := s.removeSpace(spaceId)
-	if err != nil {
+	if err != nil && !errors.Is(err, mb.ErrClosed) && !errors.Is(err, context.Canceled) {
+		// ErrClosed/Canceled just mean a concurrent close() is tearing the
+		// queue down; the bookkeeping is already updated, so don't log noise.
 		log.Error("remove space", zap.Error(err), zap.String("subId", s.subId), zap.String("spaceId", spaceId))
 	}
 }
@@ -445,6 +520,14 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 		if err != nil {
 			return err
 		}
+		// Mutate all in-memory bookkeeping together, before enqueueing events, so
+		// a later queue.Add failure (teardown: ErrClosed/Canceled) cannot leave
+		// perSpaceSubscriptions present while activeInternalSubs/totalCounts are
+		// gone. Marking the internal sub inactive also makes any counter for it
+		// still queued ahead be ignored when patched (GO-7337).
+		delete(s.perSpaceSubscriptions, spaceId)
+		delete(s.activeInternalSubs, subId)
+		total := s.removeTotalCount(subId)
 		for _, id := range ids {
 			err = s.queue.Add(s.ctx, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionRemove{
 				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
@@ -457,11 +540,6 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 				return fmt.Errorf("send remove event to queue: %w", err)
 			}
 		}
-
-		// mark inactive before draining its total so any counter for this
-		// internal sub still queued ahead is ignored when patched (GO-7337)
-		delete(s.activeInternalSubs, subId)
-		total := s.removeTotalCount(subId)
 		err = s.queue.Add(s.ctx, event.NewMessage(spaceId, &pb.EventMessageValueOfSubscriptionCounters{
 			SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
 				// the cross-space subId: keyed by the internal id, patchEvent's
@@ -475,7 +553,6 @@ func (s *crossSpaceSubscription) removeSpace(spaceId string) error {
 		if err != nil {
 			return fmt.Errorf("send counters event to queue: %w", err)
 		}
-		delete(s.perSpaceSubscriptions, spaceId)
 	}
 	return nil
 }
