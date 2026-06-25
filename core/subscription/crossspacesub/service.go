@@ -177,17 +177,6 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, spaceViewP
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	// Resubscribe with an existing subId replaces the previous subscription:
-	// close it first so its run loop, queue, and per-space subscriptions are
-	// released. Otherwise the old instance keeps broadcasting under the same
-	// subId (leak + duplicate events). close() does not take s.lock. (GO-7336)
-	if existing, ok := s.subscriptions[req.SubId]; ok {
-		if cerr := existing.close(); cerr != nil {
-			log.Error("close existing subscription on resubscribe",
-				zap.String("subId", req.SubId), zap.Error(cerr))
-		}
-		delete(s.subscriptions, req.SubId)
-	}
 	var loadedIds, pendingIds []string
 	for spaceViewId, details := range s.spaceViewDetails {
 		if spaceViewPredicate(details) {
@@ -205,6 +194,19 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, spaceViewP
 	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, loadedIds, pendingIds, spaceViewPredicate, s.clk, s.initialGrace, s.window)
 	if err != nil {
 		return nil, fmt.Errorf("new cross space subscription: %w", err)
+	}
+	// Resubscribe with an existing subId replaces the previous subscription. The
+	// new sub is built first (above) so a build failure leaves the existing one
+	// intact; only on success do we close the old one. close() stops its run
+	// loop, closes its queue, and unsubscribes its per-space subs — and it joins
+	// the run goroutine, so the old generation cannot broadcast a stale tail
+	// under this subId after the new snapshot. close() does not take s.lock.
+	// (GO-7336)
+	if existing, ok := s.subscriptions[req.SubId]; ok {
+		if cerr := existing.close(); cerr != nil {
+			log.Error("close existing subscription on resubscribe",
+				zap.String("subId", req.SubId), zap.Error(cerr))
+		}
 	}
 	s.subscriptions[req.SubId] = spaceSub
 	go spaceSub.run(req.InternalQueue)

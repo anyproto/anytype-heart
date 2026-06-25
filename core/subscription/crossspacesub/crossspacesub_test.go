@@ -35,6 +35,8 @@ func newBareCrossSpaceSub(t *testing.T, ms subscriptionservice.Service, pending 
 		totalCounts:           map[string]int64{},
 		activeInternalSubs:    map[string]struct{}{},
 		queue:                 mb.New[*pb.EventMessage](0),
+		started:               make(chan struct{}),
+		done:                  make(chan struct{}),
 		clk:                   realClock{},
 	}
 	for _, p := range pending {
@@ -479,6 +481,7 @@ func TestPatchEvent_removedSpaceCounterDoesNotResurrectTotal(t *testing.T) {
 	s := newBareCrossSpaceSub(t, ms)
 	s.perSpaceSubscriptions["space1"] = "sub-A"
 	s.activeInternalSubs["sub-A"] = struct{}{}
+	s.totalCounts["sub-A"] = 2 // sub-A already contributed its total
 	ms.EXPECT().UnsubscribeAndReturnIds("space1", "sub-A").Return([]string{"obj1", "obj2"}, nil)
 
 	// 1) per-space A's initial counter is still queued (unpatched)
@@ -498,4 +501,143 @@ func TestPatchEvent_removedSpaceCounterDoesNotResurrectTotal(t *testing.T) {
 	s.lock.Lock()
 	assert.Equal(t, int64(0), s.getTotalCount())
 	s.lock.Unlock()
+}
+
+// completeReservation (AddSpace/PromotePending) must record the per-space total
+// synchronously; otherwise the GO-7337 active-sub gate can drop the async-init
+// counter and undercount the aggregate. GO-7337 regression guard.
+func TestPromotePending_recordsTotalSynchronously(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms, "space1")
+	ms.EXPECT().Search(mock.Anything).RunAndReturn(
+		func(subscriptionservice.SubscribeRequest) (*subscriptionservice.SubscribeResponse, error) {
+			return &subscriptionservice.SubscribeResponse{
+				SubId:    "sub-A",
+				Counters: &pb.EventObjectSubscriptionCounters{Total: 5},
+			}, nil
+		})
+
+	require.NoError(t, s.PromotePending("space1"))
+
+	s.lock.Lock()
+	total := s.getTotalCount()
+	s.lock.Unlock()
+	assert.Equal(t, int64(5), total,
+		"per-space total must be recorded synchronously, not left to the racy async counter")
+}
+
+// A rolled-back per-space sub's stray async counter must be ignored (it was
+// never marked active). GO-7337.
+func TestPatchEvent_rolledBackSubCounterIgnored(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	// sub-X was created then rolled back: present nowhere in activeInternalSubs.
+	counter := event.NewMessage("space1", &pb.EventMessageValueOfSubscriptionCounters{
+		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{SubId: "sub-X", Total: 7},
+	})
+	s.patchEvent(counter)
+	total, ok := countersValue(counter)
+	require.True(t, ok)
+	assert.Equal(t, int64(0), total, "counter for a non-active internal sub must be ignored")
+}
+
+// After remove+re-add of a space, the new internal sub's counter is aggregated
+// while the old (removed) sub's stale counter is ignored. GO-7337.
+func TestPatchEvent_reAddAfterRemove(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	s.perSpaceSubscriptions["space1"] = "sub-A"
+	s.activeInternalSubs["sub-A"] = struct{}{}
+	s.totalCounts["sub-A"] = 2
+	ms.EXPECT().UnsubscribeAndReturnIds("space1", "sub-A").Return(nil, nil)
+
+	s.RemoveSpace("space1")
+	// re-add under a fresh internal id
+	s.lock.Lock()
+	s.perSpaceSubscriptions["space1"] = "sub-B"
+	s.activeInternalSubs["sub-B"] = struct{}{}
+	s.lock.Unlock()
+
+	// stale counter for the removed sub-A is ignored; sub-B's is counted
+	stale := event.NewMessage("space1", &pb.EventMessageValueOfSubscriptionCounters{
+		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{SubId: "sub-A", Total: 2},
+	})
+	fresh := event.NewMessage("space1", &pb.EventMessageValueOfSubscriptionCounters{
+		SubscriptionCounters: &pb.EventObjectSubscriptionCounters{SubId: "sub-B", Total: 3},
+	})
+	s.patchEvent(stale)
+	s.patchEvent(fresh)
+
+	s.lock.Lock()
+	total := s.getTotalCount()
+	s.lock.Unlock()
+	assert.Equal(t, int64(3), total, "only the live sub-B contributes; stale sub-A is ignored")
+}
+
+// The nested path (internalQueue != nil) forwards each patched message to the
+// parent queue and never broadcasts.
+func TestRunNested_forwardsPatchedMessages(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	parent := mb.New[*pb.EventMessage](0)
+	go s.run(parent) // nested path
+
+	require.NoError(t, s.queue.Add(context.Background(), addMsg("obj1")))
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	msgs, err := parent.NewCond().WithMin(1).Wait(ctx)
+	require.NoError(t, err)
+	require.Len(t, msgs, 1)
+	add := msgs[0].GetSubscriptionAdd()
+	require.NotNil(t, add)
+	assert.Equal(t, "cs", add.SubId, "subId rewritten to the cross-space subId")
+	assert.Equal(t, "obj1", add.Id)
+}
+
+// close() releases finalized per-space subscriptions from the engine (closing
+// the queue alone does not) and closes the queue. GO-7336.
+func TestClose_unsubscribesPerSpaceSubsAndClosesQueue(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	s.perSpaceSubscriptions["space1"] = "sub-A"
+	s.activeInternalSubs["sub-A"] = struct{}{}
+
+	sender := mock_event.NewMockSender(t) // no Broadcast expected
+	s.eventSender = sender
+	go s.run(nil) // broadcast path; no events -> no Broadcast
+
+	var unsubbed []string
+	ms.EXPECT().UnsubscribeAndReturnIds("space1", "sub-A").RunAndReturn(
+		func(_ string, id string) ([]string, error) {
+			unsubbed = append(unsubbed, id)
+			return nil, nil
+		})
+
+	require.NoError(t, s.close())
+	assert.Equal(t, []string{"sub-A"}, unsubbed, "close must unsubscribe per-space subs")
+	assert.ErrorIs(t, s.queue.Add(context.Background(), addMsg("x")), mb.ErrClosed,
+		"close must close the queue")
+}
+
+// close() during the initial grace stops the run loop and drops the buffer
+// without broadcasting. GO-7334.
+func TestRunBroadcast_closeMidWindowDropsBuffer(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	fc := newFakeClock()
+	s.clk = fc
+	s.initialGrace = 200 * time.Millisecond
+	s.window = 50 * time.Millisecond
+	s.createdAt = fc.now()
+
+	sender := mock_event.NewMockSender(t) // no Broadcast expected: buffer is dropped
+	s.eventSender = sender
+	go s.run(nil)
+
+	require.NoError(t, s.queue.Add(context.Background(), addMsg("a")))
+	require.Eventually(t, func() bool { return fc.numWaiters() >= 1 }, time.Second, time.Millisecond,
+		"grace timer armed (message buffered, not yet flushed)")
+
+	require.NoError(t, s.close()) // joins the run loop; buffer dropped, nothing broadcast
 }

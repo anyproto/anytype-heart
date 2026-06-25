@@ -1117,8 +1117,10 @@ func TestSubscribe_resubscribeReplacesOldSub(t *testing.T) {
 	require.NotNil(t, newSub)
 	assert.NotSame(t, oldSub, newSub, "resubscribe must create a fresh sub instance")
 	assert.Equal(t, 1, n, "exactly one sub registered for the subId")
-	// the previous sub must be closed (ctx cancelled) so its run loop, queue,
-	// and per-space subscriptions are released instead of leaking and
+	// the previous sub must be fully closed so its run loop, queue, and
+	// per-space subscriptions are released instead of leaking and
 	// double-broadcasting under the same subId.
-	assert.Error(t, oldSub.ctx.Err(), "old sub must be closed on resubscribe")
+	assert.Error(t, oldSub.ctx.Err(), "old sub ctx must be canceled on resubscribe")
+	assert.ErrorIs(t, oldSub.queue.Add(context.Background(), addMsg("x")), mb.ErrClosed,
+		"old sub queue must be closed on resubscribe")
 }
