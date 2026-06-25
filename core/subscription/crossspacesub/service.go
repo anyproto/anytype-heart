@@ -26,6 +26,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/globalsign/mgo/bson"
@@ -62,6 +63,10 @@ type service struct {
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
 
+	initialGrace time.Duration
+	window       time.Duration
+	clk          clock
+
 	lock             sync.Mutex
 	spaceViewsSubId  string
 	spaceViewDetails map[string]*domain.Details
@@ -87,6 +92,9 @@ func (s *service) Init(a *app.App) error {
 	s.spaceViewTargetIds = map[string]string{}
 	s.spaceViewDetails = map[string]*domain.Details{}
 	s.openedSpaceIds = map[string]struct{}{}
+	s.initialGrace = defaultInitialGrace
+	s.window = defaultWindow
+	s.clk = realClock{}
 
 	return nil
 }
@@ -183,7 +191,7 @@ func (s *service) Subscribe(req subscriptionservice.SubscribeRequest, spaceViewP
 			}
 		}
 	}
-	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, loadedIds, pendingIds, spaceViewPredicate)
+	spaceSub, resp, err := newCrossSpaceSubscription(req.SubId, req, s.eventSender, s.subscriptionService, loadedIds, pendingIds, spaceViewPredicate, s.clk, s.initialGrace, s.window)
 	if err != nil {
 		return nil, fmt.Errorf("new cross space subscription: %w", err)
 	}

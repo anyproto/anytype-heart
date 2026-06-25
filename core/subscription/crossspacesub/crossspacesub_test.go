@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/mock_subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -32,6 +33,7 @@ func newBareCrossSpaceSub(t *testing.T, ms subscriptionservice.Service, pending 
 		pendingSpaceIds:       map[string]struct{}{},
 		totalCounts:           map[string]int64{},
 		queue:                 mb.New[*pb.EventMessage](0),
+		clk:                   realClock{},
 	}
 	for _, p := range pending {
 		s.pendingSpaceIds[p] = struct{}{}
@@ -374,4 +376,89 @@ func TestPromotePending_decisionAndClaimAreAtomic(t *testing.T) {
 
 	assert.False(t, gapObserved.Load(),
 		"promote was observable in limbo (not pending, not reserved, not subscribed): a RemoveSpace in that window cannot cancel it and the space gets resurrected")
+}
+
+func TestRunBroadcast_graceDelaysFirstFlush(t *testing.T) {
+	ms := mock_subscription.NewMockService(t)
+	s := newBareCrossSpaceSub(t, ms)
+	fc := newFakeClock()
+	s.clk = fc
+	s.initialGrace = 200 * time.Millisecond
+	s.window = 50 * time.Millisecond
+	s.createdAt = fc.now()
+
+	var mu sync.Mutex
+	var broadcasts int
+	sender := mock_event.NewMockSender(t)
+	sender.EXPECT().Broadcast(mock.Anything).Run(func(*pb.Event) {
+		mu.Lock()
+		broadcasts++
+		mu.Unlock()
+	}).Maybe()
+	s.eventSender = sender
+
+	go s.runBroadcast()
+
+	require.NoError(t, s.queue.Add(context.Background(), addMsg("a")))
+	// run loop must arm the grace timer before we advance the clock
+	require.Eventually(t, func() bool { return fc.numWaiters() >= 1 }, time.Second, time.Millisecond)
+	mu.Lock()
+	assert.Equal(t, 0, broadcasts, "no broadcast before grace deadline")
+	mu.Unlock()
+
+	fc.advance(200 * time.Millisecond)
+	require.Eventually(t, func() bool { mu.Lock(); defer mu.Unlock(); return broadcasts == 1 },
+		time.Second, time.Millisecond, "exactly one broadcast after grace")
+}
+
+type fakeClock struct {
+	mu      sync.Mutex
+	t       time.Time
+	waiters []fakeWaiter
+}
+
+type fakeWaiter struct {
+	at time.Time
+	ch chan time.Time
+}
+
+func newFakeClock() *fakeClock { return &fakeClock{t: time.Unix(1000, 0)} }
+
+func (c *fakeClock) now() time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.t
+}
+
+func (c *fakeClock) after(d time.Duration) <-chan time.Time {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	ch := make(chan time.Time, 1)
+	if d <= 0 {
+		ch <- c.t
+		return ch
+	}
+	c.waiters = append(c.waiters, fakeWaiter{at: c.t.Add(d), ch: ch})
+	return ch
+}
+
+func (c *fakeClock) advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.t = c.t.Add(d)
+	kept := c.waiters[:0]
+	for _, w := range c.waiters {
+		if !w.at.After(c.t) {
+			w.ch <- c.t
+		} else {
+			kept = append(kept, w)
+		}
+	}
+	c.waiters = kept
+}
+
+func (c *fakeClock) numWaiters() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return len(c.waiters)
 }

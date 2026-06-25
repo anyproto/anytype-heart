@@ -73,6 +73,12 @@ func newFixture(t *testing.T) *fixture {
 	err := a.Start(ctx)
 	require.NoError(t, err)
 
+	// Neutralize coalescing timing so existing exact-sequence assertions are
+	// unaffected and fast: with grace=0/window=0 each wave flushes immediately.
+	svc := s.(*service)
+	svc.initialGrace = 0
+	svc.window = 0
+
 	t.Cleanup(func() {
 		closeCtx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
@@ -81,7 +87,7 @@ func newFixture(t *testing.T) *fixture {
 	})
 
 	return &fixture{
-		service:      s.(*service),
+		service:      svc,
 		objectStore:  objectStore,
 		spaceService: spaceService,
 		eventQueue:   eventQueue,
