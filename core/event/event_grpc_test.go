@@ -68,7 +68,7 @@ func TestBroadcast_overflowCloseDoesNotDeadlock(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		for i := 0; i < maxSessionQueueLen+maxSendBatch+10; i++ {
+		for i := 0; i < maxSessionQueueMessages+maxSendBatch+10; i++ {
 			es.Broadcast(nonEmptyEvent()) // takes ServerMutex.RLock each call
 		}
 		close(done)
@@ -94,11 +94,36 @@ func TestBroadcast_deliversInOrder(t *testing.T) {
 	es.SetSessionServer("tok", fs)
 	const n = 100
 	for i := 0; i < n; i++ {
-		es.Broadcast(nonEmptyEvent())
+		es.Broadcast(seqEvent(i))
 	}
 	require.Eventually(t, func() bool {
 		fs.mu.Lock()
 		defer fs.mu.Unlock()
 		return len(fs.sent) == n
 	}, 2*time.Second, time.Millisecond)
+	fs.mu.Lock()
+	defer fs.mu.Unlock()
+	for i := 0; i < n; i++ {
+		require.Equal(t, i, seqOf(fs.sent[i]), "events must arrive in broadcast order")
+	}
+}
+
+// The filtered send variants route to the right sessions.
+func TestSendVariants_routing(t *testing.T) {
+	es := NewGrpcSender()
+	a, b := &fakeStream{}, &fakeStream{}
+	es.SetSessionServer("a", a)
+	es.SetSessionServer("b", b)
+
+	es.SendToSession("a", seqEvent(1))                  // only a
+	es.BroadcastToOtherSessions("a", seqEvent(2))       // only b (not the origin a)
+	es.BroadcastExceptSessions(seqEvent(3), []string{"b"}) // only a
+
+	countFor := func(fs *fakeStream) int {
+		fs.mu.Lock()
+		defer fs.mu.Unlock()
+		return len(fs.sent)
+	}
+	require.Eventually(t, func() bool { return countFor(a) == 2 && countFor(b) == 1 },
+		2*time.Second, time.Millisecond, "SendToSession+except hit a; BroadcastToOthers hit b")
 }

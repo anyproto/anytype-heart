@@ -2,7 +2,8 @@ package event
 
 import (
 	"context"
-	"errors"
+	"sync"
+	"sync/atomic"
 
 	"github.com/cheggaaa/mb/v3"
 
@@ -14,38 +15,57 @@ import (
 var log = logging.Logger("anytype-grpc")
 
 const (
-	// maxSessionQueueLen bounds a session's outbound buffer. A client this far
-	// behind is closed rather than allowed to grow the buffer (and goroutines)
-	// without bound; it reconnects and re-subscribes.
-	maxSessionQueueLen = 50000
-	// maxSendBatch caps how many events one drain iteration pulls, so the
-	// in-flight slice is bounded too (the rest stays in the bounded queue).
+	// maxSessionQueueMessages bounds a session's outbound buffer by total
+	// EventMessage count, NOT by event count: a single *pb.Event can carry many
+	// messages (a coalesced cross-space flush up to ~500, a deliverOps batch
+	// more), so an event-count bound would not bound memory. A client buffered
+	// this far behind is closed; it reconnects and re-subscribes. Comparable to
+	// the subscription engine's per-message maxInternalQueueLen.
+	maxSessionQueueMessages = 50000
+	// maxSendBatch caps how many events one drain iteration pulls.
 	maxSendBatch = 1000
 )
 
-// sessionSender serializes event delivery to one client session. A single
-// goroutine drains a bounded queue and calls send in FIFO order, so the
-// underlying gRPC stream's Send is never invoked concurrently. enqueue is
-// non-blocking; if the client falls maxSessionQueueLen behind, onClose is
-// invoked and further events are dropped. A send error also invokes onClose and
-// stops the drain (a stream Send error is terminal).
+// sessionSender serializes event delivery to one client session: a single
+// goroutine drains a queue and calls send in FIFO order, so the underlying gRPC
+// stream's Send is never invoked concurrently. enqueue is non-blocking and the
+// buffer is bounded by total EventMessage count; a client that exceeds the
+// bound is closed via onClose.
+//
+// onClose contract: it is invoked at most once (guarded by `once`), but the
+// caller must still make it safe to run from the drain goroutine and to not
+// block — in particular it must not synchronously acquire a lock that the
+// caller of enqueue may hold (enqueue runs under GrpcSender.ServerMutex.RLock).
+// close() does not interrupt an in-flight send(); the drain exits once that send
+// returns (the stream is independently canceled) or the queue is closed.
 type sessionSender struct {
 	queue   *mb.MB[*pb.Event]
 	send    func(*pb.Event) error
 	onClose func()
+
+	maxMsgs int64
+	curMsgs atomic.Int64
+	once    sync.Once
+	done    chan struct{} // closed when run() exits
 }
 
-func newSessionSender(send func(*pb.Event) error, onClose func(), queueSize int) *sessionSender {
+func newSessionSender(send func(*pb.Event) error, onClose func(), maxMsgs int) *sessionSender {
+	if maxMsgs <= 0 {
+		maxMsgs = maxSessionQueueMessages // guard: 0 would disable the bound
+	}
 	s := &sessionSender{
-		queue:   mb.New[*pb.Event](queueSize),
+		queue:   mb.New[*pb.Event](0), // unbounded in events; bounded by curMsgs/maxMsgs
 		send:    send,
 		onClose: onClose,
+		maxMsgs: int64(maxMsgs),
+		done:    make(chan struct{}),
 	}
 	go s.run()
 	return s
 }
 
 func (s *sessionSender) run() {
+	defer close(s.done)
 	cond := s.queue.NewCond().WithMax(maxSendBatch)
 	for {
 		events, err := s.queue.WaitCond(context.Background(), cond)
@@ -53,28 +73,40 @@ func (s *sessionSender) run() {
 			return // queue closed
 		}
 		for _, e := range events {
-			if serr := s.send(e); serr != nil {
-				s.onClose()
+			serr := s.send(e)
+			s.curMsgs.Add(-int64(len(e.Messages)))
+			if serr != nil {
+				s.requestClose() // a stream Send error is terminal
 				return
 			}
 		}
 	}
 }
 
-// enqueue queues event for in-order delivery. Non-blocking: on overflow the
-// session is closed (a hopelessly-behind client) rather than blocking the
-// broadcaster; on a closed queue the event is dropped.
+// enqueue queues event for in-order delivery. Non-blocking. If the session's
+// buffered message count would exceed maxMsgs, the session is closed (a
+// hopelessly-behind client) rather than blocking the broadcaster.
 func (s *sessionSender) enqueue(event *pb.Event) {
-	switch err := s.queue.TryAdd(event); {
-	case err == nil:
-	case errors.Is(err, mb.ErrOverflowed):
-		log.Warnf("session outbound queue overflow (>%d events), closing slow session", maxSessionQueueLen)
-		s.onClose()
-	case errors.Is(err, mb.ErrClosed):
-		// session already closing; drop
-	default:
-		log.Errorf("session enqueue: %v", err)
+	n := int64(len(event.Messages))
+	if n == 0 {
+		return
 	}
+	if s.curMsgs.Add(n) > s.maxMsgs {
+		s.curMsgs.Add(-n)
+		s.once.Do(func() {
+			log.Warnf("session outbound buffer exceeded %d messages, closing slow session", s.maxMsgs)
+			s.onClose()
+		})
+		return
+	}
+	if err := s.queue.TryAdd(event); err != nil {
+		s.curMsgs.Add(-n) // queue closed: not buffered
+	}
+}
+
+// requestClose invokes onClose exactly once.
+func (s *sessionSender) requestClose() {
+	s.once.Do(s.onClose)
 }
 
 func (s *sessionSender) close() {
