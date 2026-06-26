@@ -11,12 +11,12 @@ on:
         description: 'Run perf test times'
         required: true
         default: '1'
-  schedule:
-    - cron: '0 0 * * *' # every day at midnight
-      filters:
-        branches:
-          include:
-            - 'main'
+  # schedule:
+  #   - cron: '0 0 * * *' # every day at midnight
+  #     filters:
+  #       branches:
+  #         include:
+  #           - 'main'
 
 
 permissions:

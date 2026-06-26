@@ -258,6 +258,32 @@ jobs:
             core.setOutput('html_url', data.html_url);
             core.setOutput('tag_name', data.tag_name);
 
+  cleanup-old-nightlies:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete nightly releases older than 15 days
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          CUTOFF=$(date -u -d '15 days ago' +%s)
+          echo "Cutoff (epoch): $CUTOFF ($(date -u -d '15 days ago'))"
+          gh release list \
+            --repo anyproto/anytype-heart \
+            --limit 1000 \
+            --json tagName,createdAt \
+            --jq '.[] | select(.tagName | test("-nightly\\.")) | [.tagName, .createdAt] | @tsv' \
+          | while IFS=$'\t' read -r TAG CREATED; do
+              CREATED_EPOCH=$(date -u -d "$CREATED" +%s)
+              if [ "$CREATED_EPOCH" -lt "$CUTOFF" ]; then
+                echo "Deleting nightly release $TAG (created $CREATED)"
+                gh release delete "$TAG" --repo anyproto/anytype-heart --yes --cleanup-tag
+              else
+                echo "Keeping nightly release $TAG (created $CREATED)"
+              fi
+            done
+
   notify:
     needs:
       - build
