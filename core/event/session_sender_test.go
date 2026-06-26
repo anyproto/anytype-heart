@@ -39,7 +39,7 @@ func TestSessionSender_deliversInOrder(t *testing.T) {
 		mu.Unlock()
 		return nil
 	}
-	s := newSessionSender(send, func() {}, maxSessionQueueLen)
+	s := newSessionSender(send, func() {}, maxSessionQueueMessages)
 	defer s.close()
 
 	for i := 0; i < n; i++ {
@@ -85,21 +85,28 @@ func TestSessionSender_sendErrorClosesAndStops(t *testing.T) {
 		calls.Add(1)
 		return errors.New("stream broken")
 	}
-	s := newSessionSender(send, func() { closed.Store(true) }, maxSessionQueueLen)
+	s := newSessionSender(send, func() { closed.Store(true) }, maxSessionQueueMessages)
 	defer s.close()
 
-	s.enqueue(seqEvent(0))
-	s.enqueue(seqEvent(1))
+	for i := 0; i < 50; i++ { // many: if the drain didn't stop it would send all 50
+		s.enqueue(seqEvent(i))
+	}
 	require.Eventually(t, closed.Load, 2*time.Second, time.Millisecond, "send error must close")
 	require.Eventually(t, func() bool { return calls.Load() >= 1 }, time.Second, time.Millisecond)
-	require.LessOrEqual(t, calls.Load(), int32(2))
+	time.Sleep(30 * time.Millisecond) // let any (buggy) further sends happen
+	require.LessOrEqual(t, calls.Load(), int32(1), "drain must stop after the first send error")
 }
 
-func TestSessionSender_closeStopsDrain(t *testing.T) {
+func TestSessionSender_closeStopsDrainGoroutine(t *testing.T) {
 	var calls atomic.Int32
 	send := func(e *pb.Event) error { calls.Add(1); return nil }
-	s := newSessionSender(send, func() {}, maxSessionQueueLen)
+	s := newSessionSender(send, func() {}, maxSessionQueueMessages)
 	s.close()
+	select {
+	case <-s.done:
+	case <-time.After(time.Second):
+		t.Fatal("drain goroutine did not exit after close()")
+	}
 	// enqueue after close is dropped, never sent
 	s.enqueue(seqEvent(0))
 	time.Sleep(20 * time.Millisecond)

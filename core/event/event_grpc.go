@@ -16,12 +16,12 @@ import (
 
 func NewGrpcSender() *GrpcSender {
 	gs := &GrpcSender{
-		shutdownCh: make(chan string),
+		shutdownCh: make(chan *SessionServer),
 	}
 
 	go func() {
-		for id := range gs.shutdownCh {
-			gs.CloseSession(id)
+		for srv := range gs.shutdownCh {
+			gs.CloseSessionInstance(srv)
 		}
 	}()
 
@@ -32,7 +32,7 @@ type GrpcSender struct {
 	ServerMutex sync.RWMutex
 	Servers     map[string]*SessionServer
 
-	shutdownCh chan string
+	shutdownCh chan *SessionServer
 }
 
 func (es *GrpcSender) Init(_ *app.App) (err error) {
@@ -129,7 +129,7 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 	srv.sender = newSessionSender(
 		func(e *pb.Event) error { return srv.Server.Send(e) },
 		func() { es.scheduleClose(srv) },
-		maxSessionQueueLen,
+		maxSessionQueueMessages,
 	)
 	es.Servers[token] = srv
 	es.ServerMutex.Unlock()
@@ -144,22 +144,42 @@ func (es *GrpcSender) SetSessionServer(token string, server service.ClientComman
 
 // scheduleClose tears a session down exactly once. It must not block the caller:
 // onClose can fire from sendEvent while Broadcast holds ServerMutex.RLock, and
-// CloseSession (run from the shutdownCh goroutine) needs ServerMutex.Lock — so
-// the shutdownCh send happens on its own goroutine to avoid that deadlock.
+// CloseSessionInstance (run from the shutdownCh goroutine) needs
+// ServerMutex.Lock — so the shutdownCh send happens on its own goroutine to
+// avoid that deadlock. It routes the *SessionServer (not the token) so a stale
+// auto-close cannot tear down a session that reconnected under the same token.
 func (es *GrpcSender) scheduleClose(srv *SessionServer) {
 	if srv.closing.CompareAndSwap(false, true) {
-		go func() { es.shutdownCh <- srv.Token }()
+		go func() { es.shutdownCh <- srv }()
 	}
 }
 
+// CloseSessionInstance tears down a specific session, but only if it is still
+// the one registered under its token — so an auto-close triggered by an old
+// session (send error / overflow) cannot kill a newer one that reconnected with
+// the same token. The drain goroutine is always stopped (idempotent).
+func (es *GrpcSender) CloseSessionInstance(srv *SessionServer) {
+	es.ServerMutex.Lock()
+	if cur, ok := es.Servers[srv.Token]; ok && cur == srv {
+		delete(es.Servers, srv.Token)
+		close(srv.Done)
+	}
+	es.ServerMutex.Unlock()
+	srv.sender.close()
+}
+
+// CloseSession tears down whatever session currently holds token. Used by the
+// explicit WalletCloseSession path (the caller wants this token closed,
+// regardless of identity).
 func (es *GrpcSender) CloseSession(token string) {
 	es.ServerMutex.Lock()
-	defer es.ServerMutex.Unlock()
-
 	s, ok := es.Servers[token]
 	if ok {
-		s.sender.close()
-		close(s.Done)
 		delete(es.Servers, token)
+		close(s.Done)
+	}
+	es.ServerMutex.Unlock()
+	if ok {
+		s.sender.close()
 	}
 }
