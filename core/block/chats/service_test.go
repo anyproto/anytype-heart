@@ -65,14 +65,33 @@ func (s *accountServiceDummy) Init(a *app.App) error {
 	return nil
 }
 
-type chatRepoServiceDummy struct{}
+type chatRepoServiceDummy struct {
+	repo chatrepository.Repository
+}
 
 func (s *chatRepoServiceDummy) Name() string                    { return "chatRepoServiceDummy" }
 func (s *chatRepoServiceDummy) Init(a *app.App) error           { return nil }
 func (s *chatRepoServiceDummy) Run(ctx context.Context) error   { return nil }
 func (s *chatRepoServiceDummy) Close(ctx context.Context) error { return nil }
 func (s *chatRepoServiceDummy) Repository(spaceId, chatObjectId string) (chatrepository.Repository, error) {
-	return nil, nil
+	return s.repo, nil
+}
+
+// fakeChatRepository is a minimal repository stub for service-level read tests. Only the methods
+// the tests exercise are implemented; the embedded interface leaves the rest as compile-time
+// stubs (calling an unimplemented one panics, surfacing accidental coverage gaps).
+type fakeChatRepository struct {
+	chatrepository.Repository
+	pinned        []*chatmodel.Message
+	messagesByIds []*chatmodel.Message
+}
+
+func (f *fakeChatRepository) GetPinnedMessages(ctx context.Context) ([]*chatmodel.Message, error) {
+	return f.pinned, nil
+}
+
+func (f *fakeChatRepository) GetMessagesByIds(ctx context.Context, messageIds []string) ([]*chatmodel.Message, error) {
+	return f.messagesByIds, nil
 }
 
 type fileGCDummy struct{}
@@ -112,6 +131,7 @@ type fixture struct {
 	crossSpaceSubService *mock_crossspacesub.MockService
 	ftSearch             *mock_ftsearch.MockFTSearch
 	objectStore          *objectstore.StoreFixture
+	chatRepoService      *chatRepoServiceDummy
 
 	lock sync.Mutex
 	// recorded actions (subscribe/unsubscribe) per chat object, in temporal order
@@ -184,6 +204,7 @@ func newFixture(t *testing.T) *fixture {
 	eventSender := mock_event.NewMockSender(t)
 	detailService := mock_detailservice.NewMockService(t)
 	ftSearch := mock_ftsearch.NewMockFTSearch(t)
+	chatRepoService := &chatRepoServiceDummy{}
 
 	fx := &fixture{
 		service:              New().(*service),
@@ -192,6 +213,7 @@ func newFixture(t *testing.T) *fixture {
 		objectGetter:         objectGetter,
 		ftSearch:             ftSearch,
 		objectStore:          objectStore,
+		chatRepoService:      chatRepoService,
 		actions:              map[string][]recordedAction{},
 	}
 	eventSender.EXPECT().Broadcast(mock.Anything).Run(func(e *pb.Event) {
@@ -213,7 +235,7 @@ func newFixture(t *testing.T) *fixture {
 	a.Register(&accountServiceDummy{})
 	a.Register(testutil.PrepareMock(ctx, a, detailService))
 	a.Register(&fileGCDummy{})
-	a.Register(&chatRepoServiceDummy{})
+	a.Register(chatRepoService)
 	a.Register(fx)
 
 	fx.app = a
@@ -1887,12 +1909,9 @@ func TestService_GetPinnedMessages(t *testing.T) {
 			},
 		}
 
-		mockChat := mock_chatobject.NewMockStoreObject(t)
-		mockChat.EXPECT().Lock().Return()
-		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().GetPinnedMessages(mock.Anything).Return(want, nil)
-
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+		// Pinned messages are served straight from the anystore repository — no smartblock /
+		// change-tree build (GO-7340).
+		fx.chatRepoService.repo = &fakeChatRepository{pinned: want}
 
 		fx.start(t)
 
@@ -1916,12 +1935,7 @@ func TestService_GetPinnedMessages(t *testing.T) {
 			Records: []*domain.Details{},
 		}, nil).Maybe()
 
-		mockChat := mock_chatobject.NewMockStoreObject(t)
-		mockChat.EXPECT().Lock().Return()
-		mockChat.EXPECT().Unlock().Return()
-		mockChat.EXPECT().GetPinnedMessages(mock.Anything).Return(nil, nil)
-
-		fx.objectGetter.EXPECT().WaitAndGetObject(mock.Anything, chatObjectId).Return(mockChat, nil)
+		fx.chatRepoService.repo = &fakeChatRepository{pinned: nil}
 
 		fx.start(t)
 
@@ -1931,5 +1945,38 @@ func TestService_GetPinnedMessages(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Empty(t, got)
+	})
+}
+
+func TestService_GetMessagesByIds(t *testing.T) {
+	t.Run("returns messages from repository without building the tree", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		ctx := context.Background()
+		chatObjectId := "chatId1"
+
+		fx.crossSpaceSubService.EXPECT().Subscribe(mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{
+			Records: []*domain.Details{},
+		}, nil).Maybe()
+
+		want := []*chatmodel.Message{
+			{ChatMessage: &model.ChatMessage{Id: "msg1", OrderId: "order1"}},
+			{ChatMessage: &model.ChatMessage{Id: "msg2", OrderId: "order2"}},
+		}
+
+		// Served straight from the anystore repository — no smartblock / change-tree build (GO-7340).
+		// No WaitAndGetObject expectation is set, so any attempt to build the tree fails the test.
+		fx.chatRepoService.repo = &fakeChatRepository{messagesByIds: want}
+
+		fx.start(t)
+
+		// when
+		got, err := fx.GetMessagesByIds(ctx, chatObjectId, []string{"msg1", "msg2"})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+		assert.Equal(t, "msg1", got[0].Id)
+		assert.Equal(t, "msg2", got[1].Id)
 	})
 }

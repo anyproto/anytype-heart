@@ -775,16 +775,11 @@ func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chat
 }
 
 func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatmodel.Message, error) {
-	var res []*chatmodel.Message
-	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-		msg, err := sb.GetMessagesByIds(ctx, messageIds)
-		if err != nil {
-			return err
-		}
-		res = msg
-		return nil
-	})
-	return res, err
+	repo, err := s.chatRepository(chatObjectId)
+	if err != nil {
+		return nil, err
+	}
+	return repo.GetMessagesByIds(ctx, messageIds)
 }
 
 func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error) {
@@ -951,6 +946,27 @@ func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc fu
 	return cache.DoWait(s.objectGetter, waitCtx, chatObjectId, proc)
 }
 
+// chatRepository returns the anystore-backed repository for a chat, without opening the object's
+// smartblock. Reads served from it (e.g. GetMessagesByIds, GetPinnedMessages) hit the persisted
+// materialized view directly and do not pay the change-tree build, which is O(messages) and can
+// take seconds for a large chat. The tree is only required for writes; it is warmed up lazily by
+// the subscription path (ChatSubscribeLastMessages, GO-7302), so we do not build it here.
+//
+// Consistency: the materialized view is current for any chat that has been built at least once
+// (the common reopen case) — materialization is incremental from a persisted watermark and
+// survives restarts. On a cold start (a chat never built locally, or one with remote changes not
+// yet head-synced) the view may be transiently stale/empty until the background warm-up
+// materializes it. This is the same window ChatSubscribeLastMessages already accepts; the
+// subscription self-corrects via its event stream, so a one-shot caller that needs cold-start
+// freshness (notably pinned messages) should refresh once the chat warm-up settles.
+func (s *service) chatRepository(chatObjectId string) (chatrepository.Repository, error) {
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("resolve space id: %w", err)
+	}
+	return s.chatRepoService.Repository(spaceId, chatObjectId)
+}
+
 func (s *service) ReadAll(ctx context.Context) error {
 	s.lock.Lock()
 	chatIds := make([]string, 0, len(s.allChatObjectIds))
@@ -1004,12 +1020,12 @@ func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageI
 	})
 }
 
-func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) (msgs []*chatmodel.Message, err error) {
-	err = s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-		msgs, err = sb.GetPinnedMessages(ctx)
-		return err
-	})
-	return msgs, err
+func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) ([]*chatmodel.Message, error) {
+	repo, err := s.chatRepository(chatObjectId)
+	if err != nil {
+		return nil, err
+	}
+	return repo.GetPinnedMessages(ctx)
 }
 
 func pushGroupId(objectId string) string {
