@@ -168,7 +168,7 @@ func unmarshalSeenHeads(raw []byte) ([]string, error) {
 // sync tree holds the COMPLETE DAG (true for chats: BuildTree loads every change); a
 // future lazy/partial tree mode would need to revisit this.
 func (s *store) buildReusedDiffManager(seenHeads []string, onRemove func(removed []string)) (*objecttree.DiffManager, error) {
-	liveTree := s.treeSource.Tree()
+	liveTree := s.Tree()
 	// Reuse is equivalent to BuildHistoryTree only while the in-memory tree still spans the
 	// whole snapshotRoot..heads range. Creating a non-genesis snapshot resets the in-memory
 	// tree to [latest snapshot..heads] (objectTree clears ot.tree on IsSnapshot), after which
