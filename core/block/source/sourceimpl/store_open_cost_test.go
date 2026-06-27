@@ -185,14 +185,20 @@ func TestChatOpen_DiffManagersReuseSyncTree(t *testing.T) {
 	}
 	oldDiffScans, oldDiffRows := counters.findCalls.Load(), counters.rowsRead.Load()
 
-	// NEW path: the production seam reuses the already-in-memory sync tree.
+	// NEW path: the production seam reuses the already-in-memory sync tree. Hold the
+	// object-tree lock as the real callers do (factory.InitObject / cache.DoWait).
 	s := &store{treeSource: &treeSource{ObjectTree: syncTree}}
 	counters.reset()
+	syncTree.Lock()
 	for i := 0; i < chatDiffManagerCount; i++ {
 		dm, err := s.buildReusedDiffManager(nil, func([]string) {})
 		require.NoError(t, err)
 		require.NotNil(t, dm)
+		// Proves the live tree was actually consumed (root + numChanges) — i.e. a genuine
+		// reuse, not a no-op that merely happens to do no storage I/O.
+		require.Len(t, dm.GetIds(), numChanges+1)
 	}
+	syncTree.Unlock()
 	newDiffScans, newDiffRows := counters.findCalls.Load(), counters.rowsRead.Load()
 
 	t.Logf("change log length: %d", logLen)
@@ -228,10 +234,12 @@ func TestChatOpen_ScalingCost(t *testing.T) {
 			syncTree, err := objecttree.BuildTestableTree(storage, aclList)
 			require.NoError(t, err)
 			s := &store{treeSource: &treeSource{ObjectTree: syncTree}}
+			syncTree.Lock()
 			for i := 0; i < chatDiffManagerCount; i++ {
 				_, err := s.buildReusedDiffManager(nil, func([]string) {})
 				require.NoError(t, err)
 			}
+			syncTree.Unlock()
 			elapsed := time.Since(start)
 
 			totalScans := counters.findCalls.Load()
@@ -243,4 +251,47 @@ func TestChatOpen_ScalingCost(t *testing.T) {
 			assert.Equal(t, int64(1), totalScans, "open should scan the full log exactly once at any size")
 		})
 	}
+}
+
+// TestChatOpen_ReusedDiffManager_CorrectDiff is the behavioral guard: it proves the diff
+// manager built from the reused in-memory tree computes the SAME ancestor-based diff that a
+// storage-built history tree would (the real correctness risk of the change), not just that
+// it does no storage I/O. Linear chain 0(root)<-1<-...<-n, current head = n.
+func TestChatOpen_ReusedDiffManager_CorrectDiff(t *testing.T) {
+	const n = 50
+	storage, aclList, _, _ := setupCountingChatTree(t, n)
+	syncTree, err := objecttree.BuildTestableTree(storage, aclList)
+	require.NoError(t, err)
+	s := &store{treeSource: &treeSource{ObjectTree: syncTree}}
+
+	// build a diff manager over the reused tree, apply seenHeads via Init(), return the
+	// full id set the differ ingested and the ids it reported as removed (seen).
+	build := func(seenHeads []string) (ids, removed []string) {
+		syncTree.Lock() // callers hold the object-tree lock in production
+		defer syncTree.Unlock()
+		dm, err := s.buildReusedDiffManager(seenHeads, func(r []string) { removed = append(removed, r...) })
+		require.NoError(t, err)
+		require.NotNil(t, dm)
+		ids = dm.GetIds()
+		dm.Init()
+		return
+	}
+
+	t.Run("reuses the full DAG", func(t *testing.T) {
+		ids, _ := build(nil)
+		assert.Len(t, ids, n+1, "differ should ingest root + all changes from the live tree")
+	})
+	t.Run("nil seenHeads removes nothing", func(t *testing.T) {
+		_, removed := build(nil)
+		assert.Empty(t, removed)
+	})
+	t.Run("ancestor seenHead removes exactly its prefix", func(t *testing.T) {
+		_, removed := build([]string{"5"})
+		// ancestors-or-equal of "5" in a linear chain == root "0".."5"
+		assert.ElementsMatch(t, []string{"0", "1", "2", "3", "4", "5"}, removed)
+	})
+	t.Run("unknown seenHead is handled gracefully", func(t *testing.T) {
+		_, removed := build([]string{"does-not-exist"})
+		assert.Empty(t, removed, "stale/unknown seenHead routes to notFound, not a panic or bad removal")
+	})
 }
