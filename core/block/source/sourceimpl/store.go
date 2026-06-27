@@ -149,10 +149,11 @@ func unmarshalSeenHeads(raw []byte) ([]string, error) {
 // reactions), so opening it scanned the log 1 (sync build) + 3 (diff managers) = 4 times.
 //
 // NewChangeDiffer only iterates the tree (IterateRoot) to copy each change's
-// Id+PreviousIds into its own graph; it neither mutates nor retains the tree. For a chat
-// (single root snapshot) the live DAG (root..heads) is exactly what BuildHistoryTree
-// produced, because seenHeads are always ancestors-or-equal of the current tree heads.
-// So reusing the in-memory sync tree is equivalent and drops the 3 redundant scans (4->1).
+// Id+PreviousIds into its own graph; it does not mutate the tree and keeps no reference to
+// it (only the immutable PreviousIds slices, which are never modified after a change is
+// created). For a chat the live DAG (root..heads) is exactly what BuildHistoryTree produced,
+// because seenHeads are always ancestors-or-equal of the current tree heads. So reusing the
+// in-memory sync tree is equivalent and drops the 3 redundant scans (4->1).
 //
 // No lock is taken here ON PURPOSE: the object-tree mutex is non-reentrant and is already
 // held by every caller of InitDiffManager — factory.InitObject takes it (SetLocker(ot) +
@@ -168,8 +169,29 @@ func unmarshalSeenHeads(raw []byte) ([]string, error) {
 // future lazy/partial tree mode would need to revisit this.
 func (s *store) buildReusedDiffManager(seenHeads []string, onRemove func(removed []string)) (*objecttree.DiffManager, error) {
 	liveTree := s.treeSource.Tree()
+	// Reuse is equivalent to BuildHistoryTree only while the in-memory tree still spans the
+	// whole snapshotRoot..heads range. Creating a non-genesis snapshot resets the in-memory
+	// tree to [latest snapshot..heads] (objectTree clears ot.tree on IsSnapshot), after which
+	// a seenHead before that snapshot would be misclassified and unread counts would drift.
+	// Chats never create snapshots, so the genesis root (SnapshotCounter == 1) is the only
+	// snapshot. Trip loudly if that ever changes instead of silently miscounting.
+	root := liveTree.Root()
+	if root == nil || root.SnapshotCounter > 1 {
+		cnt := -1
+		if root != nil {
+			cnt = root.SnapshotCounter
+		}
+		return nil, fmt.Errorf("reuse diff manager: tree is not genesis-rooted (root snapshot counter %d); restore BuildHistoryTree for snapshotted objects", cnt)
+	}
+	// The object-tree mutex is non-reentrant and MUST already be held by the caller (see the
+	// doc above). Trip loudly on a future lock-free caller instead of silently racing the
+	// shared iteration flags: TryLock fails when this goroutine already holds the lock.
+	if liveTree.TryLock() {
+		liveTree.Unlock()
+		log.With("objectId", s.Id()).Error("buildReusedDiffManager called without the object-tree lock held")
+	}
 	curTreeHeads := liveTree.Heads()
-	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
+	buildTree := func(_ []string) (objecttree.ReadableObjectTree, error) {
 		return liveTree, nil
 	}
 	return objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
