@@ -774,6 +774,28 @@ func TestService_Leave(t *testing.T) {
 		err = fx.Leave(ctx, spaceId)
 		require.NoError(t, err)
 	})
+	t.Run("leave evicts acl from getter cache", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		aclList, err := list.NewInMemoryDerivedAcl(spaceId, keys)
+		require.NoError(t, err)
+		records, err := aclList.RecordsAfter(ctx, "")
+		require.NoError(t, err)
+
+		fx.mockJoiningClient.EXPECT().AclGetRecords(ctx, spaceId, "").Return(records, nil)
+		fx.mockJoiningClient.EXPECT().RequestSelfRemove(ctx, spaceId, gomock.Any()).Return(nil)
+
+		err = fx.Leave(ctx, spaceId)
+		require.NoError(t, err)
+
+		// the network-fetched acl must not linger in the getter cache after leaving
+		_, cached := fx.getter.currentAcls[spaceId]
+		require.False(t, cached, "acl should be evicted from getter cache after leave")
+	})
 	t.Run("leave fail if acl getter error is known", func(t *testing.T) {
 		errs := []error{
 			space.ErrSpaceStorageMissig,
@@ -1168,4 +1190,37 @@ func TestService_ChangePermissions_AdminRejectedByValidator(t *testing.T) {
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrAclRequestFailed)
 	require.ErrorIs(t, err, list.ErrInsufficientPermissions)
+}
+
+// TestAclGetter_ConcurrentNoRace guards the aclGetter map: Leave runs without aclClientLock, so concurrent
+// Leaves write currentAcls concurrently via GetOrRefreshAcl/RemoveAcl. Without the getter mutex this is a
+// fatal `concurrent map writes`; the mutex makes it safe. The getter is built directly (no app.Start) to
+// isolate the map fix from an unrelated pre-existing race in aclService.Run's background loop. Run under -race.
+func TestAclGetter_ConcurrentNoRace(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	keys, err := accountdata.NewRandom()
+	require.NoError(t, err)
+	aclList, err := list.NewInMemoryDerivedAcl("spaceId", keys)
+	require.NoError(t, err)
+	records, err := aclList.RecordsAfter(ctx, "")
+	require.NoError(t, err)
+
+	mockClient := mock_aclclient.NewMockAclJoiningClient(ctrl)
+	mockClient.EXPECT().AclGetRecords(gomock.Any(), gomock.Any(), gomock.Any()).Return(records, nil).AnyTimes()
+	mockNodeConf := mock_nodeconf.NewMockService(ctrl)
+	mockNodeConf.EXPECT().Configuration().Return(nodeconf.Configuration{NetworkId: ""}).AnyTimes()
+
+	g := newAclGetter(mockClient, keys, mockNodeConf)
+
+	var wg sync.WaitGroup
+	for i := 0; i < 25; i++ {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			sp := fmt.Sprintf("space-%d", n)
+			_, _ = g.GetOrRefreshAcl(ctx, sp)
+			_ = g.RemoveAcl(ctx, sp)
+		}(i)
+	}
+	wg.Wait()
 }
