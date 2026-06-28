@@ -5,10 +5,13 @@ import (
 
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/session"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -184,4 +187,142 @@ func TestDependenciesSubscription(t *testing.T) {
 		assert.Contains(t, fx.smartBlock.lastDepDetails, space2obj1)
 	})
 
+}
+
+func amendedKeys(t *testing.T, e *pb.Event) []string {
+	t.Helper()
+	var keys []string
+	for _, m := range e.Messages {
+		if a := m.GetObjectDetailsAmend(); a != nil {
+			for _, kv := range a.Details {
+				keys = append(keys, kv.Key)
+			}
+		}
+	}
+	return keys
+}
+
+func TestOnMetaChangeStripKeys(t *testing.T) {
+	setup := func(t *testing.T) (*fixture, *[]*pb.Event) {
+		mainObjId := "id"
+		fx := newFixture(mainObjId, t)
+		root := bb.Root(bb.ID(mainObjId), bb.Children())
+		fx.Doc = state.NewDoc(mainObjId, root.BuildMap()).NewState()
+
+		var events []*pb.Event
+		fx.RegisterSession(session.NewContext())
+		fx.eventSender.EXPECT().
+			SendToSession(mock.Anything, mock.Anything).
+			Run(func(_ string, e *pb.Event) { events = append(events, e) }).
+			Maybe()
+		return fx, &events
+	}
+
+	t.Run("dependent sync-only change emits no event", func(t *testing.T) {
+		fx, events := setup(t)
+		depId := "dep1"
+		fx.onMetaChange(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String(depId),
+			bundle.RelationKeyName:       domain.String("Dep"),
+			bundle.RelationKeySyncStatus: domain.Int64(1),
+		}))
+		*events = nil // discard first-sight Set
+
+		fx.onMetaChange(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String(depId),
+			bundle.RelationKeyName:       domain.String("Dep"),
+			bundle.RelationKeySyncStatus: domain.Int64(2),
+			bundle.RelationKeySyncDate:   domain.Int64(123456),
+		}))
+		assert.Empty(t, *events)
+	})
+
+	t.Run("dependent name change emits amend without sync keys", func(t *testing.T) {
+		fx, events := setup(t)
+		depId := "dep2"
+		fx.onMetaChange(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String(depId),
+			bundle.RelationKeyName:       domain.String("Old"),
+			bundle.RelationKeySyncStatus: domain.Int64(1),
+		}))
+		*events = nil
+
+		fx.onMetaChange(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String(depId),
+			bundle.RelationKeyName:       domain.String("New"),
+			bundle.RelationKeySyncStatus: domain.Int64(2),
+		}))
+		require.Len(t, *events, 1)
+		keys := amendedKeys(t, (*events)[0])
+		assert.Contains(t, keys, bundle.RelationKeyName.String())
+		assert.NotContains(t, keys, bundle.RelationKeySyncStatus.String())
+	})
+
+	t.Run("self sync change is still emitted", func(t *testing.T) {
+		fx, events := setup(t)
+		selfId := fx.Id() // == "id"
+		fx.onMetaChange(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String(selfId),
+			bundle.RelationKeySyncStatus: domain.Int64(1),
+		}))
+		*events = nil
+
+		fx.onMetaChange(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyId:         domain.String(selfId),
+			bundle.RelationKeySyncStatus: domain.Int64(2),
+		}))
+		require.Len(t, *events, 1)
+		keys := amendedKeys(t, (*events)[0])
+		assert.Contains(t, keys, bundle.RelationKeySyncStatus.String())
+	})
+}
+
+func findViewDetails(t *testing.T, set []*model.ObjectViewDetailsSet, id string) *types.Struct {
+	t.Helper()
+	for _, d := range set {
+		if d.Id == id {
+			return d.Details
+		}
+	}
+	t.Fatalf("ObjectViewDetailsSet for %s not found", id)
+	return nil
+}
+
+func TestFetchMetaStripsDependentKeys(t *testing.T) {
+	mainObjId := "id"
+	fx := newFixture(mainObjId, t)
+
+	depId := "obj1"
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:         domain.String(depId),
+			bundle.RelationKeySpaceId:    domain.String(testSpaceId),
+			bundle.RelationKeyName:       domain.String("Object 1"),
+			bundle.RelationKeySyncStatus: domain.Int64(1),
+			bundle.RelationKeySyncDate:   domain.Int64(999),
+		},
+	})
+	fx.spaceIdResolver.EXPECT().ResolveSpaceID(depId).Return(testSpaceId, nil)
+	fx.space.EXPECT().Id().Return(testSpaceId)
+
+	root := bb.Root(bb.ID(mainObjId), bb.Children(bb.Link(depId)))
+	fx.Doc = state.NewDoc(mainObjId, root.BuildMap()).NewState()
+	fx.Doc.(*state.State).SetDetails(domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyId:         domain.String(mainObjId),
+		bundle.RelationKeySpaceId:    domain.String(testSpaceId),
+		bundle.RelationKeyName:       domain.String("Main object"),
+		bundle.RelationKeySyncStatus: domain.Int64(1),
+	}))
+
+	details, err := fx.fetchMeta()
+	require.NoError(t, err)
+	defer fx.closeRecordsSub()
+
+	dep := findViewDetails(t, details, depId)
+	assert.Contains(t, dep.Fields, bundle.RelationKeyName.String())
+	assert.NotContains(t, dep.Fields, bundle.RelationKeySyncStatus.String())
+	assert.NotContains(t, dep.Fields, bundle.RelationKeySyncDate.String())
+
+	self := findViewDetails(t, details, mainObjId)
+	assert.Contains(t, self.Fields, bundle.RelationKeySyncStatus.String())
 }
