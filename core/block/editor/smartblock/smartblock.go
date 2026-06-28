@@ -506,9 +506,16 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	})
 
 	for _, rec := range records {
+		recId := rec.Details.GetString(bundle.RelationKeyId)
+		recDetails := rec.Details
+		if recId != sb.Id() {
+			// strip dependents only; a self-reference (rare) keeps full details,
+			// matching the self entry added above and the onMetaChange self branch
+			recDetails = rec.Details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+		}
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      rec.Details.GetString(bundle.RelationKeyId),
-			Details: rec.Details.CopyWithoutKeys(bundle.DefaultStrippedKeys...).ToProto(),
+			Id:      recId,
+			Details: recDetails.ToProto(),
 		})
 	}
 	go sb.metaListener(recordsCh)
