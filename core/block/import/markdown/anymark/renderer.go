@@ -2,8 +2,10 @@ package anymark
 
 import (
 	"bytes"
+	"html"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"unicode"
 
@@ -154,8 +156,435 @@ func (r *Renderer) renderHTMLBlock(_ util.BufWriter,
 	source []byte,
 	node ast.Node,
 	entering bool) (ast.WalkStatus, error) {
-	// Do not render
+	if !entering {
+		return ast.WalkContinue, nil
+	}
+
+	raw := rawHTMLBlockText(source, node)
+
+	// A self-contained <details>...</details> block (no blank line between the
+	// <summary> and the children) is emitted by goldmark as a SINGLE HTMLBlock
+	// containing the whole element. Parse it fully here: open a Toggle from the
+	// <summary>, parse the inner content (between </summary> and the matching
+	// </details>) as Markdown into child blocks, nest them, then close the Toggle.
+	// Without this the block would be silently dropped (M3).
+	if summary, inner, remainder, ok := parseSelfContainedDetails(raw); ok {
+		r.handleSelfContainedDetails(summary, inner, remainder)
+		return ast.WalkContinue, nil
+	}
+
+	// A <details> element (with a <summary>) is the export encoding for a Toggle
+	// block. We open a Toggle here so the blocks parsed between this opening
+	// <details> and the closing </details> become its children, then close it on
+	// </details>. This mirrors the md exporter's <details>/<summary> output.
+	if summary, ok := parseDetailsSummary(raw); ok {
+		r.OpenToggleBlock(summary)
+		// goldmark folds a tight first line of children into the opener HTMLBlock
+		// (e.g. "<details>\n<summary>S</summary>\nFirst\n"). That trailing content
+		// after </summary> would otherwise be lost, so parse it as children here.
+		// Subsequent loosely-separated blocks still nest via the open Toggle and
+		// the closing </details> still closes it.
+		if inner := strings.TrimSpace(detailsOpenerTrailingContent(raw)); inner != "" {
+			children, _, err := MarkdownToBlocks([]byte(inner), r.GetBaseFilepath(), r.GetAllFileShortPaths())
+			if err != nil {
+				log.Errorf("failed to parse trailing content of <details> opener: %v", err)
+			} else {
+				r.AppendChildBlocks(children)
+			}
+		}
+		return ast.WalkContinue, nil
+	}
+	if isDetailsClose(raw) {
+		r.CloseToggleBlock()
+		return ast.WalkContinue, nil
+	}
+
+	// Other HTML blocks are not rendered.
 	return ast.WalkContinue, nil
+}
+
+// handleSelfContainedDetails materializes a self-contained <details>...</details>
+// block into a Toggle: the inner content (between </summary> and the matched
+// </details>) becomes child blocks, and any remainder folded into the same HTML
+// block by goldmark (its block ends at a blank line, not at </details>) is
+// emitted as SIBLINGS so it is not lost (Major 1). The remainder may itself
+// contain another tight <details>, handled by routing it back through the normal
+// MarkdownToBlocks parse.
+func (r *Renderer) handleSelfContainedDetails(summary, inner, remainder string) {
+	r.OpenToggleBlock(summary)
+	if inner = strings.TrimSpace(inner); inner != "" {
+		if children := r.parseMarkdownBlocks(inner, "inner content of self-contained <details>"); children != nil {
+			r.AppendChildBlocks(children)
+		}
+	}
+	r.CloseToggleBlock()
+	if remainder = strings.TrimSpace(remainder); remainder != "" {
+		if siblings := r.parseMarkdownBlocks(remainder, "trailing content after self-contained <details>"); siblings != nil {
+			r.AppendSiblingBlocks(siblings)
+		}
+	}
+}
+
+// parseMarkdownBlocks parses md into blocks using the renderer's base filepath
+// and file short paths, logging (and returning nil) on error. context describes
+// the source for the error message.
+func (r *Renderer) parseMarkdownBlocks(md, context string) []*model.Block {
+	blocks, _, err := MarkdownToBlocks([]byte(md), r.GetBaseFilepath(), r.GetAllFileShortPaths())
+	if err != nil {
+		log.Errorf("failed to parse %s: %v", context, err)
+		return nil
+	}
+	return blocks
+}
+
+func rawHTMLBlockText(source []byte, node ast.Node) string {
+	var buf bytes.Buffer
+	lines := node.Lines()
+	for i := 0; i < lines.Len(); i++ {
+		line := lines.At(i)
+		buf.Write(line.Value(source))
+	}
+	return buf.String()
+}
+
+var (
+	reDetailsOpen = regexp.MustCompile(`(?is)<details\b[^>]*>`)
+	reSummary     = regexp.MustCompile(`(?is)<summary\b[^>]*>(.*?)</summary>`)
+	reDetailsEnd  = regexp.MustCompile(`(?is)</details\s*>`)
+)
+
+// parseDetailsSummary reports whether raw opens a (not self-closed) <details>
+// element, and if so returns the plain text of its <summary>, if present. A
+// block that both opens and closes <details> is not treated as an opener,
+// because there would be no following children to nest and no separate close.
+func parseDetailsSummary(raw string) (string, bool) {
+	if !reDetailsOpen.MatchString(raw) || reDetailsEnd.MatchString(raw) {
+		return "", false
+	}
+	summary := ""
+	if m := reSummary.FindStringSubmatch(raw); len(m) > 1 {
+		// The exporter HTML-escapes the summary text, so the captured content is
+		// the escaped plain text of the toggle title (e.g. "&lt;/details&gt;" for
+		// a literal "</details>"). Decode HTML entities to recover the original
+		// text exactly. We intentionally do NOT strip tag-shaped substrings here:
+		// since the content is escaped, any '<'/'>' belong to the user's title and
+		// stripping them would silently drop text.
+		summary = strings.TrimSpace(html.UnescapeString(m[1]))
+	}
+	return summary, true
+}
+
+func isDetailsClose(raw string) bool {
+	return reDetailsEnd.MatchString(raw) && !reDetailsOpen.MatchString(raw)
+}
+
+// parseSelfContainedDetails reports whether raw is a single self-contained
+// <details>...</details> block (it both opens and closes <details>). If so it
+// returns the decoded <summary> text, the inner content between the </summary>
+// and the </details> that closes the OUTER <details> (depth-aware, so a nested
+// <details> inside the content is kept intact for recursive parsing), and the
+// remainder of the block AFTER that matched </details>. The remainder is
+// non-empty when goldmark folded trailing content into the same HTML block (its
+// block ends at a blank line, not at </details>); the caller emits it as
+// siblings so it is not lost (Major 1).
+func parseSelfContainedDetails(raw string) (summary string, inner string, remainder string, ok bool) {
+	openLoc := reDetailsOpen.FindStringIndex(raw)
+	if openLoc == nil || !reDetailsEnd.MatchString(raw) {
+		return "", "", "", false
+	}
+
+	// Decode the (HTML-escaped) summary, mirroring parseDetailsSummary.
+	if m := reSummary.FindStringSubmatch(raw); len(m) > 1 {
+		summary = strings.TrimSpace(html.UnescapeString(m[1]))
+	}
+
+	// Locate the body start: just after the first </summary> if present,
+	// otherwise just after the opening <details ...> tag.
+	bodyStart := openLoc[1]
+	if sumLoc := reSummary.FindStringIndex(raw); sumLoc != nil {
+		bodyStart = sumLoc[1]
+	}
+
+	// Find the </details> that closes the OUTER <details> by tracking depth over
+	// the remaining open/close tags after the body start.
+	body := raw[bodyStart:]
+	closeRel, closeEnd := matchingDetailsClose(body)
+	if closeRel < 0 {
+		// Shouldn't happen given reDetailsEnd matched, but be safe.
+		return summary, strings.TrimSpace(body), "", true
+	}
+	// inner and remainder are sliced from the ORIGINAL body using the matched
+	// offsets, so masking (used only to find the true close) never reaches the
+	// returned text.
+	return summary, body[:closeRel], body[closeEnd:], true
+}
+
+// detailsOpenerTrailingContent returns any content that appears after the
+// </summary> in a <details> opener HTMLBlock that does NOT contain a </details>.
+// goldmark folds a tight first child line into this opener block; that content
+// would otherwise be lost.
+func detailsOpenerTrailingContent(raw string) string {
+	sumLoc := reSummary.FindStringIndex(raw)
+	if sumLoc == nil {
+		return ""
+	}
+	return raw[sumLoc[1]:]
+}
+
+// matchingDetailsClose returns the byte offsets (within s) of the </details>
+// tag that closes the outer <details>, accounting for nested <details> elements
+// AND ignoring any <details>/</details> tags that fall inside fenced code blocks
+// (``` / ~~~) or inline code spans (backtick runs). It scans a masked copy of s
+// (code regions replaced with a neutral byte of EQUAL length, so all offsets map
+// 1:1 back to the original) for openers/closers, incrementing/decrementing
+// depth; the close at depth 0 is the match. It returns (start, end) where start
+// is the offset of the matched </details> and end is the offset just after it
+// (so the caller can slice inner = s[:start] and remainder = s[end:] from the
+// ORIGINAL text). Returns (-1, -1) if no matching close is found.
+func matchingDetailsClose(s string) (start int, end int) {
+	masked := maskCodeRegions(s)
+
+	type tok struct {
+		idx   int
+		end   int
+		isEnd bool
+	}
+	opens := reDetailsOpen.FindAllStringIndex(masked, -1)
+	ends := reDetailsEnd.FindAllStringIndex(masked, -1)
+	toks := make([]tok, 0, len(opens)+len(ends))
+	for _, loc := range opens {
+		toks = append(toks, tok{idx: loc[0], end: loc[1], isEnd: false})
+	}
+	for _, loc := range ends {
+		toks = append(toks, tok{idx: loc[0], end: loc[1], isEnd: true})
+	}
+	// Sort tokens by position (simple insertion sort; lists are tiny).
+	for i := 1; i < len(toks); i++ {
+		for j := i; j > 0 && toks[j-1].idx > toks[j].idx; j-- {
+			toks[j-1], toks[j] = toks[j], toks[j-1]
+		}
+	}
+	depth := 0
+	for _, tk := range toks {
+		if tk.isEnd {
+			if depth == 0 {
+				return tk.idx, tk.end
+			}
+			depth--
+		} else {
+			depth++
+		}
+	}
+	return -1, -1
+}
+
+// maskCodeRegions returns a copy of s in which the bytes belonging to fenced
+// code blocks (``` or ~~~) and inline code spans (backtick runs) are replaced
+// with a neutral space, preserving the original byte length so that offsets into
+// the returned string map 1:1 onto the original. This lets the </details> close
+// scan ignore tags that live inside code, which goldmark would render verbatim
+// (Major 2). Only the FENCE/DELIMITER-driven structure is considered; real HTML
+// tags outside code stay intact.
+//
+// Fences: a line whose first non-space run is >= 3 of the same fence char
+// (` or ~) opens a fenced block; the block closes at the next line whose fence
+// run is the same char and at least as long (an opening info string is allowed,
+// a closing fence must not have one). Goldmark allows up to 3 leading spaces of
+// indentation on a fence line; we mirror that.
+//
+// Inline spans: a run of N backticks opens an inline code span that closes at
+// the next run of exactly N backticks on the same logical text. Code spans are
+// only scanned outside fenced blocks.
+func maskCodeRegions(s string) string {
+	out := []byte(s)
+	n := len(out)
+
+	i := 0
+	atLineStart := true
+	for i < n {
+		if atLineStart {
+			if blockEnd, ok := maskFencedBlock(out, i); ok {
+				i = blockEnd
+				atLineStart = true
+				continue
+			}
+		}
+
+		switch out[i] {
+		case '\n':
+			atLineStart = true
+			i++
+		case '`':
+			i = maskInlineCodeSpan(out, i)
+			atLineStart = false
+		default:
+			atLineStart = false
+			i++
+		}
+	}
+	return string(out)
+}
+
+// maskRange replaces every non-newline byte in out[from:to) with a space,
+// preserving newlines (and thus byte offsets and line structure).
+func maskRange(out []byte, from, to int) {
+	n := len(out)
+	for i := from; i < to && i < n; i++ {
+		if out[i] != '\n' {
+			out[i] = ' '
+		}
+	}
+}
+
+// fenceRun reports the fence character and run length of a fence at line offset
+// lineStart in out, allowing up to 3 leading spaces (goldmark's rule). ok is
+// true only when a run of >= 3 identical fence chars (` or ~) is found; bodyEnd
+// is the offset just past that run. When ok is false the other results are
+// meaningless.
+func fenceRun(out []byte, lineStart int) (fenceChar byte, runLen, bodyEnd int, ok bool) {
+	n := len(out)
+	j := lineStart
+	spaces := 0
+	for j < n && out[j] == ' ' && spaces < 4 {
+		j++
+		spaces++
+	}
+	if spaces >= 4 || j >= n || (out[j] != '`' && out[j] != '~') {
+		return 0, 0, 0, false
+	}
+	fenceChar = out[j]
+	k := j
+	for k < n && out[k] == fenceChar {
+		k++
+		runLen++
+	}
+	if runLen < 3 {
+		return 0, 0, 0, false
+	}
+	return fenceChar, runLen, k, true
+}
+
+// isClosingFence reports whether the line out[ls:lineLimit) is a closing fence
+// for an opening fence of fenceChar with run length openRun: same char, run
+// length >= openRun, and only spaces/tabs after the run.
+func isClosingFence(out []byte, ls, lineLimit int, fenceChar byte, openRun int) bool {
+	p := ls
+	sp := 0
+	for p < lineLimit && out[p] == ' ' && sp < 4 {
+		p++
+		sp++
+	}
+	if sp >= 4 {
+		return false
+	}
+	clRun := 0
+	for p < lineLimit && out[p] == fenceChar {
+		p++
+		clRun++
+	}
+	if clRun < openRun {
+		return false
+	}
+	for q := p; q < lineLimit; q++ {
+		if out[q] != ' ' && out[q] != '\t' {
+			return false
+		}
+	}
+	return true
+}
+
+// maskFencedBlock checks whether a fenced code block (``` or ~~~) opens at line
+// offset lineStart and, if so, masks the whole block (open fence line through
+// the closing fence line, or end of input if unterminated) and returns the
+// offset just past the block with ok=true. When no fence opens it returns
+// ok=false and leaves out unchanged.
+func maskFencedBlock(out []byte, lineStart int) (blockEnd int, ok bool) {
+	fenceChar, runLen, bodyEnd, ok := fenceRun(out, lineStart)
+	if !ok {
+		return 0, false
+	}
+	n := len(out)
+	// Advance past the opening fence line.
+	lineEnd := indexByteFrom(out, '\n', bodyEnd)
+	if lineEnd < 0 {
+		blockEnd = n
+	} else {
+		blockEnd = lineEnd + 1
+		blockEnd = scanToFenceClose(out, blockEnd, fenceChar, runLen)
+	}
+	maskRange(out, lineStart, blockEnd)
+	return blockEnd, true
+}
+
+// scanToFenceClose scans lines starting at offset start for the closing fence of
+// an open fence (fenceChar, openRun) and returns the offset just past the block
+// (the byte after the newline of the closing line, or end of input if no close
+// is found).
+func scanToFenceClose(out []byte, start int, fenceChar byte, openRun int) int {
+	n := len(out)
+	blockEnd := start
+	for blockEnd < n {
+		ls := blockEnd
+		le := indexByteFrom(out, '\n', ls)
+		lineLimit := le
+		if le < 0 {
+			lineLimit = n
+		}
+		if isClosingFence(out, ls, lineLimit, fenceChar, openRun) {
+			if le < 0 {
+				return n
+			}
+			return le + 1
+		}
+		if le < 0 {
+			return n
+		}
+		blockEnd = le + 1
+	}
+	return blockEnd
+}
+
+// maskInlineCodeSpan masks an inline code span starting at offset start (where
+// out[start] == '`'): a run of N backticks closed by the next run of exactly N
+// backticks. It returns the offset to continue scanning from. If the span is
+// unterminated nothing is masked and scanning continues just past the opening
+// run (goldmark treats it as literal backticks).
+func maskInlineCodeSpan(out []byte, start int) int {
+	n := len(out)
+	runLen := 0
+	i := start
+	for i < n && out[i] == '`' {
+		i++
+		runLen++
+	}
+	// Find a closing run of exactly runLen backticks.
+	for p := i; p < n; {
+		if out[p] != '`' {
+			p++
+			continue
+		}
+		cl := 0
+		q := p
+		for q < n && out[q] == '`' {
+			q++
+			cl++
+		}
+		if cl == runLen {
+			maskRange(out, start, q)
+			return q
+		}
+		p = q
+	}
+	return i
+}
+
+func indexByteFrom(b []byte, c byte, from int) int {
+	for i := from; i < len(b); i++ {
+		if b[i] == c {
+			return i
+		}
+	}
+	return -1
 }
 
 func (r *Renderer) renderList(_ util.BufWriter,

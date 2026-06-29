@@ -1346,11 +1346,12 @@
   {
     "description": "Object ID where the object was initially created",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "createdInContext",
     "maxCount": 1,
     "name": "Created in context",
     "readonly": true,
+    "revision": 1,
     "source": "details"
   },
   {
@@ -1836,6 +1837,39 @@
     "readonly": true,
     "source": "derived",
     "includeTime": true
+  },
+  {
+    "description": "Participants subscribed to notifications on this discussion",
+    "format": "object",
+    "hidden": false,
+    "key": "notificationSubscribers",
+    "maxCount": 0,
+    "name": "Notification subscribers",
+    "objectTypes": [
+      "participant"
+    ],
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Number of unread messages in a discussion for the current user",
+    "format": "number",
+    "hidden": true,
+    "key": "unreadMessageCount",
+    "maxCount": 1,
+    "name": "Unread messages",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Number of unread mentions in a discussion for the current user",
+    "format": "number",
+    "hidden": true,
+    "key": "unreadMentionCount",
+    "maxCount": 1,
+    "name": "Unread mentions",
+    "readonly": true,
+    "source": "derived"
   },
   {
     "description": "Is file available offline",

@@ -148,6 +148,7 @@ func (s *Service) CreateSpace(ctx context.Context, request apimodel.CreateSpaceR
 				bundle.RelationKeySpaceType.String():  pbtypes.Float64(float64(model.SpaceType_SpaceTypeRegular)),
 			},
 		},
+		UseCase: pb.RpcObjectImportUseCaseRequest_CHAT_SPACE,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcWorkspaceCreateResponseError_NULL {
@@ -234,7 +235,7 @@ func (s *Service) getSpaceInfo(ctx context.Context, spaceId string) (space apimo
 	}
 
 	name := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyName.String()].GetStringValue()
-	icon := getIcon(s.gatewayUrl, "", spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
+	icon := s.getIcon(spaceId, "", spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), "", 0)
 	description := spaceResp.ObjectView.Details[0].Details.Fields[bundle.RelationKeyDescription.String()].GetStringValue()
 
 	return apimodel.Space{

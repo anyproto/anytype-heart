@@ -29,9 +29,6 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
 			return err
 		}
-		if b.NewState().Details().GetString(bundle.RelationKeyDiscussionId) != "" {
-			return fmt.Errorf("cannot delete object with discussion")
-		}
 		sbType = b.Type()
 		return nil
 	})
@@ -69,7 +66,18 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 		if err != nil && !errors.Is(err, filemodels.ErrEmptyFileId) {
 			return fmt.Errorf("delete file data: %w", err)
 		}
+		// BeforeDelete tears down the spaceindex row, closes open sessions
+		// and marks the smartblock as deleted. Without this the CID→object
+		// dedup lookup keeps returning the stale id, so re-uploads of the
+		// same bytes resurrect a broken object instead of creating a new one.
+		if err = s.BeforeDelete(id, nil); err != nil {
+			return fmt.Errorf("before delete: %w", err)
+		}
 		err = spc.DeleteTree(context.Background(), id.ObjectID)
+		// Tolerate a concurrent deletion that already removed the tree.
+		if errors.Is(err, spacestorage.ErrTreeStorageAlreadyDeleted) {
+			err = nil
+		}
 	default:
 		if entry.IsDerived {
 			err = s.deleteDerivedObject(id, sbType, spc)
@@ -213,9 +221,9 @@ func (s *Service) unsetHomepageIfNeeded(id domain.FullID, spc clientspace.Space)
 	homepage := details.GetString(bundle.RelationKeyHomepage)
 	if homepage == id.ObjectID {
 		if err = s.detailsService.SetSpaceInfo(spc.Id(), domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-			bundle.RelationKeyHomepage: domain.String(""),
+			bundle.RelationKeyHomepage: domain.String(domain.HomepageWidgets),
 		})); err != nil {
-			log.With("objectId", id.ObjectID).Warnf("failed to unset homepage: %v", err)
+			log.With("objectId", id.ObjectID).Warnf("failed to reset homepage to widgets: %v", err)
 		}
 	}
 }

@@ -153,6 +153,7 @@ func buildBlock(b *model.Block, targetID string) (result *model.Block) {
 		return fallback
 	}
 	result = pbtypes.CopyBlock(b)
+	result.Id = ""
 
 	switch v := result.Content.(type) {
 	case *model.BlockContentOfLink:

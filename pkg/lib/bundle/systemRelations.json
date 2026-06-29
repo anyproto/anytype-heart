@@ -103,5 +103,7 @@
   "resolvedLayout",
   "pluralName",
   "lastMessageDate",
-  "templatePlaceholders"
+  "notificationSubscribers",
+  "templatePlaceholders",
+  "createdInContext"
 ]

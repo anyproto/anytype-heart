@@ -13,11 +13,14 @@ import (
 type IdentityService interface {
 	GetMyProfileDetails(ctx context.Context) (identity string, metadataKey crypto.SymKey, details *domain.Details)
 
-	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
+	// RegisterIdentity starts tracking the identity for the given space: its profile is
+	// polled from the identity repo and fanned out into the space's participant record.
+	// The encryption key is persisted; pass nil to reuse a previously persisted key.
+	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey) error
 
-	// UnregisterIdentity removes the observer for the identity in specified space
+	// UnregisterIdentity stops tracking the identity for the specified space
 	UnregisterIdentity(spaceId string, identity string)
-	// UnregisterIdentitiesInSpace removes all identity observers in the space
+	// UnregisterIdentitiesInSpace stops tracking all identities for the space
 	UnregisterIdentitiesInSpace(spaceId string)
 
 	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile

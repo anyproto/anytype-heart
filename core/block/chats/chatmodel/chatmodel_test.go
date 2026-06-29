@@ -225,6 +225,191 @@ func TestValidate(t *testing.T) {
 		assert.Error(t, msg.Validate())
 	})
 
+	t.Run("valid editor quote block", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{
+						EditorQuote: &model.ChatMessageMessageBlockEditorQuote{
+							BlockId: "srcBlock1",
+							Content: &model.ChatMessageMessageBlockText{
+								Text:  "quoted",
+								Style: model.BlockContentText_Paragraph,
+								Marks: []*model.BlockContentTextMark{
+									{
+										Type:  model.BlockContentTextMark_Bold,
+										Range: &model.Range{From: 0, To: 6},
+									},
+								},
+							},
+						},
+					}},
+				},
+			},
+		}
+
+		assert.NoError(t, msg.Validate())
+	})
+
+	t.Run("editor quote block empty blockId", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{
+						EditorQuote: &model.ChatMessageMessageBlockEditorQuote{
+							BlockId: "",
+							Content: &model.ChatMessageMessageBlockText{Text: "quoted"},
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("editor quote block empty text", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{
+						EditorQuote: &model.ChatMessageMessageBlockEditorQuote{
+							BlockId: "srcBlock1",
+							Content: &model.ChatMessageMessageBlockText{Text: ""},
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("editor quote block nil content", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{
+						EditorQuote: &model.ChatMessageMessageBlockEditorQuote{
+							BlockId: "srcBlock1",
+							Content: nil,
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("editor quote block invalid mark range", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{
+						EditorQuote: &model.ChatMessageMessageBlockEditorQuote{
+							BlockId: "srcBlock1",
+							Content: &model.ChatMessageMessageBlockText{
+								Text: "hi",
+								Marks: []*model.BlockContentTextMark{
+									{
+										Type:  model.BlockContentTextMark_Bold,
+										Range: &model.Range{From: 0, To: 10},
+									},
+								},
+							},
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("valid message quote block", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfMessageQuote{
+						MessageQuote: &model.ChatMessageMessageBlockMessageQuote{
+							MessageId:     "msg123",
+							ParticipantId: "participant_abc",
+							Content: &model.ChatMessageMessageBlockText{
+								Text: "quoted message",
+							},
+						},
+					}},
+				},
+			},
+		}
+
+		assert.NoError(t, msg.Validate())
+	})
+
+	t.Run("message quote block empty messageId", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfMessageQuote{
+						MessageQuote: &model.ChatMessageMessageBlockMessageQuote{
+							MessageId:     "",
+							ParticipantId: "participant_abc",
+							Content:       &model.ChatMessageMessageBlockText{Text: "hi"},
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("message quote block empty participantId", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfMessageQuote{
+						MessageQuote: &model.ChatMessageMessageBlockMessageQuote{
+							MessageId:     "msg123",
+							ParticipantId: "",
+							Content:       &model.ChatMessageMessageBlockText{Text: "hi"},
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
+	t.Run("message quote block empty text", func(t *testing.T) {
+		msg := &Message{
+			ChatMessage: &model.ChatMessage{
+				Message: &model.ChatMessageMessageContent{},
+				Blocks: []*model.ChatMessageMessageBlock{
+					{Content: &model.ChatMessageMessageBlockContentOfMessageQuote{
+						MessageQuote: &model.ChatMessageMessageBlockMessageQuote{
+							MessageId:     "msg123",
+							ParticipantId: "participant_abc",
+							Content:       &model.ChatMessageMessageBlockText{Text: ""},
+						},
+					}},
+				},
+			},
+		}
+
+		assert.Error(t, msg.Validate())
+	})
+
 	t.Run("block with nil content", func(t *testing.T) {
 		msg := &Message{
 			ChatMessage: &model.ChatMessage{
@@ -352,6 +537,37 @@ func TestBlocksRoundTrip(t *testing.T) {
 							Processor: model.BlockContentLatex_Mermaid,
 						},
 					}},
+					{Content: &model.ChatMessageMessageBlockContentOfEditorQuote{
+						EditorQuote: &model.ChatMessageMessageBlockEditorQuote{
+							BlockId: "srcBlock1",
+							Content: &model.ChatMessageMessageBlockText{
+								Text:  "original content snippet",
+								Style: model.BlockContentText_Quote,
+								Marks: []*model.BlockContentTextMark{
+									{
+										Type:  model.BlockContentTextMark_Italic,
+										Range: &model.Range{From: 0, To: 8},
+									},
+								},
+							},
+						},
+					}},
+					{Content: &model.ChatMessageMessageBlockContentOfMessageQuote{
+						MessageQuote: &model.ChatMessageMessageBlockMessageQuote{
+							MessageId:     "msg123",
+							ParticipantId: "participant_xyz",
+							Content: &model.ChatMessageMessageBlockText{
+								Text:  "what they said",
+								Style: model.BlockContentText_Paragraph,
+								Marks: []*model.BlockContentTextMark{
+									{
+										Type:  model.BlockContentTextMark_Bold,
+										Range: &model.Range{From: 0, To: 4},
+									},
+								},
+							},
+						},
+					}},
 				},
 			},
 		}
@@ -365,7 +581,7 @@ func TestBlocksRoundTrip(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		require.Len(t, got.ChatMessage.Blocks, 5)
+		require.Len(t, got.ChatMessage.Blocks, 7)
 
 		// Text block 0
 		tb0 := got.ChatMessage.Blocks[0].GetText()
@@ -403,6 +619,31 @@ func TestBlocksRoundTrip(t *testing.T) {
 		require.NotNil(t, eb4)
 		assert.Equal(t, "graph TD; A-->B;", eb4.Text)
 		assert.Equal(t, model.BlockContentLatex_Mermaid, eb4.Processor)
+
+		// Editor quote block 5
+		eq5 := got.ChatMessage.Blocks[5].GetEditorQuote()
+		require.NotNil(t, eq5)
+		assert.Equal(t, "srcBlock1", eq5.BlockId)
+		require.NotNil(t, eq5.Content)
+		assert.Equal(t, "original content snippet", eq5.Content.Text)
+		assert.Equal(t, model.BlockContentText_Quote, eq5.Content.Style)
+		require.Len(t, eq5.Content.Marks, 1)
+		assert.Equal(t, model.BlockContentTextMark_Italic, eq5.Content.Marks[0].Type)
+		assert.Equal(t, int32(0), eq5.Content.Marks[0].Range.From)
+		assert.Equal(t, int32(8), eq5.Content.Marks[0].Range.To)
+
+		// Message quote block 6
+		mq6 := got.ChatMessage.Blocks[6].GetMessageQuote()
+		require.NotNil(t, mq6)
+		assert.Equal(t, "msg123", mq6.MessageId)
+		assert.Equal(t, "participant_xyz", mq6.ParticipantId)
+		require.NotNil(t, mq6.Content)
+		assert.Equal(t, "what they said", mq6.Content.Text)
+		assert.Equal(t, model.BlockContentText_Paragraph, mq6.Content.Style)
+		require.Len(t, mq6.Content.Marks, 1)
+		assert.Equal(t, model.BlockContentTextMark_Bold, mq6.Content.Marks[0].Type)
+		assert.Equal(t, int32(0), mq6.Content.Marks[0].Range.From)
+		assert.Equal(t, int32(4), mq6.Content.Marks[0].Range.To)
 	})
 
 	t.Run("empty blocks round-trip", func(t *testing.T) {

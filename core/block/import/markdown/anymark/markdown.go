@@ -190,6 +190,27 @@ func getCustomHTMLRules() []html2md.Rule {
 		},
 	}
 
+	// <details>/<summary> maps to a Toggle block. Re-emit it as a Markdown
+	// <details> element (matching the md exporter), so the goldmark pass turns it
+	// back into a Toggle with the inner content nested as children.
+	summary := html2md.Rule{
+		Filter: []string{"summary"},
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
+			return html2md.String("")
+		},
+	}
+
+	details := html2md.Rule{
+		Filter: []string{"details"},
+		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
+			summaryText := strings.TrimSpace(selec.Find("summary").First().Text())
+			summaryText = strings.ReplaceAll(summaryText, "\n", " ")
+			body := strings.TrimSpace(content)
+			res := "\n\n<details>\n<summary>" + summaryText + "</summary>\n\n" + body + "\n\n</details>\n\n"
+			return html2md.String(res)
+		},
+	}
+
 	italic := html2md.Rule{
 		Filter: []string{"cite", "dfn", "address"},
 		Replacement: func(content string, selec *goquery.Selection, options *html2md.Options) *string {
@@ -260,7 +281,7 @@ func getCustomHTMLRules() []html2md.Rule {
 	}
 
 	return []html2md.Rule{span, del, underscore, br, anohref,
-		simpleText, blockquote, italic, code, bdo, div, img, table}
+		simpleText, blockquote, summary, details, italic, code, bdo, div, img, table}
 }
 
 func extractImageSource(selec *goquery.Selection) string {

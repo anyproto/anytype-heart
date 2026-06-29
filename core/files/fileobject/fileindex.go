@@ -130,7 +130,7 @@ func (ind *indexer) initQuery() {
 }
 
 func (ind *indexer) addToQueueFromObjectStore(ctx context.Context) error {
-	recs, err := ind.objectStore.QueryCrossSpace(ind.query)
+	recs, err := ind.objectStore.QueryCrossSpace(ctx, ind.query)
 	if err != nil {
 		return fmt.Errorf("query: %w", err)
 	}

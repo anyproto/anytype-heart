@@ -544,6 +544,8 @@ func addMembers(ctx context.Context, req *pb.RpcSpaceParticipantsAddListRequest,
 		aclPerms = list.AclPermissionsReader
 	case model.ParticipantPermissions_Writer:
 		aclPerms = list.AclPermissionsWriter
+	case model.ParticipantPermissions_Admin:
+		aclPerms = list.AclPermissionsAdmin
 	default:
 		return acl.ErrIncorrectPermissions
 	}

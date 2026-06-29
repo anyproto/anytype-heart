@@ -180,6 +180,53 @@ func (_c *MockTechSpace_DoAccountObject_Call) RunAndReturn(run func(context.Cont
 	return _c
 }
 
+// DoPersonalFavoritesStore provides a mock function with given fields: ctx, apply
+func (_m *MockTechSpace) DoPersonalFavoritesStore(ctx context.Context, apply func(techspace.PersonalFavoritesStore) error) error {
+	ret := _m.Called(ctx, apply)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DoPersonalFavoritesStore")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, func(techspace.PersonalFavoritesStore) error) error); ok {
+		r0 = rf(ctx, apply)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockTechSpace_DoPersonalFavoritesStore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DoPersonalFavoritesStore'
+type MockTechSpace_DoPersonalFavoritesStore_Call struct {
+	*mock.Call
+}
+
+// DoPersonalFavoritesStore is a helper method to define mock.On call
+//   - ctx context.Context
+//   - apply func(techspace.PersonalFavoritesStore) error
+func (_e *MockTechSpace_Expecter) DoPersonalFavoritesStore(ctx interface{}, apply interface{}) *MockTechSpace_DoPersonalFavoritesStore_Call {
+	return &MockTechSpace_DoPersonalFavoritesStore_Call{Call: _e.mock.On("DoPersonalFavoritesStore", ctx, apply)}
+}
+
+func (_c *MockTechSpace_DoPersonalFavoritesStore_Call) Run(run func(ctx context.Context, apply func(techspace.PersonalFavoritesStore) error)) *MockTechSpace_DoPersonalFavoritesStore_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(func(techspace.PersonalFavoritesStore) error))
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_DoPersonalFavoritesStore_Call) Return(err error) *MockTechSpace_DoPersonalFavoritesStore_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockTechSpace_DoPersonalFavoritesStore_Call) RunAndReturn(run func(context.Context, func(techspace.PersonalFavoritesStore) error) error) *MockTechSpace_DoPersonalFavoritesStore_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // DoSpaceView provides a mock function with given fields: ctx, spaceID, apply
 func (_m *MockTechSpace) DoSpaceView(ctx context.Context, spaceID string, apply func(techspace.SpaceView) error) error {
 	ret := _m.Called(ctx, spaceID, apply)
@@ -374,6 +421,61 @@ func (_c *MockTechSpace_Name_Call) Return(name string) *MockTechSpace_Name_Call 
 }
 
 func (_c *MockTechSpace_Name_Call) RunAndReturn(run func() string) *MockTechSpace_Name_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// PersonalFavoritesObjectId provides a mock function with no fields
+func (_m *MockTechSpace) PersonalFavoritesObjectId() (string, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for PersonalFavoritesObjectId")
+	}
+
+	var r0 string
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (string, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() string); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockTechSpace_PersonalFavoritesObjectId_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PersonalFavoritesObjectId'
+type MockTechSpace_PersonalFavoritesObjectId_Call struct {
+	*mock.Call
+}
+
+// PersonalFavoritesObjectId is a helper method to define mock.On call
+func (_e *MockTechSpace_Expecter) PersonalFavoritesObjectId() *MockTechSpace_PersonalFavoritesObjectId_Call {
+	return &MockTechSpace_PersonalFavoritesObjectId_Call{Call: _e.mock.On("PersonalFavoritesObjectId")}
+}
+
+func (_c *MockTechSpace_PersonalFavoritesObjectId_Call) Run(run func()) *MockTechSpace_PersonalFavoritesObjectId_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockTechSpace_PersonalFavoritesObjectId_Call) Return(_a0 string, _a1 error) *MockTechSpace_PersonalFavoritesObjectId_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockTechSpace_PersonalFavoritesObjectId_Call) RunAndReturn(run func() (string, error)) *MockTechSpace_PersonalFavoritesObjectId_Call {
 	_c.Call.Return(run)
 	return _c
 }

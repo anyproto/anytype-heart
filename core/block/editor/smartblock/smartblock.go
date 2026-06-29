@@ -23,13 +23,13 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectlink"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/block/source"
 	"github.com/anyproto/anytype-heart/core/block/undo"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
-	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/relationutils"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
@@ -675,8 +675,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		len(sb.ObjectTree.Heads()) == 1 &&
 		sb.ObjectTree.Heads()[0] == sb.ObjectTree.Id() &&
 		!allowApplyWithEmptyTree &&
-		sb.Type() != smartblock.SmartBlockTypeChatDerivedObject &&
-		sb.Type() != smartblock.SmartBlockTypeAccountObject {
+		!sb.Type().IsStoreBacked() {
 		// protection for applying migrations on empty tree
 		log.With("sbType", sb.Type().String(), "objectId", sb.Id()).Warnf("apply on empty tree discarded")
 		return ErrApplyOnEmptyTreeDisallowed
@@ -742,6 +741,28 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	sb.setRestrictionsDetail(s)
 
 	st := sb.Doc.(*state.State)
+
+	if sendEvent {
+		events := msgsToEvents(msgs)
+		if ctx := s.Context(); ctx != nil {
+			// TODO: sessionContext.SetMessages replaces (not appends), so a second Apply
+			// against a different smartblock under the same sctx silently drops the first
+			// smartblock's events. The response slot can only carry events for one smartblock,
+			// but today we let the second writer win. Decide on the right behavior (route the
+			// mismatched writer through sb.sendEvent, or model multi-smartblock responses
+			// explicitly) and remove this warning. See GO-7152.
+			if prevId := ctx.ObjectID(); prevId != "" && prevId != sb.Id() {
+				log.With("prevSmartBlockId", prevId, "smartBlockId", sb.Id()).
+					Warnf("session context already holds events for a different smartblock; previous events will be discarded")
+			}
+			ctx.SetMessages(sb.Id(), events)
+		} else {
+			sb.sendEvent(&pb.Event{
+				Messages:  events,
+				ContextId: sb.RootId(),
+			})
+		}
+	}
 
 	changes := st.GetChanges()
 	var changeId string
@@ -825,18 +846,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.runIndexer(st)
 	}
 
-	if sendEvent {
-		events := msgsToEvents(msgs)
-		if ctx := s.Context(); ctx != nil {
-			ctx.SetMessages(sb.Id(), events)
-		} else {
-			sb.sendEvent(&pb.Event{
-				Messages:  events,
-				ContextId: sb.RootId(),
-			})
-		}
-	}
-
 	if sb.hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
@@ -917,6 +926,16 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 
 func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	source.NewSubObjectsAndProfileLinksMigration(sb.Type(), sb.space, sb.currentParticipantId, sb.spaceIndex, sb.formatFetcher).Migrate(s)
+	// Ensure bundled relation links are present for all bundled detail keys.
+	// Without this, imported states may lack relation links for details like setOf,
+	// producing a RelationRemove change that wipes the detail on replay (GO-7217).
+	var relKeys []domain.RelationKey
+	for k := range s.Details().Iterate() {
+		if bundle.HasRelation(k) {
+			relKeys = append(relKeys, k)
+		}
+	}
+	s.AddBundledRelationLinks(relKeys...)
 	s.SetParent(sb.Doc.(*state.State))
 	sb.storeFileKeys(s)
 	sb.injectLocalDetails(s)
@@ -1473,9 +1492,14 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 		}
 
 		if text := blockModel.GetText(); text != nil && text.Marks != nil {
-			// Extract mentions from text marks
+			// Extract mentions and inline-object marks from text marks. Object marks
+			// (e.g. @page references) are semantically equivalent to mentions for the
+			// purpose of outgoing links.
 			for _, mark := range text.Marks.Marks {
-				if mark.Type == model.BlockContentTextMark_Mention && mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
+				if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
+					continue
+				}
+				if mark.Param != "" && mark.Param != objectId && !linkSet[mark.Param] {
 					linkSet[mark.Param] = true
 					outgoingLinks = append(outgoingLinks, OutgoingLink{
 						TargetID:      mark.Param,
@@ -1485,9 +1509,31 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			}
 		}
 
+		// Inline dataview embed (e.g. a Set/Collection embedded on a Page) — its
+		// TargetObjectId is the embedded object. A standalone Set/Collection's own
+		// dataview block has TargetObjectId == "" and is unaffected.
+		if dv := blockModel.GetDataview(); dv != nil && dv.TargetObjectId != "" && dv.TargetObjectId != objectId && !linkSet[dv.TargetObjectId] {
+			linkSet[dv.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      dv.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
 		return true
 	}); err != nil {
 		log.Warnf("failed to iterate state blocks: %v", err)
+	}
+
+	// Collect collection members (StoreSlice). A Collection points at its members via
+	// a store slice, not via blocks or relations, so they need an explicit emission.
+	if !internalflag.NewFromState(st).Has(model.InternalFlag_collectionDontIndexLinks) {
+		for _, id := range st.GetStoreSlice(template.CollectionStoreKey) {
+			if id != "" && id != objectId && !linkSet[id] {
+				linkSet[id] = true
+				outgoingLinks = append(outgoingLinks, OutgoingLink{TargetID: id})
+			}
+		}
 	}
 
 	// Collect links from object relations

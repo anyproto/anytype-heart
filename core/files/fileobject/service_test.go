@@ -10,12 +10,14 @@ import (
 	"github.com/anyproto/any-sync/accountservice/mock_accountservice"
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
-	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/core/block/editor/fileobject"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
@@ -30,6 +32,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/filestorage"
 	"github.com/anyproto/anytype-heart/core/files/filesync/mock_filesync"
 	"github.com/anyproto/anytype-heart/core/relationutils/mock_relationutils"
+	"github.com/anyproto/anytype-heart/core/session"
 	wallet2 "github.com/anyproto/anytype-heart/core/wallet"
 	"github.com/anyproto/anytype-heart/core/wallet/mock_wallet"
 	"github.com/anyproto/anytype-heart/pb"
@@ -254,4 +257,36 @@ func TestGetFileIdFromObjectWaitLoad(t *testing.T) {
 		})
 		require.ErrorIs(t, err, filemodels.ErrEmptyFileId)
 	})
+}
+
+func TestCreateInSpaceWithCustomRelationInAdditionalDetails(t *testing.T) {
+	fx := newFixture(t)
+
+	ctx := context.Background()
+	spaceId := "spaceId"
+	rootId := "rootId"
+	customRelationKey := domain.RelationKey("customRelation")
+
+	space := mock_clientspace.NewMockSpace(t)
+	space.EXPECT().Id().Return(spaceId).Maybe()
+	space.EXPECT().CreateTreePayload(mock.Anything, mock.Anything).Return(treestorage.TreeStorageCreatePayload{
+		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: rootId},
+	}, nil)
+	space.EXPECT().Do(mock.Anything, mock.Anything).Return(nil).Maybe()
+	fx.spaceService.EXPECT().Get(mock.Anything, spaceId).Return(space, nil).Maybe()
+
+	fx.objectCreator.objectId = "newObjectId"
+
+	additionalDetails := domain.NewDetails()
+	additionalDetails.SetString(customRelationKey, "customValue")
+
+	id, _, err := fx.createInSpace(ctx, space, filemodels.CreateRequest{
+		FileId:                testFileId,
+		AsyncMetadataIndexing: true,
+		AdditionalDetails:     additionalDetails,
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "newObjectId", id)
+	assert.Equal(t, "customValue", fx.objectCreator.creationState.Details().GetString(customRelationKey))
 }

@@ -169,7 +169,7 @@ func (s *service) newTreeSource(ctx context.Context, space source.Space, id stri
 		fileObjectMigrator: s.fileObjectMigrator,
 		formatFetcher:      s.formatFetcher,
 	}
-	if sbt == smartblock.SmartBlockTypeChatDerivedObject || sbt == smartblock.SmartBlockTypeDiscussionObject || sbt == smartblock.SmartBlockTypeAccountObject {
+	if sbt.IsStoreBacked() {
 		return &store{treeSource: src, sbType: sbt, diffManagers: map[string]*diffManager{}, spaceService: s.spaceService}, nil
 	}
 

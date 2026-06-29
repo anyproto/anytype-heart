@@ -5,6 +5,7 @@ import (
 	"errors"
 	"runtime/trace"
 	"sync"
+	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/util/crypto"
@@ -13,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/vcs"
 )
 
 var log = logging.Logger("anytype-core-account")
@@ -75,12 +77,22 @@ func (s *Service) stop() error {
 	defer task.End()
 
 	if s != nil && s.app != nil {
-		log.Warnf("stopping app")
+		mwVersion := vcs.GetVCSInfo().Version()
+		log.Infow("closing app: initiated", "mwVersion", mwVersion)
 		s.app.SetDeviceState(int(domain.CompStateAppClosingInitiated))
+		start := time.Now()
 		err := s.app.Close(ctx)
 		if err != nil {
 			log.Warnf("error while stop anytype: %v", err)
 		}
+		log.Infow("closing app: finished", "mwVersion", mwVersion, "tookMs", time.Since(start).Milliseconds())
+		// Drain zap's buffered sink (the "closing app: finished" line above
+		// must reach disk) and stop the lumberjack flush goroutine. Both
+		// calls are bounded so a stuck disk doesn't hang process exit;
+		// errors are benign (stderr Sync can fail on some platforms) and
+		// intentionally ignored.
+		_ = logging.SyncWithTimeout(3 * time.Second)
+		_ = logging.CloseSink(3 * time.Second)
 
 		s.app = nil
 	}

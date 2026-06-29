@@ -111,6 +111,7 @@ type identityRepoClient interface {
 
 type aclService struct {
 	nodeConfigGetter NodeConfGetter
+	nodeConf         nodeconf.Service
 	joiningClient    aclclient.AclJoiningClient
 	spaceService     space.Service
 	inviteService    inviteservice.InviteService
@@ -133,6 +134,7 @@ type aclService struct {
 
 func (a *aclService) Init(ap *app.App) (err error) {
 	a.nodeConfigGetter = app.MustComponent[NodeConfGetter](ap)
+	a.nodeConf = app.MustComponent[nodeconf.Service](ap)
 	a.joiningClient = app.MustComponent[aclclient.AclJoiningClient](ap)
 	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
@@ -142,7 +144,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	subService := app.MustComponent[subscription.Service](ap)
 	crossSub := app.MustComponent[crossspacesub.Service](ap)
 	wlt := app.MustComponent[wallet.Wallet](ap)
-	a.getter = newAclGetter(a.joiningClient, wlt.Account())
+	a.getter = newAclGetter(a.joiningClient, wlt.Account(), a.nodeConf)
 	a.updater, err = newAclUpdater("acl-updater",
 		wlt.Account().SignKey.GetPublic().Account(),
 		crossSub,
@@ -157,8 +159,26 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	}
 
 	a.ctx, a.ctxCancel = context.WithCancel(context.Background())
-	a.recordVerifier = recordverifier.New()
 	return nil
+}
+
+// buildRecordVerifier returns the test-injected verifier when present, otherwise
+// builds one from the current networkId. We decode lazily because in LocalOnly
+// mode networkId is empty; in that mode there are no acceptor-signed records
+// to check, so we fall back to the no-op verifier.
+func (a *aclService) buildRecordVerifier() (recordverifier.AcceptorVerifier, error) {
+	if a.recordVerifier != nil {
+		return a.recordVerifier, nil
+	}
+	networkId := a.nodeConf.Configuration().NetworkId
+	if networkId == "" {
+		return recordverifier.NewValidateFull(), nil
+	}
+	netKey, err := crypto.DecodeNetworkId(networkId)
+	if err != nil {
+		return nil, fmt.Errorf("invalid networkId: %w", err)
+	}
+	return recordverifier.New(netKey), nil
 }
 
 func (a *aclService) Run(_ context.Context) (err error) {
@@ -331,6 +351,8 @@ func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perm
 			aclPerms = list.AclPermissionsReader
 		case model.ParticipantPermissions_Writer:
 			aclPerms = list.AclPermissionsWriter
+		case model.ParticipantPermissions_Admin:
+			aclPerms = list.AclPermissionsAdmin
 		default:
 			acl.RUnlock()
 			return ErrIncorrectPermissions
@@ -605,7 +627,11 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
-	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, a.recordVerifier)
+	verifier, err := a.buildRecordVerifier()
+	if err != nil {
+		return domain.InviteView{}, convertedOrInternalError("build record verifier", err)
+	}
+	lst, err := list.BuildAclListWithIdentity(a.accountService.Keys(), store, verifier)
 	if err != nil {
 		return domain.InviteView{}, convertedOrAclRequestError(err)
 	}
@@ -618,7 +644,9 @@ func (a *aclService) ViewInvite(ctx context.Context, inviteCid cid.Cid, inviteFi
 }
 
 func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto.PubKey, permissions model.ParticipantPermissions) error {
-	validPerms := permissions == model.ParticipantPermissions_Reader || permissions == model.ParticipantPermissions_Writer
+	validPerms := permissions == model.ParticipantPermissions_Reader ||
+		permissions == model.ParticipantPermissions_Writer ||
+		permissions == model.ParticipantPermissions_Admin
 	if !validPerms {
 		return ErrIncorrectPermissions
 	}
@@ -650,6 +678,8 @@ func (a *aclService) Accept(ctx context.Context, spaceId string, identity crypto
 		aclPerms = list.AclPermissionsReader
 	case model.ParticipantPermissions_Writer:
 		aclPerms = list.AclPermissionsWriter
+	case model.ParticipantPermissions_Admin:
+		aclPerms = list.AclPermissionsAdmin
 	}
 	cl := acceptSpace.CommonSpace().AclClient()
 	a.aclClientLock.Lock()

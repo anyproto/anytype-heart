@@ -119,8 +119,13 @@ func newAclUpdater(
 		ownIdentity,
 		techSpaceId,
 		func(sub *spaceViewObjectSubscription) {
-			sub.Iterate(func(id string, status spaceViewStatus) bool {
-				err := scheduler.Schedule(id, Message{
+			sub.Iterate(func(_ string, status spaceViewStatus) bool {
+				// keyed per space: Schedule replaces the message behind an
+				// existing key, so a shared key would lose all but the last
+				// space when several deleted space views arrive in one
+				// batch; OnRemoved cancels by the same per-space key
+				scheduleId := domain.NewParticipantId(status.spaceId, ownIdentity)
+				err := scheduler.Schedule(scheduleId, Message{
 					SpaceId:  status.spaceId,
 					Identity: pubKey,
 					MsgType:  MsgTypeRemoveSelf,
@@ -132,7 +137,8 @@ func newAclUpdater(
 			})
 		},
 		func(status spaceViewStatus) {
-			err := scheduler.Schedule(id, Message{
+			scheduleId := domain.NewParticipantId(status.spaceId, ownIdentity)
+			err := scheduler.Schedule(scheduleId, Message{
 				SpaceId:  status.spaceId,
 				Identity: pubKey,
 				MsgType:  MsgTypeRemoveSelf,

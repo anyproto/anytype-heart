@@ -57,6 +57,11 @@ type InMemoryStore struct {
 	spaceCids map[string]map[cid.Cid]struct{}
 	mu        sync.Mutex
 
+	// spaceInfoErr, when non-nil, is returned from SpaceInfo. Used in tests to
+	// simulate transient backend failures (e.g. cross-DC redsync lock contention).
+	errMu        sync.Mutex
+	spaceInfoErr error
+
 	stats *InMemoryStoreStats
 }
 
@@ -255,6 +260,13 @@ func (t *InMemoryStore) DeleteFiles(ctx context.Context, spaceId string, fileIds
 }
 
 func (t *InMemoryStore) SpaceInfo(ctx context.Context, spaceId string) (*fileproto.SpaceInfoResponse, error) {
+	t.errMu.Lock()
+	if injected := t.spaceInfoErr; injected != nil {
+		t.errMu.Unlock()
+		return nil, injected
+	}
+	t.errMu.Unlock()
+
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
@@ -279,6 +291,14 @@ func (t *InMemoryStore) SetLimit(limit int) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.limit = limit
+}
+
+// SetSpaceInfoError sets an error that subsequent SpaceInfo calls will return.
+// Pass nil to clear. Used in tests to simulate transient backend failures.
+func (t *InMemoryStore) SetSpaceInfoError(err error) {
+	t.errMu.Lock()
+	defer t.errMu.Unlock()
+	t.spaceInfoErr = err
 }
 
 func (t *InMemoryStore) AccountInfo(ctx context.Context) (*fileproto.AccountInfoResponse, error) {

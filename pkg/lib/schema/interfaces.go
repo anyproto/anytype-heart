@@ -4,14 +4,23 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// PropertyResolver resolves property keys and formats from names
+// PropertyResolver resolves property keys and formats from names.
+// objectTypeName is the display Name of the type declared by the current
+// file (e.g. via `Object type:` in YAML frontmatter). Implementations
+// should prefer a relation defined by the matching schema before falling
+// back to other schemas, so two schemas declaring properties with the
+// same display name but different keys do not collide. An empty
+// objectTypeName means "no scope" and implementations must behave as a
+// global search.
 type PropertyResolver interface {
-	// ResolvePropertyKey returns the property key for a given name
-	// Returns empty string if not found in schema
-	ResolvePropertyKey(name string) string
+	// ResolvePropertyKey returns the property key for a given name, scoped
+	// to the schema of objectTypeName when possible. Returns empty string
+	// if not found in any schema.
+	ResolvePropertyKey(objectTypeName, name string) string
 
-	// GetRelationFormat returns the format for a given relation key
-	GetRelationFormat(key string) model.RelationFormat
+	// GetRelationFormat returns the format for a given relation key, scoped
+	// to the schema of objectTypeName when possible.
+	GetRelationFormat(objectTypeName, key string) model.RelationFormat
 
 	// ResolveOptionValue converts option name to option ID
 	ResolveOptionValue(relationKey string, optionName string) string

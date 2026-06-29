@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,39 +16,213 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/klauspost/compress/flate"
 	exptrace "golang.org/x/exp/trace"
 
+	"github.com/anyproto/anytype-heart/core/debug/debugsnapshot"
+	walletComp "github.com/anyproto/anytype-heart/core/wallet"
+	"github.com/anyproto/anytype-heart/pkg/lib/initialparams"
+	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/util/debug"
 )
 
 var ErrNoFolder = fmt.Errorf("no folder provided")
 
-func (s *Service) RunProfiler(ctx context.Context, seconds int) (string, error) {
-	// Start
+func (s *Service) profilesDir() string {
+	return initialparams.Get().Paths.ProfilesDir
+}
+
+func (s *Service) getStatJSON() string {
+	if s.app == nil {
+		return ""
+	}
+	svc, err := app.GetComponent[debugstat.StatService](s.app)
+	if err != nil {
+		return ""
+	}
+	data, err := json.Marshal(svc.GetStat())
+	if err != nil {
+		return ""
+	}
+	return string(data)
+}
+
+// snapshotMeta assembles the debugsnapshot.Meta view of this Service, pulling
+// the wallet-scoped identity and the current rootPath for disk-free stats.
+func (s *Service) snapshotMeta() debugsnapshot.Meta {
+	peerId, accountId := s.identity()
+	return debugsnapshot.Meta{
+		StatJSON:  s.getStatJSON(),
+		PeerId:    peerId,
+		AccountId: accountId,
+		RootPath:  s.rootPath,
+	}
+}
+
+// identity returns the current device PeerId and Account Id if the app is
+// running and a wallet component is available; otherwise returns empty
+// strings. Safe to call before AccountSelect.
+func (s *Service) identity() (peerId, accountId string) {
+	if s == nil || s.app == nil {
+		return "", ""
+	}
+	w, ok := s.app.Component(walletComp.CName).(walletComp.Wallet)
+	if !ok || w == nil {
+		return "", ""
+	}
+	if dk := w.GetDevicePrivkey(); dk != nil {
+		peerId = dk.GetPublic().PeerId()
+	}
+	if ak := w.GetAccountPrivkey(); ak != nil {
+		accountId = ak.GetPublic().Account()
+	}
+	return
+}
+
+// SaveDebugSnapshot saves heap profile, goroutine stacks, and runtime info
+// as a zip file. Called via DebugRunProfiler with DurationInSeconds=0.
+func (s *Service) SaveDebugSnapshot(reason, reasonDesc string) (string, error) {
+	profilesDir := s.profilesDir()
+	zipPath, err := debugsnapshot.Save(profilesDir, reason, reasonDesc, s.snapshotMeta())
+	if err != nil {
+		return "", err
+	}
+	pruneOldProfilesIfOvercrowded(profilesDir, profilesPruneTrigger, profilesPruneOlderThan)
+	return zipPath, nil
+}
+
+// profilesPruneTrigger is the file count that must be exceeded before any
+// age-based pruning runs. Below this count every profile is kept regardless
+// of age; above it, files older than profilesPruneOlderThan are removed.
+const profilesPruneTrigger = 50
+const profilesPruneOlderThan = 30 * 24 * time.Hour
+
+// pruneOldProfilesIfOvercrowded is a lazy, trigger-based cleanup for the
+// profiles directory. It is NOT a hard cap — below countTrigger nothing is
+// deleted even if entries are older than maxAge, and above countTrigger only
+// entries older than maxAge are removed (so the directory can still exceed
+// countTrigger if every file is fresh). The intent is "let the directory
+// breathe, but don't hoard stale files once it starts filling up".
+func pruneOldProfilesIfOvercrowded(dir string, countTrigger int, maxAge time.Duration) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	if len(entries) <= countTrigger {
+		return
+	}
+	cutoff := time.Now().Add(-maxAge)
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if info.ModTime().Before(cutoff) {
+			os.Remove(filepath.Join(dir, e.Name()))
+		}
+	}
+}
+
+func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDesc string) (string, error) {
+	if seconds == 0 {
+		return s.SaveDebugSnapshot(reason, reasonDesc)
+	}
+
+	profilesDir := s.profilesDir()
+	if err := os.MkdirAll(profilesDir, 0755); err != nil {
+		return "", fmt.Errorf("create profiles dir: %w", err)
+	}
+
+	// In-flight trace (already in memory from recorder)
 	inFlightTraceBuf, err := s.traceRecorder.stopAndGetInFlightTrace()
 	if err != nil {
 		return "", err
 	}
 
-	var tracerBuf bytes.Buffer
-	err = trace.Start(&tracerBuf)
+	// Create temp files for streaming. We defer removal unconditionally —
+	// the caller never sees these paths, only the final zip.
+	type tempFile struct {
+		zipName string
+		path    string
+	}
+	var temps []tempFile
+	defer func() {
+		for _, t := range temps {
+			os.Remove(t.path)
+		}
+	}()
+
+	createTemp := func(zipName, pattern string) (*os.File, error) {
+		f, err := os.CreateTemp(profilesDir, pattern)
+		if err != nil {
+			return nil, err
+		}
+		temps = append(temps, tempFile{zipName: zipName, path: f.Name()})
+		return f, nil
+	}
+
+	// Stream trace to file
+	traceF, err := createTemp("trace", "tmp_trace_*")
 	if err != nil {
+		return "", fmt.Errorf("create trace file: %w", err)
+	}
+	if err := trace.Start(traceF); err != nil {
+		traceF.Close()
 		return "", fmt.Errorf("start tracer: %w", err)
 	}
+	traceRunning := true
+	defer func() {
+		if traceRunning {
+			trace.Stop()
+		}
+		traceF.Close()
+	}()
 
-	var cpuProfileBuf bytes.Buffer
-	err = pprof.StartCPUProfile(&cpuProfileBuf)
+	// Stream CPU profile to file
+	cpuF, err := createTemp("cpu_profile", "tmp_cpu_*")
 	if err != nil {
+		return "", fmt.Errorf("create cpu file: %w", err)
+	}
+	if err := pprof.StartCPUProfile(cpuF); err != nil {
+		cpuF.Close()
 		return "", fmt.Errorf("start cpu profile: %w", err)
 	}
+	cpuRunning := true
+	defer func() {
+		if cpuRunning {
+			pprof.StopCPUProfile()
+		}
+		cpuF.Close()
+	}()
 
-	var heapStartBuf bytes.Buffer
-	err = pprof.WriteHeapProfile(&heapStartBuf)
+	// Heap start - stream to file
+	heapStartF, err := createTemp("heap_start", "tmp_heap_start_*")
 	if err != nil {
-		return "", fmt.Errorf("write starting heap profile: %w", err)
+		return "", fmt.Errorf("create heap start file: %w", err)
 	}
-	goroutinesStart := debug.Stack(true)
+	err = pprof.WriteHeapProfile(heapStartF)
+	heapStartF.Close()
+	if err != nil {
+		return "", fmt.Errorf("write heap start: %w", err)
+	}
+
+	// Goroutines start - stream to file (reuse stackBuf for end)
+	var stackBuf []byte
+	gsF, err := createTemp("goroutines_start.txt", "tmp_goroutines_start_*")
+	if err != nil {
+		return "", fmt.Errorf("create goroutines start file: %w", err)
+	}
+	stackBuf = debug.StackReuse(stackBuf, true)
+	_, err = gsF.Write(stackBuf)
+	gsF.Close()
+	if err != nil {
+		return "", fmt.Errorf("write goroutines start: %w", err)
+	}
 
 	// Wait
 	select {
@@ -55,43 +230,102 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int) (string, error) 
 	case <-ctx.Done():
 	}
 
-	// End
+	// Stop profilers so the on-disk files are finalized before we read them.
+	// The deferred cleanup above still closes the underlying files.
 	pprof.StopCPUProfile()
+	cpuRunning = false
 	trace.Stop()
-	var heapEndBuf bytes.Buffer
-	err = pprof.WriteHeapProfile(&heapEndBuf)
-	if err != nil {
-		return "", fmt.Errorf("write ending heap profile: %w", err)
-	}
-	goroutinesEnd := debug.Stack(true)
+	traceRunning = false
 
-	// Write
-	f, err := os.CreateTemp("", "anytype_profile.*.zip")
+	// Heap end
+	heapEndF, err := createTemp("heap_end", "tmp_heap_end_*")
 	if err != nil {
-		return "", fmt.Errorf("create temp file: %w", err)
+		return "", fmt.Errorf("create heap end file: %w", err)
+	}
+	err = pprof.WriteHeapProfile(heapEndF)
+	heapEndF.Close()
+	if err != nil {
+		return "", fmt.Errorf("write heap end: %w", err)
 	}
 
-	files := []zipFile{
-		{name: "trace", data: &tracerBuf},
-		{name: "cpu_profile", data: &cpuProfileBuf},
-		{name: "heap_start", data: &heapStartBuf},
-		{name: "heap_end", data: &heapEndBuf},
-		{name: "goroutines_start.txt", data: bytes.NewReader(goroutinesStart)},
-		{name: "goroutines_end.txt", data: bytes.NewReader(goroutinesEnd)},
+	// Goroutines end (reuse stackBuf from start)
+	geF, err := createTemp("goroutines_end.txt", "tmp_goroutines_end_*")
+	if err != nil {
+		return "", fmt.Errorf("create goroutines end file: %w", err)
+	}
+	stackBuf = debug.StackReuse(stackBuf, true)
+	_, err = geF.Write(stackBuf)
+	geF.Close()
+	if err != nil {
+		return "", fmt.Errorf("write goroutines end: %w", err)
+	}
+
+	// Pack into zip, streaming each temp file from disk. The zip path and
+	// zip writer are both managed through defers: on any error before
+	// zipSuccess flips, the partial archive is removed.
+	zipPath := filepath.Join(profilesDir, fmt.Sprintf("anytype_profile_%s.zip", time.Now().Format("20060102_150405")))
+	zipF, err := os.Create(zipPath)
+	if err != nil {
+		return "", fmt.Errorf("create zip: %w", err)
+	}
+	zipSuccess := false
+	defer func() {
+		zipF.Close()
+		if !zipSuccess {
+			os.Remove(zipPath)
+		}
+	}()
+	zipw := debugsnapshot.NewZipWriter(zipF)
+	defer zipw.Close()
+
+	zipEntryTime := time.Now()
+	for _, t := range temps {
+		src, err := os.Open(t.path)
+		if err != nil {
+			return "", fmt.Errorf("open temp file %s: %w", t.zipName, err)
+		}
+		// Preserve the source temp file's mod time when known; it lets a
+		// reviewer see the relative ordering of trace/cpu/heap captures.
+		entryTime := zipEntryTime
+		if info, statErr := src.Stat(); statErr == nil {
+			entryTime = info.ModTime()
+		}
+		dst, err := debugsnapshot.CreateEntry(zipw, t.zipName, entryTime)
+		if err != nil {
+			src.Close()
+			return "", fmt.Errorf("create zip entry %s: %w", t.zipName, err)
+		}
+		_, err = io.Copy(dst, src)
+		src.Close()
+		if err != nil {
+			return "", fmt.Errorf("copy %s to zip: %w", t.zipName, err)
+		}
 	}
 	if inFlightTraceBuf != nil {
-		files = append(files, zipFile{name: "account_select_trace", data: inFlightTraceBuf})
+		dst, err := debugsnapshot.CreateEntry(zipw, "account_select_trace", zipEntryTime)
+		if err != nil {
+			return "", fmt.Errorf("write in-flight trace: %w", err)
+		}
+		if _, err := io.Copy(dst, inFlightTraceBuf); err != nil {
+			return "", fmt.Errorf("write in-flight trace: %w", err)
+		}
 	}
-	err = createZipArchive(f, files)
-	if err != nil {
-		return "", errors.Join(fmt.Errorf("create zip archive: %w", err), f.Close())
+
+	meta := s.snapshotMeta()
+	meta.Full = true
+	if err := debugsnapshot.WriteMetadata(zipw, debugsnapshot.BuildInfo(reason, reasonDesc, meta), meta.StatJSON, zipEntryTime); err != nil {
+		return "", err
 	}
-	return f.Name(), f.Close()
+
+	zipSuccess = true
+	pruneOldProfilesIfOvercrowded(profilesDir, profilesPruneTrigger, profilesPruneOlderThan)
+	return zipPath, nil
 }
 
 type zipFile struct {
-	name string
-	data io.Reader
+	name    string
+	data    io.Reader
+	modTime time.Time // zero value means "use archive creation time"
 }
 
 func createZipArchive(w io.Writer, files []zipFile) error {
@@ -101,7 +335,14 @@ func createZipArchive(w io.Writer, files []zipFile) error {
 	})
 	err := func() error {
 		for _, file := range files {
-			f, err := zipw.Create(file.name)
+			header := &zip.FileHeader{
+				Name:   file.name,
+				Method: zip.Deflate,
+			}
+			if !file.modTime.IsZero() {
+				header.Modified = file.modTime
+			}
+			f, err := zipw.CreateHeader(header)
 			if err != nil {
 				return fmt.Errorf("create file in zip archive: %w", err)
 			}
@@ -119,69 +360,322 @@ func (s *Service) SaveLoginTrace(dir string) (string, error) {
 	return s.traceRecorder.save(dir)
 }
 
-func (s *Service) SaveLog(logFile, destDir string) (string, error) {
-	if logFile == "" {
-		return "", ErrNoFolder
-	}
-	targetFile, err := os.CreateTemp(destDir, "anytype-log-*.zip")
+// buildPartialLogBundle writes a capped gzip bundle of the logs in logsDir
+// to a temp file and returns its path plus the newest source mtime. An empty
+// path is returned when there are no eligible log files.
+func (s *Service) buildPartialLogBundle(logsDir string) (string, time.Time, error) {
+	var newest time.Time
+	entries, err := os.ReadDir(logsDir)
 	if err != nil {
-		return "", fmt.Errorf("create temp file: %w", err)
+		if os.IsNotExist(err) {
+			return "", time.Time{}, nil
+		}
+		return "", time.Time{}, fmt.Errorf("read logs dir: %w", err)
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasPrefix(e.Name(), "anytype") {
+			continue
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		if t := info.ModTime(); t.After(newest) {
+			newest = t
+		}
+	}
+	if newest.IsZero() {
+		return "", time.Time{}, nil
+	}
+	tmp, err := os.CreateTemp("", "anytype-logs-*.log.gz")
+	if err != nil {
+		return "", time.Time{}, fmt.Errorf("create tmp bundle: %w", err)
+	}
+	tmp.Close()
+	if err := logging.WriteLogBundle(logsDir, tmp.Name(), partialReportLogBudget); err != nil {
+		os.Remove(tmp.Name())
+		return "", time.Time{}, err
+	}
+	return tmp.Name(), newest, nil
+}
+
+// partialReportLogBudget caps the size of the single gzipped log bundle
+// produced when SaveReport is called with full=false. Bundle is streamed
+// newest-first across active + rotated logs until the cap is hit.
+const partialReportLogBudget = 10 * 1024 * 1024
+
+// SaveReport creates a zip of logs and profiles. Returns (path, summary JSON, lastModifiedTs, error).
+// lastModifiedTs is the Unix timestamp (seconds) of the most recently modified source file included in the report.
+// When full is false the report replaces the individual log files with a
+// single gzipped bundle capped at partialReportLogBudget; profiles are
+// included in both modes.
+func (s *Service) SaveReport(destDir string, full bool) (string, string, int64, error) {
+	paths := initialparams.Get().Paths
+	logsDir := paths.LogsDir
+	if logsDir == "" {
+		return "", "", 0, ErrNoFolder
+	}
+	namePattern := fmt.Sprintf("anytype-report-%s-*.zip", time.Now().Format("20060102-150405"))
+	targetFile, err := os.CreateTemp(destDir, namePattern)
+	if err != nil {
+		return "", "", 0, fmt.Errorf("create temp file: %w", err)
 	}
 
 	err = os.Chmod(targetFile.Name(), 0664)
 	if err != nil {
-		return "", err
+		return "", "", 0, err
 	}
+
+	// Drain zap's buffered sink so log entries written right before the
+	// report call make it to disk before we start reading the log files.
+	// Bounded — a stuck log volume should not stall a client RPC.
+	_ = logging.SyncWithTimeout(3 * time.Second)
 
 	var files []zipFile
 	var toClose []io.Closer
+	var lastModifiedTs int64
 
-	srcDir := filepath.Dir(logFile)
-	err = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return fmt.Errorf("error accessing file %s: %w", path, err)
-		}
+	// parentDir is the "common" dir; zip entries are relative to it so the
+	// archive preserves the logs/ and profiles/ subdirectory structure.
+	parentDir := filepath.Dir(logsDir)
 
-		if info.IsDir() {
-			return nil
-		}
-
-		if strings.HasPrefix(info.Name(), "anytype") {
-			relPath, err := filepath.Rel(srcDir, path)
+	collectDir := func(dir string, filter func(string) bool) ([]zipFile, error) {
+		var collected []zipFile
+		err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return fmt.Errorf("error accessing file %s: %w", path, err)
+			}
+			if info.IsDir() {
+				return nil
+			}
+			if filter != nil && !filter(info.Name()) {
+				return nil
+			}
+			if ts := info.ModTime().Unix(); ts > lastModifiedTs {
+				lastModifiedTs = ts
+			}
+			relPath, err := filepath.Rel(parentDir, path)
 			if err != nil {
 				return fmt.Errorf("failed to compute relative path: %w", err)
 			}
-
 			file, err := os.Open(path)
 			if err != nil {
 				return fmt.Errorf("failed to open file %s: %w", path, err)
 			}
-
-			files = append(files, zipFile{name: relPath, data: file})
+			collected = append(collected, zipFile{name: relPath, data: file, modTime: info.ModTime()})
 			toClose = append(toClose, file)
+			return nil
+		})
+		return collected, err
+	}
+
+	if full {
+		logFiles, err := collectDir(logsDir, func(name string) bool {
+			return strings.HasPrefix(name, "anytype")
+		})
+		if err != nil {
+			return "", "", 0, fmt.Errorf("error while walking logs directory: %w", err)
 		}
-		return nil
-	})
+		files = append(files, logFiles...)
+	} else {
+		// Partial report: one capped gzip bundle in place of the individual
+		// log files. Track newest log mtime separately so lastModifiedTs
+		// reflects it without loading every file into the zip.
+		bundlePath, bundleMTime, err := s.buildPartialLogBundle(logsDir)
+		if err != nil {
+			return "", "", 0, fmt.Errorf("build log bundle: %w", err)
+		}
+		if bundlePath != "" {
+			bundleFile, err := os.Open(bundlePath)
+			if err != nil {
+				os.Remove(bundlePath)
+				return "", "", 0, fmt.Errorf("open log bundle: %w", err)
+			}
+			toClose = append(toClose, bundleFile)
+			// Delete the temp bundle after the zip is built.
+			defer os.Remove(bundlePath)
+			files = append(files, zipFile{
+				name:    filepath.Join(filepath.Base(logsDir), "bundle.log.gz"),
+				data:    bundleFile,
+				modTime: bundleMTime,
+			})
+			if ts := bundleMTime.Unix(); ts > lastModifiedTs {
+				lastModifiedTs = ts
+			}
+		}
+	}
+
+	// Collect profile files (top level only — nested directories under
+	// profiles/ are intentionally skipped).
+	profilesDir := paths.ProfilesDir
+	if profilesDir != "" {
+		entries, readErr := os.ReadDir(profilesDir)
+		if readErr != nil && !os.IsNotExist(readErr) {
+			return "", "", 0, fmt.Errorf("read profiles dir: %w", readErr)
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			info, err := e.Info()
+			if err != nil {
+				continue
+			}
+			path := filepath.Join(profilesDir, e.Name())
+			f, err := os.Open(path)
+			if err != nil {
+				return "", "", 0, fmt.Errorf("open profile file %s: %w", e.Name(), err)
+			}
+			toClose = append(toClose, f)
+			relPath, err := filepath.Rel(parentDir, path)
+			if err != nil {
+				return "", "", 0, fmt.Errorf("rel path %s: %w", path, err)
+			}
+			if ts := info.ModTime().Unix(); ts > lastModifiedTs {
+				lastModifiedTs = ts
+			}
+			files = append(files, zipFile{name: relPath, data: f, modTime: info.ModTime()})
+		}
+	}
 	defer func() {
 		for _, closeable := range toClose {
 			closeable.Close()
 		}
 	}()
 
-	if err != nil {
-		return "", fmt.Errorf("error while walking directory: %w", err)
+	if len(files) == 0 {
+		return "", "", 0, errors.New("no log files found in directory")
 	}
 
-	if len(files) == 0 {
-		return "", fmt.Errorf("no log files found in directory: %w", err)
+	// Generate profiles summary
+	var summaryStr string
+	if profilesDir != "" {
+		if summary := generateProfilesSummary(profilesDir, logsDir); len(summary) > 0 {
+			summaryStr = string(summary)
+			files = append(files, zipFile{name: "profiles_summary.json", data: bytes.NewReader(summary), modTime: time.Now()})
+		}
 	}
 
 	err = createZipArchive(targetFile, files)
 	if err != nil {
-		return "", fmt.Errorf("failed to create zip archive: %w", err)
+		return "", "", 0, fmt.Errorf("failed to create zip archive: %w", err)
 	}
 
-	return targetFile.Name(), targetFile.Close()
+	return targetFile.Name(), summaryStr, lastModifiedTs, targetFile.Close()
+}
+
+// CleanupReport removes log and profile source files with a modification time strictly before ts (Unix seconds).
+func (s *Service) CleanupReport(ts int64) error {
+	paths := initialparams.Get().Paths
+	if paths.LogsDir == "" {
+		return ErrNoFolder
+	}
+	cutoff := time.Unix(ts, 0)
+
+	removeOld := func(dir string, filter func(string) bool) error {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return fmt.Errorf("read dir %s: %w", dir, err)
+		}
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			if filter != nil && !filter(e.Name()) {
+				continue
+			}
+			info, err := e.Info()
+			if err != nil {
+				continue
+			}
+			if info.ModTime().Before(cutoff) {
+				_ = os.Remove(filepath.Join(dir, e.Name()))
+			}
+		}
+		return nil
+	}
+
+	if err := removeOld(paths.LogsDir, func(name string) bool {
+		return strings.HasPrefix(name, "anytype")
+	}); err != nil {
+		return err
+	}
+
+	if paths.ProfilesDir != "" {
+		if err := removeOld(paths.ProfilesDir, nil); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+type profilesSummary struct {
+	Profiles     int                  `json:"profiles"`
+	Logs         int                  `json:"logs"`
+	ReasonCounts map[string]int       `json:"reasonCounts"`
+	Items        []profileSummaryItem `json:"items,omitempty"`
+}
+
+// profileSummaryItem captures the per-snapshot fields pulled from each
+// profile zip's info.json, so a reviewer can see the contents of a report
+// without opening every archive.
+type profileSummaryItem struct {
+	File       string `json:"file"`
+	Version    string `json:"version,omitempty"`
+	Reason     string `json:"reason,omitempty"`
+	ReasonDesc string `json:"reasonDesc,omitempty"`
+	Time       string `json:"time,omitempty"`
+	// Full mirrors debugsnapshot.Info.Full: true for timed archives,
+	// false/omitted for fast snapshots.
+	Full bool `json:"full,omitempty"`
+}
+
+func generateProfilesSummary(profilesDir, logsDir string) []byte {
+	summary := profilesSummary{
+		ReasonCounts: make(map[string]int),
+	}
+
+	if entries, err := os.ReadDir(profilesDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".zip") {
+				continue
+			}
+			name := e.Name()
+			summary.Profiles++
+			item := profileSummaryItem{File: name}
+			if info, ok := debugsnapshot.ReadInfoFromZip(filepath.Join(profilesDir, name)); ok {
+				reason := info.Reason
+				if reason == "" {
+					reason = "(none)"
+				}
+				summary.ReasonCounts[reason]++
+				item.Version = info.Version
+				item.Reason = info.Reason
+				item.ReasonDesc = info.ReasonDesc
+				item.Time = info.Time
+				item.Full = info.Full
+			}
+			summary.Items = append(summary.Items, item)
+		}
+	}
+
+	// Count log files
+	if entries, err := os.ReadDir(logsDir); err == nil {
+		for _, e := range entries {
+			if !e.IsDir() {
+				summary.Logs++
+			}
+		}
+	}
+
+	data, err := json.MarshalIndent(summary, "", "  ")
+	if err != nil {
+		return nil
+	}
+	return data
 }
 
 // traceRecorder is a helper to start and stop flight trace recorder
