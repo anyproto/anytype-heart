@@ -228,7 +228,14 @@ func (s *dsObjectStore) AddChatMessageToIndexQueue(ctx context.Context, chatId d
 		}
 
 		currentOrderId := v.GetString(ftOrderIdKey)
-		if currentOrderId != "" && (currentOrderId < orderId || currentOrderId == FtAllOrderId) {
+		// An incoming FtAllOrderId ("_all") means "reindex the whole history" and
+		// must always win: it covers a strictly wider range than any real order
+		// id. We can't lean on string comparison for that — "_all" (0x5F '_')
+		// sorts AFTER every real order id (which start with 0x21 '!'), so
+		// `currentOrderId < orderId` would wrongly keep a pending real order id
+		// and the full-history backfill would silently index only messages from
+		// that order id forward (GO-7316).
+		if orderId != FtAllOrderId && currentOrderId != "" && (currentOrderId < orderId || currentOrderId == FtAllOrderId) {
 			// we take messages with orderId equal and more than saved in the queue;
 			// still bump the generation so an in-flight mark-as-indexed is voided
 			v.Set(ftGenKey, genVal)
