@@ -810,6 +810,14 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 			obj.Set(spaceIdKey, arena.NewString(spaceId))
 			obj.Set(ftSequenceKey, arena.NewBinary(emptyBuffer))
 			obj.Set(ftGenKey, arena.NewNumberFloat64(float64(gen)))
+			// Chat objects keep their searchable text in messages, not in object
+			// relations/blocks. Tag them with FtAllOrderId so a full FT rebuild
+			// reindexes the whole message history via prepareChatSearchDocs;
+			// otherwise the consume path treats them as a regular object and chat
+			// search stays empty after the index is rebuilt (GO-7316).
+			if model.ObjectTypeLayout(doc.GetInt(bundle.RelationKeyResolvedLayout.String())) == model.ObjectType_chatDerived {
+				obj.Set(ftOrderIdKey, arena.NewString(FtAllOrderId))
+			}
 			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
 			if err != nil {
 				if loggedErrors < maxErrorsToLog {

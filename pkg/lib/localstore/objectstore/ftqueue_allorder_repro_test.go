@@ -8,6 +8,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // TestFtAllOrderId_QueueMergePrecedence guards the chat-fulltext backfill fix
@@ -100,4 +102,49 @@ func TestFtAllOrderId_QueueMergePrecedence(t *testing.T) {
 		assert.Contains(t, got.DeletedMsgIds, "deletedMsg1",
 			"pending message deletion must survive the _all overwrite")
 	})
+}
+
+// TestEnqueueAllForFulltextIndexing_TagsChatsWithAllOrder guards the sibling fix
+// from GO-7316. A full FT-index rebuild (docCount==0) re-enqueues every object
+// via EnqueueAllForFulltextIndexing. Chat objects keep their searchable text in
+// messages, so they must be enqueued with FtAllOrderId — otherwise the consume
+// path indexes only the chat object's relations/blocks and chat search stays
+// empty after the rebuild (and the per-space checksum gate stops
+// reindexChatMessagesFulltext from re-running).
+func TestEnqueueAllForFulltextIndexing_TagsChatsWithAllOrder(t *testing.T) {
+	s := NewStoreFixture(t)
+	ctx := context.Background()
+	const spaceId = "spaceFtRebuild"
+
+	s.AddObjects(t, spaceId, []TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("chatObj"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
+		},
+		{
+			bundle.RelationKeyId:             domain.String("regularObj"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyName:           domain.String("a note"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		},
+	})
+
+	require.NoError(t, s.EnqueueAllForFulltextIndexing(ctx))
+
+	ids, err := s.ListIdsFromFullTextQueue([]string{spaceId}, 100)
+	require.NoError(t, err)
+	got := make(map[string]string, len(ids))
+	for i := range ids {
+		got[ids[i].ObjectId] = ids[i].MsgOrderId
+	}
+
+	chatOrd, chatQueued := got["chatObj"]
+	require.True(t, chatQueued, "chat object must be enqueued by the rebuild")
+	assert.Equal(t, FtAllOrderId, chatOrd,
+		"chat object must be tagged _all so the rebuild reindexes its messages")
+
+	regularOrd, regularQueued := got["regularObj"]
+	require.True(t, regularQueued, "regular object must be enqueued by the rebuild")
+	assert.Empty(t, regularOrd, "a non-chat object must not get a message order id")
 }
