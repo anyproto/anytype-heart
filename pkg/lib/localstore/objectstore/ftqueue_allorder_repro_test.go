@@ -123,6 +123,11 @@ func TestEnqueueAllForFulltextIndexing_TagsChatsWithAllOrder(t *testing.T) {
 			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
 		},
 		{
+			bundle.RelationKeyId:             domain.String("discussionObj"),
+			bundle.RelationKeySpaceId:        domain.String(spaceId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_discussion)),
+		},
+		{
 			bundle.RelationKeyId:             domain.String("regularObj"),
 			bundle.RelationKeySpaceId:        domain.String(spaceId),
 			bundle.RelationKeyName:           domain.String("a note"),
@@ -139,10 +144,13 @@ func TestEnqueueAllForFulltextIndexing_TagsChatsWithAllOrder(t *testing.T) {
 		got[ids[i].ObjectId] = ids[i].MsgOrderId
 	}
 
-	chatOrd, chatQueued := got["chatObj"]
-	require.True(t, chatQueued, "chat object must be enqueued by the rebuild")
-	assert.Equal(t, FtAllOrderId, chatOrd,
-		"chat object must be tagged _all so the rebuild reindexes its messages")
+	// both chatDerived and discussion objects hold messages → must be tagged _all
+	for _, chatId := range []string{"chatObj", "discussionObj"} {
+		ord, queued := got[chatId]
+		require.True(t, queued, "%s must be enqueued by the rebuild", chatId)
+		assert.Equal(t, FtAllOrderId, ord,
+			"%s must be tagged _all so the rebuild reindexes its messages", chatId)
+	}
 
 	regularOrd, regularQueued := got["regularObj"]
 	require.True(t, regularQueued, "regular object must be enqueued by the rebuild")

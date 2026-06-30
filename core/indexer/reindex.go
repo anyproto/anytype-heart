@@ -493,7 +493,9 @@ func (i *indexer) reindexDiscussions(ctx context.Context, space clientspace.Spac
 }
 
 func (i *indexer) reindexChatMessagesFulltext(ctx context.Context, space clientspace.Space) error {
-	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
+	// Both chatDerived (space chats) and discussion (object chats) use the chat
+	// editor and store messages identically, so both must be backfilled.
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject, coresb.SmartBlockTypeDiscussionObject)
 	if err != nil {
 		return err
 	}
