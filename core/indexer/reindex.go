@@ -52,9 +52,13 @@ const (
 
 	ForceReindexDeletedObjectsCounter int32 = 1
 
-	ForceReindexParticipantsCounter  int32 = 1
-	ForceReindexChatsCounter         int32 = 7
-	ForceReindexChatsFulltextCounter int32 = 1
+	ForceReindexParticipantsCounter int32 = 1
+	ForceReindexChatsCounter        int32 = 7
+	// Bumped to 2: the initial chat-message fulltext backfill (counter 1) could
+	// silently index only a recent suffix of each chat — an incoming "_all"
+	// reindex entry lost to a pending real order id in the queue merge (fixed in
+	// AddChatMessageToIndexQueue). Re-run the now-correct backfill once.
+	ForceReindexChatsFulltextCounter int32 = 2
 	ForceReindexDiscussionsCounter   int32 = 1
 
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
