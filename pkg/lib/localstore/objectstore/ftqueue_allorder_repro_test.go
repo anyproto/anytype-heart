@@ -68,10 +68,36 @@ func TestFtAllOrderId_QueueMergePrecedence(t *testing.T) {
 		s := NewStoreFixture(t)
 		chatId := domain.FullID{ObjectID: "chatLowerWins", SpaceID: "space1"}
 
-		require.NoError(t, s.AddChatMessageToIndexQueue(ctx, chatId, "order5"))
-		require.NoError(t, s.AddChatMessageToIndexQueue(ctx, chatId, "order2"))
+		// real order ids start with '!' (0x21); keep the lower one (covers more)
+		require.NoError(t, s.AddChatMessageToIndexQueue(ctx, chatId, "!bbb"))
+		require.NoError(t, s.AddChatMessageToIndexQueue(ctx, chatId, "!aaa"))
 
-		assert.Equal(t, "order2", queuedOrderId(t, s, chatId),
+		assert.Equal(t, "!aaa", queuedOrderId(t, s, chatId),
 			"the lower real order id covers more messages and must be kept")
+	})
+
+	t.Run("incoming _all preserves a pending deletion list", func(t *testing.T) {
+		// the fix routes an incoming _all through the overwrite path; the merge
+		// must still carry over a pending deletion list so queued message deletes
+		// are not silently dropped by a full-history backfill.
+		s := NewStoreFixture(t)
+		chatId := domain.FullID{ObjectID: "chatDelKept", SpaceID: "space1"}
+
+		require.NoError(t, s.AddChatMessageDeleteToIndexQueue(ctx, chatId, "deletedMsg1"))
+		require.NoError(t, s.AddChatMessageToIndexQueue(ctx, chatId, FtAllOrderId))
+
+		ids, err := s.ListIdsFromFullTextQueue([]string{chatId.SpaceID}, 10)
+		require.NoError(t, err)
+		var got *domain.FullTextQueuedObject
+		for i := range ids {
+			if ids[i].ObjectId == chatId.ObjectID {
+				got = &ids[i]
+				break
+			}
+		}
+		require.NotNil(t, got, "chat should be queued")
+		assert.Equal(t, FtAllOrderId, got.MsgOrderId, "_all must win")
+		assert.Contains(t, got.DeletedMsgIds, "deletedMsg1",
+			"pending message deletion must survive the _all overwrite")
 	})
 }
