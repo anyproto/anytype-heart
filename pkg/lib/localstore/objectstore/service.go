@@ -814,8 +814,11 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 			// relations/blocks. Tag them with FtAllOrderId so a full FT rebuild
 			// reindexes the whole message history via prepareChatSearchDocs;
 			// otherwise the consume path treats them as a regular object and chat
-			// search stays empty after the index is rebuilt (GO-7316).
-			if model.ObjectTypeLayout(doc.GetInt(bundle.RelationKeyResolvedLayout.String())) == model.ObjectType_chatDerived {
+			// search stays empty after the index is rebuilt (GO-7316). Both
+			// chatDerived (space chats) and discussion (object chats) use the chat
+			// editor and store messages the same way, so both must be tagged.
+			switch model.ObjectTypeLayout(doc.GetInt(bundle.RelationKeyResolvedLayout.String())) {
+			case model.ObjectType_chatDerived, model.ObjectType_discussion:
 				obj.Set(ftOrderIdKey, arena.NewString(FtAllOrderId))
 			}
 			err := s.fulltextQueue.UpsertOne(txn.Context(), obj)
