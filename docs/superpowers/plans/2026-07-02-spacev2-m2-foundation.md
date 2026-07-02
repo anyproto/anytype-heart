@@ -22,7 +22,7 @@
 - §9.2: never build controllers synchronously on the watcher/dedupqueue loop goroutine — spawn per-space work; per-space serialization via the entry work mutex.
 - Error wrapping per CLAUDE.md: `fmt.Errorf("operation: %w", err)`, no bare returns, no "failed to" prefixes.
 - Tests: fixture pattern + `want` structs + testify (`assert`/`require`) per CLAUDE.md.
-- Commits: `GO-0000 spacev2: <description>` — GO-0000 is a placeholder; a final task rewords all spacev2 commits once the real issue number is provided by the user. Do not push.
+- Commits: `GO-7348 spacev2: <description>` (issue confirmed by the user 2026-07-02; branch renamed to `go-7348-spacecontroller-refactor`). Do not push.
 
 ## Locked design decisions (confirmed against v1 + user)
 
