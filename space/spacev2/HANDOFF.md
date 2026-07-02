@@ -108,13 +108,37 @@ adapter that satisfies today's callers is acceptable during the transition.
 - All space tests pass; existing accounts load, sync, and show correct status;
   cross-device profile + push still work.
 
-## Progress log (current state — provisional, revisable)
+## Progress log (current state)
 
 - **GO-7348**, branch `go-7348-spacecontroller-refactor`.
-- **M1** skeleton + **M2** foundation: DONE (`docs/superpowers/plans/2026-07-02-spacev2-m2-foundation.md`).
-  **M3** controllers: in progress (`…-m3-controllers.md`).
-- The current files (`statemachine.go`, `registry.go`, `bootstrap.go`, `watcher.go`,
-  `spacesub.go`, `techprovider.go`, `marketplace.go`, `service.go`) reflect an early
-  unidirectional/registry design. **Under the greenfield mandate above this is not
-  settled** — revisit any of it (including the state machine) if a simpler, more
-  testable shape emerges. The existing spacev2 files are a starting point, not a spec.
+- The earlier M1–M3 code was stashed (`spacev2-agent-wip`); the current
+  implementation is a fresh build on the **per-space reconciler** architecture —
+  see `DESIGN.md` (normative) for the model and how it answers §9.
+- Implemented and unit-tested (all `-race`, stress-run):
+  - `state.go` / `controller.go` / `registry.go` — the lifecycle engine: pure
+    `decide(status, wanted)`, one reconcile goroutine per space, input/decision
+    seq freshness, controller-owned retry, first-class pause/unload.
+  - `backends.go` / `presetloader.go` — production Backend over the reused
+    layers; post-load domain components (aclobjectmanager & co) hosted with a
+    preset-loader shim, so push keys / participants / notifications /
+    OnSpaceLoad/Unload stay v1 code paths.
+  - `bootstrap.go` / `watcher.go` / `service.go` / `api.go` — tech-space
+    resolution decision tree (old-account fallbacks), SpaceView watcher,
+    account bootstrap (new account = tech space + one *created* first space;
+    the derived personal space is only for existing/old accounts), full verb
+    surface (Get/Wait/Create/CreateOneToOne/Join/InviteJoin/CancelLeave/
+    Delete/AddStreamable/Preload/SyncAllSpaceHeads/...), lazy mode as
+    wanted=false, deletioncontroller.SpaceManager satisfied.
+- Known deliberate deviations from v1 (all improvements, documented in code):
+  marketplace reindex errors are not swallowed; Join always moves an existing
+  view to Joining; AddStreamable is idempotent; offload tolerates missing
+  storage; no waiting-map / dedupqueue anywhere.
+- **Remaining: cutover (last step).** Register v2 as `client.space`
+  (CName switch — v2 currently runs as `client.spacev2`), define the outward
+  Service interface consumers compile against (or a temporary adapter in
+  package `space`), migrate consumers + error values, remove v1 orchestration,
+  and run integration/compat verification (existing accounts of all vintages
+  load and sync; cross-device profile + push). Note: the coordinator-status
+  kick is a single `UpdateCoordinatorStatus` on Run (v1 kicked per shareable
+  controller Start); the deletion driver enumerates via `AllSpaceIds()` from
+  the registry, which is populated by the watcher before the kick fires.

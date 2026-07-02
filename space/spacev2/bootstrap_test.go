@@ -69,7 +69,7 @@ func (f *resolutionFixture) resolution(newAccount bool) techSpaceResolution {
 func TestResolveTechSpaceNewAccountCreates(t *testing.T) {
 	fx := &resolutionFixture{}
 
-	ts, err := resolveTechSpace(context.Background(), fx.resolution(true))
+	ts, _, err := resolveTechSpace(context.Background(), fx.resolution(true))
 
 	require.NoError(t, err)
 	require.NotNil(t, ts)
@@ -80,7 +80,7 @@ func TestResolveTechSpaceNewAccountCreates(t *testing.T) {
 func TestResolveTechSpaceExistingLoads(t *testing.T) {
 	fx := &resolutionFixture{}
 
-	ts, err := resolveTechSpace(context.Background(), fx.resolution(false))
+	ts, _, err := resolveTechSpace(context.Background(), fx.resolution(false))
 
 	require.NoError(t, err)
 	require.NotNil(t, ts)
@@ -96,7 +96,7 @@ func TestResolveTechSpaceOfflineOldAccountCreates(t *testing.T) {
 		storageExists: true,
 	}
 
-	ts, err := resolveTechSpace(context.Background(), fx.resolution(false))
+	ts, _, err := resolveTechSpace(context.Background(), fx.resolution(false))
 
 	require.NoError(t, err)
 	require.NotNil(t, ts)
@@ -111,7 +111,7 @@ func TestResolveTechSpaceTimeoutRetriesWithoutDeadline(t *testing.T) {
 		loadResults: []error{context.DeadlineExceeded, nil},
 	}
 
-	ts, err := resolveTechSpace(context.Background(), fx.resolution(false))
+	ts, _, err := resolveTechSpace(context.Background(), fx.resolution(false))
 
 	require.NoError(t, err)
 	require.NotNil(t, ts)
@@ -125,7 +125,7 @@ func TestResolveTechSpaceRetryReportsMissingCreates(t *testing.T) {
 		loadResults: []error{context.DeadlineExceeded, spacesyncproto.ErrSpaceMissing},
 	}
 
-	ts, err := resolveTechSpace(context.Background(), fx.resolution(false))
+	ts, _, err := resolveTechSpace(context.Background(), fx.resolution(false))
 
 	require.NoError(t, err)
 	require.NotNil(t, ts)
@@ -138,7 +138,7 @@ func TestResolveTechSpaceMissingOnFirstLoadCreates(t *testing.T) {
 		loadResults: []error{spacesyncproto.ErrSpaceMissing},
 	}
 
-	ts, err := resolveTechSpace(context.Background(), fx.resolution(false))
+	ts, _, err := resolveTechSpace(context.Background(), fx.resolution(false))
 
 	require.NoError(t, err)
 	require.NotNil(t, ts)
@@ -149,7 +149,7 @@ func TestResolveTechSpaceOtherLoadErrorFails(t *testing.T) {
 	loadErr := errors.New("storage corrupted")
 	fx := &resolutionFixture{loadResults: []error{loadErr}}
 
-	_, err := resolveTechSpace(context.Background(), fx.resolution(false))
+	_, _, err := resolveTechSpace(context.Background(), fx.resolution(false))
 
 	require.ErrorIs(t, err, loadErr)
 	assert.Zero(t, fx.creates)
@@ -164,7 +164,7 @@ func TestResolveTechSpaceOldAccountWithoutPersonalFails(t *testing.T) {
 		reachableErr: reachErr,
 	}
 
-	_, err := resolveTechSpace(context.Background(), fx.resolution(false))
+	_, _, err := resolveTechSpace(context.Background(), fx.resolution(false))
 
 	require.ErrorIs(t, err, reachErr)
 	assert.Zero(t, fx.creates)
@@ -177,7 +177,7 @@ func TestResolveTechSpaceStorageCheckErrorFails(t *testing.T) {
 		storageErr:  storageErr,
 	}
 
-	_, err := resolveTechSpace(context.Background(), fx.resolution(false))
+	_, _, err := resolveTechSpace(context.Background(), fx.resolution(false))
 
 	require.ErrorIs(t, err, storageErr)
 	assert.Zero(t, fx.creates)
@@ -198,14 +198,14 @@ func (t *viewCreatingTechSpace) SpaceViewCreate(ctx context.Context, spaceId str
 	return nil
 }
 
-func TestEnsurePersonalSpaceExistingAccount(t *testing.T) {
+func TestEnsurePersonalSpaceViewOldAccount(t *testing.T) {
 	// given: an existing account (no derive/mark) whose view may be missing
 	fakeTS := &viewCreatingTechSpace{}
 	s := &service{personalSpaceId: "personal1"}
 	s.techSpace = &clientspace.TechSpace{TechSpace: fakeTS}
 
 	// when
-	err := s.ensurePersonalSpace(context.Background())
+	err := s.ensurePersonalSpaceView(context.Background())
 
 	// then
 	require.NoError(t, err)
@@ -219,7 +219,7 @@ func TestEnsurePersonalSpaceViewExistsIsFine(t *testing.T) {
 	s.techSpace = &clientspace.TechSpace{TechSpace: fakeTS}
 
 	// when
-	err := s.ensurePersonalSpace(context.Background())
+	err := s.ensurePersonalSpaceView(context.Background())
 
 	// then
 	require.NoError(t, err)

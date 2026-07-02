@@ -13,7 +13,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/spacecore"
-	"github.com/anyproto/anytype-heart/space/spacecore/storage/anystorage"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/techspace"
@@ -51,26 +50,28 @@ type techSpaceResolution struct {
 //	                                  authoritative answer before giving up)
 //	nodes report no tech space      → old account: create
 //
+// oldAccount reports that the tech space was created for a pre-tech-space
+// account, whose personal space then needs a SpaceView created for it.
 // This is v1's initAccount fallback logic isolated into one explicit step.
-func resolveTechSpace(ctx context.Context, r techSpaceResolution) (*clientspace.TechSpace, error) {
+func resolveTechSpace(ctx context.Context, r techSpaceResolution) (ts *clientspace.TechSpace, oldAccount bool, err error) {
 	if r.newAccount {
-		ts, err := r.create(ctx)
+		ts, err = r.create(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("create tech space: %w", err)
+			return nil, false, fmt.Errorf("create tech space: %w", err)
 		}
-		return ts, nil
+		return ts, false, nil
 	}
 	deadline := r.loadDeadline
 	if deadline <= 0 {
 		deadline = techSpaceLoadDeadline
 	}
 	timeoutCtx, cancel := context.WithTimeout(ctx, deadline)
-	ts, err := r.load(timeoutCtx)
+	ts, err = r.load(timeoutCtx)
 	cancel()
 	if errors.Is(err, context.DeadlineExceeded) {
 		personalExists, checkErr := r.personalStorageExists(ctx)
 		if checkErr != nil {
-			return nil, fmt.Errorf("check personal space storage: %w", checkErr)
+			return nil, false, fmt.Errorf("check personal space storage: %w", checkErr)
 		}
 		if personalExists {
 			// An old account restored locally with no connection: no tech
@@ -85,22 +86,22 @@ func resolveTechSpace(ctx context.Context, r techSpaceResolution) (*clientspace.
 		return createTechSpaceForOldAccount(ctx, r)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("load tech space: %w", err)
+		return nil, false, fmt.Errorf("load tech space: %w", err)
 	}
-	return ts, nil
+	return ts, false, nil
 }
 
-func createTechSpaceForOldAccount(ctx context.Context, r techSpaceResolution) (*clientspace.TechSpace, error) {
+func createTechSpaceForOldAccount(ctx context.Context, r techSpaceResolution) (*clientspace.TechSpace, bool, error) {
 	// Without a personal space there is nothing to restore — creating a tech
 	// space would only mask the broken account.
 	if err := r.personalCoreReachable(ctx); err != nil {
-		return nil, fmt.Errorf("get personal space: %w", err)
+		return nil, false, fmt.Errorf("get personal space: %w", err)
 	}
 	ts, err := r.create(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("create tech space for old account: %w", err)
+		return nil, false, fmt.Errorf("create tech space for old account: %w", err)
 	}
-	return ts, nil
+	return ts, true, nil
 }
 
 // createTechSpace derives the tech space and runs it with create semantics.
@@ -148,20 +149,12 @@ func (s *service) newTechSpace(techCore *spacecore.AnySpace, create bool) (*clie
 	return ts, nil
 }
 
-// ensurePersonalSpace guarantees the personal space exists (derived + marked
-// created for new accounts) and has a SpaceView. Safe to run on every start:
-// creation is skipped when the view already exists (which also heals old
-// accounts whose tech space predates their personal SpaceView).
-func (s *service) ensurePersonalSpace(ctx context.Context) error {
-	if s.newAccount {
-		coreSpace, err := s.spaceCore.Derive(ctx, spacedomain.SpaceTypeRegular)
-		if err != nil {
-			return fmt.Errorf("derive personal space: %w", err)
-		}
-		if err = coreSpace.Storage().(anystorage.ClientSpaceStorage).MarkSpaceCreated(ctx); err != nil {
-			return fmt.Errorf("mark personal space created: %w", err)
-		}
-	}
+// ensurePersonalSpaceView creates the personal space's SpaceView when it is
+// missing — needed after the tech space was created for an old account (whose
+// personal space predates SpaceViews). The personal space itself already
+// exists; only the view is created here, with status Unknown so the watcher
+// picks it up and loads it.
+func (s *service) ensurePersonalSpaceView(ctx context.Context) error {
 	info := spaceinfo.NewSpacePersistentInfo(s.personalSpaceId)
 	info.SetAccountStatus(spaceinfo.AccountStatusUnknown)
 	err := s.techSpace.SpaceViewCreate(ctx, s.personalSpaceId, false, info, nil)

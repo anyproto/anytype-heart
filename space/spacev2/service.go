@@ -4,30 +4,51 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcache"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 	"github.com/anyproto/anytype-heart/space/deletioncontroller"
 	"github.com/anyproto/anytype-heart/space/internal/components/dependencies"
 	"github.com/anyproto/anytype-heart/space/spacecore"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
+	"github.com/anyproto/anytype-heart/space/spaceinfo"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
 )
 
 // preloadRemainingSpacesTimeout is the lazy-mode safety net: deferred spaces
 // are promoted after this delay even if no explicit preload arrives.
 const preloadRemainingSpacesTimeout = 10 * time.Second
+
+// NotificationSender sends client notifications (participant-remove on
+// remote deletion); implemented by the notifications service.
+type NotificationSender interface {
+	app.Component
+	CreateAndSend(notification *model.Notification) error
+}
+
+// AclJoiner performs the network ACL join used by the stream auto-join flow;
+// implemented by core/acl.
+type AclJoiner interface {
+	Join(ctx context.Context, spaceId, networkId string, inviteCid cid.Cid, inviteFileKey crypto.SymKey) error
+}
 
 // service is the v2 space orchestrator. It owns the controller registry, the
 // SpaceView watcher (the reactive spine) and account bootstrap. The outward
@@ -46,6 +67,11 @@ type service struct {
 	fileOffloader       dependencies.FileOffloader
 	delController       deletioncontroller.DeletionController
 	virtualSpaceService virtualspaceservice.VirtualSpaceService
+	notificationService NotificationSender
+	spaceNameGetter     objectstore.SpaceNameGetter
+	identityService     dependencies.IdentityService
+	inboxSender         inboxservice.Sender
+	aclJoiner           AclJoiner
 
 	// parentApp is the chain per-space pipeline apps hang off: the main app
 	// plus the tech space registered after resolution.
@@ -56,8 +82,11 @@ type service struct {
 	newAccount             bool
 	preferredSpaceId       string
 	lazyMode               bool
+	autoJoinStreamSpace    string
+	repKey                 uint64
 	accountMetadataSymKey  crypto.SymKey
 	accountMetadataPayload []byte
+	firstCreatedSpaceId    string
 
 	techSpace *clientspace.TechSpace
 	// techSpaceReady is the happens-before barrier for s.techSpace: closed
@@ -70,10 +99,15 @@ type service struct {
 	watcher     *spaceWatcher
 	marketplace *marketplaceSpace
 
-	preloadCh chan struct{} // closed by PreloadRemainingSpaces (lazy drain)
-	ctx       context.Context
-	ctxCancel context.CancelFunc
+	preloadOnce sync.Once
+	preloadCh   chan struct{} // closed by triggerPreload (lazy drain)
+	ctx         context.Context
+	ctxCancel   context.CancelFunc
 }
+
+// The deletion controller drives remote-status updates through this service
+// (poll results, shared limits); keep the seam satisfied.
+var _ deletioncontroller.SpaceManager = (*service)(nil)
 
 func New() *service {
 	return &service{}
@@ -96,10 +130,16 @@ func (s *service) Init(a *app.App) (err error) {
 	s.fileOffloader = app.MustComponent[dependencies.FileOffloader](a)
 	s.delController = app.MustComponent[deletioncontroller.DeletionController](a)
 	s.virtualSpaceService = app.MustComponent[virtualspaceservice.VirtualSpaceService](a)
+	s.notificationService = app.MustComponent[NotificationSender](a)
+	s.spaceNameGetter = app.MustComponent[objectstore.SpaceNameGetter](a)
+	s.identityService = app.MustComponent[dependencies.IdentityService](a)
+	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
+	s.aclJoiner = app.MustComponent[AclJoiner](a)
 	s.parentApp = a.ChildApp()
 
 	s.newAccount = s.config.IsNewAccount()
 	s.preferredSpaceId = s.config.PreferredSpaceId
+	s.autoJoinStreamSpace = s.config.AutoJoinStream
 	s.techSpaceReady = make(chan struct{})
 	s.preloadCh = make(chan struct{})
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
@@ -111,6 +151,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.techSpaceId, err = s.spaceCore.DeriveID(context.Background(), spacedomain.SpaceTypeTech)
 	if err != nil {
 		return fmt.Errorf("derive tech space id: %w", err)
+	}
+	s.repKey, err = getRepKey(s.personalSpaceId)
+	if err != nil {
+		return fmt.Errorf("derive replication key: %w", err)
 	}
 
 	accountMetadata, metadataSymKey, err := domain.DeriveAccountMetadata(s.accountService.Account().SignKey)
@@ -134,7 +178,7 @@ func (s *service) Run(ctx context.Context) error {
 		return fmt.Errorf("init marketplace space: %w", err)
 	}
 
-	ts, err := resolveTechSpace(ctx, techSpaceResolution{
+	ts, oldAccount, err := resolveTechSpace(ctx, techSpaceResolution{
 		newAccount: s.newAccount,
 		create:     s.createTechSpace,
 		load:       s.loadTechSpace,
@@ -177,29 +221,37 @@ func (s *service) Run(ctx context.Context) error {
 	}
 	close(s.techSpaceReady)
 
-	if err = s.ensurePersonalSpace(ctx); err != nil {
-		return fmt.Errorf("ensure personal space: %w", err)
+	if oldAccount {
+		// the freshly created tech space has no view for the (pre-existing)
+		// personal space yet; create it so the watcher loads the space
+		if err = s.ensurePersonalSpaceView(ctx); err != nil {
+			return fmt.Errorf("ensure personal space view: %w", err)
+		}
 	}
-	s.lazyMode = s.preferredSpaceId != ""
+	s.lazyMode = s.computeLazyMode(ctx)
 
 	if err = s.watcher.Run(); err != nil {
 		return fmt.Errorf("run space watcher: %w", err)
 	}
 
-	if s.newAccount {
-		// preserve v1's synchronous bootstrap contract: Run returns with the
-		// personal space fully loaded (or a meaningful error)
-		ctrl, ctrlErr := s.registry.getOrCreate(s.personalSpaceId)
-		if ctrlErr != nil {
-			return fmt.Errorf("start personal space: %w", ctrlErr)
-		}
-		ctrl.SetWanted(true)
-		if _, loadErr := ctrl.WaitLoaded(ctx); loadErr != nil {
+	if s.newAccount && s.autoJoinStreamSpace == "" {
+		// a new account starts with one created space (not the derived
+		// personal space); preserve v1's synchronous bootstrap contract —
+		// Run returns with that space fully loaded
+		firstSpace, createErr := s.create(ctx, nil)
+		if createErr != nil {
+			if errors.Is(createErr, spacesyncproto.ErrSpaceMissing) || errors.Is(createErr, treechangeproto.ErrGetTree) {
+				createErr = ErrSpaceNotExists
+			}
+			// fix for users that have a wrong network id stored in the folder
 			if resetErr := s.config.ResetStoredNetworkId(); resetErr != nil {
 				log.Error("reset stored network id", zap.Error(resetErr))
 			}
-			return fmt.Errorf("load personal space: %w", loadErr)
+			return fmt.Errorf("create first space: %w", createErr)
 		}
+		s.firstCreatedSpaceId = firstSpace.Id()
+	} else if s.autoJoinStreamSpace != "" {
+		s.tryToJoinSpaceStream()
 	}
 
 	if s.lazyMode {
@@ -215,6 +267,19 @@ func (s *service) Run(ctx context.Context) error {
 		log.Error("persist account network id", zap.Error(err))
 	}
 	return nil
+}
+
+// computeLazyMode decides once whether non-preferred spaces are deferred at
+// startup. A preferred space whose view is absent on this device degrades to
+// eager (accepted: the existence check may do a bounded remote lookup).
+func (s *service) computeLazyMode(ctx context.Context) bool {
+	if s.preferredSpaceId == "" ||
+		s.preferredSpaceId == s.techSpaceId ||
+		s.preferredSpaceId == addr.AnytypeMarketplaceWorkspace {
+		return false
+	}
+	exists, err := s.techSpace.SpaceViewExists(ctx, s.preferredSpaceId)
+	return err == nil && exists
 }
 
 func (s *service) Close(ctx context.Context) error {
@@ -252,6 +317,18 @@ func (s *service) onSpaceViewEvent(ev spaceViewEvent) {
 	if ev.spaceId == "" || ev.spaceId == s.techSpaceId || ev.spaceId == addr.AnytypeMarketplaceWorkspace {
 		return
 	}
+	if ev.remoteStatus == spaceinfo.RemoteStatusDeleted && ev.accountStatus != spaceinfo.AccountStatusDeleted {
+		// the coordinator deleted the space but the account status has not
+		// caught up: flip it (and notify if the space was in use); the write
+		// re-enters this watcher and drives the offload
+		go s.reactRemoteDeleted(ev)
+		return
+	}
+	if s.lazyMode && ev.spaceId == s.preferredSpaceId && preferredBroken(ev) {
+		// the preferred space cannot serve as the only loaded space: release
+		// the deferred backlog
+		s.triggerPreload()
+	}
 	ctrl, err := s.registry.getOrCreate(ev.spaceId)
 	if err != nil {
 		if !errors.Is(err, ErrClosed) {
@@ -263,6 +340,33 @@ func (s *service) onSpaceViewEvent(ev spaceViewEvent) {
 		ctrl.SetWanted(true)
 	}
 	ctrl.Poke()
+}
+
+func preferredBroken(ev spaceViewEvent) bool {
+	return ev.localStatus == spaceinfo.LocalStatusMissing ||
+		ev.accountStatus == spaceinfo.AccountStatusRemoving ||
+		ev.accountStatus == spaceinfo.AccountStatusDeleted ||
+		ev.remoteStatus == spaceinfo.RemoteStatusDeleted
+}
+
+// reactRemoteDeleted publishes AccountStatusDeleted for a space the
+// coordinator reports as deleted, sending the participant-remove notification
+// when the space was actively used on this device.
+func (s *service) reactRemoteDeleted(ev spaceViewEvent) {
+	if ev.localStatus == spaceinfo.LocalStatusOk {
+		s.sendParticipantRemoveNotification(ev.spaceId)
+	}
+	info := spaceinfo.NewSpacePersistentInfo(ev.spaceId)
+	info.SetAccountStatus(spaceinfo.AccountStatusDeleted)
+	if err := s.techSpace.SetPersistentInfo(s.ctx, info); err != nil {
+		log.Warn("publish remote deletion", zap.String("spaceId", ev.spaceId), zap.Error(err))
+	}
+}
+
+func (s *service) triggerPreload() {
+	s.preloadOnce.Do(func() {
+		close(s.preloadCh)
+	})
 }
 
 // wantedOnDiscovery is the demand policy for spaces discovered via the
