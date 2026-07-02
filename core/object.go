@@ -699,6 +699,10 @@ func (mw *Middleware) ObjectImportNotionValidateToken(ctx context.Context,
 		return response(pb.RpcObjectImportNotionValidateTokenResponseError_ACCOUNT_IS_NOT_RUNNING, nil)
 	}
 
+	if v2 := mustService[importv2adapter.Importer](mw); v2.Handles(model.Import_Notion) {
+		return response(v2.ValidateNotionToken(ctx, request), nil)
+	}
+
 	importer := mw.applicationService.GetApp().MustComponent(importer.CName).(importer.Importer)
 	errCode, err := importer.ValidateNotionToken(ctx, request)
 	return response(errCode, err)

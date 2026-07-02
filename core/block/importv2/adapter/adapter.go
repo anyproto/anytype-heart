@@ -7,7 +7,9 @@ package adapter
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -23,6 +25,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/engine"
 	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
 	"github.com/anyproto/anytype-heart/core/block/importv2/markdown"
+	"github.com/anyproto/anytype-heart/core/block/importv2/notion"
+	notionclient "github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
@@ -57,6 +61,8 @@ type Importer interface {
 	// Import runs one import asynchronously (v1 handler semantics: empty
 	// reply, result via notification + EventImportFinish).
 	Import(req *pb.RpcObjectImportRequest)
+	// ValidateNotionToken probes the Notion API with the given token.
+	ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode
 }
 
 type service struct {
@@ -122,7 +128,7 @@ func (s *service) Handles(importType model.ImportType) bool {
 	case model.Import_Markdown, model.Import_Obsidian:
 		return s.config.ImportV2Markdown
 	case model.Import_Notion:
-		return false // arrives with the notion converter phase
+		return s.config.ImportV2Notion
 	default:
 		return false
 	}
@@ -175,27 +181,41 @@ func (s *service) execute(ctx context.Context, req *pb.RpcObjectImportRequest, p
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueStoreError, fmt.Errorf("get space: %w", err))}
 	}
 
-	paths, params, err := markdownParams(req)
-	if err != nil {
-		return &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, err)}
-	}
 	spillDir, err := os.MkdirTemp("", "anytype-import-v2-*")
 	if err != nil {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, fmt.Errorf("create spill dir: %w", err))}
 	}
 	defer os.RemoveAll(spillDir)
 
-	origin := objectorigin.Import(req.Type)
 	request := importv2.Request{
 		SpaceID:        req.SpaceId,
-		Origin:         origin,
+		Origin:         objectorigin.Import(req.Type),
 		Mode:           modeFromProto(req.Mode),
 		UpdateExisting: req.UpdateExistingObjects,
-		NoCollection:   params.NoCollection,
 	}
 
+	var combined *importv2.Result
+	switch req.Type {
+	case model.Import_Notion:
+		combined = s.executeNotion(ctx, request, req, spc, spillDir, progress)
+	default:
+		combined = s.executeMarkdown(ctx, request, req, spc, spillDir, progress)
+	}
+	if combined.Err == nil && combined.RootCollectionId != "" {
+		s.createRootWidget(spc.DerivedIDs().Widgets, combined)
+	}
+	return combined
+}
+
+func (s *service) executeMarkdown(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, spillDir string, progress process.Progress) *importv2.Result {
+	paths, params, err := markdownParams(req)
+	if err != nil {
+		return &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, err)}
+	}
+	request.NoCollection = params.NoCollection
+
 	// Multiple paths run as independent sequential engine runs (v1 built one
-	// merged run; parity for multi-path selections lands with increment 2).
+	// merged run; parity for multi-path selections is a phase-3 item).
 	combined := &importv2.Result{}
 	for _, importPath := range paths {
 		result := s.runOne(ctx, request, spc, importPath, params, spillDir, progress)
@@ -216,10 +236,18 @@ func (s *service) execute(ctx context.Context, req *pb.RpcObjectImportRequest, p
 			break
 		}
 	}
-	if combined.Err == nil && combined.RootCollectionId != "" {
-		s.createRootWidget(spc.DerivedIDs().Widgets, combined)
-	}
 	return combined
+}
+
+func (s *service) executeNotion(ctx context.Context, request importv2.Request, req *pb.RpcObjectImportRequest, spc clientspace.Space, spillDir string, progress process.Progress) *importv2.Result {
+	params := req.GetNotionParams()
+	if params == nil || params.GetApiKey() == "" {
+		return &importv2.Result{Err: importv2.Fatal(importv2.IssueAuthFailed, fmt.Errorf("notion import requires an api key"))}
+	}
+	apiClient := notionclient.NewClient(params.GetApiKey())
+	converter := notion.New(apiClient, notionclient.NewFileFetcher(),
+		&collectionFactory{service: s.collectionService}, spillDir)
+	return s.runEngine(ctx, request, converter, spc, spillDir, progress)
 }
 
 type mdParams struct {
@@ -247,6 +275,15 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 	}
 	defer src.Close()
 
+	converter := markdown.New(src, markdown.Params{
+		CreateDirectoryPages:     params.CreateDirectoryPages,
+		IncludePropertiesAsBlock: params.IncludePropertiesAsBlock,
+	}, &collectionFactory{service: s.collectionService})
+	return s.runEngine(ctx, request, converter, spc, spillDir, progress)
+}
+
+// runEngine wires one engine run's per-run components over the app seams.
+func (s *service) runEngine(ctx context.Context, request importv2.Request, converter importv2.Converter, spc clientspace.Space, spillDir string, progress process.Progress) *importv2.Result {
 	journal := persist.NewJournal()
 	formats := resolve.NewFormats()
 	keys := engine.NewKeyTable()
@@ -264,11 +301,6 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 		journal,
 		spillDir,
 	)
-	converter := markdown.New(src, markdown.Params{
-		CreateDirectoryPages:     params.CreateDirectoryPages,
-		IncludePropertiesAsBlock: params.IncludePropertiesAsBlock,
-	}, &collectionFactory{service: s.collectionService})
-
 	return engine.Run(ctx, request, converter, engine.Deps{
 		Identity:  identitySvc,
 		Persister: persister,
@@ -281,6 +313,27 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 		Collection: &collectionFactory{service: s.collectionService, addDate: true},
 		Reporter:   &progressReporter{progress: progress},
 	})
+}
+
+// ValidateNotionToken probes the API with the given token (the frontend
+// calls this before starting an import).
+func (s *service) ValidateNotionToken(ctx context.Context, req *pb.RpcObjectImportNotionValidateTokenRequest) pb.RpcObjectImportNotionValidateTokenResponseErrorCode {
+	apiClient := notionclient.NewClient(req.GetToken(), notionclient.WithRetryPolicy(notionclient.RetryPolicy{
+		MaxAttempts: 1, BaseDelay: time.Second, MaxDelay: time.Second, TotalBudget: 30 * time.Second,
+	}))
+	err := apiClient.Request(ctx, http.MethodGet, "/users?page_size=1", nil, nil)
+	switch {
+	case err == nil:
+		return pb.RpcObjectImportNotionValidateTokenResponseError_NULL
+	case errors.Is(err, notionclient.ErrUnauthorized):
+		return pb.RpcObjectImportNotionValidateTokenResponseError_UNAUTHORIZED
+	case errors.Is(err, notionclient.ErrForbidden):
+		return pb.RpcObjectImportNotionValidateTokenResponseError_FORBIDDEN
+	case errors.Is(err, notionclient.ErrUnavailable), errors.Is(err, notionclient.ErrRateLimited):
+		return pb.RpcObjectImportNotionValidateTokenResponseError_SERVICE_UNAVAILABLE
+	default:
+		return pb.RpcObjectImportNotionValidateTokenResponseError_INTERNAL_ERROR
+	}
 }
 
 func (s *service) createRootWidget(widgetsId string, result *importv2.Result) {
@@ -348,11 +401,22 @@ func errorCode(err error, req *pb.RpcObjectImportRequest) model.ImportErrorCode 
 	if err == nil {
 		return model.Import_NULL
 	}
+	switch {
+	case errors.Is(err, notionclient.ErrRateLimited):
+		return model.Import_NOTION_RATE_LIMIT_EXCEEDED
+	case errors.Is(err, notionclient.ErrUnavailable):
+		return model.Import_NOTION_SERVER_IS_UNAVAILABLE
+	case errors.Is(err, notionclient.ErrUnauthorized), errors.Is(err, notionclient.ErrForbidden):
+		return model.Import_INSUFFICIENT_PERMISSIONS
+	}
 	issue := importv2.AsIssue(err, importv2.SeverityFatal, importv2.IssueStoreError)
 	switch issue.Code {
 	case importv2.IssueCancelled:
 		return model.Import_IMPORT_IS_CANCELED
 	case importv2.IssueNoObjects:
+		if req.Type == model.Import_Notion {
+			return model.Import_NOTION_NO_OBJECTS_IN_INTEGRATION
+		}
 		if isZipImport(req) {
 			return model.Import_FILE_IMPORT_NO_OBJECTS_IN_ZIP_ARCHIVE
 		}

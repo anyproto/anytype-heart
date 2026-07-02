@@ -1,0 +1,161 @@
+// Package notion is the streaming Notion converter: the /search crawl is
+// pass 1 (identity only — ids, titles, parents; bodies are released), pass 2
+// re-fetches each page and streams databases, pages, relations, options and
+// files through the sink one object at a time. See docs/ImportV2Design.md
+// §11.2.
+package notion
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+
+	"github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
+)
+
+const searchPageSize = 100
+
+// Entity is the pass-1 stub of one workspace object: everything the
+// converter retains about it between passes (small strings only).
+type Entity struct {
+	Id         string
+	IsDatabase bool
+	Title      string
+	Parent     Parent
+}
+
+// Parent locates an entity in the workspace hierarchy.
+type Parent struct {
+	Type       string `json:"type"` // workspace | page_id | database_id | block_id
+	PageId     string `json:"page_id"`
+	DatabaseId string `json:"database_id"`
+	BlockId    string `json:"block_id"`
+	Workspace  bool   `json:"workspace"`
+}
+
+type richText struct {
+	PlainText string `json:"plain_text"`
+	Href      string `json:"href"`
+	Type      string `json:"type"`
+	Text      *struct {
+		Content string `json:"content"`
+		Link    *struct {
+			Url string `json:"url"`
+		} `json:"link"`
+	} `json:"text"`
+	Annotations *annotations `json:"annotations"`
+	Mention     *mention     `json:"mention"`
+	Equation    *struct {
+		Expression string `json:"expression"`
+	} `json:"equation"`
+}
+
+type annotations struct {
+	Bold          bool   `json:"bold"`
+	Italic        bool   `json:"italic"`
+	Strikethrough bool   `json:"strikethrough"`
+	Underline     bool   `json:"underline"`
+	Code          bool   `json:"code"`
+	Color         string `json:"color"`
+}
+
+type mention struct {
+	Type string `json:"type"` // user | page | database | date | link_preview | custom_emoji
+	Page *struct {
+		Id string `json:"id"`
+	} `json:"page"`
+	Database *struct {
+		Id string `json:"id"`
+	} `json:"database"`
+	Date *dateValue `json:"date"`
+	User *struct {
+		Id   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"user"`
+	LinkPreview *struct {
+		Url string `json:"url"`
+	} `json:"link_preview"`
+	CustomEmoji *customEmoji `json:"custom_emoji"`
+}
+
+type dateValue struct {
+	Start    string `json:"start"`
+	End      string `json:"end"`
+	TimeZone string `json:"time_zone"`
+}
+
+type customEmoji struct {
+	Name string `json:"name"`
+	Url  string `json:"url"`
+}
+
+// searchResult decodes only the stub fields of one /search result; the rest
+// of the body is released with the response.
+type searchResult struct {
+	Object     string     `json:"object"`
+	Id         string     `json:"id"`
+	Parent     Parent     `json:"parent"`
+	Title      []richText `json:"title"` // databases carry the title directly
+	Properties map[string]struct {
+		Type  string     `json:"type"`
+		Title []richText `json:"title"`
+	} `json:"properties"` // pages carry it in their title-type property
+}
+
+type searchResponse struct {
+	Results    []searchResult `json:"results"`
+	HasMore    bool           `json:"has_more"`
+	NextCursor *string        `json:"next_cursor"`
+}
+
+// crawlSearch paginates POST /search over everything the integration can
+// see, yielding one stub per entity.
+func crawlSearch(ctx context.Context, c *client.Client, yield func(Entity) error) error {
+	body := map[string]any{"page_size": searchPageSize}
+	for {
+		var response searchResponse
+		if err := c.Request(ctx, http.MethodPost, "/search", body, &response); err != nil {
+			return fmt.Errorf("search: %w", err)
+		}
+		for _, result := range response.Results {
+			entity := Entity{
+				Id:         result.Id,
+				IsDatabase: result.Object == "database",
+				Parent:     result.Parent,
+				Title:      titleOf(result),
+			}
+			if err := yield(entity); err != nil {
+				return err
+			}
+		}
+		if !response.HasMore {
+			return nil
+		}
+		// v1 dereferenced next_cursor unconditionally and panicked on the
+		// (observed in the wild) has_more=true + null cursor combination.
+		if response.NextCursor == nil || *response.NextCursor == "" {
+			return fmt.Errorf("search: has_more with empty next_cursor")
+		}
+		body["start_cursor"] = *response.NextCursor
+	}
+}
+
+func titleOf(result searchResult) string {
+	if result.Object == "database" {
+		return plainText(result.Title)
+	}
+	for _, property := range result.Properties {
+		if property.Type == "title" {
+			return plainText(property.Title)
+		}
+	}
+	return ""
+}
+
+func plainText(runs []richText) string {
+	text := ""
+	for _, run := range runs {
+		text += run.PlainText
+	}
+	return text
+}
