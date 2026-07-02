@@ -6,6 +6,8 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
 // engineSink receives the converter's stream. It runs on the converter
@@ -36,6 +38,15 @@ func (s *engineSink) Object(ctx context.Context, object *importv2.Object) error 
 		s.run.deps.Identity.RegisterFile(object.SourceKey)
 		w.isFile = true
 	case isDerivedClass(object.SbType):
+		// An option's relation key must be final before dedup matching
+		// (v1's phase-1 relations→options ordering, stream-order here).
+		if object.SbType == coresb.SmartBlockTypeRelationOption {
+			if key := object.Payload.Details.GetString(bundle.RelationKeyRelationKey); key != "" {
+				if finalKey, ok := s.run.deps.Keys.FinalKey(key); ok && finalKey != key {
+					object.Payload.Details.SetString(bundle.RelationKeyRelationKey, finalKey)
+				}
+			}
+		}
 		assignment, err := s.run.deps.Identity.AssignDerived(ctx, object)
 		if err != nil {
 			issue := importv2.ObjectError(importv2.IssueObjectFailed, object.SourceKey, fmt.Errorf("assign derived identity: %w", err))

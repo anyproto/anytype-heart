@@ -32,12 +32,6 @@ const (
 	compensationTimeout = 5 * time.Minute
 )
 
-// CollectionFactory builds the root-collection object wrapping the run's
-// root candidates (referenced by source key; the resolver maps them).
-type CollectionFactory interface {
-	MakeCollection(name string, memberSourceKeys []string) (*importv2.Object, error)
-}
-
 // Reporter is the rich internal progress seam; the adapter down-projects it
 // onto process.Progress. Implementations must be safe for concurrent use.
 type Reporter interface {
@@ -77,7 +71,7 @@ type Deps struct {
 	Formats *resolve.Formats
 	Keys    *KeyTable
 	// Collection may be nil when root collections are not supported.
-	Collection CollectionFactory
+	Collection importv2.CollectionFactory
 	Reporter   Reporter
 	// Gauge, when set, tracks in-flight heavy objects (test hook for the
 	// bounded-memory invariant).

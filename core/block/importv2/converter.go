@@ -71,6 +71,13 @@ type Sink interface {
 	Progress(delta int64)
 }
 
+// CollectionFactory builds a collection object whose membership references
+// other stream objects by source key (the resolver maps them to final ids).
+// Implementations are pure state builders — no store access.
+type CollectionFactory interface {
+	MakeCollection(name string, memberSourceKeys []string) (*Object, error)
+}
+
 // RootSpec describes the root collection and widget for a run. Zero value
 // means: no root collection, no widget.
 type RootSpec struct {
