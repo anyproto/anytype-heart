@@ -90,9 +90,10 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	r := &run{
-		req:    req,
-		deps:   deps,
-		cancel: cancel,
+		req:        req,
+		deps:       deps,
+		cancel:     cancel,
+		failedKeys: map[string]struct{}{},
 	}
 
 	if fatal := r.identityPass(runCtx, converter); fatal != nil {
@@ -129,8 +130,11 @@ type run struct {
 	issuesDropped int64
 	fatal         *importv2.Issue
 
+	// rootCandidates is recorded in stream order (sink side) so membership
+	// stays deterministic; failed objects are filtered out at finalize.
 	rootMu         sync.Mutex
 	rootCandidates []string
+	failedKeys     map[string]struct{}
 
 	rootCollectionId string
 	compensated      int
@@ -268,6 +272,9 @@ func (r *run) process(ctx context.Context, w work) {
 	}
 	if err != nil {
 		r.failed.Add(1)
+		r.rootMu.Lock()
+		r.failedKeys[w.object.SourceKey] = struct{}{}
+		r.rootMu.Unlock()
 		r.report(importv2.AsIssue(err, importv2.SeverityObjectError, importv2.IssueObjectFailed))
 		return
 	}
@@ -278,11 +285,6 @@ func (r *run) process(ctx context.Context, w work) {
 		r.updated.Add(1)
 	default:
 		r.skipped.Add(1)
-	}
-	if w.object.IsRootCandidate {
-		r.rootMu.Lock()
-		r.rootCandidates = append(r.rootCandidates, w.object.SourceKey)
-		r.rootMu.Unlock()
 	}
 	r.deps.Reporter.Step(1)
 }
@@ -298,7 +300,12 @@ func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 		return
 	}
 	r.rootMu.Lock()
-	candidates := append([]string(nil), r.rootCandidates...)
+	candidates := make([]string, 0, len(r.rootCandidates))
+	for _, key := range r.rootCandidates {
+		if _, failed := r.failedKeys[key]; !failed {
+			candidates = append(candidates, key)
+		}
+	}
 	r.rootMu.Unlock()
 	if rootSpec.CollectionName == "" || len(candidates) == 0 || r.deps.Collection == nil {
 		return

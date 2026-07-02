@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"sort"
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/block/import/common/filetime"
@@ -41,6 +42,11 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 		if err != nil {
 			sink.Issue(importv2.Warning(importv2.IssueDataLoss, entry.Name, fmt.Sprintf("front-matter skipped: %s", err)))
 		} else if parsed != nil {
+			// The yaml parser yields properties in map order; sort for
+			// deterministic emission (contract rule 5).
+			sort.SliceStable(parsed.Properties, func(i, j int) bool {
+				return parsed.Properties[i].Name < parsed.Properties[j].Name
+			})
 			yamlDetails, typeKey, err = c.emitPropertyDefinitions(ctx, parsed.Properties, parsed.ObjectType, sink)
 			if err != nil {
 				return err

@@ -1,0 +1,181 @@
+{
+  "objects": [
+    {
+      "id": "drv-opt-mdopt351f44b29de56bad",
+      "objectTypes": [
+        "relationOption"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "happy",
+        "origin": 3,
+        "relationKey": "md780fe43f6e8bdc25",
+        "relationOptionColor": "orange"
+      }
+    },
+    {
+      "id": "drv-opt-mdopt827feec039e897fc",
+      "objectTypes": [
+        "relationOption"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "calm",
+        "origin": 3,
+        "relationKey": "md780fe43f6e8bdc25",
+        "relationOptionColor": "red"
+      }
+    },
+    {
+      "id": "drv-ot-mdtype202f686f3b83851a",
+      "objectTypes": [
+        "objectType"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "Zettel",
+        "origin": 3,
+        "recommendedLayout": 0,
+        "recommendedRelations": [
+          "drv-rel-mdd95082a2ee57f3e4",
+          "drv-rel-md780fe43f6e8bdc25"
+        ]
+      }
+    },
+    {
+      "id": "drv-rel-md780fe43f6e8bdc25",
+      "objectTypes": [
+        "relation"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "Mood",
+        "origin": 3,
+        "relationFormat": 11,
+        "relationKey": "md780fe43f6e8bdc25"
+      }
+    },
+    {
+      "id": "drv-rel-mdd95082a2ee57f3e4",
+      "objectTypes": [
+        "relation"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "Author",
+        "origin": 3,
+        "relationFormat": 1,
+        "relationKey": "mdd95082a2ee57f3e4"
+      }
+    },
+    {
+      "id": "obj-001",
+      "objectTypes": [
+        "collection"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "Tasks",
+        "origin": 3,
+        "sourceFilePath": "32bdb861c0307f8077b0834e3009d6bf68fc48ee74a679ef1d2de8262a3c01f6"
+      },
+      "members": [
+        "obj-002"
+      ]
+    },
+    {
+      "id": "obj-002",
+      "objectTypes": [
+        "page"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "Todo",
+        "origin": 3,
+        "sourceFilePath": "2623d86fef1b96419702f03b586d6759772f2f2bcd2fc2334e9a7da1971cd606"
+      }
+    },
+    {
+      "id": "obj-003",
+      "objectTypes": [
+        "mdtype202f686f3b83851a"
+      ],
+      "details": {
+        "importType": 1,
+        "md780fe43f6e8bdc25": [
+          "drv-opt-mdopt351f44b29de56bad",
+          "drv-opt-mdopt827feec039e897fc"
+        ],
+        "mdd95082a2ee57f3e4": "Roman",
+        "name": "Home",
+        "origin": 3,
+        "sourceFilePath": "a48746cae70c44e7e105b594aad338ddd105c93c1cb445a40ba6aab785ba69e5"
+      },
+      "blocks": [
+        {
+          "kind": "file",
+          "style": "Image",
+          "target": "file-logo.png"
+        },
+        {
+          "kind": "text",
+          "style": "Paragraph",
+          "text": "See Note and ",
+          "marks": [
+            {
+              "type": "Mention",
+              "param": "obj-004"
+            }
+          ]
+        },
+        {
+          "kind": "bookmark",
+          "url": "https://anytype.io"
+        }
+      ]
+    },
+    {
+      "id": "obj-004",
+      "objectTypes": [
+        "page"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "First Note",
+        "origin": 3,
+        "sourceFilePath": "2b17d7b4bd77f6148ca29c86addeeb6264d54dd834ac9570d750300e0034bccd"
+      },
+      "blocks": [
+        {
+          "kind": "text",
+          "style": "Paragraph",
+          "text": "Back to Home",
+          "marks": [
+            {
+              "type": "Mention",
+              "param": "obj-003"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "obj-005",
+      "objectTypes": [
+        "collection"
+      ],
+      "details": {
+        "importType": 1,
+        "name": "Markdown Import",
+        "origin": 3
+      },
+      "members": [
+        "obj-003",
+        "obj-001"
+      ]
+    }
+  ],
+  "uploads": [
+    "logo.png"
+  ]
+}

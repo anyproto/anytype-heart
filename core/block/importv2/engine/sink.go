@@ -67,6 +67,13 @@ func (s *engineSink) Object(ctx context.Context, object *importv2.Object) error 
 		w.target = persist.Target{Id: assignment.Id, IsExisting: assignment.IsExisting, Payload: assignment.Payload}
 	}
 
+	if object.IsRootCandidate {
+		// Stream order keeps root-collection membership deterministic.
+		s.run.rootMu.Lock()
+		s.run.rootCandidates = append(s.run.rootCandidates, object.SourceKey)
+		s.run.rootMu.Unlock()
+	}
+
 	lane := s.objectCh
 	if w.isFile {
 		lane = s.fileCh
