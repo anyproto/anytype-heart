@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -17,8 +18,9 @@ type ApiSessionEntry struct {
 
 // Server wraps the HTTP server and service logic.
 type Server struct {
-	engine  *gin.Engine
-	service *service.Service
+	engine     *gin.Engine
+	service    *service.Service
+	chatSubSvc apicore.ChatSubscriptionService
 
 	mu         sync.Mutex
 	KeyToToken map[string]ApiSessionEntry // appKey -> token
@@ -27,28 +29,43 @@ type Server struct {
 }
 
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, openapiYAML []byte, openapiJSON []byte) *Server {
-	gatewayUrl, techSpaceId, err := getAccountInfo(accountService)
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, chatSubSvc apicore.ChatSubscriptionService, fileObjectService apicore.FileObjectService, apiListenAddr string, openapiYAML []byte, openapiJSON []byte) *Server {
+	techSpaceId, err := getTechSpaceId(accountService)
 	if err != nil {
 		panic(err)
 	}
 
-	s := &Server{service: service.NewService(mw, gatewayUrl, techSpaceId, crossSpaceSubService)}
+	apiBaseUrl := buildApiBaseUrl(apiListenAddr)
+	s := &Server{
+		service:    service.NewService(mw, fileObjectService, apiBaseUrl, techSpaceId, crossSpaceSubService),
+		chatSubSvc: chatSubSvc,
+	}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
 }
 
-// getAccountInfo retrieves the account information from the account service and returns the gateway URL and tech space ID.
-func getAccountInfo(accountService apicore.AccountService) (gatewayUrl string, techSpaceId string, err error) {
+// getTechSpaceId retrieves the tech space ID from the account service.
+func getTechSpaceId(accountService apicore.AccountService) (techSpaceId string, err error) {
 	accountInfo, err := accountService.GetInfo(context.Background())
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	gatewayUrl = accountInfo.GatewayUrl
-	techSpaceId = accountInfo.TechSpaceId
-	return gatewayUrl, techSpaceId, nil
+	return accountInfo.TechSpaceId, nil
+}
+
+// buildApiBaseUrl turns the API listen address into a fully-qualified base URL
+// (e.g. "127.0.0.1:31009" -> "http://127.0.0.1:31009"). Wildcard hosts are
+// rewritten to 127.0.0.1 so the URL is dialable from clients.
+func buildApiBaseUrl(listenAddr string) string {
+	addr := listenAddr
+	if strings.HasPrefix(addr, ":") {
+		addr = "127.0.0.1" + addr
+	} else if strings.HasPrefix(addr, "0.0.0.0:") {
+		addr = "127.0.0.1:" + strings.TrimPrefix(addr, "0.0.0.0:")
+	}
+	return "http://" + addr
 }
 
 // Stop the service to clean up caches and subscriptions

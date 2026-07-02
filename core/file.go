@@ -242,7 +242,9 @@ func (mw *Middleware) FileReconcile(ctx context.Context, req *pb.RpcFileReconcil
 			},
 		}
 	}
-	return &pb.RpcFileReconcileResponse{}
+	return &pb.RpcFileReconcileResponse{
+		Error: &pb.RpcFileReconcileResponseError{Code: pb.RpcFileReconcileResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSetAutoDownloadRequest) *pb.RpcFileSetAutoDownloadResponse {
@@ -255,7 +257,9 @@ func (mw *Middleware) FileSetAutoDownload(ctx context.Context, req *pb.RpcFileSe
 			},
 		}
 	}
-	return &pb.RpcFileSetAutoDownloadResponse{}
+	return &pb.RpcFileSetAutoDownloadResponse{
+		Error: &pb.RpcFileSetAutoDownloadResponseError{Code: pb.RpcFileSetAutoDownloadResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileAutoDownloadSetLimit(ctx context.Context, req *pb.RpcFileAutoDownloadSetLimitRequest) *pb.RpcFileAutoDownloadSetLimitResponse {
@@ -268,7 +272,9 @@ func (mw *Middleware) FileAutoDownloadSetLimit(ctx context.Context, req *pb.RpcF
 			},
 		}
 	}
-	return &pb.RpcFileAutoDownloadSetLimitResponse{}
+	return &pb.RpcFileAutoDownloadSetLimitResponse{
+		Error: &pb.RpcFileAutoDownloadSetLimitResponseError{Code: pb.RpcFileAutoDownloadSetLimitResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCacheDownloadRequest) *pb.RpcFileCacheDownloadResponse {
@@ -289,7 +295,9 @@ func (mw *Middleware) FileCacheDownload(ctx context.Context, req *pb.RpcFileCach
 			},
 		}
 	}
-	return &pb.RpcFileCacheDownloadResponse{}
+	return &pb.RpcFileCacheDownloadResponse{
+		Error: &pb.RpcFileCacheDownloadResponseError{Code: pb.RpcFileCacheDownloadResponseError_NULL},
+	}
 }
 
 func (mw *Middleware) FileCacheCancelDownload(ctx context.Context, req *pb.RpcFileCacheCancelDownloadRequest) *pb.RpcFileCacheCancelDownloadResponse {
@@ -310,5 +318,7 @@ func (mw *Middleware) FileCacheCancelDownload(ctx context.Context, req *pb.RpcFi
 			},
 		}
 	}
-	return &pb.RpcFileCacheCancelDownloadResponse{}
+	return &pb.RpcFileCacheCancelDownloadResponse{
+		Error: &pb.RpcFileCacheCancelDownloadResponseError{Code: pb.RpcFileCacheCancelDownloadResponseError_NULL},
+	}
 }

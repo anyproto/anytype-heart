@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "08eb2910b64036f7031c1559378b4a1447c7177c80fd4f4c266bcd1f10addc75"
+const RelationChecksum = "0df340fee18663c4f1584c3116f1da177ae6fcdf96a2493e15c6ca81b7aa50c5"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -190,6 +190,9 @@ const (
 	RelationKeyWidgetViewId                         domain.RelationKey = "widgetViewId"
 	RelationKeyIsMainChat                           domain.RelationKey = "isMainChat"
 	RelationKeyLastMessageDate                      domain.RelationKey = "lastMessageDate"
+	RelationKeyNotificationSubscribers              domain.RelationKey = "notificationSubscribers"
+	RelationKeyUnreadMessageCount                   domain.RelationKey = "unreadMessageCount"
+	RelationKeyUnreadMentionCount                   domain.RelationKey = "unreadMentionCount"
 	RelationKeyFileAvailableOffline                 domain.RelationKey = "fileAvailableOffline"
 	RelationKeyAnalyticsChatId                      domain.RelationKey = "analyticsChatId"
 	RelationKeyAnalyticsSpaceId                     domain.RelationKey = "analyticsSpaceId"
@@ -536,13 +539,13 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Object ID where the object was initially created",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brcreatedInContext",
 			Key:              "createdInContext",
 			MaxCount:         1,
 			Name:             "Created in context",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreatedInContextRef: {
@@ -1575,6 +1578,19 @@ var (
 			MaxCount:         1,
 			Name:             "Name",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyNotificationSubscribers: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Participants subscribed to notifications on this discussion",
+			Format:           model.RelationFormat_object,
+			Id:               "_brnotificationSubscribers",
+			Key:              "notificationSubscribers",
+			Name:             "Notification subscribers",
+			ObjectTypes:      []string{TypePrefix + "participant"},
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -2696,6 +2712,34 @@ var (
 			Key:              "uniqueKey",
 			MaxCount:         1,
 			Name:             "Unique object key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUnreadMentionCount: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Number of unread mentions in a discussion for the current user",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brunreadMentionCount",
+			Key:              "unreadMentionCount",
+			MaxCount:         1,
+			Name:             "Unread mentions",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUnreadMessageCount: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Number of unread messages in a discussion for the current user",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Id:               "_brunreadMessageCount",
+			Key:              "unreadMessageCount",
+			MaxCount:         1,
+			Name:             "Unread messages",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

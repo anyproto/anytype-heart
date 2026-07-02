@@ -268,6 +268,12 @@ func (p *pasteCtrl) singleRange() (err error) {
 		p.mode.removeSelection = true
 		if wasEmpty && firstPasteText != nil {
 			p.mode.removeSelection = false
+			// Reuse the empty focused block for the first paste line instead of
+			// leaving it as a stray empty paragraph above the pasted content.
+			// Reverts the multi-block carve-out from GO-6615 "Keep target toggle
+			// block"; the single-block toggle case is handled by intoBlock mode.
+			selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
+			p.ps.Unlink(firstPasteText.Model().Id)
 		}
 	}
 	return
@@ -436,6 +442,13 @@ func (p *pasteCtrl) intoCodeBlock() (err error) {
 			return true
 		})
 		txt = strings.Join(txtArr, "\n")
+	}
+	// Strip trailing newlines when selection reaches the end of the code block,
+	// because there is no text after the selection to absorb them. This prevents
+	// clipboard artifacts (trailing \n or \r\n) from adding blank lines.
+	textLen := int32(textutil.UTF16RuneCountString(selText.GetText()))
+	if p.selRange.To >= textLen {
+		txt = strings.TrimRight(txt, "\n\r")
 	}
 	tb := &model.Block{
 		Content: &model.BlockContentOfText{

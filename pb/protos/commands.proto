@@ -950,6 +950,27 @@ message Rpc {
             }
         }
 
+        message PreloadRemainingSpaces {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2;
+                        ACCOUNT_IS_NOT_RUNNING = 101;
+                    }
+                }
+            }
+        }
+
         message Migrate {
             message Request {
                 string id = 1; // Id of a selected account
@@ -1016,6 +1037,7 @@ message Rpc {
                 // if true - will run membership v2 polling loop, v2 methods will be available
                 // if false - will run membership v1 polling loop, v2 methods will return error
                 bool enableMembershipV2 = 10; // optional, default is false
+                string preferredSpaceId = 11; // optional. If set and resolvable, only this space + tech space load eagerly at start; the rest are deferred until AccountPreloadRemainingSpaces, a 10s timer, or this space fails. Empty = today's eager behavior.
             }
 
             /**
@@ -2285,11 +2307,15 @@ message Rpc {
                 repeated string objectTypeFilter = 6; // DEPRECATED, GO-1926
                 // needed keys in details for return, when empty - will return all
                 repeated string keys = 7;
+                // when true, response.total is filled with the count of all objects matching the filters, ignoring limit/offset
+                bool needTotal = 9;
             }
 
             message Response {
                 Error error = 1;
                 repeated google.protobuf.Struct records = 2;
+                // total number of objects matching the filters, ignoring limit/offset; filled only when request.needTotal is true
+                int64 total = 3;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -4922,6 +4948,8 @@ message Rpc {
                 string contextId = 1;
                 repeated anytype.model.Block blocks = 2;
                 anytype.model.Range selectedTextRange = 3;
+                // optional. when set and the request contains multiple blocks, selectedTextRange is applied to the first block and selectedTextRangeLastBlock to the last block. {0,0} range means the whole block
+                anytype.model.Range selectedTextRangeLastBlock = 4;
             }
 
             message Response {
@@ -4991,6 +5019,8 @@ message Rpc {
                 string contextId = 1;
                 repeated anytype.model.Block blocks = 2;
                 anytype.model.Range selectedTextRange = 3;
+                // optional. when set and the request contains multiple blocks, selectedTextRange is applied to the first block and selectedTextRangeLastBlock to the last block. {0,0} range means the whole block
+                anytype.model.Range selectedTextRangeLastBlock = 4;
             }
 
             message Response {
@@ -7544,7 +7574,29 @@ message Rpc {
 
         message RunProfiler {
             message Request {
+                // 0 = save heap snapshot only; >0 = run full profiler (CPU, heap, trace, goroutines) for this many seconds
                 int32 durationInSeconds = 1;
+                Reason reason = 2;
+                // Optional free-form description to attach to the profile
+                string reasonDesc = 3;
+
+                enum Reason {
+                    UNKNOWN = 0;
+                    // Triggered explicitly by the user
+                    USER_REQUEST = 1;
+                    // iOS: DISPATCH_MEMORYPRESSURE_WARN
+                    // Android: onTrimMemory(RUNNING_LOW)
+                    MEMORY_PRESSURE_WARN = 2;
+                    // iOS: DISPATCH_MEMORYPRESSURE_CRITICAL / applicationDidReceiveMemoryWarning
+                    // Android: onTrimMemory(RUNNING_CRITICAL)
+                    MEMORY_PRESSURE_CRITICAL = 3;
+                    // iOS: ProcessInfo.thermalState == .serious
+                    // Android: THERMAL_STATUS_SEVERE
+                    THERMAL_SERIOUS = 4;
+                    // iOS: ProcessInfo.thermalState == .critical
+                    // Android: THERMAL_STATUS_CRITICAL or higher
+                    THERMAL_CRITICAL = 5;
+                }
             }
 
             message Response {
@@ -7585,14 +7637,21 @@ message Rpc {
             }
         }
 
-        message ExportLog {
+        message ExportReport {
             message Request {
                 string dir = 1; // empty means using OS-provided temp dir
+                // When false (default) the report includes only the 2 newest log files
+                // (active + most recent rotated). When true, all logs are included.
+                bool full = 2;
             }
 
             message Response {
                 Error error = 1;
                 string path = 2;
+                // JSON summary with profile counts by reason and log count
+                string summary = 3;
+                // Unix timestamp (seconds) of the newest source file in this report. Pass to DebugCleanupReport after the report is successfully uploaded to the reporter server.
+                int64 lastModifiedTs = 4;
 
                 message Error {
                     Code code = 1;
@@ -7603,6 +7662,28 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         NO_FOLDER = 3;
+                    }
+                }
+            }
+        }
+
+        message CleanupReport {
+            message Request {
+                // Unix timestamp (seconds); files with lastModified < ts will be removed
+                int64 ts = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
                     }
                 }
             }
@@ -8573,6 +8654,8 @@ message Rpc {
                 repeated string productIds = 1;
 
                 bool isYearly = 2;
+
+                bool isLifetime = 3;
             }
 
             message Response {
@@ -8956,6 +9039,52 @@ message Rpc {
             }
         }
 
+        message AddNotificationSubscriber {
+            message Request {
+                string chatObjectId = 1;
+                string identity = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message RemoveNotificationSubscriber {
+            message Request {
+                string chatObjectId = 1;
+                string identity = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message GetMessages {
             message Request {
                 string chatObjectId = 1;
@@ -8969,6 +9098,7 @@ message Rpc {
                 Error error = 1;
                 repeated model.ChatMessage messages = 2;
                 model.ChatState chatState = 3;
+                int32 messageCount = 4;  // Total number of non-deleted messages in the chat
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -9019,6 +9149,7 @@ message Rpc {
                 repeated model.ChatMessage messages = 2;  // List of messages
                 int32 numMessagesBefore = 3;  // Number of messages before the returned messages
                 model.ChatState chatState = 4;  // Chat state
+                int32 messageCount = 5;  // Total number of non-deleted messages in the chat
                 message Error {
                     Code code = 1;
                     string description = 2;

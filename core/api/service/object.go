@@ -10,7 +10,6 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
-	"github.com/anyproto/anytype-heart/core/api/pagination"
 	"github.com/anyproto/anytype-heart/core/api/util"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -61,17 +60,24 @@ func (s *Service) ListObjects(ctx context.Context, spaceId string, additionalFil
 			Type:        model.BlockContentDataviewSort_Desc,
 			IncludeTime: true,
 		}},
+		Offset:    int32(offset),
+		Limit:     int32(limit + 1), // fetch one extra record to detect hasMore without scanning the full set
+		NeedTotal: true,
 	})
 
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectSearchResponseError_NULL {
 		return nil, 0, false, ErrFailedRetrieveObjects
 	}
 
-	total = len(resp.Records)
-	paginatedObjects, hasMore := pagination.Paginate(resp.Records, offset, limit)
-	objects = make([]apimodel.Object, 0, len(paginatedObjects))
+	records := resp.Records
+	hasMore = len(records) > limit
+	if hasMore {
+		records = records[:limit]
+	}
 
-	for _, record := range paginatedObjects {
+	total = int(resp.Total)
+	objects = make([]apimodel.Object, 0, len(records))
+	for _, record := range records {
 		objects = append(objects, s.getObjectFromStruct(record))
 	}
 	return objects, total, hasMore, nil
@@ -414,7 +420,7 @@ func (s *Service) getObjectFromStruct(details *types.Struct) apimodel.Object {
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       s.getIcon(spaceId, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),
@@ -433,7 +439,7 @@ func (s *Service) getObjectWithBlocksFromStruct(details *types.Struct, markdown 
 		Object:     "object",
 		Id:         details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
 		Name:       details.Fields[bundle.RelationKeyName.String()].GetStringValue(),
-		Icon:       getIcon(s.gatewayUrl, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
+		Icon:       s.getIcon(spaceId, details.Fields[bundle.RelationKeyIconEmoji.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconImage.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconName.String()].GetStringValue(), details.Fields[bundle.RelationKeyIconOption.String()].GetNumberValue()),
 		Archived:   details.Fields[bundle.RelationKeyIsArchived.String()].GetBoolValue(),
 		SpaceId:    spaceId,
 		Snippet:    details.Fields[bundle.RelationKeySnippet.String()].GetStringValue(),

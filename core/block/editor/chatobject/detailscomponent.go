@@ -19,7 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
-const detailsDocumentId = "details"
+const DetailsDocumentId = "details"
 
 type detailsComponent struct {
 	componentCtx          context.Context
@@ -61,7 +61,7 @@ func (c *detailsComponent) onPushOrdinaryChange(params source.PushChangeParams) 
 			if !val.Ok() {
 				continue
 			}
-			err := builder.Modify(c.collectionName, detailsDocumentId, []string{set.Key}, pb.ModifyOp_Set, val.ToAnyEnc(arena))
+			err := builder.Modify(c.collectionName, DetailsDocumentId, []string{set.Key}, pb.ModifyOp_Set, val.ToAnyEnc(arena))
 			if err != nil {
 				return "", fmt.Errorf("modify content: %w", err)
 			}
@@ -82,7 +82,7 @@ func (c *detailsComponent) setDetailsFromAnystore(ctx context.Context, st *state
 	if err != nil {
 		return fmt.Errorf("get collection: %w", err)
 	}
-	doc, err := coll.FindId(ctx, detailsDocumentId)
+	doc, err := coll.FindId(ctx, DetailsDocumentId)
 	if errors.Is(err, anystore.ErrDocNotFound) {
 		return nil
 	}

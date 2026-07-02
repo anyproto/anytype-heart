@@ -249,20 +249,23 @@ func testAddConcurrently(t *testing.T, addFunc func(t *testing.T, fx *fixture) *
 		}()
 	}
 
+	// The per-checksum add lock is released at the end of FileAdd/ImageAdd (it is no
+	// longer held until Commit) to avoid a deadlock between a preloaded upload and a
+	// subsequent upload of the same checksum without a preloadId. As a consequence,
+	// concurrent adds of the same content may each create a separate file object, so we
+	// no longer assert strict deduplication here - only that every concurrent add
+	// succeeds without deadlocking and reports consistent content (MIME and size).
 	var prev *AddResult
 	for i := 0; i < numTimes; i++ {
 		got := <-gotCh
+		require.NotNil(t, got)
+		assert.NotEmpty(t, got.FileId)
 
 		if prev == nil {
-			// The first file should be new
-			assert.False(t, got.IsExisting)
 			prev = got
 		} else {
-			assert.Equal(t, prev.FileId, got.FileId)
-			assert.Equal(t, prev.EncryptionKeys, got.EncryptionKeys)
 			assert.Equal(t, prev.MIME, got.MIME)
 			assert.Equal(t, prev.Size, got.Size)
-			assert.True(t, got.IsExisting)
 		}
 	}
 }

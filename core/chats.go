@@ -84,6 +84,38 @@ func (mw *Middleware) ChatDeleteMessage(cctx context.Context, req *pb.RpcChatDel
 	return &pb.RpcChatDeleteMessageResponse{}
 }
 
+func (mw *Middleware) ChatAddNotificationSubscriber(cctx context.Context, req *pb.RpcChatAddNotificationSubscriberRequest) *pb.RpcChatAddNotificationSubscriberResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.AddNotificationSubscriber(cctx, req.ChatObjectId, req.Identity)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatAddNotificationSubscriberResponseErrorCode](err)
+		return &pb.RpcChatAddNotificationSubscriberResponse{
+			Error: &pb.RpcChatAddNotificationSubscriberResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatAddNotificationSubscriberResponse{}
+}
+
+func (mw *Middleware) ChatRemoveNotificationSubscriber(cctx context.Context, req *pb.RpcChatRemoveNotificationSubscriberRequest) *pb.RpcChatRemoveNotificationSubscriberResponse {
+	chatService := mustService[chats.Service](mw)
+
+	err := chatService.RemoveNotificationSubscriber(cctx, req.ChatObjectId, req.Identity)
+	if err != nil {
+		code := mapErrorCode[pb.RpcChatRemoveNotificationSubscriberResponseErrorCode](err)
+		return &pb.RpcChatRemoveNotificationSubscriberResponse{
+			Error: &pb.RpcChatRemoveNotificationSubscriberResponseError{
+				Code:        code,
+				Description: getErrorDescription(err),
+			},
+		}
+	}
+	return &pb.RpcChatRemoveNotificationSubscriberResponse{}
+}
+
 func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMessagesRequest) *pb.RpcChatGetMessagesResponse {
 	chatService := mustService[chats.Service](mw)
 
@@ -104,8 +136,9 @@ func (mw *Middleware) ChatGetMessages(cctx context.Context, req *pb.RpcChatGetMe
 	}
 
 	return &pb.RpcChatGetMessagesResponse{
-		Messages:  messagesToProto(resp.Messages),
-		ChatState: resp.ChatState,
+		Messages:     messagesToProto(resp.Messages),
+		ChatState:    resp.ChatState,
+		MessageCount: resp.MessageCount,
 	}
 }
 
@@ -144,6 +177,7 @@ func (mw *Middleware) ChatSubscribeLastMessages(cctx context.Context, req *pb.Rp
 		Messages:          messagesToProto(resp.Messages),
 		NumMessagesBefore: 0,
 		ChatState:         resp.ChatState,
+		MessageCount:      resp.MessageCount,
 	}
 }
 

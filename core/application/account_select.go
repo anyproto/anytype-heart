@@ -83,7 +83,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 	metrics.Service.SetWorkingDir(req.RootPath, req.Id)
 
 	return s.start(ctx, req.Id, req.RootPath, req.DisableLocalNetworkSync, req.JsonApiListenAddr,
-		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.FulltextPrimaryLanguage, req.JoinStreamURL, req.EnableMembershipV2)
+		req.PreferYamuxTransport, req.NetworkMode, req.NetworkCustomConfigFilePath, req.FulltextPrimaryLanguage, req.JoinStreamURL, req.EnableMembershipV2, req.PreferredSpaceId)
 }
 
 func (s *Service) start(
@@ -98,6 +98,7 @@ func (s *Service) start(
 	lang string,
 	joinStreamUrl string,
 	enableMembershipV2 bool,
+	preferredSpaceId string,
 ) (*model.Account, error) {
 	ctx, task := trace2.NewTask(ctx, "application.start")
 	defer task.End()
@@ -140,6 +141,7 @@ func (s *Service) start(
 	if enableMembershipV2 {
 		cfg.EnableMembershipV2 = true
 	}
+	cfg.PreferredSpaceId = preferredSpaceId
 	if networkMode > 0 {
 		cfg.NetworkMode = networkMode
 		cfg.NetworkCustomConfigFilePath = networkConfigFilePath

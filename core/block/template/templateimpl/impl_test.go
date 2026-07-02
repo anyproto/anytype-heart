@@ -1215,3 +1215,168 @@ func TestService_collectOriginalDetails(t *testing.T) {
 		assert.False(t, result.Has(bundle.RelationKeyName), "Empty name should be removed when previous template also had empty name")
 	})
 }
+
+func newTemplateTestWithTags(templateName, typeKey string, tags []string) smartblock.SmartBlock {
+	sb := newTemplateTest(templateName, typeKey).(*smarttest.SmartTest)
+	_ = sb.SetDetails(nil, []domain.Detail{
+		{Key: bundle.RelationKeyTag, Value: domain.StringList(tags)},
+	}, false)
+	return sb
+}
+
+func TestService_MultiValueRelationMerging(t *testing.T) {
+	const (
+		testSpaceId  = "space1"
+		templateName = "template"
+	)
+
+	t.Run("template tags are preserved when incoming details has empty tag list", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithTags(templateName, bundle.TypeKeyTask.String(), []string{"tag1", "tag2"})
+		details := domain.NewDetails()
+		details.Set(bundle.RelationKeyTag, domain.StringList(nil))
+
+		s := service{
+			picker:        &testPicker{sb: tmpl},
+			formatFetcher: newFormatFetcher(t, map[string]model.RelationFormat{bundle.RelationKeyTag.String(): model.RelationFormat_tag}),
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+			Details:    details,
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"tag1", "tag2"}, st.Details().GetStringList(bundle.RelationKeyTag))
+	})
+
+	t.Run("template tags are merged with incoming tag values", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTestWithTags(templateName, bundle.TypeKeyTask.String(), []string{"tag1", "tag2"})
+		details := domain.NewDetails()
+		details.Set(bundle.RelationKeyTag, domain.StringList([]string{"tag2", "tag3"}))
+
+		s := service{
+			picker:        &testPicker{sb: tmpl},
+			formatFetcher: newFormatFetcher(t, map[string]model.RelationFormat{bundle.RelationKeyTag.String(): model.RelationFormat_tag}),
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+			Details:    details,
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"tag1", "tag2", "tag3"}, st.Details().GetStringList(bundle.RelationKeyTag))
+	})
+
+	t.Run("single-value relations still overwrite correctly", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTest(templateName, bundle.TypeKeyTask.String())
+		details := domain.NewDetails()
+		details.Set(bundle.RelationKeyDescription, domain.String("new description"))
+
+		s := service{
+			picker:        &testPicker{sb: tmpl},
+			formatFetcher: newFormatFetcher(t, map[string]model.RelationFormat{bundle.RelationKeyDescription.String(): model.RelationFormat_longtext}),
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+			Details:    details,
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "new description", st.Details().GetString(bundle.RelationKeyDescription))
+	})
+
+	t.Run("object relations are merged", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTest(templateName, bundle.TypeKeyTask.String()).(*smarttest.SmartTest)
+		_ = tmpl.SetDetails(nil, []domain.Detail{
+			{Key: domain.RelationKey("assignee"), Value: domain.StringList([]string{"user1", "user2"})},
+		}, false)
+
+		details := domain.NewDetails()
+		details.Set(domain.RelationKey("assignee"), domain.StringList([]string{"user2", "user3"}))
+
+		s := service{
+			picker:        &testPicker{sb: tmpl},
+			formatFetcher: newFormatFetcher(t, map[string]model.RelationFormat{"assignee": model.RelationFormat_object}),
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+			Details:    details,
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"user1", "user2", "user3"}, st.Details().GetStringList(domain.RelationKey("assignee")))
+	})
+
+	t.Run("file relations are merged", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTest(templateName, bundle.TypeKeyTask.String()).(*smarttest.SmartTest)
+		_ = tmpl.SetDetails(nil, []domain.Detail{
+			{Key: domain.RelationKey("attachments"), Value: domain.StringList([]string{"file1"})},
+		}, false)
+
+		details := domain.NewDetails()
+		details.Set(domain.RelationKey("attachments"), domain.StringList([]string{"file2"}))
+
+		s := service{
+			picker:        &testPicker{sb: tmpl},
+			formatFetcher: newFormatFetcher(t, map[string]model.RelationFormat{"attachments": model.RelationFormat_file}),
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+			Details:    details,
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"file1", "file2"}, st.Details().GetStringList(domain.RelationKey("attachments")))
+	})
+
+	t.Run("status relations are not merged - incoming overwrites", func(t *testing.T) {
+		// given
+		tmpl := newTemplateTest(templateName, bundle.TypeKeyTask.String()).(*smarttest.SmartTest)
+		_ = tmpl.SetDetails(nil, []domain.Detail{
+			{Key: domain.RelationKey("status"), Value: domain.StringList([]string{"status1"})},
+		}, false)
+
+		details := domain.NewDetails()
+		details.Set(domain.RelationKey("status"), domain.StringList([]string{"status2"}))
+
+		s := service{
+			picker:        &testPicker{sb: tmpl},
+			formatFetcher: newFormatFetcher(t, map[string]model.RelationFormat{"status": model.RelationFormat_status}),
+		}
+
+		// when
+		st, err := s.CreateTemplateStateWithDetails(templateSvc.CreateTemplateRequest{
+			SpaceId:    testSpaceId,
+			TemplateId: templateName,
+			Details:    details,
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, []string{"status2"}, st.Details().GetStringList(domain.RelationKey("status")))
+	})
+}

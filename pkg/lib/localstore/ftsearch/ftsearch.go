@@ -47,6 +47,9 @@ const (
 	ftsVer   = "16"
 	docLimit = 10000
 
+	// defaultSearchLimit is the docs limit applied when the caller passes none
+	defaultSearchLimit = 100
+
 	fieldTitle     = "Title"
 	fieldTitleZh   = "TitleZh"
 	fieldText      = "Text"
@@ -75,11 +78,23 @@ type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	NewAutoBatcher() AutoBatcher
+	// BatchDeleteObjects deletes ALL documents belonging to the given object ids
+	// (doc ids are structured as "objectId/r/relationKey", "objectId/b/blockId",
+	// "objectId/m/messageId"; bare-id documents are deleted as well)
 	BatchDeleteObjects(ids []string) (err error)
-	Search(spaceId string, query string) (results []*DocumentMatch, err error)
+	// Search returns up to limit best-scoring doc matches (limit <= 0 means
+	// the default of 100). The limit applies to docs, not objects.
+	Search(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
+	// SearchChat searches only the chat's message documents ("chatId/m/...")
+	// so messages don't compete with the rest of the space for the limit
+	SearchChat(spaceId string, chatId string, query string, limit int) (results []*DocumentMatch, err error)
 	// NamePrefixSearch special prefix case search
-	NamePrefixSearch(spaceId string, query string) (results []*DocumentMatch, err error)
+	NamePrefixSearch(spaceId string, query string, limit int) (results []*DocumentMatch, err error)
 	ListByIdPrefix(prefix string) (ids []string, err error)
+	// ListIdsBySpace returns up to limit document ids belonging to the space;
+	// callers that need the full set must pass a sufficient limit or
+	// delete/iterate and call again (limit <= 0 means one default page of 10k)
+	ListIdsBySpace(spaceId string, limit int) (ids []string, err error)
 	Iterate(objectId string, fields []string, shouldContinue func(doc *SearchDoc) bool) (err error)
 	ListAllObjectIds() (map[string]struct{}, error)
 	DocCount() (uint64, error)
@@ -169,22 +184,78 @@ func (f *ftSearch) BatchDeleteObjects(ids []string) error {
 			l.Debugf("ft delete done")
 		}
 	}()
-	err := f.index.DeleteDocuments(fieldIdRaw, ids...)
-	if err != nil {
-		return err
+	// doc ids are full paths ("objectId/r/relationKey", "objectId/b/blockId",
+	// "objectId/m/messageId") and deletion is an exact term match on IdRaw, so
+	// expand every object id into its doc ids first; listDocIdsForObject
+	// returns at most one page, so only objects that returned a full page are
+	// re-listed. The iteration cap guards against a non-progressing loop (e.g.
+	// deletes committed but the reader persistently failing to reload).
+	const maxIterations = 1000
+	pending := ids
+	for iteration := 0; iteration < maxIterations && len(pending) > 0; iteration++ {
+		docIds := make([]string, 0, len(pending))
+		var nextPending []string
+		for _, id := range pending {
+			found, pageFull, err := f.listDocIdsForObject(id)
+			if err != nil {
+				return fmt.Errorf("list docs by object id: %w", err)
+			}
+			docIds = append(docIds, found...)
+			if pageFull {
+				// the object may have more docs beyond the listing page
+				nextPending = append(nextPending, id)
+			}
+		}
+		if len(docIds) == 0 {
+			return nil
+		}
+		if err := f.index.DeleteDocuments(fieldIdRaw, docIds...); err != nil {
+			return fmt.Errorf("delete object docs: %w", err)
+		}
+		pending = nextPending
+	}
+	if len(pending) > 0 {
+		return fmt.Errorf("object docs still present after %d delete iterations", maxIterations)
 	}
 
 	return nil
 }
 
-func (f *ftSearch) DeleteObject(objectId string) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	if f.appClosingInitiated.Load() {
-		return ErrAppClosingInitiated
+// listDocIdsForObject returns up to one page (docLimit) of doc ids belonging
+// to the object; pageFull reports whether the underlying search page was full,
+// i.e. more matches may exist beyond it. It deliberately queries the tokenized
+// Id field instead of a TermPrefixQuery on IdRaw: prefix queries expand to at
+// most ~50 terms per segment (and deleted terms eat the expansion budget),
+// which silently truncates the listing. A term/phrase match has no such cap;
+// token-level false positives (another object's doc path containing the same
+// token) are filtered out by the exact prefix check.
+func (f *ftSearch) listDocIdsForObject(objectId string) (ids []string, pageFull bool, err error) {
+	query := tantivy.NewQueryBuilder().
+		Query(tantivy.Must, fieldId, objectId, tantivy.PhraseQuery, 1.0).
+		Build()
+	sCtx := tantivy.NewSearchContextBuilder().
+		SetQueryFromJson(&query).
+		SetWithHighlights(false).
+		AddField(fieldIdRaw, 1.0).
+		SetDocsLimit(docLimit).
+		Build()
+
+	results, err := f.index.SearchFastFieldJson(sCtx, fieldIdRaw)
+	if err != nil {
+		return nil, false, fmt.Errorf("search docs for object: %w", err)
 	}
-	err := f.index.DeleteDocuments(fieldIdRaw, objectId)
-	return err
+	ids = make([]string, 0, len(results.Values))
+	prefix := objectId + domain.ObjectPathSeparator
+	for _, id := range results.Values {
+		if strings.HasPrefix(id, prefix) || id == objectId {
+			ids = append(ids, id)
+		}
+	}
+	return ids, len(results.Values) >= docLimit, nil
+}
+
+func (f *ftSearch) DeleteObject(objectId string) error {
+	return f.BatchDeleteObjects([]string{objectId})
 }
 
 func (f *ftSearch) Init(a *app.App) error {
@@ -490,18 +561,36 @@ func (f *ftSearch) convertDoc(doc SearchDoc) (*tantivy.Document, error) {
 	return document, nil
 }
 
-func (f *ftSearch) NamePrefixSearch(spaceId, query string) ([]*DocumentMatch, error) {
-	return f.performSearch(spaceId, query, f.buildObjectQuery)
+func (f *ftSearch) NamePrefixSearch(spaceId, query string, limit int) ([]*DocumentMatch, error) {
+	// the prefix search consumers don't use text fragments, so skip the
+	// expensive highlight generation entirely
+	return f.performSearch(spaceId, query, limit, false, f.buildObjectQuery)
 }
 
-func (f *ftSearch) Search(spaceId, query string) ([]*DocumentMatch, error) {
-	return f.performSearch(spaceId, query, f.buildDetailedQuery)
+func (f *ftSearch) Search(spaceId, query string, limit int) ([]*DocumentMatch, error) {
+	return f.performSearch(spaceId, query, limit, true, f.buildDetailedQuery)
 }
 
-func (f *ftSearch) performSearch(spaceId, query string, buildQueryFunc func(*tantivy.QueryBuilder, string)) ([]*DocumentMatch, error) {
+func (f *ftSearch) SearchChat(spaceId, chatId, query string, limit int) ([]*DocumentMatch, error) {
+	return f.performSearch(spaceId, query, limit, true, func(qb *tantivy.QueryBuilder, query string) {
+		if chatId != "" {
+			// restrict to the chat's message docs ("chatId/m/msgId") via a phrase
+			// match on the tokenized id field. A prefix query on IdRaw would
+			// silently truncate: prefix expansion is capped at ~50 terms per
+			// segment. Boost 0 keeps the clause out of BM25 scoring.
+			qb.Query(tantivy.Must, fieldId, chatId+"/m", tantivy.PhraseQuery, 0.0)
+		}
+		f.buildDetailedQuery(qb, query)
+	})
+}
+
+func (f *ftSearch) performSearch(spaceId, query string, limit int, withHighlights bool, buildQueryFunc func(*tantivy.QueryBuilder, string)) ([]*DocumentMatch, error) {
 	query = prepareQuery(query)
 	if query == "" {
 		return nil, nil
+	}
+	if limit <= 0 {
+		limit = defaultSearchLimit
 	}
 
 	qb := tantivy.NewQueryBuilder()
@@ -514,8 +603,8 @@ func (f *ftSearch) performSearch(spaceId, query string, buildQueryFunc func(*tan
 	finalQuery := qb.Build()
 	sCtx := tantivy.NewSearchContextBuilder().
 		SetQueryFromJson(&finalQuery).
-		SetDocsLimit(100).
-		SetWithHighlights(true).
+		SetDocsLimit(uintptr(limit)).
+		SetWithHighlights(withHighlights).
 		Build()
 
 	result, err := f.index.SearchJson(sCtx)

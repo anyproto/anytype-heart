@@ -128,7 +128,7 @@ func (s *service) offloadAllFiles(ctx context.Context, includeNotPinned bool) (e
 	gc := s.fileStorage.NewLocalStoreGarbageCollector()
 
 	if !includeNotPinned {
-		records, err := s.objectStore.QueryCrossSpace(database.Query{
+		records, err := s.objectStore.QueryCrossSpace(ctx, database.Query{
 			Filters: []database.FilterRequest{
 				{
 					RelationKey: bundle.RelationKeyFileId,
@@ -195,7 +195,7 @@ func (s *service) offloadFileSafe(ctx context.Context,
 	record database.Record,
 	includeNotPinned bool,
 ) (uint64, error) {
-	existingObjects, err := s.objectStore.QueryCrossSpace(database.Query{
+	existingObjects, err := s.objectStore.QueryCrossSpace(ctx, database.Query{
 		Filters: []database.FilterRequest{
 			{
 				RelationKey: bundle.RelationKeyFileId,

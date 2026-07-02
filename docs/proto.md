@@ -129,6 +129,10 @@
     - [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request)
     - [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response)
     - [Rpc.Account.Move.Response.Error](#anytype-Rpc-Account-Move-Response-Error)
+    - [Rpc.Account.PreloadRemainingSpaces](#anytype-Rpc-Account-PreloadRemainingSpaces)
+    - [Rpc.Account.PreloadRemainingSpaces.Request](#anytype-Rpc-Account-PreloadRemainingSpaces-Request)
+    - [Rpc.Account.PreloadRemainingSpaces.Response](#anytype-Rpc-Account-PreloadRemainingSpaces-Response)
+    - [Rpc.Account.PreloadRemainingSpaces.Response.Error](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error)
     - [Rpc.Account.Recover](#anytype-Rpc-Account-Recover)
     - [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request)
     - [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response)
@@ -578,6 +582,10 @@
     - [Rpc.Chat.AddMessage.Request](#anytype-Rpc-Chat-AddMessage-Request)
     - [Rpc.Chat.AddMessage.Response](#anytype-Rpc-Chat-AddMessage-Response)
     - [Rpc.Chat.AddMessage.Response.Error](#anytype-Rpc-Chat-AddMessage-Response-Error)
+    - [Rpc.Chat.AddNotificationSubscriber](#anytype-Rpc-Chat-AddNotificationSubscriber)
+    - [Rpc.Chat.AddNotificationSubscriber.Request](#anytype-Rpc-Chat-AddNotificationSubscriber-Request)
+    - [Rpc.Chat.AddNotificationSubscriber.Response](#anytype-Rpc-Chat-AddNotificationSubscriber-Response)
+    - [Rpc.Chat.AddNotificationSubscriber.Response.Error](#anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error)
     - [Rpc.Chat.DeleteMessage](#anytype-Rpc-Chat-DeleteMessage)
     - [Rpc.Chat.DeleteMessage.Request](#anytype-Rpc-Chat-DeleteMessage-Request)
     - [Rpc.Chat.DeleteMessage.Response](#anytype-Rpc-Chat-DeleteMessage-Response)
@@ -610,6 +618,10 @@
     - [Rpc.Chat.ReadReactions.Request](#anytype-Rpc-Chat-ReadReactions-Request)
     - [Rpc.Chat.ReadReactions.Response](#anytype-Rpc-Chat-ReadReactions-Response)
     - [Rpc.Chat.ReadReactions.Response.Error](#anytype-Rpc-Chat-ReadReactions-Response-Error)
+    - [Rpc.Chat.RemoveNotificationSubscriber](#anytype-Rpc-Chat-RemoveNotificationSubscriber)
+    - [Rpc.Chat.RemoveNotificationSubscriber.Request](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Request)
+    - [Rpc.Chat.RemoveNotificationSubscriber.Response](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response)
+    - [Rpc.Chat.RemoveNotificationSubscriber.Response.Error](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error)
     - [Rpc.Chat.Search](#anytype-Rpc-Chat-Search)
     - [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request)
     - [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response)
@@ -653,14 +665,18 @@
     - [Rpc.Debug.AnystoreObjectChanges.Response](#anytype-Rpc-Debug-AnystoreObjectChanges-Response)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Change](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Change)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error)
+    - [Rpc.Debug.CleanupReport](#anytype-Rpc-Debug-CleanupReport)
+    - [Rpc.Debug.CleanupReport.Request](#anytype-Rpc-Debug-CleanupReport-Request)
+    - [Rpc.Debug.CleanupReport.Response](#anytype-Rpc-Debug-CleanupReport-Response)
+    - [Rpc.Debug.CleanupReport.Response.Error](#anytype-Rpc-Debug-CleanupReport-Response-Error)
     - [Rpc.Debug.ExportLocalstore](#anytype-Rpc-Debug-ExportLocalstore)
     - [Rpc.Debug.ExportLocalstore.Request](#anytype-Rpc-Debug-ExportLocalstore-Request)
     - [Rpc.Debug.ExportLocalstore.Response](#anytype-Rpc-Debug-ExportLocalstore-Response)
     - [Rpc.Debug.ExportLocalstore.Response.Error](#anytype-Rpc-Debug-ExportLocalstore-Response-Error)
-    - [Rpc.Debug.ExportLog](#anytype-Rpc-Debug-ExportLog)
-    - [Rpc.Debug.ExportLog.Request](#anytype-Rpc-Debug-ExportLog-Request)
-    - [Rpc.Debug.ExportLog.Response](#anytype-Rpc-Debug-ExportLog-Response)
-    - [Rpc.Debug.ExportLog.Response.Error](#anytype-Rpc-Debug-ExportLog-Response-Error)
+    - [Rpc.Debug.ExportReport](#anytype-Rpc-Debug-ExportReport)
+    - [Rpc.Debug.ExportReport.Request](#anytype-Rpc-Debug-ExportReport-Request)
+    - [Rpc.Debug.ExportReport.Response](#anytype-Rpc-Debug-ExportReport-Response)
+    - [Rpc.Debug.ExportReport.Response.Error](#anytype-Rpc-Debug-ExportReport-Response-Error)
     - [Rpc.Debug.NetCheck](#anytype-Rpc-Debug-NetCheck)
     - [Rpc.Debug.NetCheck.Request](#anytype-Rpc-Debug-NetCheck-Request)
     - [Rpc.Debug.NetCheck.Response](#anytype-Rpc-Debug-NetCheck-Response)
@@ -1523,6 +1539,7 @@
     - [Rpc.Account.MigrateCancel.Response.Error.Code](#anytype-Rpc-Account-MigrateCancel-Response-Error-Code)
     - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.NetworkMode](#anytype-Rpc-Account-NetworkMode)
+    - [Rpc.Account.PreloadRemainingSpaces.Response.Error.Code](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.RecoverFromLegacyExport.Response.Error.Code](#anytype-Rpc-Account-RecoverFromLegacyExport-Response-Error-Code)
     - [Rpc.Account.RevertDeletion.Response.Error.Code](#anytype-Rpc-Account-RevertDeletion-Response-Error-Code)
@@ -1630,6 +1647,7 @@
     - [Rpc.BlockWidget.SetViewId.Response.Error.Code](#anytype-Rpc-BlockWidget-SetViewId-Response-Error-Code)
     - [Rpc.Broadcast.PayloadEvent.Response.Error.Code](#anytype-Rpc-Broadcast-PayloadEvent-Response-Error-Code)
     - [Rpc.Chat.AddMessage.Response.Error.Code](#anytype-Rpc-Chat-AddMessage-Response-Error-Code)
+    - [Rpc.Chat.AddNotificationSubscriber.Response.Error.Code](#anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error-Code)
     - [Rpc.Chat.DeleteMessage.Response.Error.Code](#anytype-Rpc-Chat-DeleteMessage-Response-Error-Code)
     - [Rpc.Chat.EditMessageContent.Response.Error.Code](#anytype-Rpc-Chat-EditMessageContent-Response-Error-Code)
     - [Rpc.Chat.GetMessages.Response.Error.Code](#anytype-Rpc-Chat-GetMessages-Response-Error-Code)
@@ -1639,6 +1657,7 @@
     - [Rpc.Chat.ReadMessages.ReadType](#anytype-Rpc-Chat-ReadMessages-ReadType)
     - [Rpc.Chat.ReadMessages.Response.Error.Code](#anytype-Rpc-Chat-ReadMessages-Response-Error-Code)
     - [Rpc.Chat.ReadReactions.Response.Error.Code](#anytype-Rpc-Chat-ReadReactions-Response-Error-Code)
+    - [Rpc.Chat.RemoveNotificationSubscriber.Response.Error.Code](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error-Code)
     - [Rpc.Chat.Search.Response.Error.Code](#anytype-Rpc-Chat-Search-Response-Error-Code)
     - [Rpc.Chat.SetPinnedMessages.Response.Error.Code](#anytype-Rpc-Chat-SetPinnedMessages-Response-Error-Code)
     - [Rpc.Chat.SubscribeLastMessages.Response.Error.Code](#anytype-Rpc-Chat-SubscribeLastMessages-Response-Error-Code)
@@ -1651,11 +1670,13 @@
     - [Rpc.Debug.AccountSelectTrace.Response.Error.Code](#anytype-Rpc-Debug-AccountSelectTrace-Response-Error-Code)
     - [Rpc.Debug.AnystoreObjectChanges.Request.OrderBy](#anytype-Rpc-Debug-AnystoreObjectChanges-Request-OrderBy)
     - [Rpc.Debug.AnystoreObjectChanges.Response.Error.Code](#anytype-Rpc-Debug-AnystoreObjectChanges-Response-Error-Code)
+    - [Rpc.Debug.CleanupReport.Response.Error.Code](#anytype-Rpc-Debug-CleanupReport-Response-Error-Code)
     - [Rpc.Debug.ExportLocalstore.Response.Error.Code](#anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code)
-    - [Rpc.Debug.ExportLog.Response.Error.Code](#anytype-Rpc-Debug-ExportLog-Response-Error-Code)
+    - [Rpc.Debug.ExportReport.Response.Error.Code](#anytype-Rpc-Debug-ExportReport-Response-Error-Code)
     - [Rpc.Debug.NetCheck.Response.Error.Code](#anytype-Rpc-Debug-NetCheck-Response-Error-Code)
     - [Rpc.Debug.OpenedObjects.Response.Error.Code](#anytype-Rpc-Debug-OpenedObjects-Response-Error-Code)
     - [Rpc.Debug.Ping.Response.Error.Code](#anytype-Rpc-Debug-Ping-Response-Error-Code)
+    - [Rpc.Debug.RunProfiler.Request.Reason](#anytype-Rpc-Debug-RunProfiler-Request-Reason)
     - [Rpc.Debug.RunProfiler.Response.Error.Code](#anytype-Rpc-Debug-RunProfiler-Response-Error-Code)
     - [Rpc.Debug.SpaceSummary.Response.Error.Code](#anytype-Rpc-Debug-SpaceSummary-Response-Error-Code)
     - [Rpc.Debug.StackGoroutines.Response.Error.Code](#anytype-Rpc-Debug-StackGoroutines-Response-Error-Code)
@@ -2005,12 +2026,15 @@
     - [Event.Chat.Delete](#anytype-Event-Chat-Delete)
     - [Event.Chat.Update](#anytype-Event-Chat-Update)
     - [Event.Chat.UpdateMentionReadStatus](#anytype-Event-Chat-UpdateMentionReadStatus)
+    - [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount)
     - [Event.Chat.UpdateMessageReadStatus](#anytype-Event-Chat-UpdateMessageReadStatus)
     - [Event.Chat.UpdateMessageSyncStatus](#anytype-Event-Chat-UpdateMessageSyncStatus)
     - [Event.Chat.UpdatePinnedStatus](#anytype-Event-Chat-UpdatePinnedStatus)
     - [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus)
     - [Event.Chat.UpdateReactions](#anytype-Event-Chat-UpdateReactions)
     - [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState)
+    - [Event.Debug](#anytype-Event-Debug)
+    - [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated)
     - [Event.File](#anytype-Event-File)
     - [Event.File.LimitReached](#anytype-Event-File-LimitReached)
     - [Event.File.LimitUpdated](#anytype-Event-File-LimitUpdated)
@@ -2154,8 +2178,10 @@
     - [ChatMessage](#anytype-model-ChatMessage)
     - [ChatMessage.Attachment](#anytype-model-ChatMessage-Attachment)
     - [ChatMessage.MessageBlock](#anytype-model-ChatMessage-MessageBlock)
+    - [ChatMessage.MessageBlockEditorQuote](#anytype-model-ChatMessage-MessageBlockEditorQuote)
     - [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed)
     - [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink)
+    - [ChatMessage.MessageBlockMessageQuote](#anytype-model-ChatMessage-MessageBlockMessageQuote)
     - [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText)
     - [ChatMessage.MessageContent](#anytype-model-ChatMessage-MessageContent)
     - [ChatMessage.Reactions](#anytype-model-ChatMessage-Reactions)
@@ -2183,6 +2209,7 @@
     - [MembershipV2.Amount](#anytype-model-MembershipV2-Amount)
     - [MembershipV2.Cart](#anytype-model-MembershipV2-Cart)
     - [MembershipV2.CartProduct](#anytype-model-MembershipV2-CartProduct)
+    - [MembershipV2.CryptoCheckout](#anytype-model-MembershipV2-CryptoCheckout)
     - [MembershipV2.Data](#anytype-model-MembershipV2-Data)
     - [MembershipV2.Features](#anytype-model-MembershipV2-Features)
     - [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice)
@@ -2361,6 +2388,7 @@
 | AccountMigrateCancel | [Rpc.Account.MigrateCancel.Request](#anytype-Rpc-Account-MigrateCancel-Request) | [Rpc.Account.MigrateCancel.Response](#anytype-Rpc-Account-MigrateCancel-Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype-Rpc-Account-Create-Request) | [Rpc.Account.Create.Response](#anytype-Rpc-Account-Create-Response) |  |
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
+| AccountPreloadRemainingSpaces | [Rpc.Account.PreloadRemainingSpaces.Request](#anytype-Rpc-Account-PreloadRemainingSpaces-Request) | [Rpc.Account.PreloadRemainingSpaces.Response](#anytype-Rpc-Account-PreloadRemainingSpaces-Response) |  |
 | AccountRevertDeletion | [Rpc.Account.RevertDeletion.Request](#anytype-Rpc-Account-RevertDeletion-Request) | [Rpc.Account.RevertDeletion.Response](#anytype-Rpc-Account-RevertDeletion-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountEnableLocalNetworkSync | [Rpc.Account.EnableLocalNetworkSync.Request](#anytype-Rpc-Account-EnableLocalNetworkSync-Request) | [Rpc.Account.EnableLocalNetworkSync.Response](#anytype-Rpc-Account-EnableLocalNetworkSync-Response) |  |
@@ -2598,11 +2626,12 @@
 | DebugPing | [Rpc.Debug.Ping.Request](#anytype-Rpc-Debug-Ping-Request) | [Rpc.Debug.Ping.Response](#anytype-Rpc-Debug-Ping-Response) |  |
 | DebugSubscriptions | [Rpc.Debug.Subscriptions.Request](#anytype-Rpc-Debug-Subscriptions-Request) | [Rpc.Debug.Subscriptions.Response](#anytype-Rpc-Debug-Subscriptions-Response) |  |
 | DebugOpenedObjects | [Rpc.Debug.OpenedObjects.Request](#anytype-Rpc-Debug-OpenedObjects-Request) | [Rpc.Debug.OpenedObjects.Response](#anytype-Rpc-Debug-OpenedObjects-Response) |  |
-| DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) |  |
+| DebugRunProfiler | [Rpc.Debug.RunProfiler.Request](#anytype-Rpc-Debug-RunProfiler-Request) | [Rpc.Debug.RunProfiler.Response](#anytype-Rpc-Debug-RunProfiler-Response) | When DurationInSeconds=0, saves a heap memory profile to the logs directory and returns the file path. When DurationInSeconds&gt;0, runs a full profiler (CPU, heap, trace, goroutines) for the given duration. |
 | DebugAccountSelectTrace | [Rpc.Debug.AccountSelectTrace.Request](#anytype-Rpc-Debug-AccountSelectTrace-Request) | [Rpc.Debug.AccountSelectTrace.Response](#anytype-Rpc-Debug-AccountSelectTrace-Response) |  |
 | DebugAnystoreObjectChanges | [Rpc.Debug.AnystoreObjectChanges.Request](#anytype-Rpc-Debug-AnystoreObjectChanges-Request) | [Rpc.Debug.AnystoreObjectChanges.Response](#anytype-Rpc-Debug-AnystoreObjectChanges-Response) |  |
 | DebugNetCheck | [Rpc.Debug.NetCheck.Request](#anytype-Rpc-Debug-NetCheck-Request) | [Rpc.Debug.NetCheck.Response](#anytype-Rpc-Debug-NetCheck-Response) |  |
-| DebugExportLog | [Rpc.Debug.ExportLog.Request](#anytype-Rpc-Debug-ExportLog-Request) | [Rpc.Debug.ExportLog.Response](#anytype-Rpc-Debug-ExportLog-Response) |  |
+| DebugExportReport | [Rpc.Debug.ExportReport.Request](#anytype-Rpc-Debug-ExportReport-Request) | [Rpc.Debug.ExportReport.Response](#anytype-Rpc-Debug-ExportReport-Response) |  |
+| DebugCleanupReport | [Rpc.Debug.CleanupReport.Request](#anytype-Rpc-Debug-CleanupReport-Request) | [Rpc.Debug.CleanupReport.Response](#anytype-Rpc-Debug-CleanupReport-Response) |  |
 | InitialSetParameters | [Rpc.Initial.SetParameters.Request](#anytype-Rpc-Initial-SetParameters-Request) | [Rpc.Initial.SetParameters.Response](#anytype-Rpc-Initial-SetParameters-Response) |  |
 | ListenSessionEvents | [StreamRequest](#anytype-StreamRequest) | [Event](#anytype-Event) stream | used only for lib-server via grpc |
 | NotificationList | [Rpc.Notification.List.Request](#anytype-Rpc-Notification-List-Request) | [Rpc.Notification.List.Response](#anytype-Rpc-Notification-List-Response) |  |
@@ -2654,6 +2683,8 @@
 | ChatSearch | [Rpc.Chat.Search.Request](#anytype-Rpc-Chat-Search-Request) | [Rpc.Chat.Search.Response](#anytype-Rpc-Chat-Search-Response) |  |
 | ChatSetPinnedMessages | [Rpc.Chat.SetPinnedMessages.Request](#anytype-Rpc-Chat-SetPinnedMessages-Request) | [Rpc.Chat.SetPinnedMessages.Response](#anytype-Rpc-Chat-SetPinnedMessages-Response) |  |
 | ChatGetPinnedMessages | [Rpc.Chat.GetPinnedMessages.Request](#anytype-Rpc-Chat-GetPinnedMessages-Request) | [Rpc.Chat.GetPinnedMessages.Response](#anytype-Rpc-Chat-GetPinnedMessages-Response) |  |
+| ChatAddNotificationSubscriber | [Rpc.Chat.AddNotificationSubscriber.Request](#anytype-Rpc-Chat-AddNotificationSubscriber-Request) | [Rpc.Chat.AddNotificationSubscriber.Response](#anytype-Rpc-Chat-AddNotificationSubscriber-Response) |  |
+| ChatRemoveNotificationSubscriber | [Rpc.Chat.RemoveNotificationSubscriber.Request](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Request) | [Rpc.Chat.RemoveNotificationSubscriber.Response](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response) |  |
 | AIWritingTools | [Rpc.AI.WritingTools.Request](#anytype-Rpc-AI-WritingTools-Request) | [Rpc.AI.WritingTools.Response](#anytype-Rpc-AI-WritingTools-Response) | mock AI RPCs for compatibility between branches. Not implemented in main |
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
@@ -4461,6 +4492,57 @@ Front-end-to-middleware request to move a account to a new disk location
 
 
 
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces"></a>
+
+### Rpc.Account.PreloadRemainingSpaces
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces-Request"></a>
+
+### Rpc.Account.PreloadRemainingSpaces.Request
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces-Response"></a>
+
+### Rpc.Account.PreloadRemainingSpaces.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.PreloadRemainingSpaces.Response.Error](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error"></a>
+
+### Rpc.Account.PreloadRemainingSpaces.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.PreloadRemainingSpaces.Response.Error.Code](#anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Account-Recover"></a>
 
 ### Rpc.Account.Recover
@@ -4657,6 +4739,7 @@ User can select an account from those, that came with an AccountAdd events
 | enableMembershipV2 | [bool](#bool) |  | if true - will run membership v2 polling loop, v2 methods will be available if false - will run membership v1 polling loop, v2 methods will return error
 
 optional, default is false |
+| preferredSpaceId | [string](#string) |  | optional. If set and resolvable, only this space &#43; tech space load eagerly at start; the rest are deferred until AccountPreloadRemainingSpaces, a 10s timer, or this space fails. Empty = today&#39;s eager behavior. |
 
 
 
@@ -4953,6 +5036,7 @@ Block commands
 | contextId | [string](#string) |  |  |
 | blocks | [model.Block](#anytype-model-Block) | repeated |  |
 | selectedTextRange | [model.Range](#anytype-model-Range) |  |  |
+| selectedTextRangeLastBlock | [model.Range](#anytype-model-Range) |  | optional. when set and the request contains multiple blocks, selectedTextRange is applied to the first block and selectedTextRangeLastBlock to the last block. {0,0} range means the whole block |
 
 
 
@@ -5151,6 +5235,7 @@ common simple block command
 | contextId | [string](#string) |  |  |
 | blocks | [model.Block](#anytype-model-Block) | repeated |  |
 | selectedTextRange | [model.Range](#anytype-model-Range) |  |  |
+| selectedTextRangeLastBlock | [model.Range](#anytype-model-Range) |  | optional. when set and the request contains multiple blocks, selectedTextRange is applied to the first block and selectedTextRangeLastBlock to the last block. {0,0} range means the whole block |
 
 
 
@@ -11054,6 +11139,63 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber"></a>
+
+### Rpc.Chat.AddNotificationSubscriber
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber-Request"></a>
+
+### Rpc.Chat.AddNotificationSubscriber.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber-Response"></a>
+
+### Rpc.Chat.AddNotificationSubscriber.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.AddNotificationSubscriber.Response.Error](#anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error"></a>
+
+### Rpc.Chat.AddNotificationSubscriber.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.AddNotificationSubscriber.Response.Error.Code](#anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Chat-DeleteMessage"></a>
 
 ### Rpc.Chat.DeleteMessage
@@ -11209,6 +11351,7 @@ Get marks list in the selected range in text block.
 | error | [Rpc.Chat.GetMessages.Response.Error](#anytype-Rpc-Chat-GetMessages-Response-Error) |  |  |
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated |  |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  |  |
+| messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
 
 
 
@@ -11516,6 +11659,63 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber-Request"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| chatObjectId | [string](#string) |  |  |
+| identity | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber-Response"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Chat.RemoveNotificationSubscriber.Response.Error](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Chat.RemoveNotificationSubscriber.Response.Error.Code](#anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Chat-Search"></a>
 
 ### Rpc.Chat.Search
@@ -11676,6 +11876,7 @@ Get marks list in the selected range in text block.
 | messages | [model.ChatMessage](#anytype-model-ChatMessage) | repeated | List of messages |
 | numMessagesBefore | [int32](#int32) |  | Number of messages before the returned messages |
 | chatState | [model.ChatState](#anytype-model-ChatState) |  | Chat state |
+| messageCount | [int32](#int32) |  | Total number of non-deleted messages in the chat |
 
 
 
@@ -12149,6 +12350,62 @@ Get marks list in the selected range in text block.
 
 
 
+<a name="anytype-Rpc-Debug-CleanupReport"></a>
+
+### Rpc.Debug.CleanupReport
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-CleanupReport-Request"></a>
+
+### Rpc.Debug.CleanupReport.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ts | [int64](#int64) |  | Unix timestamp (seconds); files with lastModified &lt; ts will be removed |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-CleanupReport-Response"></a>
+
+### Rpc.Debug.CleanupReport.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.CleanupReport.Response.Error](#anytype-Rpc-Debug-CleanupReport-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Debug-CleanupReport-Response-Error"></a>
+
+### Rpc.Debug.CleanupReport.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.CleanupReport.Response.Error.Code](#anytype-Rpc-Debug-CleanupReport-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore"></a>
 
 ### Rpc.Debug.ExportLocalstore
@@ -12209,56 +12466,59 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog"></a>
+<a name="anytype-Rpc-Debug-ExportReport"></a>
 
-### Rpc.Debug.ExportLog
-
-
+### Rpc.Debug.ExportReport
 
 
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog-Request"></a>
 
-### Rpc.Debug.ExportLog.Request
+
+<a name="anytype-Rpc-Debug-ExportReport-Request"></a>
+
+### Rpc.Debug.ExportReport.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | dir | [string](#string) |  | empty means using OS-provided temp dir |
+| full | [bool](#bool) |  | When false (default) the report includes only the 2 newest log files (active &#43; most recent rotated). When true, all logs are included. |
 
 
 
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog-Response"></a>
+<a name="anytype-Rpc-Debug-ExportReport-Response"></a>
 
-### Rpc.Debug.ExportLog.Response
+### Rpc.Debug.ExportReport.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Debug.ExportLog.Response.Error](#anytype-Rpc-Debug-ExportLog-Response-Error) |  |  |
+| error | [Rpc.Debug.ExportReport.Response.Error](#anytype-Rpc-Debug-ExportReport-Response-Error) |  |  |
 | path | [string](#string) |  |  |
+| summary | [string](#string) |  | JSON summary with profile counts by reason and log count |
+| lastModifiedTs | [int64](#int64) |  | Unix timestamp (seconds) of the newest source file in this report. Pass to DebugCleanupReport after the report is successfully uploaded to the reporter server. |
 
 
 
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog-Response-Error"></a>
+<a name="anytype-Rpc-Debug-ExportReport-Response-Error"></a>
 
-### Rpc.Debug.ExportLog.Response.Error
+### Rpc.Debug.ExportReport.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Debug.ExportLog.Response.Error.Code](#anytype-Rpc-Debug-ExportLog-Response-Error-Code) |  |  |
+| code | [Rpc.Debug.ExportReport.Response.Error.Code](#anytype-Rpc-Debug-ExportReport-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12451,7 +12711,9 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| durationInSeconds | [int32](#int32) |  |  |
+| durationInSeconds | [int32](#int32) |  | 0 = save heap snapshot only; &gt;0 = run full profiler (CPU, heap, trace, goroutines) for this many seconds |
+| reason | [Rpc.Debug.RunProfiler.Request.Reason](#anytype-Rpc-Debug-RunProfiler-Request-Reason) |  |  |
+| reasonDesc | [string](#string) |  | Optional free-form description to attach to the profile |
 
 
 
@@ -15442,6 +15704,7 @@ before requesting a payment link and paying
 | ----- | ---- | ----- | ----------- |
 | productIds | [string](#string) | repeated |  |
 | isYearly | [bool](#bool) |  |  |
+| isLifetime | [bool](#bool) |  |  |
 
 
 
@@ -18690,6 +18953,7 @@ deprecated in favor of SearchWithMeta
 
 DEPRECATED, GO-1926 |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
+| needTotal | [bool](#bool) |  | when true, response.total is filled with the count of all objects matching the filters, ignoring limit/offset |
 
 
 
@@ -18706,6 +18970,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Search.Response.Error](#anytype-Rpc-Object-Search-Response-Error) |  |  |
 | records | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
+| total | [int64](#int64) |  | total number of objects matching the filters, ignoring limit/offset; filled only when request.needTotal is true |
 
 
 
@@ -24780,6 +25045,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Account-PreloadRemainingSpaces-Response-Error-Code"></a>
+
+### Rpc.Account.PreloadRemainingSpaces.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_NOT_RUNNING | 101 |  |
+
+
+
 <a name="anytype-Rpc-Account-Recover-Response-Error-Code"></a>
 
 ### Rpc.Account.Recover.Response.Error.Code
@@ -26194,6 +26473,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Chat-AddNotificationSubscriber-Response-Error-Code"></a>
+
+### Rpc.Chat.AddNotificationSubscriber.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-Chat-DeleteMessage-Response-Error-Code"></a>
 
 ### Rpc.Chat.DeleteMessage.Response.Error.Code
@@ -26308,6 +26600,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Chat-RemoveNotificationSubscriber-Response-Error-Code"></a>
+
+### Rpc.Chat.RemoveNotificationSubscriber.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -26465,6 +26770,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Debug-CleanupReport-Response-Error-Code"></a>
+
+### Rpc.Debug.CleanupReport.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-Debug-ExportLocalstore-Response-Error-Code"></a>
 
 ### Rpc.Debug.ExportLocalstore.Response.Error.Code
@@ -26478,9 +26796,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-Debug-ExportLog-Response-Error-Code"></a>
+<a name="anytype-Rpc-Debug-ExportReport-Response-Error-Code"></a>
 
-### Rpc.Debug.ExportLog.Response.Error.Code
+### Rpc.Debug.ExportReport.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -26528,6 +26846,22 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Debug-RunProfiler-Request-Reason"></a>
+
+### Rpc.Debug.RunProfiler.Request.Reason
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNKNOWN | 0 |  |
+| USER_REQUEST | 1 | Triggered explicitly by the user |
+| MEMORY_PRESSURE_WARN | 2 | iOS: DISPATCH_MEMORYPRESSURE_WARN Android: onTrimMemory(RUNNING_LOW) |
+| MEMORY_PRESSURE_CRITICAL | 3 | iOS: DISPATCH_MEMORYPRESSURE_CRITICAL / applicationDidReceiveMemoryWarning Android: onTrimMemory(RUNNING_CRITICAL) |
+| THERMAL_SERIOUS | 4 | iOS: ProcessInfo.thermalState == .serious Android: THERMAL_STATUS_SEVERE |
+| THERMAL_CRITICAL | 5 | iOS: ProcessInfo.thermalState == .critical Android: THERMAL_STATUS_CRITICAL or higher |
 
 
 
@@ -31750,6 +32084,22 @@ to its type.
 
 
 
+<a name="anytype-Event-Chat-UpdateMessageCount"></a>
+
+### Event.Chat.UpdateMessageCount
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messageCount | [int32](#int32) |  | total number of non-deleted messages (includes replies) |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="anytype-Event-Chat-UpdateMessageReadStatus"></a>
 
 ### Event.Chat.UpdateMessageReadStatus
@@ -31845,6 +32195,39 @@ to its type.
 | ----- | ---- | ----- | ----------- |
 | state | [model.ChatState](#anytype-model-ChatState) |  |  |
 | subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Debug"></a>
+
+### Event.Debug
+
+
+
+
+
+
+
+<a name="anytype-Event-Debug-ProfileCreated"></a>
+
+### Event.Debug.ProfileCreated
+ProfileCreated is emitted whenever the middleware writes a snapshot
+archive on its own (e.g. the memory-growth detector), so clients can
+surface it or queue the archive for upload without polling the
+profiles directory. Archives produced as a result of a client RPC
+(DebugRunProfiler) are NOT re-announced via this event — the RPC
+response already carries the path.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| reason | [string](#string) |  | reason is a short, stable, UPPER_SNAKE_CASE label describing why the middleware produced this report. It is NOT the DebugRunProfiler Reason enum — values come from the internal call sites: - &#34;MEMORY_GROWTH&#34; : the desktop memory-growth detector tripped - &#34;LONG_RPC&#34; : an RPC exceeded the long-execution threshold - &#34;DB_CORRUPTION&#34; : an anystore/spacestore database failed to open More reasons may be added over time; clients should forward unknown values to Sentry as-is. |
+| jsonInfo | [string](#string) |  | jsonInfo is JSON-encoded context produced by the middleware (reason- specific keys like &#34;sysMemory&#34;, &#34;method&#34;, &#34;durationMs&#34;, &#34;db&#34;, &#34;code&#34;). Clients forward it verbatim to Sentry as the event context. |
+| path | [string](#string) |  | path is the absolute path to the snapshot archive on disk; empty when the reason is event-only (e.g. DB_CORRUPTION) and no artifact was produced. |
+| full | [bool](#bool) |  | full is true when the archive carries a timed CPU profile &#43; trace in addition to heap and goroutines. False for fast snapshots and for event-only reports. |
 
 
 
@@ -32123,6 +32506,8 @@ received to update per-message mention read status (if needed |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
 | objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
+| debugProfileCreated | [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated) |  |  |
+| chatUpdateMessageCount | [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount) |  | received whenever the total number of non-deleted messages in |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
@@ -34145,6 +34530,24 @@ Used to decode block meta only, without the content itself
 | text | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  |  |
 | link | [ChatMessage.MessageBlockLink](#anytype-model-ChatMessage-MessageBlockLink) |  |  |
 | embed | [ChatMessage.MessageBlockEmbed](#anytype-model-ChatMessage-MessageBlockEmbed) |  |  |
+| editorQuote | [ChatMessage.MessageBlockEditorQuote](#anytype-model-ChatMessage-MessageBlockEditorQuote) |  |  |
+| messageQuote | [ChatMessage.MessageBlockMessageQuote](#anytype-model-ChatMessage-MessageBlockMessageQuote) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockEditorQuote"></a>
+
+### ChatMessage.MessageBlockEditorQuote
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  | id of the quoted block in the source object |
+| content | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  | quoted block content (text, style, marks, ...) |
 
 
 
@@ -34177,6 +34580,23 @@ Used to decode block meta only, without the content itself
 | ----- | ---- | ----- | ----------- |
 | targetObjectId | [string](#string) |  |  |
 | type | [ChatMessage.MessageBlockLink.LinkType](#anytype-model-ChatMessage-MessageBlockLink-LinkType) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-ChatMessage-MessageBlockMessageQuote"></a>
+
+### ChatMessage.MessageBlockMessageQuote
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| messageId | [string](#string) |  | id of the quoted chat message |
+| participantId | [string](#string) |  | id of the participant who authored the quoted message |
+| content | [ChatMessage.MessageBlockText](#anytype-model-ChatMessage-MessageBlockText) |  | quoted message content (text, style, marks, ...) |
 
 
 
@@ -34639,6 +35059,7 @@ Used to decode block meta only, without the content itself
 | total | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | total amount of the cart (including discounts, etc) |
 | totalNextInvoice | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  | in case you are paying in the middle of the period (for existing customers) the next invoice amount will also be generated |
 | nextInvoiceDate | [uint64](#uint64) |  |  |
+| appliedPromocodes | [string](#string) | repeated |  |
 
 
 
@@ -34654,8 +35075,26 @@ Used to decode block meta only, without the content itself
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | product | [MembershipV2.Product](#anytype-model-MembershipV2-Product) |  |  |
-| isYearly | [bool](#bool) |  | otherwise - monthly |
+| isYearly | [bool](#bool) |  | otherwise - monthly or isLifetime |
 | remove | [bool](#bool) |  | set to true if you want to remove this item from the customer it&#39;s like setting -1 to some product |
+| isLifetime | [bool](#bool) |  | if true - then this is lifetime product (no matter what isYearly above is) unfortunately we do not use Period here to keep compatibility with old versions that still use isYearly! |
+
+
+
+
+
+
+<a name="anytype-model-MembershipV2-CryptoCheckout"></a>
+
+### MembershipV2.CryptoCheckout
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| invoiceURL | [string](#string) |  |  |
+| total | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) |  |  |
+| isCanCancel | [bool](#bool) |  |  |
 
 
 
@@ -34674,6 +35113,7 @@ Used to decode block meta only, without the content itself
 | nextInvoice | [MembershipV2.Invoice](#anytype-model-MembershipV2-Invoice) |  |  |
 | teamOwnerID | [string](#string) |  |  |
 | paymentProvider | [MembershipV2.PaymentProvider](#anytype-model-MembershipV2-PaymentProvider) |  |  |
+| appliedPromocodes | [string](#string) | repeated |  |
 
 
 
@@ -34742,6 +35182,7 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | colorStr | [string](#string) |  | green, blue, red, purple, custom, etc |
 | offer | [string](#string) |  |  |
 | features | [MembershipV2.Features](#anytype-model-MembershipV2-Features) |  |  |
+| pricesLifetime | [MembershipV2.Amount](#anytype-model-MembershipV2-Amount) | repeated |  |
 
 
 
@@ -36281,6 +36722,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Monthly | 1 |  |
 | Yearly | 2 |  |
 | ThreeYears | 3 |  |
+| Lifetime | 4 |  |
 
 
 
@@ -36431,6 +36873,7 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | Writer | 1 |  |
 | Owner | 2 |  |
 | NoPermissions | 3 |  |
+| Admin | 4 |  |
 
 
 
@@ -36614,6 +37057,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | ChatDerivedObject | 544 | Any-store based object for chat |
 | AccountObject | 545 | Container for account data in tech space |
 | DiscussionObject | 546 | Any-store based object for discussion |
+| TechSpaceObject | 547 | Any-store based object in tech space for cross-device sync |
+| TechSpaceVirtualObject | 548 | Per-space virtual object backed by a tech space CRDT document |
 
 
 

@@ -75,6 +75,12 @@ func (cb *clipboard) Paste(ctx session.Context, req *pb.RpcBlockPasteRequest, gr
 		return nil, nil, caretPosition, false, err
 	}
 
+	for _, b := range req.AnySlot {
+		if b.Id == template.FeaturedRelationsId {
+			return nil, nil, caretPosition, false, fmt.Errorf("paste: block %q is a system block and cannot be pasted", b.Id)
+		}
+	}
+
 	if len(req.FileSlot) > 0 {
 		blockIds, err = cb.pasteFiles(ctx, req)
 		return
@@ -110,6 +116,21 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 
 	textSlot = renderText(s, len(req.Blocks) == 1)
 
+	// scenario: multiBlockRangeCopy
+	if req.SelectedTextRangeLastBlock != nil && len(req.Blocks) > 1 {
+		firstBlock, lastBlock := req.Blocks[0], req.Blocks[len(req.Blocks)-1]
+		if err = trimBlockToRange(s, firstBlock, req.SelectedTextRange); err != nil {
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("trim first block to range: %w", err)
+		}
+		if err = trimBlockToRange(s, lastBlock, req.SelectedTextRangeLastBlock); err != nil {
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("trim last block to range: %w", err)
+		}
+		textSlot = renderText(s, false)
+		htmlSlot = cb.newHTMLConverter(s).Convert()
+		anySlot = cb.stateToBlocks(s)
+		return textSlot, htmlSlot, anySlot, nil
+	}
+
 	var firstTextBlock, lastTextBlock *model.Block
 	for _, b := range req.Blocks {
 		if b.GetText() != nil {
@@ -128,12 +149,7 @@ func (cb *clipboard) Copy(ctx session.Context, req pb.RpcBlockCopyRequest) (text
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %w", err)
 		}
 
-		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
-			for i, m := range cutBlock.GetText().Marks.Marks {
-				cutBlock.GetText().Marks.Marks[i].Range.From = m.Range.From - req.SelectedTextRange.From
-				cutBlock.GetText().Marks.Marks[i].Range.To = m.Range.To - req.SelectedTextRange.From
-			}
-		}
+		shiftMarks(cutBlock, req.SelectedTextRange.From)
 		tryClearStyle(cutBlock, req.SelectedTextRange)
 
 		textSlot = cutBlock.GetText().Text
@@ -157,6 +173,44 @@ func tryClearStyle(block *model.Block, rang *model.Range) {
 	}
 }
 
+// shiftMarks moves mark ranges of a text block to the left by offset, so marks of a block
+// cut out of a bigger one point to the right positions in the new text
+func shiftMarks(block *model.Block, offset int32) {
+	if block.GetText() == nil || block.GetText().Marks == nil {
+		return
+	}
+	for _, m := range block.GetText().Marks.Marks {
+		m.Range.From -= offset
+		m.Range.To -= offset
+	}
+}
+
+// isPartialRange reports whether r selects a proper part of a text block.
+// A nil range, a {0,0} range or a range covering the whole text mean the whole block is selected.
+func isPartialRange(b *model.Block, r *model.Range) bool {
+	if b == nil || b.GetText() == nil || r == nil {
+		return false
+	}
+	if r.From == 0 && (r.To == 0 || int(r.To) >= textutil.UTF16RuneCountString(b.GetText().Text)) {
+		return false
+	}
+	return true
+}
+
+// trimBlockToRange replaces the block in s with a copy containing only the selected part of its text
+func trimBlockToRange(s *state.State, b *model.Block, r *model.Range) error {
+	if !isPartialRange(b, r) {
+		return nil
+	}
+	cutBlock, _, err := simple.New(b).(text.Block).RangeCut(r.From, r.To)
+	if err != nil {
+		return fmt.Errorf("cut range %d-%d: %w", r.From, r.To, err)
+	}
+	shiftMarks(cutBlock, r.From)
+	s.Set(simple.New(cutBlock))
+	return nil
+}
+
 func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	s := cb.NewStateCtx(ctx)
 	textSlot = ""
@@ -164,6 +218,11 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 	stateBlocks, err := assertBlocks(s.Blocks(), req.Blocks)
 	if err != nil {
 		return textSlot, htmlSlot, anySlot, err
+	}
+
+	// scenario: multiBlockRangeCut
+	if req.SelectedTextRangeLastBlock != nil && len(req.Blocks) > 1 {
+		return cb.cutWithRanges(s, stateBlocks, req)
 	}
 
 	var firstTextBlock, lastTextBlock *model.Block
@@ -197,13 +256,7 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 
 		first.SetText(initialBlock.GetText().Text, initialBlock.GetText().Marks)
 
-		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
-			for i, m := range cutBlock.GetText().Marks.Marks {
-				cutBlock.GetText().Marks.Marks[i].Range.From = m.Range.From - req.SelectedTextRange.From
-				cutBlock.GetText().Marks.Marks[i].Range.To = m.Range.To - req.SelectedTextRange.From
-			}
-		}
-
+		shiftMarks(cutBlock, req.SelectedTextRange.From)
 		tryClearStyle(cutBlock, req.SelectedTextRange)
 		textSlot = cutBlock.GetText().Text
 		anySlot = []*model.Block{cutBlock}
@@ -227,6 +280,55 @@ func (cb *clipboard) Cut(ctx session.Context, req pb.RpcBlockCutRequest) (textSl
 
 	unlinkAndClearBlocks(s, stateBlocks, req.Blocks)
 	return textSlot, htmlSlot, anySlot, cb.Apply(s)
+}
+
+// cutWithRanges cuts multiple blocks at once: the first and the last blocks may be cut partially
+// by req.SelectedTextRange and req.SelectedTextRangeLastBlock, the blocks in between are cut whole.
+// Partially cut blocks keep the not selected part of their text in the document
+func (cb *clipboard) cutWithRanges(s *state.State, stateBlocks map[string]*model.Block, req pb.RpcBlockCutRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
+	firstBlock, lastBlock := req.Blocks[0], req.Blocks[len(req.Blocks)-1]
+	cbs := cb.blocksToState(req.Blocks)
+	wholeBlocks := req.Blocks
+
+	if isPartialRange(stateBlocks[firstBlock.Id], req.SelectedTextRange) {
+		cutBlock, err := cutRangeFromBlock(s, firstBlock.Id, req.SelectedTextRange)
+		if err != nil {
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("cut range from first block: %w", err)
+		}
+		cbs.Set(simple.New(cutBlock))
+		wholeBlocks = wholeBlocks[1:]
+	}
+	if isPartialRange(stateBlocks[lastBlock.Id], req.SelectedTextRangeLastBlock) {
+		cutBlock, err := cutRangeFromBlock(s, lastBlock.Id, req.SelectedTextRangeLastBlock)
+		if err != nil {
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("cut range from last block: %w", err)
+		}
+		cbs.Set(simple.New(cutBlock))
+		wholeBlocks = wholeBlocks[:len(wholeBlocks)-1]
+	}
+
+	textSlot = renderText(cbs, false)
+	htmlSlot = cb.newHTMLConverter(cbs).Convert()
+	anySlot = cb.stateToBlocks(cbs)
+
+	unlinkAndClearBlocks(s, stateBlocks, wholeBlocks)
+	return textSlot, htmlSlot, anySlot, cb.Apply(s)
+}
+
+// cutRangeFromBlock cuts the selected range out of a text block in the document state
+// and returns the cut part with mark positions adjusted to the new text
+func cutRangeFromBlock(s *state.State, id string, r *model.Range) (*model.Block, error) {
+	textBlock, ok := s.Get(id).(text.Block)
+	if !ok {
+		return nil, fmt.Errorf("block %s is not a text block", id)
+	}
+	cutBlock, initialBlock, err := textBlock.RangeCut(r.From, r.To)
+	if err != nil {
+		return nil, fmt.Errorf("range cut: %w", err)
+	}
+	textBlock.SetText(initialBlock.GetText().Text, initialBlock.GetText().Marks)
+	shiftMarks(cutBlock, r.From)
+	return cutBlock, nil
 }
 
 func isRangeSelect(firstTextBlock *model.Block, lastTextBlock *model.Block, rang *model.Range) bool {

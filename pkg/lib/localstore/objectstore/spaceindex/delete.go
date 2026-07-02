@@ -35,7 +35,9 @@ func (s *dsObjectStore) DeleteDetails(ctx context.Context, ids []string) error {
 
 // DeleteObject removes all details, leaving only id and isDeleted
 func (s *dsObjectStore) DeleteObject(id string) error {
-	txn, err := s.db.WriteTx(s.componentCtx)
+	// s.WriteTx (not s.db.WriteTx): the tombstone notification must reach
+	// subscribers only after the tx commits
+	txn, err := s.WriteTx(s.componentCtx)
 	if err != nil {
 		return fmt.Errorf("write txn: %w", err)
 	}

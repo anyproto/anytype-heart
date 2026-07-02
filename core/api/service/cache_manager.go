@@ -6,7 +6,16 @@ import (
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 )
 
-// cacheManager handles thread-safe caching of properties, types, and tags per space
+// participantEntry caches the participant fields needed to enrich chat message
+// creators without an extra ObjectSearch per request.
+type participantEntry struct {
+	Id       string
+	Identity string
+	Name     string
+}
+
+// cacheManager handles thread-safe caching of properties, types, tags, and
+// participants per space.
 // NOTE: Current implementation copies maps on read to prevent concurrent access issues.
 // For better performance (especially with many entries), we might consider implementing
 // copy-on-write using atomic.Value to make reads lock- and copy-free.
@@ -17,16 +26,19 @@ type cacheManager struct {
 	// For properties: key can be id, relationKey, or apiObjectKey
 	// For types: key can be id, uniqueKey, or apiObjectKey
 	// For tags: key can be id, uniqueKey, or apiObjectKey
-	properties map[string]map[string]*apimodel.Property
-	types      map[string]map[string]*apimodel.Type
-	tags       map[string]map[string]*apimodel.Tag
+	// For participants: key is the raw identity string
+	properties   map[string]map[string]*apimodel.Property
+	types        map[string]map[string]*apimodel.Type
+	tags         map[string]map[string]*apimodel.Tag
+	participants map[string]map[string]*participantEntry
 }
 
 func newCacheManager() *cacheManager {
 	return &cacheManager{
-		properties: make(map[string]map[string]*apimodel.Property),
-		types:      make(map[string]map[string]*apimodel.Type),
-		tags:       make(map[string]map[string]*apimodel.Tag),
+		properties:   make(map[string]map[string]*apimodel.Property),
+		types:        make(map[string]map[string]*apimodel.Type),
+		tags:         make(map[string]map[string]*apimodel.Tag),
+		participants: make(map[string]map[string]*participantEntry),
 	}
 }
 
@@ -153,6 +165,40 @@ func (c *cacheManager) removeTag(spaceId, id, uniqueKey, key string) {
 	}
 }
 
+// Participant cache methods
+func (c *cacheManager) cacheParticipant(spaceId string, p *participantEntry) {
+	if spaceId == "" || p == nil || p.Identity == "" {
+		return
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, exists := c.participants[spaceId]; !exists {
+		c.participants[spaceId] = make(map[string]*participantEntry)
+	}
+	c.participants[spaceId][p.Identity] = p
+}
+
+// getParticipantByIdentity returns the cached participant for the given
+// (spaceId, identity) pair, or nil if it has not yet been observed by the
+// cross-space subscription.
+func (c *cacheManager) getParticipantByIdentity(spaceId, identity string) *participantEntry {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	if spaceCache, exists := c.participants[spaceId]; exists {
+		return spaceCache[identity]
+	}
+	return nil
+}
+
+func (c *cacheManager) removeParticipant(spaceId, identity string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if spaceCache, exists := c.participants[spaceId]; exists {
+		delete(spaceCache, identity)
+	}
+}
+
 func (c *cacheManager) clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -160,4 +206,5 @@ func (c *cacheManager) clear() {
 	c.properties = nil
 	c.types = nil
 	c.tags = nil
+	c.participants = nil
 }

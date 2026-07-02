@@ -106,18 +106,24 @@ func New[T any](subService subscription.Service, req subscription.SubscribeReque
 func NewFromQueue[T any](queue *mb.MB[*pb.EventMessage], params SubscriptionParams[T], initialRecords []*domain.Details) *ObjectSubscription[T] {
 	ctx, cancel := context.WithCancel(context.Background())
 	o := &ObjectSubscription[T]{
-		events: queue,
-		ch:     make(chan struct{}),
-		params: params,
-		ctx:    ctx,
-		cancel: cancel,
+		events:  queue,
+		ch:      make(chan struct{}),
+		params:  params,
+		ctx:     ctx,
+		cancel:  cancel,
+		sub:     make(map[string]T),
+		keyToId: make(map[string]string),
+		idToKey: make(map[string]string),
 	}
-	if len(initialRecords) > 0 {
-		o.sub = make(map[string]T)
-		for _, rec := range initialRecords {
-			id, data := params.SetDetails(rec)
-			o.sub[id] = data
+	for _, rec := range initialRecords {
+		if params.CustomFilter != nil && !params.CustomFilter(rec) {
+			continue
 		}
+		key, data := params.SetDetails(rec)
+		o.sub[key] = data
+		id := rec.GetString(bundle.RelationKeyId)
+		o.keyToId[key] = id
+		o.idToKey[id] = key
 	}
 	return o
 }
@@ -152,10 +158,10 @@ func (o *ObjectSubscription[T]) Run() error {
 	}
 
 	o.request.Internal = true
-	o.sub = map[string]T{}
-	o.keyToId = map[string]string{}
-	o.idToKey = map[string]string{}
 	if o.service != nil {
+		o.sub = map[string]T{}
+		o.keyToId = map[string]string{}
+		o.idToKey = map[string]string{}
 		resp, err := o.service.Search(o.request)
 		if err != nil {
 			close(o.ch)

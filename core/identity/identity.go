@@ -19,14 +19,17 @@ Scope: global
 ## External State
 - identity_profile collection in commonDb: cached encrypted identity profiles
 - global_name collection in commonDb: cached global names
+- identity_encryption_keys collection in commonDb: persisted per-identity profile encryption keys
 
 ## Documentation
 Own profile push uses batching: changes to profile details reset a timer, actual push happens
 after pushIdentityBatchTimeout to coalesce rapid updates.
 
-Observer pattern: spaces register identity observers with encryption keys. On profile updates,
-all registered observers for that identity receive callbacks. Observers are per-space to allow
-cleanup when a space is closed.
+Spaces register identities for tracking with their encryption keys (persisted, identical across
+spaces for a given identity). On profile updates the service writes the profile-derived details
+directly into the participant records of the registered spaces (store-only fan-out, see
+core/participants). Registrations are per-space only to scope polling and allow cleanup when a
+space is closed.
 */
 
 import (
@@ -49,6 +52,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileacl"
+	"github.com/anyproto/anytype-heart/core/participants"
 	"github.com/anyproto/anytype-heart/pkg/lib/datastore/anystoreprovider"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -70,22 +74,20 @@ type Service interface {
 
 	UpdateOwnGlobalName(myIdentityGlobalName string)
 
-	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observer func(identity string, profile *model.IdentityProfile)) error
+	// RegisterIdentity starts tracking the identity for the given space: its profile is
+	// polled from the identity repo and fanned out into the space's participant record.
+	// The encryption key is persisted; pass nil to reuse a previously persisted key.
+	RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey) error
 
-	// UnregisterIdentity removes the observer for the identity in specified space
+	// UnregisterIdentity stops tracking the identity for the specified space
 	UnregisterIdentity(spaceId string, identity string)
-	// UnregisterIdentitiesInSpace removes all identity observers in the space
+	// UnregisterIdentitiesInSpace stops tracking all identities for the space
 	UnregisterIdentitiesInSpace(spaceId string)
 	WaitProfile(ctx context.Context, identity string) *model.IdentityProfile
 	WaitProfileWithKey(ctx context.Context, identity string) (*model.IdentityProfileWithKey, error)
 	GetMetadataKey(identity string) (crypto.SymKey, error)
 	AddIdentityProfile(identityProfile *model.IdentityProfile, key crypto.SymKey) error
 	app.ComponentRunnable
-}
-
-type observer struct {
-	callback    func(identity string, profile *model.IdentityProfile)
-	initialized bool
 }
 
 type identityRepoClient interface {
@@ -111,10 +113,13 @@ type service struct {
 
 	identityProfileCacheStore    keyvaluestore.Store[[]byte]
 	identityGlobalNameCacheStore keyvaluestore.Store[string]
+	identityEncryptionKeyStore   keyvaluestore.Store[crypto.SymKey]
+
+	objectStore objectstore.ObjectStore
 
 	lock sync.Mutex
-	// identity => spaceId => observer
-	identityObservers      map[string]map[string]*observer
+	// identity => set of spaceIds the identity is tracked for
+	identityObservers      map[string]map[string]struct{}
 	identityEncryptionKeys map[string]crypto.SymKey
 	identityProfileCache   map[string]*model.IdentityProfile
 	identityGlobalNames    map[string]*nameserviceproto.NameByAddressResponse
@@ -127,7 +132,7 @@ func New(identityObservePeriod time.Duration, pushIdentityBatchTimeout time.Dura
 		componentCtxCancel:       cancel,
 		identityForceUpdate:      make(chan struct{}),
 		identityObservePeriod:    identityObservePeriod,
-		identityObservers:        make(map[string]map[string]*observer),
+		identityObservers:        make(map[string]map[string]struct{}),
 		identityEncryptionKeys:   make(map[string]crypto.SymKey),
 		identityProfileCache:     make(map[string]*model.IdentityProfile),
 		identityGlobalNames:      make(map[string]*nameserviceproto.NameByAddressResponse),
@@ -142,6 +147,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.namingService = app.MustComponent[nameserviceclient.AnyNsClientService](a)
 
 	objectStore := app.MustComponent[objectstore.ObjectStore](a)
+	s.objectStore = objectStore
 	spaceService := app.MustComponent[space.Service](a)
 
 	provider := app.MustComponent[anystoreprovider.Provider](a)
@@ -153,6 +159,17 @@ func (s *service) Init(a *app.App) (err error) {
 	s.identityGlobalNameCacheStore, err = keyvaluestore.New(provider.GetCommonDb(), "global_name", keyvaluestore.StringMarshal, keyvaluestore.StringUnmarshal)
 	if err != nil {
 		return fmt.Errorf("init global name cache store: %w", err)
+	}
+	s.identityEncryptionKeyStore, err = keyvaluestore.New(provider.GetCommonDb(), "identity_encryption_keys",
+		func(key crypto.SymKey) ([]byte, error) {
+			return key.Marshall()
+		},
+		func(data []byte) (crypto.SymKey, error) {
+			return crypto.UnmarshallAESKeyProto(data)
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("init identity encryption key store: %w", err)
 	}
 
 	s.ownProfileSubscription = newOwnProfileSubscription(
@@ -221,14 +238,14 @@ func (s *service) GetMetadataKey(identity string) (crypto.SymKey, error) {
 		// FIXME We have a race condition somewhere and our own key could not be indexed yet at this moment.
 		// Derive a key as a temporarily solution
 		if s.myIdentity == identity {
-			_, key, err := domain.DeriveAccountMetadata(s.accountService.Keys().SignKey)
-			if err != nil {
-				return nil, err
-			}
-			s.identityEncryptionKeys[identity] = key
-			return key, nil
+			return s.deriveMyEncryptionKey()
 		}
-		return nil, fmt.Errorf("identityEncryptionKey doesnt exist for identity")
+		persisted, err := s.identityEncryptionKeyStore.Get(s.componentCtx, identity)
+		if err != nil {
+			return nil, fmt.Errorf("encryption key for identity does not exist: %w", err)
+		}
+		s.identityEncryptionKeys[identity] = persisted
+		return persisted, nil
 	}
 
 	return key, nil
@@ -384,21 +401,12 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 
 	prevProfile, ok := s.identityProfileCache[identityData.Identity]
 	hasUpdates := !ok || !prevProfile.Equal(profile)
-
-	observers := s.identityObservers[identityData.Identity]
-	for _, obs := range observers {
-		// Run callback at least once for each observer
-		if !obs.initialized {
-			obs.initialized = true
-			obs.callback(identityData.Identity, profile)
-		} else if hasUpdates {
-			obs.callback(identityData.Identity, profile)
-		}
-	}
 	s.identityProfileCache[profile.Identity] = profile
 	s.lock.Unlock()
 
 	if hasUpdates {
+		s.updateParticipants(profile, nil)
+
 		err := s.indexIconImage(profile)
 		if err != nil {
 			return fmt.Errorf("index icon image: %w", err)
@@ -408,6 +416,33 @@ func (s *service) broadcastIdentityProfile(identityData *identityrepoproto.DataW
 	}
 
 	return nil
+}
+
+// updateParticipants writes profile-derived details into the participant records of
+// the given spaces; when spaceIds is nil, all spaces the identity is registered for
+// are updated. Records are update-only: creation happens in the ACL processing path.
+func (s *service) updateParticipants(profile *model.IdentityProfile, spaceIds []string) {
+	s.lock.Lock()
+	// prefer the freshest cached profile: writes happen outside the lock, so a
+	// concurrent broadcast may have advanced the profile after the caller took
+	// its snapshot, and writing the snapshot last would regress the records
+	if cached, ok := s.identityProfileCache[profile.Identity]; ok {
+		profile = cached
+	}
+	if spaceIds == nil {
+		for spaceId := range s.identityObservers[profile.Identity] {
+			spaceIds = append(spaceIds, spaceId)
+		}
+	}
+	s.lock.Unlock()
+	details := participants.BuildIdentityDetails(profile)
+	for _, spaceId := range spaceIds {
+		id := domain.NewParticipantId(spaceId, profile.Identity)
+		err := participants.ModifyDetails(s.componentCtx, s.objectStore, spaceId, id, nil, details)
+		if err != nil {
+			log.Error("update participant from identity", zap.String("participantId", id), zap.Error(err))
+		}
+	}
 }
 
 // AddIdentityProfile puts identity profile to cache from external place (e.g. from onetoone inbox).
@@ -431,6 +466,10 @@ func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.
 	}
 
 	s.identityEncryptionKeys[profile.Identity] = key
+	err = s.identityEncryptionKeyStore.Set(context.Background(), profile.Identity, key)
+	if err != nil {
+		log.Warn("addIdentityProfile: persist identity encryption key", zap.Error(err))
+	}
 
 	err = s.indexIconImage(profile)
 	if err != nil {
@@ -441,14 +480,7 @@ func (s *service) AddIdentityProfile(profile *model.IdentityProfile, key crypto.
 }
 
 func (s *service) broadcastMyIdentityProfile(identityProfile *model.IdentityProfile) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	observers, ok := s.identityObservers[s.myIdentity]
-	if ok {
-		for _, obs := range observers {
-			obs.callback(s.myIdentity, identityProfile)
-		}
-	}
+	s.updateParticipants(identityProfile, nil)
 }
 
 func (s *service) findProfile(identityData *identityrepoproto.DataWithIdentity) (profile *model.IdentityProfile, rawProfile []byte, err error) {
@@ -547,7 +579,7 @@ func (s *service) getCachedGlobalName(identity string) (string, error) {
 	return rawData, nil
 }
 
-func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey, observerCallback func(identity string, profile *model.IdentityProfile)) error {
+func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKey crypto.SymKey) error {
 	cachedProfile, err := s.getCachedIdentityProfile(identity)
 	if err != nil {
 		log.Warn("register identity: get cached profile", zap.Error(err))
@@ -558,49 +590,28 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 	}
 
 	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	if key, ok := s.identityEncryptionKeys[identity]; ok {
-		if !key.Equals(encryptionKey) {
-			return fmt.Errorf("encryption key for identity %s already exists and do not match new key", identity)
-		}
-	} else {
-		s.identityEncryptionKeys[identity] = encryptionKey
+	encryptionKey, err = s.resolveEncryptionKey(identity, encryptionKey)
+	if err != nil {
+		s.lock.Unlock()
+		return err
 	}
 
 	observers := s.identityObservers[identity]
 	if observers == nil {
-		observers = make(map[string]*observer)
+		observers = make(map[string]struct{})
 		s.identityObservers[identity] = observers
 	}
+	observers[spaceId] = struct{}{}
 
-	var isInitialized bool
-	if cachedProfile != nil {
-		profile, _, err := extractProfile(cachedProfile, encryptionKey)
-		if err == nil {
-			if cachedGlobalName != "" {
-				profile.GlobalName = cachedGlobalName
-			}
-			s.identityProfileCache[identity] = profile
-			observerCallback(identity, profile)
-			isInitialized = true
-		} else {
-			log.Warn("register identity: extract profile", zap.Error(err))
-		}
-	}
+	profile := s.currentProfile(identity, cachedProfile, cachedGlobalName, encryptionKey)
+	s.lock.Unlock()
 
-	if obs, ok := observers[spaceId]; ok {
-		obs.callback = observerCallback
-	} else {
-		s.identityObservers[identity][spaceId] = &observer{
-			callback:    observerCallback,
-			initialized: isInitialized,
-		}
+	if profile != nil {
+		// make sure the just-registered space gets the current profile
+		s.updateParticipants(profile, []string{spaceId})
 	}
 
 	if identity == s.myIdentity {
-		ownProfile := s.ownProfileSubscription.prepareIdentityProfile()
-		observerCallback(identity, ownProfile)
 		return nil
 	}
 
@@ -609,6 +620,77 @@ func (s *service) RegisterIdentity(spaceId string, identity string, encryptionKe
 	default:
 	}
 	return nil
+}
+
+// currentProfile returns the freshest known profile of the identity: the own profile
+// for the own identity, the in-memory cached one (always at least as fresh as the
+// persisted one), or the persisted one decrypted with the given key. Returns nil when
+// no profile is known yet. Must be called under s.lock.
+func (s *service) currentProfile(identity string, cachedProfile *identityrepoproto.DataWithIdentity, cachedGlobalName string, encryptionKey crypto.SymKey) *model.IdentityProfile {
+	if identity == s.myIdentity {
+		return s.ownProfileSubscription.prepareIdentityProfile()
+	}
+	if inMemory, ok := s.identityProfileCache[identity]; ok {
+		return inMemory
+	}
+	if cachedProfile == nil {
+		return nil
+	}
+	extracted, _, err := extractProfile(cachedProfile, encryptionKey)
+	if err != nil {
+		log.Warn("register identity: extract profile", zap.Error(err))
+		return nil
+	}
+	if cachedGlobalName != "" {
+		extracted.GlobalName = cachedGlobalName
+	}
+	s.identityProfileCache[identity] = extracted
+	return extracted
+}
+
+// resolveEncryptionKey reconciles the given key with the in-memory and persisted ones;
+// a nil key means "use the previously persisted key". The own identity's key is
+// always derivable from the account keys, so it never fails for it. Must be called
+// under s.lock.
+func (s *service) resolveEncryptionKey(identity string, encryptionKey crypto.SymKey) (crypto.SymKey, error) {
+	if key, ok := s.identityEncryptionKeys[identity]; ok {
+		if encryptionKey != nil && !key.Equals(encryptionKey) {
+			return nil, fmt.Errorf("encryption key for identity %s already exists and do not match new key", identity)
+		}
+		return key, nil
+	}
+	if encryptionKey == nil {
+		persisted, err := s.identityEncryptionKeyStore.Get(s.componentCtx, identity)
+		if err != nil {
+			if identity == s.myIdentity {
+				return s.deriveMyEncryptionKey()
+			}
+			return nil, fmt.Errorf("no encryption key for identity %s: %w", identity, err)
+		}
+		s.identityEncryptionKeys[identity] = persisted
+		return persisted, nil
+	}
+	s.identityEncryptionKeys[identity] = encryptionKey
+	err := s.identityEncryptionKeyStore.Set(s.componentCtx, identity, encryptionKey)
+	if err != nil {
+		log.Warn("persist identity encryption key", zap.Error(err))
+	}
+	return encryptionKey, nil
+}
+
+// deriveMyEncryptionKey derives the own profile encryption key from the account
+// keys, caches and persists it. Must be called under s.lock.
+func (s *service) deriveMyEncryptionKey() (crypto.SymKey, error) {
+	_, key, err := domain.DeriveAccountMetadata(s.accountService.Keys().SignKey)
+	if err != nil {
+		return nil, fmt.Errorf("derive own metadata key: %w", err)
+	}
+	s.identityEncryptionKeys[s.myIdentity] = key
+	persistErr := s.identityEncryptionKeyStore.Set(s.componentCtx, s.myIdentity, key)
+	if persistErr != nil {
+		log.Warn("persist own identity encryption key", zap.Error(persistErr))
+	}
+	return key, nil
 }
 
 func (s *service) UnregisterIdentity(spaceId string, identity string) {

@@ -56,6 +56,10 @@ var (
 	forceRefreshInterval = 10 * time.Second
 	networkTimeout       = 60 * time.Second
 	networkTimeout2      = 90 * time.Second
+	// getProductsTimeout bounds a single GetProducts call to the payment node.
+	// The node responds in ~tens of ms, so this is mostly a ceiling for dialing
+	// and client-side stalls (e.g. a silently-dead pooled connection).
+	getProductsTimeout = 15 * time.Second
 )
 
 var (
@@ -603,7 +607,9 @@ func (s *service) fetchV2Products(ctx context.Context) ([]*model.MembershipV2Pro
 	productsReq := proto.MembershipV2_GetProductsRequest{}
 
 	log.Debug("background refresh: fetching V2 products from PP node")
-	products, err := s.ppclient2.GetProducts(ctx, &productsReq)
+	callCtx, cancel := context.WithTimeout(ctx, getProductsTimeout)
+	defer cancel()
+	products, err := s.ppclient2.GetProducts(callCtx, &productsReq)
 	if err != nil {
 		return nil, err
 	}
@@ -1464,7 +1470,8 @@ func (s *service) V2CartUpdate(ctx context.Context, req *pb.RpcMembershipV2CartU
 				// specify only the ID of the product
 				Id: productId,
 			},
-			IsYearly: req.IsYearly,
+			IsYearly:   req.IsYearly,
+			IsLifetime: req.IsLifetime,
 
 			// add to cart
 			Remove: false,

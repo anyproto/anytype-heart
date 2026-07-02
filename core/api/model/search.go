@@ -53,7 +53,7 @@ func (sp *SortProperty) UnmarshalJSON(data []byte) error {
 
 type SearchRequest struct {
 	Query   string            `json:"query" example:"test"`               // The text to search within object names and content; use types field for type filtering
-	Types   []string          `json:"types" example:"page,task,bookmark"` // The types of objects to include in results (e.g., "page", "task", "bookmark"); see ListTypes endpoint for valid values
+	Types   []string          `json:"types" example:"page,task,bookmark"` // The types of objects to include in results (e.g., "page", "task", "bookmark"); see ListTypes endpoint for valid values. File-layout types (file, image, video, audio) are excluded by default and must be listed explicitly here to be searchable.
 	Sort    SortOptions       `json:"sort"`                               // The sorting options for the search results
 	Filters *FilterExpression `json:"filters,omitempty"`                  // Expression filter with nested AND/OR conditions
 }

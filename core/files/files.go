@@ -112,13 +112,27 @@ type AddResult struct {
 }
 
 // Commit transaction of adding a file
+// it's safe to call Commit multiple times(including in parallel) as impl has internal locking
 func (r *AddResult) Commit() {
 	if r.Batch != nil {
 		if err := r.Batch.Commit(); err != nil {
 			log.Errorf("failed to commit batch: %v", err)
 		}
 	}
-	r.lock.Unlock()
+}
+
+// Commit transaction of adding a file
+func (r *AddResult) Lock() {
+	if r.lock != nil {
+		r.lock.Lock()
+	}
+}
+
+// Unlock transaction of adding a file
+func (r *AddResult) Unlock() {
+	if r.lock != nil {
+		r.lock.Unlock()
+	}
 }
 
 func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOption) (*AddResult, error) {
@@ -145,6 +159,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 			addLock.Unlock()
 			return nil, err
 		}
+		addLock.Unlock()
 		return res, nil
 	}
 	rootNode, keys, err := s.addFileRootNode(ctx, spaceId, addNodeResult.variant, addNodeResult.filePairNode, opts)
@@ -164,6 +179,7 @@ func (s *service) FileAdd(ctx context.Context, spaceId string, options ...AddOpt
 		return nil, fmt.Errorf("failed to save file keys: %w", err)
 	}
 
+	addLock.Unlock()
 	return &AddResult{
 		FileId:         fileId,
 		EncryptionKeys: &fileKeys,
@@ -329,7 +345,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if existingFile, err := s.getFileVariantBySourceChecksum(mill.ID(), conf.checksum, opts); err == nil {
+	if existingFile, err := s.getFileVariantBySourceChecksum(ctx, mill.ID(), conf.checksum, opts); err == nil {
 		existingRes, err := newExistingFileResult(existingFile)
 		if err == nil {
 			return existingRes, nil
@@ -348,7 +364,7 @@ func (s *service) addFileNode(ctx context.Context, spaceID string, mill m.Mill, 
 		return nil, err
 	}
 
-	if existingFile, variant, err := s.getFileVariantByChecksum(mill.ID(), variantChecksum); err == nil {
+	if existingFile, variant, err := s.getFileVariantByChecksum(ctx, mill.ID(), variantChecksum); err == nil {
 		if variant.Source == conf.checksum {
 			// we may have same variant checksum for different files
 			// e.g. empty image exif with the same resolution

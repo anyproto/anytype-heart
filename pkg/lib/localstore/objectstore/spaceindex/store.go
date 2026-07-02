@@ -49,11 +49,19 @@ type Store interface {
 
 	// Query adds implicit filters on isArchived, isDeleted and objectType relations! To avoid them use QueryRaw
 	Query(q database.Query) (records []database.Record, err error)
+	// QueryAndCount runs the query (with limit/offset) and additionally returns the total number of
+	// objects matching the filters, ignoring limit/offset. The filters are compiled only once.
+	// It applies the same implicit filters as Query. Fulltext queries are not supported.
+	QueryAndCount(q database.Query) (records []database.Record, total int, err error)
 	QueryRaw(f *database.Filters, limit int, offset int) (records []database.Record, err error)
 	QueryByIds(ids []string) (records []database.Record, err error)
 	QueryByIdsAndSubscribeForChanges(ids []string, subscription database.Subscription) (records []database.Record, close func(), err error)
 	QueryObjectIds(q database.Query) (ids []string, total int, err error)
 	QueryIterate(q database.Query, proc func(details *domain.Details)) error
+	// QueryIterateRaw streams every record matching the precompiled filters
+	// without materializing the result set (no implicit filters, no sorts).
+	// proc returning an error stops the iteration.
+	QueryIterateRaw(f *database.Filters, proc func(details *domain.Details) error) error
 	IterateAll(proc func(doc *anyenc.Value) error) error
 	HasIds(ids []string) (exists []string, err error)
 	GetInfosByIds(ids []string) ([]*database.ObjectInfo, error)
@@ -71,6 +79,14 @@ type Store interface {
 	UpdateObjectLinksDetailed(ctx context.Context, id string, outgoingLinks []OutgoingLink) error
 	UpdatePendingLocalDetails(id string, proc func(details *domain.Details) (*domain.Details, error)) error
 	ModifyObjectDetails(id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error
+	// ModifyObjectDetailsCtx is like ModifyObjectDetails but runs under the
+	// provided context instead of the store component context. Pass a tx-bearing
+	// context (see WriteTx) to batch many modifications into a single write tx.
+	ModifyObjectDetailsCtx(ctx context.Context, id string, proc func(details *domain.Details) (*domain.Details, bool, error), upsert bool) error
+	// ListIdsWithoutSyncDetails returns ids of objects that are missing at least
+	// one of the relations maintained by helper.InjectsSyncDetails
+	// (SyncStatus/SyncDate/SyncError). Presence, not value, is checked.
+	ListIdsWithoutSyncDetails(ctx context.Context) ([]string, error)
 
 	DeleteObject(id string) error
 	DeleteDetails(ctx context.Context, ids []string) error
@@ -105,8 +121,11 @@ type Store interface {
 	GetObjectType(id string) (*model.ObjectType, error)
 
 	GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error)
+	ListLastIndexedHeadsHashes(ctx context.Context) (map[string]string, error)
 	SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error)
 	SaveLastIndexedHeadsHashWithFtQueueCtr(ctx context.Context, id string, headsHash string, ftQueueCtr uint64) (err error)
+	GetReconcileMarker(ctx context.Context, id string) (marker string, err error)
+	SaveReconcileMarker(ctx context.Context, id string, marker string) error
 	GetHeadsWithFtQueueCtrGreaterThan(ctx context.Context, threshold uint64) ([]HeadsStateEntry, error)
 	ClearHeadsState(ctx context.Context) error
 
@@ -118,7 +137,7 @@ type SourceDetailsFromID interface {
 }
 
 type FulltextQueue interface {
-	FtQueueMarkAsIndexed(ids []domain.FullID, state uint64) error
+	FtQueueMarkAsIndexed(objects []domain.FullTextQueuedObject, state uint64) error
 	AddToIndexQueue(ctx context.Context, ids ...domain.FullID) (uint64, int, error)
 	ListIdsFromFullTextQueue(spaceIds []string, limit uint) ([]domain.FullTextQueuedObject, error)
 	ClearFullTextQueue(spaceIds []string) error
@@ -203,7 +222,47 @@ type LinksUpdateInfo struct {
 var _ Store = (*dsObjectStore)(nil)
 
 func (s *dsObjectStore) WriteTx(ctx context.Context) (anystore.WriteTx, error) {
-	return s.db.WriteTx(ctx)
+	tx, err := s.db.WriteTx(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("begin write tx: %w", err)
+	}
+	if parent, ok := ctx.Value(txNotificationsKey{}).(*txNotifications); ok && parent != nil {
+		// nested (savepoint) tx: notifications belong to the ROOT tx's
+		// buffer and must flush only on the root commit — a savepoint
+		// release is not durability. (A rolled-back savepoint can leave
+		// already-buffered notifications behind; acceptable: phantom
+		// notifications self-heal, lost ones would not.)
+		return &notifyingTx{WriteTx: tx, store: s, notifications: parent, nested: true}, nil
+	}
+	return &notifyingTx{WriteTx: tx, store: s, notifications: &txNotifications{}}, nil
+}
+
+// notifyingTx defers subscription notifications raised by writes inside the
+// tx until the tx commits. Without it a notification would announce a write
+// that is not yet visible to readers — or never will be, on rollback.
+type notifyingTx struct {
+	anystore.WriteTx
+	store         *dsObjectStore
+	notifications *txNotifications
+	nested        bool
+}
+
+// Context returns the tx-bearing context with the notification buffer
+// attached, so detail writes running under this tx (see
+// sendUpdatesToSubscriptions) buffer instead of firing.
+func (t *notifyingTx) Context() context.Context {
+	return context.WithValue(t.WriteTx.Context(), txNotificationsKey{}, t.notifications)
+}
+
+func (t *notifyingTx) Commit() error {
+	// a finished tx makes Commit a nil-returning no-op (rollback-then-commit
+	// pattern); flushing then would announce rolled-back writes
+	alreadyDone := t.Done()
+	err := t.WriteTx.Commit()
+	if err == nil && !alreadyDone && !t.nested {
+		t.store.flushTxNotifications(t.notifications)
+	}
+	return err
 }
 
 func (s *dsObjectStore) initCollections(ctx context.Context) error {

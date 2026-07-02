@@ -137,6 +137,107 @@ func (r *blocksRenderer) OpenNewTextBlock(style model.BlockContentTextStyle, fie
 	r.openedTextBlocks = append(r.openedTextBlocks, &textBlock{Block: newBlock})
 }
 
+// OpenToggleBlock opens a Toggle text block (e.g. from a <details>/<summary>
+// element) with its summary text already set. The summary text is stored in the
+// model Text field (not only the text buffer) so that subsequently closed child
+// blocks are appended as children instead of having their text merged into the
+// still-empty toggle (see CloseTextBlock's parent-merge branch).
+func (r *blocksRenderer) OpenToggleBlock(summary string) {
+	r.curStyledBlock = model.BlockContentText_Toggle
+
+	newBlock := model.Block{
+		Id: bson.NewObjectId().Hex(),
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  summary,
+				Style: model.BlockContentText_Toggle,
+			},
+		},
+	}
+
+	r.openedTextBlocks = append(r.openedTextBlocks, &textBlock{Block: newBlock, textBuffer: summary})
+}
+
+// CloseToggleBlock closes the most recently opened Toggle block.
+func (r *blocksRenderer) CloseToggleBlock() {
+	r.CloseTextBlock(model.BlockContentText_Toggle)
+}
+
+// AppendChildBlocks adds an already-parsed block tree (e.g. the inner content of
+// a self-contained <details>...</details> HTML block parsed via MarkdownToBlocks)
+// to the output and nests its top-level blocks under the currently open
+// container block (the nearest opened block that can hold children, i.e. the
+// Toggle we just opened). The passed-in blocks already encode their own internal
+// parent/child relationships via ChildrenIds; only the roots (blocks not
+// referenced as a child of any other passed-in block) are attached to the open
+// container so the whole subtree nests correctly.
+func (r *blocksRenderer) AppendChildBlocks(children []*model.Block) {
+	if len(children) == 0 {
+		return
+	}
+
+	var parentBlock *textBlock
+	for i := len(r.openedTextBlocks) - 1; i >= 0; i-- {
+		if isBlockCanHaveChild(r.openedTextBlocks[i].Block) {
+			parentBlock = r.openedTextBlocks[i]
+			break
+		}
+	}
+
+	referenced := make(map[string]bool)
+	for _, b := range children {
+		for _, cID := range b.ChildrenIds {
+			referenced[cID] = true
+		}
+	}
+
+	for _, b := range children {
+		r.blocks = append(r.blocks, b)
+		if parentBlock != nil && !referenced[b.Id] {
+			parentBlock.ChildrenIds = append(parentBlock.ChildrenIds, b.Id)
+		}
+	}
+}
+
+// AppendSiblingBlocks adds an already-parsed block tree (e.g. the content that
+// goldmark folded into a self-contained <details>...</details> HTML block AFTER
+// the matched </details>) to the output WITHOUT nesting it under any currently
+// open container. The blocks are emitted as siblings at the same level as the
+// details block itself, preserving their own internal parent/child structure.
+// This is used to recover trailing content that would otherwise be lost because
+// a goldmark HTML block ends at a blank line, not at </details> (Major 1).
+func (r *blocksRenderer) AppendSiblingBlocks(siblings []*model.Block) {
+	if len(siblings) == 0 {
+		return
+	}
+
+	// Determine the open container (if any) so we explicitly avoid nesting under
+	// it: when this remainder lives inside an OUTER still-open <details> (the
+	// recursive case), the siblings belong to that outer toggle and must be
+	// attached to it, just like AppendChildBlocks does for direct children.
+	var parentBlock *textBlock
+	for i := len(r.openedTextBlocks) - 1; i >= 0; i-- {
+		if isBlockCanHaveChild(r.openedTextBlocks[i].Block) {
+			parentBlock = r.openedTextBlocks[i]
+			break
+		}
+	}
+
+	referenced := make(map[string]bool)
+	for _, b := range siblings {
+		for _, cID := range b.ChildrenIds {
+			referenced[cID] = true
+		}
+	}
+
+	for _, b := range siblings {
+		r.blocks = append(r.blocks, b)
+		if parentBlock != nil && !referenced[b.Id] {
+			parentBlock.ChildrenIds = append(parentBlock.ChildrenIds, b.Id)
+		}
+	}
+}
+
 func (r *blocksRenderer) GetBlocks() []*model.Block {
 	r.blocks = preprocessBlocks(r.blocks)
 	return r.blocks
@@ -337,7 +438,20 @@ func (r *blocksRenderer) CloseTextBlock(content model.BlockContentTextStyle) {
 	}
 
 	if parentBlock != nil {
+		// A Toggle parent must never absorb a child's text. A Toggle gets its own
+		// title from the <summary> (set on OpenToggleBlock); its children always
+		// arrive as separate blocks to be nested. When the summary is empty the
+		// Toggle's Text == "", which would otherwise trigger the merge below and
+		// steal the first child's text, dropping the nesting (M2). Other container
+		// styles (Quote/list/checkbox) legitimately rely on this merge to lift the
+		// text of their first paragraph child into themselves, so we only special-
+		// case Toggle here.
+		parentIsToggle := false
+		if pt := parentBlock.GetText(); pt != nil && pt.Style == model.BlockContentText_Toggle {
+			parentIsToggle = true
+		}
 		if parentText := parentBlock.GetText(); parentText != nil && parentText.Text == "" &&
+			!parentIsToggle &&
 			!isBlockCanHaveChild(closingBlock.Block) && t.Text != "" {
 			parentText.Marks = t.Marks
 			parentText.Checked = t.Checked

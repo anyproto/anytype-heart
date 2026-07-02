@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	mockedGatewayUrl  = "http://localhost:31006"
 	mockedTechSpaceId = "tech123"
+	mockedListenAddr  = "127.0.0.1:31009"
 )
 
 type fixture struct {
@@ -23,6 +23,8 @@ type fixture struct {
 	accountMock          *mock_apicore.MockAccountService
 	eventMock            *mock_apicore.MockEventService
 	crossSpaceSubService *mock_apicore.MockCrossSpaceSubscriptionService
+	chatSubService       *mock_apicore.MockChatSubscriptionService
+	fileObjectMock       *mock_apicore.MockFileObjectService
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -30,14 +32,15 @@ func newFixture(t *testing.T) *fixture {
 	accountMock := mock_apicore.NewMockAccountService(t)
 	eventMock := mock_apicore.NewMockEventService(t)
 	crossSpaceSubService := mock_apicore.NewMockCrossSpaceSubscriptionService(t)
+	chatSubService := mock_apicore.NewMockChatSubscriptionService(t)
+	fileObjectMock := mock_apicore.NewMockFileObjectService(t)
 
 	crossSpaceSubService.On("Subscribe", mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{}, nil).Maybe()
 	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{
-		GatewayUrl:  mockedGatewayUrl,
 		TechSpaceId: mockedTechSpaceId,
 	}, nil).Once()
 
-	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, []byte{}, []byte{})
+	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, chatSubService, fileObjectMock, mockedListenAddr, []byte{}, []byte{})
 
 	return &fixture{
 		Server:               server,
@@ -45,6 +48,8 @@ func newFixture(t *testing.T) *fixture {
 		accountMock:          accountMock,
 		eventMock:            eventMock,
 		crossSpaceSubService: crossSpaceSubService,
+		chatSubService:       chatSubService,
+		fileObjectMock:       fileObjectMock,
 	}
 }
 
@@ -61,21 +66,19 @@ func TestNewServer(t *testing.T) {
 	})
 }
 
-func TestServer_GetAccountInfo(t *testing.T) {
+func TestServer_GetTechSpaceId(t *testing.T) {
 	t.Run("successful retrieval", func(t *testing.T) {
 		// given
 		mockAcc := mock_apicore.NewMockAccountService(t)
 		mockAcc.On("GetInfo", mock.Anything).Return(&model.AccountInfo{
-			GatewayUrl:  mockedGatewayUrl,
 			TechSpaceId: mockedTechSpaceId,
 		}, nil).Once()
 
 		// when
-		gatewayUrl, techSpaceId, err := getAccountInfo(mockAcc)
+		techSpaceId, err := getTechSpaceId(mockAcc)
 
 		// then
 		require.NoError(t, err)
-		require.Equal(t, mockedGatewayUrl, gatewayUrl)
 		require.Equal(t, mockedTechSpaceId, techSpaceId)
 	})
 
@@ -86,13 +89,30 @@ func TestServer_GetAccountInfo(t *testing.T) {
 		mockAcc.On("GetInfo", mock.Anything).Return(nil, expectedError)
 
 		// when
-		gatewayUrl, techSpaceId, err := getAccountInfo(mockAcc)
+		techSpaceId, err := getTechSpaceId(mockAcc)
 
 		// then
 		require.Error(t, err)
-		require.Equal(t, "", gatewayUrl)
 		require.Equal(t, "", techSpaceId)
 	})
+}
+
+func TestBuildApiBaseUrl(t *testing.T) {
+	tests := []struct {
+		listenAddr string
+		expected   string
+	}{
+		{"127.0.0.1:31009", "http://127.0.0.1:31009"},
+		{":31009", "http://127.0.0.1:31009"},
+		{"0.0.0.0:31009", "http://127.0.0.1:31009"},
+		{"localhost:31009", "http://localhost:31009"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.listenAddr, func(t *testing.T) {
+			require.Equal(t, tt.expected, buildApiBaseUrl(tt.listenAddr))
+		})
+	}
 }
 
 func TestServer_Engine(t *testing.T) {

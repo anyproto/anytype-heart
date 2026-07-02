@@ -91,9 +91,16 @@ func (s *SpaceView) Init(ctx *smartblock.InitContext) (err error) {
 		SetAclHeadId(info.GetAclHeadId()).
 		SetEncodedKey(info.EncodedKey)
 	s.setSpacePersistentInfo(ctx.State, newInfo)
+	// Preserve the localStatus/remoteStatus persisted from the previous session instead of
+	// force-resetting to Unknown. A spaceview reloaded from disk that was Ok stays Ok so the
+	// client list does not churn on cold start; the spaceLoader remains the sole authority for
+	// status transitions. Brand-new spaceviews have no persisted value and default to Unknown
+	// (SpaceLocalInfo.GetLocalStatus/GetRemoteStatus return Unknown when unset). Explicit reset
+	// paths (spacefactory recreate, joiner rejoin) still set Unknown themselves.
+	prevLocalInfo := spaceinfo.NewSpaceLocalInfoFromState(ctx.State)
 	localInfo := spaceinfo.NewSpaceLocalInfo(spaceId)
-	localInfo.SetLocalStatus(spaceinfo.LocalStatusUnknown).
-		SetRemoteStatus(spaceinfo.RemoteStatusUnknown).
+	localInfo.SetLocalStatus(prevLocalInfo.GetLocalStatus()).
+		SetRemoteStatus(prevLocalInfo.GetRemoteStatus()).
 		UpdateDetails(ctx.State).
 		Log(log)
 	s.AddHook(s.afterApply, smartblock.HookAfterApply)
@@ -128,6 +135,11 @@ func (s *SpaceView) TryClose(objectTTL time.Duration) (res bool, err error) {
 }
 
 func (s *SpaceView) SetSpaceLocalInfo(info spaceinfo.SpaceLocalInfo) (err error) {
+	// Skip the no-op state apply when nothing changed: on app start this path is
+	// hit ~1300 times, almost always with values identical to what's stored.
+	if info.Equal(s.LocalDetails()) {
+		return nil
+	}
 	st := s.NewState()
 	info.UpdateDetails(st).Log(log)
 	s.updateAccessType(st)
@@ -258,6 +270,9 @@ func (s *SpaceView) SetAccessType(acc spaceinfo.AccessType) (err error) {
 }
 
 func (s *SpaceView) SetSpacePersistentInfo(info spaceinfo.SpacePersistentInfo) (err error) {
+	if info.Equal(s.CombinedDetails()) {
+		return nil
+	}
 	st := s.NewState()
 	s.setSpacePersistentInfo(st, info)
 	return s.Apply(st)

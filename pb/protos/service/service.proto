@@ -46,6 +46,7 @@ service ClientCommands {
     rpc AccountMigrateCancel (anytype.Rpc.Account.MigrateCancel.Request) returns (anytype.Rpc.Account.MigrateCancel.Response);
     rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);
     rpc AccountDelete (anytype.Rpc.Account.Delete.Request) returns (anytype.Rpc.Account.Delete.Response);
+    rpc AccountPreloadRemainingSpaces (anytype.Rpc.Account.PreloadRemainingSpaces.Request) returns (anytype.Rpc.Account.PreloadRemainingSpaces.Response);
     rpc AccountRevertDeletion (anytype.Rpc.Account.RevertDeletion.Request) returns (anytype.Rpc.Account.RevertDeletion.Response);
     rpc AccountSelect (anytype.Rpc.Account.Select.Request) returns (anytype.Rpc.Account.Select.Response);
     rpc AccountEnableLocalNetworkSync (anytype.Rpc.Account.EnableLocalNetworkSync.Request) returns (anytype.Rpc.Account.EnableLocalNetworkSync.Response);
@@ -353,11 +354,14 @@ service ClientCommands {
     rpc DebugPing (anytype.Rpc.Debug.Ping.Request) returns (anytype.Rpc.Debug.Ping.Response);
     rpc DebugSubscriptions (anytype.Rpc.Debug.Subscriptions.Request) returns (anytype.Rpc.Debug.Subscriptions.Response);
     rpc DebugOpenedObjects (anytype.Rpc.Debug.OpenedObjects.Request) returns (anytype.Rpc.Debug.OpenedObjects.Response);
+    // When DurationInSeconds=0, saves a heap memory profile to the logs directory and returns the file path.
+    // When DurationInSeconds>0, runs a full profiler (CPU, heap, trace, goroutines) for the given duration.
     rpc DebugRunProfiler (anytype.Rpc.Debug.RunProfiler.Request) returns (anytype.Rpc.Debug.RunProfiler.Response);
     rpc DebugAccountSelectTrace (anytype.Rpc.Debug.AccountSelectTrace.Request) returns (anytype.Rpc.Debug.AccountSelectTrace.Response);
     rpc DebugAnystoreObjectChanges (anytype.Rpc.Debug.AnystoreObjectChanges.Request) returns (anytype.Rpc.Debug.AnystoreObjectChanges.Response);
     rpc DebugNetCheck (anytype.Rpc.Debug.NetCheck.Request) returns (anytype.Rpc.Debug.NetCheck.Response);
-    rpc DebugExportLog (anytype.Rpc.Debug.ExportLog.Request) returns (anytype.Rpc.Debug.ExportLog.Response);
+    rpc DebugExportReport (anytype.Rpc.Debug.ExportReport.Request) returns (anytype.Rpc.Debug.ExportReport.Response);
+    rpc DebugCleanupReport (anytype.Rpc.Debug.CleanupReport.Request) returns (anytype.Rpc.Debug.CleanupReport.Response);
 
     rpc InitialSetParameters (anytype.Rpc.Initial.SetParameters.Request) returns (anytype.Rpc.Initial.SetParameters.Response);
 
@@ -440,6 +444,8 @@ service ClientCommands {
     rpc ChatSearch (anytype.Rpc.Chat.Search.Request) returns (anytype.Rpc.Chat.Search.Response);
     rpc ChatSetPinnedMessages (anytype.Rpc.Chat.SetPinnedMessages.Request) returns (anytype.Rpc.Chat.SetPinnedMessages.Response);
     rpc ChatGetPinnedMessages (anytype.Rpc.Chat.GetPinnedMessages.Request) returns (anytype.Rpc.Chat.GetPinnedMessages.Response);
+    rpc ChatAddNotificationSubscriber (anytype.Rpc.Chat.AddNotificationSubscriber.Request) returns (anytype.Rpc.Chat.AddNotificationSubscriber.Response);
+    rpc ChatRemoveNotificationSubscriber (anytype.Rpc.Chat.RemoveNotificationSubscriber.Request) returns (anytype.Rpc.Chat.RemoveNotificationSubscriber.Response);
 
     // mock AI RPCs for compatibility between branches. Not implemented in main
     rpc AIWritingTools (anytype.Rpc.AI.WritingTools.Request) returns (anytype.Rpc.AI.WritingTools.Response);

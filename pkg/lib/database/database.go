@@ -312,6 +312,12 @@ type FulltextResult struct {
 	Highlight       string
 	HighlightRanges []*model.Range
 	Score           float64
+	// NameMatch reports whether the object's BEST-scoring doc is a name (or
+	// pluralName) match. It deliberately does not depend on Path: the
+	// representative doc can change with the candidate budget (pluralName
+	// preference), and the final-score name boost must stay budget-stable or
+	// offset pagination drifts between requests.
+	NameMatch bool
 }
 
 func (r FulltextResult) Model() model.SearchMeta {
@@ -325,9 +331,11 @@ func (r FulltextResult) Model() model.SearchMeta {
 
 func (r FulltextResult) MessageModel() model.SearchMessageResult {
 	return model.SearchMessageResult{
-		ChatId:          r.Path.ObjectId,
-		MessageId:       r.Path.MessageId,
-		Score:           int64(r.Score),
+		ChatId:    r.Path.ObjectId,
+		MessageId: r.Path.MessageId,
+		// the proto field is an integer; round instead of truncating so that
+		// sub-integer BM25 scores don't all collapse to the same value
+		Score:           int64(math.Round(r.Score)),
 		Highlight:       r.Highlight,
 		HighlightRanges: r.HighlightRanges,
 	}
@@ -406,7 +414,10 @@ func ComputeFinalScore(bm25Score float64, details *domain.Details, nameMatch boo
 	if details == nil {
 		return math.Log1p(bm25Score)
 	}
-	now := time.Now().Unix()
+	// hour granularity: the recency signal must be stable between consecutive
+	// page requests, or the re-ranked result order drifts mid-pagination and
+	// pages overlap; with a 30-day half-life the precision loss is negligible
+	now := time.Now().Truncate(time.Hour).Unix()
 	lastOpened := details.GetInt64(bundle.RelationKeyLastOpenedDate)
 	lastModified := details.GetInt64(bundle.RelationKeyLastModifiedDate)
 	var recency float64

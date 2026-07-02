@@ -73,8 +73,9 @@ func (mw *Middleware) ObjectListDuplicate(cctx context.Context, req *pb.RpcObjec
 }
 
 func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
+	var total int64
 	response := func(code pb.RpcObjectSearchResponseErrorCode, records []*types.Struct, err error) *pb.RpcObjectSearchResponse {
-		m := &pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: code}, Records: records}
+		m := &pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: code}, Records: records, Total: total}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
@@ -91,7 +92,8 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 	}
 
 	ds := mw.applicationService.GetApp().MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	records, err := ds.SpaceIndex(req.SpaceId).Query(database.Query{
+	spaceIndex := ds.SpaceIndex(req.SpaceId)
+	query := database.Query{
 		Filters:         database.FiltersFromProto(req.Filters),
 		SpaceId:         req.SpaceId,
 		Sorts:           database.SortsFromProto(req.Sorts),
@@ -99,7 +101,22 @@ func (mw *Middleware) ObjectSearch(cctx context.Context, req *pb.RpcObjectSearch
 		Limit:           int(req.Limit),
 		TextQuery:       req.FullText,
 		PrefixNameQuery: true,
-	})
+	}
+
+	var (
+		records []database.Record
+		err     error
+	)
+	// When the caller needs the total count, fetch the page and count the full result set in a single
+	// call so the filters are compiled only once. Fulltext counting is not supported, so fall back to a
+	// plain query in that case.
+	if req.NeedTotal && req.FullText == "" {
+		var count int
+		records, count, err = spaceIndex.QueryAndCount(query)
+		total = int64(count)
+	} else {
+		records, err = spaceIndex.Query(query)
+	}
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
