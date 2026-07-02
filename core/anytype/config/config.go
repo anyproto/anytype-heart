@@ -73,6 +73,8 @@ type Config struct {
 	JsonApiListenAddr                      string           `json:",omitempty"` // empty means disabled
 	EnableMembershipV2                     bool             `json:",omitempty"` // optional, default is false
 	PreferredSpaceId                       string           `json:",omitempty"` // optional, set from accountSelect; enables client-driven lazy multi-space loading for this space
+	ImportV2Markdown                       bool             `json:",omitempty"` // route Markdown/Obsidian imports through the v2 engine (env: ANYTYPE_IMPORTV2MARKDOWN)
+	ImportV2Notion                         bool             `json:",omitempty"` // route Notion imports through the v2 engine (env: ANYTYPE_IMPORTV2NOTION)
 
 	RepoPath    string
 	AnalyticsId string

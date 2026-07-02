@@ -11,6 +11,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/block"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	importv2adapter "github.com/anyproto/anytype-heart/core/block/importv2/adapter"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
 	"github.com/anyproto/anytype-heart/core/date"
@@ -635,6 +636,11 @@ func (mw *Middleware) ObjectBookmarkFetch(cctx context.Context, req *pb.RpcObjec
 }
 
 func (mw *Middleware) ObjectImport(cctx context.Context, req *pb.RpcObjectImportRequest) *pb.RpcObjectImportResponse {
+	if v2 := mustService[importv2adapter.Importer](mw); v2.Handles(req.Type) {
+		v2.Import(req)
+		return &pb.RpcObjectImportResponse{}
+	}
+
 	importRequest := &importer.ImportRequest{
 		RpcObjectImportRequest: req,
 		Origin:                 objectorigin.Import(req.Type),

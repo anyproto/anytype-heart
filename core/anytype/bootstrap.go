@@ -54,6 +54,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/converter"
 	"github.com/anyproto/anytype-heart/core/block/export"
 	importer "github.com/anyproto/anytype-heart/core/block/import"
+	importv2adapter "github.com/anyproto/anytype-heart/core/block/importv2/adapter"
 	"github.com/anyproto/anytype-heart/core/block/object/idderiver/idderiverimpl"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
 	"github.com/anyproto/anytype-heart/core/block/object/objectcreator"
@@ -333,6 +334,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(gallery.New()).
 		Register(bookmark.New()).
 		Register(importer.New()).
+		Register(importv2adapter.New()).
 		Register(decorator.New()).
 		Register(objectcreator.NewCreator()).
 		Register(kanban.New()).
