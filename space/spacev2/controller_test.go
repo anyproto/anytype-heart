@@ -152,8 +152,14 @@ type ctrlFixture struct {
 	backend *fakeBackend
 }
 
-func newCtrlFixture(t *testing.T, status spaceinfo.AccountStatus) *ctrlFixture {
+// newCtrlFixture builds a fixture; setup functions run on the backend BEFORE
+// the controller (and its reconcile goroutine) starts — required whenever the
+// initial status makes the loop act immediately (e.g. Joining runs Join).
+func newCtrlFixture(t *testing.T, status spaceinfo.AccountStatus, setup ...func(b *fakeBackend)) *ctrlFixture {
 	backend := newFakeBackend(status)
+	for _, fn := range setup {
+		fn(backend)
+	}
 	ctrl := newController(testSpaceId, backend, controllerOptions{
 		retryMin: 2 * time.Millisecond,
 		retryMax: 10 * time.Millisecond,
@@ -324,11 +330,12 @@ func TestRestoreAfterOffload(t *testing.T) {
 
 func TestJoinAcceptedThenLoads(t *testing.T) {
 	// given
-	fx := newCtrlFixture(t, spaceinfo.AccountStatusJoining)
-	fx.backend.joinFn = func(ctx context.Context) error {
-		fx.backend.setStatus(spaceinfo.AccountStatusActive)
-		return nil
-	}
+	fx := newCtrlFixture(t, spaceinfo.AccountStatusJoining, func(b *fakeBackend) {
+		b.joinFn = func(ctx context.Context) error {
+			b.setStatus(spaceinfo.AccountStatusActive)
+			return nil
+		}
+	})
 
 	// when
 	fx.SetWanted(true)
@@ -342,11 +349,12 @@ func TestJoinAcceptedThenLoads(t *testing.T) {
 
 func TestJoinRejectedOffloads(t *testing.T) {
 	// given
-	fx := newCtrlFixture(t, spaceinfo.AccountStatusJoining)
-	fx.backend.joinFn = func(ctx context.Context) error {
-		fx.backend.setStatus(spaceinfo.AccountStatusDeleted)
-		return nil
-	}
+	fx := newCtrlFixture(t, spaceinfo.AccountStatusJoining, func(b *fakeBackend) {
+		b.joinFn = func(ctx context.Context) error {
+			b.setStatus(spaceinfo.AccountStatusDeleted)
+			return nil
+		}
+	})
 
 	// when
 	fx.SetWanted(true)

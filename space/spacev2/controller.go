@@ -217,11 +217,17 @@ func (c *controller) run() {
 		if c.ctx.Err() != nil {
 			return
 		}
-		// Capture the input generation BEFORE reading the status: an input
-		// change racing the read leaves inputSeq > seq, so this iteration's
-		// decision is treated as stale and never parks or fails a waiter.
+		// Capture the input generation AND the demand snapshot together,
+		// BEFORE reading the status. The decision below must use exactly the
+		// inputs that existed at seq: reading wanted later would let a
+		// demand flip racing the status read produce a decision that acted
+		// on newer input while stamped with the older seq — its fatal
+		// outcome would then be treated as stale and silently re-attempted.
+		// A status write racing the read is handled conservatively instead
+		// (inputSeq > seq → the decision never parks or fails a waiter).
 		c.mu.Lock()
 		seq := c.inputSeq
+		wanted := c.wanted
 		c.mu.Unlock()
 
 		status, err := c.backend.AccountStatus(c.ctx)
@@ -238,7 +244,7 @@ func (c *controller) run() {
 		}
 
 		c.mu.Lock()
-		target := decide(status, c.wanted)
+		target := decide(status, wanted)
 		changed := target != c.target || c.decidedSeq != seq
 		c.target = target
 		c.decidedSeq = seq
