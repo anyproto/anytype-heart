@@ -174,6 +174,9 @@ func (s *service) Init(a *app.App) (err error) {
 		return fmt.Errorf("get replication key: %w", err)
 	}
 
+	if s.techProvider == nil { // tests pre-set a fake before Init
+		s.techProvider = newTechProvider(a, s.spaceCore, s.personalSpaceId)
+	}
 	s.registry = newRegistry()
 	s.techSpaceReady = make(chan struct{})
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
