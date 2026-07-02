@@ -1,0 +1,425 @@
+package engine
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"sync"
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
+	"github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
+	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
+	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
+	"github.com/anyproto/anytype-heart/core/domain"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+)
+
+// fakeIdentity assigns deterministic ids without store or space.
+type fakeIdentity struct {
+	mu      sync.Mutex
+	claims  []importv2.IdentityClaim
+	files   map[string]*fileState
+	counter int
+}
+
+type fileState struct {
+	done chan struct{}
+	id   string
+	err  error
+}
+
+func newFakeIdentity() *fakeIdentity {
+	return &fakeIdentity{files: map[string]*fileState{}}
+}
+
+func (f *fakeIdentity) Claim(ctx context.Context, c importv2.IdentityClaim) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.claims = append(f.claims, c)
+	return nil
+}
+
+func (f *fakeIdentity) Assign(sourceKey string) (identity.Assignment, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.counter++
+	return identity.Assignment{Id: fmt.Sprintf("id-%s", sourceKey)}, nil
+}
+
+func (f *fakeIdentity) AssignDerived(ctx context.Context, o *importv2.Object) (identity.Assignment, error) {
+	return identity.Assignment{Id: "derived-" + o.SourceKey, InternalKey: o.Payload.Key}, nil
+}
+
+func (f *fakeIdentity) RegisterFile(sourceKey string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if _, ok := f.files[sourceKey]; !ok {
+		f.files[sourceKey] = &fileState{done: make(chan struct{})}
+	}
+}
+
+func (f *fakeIdentity) CompleteFile(sourceKey, id string, err error) {
+	f.mu.Lock()
+	state, ok := f.files[sourceKey]
+	f.mu.Unlock()
+	if !ok {
+		return
+	}
+	select {
+	case <-state.done:
+	default:
+		state.id, state.err = id, err
+		close(state.done)
+	}
+}
+
+func (f *fakeIdentity) Resolve(sourceKey string) (string, bool) {
+	return "id-" + sourceKey, true
+}
+
+// fakePersister counts persists; optional per-key behavior.
+type fakePersister struct {
+	mu        sync.Mutex
+	persisted []string
+	delay     time.Duration
+	delayKeys map[string]time.Duration
+	failKeys  map[string]error
+	journal   *persist.Journal
+}
+
+func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target persist.Target, report func(importv2.Issue)) (persist.Outcome, error) {
+	delay := f.delay
+	if d, ok := f.delayKeys[o.SourceKey]; ok {
+		delay = d
+	}
+	if delay > 0 {
+		select {
+		case <-time.After(delay):
+		case <-ctx.Done():
+			return persist.Outcome{}, ctx.Err()
+		}
+	}
+	f.mu.Lock()
+	err := f.failKeys[o.SourceKey]
+	if err == nil {
+		f.persisted = append(f.persisted, o.SourceKey)
+	}
+	f.mu.Unlock()
+	if err != nil {
+		return persist.Outcome{}, err
+	}
+	id := target.Id
+	if id == "" {
+		id = "file-" + o.SourceKey
+	}
+	if f.journal != nil {
+		f.journal.CreatedObject(id)
+	}
+	return persist.Outcome{Id: id, Action: persist.ActionCreated}, nil
+}
+
+// scriptConverter enumerates and emits a fixed object list.
+type scriptConverter struct {
+	objects  []*importv2.Object
+	rootSpec importv2.RootSpec
+}
+
+func (c *scriptConverter) Name() string { return "script" }
+
+func (c *scriptConverter) EnumerateIdentities(ctx context.Context, yield func(importv2.IdentityClaim) error) error {
+	for _, o := range c.objects {
+		if isDerivedClass(o.SbType) || isFileClass(o.SbType) {
+			continue
+		}
+		if err := yield(importv2.IdentityClaim{SourceKey: o.SourceKey, SbType: o.SbType}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *scriptConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	for _, o := range c.objects {
+		if err := sink.Object(ctx, o); err != nil {
+			return importv2.RootSpec{}, err
+		}
+	}
+	return c.rootSpec, nil
+}
+
+type fakeCollectionFactory struct {
+	name    string
+	members []string
+}
+
+func (f *fakeCollectionFactory) MakeCollection(name string, memberSourceKeys []string) (*importv2.Object, error) {
+	f.name = name
+	f.members = memberSourceKeys
+	return &importv2.Object{
+		SourceKey: "root-collection",
+		SbType:    coresb.SmartBlockTypePage,
+		Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+	}, nil
+}
+
+type engineFixture struct {
+	identity  *fakeIdentity
+	persister *fakePersister
+	journal   *persist.Journal
+	deps      Deps
+}
+
+func pageObj(key string, root bool) *importv2.Object {
+	return &importv2.Object{
+		SourceKey:       key,
+		SbType:          coresb.SmartBlockTypePage,
+		Payload:         &importv2.Snapshot{Details: domain.NewDetails()},
+		IsRootCandidate: root,
+	}
+}
+
+func fileObj(key string) *importv2.Object {
+	return &importv2.Object{
+		SourceKey: key,
+		SbType:    coresb.SmartBlockTypeFileObject,
+		Payload:   &importv2.Snapshot{Details: domain.NewDetails()},
+		File:      &importv2.FileSource{Path: "/tmp/x", Name: key},
+	}
+}
+
+func newEngineFixture() *engineFixture {
+	journal := persist.NewJournal()
+	fx := &engineFixture{
+		identity:  newFakeIdentity(),
+		persister: &fakePersister{journal: journal, failKeys: map[string]error{}},
+		journal:   journal,
+	}
+	fx.deps = Deps{
+		Identity:  fx.identity,
+		Persister: fx.persister,
+		Journal:   journal,
+		Objects:   &deleterFake{},
+		Links:     noLinks{},
+		Formats:   resolve.NewFormats(),
+		Keys:      NewKeyTable(),
+	}
+	return fx
+}
+
+type deleterFake struct {
+	mu      sync.Mutex
+	deleted []string
+}
+
+func (d *deleterFake) GetObject(ctx context.Context, objectId string) (smartblock.SmartBlock, error) {
+	return nil, errors.New("not used")
+}
+
+func (d *deleterFake) GetObjectByFullID(ctx context.Context, id domain.FullID) (smartblock.SmartBlock, error) {
+	return nil, errors.New("not used")
+}
+
+func (d *deleterFake) DeleteObject(objectId string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.deleted = append(d.deleted, objectId)
+	return nil
+}
+
+type noLinks struct{}
+
+func (noLinks) GetOutboundLinksById(id string) ([]string, error) { return nil, nil }
+
+func TestRunHappyPath(t *testing.T) {
+	t.Run("streams, persists, builds root collection", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		factory := &fakeCollectionFactory{}
+		fx.deps.Collection = factory
+		converter := &scriptConverter{
+			objects: []*importv2.Object{
+				pageObj("a.md", true),
+				pageObj("b.md", true),
+			},
+			rootSpec: importv2.RootSpec{CollectionName: "Markdown Import"},
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, int64(2), result.Created, "root collection is not counted")
+		assert.Equal(t, "Markdown Import", factory.name)
+		assert.Equal(t, []string{"a.md", "b.md"}, factory.members)
+		assert.Equal(t, "id-root-collection", result.RootCollectionId)
+	})
+
+	t.Run("no objects is fatal", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		converter := &scriptConverter{}
+
+		// when
+		result := Run(context.Background(), importv2.Request{}, converter, fx.deps)
+
+		// then
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+		assert.Equal(t, importv2.IssueNoObjects, issue.Code)
+	})
+
+	t.Run("root object key routes the widget without a collection", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		converter := &scriptConverter{
+			objects:  []*importv2.Object{pageObj("dir", true)},
+			rootSpec: importv2.RootSpec{RootObjectKey: "dir"},
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, "id-dir", result.RootCollectionId)
+	})
+}
+
+func TestRunModes(t *testing.T) {
+	t.Run("continue-on-error skips the failed object", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("bad.md", false), pageObj("c.md", false),
+		}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, int64(2), result.Created)
+		assert.Equal(t, int64(1), result.Failed)
+		assert.Zero(t, result.Compensated)
+	})
+
+	t.Run("all-or-nothing aborts and compensates", func(t *testing.T) {
+		// given — the failing object is delayed so earlier objects are
+		// already committed when the abort fires.
+		fx := newEngineFixture()
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		fx.persister.delayKeys = map[string]time.Duration{"bad.md": 100 * time.Millisecond}
+		objects := []*importv2.Object{pageObj("a.md", false), pageObj("b.md", false), pageObj("bad.md", false)}
+		converter := &scriptConverter{objects: objects}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		assert.Positive(t, result.Compensated, "created objects must be deleted on abort")
+		assert.Equal(t, result.Compensated, len(fx.deps.Objects.(*deleterFake).deleted))
+		assert.Empty(t, result.RootCollectionId)
+	})
+}
+
+func TestRunCancellation(t *testing.T) {
+	t.Run("cancel interrupts a slow run promptly and compensates", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		fx.persister.delay = 50 * time.Millisecond
+		objects := make([]*importv2.Object, 200)
+		for i := range objects {
+			objects[i] = pageObj(fmt.Sprintf("p-%03d.md", i), false)
+		}
+		converter := &scriptConverter{objects: objects}
+		ctx, cancel := context.WithCancel(context.Background())
+
+		done := make(chan *importv2.Result, 1)
+		go func() {
+			done <- Run(ctx, importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+		}()
+
+		// when
+		time.Sleep(100 * time.Millisecond)
+		cancel()
+
+		// then
+		select {
+		case result := <-done:
+			issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+			assert.Equal(t, importv2.IssueCancelled, issue.Code)
+			assert.Less(t, result.Created, int64(200), "cancellation must interrupt the stream")
+		case <-time.After(5 * time.Second):
+			t.Fatal("run did not stop after cancel")
+		}
+	})
+}
+
+func TestRunMemoryBound(t *testing.T) {
+	t.Run("in-flight heavy objects never exceed the pipeline bound", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		fx.persister.delay = time.Millisecond
+		var inFlight, maxInFlight atomic.Int64
+		fx.deps.Gauge = func(delta int) {
+			now := inFlight.Add(int64(delta))
+			for {
+				max := maxInFlight.Load()
+				if now <= max || maxInFlight.CompareAndSwap(max, now) {
+					break
+				}
+			}
+		}
+		objects := make([]*importv2.Object, 2000)
+		for i := range objects {
+			objects[i] = pageObj(fmt.Sprintf("p-%04d.md", i), false)
+		}
+		converter := &scriptConverter{objects: objects}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, int64(2000), result.Created)
+		bound := int64(2*channelCapacity + workerCount + 1)
+		assert.LessOrEqual(t, maxInFlight.Load(), bound,
+			"reintroducing collect-then-process would blow this bound")
+	})
+}
+
+func TestFileLane(t *testing.T) {
+	t.Run("file objects complete their futures even when workers wait on them", func(t *testing.T) {
+		// given — many pages emitted before the file they reference would
+		// stall a single-lane pool; the dedicated file lane must progress.
+		fx := newEngineFixture()
+		objects := []*importv2.Object{fileObj("img.png")}
+		for i := 0; i < 40; i++ {
+			objects = append(objects, pageObj(fmt.Sprintf("p-%02d.md", i), false))
+		}
+		converter := &scriptConverter{objects: objects}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		state := fx.identity.files["img.png"]
+		require.NotNil(t, state)
+		select {
+		case <-state.done:
+			assert.Equal(t, "file-img.png", state.id)
+		default:
+			t.Fatal("file future was not completed")
+		}
+	})
+}
