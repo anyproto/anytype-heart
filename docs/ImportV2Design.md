@@ -604,3 +604,40 @@ Plus: two `Config` bools, one guarded branch in `core/object.go`, one `Register(
 - **Phase 3 — parity & switch plan**: side-by-side comparison harness (same fixture through v1 and v2,
   diff object sets), flip flags per format only when told, migration notes. v1 deletion is a separate,
   later decision.
+
+## 15. Switch plan (phase 3)
+
+**Current state.** Both engines coexist; v1 is the default for everything. V2 serves Markdown/Obsidian
+when `Config.ImportV2Markdown` is set (env `ANYTYPE_IMPORTV2MARKDOWN=1`) and Notion when
+`Config.ImportV2Notion` is set — one guarded branch in `ObjectImport` +
+`ObjectImportNotionValidateToken`. PB/CSV/HTML/TXT/Web/External, `builtinobjects` and
+`bookmarkimporter` always use v1.
+
+**Parity evidence so far.**
+- `tests/integration/import_parity_test.go` runs one markdown fixture through both engines against
+  real accounts and compares engine-independent projections (pages, files, collections, custom
+  relations, options) — currently identical.
+- The intended differences (not parity bugs): v2 derives stable relation/option keys and colors where
+  v1 rolled random ones; collection membership on re-import replaces instead of unions (§13.2); the
+  orphan self-link block (v1 step 6, flagged "not understood" in v1's own code) is dropped; multi-path
+  selections run per-path instead of merged (open item); `sourceFilePath` uses the same hash as v1 so
+  cross-version re-import dedup keeps working.
+- Notion parity procedure (needs a real token once): record the cassette
+  (`NOTION_TOKEN=… go test ./core/block/importv2/notion/ -run TestCassetteWorkspace`), commit it, then
+  import the same workspace with `ANYTYPE_IMPORTV2NOTION=1` and inspect against a v1 import of the same
+  workspace. The scripted-workspace test pins the semantic mapping meanwhile.
+
+**Flip procedure (per format, when told):**
+1. Default the config flag to true (one line in `config.go`); keep the env override as the kill switch
+   (`ANYTYPE_IMPORTV2MARKDOWN=0` reverts instantly, no build needed).
+2. Watch the import completion notifications' error-code distribution and the `import-v2*` log scopes.
+3. One release later, remove the flag and the handler branch for that format.
+
+**v1 deletion criteria (explicitly out of scope until told):** all formats flipped ≥1 release,
+`builtinobjects` (Pb + AI-experience markdown paths) and `bookmarkimporter`/`ImportWeb` migrated onto
+the engine (needs the pb converter and a web converter or their retirement), `ListImports` reimplemented
+or dropped, and `core/block/import/common/filetime` relocated (v2 imports it today).
+
+**Open items tracked for the flip:** multi-path common-parent merging; converter-internal fetch pool
+for Notion (wall-clock, after cassette timings); Workspace/Widget snapshot support (pb phase);
+re-imported files counted as Created in the report; mockery entries for the new seams.
