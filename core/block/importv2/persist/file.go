@@ -45,6 +45,8 @@ func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcom
 	if localPath == "" {
 		req.Url = o.File.URL
 	}
+	// Classify BEFORE the upload can be indexed: an already-indexed id
+	// after upload means the content deduped onto a pre-existing object.
 	objectId, _, details, err := p.uploader.UploadFile(ctx, p.spaceId, req)
 	if err != nil {
 		return Outcome{}, importv2.Issue{
@@ -54,7 +56,7 @@ func (p *Persister) persistFile(ctx context.Context, o *importv2.Object) (Outcom
 			Err:       fmt.Errorf("upload %q: %w", o.File.Name, err),
 		}
 	}
-	p.journal.CreatedFile(objectId)
+	p.journal.CreatedFile(objectId, p.checker.Exists(objectId))
 	return Outcome{Id: objectId, Action: ActionCreated, Details: details}, nil
 }
 
@@ -80,7 +82,7 @@ func (p *Persister) persistContentAddressedFile(o *importv2.Object) (Outcome, er
 			Err:       fmt.Errorf("create from import %q: %w", fileId, err),
 		}
 	}
-	p.journal.CreatedFile(objectId)
+	p.journal.CreatedFile(objectId, p.checker.Exists(objectId))
 	return Outcome{Id: objectId, Action: ActionCreated, Details: nil}, nil
 }
 

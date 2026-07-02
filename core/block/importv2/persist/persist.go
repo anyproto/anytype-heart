@@ -56,6 +56,15 @@ type FlagSetter interface {
 	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
 }
 
+// ObjectChecker probes whether an id was already indexed in the space —
+// the upload-time classification of content-deduped file objects (a
+// pre-existing object is indexed long before the run; a just-created one is
+// not yet). Misclassification biases toward "pre-existing", i.e. toward
+// leaking a file on abort rather than deleting user data.
+type ObjectChecker interface {
+	Exists(id string) bool
+}
+
 // StateRewriter is the resolver seam: rewrites all references in place.
 type StateRewriter interface {
 	RewriteState(ctx context.Context, st *state.State, report func(importv2.Issue)) error
@@ -93,6 +102,7 @@ type Persister struct {
 	rewriter  StateRewriter
 	installer *InstallCoordinator
 	journal   *Journal
+	checker   ObjectChecker
 	spillDir  string
 }
 
@@ -106,6 +116,7 @@ func New(
 	rewriter StateRewriter,
 	installer *InstallCoordinator,
 	journal *Journal,
+	checker ObjectChecker,
 	spillDir string,
 ) *Persister {
 	return &Persister{
@@ -118,6 +129,7 @@ func New(
 		rewriter:  rewriter,
 		installer: installer,
 		journal:   journal,
+		checker:   checker,
 		spillDir:  spillDir,
 	}
 }

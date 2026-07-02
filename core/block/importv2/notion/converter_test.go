@@ -121,7 +121,7 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		{"id":"b2","type":"to_do","has_children":true,"to_do":{"rich_text":[{"plain_text":"task","type":"text"}],"checked":true}},
 		{"id":"b3","type":"heading_1","has_children":true,"heading_1":{"rich_text":[{"plain_text":"Head","type":"text"}],"is_toggleable":true}},
 		{"id":"b4","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
-		{"id":"b5","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true,"has_row_header":false}},
+		{"id":"tab1-e5f6","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true,"has_row_header":false}},
 		{"id":"cp1","type":"child_page","has_children":false,"child_page":{"title":"NoteChild"}}
 	],"has_more":false,"next_cursor":null}`
 	routes["GET /blocks/b2/children"] = `{"results":[
@@ -133,9 +133,9 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 	routes["GET /blocks/orig1/children"] = `{"results":[
 		{"id":"sc1","type":"paragraph","has_children":false,"paragraph":{"rich_text":[{"plain_text":"synced content","type":"text"}]}}
 	],"has_more":false,"next_cursor":null}`
-	routes["GET /blocks/b5/children"] = `{"results":[
-		{"id":"r1","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"H1","type":"text"}],[{"plain_text":"H2","type":"text"}]]}},
-		{"id":"r2","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"a","type":"text"}],[{"plain_text":"b","type":"text"}]]}}
+	routes["GET /blocks/tab1-e5f6/children"] = `{"results":[
+		{"id":"row1-a1b2","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"H1","type":"text"}],[{"plain_text":"H2","type":"text"}]]}},
+		{"id":"row2-c3d4","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"a","type":"text"}],[{"plain_text":"b","type":"text"}]]}}
 	],"has_more":false,"next_cursor":null}`
 	routes["GET /blocks/p2/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
 
@@ -287,10 +287,10 @@ func TestScriptedWorkspace(t *testing.T) {
 
 		require.NotNil(t, blocks["sc1"], "synced-block content imported (v1 lost it)")
 
-		row1 := blocks["rr1"]
+		row1 := blocks["rrow1a1b2"]
 		require.NotNil(t, row1, "row ids are dash-free derivatives of the notion id")
 		assert.True(t, row1.GetTableRow().IsHeader, "has_column_header marks the first row (v1 inverted)")
-		row2 := blocks["rr2"]
+		row2 := blocks["rrow2c3d4"]
 		require.NotNil(t, row2)
 		assert.False(t, row2.GetTableRow().IsHeader)
 	})

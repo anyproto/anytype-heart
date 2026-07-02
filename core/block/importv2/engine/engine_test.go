@@ -230,7 +230,6 @@ func newEngineFixture() *engineFixture {
 		Persister: fx.persister,
 		Journal:   journal,
 		Objects:   &deleterFake{},
-		Links:     noLinks{},
 		Formats:   resolve.NewFormats(),
 		Keys:      NewKeyTable(),
 	}
@@ -256,10 +255,6 @@ func (d *deleterFake) DeleteObject(objectId string) error {
 	d.deleted = append(d.deleted, objectId)
 	return nil
 }
-
-type noLinks struct{}
-
-func (noLinks) GetInboundLinksById(id string) ([]string, error) { return nil, nil }
 
 func TestRunHappyPath(t *testing.T) {
 	t.Run("streams, persists, builds root collection", func(t *testing.T) {

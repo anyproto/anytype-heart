@@ -8,20 +8,19 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 )
 
-// LinkQuerier reports whether other objects link to an id — the guard that
-// keeps compensation from deleting a deduped file object that pre-dates the
-// run. Satisfied by spaceindex.Store.
-type LinkQuerier interface {
-	GetInboundLinksById(id string) ([]string, error)
-}
-
 // Journal records every effect of a run, in order, for compensation.
 // Safe for concurrent worker use.
 type Journal struct {
 	mu      sync.Mutex
 	created []string
-	files   []string
-	updated []string
+	// ownedFiles are file objects the run's uploads brought into existence;
+	// matchedFiles pre-dated the run (a content-deduped upload returned an
+	// existing object) and are never compensation-deleted. The
+	// classification happens at upload time — it cannot be reconstructed at
+	// compensation time, when the run's own objects may already be indexed.
+	ownedFiles   []string
+	matchedFiles []string
+	updated      []string
 }
 
 func NewJournal() *Journal {
@@ -34,10 +33,16 @@ func (j *Journal) CreatedObject(id string) {
 	j.created = append(j.created, id)
 }
 
-func (j *Journal) CreatedFile(id string) {
+// CreatedFile records an upload outcome; preExisting marks a content-dedup
+// hit on an object that already lived in the space.
+func (j *Journal) CreatedFile(id string, preExisting bool) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	j.files = append(j.files, id)
+	if preExisting {
+		j.matchedFiles = append(j.matchedFiles, id)
+		return
+	}
+	j.ownedFiles = append(j.ownedFiles, id)
 }
 
 func (j *Journal) UpdatedObject(id string) {
@@ -62,14 +67,17 @@ type CompensationResult struct {
 	Issues      []importv2.Issue
 }
 
-// Compensate deletes every object and file created by this run, newest
-// first. File objects are deleted only when nothing outside the run links to
-// them (a deduped upload may have returned a pre-existing file object).
+// Compensate deletes every object and file the run brought into existence,
+// newest first. Pre-existing (deduped) file objects are never touched —
+// deleting a user's file because an aborted import happened to reference it
+// is the one unrecoverable outcome. (An inbound-link check cannot arbitrate
+// this: the run's own just-deleted referencers linger in the index, so it
+// would both leak owned files and still depend on index freshness.)
 // Runs on its own context so user cancellation doesn't abort the cleanup.
-func (j *Journal) Compensate(ctx context.Context, objects ObjectAccess, links LinkQuerier) CompensationResult {
+func (j *Journal) Compensate(ctx context.Context, objects ObjectAccess) CompensationResult {
 	j.mu.Lock()
 	created := append([]string(nil), j.created...)
-	files := append([]string(nil), j.files...)
+	owned := append([]string(nil), j.ownedFiles...)
 	updated := append([]string(nil), j.updated...)
 	j.mu.Unlock()
 
@@ -77,17 +85,8 @@ func (j *Journal) Compensate(ctx context.Context, objects ObjectAccess, links Li
 	for i := len(created) - 1; i >= 0; i-- {
 		j.deleteOne(created[i], objects, &result)
 	}
-	for i := len(files) - 1; i >= 0; i-- {
-		id := files[i]
-		// A content-deduped upload can return a file object that pre-dates
-		// the run; anything still linking TO it means it is not ours to
-		// delete. (Inbound, not outbound: a file object links to nothing,
-		// so an outbound check would approve every deletion.)
-		inbound, err := links.GetInboundLinksById(id)
-		if err == nil && len(inbound) > 0 {
-			continue
-		}
-		j.deleteOne(id, objects, &result)
+	for i := len(owned) - 1; i >= 0; i-- {
+		j.deleteOne(owned[i], objects, &result)
 	}
 	return result
 }

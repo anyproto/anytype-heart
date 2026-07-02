@@ -34,7 +34,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -219,7 +221,8 @@ func (fx *Fixture) RunMarkdown(t *testing.T, root string, req importv2.Request) 
 	resolver := resolve.New(identitySvc, keys, formats)
 	persister := persist.New(
 		SpaceId, req.Origin, fx.Space, fx.Space, fx.Uploader, nopFlags{},
-		resolver, persist.NewInstallCoordinator(nopInstaller{}), fx.Journal, t.TempDir(),
+		resolver, persist.NewInstallCoordinator(nopInstaller{}), fx.Journal,
+		&storeChecker{store: fx.Store.SpaceIndex(SpaceId)}, t.TempDir(),
 	)
 	converter := markdown.New(src, markdown.Params{}, stubCollectionFactory{})
 	return engine.Run(context.Background(), req, converter, engine.Deps{
@@ -227,11 +230,24 @@ func (fx *Fixture) RunMarkdown(t *testing.T, root string, req importv2.Request) 
 		Persister:  persister,
 		Journal:    fx.Journal,
 		Objects:    fx.Space,
-		Links:      fx.Store.SpaceIndex(SpaceId),
 		Formats:    formats,
 		Keys:       keys,
 		Collection: stubCollectionFactory{},
 	})
+}
+
+// storeChecker classifies deduped uploads against the real store fixture.
+type storeChecker struct {
+	store spaceindex.Store
+}
+
+func (c *storeChecker) Exists(id string) bool {
+	ids, _, err := c.store.QueryObjectIds(database.Query{Filters: []database.FilterRequest{{
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		RelationKey: bundle.RelationKeyId,
+		Value:       domain.String(id),
+	}}})
+	return err == nil && len(ids) > 0
 }
 
 // IndexCreated pushes every created object's details into the store fixture,

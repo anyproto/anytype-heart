@@ -65,9 +65,8 @@ type Deps struct {
 	Identity  IdentityService
 	Persister ObjectPersister
 	Journal   *persist.Journal
-	// Objects and Links serve compensation.
+	// Objects serves compensation deletes.
 	Objects persist.ObjectAccess
-	Links   persist.LinkQuerier
 	Formats *resolve.Formats
 	Keys    *KeyTable
 	// Collection may be nil when root collections are not supported.
@@ -340,7 +339,7 @@ func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 func (r *run) compensate() {
 	ctx, cancel := context.WithTimeout(context.Background(), compensationTimeout)
 	defer cancel()
-	result := r.deps.Journal.Compensate(ctx, r.deps.Objects, r.deps.Links)
+	result := r.deps.Journal.Compensate(ctx, r.deps.Objects)
 	r.compensated = result.Compensated
 	r.leaked = result.Leaked
 	r.issueMu.Lock()

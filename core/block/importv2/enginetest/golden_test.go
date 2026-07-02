@@ -12,6 +12,7 @@ import (
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -94,6 +95,45 @@ func TestIdempotentReimport(t *testing.T) {
 	assert.Zero(t, second.Failed)
 }
 
+func TestDivergentPropertyFormatsEndToEnd(t *testing.T) {
+	// given — the same property name infers shorttext on a.md and object on
+	// b.md. The unit halves (converter emits per-page links; resolver
+	// prefers own links) are pinned separately; this drives both together
+	// through the real engine so a contract mismatch between them fails.
+	root := writeTree(t, map[string]string{
+		"a.md":      "---\nRef: plain words here\n---\n# A\n",
+		"b.md":      "---\nRef: docs/x.md\n---\n# B\n",
+		"docs/x.md": "# X\n",
+	})
+	fx := NewFixture(t)
+
+	// when
+	result := fx.RunMarkdown(t, root, request(false, true))
+
+	// then — b.md's object value resolved to X's final id, not a dangling key
+	require.NoError(t, result.Err)
+	var pageB, pageX string
+	for id, st := range fx.Space.Created {
+		switch st.CombinedDetails().GetString(bundle.RelationKeyName) {
+		case "B":
+			pageB = id
+		case "X":
+			pageX = id
+		}
+	}
+	require.NotEmpty(t, pageB)
+	require.NotEmpty(t, pageX)
+	stB := fx.Space.Created[pageB]
+	resolved := ""
+	for key, value := range stB.CombinedDetails().Iterate() {
+		if s, ok := value.TryString(); ok && (s == pageX || s == "docs/x.md") {
+			resolved = s
+			_ = key
+		}
+	}
+	assert.Equal(t, pageX, resolved, "object-format value must resolve through the per-page relation link")
+}
+
 func TestAllOrNothingLeavesNoTrace(t *testing.T) {
 	// given — a source whose second page carries an unreadable reference is
 	// not enough to fail persist with fakes, so simulate failure by
@@ -116,7 +156,7 @@ func TestAllOrNothingLeavesNoTrace(t *testing.T) {
 	require.Positive(t, created)
 
 	// when — compensating the journal manually (as the engine does on abort)
-	compensation := fx.Journal.Compensate(t.Context(), fx.Space, fx.Store.SpaceIndex(SpaceId))
+	compensation := fx.Journal.Compensate(t.Context(), fx.Space)
 
 	// then
 	assert.Equal(t, created, compensation.Compensated)

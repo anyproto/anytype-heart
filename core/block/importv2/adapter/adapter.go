@@ -299,6 +299,7 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		resolver,
 		persist.NewInstallCoordinator(&installerAdapter{installer: s.installer, space: spc}),
 		journal,
+		&existsChecker{store: s.objectStore.SpaceIndex(request.SpaceID)},
 		spillDir,
 	)
 	return engine.Run(ctx, request, converter, engine.Deps{
@@ -306,7 +307,6 @@ func (s *service) runEngine(ctx context.Context, request importv2.Request, conve
 		Persister: persister,
 		Journal:   journal,
 		Objects:   s.blockService,
-		Links:     s.objectStore.SpaceIndex(request.SpaceID),
 		Formats:   formats,
 		Keys:      keys,
 		// The run's root collection carries the import date in its name.

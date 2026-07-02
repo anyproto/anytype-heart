@@ -24,6 +24,9 @@ import (
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -148,6 +151,7 @@ type fixture struct {
 	flags     *fakeFlags
 	installer *fakeInstaller
 	journal   *Journal
+	checker   *fakeChecker
 	issues    []importv2.Issue
 }
 
@@ -165,6 +169,7 @@ func newFixture(t *testing.T) *fixture {
 		flags:     flags,
 		installer: installer,
 		journal:   journal,
+		checker:   &fakeChecker{preExisting: map[string]bool{}},
 	}
 	fx.Persister = New(
 		testSpaceId,
@@ -176,9 +181,19 @@ func newFixture(t *testing.T) *fixture {
 		noopRewriter{},
 		NewInstallCoordinator(installer),
 		journal,
+		fx.checker,
 		t.TempDir(),
 	)
 	return fx
+}
+
+// fakeChecker marks ids as pre-existing in the space index.
+type fakeChecker struct {
+	preExisting map[string]bool
+}
+
+func (c *fakeChecker) Exists(id string) bool {
+	return c.preExisting[id]
 }
 
 func (fx *fixture) report(i importv2.Issue) {
@@ -225,7 +240,7 @@ func TestPersistCreate(t *testing.T) {
 		assert.Equal(t, int64(model.Import_Markdown), details.GetInt64(bundle.RelationKeyImportType))
 		assert.Equal(t, int64(1700000000), details.GetInt64(bundle.RelationKeyLastModifiedDate))
 		assert.Equal(t, []string{"newId"}, fx.flags.favorites)
-		result := fx.journal.Compensate(context.Background(), fx.objects, noLinks{})
+		result := fx.journal.Compensate(context.Background(), fx.objects)
 		assert.Equal(t, 1, result.Compensated)
 		assert.Equal(t, []string{"newId"}, fx.objects.deleted)
 	})
@@ -242,7 +257,7 @@ func TestPersistCreate(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, ActionSkipped, outcome.Action)
-		result := fx.journal.Compensate(context.Background(), fx.objects, noLinks{})
+		result := fx.journal.Compensate(context.Background(), fx.objects)
 		assert.Zero(t, result.Compensated)
 		assert.Empty(t, fx.objects.deleted)
 	})
@@ -282,7 +297,7 @@ func TestPersistUpdate(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, ActionUpdated, outcome.Action)
 		assert.Equal(t, []string{"existingId"}, fx.journal.Updated())
-		result := fx.journal.Compensate(context.Background(), fx.objects, noLinks{})
+		result := fx.journal.Compensate(context.Background(), fx.objects)
 		assert.Equal(t, []string{"existingId"}, result.Uncovered)
 	})
 
@@ -398,40 +413,65 @@ func TestInstallCoordinator(t *testing.T) {
 }
 
 func TestCompensate(t *testing.T) {
-	t.Run("deletes newest first, keeps linked files, reports leaks", func(t *testing.T) {
+	t.Run("deletes newest first, never touches pre-existing files, reports leaks", func(t *testing.T) {
 		// given
 		objects := &fakeObjects{failIds: map[string]error{"bad": assert.AnError}}
 		journal := NewJournal()
 		journal.CreatedObject("obj1")
 		journal.CreatedObject("obj2")
 		journal.CreatedObject("bad")
-		journal.CreatedFile("fileLinked")
-		journal.CreatedFile("fileOrphan")
+		journal.CreatedFile("preExistingFile", true)
+		journal.CreatedFile("ownedFile", false)
 
 		// when
-		result := journal.Compensate(context.Background(), objects, linkedIds{"fileLinked"})
+		result := journal.Compensate(context.Background(), objects)
 
 		// then
-		assert.Equal(t, []string{"obj2", "obj1", "fileOrphan"}, objects.deleted)
+		assert.Equal(t, []string{"obj2", "obj1", "ownedFile"}, objects.deleted)
 		assert.Equal(t, 3, result.Compensated)
 		assert.Equal(t, 1, result.Leaked)
 		require.Len(t, result.Issues, 1)
 		assert.Equal(t, importv2.IssueStoreError, result.Issues[0].Code)
 	})
+
+	t.Run("deduped upload of a pre-existing file survives an aborted run", func(t *testing.T) {
+		// given — the store fixture is the real classifier: an indexed file
+		// object means the upload deduped onto data that pre-dates the run.
+		// (An inbound-link guard cannot pin this: the run's just-deleted
+		// referencers linger in the index either way.)
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:   domain.String("userFile1"),
+			bundle.RelationKeyName: domain.String("vacation photo"),
+		}})
+		checker := &storeChecker{store: store.SpaceIndex(testSpaceId)}
+		fx := newFixture(t)
+
+		journal := NewJournal()
+		journal.CreatedFile("userFile1", checker.Exists("userFile1")) // dedup hit
+		journal.CreatedFile("runFile1", checker.Exists("runFile1"))   // fresh upload
+
+		// when
+		result := journal.Compensate(context.Background(), fx.objects)
+
+		// then
+		assert.NotContains(t, fx.objects.deleted, "userFile1",
+			"pre-existing user data must never be compensation-deleted")
+		assert.Contains(t, fx.objects.deleted, "runFile1")
+		assert.Equal(t, 1, result.Compensated)
+	})
 }
 
-type noLinks struct{}
+// storeChecker mirrors the adapter's classifier over a real space index.
+type storeChecker struct {
+	store spaceindex.Store
+}
 
-func (noLinks) GetInboundLinksById(id string) ([]string, error) { return nil, nil }
-
-// linkedIds marks ids that other (pre-existing) objects link to.
-type linkedIds []string
-
-func (l linkedIds) GetInboundLinksById(id string) ([]string, error) {
-	for _, linked := range l {
-		if linked == id {
-			return []string{"other"}, nil
-		}
-	}
-	return nil, nil
+func (c *storeChecker) Exists(id string) bool {
+	ids, _, err := c.store.QueryObjectIds(database.Query{Filters: []database.FilterRequest{{
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		RelationKey: bundle.RelationKeyId,
+		Value:       domain.String(id),
+	}}})
+	return err == nil && len(ids) > 0
 }

@@ -95,6 +95,14 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 		if seenIds != nil {
 			seenIds[block.Id] = struct{}{}
 		}
+		// child_page/child_database mark subtree boundaries: their content
+		// is imported as its own object, so descending would re-crawl every
+		// nested subpage under every ancestor (O(depth) redundant requests)
+		// and pollute seenIds with other pages' block ids, breaking the
+		// child-entity ownership check.
+		if block.Type == "child_page" || block.Type == "child_database" {
+			continue
+		}
 		childSource := ""
 		if block.HasChildren {
 			childSource = block.Id

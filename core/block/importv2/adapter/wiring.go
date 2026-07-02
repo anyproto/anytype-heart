@@ -17,9 +17,25 @@ import (
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
+	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
+
+// existsChecker probes the space index for an id (file dedup classification).
+type existsChecker struct {
+	store spaceindex.Store
+}
+
+func (c *existsChecker) Exists(id string) bool {
+	ids, _, err := c.store.QueryObjectIds(database.Query{Filters: []database.FilterRequest{{
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		RelationKey: bundle.RelationKeyId,
+		Value:       domain.String(id),
+	}}})
+	return err == nil && len(ids) > 0
+}
 
 // uploaderAdapter satisfies persist.FileUploader over the two real services.
 type uploaderAdapter struct {
