@@ -102,11 +102,23 @@ The internal (non-`Service`) contract is yours to improve:
 ## Suggested milestones (each independently buildable + testable)
 
 1. **Skeleton + types** (this scaffold): `Service`, `SpaceController`, `Mode`, status model.
+   — **DONE.**
 2. **spacecore/tech-space integration**: load/derive spaces, tech-space + SpaceView CRUD,
    the reactive watcher. Parity: create/load an existing account, enumerate SpaceViews.
+   — **DONE 2026-07-02** (plan: `docs/superpowers/plans/2026-07-02-spacev2-m2-foundation.md`).
+   Unidirectional lifecycle confirmed with the user (§11 candidate 1): the watcher is the
+   ONLY controller builder; `registry.go` replaces the v1 `spaceControllers`+`waiting`
+   maps with retryable ready-futures (kills the §9.8 poisoning / §9.9 dual-path races);
+   `bootstrap.go` isolates tech-space resolution (old-account fallbacks tested, no
+   `SkipCheckSpaceViewKey` hack); marketplace is a static registry entry (blocked on
+   GO-6259 consumer migration); `Wait` awaits the registry future (no 500ms polling).
+   Controller builds fail retryably with `errBuilderNotImplemented` until M3.
 3. **Controller + state machine + load pipeline**: bring a space to a usable
    `clientspace.Space`; `Get`/`Wait`. Parity: open objects across spaces.
+   Fill `builderFor` (personal/shareable/streamable dispatch), `createFirstSpace`.
 4. **Join / offload / delete / remote-status / deletion controller.**
+   Also: remote-deleted branch in `onSpaceStatusUpdated`, coordinator-status kick in
+   `Run`, AutoJoinStream, participant-remove notification.
 5. **Lazy load + pause/unload + memory caps** (the new capability).
 6. **Migration + platform layer** (§10) wired through.
 7. **Cutover**: register v2 in bootstrap, remove v1.
