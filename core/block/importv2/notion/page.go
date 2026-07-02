@@ -98,12 +98,13 @@ func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.
 		return err
 	}
 
-	blocks, err := c.fetchBlockTree(ctx, stub.Id, sink)
+	blockIds := map[string]struct{}{}
+	blocks, err := c.fetchBlockTree(ctx, stub.Id, blockIds, sink)
 	if err != nil {
 		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch blocks: %w", err)))
 		return nil
 	}
-	modelBlocks, err := c.mapBlocks(ctx, mapContext{pageId: stub.Id}, blocks, sink)
+	modelBlocks, err := c.mapBlocks(ctx, mapContext{pageId: stub.Id, blockIds: blockIds}, blocks, sink)
 	if err != nil {
 		return err
 	}

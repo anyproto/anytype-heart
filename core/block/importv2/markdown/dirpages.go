@@ -114,7 +114,7 @@ func (c *Converter) emitDirectoryPages(ctx context.Context, sink importv2.Sink) 
 		blocks := make([]*model.Block, 0, len(c.dirs.subdirs[dir])+len(c.dirs.files[dir]))
 		for i, subdir := range c.dirs.subdirs[dir] {
 			blocks = append(blocks, &model.Block{
-				Id: fmt.Sprintf("dirlink-%d", i),
+				Id: fmt.Sprintf("dirlink%d", i),
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 					TargetBlockId: dirSourceKey(subdir),
 					Style:         model.BlockContentLink_Page,
@@ -123,7 +123,7 @@ func (c *Converter) emitDirectoryPages(ctx context.Context, sink importv2.Sink) 
 		}
 		for i, file := range c.dirs.files[dir] {
 			blocks = append(blocks, &model.Block{
-				Id: fmt.Sprintf("doclink-%d", i),
+				Id: fmt.Sprintf("doclink%d", i),
 				Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
 					TargetBlockId: file,
 					Style:         model.BlockContentLink_Page,

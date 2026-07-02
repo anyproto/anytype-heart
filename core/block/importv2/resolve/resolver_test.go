@@ -217,6 +217,25 @@ func TestRewriteDetails(t *testing.T) {
 		assert.Equal(t, []string{"idA", "unknown-value"}, st.Details().GetStringList("linkedPages"))
 	})
 
+	t.Run("object's own relation links outrank the run-wide format registry", func(t *testing.T) {
+		// given — the registry says shorttext (another page's inference for
+		// the same key) but THIS page declares the object format; the value
+		// must still resolve instead of persisting as a dangling source key.
+		st := docWithBlocks()
+		st.SetDetail("sharedKey", domain.String("docs/a.md"))
+		st.AddRelationLinks(&model.RelationLink{Key: "sharedKey", Format: model.RelationFormat_object})
+		formats := NewFormats()
+		formats.Register("sharedKey", model.RelationFormat_shorttext)
+		r := New(&fakeRefs{ids: map[string]string{"docs/a.md": "idA"}}, fakeKeys{}, formats)
+
+		// when
+		err := r.RewriteState(context.Background(), st, (&issueCollector{}).report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "idA", st.Details().GetString("sharedKey"))
+	})
+
 	t.Run("tag values resolve to option ids", func(t *testing.T) {
 		// given
 		st := docWithBlocks()

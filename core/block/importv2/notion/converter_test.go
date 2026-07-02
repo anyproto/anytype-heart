@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -80,7 +81,11 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 	],"has_more":true,"next_cursor":"cursor-2"}`
 	searchPage2 := `{"results":[
 		{"object":"page","id":"p2","parent":{"type":"workspace","workspace":true},
-		 "properties":{"Name":{"type":"title","title":[{"plain_text":"Beta","type":"text"}]}}}
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"Beta","type":"text"}]}}},
+		{"object":"page","id":"n1","parent":{"type":"page_id","page_id":"p1"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}},
+		{"object":"page","id":"n2","parent":{"type":"block_id","block_id":"foreign-block"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}}
 	],"has_more":false,"next_cursor":null}`
 
 	routes["GET /databases/db1"] = `{
@@ -116,7 +121,8 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		{"id":"b2","type":"to_do","has_children":true,"to_do":{"rich_text":[{"plain_text":"task","type":"text"}],"checked":true}},
 		{"id":"b3","type":"heading_1","has_children":true,"heading_1":{"rich_text":[{"plain_text":"Head","type":"text"}],"is_toggleable":true}},
 		{"id":"b4","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
-		{"id":"b5","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true,"has_row_header":false}}
+		{"id":"b5","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true,"has_row_header":false}},
+		{"id":"cp1","type":"child_page","has_children":false,"child_page":{"title":"NoteChild"}}
 	],"has_more":false,"next_cursor":null}`
 	routes["GET /blocks/b2/children"] = `{"results":[
 		{"id":"b2c","type":"paragraph","has_children":false,"paragraph":{"rich_text":[{"plain_text":"subtask","type":"text"}]}}
@@ -132,6 +138,16 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		{"id":"r2","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"a","type":"text"}],[{"plain_text":"b","type":"text"}]]}}
 	],"has_more":false,"next_cursor":null}`
 	routes["GET /blocks/p2/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
+
+	emptyPage := func(id, title string) string {
+		return `{"id":"` + id + `","archived":false,
+			"created_time":"2024-02-01T10:00:00.000Z","last_edited_time":"2024-02-02T10:00:00.000Z",
+			"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"` + title + `","type":"text"}]}}}`
+	}
+	routes["GET /pages/n1"] = emptyPage("n1", "NoteChild")
+	routes["GET /pages/n2"] = emptyPage("n2", "NoteChild")
+	routes["GET /blocks/n1/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/n2/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/search" {
@@ -186,7 +202,7 @@ func TestScriptedWorkspace(t *testing.T) {
 	sink, rootSpec, claims := runScripted(t)
 
 	t.Run("pass 1 claims every entity once", func(t *testing.T) {
-		require.Len(t, claims, 3)
+		require.Len(t, claims, 5)
 		assert.Equal(t, "Notion Import", rootSpec.CollectionName)
 		assert.Equal(t, model.BlockContentWidget_CompactList, rootSpec.WidgetLayout)
 	})
@@ -271,12 +287,52 @@ func TestScriptedWorkspace(t *testing.T) {
 
 		require.NotNil(t, blocks["sc1"], "synced-block content imported (v1 lost it)")
 
-		row1 := blocks["r1"]
-		require.NotNil(t, row1)
+		row1 := blocks["rr1"]
+		require.NotNil(t, row1, "row ids are dash-free derivatives of the notion id")
 		assert.True(t, row1.GetTableRow().IsHeader, "has_column_header marks the first row (v1 inverted)")
-		row2 := blocks["r2"]
+		row2 := blocks["rr2"]
 		require.NotNil(t, row2)
 		assert.False(t, row2.GetTableRow().IsHeader)
+	})
+
+	t.Run("table cell ids satisfy the rowID-colID single-dash invariant", func(t *testing.T) {
+		// ParseCellID splits on the FIRST dash and IsTableCell rejects
+		// multi-dash ids; dashed notion UUIDs corrupted every table before.
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		cells := 0
+		for _, b := range page.Payload.Blocks {
+			if row := b.GetTableRow(); row != nil {
+				assert.NotContains(t, b.Id, "-", "row id must be dash-free")
+				for _, cellId := range b.ChildrenIds {
+					assert.Equal(t, 1, strings.Count(cellId, "-"),
+						"cell id %q must contain exactly one dash", cellId)
+					assert.True(t, strings.HasPrefix(cellId, b.Id+"-"),
+						"cell id %q must start with its row id", cellId)
+					cells++
+				}
+			}
+			if column := b.GetTableColumn(); column != nil {
+				assert.NotContains(t, b.Id, "-", "column id must be dash-free")
+			}
+		}
+		assert.Equal(t, 4, cells)
+	})
+
+	t.Run("child_page resolves to this page's subpage, ignoring foreign block-parented twins", func(t *testing.T) {
+		// n1 (parent page_id=p1) and n2 (parent block_id of ANOTHER page)
+		// share the title; treating every block-parented entity as local
+		// used to make this ambiguous and degrade the link.
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		var childLink string
+		for _, b := range page.Payload.Blocks {
+			if b.Id == "cp1" {
+				require.NotNil(t, b.GetLink(), "child_page must resolve to a link, not a placeholder")
+				childLink = b.GetLink().TargetBlockId
+			}
+		}
+		assert.Equal(t, "n1", childLink)
 	})
 
 	t.Run("workspace-level page is a root candidate", func(t *testing.T) {

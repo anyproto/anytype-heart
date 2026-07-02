@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -92,9 +93,32 @@ type fakePersister struct {
 	delayKeys map[string]time.Duration
 	failKeys  map[string]error
 	journal   *persist.Journal
+	// fileReady simulates reference resolution: objects whose key starts
+	// with "ref-" block until the file object's persist closes the channel
+	// (as resolver.ResolveRef blocks on the identity future in production).
+	fileReady chan struct{}
 }
 
 func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target persist.Target, report func(importv2.Issue)) (persist.Outcome, error) {
+	if f.fileReady != nil {
+		if o.File != nil {
+			f.mu.Lock()
+			select {
+			case <-f.fileReady:
+			default:
+				close(f.fileReady)
+			}
+			f.mu.Unlock()
+		} else if strings.HasPrefix(o.SourceKey, "ref-") {
+			select {
+			case <-f.fileReady:
+			case <-ctx.Done():
+				return persist.Outcome{}, ctx.Err()
+			case <-time.After(5 * time.Second):
+				return persist.Outcome{}, errors.New("deadlock: referencing object never saw its file complete")
+			}
+		}
+	}
 	delay := f.delay
 	if d, ok := f.delayKeys[o.SourceKey]; ok {
 		delay = d
@@ -235,7 +259,7 @@ func (d *deleterFake) DeleteObject(objectId string) error {
 
 type noLinks struct{}
 
-func (noLinks) GetOutboundLinksById(id string) ([]string, error) { return nil, nil }
+func (noLinks) GetInboundLinksById(id string) ([]string, error) { return nil, nil }
 
 func TestRunHappyPath(t *testing.T) {
 	t.Run("streams, persists, builds root collection", func(t *testing.T) {
@@ -398,14 +422,22 @@ func TestRunMemoryBound(t *testing.T) {
 }
 
 func TestFileLane(t *testing.T) {
-	t.Run("file objects complete their futures even when workers wait on them", func(t *testing.T) {
-		// given — many pages emitted before the file they reference would
-		// stall a single-lane pool; the dedicated file lane must progress.
+	t.Run("queued file progresses while every shared worker waits on it", func(t *testing.T) {
+		// given — the deadlock regime the dedicated file lane exists for:
+		// referencing objects are emitted BEFORE their file, fill the
+		// shared workers and the queue, and each blocks until the file
+		// persists. Routing files through the shared lane would park all
+		// shared workers behind a file they queued in front of — this test
+		// times out with per-object failures if the lane is removed.
 		fx := newEngineFixture()
-		objects := []*importv2.Object{fileObj("img.png")}
-		for i := 0; i < 40; i++ {
-			objects = append(objects, pageObj(fmt.Sprintf("p-%02d.md", i), false))
+		fx.persister.fileReady = make(chan struct{})
+		var objects []*importv2.Object
+		// 20 referencing pages ≤ workers-1 + channel capacity, so the
+		// converter still reaches the file emission.
+		for i := 0; i < 20; i++ {
+			objects = append(objects, pageObj(fmt.Sprintf("ref-%02d.md", i), false))
 		}
+		objects = append(objects, fileObj("img.png"))
 		converter := &scriptConverter{objects: objects}
 
 		// when
@@ -413,6 +445,8 @@ func TestFileLane(t *testing.T) {
 
 		// then
 		require.NoError(t, result.Err)
+		assert.Zero(t, result.Failed, "a stalled file lane fails the referencing objects")
+		assert.Equal(t, int64(21), result.Created)
 		state := fx.identity.files["img.png"]
 		require.NotNil(t, state)
 		select {

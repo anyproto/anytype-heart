@@ -21,6 +21,13 @@ type mappedBlock struct {
 
 type mapContext struct {
 	pageId string
+	// blockIds is the set of block ids fetched within this page's tree —
+	// the ownership check for block-parented child entities.
+	blockIds map[string]struct{}
+}
+
+func dashless(id string) string {
+	return strings.ReplaceAll(id, "-", "")
 }
 
 // mapBlocks converts a fetched subtree. One notion block may yield several
@@ -331,6 +338,10 @@ type tableRowPayload struct {
 // mapTable builds the anytype table subtree. has_column_header marks the
 // first row as header (v1 applied has_row_header there — inverted);
 // column headers have no anytype counterpart and degrade with a warning.
+//
+// Anytype cell ids are `rowID-colID` with exactly one dash (ParseCellID
+// splits on the first dash; IsTableCell rejects multi-dash ids), so row and
+// column ids derive from the dashed Notion UUIDs with the dashes stripped.
 func (c *Converter) mapTable(ctx context.Context, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload tablePayload
 	if err := block.decode(&payload); err != nil {
@@ -344,7 +355,7 @@ func (c *Converter) mapTable(ctx context.Context, block *notionBlock, sink impor
 	columns := make([]*mappedBlock, 0, payload.TableWidth)
 	columnIds := make([]string, 0, payload.TableWidth)
 	for i := 0; i < payload.TableWidth; i++ {
-		columnId := fmt.Sprintf("%s-col-%d", block.Id, i)
+		columnId := fmt.Sprintf("c%s%d", dashless(block.Id), i)
 		columnIds = append(columnIds, columnId)
 		columns = append(columns, &mappedBlock{block: &model.Block{
 			Id:      columnId,
@@ -362,7 +373,7 @@ func (c *Converter) mapTable(ctx context.Context, block *notionBlock, sink impor
 		if err := child.decode(&rowPayload); err != nil {
 			continue
 		}
-		rowId := child.Id
+		rowId := "r" + dashless(child.Id)
 		var cells []*mappedBlock
 		for cellIndex, cellRuns := range rowPayload.Cells {
 			if cellIndex >= len(columnIds) {
@@ -416,7 +427,10 @@ type childEntityPayload struct {
 
 // mapChildEntity resolves child_page/child_database (the API gives a title,
 // not an id) against the pass-1 hierarchy: children of this page first,
-// then a globally unique title. Ambiguity degrades explicitly.
+// then a globally unique title. Ambiguity degrades explicitly. A
+// block-parented entity counts as "within this page" only when its parent
+// block was actually fetched in this page's tree — an unrelated same-titled
+// subpage nested in another page's column/toggle must not match.
 func (c *Converter) mapChildEntity(mctx mapContext, block *notionBlock, wantDatabase bool, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload childEntityPayload
 	if err := block.decode(&payload); err != nil {
@@ -428,8 +442,10 @@ func (c *Converter) mapChildEntity(mctx mapContext, block *notionBlock, wantData
 			continue
 		}
 		global = append(global, entity.Id)
-		parentedHere := (entity.Parent.Type == "page_id" && entity.Parent.PageId == mctx.pageId) ||
-			entity.Parent.Type == "block_id"
+		parentedHere := entity.Parent.Type == "page_id" && entity.Parent.PageId == mctx.pageId
+		if !parentedHere && entity.Parent.Type == "block_id" {
+			_, parentedHere = mctx.blockIds[entity.Parent.BlockId]
+		}
 		if parentedHere {
 			withinPage = append(withinPage, entity.Id)
 		}

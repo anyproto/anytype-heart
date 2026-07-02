@@ -117,23 +117,28 @@ func typeSourceKey(name string) string        { return "type:" + name }
 // page's front-matter introduces, before the page itself (definitions before
 // use). Bundled and schema-emitted relations are never redefined; option
 // values were already resolved to option source keys by the resolver.
-func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []yaml.Property, typeName string, sink importv2.Sink) (details []domain.Detail, typeKey string, err error) {
+//
+// The returned relation links carry THIS page's inferred formats: the same
+// property name can infer different formats on different pages, and the
+// resolver trusts the object's own links over the run-wide registry.
+func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []yaml.Property, typeName string, sink importv2.Sink) (details []domain.Detail, links []*model.RelationLink, typeKey string, err error) {
 	for _, property := range properties {
 		if !bundle.HasRelation(domain.RelationKey(property.Key)) && !c.emittedRelations[property.Key] {
 			c.emittedRelations[property.Key] = true
 			if err := sink.Object(ctx, relationObject(property)); err != nil {
-				return nil, "", err
+				return nil, nil, "", err
 			}
 		}
 		value := property.Value
 		if property.Format == model.RelationFormat_object || property.Format == model.RelationFormat_file {
 			resolved, err := c.resolveObjectValues(ctx, value, sink)
 			if err != nil {
-				return nil, "", err
+				return nil, nil, "", err
 			}
 			value = resolved
 		}
 		details = append(details, domain.Detail{Key: domain.RelationKey(property.Key), Value: value})
+		links = append(links, &model.RelationLink{Key: property.Key, Format: property.Format})
 	}
 
 	// Options the resolver encountered while parsing this page's values.
@@ -144,7 +149,7 @@ func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []ya
 		}
 		c.emittedOptions[sourceKey] = true
 		if err := sink.Object(ctx, optionObject(option.relationKey, option.optionName)); err != nil {
-			return nil, "", err
+			return nil, nil, "", err
 		}
 	}
 
@@ -152,11 +157,11 @@ func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []ya
 	if typeName != "" {
 		key, err := c.emitTypeDefinition(ctx, typeName, properties, sink)
 		if err != nil {
-			return nil, "", err
+			return nil, nil, "", err
 		}
 		typeKey = key
 	}
-	return details, typeKey, nil
+	return details, links, typeKey, nil
 }
 
 // stableIconOption derives a 1..10 icon color deterministically.

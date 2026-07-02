@@ -36,6 +36,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 		body = content
 	}
 	var yamlDetails []domain.Detail
+	var yamlLinks []*model.RelationLink
 	typeKey := bundle.TypeKeyPage.String()
 	if len(frontMatter) > 0 {
 		parsed, err := yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, c.resolver, path.Dir(entry.Name))
@@ -47,7 +48,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 			sort.SliceStable(parsed.Properties, func(i, j int) bool {
 				return parsed.Properties[i].Name < parsed.Properties[j].Name
 			})
-			yamlDetails, typeKey, err = c.emitPropertyDefinitions(ctx, parsed.Properties, parsed.ObjectType, sink)
+			yamlDetails, yamlLinks, typeKey, err = c.emitPropertyDefinitions(ctx, parsed.Properties, parsed.ObjectType, sink)
 			if err != nil {
 				return err
 			}
@@ -78,9 +79,10 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 		SourceKey: entry.Name,
 		SbType:    coresb.SmartBlockTypePage,
 		Payload: &importv2.Snapshot{
-			Blocks:      blocks,
-			Details:     domain.NewDetails(),
-			ObjectTypes: []string{typeKey},
+			Blocks:        blocks,
+			Details:       domain.NewDetails(),
+			ObjectTypes:   []string{typeKey},
+			RelationLinks: yamlLinks,
 		},
 		IsRootCandidate: c.dirs == nil && isTopLevel(entry.Name),
 	}
@@ -134,7 +136,7 @@ func propertyBlocks(details []domain.Detail) []*model.Block {
 			continue
 		}
 		blocks = append(blocks, &model.Block{
-			Id: fmt.Sprintf("property-%d", i),
+			Id: fmt.Sprintf("property%d", i),
 			Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{
 				Key: string(detail.Key),
 			}},

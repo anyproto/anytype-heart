@@ -42,16 +42,17 @@ func (r *Resolver) adoptKeys(st *state.State) {
 	}
 }
 
-// relationFormatOf resolves a relation's format from the registry, falling
-// back to the object's own relation links (the converter's declaration).
+// relationFormatOf resolves a relation's format: the object's own relation
+// links first (per-page truth — the same property name can carry different
+// inferred formats on different pages), then the run-wide registry.
 func (r *Resolver) relationFormatOf(st *state.State, key domain.RelationKey) (model.RelationFormat, bool) {
-	if format, ok := r.formats.RelationFormat(key); ok {
-		return format, true
-	}
 	for _, link := range st.PickRelationLinks() {
 		if link.Key == key.String() {
 			return link.Format, true
 		}
+	}
+	if format, ok := r.formats.RelationFormat(key); ok {
+		return format, true
 	}
 	return 0, false
 }

@@ -12,7 +12,7 @@ import (
 // keeps compensation from deleting a deduped file object that pre-dates the
 // run. Satisfied by spaceindex.Store.
 type LinkQuerier interface {
-	GetOutboundLinksById(id string) ([]string, error)
+	GetInboundLinksById(id string) ([]string, error)
 }
 
 // Journal records every effect of a run, in order, for compensation.
@@ -79,9 +79,13 @@ func (j *Journal) Compensate(ctx context.Context, objects ObjectAccess, links Li
 	}
 	for i := len(files) - 1; i >= 0; i-- {
 		id := files[i]
-		inbound, err := links.GetOutboundLinksById(id)
+		// A content-deduped upload can return a file object that pre-dates
+		// the run; anything still linking TO it means it is not ours to
+		// delete. (Inbound, not outbound: a file object links to nothing,
+		// so an outbound check would approve every deletion.)
+		inbound, err := links.GetInboundLinksById(id)
 		if err == nil && len(inbound) > 0 {
-			continue // referenced from outside the (already deleted) run objects
+			continue
 		}
 		j.deleteOne(id, objects, &result)
 	}

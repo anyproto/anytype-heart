@@ -57,12 +57,13 @@ type blockListResponse struct {
 
 // fetchBlockTree loads a page's full block tree: paginated children, bounded
 // recursion, synced-block originals resolved (approved decision — v1 lost
-// synced content entirely).
-func (c *Converter) fetchBlockTree(ctx context.Context, pageId string, sink importv2.Sink) ([]notionBlock, error) {
-	return c.fetchChildren(ctx, pageId, 0, sink)
+// synced content entirely). seenIds collects every fetched block id — the
+// ownership set for resolving block-parented child entities.
+func (c *Converter) fetchBlockTree(ctx context.Context, pageId string, seenIds map[string]struct{}, sink importv2.Sink) ([]notionBlock, error) {
+	return c.fetchChildren(ctx, pageId, 0, seenIds, sink)
 }
 
-func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int, sink importv2.Sink) ([]notionBlock, error) {
+func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int, seenIds map[string]struct{}, sink importv2.Sink) ([]notionBlock, error) {
 	if depth > maxBlockDepth {
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, blockId,
 			fmt.Sprintf("block tree deeper than %d levels; deeper content skipped", maxBlockDepth)))
@@ -91,6 +92,9 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 
 	for i := range blocks {
 		block := &blocks[i]
+		if seenIds != nil {
+			seenIds[block.Id] = struct{}{}
+		}
 		childSource := ""
 		if block.HasChildren {
 			childSource = block.Id
@@ -109,7 +113,7 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 		if childSource == "" {
 			continue
 		}
-		children, err := c.fetchChildren(ctx, childSource, depth+1, sink)
+		children, err := c.fetchChildren(ctx, childSource, depth+1, seenIds, sink)
 		if err != nil {
 			return nil, err
 		}

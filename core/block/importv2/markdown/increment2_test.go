@@ -9,6 +9,7 @@ import (
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -174,6 +175,35 @@ func TestPropertiesAsBlock(t *testing.T) {
 		}
 		require.Len(t, relationKeys, 1, "created maps to the system createdDate and is excluded")
 		assert.NotEqual(t, bundle.RelationKeyCreatedDate.String(), relationKeys[0])
+	})
+}
+
+func TestDivergentPropertyFormats(t *testing.T) {
+	t.Run("pages carry their own inferred formats as relation links", func(t *testing.T) {
+		// given — the same property name infers shorttext on one page and
+		// object on another; the run-wide relation keeps the first format,
+		// but each page's relation links must carry ITS format so the
+		// resolver can still resolve b.md's object value.
+		sink, _ := runConverterWithParams(t, map[string]string{
+			"a.md":      "---\nRef: plain words here\n---\n# A\n",
+			"b.md":      "---\nRef: docs/x.md\n---\n# B\n",
+			"docs/x.md": "# X\n",
+		}, Params{})
+
+		// then
+		pageA := sink.byKey("a.md")
+		pageB := sink.byKey("b.md")
+		require.NotNil(t, pageA)
+		require.NotNil(t, pageB)
+		formatOf := func(o *importv2.Object) model.RelationFormat {
+			require.Len(t, o.Payload.RelationLinks, 1)
+			return o.Payload.RelationLinks[0].Format
+		}
+		assert.Equal(t, model.RelationFormat_shorttext, formatOf(pageA))
+		assert.Equal(t, model.RelationFormat_object, formatOf(pageB))
+		key := pageB.Payload.RelationLinks[0].Key
+		assert.Equal(t, "docs/x.md", pageB.Payload.Details.GetString(domain.RelationKey(key)),
+			"object value must reference the page by source key")
 	})
 }
 

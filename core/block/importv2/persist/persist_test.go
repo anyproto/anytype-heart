@@ -422,11 +422,12 @@ func TestCompensate(t *testing.T) {
 
 type noLinks struct{}
 
-func (noLinks) GetOutboundLinksById(id string) ([]string, error) { return nil, nil }
+func (noLinks) GetInboundLinksById(id string) ([]string, error) { return nil, nil }
 
+// linkedIds marks ids that other (pre-existing) objects link to.
 type linkedIds []string
 
-func (l linkedIds) GetOutboundLinksById(id string) ([]string, error) {
+func (l linkedIds) GetInboundLinksById(id string) ([]string, error) {
 	for _, linked := range l {
 		if linked == id {
 			return []string{"other"}, nil
