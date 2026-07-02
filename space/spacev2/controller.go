@@ -113,21 +113,33 @@ func (c *controller) Poke() {
 	c.mu.Lock()
 	c.inputSeq++
 	c.mu.Unlock()
-	select {
-	case c.poke <- struct{}{}:
-	default:
-	}
+	c.notifyPoke()
 }
 
 // SetWanted sets the demand flag: whether the space should be resident in
 // memory. Deletion (AccountStatusDeleted) wins over demand.
+//
+// The wanted write and its inputSeq bump happen in ONE critical section: the
+// loop snapshots (seq, wanted) atomically, so a decision can never observe a
+// demand value newer than its seq stamp — that would let its fatal outcome be
+// misjudged stale and silently re-attempted.
 func (c *controller) SetWanted(wanted bool) {
 	c.mu.Lock()
 	changed := c.wanted != wanted
-	c.wanted = wanted
+	if changed {
+		c.wanted = wanted
+		c.inputSeq++
+	}
 	c.mu.Unlock()
 	if changed {
-		c.Poke()
+		c.notifyPoke()
+	}
+}
+
+func (c *controller) notifyPoke() {
+	select {
+	case c.poke <- struct{}{}:
+	default:
 	}
 }
 
