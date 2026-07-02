@@ -146,8 +146,8 @@ func TestFrontMatter(t *testing.T) {
 		require.NotNil(t, option, "Status option must be emitted")
 		assert.Equal(t, "In Progress", option.Payload.Details.GetString(bundle.RelationKeyName))
 		statusKey := domain.RelationKey(option.Payload.Details.GetString(bundle.RelationKeyRelationKey))
-		assert.Equal(t, []string{option.SourceKey}, page.Payload.Details.GetStringList(statusKey),
-			"page status detail must reference the option by source key")
+		assert.Equal(t, option.SourceKey, page.Payload.Details.GetString(statusKey),
+			"page status detail must reference the option by source key (scalar, v1 form)")
 
 		require.NotNil(t, typeObject)
 		assert.Equal(t, "Zettel", typeObject.Payload.Details.GetString(bundle.RelationKeyName))

@@ -14,18 +14,37 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
 )
 
-// stableResolver mints deterministic relation keys from property names, so
-// the same source always yields the same keys (and re-import converges to
-// the same derived relation objects). v1 minted random bson ids here.
-type stableResolver struct {
-	nameToKey map[string]string
+// mdResolver implements schema.PropertyResolver for the yaml parser. Keys
+// come from loaded schemas when available, else are minted deterministically
+// from the property name (v1 minted random bson ids). Option values resolve
+// to option source keys and are recorded for lazy emission before the page —
+// one mechanism for both the schema and schema-less paths.
+type mdResolver struct {
+	schemas     *schemaSet
+	nameToKey   map[string]string
+	pending     []pendingOption
+	pendingSeen map[string]bool
 }
 
-func newStableResolver() *stableResolver {
-	return &stableResolver{nameToKey: map[string]string{}}
+type pendingOption struct {
+	relationKey string
+	optionName  string
 }
 
-func (r *stableResolver) ResolvePropertyKey(_ string, name string) string {
+func newResolver(schemas *schemaSet) *mdResolver {
+	return &mdResolver{
+		schemas:     schemas,
+		nameToKey:   map[string]string{},
+		pendingSeen: map[string]bool{},
+	}
+}
+
+func (r *mdResolver) ResolvePropertyKey(objectTypeName, name string) string {
+	if r.schemas != nil {
+		if key := r.schemas.propertyKey(objectTypeName, name); key != "" {
+			return key
+		}
+	}
 	if key, ok := r.nameToKey[name]; ok {
 		return key
 	}
@@ -34,18 +53,39 @@ func (r *stableResolver) ResolvePropertyKey(_ string, name string) string {
 	return key
 }
 
-func (r *stableResolver) GetRelationFormat(_ string, _ string) model.RelationFormat {
+func (r *mdResolver) GetRelationFormat(objectTypeName, key string) model.RelationFormat {
+	if r.schemas != nil {
+		if format, ok := r.schemas.relationFormat(objectTypeName, key); ok {
+			return format
+		}
+	}
 	return model.RelationFormat_longtext
 }
 
-func (r *stableResolver) GetRelationOptions(string) map[string]string { return nil }
+func (r *mdResolver) GetRelationOptions(string) map[string]string { return nil }
 
-func (r *stableResolver) ResolveOptionValue(_ string, optionValue string) string {
-	return optionValue
+func (r *mdResolver) ResolveOptionValue(relationKey string, optionName string) string {
+	sourceKey := optionSourceKey(relationKey, optionName)
+	if !r.pendingSeen[sourceKey] {
+		r.pendingSeen[sourceKey] = true
+		r.pending = append(r.pending, pendingOption{relationKey: relationKey, optionName: optionName})
+	}
+	return sourceKey
 }
 
-func (r *stableResolver) ResolveOptionValues(_ string, optionValues []string) []string {
-	return optionValues
+func (r *mdResolver) ResolveOptionValues(relationKey string, optionNames []string) []string {
+	resolved := make([]string, 0, len(optionNames))
+	for _, name := range optionNames {
+		resolved = append(resolved, r.ResolveOptionValue(relationKey, name))
+	}
+	return resolved
+}
+
+// takePending drains options encountered since the last call.
+func (r *mdResolver) takePending() []pendingOption {
+	pending := r.pending
+	r.pending = nil
+	return pending
 }
 
 func stableKey(prefix, name string) string {
@@ -75,8 +115,8 @@ func typeSourceKey(name string) string        { return "type:" + name }
 
 // emitPropertyDefinitions streams the relation, option and type objects a
 // page's front-matter introduces, before the page itself (definitions before
-// use). Bundled relations are never redefined. It returns the page's detail
-// entries with option values rewritten to option source keys.
+// use). Bundled and schema-emitted relations are never redefined; option
+// values were already resolved to option source keys by the resolver.
 func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []yaml.Property, typeName string, sink importv2.Sink) (details []domain.Detail, typeKey string, err error) {
 	for _, property := range properties {
 		if !bundle.HasRelation(domain.RelationKey(property.Key)) && !c.emittedRelations[property.Key] {
@@ -93,24 +133,19 @@ func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []ya
 			}
 			value = resolved
 		}
-		if property.Format == model.RelationFormat_tag || property.Format == model.RelationFormat_status {
-			optionKeys := make([]string, 0)
-			for _, optionName := range stringOrList(property.Value) {
-				if optionName == "" {
-					continue
-				}
-				sourceKey := optionSourceKey(property.Key, optionName)
-				if !c.emittedOptions[sourceKey] {
-					c.emittedOptions[sourceKey] = true
-					if err := sink.Object(ctx, optionObject(property.Key, optionName)); err != nil {
-						return nil, "", err
-					}
-				}
-				optionKeys = append(optionKeys, sourceKey)
-			}
-			value = domain.StringList(optionKeys)
-		}
 		details = append(details, domain.Detail{Key: domain.RelationKey(property.Key), Value: value})
+	}
+
+	// Options the resolver encountered while parsing this page's values.
+	for _, option := range c.resolver.takePending() {
+		sourceKey := optionSourceKey(option.relationKey, option.optionName)
+		if c.emittedOptions[sourceKey] {
+			continue
+		}
+		c.emittedOptions[sourceKey] = true
+		if err := sink.Object(ctx, optionObject(option.relationKey, option.optionName)); err != nil {
+			return nil, "", err
+		}
 	}
 
 	typeKey = bundle.TypeKeyPage.String()
@@ -124,13 +159,10 @@ func (c *Converter) emitPropertyDefinitions(ctx context.Context, properties []ya
 	return details, typeKey, nil
 }
 
-// stringOrList reads a value that yaml may deliver as either a scalar or a
-// list (single status vs multi tag).
-func stringOrList(value domain.Value) []string {
-	if single, ok := value.TryString(); ok {
-		return []string{single}
-	}
-	return value.StringList()
+// stableIconOption derives a 1..10 icon color deterministically.
+func stableIconOption(key string) int64 {
+	sum := sha256.Sum256([]byte(key))
+	return int64(sum[0])%10 + 1
 }
 
 // resolveObjectValues rewrites object/file property values (source-relative

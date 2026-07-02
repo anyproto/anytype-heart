@@ -38,7 +38,9 @@ type Converter struct {
 	params  Params
 	factory importv2.CollectionFactory
 
-	resolver *stableResolver
+	resolver *mdResolver
+	schemas  *schemaSet // nil when the source carries no anytype schemas
+	dirs     *dirTree   // nil unless directory pages are enabled
 	// listing metadata (small strings), built during pass 1.
 	mdEntries  []source.Entry
 	csvEntries []source.Entry
@@ -56,7 +58,6 @@ func New(src source.Source, params Params, factory importv2.CollectionFactory) *
 		source:           src,
 		params:           params,
 		factory:          factory,
-		resolver:         newStableResolver(),
 		baseNames:        map[string][]string{},
 		emittedRelations: map[string]bool{},
 		emittedOptions:   map[string]bool{},
@@ -65,10 +66,26 @@ func New(src source.Source, params Params, factory importv2.CollectionFactory) *
 	}
 }
 
+// Schemas force-disable directory pages and properties-as-blocks (v1 rule).
+func (c *Converter) directoryPagesEnabled() bool {
+	return c.params.CreateDirectoryPages && c.schemas == nil
+}
+
+func (c *Converter) propertiesAsBlockEnabled() bool {
+	return c.params.IncludePropertiesAsBlock && c.schemas == nil
+}
+
 func (c *Converter) Name() string { return "Markdown" }
 
 func (c *Converter) EnumerateIdentities(ctx context.Context, yield func(importv2.IdentityClaim) error) error {
-	err := c.source.Walk(ctx, func(e source.Entry) error {
+	schemas, err := loadSchemas(ctx, c.source)
+	if err != nil {
+		return fmt.Errorf("load schemas: %w", err)
+	}
+	c.schemas = schemas
+	c.resolver = newResolver(schemas)
+
+	err = c.source.Walk(ctx, func(e source.Entry) error {
 		c.baseNames[path.Base(e.Name)] = append(c.baseNames[path.Base(e.Name)], e.Name)
 		switch strings.ToLower(path.Ext(e.Name)) {
 		case ".md":
@@ -90,6 +107,19 @@ func (c *Converter) EnumerateIdentities(ctx context.Context, yield func(importv2
 	if len(c.mdEntries) == 0 {
 		return importv2.Fatal(importv2.IssueNoObjects, fmt.Errorf("no markdown files in source"))
 	}
+
+	if c.directoryPagesEnabled() {
+		c.dirs = buildDirTree(append(append([]source.Entry{}, c.mdEntries...), c.csvEntries...))
+		for _, dir := range c.dirs.dirs {
+			if err := yield(importv2.IdentityClaim{
+				SourceKey:      dirSourceKey(dir),
+				SbType:         coresb.SmartBlockTypePage,
+				SourceFilePath: sourcePathHash(dirSourceKey(dir)),
+			}); err != nil {
+				return fmt.Errorf("claim directory page: %w", err)
+			}
+		}
+	}
 	return nil
 }
 
@@ -97,6 +127,9 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	for _, rejected := range c.source.Rejected() {
 		sink.Issue(importv2.Warning(importv2.IssueSourceInvalid, rejected,
 			"archive entry rejected: path escapes the archive root"))
+	}
+	if err := c.emitSchemaDefinitions(ctx, sink); err != nil {
+		return importv2.RootSpec{}, err
 	}
 	for _, entry := range c.mdEntries {
 		if err := c.convertPage(ctx, entry, sink); err != nil {
@@ -107,6 +140,18 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 		if err := c.convertCsvCollection(ctx, entry, sink); err != nil {
 			return importv2.RootSpec{}, err
 		}
+	}
+	if c.dirs != nil {
+		if err := c.emitDirectoryPages(ctx, sink); err != nil {
+			return importv2.RootSpec{}, err
+		}
+		// The root directory page is the import's entry point: a Tree
+		// widget targets it directly, no wrapper collection (v1's
+		// single-directory-page case).
+		return importv2.RootSpec{
+			RootObjectKey: dirSourceKey(c.dirs.root),
+			WidgetLayout:  model.BlockContentWidget_Tree,
+		}, nil
 	}
 	return importv2.RootSpec{
 		CollectionName: rootCollectionName,

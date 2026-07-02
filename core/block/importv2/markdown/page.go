@@ -61,12 +61,17 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	}
 
 	title := pageTitleFromPath(entry.Name)
+	iconEmoji := ""
 	if extracted, rest := extractH1Title(blocks); extracted != "" {
 		title, blocks = extracted, rest
+		iconEmoji, title = splitEmojiTitle(title)
 	}
 	blocks, err = c.rewriteBlocks(ctx, entry.Name, blocks, sink)
 	if err != nil {
 		return err
+	}
+	if c.propertiesAsBlockEnabled() {
+		blocks = append(propertyBlocks(yamlDetails), blocks...)
 	}
 
 	object := &importv2.Object{
@@ -77,13 +82,65 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 			Details:     domain.NewDetails(),
 			ObjectTypes: []string{typeKey},
 		},
-		IsRootCandidate: isTopLevel(entry.Name),
+		IsRootCandidate: c.dirs == nil && isTopLevel(entry.Name),
 	}
 	c.stampCommonDetails(object, entry, title)
+	if iconEmoji != "" {
+		object.Payload.Details.SetString(bundle.RelationKeyIconEmoji, iconEmoji)
+	}
 	for _, detail := range yamlDetails {
 		object.Payload.Details.Set(detail.Key, detail.Value)
 	}
 	return sink.Object(ctx, object)
+}
+
+// splitEmojiTitle extracts a leading emoji from an H1 title into the page
+// icon (v1 convention, approximate unicode ranges as before).
+func splitEmojiTitle(title string) (emoji, rest string) {
+	trimmed := strings.TrimSpace(title)
+	runes := []rune(trimmed)
+	if len(runes) == 0 || !isEmojiRune(runes[0]) {
+		return "", title
+	}
+	return string(runes[0]), strings.TrimSpace(string(runes[1:]))
+}
+
+func isEmojiRune(r rune) bool {
+	return (r >= 0x1F000 && r <= 0x1FAFF) || (r >= 0x2600 && r <= 0x27BF)
+}
+
+// systemPropertyKeys are excluded from properties-as-blocks (v1 list).
+var systemPropertyKeys = map[string]struct{}{
+	bundle.RelationKeyName.String():             {},
+	bundle.RelationKeyDescription.String():      {},
+	bundle.RelationKeyType.String():             {},
+	bundle.RelationKeyCreatedDate.String():      {},
+	bundle.RelationKeyLastModifiedDate.String(): {},
+	bundle.RelationKeyCreator.String():          {},
+	bundle.RelationKeyLastModifiedBy.String():   {},
+	bundle.RelationKeyId.String():               {},
+	bundle.RelationKeyIconEmoji.String():        {},
+	bundle.RelationKeyIconImage.String():        {},
+	bundle.RelationKeyCoverId.String():          {},
+	bundle.RelationKeyLayout.String():           {},
+}
+
+// propertyBlocks renders front-matter properties as relation blocks at the
+// top of the page (the includePropertiesAsBlock option).
+func propertyBlocks(details []domain.Detail) []*model.Block {
+	blocks := make([]*model.Block, 0, len(details))
+	for i, detail := range details {
+		if _, system := systemPropertyKeys[string(detail.Key)]; system {
+			continue
+		}
+		blocks = append(blocks, &model.Block{
+			Id: fmt.Sprintf("property-%d", i),
+			Content: &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{
+				Key: string(detail.Key),
+			}},
+		})
+	}
+	return blocks
 }
 
 // readEntry buffers one file — bounded by a single document, never the set.
