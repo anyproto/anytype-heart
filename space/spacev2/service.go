@@ -10,11 +10,14 @@ import (
 
 	"github.com/anyproto/any-sync/accountservice"
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/addr"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/clientspace"
@@ -217,11 +220,60 @@ func (s *service) InviteJoin(ctx context.Context, id, aclHeadId string) error {
 func (s *service) CancelLeave(ctx context.Context, id string) error { return errNotImplemented }
 
 func (s *service) Get(ctx context.Context, id string) (clientspace.Space, error) {
-	return nil, errNotImplemented
+	if id == s.techSpaceId {
+		return s.getTechSpace(ctx)
+	}
+	ctrl, err := s.registry.get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	sp, err := ctrl.WaitLoad(ctx)
+	if err != nil {
+		return nil, convertSpaceError(err)
+	}
+	return sp, nil
 }
 
 func (s *service) Wait(ctx context.Context, spaceId string) (clientspace.Space, error) {
-	return nil, errNotImplemented
+	techSpace, err := s.getTechSpace(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get tech space: %w", err)
+	}
+	if spaceId == s.techSpaceId {
+		return techSpace, nil
+	}
+	// If there is no space view, there is no space (marketplace has none).
+	if spaceId != addr.AnytypeMarketplaceWorkspace {
+		exists, err := techSpace.SpaceViewExists(ctx, spaceId)
+		if err != nil {
+			return nil, fmt.Errorf("check space view: %w", err)
+		}
+		if !exists {
+			return nil, ErrSpaceNotExists
+		}
+	}
+	// Unidirectional: the view exists, so the watcher will build the
+	// controller; the registry future resolves without polling.
+	ctrl, err := s.registry.await(ctx, spaceId)
+	if err != nil {
+		return nil, err
+	}
+	sp, err := ctrl.WaitLoad(ctx)
+	if err != nil {
+		return nil, convertSpaceError(err)
+	}
+	return sp, nil
+}
+
+func convertSpaceError(err error) error {
+	switch {
+	case errors.Is(err, spacesyncproto.ErrSpaceIsDeleted):
+		return ErrSpaceDeleted
+	case errors.Is(err, spacestorage.ErrSpaceStorageMissing):
+		return ErrSpaceStorageMissig
+	default:
+		return err
+	}
 }
 
 func (s *service) AddStreamable(ctx context.Context, id string, guestKey crypto.PrivKey) error {
@@ -236,14 +288,22 @@ func (s *service) FirstCreatedSpaceId() string       { return s.firstCreatedSpac
 func (s *service) TechSpace() *clientspace.TechSpace { return s.techSpace }
 
 func (s *service) GetPersonalSpace(ctx context.Context) (clientspace.Space, error) {
-	return nil, errNotImplemented
+	return s.Get(ctx, s.personalSpaceId)
 }
 
 func (s *service) GetTechSpace(ctx context.Context) (clientspace.Space, error) {
-	return nil, errNotImplemented
+	return s.Get(ctx, s.techSpaceId)
 }
 
-func (s *service) SpaceViewId(spaceId string) (string, error) { return "", errNotImplemented }
+func (s *service) SpaceViewId(spaceId string) (string, error) {
+	select {
+	case <-s.techSpaceReady:
+		return s.techSpace.SpaceViewId(spaceId)
+	default:
+		// v1 would nil-deref here; erroring is strictly better for callers.
+		return "", fmt.Errorf("tech space not ready: %w", ErrSpaceNotExists)
+	}
+}
 
 func (s *service) AccountMetadataSymKey() crypto.SymKey { return s.accountMetadataSymKey }
 func (s *service) AccountMetadataPayload() []byte       { return s.accountMetadataPayload }
