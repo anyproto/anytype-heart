@@ -133,12 +133,24 @@ adapter that satisfies today's callers is acceptable during the transition.
   marketplace reindex errors are not swallowed; Join always moves an existing
   view to Joining; AddStreamable is idempotent; offload tolerates missing
   storage; no waiting-map / dedupqueue anywhere.
-- **Remaining: cutover (last step).** Register v2 as `client.space`
-  (CName switch — v2 currently runs as `client.spacev2`), define the outward
-  Service interface consumers compile against (or a temporary adapter in
-  package `space`), migrate consumers + error values, remove v1 orchestration,
-  and run integration/compat verification (existing accounts of all vintages
-  load and sync; cross-device profile + push). Note: the coordinator-status
-  kick is a single `UpdateCoordinatorStatus` on Run (v1 kicked per shareable
-  controller Start); the deletion driver enumerates via `AllSpaceIds()` from
-  the registry, which is populated by the watcher before the kick fires.
+- **Cutover: DONE (code level).** v1 orchestration is removed (service, load,
+  create, join, waiter, watcher, dedupqueue, spacefactory, the five controller
+  types, spaceprocess mode/loader/offloader/joiner/initial, spaceoffloader,
+  syncstopper). Package `space` is now a thin façade: the v1 `Service`
+  interface verbatim (so the 24 files using `space/mock_space` need no
+  regeneration), the error set aliased to spacev2's values, and
+  `New() = spacev2.New()`. spacev2 owns CName `client.space`.
+  `core/anytype/bootstrap.go` no longer registers spacefactory. The reused
+  pipeline components (`spacestatus`, `spaceloader`+`builder` (interface
+  seams), `aclobjectmanager`, `participantwatcher`, `aclnotifications`,
+  `migration`, `personalmigration`, `dependencies`, `objectprovider`) stay
+  under `space/internal/`. Note: the coordinator-status kick is a single
+  `UpdateCoordinatorStatus` on Run (v1 kicked per shareable controller
+  Start); the deletion driver enumerates via registry-backed `AllSpaceIds()`,
+  populated by the watcher before the kick fires.
+- **Remaining: runtime verification.** All unit suites pass (`go build ./...`,
+  `go vet`, `./space/...`, `./core/anytype/...`, consumer suites); what is NOT
+  yet verified is a real end-to-end run: existing accounts of all vintages
+  (new / migrated / joined / streamable / one-to-one) loading + syncing,
+  cross-device profile + push, lazy mode against a real client. Do that before
+  merging.

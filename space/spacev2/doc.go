@@ -7,6 +7,8 @@ package spacev2
 
 import "github.com/anyproto/any-sync/app/logger"
 
-const CName = "client.spacev2"
+// CName is the registered component name; consumers resolve the space
+// service under the same name v1 used.
+const CName = "client.space"
 
 var log = logger.NewNamed(CName)
