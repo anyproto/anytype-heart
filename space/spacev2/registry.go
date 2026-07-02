@@ -158,14 +158,21 @@ func (r *registry) ensure(ctx context.Context, spaceId string, build builderFunc
 	return ctrl, err
 }
 
-// addStatic registers an already-started controller (marketplace).
+// addStatic registers an already-started controller (marketplace). Safe over a
+// placeholder (resolves its waiters) or a failed/ready entry (their channel was
+// already closed by the completing ensure); must not race an in-flight build —
+// that channel belongs to its ensure.
 func (r *registry) addStatic(spaceId string, ctrl SpaceController) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	e := r.entryFor(spaceId)
+	prev := e.state
 	e.state = stateReady
 	e.ctrl = ctrl
-	close(e.ready)
+	e.err = nil
+	if prev == statePlaceholder {
+		close(e.ready)
+	}
 }
 
 func (r *registry) all() []SpaceController {

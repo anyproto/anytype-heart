@@ -3,12 +3,15 @@ package spacev2
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
 	"github.com/anyproto/any-sync/commonspace/object/accountdata"
+	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -232,6 +235,63 @@ func TestService_Run(t *testing.T) {
 		assert.Equal(t, 1, fx.provider.createCalls)
 		assert.Equal(t, 0, fx.provider.loadCalls)
 	})
+}
+
+func TestService_ApplyOnExistingController(t *testing.T) {
+	t.Run("subsequent events drive Update, not a rebuild", func(t *testing.T) {
+		// given: a ready controller in the registry
+		s := &service{registry: newRegistry()}
+		s.ctx, s.ctxCancel = context.WithCancel(context.Background())
+		defer s.ctxCancel()
+		fake := &fakeController{spaceId: "spaceA"}
+		s.registry.addStatic("spaceA", fake)
+
+		// when: a watcher event arrives for it
+		s.onSpaceStatusUpdated(spaceViewStatus{spaceId: "spaceA", accountStatus: spaceinfo.AccountStatusActive})
+
+		// then: the live controller is updated (§9.2: Update re-reads live state)
+		require.Eventually(t, func() bool {
+			return fake.updateCount() == 1
+		}, time.Second, 5*time.Millisecond)
+	})
+}
+
+func TestService_ViewUpdateReachesController(t *testing.T) {
+	t.Run("a SpaceView detail change flows through the subscription to Update", func(t *testing.T) {
+		// given: one space view replayed at startup
+		spaceId := "space1.1"
+		fx := newFixture(t, fixtureOptions{
+			storeObjects: []objectstore.TestObject{
+				givenSpaceViewObject("view1", spaceId, spaceinfo.AccountStatusActive),
+			},
+		})
+		require.Eventually(t, func() bool {
+			state, err := registryEntryState(fx.registry, spaceId)
+			return state == stateFailed && errors.Is(err, errBuilderNotImplemented)
+		}, 2*time.Second, 10*time.Millisecond)
+
+		// and: its controller now exists (simulating the M3 builder result)
+		fake := &fakeController{spaceId: spaceId}
+		fx.registry.addStatic(spaceId, fake)
+
+		// when: the view's account status changes in the store (UpdateKeys path)
+		fx.objectStore.AddObjects(t, testTechSpaceId, []objectstore.TestObject{
+			givenSpaceViewObject("view1", spaceId, spaceinfo.AccountStatusDeleted),
+		})
+
+		// then: the update reaches the existing controller
+		require.Eventually(t, func() bool {
+			return fake.updateCount() >= 1
+		}, 2*time.Second, 10*time.Millisecond)
+	})
+}
+
+func TestConvertSpaceError(t *testing.T) {
+	// the documented error set is a caller-facing contract (§5.1)
+	assert.ErrorIs(t, convertSpaceError(fmt.Errorf("wrap: %w", spacesyncproto.ErrSpaceIsDeleted)), ErrSpaceDeleted)
+	assert.ErrorIs(t, convertSpaceError(fmt.Errorf("wrap: %w", spacestorage.ErrSpaceStorageMissing)), ErrSpaceStorageMissig)
+	other := errors.New("other")
+	assert.ErrorIs(t, convertSpaceError(other), other)
 }
 
 func TestService_Close(t *testing.T) {

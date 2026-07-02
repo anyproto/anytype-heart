@@ -18,6 +18,7 @@ type fakeController struct {
 	spaceId string
 	mu      sync.Mutex
 	closed  bool
+	updates int
 }
 
 func (f *fakeController) SpaceId() string                 { return f.spaceId }
@@ -26,7 +27,18 @@ func (f *fakeController) Mode() Mode                      { return ModeLoading }
 func (f *fakeController) WaitLoad(ctx context.Context) (clientspace.Space, error) {
 	return nil, nil
 }
-func (f *fakeController) Update() error { return nil }
+func (f *fakeController) Update() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.updates++
+	return nil
+}
+
+func (f *fakeController) updateCount() int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.updates
+}
 func (f *fakeController) SetPersistentInfo(ctx context.Context, info spaceinfo.SpacePersistentInfo) error {
 	return nil
 }
@@ -173,6 +185,41 @@ func TestRegistry_CloseAll(t *testing.T) {
 	})
 	require.ErrorIs(t, err, ErrSpaceIsClosing)
 	_, err = r.await(context.Background(), "s2")
+	require.ErrorIs(t, err, ErrSpaceIsClosing)
+}
+
+func TestRegistry_CloseAllDuringInflightBuild(t *testing.T) {
+	// given: a build blocked in flight
+	r := newRegistry()
+	buildStarted := make(chan struct{})
+	unblock := make(chan struct{})
+	built := &fakeController{spaceId: "s1"}
+	done := make(chan error, 1)
+	go func() {
+		_, err := r.ensure(context.Background(), "s1", func(ctx context.Context) (SpaceController, error) {
+			close(buildStarted)
+			<-unblock
+			return built, nil
+		})
+		done <- err
+	}()
+	<-buildStarted
+
+	// when: shutdown races the build; closeAll must not close the attempt
+	// channel (that belongs to ensure) and must not let the fresh controller
+	// outlive the shutdown
+	closeDone := make(chan struct{})
+	go func() {
+		require.NoError(t, r.closeAll(context.Background()))
+		close(closeDone)
+	}()
+	<-closeDone
+	close(unblock)
+
+	// then: ensure reports closing and the built controller was closed, not published
+	require.ErrorIs(t, <-done, ErrSpaceIsClosing)
+	assert.True(t, built.isClosed())
+	_, err := r.await(context.Background(), "s1")
 	require.ErrorIs(t, err, ErrSpaceIsClosing)
 }
 
