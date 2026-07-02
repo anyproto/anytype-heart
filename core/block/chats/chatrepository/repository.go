@@ -174,7 +174,11 @@ type Repository interface {
 	GetReadMessagesAfter(ctx context.Context, afterOrderId string, counterType chatmodel.CounterType) ([]string, error)
 	GetUnreadMessageIdsInRange(ctx context.Context, afterOrderId, beforeOrderId string, lastStateId string, counterType chatmodel.CounterType) ([]string, error)
 	GetAllUnreadMessages(ctx context.Context, counterType chatmodel.CounterType) ([]string, error)
-	GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error)
+	// IterateMessagesForIndexing streams messages created or edited at or after
+	// afterOrderId to proc one at a time; an empty afterOrderId streams the whole
+	// history. Nothing is materialized, so callers can index arbitrarily large
+	// chats with bounded memory.
+	IterateMessagesForIndexing(ctx context.Context, afterOrderId string, proc func(msg *chatmodel.Message) error) error
 	SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) ([]string, error)
 	GetMessages(ctx context.Context, req GetMessagesRequest) ([]*chatmodel.Message, error)
 	HasMyReaction(ctx context.Context, myIdentity string, messageId string, emoji string) (bool, error)
@@ -428,13 +432,36 @@ func (s *repository) GetAllUnreadMessages(ctx context.Context, counterType chatm
 	return msgIds, iter.Err()
 }
 
-func (s *repository) GetMessagesForIndexing(ctx context.Context, afterOrderId string) ([]*chatmodel.Message, error) {
-	qry := s.collection.Find(query.Or{
-		query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-		query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
-	})
+func (s *repository) IterateMessagesForIndexing(ctx context.Context, afterOrderId string, proc func(msg *chatmodel.Message) error) error {
+	var filter query.Filter
+	if afterOrderId != "" {
+		// _o.id is the creation order, _o.content the last content-edit order:
+		// both new and edited messages need reindexing
+		filter = query.Or{
+			query.Key{Path: []string{chatmodel.OrderKey, "id"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+			query.Key{Path: []string{chatmodel.OrderKey, "content"}, Filter: query.NewComp(query.CompOpGte, afterOrderId)},
+		}
+	}
+	iter, err := s.collection.Find(filter).Sort(ascOrder).Iter(ctx)
+	if err != nil {
+		return fmt.Errorf("init iterator: %w", err)
+	}
+	defer iter.Close()
 
-	return s.queryMessages(ctx, qry)
+	for iter.Next() {
+		doc, err := iter.Doc()
+		if err != nil {
+			return fmt.Errorf("get doc: %w", err)
+		}
+		msg, err := chatmodel.UnmarshalMessage(doc.Value())
+		if err != nil {
+			return fmt.Errorf("unmarshal message: %w", err)
+		}
+		if err = proc(msg); err != nil {
+			return fmt.Errorf("process message: %w", err)
+		}
+	}
+	return iter.Err()
 }
 
 func (r *repository) SetReadFlag(ctx context.Context, chatObjectId string, msgIds []string, counterType chatmodel.CounterType, value bool) ([]string, error) {
