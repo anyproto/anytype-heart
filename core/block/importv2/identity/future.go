@@ -74,6 +74,27 @@ func (s *Service) CompleteFile(sourceKey, id string, err error) {
 	}
 }
 
+// ResolveRef resolves any reference by source key: immediate for minted,
+// matched and derived entries, future-waiting for file entries. Returns
+// found=false for unknown keys; a non-nil error means the wait was cancelled
+// or the file's upload failed.
+func (s *Service) ResolveRef(ctx context.Context, sourceKey string) (id string, found bool, err error) {
+	s.mu.RLock()
+	e, ok := s.entries[sourceKey]
+	s.mu.RUnlock()
+	if !ok {
+		return "", false, nil
+	}
+	if e.mode != entryFile {
+		return e.id, true, nil
+	}
+	id, err = s.ResolveFile(ctx, sourceKey)
+	if err != nil {
+		return "", true, err
+	}
+	return id, true, nil
+}
+
 // ResolveFile waits (ctx-aware) for a file object's final id. A reference to
 // a never-registered file key is a converter contract violation
 // (use-before-definition) and returns an invariant issue instead of hanging.
