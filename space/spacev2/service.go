@@ -122,6 +122,11 @@ type service struct {
 	spaceNameGetter     objectstore.SpaceNameGetter
 	spaceLoaderListener aclobjectmanager.SpaceLoaderListener
 	techProvider        techSpaceProvider
+	marketplace         SpaceController
+
+	// createFirstSpaceHook is a test seam until the M3 create() implementation
+	// (spaceCore.Create + shareable controller) replaces it.
+	createFirstSpaceHook func(ctx context.Context) error
 
 	techSpace      *clientspace.TechSpace
 	techSpaceReady chan struct{}
@@ -180,6 +185,9 @@ func (s *service) Init(a *app.App) (err error) {
 	if s.techProvider == nil { // tests pre-set a fake before Init
 		s.techProvider = newTechProvider(a, s.spaceCore, s.personalSpaceId)
 	}
+	if s.marketplace == nil { // tests pre-set a fake before Init
+		s.marketplace = newMarketplaceController(a, s.personalSpaceId)
+	}
 	s.registry = newRegistry()
 	s.techSpaceReady = make(chan struct{})
 	s.ctx, s.ctxCancel = context.WithCancel(context.Background())
@@ -189,13 +197,130 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Name() (name string) { return CName }
 
-// Run is wired in the M2 Run/Close task; nil keeps test apps startable.
-func (s *service) Run(ctx context.Context) error   { return nil }
-func (s *service) Close(ctx context.Context) error { return nil }
+func (s *service) Run(ctx context.Context) (err error) {
+	// TODO(M4): defer coordinator status poll kick (updater.UpdateCoordinatorStatus)
+	// and the AutoJoinStream branch.
+	if err = s.initMarketplaceSpace(ctx); err != nil {
+		return fmt.Errorf("init marketplace space: %w", err)
+	}
+	if !s.newAccount {
+		// v1 parity: only initAccount reports the marketplace to the FT indexer.
+		s.spaceLoaderListener.OnSpaceLoad(addr.AnytypeMarketplaceWorkspace)
+	}
+	if err = s.resolveTechSpace(ctx); err != nil {
+		return err
+	}
+	if s.newAccount {
+		if err = s.createFirstSpace(ctx); err != nil {
+			return fmt.Errorf("create first space: %w", err)
+		}
+	}
+	// TODO(M5): computeLazyMode + deferred backlog drain goroutine.
+	if err = s.watcher.Run(); err != nil {
+		return fmt.Errorf("run watcher: %w", err)
+	}
+	// Sync starts only after the watcher is running (v1 ordering: replayed
+	// SpaceView events must not race the subscription setup).
+	s.techSpace.StartSync()
+	// Persist the network id only after a successful space init (§8: the
+	// mismatch guard corrupts if persisted unconditionally).
+	if err = s.config.PersistAccountNetworkId(); err != nil {
+		log.Error("persist network id to config", zapError(err))
+	}
+	return nil
+}
 
-// onSpaceStatusUpdated is the unidirectional apply path (statusApplier);
-// completed in the M2 Run/Close task.
-func (s *service) onSpaceStatusUpdated(status spaceViewStatus) {}
+func (s *service) initMarketplaceSpace(ctx context.Context) error {
+	if err := s.marketplace.Start(ctx); err != nil {
+		return fmt.Errorf("start marketplace controller: %w", err)
+	}
+	s.registry.addStatic(addr.AnytypeMarketplaceWorkspace, s.marketplace)
+	return nil
+}
+
+// createFirstSpace creates the account's first space (v1: create(ctx, nil) —
+// spaceCore.Create with a random id, NOT the deterministic personal space).
+// The real implementation lands with the M3 controllers milestone.
+func (s *service) createFirstSpace(ctx context.Context) error {
+	if s.createFirstSpaceHook != nil {
+		return s.createFirstSpaceHook(ctx)
+	}
+	return errNotImplemented
+}
+
+func (s *service) Close(ctx context.Context) error {
+	// Ordering is load-bearing (§9): cancel the service ctx BEFORE isClosing so
+	// in-flight applies observe a canceled ctx, then refuse new work.
+	if s.ctxCancel != nil {
+		s.ctxCancel()
+	}
+	s.isClosing.Store(true)
+	if s.registry != nil {
+		if err := s.registry.closeAll(ctx); err != nil {
+			log.Error("close controllers", zapError(err))
+		}
+	}
+	if s.techSpace != nil {
+		if err := s.techSpace.Close(ctx); err != nil {
+			log.Error("close tech space", zapError(err))
+		}
+	}
+	if s.watcher != nil {
+		return s.watcher.Close()
+	}
+	return nil
+}
+
+// onSpaceStatusUpdated is the unidirectional apply path: every SpaceView
+// change (local or synced) lands here, and this is the ONLY place controllers
+// are built. Runs on its own goroutine per event (§9.2: a slow build must not
+// head-of-line-block other spaces); per-space ordering comes from the entry
+// work lock.
+func (s *service) onSpaceStatusUpdated(status spaceViewStatus) {
+	if s.isClosing.Load() {
+		return
+	}
+	go func() {
+		lock := s.registry.workLock(status.spaceId)
+		lock.Lock()
+		defer lock.Unlock()
+		if s.isClosing.Load() {
+			return
+		}
+		// TODO(M4): remote-deleted branch — RemoteStatusDeleted flips
+		// AccountStatus to Deleted (+ participant-remove notification) through
+		// the SpaceView, never by driving the controller directly (§9.3).
+		s.applySpaceStatus(status)
+	}()
+}
+
+func (s *service) applySpaceStatus(status spaceViewStatus) {
+	info := statusToInfo(status)
+	ctrl, err := s.registry.ensure(s.ctx, status.spaceId, s.builderFor(info))
+	if err != nil {
+		if !errors.Is(err, ErrSpaceIsClosing) {
+			log.Warn("build space controller", zapSpaceId(status.spaceId), zapError(err))
+		}
+		return
+	}
+	// Update re-reads the LIVE SpaceView status, not this snapshot (§9.2: the
+	// watcher does not order per-space updates; the live read is what keeps
+	// the mode decision correct).
+	if err = ctrl.Update(); err != nil {
+		log.Warn("update space controller", zapSpaceId(status.spaceId), zapError(err))
+	}
+}
+
+var errBuilderNotImplemented = errors.New("spacev2: controller builder not implemented (M3)")
+
+// builderFor dispatches persistent info to a controller constructor (v1
+// load.go:80-86: personal / shareable / streamable). The dispatch arrives with
+// the M3 controllers milestone; until then every build fails retryably.
+func (s *service) builderFor(info spaceinfo.SpacePersistentInfo) builderFunc {
+	return func(ctx context.Context) (SpaceController, error) {
+		return nil, errBuilderNotImplemented
+	}
+}
 
 func getRepKey(spaceId string) (uint64, error) {
 	sepIdx := strings.Index(spaceId, ".")
