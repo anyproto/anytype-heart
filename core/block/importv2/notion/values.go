@@ -11,8 +11,10 @@ import (
 )
 
 // iconValue is a page/database/callout icon: emoji, custom emoji, or file.
+// The file_upload variant carries only an upload id (no fetchable URL) and
+// degrades with a warning at the call sites via fileUrl() == "".
 type iconValue struct {
-	Type     string `json:"type"` // emoji | external | file | custom_emoji
+	Type     string `json:"type"` // emoji | external | file | custom_emoji | file_upload
 	Emoji    string `json:"emoji"`
 	External *struct {
 		Url string `json:"url"`
@@ -102,8 +104,11 @@ func setTimestamps(details *domain.Details, createdTime, lastEditedTime string) 
 }
 
 // parseNotionDate converts a date value to a unix timestamp, honoring the
-// time zone. Malformed dates return an error (v1 silently imported them as
-// epoch 0) — the caller reports a warning and omits the detail.
+// time zone. The API contract: when an IANA time_zone is set, start/end
+// carry NO UTC offset (e.g. "2020-12-08T12:00:00") — the offset-less
+// layouts interpret those in the given zone. Malformed dates return an
+// error (v1 silently imported them as epoch 0) — the caller reports a
+// warning and omits the detail.
 func parseNotionDate(value string, timeZone string) (int64, bool, error) {
 	location := time.UTC
 	if timeZone != "" {
@@ -113,6 +118,11 @@ func parseNotionDate(value string, timeZone string) (int64, bool, error) {
 	}
 	if parsed, err := time.Parse(time.RFC3339, value); err == nil {
 		return parsed.Unix(), true, nil
+	}
+	for _, layout := range []string{"2006-01-02T15:04:05.999", "2006-01-02T15:04:05"} {
+		if parsed, err := time.ParseInLocation(layout, value, location); err == nil {
+			return parsed.Unix(), true, nil
+		}
 	}
 	if parsed, err := time.ParseInLocation("2006-01-02", value, location); err == nil {
 		return parsed.Unix(), false, nil

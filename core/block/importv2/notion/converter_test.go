@@ -74,9 +74,10 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 	routes := map[string]string{}
 
 	searchPage1 := `{"results":[
-		{"object":"database","id":"db1","parent":{"type":"workspace","workspace":true},
+		{"object":"data_source","id":"db1","parent":{"type":"database_id","database_id":"realdb1"},
+		 "database_parent":{"type":"workspace","workspace":true},
 		 "title":[{"plain_text":"Tasks","type":"text"}]},
-		{"object":"page","id":"p1","parent":{"type":"database_id","database_id":"db1"},
+		{"object":"page","id":"p1","parent":{"type":"data_source_id","data_source_id":"db1"},
 		 "properties":{"Name":{"type":"title","title":[{"plain_text":"Alpha","type":"text"}]}}}
 	],"has_more":true,"next_cursor":"cursor-2"}`
 	searchPage2 := `{"results":[
@@ -88,7 +89,7 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}}
 	],"has_more":false,"next_cursor":null}`
 
-	routes["GET /databases/db1"] = `{
+	routes["GET /data_sources/db1"] = `{
 		"id":"db1","title":[{"plain_text":"Tasks","type":"text"}],
 		"created_time":"2024-01-01T10:00:00.000Z","last_edited_time":"2024-01-02T10:00:00.000Z",
 		"properties":{

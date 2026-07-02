@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 
@@ -101,8 +102,13 @@ func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.
 	blockIds := map[string]struct{}{}
 	blocks, err := c.fetchBlockTree(ctx, stub.Id, blockIds, sink)
 	if err != nil {
-		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch blocks: %w", err)))
-		return nil
+		if ctx.Err() != nil {
+			return err
+		}
+		// The page's properties and title are already in hand — import them
+		// with a placeholder body instead of dropping the whole page.
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, stub.Id, fmt.Sprintf("page content could not be fetched: %s", err)))
+		blocks = []notionBlock{{Id: stub.Id + "-lostcontent", Type: "unreadable"}}
 	}
 	modelBlocks, err := c.mapBlocks(ctx, mapContext{pageId: stub.Id, blockIds: blockIds}, blocks, sink)
 	if err != nil {
@@ -247,8 +253,12 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, val
 		keys, err := c.optionKeys(ctx, def, []selectOption{*value.Status}, sink)
 		return domain.StringList(keys), nil, err
 	case "people":
-		options := make([]selectOption, 0, len(value.People))
-		for _, person := range value.People {
+		people, err := c.completePeople(ctx, pageId, value)
+		if err != nil {
+			return domain.Invalid(), nil, err
+		}
+		options := make([]selectOption, 0, len(people))
+		for _, person := range people {
 			if person.Name == "" {
 				// v1 left the raw notion user id dangling in the detail.
 				sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
@@ -409,6 +419,14 @@ func (c *Converter) rollupDetail(pageId, name string, rollup *rollupValue, sink 
 			return domain.Int64(start), nil, nil
 		}
 		return domain.Invalid(), nil, nil
+	case "incomplete":
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
+			fmt.Sprintf("rollup %q aggregates more than 25 relations and was returned incomplete; value omitted", name)))
+		return domain.Invalid(), nil, nil
+	case "unsupported":
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, pageId,
+			fmt.Sprintf("rollup %q uses an aggregation the API does not expose; value omitted", name)))
+		return domain.Invalid(), nil, nil
 	case "array":
 		parts := make([]string, 0, len(rollup.Array))
 		for _, item := range rollup.Array {
@@ -436,6 +454,52 @@ func scalarText(value propertyValue) string {
 		}
 	case "checkbox":
 		return fmt.Sprintf("%t", value.Checkbox)
+	case "select":
+		if value.Select != nil {
+			return value.Select.Name
+		}
+	case "status":
+		if value.Status != nil {
+			return value.Status.Name
+		}
+	case "multi_select":
+		names := make([]string, 0, len(value.MultiSelect))
+		for _, option := range value.MultiSelect {
+			names = append(names, option.Name)
+		}
+		return strings.Join(names, ", ")
+	case "people":
+		names := make([]string, 0, len(value.People))
+		for _, person := range value.People {
+			if person.Name != "" {
+				names = append(names, person.Name)
+			}
+		}
+		return strings.Join(names, ", ")
+	case "date":
+		if value.Date != nil {
+			if value.Date.End != "" {
+				return value.Date.Start + " → " + value.Date.End
+			}
+			return value.Date.Start
+		}
+	case "formula":
+		if value.Formula != nil {
+			switch value.Formula.Type {
+			case "string":
+				if value.Formula.String != nil {
+					return *value.Formula.String
+				}
+			case "number":
+				if value.Formula.Number != nil {
+					return trimFloat(*value.Formula.Number)
+				}
+			case "boolean":
+				if value.Formula.Boolean != nil {
+					return fmt.Sprintf("%t", *value.Formula.Boolean)
+				}
+			}
+		}
 	}
 	return ""
 }
@@ -513,9 +577,27 @@ func (c *Converter) completeRelationRefs(ctx context.Context, pageId string, val
 }
 
 type propertyItem struct {
-	Type     string   `json:"type"`
-	RichText richText `json:"rich_text"`
-	Relation idRef    `json:"relation"`
+	Type     string    `json:"type"`
+	RichText richText  `json:"rich_text"`
+	Relation idRef     `json:"relation"`
+	People   userValue `json:"people"`
+}
+
+// completePeople de-truncates a people property past the page object's
+// 25-item cap via the property-item endpoint.
+func (c *Converter) completePeople(ctx context.Context, pageId string, value propertyValue) ([]userValue, error) {
+	if len(value.People) < propertyItemsThreshold {
+		return value.People, nil
+	}
+	items, err := c.fetchPropertyItems(ctx, pageId, value.Id)
+	if err != nil {
+		return value.People, nil // keep the truncated value
+	}
+	people := make([]userValue, 0, len(items))
+	for _, item := range items {
+		people = append(people, item.People)
+	}
+	return people, nil
 }
 
 type propertyItemsResponse struct {
@@ -530,9 +612,10 @@ func (c *Converter) fetchPropertyItems(ctx context.Context, pageId, propertyId s
 	var items []propertyItem
 	cursor := ""
 	for {
-		path := fmt.Sprintf("/pages/%s/properties/%s?page_size=100", pageId, propertyId)
+		path := fmt.Sprintf("/pages/%s/properties/%s?page_size=100", pageId, url.PathEscape(propertyId))
 		if cursor != "" {
-			path += "&start_cursor=" + cursor
+			// Cursors are opaque: escape rather than assume URL-safety.
+			path += "&start_cursor=" + url.QueryEscape(cursor)
 		}
 		var response propertyItemsResponse
 		if err := c.client.Request(ctx, http.MethodGet, path, nil, &response); err != nil {

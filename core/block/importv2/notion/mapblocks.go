@@ -149,28 +149,69 @@ func (c *Converter) mapBlock(ctx context.Context, mctx mapContext, block *notion
 }
 
 // mapText renders a text-like block. Children (incl. toggleable headings —
-// v1 flattened those to siblings) nest under the block.
+// v1 flattened those to siblings) nest under the primary block. Inline
+// equations split the text in place, keeping their position.
 func (c *Converter) mapText(ctx context.Context, mctx mapContext, block *notionBlock, style model.BlockContentTextStyle, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload textPayload
 	if err := block.decode(&payload); err != nil {
 		return c.unsupported(block, sink), nil
 	}
-	rendered := c.renderRichText(payload.RichText)
-	text := &model.BlockContentText{
-		Text:    rendered.text,
-		Style:   style,
-		Checked: payload.Checked,
-		Marks:   &model.BlockContentTextMarks{Marks: rendered.marks},
+	children, err := c.mapBlocks(ctx, mctx, block.children, sink)
+	if err != nil {
+		return nil, err
 	}
-	modelBlock := &model.Block{Id: block.Id, Content: &model.BlockContentOfText{Text: text}}
-	if payload.Color != "" && payload.Color != "default" {
-		if strings.Contains(payload.Color, "background") {
-			modelBlock.BackgroundColor = anytypeColor(payload.Color)
-		} else {
-			text.Color = anytypeColor(payload.Color)
+
+	makeText := func(piece renderedPiece, primary bool, index int) *model.Block {
+		text := &model.BlockContentText{
+			Text:  piece.text,
+			Style: model.BlockContentText_Paragraph,
+			Marks: &model.BlockContentTextMarks{Marks: piece.marks},
 		}
+		modelBlock := &model.Block{Content: &model.BlockContentOfText{Text: text}}
+		if primary {
+			modelBlock.Id = block.Id
+			text.Style = style
+			text.Checked = payload.Checked
+			if payload.Color != "" && payload.Color != "default" {
+				if strings.Contains(payload.Color, "background") {
+					modelBlock.BackgroundColor = anytypeColor(payload.Color)
+				} else {
+					text.Color = anytypeColor(payload.Color)
+				}
+			}
+		} else {
+			modelBlock.Id = fmt.Sprintf("%s-t%d", block.Id, index)
+		}
+		return modelBlock
 	}
+
+	pieces := c.renderRichTextPieces(payload.RichText)
+	var nodes []*mappedBlock
+	var primary *mappedBlock
+	for i, piece := range pieces {
+		if piece.equation != "" {
+			nodes = append(nodes, latexBlock(fmt.Sprintf("%s-eq-%d", block.Id, i), piece.equation, model.BlockContentLatex_Latex))
+			continue
+		}
+		node := &mappedBlock{block: makeText(piece, primary == nil, i)}
+		if primary == nil {
+			primary = node
+		}
+		nodes = append(nodes, node)
+	}
+	// Pure-equation blocks with no children render as latex only; anything
+	// needing a host (children, callout icon, empty text) gets one.
+	if primary == nil {
+		if len(children) == 0 && len(nodes) > 0 && style != model.BlockContentText_Callout {
+			return nodes, nil
+		}
+		primary = &mappedBlock{block: makeText(renderedPiece{}, true, 0)}
+		nodes = append([]*mappedBlock{primary}, nodes...)
+	}
+	primary.children = children
+
 	if style == model.BlockContentText_Callout && payload.Icon != nil {
+		text := primary.block.GetText()
 		if payload.Icon.Type == "emoji" {
 			text.IconEmoji = payload.Icon.Emoji
 		} else if iconUrl := payload.Icon.fileUrl(); iconUrl != "" {
@@ -180,19 +221,6 @@ func (c *Converter) mapText(ctx context.Context, mctx mapContext, block *notionB
 			}
 			text.IconImage = sourceKey
 		}
-	}
-
-	children, err := c.mapBlocks(ctx, mctx, block.children, sink)
-	if err != nil {
-		return nil, err
-	}
-	nodes := []*mappedBlock{{block: modelBlock, children: children}}
-	for i, expression := range rendered.equations {
-		nodes = append(nodes, latexBlock(fmt.Sprintf("%s-eq-%d", block.Id, i), expression, model.BlockContentLatex_Latex))
-	}
-	// A block that was nothing but an equation renders as latex only.
-	if rendered.text == "" && len(rendered.equations) > 0 && len(children) == 0 {
-		return nodes[1:], nil
 	}
 	return nodes, nil
 }
@@ -438,7 +466,7 @@ func (c *Converter) mapChildEntity(mctx mapContext, block *notionBlock, wantData
 	}
 	var withinPage, global []string
 	for _, entity := range c.entityById {
-		if entity.IsDatabase != wantDatabase || entity.Title != payload.Title {
+		if entity.isCollectionLike() != wantDatabase || entity.Title != payload.Title {
 			continue
 		}
 		global = append(global, entity.Id)
@@ -481,12 +509,19 @@ func (c *Converter) mapLinkToPage(block *notionBlock, sink importv2.Sink) ([]*ma
 	if err := block.decode(&payload); err != nil {
 		return c.unsupported(block, sink), nil
 	}
-	targetId := payload.PageId
-	if payload.Type == "database_id" {
-		targetId = payload.DatabaseId
+	targetId, resolved := "", false
+	switch payload.Type {
+	case "database_id":
+		// Blocks still reference the database, not its data sources.
+		targetId, resolved = c.resolveDatabaseRef(payload.DatabaseId)
+	default:
+		targetId = payload.PageId
+		_, resolved = c.entityById[targetId]
 	}
-	if targetId == "" {
-		return c.unsupported(block, sink), nil
+	if !resolved || targetId == "" {
+		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, block.Id,
+			"link_to_page target was not part of the import"))
+		return []*mappedBlock{textBlock(block.Id, "Unresolved link")}, nil
 	}
 	return []*mappedBlock{{block: &model.Block{
 		Id: block.Id,

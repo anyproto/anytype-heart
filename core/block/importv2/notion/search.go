@@ -15,22 +15,45 @@ import (
 
 const searchPageSize = 100
 
+// entityKind distinguishes the pass-1 stub flavors under the data-sources
+// API: collections come from data_source objects (a database owns one or
+// more of them); a bare database result is handled defensively by resolving
+// its data sources in pass 2.
+type entityKind int
+
+const (
+	kindPage entityKind = iota
+	kindDataSource
+	kindDatabase
+)
+
 // Entity is the pass-1 stub of one workspace object: everything the
 // converter retains about it between passes (small strings only).
 type Entity struct {
-	Id         string
-	IsDatabase bool
-	Title      string
-	Parent     Parent
+	Id    string
+	Kind  entityKind
+	Title string
+	// Parent is the hierarchy location: for pages the page/data-source
+	// parent; for data sources the owning database (their location parent
+	// arrives separately as database_parent).
+	Parent Parent
+	// DatabaseId is the owning database for data-source stubs — the alias
+	// child_database blocks and rich-text mentions still reference.
+	DatabaseId string
+}
+
+func (e Entity) isCollectionLike() bool {
+	return e.Kind != kindPage
 }
 
 // Parent locates an entity in the workspace hierarchy.
 type Parent struct {
-	Type       string `json:"type"` // workspace | page_id | database_id | block_id
-	PageId     string `json:"page_id"`
-	DatabaseId string `json:"database_id"`
-	BlockId    string `json:"block_id"`
-	Workspace  bool   `json:"workspace"`
+	Type         string `json:"type"` // workspace | page_id | database_id | data_source_id | block_id
+	PageId       string `json:"page_id"`
+	DatabaseId   string `json:"database_id"`
+	DataSourceId string `json:"data_source_id"`
+	BlockId      string `json:"block_id"`
+	Workspace    bool   `json:"workspace"`
 }
 
 type richText struct {
@@ -60,7 +83,7 @@ type annotations struct {
 }
 
 type mention struct {
-	Type string `json:"type"` // user | page | database | date | link_preview | custom_emoji
+	Type string `json:"type"` // user | page | database | date | link_preview | custom_emoji | template_mention
 	Page *struct {
 		Id string `json:"id"`
 	} `json:"page"`
@@ -75,7 +98,12 @@ type mention struct {
 	LinkPreview *struct {
 		Url string `json:"url"`
 	} `json:"link_preview"`
-	CustomEmoji *customEmoji `json:"custom_emoji"`
+	CustomEmoji     *customEmoji `json:"custom_emoji"`
+	TemplateMention *struct {
+		Type string `json:"type"` // template_mention_date | template_mention_user
+		Date string `json:"template_mention_date"`
+		User string `json:"template_mention_user"`
+	} `json:"template_mention"`
 }
 
 type dateValue struct {
@@ -92,11 +120,15 @@ type customEmoji struct {
 // searchResult decodes only the stub fields of one /search result; the rest
 // of the body is released with the response.
 type searchResult struct {
-	Object     string     `json:"object"`
-	Id         string     `json:"id"`
-	Parent     Parent     `json:"parent"`
-	Title      []richText `json:"title"` // databases carry the title directly
-	Properties map[string]struct {
+	Object string `json:"object"` // page | data_source | database
+	Id     string `json:"id"`
+	Parent Parent `json:"parent"`
+	// DatabaseParent is a data source's LOCATION (page/workspace); its
+	// plain parent is the owning database.
+	DatabaseParent *Parent    `json:"database_parent"`
+	Title          []richText `json:"title"` // data sources/databases carry it directly
+	Name           string     `json:"name"`  // data-source display name fallback
+	Properties     map[string]struct {
 		Type  string     `json:"type"`
 		Title []richText `json:"title"`
 	} `json:"properties"` // pages carry it in their title-type property
@@ -109,40 +141,56 @@ type searchResponse struct {
 }
 
 // crawlSearch paginates POST /search over everything the integration can
-// see, yielding one stub per entity.
-func crawlSearch(ctx context.Context, c *client.Client, yield func(Entity) error) error {
+// see, yielding one stub per entity. truncated=true reports a pagination
+// inconsistency after which the crawl stopped early — the caller surfaces
+// it as a data-loss warning instead of failing the run (a v1-observed
+// has_more+null-cursor response used to abort the whole import).
+func crawlSearch(ctx context.Context, c *client.Client, yield func(Entity) error) (truncated bool, err error) {
 	body := map[string]any{"page_size": searchPageSize}
 	for {
 		var response searchResponse
 		if err := c.Request(ctx, http.MethodPost, "/search", body, &response); err != nil {
-			return fmt.Errorf("search: %w", err)
+			return false, fmt.Errorf("search: %w", err)
 		}
 		for _, result := range response.Results {
 			entity := Entity{
-				Id:         result.Id,
-				IsDatabase: result.Object == "database",
-				Parent:     result.Parent,
-				Title:      titleOf(result),
+				Id:     result.Id,
+				Parent: result.Parent,
+				Title:  titleOf(result),
+			}
+			switch result.Object {
+			case "data_source":
+				entity.Kind = kindDataSource
+				entity.DatabaseId = result.Parent.DatabaseId
+				if result.DatabaseParent != nil {
+					entity.Parent = *result.DatabaseParent
+				}
+			case "database":
+				entity.Kind = kindDatabase
+				entity.DatabaseId = result.Id
 			}
 			if err := yield(entity); err != nil {
-				return err
+				return false, err
 			}
 		}
 		if !response.HasMore {
-			return nil
+			return false, nil
 		}
 		// v1 dereferenced next_cursor unconditionally and panicked on the
 		// (observed in the wild) has_more=true + null cursor combination.
 		if response.NextCursor == nil || *response.NextCursor == "" {
-			return fmt.Errorf("search: has_more with empty next_cursor")
+			return true, nil
 		}
 		body["start_cursor"] = *response.NextCursor
 	}
 }
 
 func titleOf(result searchResult) string {
-	if result.Object == "database" {
-		return plainText(result.Title)
+	if result.Object == "database" || result.Object == "data_source" {
+		if title := plainText(result.Title); title != "" {
+			return title
+		}
+		return result.Name
 	}
 	for _, property := range result.Properties {
 		if property.Type == "title" {

@@ -13,11 +13,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// databaseObject is the GET /databases/{id} payload subset the converter
-// uses. Fetched fresh in pass 2 (search bodies are not retained).
+// databaseObject is the GET /data_sources/{id} payload subset the converter
+// uses (the schema moved from the database to its data sources in the
+// 2025-09-03 API). Fetched fresh in pass 2 (search bodies are not retained).
 type databaseObject struct {
 	Id             string                    `json:"id"`
 	Title          []richText                `json:"title"`
+	Name           string                    `json:"name"`
 	Description    []richText                `json:"description"`
 	Icon           *iconValue                `json:"icon"`
 	Cover          *fileValue                `json:"cover"`
@@ -27,13 +29,41 @@ type databaseObject struct {
 	Properties     map[string]propertySchema `json:"properties"`
 }
 
+func (d *databaseObject) title() string {
+	if title := plainText(d.Title); title != "" {
+		return title
+	}
+	return d.Name
+}
+
 // convertDatabase emits, in order: new relation definitions, their declared
-// options, then the collection object whose members are the database's
+// options, then the collection object whose members are the data source's
 // pages (known from the pass-1 hierarchy).
 func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink importv2.Sink) error {
+	schemaId := stub.Id
+	if stub.Kind == kindDatabase {
+		// Defensive: a bare database result — resolve its first data source
+		// for the schema (search normally returns data_source objects).
+		var database struct {
+			DataSources []struct {
+				Id string `json:"id"`
+			} `json:"data_sources"`
+		}
+		if err := c.client.Request(ctx, http.MethodGet, "/databases/"+stub.Id, nil, &database); err != nil {
+			sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch database: %w", err)))
+			return nil
+		}
+		if len(database.DataSources) == 0 {
+			sink.Issue(importv2.Warning(importv2.IssueDataLoss, stub.Id, "database exposes no data sources; skipped"))
+			return nil
+		}
+		schemaId = database.DataSources[0].Id
+		c.dataSourcesByDatabase[stub.Id] = append(c.dataSourcesByDatabase[stub.Id], stub.Id)
+	}
+
 	var database databaseObject
-	if err := c.client.Request(ctx, http.MethodGet, "/databases/"+stub.Id, nil, &database); err != nil {
-		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch database: %w", err)))
+	if err := c.client.Request(ctx, http.MethodGet, "/data_sources/"+schemaId, nil, &database); err != nil {
+		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch data source: %w", err)))
 		return nil
 	}
 
@@ -54,6 +84,12 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		if property.Type == "title" {
 			continue // the title property is the object name, not a relation
 		}
+		if property.Type == "formula" || property.Type == "rollup" {
+			// Their format is value-typed (a date formula must become a date
+			// relation); the first page value defines the relation instead
+			// of the schema committing a generic text format.
+			continue
+		}
 		if property.Type == "verification" {
 			sink.Issue(importv2.Warning(importv2.IssueDataLoss, stub.Id,
 				fmt.Sprintf("property %q (verification) has no anytype counterpart and was skipped", name)))
@@ -72,7 +108,7 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		details.Set(domain.RelationKey(def.key), zeroValueOf(def.format))
 	}
 
-	object, err := c.factory.MakeCollection(plainText(database.Title), c.databaseMembers(stub.Id))
+	object, err := c.factory.MakeCollection(database.title(), c.databaseMembers(stub.Id, schemaId))
 	if err != nil {
 		return fmt.Errorf("make database collection: %w", err)
 	}
@@ -83,7 +119,7 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 	for key, value := range details.Iterate() {
 		object.Payload.Details.Set(key, value)
 	}
-	object.Payload.Details.SetString(bundle.RelationKeyName, plainText(database.Title))
+	object.Payload.Details.SetString(bundle.RelationKeyName, database.title())
 	if description := plainText(database.Description); description != "" {
 		object.Payload.Details.SetString(bundle.RelationKeyDescription, description)
 	}
@@ -138,12 +174,21 @@ func schemaOptions(property propertySchema) []selectOption {
 	}
 }
 
-// databaseMembers lists the database's pages in stream (search) order.
-func (c *Converter) databaseMembers(databaseId string) []string {
+// databaseMembers lists the data source's pages in stream (search) order.
+// Pages parent onto data_source_id under the 2025-09-03 API; the database_id
+// form is kept for defensive coverage of mixed responses.
+func (c *Converter) databaseMembers(entityId, dataSourceId string) []string {
 	var members []string
 	for _, page := range c.pages {
-		if page.Parent.Type == "database_id" && page.Parent.DatabaseId == databaseId {
-			members = append(members, page.Id)
+		switch page.Parent.Type {
+		case "data_source_id":
+			if page.Parent.DataSourceId == dataSourceId || page.Parent.DataSourceId == entityId {
+				members = append(members, page.Id)
+			}
+		case "database_id":
+			if page.Parent.DatabaseId == entityId {
+				members = append(members, page.Id)
+			}
 		}
 	}
 	return members

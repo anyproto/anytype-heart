@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 )
@@ -74,7 +75,8 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 	for {
 		path := fmt.Sprintf("/blocks/%s/children?page_size=100", blockId)
 		if cursor != "" {
-			path += "&start_cursor=" + cursor
+			// Cursors are opaque: escape rather than assume URL-safety.
+			path += "&start_cursor=" + url.QueryEscape(cursor)
 		}
 		var response blockListResponse
 		if err := c.client.Request(ctx, http.MethodGet, path, nil, &response); err != nil {
@@ -123,7 +125,16 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 		}
 		children, err := c.fetchChildren(ctx, childSource, depth+1, seenIds, sink)
 		if err != nil {
-			return nil, err
+			if ctx.Err() != nil {
+				return nil, err
+			}
+			// One unreadable subtree (e.g. a synced block whose original is
+			// not shared with the integration → 404) must not drop the
+			// whole page: degrade to a placeholder child.
+			sink.Issue(importv2.Warning(importv2.IssueDataLoss, block.Id,
+				fmt.Sprintf("children of block %s could not be fetched: %s", block.Id, err)))
+			block.children = []notionBlock{{Id: block.Id + "-lostchildren", Type: "unreadable"}}
+			continue
 		}
 		block.children = children
 	}

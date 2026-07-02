@@ -18,8 +18,11 @@ import (
 )
 
 const (
-	BaseURL    = "https://api.notion.com/v1"
-	apiVersion = "2022-06-28"
+	BaseURL = "https://api.notion.com/v1"
+	// apiVersion pins the data-sources API generation: older versions get
+	// ZERO search results for any database a user split into multiple data
+	// sources — silent, total data loss for that database and its pages.
+	apiVersion = "2025-09-03"
 
 	// requestsPerSecond follows Notion's documented average; bursts are
 	// allowed by the API, pushback is handled via Retry-After.
