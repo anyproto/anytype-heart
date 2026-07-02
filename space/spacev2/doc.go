@@ -1,0 +1,12 @@
+// Package spacev2 is the greenfield reimplementation of the space
+// orchestration layer: how spaces are brought up, tracked, paused and torn
+// down. See HANDOFF.md for scope and the compatibility boundary, DESIGN.md
+// for the architecture (per-space reconciler over live SpaceView status +
+// local demand).
+package spacev2
+
+import "github.com/anyproto/any-sync/app/logger"
+
+const CName = "client.spacev2"
+
+var log = logger.NewNamed(CName)
