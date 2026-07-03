@@ -128,13 +128,6 @@ packages:
       TechSpace:
       SpaceView:
       AccountObject:
-  github.com/anyproto/anytype-heart/space/spacefactory:
-    interfaces:
-      SpaceFactory:
-  github.com/anyproto/anytype-heart/space/internal/spacecontroller:
-    interfaces:
-      SpaceController:
-      DeleteController:
   github.com/anyproto/anytype-heart/space/internal/components/spaceloader:
     interfaces:
       SpaceLoader:

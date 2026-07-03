@@ -133,7 +133,6 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migratorfinisher"
 	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
-	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/virtualspaceservice"
 	"github.com/anyproto/anytype-heart/util/builtinobjects"
 	"github.com/anyproto/anytype-heart/util/builtintemplate"
@@ -293,7 +292,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(chats.New()).
 		Register(personalfavorites.New()).
 		Register(sourceimpl.New()).
-		Register(spacefactory.New()).
 		Register(space.New()).
 		Register(idderiverimpl.New()).
 		Register(deletioncontroller.New()).
