@@ -58,7 +58,9 @@ const (
 	// silently index only a recent suffix of each chat — an incoming "_all"
 	// reindex entry lost to a pending real order id in the queue merge (fixed in
 	// AddChatMessageToIndexQueue). Re-run the now-correct backfill once.
-	ForceReindexChatsFulltextCounter int32 = 2
+	// Bumped to 3 (GO-6758): re-run the full chat-message backfill on the new
+	// streamed reindex path so histories missed by earlier builds are recovered.
+	ForceReindexChatsFulltextCounter int32 = 3
 	ForceReindexDiscussionsCounter   int32 = 1
 
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
