@@ -104,6 +104,48 @@ func TestDependencies(t *testing.T) {
 		assert.Equal(t, bundle.RelationKeyName.String(), amend.Details[0].Key)
 	})
 
+	t.Run("strip-by-default keys are stripped from deps even when the parent requests them", func(t *testing.T) {
+		fx := newEngineFixture(t)
+		alice := givenPerson("alice", "Alice")
+		alice[bundle.RelationKeySyncStatus] = domain.Int64(1)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			givenAssigneeRelation(),
+			alice,
+			givenTask("task1", "fix bug", "alice"),
+		})
+
+		// parent explicitly lists syncStatus for its own rows
+		req := givenDepRequest()
+		req.Keys = append(req.Keys, bundle.RelationKeySyncStatus.String())
+		resp, err := fx.Search(req)
+		require.NoError(t, err)
+
+		// the dependency snapshot for alice must NOT carry syncStatus
+		require.Len(t, resp.Dependencies, 1)
+		assert.Equal(t, "alice", resp.Dependencies[0].GetString(bundle.RelationKeyId))
+		_, hasSync := resp.Dependencies[0].TryGet(bundle.RelationKeySyncStatus)
+		assert.False(t, hasSync, "dep snapshot leaked syncStatus")
+
+		// a syncStatus-only change to the dependency emits nothing
+		aliceSync := givenPerson("alice", "Alice")
+		aliceSync[bundle.RelationKeySyncStatus] = domain.Int64(2)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{aliceSync})
+		assertNoMessages(t, resp.Output)
+
+		// a real (requested, non-stripped) change still arrives, without sync keys
+		aliceRenamed := givenPerson("alice", "Alice Renamed")
+		aliceRenamed[bundle.RelationKeySyncStatus] = domain.Int64(3)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{aliceRenamed})
+		msgs := waitMessages(t, resp.Output, 1)
+		require.Len(t, msgs, 1)
+		amend := msgs[0].GetObjectDetailsAmend()
+		require.NotNil(t, amend)
+		assert.Equal(t, "alice", amend.Id)
+		assert.Equal(t, []string{"dep-parent/dep"}, amend.SubIds)
+		require.Len(t, amend.Details, 1)
+		assert.Equal(t, bundle.RelationKeyName.String(), amend.Details[0].Key)
+	})
+
 	t.Run("changing a member's dep value swaps the tracked dependency", func(t *testing.T) {
 		fx := newEngineFixture(t)
 		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{

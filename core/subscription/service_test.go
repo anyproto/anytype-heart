@@ -556,3 +556,68 @@ func TestBroadcastSubscription(t *testing.T) {
 	}
 	assert.Equal(t, want, events[0].Messages)
 }
+
+func TestStrippedKeysInvariant(t *testing.T) {
+	syncFilter := []database.FilterRequest{{
+		RelationKey: bundle.RelationKeyResolvedLayout,
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       domain.Int64(int64(model.ObjectType_participant)),
+	}}
+
+	t.Run("syncStatus not requested: change emits no event", func(t *testing.T) {
+		fx := newEngineFixture(t)
+
+		resp, err := fx.Search(SubscribeRequest{
+			SpaceId:           testSpaceId,
+			SubId:             "sub-no-sync",
+			Internal:          true,
+			NoDepSubscription: true,
+			Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeyName.String()},
+			Filters:           syncFilter,
+		})
+		require.NoError(t, err)
+
+		obj := givenParticipant("p1")
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+		waitMessages(t, resp.Output, 3) // drain Set, Add, Counters
+
+		obj[bundle.RelationKeySyncStatus] = domain.Int64(2)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+
+		assertNoMessages(t, resp.Output)
+	})
+
+	t.Run("syncStatus requested: change emits amend", func(t *testing.T) {
+		fx := newEngineFixture(t)
+
+		resp, err := fx.Search(SubscribeRequest{
+			SpaceId:           testSpaceId,
+			SubId:             "sub-with-sync",
+			Internal:          true,
+			NoDepSubscription: true,
+			Keys:              []string{bundle.RelationKeyId.String(), bundle.RelationKeySyncStatus.String()},
+			Filters:           syncFilter,
+		})
+		require.NoError(t, err)
+
+		obj := givenParticipant("p1")
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+		waitMessages(t, resp.Output, 3) // drain Set, Add, Counters
+
+		obj[bundle.RelationKeySyncStatus] = domain.Int64(2)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{obj})
+
+		want := []*pb.EventMessage{
+			event.NewMessage(testSpaceId, &pb.EventMessageValueOfObjectDetailsAmend{
+				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+					Id: "p1",
+					Details: []*pb.EventObjectDetailsAmendKeyValue{
+						{Key: bundle.RelationKeySyncStatus.String(), Value: pbtypes.Int64(2)},
+					},
+					SubIds: []string{"sub-with-sync"},
+				},
+			}),
+		}
+		assert.Equal(t, want, waitMessages(t, resp.Output, 1))
+	})
+}
