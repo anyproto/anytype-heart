@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/accountservice"
@@ -101,8 +102,13 @@ type service struct {
 
 	preloadOnce sync.Once
 	preloadCh   chan struct{} // closed by triggerPreload (lazy drain)
-	ctx         context.Context
-	ctxCancel   context.CancelFunc
+	// lazyReleased flips once the deferred backlog is drained: from then on
+	// lazy mode is over and every discovery — including SpaceViews that first
+	// appear later in the session (shared/created on another device) — is
+	// demanded eagerly, matching v1's collapse-to-eager `releasing` flag.
+	lazyReleased atomic.Bool
+	ctx          context.Context
+	ctxCancel    context.CancelFunc
 }
 
 // The deletion controller drives remote-status updates through this service
@@ -372,9 +378,10 @@ func (s *service) triggerPreload() {
 // wantedOnDiscovery is the demand policy for spaces discovered via the
 // watcher: eager mode loads everything; lazy mode (a preferred space is
 // configured) loads only the preferred space until the deferred backlog is
-// drained (preload RPC / safety timer). Get/Wait promote on demand.
+// drained (preload RPC / safety timer), after which discovery is eager again.
+// Get/Wait promote on demand.
 func (s *service) wantedOnDiscovery(spaceId string) bool {
-	if !s.lazyMode {
+	if !s.lazyMode || s.lazyReleased.Load() {
 		return true
 	}
 	return spaceId == s.preferredSpaceId
@@ -390,6 +397,13 @@ func (s *service) drainDeferredLater() {
 	case <-s.ctx.Done():
 		return
 	}
+	// End lazy mode BEFORE sweeping: an event racing the sweep either sees
+	// lazyReleased (demanded via wantedOnDiscovery) or its controller is
+	// already registered and caught by the sweep — no discovery can slip
+	// through undemanded. Without this flip, a space first discovered after
+	// the drain would never background-load or sync (v1 collapsed to eager
+	// after the first release via its `releasing` flag).
+	s.lazyReleased.Store(true)
 	for _, ctrl := range s.registry.all() {
 		ctrl.SetWanted(true)
 	}

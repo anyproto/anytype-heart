@@ -324,6 +324,28 @@ func TestAPIPreloadDrainsDeferred(t *testing.T) {
 	}, time.Second, time.Millisecond)
 }
 
+func TestAPILazyRevertsToEagerAfterDrain(t *testing.T) {
+	// given: lazy mode whose backlog has been drained
+	fx := newAPIFixture(t)
+	fx.svc.lazyMode = true
+	fx.svc.preferredSpaceId = "preferredSpace"
+	fx.svc.onSpaceViewEvent(spaceViewEvent{spaceId: "earlySpace", accountStatus: spaceinfo.AccountStatusActive})
+	go fx.svc.drainDeferredLater()
+	require.NoError(t, fx.svc.PreloadRemainingSpaces(context.Background()))
+	require.Eventually(t, func() bool {
+		return fx.svc.registry.get("earlySpace").Wanted()
+	}, time.Second, time.Millisecond)
+
+	// when: a space is discovered only after the drain (e.g. shared to this
+	// account from another device mid-session)
+	fx.svc.onSpaceViewEvent(spaceViewEvent{spaceId: "lateSpace", accountStatus: spaceinfo.AccountStatusActive})
+
+	// then: it is demanded immediately — lazy mode reverted to eager
+	ctrl := fx.svc.registry.get("lateSpace")
+	require.NotNil(t, ctrl)
+	assert.True(t, ctrl.Wanted())
+}
+
 func TestAPIPreferredBrokenReleasesBacklog(t *testing.T) {
 	// given
 	fx := newAPIFixture(t)
