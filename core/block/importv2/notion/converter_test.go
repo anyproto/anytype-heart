@@ -123,7 +123,7 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		{"id":"b3","type":"heading_1","has_children":true,"heading_1":{"rich_text":[{"plain_text":"Head","type":"text"}],"is_toggleable":true}},
 		{"id":"b4","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
 		{"id":"tab1-e5f6","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true,"has_row_header":false}},
-		{"id":"cp1","type":"child_page","has_children":false,"child_page":{"title":"NoteChild"}}
+		{"id":"n1","type":"child_page","has_children":true,"child_page":{"title":"NoteChild"}}
 	],"has_more":false,"next_cursor":null}`
 	routes["GET /blocks/b2/children"] = `{"results":[
 		{"id":"b2c","type":"paragraph","has_children":false,"paragraph":{"rich_text":[{"plain_text":"subtask","type":"text"}]}}
@@ -320,7 +320,7 @@ func TestScriptedWorkspace(t *testing.T) {
 		assert.Equal(t, 4, cells)
 	})
 
-	t.Run("child_page resolves to this page's subpage, ignoring foreign block-parented twins", func(t *testing.T) {
+	t.Run("child_page resolves by block id (== child page id), beating the ambiguous title twin", func(t *testing.T) {
 		// n1 (parent page_id=p1) and n2 (parent block_id of ANOTHER page)
 		// share the title; treating every block-parented entity as local
 		// used to make this ambiguous and degrade the link.
@@ -328,11 +328,13 @@ func TestScriptedWorkspace(t *testing.T) {
 		require.NotNil(t, page)
 		var childLink string
 		for _, b := range page.Payload.Blocks {
-			if b.Id == "cp1" {
+			if b.Id == "n1" {
 				require.NotNil(t, b.GetLink(), "child_page must resolve to a link, not a placeholder")
 				childLink = b.GetLink().TargetBlockId
 			}
 		}
+		// n1 and n2 share the title "NoteChild"; resolution by the block's
+		// own id (which equals the child page id) is unambiguous.
 		assert.Equal(t, "n1", childLink)
 	})
 

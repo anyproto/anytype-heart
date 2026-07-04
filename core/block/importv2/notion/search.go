@@ -7,6 +7,7 @@ package notion
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -128,10 +129,14 @@ type searchResult struct {
 	DatabaseParent *Parent    `json:"database_parent"`
 	Title          []richText `json:"title"` // data sources/databases carry it directly
 	Name           string     `json:"name"`  // data-source display name fallback
-	Properties     map[string]struct {
-		Type  string     `json:"type"`
-		Title []richText `json:"title"`
-	} `json:"properties"` // pages carry it in their title-type property
+	// Properties is the page's property VALUES or a data source's property
+	// SCHEMA — the title field is a rich-text array in the former and an
+	// empty config object in the latter, so it stays raw and is parsed
+	// leniently (only pages read a title out of it).
+	Properties map[string]struct {
+		Type  string          `json:"type"`
+		Title json.RawMessage `json:"title"`
+	} `json:"properties"`
 }
 
 type searchResponse struct {
@@ -193,9 +198,18 @@ func titleOf(result searchResult) string {
 		return result.Name
 	}
 	for _, property := range result.Properties {
-		if property.Type == "title" {
-			return plainText(property.Title)
+		if property.Type != "title" {
+			continue
 		}
+		// A page's title value is a rich-text array; a data source's title
+		// schema is an object — accept only the array form.
+		if len(property.Title) > 0 && property.Title[0] == '[' {
+			var runs []richText
+			if json.Unmarshal(property.Title, &runs) == nil {
+				return plainText(runs)
+			}
+		}
+		return ""
 	}
 	return ""
 }

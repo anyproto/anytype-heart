@@ -269,10 +269,23 @@ type filePayload struct {
 	Caption []richText `json:"caption"`
 }
 
+// emptyMedia handles a media/embed block whose URL is empty or inaccessible
+// (the API returns "" when the file has no content or the integration lacks
+// access) — an accurate warning, not a false "unsupported block type", and
+// any caption is preserved.
+func (c *Converter) emptyMedia(block *notionBlock, caption []richText, sink importv2.Sink) []*mappedBlock {
+	sink.Issue(importv2.Warning(importv2.IssueDataLoss, block.Id,
+		fmt.Sprintf("%s block has no accessible URL (empty or not shared with the integration); skipped", block.Type)))
+	return c.captionBlocks(block.Id, caption)
+}
+
 func (c *Converter) mapFile(ctx context.Context, block *notionBlock, fileType model.BlockContentFileType, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload filePayload
-	if err := block.decode(&payload); err != nil || payload.url() == "" {
+	if err := block.decode(&payload); err != nil {
 		return c.unsupported(block, sink), nil
+	}
+	if payload.url() == "" {
+		return c.emptyMedia(block, payload.Caption, sink), nil
 	}
 	sourceKey, err := c.emitFileFromUrl(ctx, sink, payload.url(), payload.Name)
 	if err != nil {
@@ -294,8 +307,11 @@ func (c *Converter) mapFile(ctx context.Context, block *notionBlock, fileType mo
 // imports everything else as a file.
 func (c *Converter) mapMedia(ctx context.Context, block *notionBlock, fileType model.BlockContentFileType, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload filePayload
-	if err := block.decode(&payload); err != nil || payload.url() == "" {
+	if err := block.decode(&payload); err != nil {
 		return c.unsupported(block, sink), nil
+	}
+	if payload.url() == "" {
+		return c.emptyMedia(block, payload.Caption, sink), nil
 	}
 	mediaUrl := payload.url()
 	if processor, ok := embedProcessorOf(mediaUrl); ok {
@@ -307,8 +323,11 @@ func (c *Converter) mapMedia(ctx context.Context, block *notionBlock, fileType m
 
 func (c *Converter) mapEmbed(block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload textPayload
-	if err := block.decode(&payload); err != nil || payload.Url == "" {
+	if err := block.decode(&payload); err != nil {
 		return c.unsupported(block, sink), nil
+	}
+	if payload.Url == "" {
+		return c.emptyMedia(block, payload.Caption, sink), nil
 	}
 	if processor, ok := embedProcessorOf(payload.Url); ok {
 		nodes := []*mappedBlock{latexBlock(block.Id, payload.Url, processor)}
@@ -464,9 +483,42 @@ func (c *Converter) mapChildEntity(mctx mapContext, block *notionBlock, wantData
 	if err := block.decode(&payload); err != nil {
 		return c.unsupported(block, sink), nil
 	}
+
+	// A child_page block's own id IS the child page's id; a child_database
+	// block's id is the owning database's id. Resolve directly — this is
+	// exact, unlike title matching which collides on "Untitled" siblings.
+	targetId := ""
+	if wantDatabase {
+		if id, ok := c.resolveDatabaseRef(block.Id); ok {
+			targetId = id
+		}
+	} else if _, ok := c.entityById[block.Id]; ok {
+		targetId = block.Id
+	}
+
+	// Fallback: title matching within the page (kept for entities the block
+	// id can't resolve — e.g. an id shape mismatch).
+	if targetId == "" {
+		targetId = c.resolveChildByTitle(mctx, payload.Title, wantDatabase)
+	}
+	if targetId == "" {
+		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, mctx.pageId,
+			fmt.Sprintf("child %q could not be resolved", payload.Title)))
+		return []*mappedBlock{textBlock(block.Id, fmt.Sprintf("Unresolved link: %s", payload.Title))}, nil
+	}
+	return []*mappedBlock{{block: &model.Block{
+		Id: block.Id,
+		Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
+			TargetBlockId: targetId,
+			Style:         model.BlockContentLink_Page,
+		}},
+	}}}, nil
+}
+
+func (c *Converter) resolveChildByTitle(mctx mapContext, title string, wantDatabase bool) string {
 	var withinPage, global []string
 	for _, entity := range c.entityById {
-		if entity.isCollectionLike() != wantDatabase || entity.Title != payload.Title {
+		if entity.isCollectionLike() != wantDatabase || entity.Title != title {
 			continue
 		}
 		global = append(global, entity.Id)
@@ -478,24 +530,13 @@ func (c *Converter) mapChildEntity(mctx mapContext, block *notionBlock, wantData
 			withinPage = append(withinPage, entity.Id)
 		}
 	}
-	targetId := ""
 	if len(withinPage) == 1 {
-		targetId = withinPage[0]
-	} else if len(withinPage) == 0 && len(global) == 1 {
-		targetId = global[0]
+		return withinPage[0]
 	}
-	if targetId == "" {
-		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, mctx.pageId,
-			fmt.Sprintf("child %q could not be resolved unambiguously", payload.Title)))
-		return []*mappedBlock{textBlock(block.Id, fmt.Sprintf("Unresolved link: %s", payload.Title))}, nil
+	if len(withinPage) == 0 && len(global) == 1 {
+		return global[0]
 	}
-	return []*mappedBlock{{block: &model.Block{
-		Id: block.Id,
-		Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
-			TargetBlockId: targetId,
-			Style:         model.BlockContentLink_Page,
-		}},
-	}}}, nil
+	return ""
 }
 
 type linkToPagePayload struct {
