@@ -74,10 +74,26 @@ const (
 )
 
 var flavours = map[string]Flavour{
-	FlavourGeneric:       {Name: FlavourGeneric, CSVCollections: true},
-	FlavourNotionExport:  {Name: FlavourNotionExport, CSVCollections: true},
-	FlavourObsidian:      {Name: FlavourObsidian, CSVCollections: true},
-	FlavourAnytypeExport: {Name: FlavourAnytypeExport, CSVCollections: true},
+	FlavourGeneric:  {Name: FlavourGeneric, CSVCollections: true},
+	FlavourObsidian: {Name: FlavourObsidian, CSVCollections: true},
+	FlavourNotionExport: {
+		Name:            FlavourNotionExport,
+		ExtractMetadata: notionExtractMetadata,
+		ResolveTarget:   notionResolveTarget,
+		CSVCollections:  true,
+	},
+	FlavourAnytypeExport: {
+		Name:             FlavourAnytypeExport,
+		CSVCollections:   true,
+		CollectionByName: true,
+	},
+}
+
+// flavourEnables names what each profile's hooks actually switch on, for
+// the observability issue.
+var flavourEnables = map[string]string{
+	FlavourNotionExport:  "property lines and id-based link resolution enabled",
+	FlavourAnytypeExport: "Collection front matter honored",
 }
 
 // resolveFlavour fixes the run's profile: an explicit request name wins,
@@ -160,6 +176,9 @@ func (c *Converter) flavourIssue() (importv2.Issue, bool) {
 	if c.flavourForced {
 		how = "requested"
 	}
-	return importv2.Info(importv2.IssueFlavourDetected,
-		fmt.Sprintf("markdown source %s as %s", how, c.flavour.Name)), true
+	message := fmt.Sprintf("markdown source %s as %s", how, c.flavour.Name)
+	if clause := flavourEnables[c.flavour.Name]; clause != "" {
+		message += "; " + clause
+	}
+	return importv2.Info(importv2.IssueFlavourDetected, message), true
 }

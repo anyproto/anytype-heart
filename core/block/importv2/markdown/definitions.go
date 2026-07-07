@@ -232,18 +232,26 @@ func (c *Converter) emitTypeDefinition(ctx context.Context, typeName string, pro
 		}
 		recommended = append(recommended, relationSourceKey(property.Key))
 	}
+	// The first three properties are featured (v1 rule, minus its synthetic
+	// "Object type" relation that always occupied one featured slot).
+	featured := recommended[:min(len(recommended), 3)]
+	recommended = recommended[len(featured):]
+	details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+		bundle.RelationKeyName:                         domain.String(typeName),
+		bundle.RelationKeyUniqueKey:                    domain.String(uniqueKey.Marshal()),
+		bundle.RelationKeyRecommendedLayout:            domain.Int64(int64(model.ObjectType_basic)),
+		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList(featured),
+		bundle.RelationKeyResolvedLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+	})
+	if len(recommended) > 0 {
+		details.SetStringList(bundle.RelationKeyRecommendedRelations, recommended)
+	}
 	object := &importv2.Object{
 		SourceKey: typeSourceKey(typeName),
 		SbType:    coresb.SmartBlockTypeObjectType,
 		Payload: &importv2.Snapshot{
-			Key: key,
-			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyName:                 domain.String(typeName),
-				bundle.RelationKeyUniqueKey:            domain.String(uniqueKey.Marshal()),
-				bundle.RelationKeyRecommendedLayout:    domain.Int64(int64(model.ObjectType_basic)),
-				bundle.RelationKeyRecommendedRelations: domain.StringList(recommended),
-				bundle.RelationKeyResolvedLayout:       domain.Int64(int64(model.ObjectType_objectType)),
-			}),
+			Key:         key,
+			Details:     details,
 			ObjectTypes: []string{bundle.TypeKeyObjectType.String()},
 		},
 	}

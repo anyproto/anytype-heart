@@ -143,7 +143,8 @@ func TestFlavourIssue(t *testing.T) {
 
 		// then
 		require.NotEmpty(t, sink.issues)
-		want := importv2.Info(importv2.IssueFlavourDetected, "markdown source detected as notion-export")
+		want := importv2.Info(importv2.IssueFlavourDetected,
+			"markdown source detected as notion-export; property lines and id-based link resolution enabled")
 		assert.Equal(t, want, sink.issues[0])
 	})
 

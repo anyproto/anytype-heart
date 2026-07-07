@@ -35,11 +35,11 @@
         "importType": 1,
         "name": "Zettel",
         "origin": 3,
-        "recommendedLayout": 0,
-        "recommendedRelations": [
+        "recommendedFeaturedRelations": [
           "drv-rel-mdd95082a2ee57f3e4",
           "drv-rel-md780fe43f6e8bdc25"
-        ]
+        ],
+        "recommendedLayout": 0
       }
     },
     {

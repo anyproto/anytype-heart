@@ -39,21 +39,15 @@ func buildDirTree(entries []source.Entry) *dirTree {
 		files:   map[string][]string{},
 	}
 
-	// Collapse a single top-level directory (the typical zip shape).
-	tops := map[string]bool{}
-	for _, e := range entries {
-		segment, _, nested := strings.Cut(e.Name, "/")
-		if !nested {
-			segment = "."
+	// Root at the deepest directory common to every document (v1 rule):
+	// collapses the typical single-top zip shape and deeper single-branch
+	// chains that would otherwise become empty intermediate pages.
+	if len(entries) > 0 {
+		root := path.Dir(entries[0].Name)
+		for _, e := range entries[1:] {
+			root = commonDir(root, path.Dir(e.Name))
 		}
-		tops[segment] = true
-	}
-	if len(tops) == 1 {
-		for top := range tops {
-			if top != "." {
-				tree.root = top
-			}
-		}
+		tree.root = root
 	}
 
 	dirSet := map[string]bool{tree.root: true}
@@ -85,7 +79,32 @@ func buildDirTree(entries []source.Entry) *dirTree {
 	for _, subdirs := range tree.subdirs {
 		sort.Strings(subdirs)
 	}
+	// Documents listed alphabetically within a directory (v1 order; the
+	// input arrives md-then-csv, not mixed).
+	for _, files := range tree.files {
+		sort.Strings(files)
+	}
 	return tree
+}
+
+// commonDir returns the deepest directory containing both, "." when they
+// share no prefix.
+func commonDir(a, b string) string {
+	if a == "." || b == "." {
+		return "."
+	}
+	if a == b {
+		return a
+	}
+	as, bs := strings.Split(a, "/"), strings.Split(b, "/")
+	shared := 0
+	for shared < len(as) && shared < len(bs) && as[shared] == bs[shared] {
+		shared++
+	}
+	if shared == 0 {
+		return "."
+	}
+	return strings.Join(as[:shared], "/")
 }
 
 func withinDir(dir, root string) bool {

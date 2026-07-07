@@ -646,9 +646,9 @@ fix in place or the first real implementation of a hook:
 |---|---|
 | `Collection:`/`_collection` front matter loses the collection store (high) | `CollectionByName` hook + global `_collection` handling; store + v1's member resolution (`.md`-append, exact/dir-relative/basename) |
 | Notion first-paragraph property lines dropped (high) | `ExtractMetadata` hook, notion-export |
-| multi-code-point emoji split; emoji-only H1 → empty Name (med) | neutral fix: grapheme-cluster segmentation + v1's keep-title-when-emoji-only rule |
+| multi-code-point emoji split; emoji-only H1 → empty Name (med) | neutral fix: v1's whole-first-token rule (flags/ZWJ/skin tones survive intact) + keep-title-when-emoji-only |
 | `isEmojiRune` misses 2194–25FF / 2B00–329F (⏰⭐⭕) (med) | neutral fix: v1 ranges ∪ 1FAE0+ |
-| read/parse-failed pages leave dangling claimed ids (med) | engine fix: never-emitted claims resolve to `MissingObject`, not the minted id |
+| read/parse-failed pages leave dangling claimed ids (med) | converter emits a placeholder page (filename title, no blocks) so the claimed id stays real — v1 behavior. An engine-side `MissingObject` rewrite is impossible: pages reference forward, so refs resolve before the target's emission outcome is known. The ObjectError still aborts all-or-nothing runs |
 | inline (mid-sentence) local file link drops the attachment (med) | neutral fix: emit the file object and retype the mark to a Mention of it (keeps text, unlike v1's destructive block replacement) |
 | `![](page.md)` / `![](db.csv)` source-key collision (med) | neutral fix: `isPageEntry` guard in `rewriteFileBlock`; csv file-blocks → page links (v1 rule) |
 | deep-tree root not collapsed; dir-page child order; properties-as-blocks exclusion list; type featured-relations split (low) | neutral parity fixes |

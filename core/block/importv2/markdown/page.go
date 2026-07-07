@@ -8,6 +8,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/core/block/editor/template"
 	"github.com/anyproto/anytype-heart/core/block/import/common/filetime"
 	"github.com/anyproto/anytype-heart/core/block/import/markdown/anymark"
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
@@ -16,7 +19,9 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema"
 	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
@@ -27,7 +32,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	content, err := c.readEntry(ctx, entry.Name)
 	if err != nil {
 		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, entry.Name, fmt.Errorf("read: %w", err)))
-		return nil
+		return c.emitPlaceholderPage(ctx, entry, sink)
 	}
 
 	frontMatter, body, err := yaml.ExtractYAMLFrontMatter(content)
@@ -37,12 +42,15 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	}
 	var yamlDetails []domain.Detail
 	var yamlLinks []*model.RelationLink
+	var collectionRefs []string
+	isCollection := false
 	typeKey := bundle.TypeKeyPage.String()
 	if len(frontMatter) > 0 {
 		parsed, err := yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, c.resolver, path.Dir(entry.Name))
 		if err != nil {
 			sink.Issue(importv2.Warning(importv2.IssueDataLoss, entry.Name, fmt.Sprintf("front-matter skipped: %s", err)))
 		} else if parsed != nil {
+			collectionRefs, parsed.Properties, isCollection = c.extractCollectionProperty(parsed.Properties)
 			// The yaml parser yields properties in map order; sort for
 			// deterministic emission (contract rule 5).
 			sort.SliceStable(parsed.Properties, func(i, j int) bool {
@@ -58,7 +66,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	blocks, _, err := anymark.MarkdownToBlocks(body, path.Dir(entry.Name), nil, c.flavour.Anymark...)
 	if err != nil {
 		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, entry.Name, fmt.Errorf("parse markdown: %w", err)))
-		return nil
+		return c.emitPlaceholderPage(ctx, entry, sink)
 	}
 
 	title := pageTitleFromPath(entry.Name)
@@ -98,22 +106,82 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	for _, detail := range yamlDetails {
 		object.Payload.Details.Set(detail.Key, detail.Value)
 	}
+	if isCollection {
+		if members := c.resolveCollectionMembers(entry.Name, collectionRefs, sink); len(members) > 0 {
+			object.Payload.Collections = collectionStore(members)
+		}
+	}
 	return sink.Object(ctx, object)
 }
 
+// extractCollectionProperty pulls the collection-membership pseudo-property
+// out of the front matter: the `_collection` key (Anytype's export
+// convention, honored under every profile) or — with CollectionByName — a
+// property named "Collection". It becomes the collection store, never a
+// visible relation.
+func (c *Converter) extractCollectionProperty(properties []yaml.Property) (refs []string, rest []yaml.Property, found bool) {
+	for i, property := range properties {
+		if property.Key != schema.CollectionPropertyKey &&
+			!(c.flavour.CollectionByName && strings.EqualFold(property.Name, "Collection")) {
+			continue
+		}
+		return property.Value.WrapToStringList(), append(properties[:i:i], properties[i+1:]...), true
+	}
+	return nil, properties, false
+}
+
+// resolveCollectionMembers maps front-matter member references to page
+// source keys: `.md` appended when missing, the generic lookup chain, then
+// relative to the collection page's directory (v1's matching strategies).
+func (c *Converter) resolveCollectionMembers(pageName string, refs []string, sink importv2.Sink) []string {
+	members := make([]string, 0, len(refs))
+	for _, ref := range refs {
+		refPath := ref
+		if !strings.HasSuffix(strings.ToLower(refPath), ".md") {
+			refPath += ".md"
+		}
+		if entryName, ok := c.lookupEntry(refPath); ok && c.isPageEntry(entryName) {
+			members = append(members, entryName)
+			continue
+		}
+		if entryName, ok := c.lookupEntry(path.Join(path.Dir(pageName), refPath)); ok && c.isPageEntry(entryName) {
+			members = append(members, entryName)
+			continue
+		}
+		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, pageName,
+			fmt.Sprintf("collection member %q is not part of the import", ref)))
+	}
+	return members
+}
+
+func collectionStore(members []string) *types.Struct {
+	return &types.Struct{Fields: map[string]*types.Value{
+		template.CollectionStoreKey: pbtypes.StringList(members),
+	}}
+}
+
 // splitEmojiTitle extracts a leading emoji from an H1 title into the page
-// icon (v1 convention, approximate unicode ranges as before).
+// icon. The v1 rule: the icon is the whole first space-delimited token, so
+// multi-code-point emoji (flags, ZWJ families, skin tones) survive intact;
+// an emoji-only title stays the name — a page must not lose its title to
+// its icon.
 func splitEmojiTitle(title string) (emoji, rest string) {
-	trimmed := strings.TrimSpace(title)
-	runes := []rune(trimmed)
+	first, remainder, found := strings.Cut(strings.TrimSpace(title), " ")
+	if !found {
+		return "", title
+	}
+	runes := []rune(first)
 	if len(runes) == 0 || !isEmojiRune(runes[0]) {
 		return "", title
 	}
-	return string(runes[0]), strings.TrimSpace(string(runes[1:]))
+	return first, strings.TrimSpace(remainder)
 }
 
+// isEmojiRune approximates emoji detection, as v1 did: 2194–329F covers the
+// BMP symbol blocks (arrows, clocks ⏰, stars ⭐, enclosed CJK), 1F000–1FAFF
+// the emoji planes (extended past v1's 1FADF for the Unicode 15 additions).
 func isEmojiRune(r rune) bool {
-	return (r >= 0x1F000 && r <= 0x1FAFF) || (r >= 0x2600 && r <= 0x27BF)
+	return (r >= 0x2194 && r <= 0x329F) || (r >= 0x1F000 && r <= 0x1FAFF)
 }
 
 // systemPropertyKeys are excluded from properties-as-blocks (v1 list).
@@ -129,7 +197,12 @@ var systemPropertyKeys = map[string]struct{}{
 	bundle.RelationKeyIconEmoji.String():        {},
 	bundle.RelationKeyIconImage.String():        {},
 	bundle.RelationKeyCoverId.String():          {},
+	bundle.RelationKeyCoverType.String():        {},
+	bundle.RelationKeyCoverX.String():           {},
+	bundle.RelationKeyCoverY.String():           {},
+	bundle.RelationKeyCoverScale.String():       {},
 	bundle.RelationKeyLayout.String():           {},
+	bundle.RelationKeyLayoutAlign.String():      {},
 }
 
 // propertyBlocks renders front-matter properties as relation blocks at the
@@ -148,6 +221,24 @@ func propertyBlocks(details []domain.Detail) []*model.Block {
 		})
 	}
 	return blocks
+}
+
+// emitPlaceholderPage keeps a claimed identity real when its content is
+// unreadable: pass-1 minted an id that other pages may already reference, so
+// an empty page (filename title) must exist — v1 behavior. The accompanying
+// ObjectError still aborts all-or-nothing runs.
+func (c *Converter) emitPlaceholderPage(ctx context.Context, entry source.Entry, sink importv2.Sink) error {
+	object := &importv2.Object{
+		SourceKey: entry.Name,
+		SbType:    coresb.SmartBlockTypePage,
+		Payload: &importv2.Snapshot{
+			Details:     domain.NewDetails(),
+			ObjectTypes: []string{bundle.TypeKeyPage.String()},
+		},
+		IsRootCandidate: c.dirs == nil && isTopLevel(entry.Name),
+	}
+	c.stampCommonDetails(object, entry, pageTitleFromPath(entry.Name))
+	return sink.Object(ctx, object)
 }
 
 // readEntry buffers one file — bounded by a single document, never the set.
@@ -232,6 +323,16 @@ func (c *Converter) rewriteFileBlock(ctx context.Context, pageName string, block
 		file.Name = ""
 		return nil
 	}
+	if c.isPageEntry(entryName) {
+		// An image/file embed of a page or csv collection: emitting a file
+		// object here would collide with the page's identity under the same
+		// source key. Link to the page instead (v1's csv rule).
+		block.Content = &model.BlockContentOfLink{Link: &model.BlockContentLink{
+			TargetBlockId: entryName,
+			Style:         model.BlockContentLink_Page,
+		}}
+		return nil
+	}
 	if err := c.emitFileObject(ctx, entryName, sink); err != nil {
 		return err
 	}
@@ -262,10 +363,16 @@ func (c *Converter) rewriteTextBlock(ctx context.Context, pageName string, block
 		if !found {
 			continue // not a source file: leave the mark untouched
 		}
-		if c.isPageEntry(entryName) {
-			mark.Type = model.BlockContentTextMark_Mention
-			mark.Param = entryName
+		if !c.isPageEntry(entryName) {
+			// An inline link to a local file: import the file and mention
+			// it — keeps the sentence intact (v1 replaced the whole block
+			// with a file block, losing the text).
+			if err := c.emitFileObject(ctx, entryName, sink); err != nil {
+				return nil, err
+			}
 		}
+		mark.Type = model.BlockContentTextMark_Mention
+		mark.Param = entryName
 	}
 	return block, nil
 }
