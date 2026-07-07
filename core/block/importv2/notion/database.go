@@ -50,6 +50,9 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 			} `json:"data_sources"`
 		}
 		if err := c.client.Request(ctx, http.MethodGet, "/databases/"+stub.Id, nil, &database); err != nil {
+			if ctx.Err() != nil {
+				return fmt.Errorf("fetch database: %w", err)
+			}
 			sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch database: %w", err)))
 			return nil
 		}
@@ -63,6 +66,9 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 
 	var database databaseObject
 	if err := c.client.Request(ctx, http.MethodGet, "/data_sources/"+schemaId, nil, &database); err != nil {
+		if ctx.Err() != nil {
+			return fmt.Errorf("fetch data source: %w", err)
+		}
 		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch data source: %w", err)))
 		return nil
 	}

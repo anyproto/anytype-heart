@@ -87,6 +87,11 @@ type uniqueIdValue struct {
 func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.Sink) error {
 	var page pageObject
 	if err := c.client.Request(ctx, http.MethodGet, "/pages/"+stub.Id, nil, &page); err != nil {
+		if ctx.Err() != nil {
+			// Cancellation must stop the run, not degrade into one bogus
+			// per-object failure per remaining entity.
+			return fmt.Errorf("fetch page: %w", err)
+		}
 		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch page: %w", err)))
 		return nil
 	}
@@ -227,7 +232,7 @@ type companionDetail struct {
 func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, value propertyValue, def *relationDef, sink importv2.Sink) (domain.Value, *companionDetail, error) {
 	switch value.Type {
 	case "rich_text":
-		runs, err := c.completeRichText(ctx, pageId, value)
+		runs, err := c.completeRichText(ctx, pageId, name, value, sink)
 		if err != nil {
 			return domain.Invalid(), nil, err
 		}
@@ -253,7 +258,7 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, val
 		keys, err := c.optionKeys(ctx, def, []selectOption{*value.Status}, sink)
 		return domain.StringList(keys), nil, err
 	case "people":
-		people, err := c.completePeople(ctx, pageId, value)
+		people, err := c.completePeople(ctx, pageId, name, value, sink)
 		if err != nil {
 			return domain.Invalid(), nil, err
 		}
@@ -287,7 +292,7 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, val
 			if file.url() == "" {
 				continue
 			}
-			sourceKey, err := c.emitFileFromUrl(ctx, sink, file.url(), file.Name)
+			sourceKey, err := c.emitFileFromUrl(ctx, sink, file.url(), file.Name, file.isExternal())
 			if err != nil {
 				return domain.Invalid(), nil, err
 			}
@@ -295,7 +300,7 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, val
 		}
 		return domain.StringList(keys), nil, nil
 	case "relation":
-		refs, err := c.completeRelationRefs(ctx, pageId, value)
+		refs, err := c.completeRelationRefs(ctx, pageId, name, value, sink)
 		if err != nil {
 			return domain.Invalid(), nil, err
 		}
@@ -546,13 +551,17 @@ func userName(user *userValue) domain.Value {
 // and need the property-item endpoint.
 const propertyItemsThreshold = 25
 
-func (c *Converter) completeRichText(ctx context.Context, pageId string, value propertyValue) ([]richText, error) {
+func (c *Converter) completeRichText(ctx context.Context, pageId, name string, value propertyValue, sink importv2.Sink) ([]richText, error) {
 	if len(value.RichText) < propertyItemsThreshold {
 		return value.RichText, nil
 	}
 	items, err := c.fetchPropertyItems(ctx, pageId, value.Id)
 	if err != nil {
-		return value.RichText, nil // keep the truncated value, already reported
+		if ctx.Err() != nil {
+			return nil, err
+		}
+		sink.Issue(truncationWarning(pageId, name, err))
+		return value.RichText, nil
 	}
 	runs := make([]richText, 0, len(items))
 	for _, item := range items {
@@ -561,12 +570,16 @@ func (c *Converter) completeRichText(ctx context.Context, pageId string, value p
 	return runs, nil
 }
 
-func (c *Converter) completeRelationRefs(ctx context.Context, pageId string, value propertyValue) ([]idRef, error) {
+func (c *Converter) completeRelationRefs(ctx context.Context, pageId, name string, value propertyValue, sink importv2.Sink) ([]idRef, error) {
 	if !value.HasMore && len(value.Relation) < propertyItemsThreshold {
 		return value.Relation, nil
 	}
 	items, err := c.fetchPropertyItems(ctx, pageId, value.Id)
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, err
+		}
+		sink.Issue(truncationWarning(pageId, name, err))
 		return value.Relation, nil
 	}
 	refs := make([]idRef, 0, len(items))
@@ -574,6 +587,13 @@ func (c *Converter) completeRelationRefs(ctx context.Context, pageId string, val
 		refs = append(refs, item.Relation)
 	}
 	return refs, nil
+}
+
+// truncationWarning reports a failed >25-item property completion: the
+// truncated prefix from the page object is kept, but never silently.
+func truncationWarning(pageId, name string, err error) importv2.Issue {
+	return importv2.Warning(importv2.IssueDataLoss, pageId,
+		fmt.Sprintf("property %q: completing the value past %d items failed (%s); the truncated value was kept", name, propertyItemsThreshold, err))
 }
 
 type propertyItem struct {
@@ -585,13 +605,17 @@ type propertyItem struct {
 
 // completePeople de-truncates a people property past the page object's
 // 25-item cap via the property-item endpoint.
-func (c *Converter) completePeople(ctx context.Context, pageId string, value propertyValue) ([]userValue, error) {
+func (c *Converter) completePeople(ctx context.Context, pageId, name string, value propertyValue, sink importv2.Sink) ([]userValue, error) {
 	if len(value.People) < propertyItemsThreshold {
 		return value.People, nil
 	}
 	items, err := c.fetchPropertyItems(ctx, pageId, value.Id)
 	if err != nil {
-		return value.People, nil // keep the truncated value
+		if ctx.Err() != nil {
+			return nil, err
+		}
+		sink.Issue(truncationWarning(pageId, name, err))
+		return value.People, nil
 	}
 	people := make([]userValue, 0, len(items))
 	for _, item := range items {
@@ -612,7 +636,10 @@ func (c *Converter) fetchPropertyItems(ctx context.Context, pageId, propertyId s
 	var items []propertyItem
 	cursor := ""
 	for {
-		path := fmt.Sprintf("/pages/%s/properties/%s?page_size=100", pageId, url.PathEscape(propertyId))
+		// Property ids arrive already percent-encoded in page JSON (e.g.
+		// "qK%7C%5E") and the endpoint expects them verbatim; escaping again
+		// would double-encode the '%' and address a nonexistent property.
+		path := fmt.Sprintf("/pages/%s/properties/%s?page_size=100", pageId, propertyId)
 		if cursor != "" {
 			// Cursors are opaque: escape rather than assume URL-safety.
 			path += "&start_cursor=" + url.QueryEscape(cursor)

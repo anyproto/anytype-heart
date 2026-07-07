@@ -10,11 +10,10 @@ import (
 )
 
 // renderedText is a rich-text run sequence rendered to anytype form: text
-// with UTF-16 mark ranges, plus standalone latex blocks for equation runs.
+// with UTF-16 mark ranges.
 type renderedText struct {
-	text      string
-	marks     []*model.BlockContentTextMark
-	equations []string
+	text  string
+	marks []*model.BlockContentTextMark
 }
 
 // renderedPiece is one ordered segment of a rich-text sequence: either a
@@ -69,29 +68,41 @@ func (c *Converter) renderRichTextPieces(runs []richText) []renderedPiece {
 	return pieces
 }
 
-// renderRichText flattens the pieces into one text span (equations
-// collected separately) — for contexts that cannot split, like table cells
-// and code blocks.
+// renderRichText flattens the pieces into one text span — for contexts that
+// cannot split into sibling blocks, like table cells and code blocks. Inline
+// equations stay in the flow as their raw expression (no latex host here;
+// dropping them would lose user data).
 func (c *Converter) renderRichText(runs []richText) renderedText {
 	var rendered renderedText
 	offset := 0
 	for _, piece := range c.renderRichTextPieces(runs) {
+		text := piece.text
 		if piece.equation != "" {
-			rendered.equations = append(rendered.equations, piece.equation)
-			continue
+			text = piece.equation
 		}
 		for _, mark := range piece.marks {
 			mark.Range.From += int32(offset)
 			mark.Range.To += int32(offset)
 		}
 		rendered.marks = append(rendered.marks, piece.marks...)
-		rendered.text += piece.text
-		offset += textutil.UTF16RuneCountString(piece.text)
+		rendered.text += text
+		offset += textutil.UTF16RuneCountString(text)
 	}
 	return rendered
 }
 
+// annotationMarks renders a run's style annotations plus its link target —
+// for plain text runs. Mention runs use styleMarks: their target comes from
+// the mention payload and the href merely repeats it.
 func (c *Converter) annotationMarks(run richText) []*model.BlockContentTextMark {
+	marks := c.styleMarks(run)
+	if target := c.linkTarget(run); target != nil {
+		marks = append(marks, target)
+	}
+	return marks
+}
+
+func (c *Converter) styleMarks(run richText) []*model.BlockContentTextMark {
 	var marks []*model.BlockContentTextMark
 	add := func(markType model.BlockContentTextMarkType, param string) {
 		marks = append(marks, &model.BlockContentTextMark{Type: markType, Param: param})
@@ -120,9 +131,6 @@ func (c *Converter) annotationMarks(run richText) []*model.BlockContentTextMark 
 			}
 		}
 	}
-	if target := c.linkTarget(run); target != nil {
-		marks = append(marks, target)
-	}
 	return marks
 }
 
@@ -139,6 +147,11 @@ func (c *Converter) linkTarget(run richText) *model.BlockContentTextMark {
 	if id, ok := c.entityIdFromUrl(href); ok {
 		return &model.BlockContentTextMark{Type: model.BlockContentTextMark_Mention, Param: id}
 	}
+	if strings.HasPrefix(href, "/") {
+		// A relative in-workspace href whose target was not imported:
+		// absolutize so the link at least opens in a browser.
+		href = "https://app.notion.com" + href
+	}
 	return &model.BlockContentTextMark{Type: model.BlockContentTextMark_Link, Param: href}
 }
 
@@ -146,9 +159,14 @@ func (c *Converter) renderMention(run richText, appendText func(string, ...*mode
 	m := run.Mention
 	display := run.PlainText
 	// Mentions keep the run's own annotations (bold/italic/color survive).
+	// Resolved mentions carry their target in the Mention mark alone — the
+	// run's href repeats it, and stacking a Link mark on the same range
+	// polluted every page mention. Fallback paths (target not imported)
+	// keep the href link via annotationMarks.
+	styleMarks := c.styleMarks(run)
 	baseMarks := c.annotationMarks(run)
 	withMention := func(param string) []*model.BlockContentTextMark {
-		return append(append([]*model.BlockContentTextMark{}, baseMarks...),
+		return append(append([]*model.BlockContentTextMark{}, styleMarks...),
 			&model.BlockContentTextMark{Type: model.BlockContentTextMark_Mention, Param: param})
 	}
 	switch m.Type {
@@ -182,7 +200,7 @@ func (c *Converter) renderMention(run richText, appendText func(string, ...*mode
 	case "link_preview":
 		if m.LinkPreview != nil && m.LinkPreview.Url != "" {
 			// v1 emitted a Link mark with an empty param here.
-			appendText(display, append(append([]*model.BlockContentTextMark{}, baseMarks...),
+			appendText(display, append(append([]*model.BlockContentTextMark{}, styleMarks...),
 				&model.BlockContentTextMark{Type: model.BlockContentTextMark_Link, Param: m.LinkPreview.Url})...)
 			return
 		}
@@ -211,9 +229,13 @@ func (c *Converter) renderMention(run richText, appendText func(string, ...*mode
 
 var notionIdInUrl = regexp.MustCompile(`([0-9a-fA-F]{32})(?:[?#].*)?$`)
 
-// entityIdFromUrl recognizes notion.so links to imported entities.
+// entityIdFromUrl recognizes links to imported entities. The API emits three
+// shapes: legacy notion.so URLs, app.notion.com URLs (every mention href),
+// and relative "/p/<id>" hrefs on intra-workspace text-run links.
 func (c *Converter) entityIdFromUrl(rawUrl string) (string, bool) {
-	if !strings.Contains(rawUrl, "notion.so") {
+	if !strings.Contains(rawUrl, "notion.so") &&
+		!strings.Contains(rawUrl, "notion.com") &&
+		!strings.HasPrefix(rawUrl, "/") {
 		return "", false
 	}
 	match := notionIdInUrl.FindStringSubmatch(rawUrl)

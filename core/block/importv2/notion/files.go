@@ -15,14 +15,16 @@ import (
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 )
 
-// fileRegistry dedupes file objects within the run. Keys derive from the
-// URL path only — Notion re-signs the same S3 object with fresh query
-// params per response, and both must resolve to one file object. The
-// registry (and the temp dir) is run-scoped: no cross-run reuse (v1's
-// global temp dir silently served stale bytes from previous imports).
+// fileRegistry dedupes file objects within the run. For Notion-hosted files
+// keys derive from the URL path only — Notion re-signs the same S3 object
+// with fresh query params per response, and both must resolve to one file
+// object. External URLs keep their query: it can be the only thing that
+// distinguishes two files (drive.google.com/uc?id=A vs ?id=B). The registry
+// (and the temp dir) is run-scoped: no cross-run reuse (v1's global temp
+// dir silently served stale bytes from previous imports).
 type fileRegistry struct {
 	mu   sync.Mutex
-	seen map[string]string // url path → source key
+	seen map[string]string // url identity → source key
 	next int
 }
 
@@ -30,10 +32,13 @@ func newFileRegistry() *fileRegistry {
 	return &fileRegistry{seen: map[string]string{}}
 }
 
-func (r *fileRegistry) sourceKeyFor(rawUrl string) (sourceKey string, created bool) {
+func (r *fileRegistry) sourceKeyFor(rawUrl string, external bool) (sourceKey string, created bool) {
 	identity := rawUrl
 	if parsed, err := url.Parse(rawUrl); err == nil {
 		identity = parsed.Host + parsed.Path
+		if external && parsed.RawQuery != "" {
+			identity += "?" + parsed.RawQuery
+		}
 	}
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -50,8 +55,8 @@ func (r *fileRegistry) sourceKeyFor(rawUrl string) (sourceKey string, created bo
 // a remote URL. The download is lazy: it runs inside the persist worker via
 // FileSource.Open, in parallel with conversion, into the run's temp dir —
 // with the fetcher's bounded retries. Returns the reference source key.
-func (c *Converter) emitFileFromUrl(ctx context.Context, sink importv2.Sink, rawUrl, name string) (string, error) {
-	sourceKey, created := c.files.sourceKeyFor(rawUrl)
+func (c *Converter) emitFileFromUrl(ctx context.Context, sink importv2.Sink, rawUrl, name string, external bool) (string, error) {
+	sourceKey, created := c.files.sourceKeyFor(rawUrl, external)
 	if !created {
 		return sourceKey, nil
 	}

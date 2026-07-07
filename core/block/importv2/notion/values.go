@@ -25,6 +25,11 @@ type iconValue struct {
 	CustomEmoji *customEmoji `json:"custom_emoji"`
 }
 
+// isExternal reports a user-provided external URL — its query string is
+// part of the file's identity, unlike Notion-hosted signed URLs whose query
+// is a per-response signature.
+func (i *iconValue) isExternal() bool { return i != nil && i.Type == "external" }
+
 func (i *iconValue) fileUrl() string {
 	switch {
 	case i == nil:
@@ -55,6 +60,8 @@ type fileValue struct {
 	Caption []richText `json:"caption"`
 }
 
+func (f *fileValue) isExternal() bool { return f != nil && f.Type == "external" }
+
 func (f *fileValue) url() string {
 	switch {
 	case f == nil:
@@ -75,7 +82,7 @@ func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon
 		if icon.Type == "emoji" && icon.Emoji != "" {
 			object.Payload.Details.SetString(bundle.RelationKeyIconEmoji, icon.Emoji)
 		} else if iconUrl := icon.fileUrl(); iconUrl != "" {
-			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon")
+			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", icon.isExternal())
 			if err != nil {
 				return err
 			}
@@ -83,7 +90,7 @@ func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon
 		}
 	}
 	if coverUrl := cover.url(); coverUrl != "" {
-		sourceKey, err := c.emitFileFromUrl(ctx, sink, coverUrl, "cover")
+		sourceKey, err := c.emitFileFromUrl(ctx, sink, coverUrl, "cover", cover.isExternal())
 		if err != nil {
 			return err
 		}

@@ -86,6 +86,8 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		{"object":"page","id":"n1","parent":{"type":"page_id","page_id":"p1"},
 		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}},
 		{"object":"page","id":"n2","parent":{"type":"block_id","block_id":"foreign-block"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}},
+		{"object":"page","id":"n3","parent":{"type":"page_id","page_id":"p1"},
 		 "properties":{"Name":{"type":"title","title":[{"plain_text":"NoteChild","type":"text"}]}}}
 	],"has_more":false,"next_cursor":null}`
 
@@ -118,13 +120,14 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 	routes["GET /blocks/p1/children"] = `{"results":[
 		{"id":"b1","type":"paragraph","has_children":false,"paragraph":{"rich_text":[
 			{"plain_text":"see ","type":"text","annotations":{"bold":true}},
-			{"plain_text":"Beta","type":"mention","mention":{"type":"page","page":{"id":"p2"}}}]}},
+			{"plain_text":"Beta","type":"mention","href":"https://app.notion.com/p/00000000000000000000000000000002","mention":{"type":"page","page":{"id":"p2"}}}]}},
 		{"id":"b2","type":"to_do","has_children":true,"to_do":{"rich_text":[{"plain_text":"task","type":"text"}],"checked":true}},
 		{"id":"b3","type":"heading_1","has_children":true,"heading_1":{"rich_text":[{"plain_text":"Head","type":"text"}],"is_toggleable":true}},
 		{"id":"b4","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
 		{"id":"b5","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
 		{"id":"tab1-e5f6","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true,"has_row_header":false}},
-		{"id":"n1","type":"child_page","has_children":true,"child_page":{"title":"NoteChild"}}
+		{"id":"n1","type":"child_page","has_children":true,"child_page":{"title":"NoteChild"}},
+		{"id":"n3","type":"child_page","has_children":true,"child_page":{"title":"NoteChild"}}
 	],"has_more":false,"next_cursor":null}`
 	routes["GET /blocks/b2/children"] = `{"results":[
 		{"id":"b2c","type":"paragraph","has_children":false,"paragraph":{"rich_text":[{"plain_text":"subtask","type":"text"}]}}
@@ -137,9 +140,15 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 	],"has_more":false,"next_cursor":null}`
 	routes["GET /blocks/tab1-e5f6/children"] = `{"results":[
 		{"id":"row1-a1b2","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"H1","type":"text"}],[{"plain_text":"H2","type":"text"}]]}},
-		{"id":"row2-c3d4","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"a","type":"text"}],[{"plain_text":"b","type":"text"}]]}}
+		{"id":"row2-c3d4","type":"table_row","has_children":false,"table_row":{"cells":[[{"plain_text":"a","type":"text"},{"type":"equation","plain_text":"E=mc^2","equation":{"expression":"E=mc^2"}}],[{"plain_text":"b","type":"text"}]]}}
 	],"has_more":false,"next_cursor":null}`
-	routes["GET /blocks/p2/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/p2/children"] = `{"results":[
+		{"id":"m1","type":"image","has_children":false,"image":{"type":"file","file":{"url":""},"caption":[{"plain_text":"lost image","type":"text"}]}},
+		{"id":"m2","type":"file","has_children":false,"file":{"type":"external","name":"a.bin","external":{"url":"https://drive.example.com/uc?id=AAA"}}},
+		{"id":"m3","type":"file","has_children":false,"file":{"type":"external","name":"b.bin","external":{"url":"https://drive.example.com/uc?id=BBB"}}},
+		{"id":"m4","type":"image","has_children":false,"image":{"type":"file","file":{"url":"https://files.example.com/bucket/pic.png?X-Amz-Signature=one"}}},
+		{"id":"m5","type":"image","has_children":false,"image":{"type":"file","file":{"url":"https://files.example.com/bucket/pic.png?X-Amz-Signature=two"}}}
+	],"has_more":false,"next_cursor":null}`
 
 	emptyPage := func(id, title string) string {
 		return `{"id":"` + id + `","archived":false,
@@ -148,8 +157,10 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 	}
 	routes["GET /pages/n1"] = emptyPage("n1", "NoteChild")
 	routes["GET /pages/n2"] = emptyPage("n2", "NoteChild")
+	routes["GET /pages/n3"] = emptyPage("n3", "NoteChild")
 	routes["GET /blocks/n1/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
 	routes["GET /blocks/n2/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
+	routes["GET /blocks/n3/children"] = `{"results":[],"has_more":false,"next_cursor":null}`
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost && r.URL.Path == "/search" {
@@ -204,7 +215,7 @@ func TestScriptedWorkspace(t *testing.T) {
 	sink, rootSpec, claims := runScripted(t)
 
 	t.Run("pass 1 claims every entity once", func(t *testing.T) {
-		require.Len(t, claims, 5)
+		require.Len(t, claims, 6)
 		assert.Equal(t, "Notion Import", rootSpec.CollectionName)
 		assert.Equal(t, model.BlockContentWidget_CompactList, rootSpec.WidgetLayout)
 	})
@@ -275,6 +286,8 @@ func TestScriptedWorkspace(t *testing.T) {
 			if mark.Type == model.BlockContentTextMark_Mention {
 				mentionParam = mark.Param
 			}
+			assert.NotEqual(t, model.BlockContentTextMark_Link, mark.Type,
+				"a resolved mention must not also carry a Link mark for its own href")
 		}
 		assert.Equal(t, "p2", mentionParam)
 
@@ -327,22 +340,83 @@ func TestScriptedWorkspace(t *testing.T) {
 		assert.Equal(t, 4, cells)
 	})
 
-	t.Run("child_page resolves by block id (== child page id), beating the ambiguous title twin", func(t *testing.T) {
-		// n1 (parent page_id=p1) and n2 (parent block_id of ANOTHER page)
-		// share the title; treating every block-parented entity as local
-		// used to make this ambiguous and degrade the link.
+	t.Run("child_page resolves by block id (== child page id), beating the ambiguous title twins", func(t *testing.T) {
+		// n1 and n3 are BOTH children of p1 titled "NoteChild" (and n2 is a
+		// same-titled page block-parented to ANOTHER page): title matching
+		// is ambiguous within the page, so only resolution by the block's
+		// own id (which equals the child page id) links each block right.
 		page := sink.byKey("p1")
 		require.NotNil(t, page)
-		var childLink string
+		links := map[string]string{}
 		for _, b := range page.Payload.Blocks {
-			if b.Id == "n1" {
-				require.NotNil(t, b.GetLink(), "child_page must resolve to a link, not a placeholder")
-				childLink = b.GetLink().TargetBlockId
+			if b.Id == "n1" || b.Id == "n3" {
+				require.NotNil(t, b.GetLink(), "child_page %s must resolve to a link, not a placeholder", b.Id)
+				links[b.Id] = b.GetLink().TargetBlockId
 			}
 		}
-		// n1 and n2 share the title "NoteChild"; resolution by the block's
-		// own id (which equals the child page id) is unambiguous.
-		assert.Equal(t, "n1", childLink)
+		assert.Equal(t, map[string]string{"n1": "n1", "n3": "n3"}, links)
+	})
+
+	t.Run("nested and block-parented pages stay out of the root collection", func(t *testing.T) {
+		// v1's orphan rule: block-parented entities are reachable via their
+		// hosting page's child_page link, never root (the dead entityById
+		// check used to promote every one of them).
+		for _, key := range []string{"n1", "n2", "n3", "p1"} {
+			object := sink.byKey(key)
+			require.NotNil(t, object)
+			assert.False(t, object.IsRootCandidate, "%s must not be a root candidate", key)
+		}
+	})
+
+	t.Run("inline equation in a table cell stays in the text flow", func(t *testing.T) {
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		var cellTexts []string
+		for _, b := range page.Payload.Blocks {
+			if strings.HasPrefix(b.Id, "rrow2c3d4-") && b.GetText() != nil {
+				cellTexts = append(cellTexts, b.GetText().Text)
+			}
+		}
+		assert.Contains(t, cellTexts, "aE=mc^2",
+			"the equation expression must stay inline in the cell, not vanish")
+	})
+
+	t.Run("media blocks: empty url degrades with caption, external files dedup by full url", func(t *testing.T) {
+		page := sink.byKey("p2")
+		require.NotNil(t, page)
+		blocks := map[string]*model.Block{}
+		for _, b := range page.Payload.Blocks {
+			blocks[b.Id] = b
+		}
+
+		assert.Nil(t, blocks["m1"], "empty-url image emits no file block")
+		caption := blocks["m1-caption"]
+		require.NotNil(t, caption, "the empty-url image's caption survives")
+		assert.Equal(t, "lost image", caption.GetText().GetText())
+		var warned bool
+		for _, issue := range sink.issues {
+			if issue.Code == importv2.IssueDataLoss && issue.SourceKey == "m1" {
+				warned = true
+			}
+		}
+		assert.True(t, warned, "empty-url media must report dataLoss, not vanish silently")
+
+		require.NotNil(t, blocks["m2"])
+		require.NotNil(t, blocks["m3"])
+		assert.NotEqual(t, blocks["m2"].GetFile().TargetObjectId, blocks["m3"].GetFile().TargetObjectId,
+			"external urls differing only in query are different files")
+
+		require.NotNil(t, blocks["m4"])
+		require.NotNil(t, blocks["m5"])
+		assert.Equal(t, blocks["m4"].GetFile().TargetObjectId, blocks["m5"].GetFile().TargetObjectId,
+			"notion-hosted urls differing only in signature dedup to one file")
+		fileObjects := 0
+		for _, o := range sink.objects {
+			if o.SourceKey == blocks["m4"].GetFile().TargetObjectId {
+				fileObjects++
+			}
+		}
+		assert.Equal(t, 1, fileObjects, "the deduped notion-hosted file is emitted once")
 	})
 
 	t.Run("workspace-level page is a root candidate", func(t *testing.T) {

@@ -118,8 +118,13 @@ func (c *Converter) isRootCandidate(entity Entity) bool {
 		_, imported := c.entityById[entity.Parent.DataSourceId]
 		return !imported
 	case "block_id":
-		_, imported := c.entityById[entity.Parent.BlockId]
-		return !imported
+		// A block-parented entity lives inside some page's block tree and is
+		// reachable via that page's child_page/child_database link. Which
+		// page owns the block is unknowable from the pass-1 stubs (entityById
+		// holds entity ids, never block ids), so mirror v1: block-parented is
+		// never root — the alternative promoted every toggle/column-nested
+		// page into the root collection.
+		return false
 	default:
 		return entity.Parent.Workspace
 	}

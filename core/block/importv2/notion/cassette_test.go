@@ -14,6 +14,7 @@ import (
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 const workspaceCassette = "testdata/cassettes/workspace"
@@ -78,4 +79,71 @@ func TestCassetteWorkspace(t *testing.T) {
 	// several places per page (nav-bar pattern); each occurrence must get
 	// its own block ids.
 	assertUniqueBlockIds(t, sink)
+
+	// Fidelity snapshot: replay over the committed cassette is deterministic,
+	// so these numbers pin conversion fidelity exactly. Severity-only checks
+	// stayed green through wholesale degradations (every block decoding to an
+	// "unsupported" placeholder is just Warnings); a drop here is loud.
+	// UPDATE the literals when re-recording the cassette.
+	if mode == recorder.ModeReplayOnly {
+		assert.Equal(t, fidelitySummary{
+			Objects:        763,
+			FileObjects:    41,
+			RootCandidates: 13,
+			Blocks:         5039,
+			MentionMarks:   1466,
+			LinkMarks:      62,
+			IssuesByCode: map[importv2.IssueCode]int{
+				importv2.IssueDataLoss:         341,
+				importv2.IssueMissingTarget:    171,
+				importv2.IssueUnsupportedBlock: 438,
+			},
+		}, summarizeFidelity(sink))
+	}
+}
+
+// fidelitySummary is the cassette conversion's measurable shape.
+type fidelitySummary struct {
+	Objects        int
+	FileObjects    int
+	RootCandidates int
+	Blocks         int
+	MentionMarks   int
+	LinkMarks      int
+	IssuesByCode   map[importv2.IssueCode]int
+}
+
+func summarizeFidelity(sink *recordingSink) fidelitySummary {
+	summary := fidelitySummary{IssuesByCode: map[importv2.IssueCode]int{}}
+	for _, object := range sink.objects {
+		summary.Objects++
+		if object.File != nil {
+			summary.FileObjects++
+		}
+		if object.IsRootCandidate {
+			summary.RootCandidates++
+		}
+		if object.Payload == nil {
+			continue
+		}
+		summary.Blocks += len(object.Payload.Blocks)
+		for _, block := range object.Payload.Blocks {
+			text := block.GetText()
+			if text == nil || text.Marks == nil {
+				continue
+			}
+			for _, mark := range text.Marks.Marks {
+				switch mark.Type {
+				case model.BlockContentTextMark_Mention:
+					summary.MentionMarks++
+				case model.BlockContentTextMark_Link:
+					summary.LinkMarks++
+				}
+			}
+		}
+	}
+	for _, issue := range sink.issues {
+		summary.IssuesByCode[issue.Code]++
+	}
+	return summary
 }

@@ -34,8 +34,13 @@ func WithFetcherStallTimeout(d time.Duration) FetcherOption {
 }
 
 func NewFileFetcher(opts ...FetcherOption) FileFetcher {
+	// The stall guard only arms once headers arrive; a host that accepts
+	// the connection but never answers must not hang the run, so the header
+	// phase gets its own bound. No total cap — large files are legitimate.
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = 30 * time.Second
 	f := &httpFetcher{
-		transport:    &http.Client{Timeout: 0}, // no total cap; stall-guarded below
+		transport:    &http.Client{Transport: transport},
 		retry:        DefaultRetryPolicy(),
 		stallTimeout: 30 * time.Second,
 	}
