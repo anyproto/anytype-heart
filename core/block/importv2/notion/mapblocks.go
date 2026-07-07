@@ -487,13 +487,15 @@ func (c *Converter) mapChildEntity(mctx mapContext, block *notionBlock, wantData
 	// A child_page block's own id IS the child page's id; a child_database
 	// block's id is the owning database's id. Resolve directly — this is
 	// exact, unlike title matching which collides on "Untitled" siblings.
+	// Hoisted synced-block content carries suffixed ids, so resolve via the
+	// real Notion id.
 	targetId := ""
 	if wantDatabase {
-		if id, ok := c.resolveDatabaseRef(block.Id); ok {
+		if id, ok := c.resolveDatabaseRef(block.notionId()); ok {
 			targetId = id
 		}
-	} else if _, ok := c.entityById[block.Id]; ok {
-		targetId = block.Id
+	} else if _, ok := c.entityById[block.notionId()]; ok {
+		targetId = block.notionId()
 	}
 
 	// Fallback: title matching within the page (kept for entities the block

@@ -22,6 +22,18 @@ type notionBlock struct {
 	HasChildren bool            `json:"has_children"`
 	payload     json.RawMessage // the type-keyed member
 	children    []notionBlock
+	// origId keeps the real Notion id when Id got a per-occurrence suffix
+	// (hoisted duplicate synced-block content).
+	origId string
+}
+
+// notionId is the block's real Notion id — the one API references (child_page
+// ids, block parents) point at — regardless of any Id suffixing.
+func (b *notionBlock) notionId() string {
+	if b.origId != "" {
+		return b.origId
+	}
+	return b.Id
 }
 
 func (b *notionBlock) UnmarshalJSON(data []byte) error {
@@ -109,6 +121,7 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 		if block.HasChildren {
 			childSource = block.Id
 		}
+		syncedDuplicate := false
 		if block.Type == "synced_block" {
 			var synced struct {
 				SyncedFrom *struct {
@@ -118,6 +131,7 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 			if err := block.decode(&synced); err == nil && synced.SyncedFrom != nil {
 				// Duplicate synced block: content lives under the original.
 				childSource = synced.SyncedFrom.BlockId
+				syncedDuplicate = true
 			}
 		}
 		if childSource == "" {
@@ -136,7 +150,29 @@ func (c *Converter) fetchChildren(ctx context.Context, blockId string, depth int
 			block.children = []notionBlock{{Id: block.Id + "-lostchildren", Type: "unreadable"}}
 			continue
 		}
+		if syncedDuplicate {
+			// The same original may be referenced by several duplicates in
+			// one page (or coexist with the original itself), so the hoisted
+			// subtree cannot reuse the original's ids verbatim: the snapshot
+			// would carry one block id under several parents and state would
+			// collapse all copies into one.
+			suffixHoistedIds(children, "-"+dashless(block.Id))
+		}
 		block.children = children
 	}
 	return blocks, nil
+}
+
+// suffixHoistedIds rewrites a duplicate synced block's hoisted subtree with a
+// per-occurrence id suffix, keeping the real Notion id for reference
+// resolution (nested duplicates accumulate one suffix per hoisting level).
+func suffixHoistedIds(blocks []notionBlock, suffix string) {
+	for i := range blocks {
+		block := &blocks[i]
+		if block.origId == "" {
+			block.origId = block.Id
+		}
+		block.Id += suffix
+		suffixHoistedIds(block.children, suffix)
+	}
 }

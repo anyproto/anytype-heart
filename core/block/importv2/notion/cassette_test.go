@@ -74,4 +74,8 @@ func TestCassetteWorkspace(t *testing.T) {
 		assert.LessOrEqual(t, issue.Severity, importv2.SeverityWarning,
 			"a recorded workspace should convert without object errors: %s", issue.Error())
 	}
+	// The recorded workspace references the same synced-block original from
+	// several places per page (nav-bar pattern); each occurrence must get
+	// its own block ids.
+	assertUniqueBlockIds(t, sink)
 }

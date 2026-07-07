@@ -67,8 +67,8 @@ func (stubFactory) MakeCollection(name string, memberSourceKeys []string) (*impo
 
 // scriptedWorkspace is a hand-written API fake: one database with two
 // property flavors (incl. the Tags redirect), one database page exercising
-// blocks (nesting fixes, synced content, table headers, mentions), one
-// workspace-level page.
+// blocks (nesting fixes, synced content referenced twice, table headers,
+// mentions), one workspace-level page.
 func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 	t.Helper()
 	routes := map[string]string{}
@@ -122,6 +122,7 @@ func scriptedWorkspace(t *testing.T) http.HandlerFunc {
 		{"id":"b2","type":"to_do","has_children":true,"to_do":{"rich_text":[{"plain_text":"task","type":"text"}],"checked":true}},
 		{"id":"b3","type":"heading_1","has_children":true,"heading_1":{"rich_text":[{"plain_text":"Head","type":"text"}],"is_toggleable":true}},
 		{"id":"b4","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
+		{"id":"b5","type":"synced_block","has_children":false,"synced_block":{"synced_from":{"block_id":"orig1"}}},
 		{"id":"tab1-e5f6","type":"table","has_children":true,"table":{"table_width":2,"has_column_header":true,"has_row_header":false}},
 		{"id":"n1","type":"child_page","has_children":true,"child_page":{"title":"NoteChild"}}
 	],"has_more":false,"next_cursor":null}`
@@ -286,7 +287,13 @@ func TestScriptedWorkspace(t *testing.T) {
 		require.NotNil(t, heading)
 		assert.Equal(t, []string{"b3c"}, heading.ChildrenIds, "toggleable heading keeps its children (v1 flattened)")
 
-		require.NotNil(t, blocks["sc1"], "synced-block content imported (v1 lost it)")
+		syncedA := blocks["sc1-b4"]
+		require.NotNil(t, syncedA, "synced-block content imported (v1 lost it)")
+		assert.Equal(t, "synced content", syncedA.GetText().GetText())
+		syncedB := blocks["sc1-b5"]
+		require.NotNil(t, syncedB, "second duplicate of the same original keeps its own copy")
+		assert.Equal(t, "synced content", syncedB.GetText().GetText())
+		assert.Nil(t, blocks["sc1"], "hoisted synced content must not reuse the original's ids verbatim")
 
 		row1 := blocks["rrow1a1b2"]
 		require.NotNil(t, row1, "row ids are dash-free derivatives of the notion id")
@@ -343,4 +350,23 @@ func TestScriptedWorkspace(t *testing.T) {
 		require.NotNil(t, page)
 		assert.True(t, page.IsRootCandidate)
 	})
+
+	t.Run("block ids are unique within every snapshot", func(t *testing.T) {
+		// State keys blocks by id: a repeated id collapses all copies into
+		// one block claimed by several parents (repeated synced originals
+		// used to trigger exactly that).
+		assertUniqueBlockIds(t, sink)
+	})
+}
+
+func assertUniqueBlockIds(t *testing.T, sink *recordingSink) {
+	t.Helper()
+	for _, object := range sink.objects {
+		seen := map[string]bool{}
+		for _, block := range object.Payload.Blocks {
+			assert.False(t, seen[block.Id],
+				"duplicate block id %q in object %q", block.Id, object.SourceKey)
+			seen[block.Id] = true
+		}
+	}
 }

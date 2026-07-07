@@ -537,7 +537,7 @@ Proposed defaults — flag disagreements in review:
 | Construct | v1 behavior | v2 proposal |
 |---|---|---|
 | Unknown Notion block type | silently dropped | placeholder text block + `Warning(UnsupportedBlock)` |
-| `synced_block` | "Unsupported block", content lost | fetch children (original & duplicate via `synced_from`) → import as duplicated content + Warning |
+| `synced_block` | "Unsupported block", content lost | fetch children (original & duplicate via `synced_from`) → import as duplicated content + Warning; hoisted ids get a per-occurrence suffix so repeated references to one original stay distinct blocks |
 | Toggleable heading children | flattened to siblings | properly nested under the heading |
 | `to_do` nesting | two-parent bug | correct child filtering |
 | Table headers | inverted | match Notion semantics (`has_column_header` → header row) |
