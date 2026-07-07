@@ -26,12 +26,16 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
+	"github.com/anyproto/any-sync/commonfile/fileblockstore"
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
+	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/block/cache"
@@ -62,11 +66,18 @@ type service struct {
 	ctxCancel context.CancelFunc
 
 	dagService           ipld.DAGService
+	commonFile           fileservice.FileService
 	crossSpaceSubService crossspacesub.Service
 	objectGetter         cache.ObjectGetter
 	config               *config.Config
 	networkState         device.NetworkState
+	statService          debugstat.StatService
 	cacheWarmer          *cacheWarmer
+
+	// skippedFiles counts CacheFile requests skipped because the file's root block
+	// was already cached locally. The enqueue/warm-up/cancel counters live on the
+	// cacheWarmer, where those transitions happen.
+	skippedFiles atomic.Int64
 
 	lock        sync.Mutex
 	isEnabled   bool
@@ -91,12 +102,18 @@ func (s *service) Init(a *app.App) error {
 	s.crossSpaceSubService = app.MustComponent[crossspacesub.Service](a)
 	s.objectGetter = app.MustComponent[cache.ObjectGetter](a)
 	commonFile := app.MustComponent[fileservice.FileService](a)
+	s.commonFile = commonFile
 	s.dagService = commonFile.DAGService()
 	s.config = app.MustComponent[*config.Config](a)
 	s.networkState = app.MustComponent[device.NetworkState](a)
 	s.networkState.RegisterHook(s.networkStateChanged)
 
 	s.cacheWarmer = newCacheWarmer(s.ctx, 10, 20, 2*time.Minute, s.DownloadToLocalStore)
+
+	if statService, _ := app.GetComponent[debugstat.StatService](a); statService != nil {
+		s.statService = statService
+		s.statService.AddProvider(s)
+	}
 
 	return nil
 }
@@ -114,6 +131,9 @@ func (s *service) Run(ctx context.Context) error {
 }
 
 func (s *service) Close(ctx context.Context) error {
+	if s.statService != nil {
+		s.statService.RemoveProvider(s)
+	}
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
@@ -167,7 +187,62 @@ func (s *service) setDownloadState(enabled bool, wifiOnly bool, sizeLimitMb int6
 }
 
 func (s *service) CacheFile(spaceId string, fileId domain.FileId) {
+	if s.hasRootBlock(spaceId, fileId) {
+		// The file's root block is already present in the local flatfs, so the
+		// file has (almost certainly) been cached before. Skip the warm-up to
+		// avoid a redundant DAG walk. Missing child blocks are a tolerated edge
+		// case: the proxy store refetches them on demand when the file is read.
+		s.skippedFiles.Add(1)
+		return
+	}
 	s.cacheWarmer.enqueue(spaceId, fileId)
+}
+
+type stat struct {
+	// SkippedFiles is the number of CacheFile requests skipped because the file's
+	// root block was already cached locally.
+	SkippedFiles int64 `json:"skippedFiles"`
+	// EnqueuedFiles is the number of files accepted into the warm-up queue.
+	EnqueuedFiles int64 `json:"enqueuedFiles"`
+	// WarmedUpFiles is the number of files whose warm-up finished successfully.
+	WarmedUpFiles int64 `json:"warmedUpFiles"`
+	// CancelledBeforeStart is the number of queued warm-ups cancelled before they started.
+	CancelledBeforeStart int64 `json:"cancelledBeforeStart"`
+}
+
+func (s *service) ProvideStat() any {
+	st := stat{SkippedFiles: s.skippedFiles.Load()}
+	if s.cacheWarmer != nil {
+		st.EnqueuedFiles = s.cacheWarmer.enqueued.Load()
+		st.WarmedUpFiles = s.cacheWarmer.warmedUp.Load()
+		st.CancelledBeforeStart = s.cacheWarmer.cancelledBeforeStart.Load()
+	}
+	return st
+}
+
+func (s *service) StatId() string {
+	return "cache"
+}
+
+func (s *service) StatType() string {
+	return CName
+}
+
+// hasRootBlock reports whether the file's root block already exists in the local
+// blockstore. It is a pure local key-existence check (flatfs stat) — no block is
+// read, decrypted or fetched from a remote peer.
+func (s *service) hasRootBlock(spaceId string, fileId domain.FileId) bool {
+	rootCid, err := cid.Parse(fileId.String())
+	if err != nil {
+		return false
+	}
+	ctx := fileblockstore.CtxWithSpaceId(s.ctx, spaceId)
+	exists, err := s.commonFile.HasCid(ctx, rootCid)
+	if err != nil {
+		log.Warn("cache file: check root block existence", zap.Error(err))
+		return false
+	}
+	return exists
 }
 
 func (s *service) CancelFileCaching(fileId domain.FileId) {

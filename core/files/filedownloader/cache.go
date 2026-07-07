@@ -3,6 +3,7 @@ package filedownloader
 import (
 	"context"
 	"slices"
+	"sync/atomic"
 	"time"
 
 	"go.uber.org/zap"
@@ -25,6 +26,14 @@ type cacheWarmer struct {
 	blocksLimit int
 	tasksLimit  int
 	downloadFn  func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error
+
+	// lifecycle counters, read by the service's stat provider.
+	enqueued atomic.Int64 // tasks accepted into the queue
+	// warmedUp counts tasks whose downloadFn returned without error. Note that
+	// DownloadToLocalStore currently swallows mid-walk errors (timeout/cancel), so
+	// this means "root block fetched, no hard error" rather than "fully warmed".
+	warmedUp             atomic.Int64
+	cancelledBeforeStart atomic.Int64 // tasks cancelled while still queued (never started)
 }
 
 func newCacheWarmer(ctx context.Context, blocksLimit int, tasksLimit int, timeout time.Duration, downloadFn func(ctx context.Context, spaceId string, cid domain.FileId, blocksLimit int) error) *cacheWarmer {
@@ -59,6 +68,8 @@ func (w *cacheWarmer) runWorker() {
 		err = w.downloadFn(task.ctx, task.spaceId, task.cid, w.blocksLimit)
 		if err != nil {
 			log.Error("cache warmer: download file", zap.Error(err))
+		} else {
+			w.warmedUp.Add(1)
 		}
 
 		err = w.markDone(task.cid)
@@ -81,7 +92,9 @@ func (w *cacheWarmer) enqueue(spaceId string, cid domain.FileId) {
 
 	select {
 	case w.enqueueCh <- task:
+		w.enqueued.Add(1)
 	case <-w.ctx.Done():
+		cancel()
 	}
 }
 
@@ -170,6 +183,8 @@ func (w *cacheWarmer) handleCancel(fileId domain.FileId) {
 	for i, task := range w.tasks {
 		if task.cid == fileId {
 			w.tasks = slices.Delete(w.tasks, i, i+1)
+			// The task was still queued, so its warm-up had not started yet.
+			w.cancelledBeforeStart.Add(1)
 			break
 		}
 	}
