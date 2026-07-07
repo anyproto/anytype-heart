@@ -575,23 +575,28 @@ definitions-before-use can't be broken by a profile.
 type Flavour struct {
     Name string // "generic" | "notion-export" | "obsidian" | "anytype-export"
 
-    // 1. Syntax: goldmark extenders enabled for this profile. Needs a small
-    //    anymark change (variadic options on MarkdownToBlocks); existing
-    //    callers unchanged. Base set (tables, strikethrough, <details>
-    //    toggles, <u>, wiki-links) stays global — cheap and unambiguous.
-    Anymark []anymark.Option
+    // 1. Syntax: goldmark extenders enabled for this profile (appended to
+    //    the base set — tables, strikethrough, <details> toggles, <u>,
+    //    wiki-links — which stays global: cheap and unambiguous). Shipped
+    //    as variadic goldmark.Extender on MarkdownToBlocks; existing
+    //    callers unchanged; nested toggle reparses run base-only for now.
+    Anymark []goldmark.Extender
 
     // 2. Metadata: page-level property extraction beyond the shared YAML
-    //    front-matter pass (which stays global).
-    ExtractMetadata func(page *pageContext) // nil = YAML only
+    //    front-matter pass (which stays global). Runs after H1 title
+    //    extraction, before reference rewriting.
+    ExtractMetadata func(c *Converter, page *pageContext) // nil = YAML only
 
-    // 3. Link targets: fallbacks tried after the generic chain
-    //    (exact path → unescape → unique basename) misses.
-    ResolveTarget func(target string, c *Converter) (entryName string, ok bool)
+    // 3. Link targets: fallback tried after the generic chain (exact path
+    //    → unescape → unique basename) misses; receives the chain's
+    //    normalized, percent-unescaped form of the target.
+    ResolveTarget func(c *Converter, target string) (entryName string, ok bool)
 
-    // 4. Structure conventions.
+    // 4. Structure conventions. CSVCollections is uniform: claims,
+    //    collection emission, link/mention target classification and
+    //    directory-tree membership all follow it.
     CSVCollections        bool // Notion's `Db.csv` ↔ `Db/` membership rule
-    DirectoryPagesDefault bool // profile default; the request param still wins
+    DirectoryPagesDefault bool // profile default; can only ENABLE — see below
     CollectionByName      bool // front-matter *name* "Collection" → collection store
 }
 ```
@@ -605,7 +610,7 @@ divergences land in step 2 with their own goldens.
 | Metadata extraction | YAML front matter only | notion-export: first-paragraph `Key: value` lines → details + Mention marks resolved by trailing Notion id (v1 `processFieldBlockIfItIs`); logseq (future): `::` page properties |
 | Link resolution | generic chain; ambiguity → Issue | notion-export: trailing-32-hex-id match when the path misses; obsidian: extension-less basename, shortest-path preference |
 | CSV collections | on (v1 parity — open question below) | notion-export: on; obsidian: candidate for off |
-| Directory pages | request param, default off | obsidian: candidate default on (vault tree); request wins |
+| Directory pages | request param, default off | obsidian: candidate default on (vault tree). Caveat: the proto bool cannot express explicit-off, so a profile default can only enable; before any profile ships `true` the request param needs a tri-state (open question) |
 | Collection property | `_collection` key honored **globally** (unambiguous, anytype-only key) | anytype-export: additionally match by display name "Collection" (v1 `EqualFold` rule — too loose to run globally) |
 | JSON schemas | honored globally when present, as v1 (the x-app marker never false-positives); schema presence keeps force-disabling dir pages / properties-as-blocks | — (schema presence *is* the anytype-export detection signal) |
 | Title/icon | leading H1 → title, leading emoji **grapheme cluster** → icon | none yet; obsidian filename-as-title is an open product question (v1 extracted H1 for every flavour) |
@@ -621,8 +626,11 @@ there):
    extension, or ≥1 `X.csv` with a sibling `X/` directory containing `.md` → notion-export.
 5. Otherwise generic.
 
-The choice is reported as an informational Issue ("source detected as notion-export; property lines
-and id-based link resolution enabled") — cheap observability for "why did my import behave that way".
+The choice is reported as an informational Issue ("markdown source detected as notion-export") —
+cheap observability for "why did my import behave that way". Detected-generic stays silent (nothing
+flavour-specific is enabled); a forced flavour is always reported ("requested as …"). Once hooks
+actually enable behavior (step 2+), the message grows the enabled-behaviors clause ("… property
+lines and id-based link resolution enabled").
 Mixed sources are the norm (an Obsidian vault containing pasted Notion pages), so profiles are
 defaults-plus-leniency, not strict modes: only heuristics with false-positive risk (field-block lines,
 hex-id matching, name-based Collection) are profile-gated; unambiguous syntax stays global.
@@ -659,7 +667,8 @@ compare — they are spec'd from the source app's export format and pinned by go
 
 **Open questions (decide before step 2):** should generic keep the CSV↔dir collection convention
 (v1 parity) or route bare csv to table-import instead; Obsidian filename-vs-H1 title precedence;
-whether `Import_Markdown` grows an explicit flavour override param for the clients.
+whether `Import_Markdown` grows an explicit flavour override param for the clients; a tri-state
+`CreateDirectoryPages` request param (required before any profile defaults directory pages on).
 
 ---
 

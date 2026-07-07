@@ -44,8 +44,9 @@ func convertBlocks(source []byte, extenders []goldmark.Extender, r ...renderer.N
 
 // MarkdownToBlocks parses markdown into blocks. Optional extenders add
 // dialect-specific goldmark extensions on top of the base set (tables,
-// strikethrough, wiki-links). Known limitation: nested reparses (toggle /
-// <details> inner content) run with the base set only.
+// strikethrough, wiki-links); they are appended verbatim — passing a
+// base-set extension again registers it twice. Known limitation: nested
+// reparses (toggle / <details> inner content) run with the base set only.
 func MarkdownToBlocks(markdownSource []byte,
 	baseFilepath string,
 	allFileShortPaths []string,

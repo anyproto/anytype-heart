@@ -179,7 +179,7 @@ func (c *Converter) resolveObjectValues(ctx context.Context, value domain.Value,
 		if !found {
 			return raw, nil
 		}
-		if !isPageEntry(entryName) {
+		if !c.isPageEntry(entryName) {
 			if err := c.emitFileObject(ctx, entryName, sink); err != nil {
 				return "", err
 			}

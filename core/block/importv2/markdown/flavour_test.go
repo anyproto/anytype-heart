@@ -9,6 +9,7 @@ import (
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 // enumerate runs pass 1 only and returns the converter with its flavour
@@ -84,6 +85,15 @@ func TestFlavourDetection(t *testing.T) {
 			},
 			want: FlavourAnytypeExport,
 		},
+		{
+			name: "an .obsidian dir outranks a notion signature",
+			files: map[string]string{
+				"Tasks.csv":          "Name\n",
+				"Tasks/a.md":         "# A\n",
+				".obsidian/app.json": "{}",
+			},
+			want: FlavourObsidian,
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -153,5 +163,51 @@ func TestFlavourIssue(t *testing.T) {
 
 		// then
 		assert.Empty(t, sink.issues)
+	})
+
+	t.Run("forced generic is still reported", func(t *testing.T) {
+		// given / when
+		sink, _ := runConverterWithParams(t, map[string]string{"a.md": "# A\n"}, Params{Flavour: FlavourGeneric})
+
+		// then
+		require.NotEmpty(t, sink.issues)
+		want := importv2.Info(importv2.IssueFlavourDetected, "markdown source requested as generic")
+		assert.Equal(t, want, sink.issues[0])
+	})
+}
+
+// TestGenericCsvBehavior pins what the CSVCollections toggle governs on the
+// generic profile: a bare csv (no sibling directory, so detection stays
+// generic) is claimed, emitted as a collection, and counts as a link target.
+// Flipping generic's toggle must fail this test.
+func TestGenericCsvBehavior(t *testing.T) {
+	t.Run("bare csv still claims and emits a collection under generic", func(t *testing.T) {
+		// given / when
+		sink, _, claims := runConverter(t, map[string]string{
+			"a.md":     "[Data](data.csv)\n",
+			"data.csv": "x\n",
+		})
+
+		// then — detection stayed generic (no issue), csv claimed and emitted
+		assert.Empty(t, sink.issues)
+		claimed := make([]string, 0, len(claims))
+		for _, c := range claims {
+			claimed = append(claimed, c.SourceKey)
+		}
+		assert.Contains(t, claimed, "data.csv")
+		collection := sink.byKey("data.csv")
+		require.NotNil(t, collection, "bare csv must still become a collection")
+
+		// and the csv counts as a page-link target
+		page := sink.byKey("a.md")
+		require.NotNil(t, page)
+		var link *model.BlockContentLink
+		for _, b := range page.Payload.Blocks {
+			if l := b.GetLink(); l != nil {
+				link = l
+			}
+		}
+		require.NotNil(t, link, "whole-line csv link becomes a page link block")
+		assert.Equal(t, "data.csv", link.TargetBlockId)
 	})
 }

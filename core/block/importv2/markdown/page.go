@@ -262,7 +262,7 @@ func (c *Converter) rewriteTextBlock(ctx context.Context, pageName string, block
 		if !found {
 			continue // not a source file: leave the mark untouched
 		}
-		if isPageEntry(entryName) {
+		if c.isPageEntry(entryName) {
 			mark.Type = model.BlockContentTextMark_Mention
 			mark.Param = entryName
 		}
@@ -285,7 +285,7 @@ func (c *Converter) convertWholeLineLink(ctx context.Context, pageName string, b
 	if !found {
 		return block, nil, false
 	}
-	if isPageEntry(entryName) {
+	if c.isPageEntry(entryName) {
 		return &model.Block{
 			Id: block.Id,
 			Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
@@ -327,11 +327,15 @@ func (c *Converter) emitFileObject(ctx context.Context, entryName string, sink i
 }
 
 // isPageEntry reports whether an entry converts to an object of its own
-// (markdown page or csv collection) rather than a file object.
-func isPageEntry(name string) bool {
+// (markdown page, or csv collection under a csv-collections profile) rather
+// than a file object. Must agree with what Convert actually emits, or link
+// rewriting produces dangling references.
+func (c *Converter) isPageEntry(name string) bool {
 	switch strings.ToLower(path.Ext(name)) {
-	case ".md", ".csv":
+	case ".md":
 		return true
+	case ".csv":
+		return c.flavour.CSVCollections
 	default:
 		return false
 	}

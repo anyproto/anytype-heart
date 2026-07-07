@@ -136,7 +136,11 @@ func (c *Converter) EnumerateIdentities(ctx context.Context, yield func(importv2
 	}
 
 	if c.directoryPagesEnabled() {
-		c.dirs = buildDirTree(append(append([]source.Entry{}, c.mdEntries...), c.csvEntries...))
+		documents := append([]source.Entry{}, c.mdEntries...)
+		if c.flavour.CSVCollections {
+			documents = append(documents, c.csvEntries...)
+		}
+		c.dirs = buildDirTree(documents)
 		for _, dir := range c.dirs.dirs {
 			if err := yield(importv2.IdentityClaim{
 				SourceKey:      dirSourceKey(dir),
@@ -240,7 +244,9 @@ func (c *Converter) lookupEntry(target string) (string, bool) {
 		return candidates[0], true
 	}
 	if c.flavour.ResolveTarget != nil {
-		if entryName, ok := c.flavour.ResolveTarget(c, target); ok {
+		// The hook gets the chain's normalized (and, when it applied,
+		// percent-unescaped) form — not the raw target.
+		if entryName, ok := c.flavour.ResolveTarget(c, name); ok {
 			return entryName, true
 		}
 	}

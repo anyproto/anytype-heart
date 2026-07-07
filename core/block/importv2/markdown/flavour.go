@@ -37,14 +37,20 @@ type Flavour struct {
 	ExtractMetadata func(c *Converter, page *pageContext)
 
 	// ResolveTarget is the flavour fallback tried after the generic link
-	// target chain (exact path → unescape → unique basename) misses.
+	// target chain (exact path → unescape → unique basename) misses. It
+	// receives the chain's normalized, percent-unescaped form of the
+	// target, not the raw link text.
 	ResolveTarget func(c *Converter, target string) (entryName string, ok bool)
 
-	// CSVCollections applies Notion's `Db.csv` ↔ `Db/` membership rule:
-	// every csv claims a collection of its sibling directory's pages.
+	// CSVCollections applies Notion's `Db.csv` ↔ `Db/` convention
+	// uniformly: csv files claim collections of their sibling directory's
+	// pages, count as link/mention targets, and appear in directory trees.
 	CSVCollections bool
-	// DirectoryPagesDefault turns directory pages on for this profile; an
-	// explicit request param still wins (schemas force-disable regardless).
+	// DirectoryPagesDefault turns directory pages on for this profile in
+	// addition to the request param. A plain bool request cannot express
+	// explicit-off, so a profile default can only enable — the request
+	// param needs a tri-state before any profile ships true (§11.4 open
+	// question). Schemas force-disable regardless.
 	DirectoryPagesDefault bool
 	// CollectionByName additionally treats a front-matter property *named*
 	// "Collection" as the collection store. The unambiguous `_collection`

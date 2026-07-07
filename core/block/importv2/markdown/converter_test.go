@@ -97,12 +97,14 @@ func TestEnumerate(t *testing.T) {
 			"Tasks/b.md": "# B",
 		})
 
-		// then — md + csv claimed, binary not
-		require.Len(t, claims, 3)
+		// then — md + csv claimed in walk (lexicographic) order, binary not
+		claimedKeys := make([]string, 0, len(claims))
 		for _, c := range claims {
 			assert.Equal(t, coresb.SmartBlockTypePage, c.SbType)
 			assert.NotEmpty(t, c.SourceFilePath)
+			claimedKeys = append(claimedKeys, c.SourceKey)
 		}
+		assert.Equal(t, []string{"Tasks.csv", "Tasks/b.md", "a.md"}, claimedKeys)
 
 		// and an md-less source is fatal
 		src, err := source.Open(writeTree(t, map[string]string{"only.png": "x"}))
