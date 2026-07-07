@@ -57,6 +57,9 @@ type Flavour struct {
 	// key is honored under every profile; the display-name match is too
 	// loose to run globally.
 	CollectionByName bool
+	// SuggestTypes types csv-collection member pages by the collection's
+	// title (§11.5, name-only evidence — csv rows are never parsed).
+	SuggestTypes bool
 }
 
 // pageContext is the page-local data a metadata hook may inspect and mutate.
@@ -81,6 +84,7 @@ var flavours = map[string]Flavour{
 		ExtractMetadata: notionExtractMetadata,
 		ResolveTarget:   notionResolveTarget,
 		CSVCollections:  true,
+		SuggestTypes:    true,
 	},
 	FlavourAnytypeExport: {
 		Name:             FlavourAnytypeExport,
@@ -92,7 +96,7 @@ var flavours = map[string]Flavour{
 // flavourEnables names what each profile's hooks actually switch on, for
 // the observability issue.
 var flavourEnables = map[string]string{
-	FlavourNotionExport:  "property lines and id-based link resolution enabled",
+	FlavourNotionExport:  "property lines, id-based link resolution and collection type suggestion enabled",
 	FlavourAnytypeExport: "Collection front matter honored",
 }
 

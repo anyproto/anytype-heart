@@ -62,6 +62,13 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 			}
 		}
 	}
+	// A collection-title suggestion fills the default-Page gap only — an
+	// explicit front-matter type always wins (§11.5).
+	if typeKey == bundle.TypeKeyPage.String() {
+		if suggested, ok := c.suggestedDirTypes[path.Dir(entry.Name)]; ok {
+			typeKey = suggested.String()
+		}
+	}
 
 	blocks, _, err := anymark.MarkdownToBlocks(body, path.Dir(entry.Name), nil, c.flavour.Anymark...)
 	if err != nil {

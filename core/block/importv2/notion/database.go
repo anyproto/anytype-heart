@@ -7,6 +7,7 @@ import (
 	"sort"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/typesuggest"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -114,6 +115,8 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		details.Set(domain.RelationKey(def.key), zeroValueOf(def.format))
 	}
 
+	c.suggestPageType(stub.Id, schemaId, &database, names, sink)
+
 	object, err := c.factory.MakeCollection(database.title(), c.databaseMembers(stub.Id, schemaId))
 	if err != nil {
 		return fmt.Errorf("make database collection: %w", err)
@@ -136,6 +139,32 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 	}
 	wireDataview(object, schemaDefs)
 	return sink.Object(ctx, object)
+}
+
+// suggestPageType records a bundled object type for the data source's rows
+// when the database looks like one (name/shape rules, §11.5). Rows would
+// otherwise import as plain Pages, so a confident suggestion only upgrades.
+func (c *Converter) suggestPageType(entityId, schemaId string, database *databaseObject, sortedNames []string, sink importv2.Sink) {
+	evidence := typesuggest.Evidence{ContainerName: database.title()}
+	for _, name := range sortedNames {
+		property := database.Properties[name]
+		if property.Type == "title" {
+			continue
+		}
+		format, supported := relationFormatOf(property.Type)
+		if !supported {
+			continue
+		}
+		evidence.Properties = append(evidence.Properties, typesuggest.Property{Name: name, Format: format})
+	}
+	suggestion, ok := c.suggestor.Suggest(evidence)
+	if !ok {
+		return
+	}
+	c.suggestedTypes[entityId] = suggestion.TypeKey
+	c.suggestedTypes[schemaId] = suggestion.TypeKey
+	sink.Issue(importv2.Info(importv2.IssueTypeSuggested,
+		fmt.Sprintf("database %q pages imported as %s (%s)", database.title(), suggestion.TypeKey, suggestion.Reason)))
 }
 
 // emitProperty resolves one property against the shared store and emits the

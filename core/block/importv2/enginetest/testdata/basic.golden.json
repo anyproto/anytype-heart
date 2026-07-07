@@ -86,7 +86,7 @@
     {
       "id": "obj-002",
       "objectTypes": [
-        "page"
+        "task"
       ],
       "details": {
         "importType": 1,

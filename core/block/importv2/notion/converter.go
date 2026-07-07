@@ -6,6 +6,8 @@ import (
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
+	"github.com/anyproto/anytype-heart/core/block/importv2/typesuggest"
+	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -30,6 +32,12 @@ type Converter struct {
 	properties      *propertiesStore
 	files           *fileRegistry
 	searchTruncated bool
+
+	// suggestor types database rows that would otherwise import as plain
+	// Pages (§11.5); suggestedTypes is keyed by data-source AND entity id
+	// so both parent forms on a page stub resolve.
+	suggestor      typesuggest.Suggestor
+	suggestedTypes map[string]domain.TypeKey
 }
 
 // New builds a per-run converter. tempDir is the run-scoped download
@@ -44,6 +52,8 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		dataSourcesByDatabase: map[string][]string{},
 		properties:            newPropertiesStore(),
 		files:                 newFileRegistry(),
+		suggestor:             typesuggest.NewNaive(),
+		suggestedTypes:        map[string]domain.TypeKey{},
 	}
 }
 

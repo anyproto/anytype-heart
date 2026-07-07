@@ -39,6 +39,7 @@ type IssueCode string
 const (
 	// Informational — run diagnostics, never a problem.
 	IssueFlavourDetected IssueCode = "flavourDetected"
+	IssueTypeSuggested   IssueCode = "typeSuggested"
 
 	// Warnings — deliberate data decisions and placeholders.
 	IssueUnsupportedBlock IssueCode = "unsupportedBlock"

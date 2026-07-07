@@ -126,7 +126,7 @@ func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.
 		Payload: &importv2.Snapshot{
 			Blocks:      flattenBlocks(modelBlocks),
 			Details:     details,
-			ObjectTypes: []string{bundle.TypeKeyPage.String()},
+			ObjectTypes: []string{c.pageTypeKey(stub)},
 		},
 		IsRootCandidate: c.isRootCandidate(stub),
 		Archived:        page.Archived,
@@ -136,6 +136,23 @@ func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.
 		return err
 	}
 	return sink.Object(ctx, object)
+}
+
+// pageTypeKey returns the type suggested for the page's parent database
+// (§11.5), Page otherwise. Databases convert before pages, so suggestions
+// are complete by the time any row asks.
+func (c *Converter) pageTypeKey(stub Entity) string {
+	var parentId string
+	switch stub.Parent.Type {
+	case "data_source_id":
+		parentId = stub.Parent.DataSourceId
+	case "database_id":
+		parentId = stub.Parent.DatabaseId
+	}
+	if typeKey, ok := c.suggestedTypes[parentId]; ok {
+		return typeKey.String()
+	}
+	return bundle.TypeKeyPage.String()
 }
 
 // convertProperties maps every property value to a detail, emitting new

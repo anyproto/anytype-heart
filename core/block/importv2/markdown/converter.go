@@ -20,6 +20,8 @@ import (
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
+	"github.com/anyproto/anytype-heart/core/block/importv2/typesuggest"
+	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -48,6 +50,10 @@ type Converter struct {
 	flavour        Flavour
 	flavourForced  bool
 	sawObsidianDir bool
+	// suggestedDirTypes maps a csv collection's directory to the member
+	// type its title suggests (§11.5, SuggestTypes profiles only).
+	suggestor         typesuggest.Suggestor
+	suggestedDirTypes map[string]domain.TypeKey
 	// listing metadata (small strings), built during pass 1.
 	mdEntries  []source.Entry
 	csvEntries []source.Entry
@@ -62,15 +68,17 @@ type Converter struct {
 // New builds a per-run converter instance (never shared between runs).
 func New(src source.Source, params Params, factory importv2.CollectionFactory) *Converter {
 	return &Converter{
-		source:           src,
-		params:           params,
-		factory:          factory,
-		flavour:          flavours[FlavourGeneric], // resolved for real in pass 1
-		baseNames:        map[string][]string{},
-		emittedRelations: map[string]bool{},
-		emittedOptions:   map[string]bool{},
-		emittedTypes:     map[string]string{},
-		emittedFiles:     map[string]bool{},
+		source:            src,
+		params:            params,
+		factory:           factory,
+		flavour:           flavours[FlavourGeneric], // resolved for real in pass 1
+		suggestor:         typesuggest.NewNaive(),
+		suggestedDirTypes: map[string]domain.TypeKey{},
+		baseNames:         map[string][]string{},
+		emittedRelations:  map[string]bool{},
+		emittedOptions:    map[string]bool{},
+		emittedTypes:      map[string]string{},
+		emittedFiles:      map[string]bool{},
 	}
 }
 
@@ -158,6 +166,7 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	if issue, ok := c.flavourIssue(); ok {
 		sink.Issue(issue)
 	}
+	c.suggestCsvTypes(sink)
 	for _, rejected := range c.source.Rejected() {
 		sink.Issue(importv2.Warning(importv2.IssueSourceInvalid, rejected,
 			"archive entry rejected: path escapes the archive root"))

@@ -334,6 +334,51 @@ func TestDirTreeCollapsesCommonPrefix(t *testing.T) {
 	})
 }
 
+func TestCsvTypeSuggestion(t *testing.T) {
+	dirName := "Tasks " + notionIdA
+
+	t.Run("csv title types member pages under notion-export", func(t *testing.T) {
+		// given / when — id-suffixed csv + dir trip the notion signature
+		sink, _ := runConverterWithParams(t, map[string]string{
+			dirName + ".csv":    "Name,Done\n",
+			dirName + "/one.md": "# One\n",
+			dirName + "/two.md": "---\ntype: Meeting\n---\n# Two\n",
+		}, Params{})
+
+		// then — typeless members become Tasks, explicit types win
+		one := sink.byKey(dirName + "/one.md")
+		require.NotNil(t, one)
+		assert.Equal(t, []string{bundle.TypeKeyTask.String()}, one.Payload.ObjectTypes)
+
+		two := sink.byKey(dirName + "/two.md")
+		require.NotNil(t, two)
+		assert.NotEqual(t, []string{bundle.TypeKeyTask.String()}, two.Payload.ObjectTypes,
+			"explicit front-matter type wins over the suggestion")
+
+		var suggested bool
+		for _, issue := range sink.issues {
+			if issue.Code == importv2.IssueTypeSuggested {
+				suggested = true
+				assert.Equal(t, importv2.SeverityInfo, issue.Severity)
+			}
+		}
+		assert.True(t, suggested, "adopted suggestion must be reported")
+	})
+
+	t.Run("no suggestion under a forced generic profile", func(t *testing.T) {
+		// given / when
+		sink, _ := runConverterWithParams(t, map[string]string{
+			"Tasks.csv":    "Name\n",
+			"Tasks/one.md": "# One\n",
+		}, Params{Flavour: FlavourGeneric})
+
+		// then
+		one := sink.byKey("Tasks/one.md")
+		require.NotNil(t, one)
+		assert.Equal(t, []string{bundle.TypeKeyPage.String()}, one.Payload.ObjectTypes)
+	})
+}
+
 func TestTypeFeaturedRelations(t *testing.T) {
 	t.Run("first three properties are featured, the rest recommended", func(t *testing.T) {
 		// given / when

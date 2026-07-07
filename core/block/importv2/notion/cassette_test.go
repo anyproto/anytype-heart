@@ -97,6 +97,10 @@ func TestCassetteWorkspace(t *testing.T) {
 				importv2.IssueDataLoss:         341,
 				importv2.IssueMissingTarget:    171,
 				importv2.IssueUnsupportedBlock: 438,
+				// 9 databases in the recorded workspace match the naive
+				// type suggestor (§11.5): Tasks/Notes/People/Projects by
+				// name, CRM via email+phone, 4 trackers via due+status.
+				importv2.IssueTypeSuggested: 9,
 			},
 		}, summarizeFidelity(sink))
 	}

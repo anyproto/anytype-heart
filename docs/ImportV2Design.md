@@ -598,6 +598,7 @@ type Flavour struct {
     CSVCollections        bool // Notion's `Db.csv` ↔ `Db/` membership rule
     DirectoryPagesDefault bool // profile default; can only ENABLE — see below
     CollectionByName      bool // front-matter *name* "Collection" → collection store
+    SuggestTypes          bool // csv titles type their member pages (§11.5)
 }
 ```
 
@@ -612,6 +613,7 @@ divergences land in step 2 with their own goldens.
 | CSV collections | on (v1 parity — open question below) | notion-export: on; obsidian: candidate for off |
 | Directory pages | request param, default off | obsidian: candidate default on (vault tree). Caveat: the proto bool cannot express explicit-off, so a profile default can only enable; before any profile ships `true` the request param needs a tri-state (open question) |
 | Collection property | `_collection` key honored **globally** (unambiguous, anytype-only key) | anytype-export: additionally match by display name "Collection" (v1 `EqualFold` rule — too loose to run globally) |
+| Type suggestion | off | notion-export: csv collection titles type their typeless member pages (§11.5, name-only evidence) |
 | JSON schemas | honored globally when present, as v1 (the x-app marker never false-positives); schema presence keeps force-disabling dir pages / properties-as-blocks | — (schema presence *is* the anytype-export detection signal) |
 | Title/icon | leading H1 → title, leading emoji **grapheme cluster** → icon | none yet; obsidian filename-as-title is an open product question (v1 extracted H1 for every flavour) |
 
@@ -669,6 +671,57 @@ compare — they are spec'd from the source app's export format and pinned by go
 (v1 parity) or route bare csv to table-import instead; Obsidian filename-vs-H1 title precedence;
 whether `Import_Markdown` grows an explicit flavour override param for the clients; a tri-state
 `CreateDirectoryPages` request param (required before any profile defaults directory pages on).
+
+### 11.5 Type suggestion
+
+**Problem.** Every imported page is a plain Page, even when the source screams its type: a Notion
+database called "Tasks" with a Due-date column, a "People" database with email and phone columns.
+Typing those rows (Task, Contact, …) is most of the difference between an import that feels native
+and one that needs an afternoon of manual retyping.
+
+**Seam.** `core/block/importv2/typesuggest` — one interface, converter-agnostic evidence:
+
+```go
+type Evidence struct {
+    ContainerName string     // database title / csv collection title, id-stripped
+    Properties    []Property // schema property names + relation formats, when known
+}
+type Suggestor interface {
+    Suggest(evidence Evidence) (Suggestion, bool) // TypeKey, Confidence, Reason
+}
+```
+
+Rules of the seam: suggestions only ever fill the **default-Page gap** — an explicit type (front
+matter, schema) always wins, enforced by the callers; implementations return only suggestions
+confident enough to *apply* (there is no suggestion UI in the import flow); output is deterministic
+for identical evidence. The naive implementation ships first; a learned model (and with it
+non-English container names) replaces it behind the same interface in a later iteration.
+
+**Naive rules** (deliberately conservative — a wrong type on every row of a database is worse than
+Page): exact normalized container-name matches against per-type keyword tables (task/todo/backlog…,
+project, contact/people/clients…, note, journal→diary entry, goal/okr, book/reading list, movie,
+recipe; plurals listed, not derived; emoji and punctuation stripped) at confidence 0.9; property-shape
+corroboration when the name says nothing — email+phone → contact (0.8), a completion-named checkbox
+(done/complete/…) → task (0.75), due-date + status property → task (0.7).
+
+**Evidence sites.** Notion converter: `convertDatabase` suggests from the data-source title + schema
+(sorted property names, mapped formats) and records the verdict under both the entity and data-source
+ids; `convertPage` types rows through either parent form. Databases convert before pages, so
+suggestions are complete when rows ask. Markdown: `SuggestTypes` profiles (notion-export) suggest per
+csv collection from its id-stripped title only — csv rows are never parsed (schema evidence would
+need the header line; a possible later increment).
+
+**Observability.** Every adopted suggestion is an Info issue (`typeSuggested`): `database "Tasks"
+pages imported as task (container name)`.
+
+**Real-workspace validation** (the committed cassette): 9 of 35 databases match — Tasks / Notes /
+People / Projects by name, "CRM (SB)" via email+phone, "90 Day Sprint Planner" / "Launch Tracker" /
+"Tasks & Features" / "Approvals" via due-date+status — typing 64 of 368 pages, no visible false
+positives. The counts are pinned in the cassette fidelity snapshot.
+
+**Future increments** (behind the same seam): dataview `DefaultObjectTypeId` on the database
+collection view (blocked on resolver passthrough + installed-type ids for bundled types); csv header
+line as property evidence; per-page content signals; multilingual/learned matching.
 
 ---
 
