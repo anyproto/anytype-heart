@@ -2526,3 +2526,99 @@ func TestPasteEmptyFileBlock(t *testing.T) {
 		assert.Empty(t, uploadArr)
 	})
 }
+
+func TestClipboard_PasteIntoEmptyBlockForksId(t *testing.T) {
+	newTextModel := func(text string) *model.Block {
+		return &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: text}}}
+	}
+	newPage := func(t *testing.T) *smarttest.SmartTest {
+		return createPage(t, []*model.Block{
+			{Id: "a", Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "existing"}}},
+			{Id: "empty", Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}},
+		})
+	}
+
+	t.Run("single text block into empty block gets a fresh id", func(t *testing.T) {
+		// given
+		sb := newPage(t)
+		cb := newFixture(t, sb)
+
+		// when
+		blockIds, _, caret, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "empty",
+			SelectedTextRange: &model.Range{},
+			AnySlot:           []*model.Block{newTextModel("pasted")},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Nil(t, sb.Pick("empty"), "the peer-known empty block id must be replaced")
+		require.Len(t, blockIds, 1)
+		forked := sb.Pick(blockIds[0])
+		require.NotNil(t, forked)
+		assert.Equal(t, "pasted", forked.Model().GetText().Text)
+		assert.EqualValues(t, -1, caret, "caret must be reported via blockIds, not a position in the replaced block")
+		checkBlockText(t, sb, []string{"existing", "pasted"})
+	})
+
+	t.Run("multi block paste into empty block forks the first line", func(t *testing.T) {
+		// given
+		sb := newPage(t)
+		cb := newFixture(t, sb)
+
+		// when
+		blockIds, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "empty",
+			SelectedTextRange: &model.Range{},
+			AnySlot:           []*model.Block{newTextModel("first"), newTextModel("second")},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Nil(t, sb.Pick("empty"))
+		require.Len(t, blockIds, 2)
+		assert.Equal(t, "first", sb.Pick(blockIds[0]).Model().GetText().Text)
+		checkBlockText(t, sb, []string{"existing", "first", "second"})
+	})
+
+	t.Run("paste into non-empty block keeps its id", func(t *testing.T) {
+		// given
+		sb := newPage(t)
+		cb := newFixture(t, sb)
+
+		// when: caret at the end of "existing"
+		_, _, caret, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    "a",
+			SelectedTextRange: &model.Range{From: 8, To: 8},
+			AnySlot:           []*model.Block{newTextModel("-tail")},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, sb.Pick("a"))
+		assert.Equal(t, "existing-tail", sb.Pick("a").Model().GetText().Text)
+		assert.EqualValues(t, 13, caret)
+	})
+
+	t.Run("empty title keeps its id", func(t *testing.T) {
+		// given
+		sb := smarttest.New("text")
+		s := sb.NewState()
+		template.InitTemplate(s, template.WithTitle)
+		_, _, err := state.ApplyState("", s, false)
+		require.NoError(t, err)
+		cb := newFixture(t, sb)
+
+		// when
+		_, _, _, _, err = cb.Paste(nil, &pb.RpcBlockPasteRequest{
+			FocusedBlockId:    template.TitleBlockId,
+			SelectedTextRange: &model.Range{},
+			AnySlot:           []*model.Block{newTextModel("t")},
+		}, "")
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, sb.Pick(template.TitleBlockId))
+		assert.Equal(t, "t", sb.Pick(template.TitleBlockId).Model().GetText().Text)
+	})
+}

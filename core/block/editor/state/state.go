@@ -136,6 +136,11 @@ type State struct {
 
 	changesStructureIgnoreIds []string
 
+	// replay-only childId→parentId index; see parentindex.go. Deliberately not
+	// propagated by NewState/Copy — it is only sound on the single-layer
+	// replay state inside BuildState.
+	parentIdx *parentIndex
+
 	stringBuf []string
 
 	groupId                  string
@@ -269,6 +274,7 @@ func (s *State) Add(b simple.Block) (ok bool) {
 		s.blocks[id] = b
 		s.blockInit(b)
 		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
+		s.assertParentIds(id, b.Model().ChildrenIds...)
 		return true
 	}
 	return false
@@ -279,6 +285,7 @@ func (s *State) Set(b simple.Block) {
 		s.Add(b)
 	} else {
 		s.setChildrenIds(b.Model(), b.Model().ChildrenIds)
+		s.assertParentIds(b.Model().Id, b.Model().ChildrenIds...)
 		s.blocks[b.Model().Id] = b
 		s.blockInit(b)
 	}
@@ -346,6 +353,28 @@ func (s *State) Unlink(blockId string) (ok bool) {
 func (s *State) UnlinkAll(ids []string) {
 	if len(ids) == 0 {
 		return
+	}
+	if s.parentIdx != nil {
+		// resolve parents through the index; ids it can't answer for keep the
+		// tree-scan path below
+		var missed []string
+		for _, id := range ids {
+			p, ok := s.lookupParent(id)
+			if !ok {
+				missed = append(missed, id)
+				continue
+			}
+			parent := s.Get(p.Model().Id)
+			if parent == nil {
+				missed = append(missed, id)
+				continue
+			}
+			s.removeChildren(parent.Model(), id)
+		}
+		if len(missed) == 0 {
+			return
+		}
+		ids = missed
 	}
 	if len(ids) == 1 {
 		s.Unlink(ids[0])
@@ -423,6 +452,9 @@ func (s *State) HasParent(id, parentId string) bool {
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
+	if p, ok := s.lookupParent(id); ok {
+		return p
+	}
 	s.Iterate(func(b simple.Block) bool {
 		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
 			res = b

@@ -20,6 +20,9 @@ var (
 )
 
 func (s *State) Normalize(withLayouts bool) (err error) {
+	// normalization mutates children lists in ways no index hook can observe
+	// (in-place slice edits before setChildrenIds); never run it indexed
+	s.DisableParentIndex()
 	s.removeDuplicates()
 	s.normalizeDetails()
 	return s.normalize(withLayouts)
@@ -371,6 +374,7 @@ func isBlockEmpty(b simple.Block) bool {
 }
 
 func CleanupLayouts(s *State) (removedCount int) {
+	s.DisableParentIndex()
 	var cleanup func(id string) []string
 	cleanup = func(id string) (result []string) {
 		b := s.Get(id)
