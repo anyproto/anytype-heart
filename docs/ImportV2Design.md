@@ -552,6 +552,115 @@ Proposed defaults — flag disagreements in review:
 | Markdown H1-as-title | first H1 stripped into title | kept (product expectation), documented |
 | Markdown missing file target | empty file block | placeholder + `Warning(MissingTarget)` |
 
+### 11.4 Markdown flavour profiles (phase 4)
+
+**Problem.** The markdown converter serves four dialects through one implicit behavior set: generic
+markdown folders/zips, Notion markdown+CSV zip exports, Obsidian vaults (`Import_Obsidian` is a plain
+alias), and Anytype's own markdown export (YAML front-matter + x-app JSON schemas). The 2026-07-07
+v1-parity review showed the flavour-specific pieces are either applied unconditionally (the CSV↔dir
+collection convention fires on generic folders), missing entirely (Notion property lines, the
+`Collection:` front-matter store), or wrongly generic-ified (emoji token handling). Adding more
+flavours (Logseq, Bear, Joplin) onto the same path recreates v1's failure mode: one converter with all
+conventions interleaved.
+
+**Decision.** Engine, identity, resolve and persist stay flavour-blind (they already are). The
+markdown converter gains a **flavour profile**: a compile-time strategy value selected once per run —
+request override first, listing-based detection otherwise. Not runtime plugins: a `map[string]Flavour`
+is the whole registry; a new flavour is one file plus fixtures. Profiles transform page-local data
+only; they never see the sink — the converter keeps sole ownership of emission order, so
+definitions-before-use can't be broken by a profile.
+
+```go
+// package markdown — sketch; the field set is fixed by the hook inventory below
+type Flavour struct {
+    Name string // "generic" | "notion-export" | "obsidian" | "anytype-export"
+
+    // 1. Syntax: goldmark extenders enabled for this profile. Needs a small
+    //    anymark change (variadic options on MarkdownToBlocks); existing
+    //    callers unchanged. Base set (tables, strikethrough, <details>
+    //    toggles, <u>, wiki-links) stays global — cheap and unambiguous.
+    Anymark []anymark.Option
+
+    // 2. Metadata: page-level property extraction beyond the shared YAML
+    //    front-matter pass (which stays global).
+    ExtractMetadata func(page *pageContext) // nil = YAML only
+
+    // 3. Link targets: fallbacks tried after the generic chain
+    //    (exact path → unescape → unique basename) misses.
+    ResolveTarget func(target string, c *Converter) (entryName string, ok bool)
+
+    // 4. Structure conventions.
+    CSVCollections        bool // Notion's `Db.csv` ↔ `Db/` membership rule
+    DirectoryPagesDefault bool // profile default; the request param still wins
+    CollectionByName      bool // front-matter *name* "Collection" → collection store
+}
+```
+
+**Hook inventory.** Defaults in step 1 reproduce today's behavior exactly (pure-refactor gate);
+divergences land in step 2 with their own goldens.
+
+| Hook | Generic default | Flavour overrides |
+|---|---|---|
+| Syntax extensions | global base set above | obsidian: callouts (`> [!note]`), `==highlight==`, `%%comments%%`; logseq (future): `key:: value` inline properties, outliner mode |
+| Metadata extraction | YAML front matter only | notion-export: first-paragraph `Key: value` lines → details + Mention marks resolved by trailing Notion id (v1 `processFieldBlockIfItIs`); logseq (future): `::` page properties |
+| Link resolution | generic chain; ambiguity → Issue | notion-export: trailing-32-hex-id match when the path misses; obsidian: extension-less basename, shortest-path preference |
+| CSV collections | on (v1 parity — open question below) | notion-export: on; obsidian: candidate for off |
+| Directory pages | request param, default off | obsidian: candidate default on (vault tree); request wins |
+| Collection property | `_collection` key honored **globally** (unambiguous, anytype-only key) | anytype-export: additionally match by display name "Collection" (v1 `EqualFold` rule — too loose to run globally) |
+| JSON schemas | honored globally when present, as v1 (the x-app marker never false-positives); schema presence keeps force-disabling dir pages / properties-as-blocks | — (schema presence *is* the anytype-export detection signal) |
+| Title/icon | leading H1 → title, leading emoji **grapheme cluster** → icon | none yet; obsidian filename-as-title is an open product question (v1 extracted H1 for every flavour) |
+
+**Detection.** Once per run, on the pass-1 listing already in memory (schemas are already sniffed
+there):
+
+1. Request wins: `model.Import_Obsidian` → obsidian. (`Import_Markdown` has no flavour field; adding
+   one to `RpcObjectImportRequestMarkdownParams` is deferred — detection covers the common cases.)
+2. x-app JSON schema parsed → anytype-export.
+3. `.obsidian/` directory in the listing → obsidian.
+4. Notion signature — ≥ max(2, 20% of `.md` files) basenames ending in ` <32-hex>` before the
+   extension, or ≥1 `X.csv` with a sibling `X/` directory containing `.md` → notion-export.
+5. Otherwise generic.
+
+The choice is reported as an informational Issue ("source detected as notion-export; property lines
+and id-based link resolution enabled") — cheap observability for "why did my import behave that way".
+Mixed sources are the norm (an Obsidian vault containing pasted Notion pages), so profiles are
+defaults-plus-leniency, not strict modes: only heuristics with false-positive risk (field-block lines,
+hex-id matching, name-based Collection) are profile-gated; unambiguous syntax stays global.
+
+**Flavour-neutral (no hooks, unchanged):** claims/identity, definitions-before-use emission, YAML
+property→relation/option/type minting, deterministic keys/colors, ref rewriting + file futures,
+dir-page mechanics, root spec/collection, the error model.
+
+**Review deltas folded in (2026-07-07 v1-parity review).** Each finding is either a flavour-neutral
+fix in place or the first real implementation of a hook:
+
+| Finding (severity) | Disposition |
+|---|---|
+| `Collection:`/`_collection` front matter loses the collection store (high) | `CollectionByName` hook + global `_collection` handling; store + v1's member resolution (`.md`-append, exact/dir-relative/basename) |
+| Notion first-paragraph property lines dropped (high) | `ExtractMetadata` hook, notion-export |
+| multi-code-point emoji split; emoji-only H1 → empty Name (med) | neutral fix: grapheme-cluster segmentation + v1's keep-title-when-emoji-only rule |
+| `isEmojiRune` misses 2194–25FF / 2B00–329F (⏰⭐⭕) (med) | neutral fix: v1 ranges ∪ 1FAE0+ |
+| read/parse-failed pages leave dangling claimed ids (med) | engine fix: never-emitted claims resolve to `MissingObject`, not the minted id |
+| inline (mid-sentence) local file link drops the attachment (med) | neutral fix: emit the file object and retype the mark to a Mention of it (keeps text, unlike v1's destructive block replacement) |
+| `![](page.md)` / `![](db.csv)` source-key collision (med) | neutral fix: `isPageEntry` guard in `rewriteFileBlock`; csv file-blocks → page links (v1 rule) |
+| deep-tree root not collapsed; dir-page child order; properties-as-blocks exclusion list; type featured-relations split (low) | neutral parity fixes |
+
+**Testing.** One fixture directory per flavour under `enginetest/testdata` with goldens; a detection
+table test; cross-contamination tests (field-block lines NOT parsed under generic, hex-id resolution
+NOT under obsidian); the parity harness gains one fixture per v1 dialect (new flavours have no v1 to
+compare — they are spec'd from the source app's export format and pinned by goldens only).
+
+**Sequencing (phase 4).**
+1. Introduce `Flavour` + detection with the four existing profiles, all defaults = current behavior.
+   Goldens unchanged except the new detection Issue. Pure refactor.
+2. Land the review-delta table on the seam — first real divergence; per-flavour goldens.
+3. New flavours one at a time (candidate order: Logseq, Bear, Joplin): profile file + anymark
+   extenders (where syntax differs) + fixtures + goldens.
+
+**Open questions (decide before step 2):** should generic keep the CSV↔dir collection convention
+(v1 parity) or route bare csv to table-import instead; Obsidian filename-vs-H1 title precedence;
+whether `Import_Markdown` grows an explicit flavour override param for the clients.
+
 ---
 
 ## 12. Package layout
@@ -604,6 +713,9 @@ Plus: two `Config` bools, one guarded branch in `core/object.go`, one `Register(
 - **Phase 3 — parity & switch plan**: side-by-side comparison harness (same fixture through v1 and v2,
   diff object sets), flip flags per format only when told, migration notes. v1 deletion is a separate,
   later decision.
+- **Phase 4 — markdown flavour profiles** (§11.4): flavour seam + detection (pure refactor) → land the
+  2026-07-07 review deltas on the seam (notion field-blocks, `Collection:` store, emoji/link/collision
+  fixes) → new flavours (Logseq, Bear, Joplin) one profile file at a time.
 
 ## 15. Switch plan (phase 3)
 
