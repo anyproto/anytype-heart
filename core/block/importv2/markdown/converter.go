@@ -31,6 +31,9 @@ type Params struct {
 	// increment 2; carried here so the adapter contract is stable.
 	CreateDirectoryPages     bool
 	IncludePropertiesAsBlock bool
+	// Flavour forces a dialect profile by name (§11.4); empty means
+	// detect from the listing.
+	Flavour string
 }
 
 type Converter struct {
@@ -41,6 +44,10 @@ type Converter struct {
 	resolver *mdResolver
 	schemas  *schemaSet // nil when the source carries no anytype schemas
 	dirs     *dirTree   // nil unless directory pages are enabled
+	// flavour is the run's dialect profile, fixed in pass 1 (flavour.go).
+	flavour        Flavour
+	flavourForced  bool
+	sawObsidianDir bool
 	// listing metadata (small strings), built during pass 1.
 	mdEntries  []source.Entry
 	csvEntries []source.Entry
@@ -58,6 +65,7 @@ func New(src source.Source, params Params, factory importv2.CollectionFactory) *
 		source:           src,
 		params:           params,
 		factory:          factory,
+		flavour:          flavours[FlavourGeneric], // resolved for real in pass 1
 		baseNames:        map[string][]string{},
 		emittedRelations: map[string]bool{},
 		emittedOptions:   map[string]bool{},
@@ -66,9 +74,10 @@ func New(src source.Source, params Params, factory importv2.CollectionFactory) *
 	}
 }
 
-// Schemas force-disable directory pages and properties-as-blocks (v1 rule).
+// Schemas force-disable directory pages and properties-as-blocks (v1 rule);
+// otherwise the request param or the flavour default enables them.
 func (c *Converter) directoryPagesEnabled() bool {
-	return c.params.CreateDirectoryPages && c.schemas == nil
+	return (c.params.CreateDirectoryPages || c.flavour.DirectoryPagesDefault) && c.schemas == nil
 }
 
 func (c *Converter) propertiesAsBlockEnabled() bool {
@@ -85,27 +94,45 @@ func (c *Converter) EnumerateIdentities(ctx context.Context, yield func(importv2
 	c.schemas = schemas
 	c.resolver = newResolver(schemas)
 
+	// Collect the listing first: flavour detection needs the whole picture
+	// before any claim is made (csv claims depend on the profile).
+	var claimable []source.Entry
 	err = c.source.Walk(ctx, func(e source.Entry) error {
 		c.baseNames[path.Base(e.Name)] = append(c.baseNames[path.Base(e.Name)], e.Name)
+		if !c.sawObsidianDir && hasObsidianSegment(path.Dir(e.Name)) {
+			c.sawObsidianDir = true
+		}
 		switch strings.ToLower(path.Ext(e.Name)) {
 		case ".md":
 			c.mdEntries = append(c.mdEntries, e)
+			claimable = append(claimable, e)
 		case ".csv":
 			c.csvEntries = append(c.csvEntries, e)
-		default:
-			return nil
+			claimable = append(claimable, e)
 		}
-		return yield(importv2.IdentityClaim{
-			SourceKey:      e.Name,
-			SbType:         coresb.SmartBlockTypePage,
-			SourceFilePath: sourcePathHash(e.Name),
-		})
+		return nil
 	})
 	if err != nil {
 		return fmt.Errorf("walk source: %w", err)
 	}
 	if len(c.mdEntries) == 0 {
 		return importv2.Fatal(importv2.IssueNoObjects, fmt.Errorf("no markdown files in source"))
+	}
+	if err := c.resolveFlavour(); err != nil {
+		return err
+	}
+
+	for _, e := range claimable {
+		if !c.flavour.CSVCollections && strings.ToLower(path.Ext(e.Name)) == ".csv" {
+			continue
+		}
+		if err := yield(importv2.IdentityClaim{
+			SourceKey:      e.Name,
+			SbType:         coresb.SmartBlockTypePage,
+			SourceFilePath: sourcePathHash(e.Name),
+		}); err != nil {
+			return fmt.Errorf("claim page: %w", err)
+		}
 	}
 
 	if c.directoryPagesEnabled() {
@@ -124,6 +151,9 @@ func (c *Converter) EnumerateIdentities(ctx context.Context, yield func(importv2
 }
 
 func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	if issue, ok := c.flavourIssue(); ok {
+		sink.Issue(issue)
+	}
 	for _, rejected := range c.source.Rejected() {
 		sink.Issue(importv2.Warning(importv2.IssueSourceInvalid, rejected,
 			"archive entry rejected: path escapes the archive root"))
@@ -136,9 +166,11 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 			return importv2.RootSpec{}, err
 		}
 	}
-	for _, entry := range c.csvEntries {
-		if err := c.convertCsvCollection(ctx, entry, sink); err != nil {
-			return importv2.RootSpec{}, err
+	if c.flavour.CSVCollections {
+		for _, entry := range c.csvEntries {
+			if err := c.convertCsvCollection(ctx, entry, sink); err != nil {
+				return importv2.RootSpec{}, err
+			}
 		}
 	}
 	if c.dirs != nil {
@@ -190,7 +222,8 @@ func (c *Converter) csvMembers(csvName string) []string {
 
 // lookupEntry resolves a link target (converter-relative path, possibly
 // URL-escaped) to a source entry name. Basename fallback fires only on a
-// unique match — v1 silently picked the last same-named file.
+// unique match — v1 silently picked the last same-named file. The flavour
+// fallback (e.g. Notion id matching) gets the last word.
 func (c *Converter) lookupEntry(target string) (string, bool) {
 	name := source.NormalizeName(target)
 	if _, ok := c.source.Stat(name); ok {
@@ -205,6 +238,11 @@ func (c *Converter) lookupEntry(target string) (string, bool) {
 	}
 	if candidates, ok := c.baseNames[path.Base(name)]; ok && len(candidates) == 1 {
 		return candidates[0], true
+	}
+	if c.flavour.ResolveTarget != nil {
+		if entryName, ok := c.flavour.ResolveTarget(c, target); ok {
+			return entryName, true
+		}
 	}
 	return name, false
 }

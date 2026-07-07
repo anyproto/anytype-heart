@@ -55,7 +55,7 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 		}
 	}
 
-	blocks, _, err := anymark.MarkdownToBlocks(body, path.Dir(entry.Name), nil)
+	blocks, _, err := anymark.MarkdownToBlocks(body, path.Dir(entry.Name), nil, c.flavour.Anymark...)
 	if err != nil {
 		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, entry.Name, fmt.Errorf("parse markdown: %w", err)))
 		return nil
@@ -66,6 +66,11 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 	if extracted, rest := extractH1Title(blocks); extracted != "" {
 		title, blocks = extracted, rest
 		iconEmoji, title = splitEmojiTitle(title)
+	}
+	if c.flavour.ExtractMetadata != nil {
+		page := &pageContext{Name: entry.Name, Blocks: blocks}
+		c.flavour.ExtractMetadata(c, page)
+		blocks = page.Blocks
 	}
 	blocks, err = c.rewriteBlocks(ctx, entry.Name, blocks, sink)
 	if err != nil {

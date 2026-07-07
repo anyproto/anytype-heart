@@ -30,20 +30,26 @@ var (
 	reWikiWbr = regexp.MustCompile(`<wbr[^>]*>`)
 )
 
-func convertBlocks(source []byte, r ...renderer.NodeRenderer) error {
+func convertBlocks(source []byte, extenders []goldmark.Extender, r ...renderer.NodeRenderer) error {
 	nodeRenderers := make([]util.PrioritizedValue, 0, len(r))
 	for _, nodeRenderer := range r {
 		nodeRenderers = append(nodeRenderers, util.Prioritized(nodeRenderer, 100))
 	}
+	extensions := append([]goldmark.Extender{extension.Table, extension.Strikethrough, &wikilink.Extender{}}, extenders...)
 	gm := goldmark.New(goldmark.WithRenderer(
 		renderer.NewRenderer(renderer.WithNodeRenderers(nodeRenderers...)),
-	), goldmark.WithExtensions(extension.Table), goldmark.WithExtensions(extension.Strikethrough), goldmark.WithExtensions(&wikilink.Extender{}))
+	), goldmark.WithExtensions(extensions...))
 	return gm.Convert(source, &bytes.Buffer{})
 }
 
+// MarkdownToBlocks parses markdown into blocks. Optional extenders add
+// dialect-specific goldmark extensions on top of the base set (tables,
+// strikethrough, wiki-links). Known limitation: nested reparses (toggle /
+// <details> inner content) run with the base set only.
 func MarkdownToBlocks(markdownSource []byte,
 	baseFilepath string,
-	allFileShortPaths []string) (blocks []*model.Block, rootBlockIDs []string, err error) {
+	allFileShortPaths []string,
+	extenders ...goldmark.Extender) (blocks []*model.Block, rootBlockIDs []string, err error) {
 	br := newBlocksRenderer(baseFilepath, allFileShortPaths, false)
 
 	r := NewRenderer(br)
@@ -51,7 +57,7 @@ func MarkdownToBlocks(markdownSource []byte,
 	te := table.NewEditor(nil)
 	tr := NewTableRenderer(br, te)
 	// allFileShortPaths,
-	err = convertBlocks(markdownSource, r, tr)
+	err = convertBlocks(markdownSource, extenders, r, tr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,7 +132,7 @@ func HTMLToBlocks(source []byte, url string) (blocks []*model.Block, rootBlockID
 	blRenderer := newBlocksRenderer("", nil, false)
 	r := NewRenderer(blRenderer)
 	tr := NewTableRenderer(blRenderer, table.NewEditor(nil))
-	err = convertBlocks([]byte(md), r, tr)
+	err = convertBlocks([]byte(md), nil, r, tr)
 	if err != nil {
 		return nil, nil, err
 	}

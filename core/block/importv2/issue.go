@@ -5,18 +5,21 @@ import (
 	"fmt"
 )
 
-// Severity orders issues: warnings never abort, object errors abort in
-// all-or-nothing mode, fatal issues always abort.
+// Severity orders issues: info and warnings never abort, object errors abort
+// in all-or-nothing mode, fatal issues always abort.
 type Severity int
 
 const (
-	SeverityWarning Severity = iota
+	SeverityInfo Severity = iota
+	SeverityWarning
 	SeverityObjectError
 	SeverityFatal
 )
 
 func (s Severity) String() string {
 	switch s {
+	case SeverityInfo:
+		return "info"
 	case SeverityWarning:
 		return "warning"
 	case SeverityObjectError:
@@ -34,6 +37,9 @@ func (s Severity) String() string {
 type IssueCode string
 
 const (
+	// Informational — run diagnostics, never a problem.
+	IssueFlavourDetected IssueCode = "flavourDetected"
+
 	// Warnings — deliberate data decisions and placeholders.
 	IssueUnsupportedBlock IssueCode = "unsupportedBlock"
 	IssueDataLoss         IssueCode = "dataLoss"
@@ -79,6 +85,11 @@ func (i Issue) Error() string {
 
 func (i Issue) Unwrap() error {
 	return i.Err
+}
+
+// Info builds an informational issue.
+func Info(code IssueCode, message string) Issue {
+	return Issue{Severity: SeverityInfo, Code: code, Message: message}
 }
 
 // Warning builds a warning-severity issue.

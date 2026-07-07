@@ -254,6 +254,7 @@ type mdParams struct {
 	NoCollection             bool
 	CreateDirectoryPages     bool
 	IncludePropertiesAsBlock bool
+	Flavour                  string
 }
 
 func markdownParams(req *pb.RpcObjectImportRequest) ([]string, mdParams, error) {
@@ -261,10 +262,17 @@ func markdownParams(req *pb.RpcObjectImportRequest) ([]string, mdParams, error) 
 	if markdownReq == nil || len(markdownReq.Path) == 0 {
 		return nil, mdParams{}, fmt.Errorf("markdown import requires at least one path")
 	}
+	// An explicit Obsidian import forces the profile; plain markdown
+	// imports detect the flavour from the listing (§11.4).
+	flavour := ""
+	if req.Type == model.Import_Obsidian {
+		flavour = markdown.FlavourObsidian
+	}
 	return markdownReq.Path, mdParams{
 		NoCollection:             markdownReq.NoCollection,
 		CreateDirectoryPages:     markdownReq.CreateDirectoryPages,
 		IncludePropertiesAsBlock: markdownReq.IncludePropertiesAsBlock,
+		Flavour:                  flavour,
 	}, nil
 }
 
@@ -278,6 +286,7 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 	converter := markdown.New(src, markdown.Params{
 		CreateDirectoryPages:     params.CreateDirectoryPages,
 		IncludePropertiesAsBlock: params.IncludePropertiesAsBlock,
+		Flavour:                  params.Flavour,
 	}, &collectionFactory{service: s.collectionService})
 	return s.runEngine(ctx, request, converter, spc, spillDir, progress)
 }
