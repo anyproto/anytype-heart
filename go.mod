@@ -308,7 +308,7 @@ replace github.com/dgraph-io/badger/v4 => github.com/anyproto/badger/v4 v4.2.1-0
 
 replace github.com/dgraph-io/ristretto => github.com/anyproto/ristretto v0.1.2-0.20240221153107-2b23839cc50c
 
-replace github.com/libp2p/zeroconf/v2 => github.com/anyproto/zeroconf/v2 v2.2.1-0.20240228113933-f90a5cc4439d
+replace github.com/libp2p/zeroconf/v2 => github.com/anyproto/zeroconf/v2 v2.2.1-0.20260708184030-4b038d2205c0
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anyproto/html-to-markdown v0.0.0-20231025221133-830bf0a6f139
 
