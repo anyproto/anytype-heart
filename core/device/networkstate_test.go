@@ -145,6 +145,35 @@ func TestNetworkState_SetNetworkState(t *testing.T) {
 		assert.Equal(t, model.DeviceNetworkType_WIFI, state.networkState)
 		assert.Equal(t, model.DeviceNetworkType_WIFI, hookState)
 	})
+	t.Run("same value is a cheap no-op (hook not called)", func(t *testing.T) {
+		// given: default state is WIFI(0)
+		state := &networkState{}
+		var calls int
+		var last model.DeviceNetworkType
+		state.RegisterHook(func(n model.DeviceNetworkType) {
+			calls++
+			last = n
+		})
+
+		// when/then: setting the same-as-current value must not fire the hook
+		state.SetNetworkState(model.DeviceNetworkType_WIFI)
+		assert.Equal(t, 0, calls, "same-as-default value must not fire the hook")
+
+		// a real change fires exactly once
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		assert.Equal(t, 1, calls)
+		assert.Equal(t, model.DeviceNetworkType_CELLULAR, last)
+
+		// repeating the same value is a no-op — no extra hook calls
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		assert.Equal(t, 1, calls, "repeated same value must be a no-op")
+
+		// switching back fires once more
+		state.SetNetworkState(model.DeviceNetworkType_WIFI)
+		assert.Equal(t, 2, calls)
+		assert.Equal(t, model.DeviceNetworkType_WIFI, last)
+	})
 }
 
 func TestNetworkState_GetNetworkState(t *testing.T) {
