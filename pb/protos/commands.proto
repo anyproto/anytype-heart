@@ -7574,11 +7574,13 @@ message Rpc {
 
         message RunProfiler {
             message Request {
-                // 0 = save heap snapshot only; >0 = run full profiler (CPU, heap, trace, goroutines) for this many seconds
+                // 0 = save heap snapshot only; >0 = run timed profiler (CPU, heap, goroutines) for this many seconds. Set includeTrace to also capture the runtime execution trace.
                 int32 durationInSeconds = 1;
                 Reason reason = 2;
                 // Optional free-form description to attach to the profile
                 string reasonDesc = 3;
+                // Also capture the runtime execution trace (runtime/trace). Off by default: it is the heaviest artifact in both archive size and runtime overhead. Only applies when durationInSeconds > 0.
+                bool includeTrace = 4;
 
                 enum Reason {
                     UNKNOWN = 0;

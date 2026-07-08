@@ -128,7 +128,7 @@ func pruneOldProfilesIfOvercrowded(dir string, countTrigger int, maxAge time.Dur
 	}
 }
 
-func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDesc string) (string, error) {
+func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDesc string, includeTrace bool) (string, error) {
 	if seconds == 0 {
 		return s.SaveDebugSnapshot(reason, reasonDesc)
 	}
@@ -137,13 +137,17 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	if err := os.MkdirAll(profilesDir, 0755); err != nil {
 		return "", fmt.Errorf("create profiles dir: %w", err)
 	}
+	return s.runTimedProfiler(ctx, profilesDir, seconds, reason, reasonDesc, includeTrace)
+}
 
-	// In-flight trace (already in memory from recorder)
-	inFlightTraceBuf, err := s.traceRecorder.stopAndGetInFlightTrace()
-	if err != nil {
-		return "", err
-	}
-
+// runTimedProfiler captures a timed profiling bundle — CPU profile, heap
+// (start/end), and goroutine dumps (start/end) — into a zip under profilesDir
+// and returns its path. The runtime execution trace is the heaviest artifact,
+// in both archive size and runtime overhead, so it is captured only when the
+// caller opts in via includeTrace; otherwise the flight recorder is left
+// untouched. profilesDir is passed explicitly so the capture is testable
+// without the global initialparams singleton.
+func (s *Service) runTimedProfiler(ctx context.Context, profilesDir string, seconds int, reason, reasonDesc string, includeTrace bool) (string, error) {
 	// Create temp files for streaming. We defer removal unconditionally —
 	// the caller never sees these paths, only the final zip.
 	type tempFile struct {
@@ -166,22 +170,27 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 		return f, nil
 	}
 
-	// Stream trace to file
-	traceF, err := createTemp("trace", "tmp_trace_*")
-	if err != nil {
-		return "", fmt.Errorf("create trace file: %w", err)
-	}
-	if err := trace.Start(traceF); err != nil {
-		traceF.Close()
-		return "", fmt.Errorf("start tracer: %w", err)
-	}
-	traceRunning := true
-	defer func() {
-		if traceRunning {
-			trace.Stop()
+	// Optional runtime execution trace. It is the heaviest artifact — in both
+	// archive size and runtime overhead — so it is captured only when the
+	// caller opts in via includeTrace.
+	traceRunning := false
+	if includeTrace {
+		traceF, err := createTemp("trace", "tmp_trace_*")
+		if err != nil {
+			return "", fmt.Errorf("create trace file: %w", err)
 		}
-		traceF.Close()
-	}()
+		if err := trace.Start(traceF); err != nil {
+			traceF.Close()
+			return "", fmt.Errorf("start tracer: %w", err)
+		}
+		traceRunning = true
+		defer func() {
+			if traceRunning {
+				trace.Stop()
+			}
+			traceF.Close()
+		}()
+	}
 
 	// Stream CPU profile to file
 	cpuF, err := createTemp("cpu_profile", "tmp_cpu_*")
@@ -234,8 +243,10 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 	// The deferred cleanup above still closes the underlying files.
 	pprof.StopCPUProfile()
 	cpuRunning = false
-	trace.Stop()
-	traceRunning = false
+	if traceRunning {
+		trace.Stop()
+		traceRunning = false
+	}
 
 	// Heap end
 	heapEndF, err := createTemp("heap_end", "tmp_heap_end_*")
@@ -301,16 +312,6 @@ func (s *Service) RunProfiler(ctx context.Context, seconds int, reason, reasonDe
 			return "", fmt.Errorf("copy %s to zip: %w", t.zipName, err)
 		}
 	}
-	if inFlightTraceBuf != nil {
-		dst, err := debugsnapshot.CreateEntry(zipw, "account_select_trace", zipEntryTime)
-		if err != nil {
-			return "", fmt.Errorf("write in-flight trace: %w", err)
-		}
-		if _, err := io.Copy(dst, inFlightTraceBuf); err != nil {
-			return "", fmt.Errorf("write in-flight trace: %w", err)
-		}
-	}
-
 	meta := s.snapshotMeta()
 	meta.Full = true
 	if err := debugsnapshot.WriteMetadata(zipw, debugsnapshot.BuildInfo(reason, reasonDesc, meta), meta.StatJSON, zipEntryTime); err != nil {
@@ -757,24 +758,4 @@ func (r *traceRecorder) saveTraceToZipArchive(w io.Writer) error {
 		return fmt.Errorf("create zip archive: %w", err)
 	}
 	return nil
-}
-
-func (r *traceRecorder) stopAndGetInFlightTrace() (*bytes.Buffer, error) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
-
-	if r.recorder != nil {
-		buf := bytes.NewBuffer(nil)
-		_, err := r.recorder.WriteTo(buf)
-		if err != nil {
-			return nil, fmt.Errorf("write in-flight trace: %w", err)
-		}
-		err = r.recorder.Stop()
-		if err != nil {
-			log.With("error", err).Error("stop trace recorder")
-		}
-		r.recorder = nil
-		return buf, nil
-	}
-	return nil, nil
 }

@@ -214,7 +214,7 @@ func (mw *Middleware) DebugOpenedObjects(_ context.Context, _ *pb.RpcDebugOpened
 }
 
 func (mw *Middleware) DebugRunProfiler(cctx context.Context, req *pb.RpcDebugRunProfilerRequest) *pb.RpcDebugRunProfilerResponse {
-	path, err := mw.applicationService.RunProfiler(cctx, int(req.DurationInSeconds), req.Reason.String(), req.ReasonDesc)
+	path, err := mw.applicationService.RunProfiler(cctx, int(req.DurationInSeconds), req.Reason.String(), req.ReasonDesc, req.IncludeTrace)
 	if err != nil {
 		return &pb.RpcDebugRunProfilerResponse{
 			Error: &pb.RpcDebugRunProfilerResponseError{
