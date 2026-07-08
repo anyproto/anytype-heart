@@ -30,6 +30,13 @@ import (
 
 var ErrNoFolder = fmt.Errorf("no folder provided")
 
+// startupTraceEnabled gates the login (AccountSelect) flight recorder behind
+// ANYTYPE_STARTUP_TRACE=1. The recorder continuously captures a runtime
+// execution trace, so it is off by default and enabled only when explicitly
+// debugging startup performance. When off, DebugAccountSelectTrace returns an
+// error because nothing was recorded.
+var startupTraceEnabled = os.Getenv("ANYTYPE_STARTUP_TRACE") == "1"
+
 func (s *Service) profilesDir() string {
 	return initialparams.Get().Paths.ProfilesDir
 }
