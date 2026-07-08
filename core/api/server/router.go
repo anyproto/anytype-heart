@@ -43,6 +43,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	srv.registerObjectRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerPropertyRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerSearchRoutes(v1, eventService)
+	srv.registerBlockRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerSpaceRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerTagRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerTemplateRoutes(v1, eventService)
@@ -397,5 +398,19 @@ func (srv *Server) registerTypeRoutes(v1 *gin.RouterGroup, eventService apicore.
 		writeRateLimitMW,
 		ensureAnalyticsEvent("DeleteType", eventService),
 		handler.DeleteTypeHandler(srv.service),
+	)
+}
+
+// registerBlockRoutes registers block-related routes
+func (srv *Server) registerBlockRoutes(v1 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	v1.POST("/spaces/:space_id/objects/:object_id/blocks/:block_id/link",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("SetBlockObjectLink", eventService),
+		handler.SetBlockObjectLinkHandler(srv.service),
+	)
+	v1.DELETE("/spaces/:space_id/objects/:object_id/blocks/:block_id/link",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("DeleteBlockObjectLink", eventService),
+		handler.DeleteBlockObjectLinkHandler(srv.service),
 	)
 }
