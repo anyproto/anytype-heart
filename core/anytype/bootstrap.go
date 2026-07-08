@@ -66,6 +66,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/configfetcher"
 	"github.com/anyproto/anytype-heart/core/debug"
 	"github.com/anyproto/anytype-heart/core/debug/debugreporter"
+	"github.com/anyproto/anytype-heart/core/debug/p2ptrace"
 	"github.com/anyproto/anytype-heart/core/debug/profiler"
 	"github.com/anyproto/anytype-heart/core/device"
 	"github.com/anyproto/anytype-heart/core/durability"
@@ -276,6 +277,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(spacecore.New()).
 		Register(idresolver.New(200*time.Millisecond, 2*time.Second)).
 		Register(device.New()).
+		Register(p2ptrace.New()). // DEBUG-ONLY #p2p trace server on :6061/trace
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
 		Register(typeprovider.New()).
