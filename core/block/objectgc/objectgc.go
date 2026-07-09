@@ -23,6 +23,17 @@ var log = logging.Logger("objectgc")
 
 const CName = "core.block.objectgc"
 
+// autoArchiveOrphanFiles gates context-driven auto-archival and auto-restore of orphan files.
+//
+// Disabled: orphan files are reported as CleanupSuggestion candidates alongside orphan objects, and
+// the client decides whether to prompt in place or let the user clean up later via
+// ObjectCleanupSuggestions. Nothing is archived or restored without the user's consent.
+//
+// The archival code is retained so this can be re-enabled if user feedback calls for it. It does not
+// gate the chat attachment cleanup in ArchiveOrphansOnLinksRemoval (skipBin=true), which permanently
+// deletes files that have no other owner.
+const autoArchiveOrphanFiles = false
+
 type ObjectGC interface {
 	app.ComponentRunnable
 	// CheckObjectsOnObjectArchived finds orphans when objectId is archived/unarchived.
@@ -69,17 +80,11 @@ type ObjectArchiver interface {
 	SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error
 }
 
-// ParticipantProvider provides the current user's participant ID for a given space
-type ParticipantProvider interface {
-	MyParticipantId(spaceId string) string
-}
-
 type objectGC struct {
-	objectDeleter       ObjectDeleter
-	objectStore         objectstore.ObjectStore
-	objectArchiver      ObjectArchiver
-	backlinksWatcher    BacklinksFlusher
-	participantProvider ParticipantProvider
+	objectDeleter    ObjectDeleter
+	objectStore      objectstore.ObjectStore
+	objectArchiver   ObjectArchiver
+	backlinksWatcher BacklinksFlusher
 
 	componentCtx context.Context
 }
@@ -97,7 +102,6 @@ func (gc *objectGC) Init(a *app.App) error {
 	gc.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	gc.objectArchiver = app.MustComponent[ObjectArchiver](a)
 	gc.backlinksWatcher = app.MustComponent[BacklinksFlusher](a)
-	gc.participantProvider = app.MustComponent[ParticipantProvider](a)
 	return nil
 }
 
@@ -196,28 +200,29 @@ func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, remo
 			continue
 		}
 
-		// orphaned removed-link file (direct target == level 1) → archive or delete
-		shouldSkipBin := skipBin
-		if shouldSkipBin {
-			// Additional safety: only permanently delete if the file was created by the current user.
-			fileCreator := record.Details.GetString(bundle.RelationKeyCreator)
-			if fileCreator != gc.participantProvider.MyParticipantId(spaceId) {
-				log.With("id", id).Debugf("file created by another user - archiving instead of deleting")
-				shouldSkipBin = false
-			}
-		}
-		if shouldSkipBin {
+		// orphaned removed-link file (direct target == level 1)
+		if skipBin {
+			// Chat attachment cleanup: the file has no other owner, so it is permanently deleted
+			// regardless of who uploaded it. Only admins can moderate a chat, so a moderated message
+			// takes its attachments with it.
 			log.With("id", id).Debugf("deleting orphaned file created in context %s", contextId)
 			if err := gc.deleteObject(spaceId, id); err != nil {
 				log.With("id", id).Errorf("failed to delete object: %v", err)
 			}
-		} else {
+			continue
+		}
+		if autoArchiveOrphanFiles {
 			log.With("id", id).Debugf("archiving orphaned file created in context %s", contextId)
 			res.Files = append(res.Files, id)
+		} else {
+			// surfaced for user confirmation, exactly like orphaned objects
+			res.Candidates = append(res.Candidates, id)
 		}
 	}
-	if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, res.Files, true); err != nil {
-		return OrphanCandidates{}, fmt.Errorf("archive objects: %w", err)
+	if autoArchiveOrphanFiles && len(res.Files) > 0 {
+		if err := gc.objectArchiver.SetListIsArchivedNoGC(gc.componentCtx, res.Files, true); err != nil {
+			return OrphanCandidates{}, fmt.Errorf("archive objects: %w", err)
+		}
 	}
 	return res, nil
 }
@@ -403,11 +408,12 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 		for id, details := range candidates {
 			visited[id] = struct{}{}
 			isFile := slices.Contains(domain.FileLayouts, model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout)))
-			if current == objectId && isFile {
+			if autoArchiveOrphanFiles && current == objectId && isFile {
 				// level-1 orphan file → auto-archived
 				res.Files = append(res.Files, id)
 			} else {
-				// objects (any level) + files at level >= 2 → user confirmation
+				// everything else → user confirmation. With auto-archival disabled this is every
+				// orphan: objects at any level, and files at any level.
 				res.Candidates = append(res.Candidates, id)
 			}
 			if !isFile {
@@ -595,6 +601,11 @@ func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId str
 // It is a pure read operation — no state changes occur. The caller is responsible for
 // restoring the returned IDs and emitting any events.
 func (gc *objectGC) restoreObjectsOnUnarchive(idx spaceindex.Store, objectId string, gcLayouts []int64) ([]string, error) {
+	if !autoArchiveOrphanFiles {
+		// Nothing was auto-archived, so there is nothing to auto-restore. Files archived by earlier
+		// builds stay in the bin until the user restores them.
+		return nil, nil
+	}
 	toRestore, err := gc.collectOrphanedForRestore(idx, objectId, gcLayouts)
 	if err != nil {
 		return nil, fmt.Errorf("collect orphaned for restore: %w", err)
@@ -638,6 +649,10 @@ func (gc *objectGC) queryActiveIds(idx spaceindex.Store, ids map[string]struct{}
 // in the page is sufficient justification to unarchive it. Objects are never auto-restored.
 // RestoreOrphansOnLinksAdded returns the IDs of files that were restored; the caller emits events.
 func (gc *objectGC) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
+	if !autoArchiveOrphanFiles {
+		// Link removal no longer archives files, so re-adding a link has nothing to undo.
+		return nil, nil
+	}
 	if len(addedLinks) == 0 {
 		return nil, nil
 	}

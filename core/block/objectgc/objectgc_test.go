@@ -24,22 +24,25 @@ type fixture struct {
 	*objectGC
 	store    *objectstore.StoreFixture
 	archiver *mockArchiver
+	deleter  *mockDeleter
 }
 
 func newFixture(t *testing.T) *fixture {
 	store := objectstore.NewStoreFixture(t)
 	archiver := &mockArchiver{}
+	deleter := &mockDeleter{}
 	gc := &objectGC{
-		objectStore:         store,
-		objectArchiver:      archiver,
-		backlinksWatcher:    &noopFlusher{},
-		componentCtx:        context.Background(),
-		participantProvider: &mockParticipantProvider{},
+		objectStore:      store,
+		objectArchiver:   archiver,
+		objectDeleter:    deleter,
+		backlinksWatcher: &noopFlusher{},
+		componentCtx:     context.Background(),
 	}
 	return &fixture{
 		objectGC: gc,
 		store:    store,
 		archiver: archiver,
+		deleter:  deleter,
 	}
 }
 
@@ -107,10 +110,6 @@ func systemObjectWithRef(id, createdInContext, ref string, backlinks []string) o
 
 // -- mocks --
 
-type mockParticipantProvider struct{ id string }
-
-func (m *mockParticipantProvider) MyParticipantId(_ string) string { return m.id }
-
 type mockArchiver struct {
 	archivedIds   []string
 	unarchivedIds []string
@@ -122,6 +121,13 @@ func (m *mockArchiver) SetListIsArchivedNoGC(_ context.Context, objectIds []stri
 	} else {
 		m.unarchivedIds = append(m.unarchivedIds, objectIds...)
 	}
+	return nil
+}
+
+type mockDeleter struct{ deletedIds []string }
+
+func (m *mockDeleter) DeleteObjectByFullID(id domain.FullID) error {
+	m.deletedIds = append(m.deletedIds, id.ObjectID)
 	return nil
 }
 
@@ -341,26 +347,6 @@ func TestCheckObjectsOnObjectArchived_ImageObject_NoChildrenFound(t *testing.T) 
 
 // -- links restored (undo) tests --
 
-func TestRestoreOrphansOnLinksAdded_RestoresArchivedFile(t *testing.T) {
-	// given: file was GC'd (archived) when its link was deleted; undo re-adds the link
-	fx := newFixture(t)
-	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
-		{
-			bundle.RelationKeyId:               domain.String("file1"),
-			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_image)),
-			bundle.RelationKeyCreatedInContext: domain.String("page"),
-			bundle.RelationKeyIsArchived:       domain.Bool(true),
-		},
-	})
-
-	// when: undo re-adds the file link
-	_, err := fx.RestoreOrphansOnLinksAdded(testSpaceId, "page", []string{"file1"})
-
-	// then: file is unarchived
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.unarchivedIds)
-}
-
 func TestRestoreOrphansOnLinksAdded_IgnoresFileFromDifferentContext(t *testing.T) {
 	// given: file belongs to a different context
 	fx := newFixture(t)
@@ -395,28 +381,6 @@ func TestRestoreOrphansOnLinksAdded_IgnoresAlreadyActiveFile(t *testing.T) {
 }
 
 // -- unarchive direction tests --
-
-func TestCheckObjectsOnObjectArchived_Unarchive_NoOtherBacklinks(t *testing.T) {
-	// given: file was archived alongside its parent, now parent is being restored
-	fx := newFixture(t)
-	fx.addObject(t, regularObject("parent"))
-	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
-		{
-			bundle.RelationKeyId:               domain.String("file1"),
-			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_image)),
-			bundle.RelationKeyCreatedInContext: domain.String("parent"),
-			bundle.RelationKeyBacklinks:        domain.StringList([]string{"parent"}),
-			bundle.RelationKeyIsArchived:       domain.Bool(true),
-		},
-	})
-
-	// when: parent unarchived
-	res, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", false)
-
-	// then: file restored
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, res.Files)
-}
 
 func TestCheckObjectsOnObjectArchived_Unarchive_HasOtherBacklinks(t *testing.T) {
 	// given: file has another backlink besides the parent
@@ -499,7 +463,6 @@ func TestCheckObjectsOnObjectArchived_NonFileObject_Unarchive(t *testing.T) {
 func TestArchiveOrphansOnLinksRemoval_NonFileObject_BecomesCandidate(t *testing.T) {
 	// given: a basic object whose link is removed; caller requests skipBin=true
 	fx := newFixture(t)
-	fx.participantProvider = &mockParticipantProvider{id: "user1"}
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
 		{
 			bundle.RelationKeyId:                  domain.String("child"),
@@ -611,35 +574,6 @@ func basicObjectWithRef(id, createdInContext, createdInContextRef string, backli
 	}
 }
 
-func TestArchiveOrphansOnLinksRemoval_FileWithRef_Archived(t *testing.T) {
-	// given: a file with non-empty CreatedInContextRef (block-attached file)
-	fx := newFixture(t)
-	fx.addObject(t, fileObjectWithRef("file1", "page", "block1", []string{"page"}))
-
-	// when
-	res, err := fx.ArchiveOrphansOnLinksRemoval(testSpaceId, "page", []string{"file1"}, false, nil)
-
-	// then: file is archived — non-empty ref means it is NOT a collection-created file
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.archivedIds)
-	assert.ElementsMatch(t, []string{"file1"}, res.Files)
-}
-
-func TestCheckObjectsOnObjectArchived_FileWithRef_ParentArchived_Archived(t *testing.T) {
-	// given: parent archived, file has a non-empty CreatedInContextRef and no other backlinks
-	fx := newFixture(t)
-	fx.addObject(t, regularObject("parent"))
-	fx.addObject(t, fileObjectWithRef("file1", "parent", "block1", []string{"parent"}))
-
-	// when
-	res, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
-
-	// then: level-1 file with non-empty ref is auto-archived
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, res.Files)
-	assert.Empty(t, res.Candidates)
-}
-
 // -- returned-IDs tests for CheckObjectsOnObjectArchived --
 
 func TestCheckObjectsOnObjectArchived_NoRefFile_NotCollected(t *testing.T) {
@@ -655,49 +589,6 @@ func TestCheckObjectsOnObjectArchived_NoRefFile_NotCollected(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, res.Files)
 	assert.Empty(t, res.Candidates)
-}
-
-func TestCheckObjectsOnObjectArchived_Unarchive_ReturnsRestoredIds(t *testing.T) {
-	// given: parent unarchived, file was archived
-	fx := newFixture(t)
-	fx.addObject(t, regularObject("parent"))
-	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
-		{
-			bundle.RelationKeyId:               domain.String("file1"),
-			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_image)),
-			bundle.RelationKeyCreatedInContext: domain.String("parent"),
-			bundle.RelationKeyBacklinks:        domain.StringList([]string{"parent"}),
-			bundle.RelationKeyIsArchived:       domain.Bool(true),
-		},
-	})
-
-	// when: unarchive direction
-	res, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", false)
-
-	// then: file restored and returned
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, res.Files)
-}
-
-func TestRestoreOrphansOnLinksAdded_ReturnsRestoredIds(t *testing.T) {
-	// given: file was GC'd and is now being restored via undo
-	fx := newFixture(t)
-	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
-		{
-			bundle.RelationKeyId:               domain.String("file1"),
-			bundle.RelationKeyResolvedLayout:   domain.Int64(int64(model.ObjectType_image)),
-			bundle.RelationKeyCreatedInContext: domain.String("page"),
-			bundle.RelationKeyIsArchived:       domain.Bool(true),
-		},
-	})
-
-	// when
-	restoredIds, err := fx.RestoreOrphansOnLinksAdded(testSpaceId, "page", []string{"file1"})
-
-	// then: file unarchived and returned
-	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, fx.archiver.unarchivedIds)
-	assert.ElementsMatch(t, []string{"file1"}, restoredIds)
 }
 
 func TestFilterExplicitIds_RemovesFromAutoArchive(t *testing.T) {
@@ -831,11 +722,13 @@ func TestCheckObjectsOnObjectArchived_SiblingCrossReference_BothCandidates(t *te
 	assert.ElementsMatch(t, []string{"child1", "child2"}, res.Candidates)
 }
 
-func TestCheckObjectsOnObjectArchived_Unarchive_FileOnlyRestored(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_Unarchive_RestoresNothing(t *testing.T) {
 	// given
 	// parent (unarchived)
-	//   ├→ file1 (archived file, createdInContext=parent)  → restored
-	//   └→ obj   (archived object, createdInContext=parent) → NOT restored
+	//   ├→ file1 (archived file, createdInContext=parent)   → stays archived (was: restored)
+	//   └→ obj   (archived object, createdInContext=parent)  → stays archived
+	//
+	// Files auto-archived by earlier builds remain in the bin; the user restores them by hand.
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
 	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
@@ -858,10 +751,11 @@ func TestCheckObjectsOnObjectArchived_Unarchive_FileOnlyRestored(t *testing.T) {
 	// when
 	res, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", false)
 
-	// then: only the file is restored; the object stays archived
+	// then: neither is restored, and the archiver is never consulted
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"file1"}, res.Files)
+	assert.Empty(t, res.Files)
 	assert.Empty(t, res.Candidates)
+	assert.Empty(t, fx.archiver.unarchivedIds)
 }
 
 func TestCheckObjectsOnObjectArchived_SiblingExcludedCascade_DependentSiblingAlsoExcluded(t *testing.T) {
@@ -887,11 +781,14 @@ func TestCheckObjectsOnObjectArchived_SiblingExcludedCascade_DependentSiblingAls
 	assert.Empty(t, res.Candidates)
 }
 
-func TestCheckObjectsOnObjectArchived_MixedTree_Level1FileArchived_RestCandidates(t *testing.T) {
+func TestCheckObjectsOnObjectArchived_MixedTree_AllCandidates(t *testing.T) {
 	// parent
-	//   ├─ f1   (file, level 1)        → Files
+	//   ├─ f1   (file, level 1)        → Candidates (was: auto-archived)
 	//   ├─ obj  (object, level 1)      → Candidates
 	//   │    └─ f2 (file, level 2)     → Candidates
+	//
+	// With auto-archival disabled, depth no longer changes an orphan's fate: the whole subtree is
+	// offered to the user in one CleanupSuggestion.
 	fx := newFixture(t)
 	fx.addObject(t, regularObject("parent"))
 	fx.addObject(t, fileObjectWithRef("f1", "parent", "block1", []string{"parent"}))
@@ -900,10 +797,10 @@ func TestCheckObjectsOnObjectArchived_MixedTree_Level1FileArchived_RestCandidate
 
 	res, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
 
-	// only the level-1 file is auto-archived; the object and the deeper file are candidates
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"f1"}, res.Files)
-	assert.ElementsMatch(t, []string{"obj", "f2"}, res.Candidates)
+	assert.Empty(t, res.Files)
+	assert.ElementsMatch(t, []string{"f1", "obj", "f2"}, res.Candidates)
+	assert.Empty(t, fx.archiver.archivedIds)
 }
 
 func TestFilterExplicitIds_RemovesFromCleanupSuggestion(t *testing.T) {

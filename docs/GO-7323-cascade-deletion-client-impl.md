@@ -12,20 +12,38 @@ User feedback: silently archiving nested *objects* is surprising.
 
 New behavior (backend already shipped on `go-7323-cascade-deletion-orphan-events`):
 
-- **Files** that are direct children of the acted-on object are still **auto-archived** — no change,
-  still reported via the existing `ObjectAutoArchive` event.
-- **Everything else orphaned** (nested objects at any depth, plus files deeper than level 1) is **no
-  longer archived automatically**. Instead the backend emits a **new event** listing those object
-  IDs so the client can show a **confirmation popup** and let the user pick what to archive.
+- **Nothing is archived, restored, or deleted automatically.** Every orphan — nested objects at any
+  depth, and files at any depth, including direct children — is reported in a **new event** listing
+  the ids. The client decides whether to block on a confirmation popup or just inform the user, who
+  can clean up later via `ObjectCleanupSuggestions`.
+- The sole exception is **chat attachments**: deleting a chat message permanently deletes the files
+  that message introduced, regardless of who uploaded them. Those files have no other owner and there
+  is no session in which to ask.
 
 ## Behavior matrix
 
+The backend no longer archives, restores, or deletes anything on its own. Every orphan — objects and
+files, at every depth — is reported in the `CleanupSuggestion` event. **The client decides** whether
+to block on a confirmation popup or merely inform the user, who can clean up later via
+`ObjectCleanupSuggestions`.
+
 | Trigger | Files (direct children) | Other orphans (nested objects + deep files) |
 |---|---|---|
-| Archive object A | auto-archived + `ObjectAutoArchive` | **`CleanupSuggestion` event** → popup |
-| Delete object A | auto-archived | **`CleanupSuggestion` event** (broadcast) → popup |
-| Remove link A→X | auto-archived (if X is a file) | **`CleanupSuggestion` event** → popup |
-| Unarchive / undo | auto-restored | nothing (objects restored manually from the Bin) |
+| Archive object A | **`CleanupSuggestion` event** → client decides | **`CleanupSuggestion` event** → client decides |
+| Delete object A | **`CleanupSuggestion` event** (broadcast) | **`CleanupSuggestion` event** (broadcast) |
+| Remove link A→X | **`CleanupSuggestion` event** | **`CleanupSuggestion` event** |
+| Unarchive / undo | nothing | nothing (restored manually from the Bin) |
+| Delete chat message | attachments permanently deleted | — |
+
+> **Breaking for clients that handle `ObjectAutoArchive` / `ObjectAutoRestore`:** these events are
+> **no longer emitted**. They remain defined in the proto, and no error is returned — they simply
+> never arrive. Any UI that depended on them (e.g. an "N files moved to Bin" toast) must move to
+> `CleanupSuggestion`, whose candidate list now contains file objects on paths where it previously
+> carried only non-file objects. Clients already resolve each candidate's layout for display, so no
+> parsing change is needed — the list is just longer.
+>
+> Files auto-archived by earlier builds stay in the Bin. Unarchiving their parent no longer pulls
+> them back out; the user restores them by hand.
 
 ## Protocol changes (the contract)
 
@@ -64,10 +82,14 @@ cascade at all** (no file auto-archive, no `CleanupSuggestion` event). The clien
 of orphan detection (which would re-open the popup — an infinite loop). Default `false` preserves
 the cascade behavior for normal user-initiated archive/delete.
 
-### 3. Unchanged
+### 3. Retired — `ObjectAutoArchive` / `ObjectAutoRestore`
 
-`ObjectAutoArchive` / `ObjectAutoRestore` keep their current meaning (files). No change to how the
-client handles them.
+Still defined in the proto, never emitted. The backend performs no automatic archival or restoration,
+so there is nothing for them to announce. They are kept rather than removed because the decision is
+gated behind a single backend constant (`objectgc.autoArchiveOrphanFiles`) and may be revisited after
+user feedback; removing the messages would be a breaking protocol change for a reversible experiment.
+
+Clients should stop relying on them. See the note in the behavior matrix above.
 
 ### 4. Phase-2 RPCs
 
@@ -84,9 +106,9 @@ The event above is the *reactive* half of cleanup suggestions. Phase 2 adds the 
 ## Client flow
 
 1. User archives / deletes an object, or removes a link (normal call, `skipCascade=false`).
-2. Backend auto-archives direct-child files (`ObjectAutoArchive`, as today) **and** sends
-   `CleanupSuggestion` with the candidate object ids.
-3. Client receives `CleanupSuggestion` → opens the **confirmation popup** listing those objects.
+2. Backend mutates nothing and sends `CleanupSuggestion` with every orphan id — objects and files.
+3. Client receives `CleanupSuggestion` and chooses its UX: a **blocking confirmation popup**, or a
+   non-blocking notice, leaving the user to clean up later via `ObjectCleanupSuggestions`.
 4. User ticks the ones to archive and confirms (or cancels — nothing happens to unticked objects).
 5. Client archives the chosen ids with **`ObjectListSetIsArchived(selectedIds, isArchived=true, skipCascade=true)`**.
    The `skipCascade=true` is essential — it prevents the re-prompt loop.
@@ -125,7 +147,9 @@ popup pattern — but the tree is strongly preferred for clarity.
 3. **Build the popup**: reuse the Bin tree view (per above) with checkboxes + confirm.
 4. **Thread `skipCascade`** through the archive command wrapper and call it with `true` from the
    popup's confirm handler.
-5. Files keep their existing `ObjectAutoArchive` toast/handling — no change.
+5. **Retire the `ObjectAutoArchive` / `ObjectAutoRestore` handlers.** They will never fire again. Any
+   "files moved to Bin" toast should be dropped, or re-driven from the user's own confirmation in
+   step 4 — the files now appear in the `CleanupSuggestion` candidate list like any other orphan.
 
 ## Open questions for the client team
 
