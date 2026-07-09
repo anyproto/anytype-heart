@@ -97,6 +97,14 @@ func systemObject(id, createdInContext string, backlinks []string) objectstore.T
 	}
 }
 
+// systemObjectWithRef builds a non-GC-eligible (system layout) object that nevertheless passes the
+// CreatedInContextRef gate, so that only the layout can exclude it.
+func systemObjectWithRef(id, createdInContext, ref string, backlinks []string) objectstore.TestObject {
+	obj := systemObject(id, createdInContext, backlinks)
+	obj[bundle.RelationKeyCreatedInContextRef] = domain.String(ref)
+	return obj
+}
+
 // -- mocks --
 
 type mockParticipantProvider struct{ id string }

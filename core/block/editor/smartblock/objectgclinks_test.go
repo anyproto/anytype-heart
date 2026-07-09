@@ -61,6 +61,10 @@ func (r *objectGCCallRecorder) RestoreOrphansOnLinksAdded(spaceId, contextId str
 	return nil, nil
 }
 
+func (r *objectGCCallRecorder) ListOrphans(spaceId string) ([]objectgc.OrphanItem, error) {
+	return nil, nil
+}
+
 // TestSmartBlock_ObjectGC_LinksAdded_TriggersRestore verifies that Apply calls
 // RestoreOrphansOnLinksAdded when links are added from an empty state (the undo case).
 // This exercises the fix for the len(linksBefore) > 0 guard that used to skip the diff.

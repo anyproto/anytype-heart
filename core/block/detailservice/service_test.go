@@ -51,6 +51,10 @@ func (f *fileGCStub) RestoreOrphansOnLinksAdded(spaceId, contextId string, added
 	return nil, nil
 }
 
+func (f *fileGCStub) ListOrphans(spaceId string) ([]objectgc.OrphanItem, error) {
+	return nil, nil
+}
+
 // recordingGCStub records whether the GC was consulted and would otherwise produce orphans.
 type recordingGCStub struct {
 	fileGCStub

@@ -111,6 +111,10 @@ func (s *fileGCDummy) RestoreOrphansOnLinksAdded(spaceId, contextId string, adde
 	return nil, nil
 }
 
+func (s *fileGCDummy) ListOrphans(spaceId string) ([]objectgc.OrphanItem, error) {
+	return nil, nil
+}
+
 type actionType int
 
 const (

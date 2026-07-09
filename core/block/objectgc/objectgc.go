@@ -28,13 +28,18 @@ type ObjectGC interface {
 	// CheckObjectsOnObjectArchived finds orphans when objectId is archived/unarchived.
 	// On archive it returns level-1 orphan files (Files) and all other orphans (Candidates).
 	// On unarchive it returns the restored files in Files; Candidates is always empty.
-	// The caller archives Files and emits an CleanupSuggestion event for Candidates.
+	// The caller archives Files and emits a CleanupSuggestion event for Candidates.
 	CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (OrphanCandidates, error)
 
 	// ArchiveOrphansOnLinksRemoval archives orphaned removed-link files (returned in Files) and
 	// returns orphaned removed-link objects as Candidates for user confirmation.
 	ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) (OrphanCandidates, error)
 	RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error)
+
+	// ListOrphans returns every orphan in the space as a forest: roots (whose createdInContext
+	// parent is outside the orphan set) plus their full transitive subtrees, objects and files.
+	// Pure read operation.
+	ListOrphans(spaceId string) ([]OrphanItem, error)
 }
 
 // OrphanCandidates splits the orphans discovered for an archive/delete/link-removal operation
