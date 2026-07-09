@@ -124,7 +124,7 @@ func TestSetIsArchived_EmitsCleanupSuggestion(t *testing.T) {
 	err := fx.SetIsArchived(sctx, context.Background(), "obj1", true, false)
 	require.NoError(t, err)
 
-	// then: an CleanupSuggestion event is emitted with the candidates and originating context
+	// then: a CleanupSuggestion event is emitted with the candidates and originating context
 	var found *pb.EventObjectCleanupSuggestion
 	for _, m := range sctx.GetMessages() {
 		if v, ok := m.Value.(*pb.EventMessageValueOfObjectCleanupSuggestion); ok {

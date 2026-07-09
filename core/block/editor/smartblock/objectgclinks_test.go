@@ -151,7 +151,7 @@ func TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC(t *testing.T) {
 }
 
 // TestPerformGCOnLinksRemoval_EmitsCleanupSuggestion verifies that orphan-object candidates from a
-// link removal are appended to the session as an CleanupSuggestion event (trigger=linkRemoval).
+// link removal are appended to the session as a CleanupSuggestion event (trigger=linkRemoval).
 func TestPerformGCOnLinksRemoval_EmitsCleanupSuggestion(t *testing.T) {
 	objectId := "root"
 	fx := newFixture(objectId, t)
@@ -166,7 +166,7 @@ func TestPerformGCOnLinksRemoval_EmitsCleanupSuggestion(t *testing.T) {
 	// when: GC runs on link removal with a session context (called synchronously)
 	fx.performGCOnLinksRemoval(sctx, testSpaceId, objectId, []string{"file1"})
 
-	// then: an CleanupSuggestion message (trigger=linkRemoval) was appended to the session
+	// then: a CleanupSuggestion message (trigger=linkRemoval) was appended to the session
 	var found *pb.EventObjectCleanupSuggestion
 	for _, m := range sctx.GetMessages() {
 		if v, ok := m.Value.(*pb.EventMessageValueOfObjectCleanupSuggestion); ok {
