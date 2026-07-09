@@ -6,6 +6,7 @@ package localdiscovery
 import (
 	"context"
 	"fmt"
+	gonet "net"
 	"slices"
 	"sync"
 	"time"
@@ -27,6 +28,10 @@ type Hook int
 
 var interfacesSortPriority = []string{"wlan", "wl", "en", "eth", "tun", "tap", "utun", "lo"}
 
+// queryStopTimeout bounds how long a refresh waits for the previous
+// generation's query goroutines to stop. A var so tests can shorten it.
+var queryStopTimeout = 5 * time.Second
+
 type localDiscovery struct {
 	server *zeroconf.Server
 	peerId string
@@ -36,8 +41,12 @@ type localDiscovery struct {
 	componentCtxCancel context.CancelFunc
 	queryCtx           context.Context
 	queryCtxCancel     context.CancelFunc
-	closeWait          sync.WaitGroup
-	interfacesAddrs    addrs.InterfacesAddrs
+	// closeWait tracks the query goroutines of the current server generation.
+	// A fresh WaitGroup per generation (created in startQuerying, under l.m):
+	// reusing one value across generations raced Close's Wait against the
+	// refresh reassigning it.
+	closeWait       *sync.WaitGroup
+	interfacesAddrs addrs.InterfacesAddrs
 	periodicCheck      periodicsync.PeriodicSync
 	drpcServer         clientserver.ClientServer
 	nodeConf           nodeconf.Configuration
@@ -122,6 +131,7 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 		return
 	}
 	server := l.server
+	closeWait := l.closeWait
 	l.m.Unlock()
 
 	if server != nil {
@@ -129,7 +139,9 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 		shutdownFinished := make(chan struct{})
 		go func() {
 			server.Shutdown()
-			l.closeWait.Wait()
+			if closeWait != nil {
+				closeWait.Wait()
+			}
 			close(shutdownFinished)
 			spent := time.Since(start)
 			if spent.Milliseconds() > 500 {
@@ -201,6 +213,7 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed")
 	l.interfacesAddrs = newAddrs
 	server := l.server
+	closeWait := l.closeWait
 	l.server = nil
 	if server != nil {
 		l.queryCtxCancel()
@@ -212,8 +225,12 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	// (this mirrors Close). refreshMu keeps concurrent refreshes out of this window.
 	if server != nil {
 		server.Shutdown()
-		l.closeWait.Wait()
-		l.closeWait = sync.WaitGroup{}
+		if closeWait != nil && !waitWithTimeout(closeWait, queryStopTimeout) {
+			// A stuck goroutine must not wedge every future refresh (and the
+			// networkState hooks behind it); log and rebuild on a fresh
+			// generation instead.
+			log.Error("zeroconf query goroutines did not stop in time, proceeding with rebuild")
+		}
 	}
 
 	l.m.Lock()
@@ -259,16 +276,22 @@ func (l *localDiscovery) startServer() (err error) {
 	return
 }
 
+// startQuerying is called under l.m.
 func (l *localDiscovery) startQuerying(ctx context.Context) {
-	l.closeWait.Add(2)
+	closeWait := &sync.WaitGroup{}
+	closeWait.Add(2)
+	l.closeWait = closeWait
 	listenCh := make(chan *zeroconf.ServiceEntry, 10)
+	// snapshot the interfaces under l.m instead of letting browse read the
+	// field unlocked later, racing with the next refresh
+	ifaces := l.interfacesAddrs.NetInterfaces()
 
-	go l.readAnswers(listenCh)
-	go l.browse(ctx, listenCh)
+	go l.readAnswers(closeWait, listenCh)
+	go l.browse(ctx, closeWait, ifaces, listenCh)
 }
 
-func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
-	defer l.closeWait.Done()
+func (l *localDiscovery) readAnswers(closeWait *sync.WaitGroup, ch chan *zeroconf.ServiceEntry) {
+	defer closeWait.Done()
 	for entry := range ch {
 		if entry.Instance == l.peerId {
 			log.Debug("discovered self")
@@ -297,13 +320,28 @@ func (l *localDiscovery) readAnswers(ch chan *zeroconf.ServiceEntry) {
 	}
 }
 
-func (l *localDiscovery) browse(ctx context.Context, ch chan *zeroconf.ServiceEntry) {
-	defer l.closeWait.Done()
+func (l *localDiscovery) browse(ctx context.Context, closeWait *sync.WaitGroup, ifaces []gonet.Interface, ch chan *zeroconf.ServiceEntry) {
+	defer closeWait.Done()
 	if err := zeroconf.Browse(ctx, serviceName, mdnsDomain, ch,
 		zeroconf.ClientWriteTimeout(time.Second*3),
-		zeroconf.SelectIfaces(l.interfacesAddrs.NetInterfaces()),
+		zeroconf.SelectIfaces(ifaces),
 		zeroconf.SelectIPTraffic(zeroconf.IPv4)); err != nil {
 		log.Error("browsing failed", zap.Error(err))
+	}
+}
+
+// waitWithTimeout waits for wg up to timeout; false means the wait timed out.
+func waitWithTimeout(wg *sync.WaitGroup, timeout time.Duration) bool {
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return true
+	case <-time.After(timeout):
+		return false
 	}
 }
 

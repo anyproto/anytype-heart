@@ -2,6 +2,7 @@ package localdiscovery
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -116,6 +117,41 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 	})
 }
 
+func TestLocalDiscovery_refreshSurvivesStuckQueryGoroutine(t *testing.T) {
+	// given
+	origTimeout := queryStopTimeout
+	queryStopTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { queryStopTimeout = origTimeout })
+
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*localDiscovery)
+	ld.port = 6789
+	err := ld.refreshInterfaces(context.Background())
+	assert.Nil(t, err)
+
+	// simulate a query goroutine of the current generation that never exits
+	// (e.g. an entries channel that is never closed)
+	ld.m.Lock()
+	ld.closeWait.Add(1)
+	ld.m.Unlock()
+
+	// when: a forced rebuild tears the current generation down
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ld.onNetworkStateChanged()
+	}()
+
+	// then: the refresh must not wedge on the stuck goroutine
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("refreshInterfaces wedged on a stuck query goroutine")
+	}
+	assert.Nil(t, f.Close(context.Background()))
+}
+
 func TestLocalDiscovery_readAnswers(t *testing.T) {
 	t.Run("readAnswers - send peer update for itself", func(t *testing.T) {
 		// given
@@ -126,8 +162,9 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
 		go func() {
-			ld.closeWait.Add(1)
 			peerUpdate <- &zeroconf.ServiceEntry{
 				ServiceRecord: zeroconf.ServiceRecord{
 					Instance: ld.peerId,
@@ -135,7 +172,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 			}
 			close(peerUpdate)
 		}()
-		ld.readAnswers(peerUpdate)
+		ld.readAnswers(closeWait, peerUpdate)
 
 		// then
 		notifier.AssertNotCalled(t, "PeerDiscovered")
@@ -167,8 +204,9 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		}, mock.Anything).Return()
 		ld.SetNotifier(notifier)
 
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
 		go func() {
-			ld.closeWait.Add(1)
 			peerUpdate <- &zeroconf.ServiceEntry{
 				ServiceRecord: zeroconf.ServiceRecord{
 					Instance: accountKeys.PeerId,
@@ -176,7 +214,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 			}
 			close(peerUpdate)
 		}()
-		ld.readAnswers(peerUpdate)
+		ld.readAnswers(closeWait, peerUpdate)
 
 		select {
 		case <-called:
