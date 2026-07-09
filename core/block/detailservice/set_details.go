@@ -343,7 +343,7 @@ func (s *service) triggerGCOnArchive(spaceId string, objectIds []string, isArchi
 	return files, candidatesByContext
 }
 
-// appendGCEvents emits the file auto-archive/restore event plus one OrphansDetected event per
+// appendGCEvents emits the file auto-archive/restore event plus one CleanupSuggestion event per
 // originating context, then strips explicitIds so user-requested objects are not double-reported.
 func (s *service) appendGCEvents(sctx session.Context, gcFiles []string, candidatesByContext map[string][]string, explicitIds []string, isArchived bool) {
 	if sctx == nil {
@@ -367,18 +367,18 @@ func (s *service) appendGCEvents(sctx session.Context, gcFiles []string, candida
 		}
 		changed = true
 	}
-	// OrphansDetected is only emitted on the archive direction.
+	// CleanupSuggestion is only emitted on the archive direction.
 	if isArchived {
 		for contextId, candidates := range candidatesByContext {
 			if len(candidates) == 0 {
 				continue
 			}
 			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectOrphansDetected{
-					ObjectOrphansDetected: &pb.EventObjectOrphansDetected{
+				Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
 						ObjectIds: candidates,
 						ContextId: contextId,
-						Trigger:   pb.EventObjectOrphansDetected_archive,
+						Trigger:   pb.EventObjectCleanupSuggestion_archive,
 					},
 				},
 			})

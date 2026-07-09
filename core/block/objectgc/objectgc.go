@@ -28,7 +28,7 @@ type ObjectGC interface {
 	// CheckObjectsOnObjectArchived finds orphans when objectId is archived/unarchived.
 	// On archive it returns level-1 orphan files (Files) and all other orphans (Candidates).
 	// On unarchive it returns the restored files in Files; Candidates is always empty.
-	// The caller archives Files and emits an OrphansDetected event for Candidates.
+	// The caller archives Files and emits an CleanupSuggestion event for Candidates.
 	CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (OrphanCandidates, error)
 
 	// ArchiveOrphansOnLinksRemoval archives orphaned removed-link files (returned in Files) and
@@ -42,7 +42,7 @@ type ObjectGC interface {
 // else that must be surfaced to the user for explicit confirmation.
 type OrphanCandidates struct {
 	Files      []string // level-1 orphan files → auto-archived (+ ObjectAutoArchive event)
-	Candidates []string // objects (any level) + files (level >= 2) → OrphansDetected event
+	Candidates []string // objects (any level) + files (level >= 2) → CleanupSuggestion event
 }
 
 func makeFileLayouts() []int64 {
@@ -737,20 +737,20 @@ func FilterExplicitIds(sctx session.Context, ids []string) {
 					},
 				})
 			}
-		case *pb.EventMessageValueOfObjectOrphansDetected:
-			filtered := filterExcluded(v.ObjectOrphansDetected.ObjectIds, exclude)
-			if len(filtered) == len(v.ObjectOrphansDetected.ObjectIds) {
+		case *pb.EventMessageValueOfObjectCleanupSuggestion:
+			filtered := filterExcluded(v.ObjectCleanupSuggestion.ObjectIds, exclude)
+			if len(filtered) == len(v.ObjectCleanupSuggestion.ObjectIds) {
 				result = append(result, msg)
 				continue
 			}
 			changed = true
 			if len(filtered) > 0 {
 				result = append(result, &pb.EventMessage{
-					Value: &pb.EventMessageValueOfObjectOrphansDetected{
-						ObjectOrphansDetected: &pb.EventObjectOrphansDetected{
+					Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+						ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
 							ObjectIds: filtered,
-							ContextId: v.ObjectOrphansDetected.ContextId,
-							Trigger:   v.ObjectOrphansDetected.Trigger,
+							ContextId: v.ObjectCleanupSuggestion.ContextId,
+							Trigger:   v.ObjectCleanupSuggestion.Trigger,
 						},
 					},
 				})

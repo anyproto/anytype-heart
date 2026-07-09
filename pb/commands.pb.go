@@ -31162,7 +31162,7 @@ type RpcObjectSetIsArchivedRequest struct {
 	ContextId  string `protobuf:"bytes,1,opt,name=contextId,proto3" json:"contextId,omitempty"`
 	IsArchived bool   `protobuf:"varint,2,opt,name=isArchived,proto3" json:"isArchived,omitempty"`
 	// when true, skip the orphan cascade entirely (no file auto-archive, no
-	// OrphansDetected event). Used by the client when archiving objects the user
+	// CleanupSuggestion event). Used by the client when archiving objects the user
 	// confirmed in the popup, to avoid re-prompting.
 	SkipCascade bool `protobuf:"varint,3,opt,name=skipCascade,proto3" json:"skipCascade,omitempty"`
 }

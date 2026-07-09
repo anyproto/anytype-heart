@@ -22,19 +22,19 @@ New behavior (backend already shipped on `go-7323-cascade-deletion-orphan-events
 
 | Trigger | Files (direct children) | Other orphans (nested objects + deep files) |
 |---|---|---|
-| Archive object A | auto-archived + `ObjectAutoArchive` | **`OrphansDetected` event** → popup |
-| Delete object A | auto-archived | **`OrphansDetected` event** (broadcast) → popup |
-| Remove link A→X | auto-archived (if X is a file) | **`OrphansDetected` event** → popup |
+| Archive object A | auto-archived + `ObjectAutoArchive` | **`CleanupSuggestion` event** → popup |
+| Delete object A | auto-archived | **`CleanupSuggestion` event** (broadcast) → popup |
+| Remove link A→X | auto-archived (if X is a file) | **`CleanupSuggestion` event** → popup |
 | Unarchive / undo | auto-restored | nothing (objects restored manually from the Bin) |
 
 ## Protocol changes (the contract)
 
-### 1. New event — `Object.OrphansDetected`
+### 1. New event — `Object.CleanupSuggestion`
 
-`pb/protos/events.proto`, registered in the `Event.Message` oneof as `objectOrphansDetected` (field **146**):
+`pb/protos/events.proto`, registered in the `Event.Message` oneof as `objectCleanupSuggestion` (field **146**):
 
 ```proto
-message OrphansDetected {
+message CleanupSuggestion {
   repeated string objectIds = 1;  // orphan ids (objects any level + files level >= 2) created within contextId
   string contextId = 2;           // the object that was archived / deleted / had a link removed
   Trigger trigger = 3;
@@ -59,7 +59,7 @@ Added to **both** archive RPC requests:
 - `Rpc.Object.ListSetIsArchived.Request` → `bool skipCascade = 3;`
 
 Semantics: when `true`, the backend performs a **pure archive** of exactly the given ids — **no
-cascade at all** (no file auto-archive, no `OrphansDetected` event). The client uses this on the
+cascade at all** (no file auto-archive, no `CleanupSuggestion` event). The client uses this on the
 **confirmation calls** so that archiving the user-chosen objects does **not** trigger another round
 of orphan detection (which would re-open the popup — an infinite loop). Default `false` preserves
 the cascade behavior for normal user-initiated archive/delete.
@@ -69,12 +69,24 @@ the cascade behavior for normal user-initiated archive/delete.
 `ObjectAutoArchive` / `ObjectAutoRestore` keep their current meaning (files). No change to how the
 client handles them.
 
+### 4. Phase-2 RPCs
+
+The event above is the *reactive* half of cleanup suggestions. Phase 2 adds the on-demand half:
+
+- `ObjectCleanupSuggestions(spaceId, keys)` — returns every orphan in the space as a forest: one
+  item per orphan, with `isRoot` marking the forest roots and `reason` (`contextArchived`,
+  `contextDeleted`, `contextUnlinked`) set on roots only. `keys` selects which relations come back in
+  `details`; `id`, `createdInContext` and `resolvedLayout` are always included.
+- `ObjectCleanupSuggestionIgnore(objectIds, ignored)` — permanently excludes objects from cleanup
+  suggestions *and* from automatic context-driven archival, by setting the `createdInContextIgnored`
+  relation. Reversible by passing `ignored=false`.
+
 ## Client flow
 
 1. User archives / deletes an object, or removes a link (normal call, `skipCascade=false`).
 2. Backend auto-archives direct-child files (`ObjectAutoArchive`, as today) **and** sends
-   `OrphansDetected` with the candidate object ids.
-3. Client receives `OrphansDetected` → opens the **confirmation popup** listing those objects.
+   `CleanupSuggestion` with the candidate object ids.
+3. Client receives `CleanupSuggestion` → opens the **confirmation popup** listing those objects.
 4. User ticks the ones to archive and confirms (or cancels — nothing happens to unticked objects).
 5. Client archives the chosen ids with **`ObjectListSetIsArchived(selectedIds, isArchived=true, skipCascade=true)`**.
    The `skipCascade=true` is essential — it prevents the re-prompt loop.
@@ -85,7 +97,7 @@ client handles them.
 
 The Bin already displays archived objects as an **expandable tree nested by `createdInContext`** —
 which is exactly the relation that defines "orphans created inside" the acted-on object. So the
-candidate set in `OrphansDetected` forms the **same tree shape** the Bin already knows how to render.
+candidate set in `CleanupSuggestion` forms the **same tree shape** the Bin already knows how to render.
 
 **Recommendation:** reuse the Bin's existing tree component inside the new popup rather than building
 a new list, to avoid duplication. High-level fit (implementing agent to confirm specifics):
@@ -108,7 +120,7 @@ popup pattern — but the tree is strongly preferred for clarity.
 
 1. **Regenerate proto bindings** from the updated `.proto` (events + commands) — picks up the new
    event field and `skipCascade`.
-2. **Handle the new event**: add `OrphansDetected` to the event mapper + dispatcher; on receipt, open
+2. **Handle the new event**: add `CleanupSuggestion` to the event mapper + dispatcher; on receipt, open
    the confirmation popup with `{ objectIds, contextId, trigger }`.
 3. **Build the popup**: reuse the Bin tree view (per above) with checkboxes + confirm.
 4. **Thread `skipCascade`** through the archive command wrapper and call it with `true` from the
@@ -121,8 +133,8 @@ popup pattern — but the tree is strongly preferred for clarity.
   popup would appear on every device of the user, not just the initiating one. Confirm acceptable, or
   decide on session-targeted delivery.
 - **Batch archive**: archiving multiple objects where one is an ancestor of another can produce the
-  same candidate id under two `contextId`s (two `OrphansDetected` messages). The client should
+  same candidate id under two `contextId`s (two `CleanupSuggestion` messages). The client should
   **dedup** ids across messages when populating the popup.
-- **Event/flag naming** (`OrphansDetected`, `skipCascade`) is still provisional on the backend — flag
+- **Event/flag naming** (`CleanupSuggestion`, `skipCascade`) is still provisional on the backend — flag
   if you'd prefer different names before this merges.
 ```

@@ -146,9 +146,9 @@ func TestSmartBlock_ObjectGC_LinksRemoved_TriggersGC(t *testing.T) {
 	}
 }
 
-// TestPerformGCOnLinksRemoval_EmitsOrphansDetected verifies that orphan-object candidates from a
-// link removal are appended to the session as an OrphansDetected event (trigger=linkRemoval).
-func TestPerformGCOnLinksRemoval_EmitsOrphansDetected(t *testing.T) {
+// TestPerformGCOnLinksRemoval_EmitsCleanupSuggestion verifies that orphan-object candidates from a
+// link removal are appended to the session as an CleanupSuggestion event (trigger=linkRemoval).
+func TestPerformGCOnLinksRemoval_EmitsCleanupSuggestion(t *testing.T) {
 	objectId := "root"
 	fx := newFixture(objectId, t)
 	fx.init(t, []*model.Block{{Id: objectId}})
@@ -162,15 +162,15 @@ func TestPerformGCOnLinksRemoval_EmitsOrphansDetected(t *testing.T) {
 	// when: GC runs on link removal with a session context (called synchronously)
 	fx.performGCOnLinksRemoval(sctx, testSpaceId, objectId, []string{"file1"})
 
-	// then: an OrphansDetected message (trigger=linkRemoval) was appended to the session
-	var found *pb.EventObjectOrphansDetected
+	// then: an CleanupSuggestion message (trigger=linkRemoval) was appended to the session
+	var found *pb.EventObjectCleanupSuggestion
 	for _, m := range sctx.GetMessages() {
-		if v, ok := m.Value.(*pb.EventMessageValueOfObjectOrphansDetected); ok {
-			found = v.ObjectOrphansDetected
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectCleanupSuggestion); ok {
+			found = v.ObjectCleanupSuggestion
 		}
 	}
 	require.NotNil(t, found)
 	assert.Equal(t, objectId, found.ContextId)
-	assert.Equal(t, pb.EventObjectOrphansDetected_linkRemoval, found.Trigger)
+	assert.Equal(t, pb.EventObjectCleanupSuggestion_linkRemoval, found.Trigger)
 	assert.ElementsMatch(t, []string{"orphanObj"}, found.ObjectIds)
 }

@@ -97,7 +97,7 @@ func TestSetIsArchived_SkipCascade_NoGC(t *testing.T) {
 	assert.False(t, gc.checkCalled, "GC must not run when skipCascade=true")
 }
 
-func TestSetIsArchived_EmitsOrphansDetected(t *testing.T) {
+func TestSetIsArchived_EmitsCleanupSuggestion(t *testing.T) {
 	binId := "bin"
 	fx := newFixture(t)
 	fx.Service.(*service).objectGC = &recordingGCStub{}
@@ -119,20 +119,20 @@ func TestSetIsArchived_EmitsOrphansDetected(t *testing.T) {
 	err := fx.SetIsArchived(sctx, context.Background(), "obj1", true, false)
 	require.NoError(t, err)
 
-	// then: an OrphansDetected event is emitted with the candidates and originating context
-	var found *pb.EventObjectOrphansDetected
+	// then: an CleanupSuggestion event is emitted with the candidates and originating context
+	var found *pb.EventObjectCleanupSuggestion
 	for _, m := range sctx.GetMessages() {
-		if v, ok := m.Value.(*pb.EventMessageValueOfObjectOrphansDetected); ok {
-			found = v.ObjectOrphansDetected
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectCleanupSuggestion); ok {
+			found = v.ObjectCleanupSuggestion
 		}
 	}
 	require.NotNil(t, found)
 	assert.Equal(t, "obj1", found.ContextId)
-	assert.Equal(t, pb.EventObjectOrphansDetected_archive, found.Trigger)
+	assert.Equal(t, pb.EventObjectCleanupSuggestion_archive, found.Trigger)
 	assert.ElementsMatch(t, []string{"c1"}, found.ObjectIds)
 }
 
-func TestSetListIsArchived_EmitsPerContextOrphansDetected(t *testing.T) {
+func TestSetListIsArchived_EmitsPerContextCleanupSuggestion(t *testing.T) {
 	binId := "bin"
 	fx := newFixture(t)
 	fx.Service.(*service).objectGC = &perContextGCStub{}
@@ -155,11 +155,11 @@ func TestSetListIsArchived_EmitsPerContextOrphansDetected(t *testing.T) {
 	err := fx.SetListIsArchived(sctx, context.Background(), []string{"obj1", "obj2"}, true, false)
 	require.NoError(t, err)
 
-	// then: one OrphansDetected event per originating context, each with its own candidates
+	// then: one CleanupSuggestion event per originating context, each with its own candidates
 	byContext := map[string][]string{}
 	for _, m := range sctx.GetMessages() {
-		if v, ok := m.Value.(*pb.EventMessageValueOfObjectOrphansDetected); ok {
-			byContext[v.ObjectOrphansDetected.ContextId] = v.ObjectOrphansDetected.ObjectIds
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectCleanupSuggestion); ok {
+			byContext[v.ObjectCleanupSuggestion.ContextId] = v.ObjectCleanupSuggestion.ObjectIds
 		}
 	}
 	assert.Equal(t, []string{"c-obj1"}, byContext["obj1"])

@@ -729,7 +729,7 @@ func (s *service) DeleteMessage(ctx context.Context, chatObjectId string, messag
 				// Only orphaned *files* are handled here (archived/deleted internally). Any non-file
 				// orphan objects come back in the returned OrphanCandidates but are intentionally
 				// dropped on this path: chat attachments are files, and there is no session context
-				// here to surface an OrphansDetected confirmation event to the user.
+				// here to surface an CleanupSuggestion confirmation event to the user.
 				if _, err := s.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, chatObjectId, fileIds, true, []string{messageId}); err != nil {
 					log.Error("file GC failed for deleted message",
 						zap.String("messageId", messageId),

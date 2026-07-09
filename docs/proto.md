@@ -2055,13 +2055,13 @@
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive)
     - [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore)
+    - [Event.Object.CleanupSuggestion](#anytype-Event-Object-CleanupSuggestion)
     - [Event.Object.Close](#anytype-Event-Object-Close)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
     - [Event.Object.Details.Amend.KeyValue](#anytype-Event-Object-Details-Amend-KeyValue)
     - [Event.Object.Details.Set](#anytype-Event-Object-Details-Set)
     - [Event.Object.Details.Unset](#anytype-Event-Object-Details-Unset)
-    - [Event.Object.OrphansDetected](#anytype-Event-Object-OrphansDetected)
     - [Event.Object.Relations](#anytype-Event-Object-Relations)
     - [Event.Object.Relations.Amend](#anytype-Event-Object-Relations-Amend)
     - [Event.Object.Relations.Remove](#anytype-Event-Object-Relations-Remove)
@@ -2111,7 +2111,7 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
-    - [Event.Object.OrphansDetected.Trigger](#anytype-Event-Object-OrphansDetected-Trigger)
+    - [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger)
     - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
     - [Event.Space.Network](#anytype-Event-Space-Network)
     - [Event.Space.Status](#anytype-Event-Space-Status)
@@ -19387,7 +19387,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | isArchived | [bool](#bool) |  |  |
-| skipCascade | [bool](#bool) |  | when true, skip the orphan cascade entirely (no file auto-archive, no OrphansDetected event). Used by the client when archiving objects the user confirmed in the popup, to avoid re-prompting. |
+| skipCascade | [bool](#bool) |  | when true, skip the orphan cascade entirely (no file auto-archive, no CleanupSuggestion event). Used by the client when archiving objects the user confirmed in the popup, to avoid re-prompting. |
 
 
 
@@ -32511,7 +32511,7 @@ received to update per-message mention read status (if needed |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
 | objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
-| objectOrphansDetected | [Event.Object.OrphansDetected](#anytype-Event-Object-OrphansDetected) |  |  |
+| objectCleanupSuggestion | [Event.Object.CleanupSuggestion](#anytype-Event-Object-CleanupSuggestion) |  |  |
 | debugProfileCreated | [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated) |  |  |
 | chatUpdateMessageCount | [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount) |  | received whenever the total number of non-deleted messages in |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
@@ -32598,6 +32598,23 @@ received to update per-message mention read status (if needed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Object-CleanupSuggestion"></a>
+
+### Event.Object.CleanupSuggestion
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated | orphan ids (objects at any level &#43; files at level &gt;= 2) created within contextId |
+| contextId | [string](#string) |  | the object that was archived / deleted / had a link removed |
+| trigger | [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger) |  |  |
 
 
 
@@ -32691,23 +32708,6 @@ Unset existing detail keys
 | id | [string](#string) |  | context objectId |
 | keys | [string](#string) | repeated |  |
 | subIds | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype-Event-Object-OrphansDetected"></a>
-
-### Event.Object.OrphansDetected
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectIds | [string](#string) | repeated | orphan ids (objects at any level &#43; files at level &gt;= 2) created within contextId |
-| contextId | [string](#string) |  | the object that was archived / deleted / had a link removed |
-| trigger | [Event.Object.OrphansDetected.Trigger](#anytype-Event-Object-OrphansDetected-Trigger) |  |  |
 
 
 
@@ -33413,9 +33413,9 @@ scenario: Precondition: user A and user B opened the same block
 
 
 
-<a name="anytype-Event-Object-OrphansDetected-Trigger"></a>
+<a name="anytype-Event-Object-CleanupSuggestion-Trigger"></a>
 
-### Event.Object.OrphansDetected.Trigger
+### Event.Object.CleanupSuggestion.Trigger
 
 
 | Name | Number | Description |

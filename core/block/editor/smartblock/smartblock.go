@@ -1679,11 +1679,11 @@ func (sb *smartBlock) performGCOnLinksRemoval(sctx session.Context, spaceId, con
 		}
 		if len(res.Candidates) > 0 {
 			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectOrphansDetected{
-					ObjectOrphansDetected: &pb.EventObjectOrphansDetected{
+				Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
 						ObjectIds: res.Candidates,
 						ContextId: contextId,
-						Trigger:   pb.EventObjectOrphansDetected_linkRemoval,
+						Trigger:   pb.EventObjectCleanupSuggestion_linkRemoval,
 					},
 				},
 			})

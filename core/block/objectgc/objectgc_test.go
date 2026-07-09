@@ -898,14 +898,14 @@ func TestCheckObjectsOnObjectArchived_MixedTree_Level1FileArchived_RestCandidate
 	assert.ElementsMatch(t, []string{"obj", "f2"}, res.Candidates)
 }
 
-func TestFilterExplicitIds_RemovesFromOrphansDetected(t *testing.T) {
+func TestFilterExplicitIds_RemovesFromCleanupSuggestion(t *testing.T) {
 	sctx := session.NewContext(session.WithSession("test-token"))
 	sctx.SetMessages("block1", []*pb.EventMessage{{
-		Value: &pb.EventMessageValueOfObjectOrphansDetected{
-			ObjectOrphansDetected: &pb.EventObjectOrphansDetected{
+		Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+			ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
 				ObjectIds: []string{"a", "b", "c"},
 				ContextId: "ctx",
-				Trigger:   pb.EventObjectOrphansDetected_archive,
+				Trigger:   pb.EventObjectCleanupSuggestion_archive,
 			},
 		},
 	}})
@@ -914,7 +914,7 @@ func TestFilterExplicitIds_RemovesFromOrphansDetected(t *testing.T) {
 
 	msgs := sctx.GetMessages()
 	require.Len(t, msgs, 1)
-	msg := msgs[0].Value.(*pb.EventMessageValueOfObjectOrphansDetected)
-	assert.ElementsMatch(t, []string{"a", "c"}, msg.ObjectOrphansDetected.ObjectIds)
-	assert.Equal(t, "ctx", msg.ObjectOrphansDetected.ContextId)
+	msg := msgs[0].Value.(*pb.EventMessageValueOfObjectCleanupSuggestion)
+	assert.ElementsMatch(t, []string{"a", "c"}, msg.ObjectCleanupSuggestion.ObjectIds)
+	assert.Equal(t, "ctx", msg.ObjectCleanupSuggestion.ContextId)
 }

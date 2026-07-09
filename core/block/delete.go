@@ -54,11 +54,11 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 			}
 			if len(res.Candidates) > 0 {
 				// no session context here — broadcast so the initiating client can prompt the user
-				s.eventSender.Broadcast(event.NewEventSingleMessage(id.SpaceID, &pb.EventMessageValueOfObjectOrphansDetected{
-					ObjectOrphansDetected: &pb.EventObjectOrphansDetected{
+				s.eventSender.Broadcast(event.NewEventSingleMessage(id.SpaceID, &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
 						ObjectIds: res.Candidates,
 						ContextId: id.ObjectID,
-						Trigger:   pb.EventObjectOrphansDetected_delete,
+						Trigger:   pb.EventObjectCleanupSuggestion_delete,
 					},
 				}))
 			}
