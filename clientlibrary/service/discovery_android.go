@@ -2,7 +2,8 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"net"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -105,8 +106,14 @@ func (d *discoveryObserver) ObserveChange(result ObservationResult) {
 	// sorry, slices are not supported in the bridge :'(
 	var ips = strings.Split(result.Ip(), ",")
 	var addrs = make([]string, 0, len(ips))
+	port := strconv.Itoa(result.Port())
 	for _, ip := range ips {
-		addrs = append(addrs, fmt.Sprintf("%s:%d", ip, result.Port()))
+		if ip == "" {
+			continue
+		}
+		// JoinHostPort brackets IPv6 addresses; "%s:%d" produced unparseable
+		// fe80::1:4006-style strings
+		addrs = append(addrs, net.JoinHostPort(ip, port))
 	}
 	peer := localdiscovery.DiscoveredPeer{
 		Addrs:  addrs,

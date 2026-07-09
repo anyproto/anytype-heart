@@ -27,11 +27,34 @@ func (r fakeObservationResult) PeerId() string { return r.peerId }
 type recordingNotifier struct {
 	ctxErr error
 	called bool
+	peer   localdiscovery.DiscoveredPeer
 }
 
 func (r *recordingNotifier) PeerDiscovered(ctx context.Context, peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
 	r.called = true
 	r.ctxErr = ctx.Err()
+	r.peer = peer
+}
+
+// Newer Android NSD can report IPv6 addresses; "%s:%d" produces unparseable
+// strings like fe80::1:4006 — they must be formatted with brackets.
+func TestDiscoveryObserver_ObserveChangeFormatsIPv6WithBrackets(t *testing.T) {
+	proxy := &fakeDiscoveryProxy{}
+	p := newNotifierProvider(proxy)
+	notifier := &recordingNotifier{}
+	p.Provide(notifier, 4006, "peer1", "_anytype._tcp")
+
+	proxy.observer.ObserveChange(fakeObservationResult{port: 4006, ip: "192.168.1.5,fe80::1", peerId: "peer2"})
+
+	want := []string{"192.168.1.5:4006", "[fe80::1]:4006"}
+	if len(notifier.peer.Addrs) != len(want) {
+		t.Fatalf("got addrs %v, want %v", notifier.peer.Addrs, want)
+	}
+	for i := range want {
+		if notifier.peer.Addrs[i] != want[i] {
+			t.Fatalf("got addrs %v, want %v", notifier.peer.Addrs, want)
+		}
+	}
 }
 
 // After an account switch (Remove + Provide), the new observer must run with a
