@@ -52,14 +52,23 @@ const (
 
 	ForceReindexDeletedObjectsCounter int32 = 1
 
-	ForceReindexParticipantsCounter  int32 = 1
-	ForceReindexChatsCounter         int32 = 7
-	ForceReindexChatsFulltextCounter int32 = 1
+	ForceReindexParticipantsCounter int32 = 1
+	ForceReindexChatsCounter        int32 = 7
+	// Bumped to 2: the initial chat-message fulltext backfill (counter 1) could
+	// silently index only a recent suffix of each chat — an incoming "_all"
+	// reindex entry lost to a pending real order id in the queue merge (fixed in
+	// AddChatMessageToIndexQueue). Re-run the now-correct backfill once.
+	// Bumped to 3 (GO-6758): re-run the full chat-message backfill on the new
+	// streamed reindex path so histories missed by earlier builds are recovered.
+	ForceReindexChatsFulltextCounter int32 = 3
 	ForceReindexDiscussionsCounter   int32 = 1
 
 	// ForceFTRecheckCounter triggers a lightweight FT consistency check
 	// Aggregates the list of object ids that need to be indexed and verify their presence in the FT index.
-	ForceFTRecheckCounter int32 = 0
+	// Bumped to 1 for GO-7316: backfill objects missed by the FT queue and
+	// garbage-collect orphaned FT docs accumulated by the old broken deletion
+	// paths (bare-id deletes, no cleanup on space offload).
+	ForceFTRecheckCounter int32 = 1
 
 	// ForceInvalidateObjectsIndexCounter clears all indexed heads hashes, causing reindexOutdatedObjects
 	// to reindex all objects. This is more efficient than ForceObjectsReindexCounter because it
@@ -278,8 +287,58 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 	}
 
 	go i.addSyncDetails(space)
+	go i.reconcileLinkDerivedDetails(space)
 
 	return i.saveLatestChecksums(space.Id())
+}
+
+// reconcileLinkDerivedDetails verifies, without building trees, that the local details derived
+// from the Home and Archive link collections (isFavorite/isArchived) still match the trees, and
+// re-runs the authoritative editor reconcile when the proof is missing or stale. The proof is a
+// fingerprint of the tree heads persisted after each completed reconcile (SaveReconcileMarker);
+// headstorage advances at apply commit, so any tree change whose reconcile did not complete
+// (crash or error between apply and the per-object detail writes) leaves the marker stale.
+// Opening the object runs the editor reconcile (Archive.Init/Dashboard.Init), which refreshes
+// the marker.
+func (i *indexer) reconcileLinkDerivedDetails(space clientspace.Space) {
+	store := i.store.SpaceIndex(space.Id())
+	derivedIds := space.DerivedIDs()
+	ctx := objectcache.CacheOptsWithRemoteLoadDisabled(context.Background())
+	for _, objectId := range []string{derivedIds.Home, derivedIds.Archive} {
+		if objectId == "" {
+			continue
+		}
+		l := log.With("spaceId", space.Id(), "objectId", objectId)
+		// a tree that is not local yet is fetched by the mandatory-objects load, which opens
+		// it and thereby reconciles; same for the deleted-tree edge handled there
+		entry, err := space.Storage().HeadStorage().GetEntry(i.runCtx, objectId)
+		if err != nil || entry.DeletedStatus != headstorage.DeletedStatusNotDeleted {
+			if err != nil && !errors.Is(err, anystore.ErrDocNotFound) && !errors.Is(err, context.Canceled) {
+				l.Warnf("reconcile link-derived details: get heads entry: %v", err)
+			}
+			continue
+		}
+		marker, err := store.GetReconcileMarker(i.runCtx, objectId)
+		if err != nil {
+			if !errors.Is(err, context.Canceled) {
+				l.Errorf("reconcile link-derived details: get marker: %v", err)
+			}
+			continue
+		}
+		if marker == spaceindex.HashIds(entry.Heads) {
+			continue
+		}
+		if marker == "" {
+			// no reconcile recorded yet: first load since the marker was introduced
+			l.Info("link-derived details reconcile marker absent, reconciling")
+		} else {
+			l.Warn("link-derived details out of sync with object tree, reconciling")
+		}
+		// opening the object runs the editor reconcile, which rewrites the marker
+		if err = space.DoCtx(ctx, objectId, func(smartblock.SmartBlock) error { return nil }); err != nil {
+			l.Errorf("reconcile link-derived details: open object: %v", err)
+		}
+	}
 }
 
 func (i *indexer) cleanChatCollection(ctx context.Context, db anystore.DB, chatId string, colName string) error {
@@ -436,7 +495,9 @@ func (i *indexer) reindexDiscussions(ctx context.Context, space clientspace.Spac
 }
 
 func (i *indexer) reindexChatMessagesFulltext(ctx context.Context, space clientspace.Space) error {
-	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject)
+	// Both chatDerived (space chats) and discussion (object chats) use the chat
+	// editor and store messages identically, so both must be backfilled.
+	ids, err := i.getIdsForTypes(space, coresb.SmartBlockTypeChatDerivedObject, coresb.SmartBlockTypeDiscussionObject)
 	if err != nil {
 		return err
 	}
@@ -738,20 +799,15 @@ func (i *indexer) reindexOutdatedObjects(ctx context.Context, space clientspace.
 	if err != nil {
 		return
 	}
+	indexedHashes, err := store.ListLastIndexedHeadsHashes(ctx)
+	if err != nil {
+		return 0, 0, fmt.Errorf("list last indexed heads hashes: %w", err)
+	}
 	var idsToReindex []string
 	for _, entry := range entries {
-		// todo: make it more effective
-		id := entry.Id
-		logErr := func(err error) {
-			log.With("tree", entry.Id).Errorf("reindexOutdatedObjects failed to get tree to reindex: %s", err)
-		}
-		lastHash, err := store.GetLastIndexedHeadsHash(ctx, id)
-		if err != nil {
-			logErr(err)
-			continue
-		}
-		if lastHash == "" || lastHash != headsHash(entry.Heads) {
-			idsToReindex = append(idsToReindex, id)
+		// an id missing from indexedHashes yields "", which never matches a real hash
+		if indexedHashes[entry.Id] != headsHash(entry.Heads) {
+			idsToReindex = append(idsToReindex, entry.Id)
 		}
 	}
 	if len(idsToReindex) == 0 {
@@ -854,6 +910,14 @@ func (i *indexer) getLatestChecksums(isMarketplace bool) (checksums model.Object
 
 func (i *indexer) saveLatestChecksums(spaceID string) error {
 	checksums := i.getLatestChecksums(spaceID == addr.AnytypeMarketplaceWorkspace)
+	stored, err := i.store.GetChecksums(spaceID)
+	if err != nil && !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("get stored checksums: %w", err)
+	}
+	// this runs on every space load; skip the write tx when nothing changed
+	if stored != nil && *stored == checksums {
+		return nil
+	}
 	return i.store.SaveChecksums(spaceID, &checksums)
 }
 
@@ -898,5 +962,52 @@ func (i *indexer) logFinishedReindexStat(reindexType metrics.ReindexType, totalI
 func (i *indexer) RemoveIndexes(spaceId string) error {
 	var flags reindexFlags
 	flags.enableAll()
-	return i.removeCommonIndexes(spaceId, nil, flags)
+	if err := i.removeCommonIndexes(spaceId, nil, flags); err != nil {
+		log.Errorf("remove common indexes on space removal: %v", err)
+	}
+	// Remove the space's full-text documents and pending queue entries.
+	// Errors propagate so the space offloader retries the offload (every 20s,
+	// and again after restart): the local status is only marked Missing after
+	// RemoveIndexes succeeds, and the FT removal is idempotent (it deletes
+	// whatever docs still exist). Swallowing a failure here would persist the
+	// leftovers forever — the orphan GC cannot collect docs of a space whose
+	// store is deleted right below.
+	if err := i.store.ClearFullTextQueue([]string{spaceId}); err != nil {
+		return fmt.Errorf("clear fulltext queue on space removal: %w", err)
+	}
+	if err := i.removeFullTextIndexes(spaceId); err != nil {
+		return fmt.Errorf("remove fulltext docs on space removal: %w", err)
+	}
+	// Drop the per-space objectstore entirely: close the in-memory index and
+	// remove the on-disk objectstore/CRDT databases for the space.
+	if err := i.store.DeleteSpaceIndex(spaceId); err != nil {
+		return fmt.Errorf("delete space index: %w", err)
+	}
+	return nil
+}
+
+// removeFullTextIndexes deletes all full-text documents belonging to the
+// space. ListIdsBySpace returns one page at a time, so loop until empty; the
+// iteration cap only guards against an unforeseen non-progressing loop.
+func (i *indexer) removeFullTextIndexes(spaceId string) error {
+	const maxIterations = 1000
+	for iteration := 0; iteration < maxIterations; iteration++ {
+		ids, err := i.ftsearch.ListIdsBySpace(spaceId, 0)
+		if err != nil {
+			return fmt.Errorf("list space doc ids: %w", err)
+		}
+		if len(ids) == 0 {
+			return nil
+		}
+		batcher := i.ftsearch.NewAutoBatcher()
+		for _, id := range ids {
+			if err = batcher.DeleteDoc(id); err != nil {
+				return fmt.Errorf("delete doc: %w", err)
+			}
+		}
+		if _, err = batcher.Finish(); err != nil {
+			return fmt.Errorf("finish delete batch: %w", err)
+		}
+	}
+	return fmt.Errorf("space docs still present after %d delete iterations", maxIterations)
 }

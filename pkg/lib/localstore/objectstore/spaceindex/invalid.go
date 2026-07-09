@@ -71,6 +71,10 @@ func (s *invalidStore) QueryIterate(q database.Query, proc func(details *domain.
 	return s.err
 }
 
+func (s *invalidStore) QueryIterateRaw(f *database.Filters, proc func(details *domain.Details) error) error {
+	return s.err
+}
+
 func (s *invalidStore) HasIds(ids []string) (exists []string, err error) {
 	return nil, s.err
 }
@@ -221,6 +225,18 @@ func (s *invalidStore) GetObjectType(id string) (*model.ObjectType, error) {
 
 func (s *invalidStore) GetLastIndexedHeadsHash(ctx context.Context, id string) (headsHash string, err error) {
 	return "", s.err
+}
+
+func (s *invalidStore) ListLastIndexedHeadsHashes(ctx context.Context) (map[string]string, error) {
+	return nil, s.err
+}
+
+func (s *invalidStore) GetReconcileMarker(ctx context.Context, id string) (marker string, err error) {
+	return "", s.err
+}
+
+func (s *invalidStore) SaveReconcileMarker(ctx context.Context, id string, marker string) error {
+	return s.err
 }
 
 func (s *invalidStore) SaveLastIndexedHeadsHash(ctx context.Context, id string, headsHash string) (err error) {

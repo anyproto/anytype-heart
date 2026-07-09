@@ -429,6 +429,69 @@ func TestApply_doesNotClobberConcurrentRemoteEntry(t *testing.T) {
 	assert.Empty(t, stub.creates)
 }
 
+// TestUpdate_pushesDeltaToStore locks the regression behind the
+// "personal-favorites widget layout reset on reorder" bug: BlockWidgetSetLayout
+// (and SetLimit/SetViewId) flow through basic.Updatable.Update. The base
+// basic.Update calls its embedded SmartBlock.Apply directly, which bypasses
+// VirtualWidgetObject.Apply and never pushes the change to the CRDT store. As a
+// result the layout lived only in memory and a later store-triggered rebuild
+// (e.g. after a reorder) would overwrite it with the stale store value.
+//
+// VirtualWidgetObject.Update overrides Update so it applies through v.Apply,
+// which diffs the state and pushes the per-entry op. This test asserts the
+// store actually receives the layout update.
+func TestUpdate_pushesDeltaToStore(t *testing.T) {
+	const (
+		spaceId = "spaceA"
+		linkId  = "l1"
+	)
+	existing := personalfavorites.WidgetEntry{
+		Id: linkId, SpaceId: spaceId, TargetId: "targetA",
+		Layout: model.BlockContentWidget_Link, Limit: 5, ViewId: "vA",
+	}
+
+	stub := &stubService{
+		getWidgetsFn: func(context.Context, string) ([]personalfavorites.WidgetEntry, error) {
+			return []personalfavorites.WidgetEntry{existing}, nil
+		},
+	}
+
+	sb := smarttest.New("root")
+	sb.SetSpaceId(spaceId)
+	sb.Doc = buildDoc(widgetBlock{
+		wrapperId: linkId + widgetWrapperSuffix,
+		linkId:    linkId,
+		target:    existing.TargetId,
+		layout:    existing.Layout,
+		limit:     existing.Limit,
+		view:      existing.ViewId,
+	})
+
+	v := NewVirtualWidget(sb, nil, stub, nil)
+
+	// Simulate SetWidgetBlockLayout: mutate the wrapper's widget layout via the
+	// Updatable.Update path on the wrapper block id.
+	err := v.Update(nil, func(b simple.Block) error {
+		wc, ok := b.Model().Content.(*model.BlockContentOfWidget)
+		require.True(t, ok, "block is not a widget wrapper (%T)", b.Model().Content)
+		wc.Widget.Layout = model.BlockContentWidget_Tree
+		return nil
+	}, linkId+widgetWrapperSuffix)
+	require.NoError(t, err)
+
+	// The layout change must have reached the store as a single layout update.
+	require.Len(t, stub.updates, 1, "layout change was not pushed to the store")
+	assert.Equal(t, linkId, stub.updates[0].id)
+	require.NotNil(t, stub.updates[0].update.Layout)
+	assert.Equal(t, model.BlockContentWidget_Tree, *stub.updates[0].update.Layout)
+	assert.Empty(t, stub.creates)
+	assert.Empty(t, stub.deletes)
+
+	// And the in-memory wrapper reflects the new layout.
+	got := pickWidget(t, v.NewState(), linkId+widgetWrapperSuffix)
+	assert.Equal(t, model.BlockContentWidget_Tree, got.Layout)
+}
+
 func TestPushDelta(t *testing.T) {
 	const spaceId = "spaceA"
 

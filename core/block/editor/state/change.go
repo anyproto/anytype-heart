@@ -350,7 +350,7 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		b := simple.New(m)
 		if m.Id != s.rootId {
 			bIds = append(bIds, b.Model().Id)
-			s.Unlink(m.Id)
+			s.unlinkForReplay(m.Id)
 		}
 		s.Set(b)
 		if dv := b.Model().GetDataview(); dv != nil {
@@ -569,7 +569,11 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	}
 	var cb = &changeBuilder{changes: s.changes}
 	if len(structMsgs) > 0 {
-		s.fillStructureChanges(cb, structMsgs)
+		deleted := make(map[string]struct{}, len(delIds))
+		for _, id := range delIds {
+			deleted[id] = struct{}{}
+		}
+		s.fillStructureChanges(cb, structMsgs, deleted)
 	}
 	if len(delIds) > 0 {
 		cb.AddChange(&pb.ChangeContent{
@@ -643,13 +647,13 @@ func (s *State) filterLocalAndDerivedRelationsByKey(relationKeys []string) []str
 	return relKeysWithoutLocal
 }
 
-func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
+func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds, deleted map[string]struct{}) {
 	for _, msg := range msgs {
-		s.makeStructureChanges(cb, msg)
+		s.makeStructureChanges(cb, msg, deleted)
 	}
 }
 
-func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChildrenIds) (ch []*pb.ChangeContent) {
+func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChildrenIds, deleted map[string]struct{}) (ch []*pb.ChangeContent) {
 	if slice.FindPos(s.changesStructureIgnoreIds, msg.Id) != -1 {
 		return
 	}
@@ -667,12 +671,24 @@ func (s *State) makeStructureChanges(cb *changeBuilder, msg *pb.EventBlockSetChi
 	)
 	var makeTarget = func(pos int) {
 		if pos == 0 {
+			// anchor on the first previous sibling not deleted in this change:
+			// a concurrent change may carry the same deletion (e.g. two users
+			// replacing the same empty block), and a create or move targeting
+			// an already-deleted id is silently dropped on replay
+			for _, prevId := range ds.a {
+				if _, isDeleted := deleted[prevId]; !isDeleted {
+					targetId = prevId
+					targetPos = model.Block_Top
+					return
+				}
+			}
+			targetId = msg.Id
 			if len(ds.a) == 0 {
-				targetId = msg.Id
 				targetPos = model.Block_Inner
 			} else {
-				targetId = ds.a[0]
-				targetPos = model.Block_Top
+				// all previous siblings are deleted in this change: anchor on
+				// the parent so the target survives any concurrent replay
+				targetPos = model.Block_InnerFirst
 			}
 		} else {
 			targetId = ds.b[pos-1]

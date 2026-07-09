@@ -48,6 +48,7 @@ type localDiscovery struct {
 	started     bool
 	notifier    Notifier
 	m           sync.Mutex
+	refreshMu   sync.Mutex // serializes refreshInterfaces so l.m can be released across the server teardown
 
 	hookMu       sync.Mutex
 	hookState    DiscoveryPossibility
@@ -95,10 +96,7 @@ func (l *localDiscovery) Start() (err error) {
 	}
 	l.started = true
 	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
-		err = l.refreshInterfaces(l.componentCtx)
-		if err != nil {
-			log.Warn("refreshing interfaces on networkState failed", zap.Error(err))
-		}
+		l.onNetworkStateChanged()
 	})
 
 	l.port = l.drpcServer.Port()
@@ -150,9 +148,31 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 	return nil
 }
 
-func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
+// onNetworkStateChanged is called when the device network type changes (e.g.
+// cellular -> wifi, or plugging the phone into a Mac by cable). After such a
+// transition the previous mDNS socket is usually dead — iOS leaves it in
+// ENOTCONN — yet its interface addresses can look unchanged, so refreshInterfaces
+// would skip the rebuild and the recv loop would keep hitting the dead socket
+// (throttled by the backoff, but never recovering). We clear the cached
+// addresses to force a full teardown + rebuild on the fresh interface. Network
+// type is intentionally ignored: we can't tell wifi from a USB-cable LAN here,
+// and both should keep discovery running.
+func (l *localDiscovery) onNetworkStateChanged() {
 	l.m.Lock()
-	defer l.m.Unlock()
+	l.interfacesAddrs = addrs.InterfacesAddrs{}
+	l.m.Unlock()
+	if err := l.refreshInterfaces(l.componentCtx); err != nil {
+		log.Warn("refreshing interfaces on network change failed", zap.Error(err))
+	}
+}
+
+func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
+	// refreshMu serializes the whole refresh so the periodic check and the
+	// network-change hook can't interleave a rebuild while l.m is released below.
+	l.refreshMu.Lock()
+	defer l.refreshMu.Unlock()
+
+	l.m.Lock()
 	newAddrs, err := addrs.GetInterfacesAddrs()
 	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
 		// this optimization allows to save syscalls to get addrs for every iface
@@ -164,6 +184,7 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 			// do the check only if we are in restricted state, just in case it was disabled
 			return l.getDiscoveryPossibility(newAddrs)
 		})
+		l.m.Unlock()
 		return
 	}
 
@@ -174,17 +195,29 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	if newAddrs.Equal(l.interfacesAddrs) && l.server != nil {
 		// we do additional check after we filter and sort multicast interfaces
 		// so this equal check is more precise
+		l.m.Unlock()
 		return
 	}
 	log.With(zap.Strings("ifaces", newAddrs.InterfaceNames())).Info("net interfaces configuration changed")
 	l.interfacesAddrs = newAddrs
-	if l.server != nil {
+	server := l.server
+	l.server = nil
+	if server != nil {
 		l.queryCtxCancel()
-		l.server.Shutdown()
+	}
+	l.m.Unlock()
+
+	// Tear the old server down WITHOUT holding l.m: Shutdown + closeWait.Wait can
+	// block on readAnswers, which itself needs l.m — holding it here deadlocks
+	// (this mirrors Close). refreshMu keeps concurrent refreshes out of this window.
+	if server != nil {
+		server.Shutdown()
 		l.closeWait.Wait()
 		l.closeWait = sync.WaitGroup{}
-		l.server = nil
 	}
+
+	l.m.Lock()
+	defer l.m.Unlock()
 	if len(l.interfacesAddrs.Interfaces) == 0 {
 		return nil
 	}

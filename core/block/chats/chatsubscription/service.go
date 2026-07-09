@@ -257,13 +257,19 @@ func (s *service) SubscribeLastMessages(ctx context.Context, req SubscribeLastMe
 		}
 	}
 
-	// Warm up cache
-	go func() {
-		_, err = s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
-		if err != nil {
-			log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
-		}
-	}()
+	// Warm up the chat tree only for full subscriptions, i.e. a chat actually opened
+	// by the user. Vault previews subscribe with OnlyLastMessage and must not open
+	// every chat tree on app start (GO-7302): their data is served from the persisted
+	// repository above and refreshed by per-space diffsync, which pulls a chat tree
+	// only when its heads diverge (head-syncing chats first, see block.Service.GetPriorityIds).
+	if !req.OnlyLastMessage {
+		go func() {
+			_, err := s.objectGetter.WaitAndGetObject(s.componentCtx, req.ChatObjectId)
+			if err != nil {
+				log.Error("load chat to cache", zap.String("chatObjectId", req.ChatObjectId), zap.Error(err))
+			}
+		}()
+	}
 
 	return &SubscribeLastMessagesResponse{
 		Messages:        messages,

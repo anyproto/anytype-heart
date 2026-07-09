@@ -207,6 +207,21 @@ func (a *aclObjectManager) processAcl() (err error) {
 	}
 	a.mx.Unlock()
 
+	// participants are store-only records: when the ACL head matches the persisted
+	// marker, the records are already up to date and per-member processing can be
+	// skipped; only identity tracking has to be re-registered from the store
+	if lastIndexed == "" && a.participantWatcher.GetProcessedAclHeadId(a.ctx, a.sp) == acl.Head().Id {
+		upToDate = a.isUpToDate(acl)
+		werr := a.participantWatcher.WatchPersistedParticipants(a.ctx, a.sp)
+		if werr == nil {
+			a.mx.Lock()
+			a.lastIndexed = acl.Head().Id
+			a.mx.Unlock()
+			return
+		}
+		log.Warn("watch persisted participants, falling back to full acl processing", zap.Error(werr))
+	}
+
 	states := aclState.CurrentAccounts()
 	// for tests make sure that owner comes first
 	sortStates(states)
@@ -235,8 +250,7 @@ func (a *aclObjectManager) processAcl() (err error) {
 		}
 	}
 
-	statusAclHeadId := a.status.GetLatestAclHeadId()
-	upToDate = statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
+	upToDate = a.isUpToDate(acl)
 	if a.guestKey != nil {
 		el, res := lo.Find(states, func(item list.AccountState) bool {
 			return item.PubKey.Account() == a.guestKey.GetPublic().Account()
@@ -297,10 +311,23 @@ func (a *aclObjectManager) processAcl() (err error) {
 	if err != nil {
 		return
 	}
+	err = a.participantWatcher.SetProcessedAclHeadId(a.ctx, a.sp, acl.Head().Id)
+	if err != nil {
+		// not fatal: the next start falls back to full processing
+		log.Warn("persist processed acl head id", zap.Error(err))
+		err = nil
+	}
 	a.mx.Lock()
 	defer a.mx.Unlock()
 	a.lastIndexed = acl.Head().Id
 	return nil
+}
+
+// isUpToDate reports whether the local ACL has caught up with the latest remotely
+// known head stored on the space view
+func (a *aclObjectManager) isUpToDate(acl syncacl.SyncAcl) bool {
+	statusAclHeadId := a.status.GetLatestAclHeadId()
+	return statusAclHeadId == "" || acl.HasHead(statusAclHeadId)
 }
 
 func (a *aclObjectManager) findJoinedDate(acl syncacl.SyncAcl) (int64, error) {

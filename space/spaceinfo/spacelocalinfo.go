@@ -7,6 +7,8 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
+var spaceInfoLog = logging.Logger("space.spaceinfo")
+
 type SpaceLocalInfo struct {
 	SpaceId         string
 	localStatus     *LocalStatus
@@ -93,6 +95,29 @@ func (s *SpaceLocalInfo) SetReadLimit(limit uint32) *SpaceLocalInfo {
 
 func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
 	st.SetDetailAndBundledRelation(bundle.RelationKeyTargetSpaceId, domain.String(s.SpaceId))
+	// Log local/remote status transitions at the single chokepoint every status write passes
+	// through, so cold-start status churn (GO-7289) can be diagnosed. Only emitted when a value
+	// actually changes, to avoid noise from idempotent re-writes.
+	if s.localStatus != nil || s.remoteStatus != nil {
+		oldLocal := LocalStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceLocalStatus))
+		oldRemote := RemoteStatus(st.LocalDetails().GetInt64(bundle.RelationKeySpaceRemoteStatus))
+		newLocal := oldLocal
+		if s.localStatus != nil {
+			newLocal = *s.localStatus
+		}
+		newRemote := oldRemote
+		if s.remoteStatus != nil {
+			newRemote = *s.remoteStatus
+		}
+		changed := (s.localStatus != nil && newLocal != oldLocal) ||
+			(s.remoteStatus != nil && newRemote != oldRemote)
+		if changed {
+			spaceInfoLog.With("spaceId", s.SpaceId).
+				With("localStatus", oldLocal.String()+"->"+newLocal.String()).
+				With("remoteStatus", oldRemote.String()+"->"+newRemote.String()).
+				Debug("space status transition in objectstore")
+		}
+	}
 	if s.localStatus != nil {
 		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceLocalStatus, domain.Int64(*s.localStatus))
 	}
@@ -109,6 +134,34 @@ func (s *SpaceLocalInfo) UpdateDetails(st *state.State) *SpaceLocalInfo {
 		st.SetDetailAndBundledRelation(bundle.RelationKeyReadersLimit, domain.Int64(*s.readLimit))
 	}
 	return s
+}
+
+// Equal reports whether every field set on s already matches the corresponding
+// detail in details. Unset (nil) fields are ignored, mirroring UpdateDetails.
+// It lets callers skip a no-op state apply when the status hasn't changed.
+func (s *SpaceLocalInfo) Equal(details *domain.Details) bool {
+	if details == nil {
+		return false
+	}
+	if details.GetString(bundle.RelationKeyTargetSpaceId) != s.SpaceId {
+		return false
+	}
+	if s.localStatus != nil && details.GetInt64(bundle.RelationKeySpaceLocalStatus) != int64(*s.localStatus) {
+		return false
+	}
+	if s.remoteStatus != nil && details.GetInt64(bundle.RelationKeySpaceRemoteStatus) != int64(*s.remoteStatus) {
+		return false
+	}
+	if s.shareableStatus != nil && details.GetInt64(bundle.RelationKeySpaceShareableStatus) != int64(*s.shareableStatus) {
+		return false
+	}
+	if s.writeLimit != nil && details.GetInt64(bundle.RelationKeyWritersLimit) != int64(*s.writeLimit) {
+		return false
+	}
+	if s.readLimit != nil && details.GetInt64(bundle.RelationKeyReadersLimit) != int64(*s.readLimit) {
+		return false
+	}
+	return true
 }
 
 func (s *SpaceLocalInfo) Log(log *logging.Sugared) *SpaceLocalInfo {

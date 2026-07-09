@@ -12,11 +12,9 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
 	"github.com/samber/lo"
-	"golang.org/x/exp/slices"
 
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
-	"github.com/anyproto/anytype-heart/core/block/chats/chatrepository"
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/simple"
@@ -30,20 +28,25 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
+	"github.com/anyproto/anytype-heart/space/spacecore/typeprovider"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const maxErrorsPerSession = 100
 
+// errBatcherUpsert marks failures of the tantivy batcher itself, as opposed to
+// errors preparing an object's docs: the batch is broken, so the indexing run
+// must abort instead of skipping the object and continuing.
+var errBatcherUpsert = errors.New("batcher upsert")
+
 var (
-	ftIndexInterval                     = 10 * time.Second
-	ftMaxIndexInterval                  = time.Second * 60
-	ftIndexForceMinInterval             = time.Second * 10
-	ftInconsistencyCheckStartDelay      = time.Second * 10
-	ftBatchLimit                   uint = 1000
-	ftBlockMaxSize                      = 1024 * 1024
-	maxErrSent                     atomic.Int32
+	ftIndexInterval              = 10 * time.Second
+	ftMaxIndexInterval           = time.Second * 60
+	ftIndexForceMinInterval      = time.Second * 10
+	ftBatchLimit            uint = 1000
+	ftBlockMaxSize               = 1024 * 1024
+	maxErrSent              atomic.Int32
 )
 
 var filesLayouts = map[model.ObjectTypeLayout]struct{}{
@@ -135,7 +138,21 @@ func (i *indexer) activeSpaces() []string {
 func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 	batcher := i.ftsearch.NewAutoBatcher()
 
-	var processQueuedObjects = func(objects []domain.FullTextQueuedObject) (succeedIds []domain.FullID, ftIndexSeq uint64, err error) {
+	// upsertDoc feeds one doc to the auto-flushing batcher; invalid utf-8 only
+	// skips the doc, any other batcher error is fatal for the whole run
+	var upsertDoc = func(objectId string, doc ftsearch.SearchDoc) error {
+		err := batcher.UpsertDoc(doc)
+		if err != nil {
+			if strings.Contains(err.Error(), "invalid utf-8 sequence") {
+				log.With("id", objectId).Warnf(err.Error())
+				return nil
+			}
+			return fmt.Errorf("%w: %w", errBatcherUpsert, err)
+		}
+		return nil
+	}
+
+	var processQueuedObjects = func(objects []domain.FullTextQueuedObject) (succeed []domain.FullTextQueuedObject, ftIndexSeq uint64, err error) {
 		if len(objects) == 0 {
 			return nil, 0, nil
 		}
@@ -146,9 +163,14 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				return nil, 0, ctx.Err()
 			default:
 			}
-			objDocs, isChat, err := i.prepareSearchDocs(ctx, object)
+			// chat message docs are streamed straight into the batcher instead of
+			// being returned: a queue entry can cover the whole chat history, and
+			// materializing it would defeat the batcher's memory cap
+			objDocs, isChat, err := i.prepareSearchDocs(ctx, object, func(doc ftsearch.SearchDoc) error {
+				return upsertDoc(object.ObjectId, doc)
+			})
 			if err != nil {
-				if errors.Is(err, context.Canceled) {
+				if errors.Is(err, context.Canceled) || errors.Is(err, errBatcherUpsert) {
 					return nil, 0, err
 				}
 				if !errors.Is(err, domain.ErrObjectNotFound) &&
@@ -163,7 +185,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 				}
 			}
 
-			removedDocIds := make([]string, len(object.DeletedMsgIds))
+			removedDocIds := make([]string, 0, len(object.DeletedMsgIds))
 			if !isChat {
 				objDocs, removedDocIds, err = i.filterOutNotChangedDocuments(object.ObjectId, objDocs)
 			}
@@ -188,17 +210,13 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 			}
 
 			for _, doc := range objDocs {
-				err = batcher.UpsertDoc(doc)
+				err = upsertDoc(object.ObjectId, doc)
 				if err != nil {
-					if strings.Contains(err.Error(), "invalid utf-8 sequence") {
-						log.With("id", object.ObjectId).Warnf(err.Error())
-						continue // skip this document
-					}
 					return nil, 0, fmt.Errorf("batcher add: %w", err)
 				}
 			}
 
-			succeedIds = append(succeedIds, object.FullId())
+			succeed = append(succeed, object)
 		}
 
 		ftIndexSeq, err = batcher.Finish()
@@ -211,7 +229,7 @@ func (i *indexer) runFullTextIndexer(ctx context.Context) error {
 			// but it's not a big problem, in case of db corruption we may just try to reindex more objects than needed
 			i.ftsearchLastIndexSeq = ftIndexSeq
 		}
-		return succeedIds, i.ftsearchLastIndexSeq, nil
+		return succeed, i.ftsearchLastIndexSeq, nil
 	}
 
 	err := i.store.BatchProcessFullTextQueue(i.activeSpaces, ftBatchLimit, processQueuedObjects)
@@ -241,7 +259,9 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 		// no need to query fields if we have no documents to compare (means the whole object is deleted)
 		fields = []string{"Title", "Text"}
 	}
+	seenIds := make(map[string]struct{})
 	err = i.ftsearch.Iterate(id, fields, func(doc *ftsearch.SearchDoc) bool {
+		seenIds[doc.Id] = struct{}{}
 		newDocIndex := slice.Find(newDocs, func(d ftsearch.SearchDoc) bool {
 			return d.Id == doc.Id
 		})
@@ -262,9 +282,7 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	}
 
 	for _, doc := range newDocs {
-		if !slices.ContainsFunc(changedDocs, func(d ftsearch.SearchDoc) bool {
-			return d.Id == doc.Id
-		}) {
+		if _, exists := seenIds[doc.Id]; !exists {
 			// doc is new as it doesn't exist in the index
 			changedDocs = append(changedDocs, doc)
 		}
@@ -272,7 +290,10 @@ func (i *indexer) filterOutNotChangedDocuments(id string, newDocs []ftsearch.Sea
 	return changedDocs, removeDocs, nil
 }
 
-func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, isChat bool, err error) {
+// prepareSearchDocs returns the fulltext docs for a queued object. Chat
+// message docs are not returned: they are streamed into chatSink one at a
+// time, because a single queue entry can cover an arbitrarily large history.
+func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQueuedObject, chatSink func(doc ftsearch.SearchDoc) error) (docs []ftsearch.SearchDoc, isChat bool, err error) {
 	// shortcut for deleted objects via objectstore
 	// otherwise we can have race condition when object is marked as deleted but the tree is not yet deleted
 	details, err := i.store.SpaceIndex(object.SpaceId).GetDetails(object.ObjectId)
@@ -283,14 +304,21 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 		return
 	}
 
+	// store-owned objects (e.g. participants): fulltext docs derive from details alone,
+	// loading them into the object cache would build a smartblock for nothing
+	if sbType, sbTypeErr := typeprovider.SmartblockTypeFromID(object.ObjectId); sbTypeErr == nil && sbType.DetailsStoreOwned() {
+		if err != nil {
+			return nil, false, fmt.Errorf("get details for details-only fulltext: %w", err)
+		}
+		// an empty record means the object is gone from the store: no docs are
+		// returned and filterOutNotChangedDocuments drops the stale ones
+		return i.prepareDetailsOnlySearchDocs(object.SpaceId, object.ObjectId, details), false, nil
+	}
+
 	ctx = context.WithValue(ctx, metrics.CtxKeyEntrypoint, "index_fulltext")
 
 	if object.MsgOrderId != "" || len(object.DeletedMsgIds) > 0 {
-		docs, err = i.prepareChatSearchDocs(ctx, object)
-		if err != nil {
-			return nil, true, err
-		}
-		return docs, true, nil
+		return nil, true, i.indexChatMessages(ctx, object, chatSink)
 	}
 
 	var fulltextSkipped bool
@@ -326,52 +354,78 @@ func (i *indexer) prepareSearchDocs(ctx context.Context, object domain.FullTextQ
 	return docs, isChat, nil
 }
 
-func (i *indexer) prepareChatSearchDocs(ctx context.Context, object domain.FullTextQueuedObject) (docs []ftsearch.SearchDoc, err error) {
+// prepareDetailsOnlySearchDocs builds fulltext docs from objectstore details without
+// loading the object, applying the same relation-doc filtering as the smartblock path.
+func (i *indexer) prepareDetailsOnlySearchDocs(spaceId, objectId string, details *domain.Details) []ftsearch.SearchDoc {
+	//nolint:gosec
+	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
+	return i.prepareRelationSearchDocsFromDetails(domain.FullID{SpaceID: spaceId, ObjectID: objectId}, layout, details)
+}
+
+// indexChatMessages streams the queued range of chat messages (the whole
+// history for FtAllOrderId) into sink as fulltext docs, one message at a time.
+func (i *indexer) indexChatMessages(ctx context.Context, object domain.FullTextQueuedObject, sink func(doc ftsearch.SearchDoc) error) error {
+	var afterOrderId string
+	switch object.MsgOrderId {
+	case "":
+		return nil // only deleted messages in this queue entry, no new search docs
+	case objectstore.FtAllOrderId:
+		afterOrderId = ""
+	default:
+		afterOrderId = object.MsgOrderId
+	}
+
 	repository, err := i.chatRepository.Repository(object.SpaceId, object.ObjectId)
 	if err != nil {
-		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get chat repository: %w", err)
+		return fmt.Errorf("get chat repository: %w", err)
 	}
 
-	var msgs []*chatmodel.Message
-	switch object.MsgOrderId {
-	case objectstore.FtAllOrderId:
-		// TODO: GO-6758 add batch messages fetch by limits
-		msgs, err = repository.GetMessages(ctx, chatrepository.GetMessagesRequest{})
-	case "":
-		return nil, nil // no new search docs should be added
-	default:
-		msgs, err = repository.GetMessagesForIndexing(ctx, object.MsgOrderId)
-	}
-
+	err = repository.IterateMessagesForIndexing(ctx, afterOrderId, func(msg *chatmodel.Message) error {
+		return sink(chatMessageToSearchDoc(object.ObjectId, object.SpaceId, msg))
+	})
 	if err != nil {
-		return nil, fmt.Errorf("prepareChatSearchDocs: failed to get messages for indexing: %w", err)
+		return fmt.Errorf("iterate messages for indexing: %w", err)
 	}
+	return nil
+}
 
-	for _, msg := range msgs {
-		text := msg.Message.Text
-		if blocksText := msg.BlocksText(); blocksText != "" {
-			if text != "" {
-				text += "\n"
-			}
-			text += blocksText
+func chatMessageToSearchDoc(objectId, spaceId string, msg *chatmodel.Message) ftsearch.SearchDoc {
+	text := msg.Message.Text
+	if blocksText := msg.BlocksText(); blocksText != "" {
+		if text != "" {
+			text += "\n"
 		}
-		docs = append(docs, ftsearch.SearchDoc{
-			Id:        domain.NewObjectPathWithMessage(object.ObjectId, msg.Id).String(),
-			SpaceId:   object.SpaceId,
-			Text:      text,
-			Author:    msg.Creator,
-			OrderId:   msg.OrderId,
-			MessageId: msg.Id,
-			Timestamp: strconv.Itoa(int(msg.CreatedAt)),
-		})
+		text += blocksText
 	}
-	return docs, nil
-
+	return ftsearch.SearchDoc{
+		Id:        domain.NewObjectPathWithMessage(objectId, msg.Id).String(),
+		SpaceId:   spaceId,
+		Text:      text,
+		Author:    msg.Creator,
+		OrderId:   msg.OrderId,
+		MessageId: msg.Id,
+		Timestamp: strconv.Itoa(int(msg.CreatedAt)),
+	}
 }
 
 func (i *indexer) prepareRelationSearchDocs(fullId domain.FullID, sb smartblock.SmartBlock) (docs []ftsearch.SearchDoc) {
 	layout, _ := sb.Layout()
-	for key, value := range sb.Details().Iterate() {
+	docs = i.prepareRelationSearchDocsFromDetails(fullId, layout, sb.Details())
+
+	if layout == model.ObjectType_note {
+		snippet := sb.LocalDetails().GetString(bundle.RelationKeySnippet)
+		docs = append(docs, ftsearch.SearchDoc{
+			Id:      domain.NewObjectPathWithRelation(fullId.ObjectID, bundle.RelationKeySnippet.String()).String(),
+			SpaceId: fullId.SpaceID,
+			Text:    snippet,
+		})
+	}
+
+	return docs
+}
+
+func (i *indexer) prepareRelationSearchDocsFromDetails(fullId domain.FullID, layout model.ObjectTypeLayout, details *domain.Details) (docs []ftsearch.SearchDoc) {
+	for key, value := range details.Iterate() {
 		format, err := i.formatFetcher.GetRelationFormatByKey(fullId.SpaceID, key)
 		if err == nil && !isIndexableFormat(format) {
 			continue
@@ -403,15 +457,6 @@ func (i *indexer) prepareRelationSearchDocs(fullId domain.FullID, sb smartblock.
 		}
 
 		docs = append(docs, doc)
-	}
-
-	if layout == model.ObjectType_note {
-		snippet := sb.LocalDetails().GetString(bundle.RelationKeySnippet)
-		docs = append(docs, ftsearch.SearchDoc{
-			Id:      domain.NewObjectPathWithRelation(fullId.ObjectID, bundle.RelationKeySnippet.String()).String(),
-			SpaceId: fullId.SpaceID,
-			Text:    snippet,
-		})
 	}
 
 	return docs
@@ -476,12 +521,20 @@ func (i *indexer) ftInit() error {
 			if err != nil {
 				return err
 			}
-			// query objects that are existing in the store
-			// if they are not existing in the object store, they will be indexed and added via reindexOutdatedObjects or on receiving via any-sync
-			err = i.store.EnqueueAllForFulltextIndexing(i.runCtx)
-			if err != nil {
-				return err
-			}
+			// EnqueueAllForFulltextIndexing waits for the objectstore warm-up
+			// so the rebuild covers every space, not just those already open.
+			// Run it off the Run path: ftInit is called synchronously from
+			// StartFullTextIndex (component Run), and blocking on warm-up here
+			// would stall startup / workspace open. The FT loop (started right
+			// after) drains the queue as it fills. Objects not yet in the
+			// store are indexed later via reindexOutdatedObjects or on
+			// receiving via any-sync.
+			go func() {
+				enqErr := i.store.EnqueueAllForFulltextIndexing(i.runCtx)
+				if enqErr != nil && !errors.Is(enqErr, context.Canceled) {
+					log.Errorf("enqueue all for fulltext indexing: %v", enqErr)
+				}
+			}()
 		}
 	}
 	return nil
@@ -512,22 +565,39 @@ func (i *indexer) maybeRunFTConsistencyCheck(ctx context.Context) {
 		return
 	}
 
+	// The check iterates only spaces registered so far; running it against a
+	// partial registry would permanently skip the not-yet-opened spaces and
+	// could misclassify their docs. Probe the warm-up without blocking the FT
+	// loop: if stores are still loading, retry at a later queue drain.
+	waitCtx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
+	err = i.store.WaitStoresLoaded(waitCtx)
+	cancel()
+	if err != nil {
+		i.ftConsistencyCheckDone.Store(false)
+		return
+	}
+
 	start := time.Now()
-	checked, enqueued, err := i.store.RunFTConsistencyCheck(i.runCtx, i.ftsearch)
+	checked, enqueued, complete, err := i.store.RunFTConsistencyCheck(i.runCtx, i.ftsearch)
 	if err != nil {
 		log.Errorf("ft consistency check failed: %v", err)
 		return
 	}
 
-	// Update counter only on success
-	err = i.store.SetFTRecheckCounter(i.runCtx, ForceFTRecheckCounter)
-	if err != nil {
-		log.Errorf("save ft recheck counter: %v", err)
-		return
+	// Persist the counter only when the whole index was covered; an incomplete
+	// run (truncated listing, skipped space, capped orphan GC) must be retried
+	// next session, otherwise the remainder is never collected — the counter
+	// gate short-circuits every future run.
+	if complete {
+		err = i.store.SetFTRecheckCounter(i.runCtx, ForceFTRecheckCounter)
+		if err != nil {
+			log.Errorf("save ft recheck counter: %v", err)
+			return
+		}
 	}
 
-	var l = log.With("checked", checked, "enqueued", enqueued, "duration", time.Since(start))
-	if enqueued > 0 {
+	var l = log.With("checked", checked, "enqueued", enqueued, "complete", complete, "duration", time.Since(start))
+	if enqueued > 0 || !complete {
 		l.Warn("ft consistency check completed")
 	} else {
 		l.Info("ft consistency check completed")

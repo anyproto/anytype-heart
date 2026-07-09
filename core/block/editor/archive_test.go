@@ -1,8 +1,10 @@
 package editor
 
 import (
+	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/block/editor/blockcollection"
@@ -85,5 +87,67 @@ func TestArchive_UnArchive(t *testing.T) {
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
 		require.Len(t, chIds, 1)
+	})
+}
+
+func TestArchive_ReconcileInStore(t *testing.T) {
+	// the editors are built without Init so the hook does not spawn a racing background reconcile
+	t.Run("archive writes marker after successful reconcile", func(t *testing.T) {
+		// given
+		sb := smarttest.New("root")
+		store := spaceindex.NewStoreFixture(t)
+		a := &Archive{
+			SmartBlock:  sb,
+			Collection:  blockcollection.NewCollection(sb, store),
+			objectStore: store,
+		}
+		want := spaceindex.HashIds([]string{"head1"})
+
+		// when
+		a.reconcileInStore([]string{"obj1", "obj2"}, want)
+
+		// then
+		got, err := store.GetReconcileMarker(context.Background(), "root")
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("empty marker is not persisted", func(t *testing.T) {
+		// given
+		sb := smarttest.New("root")
+		store := spaceindex.NewStoreFixture(t)
+		a := &Archive{
+			SmartBlock:  sb,
+			Collection:  blockcollection.NewCollection(sb, store),
+			objectStore: store,
+		}
+
+		// when: an object without a tree (virtual, tests) yields an empty marker
+		a.reconcileInStore([]string{"obj1"}, "")
+
+		// then
+		got, err := store.GetReconcileMarker(context.Background(), "root")
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("dashboard writes marker after successful reconcile", func(t *testing.T) {
+		// given
+		sb := smarttest.New("home")
+		store := spaceindex.NewStoreFixture(t)
+		d := &Dashboard{
+			SmartBlock:  sb,
+			Collection:  blockcollection.NewCollection(sb, store),
+			objectStore: store,
+		}
+		want := spaceindex.HashIds([]string{"head1"})
+
+		// when
+		d.reconcileInStore([]string{"fav1"}, want)
+
+		// then
+		got, err := store.GetReconcileMarker(context.Background(), "home")
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
 	})
 }

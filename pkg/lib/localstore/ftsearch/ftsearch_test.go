@@ -75,15 +75,15 @@ func TestDifferentSpaces(t *testing.T) {
 		SpaceId: "space2",
 	}))
 
-	search, err := ft.Search("space1", "one")
+	search, err := ft.Search("space1", "one", 0)
 	require.NoError(t, err)
 	require.Len(t, search, 1)
 
-	search, err = ft.Search("space2", "one")
+	search, err = ft.Search("space2", "one", 0)
 	require.NoError(t, err)
 	require.Len(t, search, 1)
 
-	search, err = ft.Search("", "one")
+	search, err = ft.Search("", "one", 0)
 	require.NoError(t, err)
 	require.Len(t, search, 2)
 
@@ -123,11 +123,11 @@ func TestNamePrefixSearch(t *testing.T) {
 		Text: "opa",
 	}))
 
-	search, err := ft.NamePrefixSearch("", "o")
+	search, err := ft.NamePrefixSearch("", "o", 0)
 	require.NoError(t, err)
 	require.Len(t, search, 4)
 
-	search, err = ft.NamePrefixSearch("", "n")
+	search, err = ft.NamePrefixSearch("", "n", 0)
 	require.NoError(t, err)
 	require.Len(t, search, 0)
 
@@ -330,7 +330,7 @@ func assertSearch(t *testing.T, tmpDir string) {
 }
 
 func validateSearch(t *testing.T, ft FTSearch, spaceID, qry string, times int) {
-	res, err := ft.Search(spaceID, qry)
+	res, err := ft.Search(spaceID, qry, 0)
 	require.NoError(t, err)
 	assert.Len(t, res, times)
 }

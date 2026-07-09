@@ -99,6 +99,115 @@ func (f *fixture) addMessageWithUnreadReactions(t *testing.T, id, orderId string
 	require.NoError(t, err)
 }
 
+// addMessageWithOrders inserts a message with an explicit _o order object so
+// tests can model a content edit whose order differs from the creation order.
+func (f *fixture) addMessageWithOrders(t *testing.T, id, orderId, contentOrderId string) {
+	t.Helper()
+	arena := &anyenc.Arena{}
+	msg := &chatmodel.Message{
+		ChatMessage: &model.ChatMessage{
+			Id:      id,
+			OrderId: orderId,
+			Message: &model.ChatMessageMessageContent{
+				Text: "test",
+			},
+		},
+	}
+	val := arena.NewObject()
+	msg.MarshalAnyenc(val, arena)
+
+	orderObj := arena.NewObject()
+	orderObj.Set("id", arena.NewString(orderId))
+	if contentOrderId != "" {
+		orderObj.Set("content", arena.NewString(contentOrderId))
+	}
+	val.Set(chatmodel.OrderKey, orderObj)
+
+	err := f.repo.collection.Insert(context.Background(), val)
+	require.NoError(t, err)
+}
+
+func TestIterateMessagesForIndexing(t *testing.T) {
+	collectIds := func(fx *fixture, afterOrderId string) ([]string, error) {
+		var ids []string
+		err := fx.repo.IterateMessagesForIndexing(context.Background(), afterOrderId, func(msg *chatmodel.Message) error {
+			ids = append(ids, msg.Id)
+			return nil
+		})
+		return ids, err
+	}
+
+	t.Run("all messages when afterOrderId is empty", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		want := make([]string, 0, 5)
+		for i := 1; i <= 5; i++ {
+			id := fmt.Sprintf("msg%d", i)
+			fx.addMessage(t, id, fmt.Sprintf("o%d", i), false, false, false)
+			want = append(want, id)
+		}
+
+		// when
+		got, err := collectIds(fx, "")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("messages at or after afterOrderId", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		for i := 1; i <= 5; i++ {
+			fx.addMessage(t, fmt.Sprintf("msg%d", i), fmt.Sprintf("o%d", i), false, false, false)
+		}
+		want := []string{"msg3", "msg4", "msg5"}
+
+		// when
+		got, err := collectIds(fx, "o3")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("message with older order id but newer content edit is included", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		fx.addMessageWithOrders(t, "msgEdited", "o1", "o9")
+		fx.addMessageWithOrders(t, "msgOld", "o2", "")
+		fx.addMessageWithOrders(t, "msgNew", "o5", "")
+		want := []string{"msgEdited", "msgNew"}
+
+		// when
+		got, err := collectIds(fx, "o4")
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, got)
+	})
+
+	t.Run("proc error stops iteration and propagates", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		for i := 1; i <= 3; i++ {
+			fx.addMessage(t, fmt.Sprintf("msg%d", i), fmt.Sprintf("o%d", i), false, false, false)
+		}
+		wantErr := fmt.Errorf("sink failed")
+
+		// when
+		var seen int
+		err := fx.repo.IterateMessagesForIndexing(context.Background(), "", func(msg *chatmodel.Message) error {
+			seen++
+			return wantErr
+		})
+
+		// then
+		require.ErrorIs(t, err, wantErr)
+		assert.Equal(t, 1, seen)
+	})
+}
+
 func TestCountMessages(t *testing.T) {
 	t.Run("zero on empty collection", func(t *testing.T) {
 		fx := newFixture(t)

@@ -36,6 +36,9 @@ func (mw *Middleware) ListenSessionEvents(req *pb.StreamRequest, server lib.Clie
 	var srv *event.SessionServer
 	if sender, ok := mw.applicationService.GetEventSender().(*event.GrpcSender); ok {
 		srv = sender.SetSessionServer(req.Token, server)
+		// On disconnect/exit, tear down this session's drain goroutine. Identity-
+		// aware, so it is a no-op if the session was already replaced/closed.
+		defer sender.CloseSessionInstance(srv)
 	} else {
 		log.Fatal("failed to ListenEvents: has a wrong Sender")
 		return

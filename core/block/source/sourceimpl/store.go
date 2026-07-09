@@ -12,7 +12,6 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/synctree/updatelistener"
-	"github.com/anyproto/any-sync/commonspace/objecttreebuilder"
 	"github.com/gogo/protobuf/proto"
 	"github.com/golang/snappy"
 
@@ -141,28 +140,76 @@ func unmarshalSeenHeads(raw []byte) ([]string, error) {
 	return seenHeads, nil
 }
 
+// buildReusedDiffManager creates a DiffManager that reuses the already-in-memory sync
+// tree instead of re-reading the entire change log from storage.
+//
+// Previously every diff manager built its own history tree via
+// space.TreeBuilder().BuildHistoryTree(...), i.e. a full GetAfterOrder scan of the whole
+// "changes" collection. A chat registers three diff managers (messages, mentions,
+// reactions), so opening it scanned the log 1 (sync build) + 3 (diff managers) = 4 times.
+//
+// NewChangeDiffer only iterates the tree (IterateRoot) to copy each change's
+// Id+PreviousIds into its own graph; it does not mutate the tree and keeps no reference to
+// it (only the immutable PreviousIds slices, which are never modified after a change is
+// created). For a chat the live DAG (root..heads) is exactly what BuildHistoryTree produced,
+// because seenHeads are always ancestors-or-equal of the current tree heads. So reusing the
+// in-memory sync tree is equivalent and drops the 3 redundant scans (4->1).
+//
+// No lock is taken here ON PURPOSE: the object-tree mutex is non-reentrant and is already
+// held by every caller of InitDiffManager — factory.InitObject takes it (SetLocker(ot) +
+// Lock) around Init -> ReadStoreDoc -> initDiffManagers on open, and cache.DoWait takes it
+// (sb.Lock) on the mark-unread path. Locking again would self-deadlock.
+//
+// Safe against ocache eviction/GC: (1) the held lock blocks eviction during the build
+// (GC closes via smartBlock.TryClose -> TryLock, which fails while locked; Close() also
+// re-acquires the lock); (2) after the build the DiffManager keeps its OWN copied graph
+// and holds no reference to the tree, so later eviction/GC of the tree is harmless, and
+// ongoing updates pass a fresh tree via updateInDiffManagers. This assumes the in-memory
+// sync tree holds the COMPLETE DAG (true for chats: BuildTree loads every change); a
+// future lazy/partial tree mode would need to revisit this.
+func (s *store) buildReusedDiffManager(seenHeads []string, onRemove func(removed []string)) (*objecttree.DiffManager, error) {
+	liveTree := s.Tree()
+	// Reuse is equivalent to BuildHistoryTree only while the in-memory tree still spans the
+	// whole snapshotRoot..heads range. Creating a non-genesis snapshot resets the in-memory
+	// tree to [latest snapshot..heads] (objectTree clears ot.tree on IsSnapshot), after which
+	// a seenHead before that snapshot would be misclassified and unread counts would drift.
+	// Chats never create snapshots, so the genesis root (SnapshotCounter == 1) is the only
+	// snapshot. Trip loudly if that ever changes instead of silently miscounting.
+	root := liveTree.Root()
+	if root == nil || root.SnapshotCounter > 1 {
+		cnt := -1
+		if root != nil {
+			cnt = root.SnapshotCounter
+		}
+		return nil, fmt.Errorf("reuse diff manager: tree is not genesis-rooted (root snapshot counter %d); restore BuildHistoryTree for snapshotted objects", cnt)
+	}
+	// The object-tree mutex is non-reentrant and MUST already be held by the caller (see the
+	// doc above). Trip loudly on a future lock-free caller instead of silently racing the
+	// shared iteration flags: TryLock fails when this goroutine already holds the lock.
+	if liveTree.TryLock() {
+		liveTree.Unlock()
+		log.With("objectId", s.Id()).Error("buildReusedDiffManager called without the object-tree lock held")
+	}
+	curTreeHeads := liveTree.Heads()
+	buildTree := func(_ []string) (objecttree.ReadableObjectTree, error) {
+		return liveTree, nil
+	}
+	return objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
+}
+
 func (s *store) InitDiffManager(ctx context.Context, name string, seenHeads []string) (err error) {
 	manager, ok := s.diffManagers[name]
 	if !ok {
 		return nil
 	}
 
-	curTreeHeads := s.treeSource.Tree().Heads()
-
-	buildTree := func(heads []string) (objecttree.ReadableObjectTree, error) {
-		return s.space.TreeBuilder().BuildHistoryTree(ctx, s.Id(), objecttreebuilder.HistoryTreeOpts{
-			Heads:          heads,
-			Include:        true,
-			BuildEmptyData: true,
-		})
-	}
 	onRemove := func(removed []string) {
 		if manager.onRemove != nil {
 			manager.onRemove(removed)
 		}
 	}
 
-	manager.diffManager, err = objecttree.NewDiffManager(seenHeads, curTreeHeads, buildTree, onRemove)
+	manager.diffManager, err = s.buildReusedDiffManager(seenHeads, onRemove)
 	if err != nil {
 		return fmt.Errorf("init diff manager: %w", err)
 	}

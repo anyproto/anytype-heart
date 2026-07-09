@@ -23,6 +23,7 @@ When chats are added/removed, preview subscriptions are automatically updated an
 */
 
 import (
+	"cmp"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -357,13 +358,7 @@ func (s *service) onChatAdded(chatObjectId string, subId string) (*chatsubscript
 }
 
 func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId string) error {
-	resp, err := s.chatSubscriptionService.SubscribeLastMessages(s.componentCtx, chatsubscription.SubscribeLastMessagesRequest{
-		ChatObjectId:     chatObjectId,
-		SubId:            subId,
-		Limit:            1,
-		WithDependencies: true,
-		OnlyLastMessage:  true,
-	})
+	resp, err := s.onChatAdded(chatObjectId, subId)
 	if err != nil {
 		return fmt.Errorf("subscribe: %w", err)
 	}
@@ -373,23 +368,21 @@ func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId st
 		return fmt.Errorf("get manager: %w", err)
 	}
 	mngr.Lock()
-	defer mngr.Unlock()
+	chatState := mngr.GetChatState()
+	mngr.Unlock()
 
 	events := make([]*pb.EventMessage, 0, 2)
 	if len(resp.Messages) > 0 {
-		msg := resp.Messages[0]
-		events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatAdd{
-			ChatAdd: &pb.EventChatAdd{
-				Id:           msg.Id,
-				OrderId:      msg.OrderId,
-				AfterOrderId: resp.PreviousOrderId,
-				Message:      msg.ChatMessage,
-				SubIds:       []string{subId},
-			},
-		}))
+		events = append(events, newChatAddEvent(spaceId, subId, resp))
 	}
+	// If the chat's message store is not loaded yet there is no last message to
+	// preview right now — and that is fine, no polling needed. onChatAdded above
+	// registered subId on the chat's subscription manager, so when the chat
+	// object finishes loading it calls Flush() and the manager reactively emits
+	// the last message (with dependencies) to subId. See
+	// chatobject.onInit -> subscription.Flush and subscriptionManager.Flush.
 	events = append(events, event.NewMessage(spaceId, &pb.EventMessageValueOfChatStateUpdate{ChatStateUpdate: &pb.EventChatUpdateState{
-		State:  mngr.GetChatState(),
+		State:  chatState,
 		SubIds: []string{subId},
 	}}))
 	s.eventSender.Broadcast(&pb.Event{
@@ -398,6 +391,24 @@ func (s *service) onChatAddedAsync(spaceId string, chatObjectId string, subId st
 	})
 
 	return nil
+}
+
+// newChatAddEvent builds the ChatAdd preview event for a chat backfilled into an
+// existing previews subscription, carrying the message dependencies
+// (creator/attachments) so it is as complete as the chats returned by
+// SubscribeToMessagePreviews itself and the reactive Flush path.
+func newChatAddEvent(spaceId string, subId string, resp *chatsubscription.SubscribeLastMessagesResponse) *pb.EventMessage {
+	msg := resp.Messages[0]
+	return event.NewMessage(spaceId, &pb.EventMessageValueOfChatAdd{
+		ChatAdd: &pb.EventChatAdd{
+			Id:           msg.Id,
+			OrderId:      msg.OrderId,
+			AfterOrderId: resp.PreviousOrderId,
+			Message:      msg.ChatMessage,
+			SubIds:       []string{subId},
+			Dependencies: domain.DetailsListToProtos(resp.Dependencies[msg.Id]),
+		},
+	})
 }
 
 func (s *service) onChatRemoved(chatObjectId string, subId string) error {
@@ -768,16 +779,11 @@ func (s *service) GetMessages(ctx context.Context, chatObjectId string, req chat
 }
 
 func (s *service) GetMessagesByIds(ctx context.Context, chatObjectId string, messageIds []string) ([]*chatmodel.Message, error) {
-	var res []*chatmodel.Message
-	err := s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-		msg, err := sb.GetMessagesByIds(ctx, messageIds)
-		if err != nil {
-			return err
-		}
-		res = msg
-		return nil
-	})
-	return res, err
+	repo, err := s.chatRepository(chatObjectId)
+	if err != nil {
+		return nil, err
+	}
+	return repo.GetMessagesByIds(ctx, messageIds)
 }
 
 func (s *service) SubscribeLastMessages(ctx context.Context, chatObjectId string, limit int, subId string) (*chatsubscription.SubscribeLastMessagesResponse, error) {
@@ -835,7 +841,22 @@ func (s *service) ReadReaction(ctx context.Context, chatObjectId string) error {
 }
 
 func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*model.SearchMessageResult, error) {
-	ftResults, err := s.ftSearch.Search(req.SpaceId, req.FullText)
+	// candidate budget: Limit == 0 falls back to the ftsearch default (one
+	// 100-doc page); otherwise request at least the default page so sorting by
+	// keys other than score stays consistent across shallow pages. Known
+	// limitation: once offset+limit crosses the shared candidate budget, pages
+	// sorted by non-score keys are computed over different BM25-truncated sets
+	// and may overlap — deep chat-search pagination needs a cursor to be exact.
+	ftLimit := 0
+	if req.Limit > 0 {
+		ftLimit = int(req.Offset) + int(req.Limit)
+		if ftLimit < 100 {
+			ftLimit = 100
+		}
+	}
+	// the search is scoped to the chat's message docs so messages don't compete
+	// with the rest of the space for the candidate limit
+	ftResults, err := s.ftSearch.SearchChat(req.SpaceId, req.ChatId, req.FullText, ftLimit)
 	if err != nil {
 		return nil, fmt.Errorf("search ft: %w", err)
 	}
@@ -866,6 +887,9 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	}
 
 	results := make([]*model.SearchMessageResult, 0, len(messages))
+	// keep the original float BM25 scores for sorting: the proto Score field is
+	// an integer and loses sub-integer differences
+	scores := make(map[string]float64, len(messages))
 	for _, message := range messages {
 		docMatch := ftResultsMap[message.Id]
 		ftResult, err := database.FTDocumentMatchToFulltextResult(docMatch)
@@ -875,13 +899,17 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 
 		result := ftResult.MessageModel()
 		result.Message = message.ChatMessage
+		scores[result.MessageId] = ftResult.Score
 
 		results = append(results, &result)
 	}
 
-	slices.SortFunc(results, getComparator(req.Sorts))
+	slices.SortFunc(results, getComparator(req.Sorts, scores))
 
-	if req.Offset > 0 && len(results) >= int(req.Offset) {
+	if req.Offset > 0 {
+		if int(req.Offset) >= len(results) {
+			return nil, nil
+		}
 		results = results[req.Offset:]
 	}
 
@@ -892,23 +920,23 @@ func (s *service) Search(ctx context.Context, req *pb.RpcChatSearchRequest) ([]*
 	return results, nil
 }
 
-func getComparator(sorts []*model.SearchMessageSort) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {
-	return func(a *model.SearchMessageResult, b *model.SearchMessageResult) (cmp int) {
+func getComparator(sorts []*model.SearchMessageSort, scores map[string]float64) func(result *model.SearchMessageResult, result2 *model.SearchMessageResult) int {
+	return func(a *model.SearchMessageResult, b *model.SearchMessageResult) (res int) {
 		for _, sort := range sorts {
 			switch sort.Key {
 			case model.SearchMessageSort_ORDER_ID:
-				cmp = strings.Compare(a.Message.OrderId, b.Message.OrderId)
+				res = strings.Compare(a.Message.OrderId, b.Message.OrderId)
 			case model.SearchMessageSort_SCORE:
-				cmp = int(a.Score - b.Score)
+				res = cmp.Compare(scores[a.MessageId], scores[b.MessageId])
 			case model.SearchMessageSort_CREATED_AT:
-				cmp = int(a.Message.CreatedAt - b.Message.CreatedAt)
+				res = cmp.Compare(a.Message.CreatedAt, b.Message.CreatedAt)
 			case model.SearchMessageSort_MODIFIED_AT:
-				cmp = int(a.Message.ModifiedAt - b.Message.ModifiedAt)
+				res = cmp.Compare(a.Message.ModifiedAt, b.Message.ModifiedAt)
 			}
 			if sort.Type == model.SearchMessageSort_Desc {
-				cmp = -cmp
+				res = -res
 			}
-			if cmp != 0 {
+			if res != 0 {
 				return
 			}
 		}
@@ -920,6 +948,27 @@ func (s *service) chatObjectDo(ctx context.Context, chatObjectId string, proc fu
 	waitCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	return cache.DoWait(s.objectGetter, waitCtx, chatObjectId, proc)
+}
+
+// chatRepository returns the anystore-backed repository for a chat, without opening the object's
+// smartblock. Reads served from it (e.g. GetMessagesByIds, GetPinnedMessages) hit the persisted
+// materialized view directly and do not pay the change-tree build, which is O(messages) and can
+// take seconds for a large chat. The tree is only required for writes; it is warmed up lazily by
+// the subscription path (ChatSubscribeLastMessages, GO-7302), so we do not build it here.
+//
+// Consistency: the materialized view is current for any chat that has been built at least once
+// (the common reopen case) — materialization is incremental from a persisted watermark and
+// survives restarts. On a cold start (a chat never built locally, or one with remote changes not
+// yet head-synced) the view may be transiently stale/empty until the background warm-up
+// materializes it. This is the same window ChatSubscribeLastMessages already accepts; the
+// subscription self-corrects via its event stream, so a one-shot caller that needs cold-start
+// freshness (notably pinned messages) should refresh once the chat warm-up settles.
+func (s *service) chatRepository(chatObjectId string) (chatrepository.Repository, error) {
+	spaceId, err := s.spaceIdResolver.ResolveSpaceID(chatObjectId)
+	if err != nil {
+		return nil, fmt.Errorf("resolve space id: %w", err)
+	}
+	return s.chatRepoService.Repository(spaceId, chatObjectId)
 }
 
 func (s *service) ReadAll(ctx context.Context) error {
@@ -975,12 +1024,12 @@ func (s *service) PinMessages(ctx context.Context, chatObjectId string, messageI
 	})
 }
 
-func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) (msgs []*chatmodel.Message, err error) {
-	err = s.chatObjectDo(ctx, chatObjectId, func(sb chatobject.StoreObject) error {
-		msgs, err = sb.GetPinnedMessages(ctx)
-		return err
-	})
-	return msgs, err
+func (s *service) GetPinnedMessages(ctx context.Context, chatObjectId string) ([]*chatmodel.Message, error) {
+	repo, err := s.chatRepository(chatObjectId)
+	if err != nil {
+		return nil, err
+	}
+	return repo.GetPinnedMessages(ctx)
 }
 
 func pushGroupId(objectId string) string {

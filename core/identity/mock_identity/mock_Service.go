@@ -338,17 +338,17 @@ func (_c *MockService_Name_Call) RunAndReturn(run func() string) *MockService_Na
 	return _c
 }
 
-// RegisterIdentity provides a mock function with given fields: spaceId, _a1, encryptionKey, observer
-func (_m *MockService) RegisterIdentity(spaceId string, _a1 string, encryptionKey crypto.SymKey, observer func(string, *model.IdentityProfile)) error {
-	ret := _m.Called(spaceId, _a1, encryptionKey, observer)
+// RegisterIdentity provides a mock function with given fields: spaceId, _a1, encryptionKey
+func (_m *MockService) RegisterIdentity(spaceId string, _a1 string, encryptionKey crypto.SymKey) error {
+	ret := _m.Called(spaceId, _a1, encryptionKey)
 
 	if len(ret) == 0 {
 		panic("no return value specified for RegisterIdentity")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(string, string, crypto.SymKey, func(string, *model.IdentityProfile)) error); ok {
-		r0 = rf(spaceId, _a1, encryptionKey, observer)
+	if rf, ok := ret.Get(0).(func(string, string, crypto.SymKey) error); ok {
+		r0 = rf(spaceId, _a1, encryptionKey)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -365,14 +365,13 @@ type MockService_RegisterIdentity_Call struct {
 //   - spaceId string
 //   - _a1 string
 //   - encryptionKey crypto.SymKey
-//   - observer func(string , *model.IdentityProfile)
-func (_e *MockService_Expecter) RegisterIdentity(spaceId interface{}, _a1 interface{}, encryptionKey interface{}, observer interface{}) *MockService_RegisterIdentity_Call {
-	return &MockService_RegisterIdentity_Call{Call: _e.mock.On("RegisterIdentity", spaceId, _a1, encryptionKey, observer)}
+func (_e *MockService_Expecter) RegisterIdentity(spaceId interface{}, _a1 interface{}, encryptionKey interface{}) *MockService_RegisterIdentity_Call {
+	return &MockService_RegisterIdentity_Call{Call: _e.mock.On("RegisterIdentity", spaceId, _a1, encryptionKey)}
 }
 
-func (_c *MockService_RegisterIdentity_Call) Run(run func(spaceId string, _a1 string, encryptionKey crypto.SymKey, observer func(string, *model.IdentityProfile))) *MockService_RegisterIdentity_Call {
+func (_c *MockService_RegisterIdentity_Call) Run(run func(spaceId string, _a1 string, encryptionKey crypto.SymKey)) *MockService_RegisterIdentity_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(string), args[1].(string), args[2].(crypto.SymKey), args[3].(func(string, *model.IdentityProfile)))
+		run(args[0].(string), args[1].(string), args[2].(crypto.SymKey))
 	})
 	return _c
 }
@@ -382,7 +381,7 @@ func (_c *MockService_RegisterIdentity_Call) Return(_a0 error) *MockService_Regi
 	return _c
 }
 
-func (_c *MockService_RegisterIdentity_Call) RunAndReturn(run func(string, string, crypto.SymKey, func(string, *model.IdentityProfile)) error) *MockService_RegisterIdentity_Call {
+func (_c *MockService_RegisterIdentity_Call) RunAndReturn(run func(string, string, crypto.SymKey) error) *MockService_RegisterIdentity_Call {
 	_c.Call.Return(run)
 	return _c
 }

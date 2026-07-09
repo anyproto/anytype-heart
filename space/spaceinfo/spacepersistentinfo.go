@@ -59,6 +59,40 @@ func (s *SpacePersistentInfo) UpdateDetails(st *state.State) *SpacePersistentInf
 	return s
 }
 
+// Equal reports whether every field set on s already matches the corresponding
+// detail in details. Unset (zero) fields are ignored, mirroring UpdateDetails.
+// It lets callers skip a no-op state apply when the info hasn't changed.
+func (s *SpacePersistentInfo) Equal(details *domain.Details) bool {
+	if details == nil {
+		return false
+	}
+	if details.GetString(bundle.RelationKeyTargetSpaceId) != s.SpaceID {
+		return false
+	}
+	if s.AccountStatus != nil && details.GetInt64(bundle.RelationKeySpaceAccountStatus) != int64(*s.AccountStatus) {
+		return false
+	}
+	if s.AclHeadId != "" && details.GetString(bundle.RelationKeyLatestAclHeadId) != s.AclHeadId {
+		return false
+	}
+	if s.EncodedKey != "" && details.GetString(bundle.RelationKeyGuestKey) != s.EncodedKey {
+		return false
+	}
+	if s.OneToOneIdentity != "" && details.GetString(bundle.RelationKeyOneToOneIdentity) != s.OneToOneIdentity {
+		return false
+	}
+	if s.OneToOneRequestMetadataKey != "" && details.GetString(bundle.RelationKeyOneToOneRequestMetadataKey) != s.OneToOneRequestMetadataKey {
+		return false
+	}
+	if s.OneToOneInboxSentStatus != OneToOneInboxSentStatusNone && details.GetInt64(bundle.RelationKeyOneToOneInboxSentStatus) != int64(s.OneToOneInboxSentStatus) {
+		return false
+	}
+	if s.Name != "" && details.GetString(bundle.RelationKeyName) != s.Name {
+		return false
+	}
+	return true
+}
+
 func (s *SpacePersistentInfo) Log(log *logging.Sugared) *SpacePersistentInfo {
 	log = log.With("spaceId", s.SpaceID)
 	if s.AccountStatus != nil {

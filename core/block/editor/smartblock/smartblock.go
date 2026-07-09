@@ -506,9 +506,16 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	})
 
 	for _, rec := range records {
+		recId := rec.Details.GetString(bundle.RelationKeyId)
+		recDetails := rec.Details
+		if recId != sb.Id() {
+			// strip dependents only; a self-reference (rare) keeps full details,
+			// matching the self entry added above and the onMetaChange self branch
+			recDetails = rec.Details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+		}
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      rec.Details.GetString(bundle.RelationKeyId),
-			Details: rec.Details.ToProto(),
+			Id:      recId,
+			Details: recDetails.ToProto(),
 		})
 	}
 	go sb.metaListener(recordsCh)
@@ -568,6 +575,12 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 		return
 	}
 	id := details.GetString(bundle.RelationKeyId)
+	if id != sb.Id() {
+		// dependents never carry strip-by-default keys (sync/usage churn);
+		// strip before diffing/storing so a later change to those keys produces
+		// an empty diff and no event for the client
+		details = details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+	}
 	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff, keysToUnset := domain.StructDiff(v, details)

@@ -434,6 +434,11 @@ func (a *aclService) Leave(ctx context.Context, spaceId string) (err error) {
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
+	// We've left the space, so drop the network-fetched ACL copy the getter cached for
+	// this operation; otherwise it lingers in currentAcls for the rest of the session.
+	if removeErr := a.getter.RemoveAcl(ctx, spaceId); removeErr != nil {
+		log.Warn("remove acl from getter cache after leave", zap.Error(removeErr), zap.String("spaceId", spaceId))
+	}
 	return nil
 }
 
