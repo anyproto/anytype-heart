@@ -1,10 +1,12 @@
-# Space-wide Orphan List & Ignore — Implementation Plan
+# Cleanup Suggestions (space-wide orphan list) — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add an on-demand `ObjectListOrphans` RPC returning every orphan in a space as a forest (roots + subtrees, objects and files) with caller-selected keys, plus an `orphanIgnored` relation and a thin `ObjectListSetOrphanIgnored` RPC to permanently exclude objects.
+**Goal:** Add an on-demand `ObjectCleanupSuggestions` RPC returning every orphan in a space as a forest (roots + subtrees, objects and files) with caller-selected keys, plus a `createdInContextIgnored` relation and a thin `ObjectCleanupSuggestionIgnore` RPC to permanently exclude objects. Task 0 first unifies the protocol vocabulary by renaming the phase-1 `OrphansDetected` event to `CleanupSuggestion`.
 
-**Architecture:** A new `ListOrphans` method on the existing `objectgc` component computes the orphan set as the greatest fixed point of "candidates whose active backlinks all fall inside the set" — the cascade's existing eviction rule applied space-wide. Three store queries total (candidates, active-backlink batch, parent-state batch); the rest is an in-memory `O(V+E)` worklist. The RPC handler projects requested keys. Ignore is a `details`-source relation written with a new `ChangeTypeOrphanIgnored` so it syncs without bumping `lastModifiedDate`.
+**Vocabulary boundary (deliberate):** the **protocol/client** says *cleanup suggestion*; **internal Go** keeps *orphan* (the precise term for a node with no inbound references) — `objectgc`, `OrphanCandidates`, `ListOrphans`, `OrphanItem`, `OrphanReason`. Do not rename the internals.
+
+**Architecture:** A new `ListOrphans` method on the existing `objectgc` component computes the orphan set as the greatest fixed point of "candidates whose active backlinks all fall inside the set" — the cascade's existing eviction rule applied space-wide. Three store queries total (candidates, active-backlink batch, parent-state batch); the rest is an in-memory `O(V+E)` worklist. The RPC handler projects requested keys. Ignore is a `details`-source relation written with a new `ChangeTypeCreatedInContext` so it syncs without bumping `lastModifiedDate`.
 
 **Tech Stack:** Go, gogo/protobuf (`make protos`), mockery (`make test-deps`), testify, anystore.
 
@@ -42,30 +44,138 @@
 
 | File | Change |
 |------|--------|
-| `pkg/lib/bundle/relations.json` | Add `orphanIgnored` relation |
+| `pb/protos/events.proto` | **Task 0** — rename `Object.OrphansDetected` → `Object.CleanupSuggestion` (field 146 kept) |
+| `core/block/{objectgc,detailservice,delete.go,editor/smartblock,chats}` | **Task 0** — rename event references |
+| `docs/GO-7323-cascade-deletion-client-impl.md` | **Task 0** — update client contract |
+| `pkg/lib/bundle/relations.json` | Add `createdInContextIgnored` relation |
 | `pkg/lib/bundle/relation.gen.go` | Regenerated (`go generate ./pkg/lib/bundle/...`) |
-| `core/domain/types.go` | Add `ChangeTypeOrphanIgnored` + `String()` case |
+| `core/domain/types.go` | Add `ChangeTypeCreatedInContext` + `String()` case |
 | `core/block/objectgc/orphanlist.go` | **New** — `ListOrphans`, `OrphanItem`, `OrphanReason`, fixed point |
 | `core/block/objectgc/orphanlist_test.go` | **New** — unit tests |
-| `core/block/objectgc/objectgc.go` | Add `ListOrphans` to interface; honor `orphanIgnored` in 3 GC paths |
-| `core/block/detailservice/service.go` | Add `SetOrphanIgnored` to `Service` |
-| `core/block/detailservice/set_details.go` | Implement `SetOrphanIgnored` |
-| `pb/protos/commands.proto` | `Rpc.Object.ListOrphans`, `Rpc.Object.ListSetOrphanIgnored` |
+| `core/block/objectgc/objectgc.go` | Add `ListOrphans` to interface; honor `createdInContextIgnored` in 3 GC paths |
+| `core/block/detailservice/service.go` | Add `SetCreatedInContextIgnored` to `Service` |
+| `core/block/detailservice/set_details.go` | Implement `SetCreatedInContextIgnored` |
+| `pb/protos/commands.proto` | `Rpc.Object.CleanupSuggestions`, `Rpc.Object.CleanupSuggestionIgnore` |
 | `pb/protos/service/service.proto` | Register both RPCs |
-| `core/object.go` | `ObjectListOrphans` handler + key projection |
-| `core/details.go` | `ObjectListSetOrphanIgnored` handler |
+| `core/object.go` | `ObjectCleanupSuggestions` handler + key projection |
+| `core/details.go` | `ObjectCleanupSuggestionIgnore` handler |
 | Test stubs | `detailservice/service_test.go`, `smartblock/objectgclinks_test.go`, `chats/service_test.go` |
 
 ---
 
-## Task 1: Bundle relation `orphanIgnored` + `ChangeTypeOrphanIgnored`
+## Task 0: Rename the phase-1 event `OrphansDetected` → `CleanupSuggestion`
+
+**Why now:** GO-7323 phase 1 is pushed but **unmerged**, so this protocol has never shipped. Unifying
+the vocabulary (the popup event and the cleanup list are the same concept) is at its cheapest today.
+
+**Files:**
+- Modify: `pb/protos/events.proto`, `pb/protos/commands.proto` (comments only)
+- Generate: `pb/events.pb.go`, `pb/commands.pb.go`
+- Modify: `core/block/objectgc/objectgc.go`, `core/block/objectgc/objectgc_test.go`
+- Modify: `core/block/detailservice/set_details.go`, `core/block/detailservice/service_test.go`
+- Modify: `core/block/delete.go`
+- Modify: `core/block/editor/smartblock/smartblock.go`, `core/block/editor/smartblock/objectgclinks_test.go`
+- Modify: `core/block/chats/service.go` (comment only)
+- Modify: `docs/GO-7323-cascade-deletion-client-impl.md`
+
+**Produces:** `pb.EventObjectCleanupSuggestion`, `pb.EventMessageValueOfObjectCleanupSuggestion`, enum constants `pb.EventObjectCleanupSuggestion_archive` / `_delete` / `_linkRemoval`.
+
+- [ ] **Step 1: Rename the message and oneof field in `events.proto`**
+
+In `pb/protos/events.proto`:
+- `message OrphansDetected {` → `message CleanupSuggestion {`
+- the oneof entry `Object.OrphansDetected objectOrphansDetected = 146;` → `Object.CleanupSuggestion objectCleanupSuggestion = 146;`
+
+**Keep field number 146**, and keep the payload (`objectIds`, `contextId`, `trigger`) and the
+`Trigger` enum (`archive`, `delete`, `linkRemoval`) exactly as they are.
+
+- [ ] **Step 2: Update the `skipCascade` comments in `commands.proto`**
+
+Both `SetIsArchived.Request` and `ListSetIsArchived.Request` document `skipCascade` as suppressing
+the "OrphansDetected event". Replace that phrase with "CleanupSuggestion event". (`skipCascade` keeps
+its name — it skips the whole cascade: file auto-archive *and* the suggestion.)
+
+- [ ] **Step 3: Regenerate**
+
+Run: `make protos`
+Expected: `pb/events.pb.go`, `pb/commands.pb.go`, `docs/proto.md` modified.
+
+- [ ] **Step 4: Verify the new generated names**
+
+Run:
+```bash
+grep -nE "type EventObjectCleanupSuggestion struct|EventMessageValueOfObjectCleanupSuggestion|EventObjectCleanupSuggestion_archive" pb/events.pb.go | head
+```
+Expected: all three present. If the enum constants differ, note the real names — they are used in Step 5.
+
+- [ ] **Step 5: Rename the Go references**
+
+The generated pb files are already correct; only hand-written code refers to the old names. Run this
+from the repo root (ordered longest-first so nothing cascades wrongly):
+
+```bash
+for f in core/block/objectgc/objectgc.go core/block/objectgc/objectgc_test.go \
+         core/block/detailservice/set_details.go core/block/detailservice/service_test.go \
+         core/block/delete.go \
+         core/block/editor/smartblock/smartblock.go core/block/editor/smartblock/objectgclinks_test.go \
+         core/block/chats/service.go; do
+  perl -pi -e 's/EventMessageValueOfObjectOrphansDetected/EventMessageValueOfObjectCleanupSuggestion/g;
+               s/EventObjectOrphansDetected/EventObjectCleanupSuggestion/g;
+               s/ObjectOrphansDetected/ObjectCleanupSuggestion/g;
+               s/objectOrphansDetected/objectCleanupSuggestion/g;
+               s/OrphansDetected/CleanupSuggestion/g;' "$f"
+done
+```
+
+This renames the `FilterExplicitIds` switch case in `objectgc.go`, the event construction in
+`set_details.go` (`appendGCEvents`), `delete.go` (broadcast), `smartblock.go`
+(`performGCOnLinksRemoval`), and the test assertions. It also fixes the comment in `chats/service.go`.
+
+- [ ] **Step 6: Confirm nothing stale remains in hand-written code**
+
+Run: `grep -rn "OrphansDetected" core/ pb/protos/ | grep -v "\.pb\.go"`
+Expected: no output.
+
+- [ ] **Step 7: Build and test**
+
+Run: `go build ./... && go test ./core/block/objectgc/... ./core/block/detailservice/... ./core/block/editor/smartblock/... ./core/block/chats/...`
+Expected: build success; all `ok`. The renamed tests (e.g. `TestFilterExplicitIds_RemovesFromCleanupSuggestion`) pass.
+
+- [ ] **Step 8: Update the client-facing brief**
+
+In `docs/GO-7323-cascade-deletion-client-impl.md`, replace `OrphansDetected` with `CleanupSuggestion`
+and `objectOrphansDetected` with `objectCleanupSuggestion` throughout, and note in the protocol
+section that the read RPC is `ObjectCleanupSuggestions` and the ignore RPC is
+`ObjectCleanupSuggestionIgnore` (phase 2).
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add pb/ core/ docs/
+git commit -m "GO-7323 Rename OrphansDetected event to CleanupSuggestion
+
+Phase 1 is unmerged, so the protocol has never shipped. The popup event and
+the new space-wide cleanup list are the same concept; unify the client-facing
+vocabulary on 'cleanup suggestion'. Internal Go keeps the precise term
+'orphan'. Field number 146 and the Trigger enum are unchanged."
+```
+
+> **Follow-up, separate branch:** the e2e tests in the sibling repo `anytype-suite` (branch
+> `go-7323-cascade-deletion-orphan-events`, `src/scenarios/cascade-deletion/` — 8 files) reference
+> `objectOrphansDetected` and must be renamed too. **Its working tree is currently checked out on a
+> different branch (`go-7320-position-events-convergence`)** — do not switch it as a side effect of
+> this task.
+
+---
+
+## Task 1: Bundle relation `createdInContextIgnored` + `ChangeTypeCreatedInContext`
 
 **Files:**
 - Modify: `pkg/lib/bundle/relations.json`
 - Generate: `pkg/lib/bundle/relation.gen.go`
 - Modify: `core/domain/types.go`
 
-**Produces:** `bundle.RelationKeyOrphanIgnored` (a `domain.RelationKey`), `domain.ChangeTypeOrphanIgnored`.
+**Produces:** `bundle.RelationKeyCreatedInContextIgnored` (a `domain.RelationKey`), `domain.ChangeTypeCreatedInContext`.
 
 - [ ] **Step 1: Add the relation to `relations.json`**
 
@@ -73,12 +183,12 @@ Insert this object into the JSON array (it is sorted by nothing in particular; p
 
 ```json
   {
-    "description": "User dismissed this object from orphan cleanup; its lifecycle is detached from its creation context",
+    "description": "Ignore this object's createdInContext link: it is excluded from cleanup suggestions and from automatic context-driven archival",
     "format": "checkbox",
     "hidden": true,
-    "key": "orphanIgnored",
+    "key": "createdInContextIgnored",
     "maxCount": 1,
-    "name": "Orphan ignored",
+    "name": "Created in context ignored",
     "readonly": false,
     "source": "details"
   },
@@ -89,29 +199,35 @@ Do **not** add it to `systemRelations.json`: the ignore RPC writes the detail vi
 - [ ] **Step 2: Regenerate the bundle**
 
 Run: `go generate ./pkg/lib/bundle/...`
-Expected: `pkg/lib/bundle/relation.gen.go` modified; it now contains `RelationKeyOrphanIgnored`.
+Expected: `pkg/lib/bundle/relation.gen.go` modified; it now contains `RelationKeyCreatedInContextIgnored`.
 
 - [ ] **Step 3: Verify the generated key exists**
 
-Run: `grep -n "RelationKeyOrphanIgnored" pkg/lib/bundle/relation.gen.go`
-Expected: one or more lines, e.g. `RelationKeyOrphanIgnored RelationKey = "orphanIgnored"`.
+Run: `grep -n "RelationKeyCreatedInContextIgnored" pkg/lib/bundle/relation.gen.go`
+Expected: one or more lines, e.g. `RelationKeyCreatedInContextIgnored RelationKey = "createdInContextIgnored"`.
 
 - [ ] **Step 4: Add the change type**
 
-In `core/domain/types.go`, add `ChangeTypeOrphanIgnored` as the **last** constant in the `const` block (appending keeps existing values stable):
+In `core/domain/types.go`, add `ChangeTypeCreatedInContext` as the **last** constant in the `const` block (appending keeps existing values stable):
 
 ```go
 	ChangeTypeDescriptionToggle
-	ChangeTypeOrphanIgnored
+	ChangeTypeCreatedInContext
 )
 ```
 
 and add its `String()` case just before `default:`:
 
 ```go
-	case ChangeTypeOrphanIgnored:
-		return "OrphanIgnored"
+	case ChangeTypeCreatedInContext:
+		return "CreatedInContext"
 ```
+
+> This change type is deliberately **generic**, not ignore-specific: any `createdInContext`-related
+> write should use it. A concrete second consumer already exists — `core/migration/objectcontext.go`
+> backfills `createdInContext`/`createdInContextRef` via `detailsService.ModifyDetails`, which applies
+> with the default *user* change type and therefore bumps `lastModifiedDate` on every backfilled file.
+> Converting that migration is a clean follow-up (out of scope for this plan).
 
 - [ ] **Step 5: Build**
 
@@ -122,7 +238,7 @@ Expected: success.
 
 ```bash
 git add pkg/lib/bundle/relations.json pkg/lib/bundle/relation.gen.go core/domain/types.go
-git commit -m "GO-7323 Add orphanIgnored relation and ChangeTypeOrphanIgnored"
+git commit -m "GO-7323 Add createdInContextIgnored relation and ChangeTypeCreatedInContext"
 ```
 
 ---
@@ -135,7 +251,7 @@ git commit -m "GO-7323 Add orphanIgnored relation and ChangeTypeOrphanIgnored"
 - Modify: `core/block/objectgc/objectgc.go` (interface only)
 - Modify: `core/block/detailservice/service_test.go`, `core/block/editor/smartblock/objectgclinks_test.go`, `core/block/chats/service_test.go` (stubs)
 
-**Consumes:** `bundle.RelationKeyOrphanIgnored` (Task 1). Existing `queryActiveIds`, `makeGCEligibleLayouts`, `gc.backlinksWatcher`, `gc.objectStore`.
+**Consumes:** `bundle.RelationKeyCreatedInContextIgnored` (Task 1). Existing `queryActiveIds`, `makeGCEligibleLayouts`, `gc.backlinksWatcher`, `gc.objectStore`.
 
 **Produces:**
 ```go
@@ -310,7 +426,7 @@ Append to `core/block/objectgc/orphanlist.go`:
 // ListOrphans computes the space's orphan forest.
 //
 // Candidates: active objects with createdInContext + non-empty createdInContextRef, a GC-eligible
-// layout, not orphanIgnored, and whose parent is present in the store (sync-gap guard).
+// layout, not createdInContextIgnored, and whose parent is present in the store (sync-gap guard).
 //
 // The removable set S is the greatest subset of the candidates such that every member's *active*
 // backlinks fall inside S. Anything reachable from an active object outside S is evicted, and that
@@ -345,7 +461,7 @@ func (gc *objectGC) ListOrphans(spaceId string) ([]OrphanItem, error) {
 	for _, r := range records {
 		// The ignore gate is applied in memory to avoid depending on NotEqual-vs-missing-key
 		// filter semantics.
-		if r.Details.GetBool(bundle.RelationKeyOrphanIgnored) {
+		if r.Details.GetBool(bundle.RelationKeyCreatedInContextIgnored) {
 			continue
 		}
 		candidates[r.Details.GetString(bundle.RelationKeyId)] = r.Details
@@ -756,7 +872,7 @@ func TestListOrphans_Ignored_Excluded_AndDropsSubtree(t *testing.T) {
 			bundle.RelationKeyCreatedInContext:    domain.String("parent"),
 			bundle.RelationKeyCreatedInContextRef: domain.String("block1"),
 			bundle.RelationKeyBacklinks:           domain.StringList([]string{"parent"}),
-			bundle.RelationKeyOrphanIgnored:       domain.Bool(true),
+			bundle.RelationKeyCreatedInContextIgnored:       domain.Bool(true),
 		},
 	})
 	fx.addObject(t, basicObjectWithRef("C", "B", "block1", []string{"B"}))
@@ -795,15 +911,15 @@ git commit -m "GO-7323 Add objectgc.ListOrphans computing the space orphan fores
 
 ---
 
-## Task 3: Honor `orphanIgnored` in the three GC candidate paths
+## Task 3: Honor `createdInContextIgnored` in the three GC candidate paths
 
 **Files:**
 - Modify: `core/block/objectgc/objectgc.go`
 - Modify: `core/block/objectgc/objectgc_test.go`
 
-**Consumes:** `bundle.RelationKeyOrphanIgnored` (Task 1).
+**Consumes:** `bundle.RelationKeyCreatedInContextIgnored` (Task 1).
 
-An ignored object must never appear in an `OrphansDetected` popup, and an ignored level-1 file must not be auto-archived. Apply the gate as an in-memory predicate on the already-loaded record details, exactly like the existing layout checks.
+An ignored object must never appear in an `CleanupSuggestion` popup, and an ignored level-1 file must not be auto-archived. Apply the gate as an in-memory predicate on the already-loaded record details, exactly like the existing layout checks.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -818,7 +934,7 @@ func ignoredBasicObject(id, createdInContext, ref string, backlinks []string) ob
 		bundle.RelationKeyCreatedInContext:    domain.String(createdInContext),
 		bundle.RelationKeyCreatedInContextRef: domain.String(ref),
 		bundle.RelationKeyBacklinks:           domain.StringList(backlinks),
-		bundle.RelationKeyOrphanIgnored:       domain.Bool(true),
+		bundle.RelationKeyCreatedInContextIgnored:       domain.Bool(true),
 	}
 }
 
@@ -844,7 +960,7 @@ func TestCheckObjectsOnObjectArchived_IgnoredLevel1File_NotAutoArchived(t *testi
 			bundle.RelationKeyCreatedInContext:    domain.String("parent"),
 			bundle.RelationKeyCreatedInContextRef: domain.String("block1"),
 			bundle.RelationKeyBacklinks:           domain.StringList([]string{"parent"}),
-			bundle.RelationKeyOrphanIgnored:       domain.Bool(true),
+			bundle.RelationKeyCreatedInContextIgnored:       domain.Bool(true),
 		},
 	})
 
@@ -894,7 +1010,7 @@ to:
 			if _, seen := visited[id]; seen {
 				continue
 			}
-			if record.Details.GetBool(bundle.RelationKeyOrphanIgnored) {
+			if record.Details.GetBool(bundle.RelationKeyCreatedInContextIgnored) {
 				// user detached this object's lifecycle from its creation context
 				continue
 			}
@@ -907,7 +1023,7 @@ to:
 In the same function, in the final `for _, record := range backlinkRecords` loop, immediately after the `if _, seen := visited[id]; seen { continue }` guard, add:
 
 ```go
-			if record.Details.GetBool(bundle.RelationKeyOrphanIgnored) {
+			if record.Details.GetBool(bundle.RelationKeyCreatedInContextIgnored) {
 				continue
 			}
 ```
@@ -919,7 +1035,7 @@ In the same function, in the final `for _, record := range backlinkRecords` loop
 In `ArchiveOrphansOnLinksRemoval`, at the top of the `for _, record := range records` loop, right after `id := record.Details.GetString(bundle.RelationKeyId)`, add:
 
 ```go
-		if record.Details.GetBool(bundle.RelationKeyOrphanIgnored) {
+		if record.Details.GetBool(bundle.RelationKeyCreatedInContextIgnored) {
 			continue
 		}
 ```
@@ -933,26 +1049,26 @@ Expected: `ok` — the three new tests pass and every existing GO-7323 test stil
 
 ```bash
 git add core/block/objectgc/objectgc.go core/block/objectgc/objectgc_test.go
-git commit -m "GO-7323 Exclude orphanIgnored objects from cascade GC candidates"
+git commit -m "GO-7323 Exclude createdInContextIgnored objects from cascade GC candidates"
 ```
 
 ---
 
-## Task 4: Proto — `ObjectListOrphans` + `ObjectListSetOrphanIgnored`
+## Task 4: Proto — `ObjectCleanupSuggestions` + `ObjectCleanupSuggestionIgnore`
 
 **Files:**
 - Modify: `pb/protos/commands.proto`
 - Modify: `pb/protos/service/service.proto`
 - Generate: `pb/commands.pb.go`, `pb/service/service.pb.go`
 
-**Produces:** `pb.RpcObjectListOrphansRequest/Response`, `pb.RpcObjectListOrphansResponseItem` (+ its `Reason` enum), `pb.RpcObjectListSetOrphanIgnoredRequest/Response`.
+**Produces:** `pb.RpcObjectCleanupSuggestionsRequest/Response`, `pb.RpcObjectCleanupSuggestionsResponseItem` (+ its `Reason` enum), `pb.RpcObjectCleanupSuggestionIgnoreRequest/Response`.
 
 - [ ] **Step 1: Add both messages to `commands.proto`**
 
 Inside `message Rpc { message Object { ... } }` — next to the existing `ListSetIsArchived` message — add:
 
 ```proto
-        message ListOrphans {
+        message CleanupSuggestions {
             message Request {
                 string spaceId = 1;
                 // relation keys to return; empty => a default set.
@@ -992,7 +1108,7 @@ Inside `message Rpc { message Object { ... } }` — next to the existing `ListSe
             }
         }
 
-        message ListSetOrphanIgnored {
+        message CleanupSuggestionIgnore {
             message Request {
                 repeated string objectIds = 1;
                 bool ignored = 2;
@@ -1020,8 +1136,8 @@ Inside `message Rpc { message Object { ... } }` — next to the existing `ListSe
 In `pb/protos/service/service.proto`, in the `service ClientCommands` block, next to the other `Object*` rpcs, add:
 
 ```proto
-    rpc ObjectListOrphans (anytype.Rpc.Object.ListOrphans.Request) returns (anytype.Rpc.Object.ListOrphans.Response);
-    rpc ObjectListSetOrphanIgnored (anytype.Rpc.Object.ListSetOrphanIgnored.Request) returns (anytype.Rpc.Object.ListSetOrphanIgnored.Response);
+    rpc ObjectCleanupSuggestions (anytype.Rpc.Object.CleanupSuggestions.Request) returns (anytype.Rpc.Object.CleanupSuggestions.Response);
+    rpc ObjectCleanupSuggestionIgnore (anytype.Rpc.Object.CleanupSuggestionIgnore.Request) returns (anytype.Rpc.Object.CleanupSuggestionIgnore.Response);
 ```
 
 - [ ] **Step 3: Regenerate**
@@ -1033,9 +1149,9 @@ Expected: completes; `pb/commands.pb.go` and the service files are modified.
 
 Run:
 ```bash
-grep -nE "type RpcObjectListOrphansRequest struct|type RpcObjectListOrphansResponseItem struct|RpcObjectListOrphansResponseItem_contextArchived|type RpcObjectListSetOrphanIgnoredRequest struct" pb/commands.pb.go | head
+grep -nE "type RpcObjectCleanupSuggestionsRequest struct|type RpcObjectCleanupSuggestionsResponseItem struct|RpcObjectCleanupSuggestionsResponseItem_contextArchived|type RpcObjectCleanupSuggestionIgnoreRequest struct" pb/commands.pb.go | head
 ```
-Expected: all four present. If the enum constants differ from `RpcObjectListOrphansResponseItem_contextArchived` / `_contextDeleted` / `_contextUnlinked` / `_none`, note the real names — Task 6 references them.
+Expected: all four present. If the enum constants differ from `RpcObjectCleanupSuggestionsResponseItem_contextArchived` / `_contextDeleted` / `_contextUnlinked` / `_none`, note the real names — Task 6 references them.
 
 - [ ] **Step 5: Build**
 
@@ -1046,12 +1162,12 @@ Expected: success.
 
 ```bash
 git add pb/protos/commands.proto pb/protos/service/service.proto pb/ docs/
-git commit -m "GO-7323 Add ObjectListOrphans and ObjectListSetOrphanIgnored protos"
+git commit -m "GO-7323 Add ObjectCleanupSuggestions and ObjectCleanupSuggestionIgnore protos"
 ```
 
 ---
 
-## Task 5: `detailservice.SetOrphanIgnored`
+## Task 5: `detailservice.SetCreatedInContextIgnored`
 
 **Files:**
 - Modify: `core/block/detailservice/service.go`
@@ -1059,9 +1175,9 @@ git commit -m "GO-7323 Add ObjectListOrphans and ObjectListSetOrphanIgnored prot
 - Modify: `core/block/detailservice/service_test.go`
 - Regenerate: `core/block/detailservice/mock_detailservice/mock_Service.go`
 
-**Consumes:** `bundle.RelationKeyOrphanIgnored`, `domain.ChangeTypeOrphanIgnored` (Task 1).
+**Consumes:** `bundle.RelationKeyCreatedInContextIgnored`, `domain.ChangeTypeCreatedInContext` (Task 1).
 
-**Produces:** `SetOrphanIgnored(ctx context.Context, objectIds []string, ignored bool) error` on `detailservice.Service`.
+**Produces:** `SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error` on `detailservice.Service`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1086,7 +1202,7 @@ func (a *applySpy) Apply(s *state.State, flags ...smartblock.ApplyFlag) error {
 	return a.SmartTest.Apply(s, flags...)
 }
 
-func TestSetOrphanIgnored_SetsDetailWithNonUserChangeType(t *testing.T) {
+func TestSetCreatedInContextIgnored_SetsDetailWithNonUserChangeType(t *testing.T) {
 	fx := newFixture(t)
 	spy := &applySpy{SmartTest: smarttest.New("obj1")}
 	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
@@ -1094,26 +1210,26 @@ func TestSetOrphanIgnored_SetsDetailWithNonUserChangeType(t *testing.T) {
 	})
 
 	// when
-	err := fx.SetOrphanIgnored(context.Background(), []string{"obj1"}, true)
+	err := fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, true)
 
 	// then: the flag is set...
 	require.NoError(t, err)
-	assert.True(t, spy.NewState().Details().GetBool(bundle.RelationKeyOrphanIgnored))
+	assert.True(t, spy.NewState().Details().GetBool(bundle.RelationKeyCreatedInContextIgnored))
 	// ...via a non-user change type, which is what makes smartblock.Apply skip SetLastModified
-	assert.Equal(t, domain.ChangeTypeOrphanIgnored, spy.lastChangeType)
+	assert.Equal(t, domain.ChangeTypeCreatedInContext, spy.lastChangeType)
 }
 
-func TestSetOrphanIgnored_Reversible(t *testing.T) {
+func TestSetCreatedInContextIgnored_Reversible(t *testing.T) {
 	fx := newFixture(t)
 	spy := &applySpy{SmartTest: smarttest.New("obj1")}
 	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
 		return spy, nil
 	})
 
-	require.NoError(t, fx.SetOrphanIgnored(context.Background(), []string{"obj1"}, true))
-	require.NoError(t, fx.SetOrphanIgnored(context.Background(), []string{"obj1"}, false))
+	require.NoError(t, fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, true))
+	require.NoError(t, fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, false))
 
-	assert.False(t, spy.NewState().Details().GetBool(bundle.RelationKeyOrphanIgnored))
+	assert.False(t, spy.NewState().Details().GetBool(bundle.RelationKeyCreatedInContextIgnored))
 }
 ```
 
@@ -1122,17 +1238,17 @@ Add the `state` import to `service_test.go`:
 
 - [ ] **Step 2: Run it and watch it fail**
 
-Run: `go test ./core/block/detailservice/ -run TestSetOrphanIgnored -v`
-Expected: FAIL — compile error `fx.SetOrphanIgnored undefined`.
+Run: `go test ./core/block/detailservice/ -run TestSetCreatedInContextIgnored -v`
+Expected: FAIL — compile error `fx.SetCreatedInContextIgnored undefined`.
 
 - [ ] **Step 3: Add the method to the `Service` interface**
 
 In `core/block/detailservice/service.go`, after `SetListIsArchivedNoGC`, add:
 
 ```go
-	// SetOrphanIgnored detaches (or re-attaches) an object's lifecycle from its creation context.
-	// Written with ChangeTypeOrphanIgnored so it syncs without bumping lastModifiedDate.
-	SetOrphanIgnored(ctx context.Context, objectIds []string, ignored bool) error
+	// SetCreatedInContextIgnored detaches (or re-attaches) an object's lifecycle from its creation context.
+	// Written with ChangeTypeCreatedInContext so it syncs without bumping lastModifiedDate.
+	SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error
 ```
 
 - [ ] **Step 4: Implement it**
@@ -1140,10 +1256,11 @@ In `core/block/detailservice/service.go`, after `SetListIsArchivedNoGC`, add:
 Append to `core/block/detailservice/set_details.go`:
 
 ```go
-// SetOrphanIgnored marks objects as ignored for orphan cleanup. The detail is written directly on
+// SetCreatedInContextIgnored excludes objects from cleanup suggestions and from automatic
+// context-driven archival, by ignoring their createdInContext link. The detail is written directly on
 // the state with a non-user change type, which skips the lastModifiedDate bump (SetLastModified is
 // only called for domain.ChangeTypeUserChange) while still producing a real, syncing CRDT change.
-func (s *service) SetOrphanIgnored(ctx context.Context, objectIds []string, ignored bool) error {
+func (s *service) SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error {
 	var (
 		resultErr  error
 		anySucceed bool
@@ -1151,13 +1268,13 @@ func (s *service) SetOrphanIgnored(ctx context.Context, objectIds []string, igno
 	for _, objectId := range objectIds {
 		err := cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
 			st := sb.NewState()
-			st.SetDetail(bundle.RelationKeyOrphanIgnored, domain.Bool(ignored))
-			st.SetChangeType(domain.ChangeTypeOrphanIgnored)
+			st.SetDetail(bundle.RelationKeyCreatedInContextIgnored, domain.Bool(ignored))
+			st.SetChangeType(domain.ChangeTypeCreatedInContext)
 			return sb.Apply(st)
 		})
 		if err != nil {
-			log.Error("failed to set orphanIgnored", zap.String("objectId", objectId), zap.Error(err))
-			resultErr = errors.Join(resultErr, fmt.Errorf("set orphanIgnored on %s: %w", objectId, err))
+			log.Error("failed to set createdInContextIgnored", zap.String("objectId", objectId), zap.Error(err))
+			resultErr = errors.Join(resultErr, fmt.Errorf("set createdInContextIgnored on %s: %w", objectId, err))
 			continue
 		}
 		anySucceed = true
@@ -1171,15 +1288,15 @@ func (s *service) SetOrphanIgnored(ctx context.Context, objectIds []string, igno
 
 - [ ] **Step 5: Run the test**
 
-Run: `go test ./core/block/detailservice/ -run TestSetOrphanIgnored -v`
+Run: `go test ./core/block/detailservice/ -run TestSetCreatedInContextIgnored -v`
 Expected: PASS.
 
 - [ ] **Step 6: Regenerate mocks**
 
 Run: `make test-deps`
-Expected: `mock_detailservice/mock_Service.go` gains `SetOrphanIgnored`.
+Expected: `mock_detailservice/mock_Service.go` gains `SetCreatedInContextIgnored`.
 
-Verify: `grep -n "func (_m \*MockService) SetOrphanIgnored" core/block/detailservice/mock_detailservice/mock_Service.go`
+Verify: `grep -n "func (_m \*MockService) SetCreatedInContextIgnored" core/block/detailservice/mock_detailservice/mock_Service.go`
 
 - [ ] **Step 7: Build + test**
 
@@ -1189,7 +1306,7 @@ Expected: build success; `ok`.
 - [ ] **Step 8: Commit**
 
 ```bash
-git add core/block/detailservice/ && git commit -m "GO-7323 Add detailservice.SetOrphanIgnored with ChangeTypeOrphanIgnored"
+git add core/block/detailservice/ && git commit -m "GO-7323 Add detailservice.SetCreatedInContextIgnored with ChangeTypeCreatedInContext"
 ```
 
 ---
@@ -1197,18 +1314,18 @@ git add core/block/detailservice/ && git commit -m "GO-7323 Add detailservice.Se
 ## Task 6: RPC handlers
 
 **Files:**
-- Modify: `core/object.go` (`ObjectListOrphans`)
-- Modify: `core/details.go` (`ObjectListSetOrphanIgnored`)
+- Modify: `core/object.go` (`ObjectCleanupSuggestions`)
+- Modify: `core/details.go` (`ObjectCleanupSuggestionIgnore`)
 
-**Consumes:** `objectgc.ListOrphans` + `OrphanItem`/`OrphanReason` (Task 2); `detailservice.SetOrphanIgnored` (Task 5); the pb types (Task 4).
+**Consumes:** `objectgc.ListOrphans` + `OrphanItem`/`OrphanReason` (Task 2); `detailservice.SetCreatedInContextIgnored` (Task 5); the pb types (Task 4).
 
-- [ ] **Step 1: Implement `ObjectListOrphans` in `core/object.go`**
+- [ ] **Step 1: Implement `ObjectCleanupSuggestions` in `core/object.go`**
 
 Append to `core/object.go` (imports needed: `github.com/anyproto/anytype-heart/core/block/objectgc`, `github.com/anyproto/anytype-heart/core/domain`, `github.com/gogo/protobuf/types`, `github.com/samber/lo`, `github.com/anyproto/anytype-heart/util/slice`):
 
 ```go
-// defaultOrphanKeys is returned when the caller passes no keys.
-var defaultOrphanKeys = []domain.RelationKey{
+// defaultCleanupKeys is returned when the caller passes no keys.
+var defaultCleanupKeys = []domain.RelationKey{
 	bundle.RelationKeyName,
 	bundle.RelationKeyType,
 	bundle.RelationKeyCreator,
@@ -1219,40 +1336,40 @@ var defaultOrphanKeys = []domain.RelationKey{
 	bundle.RelationKeyResolvedLayout,
 }
 
-// forcedOrphanKeys are always returned: the client cannot render the forest without them.
-var forcedOrphanKeys = []domain.RelationKey{
+// forcedCleanupKeys are always returned: the client cannot render the forest without them.
+var forcedCleanupKeys = []domain.RelationKey{
 	bundle.RelationKeyId,
 	bundle.RelationKeyCreatedInContext,
 	bundle.RelationKeyResolvedLayout,
 }
 
-func orphanReasonToProto(r objectgc.OrphanReason) pb.RpcObjectListOrphansResponseItemReason {
+func orphanReasonToProto(r objectgc.OrphanReason) pb.RpcObjectCleanupSuggestionsResponseItemReason {
 	switch r {
 	case objectgc.OrphanReasonContextArchived:
-		return pb.RpcObjectListOrphansResponseItem_contextArchived
+		return pb.RpcObjectCleanupSuggestionsResponseItem_contextArchived
 	case objectgc.OrphanReasonContextDeleted:
-		return pb.RpcObjectListOrphansResponseItem_contextDeleted
+		return pb.RpcObjectCleanupSuggestionsResponseItem_contextDeleted
 	case objectgc.OrphanReasonContextUnlinked:
-		return pb.RpcObjectListOrphansResponseItem_contextUnlinked
+		return pb.RpcObjectCleanupSuggestionsResponseItem_contextUnlinked
 	default:
-		return pb.RpcObjectListOrphansResponseItem_none
+		return pb.RpcObjectCleanupSuggestionsResponseItem_none
 	}
 }
 
-// orphanKeys resolves the relation keys to project: the caller's keys (or the default set when the
+// cleanupKeys resolves the relation keys to project: the caller's keys (or the default set when the
 // caller passes none), always unioned with the forced keys.
-func orphanKeys(reqKeys []string) []domain.RelationKey {
-	keys := defaultOrphanKeys
+func cleanupKeys(reqKeys []string) []domain.RelationKey {
+	keys := defaultCleanupKeys
 	if len(reqKeys) > 0 {
 		keys = slice.StringsInto[domain.RelationKey](reqKeys)
 	}
-	keys = append(append([]domain.RelationKey{}, keys...), forcedOrphanKeys...)
+	keys = append(append([]domain.RelationKey{}, keys...), forcedCleanupKeys...)
 	return lo.Uniq(keys)
 }
 
-func (mw *Middleware) ObjectListOrphans(cctx context.Context, req *pb.RpcObjectListOrphansRequest) *pb.RpcObjectListOrphansResponse {
-	response := func(code pb.RpcObjectListOrphansResponseErrorCode, items []*pb.RpcObjectListOrphansResponseItem, err error) *pb.RpcObjectListOrphansResponse {
-		m := &pb.RpcObjectListOrphansResponse{Error: &pb.RpcObjectListOrphansResponseError{Code: code}, Items: items}
+func (mw *Middleware) ObjectCleanupSuggestions(cctx context.Context, req *pb.RpcObjectCleanupSuggestionsRequest) *pb.RpcObjectCleanupSuggestionsResponse {
+	response := func(code pb.RpcObjectCleanupSuggestionsResponseErrorCode, items []*pb.RpcObjectCleanupSuggestionsResponseItem, err error) *pb.RpcObjectCleanupSuggestionsResponse {
+		m := &pb.RpcObjectCleanupSuggestionsResponse{Error: &pb.RpcObjectCleanupSuggestionsResponseError{Code: code}, Items: items}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
@@ -1261,48 +1378,48 @@ func (mw *Middleware) ObjectListOrphans(cctx context.Context, req *pb.RpcObjectL
 
 	orphans, err := mustService[objectgc.ObjectGC](mw).ListOrphans(req.SpaceId)
 	if err != nil {
-		return response(pb.RpcObjectListOrphansResponseError_UNKNOWN_ERROR, nil, err)
+		return response(pb.RpcObjectCleanupSuggestionsResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	keys := orphanKeys(req.Keys)
+	keys := cleanupKeys(req.Keys)
 
-	items := lo.Map(orphans, func(it objectgc.OrphanItem, _ int) *pb.RpcObjectListOrphansResponseItem {
-		return &pb.RpcObjectListOrphansResponseItem{
+	items := lo.Map(orphans, func(it objectgc.OrphanItem, _ int) *pb.RpcObjectCleanupSuggestionsResponseItem {
+		return &pb.RpcObjectCleanupSuggestionsResponseItem{
 			Details: it.Details.CopyOnlyKeys(keys...).ToProto(),
 			IsRoot:  it.IsRoot,
 			Reason:  orphanReasonToProto(it.Reason),
 		}
 	})
-	return response(pb.RpcObjectListOrphansResponseError_NULL, items, nil)
+	return response(pb.RpcObjectCleanupSuggestionsResponseError_NULL, items, nil)
 }
 ```
 
 > If Task 4 Step 4 reported different generated enum constant names, substitute them here.
 
-- [ ] **Step 2: Implement `ObjectListSetOrphanIgnored` in `core/details.go`**
+- [ ] **Step 2: Implement `ObjectCleanupSuggestionIgnore` in `core/details.go`**
 
 Append to `core/details.go`:
 
 ```go
-func (mw *Middleware) ObjectListSetOrphanIgnored(cctx context.Context, req *pb.RpcObjectListSetOrphanIgnoredRequest) *pb.RpcObjectListSetOrphanIgnoredResponse {
-	response := func(code pb.RpcObjectListSetOrphanIgnoredResponseErrorCode, err error) *pb.RpcObjectListSetOrphanIgnoredResponse {
-		m := &pb.RpcObjectListSetOrphanIgnoredResponse{Error: &pb.RpcObjectListSetOrphanIgnoredResponseError{Code: code}}
+func (mw *Middleware) ObjectCleanupSuggestionIgnore(cctx context.Context, req *pb.RpcObjectCleanupSuggestionIgnoreRequest) *pb.RpcObjectCleanupSuggestionIgnoreResponse {
+	response := func(code pb.RpcObjectCleanupSuggestionIgnoreResponseErrorCode, err error) *pb.RpcObjectCleanupSuggestionIgnoreResponse {
+		m := &pb.RpcObjectCleanupSuggestionIgnoreResponse{Error: &pb.RpcObjectCleanupSuggestionIgnoreResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetOrphanIgnored(cctx, req.ObjectIds, req.Ignored)
+	err := mustService[detailservice.Service](mw).SetCreatedInContextIgnored(cctx, req.ObjectIds, req.Ignored)
 	if err != nil {
-		return response(pb.RpcObjectListSetOrphanIgnoredResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectCleanupSuggestionIgnoreResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcObjectListSetOrphanIgnoredResponseError_NULL, nil)
+	return response(pb.RpcObjectCleanupSuggestionIgnoreResponseError_NULL, nil)
 }
 ```
 
 - [ ] **Step 3: Test the key projection (spec requires it)**
 
-Create `core/object_orphans_test.go`:
+Create `core/object_cleanup_test.go`:
 
 ```go
 package core
@@ -1316,15 +1433,15 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
-func TestOrphanKeys_EmptyRequest_UsesDefaultsPlusForced(t *testing.T) {
-	keys := orphanKeys(nil)
+func TestCleanupKeys_EmptyRequest_UsesDefaultsPlusForced(t *testing.T) {
+	keys := cleanupKeys(nil)
 
-	assert.Subset(t, keys, defaultOrphanKeys)
-	assert.Subset(t, keys, forcedOrphanKeys)
+	assert.Subset(t, keys, defaultCleanupKeys)
+	assert.Subset(t, keys, forcedCleanupKeys)
 }
 
-func TestOrphanKeys_CallerKeys_ForcedAlwaysIncluded(t *testing.T) {
-	keys := orphanKeys([]string{"name"})
+func TestCleanupKeys_CallerKeys_ForcedAlwaysIncluded(t *testing.T) {
+	keys := cleanupKeys([]string{"name"})
 
 	assert.Contains(t, keys, domain.RelationKey("name"))
 	assert.Contains(t, keys, bundle.RelationKeyId)
@@ -1334,9 +1451,9 @@ func TestOrphanKeys_CallerKeys_ForcedAlwaysIncluded(t *testing.T) {
 	assert.NotContains(t, keys, bundle.RelationKeySnippet)
 }
 
-func TestOrphanKeys_Deduplicates(t *testing.T) {
+func TestCleanupKeys_Deduplicates(t *testing.T) {
 	// resolvedLayout is both a caller key and a forced key
-	keys := orphanKeys([]string{"resolvedLayout", "resolvedLayout"})
+	keys := cleanupKeys([]string{"resolvedLayout", "resolvedLayout"})
 
 	count := 0
 	for _, k := range keys {
@@ -1358,14 +1475,14 @@ Expected: success. (A missing method on `ClientCommands` here means Task 4 Step 
 
 - [ ] **Step 5: Verify the handlers are wired to the gRPC service**
 
-Run: `grep -rn "ObjectListOrphans\|ObjectListSetOrphanIgnored" pb/service/service.pb.go | head -4`
+Run: `grep -rn "ObjectCleanupSuggestions\|ObjectCleanupSuggestionIgnore" pb/service/service.pb.go | head -4`
 Expected: the generated server interface lists both methods.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add core/object.go core/details.go core/object_orphans_test.go
-git commit -m "GO-7323 Add ObjectListOrphans and ObjectListSetOrphanIgnored RPC handlers"
+git add core/object.go core/details.go core/object_cleanup_test.go
+git commit -m "GO-7323 Add ObjectCleanupSuggestions and ObjectCleanupSuggestionIgnore RPC handlers"
 ```
 
 ---
@@ -1408,8 +1525,8 @@ git commit -m "GO-7323 Tidy after space orphan list" --allow-empty
 
 The spec's **e2e scenarios** live in the sibling repo `anytype-suite` (gRPC/middleware-level, vitest),
 on branch `go-7323-cascade-deletion-orphan-events` under `src/scenarios/cascade-deletion/`. After this
-lands, add a scenario that archives a parent, calls `ObjectListOrphans`, ignores the child via
-`ObjectListSetOrphanIgnored`, and re-requests to assert it disappears. Rebuild the suite's server with
+lands, add a scenario that archives a parent, calls `ObjectCleanupSuggestions`, ignores the child via
+`ObjectCleanupSuggestionIgnore`, and re-requests to assert it disappears. Rebuild the suite's server with
 `npm run server:build-local` (builds from the local checkout — `build-from-git.sh` clones from GitHub
 and cannot see unpushed work) and `npm run server:use -- local --update-protos`.
 

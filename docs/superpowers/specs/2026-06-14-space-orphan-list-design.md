@@ -1,4 +1,9 @@
-# Space-wide Orphan List & Ignore
+# Cleanup Suggestions (space-wide orphan list) & Ignore
+
+> **Vocabulary boundary (deliberate).** The **protocol / client** says *cleanup suggestion*. **Internal
+> Go** keeps *orphan* — the precise term for a node with no inbound references (`objectgc`,
+> `OrphanCandidates`, `ListOrphans`, `OrphanItem`, `OrphanReason`). This spec uses "orphan" when
+> describing the algorithm and "cleanup suggestion" when describing the API.
 
 **Issue:** GO-7323 (second phase of the same issue — extends the user-confirmed object archival work)
 **Date:** 2026-06-14
@@ -6,7 +11,7 @@
 
 ## Background
 
-GO-7323 replaced implicit cascade archival with an **`OrphansDetected` event**: when a user
+GO-7323 replaced implicit cascade archival with an **`CleanupSuggestion` event**: when a user
 archives/deletes an object or removes a link, the backend reports the orphaned objects so the client
 can prompt for confirmation. That event is **fire-and-forget** and **rooted at the object the user
 just acted on**.
@@ -39,7 +44,7 @@ Let the **candidate set** `C` be every object `o` in the space where all hold:
 - `o.createdInContext` is non-empty.
 - `o.createdInContextRef` is non-empty — the existing "collections have empty ref" gate.
 - `o.resolvedLayout ∈ domain.GCEligibleLayouts` (user content + files; excludes system layouts).
-- `o.orphanIgnored != true` (new relation, below).
+- `o.createdInContextIgnored != true` (new relation, below).
 - **`o.createdInContext` is present in the store** — sync-gap guard, see *Safety*.
 
 Define `activeBacklinks(o) = { b ∈ o.backlinks : b ≠ o.id and b is active }`.
@@ -79,7 +84,7 @@ independent of orphan count; the rest is in memory.
 2. **Candidate query** — one `Query`/`QueryIterate` with filters
    `createdInContext NotEmpty`, `createdInContextRef NotEmpty`, `resolvedLayout IN GCEligibleLayouts`
    (implicit active filter applies). Materialize each candidate's `Details`.
-   Apply `orphanIgnored != true` as an **in-memory predicate** on the loaded details rather than a
+   Apply `createdInContextIgnored != true` as an **in-memory predicate** on the loaded details rather than a
    store filter, to avoid depending on `NotEqual`-vs-missing-key filter semantics.
 3. **Active-status batch** — `queryActiveIds(backlinkTargets \ C)`: a single `Id IN [...]` query
    using the implicit filter, so returned ids are exactly the active ones. Members of `C` are active
@@ -110,7 +115,7 @@ assumption for a large space. Acceptable for an on-demand RPC.
 
 ## API
 
-### 1. List RPC — `ObjectListOrphans`
+### 1. List RPC — `ObjectCleanupSuggestions`
 
 Request:
 ```proto
@@ -122,7 +127,7 @@ message Request {
 
 Response:
 ```proto
-message OrphanItem {
+message Item {
   google.protobuf.Struct details = 1; // only the requested keys
   bool isRoot = 2;                    // server-computed forest root
   Reason reason = 3;                  // why it is orphaned; set on roots only
@@ -136,7 +141,7 @@ message OrphanItem {
 }
 message Response {
   Error error = 1;
-  repeated OrphanItem items = 2;
+  repeated Item items = 2;
 }
 ```
 
@@ -177,7 +182,7 @@ resolvedLayout` (plus the three forced keys).
 Ordering is unspecified; the client sorts. `snippet` can be sizable — a client wanting only a
 count/badge should pass a minimal `keys`.
 
-### 2. Ignore RPC — `ObjectListSetOrphanIgnored`
+### 2. Ignore RPC — `ObjectCleanupSuggestionIgnore`
 
 ```proto
 message Request {
@@ -186,8 +191,8 @@ message Request {
 }
 ```
 
-Sets the `orphanIgnored` detail on each object. Implemented in `detailservice`, and it **must** set
-`state.SetChangeType(domain.ChangeTypeOrphanIgnored)` before `Apply`.
+Sets the `createdInContextIgnored` detail on each object. Implemented in `detailservice`, and it **must** set
+`state.SetChangeType(domain.ChangeTypeCreatedInContext)` before `Apply`.
 
 Why a dedicated RPC rather than the generic `ObjectListSetDetails`:
 
@@ -213,14 +218,14 @@ The client archives the selected ids with the existing
 
 ## New schema
 
-### Relation `orphanIgnored`
+### Relation `createdInContextIgnored`
 
 Add to `pkg/lib/bundle/relations.json`, mirroring `isHidden` (the exact analog: a hidden checkbox
 relation stored in object details):
 
 | field | value |
 |---|---|
-| `key` | `orphanIgnored` |
+| `key` | `createdInContextIgnored` |
 | `format` | `checkbox` |
 | `source` | `details` (CRDT state → syncs) |
 | `hidden` | `true` (not user-editable in the relations panel) |
@@ -238,7 +243,7 @@ Regenerate with `go generate ./pkg/lib/bundle/...` (`//go:generate go run ./gene
 reindexes **bundled relations** automatically. There is **no user-data migration**: an absent key
 means "not ignored".
 
-### `domain.ChangeTypeOrphanIgnored`
+### `domain.ChangeTypeCreatedInContext`
 
 New constant in `core/domain/types.go` (+ its `String()` case), mirroring
 `ChangeTypeDescriptionToggle` — a user-initiated but non-content change that intentionally skips the
@@ -246,7 +251,7 @@ New constant in `core/domain/types.go` (+ its `String()` case), mirroring
 
 ## GC integration
 
-`orphanIgnored` means *"this object's lifecycle is detached from its creation context."* It is
+`createdInContextIgnored` means *"this object's lifecycle is detached from its creation context."* It is
 honored in **both** surfaces:
 
 - The new orphan list (step 2 of the algorithm).
@@ -254,7 +259,7 @@ honored in **both** surfaces:
   Query 2, and `ArchiveOrphansOnLinksRemoval` — as an in-memory predicate on the already-loaded
   record details, exactly like the layout check.
 
-Consequences: an ignored object never appears in an `OrphansDetected` popup, and an **ignored
+Consequences: an ignored object never appears in an `CleanupSuggestion` popup, and an **ignored
 level-1 file is not auto-archived** when its parent is archived. Both follow from the single meaning
 above.
 
@@ -264,16 +269,16 @@ logic.
 
 ## Client flow
 
-1. User opens the cleanup screen → `ObjectListOrphans{spaceId, keys}`.
+1. User opens the cleanup screen → `ObjectCleanupSuggestions{spaceId, keys}`.
 2. Client nests items by `createdInContext` and renders the **Bin's existing tree view**, grouping
    objects and files by `resolvedLayout`. `isRoot` marks the tree tops, and `reason` explains each
    root ("its page is in the Bin" / "its page was deleted" / "the link to it was removed").
 3. Checkboxes with parent→subtree cascade (the Bin tree already does this).
 4. Per selection: **Move to Bin** (`ObjectListSetIsArchived(..., skipCascade: true)`),
    **Delete permanently** (`ObjectListDelete`), or **Ignore**
-   (`ObjectListSetOrphanIgnored(ids, true)` → re-request the list).
+   (`ObjectCleanupSuggestionIgnore(ids, true)` → re-request the list).
 
-The existing `OrphansDetected` event stays as the in-the-moment prompt; this list is the periodic
+The existing `CleanupSuggestion` event stays as the in-the-moment prompt; this list is the periodic
 cleanup surface that also catches dismissed and pre-existing orphans.
 
 ## Safety & edge cases
@@ -307,18 +312,18 @@ cleanup surface that also catches dismissed and pre-existing orphans.
 - parent absent from store → candidate skipped (sync gap).
 - empty `createdInContextRef` → excluded; system layout → excluded.
 - files included, distinguishable by `resolvedLayout`.
-- `orphanIgnored=true` → excluded; **ignoring a root removes its whole subtree**.
+- `createdInContextIgnored=true` → excluded; **ignoring a root removes its whole subtree**.
 
 **RPC tests:** requested-keys projection; forced keys always present; default key set when `keys`
 empty.
 
-**Ignore RPC tests:** sets `orphanIgnored`; **`lastModifiedDate` unchanged** (assert before/after);
+**Ignore RPC tests:** sets `createdInContextIgnored`; **`lastModifiedDate` unchanged** (assert before/after);
 reversible with `ignored=false`.
 
-**GC regression tests:** an ignored object does not appear in `OrphansDetected` candidates; an
+**GC regression tests:** an ignored object does not appear in `CleanupSuggestion` candidates; an
 ignored level-1 file is **not** auto-archived on parent archive.
 
-**e2e (anytype-suite):** archive a parent → `ObjectListOrphans` lists the child; ignore it →
+**e2e (anytype-suite):** archive a parent → `ObjectCleanupSuggestions` lists the child; ignore it →
 re-request returns empty; archive from the list with `skipCascade=true` succeeds.
 
 ## Out of scope
@@ -333,9 +338,16 @@ re-request returns empty; archive from the list with `skipCascade=true` succeeds
 
 ## Open items
 
-- Names are provisional: relation `orphanIgnored`, RPCs `ObjectListOrphans` /
-  `ObjectListSetOrphanIgnored`, constant `ChangeTypeOrphanIgnored`, enum values
-  `contextArchived` / `contextDeleted` / `contextUnlinked`.
-- Builds directly on the first phase of GO-7323 (`skipCascade`, the `createdInContextRef` gate,
-  `OrphansDetected`) and lands on the same branch / PR
-  (`go-7323-cascade-deletion-orphan-events`).
+- **Phase-1 event rename (part of this work).** `Object.OrphansDetected` → `Object.CleanupSuggestion`
+  (oneof field `objectCleanupSuggestion`; field number 146 and the `Trigger` enum unchanged). Phase 1
+  is pushed but unmerged, so the protocol has never shipped and the rename is free now. The e2e tests
+  in `anytype-suite` (branch `go-7323-cascade-deletion-orphan-events`,
+  `src/scenarios/cascade-deletion/`, 8 files) reference the old name and must be renamed on that
+  branch too — its working tree is currently on a different branch, so do not switch it implicitly.
+- `ChangeTypeCreatedInContext` is deliberately **generic**, not ignore-specific. A second consumer
+  already exists: `core/migration/objectcontext.go` backfills `createdInContext` via
+  `ModifyDetails` with the default *user* change type, so it currently bumps `lastModifiedDate` on
+  every backfilled file. Converting it is a clean follow-up.
+- `skipCascade` keeps its name — it skips the whole cascade (file auto-archive *and* the suggestion).
+- Builds directly on the first phase of GO-7323 (`skipCascade`, the `createdInContextRef` gate) and
+  lands on the same branch / PR (`go-7323-cascade-deletion-orphan-events`).
