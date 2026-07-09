@@ -926,3 +926,49 @@ func TestFilterExplicitIds_RemovesFromCleanupSuggestion(t *testing.T) {
 	assert.ElementsMatch(t, []string{"a", "c"}, msg.ObjectCleanupSuggestion.ObjectIds)
 	assert.Equal(t, "ctx", msg.ObjectCleanupSuggestion.ContextId)
 }
+
+// -- createdInContextIgnored gate --
+
+// ignoredBasicObject builds a candidate object that the user has ignored.
+func ignoredBasicObject(id, createdInContext, ref string, backlinks []string) objectstore.TestObject {
+	obj := basicObjectWithRef(id, createdInContext, ref, backlinks)
+	obj[bundle.RelationKeyCreatedInContextIgnored] = domain.Bool(true)
+	return obj
+}
+
+func TestCheckObjectsOnObjectArchived_IgnoredObject_NotACandidate(t *testing.T) {
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	fx.addObject(t, ignoredBasicObject("child", "parent", "block1", []string{"parent"}))
+
+	res, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
+
+	require.NoError(t, err)
+	assert.Empty(t, res.Files)
+	assert.Empty(t, res.Candidates)
+}
+
+func TestCheckObjectsOnObjectArchived_IgnoredLevel1File_NotAutoArchived(t *testing.T) {
+	fx := newFixture(t)
+	fx.addObject(t, regularObject("parent"))
+	ignoredFile := fileObjectWithRef("f1", "parent", "block1", []string{"parent"})
+	ignoredFile[bundle.RelationKeyCreatedInContextIgnored] = domain.Bool(true)
+	fx.addObject(t, ignoredFile)
+
+	res, err := fx.CheckObjectsOnObjectArchived(testSpaceId, "parent", true)
+
+	require.NoError(t, err)
+	assert.Empty(t, res.Files)
+	assert.Empty(t, res.Candidates)
+}
+
+func TestArchiveOrphansOnLinksRemoval_IgnoredObject_NotACandidate(t *testing.T) {
+	fx := newFixture(t)
+	fx.addObject(t, ignoredBasicObject("child", "parent", "block1", []string{"parent"}))
+
+	res, err := fx.ArchiveOrphansOnLinksRemoval(testSpaceId, "parent", []string{"child"}, false, nil)
+
+	require.NoError(t, err)
+	assert.Empty(t, res.Files)
+	assert.Empty(t, res.Candidates)
+}

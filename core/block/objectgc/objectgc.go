@@ -174,6 +174,10 @@ func (gc *objectGC) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, remo
 	var res OrphanCandidates
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyId)
+		if record.Details.GetBool(bundle.RelationKeyCreatedInContextIgnored) {
+			// user detached this object's lifecycle from its creation context
+			continue
+		}
 
 		// Filter out the current context and self-references from backlinks.
 		backlinks := record.Details.GetStringList(bundle.RelationKeyBacklinks)
@@ -325,6 +329,10 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 			if _, seen := visited[id]; seen {
 				continue
 			}
+			if record.Details.GetBool(bundle.RelationKeyCreatedInContextIgnored) {
+				// user detached this object's lifecycle from its creation context
+				continue
+			}
 			candidates[id] = record.Details
 		}
 
@@ -471,6 +479,9 @@ func (gc *objectGC) collectOrphanedObjects(idx spaceindex.Store, objectId string
 		for _, record := range backlinkRecords {
 			id := record.Details.GetString(bundle.RelationKeyId)
 			if _, seen := visited[id]; seen {
+				continue
+			}
+			if record.Details.GetBool(bundle.RelationKeyCreatedInContextIgnored) {
 				continue
 			}
 			parentId := record.Details.GetString(bundle.RelationKeyCreatedInContext)
