@@ -1,0 +1,305 @@
+# Space-wide Orphan List & Ignore
+
+**Issue:** GO-7323 (second phase of the same issue — extends the user-confirmed object archival work)
+**Date:** 2026-06-14
+**Status:** Design approved
+
+## Background
+
+GO-7323 replaced implicit cascade archival with an **`OrphansDetected` event**: when a user
+archives/deletes an object or removes a link, the backend reports the orphaned objects so the client
+can prompt for confirmation. That event is **fire-and-forget** and **rooted at the object the user
+just acted on**.
+
+Two gaps remain:
+
+1. If the user dismisses the popup (or the orphaning happened before this feature shipped), those
+   orphans are never surfaced again.
+2. There is no way to answer "what in this space is now unreachable and could be cleaned up?"
+
+This spec adds a **queryable, space-wide orphan list** so the client can present a *cleanup
+recommendation*, plus a way for the user to **permanently ignore** an object so it stops being
+recommended.
+
+## Goal
+
+- An on-demand RPC that returns every orphan in a space, as a **forest** (roots + their full
+  transitive subtrees, objects **and** files), with caller-selected relation keys.
+- A way to **ignore** an object (and, for free, its subtree) so it is excluded from both the orphan
+  list and future cascade prompts.
+- Reuse the existing orphan semantics — exactly one definition of "orphan" in the codebase.
+
+Non-goals: a live-updating subscription, and pagination. See *Out of scope*.
+
+## Orphan definition
+
+Let the **candidate set** `C` be every object `o` in the space where all hold:
+
+- `o` is **active** — not archived, not deleted (the store's implicit query filter).
+- `o.createdInContext` is non-empty.
+- `o.createdInContextRef` is non-empty — the existing "collections have empty ref" gate.
+- `o.resolvedLayout ∈ domain.GCEligibleLayouts` (user content + files; excludes system layouts).
+- `o.orphanIgnored != true` (new relation, below).
+- **`o.createdInContext` is present in the store** — sync-gap guard, see *Safety*.
+
+Define `activeBacklinks(o) = { b ∈ o.backlinks : b ≠ o.id and b is active }`.
+
+The **removable set `S`** is the **greatest subset of `C`** such that
+
+> for every `o ∈ S`: `activeBacklinks(o) ⊆ S`
+
+i.e. every member's active backlinks fall *inside* the set. Anything reachable from an active object
+outside `S` is excluded, and that exclusion cascades.
+
+**Roots** = `{ o ∈ S : o.createdInContext ∉ S }`. These are the tops of the orphan trees.
+
+### Why this is the right definition
+
+It is the same eviction rule the GO-7323 cascade BFS already uses, applied space-wide instead of
+rooted at one object. Worked examples:
+
+| Situation | Outcome |
+|---|---|
+| `B` created in `A`; `A` archived | `A` is inactive → `activeBacklinks(B) = ∅` → **B is a root** |
+| `X` created in active page `P`; `P` still links `X` | `activeBacklinks(X) = {P}`, `P ∉ C` (top-level) → **X evicted** (reachable) |
+| `X` created in `P`; link removed; `P` still active | `P` is no longer a backlink → **X is a root** (link-removal orphan) |
+| `P` created in archived `A`; `X` created in `P` | `P` root, `X` descendant (its only active backlink `P` is in `S`) |
+| `X ∈ S` but linked from active top-level `T` | `T ∉ S` → **X evicted**, and anything whose only backlink was `X` is evicted too (cascade) |
+| `A` created in `B`, `B` created in `A` (cycle), nothing else links them | both stay in `S`; no parent-outside-`S` → **no root** → pick a deterministic root |
+
+It also naturally catches **detached islands** (mutually-linked groups nothing active points at).
+
+## Algorithm
+
+Lives in `core/block/objectgc` so orphan semantics stay in one place. **Three store queries total**,
+independent of orphan count; the rest is in memory.
+
+1. `backlinksWatcher.FlushUpdates()` — backlinks must be current (objectgc already does this before
+   every GC query).
+2. **Candidate query** — one `Query`/`QueryIterate` with filters
+   `createdInContext NotEmpty`, `createdInContextRef NotEmpty`, `resolvedLayout IN GCEligibleLayouts`
+   (implicit active filter applies). Materialize each candidate's `Details`.
+   Apply `orphanIgnored != true` as an **in-memory predicate** on the loaded details rather than a
+   store filter, to avoid depending on `NotEqual`-vs-missing-key filter semantics.
+3. **Active-status batch** — `queryActiveIds(backlinkTargets \ C)`: a single `Id IN [...]` query
+   using the implicit filter, so returned ids are exactly the active ones. Members of `C` are active
+   by construction and need no lookup.
+4. **Parent-existence batch** — `HasIds(parentIds \ C)`: one call; parents absent from the store fail
+   the sync-gap guard and their candidates are dropped from `C`.
+5. **Fixed point** (worklist, `O(V+E)` — not the naive `O(n²)` restart loop):
+   - Build a reverse index `backlinkTarget → candidates that list it`.
+   - Seed: evict every `o ∈ C` having an active backlink outside `C`.
+   - Propagate: when `o` is evicted it becomes "active and outside `S`", so every surviving candidate
+     `x` with `o ∈ x.backlinks` is evicted in turn. Repeat until the worklist drains.
+   - Survivors = `S`.
+6. **Forest** — build `parent → children` over `S` via `createdInContext`; mark roots
+   (`parent ∉ S`). For a cycle component with no root, pick the **lowest id** as root so the tree
+   still renders deterministically.
+
+### Cost
+
+`createdInContext`, `backlinks`, `isArchived`, `isDeleted` are **not indexed**; the candidate query
+uses the `resolvedLayout` index and filters the rest in memory. This is the same shape as
+`ObjectTypeListConflictingRelations`, and strictly cheaper than `RelationListWithValue`, which
+already full-scans **every** object in a space in production. ~10k objects is the codebase's working
+assumption for a large space. Acceptable for an on-demand RPC.
+
+## API
+
+### 1. List RPC — `ObjectListOrphans`
+
+Request:
+```proto
+message Request {
+  string spaceId = 1;
+  repeated string keys = 2; // relation keys to return; empty => default set
+}
+```
+
+Response:
+```proto
+message OrphanItem {
+  google.protobuf.Struct details = 1; // only the requested keys
+  bool isRoot = 2;                    // server-computed forest root
+}
+message Response {
+  Error error = 1;
+  repeated OrphanItem items = 2;
+}
+```
+
+Returning details (rather than bare ids) is **free**: the scan already materializes every
+candidate's `Details`, and `S ⊆ C`, so the response is pure projection from memory. It saves the
+client a second request and saves the backend a second scan.
+
+**Force-included keys** (always returned, regardless of `keys`) — the client cannot render the
+result without them:
+
+- `id` — identity
+- `createdInContext` — the client nests the tree itself, on the same relation the Bin tree uses
+- `resolvedLayout` — the client groups objects vs files (`resolvedLayout ∈ FileLayouts`)
+
+Consequently there is **no bespoke `kind` or `contextId` field**: file-ness is `resolvedLayout`, and
+the context is the `createdInContext` key. The only thing this response adds over a normal search
+record is `isRoot`.
+
+**Default `keys` when empty:** `name, type, creator, createdDate, snippet, iconEmoji, iconImage,
+resolvedLayout` (plus the three forced keys).
+
+Ordering is unspecified; the client sorts. `snippet` can be sizable — a client wanting only a
+count/badge should pass a minimal `keys`.
+
+### 2. Ignore RPC — `ObjectListSetOrphanIgnored`
+
+```proto
+message Request {
+  repeated string objectIds = 1;
+  bool ignored = 2;
+}
+```
+
+Sets the `orphanIgnored` detail on each object. Implemented in `detailservice`, and it **must** set
+`state.SetChangeType(domain.ChangeTypeOrphanIgnored)` before `Apply`.
+
+Why a dedicated RPC rather than the generic `ObjectListSetDetails`:
+
+- `SetLastModified` is only called when `changeType == domain.ChangeTypeUserChange`
+  (`smartblock.go`). The change type can only be set **server-side**, so a generic details write from
+  the client would bump `lastModifiedDate` and shove every ignored object to the top of "recently
+  modified".
+- It avoids relying on per-relation `readonly` being unenforced on the gRPC details path (true today,
+  but an implicit contract).
+
+The write is still a real CRDT change, so **the ignore syncs across devices**. It is reversible
+(`ignored = false`).
+
+### 3. Actions — no new RPC
+
+The client archives the selected ids with the existing
+`ObjectListSetIsArchived(ids, isArchived: true, skipCascade: true)`, or deletes them with
+`ObjectListDelete`.
+
+> **Load-bearing:** because the confirm call uses `skipCascade=true`, an orphan root's direct-child
+> files are **not** auto-archived. That is precisely why the returned subtree must include files —
+> the client sends them explicitly.
+
+## New schema
+
+### Relation `orphanIgnored`
+
+Add to `pkg/lib/bundle/relations.json`, mirroring `isHidden` (the exact analog: a hidden checkbox
+relation stored in object details):
+
+| field | value |
+|---|---|
+| `key` | `orphanIgnored` |
+| `format` | `checkbox` |
+| `source` | `details` (CRDT state → syncs) |
+| `hidden` | `true` (not user-editable in the relations panel) |
+| `readonly` | `false` (the backend legitimately writes it; no reliance on the readonly loophole) |
+| `maxCount` | 1 |
+
+Also register it in `pkg/lib/bundle/systemRelations.json` (as `isHidden` is). This matters because
+the ignore RPC writes through `basic.SetDetails`, whose `validateDetailFormat` calls
+`objectStore.FetchRelationByKey(key)` — the relation must be resolvable. *(`createdInContextRef` is
+in `relations.json` but not `systemRelations.json`, so the minimal path may also work; a test that the
+ignore RPC succeeds on a fresh space settles it.)*
+
+Regenerate with `go generate ./pkg/lib/bundle/...` (`//go:generate go run ./generator` in
+`init.go`), which rewrites `relation.gen.go`. This bumps the bundle checksum, so the indexer
+reindexes **bundled relations** automatically. There is **no user-data migration**: an absent key
+means "not ignored".
+
+### `domain.ChangeTypeOrphanIgnored`
+
+New constant in `core/domain/types.go` (+ its `String()` case), mirroring
+`ChangeTypeDescriptionToggle` — a user-initiated but non-content change that intentionally skips the
+`lastModifiedDate` bump.
+
+## GC integration
+
+`orphanIgnored` means *"this object's lifecycle is detached from its creation context."* It is
+honored in **both** surfaces:
+
+- The new orphan list (step 2 of the algorithm).
+- The **three existing GC candidate paths** in `objectgc.go` — `collectOrphanedObjects` Query 1 and
+  Query 2, and `ArchiveOrphansOnLinksRemoval` — as an in-memory predicate on the already-loaded
+  record details, exactly like the layout check.
+
+Consequences: an ignored object never appears in an `OrphansDetected` popup, and an **ignored
+level-1 file is not auto-archived** when its parent is archived. Both follow from the single meaning
+above.
+
+**Ignoring a root drops its whole subtree from the list for free**: the root leaves `C`, so its
+children have an active backlink (the still-active root) outside `S` and are evicted — no extra
+logic.
+
+## Client flow
+
+1. User opens the cleanup screen → `ObjectListOrphans{spaceId, keys}`.
+2. Client nests items by `createdInContext` and renders the **Bin's existing tree view**, grouping
+   objects and files by `resolvedLayout`. `isRoot` marks the tree tops.
+3. Checkboxes with parent→subtree cascade (the Bin tree already does this).
+4. Per selection: **Move to Bin** (`ObjectListSetIsArchived(..., skipCascade: true)`),
+   **Delete permanently** (`ObjectListDelete`), or **Ignore**
+   (`ObjectListSetOrphanIgnored(ids, true)` → re-request the list).
+
+The existing `OrphansDetected` event stays as the in-the-moment prompt; this list is the periodic
+cleanup surface that also catches dismissed and pre-existing orphans.
+
+## Safety & edge cases
+
+- **Sync gap.** A candidate whose `createdInContext` parent id is absent from the store is skipped.
+  A *deleted* parent remains indexed with `isDeleted=true`, so only a genuinely un-synced parent is
+  absent. Same conservatism as `isConfirmedInactive`.
+- **Cycles.** A `createdInContext` cycle yields a component with no parent-outside-`S`; pick the
+  lowest id as root.
+- **Self-references** are excluded from `activeBacklinks`.
+- **Collection-created objects** (empty `createdInContextRef`) are excluded, as today.
+- **System layouts** are excluded via `GCEligibleLayouts`.
+- **Ignored + archived.** An ignored object that the user later archives behaves normally; ignore only
+  governs orphan/cascade handling.
+
+## Testing
+
+**objectgc unit tests** (`StoreFixture`, mirroring the GO-7323 suite):
+
+- archived-parent orphan → root; link-removal orphan (parent active, no backlink) → root.
+- reachable object (active backlink to a non-candidate) → excluded.
+- cascade eviction: `X` evicted (external backlink) → `Y` whose only backlink is `X` → also evicted.
+- descendant: `P` root, `X` under it, `X` not a root.
+- cycle `A↔B` → both in `S`, deterministic root chosen.
+- parent absent from store → candidate skipped (sync gap).
+- empty `createdInContextRef` → excluded; system layout → excluded.
+- files included, distinguishable by `resolvedLayout`.
+- `orphanIgnored=true` → excluded; **ignoring a root removes its whole subtree**.
+
+**RPC tests:** requested-keys projection; forced keys always present; default key set when `keys`
+empty.
+
+**Ignore RPC tests:** sets `orphanIgnored`; **`lastModifiedDate` unchanged** (assert before/after);
+reversible with `ignored=false`.
+
+**GC regression tests:** an ignored object does not appear in `OrphansDetected` candidates; an
+ignored level-1 file is **not** auto-archived on parent archive.
+
+**e2e (anytype-suite):** archive a parent → `ObjectListOrphans` lists the child; ignore it →
+re-request returns empty; archive from the list with `skipCascade=true` succeeds.
+
+## Out of scope
+
+- **Live subscription.** Subscriptions can only filter on *stored* details, so a live orphan badge
+  would require materializing an `isOrphan` derived relation (precedent: `backlinks`, maintained by a
+  watcher) plus a reindex backfill. The on-demand RPC needs none of that. This design does not
+  preclude that upgrade: the RPC contract would not change.
+- **Pagination.** A ~10k-object space yields at most a few hundred orphans. Add a `limit` if it ever
+  bites.
+- Client UI implementation (separate client work; this spec defines the contract).
+
+## Open items
+
+- Names are provisional: relation `orphanIgnored`, RPCs `ObjectListOrphans` /
+  `ObjectListSetOrphanIgnored`, constant `ChangeTypeOrphanIgnored`.
+- Builds directly on the first phase of GO-7323 (`skipCascade`, the `createdInContextRef` gate,
+  `OrphansDetected`) and lands on the same branch / PR
+  (`go-7323-cascade-deletion-orphan-events`).
