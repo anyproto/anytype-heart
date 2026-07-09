@@ -84,8 +84,11 @@ independent of orphan count; the rest is in memory.
 3. **Active-status batch** — `queryActiveIds(backlinkTargets \ C)`: a single `Id IN [...]` query
    using the implicit filter, so returned ids are exactly the active ones. Members of `C` are active
    by construction and need no lookup.
-4. **Parent-existence batch** — `HasIds(parentIds \ C)`: one call; parents absent from the store fail
-   the sync-gap guard and their candidates are dropped from `C`.
+4. **Parent-state batch** — one `QueryRaw` (no implicit filters) over the distinct
+   `createdInContext` ids, projecting `id, isArchived, isDeleted`. This yields, per parent:
+   *absent* / *archived* / *deleted* / *active*. Parents that are **absent** fail the sync-gap guard
+   and their candidates are dropped from `C`. Parent ids are few (distinct contexts), so this is
+   cheap. It supplies both the guard and the per-root `reason` below.
 5. **Fixed point** (worklist, `O(V+E)` — not the naive `O(n²)` restart loop):
    - Build a reverse index `backlinkTarget → candidates that list it`.
    - Seed: evict every `o ∈ C` having an active backlink outside `C`.
@@ -95,6 +98,7 @@ independent of orphan count; the rest is in memory.
 6. **Forest** — build `parent → children` over `S` via `createdInContext`; mark roots
    (`parent ∉ S`). For a cycle component with no root, pick the **lowest id** as root so the tree
    still renders deterministically.
+7. **Reason** — for each root, derive it from the parent-state map (step 4).
 
 ### Cost
 
@@ -121,12 +125,36 @@ Response:
 message OrphanItem {
   google.protobuf.Struct details = 1; // only the requested keys
   bool isRoot = 2;                    // server-computed forest root
+  Reason reason = 3;                  // why it is orphaned; set on roots only
+
+  enum Reason {
+    none = 0;            // descendants — the reason belongs to their root
+    contextArchived = 1; // createdInContext parent is in the Bin
+    contextDeleted = 2;  // createdInContext parent was removed
+    contextUnlinked = 3; // parent is still active, but the link to this object was removed
+  }
 }
 message Response {
   Error error = 1;
   repeated OrphanItem items = 2;
 }
 ```
+
+**The three reasons are total and provable for roots.** A root's parent is:
+
+- never in `S` (that is the definition of a root),
+- never absent from the store (the sync-gap guard already dropped such candidates, and deletion
+  *tombstones* the row — `DeleteObject` keeps `id` + `isDeleted=true` precisely "so we can
+  distinguish links to deleted and not-yet-loaded objects"),
+- never active-and-still-linking the child (that would make it an active backlink, and the child
+  would have been evicted from `S`).
+
+So the parent is exactly one of *archived*, *deleted*, or *active* — and *active* can only mean the
+link was removed. The backend computes this authoritatively from the parent-state batch rather than
+making the client infer it from an absent lookup.
+
+`reason` is `none` for descendants: a descendant's `createdInContext` parent is itself an orphan
+sitting in `S` (active, but not "unlinked"). That is what `isRoot` is for.
 
 Returning details (rather than bare ids) is **free**: the scan already materializes every
 candidate's `Details`, and `S ⊆ C`, so the response is pure projection from memory. It saves the
@@ -238,7 +266,8 @@ logic.
 
 1. User opens the cleanup screen → `ObjectListOrphans{spaceId, keys}`.
 2. Client nests items by `createdInContext` and renders the **Bin's existing tree view**, grouping
-   objects and files by `resolvedLayout`. `isRoot` marks the tree tops.
+   objects and files by `resolvedLayout`. `isRoot` marks the tree tops, and `reason` explains each
+   root ("its page is in the Bin" / "its page was deleted" / "the link to it was removed").
 3. Checkboxes with parent→subtree cascade (the Bin tree already does this).
 4. Per selection: **Move to Bin** (`ObjectListSetIsArchived(..., skipCascade: true)`),
    **Delete permanently** (`ObjectListDelete`), or **Ignore**
@@ -250,8 +279,11 @@ cleanup surface that also catches dismissed and pre-existing orphans.
 ## Safety & edge cases
 
 - **Sync gap.** A candidate whose `createdInContext` parent id is absent from the store is skipped.
-  A *deleted* parent remains indexed with `isDeleted=true`, so only a genuinely un-synced parent is
-  absent. Same conservatism as `isConfirmedInactive`.
+  This is safe because `DeleteObject` **tombstones** rather than purges — it keeps `id` and
+  `isDeleted=true` (`spaceindex/delete.go`), explicitly "so we can distinguish links to deleted and
+  not-yet-loaded objects". Therefore an absent parent means *never synced*, not *deleted*. Same
+  conservatism as `isConfirmedInactive`.
+  *(Note: `DeleteDetails` does purge, but it is a separate API not used by normal object deletion.)*
 - **Cycles.** A `createdInContext` cycle yields a component with no parent-outside-`S`; pick the
   lowest id as root.
 - **Self-references** are excluded from `activeBacklinks`.
@@ -264,7 +296,10 @@ cleanup surface that also catches dismissed and pre-existing orphans.
 
 **objectgc unit tests** (`StoreFixture`, mirroring the GO-7323 suite):
 
-- archived-parent orphan → root; link-removal orphan (parent active, no backlink) → root.
+- archived-parent orphan → root, `reason = contextArchived`.
+- deleted-parent orphan (tombstoned, `isDeleted=true`) → root, `reason = contextDeleted`.
+- link-removal orphan (parent active, no backlink) → root, `reason = contextUnlinked`.
+- descendants carry `reason = none`.
 - reachable object (active backlink to a non-candidate) → excluded.
 - cascade eviction: `X` evicted (external backlink) → `Y` whose only backlink is `X` → also evicted.
 - descendant: `P` root, `X` under it, `X` not a root.
@@ -299,7 +334,8 @@ re-request returns empty; archive from the list with `skipCascade=true` succeeds
 ## Open items
 
 - Names are provisional: relation `orphanIgnored`, RPCs `ObjectListOrphans` /
-  `ObjectListSetOrphanIgnored`, constant `ChangeTypeOrphanIgnored`.
+  `ObjectListSetOrphanIgnored`, constant `ChangeTypeOrphanIgnored`, enum values
+  `contextArchived` / `contextDeleted` / `contextUnlinked`.
 - Builds directly on the first phase of GO-7323 (`skipCascade`, the `createdInContextRef` gate,
   `OrphansDetected`) and lands on the same branch / PR
   (`go-7323-cascade-deletion-orphan-events`).
