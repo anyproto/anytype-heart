@@ -32,6 +32,9 @@ var interfacesSortPriority = []string{"wlan", "wl", "en", "eth", "tun", "tap", "
 // generation's query goroutines to stop. A var so tests can shorten it.
 var queryStopTimeout = 5 * time.Second
 
+// getInterfacesAddrs is a seam for tests to inject enumeration failures.
+var getInterfacesAddrs = addrs.GetInterfacesAddrs
+
 type localDiscovery struct {
 	server *zeroconf.Server
 	peerId string
@@ -185,7 +188,13 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	defer l.refreshMu.Unlock()
 
 	l.m.Lock()
-	newAddrs, err := addrs.GetInterfacesAddrs()
+	newAddrs, err := getInterfacesAddrs()
+	if err != nil {
+		// a transient enumeration failure must not be treated as "no
+		// interfaces": that would tear the running server down
+		l.m.Unlock()
+		return fmt.Errorf("get interfaces addrs: %w", err)
+	}
 	if addrs.NetAddrsEqualUnordered(l.interfacesAddrs.Addrs, newAddrs.Addrs) {
 		// this optimization allows to save syscalls to get addrs for every iface
 		// also we may receive a new ip address on the existing interface
@@ -246,6 +255,9 @@ func (l *localDiscovery) refreshInterfaces(ctx context.Context) (err error) {
 	}
 	l.queryCtx, l.queryCtxCancel = context.WithCancel(l.componentCtx)
 	if err = l.startServer(); err != nil {
+		// the addr snapshot was already committed above; clear it so the next
+		// periodic tick does not see "unchanged" and skip the retry forever
+		l.interfacesAddrs = addrs.InterfacesAddrs{}
 		return fmt.Errorf("starting mdns server: %w", err)
 	}
 	l.startQuerying(l.queryCtx)

@@ -2,6 +2,7 @@ package localdiscovery
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -18,6 +19,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/device/mock_device"
+	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver/mock_clientserver"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -115,6 +117,59 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 		assert.Nil(t, err)
 		assert.True(t, hookCalled.Load() == int64(DiscoveryPossible))
 	})
+}
+
+func TestLocalDiscovery_refreshRetriesFailedServerStart(t *testing.T) {
+	// given: the first refresh fails to start the mdns server (port 0 is
+	// rejected by RegisterProxy), simulating a transient start failure
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*localDiscovery)
+	ld.port = 0
+	err := ld.refreshInterfaces(context.Background())
+	assert.Error(t, err)
+
+	// when: the failure condition is gone but the addresses are unchanged
+	ld.port = 6789
+	err = ld.refreshInterfaces(context.Background())
+
+	// then: the next tick must retry instead of treating the state as done
+	assert.Nil(t, err)
+	ld.m.Lock()
+	server := ld.server
+	ld.m.Unlock()
+	assert.NotNil(t, server, "failed server start was never retried")
+	assert.Nil(t, f.Close(context.Background()))
+}
+
+func TestLocalDiscovery_refreshKeepsServerOnEnumerationError(t *testing.T) {
+	// given: a healthy running server
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*localDiscovery)
+	ld.port = 6789
+	err := ld.refreshInterfaces(context.Background())
+	assert.Nil(t, err)
+	ld.m.Lock()
+	assert.NotNil(t, ld.server)
+	ld.m.Unlock()
+
+	// when: interface enumeration fails transiently
+	origGetter := getInterfacesAddrs
+	getInterfacesAddrs = func() (addrs.InterfacesAddrs, error) {
+		return addrs.InterfacesAddrs{}, fmt.Errorf("transient enumeration failure")
+	}
+	t.Cleanup(func() { getInterfacesAddrs = origGetter })
+	err = ld.refreshInterfaces(context.Background())
+
+	// then: the error is surfaced and the running server is not torn down
+	assert.Error(t, err)
+	ld.m.Lock()
+	server := ld.server
+	ld.m.Unlock()
+	assert.NotNil(t, server, "transient enumeration error must not tear down the server")
+	getInterfacesAddrs = origGetter
+	assert.Nil(t, f.Close(context.Background()))
 }
 
 func TestLocalDiscovery_refreshSurvivesStuckQueryGoroutine(t *testing.T) {
