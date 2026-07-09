@@ -1,13 +1,27 @@
 package core
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
+
+// An empty spaceId is a caller bug, not a backend failure: the proto declares BAD_INPUT for it, and
+// the handler must reject it before reaching the store (SpaceIndex("") yields an invalid store whose
+// error would otherwise surface as UNKNOWN_ERROR).
+func TestObjectCleanupSuggestions_EmptySpaceId_BadInput(t *testing.T) {
+	mw := &Middleware{}
+
+	resp := mw.ObjectCleanupSuggestions(context.Background(), &pb.RpcObjectCleanupSuggestionsRequest{SpaceId: ""})
+
+	assert.Equal(t, pb.RpcObjectCleanupSuggestionsResponseError_BAD_INPUT, resp.Error.Code)
+	assert.Empty(t, resp.Items)
+}
 
 func TestCleanupKeys_EmptyRequest_UsesDefaultsPlusForced(t *testing.T) {
 	keys := cleanupKeys(nil)

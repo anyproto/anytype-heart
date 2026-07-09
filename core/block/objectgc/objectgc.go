@@ -531,6 +531,10 @@ func (gc *objectGC) archiveOrphanedObjects(idx spaceindex.Store, objectId string
 // collectOrphanedForRestore returns the archived level-1 file children of objectId that have no
 // backlinks outside the restore batch (i.e. nothing else still references them). Objects are
 // never auto-restored — the user restores them manually from the bin.
+//
+// Deliberately does NOT honor createdInContextIgnored: that flag scopes to cleanup suggestions and
+// context-driven *archival*, not restoration. The asymmetry is only reachable by ignoring a file
+// after it was archived, and it errs toward restoring a file rather than hiding it.
 func (gc *objectGC) collectOrphanedForRestore(idx spaceindex.Store, objectId string, _ []int64) ([]string, error) {
 	records, err := idx.Query(database.Query{
 		Filters: []database.FilterRequest{

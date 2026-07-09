@@ -138,7 +138,7 @@ func (gc *objectGC) ListOrphans(spaceId string) ([]OrphanItem, error) {
 	}
 	parentStates, err := gc.queryParentStates(idx, toLookup)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolve parent states: %w", err)
 	}
 
 	// Sync-gap guard: a parent absent from the store was never synced (deletion tombstones the row),
@@ -314,8 +314,10 @@ func (gc *objectGC) buildForest(candidates map[string]*domain.Details, inS map[s
 	reasonFor := func(id string) OrphanReason {
 		p := parentOf(id)
 		if _, ok := candidates[p]; ok {
-			// Parent is an active candidate that was evicted (or a cycle peer): it is alive and does
-			// not link this object, otherwise this object would have been evicted too.
+			// Parent is a candidate, so it is active. Either it was evicted from S — and then it
+			// cannot link this object, or this object would have been evicted with it — or it is a
+			// peer on this object's createdInContext cycle, which nothing outside the cycle links.
+			// Both mean: the context is alive but no longer references this object.
 			return OrphanReasonContextUnlinked
 		}
 		switch parentStates[p] {

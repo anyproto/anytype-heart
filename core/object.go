@@ -766,7 +766,6 @@ var defaultCleanupKeys = []domain.RelationKey{
 	bundle.RelationKeySnippet,
 	bundle.RelationKeyIconEmoji,
 	bundle.RelationKeyIconImage,
-	bundle.RelationKeyResolvedLayout,
 }
 
 // forcedCleanupKeys are always returned: the client cannot render the forest without them.
@@ -807,6 +806,10 @@ func (mw *Middleware) ObjectCleanupSuggestions(cctx context.Context, req *pb.Rpc
 			m.Error.Description = getErrorDescription(err)
 		}
 		return m
+	}
+
+	if req.SpaceId == "" {
+		return response(pb.RpcObjectCleanupSuggestionsResponseError_BAD_INPUT, nil, fmt.Errorf("spaceId is required"))
 	}
 
 	orphans, err := mustService[objectgc.ObjectGC](mw).ListOrphans(req.SpaceId)

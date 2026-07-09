@@ -118,6 +118,26 @@ func TestListOrphans_Descendant_NotRoot(t *testing.T) {
 	assert.Equal(t, OrphanReasonNone, x.Reason)
 }
 
+func TestListOrphans_RootUnderEvictedCandidateParent_ReasonUnlinked(t *testing.T) {
+	// PC is a candidate but has an active external backlink → evicted from S, and it stays alive.
+	// Its child CH has no backlinks at all, so nothing evicts CH: it survives as a root whose
+	// createdInContext parent is an evicted candidate. That is the one reasonFor branch where the
+	// parent is still in the candidates map but outside S.
+	fx := newFixture(t)
+	fx.addObject(t, archivedObject("parent"))
+	fx.addObject(t, regularObject("external"))
+	fx.addObject(t, basicObjectWithRef("PC", "parent", "block1", []string{"external"}))
+	fx.addObject(t, basicObjectWithRef("CH", "PC", "block1", nil))
+
+	items, err := fx.ListOrphans(testSpaceId)
+
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"CH"}, ids(items), "PC is evicted; CH survives")
+	ch := find(t, items, "CH")
+	assert.True(t, ch.IsRoot)
+	assert.Equal(t, OrphanReasonContextUnlinked, ch.Reason)
+}
+
 func TestListOrphans_Cycle_DeterministicRoot(t *testing.T) {
 	// A created in B, B created in A, nothing else links them
 	fx := newFixture(t)
