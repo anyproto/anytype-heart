@@ -61,6 +61,9 @@ type localDiscovery struct {
 	notifier    Notifier
 	m           sync.Mutex
 	refreshMu   sync.Mutex // serializes refreshInterfaces so l.m can be released across the server teardown
+	// refreshTrigger (buffered 1) coalesces network-change refresh requests
+	// for the refreshWorker goroutine
+	refreshTrigger chan struct{}
 
 	hookMu       sync.Mutex
 	hookState    DiscoveryPossibility
@@ -84,6 +87,7 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 	l.drpcServer = app.MustComponent[clientserver.ClientServer](a)
 	l.networkState = app.MustComponent[NetworkStateService](a)
 	l.componentCtx, l.componentCtxCancel = context.WithCancel(context.Background())
+	l.refreshTrigger = make(chan struct{}, 1)
 	return
 }
 
@@ -110,6 +114,7 @@ func (l *localDiscovery) Start() (err error) {
 	l.networkState.RegisterHook(func(_ model.DeviceNetworkType) {
 		l.onNetworkStateChanged()
 	})
+	go l.refreshWorker()
 
 	l.port = l.drpcServer.Port()
 	l.periodicCheck.Run()
@@ -172,12 +177,32 @@ func (l *localDiscovery) Close(ctx context.Context) (err error) {
 // addresses to force a full teardown + rebuild on the fresh interface. Network
 // type is intentionally ignored: we can't tell wifi from a USB-cable LAN here,
 // and both should keep discovery running.
+//
+// The rebuild itself runs on refreshWorker: it can take seconds (goodbye
+// packets with write deadlines, self-connect probing), and this hook is
+// invoked synchronously from the DeviceNetworkStateSet RPC under networkMu,
+// so it must not block.
 func (l *localDiscovery) onNetworkStateChanged() {
 	l.m.Lock()
 	l.interfacesAddrs = addrs.InterfacesAddrs{}
 	l.m.Unlock()
-	if err := l.refreshInterfaces(l.componentCtx); err != nil {
-		log.Warn("refreshing interfaces on network change failed", zap.Error(err))
+	select {
+	case l.refreshTrigger <- struct{}{}:
+	default:
+		// a refresh is already pending; it will pick up the cleared state
+	}
+}
+
+func (l *localDiscovery) refreshWorker() {
+	for {
+		select {
+		case <-l.componentCtx.Done():
+			return
+		case <-l.refreshTrigger:
+			if err := l.refreshInterfaces(l.componentCtx); err != nil {
+				log.Warn("refreshing interfaces on network change failed", zap.Error(err))
+			}
+		}
 	}
 }
 

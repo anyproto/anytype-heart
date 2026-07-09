@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/device/mock_device"
 	"github.com/anyproto/anytype-heart/net/addrs"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver/mock_clientserver"
 	"github.com/anyproto/anytype-heart/tests/testutil"
@@ -121,6 +122,40 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 	})
 }
 
+func TestLocalDiscovery_networkStateHookDoesNotBlockOnSlowRefresh(t *testing.T) {
+	// given: a started discovery whose refresh pipeline is busy
+	// (refreshMu held simulates an in-flight teardown/rebuild)
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true)
+	f.clientServer.EXPECT().Port().Return(6789)
+	var hook func(model.DeviceNetworkType)
+	f.deviceService.EXPECT().RegisterHook(mock.Anything).Run(func(h func(model.DeviceNetworkType)) {
+		hook = h
+	}).Return()
+	err := f.Start()
+	assert.Nil(t, err)
+
+	ld := f.LocalDiscovery.(*localDiscovery)
+	ld.refreshMu.Lock()
+
+	// when: the device reports a network change (this call happens on the
+	// DeviceNetworkStateSet RPC path and must stay fast)
+	done := make(chan struct{})
+	go func() {
+		hook(model.DeviceNetworkType_CELLULAR)
+		close(done)
+	}()
+
+	// then
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("network-state hook blocked behind an in-flight refresh")
+	}
+	ld.refreshMu.Unlock()
+	assert.Nil(t, f.Close(context.Background()))
+}
+
 func TestLocalDiscovery_refreshRetriesFailedServerStart(t *testing.T) {
 	// given: the first refresh fails to start the mdns server (port 0 is
 	// rejected by RegisterProxy), simulating a transient start failure
@@ -188,16 +223,20 @@ func TestLocalDiscovery_refreshSurvivesStuckQueryGoroutine(t *testing.T) {
 	assert.Nil(t, err)
 
 	// simulate a query goroutine of the current generation that never exits
-	// (e.g. an entries channel that is never closed)
+	// (e.g. an entries channel that is never closed), and clear the cached
+	// addresses to force a full teardown + rebuild like a network change does
 	ld.m.Lock()
 	ld.closeWait.Add(1)
+	ld.interfacesAddrs = addrs.InterfacesAddrs{}
 	ld.m.Unlock()
 
 	// when: a forced rebuild tears the current generation down
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		ld.onNetworkStateChanged()
+		if err := ld.refreshInterfaces(context.Background()); err != nil {
+			t.Error(err)
+		}
 	}()
 
 	// then: the refresh must not wedge on the stuck goroutine
