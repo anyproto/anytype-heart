@@ -209,3 +209,18 @@ func (mw *Middleware) extractRelationFormat(current *domain.Details, objectStore
 	}
 	return format, nil
 }
+
+func (mw *Middleware) ObjectCleanupSuggestionIgnore(cctx context.Context, req *pb.RpcObjectCleanupSuggestionIgnoreRequest) *pb.RpcObjectCleanupSuggestionIgnoreResponse {
+	response := func(code pb.RpcObjectCleanupSuggestionIgnoreResponseErrorCode, err error) *pb.RpcObjectCleanupSuggestionIgnoreResponse {
+		m := &pb.RpcObjectCleanupSuggestionIgnoreResponse{Error: &pb.RpcObjectCleanupSuggestionIgnoreResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mustService[detailservice.Service](mw).SetCreatedInContextIgnored(cctx, req.ObjectIds, req.Ignored)
+	if err != nil {
+		return response(pb.RpcObjectCleanupSuggestionIgnoreResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectCleanupSuggestionIgnoreResponseError_NULL, nil)
+}

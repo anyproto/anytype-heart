@@ -13,6 +13,7 @@ import (
 	importer "github.com/anyproto/anytype-heart/core/block/import"
 	"github.com/anyproto/anytype-heart/core/block/import/common"
 	"github.com/anyproto/anytype-heart/core/block/object/objectgraph"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/date"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
@@ -754,4 +755,73 @@ func (mw *Middleware) ObjectDateByTimestamp(ctx context.Context, req *pb.RpcObje
 	return &pb.RpcObjectDateByTimestampResponse{
 		Details: details.ToProto(),
 	}
+}
+
+// defaultCleanupKeys is returned when the caller passes no keys.
+var defaultCleanupKeys = []domain.RelationKey{
+	bundle.RelationKeyName,
+	bundle.RelationKeyType,
+	bundle.RelationKeyCreator,
+	bundle.RelationKeyCreatedDate,
+	bundle.RelationKeySnippet,
+	bundle.RelationKeyIconEmoji,
+	bundle.RelationKeyIconImage,
+	bundle.RelationKeyResolvedLayout,
+}
+
+// forcedCleanupKeys are always returned: the client cannot render the forest without them.
+var forcedCleanupKeys = []domain.RelationKey{
+	bundle.RelationKeyId,
+	bundle.RelationKeyCreatedInContext,
+	bundle.RelationKeyResolvedLayout,
+}
+
+func orphanReasonToProto(r objectgc.OrphanReason) pb.RpcObjectCleanupSuggestionsResponseItemReason {
+	switch r {
+	case objectgc.OrphanReasonContextArchived:
+		return pb.RpcObjectCleanupSuggestionsResponseItem_contextArchived
+	case objectgc.OrphanReasonContextDeleted:
+		return pb.RpcObjectCleanupSuggestionsResponseItem_contextDeleted
+	case objectgc.OrphanReasonContextUnlinked:
+		return pb.RpcObjectCleanupSuggestionsResponseItem_contextUnlinked
+	default:
+		return pb.RpcObjectCleanupSuggestionsResponseItem_none
+	}
+}
+
+// cleanupKeys resolves the relation keys to project: the caller's keys (or the default set when the
+// caller passes none), always unioned with the forced keys.
+func cleanupKeys(reqKeys []string) []domain.RelationKey {
+	keys := defaultCleanupKeys
+	if len(reqKeys) > 0 {
+		keys = slice.StringsInto[domain.RelationKey](reqKeys)
+	}
+	keys = append(append([]domain.RelationKey{}, keys...), forcedCleanupKeys...)
+	return lo.Uniq(keys)
+}
+
+func (mw *Middleware) ObjectCleanupSuggestions(cctx context.Context, req *pb.RpcObjectCleanupSuggestionsRequest) *pb.RpcObjectCleanupSuggestionsResponse {
+	response := func(code pb.RpcObjectCleanupSuggestionsResponseErrorCode, items []*pb.RpcObjectCleanupSuggestionsResponseItem, err error) *pb.RpcObjectCleanupSuggestionsResponse {
+		m := &pb.RpcObjectCleanupSuggestionsResponse{Error: &pb.RpcObjectCleanupSuggestionsResponseError{Code: code}, Items: items}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+
+	orphans, err := mustService[objectgc.ObjectGC](mw).ListOrphans(req.SpaceId)
+	if err != nil {
+		return response(pb.RpcObjectCleanupSuggestionsResponseError_UNKNOWN_ERROR, nil, err)
+	}
+
+	keys := cleanupKeys(req.Keys)
+
+	items := lo.Map(orphans, func(it objectgc.OrphanItem, _ int) *pb.RpcObjectCleanupSuggestionsResponseItem {
+		return &pb.RpcObjectCleanupSuggestionsResponseItem{
+			Details: it.Details.CopyOnlyKeys(keys...).ToProto(),
+			IsRoot:  it.IsRoot,
+			Reason:  orphanReasonToProto(it.Reason),
+		}
+	})
+	return response(pb.RpcObjectCleanupSuggestionsResponseError_NULL, items, nil)
 }
