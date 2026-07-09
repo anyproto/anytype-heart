@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "0df340fee18663c4f1584c3116f1da177ae6fcdf96a2493e15c6ca81b7aa50c5"
+const RelationChecksum = "a6d50777e29a2eaeaa9c0631b9a602d4ce6c39f1246657198770fcf528b10e4e"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -143,6 +143,7 @@ const (
 	RelationKeyImageKind                            domain.RelationKey = "imageKind"
 	RelationKeyCreatedInContext                     domain.RelationKey = "createdInContext"
 	RelationKeyCreatedInContextRef                  domain.RelationKey = "createdInContextRef"
+	RelationKeyCreatedInContextIgnored              domain.RelationKey = "createdInContextIgnored"
 	RelationKeyImportType                           domain.RelationKey = "importType"
 	RelationKeyGlobalName                           domain.RelationKey = "globalName"
 	RelationKeySyncStatus                           domain.RelationKey = "syncStatus"
@@ -546,6 +547,20 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInContextIgnored: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Ignore this object's createdInContext link: it is excluded from cleanup suggestions and from automatic context-driven archival",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brcreatedInContextIgnored",
+			Key:              "createdInContextIgnored",
+			MaxCount:         1,
+			Name:             "Created in context ignored",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreatedInContextRef: {

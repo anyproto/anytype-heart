@@ -62,7 +62,7 @@ func (s *service) SetIsFavorite(objectId string, isFavorite bool) error {
 	return nil
 }
 
-func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error {
+func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error {
 	spaceID, err := s.resolver.ResolveSpaceID(objectId)
 	if err != nil {
 		return fmt.Errorf("resolve spaceID: %w", err)
@@ -74,7 +74,7 @@ func (s *service) SetIsArchived(sctx session.Context, ctx context.Context, objec
 	if objectId == spc.DerivedIDs().Archive {
 		return fmt.Errorf("can't archive archive itself")
 	}
-	return s.setIsArchivedForObjects(sctx, ctx, spaceID, []string{objectId}, isArchived)
+	return s.setIsArchivedForObjects(sctx, ctx, spaceID, []string{objectId}, isArchived, skipCascade)
 }
 
 func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
@@ -114,7 +114,7 @@ func (s *service) SetListIsFavorite(objectIds []string, isFavorite bool) error {
 	return resultError
 }
 
-func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error {
+func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool, skipCascade bool) error {
 	objectIdsPerSpace, err := s.partitionObjectIdsBySpaceId(objectIds)
 	if err != nil {
 		return fmt.Errorf("partition object ids by spaces: %w", err)
@@ -125,7 +125,7 @@ func (s *service) SetListIsArchived(sctx session.Context, ctx context.Context, o
 		anySucceed bool
 	)
 	for spaceId, objectIdsOfThisSpace := range objectIdsPerSpace {
-		err = s.setIsArchivedForObjects(sctx, ctx, spaceId, objectIdsOfThisSpace, isArchived)
+		err = s.setIsArchivedForObjects(sctx, ctx, spaceId, objectIdsOfThisSpace, isArchived, skipCascade)
 		if err != nil {
 			log.Error("failed to set isArchived to objects", zap.String("spaceId", spaceId),
 				zap.Strings("objectIds", objectIdsOfThisSpace), zap.Bool("isArchived", isArchived), zap.Error(err))
@@ -213,17 +213,22 @@ func (s *service) partitionObjectIdsBySpaceId(objectIds []string) (map[string][]
 	return res, nil
 }
 
-func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Context, spaceId string, objectIds []string, isArchived bool) error {
+func (s *service) setIsArchivedForObjects(sctx session.Context, ctx context.Context, spaceId string, objectIds []string, isArchived bool, skipCascade bool) error {
+	if skipCascade {
+		// pure archive — no orphan cascade (no file auto-archive, no events); reuse the NoGC path.
+		return s.setIsArchivedForObjectsNoGC(ctx, spaceId, objectIds, isArchived)
+	}
+
 	spc, err := s.spaceService.Get(context.Background(), spaceId)
 	if err != nil {
 		return fmt.Errorf("get space: %w", err)
 	}
 
-	gcIds := s.triggerGCOnArchive(spaceId, objectIds, isArchived)
-	s.appendGCEvent(sctx, gcIds, objectIds, isArchived)
+	gcFiles, candidatesByContext := s.triggerGCOnArchive(spaceId, objectIds, isArchived)
+	s.appendGCEvents(sctx, gcFiles, candidatesByContext, objectIds, isArchived)
 
-	// Merge explicit IDs and GC-collected children so they are all archived in one operation.
-	allIds := append(objectIds, gcIds...)
+	// Merge explicit IDs and GC-collected files so they are all archived in one operation.
+	allIds := append(objectIds, gcFiles...)
 
 	return cache.Do(s.objectGetter, spc.DerivedIDs().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(blockcollection.Collection)
@@ -317,40 +322,70 @@ func (s *service) modifyArchiveLinks(ctx context.Context, coll blockcollection.C
 // triggerGCOnArchive runs GC for all children of objectIds that have no other backlinks.
 // It returns the IDs of objects that were archived or restored; the caller is responsible
 // for emitting events and filtering explicit IDs from the session context.
-func (s *service) triggerGCOnArchive(spaceId string, objectIds []string, isArchived bool) []string {
+// triggerGCOnArchive runs GC for each objectId and returns the aggregated level-1 files to
+// archive plus, keyed by originating object, the orphan candidates to surface to the user.
+func (s *service) triggerGCOnArchive(spaceId string, objectIds []string, isArchived bool) (files []string, candidatesByContext map[string][]string) {
 	if len(objectIds) == 0 {
-		return nil
+		return nil, nil
 	}
-	var allAffected []string
+	candidatesByContext = make(map[string][]string)
 	for _, objId := range objectIds {
-		ids, err := s.objectGC.CheckObjectsOnObjectArchived(spaceId, objId, isArchived)
+		res, err := s.objectGC.CheckObjectsOnObjectArchived(spaceId, objId, isArchived)
 		if err != nil {
 			log.Error("GC failed for archived object", zap.String("objectId", objId), zap.Error(err))
 			continue
 		}
-		allAffected = append(allAffected, ids...)
+		files = append(files, res.Files...)
+		if len(res.Candidates) > 0 {
+			candidatesByContext[objId] = res.Candidates
+		}
 	}
-	return allAffected
+	return files, candidatesByContext
 }
 
-// appendGCEvent emits a single auto-archive or auto-restore event for gcIds into sctx,
-// then strips explicitIds from all GC events so user-requested objects are not double-reported.
-func (s *service) appendGCEvent(sctx session.Context, gcIds []string, explicitIds []string, isArchived bool) {
-	if sctx != nil && len(gcIds) > 0 {
-		msgs := sctx.GetMessages()
+// appendGCEvents emits the file auto-archive/restore event plus one CleanupSuggestion event per
+// originating context, then strips explicitIds so user-requested objects are not double-reported.
+func (s *service) appendGCEvents(sctx session.Context, gcFiles []string, candidatesByContext map[string][]string, explicitIds []string, isArchived bool) {
+	if sctx == nil {
+		return
+	}
+	msgs := sctx.GetMessages()
+	changed := false
+	if len(gcFiles) > 0 {
 		if isArchived {
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectAutoArchive{
-					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: gcIds},
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: gcFiles},
 				},
 			})
 		} else {
 			msgs = append(msgs, &pb.EventMessage{
 				Value: &pb.EventMessageValueOfObjectAutoRestore{
-					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: gcIds},
+					ObjectAutoRestore: &pb.EventObjectAutoRestore{ObjectIds: gcFiles},
 				},
 			})
 		}
+		changed = true
+	}
+	// CleanupSuggestion is only emitted on the archive direction.
+	if isArchived {
+		for contextId, candidates := range candidatesByContext {
+			if len(candidates) == 0 {
+				continue
+			}
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
+						ObjectIds: candidates,
+						ContextId: contextId,
+						Trigger:   pb.EventObjectCleanupSuggestion_archive,
+					},
+				},
+			})
+			changed = true
+		}
+	}
+	if changed {
 		sctx.SetMessages(sctx.ObjectID(), msgs)
 	}
 	objectgc.FilterExplicitIds(sctx, explicitIds)
@@ -377,4 +412,33 @@ func (s *service) validateHomepage(spc clientspace.Space, homepageValue domain.V
 		return fmt.Errorf("homepage object %s not found in space %s", homepage, spc.Id())
 	}
 	return nil
+}
+
+// SetCreatedInContextIgnored excludes objects from cleanup suggestions and from automatic
+// context-driven archival, by ignoring their createdInContext link. The detail is written directly on
+// the state with a non-user change type, which skips the lastModifiedDate bump (SetLastModified is
+// only called for domain.ChangeTypeUserChange) while still producing a real, syncing CRDT change.
+func (s *service) SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error {
+	var (
+		resultErr  error
+		anySucceed bool
+	)
+	for _, objectId := range objectIds {
+		err := cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
+			st := sb.NewState()
+			st.SetDetail(bundle.RelationKeyCreatedInContextIgnored, domain.Bool(ignored))
+			st.SetChangeType(domain.ChangeTypeCreatedInContext)
+			return sb.Apply(st)
+		})
+		if err != nil {
+			log.Error("failed to set createdInContextIgnored", zap.String("objectId", objectId), zap.Error(err))
+			resultErr = errors.Join(resultErr, fmt.Errorf("set createdInContextIgnored on %s: %w", objectId, err))
+			continue
+		}
+		anySucceed = true
+	}
+	if anySucceed {
+		return nil
+	}
+	return resultErr
 }

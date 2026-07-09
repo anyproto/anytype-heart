@@ -1662,17 +1662,35 @@ func (sb *smartBlock) performGCOnLinksRemoval(sctx session.Context, spaceId, con
 	if len(removedLinks) == 0 {
 		return
 	}
-	archivedIds, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
+	res, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
 	if err != nil {
 		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}
-	if sctx != nil && len(archivedIds) > 0 {
+	if sctx != nil {
 		msgs := sctx.GetMessages()
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectAutoArchive{
-				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: archivedIds},
-			},
-		})
-		sctx.SetMessages(contextId, msgs)
+		changed := false
+		if len(res.Files) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoArchive{
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: res.Files},
+				},
+			})
+			changed = true
+		}
+		if len(res.Candidates) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
+						ObjectIds: res.Candidates,
+						ContextId: contextId,
+						Trigger:   pb.EventObjectCleanupSuggestion_linkRemoval,
+					},
+				},
+			})
+			changed = true
+		}
+		if changed {
+			sctx.SetMessages(contextId, msgs)
+		}
 	}
 }

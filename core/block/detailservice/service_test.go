@@ -14,11 +14,14 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
+	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
 	"github.com/anyproto/anytype-heart/core/block/simple"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files/fileobject/mock_fileobject"
+	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -39,14 +42,133 @@ func (f *fileGCStub) Name() string                    { return "fileGCStub" }
 func (f *fileGCStub) Init(a *app.App) error           { return nil }
 func (f *fileGCStub) Run(ctx context.Context) error   { return nil }
 func (f *fileGCStub) Close(ctx context.Context) error { return nil }
-func (f *fileGCStub) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) ([]string, error) {
-	return nil, nil
+func (f *fileGCStub) ArchiveOrphansOnLinksRemoval(spaceId, contextId string, removedLinks []string, skipBin bool, onlyBlockIds []string) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
-func (f *fileGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) ([]string, error) {
-	return nil, nil
+func (f *fileGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{}, nil
 }
 func (f *fileGCStub) RestoreOrphansOnLinksAdded(spaceId, contextId string, addedLinks []string) ([]string, error) {
 	return nil, nil
+}
+
+func (f *fileGCStub) ListOrphans(spaceId string) ([]objectgc.OrphanItem, error) {
+	return nil, nil
+}
+
+// recordingGCStub records whether the GC was consulted and would otherwise produce orphans.
+type recordingGCStub struct {
+	fileGCStub
+	checkCalled bool
+}
+
+func (r *recordingGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (objectgc.OrphanCandidates, error) {
+	r.checkCalled = true
+	return objectgc.OrphanCandidates{Files: []string{"f1"}, Candidates: []string{"c1"}}, nil
+}
+
+// perContextGCStub returns candidates keyed to the object being archived, so per-context event
+// routing can be verified.
+type perContextGCStub struct{ fileGCStub }
+
+func (p *perContextGCStub) CheckObjectsOnObjectArchived(spaceId, objectId string, isArchived bool) (objectgc.OrphanCandidates, error) {
+	return objectgc.OrphanCandidates{Candidates: []string{"c-" + objectId}}, nil
+}
+
+func TestSetIsArchived_SkipCascade_NoGC(t *testing.T) {
+	binId := "bin"
+	fx := newFixture(t)
+	gc := &recordingGCStub{}
+	fx.Service.(*service).objectGC = gc
+	sb := smarttest.New(binId)
+	sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+	fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+		{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+	})
+	fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		if objectId == binId {
+			return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
+		}
+		return smarttest.New(objectId), nil
+	})
+
+	// when: archive with skipCascade=true
+	err := fx.SetIsArchived(nil, context.Background(), "obj1", true, true)
+
+	// then: object archived, but GC was never consulted (no cascade)
+	require.NoError(t, err)
+	assert.Len(t, sb.Blocks(), 2)
+	assert.False(t, gc.checkCalled, "GC must not run when skipCascade=true")
+}
+
+func TestSetIsArchived_EmitsCleanupSuggestion(t *testing.T) {
+	binId := "bin"
+	fx := newFixture(t)
+	fx.Service.(*service).objectGC = &recordingGCStub{}
+	sb := smarttest.New(binId)
+	sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+	fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+		{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+	})
+	fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		if objectId == binId {
+			return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
+		}
+		return smarttest.New(objectId), nil
+	})
+	sctx := session.NewContext(session.WithSession("tok"))
+
+	// when: archive with cascade enabled
+	err := fx.SetIsArchived(sctx, context.Background(), "obj1", true, false)
+	require.NoError(t, err)
+
+	// then: a CleanupSuggestion event is emitted with the candidates and originating context
+	var found *pb.EventObjectCleanupSuggestion
+	for _, m := range sctx.GetMessages() {
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectCleanupSuggestion); ok {
+			found = v.ObjectCleanupSuggestion
+		}
+	}
+	require.NotNil(t, found)
+	assert.Equal(t, "obj1", found.ContextId)
+	assert.Equal(t, pb.EventObjectCleanupSuggestion_archive, found.Trigger)
+	assert.ElementsMatch(t, []string{"c1"}, found.ObjectIds)
+}
+
+func TestSetListIsArchived_EmitsPerContextCleanupSuggestion(t *testing.T) {
+	binId := "bin"
+	fx := newFixture(t)
+	fx.Service.(*service).objectGC = &perContextGCStub{}
+	sb := smarttest.New(binId)
+	sb.AddBlock(simple.New(&model.Block{Id: binId, ChildrenIds: []string{}}))
+	fx.store.AddObjects(t, spaceId, []objectstore.TestObject{
+		{bundle.RelationKeyId: domain.String("obj1"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+		{bundle.RelationKeyId: domain.String("obj2"), bundle.RelationKeySpaceId: domain.String(spaceId)},
+	})
+	fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		if objectId == binId {
+			return editor.NewArchive(sb, fx.store.SpaceIndex(spaceId)), nil
+		}
+		return smarttest.New(objectId), nil
+	})
+	sctx := session.NewContext(session.WithSession("tok"))
+
+	// when: archive two objects in one batch
+	err := fx.SetListIsArchived(sctx, context.Background(), []string{"obj1", "obj2"}, true, false)
+	require.NoError(t, err)
+
+	// then: one CleanupSuggestion event per originating context, each with its own candidates
+	byContext := map[string][]string{}
+	for _, m := range sctx.GetMessages() {
+		if v, ok := m.Value.(*pb.EventMessageValueOfObjectCleanupSuggestion); ok {
+			byContext[v.ObjectCleanupSuggestion.ContextId] = v.ObjectCleanupSuggestion.ObjectIds
+		}
+	}
+	assert.Equal(t, []string{"c-obj1"}, byContext["obj1"])
+	assert.Equal(t, []string{"c-obj2"}, byContext["obj2"])
 }
 
 type fixture struct {
@@ -413,7 +535,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -437,7 +559,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true, false)
 
 		// then
 		assert.Error(t, err)
@@ -462,7 +584,7 @@ func TestService_SetIsArchived(t *testing.T) {
 		fx.space.EXPECT().DerivedIDs().Return(threads.DerivedSmartblockIds{Archive: binId})
 
 		// when
-		err := fx.SetIsArchived(nil, context.Background(), "obj1", true)
+		err := fx.SetIsArchived(nil, context.Background(), "obj1", true, false)
 
 		// then
 		assert.Error(t, err)
@@ -494,7 +616,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -522,7 +644,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, false)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, false, false)
 
 		// then
 		assert.NoError(t, err)
@@ -547,7 +669,7 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true, false)
 
 		// then
 		assert.NoError(t, err)
@@ -565,9 +687,52 @@ func TestService_SetListIsArchived(t *testing.T) {
 		})
 
 		// when
-		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true)
+		err := fx.SetListIsArchived(nil, context.Background(), []string{"obj1", "obj2", "obj3"}, true, false)
 
 		// then
 		assert.Error(t, err)
 	})
+}
+
+// -- createdInContextIgnored --
+
+// applySpy wraps a smarttest block to capture the change type of the state passed to Apply.
+type applySpy struct {
+	*smarttest.SmartTest
+	lastChangeType domain.ChangeType
+}
+
+func (a *applySpy) Apply(s *state.State, flags ...smartblock.ApplyFlag) error {
+	a.lastChangeType = s.GetChangeType()
+	return a.SmartTest.Apply(s, flags...)
+}
+
+func TestSetCreatedInContextIgnored_SetsDetailWithNonUserChangeType(t *testing.T) {
+	fx := newFixture(t)
+	spy := &applySpy{SmartTest: smarttest.New("obj1")}
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		return spy, nil
+	})
+
+	// when
+	err := fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, true)
+
+	// then: the flag is set...
+	require.NoError(t, err)
+	assert.True(t, spy.NewState().Details().GetBool(bundle.RelationKeyCreatedInContextIgnored))
+	// ...via a non-user change type, which is what makes smartblock.Apply skip SetLastModified
+	assert.Equal(t, domain.ChangeTypeCreatedInContext, spy.lastChangeType)
+}
+
+func TestSetCreatedInContextIgnored_Reversible(t *testing.T) {
+	fx := newFixture(t)
+	spy := &applySpy{SmartTest: smarttest.New("obj1")}
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		return spy, nil
+	})
+
+	require.NoError(t, fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, true))
+	require.NoError(t, fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, false))
+
+	assert.False(t, spy.NewState().Details().GetBool(bundle.RelationKeyCreatedInContextIgnored))
 }
