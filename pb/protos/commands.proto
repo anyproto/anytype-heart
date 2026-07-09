@@ -2961,6 +2961,68 @@ message Rpc {
             }
         }
 
+        message CleanupSuggestions {
+            message Request {
+                string spaceId = 1;
+                // relation keys to return; empty => a default set.
+                // id, createdInContext and resolvedLayout are always included.
+                repeated string keys = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated Item items = 2;
+
+                message Item {
+                    google.protobuf.Struct details = 1;
+                    // true for forest roots (createdInContext parent is outside the orphan set)
+                    bool isRoot = 2;
+                    // set on roots only; none for descendants
+                    Reason reason = 3;
+
+                    enum Reason {
+                        none = 0;
+                        contextArchived = 1;
+                        contextDeleted = 2;
+                        contextUnlinked = 3;
+                    }
+                }
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
+        message CleanupSuggestionIgnore {
+            message Request {
+                repeated string objectIds = 1;
+                bool ignored = 2;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
         message ListSetIsFavorite {
             message Request {
                 repeated string objectIds = 1;

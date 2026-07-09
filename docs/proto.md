@@ -971,6 +971,15 @@
     - [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request)
     - [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response)
     - [Rpc.Object.ChatAdd.Response.Error](#anytype-Rpc-Object-ChatAdd-Response-Error)
+    - [Rpc.Object.CleanupSuggestionIgnore](#anytype-Rpc-Object-CleanupSuggestionIgnore)
+    - [Rpc.Object.CleanupSuggestionIgnore.Request](#anytype-Rpc-Object-CleanupSuggestionIgnore-Request)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response.Error](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error)
+    - [Rpc.Object.CleanupSuggestions](#anytype-Rpc-Object-CleanupSuggestions)
+    - [Rpc.Object.CleanupSuggestions.Request](#anytype-Rpc-Object-CleanupSuggestions-Request)
+    - [Rpc.Object.CleanupSuggestions.Response](#anytype-Rpc-Object-CleanupSuggestions-Response)
+    - [Rpc.Object.CleanupSuggestions.Response.Error](#anytype-Rpc-Object-CleanupSuggestions-Response-Error)
+    - [Rpc.Object.CleanupSuggestions.Response.Item](#anytype-Rpc-Object-CleanupSuggestions-Response-Item)
     - [Rpc.Object.Close](#anytype-Rpc-Object-Close)
     - [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request)
     - [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response)
@@ -1745,6 +1754,9 @@
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
     - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.ChatAdd.Response.Error.Code](#anytype-Rpc-Object-ChatAdd-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestions.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestions.Response.Item.Reason](#anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
     - [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code)
     - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
@@ -2454,6 +2466,8 @@
 | ObjectListDuplicate | [Rpc.Object.ListDuplicate.Request](#anytype-Rpc-Object-ListDuplicate-Request) | [Rpc.Object.ListDuplicate.Response](#anytype-Rpc-Object-ListDuplicate-Response) |  |
 | ObjectListDelete | [Rpc.Object.ListDelete.Request](#anytype-Rpc-Object-ListDelete-Request) | [Rpc.Object.ListDelete.Response](#anytype-Rpc-Object-ListDelete-Response) |  |
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response) |  |
+| ObjectCleanupSuggestions | [Rpc.Object.CleanupSuggestions.Request](#anytype-Rpc-Object-CleanupSuggestions-Request) | [Rpc.Object.CleanupSuggestions.Response](#anytype-Rpc-Object-CleanupSuggestions-Response) |  |
+| ObjectCleanupSuggestionIgnore | [Rpc.Object.CleanupSuggestionIgnore.Request](#anytype-Rpc-Object-CleanupSuggestionIgnore-Request) | [Rpc.Object.CleanupSuggestionIgnore.Response](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response) |  |
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectListSetObjectType | [Rpc.Object.ListSetObjectType.Request](#anytype-Rpc-Object-ListSetObjectType-Request) | [Rpc.Object.ListSetObjectType.Response](#anytype-Rpc-Object-ListSetObjectType-Response) |  |
 | ObjectListSetDetails | [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request) | [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response) |  |
@@ -16713,6 +16727,138 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Request"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+| ignored | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CleanupSuggestionIgnore.Response.Error](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions"></a>
+
+### Rpc.Object.CleanupSuggestions
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Request"></a>
+
+### Rpc.Object.CleanupSuggestions.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| keys | [string](#string) | repeated | relation keys to return; empty =&gt; a default set. id, createdInContext and resolvedLayout are always included. |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response"></a>
+
+### Rpc.Object.CleanupSuggestions.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CleanupSuggestions.Response.Error](#anytype-Rpc-Object-CleanupSuggestions-Response-Error) |  |  |
+| items | [Rpc.Object.CleanupSuggestions.Response.Item](#anytype-Rpc-Object-CleanupSuggestions-Response-Item) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Error"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CleanupSuggestions.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Item"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Item
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| isRoot | [bool](#bool) |  | true for forest roots (createdInContext parent is outside the orphan set) |
+| reason | [Rpc.Object.CleanupSuggestions.Response.Item.Reason](#anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason) |  | set on roots only; none for descendants |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Close"></a>
 
 ### Rpc.Object.Close
@@ -27891,6 +28037,46 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Item.Reason
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| none | 0 |  |
+| contextArchived | 1 |  |
+| contextDeleted | 2 |  |
+| contextUnlinked | 3 |  |
 
 
 
