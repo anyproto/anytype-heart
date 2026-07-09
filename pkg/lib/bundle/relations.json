@@ -1365,6 +1365,16 @@
     "source": "details"
   },
   {
+    "description": "Ignore this object's createdInContext link: it is excluded from cleanup suggestions and from automatic context-driven archival",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "createdInContextIgnored",
+    "maxCount": 1,
+    "name": "Created in context ignored",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Import type, used to create object (notion, md and etc)",
     "format": "number",
     "hidden": false,

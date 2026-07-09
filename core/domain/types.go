@@ -48,6 +48,7 @@ const (
 	ChangeTypeIndexing
 	ChangeTypeSystemObjectReviserMigration
 	ChangeTypeDescriptionToggle
+	ChangeTypeCreatedInContext
 )
 
 func (c ChangeType) String() string {
@@ -74,6 +75,8 @@ func (c ChangeType) String() string {
 		return "SystemObjectReviserMigration"
 	case ChangeTypeDescriptionToggle:
 		return "DescriptionToggle"
+	case ChangeTypeCreatedInContext:
+		return "CreatedInContext"
 	default:
 		return "Unknown"
 	}
