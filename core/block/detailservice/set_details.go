@@ -413,3 +413,32 @@ func (s *service) validateHomepage(spc clientspace.Space, homepageValue domain.V
 	}
 	return nil
 }
+
+// SetCreatedInContextIgnored excludes objects from cleanup suggestions and from automatic
+// context-driven archival, by ignoring their createdInContext link. The detail is written directly on
+// the state with a non-user change type, which skips the lastModifiedDate bump (SetLastModified is
+// only called for domain.ChangeTypeUserChange) while still producing a real, syncing CRDT change.
+func (s *service) SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error {
+	var (
+		resultErr  error
+		anySucceed bool
+	)
+	for _, objectId := range objectIds {
+		err := cache.Do(s.objectGetter, objectId, func(sb smartblock.SmartBlock) error {
+			st := sb.NewState()
+			st.SetDetail(bundle.RelationKeyCreatedInContextIgnored, domain.Bool(ignored))
+			st.SetChangeType(domain.ChangeTypeCreatedInContext)
+			return sb.Apply(st)
+		})
+		if err != nil {
+			log.Error("failed to set createdInContextIgnored", zap.String("objectId", objectId), zap.Error(err))
+			resultErr = errors.Join(resultErr, fmt.Errorf("set createdInContextIgnored on %s: %w", objectId, err))
+			continue
+		}
+		anySucceed = true
+	}
+	if anySucceed {
+		return nil
+	}
+	return resultErr
+}

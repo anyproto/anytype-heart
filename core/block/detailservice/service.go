@@ -65,6 +65,10 @@ type Service interface {
 	// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
 	// Used by callers that must act on GC results without re-entering the GC loop.
 	SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error
+
+	// SetCreatedInContextIgnored detaches (or re-attaches) an object's lifecycle from its creation context.
+	// Written with ChangeTypeCreatedInContext so it syncs without bumping lastModifiedDate.
+	SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error
 }
 
 func New() Service {

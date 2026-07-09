@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver/mock_idresolver"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -691,4 +692,47 @@ func TestService_SetListIsArchived(t *testing.T) {
 		// then
 		assert.Error(t, err)
 	})
+}
+
+// -- createdInContextIgnored --
+
+// applySpy wraps a smarttest block to capture the change type of the state passed to Apply.
+type applySpy struct {
+	*smarttest.SmartTest
+	lastChangeType domain.ChangeType
+}
+
+func (a *applySpy) Apply(s *state.State, flags ...smartblock.ApplyFlag) error {
+	a.lastChangeType = s.GetChangeType()
+	return a.SmartTest.Apply(s, flags...)
+}
+
+func TestSetCreatedInContextIgnored_SetsDetailWithNonUserChangeType(t *testing.T) {
+	fx := newFixture(t)
+	spy := &applySpy{SmartTest: smarttest.New("obj1")}
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		return spy, nil
+	})
+
+	// when
+	err := fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, true)
+
+	// then: the flag is set...
+	require.NoError(t, err)
+	assert.True(t, spy.NewState().Details().GetBool(bundle.RelationKeyCreatedInContextIgnored))
+	// ...via a non-user change type, which is what makes smartblock.Apply skip SetLastModified
+	assert.Equal(t, domain.ChangeTypeCreatedInContext, spy.lastChangeType)
+}
+
+func TestSetCreatedInContextIgnored_Reversible(t *testing.T) {
+	fx := newFixture(t)
+	spy := &applySpy{SmartTest: smarttest.New("obj1")}
+	fx.getter.EXPECT().GetObject(mock.Anything, mock.Anything).RunAndReturn(func(_ context.Context, objectId string) (smartblock.SmartBlock, error) {
+		return spy, nil
+	})
+
+	require.NoError(t, fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, true))
+	require.NoError(t, fx.SetCreatedInContextIgnored(context.Background(), []string{"obj1"}, false))
+
+	assert.False(t, spy.NewState().Details().GetBool(bundle.RelationKeyCreatedInContextIgnored))
 }

@@ -614,6 +614,54 @@ func (_c *MockService_Run_Call) RunAndReturn(run func(context.Context) error) *M
 	return _c
 }
 
+// SetCreatedInContextIgnored provides a mock function with given fields: ctx, objectIds, ignored
+func (_m *MockService) SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error {
+	ret := _m.Called(ctx, objectIds, ignored)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SetCreatedInContextIgnored")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, []string, bool) error); ok {
+		r0 = rf(ctx, objectIds, ignored)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockService_SetCreatedInContextIgnored_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetCreatedInContextIgnored'
+type MockService_SetCreatedInContextIgnored_Call struct {
+	*mock.Call
+}
+
+// SetCreatedInContextIgnored is a helper method to define mock.On call
+//   - ctx context.Context
+//   - objectIds []string
+//   - ignored bool
+func (_e *MockService_Expecter) SetCreatedInContextIgnored(ctx interface{}, objectIds interface{}, ignored interface{}) *MockService_SetCreatedInContextIgnored_Call {
+	return &MockService_SetCreatedInContextIgnored_Call{Call: _e.mock.On("SetCreatedInContextIgnored", ctx, objectIds, ignored)}
+}
+
+func (_c *MockService_SetCreatedInContextIgnored_Call) Run(run func(ctx context.Context, objectIds []string, ignored bool)) *MockService_SetCreatedInContextIgnored_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].([]string), args[2].(bool))
+	})
+	return _c
+}
+
+func (_c *MockService_SetCreatedInContextIgnored_Call) Return(_a0 error) *MockService_SetCreatedInContextIgnored_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockService_SetCreatedInContextIgnored_Call) RunAndReturn(run func(context.Context, []string, bool) error) *MockService_SetCreatedInContextIgnored_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SetDetails provides a mock function with given fields: ctx, objectId, details
 func (_m *MockService) SetDetails(ctx session.Context, objectId string, details []domain.Detail) error {
 	ret := _m.Called(ctx, objectId, details)
