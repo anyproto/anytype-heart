@@ -16,6 +16,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
+	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
 const ApiVersion = "2025-11-08"
@@ -26,6 +27,7 @@ var (
 	ErrMissingAuthorizationHeader = errors.New("missing authorization header")
 	ErrInvalidAuthorizationHeader = errors.New("invalid authorization header format")
 	ErrInvalidApiKey              = errors.New("invalid api key")
+	ErrForbiddenOrigin            = errors.New("request origin is not allowed")
 )
 
 // ensureMetadataHeader is a middleware that ensures the metadata header is set.
@@ -33,6 +35,25 @@ func ensureMetadataHeader() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Anytype-Version", ApiVersion)
 		c.Next()
+	}
+}
+
+// ensureTrustedOrigin rejects browser-driven cross-origin requests.
+//
+// The API serves no CORS headers, so a site cannot read a response, but a
+// cross-origin "simple" request still reaches the handler: gin's ShouldBindJSON
+// parses the body whatever the Content-Type, so a form-style POST with
+// Content-Type: text/plain skips the preflight and lands on the unauthenticated
+// /v1/auth routes. This middleware stops the request instead.
+func ensureTrustedOrigin(policy *localorigin.Policy) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if policy.AllowRequest(c.Request) {
+			c.Next()
+			return
+		}
+		log.Warnf("rejected api request from untrusted origin %q (host %q)", c.GetHeader("Origin"), c.Request.Host)
+		apiErr := util.CodeToApiError(http.StatusForbidden, ErrForbiddenOrigin.Error())
+		c.AbortWithStatusJSON(http.StatusForbidden, apiErr)
 	}
 }
 
