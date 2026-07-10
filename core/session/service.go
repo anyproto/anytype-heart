@@ -14,7 +14,10 @@ Scope: global
 ## Documentation
 Challenge flow: StartNewChallenge generates 4-digit code displayed to user ->
 client calls SolveChallenge with code -> on success, creates session with requested scope.
-Limited to 5 tries per challenge, 50 concurrent challenges globally.
+Limited to 5 tries per challenge and 50 challenge requests per app run. Wrong
+verifications are also counted across the whole run: after 20 the flow locks
+until the process restarts, so fresh codes cannot be cycled to brute-force the
+code. A correct verification resets both counters.
 Full scope (AccountAuth_Full) not available via challenge - only Limited and JsonAPI.
 */
 
