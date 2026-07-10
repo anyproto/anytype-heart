@@ -92,6 +92,7 @@ type fakePersister struct {
 	delay     time.Duration
 	delayKeys map[string]time.Duration
 	failKeys  map[string]error
+	panicKeys map[string]bool
 	journal   *persist.Journal
 	// fileReady simulates reference resolution: objects whose key starts
 	// with "ref-" block until the file object's persist closes the channel
@@ -100,6 +101,10 @@ type fakePersister struct {
 }
 
 func (f *fakePersister) Persist(ctx context.Context, o *importv2.Object, target persist.Target, report func(importv2.Issue)) (persist.Outcome, error) {
+	// Fires outside the mutex: a recovered panic must not strand the lock.
+	if f.panicKeys[o.SourceKey] {
+		panic("injected persist panic: " + o.SourceKey)
+	}
 	if f.fileReady != nil {
 		if o.File != nil {
 			f.mu.Lock()
@@ -176,6 +181,31 @@ func (c *scriptConverter) Convert(ctx context.Context, sink importv2.Sink) (impo
 		}
 	}
 	return c.rootSpec, nil
+}
+
+// panicConvertConverter emits its objects, then panics inside Convert.
+type panicConvertConverter struct {
+	scriptConverter
+}
+
+func (c *panicConvertConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	if _, err := c.scriptConverter.Convert(ctx, sink); err != nil {
+		return importv2.RootSpec{}, err
+	}
+	panic("injected converter panic")
+}
+
+// panicEnumConverter panics during the identity pass (main goroutine).
+type panicEnumConverter struct{}
+
+func (c *panicEnumConverter) Name() string { return "panic-enum" }
+
+func (c *panicEnumConverter) EnumerateIdentities(ctx context.Context, yield func(importv2.IdentityClaim) error) error {
+	panic("injected enumerate panic")
+}
+
+func (c *panicEnumConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	return importv2.RootSpec{}, nil
 }
 
 type fakeCollectionFactory struct {
@@ -413,6 +443,81 @@ func TestRunMemoryBound(t *testing.T) {
 		bound := int64(2*channelCapacity + workerCount + 1)
 		assert.LessOrEqual(t, maxInFlight.Load(), bound,
 			"reintroducing collect-then-process would blow this bound")
+	})
+}
+
+func TestPanicFirewall(t *testing.T) {
+	t.Run("persist panic fails one object, run continues", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		fx.persister.panicKeys = map[string]bool{"bad.md": true}
+		converter := &scriptConverter{objects: []*importv2.Object{
+			pageObj("a.md", false), pageObj("bad.md", false), pageObj("c.md", false),
+		}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, int64(2), result.Created)
+		assert.Equal(t, int64(1), result.Failed)
+		require.NotEmpty(t, result.Issues)
+		issue := result.Issues[0]
+		assert.Equal(t, importv2.IssueInvariant, issue.Code)
+		assert.Equal(t, "bad.md", issue.SourceKey)
+		assert.Contains(t, issue.Error(), "injected persist panic")
+	})
+
+	t.Run("persist panic on a file still completes the future", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		fx.persister.panicKeys = map[string]bool{"img.png": true}
+		// A page rides along: file objects are never claimed in pass 1, so a
+		// file-only source would trip the noObjects gate before the stream.
+		converter := &scriptConverter{objects: []*importv2.Object{pageObj("a.md", false), fileObj("img.png")}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, int64(1), result.Failed)
+		state := fx.identity.files["img.png"]
+		require.NotNil(t, state)
+		select {
+		case <-state.done:
+			require.Error(t, state.err, "waiters must observe the failure, not hang")
+		default:
+			t.Fatal("file future was not completed after a persist panic")
+		}
+	})
+
+	t.Run("converter panic aborts with an invariant issue and compensates", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		converter := &panicConvertConverter{scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+		assert.Equal(t, importv2.IssueInvariant, issue.Code)
+		assert.Contains(t, issue.Error(), "injected converter panic")
+		assert.Equal(t, 1, result.Compensated, "the already-created object must be compensated")
+	})
+
+	t.Run("identity-pass panic returns a fatal result instead of crashing", func(t *testing.T) {
+		// when
+		result := Run(context.Background(), importv2.Request{}, &panicEnumConverter{}, newEngineFixture().deps)
+
+		// then
+		require.Error(t, result.Err)
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+		assert.Equal(t, importv2.IssueInvariant, issue.Code)
+		assert.Contains(t, issue.Error(), "injected enumerate panic")
 	})
 }
 

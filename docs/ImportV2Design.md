@@ -545,7 +545,8 @@ Proposed defaults — flag disagreements in review:
 | Date ranges / time zones | end + tz dropped; malformed → epoch 0 | apply tz; store start; end → companion "<name> (end)" relation; malformed → Warning, detail omitted (never epoch-0) |
 | Date formulas | dropped | import as date detail |
 | `verification` property | dropped | skipped + Warning (no Anytype analogue) |
-| People (`created_by`, mentions…) | name strings / dangling raw ids | name strings kept; dangling ids never emitted (skip + Warning) |
+| Notion `select` (single-choice) | tag relation — pick-one cardinality lost | **status** relation (single-select preserved; `multi_select` stays tag) — decision §13.8, implementation §16 item 6 |
+| People (`created_by`, mentions…) | name strings / dangling raw ids | name strings kept; dangling ids never emitted (skip + Warning). Property maps to tag-of-names for now; an object-format mapping to imported member pages is a possible later improvement |
 | Rollup arrays | pseudo-tag with unbacked values | joined longtext + Warning (no unbacked tag values) |
 | Brown color | silently → default | nearest supported color + Warning |
 | Block/media captions | dropped (except bookmark) | emitted as description text under the block |
@@ -764,6 +765,29 @@ Plus: two `Config` bools, one guarded branch in `core/object.go`, one `Register(
    package-name clash with `pkg/lib/pb/model`); the app component registered in bootstrap lives in
    `importv2/adapter`. Subpackages import the root, never each other's internals.
 
+Added 2026-07-11 (Linear-insights review, `docs/ImportV2LinearInsights.json` — see §16):
+
+7. **Issue-ledger user surface = import report object.** When a run finishes with issues, create one
+   Anytype object in the target space: a table-block summary (count by code × severity) plus a
+   toggleable per-issue list grouped by code (details in §16 item 1). The report **page is the primary
+   UX surface** — an ephemeral popup/progress bar is the wrong medium for per-object detail; the
+   client renders it with a discard button. Import API changes are sanctioned (2026-07-11: "client
+   will adopt the new api"): `NotificationImport` + `EventImportFinish` gain `reportObjectId` and
+   issue counts so clients can navigate to the report. One structured end-of-run log line records
+   counts by code for telemetry.
+8. **Select cardinality — UX over v1 parity.** v1 parity is explicitly *not* a goal where it degrades
+   UX. Notion single `select` → **status** format (pick-one preserved); `multi_select` stays tag.
+   §11.3 row updated; implementation tracked in §16 item 6.
+9. **Export lossiness is out of scope.** The round-trip-fidelity issue cluster (63 issues: embeds,
+   bookmarks, inline sets, option colors flattened by markdown export) is an *exporter* problem; the
+   export rewrite (lossless snapshot channel + total, registry-driven markdown renderer) is a separate
+   issue. v2's `anytype-export` flavour maximizes what import can recover but cannot restore data the
+   exporter never wrote.
+10. **PB-phase ground rule.** Destination-owned identity and configuration — the space's name/icon,
+    existing types and their views — are **immutable** to a normal import; mutable only under an
+    explicit, separately requested full-restore mode. Binding for the future pb converter (today's
+    persist already rejects Workspace/Widget snapshots).
+
 ## 14. Phased plan
 
 - **Phase 1 — engine core + Markdown** (★ pause): scaffolding (model/engine/identity/resolve/persist/
@@ -778,6 +802,8 @@ Plus: two `Config` bools, one guarded branch in `core/object.go`, one `Register(
 - **Phase 4 — markdown flavour profiles** (§11.4): flavour seam + detection (pure refactor) → land the
   2026-07-07 review deltas on the seam (notion field-blocks, `Collection:` store, emoji/link/collision
   fixes) → new flavours (Logseq, Bear, Joplin) one profile file at a time.
+- **Phase 5 — hardening backlog** (§16): items from the 2026-07-11 Linear-insights review. Items 1–2
+  (issue-ledger surfacing, panic firewall) gate the flip; the rest can land after.
 
 ## 15. Switch plan (phase 3)
 
@@ -814,4 +840,79 @@ or dropped, and `core/block/import/common/filetime` relocated (v2 imports it tod
 
 **Open items tracked for the flip:** multi-path common-parent merging; converter-internal fetch pool
 for Notion (wall-clock, after cassette timings); Workspace/Widget snapshot support (pb phase);
-re-imported files counted as Created in the report; mockery entries for the new seams.
+re-imported files counted as Created in the report; mockery entries for the new seams; §16 items 1–2
+(issue-ledger surfacing, panic firewall) are flip-gating.
+
+---
+
+## 16. Hardening backlog (Linear-insights review, 2026-07-11)
+
+Source: `docs/ImportV2LinearInsights.json` — 369 historical import issues clustered into 8
+architectural patterns, mapped against the v2 code on 2026-07-11 (every claim below verified against
+the working tree, not taken from the synthesis).
+
+**Cluster verdicts:**
+
+| Cluster (issue count) | v2 status |
+|---|---|
+| Silent / partial import failure (37) | Claim pass + typed issues + placeholders kill the drop paths. Residual: items 1, 3, 4. |
+| No schema negotiation (65) | Deterministic derivable identity + dedup by source property id + pinned idempotency solve the duplicate/convergence family; date→date w/ range+tz solved. Residual: item 6 (select cardinality); CSV column typing belongs to the future standalone CSV converter. |
+| File/link resolution (48) | Files as futures in the one identity index, one reference rewriter, typed fetch issues, NFC + slash canonicalization (`source.go`) solve the class. Residual: item 5. |
+| Export can't losslessly encode (63) | **Out of scope** — decision §13.9; export rewrite is a separate issue. |
+| No stable identity/dedup on re-import (37) | Solved for md/notion (2nd-run Created=0 pinned; Revision guard; Workspace/Widget rejected in persist). The pb phase must honor decision §13.10. |
+| Crashes/panics on edge input (19) | Known v1 panic sites gone (guarded parsing), but the *class* needs item 2 — zero `recover()` in importv2 today. |
+| RPC lifecycle / error codes (76) | One runCtx threaded through fetches/uploads, Close drains with grace, single `errorCode` mapping (surfaces can't disagree). Residual: item 7; capability contract = §11.4 open Qs. |
+| Doesn't scale (20) | O(concurrency) memory + gauge test, no arbitrary caps, shared pacer w/ bounded retries, spill uploads. Residual: item 8; post-import subscription-event flood is outside import. |
+
+**Ranked items:**
+
+1. **Surface the issue ledger** (flip-gating). Today `Result.Issues` is assembled
+   (`adapter/adapter.go` combine step) and then discarded: the notification carries only the fatal
+   code, `EventImportFinish` only counts, and nothing logs the taxonomy — a lossy import is
+   indistinguishable from a clean one. Work (decision §13.7):
+   - **Import report object**, created in the target space when a run finishes with ≥1 issue:
+     - name: "Import report — {source type}, {date}";
+     - a table block summarizing count by code × severity;
+     - a toggle block per issue code, children = one text line per issue (message + `SourceKey`,
+       with a mention of the created object when `ObjectId` is known);
+     - capped at `IssueCap` with an explicit overflow line (`IssuesDropped`);
+     - added to the root collection (and root widget) so it is discoverable next to the imported
+       content.
+   - Notification payload distinguishes clean success from success-with-N-issues (counts by
+     severity; proto extension of `NotificationImport`).
+   - One structured end-of-run log line (counts by code) on the `import-v2` scope so
+     Sentry/Graylog events become attributable — kills the "unresearchable import failure"
+     meta-ticket class (GO-1785).
+2. **Panic firewall** (flip-gating). `engine/engine.go` spawns the converter and persist goroutines
+   bare (three `go func` sites) and there is no `recover()` anywhere in importv2 — one panic on
+   unanticipated input still kills the whole process (the class behind 19 crash issues). Add a
+   per-goroutine recover in the engine spawn sites + persist workers that converts any panic into
+   `Issue(IssueInvariant)` flowing through the normal abort predicate. Pin with a test injecting a
+   panicking converter and a panicking uploader.
+3. **Second-chance Notion discovery.** Discovery is `/search`-only; a child page Notion's
+   eventually-consistent index omits (GO-5273) is reported (`missingTarget` warning + "Unresolved
+   link" text) but still lost — even though `mapChildEntity` already holds the child's exact
+   fetchable id (a `child_page` block's id IS the page id). Fetch-and-claim on demand any
+   `child_page`/`child_database`/`link_to_page`/mention id seen in pass-2 blocks but absent from the
+   pass-1 claim set; a permission 404 keeps today's warning. Closes the eventual-consistency hole
+   instead of reporting it.
+4. **Claims-reconciliation invariant.** `identity.Assign` rejects unclaimed keys, but nothing asserts
+   the inverse: at end of run the engine should verify every pass-1 claim ended persisted,
+   skipped-with-issue, or failed-with-issue — anything else emits `IssueInvariant`. Placeholder
+   emission is converter discipline today; this makes completeness structural for every future
+   converter.
+5. **Fresh-URL retry for Notion files.** Signed file URLs expire (~1h); the URL string is captured at
+   block-fetch time but downloaded by a persist worker later, and `resettableFile.Reset`
+   (`notion/files.go`) only rewinds the same URL. On a long run (150-minute-class imports, GO-1778 /
+   GO-3998) the gap can exceed the expiry. On 403, re-fetch the owning block to mint a fresh URL
+   before failing the file.
+6. **Select cardinality** (decision §13.8). `relationFormatOf` (`notion/properties.go`) maps
+   `"select", "multi_select", "people"` → tag; change single `select` → status format. Update the
+   §11.3 row's pinning test, scripted-workspace fixtures, and cassette summary literals.
+7. **Quota-specific issue code.** Storage-quota upload failures currently collapse into
+   `FILE_LOAD_ERROR`/`INTERNAL_ERROR` (GO-7037 reported it as a misleading message while images were
+   silently dropped). Add a typed `IssueCode` + wire mapping so quota exhaustion is actionable.
+8. **Oversized-object guard.** Nothing guards the ~64MB CRDT-change ceiling (GO-1433, GO-2635 —
+   giant single documents fail downstream with an opaque error). Persist should measure the payload
+   and reject/degrade with a typed `ObjectError` naming the object; chunking/splitting oversized
+   documents is a possible later refinement.

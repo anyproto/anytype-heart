@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -138,6 +139,14 @@ func (s *service) Import(req *pb.RpcObjectImportRequest) {
 	s.runs.Add(1)
 	go func() {
 		defer s.runs.Done()
+		// The engine firewalls its own run; this catches adapter-level
+		// panics (progress/notification plumbing) so a fire-and-forget
+		// import can never crash the process.
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Errorf("import run panic: %v\n%s", rec, debug.Stack())
+			}
+		}()
 		s.runImport(req)
 	}()
 }

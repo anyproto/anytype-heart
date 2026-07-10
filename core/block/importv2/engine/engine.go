@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -79,7 +80,12 @@ type Deps struct {
 
 // Run executes one import. The passed ctx is the run's single cancellation
 // source (the adapter joins process cancel into it).
-func Run(ctx context.Context, req importv2.Request, converter importv2.Converter, deps Deps) *importv2.Result {
+//
+// Panic firewall (§16 item 2): a panic anywhere in the run becomes a typed
+// invariant issue, never a process crash — per object in persistGuarded, per
+// goroutine in the converter/worker spawns, and here as the last resort for
+// the main-goroutine stages (identity pass, finalize, compensation).
+func Run(ctx context.Context, req importv2.Request, converter importv2.Converter, deps Deps) (result *importv2.Result) {
 	if deps.Reporter == nil {
 		deps.Reporter = noopReporter{}
 	}
@@ -94,6 +100,13 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		cancel:     cancel,
 		failedKeys: map[string]struct{}{},
 	}
+	defer func() {
+		if rec := recover(); rec != nil {
+			r.report(importv2.Fatal(importv2.IssueInvariant, panicError("import run", rec)))
+			r.compensate()
+			result = r.buildResult(*r.fatalIssue(), importv2.RootSpec{})
+		}
+	}()
 
 	if fatal := r.identityPass(runCtx, converter); fatal != nil {
 		return r.buildResult(*fatal, importv2.RootSpec{})
@@ -109,9 +122,15 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		r.compensate()
 		return r.buildResult(*fatal, importv2.RootSpec{})
 	}
-	result := r.buildResult(importv2.Issue{}, rootSpec)
+	result = r.buildResult(importv2.Issue{}, rootSpec)
 	result.Err = nil
 	return result
+}
+
+// panicError renders a recovered panic (with the panic-site stack — the
+// frames are still live inside the recovering defer) as a wrappable error.
+func panicError(where string, rec any) error {
+	return fmt.Errorf("%s panic: %v\n%s", where, rec, debug.Stack())
 }
 
 type run struct {
@@ -204,6 +223,13 @@ func (r *run) streamPass(ctx context.Context, converter importv2.Converter) impo
 		defer close(converterDone)
 		defer close(objectCh)
 		defer close(fileCh)
+		// Registered last so it runs first: recover before the channels
+		// close, turning a converter panic into a fatal invariant issue.
+		defer func() {
+			if rec := recover(); rec != nil {
+				convertErr = importv2.Fatal(importv2.IssueInvariant, panicError("converter", rec))
+			}
+		}()
 		rootSpec, convertErr = converter.Convert(ctx, sink)
 	}()
 
@@ -214,6 +240,7 @@ func (r *run) streamPass(ctx context.Context, converter importv2.Converter) impo
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer r.recoverWorker()
 		for w := range fileCh {
 			r.process(ctx, w)
 		}
@@ -222,6 +249,7 @@ func (r *run) streamPass(ctx context.Context, converter importv2.Converter) impo
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			defer r.recoverWorker()
 			objects, files := objectCh, fileCh
 			for objects != nil || files != nil {
 				select {
@@ -256,6 +284,15 @@ type work struct {
 	isFile bool
 }
 
+// recoverWorker is the per-worker insurance firewall: persistGuarded already
+// contains per-object panics, so this only fires on an engine bug in the loop
+// itself — the run aborts with a typed issue and cancel unblocks the lanes.
+func (r *run) recoverWorker() {
+	if rec := recover(); rec != nil {
+		r.report(importv2.Fatal(importv2.IssueInvariant, panicError("persist worker", rec)))
+	}
+}
+
 func (r *run) process(ctx context.Context, w work) {
 	defer r.deps.Gauge(-1)
 	if ctx.Err() != nil {
@@ -265,7 +302,7 @@ func (r *run) process(ctx context.Context, w work) {
 		r.skipped.Add(1)
 		return
 	}
-	outcome, err := r.deps.Persister.Persist(ctx, w.object, w.target, r.report)
+	outcome, err := r.persistGuarded(ctx, w)
 	if w.isFile {
 		r.deps.Identity.CompleteFile(w.object.SourceKey, outcome.Id, err)
 	}
@@ -286,6 +323,19 @@ func (r *run) process(ctx context.Context, w work) {
 		r.skipped.Add(1)
 	}
 	r.deps.Reporter.Step(1)
+}
+
+// persistGuarded is the per-object firewall: a panic in persist/resolve/store
+// code fails only this object. The caller's file-future completion and failed
+// accounting run on the returned error as for any ordinary persist failure.
+func (r *run) persistGuarded(ctx context.Context, w work) (outcome persist.Outcome, err error) {
+	defer func() {
+		if rec := recover(); rec != nil {
+			outcome = persist.Outcome{}
+			err = importv2.ObjectError(importv2.IssueInvariant, w.object.SourceKey, panicError("persist", rec))
+		}
+	}()
+	return r.deps.Persister.Persist(ctx, w.object, w.target, r.report)
 }
 
 func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
