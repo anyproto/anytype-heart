@@ -22,6 +22,9 @@ func (s *fileSync) DeleteFile(objectId string, fileId domain.FullFileId) error {
 	return s.process(objectId, func(exists bool, info FileInfo) (FileInfo, bool, error) {
 		if exists {
 			info.State = FileStatePendingDeletion
+			// Deletion must not wait out a long retry backoff the item may
+			// carry from MissingBlocks parking
+			info.ScheduledAt = time.Now()
 			return info, true, nil
 		}
 
