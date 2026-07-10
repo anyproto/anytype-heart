@@ -22,6 +22,10 @@ func TestNoAuthMethods_ExcludesSessionBackedMethods(t *testing.T) {
 	// account selection, so the caller already has a (full-scope) token.
 	assert.NotContains(t, noAuthMethods, "ObjectImport")
 
+	// DebugRunProfiler runs a heavy profiler; requiring a token keeps an
+	// anonymous caller from triggering it.
+	assert.NotContains(t, noAuthMethods, "DebugRunProfiler")
+
 	// The genuine pre-session bootstrap methods must stay exempt.
 	for _, method := range []string{
 		"WalletCreateSession",

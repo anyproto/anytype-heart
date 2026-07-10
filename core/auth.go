@@ -49,7 +49,6 @@ var noAuthMethods = map[string]struct{}{
 	"AccountRecoverFromLegacyExport": {},
 	"AccountLocalLinkNewChallenge":   {},
 	"AccountLocalLinkSolveChallenge": {},
-	"DebugRunProfiler":               {},
 	"DebugAccountSelectTrace":        {},
 	"InitialSetParameters":           {},
 }
