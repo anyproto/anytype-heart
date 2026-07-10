@@ -105,7 +105,7 @@ require (
 	go.uber.org/mock v0.6.0
 	go.uber.org/zap v1.28.0
 	golang.org/x/exp v0.0.0-20260603202125-055de637280b
-	golang.org/x/image v0.27.0
+	golang.org/x/image v0.41.0
 	golang.org/x/mobile v0.0.0-20250218173827-cd096645fcd3
 	golang.org/x/net v0.57.0
 	golang.org/x/oauth2 v0.36.0
