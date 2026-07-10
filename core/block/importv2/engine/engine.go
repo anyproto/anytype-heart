@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime/debug"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -55,6 +56,8 @@ type IdentityService interface {
 	RegisterFile(sourceKey string)
 	CompleteFile(sourceKey, id string, err error)
 	Resolve(sourceKey string) (id string, ok bool)
+	// UnassignedClaims lists pass-1 claims that never arrived in pass 2.
+	UnassignedClaims() []string
 }
 
 // ObjectPersister is the persistence seam (implemented by persist.Persister).
@@ -99,6 +102,7 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		deps:       deps,
 		cancel:     cancel,
 		failedKeys: map[string]struct{}{},
+		issuedKeys: map[string]struct{}{},
 	}
 	defer func() {
 		if rec := recover(); rec != nil {
@@ -118,6 +122,7 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		return r.buildResult(*fatal, importv2.RootSpec{})
 	}
 	r.finalize(runCtx, rootSpec)
+	r.reconcileClaims()
 	if fatal := r.fatalIssue(); fatal != nil {
 		r.compensate()
 		return r.buildResult(*fatal, importv2.RootSpec{})
@@ -143,8 +148,12 @@ type run struct {
 	skipped atomic.Int64
 	failed  atomic.Int64
 
-	issueMu       sync.Mutex
-	issues        []importv2.Issue
+	issueMu sync.Mutex
+	issues  []importv2.Issue
+	// issuedKeys records every SourceKey that carries an issue, uncapped —
+	// the exclusion set for claims reconciliation (a claim that failed
+	// loudly is not a silent drop).
+	issuedKeys    map[string]struct{}
 	issuesDropped int64
 	fatal         *importv2.Issue
 
@@ -167,6 +176,9 @@ func (r *run) report(issue importv2.Issue) {
 		r.issues = append(r.issues, issue)
 	} else {
 		r.issuesDropped++
+	}
+	if issue.SourceKey != "" {
+		r.issuedKeys[issue.SourceKey] = struct{}{}
 	}
 	abort := importv2.ShouldAbort(issue.Severity, r.req.Mode) && r.fatal == nil
 	if abort {
@@ -384,6 +396,30 @@ func (r *run) finalize(ctx context.Context, rootSpec importv2.RootSpec) {
 		return
 	}
 	r.rootCollectionId = outcome.Id
+}
+
+// reconcileClaims is the completeness invariant (§16 item 4): on a run that
+// finished without a fatal, every pass-1 claim must have arrived in pass 2 or
+// carry a reported issue — a bare gap means a converter dropped an object
+// silently, which is exactly the failure class the engine exists to forbid.
+func (r *run) reconcileClaims() {
+	if r.fatalIssue() != nil {
+		// Aborted/cancelled runs legitimately strand claims.
+		return
+	}
+	unassigned := r.deps.Identity.UnassignedClaims()
+	sort.Strings(unassigned)
+	for _, key := range unassigned {
+		r.issueMu.Lock()
+		_, loud := r.issuedKeys[key]
+		r.issueMu.Unlock()
+		if loud {
+			continue
+		}
+		r.failed.Add(1)
+		r.report(importv2.ObjectError(importv2.IssueInvariant, key,
+			fmt.Errorf("claimed object was never emitted by the converter")))
+	}
 }
 
 func (r *run) compensate() {

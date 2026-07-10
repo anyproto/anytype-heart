@@ -63,6 +63,10 @@ type entry struct {
 	id     string
 	mode   entryMode
 	future *fileFuture
+	// claimed marks pass-1 claims; assigned marks their pass-2 arrival.
+	// The gap between the two is the completeness-reconciliation input.
+	claimed  bool
+	assigned bool
 }
 
 // Service implements the identity index for one run. Claim, Assign and
@@ -126,7 +130,7 @@ func (s *Service) Claim(ctx context.Context, c importv2.IdentityClaim) error {
 		s.mu.Unlock()
 	}
 	s.mu.Lock()
-	s.entries[c.SourceKey] = &entry{id: id, mode: mode}
+	s.entries[c.SourceKey] = &entry{id: id, mode: mode, claimed: true}
 	s.mu.Unlock()
 	return nil
 }
@@ -141,6 +145,7 @@ func (s *Service) Assign(sourceKey string) (Assignment, error) {
 		return Assignment{}, fmt.Errorf("assign %q: object was not claimed in pass 1", sourceKey)
 	}
 	if e.mode == entryMatched {
+		e.assigned = true
 		return Assignment{Id: e.id, IsExisting: true}, nil
 	}
 	payload, ok := s.payloads[e.id]
@@ -148,7 +153,23 @@ func (s *Service) Assign(sourceKey string) (Assignment, error) {
 		return Assignment{}, fmt.Errorf("assign %q: create payload already taken", sourceKey)
 	}
 	delete(s.payloads, e.id)
+	e.assigned = true
 	return Assignment{Id: e.id, Payload: payload}, nil
+}
+
+// UnassignedClaims returns pass-1 claims that never arrived in pass 2 — the
+// completeness-reconciliation input (§16 item 4). Order is unspecified; the
+// engine sorts for determinism.
+func (s *Service) UnassignedClaims() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var keys []string
+	for key, e := range s.entries {
+		if e.claimed && !e.assigned {
+			keys = append(keys, key)
+		}
+	}
+	return keys
 }
 
 // AssignDerived resolves a derivable-class object (relation, type, option,

@@ -24,10 +24,11 @@ import (
 
 // fakeIdentity assigns deterministic ids without store or space.
 type fakeIdentity struct {
-	mu      sync.Mutex
-	claims  []importv2.IdentityClaim
-	files   map[string]*fileState
-	counter int
+	mu       sync.Mutex
+	claims   []importv2.IdentityClaim
+	assigned map[string]bool
+	files    map[string]*fileState
+	counter  int
 }
 
 type fileState struct {
@@ -37,7 +38,7 @@ type fileState struct {
 }
 
 func newFakeIdentity() *fakeIdentity {
-	return &fakeIdentity{files: map[string]*fileState{}}
+	return &fakeIdentity{files: map[string]*fileState{}, assigned: map[string]bool{}}
 }
 
 func (f *fakeIdentity) Claim(ctx context.Context, c importv2.IdentityClaim) error {
@@ -51,7 +52,20 @@ func (f *fakeIdentity) Assign(sourceKey string) (identity.Assignment, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.counter++
+	f.assigned[sourceKey] = true
 	return identity.Assignment{Id: fmt.Sprintf("id-%s", sourceKey)}, nil
+}
+
+func (f *fakeIdentity) UnassignedClaims() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var keys []string
+	for _, c := range f.claims {
+		if !f.assigned[c.SourceKey] {
+			keys = append(keys, c.SourceKey)
+		}
+	}
+	return keys
 }
 
 func (f *fakeIdentity) AssignDerived(ctx context.Context, o *importv2.Object) (identity.Assignment, error) {
@@ -181,6 +195,34 @@ func (c *scriptConverter) Convert(ctx context.Context, sink importv2.Sink) (impo
 		}
 	}
 	return c.rootSpec, nil
+}
+
+// gapConverter claims extra keys in pass 1 that it never emits in pass 2 —
+// the silent-drop shape the claims-reconciliation invariant exists to catch.
+// Keys in issuedKeys get a warning issue instead (a loud skip).
+type gapConverter struct {
+	scriptConverter
+	gapKeys  []string
+	loudKeys []string
+}
+
+func (c *gapConverter) EnumerateIdentities(ctx context.Context, yield func(importv2.IdentityClaim) error) error {
+	if err := c.scriptConverter.EnumerateIdentities(ctx, yield); err != nil {
+		return err
+	}
+	for _, key := range append(append([]string{}, c.gapKeys...), c.loudKeys...) {
+		if err := yield(importv2.IdentityClaim{SourceKey: key, SbType: coresb.SmartBlockTypePage}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c *gapConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	for _, key := range c.loudKeys {
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, key, "deliberately skipped"))
+	}
+	return c.scriptConverter.Convert(ctx, sink)
 }
 
 // panicConvertConverter emits its objects, then panics inside Convert.
@@ -443,6 +485,64 @@ func TestRunMemoryBound(t *testing.T) {
 		bound := int64(2*channelCapacity + workerCount + 1)
 		assert.LessOrEqual(t, maxInFlight.Load(), bound,
 			"reintroducing collect-then-process would blow this bound")
+	})
+}
+
+func TestClaimsReconciliation(t *testing.T) {
+	t.Run("silently dropped claim becomes an invariant issue", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		converter := &gapConverter{
+			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
+			gapKeys:         []string{"dropped.md"},
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, int64(1), result.Created)
+		assert.Equal(t, int64(1), result.Failed)
+		require.Len(t, result.Issues, 1)
+		assert.Equal(t, importv2.IssueInvariant, result.Issues[0].Code)
+		assert.Equal(t, "dropped.md", result.Issues[0].SourceKey)
+	})
+
+	t.Run("loudly skipped claim is not double-flagged", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		converter := &gapConverter{
+			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
+			loudKeys:        []string{"skipped.md"},
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Zero(t, result.Failed)
+		require.Len(t, result.Issues, 1)
+		assert.Equal(t, importv2.IssueDataLoss, result.Issues[0].Code, "only the converter's own warning")
+	})
+
+	t.Run("all-or-nothing aborts and compensates on a silent gap", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		converter := &gapConverter{
+			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
+			gapKeys:         []string{"dropped.md"},
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeAllOrNothing}, converter, fx.deps)
+
+		// then
+		require.Error(t, result.Err)
+		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
+		assert.Equal(t, importv2.IssueInvariant, issue.Code)
+		assert.Equal(t, 1, result.Compensated)
 	})
 }
 
