@@ -242,3 +242,108 @@ func TestListOrphans_Ignored_Excluded_AndDropsSubtree(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, items)
 }
+
+// -- parent eligibility --
+
+// tombstoneObject mimics a real deletion tombstone: DeleteObject replaces the details with
+// {id, spaceId, isDeleted} only, so resolvedLayout is gone.
+func tombstoneObject(id string) objectstore.TestObject {
+	return objectstore.TestObject{
+		bundle.RelationKeyId:        domain.String(id),
+		bundle.RelationKeyIsDeleted: domain.Bool(true),
+	}
+}
+
+func TestListOrphans_ChatParent_Excluded(t *testing.T) {
+	// A live chat attachment has exactly the store shape of an unlinked orphan: createdInContext is
+	// the chat object, createdInContextRef is the message id, and backlinks are empty forever —
+	// chat messages live in anystore, so they never enter the links table. The message is still on
+	// screen; the file must never be offered for removal.
+	fx := newFixture(t)
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("chatObj"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
+		},
+	})
+	fx.addObject(t, fileObjectWithRef("photo", "chatObj", "msg1", nil))
+
+	items, err := fx.ListOrphans(testSpaceId)
+
+	require.NoError(t, err)
+	assert.Empty(t, items, "a live chat attachment is not an orphan")
+}
+
+func TestListOrphans_ChatCreatedObject_Excluded(t *testing.T) {
+	// Objects created from a chat message (link targets) carry the same createdInContext.
+	fx := newFixture(t)
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("chatObj"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDeprecated)),
+		},
+	})
+	fx.addObject(t, basicObjectWithRef("page", "chatObj", "msg1", nil))
+
+	items, err := fx.ListOrphans(testSpaceId)
+
+	require.NoError(t, err)
+	assert.Empty(t, items)
+}
+
+func TestListOrphans_SystemLayoutParent_Excluded(t *testing.T) {
+	// Mirrors the gate CheckObjectsOnObjectArchived already applies: a non-GC-eligible object
+	// cannot own GC-tracked children.
+	fx := newFixture(t)
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("participant"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_participant)),
+		},
+	})
+	fx.addObject(t, basicObjectWithRef("child", "participant", "block1", nil))
+
+	items, err := fx.ListOrphans(testSpaceId)
+
+	require.NoError(t, err)
+	assert.Empty(t, items)
+}
+
+func TestListOrphans_DeletedParent_Tombstone_StillListed(t *testing.T) {
+	// A real tombstone has no resolvedLayout, so the parent-layout gate cannot be applied to it.
+	// Deleting a context genuinely orphans its children -- including a deleted chat's attachments --
+	// so they must still be listed.
+	fx := newFixture(t)
+	fx.addObject(t, tombstoneObject("goneChat"))
+	fx.addObject(t, fileObjectWithRef("photo", "goneChat", "msg1", nil))
+
+	items, err := fx.ListOrphans(testSpaceId)
+
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"photo"}, ids(items))
+	assert.Equal(t, OrphanReasonContextDeleted, find(t, items, "photo").Reason)
+}
+
+func TestListOrphans_DeletedChatParent_StillListed(t *testing.T) {
+	// Locks the intent of canOwnOrphans's state check, which a tombstone alone cannot: a missing
+	// resolvedLayout reads as 0 (== ObjectType_basic, GC-eligible), so the tombstone test would keep
+	// passing even if the layout gate were wrongly applied to deleted parents. Here the deleted
+	// parent carries a chat layout, so only the state check can keep its children listed.
+	//
+	// Deleting a chat genuinely orphans its attachments -- there is no message left to show them.
+	fx := newFixture(t)
+	fx.store.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("goneChat"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
+			bundle.RelationKeyIsDeleted:      domain.Bool(true),
+		},
+	})
+	fx.addObject(t, fileObjectWithRef("photo", "goneChat", "msg1", nil))
+
+	items, err := fx.ListOrphans(testSpaceId)
+
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"photo"}, ids(items))
+	assert.Equal(t, OrphanReasonContextDeleted, find(t, items, "photo").Reason)
+}

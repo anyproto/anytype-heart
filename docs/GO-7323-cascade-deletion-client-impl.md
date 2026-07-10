@@ -10,9 +10,9 @@ When a user creates an object **inside** another object, the backend records the
 a created object) **implicitly archived** the whole nested subtree — objects and files alike.
 User feedback: silently archiving nested *objects* is surprising.
 
-> **Status:** the backend lives on branch `go-7323-cascade-deletion-orphan-events`, **not yet merged
-> to `develop` and not yet pushed**. Regenerate protos from that branch, not from `develop`. Nothing
-> described here has shipped, so the protocol can still be changed cheaply — raise objections now.
+> **Status:** the backend is merged to `develop` (PR #3201). Regenerate protos from `develop`.
+> Nothing has been *released* to users, so the protocol can still be changed cheaply — raise
+> objections now.
 
 New behavior:
 
@@ -141,6 +141,13 @@ message CleanupSuggestionIgnore {
 Reconstruct the tree by joining each item's `details.createdInContext` to its parent's `details.id`;
 items with `isRoot = true` are the roots. `reason` explains *why* a root is orphaned and is only
 meaningful on roots — descendants inherit their root's reason and carry `none`.
+
+**Chat content is never suggested.** Files and objects created in a live chat carry
+`createdInContext = <chat object>` but can never acquire a backlink (chat messages live in anystore,
+not in block state), so they would otherwise look exactly like unlinked orphans. Objects whose
+creation context is a live chat — or any other non-GC-eligible layout — are excluded. Once the chat
+itself is deleted its attachments *are* genuinely orphaned, and they appear with
+`reason = contextDeleted`.
 
 `keys` selects which relations come back in `details`. Pass what you need to render (e.g. `name`,
 `iconEmoji`, `iconImage`, `snippet`). `id`, `createdInContext`, and `resolvedLayout` are **always**
