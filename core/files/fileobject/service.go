@@ -270,6 +270,11 @@ func (s *service) ensureNotSyncedFilesAddedToQueue() error {
 				Condition:   model.BlockContentDataviewFilter_NotEqual,
 				Value:       domain.Int64(int64(filesyncstatus.Synced)),
 			},
+			{
+				RelationKey: bundle.RelationKeyIsDeleted,
+				Condition:   model.BlockContentDataviewFilter_NotEqual,
+				Value:       domain.Bool(true),
+			},
 		},
 	})
 	if err != nil {
