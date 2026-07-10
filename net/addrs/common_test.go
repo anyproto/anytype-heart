@@ -1,11 +1,52 @@
 package addrs
 
 import (
+	"net"
 	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
+
+// GetAddr promises to cache the syscall result after the first call; a value
+// receiver silently caches into a copy and re-runs the syscalls every time.
+func TestGetAddrCachesIntoSliceElement(t *testing.T) {
+	ifaces, err := net.Interfaces()
+	require.NoError(t, err)
+	if len(ifaces) == 0 {
+		t.Skip("no network interfaces on this machine")
+	}
+	wrapped := WrapInterfaces(ifaces)
+	for i := range wrapped {
+		first := wrapped[i].GetAddr()
+		if wrapped[i].cachedAddrs == nil && wrapped[i].cachedErr == nil {
+			t.Fatalf("GetAddr did not cache the result for %s", wrapped[i].Name)
+		}
+		second := wrapped[i].GetAddr()
+		if len(first) > 0 {
+			assert.Equal(t, &first[0], &second[0], "second GetAddr call for %s must return the cached slice", wrapped[i].Name)
+		}
+	}
+}
+
+// findInterfacePosByIP is the hot path (called per discovered peer entry per
+// IP); it must populate the per-interface cache instead of re-dumping
+// addresses on every scan.
+func TestFindInterfacePosByIPPopulatesCache(t *testing.T) {
+	ia, err := GetInterfacesAddrs()
+	require.NoError(t, err)
+	if len(ia.Interfaces) == 0 {
+		t.Skip("no network interfaces on this machine")
+	}
+	// TEST-NET-1 address: matches no local interface, so the scan visits all
+	ia.findInterfacePosByIP(net.ParseIP("192.0.2.1"))
+	for i := range ia.Interfaces {
+		if ia.Interfaces[i].cachedAddrs == nil && ia.Interfaces[i].cachedErr == nil {
+			t.Fatalf("scan did not populate the addr cache for %s", ia.Interfaces[i].Name)
+		}
+	}
+}
 
 func Test_parseInterfaceName(t *testing.T) {
 	type args struct {
