@@ -33,6 +33,11 @@ var limitedScopeMethods = map[string]struct{}{
 	"ObjectCollectionAdd":        {},
 }
 
+// noAuthMethods run without a session token. Only add a method here if a client
+// must call it before a session can exist (wallet/account bootstrap, the
+// local-link pairing handshake, startup parameters). Anything a client calls
+// after WalletCreateSession has a token and must go through scope validation
+// instead — see limitedScopeMethods.
 var noAuthMethods = map[string]struct{}{
 	"AppGetVersion":                  {},
 	"WalletCreate":                   {},
@@ -41,14 +46,11 @@ var noAuthMethods = map[string]struct{}{
 	"AccountCreate":                  {},
 	"AccountMigrate":                 {},
 	"AccountMigrateCancel":           {},
-	"AccountSelect":                  {},
 	"AccountRecoverFromLegacyExport": {},
 	"AccountLocalLinkNewChallenge":   {},
 	"AccountLocalLinkSolveChallenge": {},
-	"ObjectImport":                   {},
 	"DebugRunProfiler":               {},
 	"DebugAccountSelectTrace":        {},
-	"DebugExportLog":                 {},
 	"InitialSetParameters":           {},
 }
 
