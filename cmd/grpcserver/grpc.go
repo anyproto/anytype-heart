@@ -24,7 +24,6 @@ import (
 	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
-	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/opentracing/opentracing-go"
 	"github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
@@ -48,7 +47,6 @@ const defaultWebAddr = "127.0.0.1:31008"
 // do not change this, js client relies on this msg to ensure that server is up
 const grpcWebStartedMessagePrefix = "gRPC Web proxy started at: "
 
-var log = logging.Logger("anytype-grpc-server")
 var commonOSSignals = []os.Signal{os.Interrupt, syscall.SIGTERM, syscall.SIGINT}
 
 func main() {
@@ -196,27 +194,15 @@ func main() {
 		// grpc_prometheus.Register(server)
 	}
 
-	webrpc := grpcweb.WrapServer(
-		server,
-		grpcweb.WithOriginFunc(func(origin string) bool {
-			return true
-		}),
-		grpcweb.WithWebsockets(true),
-		grpcweb.WithWebsocketOriginFunc(func(req *http.Request) bool {
-			return true
-		}))
+	originPolicy := newOriginPolicy()
+	withWebsockets := websocketsEnabled()
+	webrpc := wrapGrpcServer(server, originPolicy, withWebsockets)
 
 	proxy := &http.Server{
 		Addr: webaddr,
 	}
 
-	proxy.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if webrpc.IsGrpcWebRequest(r) ||
-			webrpc.IsAcceptableGrpcCorsRequest(r) ||
-			webrpc.IsGrpcWebSocketRequest(r) {
-			webrpc.ServeHTTP(w, r)
-		}
-	})
+	proxy.Handler = newProxyHandler(webrpc, originPolicy, withWebsockets)
 
 	go func() {
 		server.Serve(lis)
