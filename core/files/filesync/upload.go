@@ -10,6 +10,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileproto"
 	"github.com/anyproto/any-sync/commonfile/fileproto/fileprotoerr"
 	"github.com/anyproto/any-sync/commonspace/spacestorage"
+	"github.com/anyproto/any-sync/net"
 	"github.com/anyproto/any-sync/net/peer"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
+	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 	"github.com/anyproto/anytype-heart/pb"
@@ -127,7 +129,7 @@ func (s *fileSync) runUploader(ctx context.Context) {
 		default:
 			err := s.processNextPendingUploadItem(ctx, FileStatePendingUpload)
 			if err != nil && !errors.Is(err, filequeue.ErrClosed) {
-				log.Error("process next pending upload item", zap.Error(err))
+				logProcessingError("process next pending upload item", err)
 			}
 		}
 	}
@@ -144,10 +146,20 @@ func (s *fileSync) runMissingBlocksRetrier(ctx context.Context) {
 		default:
 			err := s.processNextPendingUploadItem(ctx, FileStateMissingBlocks)
 			if err != nil && !errors.Is(err, filequeue.ErrClosed) {
-				log.Error("process next missing-blocks item", zap.Error(err))
+				logProcessingError("process next missing-blocks item", err)
 			}
 		}
 	}
+}
+
+// logProcessingError logs an expected degraded-environment condition (device
+// offline, node unreachable) at WARN and everything else at ERROR
+func logProcessingError(msg string, err error) {
+	if isConnectivityError(err) {
+		log.Warn(msg+": no connection to file node", zap.Error(err))
+		return
+	}
+	log.Error(msg, zap.Error(err))
 }
 
 func (s *fileSync) processNextPendingUploadItem(ctx context.Context, state FileState) error {
@@ -182,13 +194,22 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		if errors.Is(err, errBlockNotFound) {
 			return s.parkMissingBlocks(it, err), nil
 		}
-		it = rescheduleTransient(it)
+		it = rescheduleTransient(it, err)
 		return it, fmt.Errorf("check blocks availability: %w", err)
 	}
 
 	it.BytesToUploadOrBind = blocksAvailability.bytesToUploadOrBind
 	it.CidsToBind = blocksAvailability.cidsToBind
 	it.CidsToUpload = blocksAvailability.cidsToUpload
+
+	// The blocks were enumerated and checked successfully, so the
+	// missing-blocks condition no longer holds: leave the parked state now, so
+	// that a transient failure below gets the normal short retry instead of
+	// the long missing-blocks backoff
+	if it.State == FileStateMissingBlocks {
+		it.State = FileStatePendingUpload
+		it.MissingBlocksRetries = 0
+	}
 
 	spaceLimits, err := s.limitManager.getSpace(it.SpaceId)
 	// If space is deleted, move file to deletion queue. It'll help to reclaim space if file is partially uploaded
@@ -198,7 +219,7 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		return it, nil
 	}
 	if err != nil {
-		it = rescheduleTransient(it)
+		it = rescheduleTransient(it, err)
 		return it, fmt.Errorf("get space limits: %w", err)
 	}
 
@@ -208,7 +229,7 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		if !errors.As(allocateErr, &limitErr) {
 			// Transient infra failure (e.g. SpaceInfo failed). Reschedule for
 			// retry instead of marking the file as Limited.
-			it = rescheduleTransient(it)
+			it = rescheduleTransient(it, allocateErr)
 			return it, fmt.Errorf("allocate file: %w", allocateErr)
 		}
 
@@ -238,7 +259,7 @@ func (s *fileSync) processFilePendingUpload(ctx context.Context, it FileInfo) (F
 		if errors.Is(err, errBlockNotFound) {
 			return s.parkMissingBlocks(it, err), nil
 		}
-		it = rescheduleTransient(it)
+		it = rescheduleTransient(it, err)
 		return it, err
 	}
 
@@ -311,7 +332,7 @@ func (s *fileSync) bindCids(ctx context.Context, it FileInfo, cids []cid.Cid) er
 		end := min(start+bindBatchSize, len(cids))
 		err := s.rpcStore.BindCids(ctx, it.SpaceId, it.FileId, cids[start:end])
 		if err != nil {
-			return err
+			return fmt.Errorf("bind batch %d..%d of %d: %w", start, end, len(cids), err)
 		}
 	}
 	return nil
@@ -380,16 +401,25 @@ func (s *fileSync) parkMissingBlocks(it FileInfo, err error) FileInfo {
 	return it
 }
 
-// rescheduleTransient delays an item after a transient failure (network
-// error, node unavailable). Items parked in MissingBlocks keep their long
-// backoff instead of the 1-minute retry, so an offline device doesn't churn
-// its parked items every minute.
-func rescheduleTransient(it FileInfo) FileInfo {
+// rescheduleTransient delays an item after a transient failure. Items parked
+// in MissingBlocks keep their long backoff instead of the 1-minute retry, and
+// connectivity failures (device offline, node unreachable) get a longer delay
+// than other transient errors — so an offline device doesn't churn its whole
+// queue with dial attempts every minute.
+func rescheduleTransient(it FileInfo, err error) FileInfo {
 	if it.State == FileStateMissingBlocks {
 		it.ScheduledAt = time.Now().Add(missingBlocksRetryDelay(it.MissingBlocksRetries))
 		return it
 	}
+	if isConnectivityError(err) {
+		it.ScheduledAt = time.Now().Add(connectivityRetryDelay)
+		return it
+	}
 	return it.Reschedule()
+}
+
+func isConnectivityError(err error) bool {
+	return errors.Is(err, rpcstore2.ErrNoConnectionToAnyFileClient) || errors.Is(err, net.ErrUnableToConnect)
 }
 
 func missingBlocksRetryDelay(retries int) time.Duration {
@@ -440,6 +470,10 @@ const (
 	// batcher at once
 	uploadBatchSize = 10
 )
+
+// connectivityRetryDelay is used instead of the 1-minute reschedule when the
+// file node cannot be reached at all
+const connectivityRetryDelay = 5 * time.Minute
 
 type blocksAvailabilityResponse struct {
 	bytesToUploadOrBind int

@@ -3,6 +3,7 @@ package filesync
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	rpcstore2 "github.com/anyproto/anytype-heart/core/files/filestorage/rpcstore"
 	"github.com/anyproto/anytype-heart/core/files/filesync/filequeue"
 	"github.com/anyproto/anytype-heart/core/syncstatus/filesyncstatus"
 )
@@ -171,6 +173,97 @@ func TestFileSync_BindFileAlreadyOnNode(t *testing.T) {
 		require.True(t, ok)
 		assert.Equal(t, filesyncstatus.Synced, gotStatus)
 		assert.Equal(t, blocksUploadedBefore, fx.rpcStore.Stats().BlocksAdded())
+	})
+
+	t.Run("more blocks than one availability/bind batch: every cid is checked and bound", func(t *testing.T) {
+		// 66 MiB → 66 leaf chunks + root = 67 cids, crossing the 64-cid
+		// batch boundary of both CheckAvailability and BindCids
+		fx := newFixtureNotStarted(t, 1024*1024*1024)
+		statuses := newStatusRecorder(fx)
+		require.NoError(t, fx.a.Start(ctx))
+		defer fx.Finish(t)
+
+		fileId, fileNode := fx.givenFileAddedToDAG(t, 66*1024*1024)
+		dagBlocks := fx.collectDAGBlocks(t, fileNode)
+		require.Greater(t, len(dagBlocks), checkAvailabilityBatchSize)
+		require.Greater(t, len(dagBlocks), bindBatchSize)
+
+		require.NoError(t, fx.rpcStore.AddToFile(ctx, "spaceOld", fileId, dagBlocks))
+		blocksUploadedBefore := fx.rpcStore.Stats().BlocksAdded()
+		for _, b := range dagBlocks {
+			require.NoError(t, fx.localFileStorage.Delete(ctx, b.Cid()))
+		}
+
+		objectId := "fileObjectId1"
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: "space1", FileId: fileId},
+		}))
+
+		fx.waitItemState(t, objectId, FileStateDone, 10*time.Second)
+
+		gotStatus, ok := statuses.lastStatus(objectId)
+		require.True(t, ok)
+		assert.Equal(t, filesyncstatus.Synced, gotStatus)
+		assert.Equal(t, blocksUploadedBefore, fx.rpcStore.Stats().BlocksAdded())
+
+		spaceInfo, err := fx.rpcStore.SpaceInfo(ctx, "space1")
+		require.NoError(t, err)
+		assert.Equal(t, uint64(len(dagBlocks)), spaceInfo.CidsCount)
+	})
+
+	t.Run("already bound to the space: synced without binding or uploading anything", func(t *testing.T) {
+		fx := newFixtureNotStarted(t, 1024*1024*1024)
+		statuses := newStatusRecorder(fx)
+		require.NoError(t, fx.a.Start(ctx))
+		defer fx.Finish(t)
+
+		fileId, fileNode := fx.givenFileAddedToDAG(t, 3*1024*1024)
+		dagBlocks := fx.collectDAGBlocks(t, fileNode)
+
+		// The file is already fully bound to the requesting space
+		require.NoError(t, fx.rpcStore.AddToFile(ctx, "space1", fileId, dagBlocks))
+		blocksUploadedBefore := fx.rpcStore.Stats().BlocksAdded()
+		cidsBoundBefore := fx.rpcStore.Stats().CidsBinded()
+
+		objectId := "fileObjectId1"
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: "space1", FileId: fileId},
+		}))
+
+		fx.waitItemState(t, objectId, FileStateDone, 5*time.Second)
+
+		gotStatus, ok := statuses.lastStatus(objectId)
+		require.True(t, ok)
+		assert.Equal(t, filesyncstatus.Synced, gotStatus)
+		assert.Equal(t, blocksUploadedBefore, fx.rpcStore.Stats().BlocksAdded())
+		assert.Equal(t, cidsBoundBefore, fx.rpcStore.Stats().CidsBinded())
+	})
+
+	t.Run("cid omitted from the availability response is treated as missing and uploaded", func(t *testing.T) {
+		fx := newFixtureNotStarted(t, 1024*1024*1024)
+		require.NoError(t, fx.a.Start(ctx))
+		defer fx.Finish(t)
+
+		fileId, fileNode := fx.givenFileAddedToDAG(t, 3*1024*1024)
+		dagBlocks := fx.collectDAGBlocks(t, fileNode)
+
+		// Node has every block, but doesn't answer for one of them
+		require.NoError(t, fx.rpcStore.AddToFile(ctx, "spaceOld", fileId, dagBlocks))
+		blocksUploadedBefore := fx.rpcStore.Stats().BlocksAdded()
+		fx.rpcStore.SetOmitFromAvailability(dagBlocks[len(dagBlocks)-1].Cid())
+
+		objectId := "fileObjectId1"
+		require.NoError(t, fx.AddFile(AddFileRequest{
+			FileObjectId: objectId,
+			FileId:       domain.FullFileId{SpaceId: "space1", FileId: fileId},
+		}))
+
+		fx.waitItemState(t, objectId, FileStateDone, 5*time.Second)
+
+		// The unanswered cid was uploaded rather than silently counted as synced
+		assert.Equal(t, blocksUploadedBefore+1, fx.rpcStore.Stats().BlocksAdded())
 	})
 
 	t.Run("mixed: node misses some blocks, they are uploaded from local store", func(t *testing.T) {
@@ -335,4 +428,145 @@ func blockCids(bs []blocks.Block) []cid.Cid {
 		out = append(out, b.Cid())
 	}
 	return out
+}
+
+func TestFileSync_RecoveredParkedItemGetsShortTransientRetry(t *testing.T) {
+	// A parked item whose availability check finally succeeds must leave the
+	// MissingBlocks state immediately: a transient failure in a later step
+	// (here: SpaceInfo) must produce the normal ~1-minute retry, not the
+	// multi-hour missing-blocks backoff earned by its parking history.
+	transientErr := errors.New("transient space info failure")
+
+	fx := newFixtureNotStarted(t, 1024*1024*1024)
+	fx.rpcStore.SetSpaceInfoError(transientErr)
+	require.NoError(t, fx.a.Start(ctx))
+	defer fx.Finish(t)
+
+	spaceId := "space1"
+	fx.waitCondition(t, 2*time.Second, func() bool {
+		_, err := fx.limitManager.getSpace(spaceId)
+		return err == nil
+	})
+
+	// Blocks are fully available locally, so the availability check succeeds
+	fileId, _ := fx.givenFileAddedToDAG(t, 1024)
+
+	it := FileInfo{
+		FileId:               fileId,
+		SpaceId:              spaceId,
+		ObjectId:             "fileObjectId1",
+		State:                FileStateMissingBlocks,
+		MissingBlocksRetries: 5, // long backoff earned before recovery
+		ScheduledAt:          time.Now(),
+		CidsToUpload:         map[cid.Cid]struct{}{},
+		CidsToBind:           map[cid.Cid]struct{}{},
+	}
+
+	result, err := fx.processFilePendingUpload(ctx, it)
+
+	require.Error(t, err)
+	assert.ErrorIs(t, err, transientErr)
+	assert.Equal(t, FileStatePendingUpload, result.State, "recovered item must leave MissingBlocks once the check succeeds")
+	assert.Zero(t, result.MissingBlocksRetries)
+	assert.WithinDuration(t, time.Now().Add(time.Minute), result.ScheduledAt, 15*time.Second,
+		"transient failure after a successful check must get the short retry")
+}
+
+func TestFileSync_BindNotFoundDropsCachedPlan(t *testing.T) {
+	// The node lost a block between BlocksCheck and BlocksBind (GC race): the
+	// cached plan must be dropped so the next attempt re-enumerates instead of
+	// replaying the stale plan forever
+	fx := newFixture(t, 1024*1024*1024)
+	defer fx.Finish(t)
+
+	spaceId := "space1"
+	fx.waitCondition(t, 2*time.Second, func() bool {
+		_, err := fx.limitManager.getSpace(spaceId)
+		return err == nil
+	})
+
+	fileId, _ := fx.givenFileAddedToDAG(t, 1024)
+	goneCid := cid.MustParse("bafybeihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku")
+
+	it := FileInfo{
+		FileId:              fileId,
+		SpaceId:             spaceId,
+		ObjectId:            "fileObjectId1",
+		State:               FileStatePendingUpload,
+		ScheduledAt:         time.Now(),
+		BytesToUploadOrBind: 1024,
+		CidsToBind:          map[cid.Cid]struct{}{goneCid: {}},
+		CidsToUpload:        map[cid.Cid]struct{}{},
+	}
+
+	result, err := fx.processFilePendingUpload(ctx, it)
+
+	require.Error(t, err)
+	assert.Empty(t, result.CidsToBind, "stale plan must be dropped after a bind not-found error")
+	assert.Empty(t, result.CidsToUpload)
+	assert.Zero(t, result.BytesToUploadOrBind)
+	assert.Equal(t, FileStatePendingUpload, result.State)
+}
+
+func TestFileSync_DeleteResetsParkedSchedule(t *testing.T) {
+	// Deleting a file parked with a long backoff must not wait the backoff out
+	fx := newFixture(t, 1024*1024*1024)
+	defer fx.Finish(t)
+
+	fileId, _ := fx.givenFileAddedToDAG(t, 1024)
+	objectId := "fileObjectId1"
+
+	err := fx.queue.Upsert(objectId, func(exists bool, prev FileInfo) FileInfo {
+		return FileInfo{
+			FileId:      fileId,
+			SpaceId:     "space1",
+			ObjectId:    objectId,
+			State:       FileStateMissingBlocks,
+			ScheduledAt: time.Now().Add(20 * time.Hour),
+		}
+	})
+	require.NoError(t, err)
+
+	require.NoError(t, fx.DeleteFile(objectId, domain.FullFileId{SpaceId: "space1", FileId: fileId}))
+
+	it, err := fx.queue.GetById(objectId)
+	require.NoError(t, err)
+	assert.Equal(t, FileStatePendingDeletion, it.State)
+	assert.True(t, it.ScheduledAt.Before(time.Now().Add(5*time.Minute)),
+		"deletion must be scheduled promptly, not after the parked backoff")
+	require.NoError(t, fx.queue.ReleaseAndUpdate(objectId, it))
+}
+
+func TestMissingBlocksRetryDelay(t *testing.T) {
+	want := []time.Duration{
+		10 * time.Minute,
+		40 * time.Minute,
+		160 * time.Minute,
+		640 * time.Minute,
+		24 * time.Hour, // 2560min capped
+		24 * time.Hour,
+	}
+	for retries, wantDelay := range want {
+		assert.Equal(t, wantDelay, missingBlocksRetryDelay(retries), "retries=%d", retries)
+	}
+}
+
+func TestRescheduleTransient(t *testing.T) {
+	t.Run("parked item keeps its long backoff", func(t *testing.T) {
+		it := FileInfo{State: FileStateMissingBlocks, MissingBlocksRetries: 2}
+		got := rescheduleTransient(it, errors.New("any transient error"))
+		assert.WithinDuration(t, time.Now().Add(160*time.Minute), got.ScheduledAt, 15*time.Second)
+	})
+
+	t.Run("connectivity error gets the longer delay", func(t *testing.T) {
+		it := FileInfo{State: FileStatePendingUpload}
+		got := rescheduleTransient(it, fmt.Errorf("get node: %w", rpcstore2.ErrNoConnectionToAnyFileClient))
+		assert.WithinDuration(t, time.Now().Add(connectivityRetryDelay), got.ScheduledAt, 15*time.Second)
+	})
+
+	t.Run("other transient errors get the short retry", func(t *testing.T) {
+		it := FileInfo{State: FileStatePendingUpload}
+		got := rescheduleTransient(it, errors.New("some rpc error"))
+		assert.WithinDuration(t, time.Now().Add(time.Minute), got.ScheduledAt, 15*time.Second)
+	})
 }

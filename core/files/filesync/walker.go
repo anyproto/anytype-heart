@@ -122,14 +122,17 @@ func (s *fileSync) enumerateFileCids(ctx context.Context, spaceId string, fileId
 // leaf chunk of file content, so that children can be enumerated from links
 // without fetching them.
 //
-// This holds for a unixfs file node whose content fits in a single layer of
-// chunks: the balanced importer then puts all leaves directly under it. The
-// check is exact for DAGs built with our chunk size (fileservice.ChunkSize).
-// A DAG built with a smaller chunker can, when its chunk count is ≡1 modulo
-// the link fanout, hide a one-chunk intermediate node behind a small link and
-// have it misread as a leaf; the consequence is one unenumerated block, never
-// a wrong upload. When in doubt this function returns false and the children
-// are fetched, which is always correct.
+// In a balanced unixfs DAG a node's children are either all leaves or all
+// intermediate nodes, and among intermediate children the first one always
+// covers a fully filled subtree of DefaultLinksPerBlock chunks. The per-child
+// blocksize check below therefore rejects any node with intermediate children
+// as long as the writer's chunk size exceeds ChunkSize/DefaultLinksPerBlock
+// (~6 KB); for anytype's fixed 1 MiB chunker the classification is exact.
+// Should a foreign sub-6KB-chunk DAG ever slip through, a skipped
+// intermediate node would leave its subtree unenumerated — not bound to the
+// space and so exposed to node-side garbage collection — which is why, when
+// in doubt, this function returns false and the children are fetched: that is
+// always correct.
 func childrenAreLeafChunks(node ipld.Node, links []*ipld.Link) bool {
 	protoNode, ok := node.(*merkledag.ProtoNode)
 	if !ok {
