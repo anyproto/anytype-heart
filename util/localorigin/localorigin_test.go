@@ -73,6 +73,18 @@ func TestPolicy_AllowFileOrigin(t *testing.T) {
 	assert.False(t, policy.AllowOrigin("null"))
 }
 
+func TestPolicy_AllowWebclipperExtension(t *testing.T) {
+	policy := New("", AllowWebclipperExtension())
+
+	assert.True(t, policy.AllowOrigin("chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf"))
+	assert.True(t, policy.AllowOrigin("chrome-extension://jkmhmgghdjjbafmkgjmplhemjjnkligf"))
+	assert.True(t, policy.AllowOrigin("chrome-extension://lcamkcmpcofgmbmloefimnelnjpcdpfn"))
+	// Not a licence for any chrome-extension origin, only the Webclipper's own.
+	assert.False(t, policy.AllowOrigin("chrome-extension://abcdef"))
+	// ...and off unless the option is set.
+	assert.False(t, New("").AllowOrigin("chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf"))
+}
+
 func TestPolicy_ExtraAllowedOrigins(t *testing.T) {
 	t.Run("comma separated list with whitespace", func(t *testing.T) {
 		policy := New(" http://192.168.1.5:3030 , https://app.example.com ")

@@ -31,10 +31,14 @@ var log = logging.Logger("anytype-grpc-server")
 // cross-origin: it sends no Origin on gRPC-Web POSTs and "file://" on a
 // WebSocket handshake. Neither can be produced by a remote page, which always
 // has to attach its own Origin.
+//
+// The Webclipper browser extension's iframe also reaches the proxy directly,
+// sending a chrome-extension:// origin carrying the extension's own id.
 func newOriginPolicy() *localorigin.Policy {
 	return localorigin.New(os.Getenv(envAllowedOrigins),
 		localorigin.AllowFileOrigin(),
 		localorigin.AllowHosts(os.Getenv(envAllowedHosts)),
+		localorigin.AllowWebclipperExtension(),
 	)
 }
 

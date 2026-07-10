@@ -20,6 +20,12 @@ const proxyHost = "127.0.0.1:31008"
 // uses, in front of a sentinel that records whether the RPC was dispatched.
 func newTestProxy(t *testing.T, withWebsockets bool) (http.HandlerFunc, *atomic.Bool) {
 	t.Helper()
+	policy := localorigin.New("", localorigin.AllowFileOrigin())
+	return newTestProxyWithPolicy(t, policy, withWebsockets)
+}
+
+func newTestProxyWithPolicy(t *testing.T, policy *localorigin.Policy, withWebsockets bool) (http.HandlerFunc, *atomic.Bool) {
+	t.Helper()
 
 	var dispatched atomic.Bool
 	sentinel := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -27,7 +33,6 @@ func newTestProxy(t *testing.T, withWebsockets bool) (http.HandlerFunc, *atomic.
 		w.WriteHeader(http.StatusOK)
 	})
 
-	policy := localorigin.New("", localorigin.AllowFileOrigin())
 	// WrapServer auto-registers the real gRPC methods in production; WrapHandler
 	// does not, so register the probed endpoint to keep the default
 	// corsForRegisteredEndpointsOnly preflight check faithful.
@@ -134,6 +139,23 @@ func TestProxyHandler_AllowsTrustedCallers(t *testing.T) {
 			assert.True(t, dispatched.Load(), "the rpc should reach the handler")
 		})
 	}
+}
+
+// TestProxyHandler_AllowsWebclipperExtension covers the Webclipper browser
+// extension's iframe, which talks to the proxy directly from a
+// chrome-extension:// origin rather than through native messaging.
+func TestProxyHandler_AllowsWebclipperExtension(t *testing.T) {
+	// given the allowlist production builds for the proxy
+	policy := localorigin.New("", localorigin.AllowFileOrigin(), localorigin.AllowWebclipperExtension())
+	handler, dispatched := newTestProxyWithPolicy(t, policy, false)
+	w := httptest.NewRecorder()
+
+	// when
+	handler(w, newGrpcWebRequest(proxyHost, "chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf"))
+
+	// then
+	require.NotEqual(t, http.StatusForbidden, w.Code)
+	assert.True(t, dispatched.Load())
 }
 
 func TestProxyHandler_Preflight(t *testing.T) {

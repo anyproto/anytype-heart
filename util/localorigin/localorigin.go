@@ -26,6 +26,17 @@ import (
 // WebSocket handshake. A remote page can never obtain it.
 const fileOrigin = "file://"
 
+// webclipperExtensionOrigins are the origins Anytype's official Webclipper
+// browser extension sends when its iframe (chrome-extension://<id>/iframe/index.html)
+// talks to the gRPC-Web proxy directly, one id per browser/store build. Kept in
+// sync with the EXTENSION_IDS list in anytype-ts's
+// electron/ts/lib/installNativeMessagingHost.ts.
+var webclipperExtensionOrigins = []string{
+	"chrome-extension://jbnammhjiplhpjfncnlejjjejghimdkf",
+	"chrome-extension://jkmhmgghdjjbafmkgjmplhemjjnkligf",
+	"chrome-extension://lcamkcmpcofgmbmloefimnelnjpcdpfn",
+}
+
 // Option configures a Policy.
 type Option func(*Policy)
 
@@ -34,6 +45,18 @@ type Option func(*Policy)
 // only native clients talk to.
 func AllowFileOrigin() Option {
 	return func(p *Policy) { p.allowFileOrigin = true }
+}
+
+// AllowWebclipperExtension trusts the origins of Anytype's official Webclipper
+// browser extension. Enable it for surfaces the extension's iframe reaches
+// directly over HTTP; it is not a licence for third-party extensions, which
+// send a chrome-extension:// origin of their own that stays untrusted.
+func AllowWebclipperExtension() Option {
+	return func(p *Policy) {
+		for _, origin := range webclipperExtensionOrigins {
+			p.extra[normalize(origin)] = struct{}{}
+		}
+	}
 }
 
 // AllowHosts accepts a comma-separated list of Host header values (port
