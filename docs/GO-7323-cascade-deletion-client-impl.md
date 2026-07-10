@@ -10,9 +10,9 @@ When a user creates an object **inside** another object, the backend records the
 a created object) **implicitly archived** the whole nested subtree — objects and files alike.
 User feedback: silently archiving nested *objects* is surprising.
 
-> **Status:** the backend lives on branch `go-7323-cascade-deletion-orphan-events`, **not yet merged
-> to `develop` and not yet pushed**. Regenerate protos from that branch, not from `develop`. Nothing
-> described here has shipped, so the protocol can still be changed cheaply — raise objections now.
+> **Status:** the backend is merged to `develop` (PR #3201). Regenerate protos from `develop`.
+> Nothing has been *released* to users, so the protocol can still be changed cheaply — raise
+> objections now.
 
 New behavior:
 
