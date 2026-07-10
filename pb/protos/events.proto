@@ -1092,6 +1092,10 @@ message Event {
       string rootCollectionID = 1;
       int64 objectsCount = 2;
       model.Import.Type importType = 3;
+      // id of the import report page listing per-object issues; empty when the run was clean (importv2)
+      string reportObjectId = 4;
+      // number of issues recorded during the run (importv2)
+      int64 issuesCount = 5;
     }
   }
 

@@ -17,6 +17,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/identity"
 	"github.com/anyproto/anytype-heart/core/block/importv2/persist"
+	"github.com/anyproto/anytype-heart/core/block/importv2/report"
 	"github.com/anyproto/anytype-heart/core/block/importv2/resolve"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -121,15 +122,25 @@ func Run(ctx context.Context, req importv2.Request, converter importv2.Converter
 		r.compensate()
 		return r.buildResult(*fatal, importv2.RootSpec{})
 	}
+	reportClaimed := r.maybeClaimReport(runCtx)
 	r.finalize(runCtx, rootSpec)
 	r.reconcileClaims()
 	if fatal := r.fatalIssue(); fatal != nil {
 		r.compensate()
 		return r.buildResult(*fatal, importv2.RootSpec{})
 	}
+	r.emitReport(runCtx, reportClaimed, reportTitle(rootSpec, converter))
 	result = r.buildResult(importv2.Issue{}, rootSpec)
 	result.Err = nil
 	return result
+}
+
+func reportTitle(rootSpec importv2.RootSpec, converter importv2.Converter) string {
+	name := rootSpec.CollectionName
+	if name == "" {
+		name = converter.Name()
+	}
+	return "Import report — " + name
 }
 
 // panicError renders a recovered panic (with the panic-site stack — the
@@ -155,7 +166,10 @@ type run struct {
 	// loudly is not a silent drop).
 	issuedKeys    map[string]struct{}
 	issuesDropped int64
-	fatal         *importv2.Issue
+	// loudIssues counts warning-or-worse issues: info diagnostics ride along
+	// in a report page but never cause one.
+	loudIssues int64
+	fatal      *importv2.Issue
 
 	// rootCandidates is recorded in stream order (sink side) so membership
 	// stays deterministic; failed objects are filtered out at finalize.
@@ -164,6 +178,7 @@ type run struct {
 	failedKeys     map[string]struct{}
 
 	rootCollectionId string
+	reportObjectId   string
 	compensated      int
 	leaked           int
 }
@@ -179,6 +194,9 @@ func (r *run) report(issue importv2.Issue) {
 	}
 	if issue.SourceKey != "" {
 		r.issuedKeys[issue.SourceKey] = struct{}{}
+	}
+	if issue.Severity >= importv2.SeverityWarning {
+		r.loudIssues++
 	}
 	abort := importv2.ShouldAbort(issue.Severity, r.req.Mode) && r.fatal == nil
 	if abort {
@@ -410,6 +428,10 @@ func (r *run) reconcileClaims() {
 	unassigned := r.deps.Identity.UnassignedClaims()
 	sort.Strings(unassigned)
 	for _, key := range unassigned {
+		if key == report.SourceKey {
+			// Claimed before finalize, emitted after this reconciliation.
+			continue
+		}
 		r.issueMu.Lock()
 		_, loud := r.issuedKeys[key]
 		r.issueMu.Unlock()
@@ -420,6 +442,73 @@ func (r *run) reconcileClaims() {
 		r.report(importv2.ObjectError(importv2.IssueInvariant, key,
 			fmt.Errorf("claimed object was never emitted by the converter")))
 	}
+}
+
+// hasIssues reports whether the ledger holds anything worth a report page:
+// at least one warning-or-worse issue (info-only runs are clean).
+func (r *run) hasIssues() bool {
+	r.issueMu.Lock()
+	defer r.issueMu.Unlock()
+	return r.loudIssues > 0 || r.issuesDropped > 0
+}
+
+// maybeClaimReport claims the report page before finalize so the root
+// collection lists it next to the imported content. Claimed only when issues
+// already exist — issues never shrink, so the report is then guaranteed to be
+// emitted (a claim without a later object would be a reconciliation gap).
+func (r *run) maybeClaimReport(ctx context.Context) bool {
+	if !r.hasIssues() {
+		return false
+	}
+	if err := r.deps.Identity.Claim(ctx, importv2.IdentityClaim{SourceKey: report.SourceKey, SbType: coresb.SmartBlockTypePage}); err != nil {
+		r.report(importv2.Warning(importv2.IssueObjectFailed, report.SourceKey,
+			fmt.Sprintf("claim import report: %s", err)))
+		return false
+	}
+	r.rootMu.Lock()
+	r.rootCandidates = append(r.rootCandidates, report.SourceKey)
+	r.rootMu.Unlock()
+	return true
+}
+
+// emitReport builds and persists the report page from the final issue list
+// (§16 item 1). Its own failures degrade to warnings: a report problem must
+// never abort — or compensate away — an otherwise finished import.
+func (r *run) emitReport(ctx context.Context, claimed bool, title string) {
+	if !r.hasIssues() {
+		return
+	}
+	if !claimed {
+		// Issues appeared only during finalize/reconciliation: claim late —
+		// reconciliation already ran, and the object follows immediately.
+		if err := r.deps.Identity.Claim(ctx, importv2.IdentityClaim{SourceKey: report.SourceKey, SbType: coresb.SmartBlockTypePage}); err != nil {
+			r.report(importv2.Warning(importv2.IssueObjectFailed, report.SourceKey,
+				fmt.Sprintf("claim import report: %s", err)))
+			return
+		}
+	}
+	r.issueMu.Lock()
+	issues := append([]importv2.Issue(nil), r.issues...)
+	dropped := r.issuesDropped
+	r.issueMu.Unlock()
+	object := report.Build(title, issues, dropped, r.deps.Identity.Resolve)
+	assignment, err := r.deps.Identity.Assign(object.SourceKey)
+	if err != nil {
+		r.report(importv2.Warning(importv2.IssueObjectFailed, object.SourceKey,
+			fmt.Sprintf("assign import report: %s", err)))
+		return
+	}
+	outcome, err := r.persistGuarded(ctx, work{object: object, target: persist.Target{
+		Id:         assignment.Id,
+		IsExisting: assignment.IsExisting,
+		Payload:    assignment.Payload,
+	}})
+	if err != nil {
+		r.report(importv2.Warning(importv2.IssueObjectFailed, object.SourceKey,
+			fmt.Sprintf("persist import report: %s", err)))
+		return
+	}
+	r.reportObjectId = outcome.Id
 }
 
 func (r *run) compensate() {
@@ -456,6 +545,7 @@ func (r *run) buildResult(fatal importv2.Issue, rootSpec importv2.RootSpec) *imp
 	r.issueMu.Unlock()
 	result := &importv2.Result{
 		RootCollectionId: r.rootCollectionId,
+		ReportObjectId:   r.reportObjectId,
 		WidgetLayout:     rootSpec.WidgetLayout,
 		Created:          r.created.Load(),
 		Updated:          r.updated.Load(),

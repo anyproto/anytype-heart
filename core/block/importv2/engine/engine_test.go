@@ -225,6 +225,17 @@ func (c *gapConverter) Convert(ctx context.Context, sink importv2.Sink) (importv
 	return c.scriptConverter.Convert(ctx, sink)
 }
 
+// issueConverter emits one fixed issue before streaming its objects.
+type issueConverter struct {
+	scriptConverter
+	issue importv2.Issue
+}
+
+func (c *issueConverter) Convert(ctx context.Context, sink importv2.Sink) (importv2.RootSpec, error) {
+	sink.Issue(c.issue)
+	return c.scriptConverter.Convert(ctx, sink)
+}
+
 // panicConvertConverter emits its objects, then panics inside Convert.
 type panicConvertConverter struct {
 	scriptConverter
@@ -543,6 +554,86 @@ func TestClaimsReconciliation(t *testing.T) {
 		issue := importv2.AsIssue(result.Err, importv2.SeverityFatal, importv2.IssueStoreError)
 		assert.Equal(t, importv2.IssueInvariant, issue.Code)
 		assert.Equal(t, 1, result.Compensated)
+	})
+}
+
+func TestImportReport(t *testing.T) {
+	t.Run("run with issues persists a report page listed in the root collection", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		factory := &fakeCollectionFactory{}
+		fx.deps.Collection = factory
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		converter := &scriptConverter{
+			objects:  []*importv2.Object{pageObj("a.md", true), pageObj("bad.md", true)},
+			rootSpec: importv2.RootSpec{CollectionName: "Markdown Import"},
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Equal(t, "id-import-report", result.ReportObjectId)
+		assert.Contains(t, fx.persister.persisted, "import-report")
+		assert.Equal(t, []string{"a.md", "import-report"}, factory.members,
+			"failed page filtered, report listed after the content")
+	})
+
+	t.Run("clean run creates no report", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		converter := &scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Empty(t, result.ReportObjectId)
+		assert.NotContains(t, fx.persister.persisted, "import-report")
+	})
+
+	t.Run("info-only diagnostics do not cause a report page", func(t *testing.T) {
+		// given — flavour/type-suggestion info fires on most imports; a
+		// report page must mean something actually went wrong.
+		fx := newEngineFixture()
+		converter := &issueConverter{
+			scriptConverter: scriptConverter{objects: []*importv2.Object{pageObj("a.md", false)}},
+			issue:           importv2.Info(importv2.IssueFlavourDetected, "notion-export"),
+		}
+
+		// when
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		require.Len(t, result.Issues, 1, "the info issue itself is still reported")
+		assert.Empty(t, result.ReportObjectId)
+		assert.NotContains(t, fx.persister.persisted, "import-report")
+	})
+
+	t.Run("report persist failure degrades to a warning, never aborts", func(t *testing.T) {
+		// given
+		fx := newEngineFixture()
+		fx.persister.failKeys["bad.md"] = assert.AnError
+		fx.persister.failKeys["import-report"] = assert.AnError
+		converter := &scriptConverter{objects: []*importv2.Object{pageObj("a.md", false), pageObj("bad.md", false)}}
+
+		// when — all-or-nothing would abort on any new ObjectError
+		result := Run(context.Background(), importv2.Request{Mode: importv2.ModeContinueOnError}, converter, fx.deps)
+
+		// then
+		require.NoError(t, result.Err)
+		assert.Empty(t, result.ReportObjectId)
+		var reportIssue *importv2.Issue
+		for i := range result.Issues {
+			if result.Issues[i].SourceKey == "import-report" {
+				reportIssue = &result.Issues[i]
+			}
+		}
+		require.NotNil(t, reportIssue)
+		assert.Equal(t, importv2.SeverityWarning, reportIssue.Severity)
 	})
 }
 

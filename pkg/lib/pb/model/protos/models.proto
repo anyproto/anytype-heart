@@ -1148,6 +1148,10 @@ message Notification {
         string spaceId = 4;
         string name = 5;
         string spaceName = 6;
+        // id of the import report page listing per-object issues; empty when the run was clean (importv2)
+        string reportObjectId = 7;
+        // number of issues recorded during the run, for "imported with N issues" UI (importv2)
+        int64 issuesCount = 8;
     }
 
     message Export {

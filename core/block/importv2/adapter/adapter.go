@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -167,6 +168,7 @@ func (s *service) runImport(req *pb.RpcObjectImportRequest) {
 
 	result := s.execute(runCtx, req, progress)
 
+	logRunResult(req, result)
 	s.finishProgress(progress, req, result)
 	if result.Err == nil {
 		s.fileSync.SendImportEvents()
@@ -177,8 +179,58 @@ func (s *service) runImport(req *pb.RpcObjectImportRequest) {
 			RootCollectionID: result.RootCollectionId,
 			ObjectsCount:     result.ObjectsCount(),
 			ImportType:       req.Type,
+			ReportObjectId:   result.ReportObjectId,
+			IssuesCount:      issuesCount(result),
 		},
 	}))
+}
+
+// issuesCount is the wire-facing issue count: warning-or-worse issues plus
+// the overflow the capped list did not retain (info diagnostics excluded).
+func issuesCount(result *importv2.Result) int64 {
+	count := result.IssuesDropped
+	for _, issue := range result.Issues {
+		if issue.Severity >= importv2.SeverityWarning {
+			count++
+		}
+	}
+	return count
+}
+
+// logRunResult emits the one structured end-of-run line the issue taxonomy
+// feeds into telemetry (§16 item 1): counts by severity/code make a Sentry
+// or Graylog event attributable to a converter, object class, and failure
+// kind instead of an opaque "import failed".
+func logRunResult(req *pb.RpcObjectImportRequest, result *importv2.Result) {
+	counts := map[string]int64{}
+	for _, issue := range result.Issues {
+		counts[issue.Severity.String()+"/"+string(issue.Code)]++
+	}
+	keys := make([]string, 0, len(counts))
+	for key := range counts {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, key := range keys {
+		parts = append(parts, fmt.Sprintf("%s=%d", key, counts[key]))
+	}
+	logger := log.With(
+		"importType", req.Type.String(),
+		"spaceId", req.SpaceId,
+		"created", result.Created,
+		"updated", result.Updated,
+		"skipped", result.Skipped,
+		"failed", result.Failed,
+		"issues", strings.Join(parts, " "),
+		"issuesDropped", result.IssuesDropped,
+		"reportObjectId", result.ReportObjectId,
+	)
+	if result.Err != nil {
+		logger.Warnf("import finished with error: %s", result.Err)
+		return
+	}
+	logger.Infof("import finished")
 }
 
 func (s *service) execute(ctx context.Context, req *pb.RpcObjectImportRequest, progress process.Progress) *importv2.Result {
@@ -239,6 +291,9 @@ func (s *service) executeMarkdown(ctx context.Context, request importv2.Request,
 		if result.RootCollectionId != "" {
 			combined.RootCollectionId = result.RootCollectionId
 			combined.WidgetLayout = result.WidgetLayout
+		}
+		if result.ReportObjectId != "" {
+			combined.ReportObjectId = result.ReportObjectId
 		}
 		if result.Err != nil {
 			combined.Err = result.Err
@@ -398,10 +453,12 @@ func (s *service) finishProgress(progress process.Progress, req *pb.RpcObjectImp
 		IsLocal: true,
 		Space:   req.SpaceId,
 		Payload: &model.NotificationPayloadOfImport{Import: &model.NotificationImport{
-			ProcessId:  progress.Id(),
-			ErrorCode:  errorCode(result.Err, req),
-			ImportType: req.Type,
-			SpaceId:    req.SpaceId,
+			ProcessId:      progress.Id(),
+			ErrorCode:      errorCode(result.Err, req),
+			ImportType:     req.Type,
+			SpaceId:        req.SpaceId,
+			ReportObjectId: result.ReportObjectId,
+			IssuesCount:    issuesCount(result),
 		}},
 	}, result.Err)
 }

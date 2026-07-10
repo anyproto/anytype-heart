@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -156,6 +157,10 @@ func projectionOf(t *testing.T, app *testApplication) parityProjection {
 	projection := parityProjection{}
 	for _, record := range records {
 		name := record.Details.GetString(bundle.RelationKeyName)
+		if strings.HasPrefix(name, "Import report — ") {
+			// v2-only diagnostic page (§16 item 1), deliberately absent in v1.
+			continue
+		}
 		layout := model.ObjectTypeLayout(record.Details.GetInt64(bundle.RelationKeyResolvedLayout))
 		switch layout {
 		case model.ObjectType_basic, model.ObjectType_todo, model.ObjectType_note:
