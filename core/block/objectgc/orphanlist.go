@@ -2,6 +2,7 @@ package objectgc
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -39,16 +40,28 @@ const (
 	parentActive
 )
 
-// queryParentStates resolves existence + archived/deleted state for the given ids using QueryRaw,
-// which (unlike Query) applies no implicit isArchived/isDeleted filters. Ids not returned are absent.
-func (gc *objectGC) queryParentStates(idx spaceindex.Store, ids map[string]struct{}) (map[string]parentState, error) {
-	states := make(map[string]parentState, len(ids))
+// parentInfo is a candidate's createdInContext parent as the store knows it: its lifecycle state,
+// plus the layout needed to decide whether it can own GC-tracked children at all.
+//
+// layout is only meaningful when the parent is present with real details (parentActive /
+// parentArchived). DeleteObject replaces a deleted object's details with {id, spaceId, isDeleted},
+// so a tombstone carries no layout at all.
+type parentInfo struct {
+	state  parentState
+	layout model.ObjectTypeLayout
+}
+
+// queryParentInfo resolves existence, archived/deleted state and layout for the given ids using
+// QueryRaw, which (unlike Query) applies no implicit isArchived/isDeleted filters. Ids not returned
+// are absent.
+func (gc *objectGC) queryParentInfo(idx spaceindex.Store, ids map[string]struct{}) (map[string]parentInfo, error) {
+	infos := make(map[string]parentInfo, len(ids))
 	if len(ids) == 0 {
-		return states, nil
+		return infos, nil
 	}
 	values := make([]domain.Value, 0, len(ids))
 	for id := range ids {
-		states[id] = parentAbsent
+		infos[id] = parentInfo{state: parentAbsent}
 		values = append(values, domain.String(id))
 	}
 	records, err := idx.QueryRaw(&database.Filters{FilterObj: database.FilterIn{
@@ -56,20 +69,42 @@ func (gc *objectGC) queryParentStates(idx spaceindex.Store, ids map[string]struc
 		Value: values,
 	}}, 0, 0)
 	if err != nil {
-		return nil, fmt.Errorf("query parent states: %w", err)
+		return nil, fmt.Errorf("query parent info: %w", err)
 	}
 	for _, r := range records {
 		id := r.Details.GetString(bundle.RelationKeyId)
+		info := parentInfo{layout: model.ObjectTypeLayout(r.Details.GetInt64(bundle.RelationKeyResolvedLayout))}
 		switch {
 		case r.Details.GetBool(bundle.RelationKeyIsDeleted):
-			states[id] = parentDeleted
+			info.state = parentDeleted
 		case r.Details.GetBool(bundle.RelationKeyIsArchived):
-			states[id] = parentArchived
+			info.state = parentArchived
 		default:
-			states[id] = parentActive
+			info.state = parentActive
 		}
+		infos[id] = info
 	}
-	return states, nil
+	return infos, nil
+}
+
+// canOwnOrphans reports whether a live parent is the kind of object that can own GC-tracked
+// children. It mirrors the gate CheckObjectsOnObjectArchived already applies to the object it is
+// asked about: system and unsupported layouts cannot.
+//
+// This is what keeps chat content out of the orphan list. A chat attachment carries
+// createdInContext = the chat object and createdInContextRef = the message id, but it can never
+// acquire a backlink: chat messages live in anystore, chatobject contributes no outgoing links, and
+// the indexer only feeds smartblock links into the links table. Without this gate a live attachment
+// -- still visible in the chat -- looks exactly like an unlinked orphan and would be offered to the
+// user for removal.
+//
+// Only applied to parents whose details exist. A deleted parent has no layout (tombstone), and its
+// children are genuinely orphaned whatever it used to be, including a deleted chat's attachments.
+func canOwnOrphans(info parentInfo) bool {
+	if info.state != parentActive && info.state != parentArchived {
+		return true
+	}
+	return slices.Contains(domain.GCEligibleLayouts, info.layout)
 }
 
 // ListOrphans computes the space's orphan forest.
@@ -127,8 +162,9 @@ func (gc *objectGC) ListOrphans(spaceId string) ([]OrphanItem, error) {
 		isCandidate[id] = struct{}{}
 	}
 
-	// 2) Parent states, for the sync-gap guard and the per-root reason. Parents that are themselves
-	// candidates are active by construction and need no lookup.
+	// 2) Parent info, for the sync-gap guard, the parent-eligibility gate and the per-root reason.
+	// Parents that are themselves candidates need no lookup: they are active, and they passed the
+	// GC-eligible layout filter of the candidate query by construction.
 	toLookup := make(map[string]struct{})
 	for _, d := range candidates {
 		p := d.GetString(bundle.RelationKeyCreatedInContext)
@@ -136,19 +172,23 @@ func (gc *objectGC) ListOrphans(spaceId string) ([]OrphanItem, error) {
 			toLookup[p] = struct{}{}
 		}
 	}
-	parentStates, err := gc.queryParentStates(idx, toLookup)
+	parentInfos, err := gc.queryParentInfo(idx, toLookup)
 	if err != nil {
-		return nil, fmt.Errorf("resolve parent states: %w", err)
+		return nil, fmt.Errorf("resolve parent info: %w", err)
 	}
 
-	// Sync-gap guard: a parent absent from the store was never synced (deletion tombstones the row),
-	// so we must not recommend removing its children.
+	// Drop candidates whose parent cannot own orphans:
+	//   - absent from the store: never synced (deletion tombstones the row rather than removing it),
+	//     so we must not recommend removing its children;
+	//   - a live chat or system object: it can't own GC-tracked children, and its "children" (chat
+	//     attachments) have no backlinks by construction, so they would all look unlinked.
 	for id, d := range candidates {
 		p := d.GetString(bundle.RelationKeyCreatedInContext)
 		if _, ok := isCandidate[p]; ok {
 			continue
 		}
-		if parentStates[p] == parentAbsent {
+		info := parentInfos[p]
+		if info.state == parentAbsent || !canOwnOrphans(info) {
 			delete(candidates, id)
 		}
 	}
@@ -180,7 +220,7 @@ func (gc *objectGC) ListOrphans(spaceId string) ([]OrphanItem, error) {
 	if len(inS) == 0 {
 		return nil, nil
 	}
-	return gc.buildForest(candidates, inS, parentStates), nil
+	return gc.buildForest(candidates, inS, parentInfos), nil
 }
 
 // evictToFixedPoint returns the greatest subset of candidates whose active backlinks all fall
@@ -239,7 +279,7 @@ func (gc *objectGC) evictToFixedPoint(candidates map[string]*domain.Details, act
 
 // buildForest marks roots (parent outside S), resolves each root's reason, and handles
 // createdInContext cycles (a component with no parent-outside-S) by electing the lowest id as root.
-func (gc *objectGC) buildForest(candidates map[string]*domain.Details, inS map[string]struct{}, parentStates map[string]parentState) []OrphanItem {
+func (gc *objectGC) buildForest(candidates map[string]*domain.Details, inS map[string]struct{}, parentInfos map[string]parentInfo) []OrphanItem {
 	parentOf := func(id string) string {
 		return candidates[id].GetString(bundle.RelationKeyCreatedInContext)
 	}
@@ -320,7 +360,7 @@ func (gc *objectGC) buildForest(candidates map[string]*domain.Details, inS map[s
 			// Both mean: the context is alive but no longer references this object.
 			return OrphanReasonContextUnlinked
 		}
-		switch parentStates[p] {
+		switch parentInfos[p].state {
 		case parentArchived:
 			return OrphanReasonContextArchived
 		case parentDeleted:

@@ -142,6 +142,13 @@ Reconstruct the tree by joining each item's `details.createdInContext` to its pa
 items with `isRoot = true` are the roots. `reason` explains *why* a root is orphaned and is only
 meaningful on roots — descendants inherit their root's reason and carry `none`.
 
+**Chat content is never suggested.** Files and objects created in a live chat carry
+`createdInContext = <chat object>` but can never acquire a backlink (chat messages live in anystore,
+not in block state), so they would otherwise look exactly like unlinked orphans. Objects whose
+creation context is a live chat — or any other non-GC-eligible layout — are excluded. Once the chat
+itself is deleted its attachments *are* genuinely orphaned, and they appear with
+`reason = contextDeleted`.
+
 `keys` selects which relations come back in `details`. Pass what you need to render (e.g. `name`,
 `iconEmoji`, `iconImage`, `snippet`). `id`, `createdInContext`, and `resolvedLayout` are **always**
 included regardless — you cannot render the forest without them. Passing no keys yields the default
