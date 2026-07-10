@@ -19,6 +19,8 @@ func (r *issueRecorder) Object(ctx context.Context, o *importv2.Object) error { 
 func (r *issueRecorder) Issue(i importv2.Issue)                               { r.issues = append(r.issues, i) }
 func (r *issueRecorder) Progress(delta int64)                                 {}
 
+func (r *issueRecorder) Claim(ctx context.Context, claim importv2.IdentityClaim) error { return nil }
+
 func TestSuggestPageType(t *testing.T) {
 	t.Run("database title types its rows via both parent forms", func(t *testing.T) {
 		// given

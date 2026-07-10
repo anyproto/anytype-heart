@@ -893,9 +893,13 @@ the working tree, not taken from the synthesis).
    eventually-consistent index omits (GO-5273) is reported (`missingTarget` warning + "Unresolved
    link" text) but still lost — even though `mapChildEntity` already holds the child's exact
    fetchable id (a `child_page` block's id IS the page id). Fetch-and-claim on demand any
-   `child_page`/`child_database`/`link_to_page`/mention id seen in pass-2 blocks but absent from the
+   `child_page`/`child_database`/`link_to_page` id seen in pass-2 blocks but absent from the
    pass-1 claim set; a permission 404 keeps today's warning. Closes the eventual-consistency hole
-   instead of reporting it.
+   instead of reporting it. Scope note (implemented 2026-07-11): inline rich-text MENTIONS are
+   excluded — an unresolved mention degrades to an external notion.so link (no content loss), and
+   hooking discovery into rich-text rendering would thread ctx through the whole renderer for
+   marginal gain; revisit if user reports demand it. Late claims flow through the new `Sink.Claim`,
+   count toward progress, and are drained by the converter's pending queue (capped at 1000).
 4. **Claims-reconciliation invariant.** `identity.Assign` rejects unclaimed keys, but nothing asserts
    the inverse: at end of run the engine should verify every pass-1 claim ended persisted,
    skipped-with-issue, or failed-with-issue — anything else emits `IssueInvariant`. Placeholder

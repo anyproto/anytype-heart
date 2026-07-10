@@ -108,6 +108,16 @@ func (s *engineSink) Issue(issue importv2.Issue) {
 	s.run.report(issue)
 }
 
+// Claim serves second-chance discovery: identities found only in pass 2 join
+// the index (and the progress total) exactly like pass-1 claims.
+func (s *engineSink) Claim(ctx context.Context, claim importv2.IdentityClaim) error {
+	if err := s.run.deps.Identity.Claim(ctx, claim); err != nil {
+		return err
+	}
+	s.run.deps.Reporter.AddTotal(1)
+	return nil
+}
+
 func (s *engineSink) Progress(delta int64) {
 	s.run.deps.Reporter.Step(delta)
 }

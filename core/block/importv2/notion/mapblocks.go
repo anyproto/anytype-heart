@@ -135,11 +135,11 @@ func (c *Converter) mapBlock(ctx context.Context, mctx mapContext, block *notion
 			}},
 		}}}, nil
 	case "child_page":
-		return c.mapChildEntity(mctx, block, false, sink)
+		return c.mapChildEntity(ctx, mctx, block, false, sink)
 	case "child_database":
-		return c.mapChildEntity(mctx, block, true, sink)
+		return c.mapChildEntity(ctx, mctx, block, true, sink)
 	case "link_to_page":
-		return c.mapLinkToPage(block, sink)
+		return c.mapLinkToPage(ctx, block, sink)
 	case "synced_block":
 		// Transparent container: the (already resolved) content hoists up.
 		return c.mapBlocks(ctx, mctx, block.children, sink)
@@ -478,7 +478,7 @@ type childEntityPayload struct {
 // block-parented entity counts as "within this page" only when its parent
 // block was actually fetched in this page's tree — an unrelated same-titled
 // subpage nested in another page's column/toggle must not match.
-func (c *Converter) mapChildEntity(mctx mapContext, block *notionBlock, wantDatabase bool, sink importv2.Sink) ([]*mappedBlock, error) {
+func (c *Converter) mapChildEntity(ctx context.Context, mctx mapContext, block *notionBlock, wantDatabase bool, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload childEntityPayload
 	if err := block.decode(&payload); err != nil {
 		return c.unsupported(block, sink), nil
@@ -502,6 +502,16 @@ func (c *Converter) mapChildEntity(mctx mapContext, block *notionBlock, wantData
 	// id can't resolve — e.g. an id shape mismatch).
 	if targetId == "" {
 		targetId = c.resolveChildByTitle(mctx, payload.Title, wantDatabase)
+	}
+	// Second chance (§16 item 3): the block id is the child's fetchable id —
+	// a child /search omitted (eventual consistency) is claimed and imported
+	// instead of degrading to a dead placeholder.
+	if targetId == "" {
+		if wantDatabase {
+			targetId, _ = c.discoverDatabase(ctx, block.notionId(), sink)
+		} else {
+			targetId, _ = c.discoverPage(ctx, block.notionId(), sink)
+		}
 	}
 	if targetId == "" {
 		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, mctx.pageId,
@@ -547,7 +557,7 @@ type linkToPagePayload struct {
 	DatabaseId string `json:"database_id"`
 }
 
-func (c *Converter) mapLinkToPage(block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
+func (c *Converter) mapLinkToPage(ctx context.Context, block *notionBlock, sink importv2.Sink) ([]*mappedBlock, error) {
 	var payload linkToPagePayload
 	if err := block.decode(&payload); err != nil {
 		return c.unsupported(block, sink), nil
@@ -557,9 +567,14 @@ func (c *Converter) mapLinkToPage(block *notionBlock, sink importv2.Sink) ([]*ma
 	case "database_id":
 		// Blocks still reference the database, not its data sources.
 		targetId, resolved = c.resolveDatabaseRef(payload.DatabaseId)
+		if !resolved {
+			targetId, resolved = c.discoverDatabase(ctx, payload.DatabaseId, sink)
+		}
 	default:
 		targetId = payload.PageId
-		_, resolved = c.entityById[targetId]
+		if _, resolved = c.entityById[targetId]; !resolved {
+			targetId, resolved = c.discoverPage(ctx, payload.PageId, sink)
+		}
 	}
 	if !resolved || targetId == "" {
 		sink.Issue(importv2.Warning(importv2.IssueMissingTarget, block.Id,

@@ -69,6 +69,14 @@ type Sink interface {
 	// Progress adds fine-grained progress ticks beyond the engine's
 	// per-object accounting (e.g. per search page during a crawl).
 	Progress(delta int64)
+
+	// Claim registers a late identity claim for an entity discovered only
+	// during pass 2 (second-chance discovery, §16 item 3 — e.g. a Notion
+	// child page the eventually-consistent /search index omitted). The claim
+	// must precede the emission of any object referencing the claimed key,
+	// and the converter must eventually emit the claimed object (or report
+	// an issue for it) — the claims-reconciliation invariant applies.
+	Claim(ctx context.Context, claim IdentityClaim) error
 }
 
 // CollectionFactory builds a collection object whose membership references

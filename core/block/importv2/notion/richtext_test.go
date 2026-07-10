@@ -110,7 +110,7 @@ func TestMentionCarriesNoDuplicateLinkMark(t *testing.T) {
 		PlainText: "Beta",
 		Type:      "mention",
 		Href:      "https://app.notion.com/p/" + knownHex,
-		Mention:   &mention{Type: "page", Page: &struct {
+		Mention: &mention{Type: "page", Page: &struct {
 			Id string `json:"id"`
 		}{Id: knownId}},
 	}})
