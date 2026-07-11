@@ -132,7 +132,7 @@ func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.
 		Archived:        page.Archived,
 	}
 	// Root children are the top-level mapped blocks; persist adds the root.
-	if err := c.applyIcon(ctx, object, page.Icon, page.Cover, sink); err != nil {
+	if err := c.applyIcon(ctx, object, page.Icon, page.Cover, "/pages/"+stub.Id, sink); err != nil {
 		return err
 	}
 	return sink.Object(ctx, object)
@@ -309,7 +309,10 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, val
 			if file.url() == "" {
 				continue
 			}
-			sourceKey, err := c.emitFileFromUrl(ctx, sink, file.url(), file.Name, file.isExternal())
+			// Property files carry no per-file refresh source (re-reading the
+			// whole page to match a file by name is not worth it) — nil skips
+			// the expired-URL retry.
+			sourceKey, err := c.emitFileFromUrl(ctx, sink, file.url(), file.Name, file.isExternal(), nil)
 			if err != nil {
 				return domain.Invalid(), nil, err
 			}

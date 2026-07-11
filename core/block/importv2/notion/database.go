@@ -134,7 +134,7 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 	}
 	object.Payload.Details.SetString(bundle.RelationKeySourceFilePath, stub.Id)
 	setTimestamps(object.Payload.Details, database.CreatedTime, database.LastEditedTime)
-	if err := c.applyIcon(ctx, object, database.Icon, database.Cover, sink); err != nil {
+	if err := c.applyIcon(ctx, object, database.Icon, database.Cover, "/data_sources/"+schemaId, sink); err != nil {
 		return err
 	}
 	wireDataview(object, schemaDefs)

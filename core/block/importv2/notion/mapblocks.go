@@ -215,7 +215,14 @@ func (c *Converter) mapText(ctx context.Context, mctx mapContext, block *notionB
 		if payload.Icon.Type == "emoji" {
 			text.IconEmoji = payload.Icon.Emoji
 		} else if iconUrl := payload.Icon.fileUrl(); iconUrl != "" {
-			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", payload.Icon.isExternal())
+			refresh := c.blockUrlRefresher(block.notionId(), func(b *notionBlock) string {
+				var fresh textPayload
+				if b.decode(&fresh) != nil {
+					return ""
+				}
+				return fresh.Icon.fileUrl()
+			})
+			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", payload.Icon.isExternal(), refresh)
 			if err != nil {
 				return nil, err
 			}
@@ -287,7 +294,14 @@ func (c *Converter) mapFile(ctx context.Context, block *notionBlock, fileType mo
 	if payload.url() == "" {
 		return c.emptyMedia(block, payload.Caption, sink), nil
 	}
-	sourceKey, err := c.emitFileFromUrl(ctx, sink, payload.url(), payload.Name, payload.isExternal())
+	refresh := c.blockUrlRefresher(block.notionId(), func(b *notionBlock) string {
+		var fresh filePayload
+		if b.decode(&fresh) != nil {
+			return ""
+		}
+		return fresh.url()
+	})
+	sourceKey, err := c.emitFileFromUrl(ctx, sink, payload.url(), payload.Name, payload.isExternal(), refresh)
 	if err != nil {
 		return nil, err
 	}

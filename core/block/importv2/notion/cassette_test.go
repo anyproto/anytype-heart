@@ -56,6 +56,11 @@ func TestCassetteWorkspace(t *testing.T) {
 	apiClient := client.NewClient(token,
 		client.WithTransport(&http.Client{Transport: rec, Timeout: time.Minute}),
 		client.WithRateLimit(1000),
+		// Second-chance discovery probes ids the cassette has no interaction
+		// for; an unmatched replay surfaces as a retryable transport error,
+		// so the default policy (5 attempts, minutes of backoff) would turn
+		// each miss into a multi-second stall. One cheap retry is plenty here.
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: 10 * time.Millisecond, MaxDelay: 50 * time.Millisecond, TotalBudget: 30 * time.Second}),
 	)
 	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir())
 

@@ -76,13 +76,17 @@ func (f *fileValue) url() string {
 }
 
 // applyIcon writes icon/cover details, emitting file objects for
-// image-backed icons and covers.
-func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon *iconValue, cover *fileValue, sink importv2.Sink) error {
+// image-backed icons and covers. refreshPath is the entity's GET path
+// ("/pages/{id}" or "/data_sources/{id}") for expired-URL re-minting.
+func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon *iconValue, cover *fileValue, refreshPath string, sink importv2.Sink) error {
 	if icon != nil {
 		if icon.Type == "emoji" && icon.Emoji != "" {
 			object.Payload.Details.SetString(bundle.RelationKeyIconEmoji, icon.Emoji)
 		} else if iconUrl := icon.fileUrl(); iconUrl != "" {
-			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", icon.isExternal())
+			refresh := c.entityUrlRefresher(refreshPath, func(fresh *iconValue, _ *fileValue) string {
+				return fresh.fileUrl()
+			})
+			sourceKey, err := c.emitFileFromUrl(ctx, sink, iconUrl, "icon", icon.isExternal(), refresh)
 			if err != nil {
 				return err
 			}
@@ -90,7 +94,10 @@ func (c *Converter) applyIcon(ctx context.Context, object *importv2.Object, icon
 		}
 	}
 	if coverUrl := cover.url(); coverUrl != "" {
-		sourceKey, err := c.emitFileFromUrl(ctx, sink, coverUrl, "cover", cover.isExternal())
+		refresh := c.entityUrlRefresher(refreshPath, func(_ *iconValue, fresh *fileValue) string {
+			return fresh.url()
+		})
+		sourceKey, err := c.emitFileFromUrl(ctx, sink, coverUrl, "cover", cover.isExternal(), refresh)
 		if err != nil {
 			return err
 		}

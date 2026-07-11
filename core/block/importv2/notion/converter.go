@@ -44,6 +44,10 @@ type Converter struct {
 	// discovery): claimed on sight, converted by the Convert drain loop.
 	pending        []Entity
 	lateDiscovered int
+	// discoveryMisses caches failed discovery fetches: an inaccessible id
+	// referenced from many pages is attempted once per run, not once per
+	// reference (each miss costs the client's full retry budget).
+	discoveryMisses map[string]bool
 
 	// suggestor types database rows that would otherwise import as plain
 	// Pages (§11.5); suggestedTypes is keyed by data-source AND entity id
@@ -62,6 +66,7 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		tempDir:               tempDir,
 		entityById:            map[string]Entity{},
 		dataSourcesByDatabase: map[string][]string{},
+		discoveryMisses:       map[string]bool{},
 		properties:            newPropertiesStore(),
 		files:                 newFileRegistry(),
 		suggestor:             typesuggest.NewNaive(),
@@ -142,12 +147,13 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 // integration cannot access (404/403) stays unresolved and keeps the
 // caller's missing-target degrade.
 func (c *Converter) discoverPage(ctx context.Context, pageId string, sink importv2.Sink) (string, bool) {
-	if pageId == "" || c.lateDiscovered >= lateDiscoveryCap {
+	if pageId == "" || c.lateDiscovered >= lateDiscoveryCap || c.discoveryMisses[pageId] {
 		return "", false
 	}
 	// GET /pages/{id} has the same stub shape /search results carry.
 	var result searchResult
 	if err := c.client.Request(ctx, http.MethodGet, "/pages/"+pageId, nil, &result); err != nil {
+		c.discoveryMisses[pageId] = true
 		return "", false
 	}
 	entity := Entity{Id: result.Id, Parent: result.Parent, Title: titleOf(result)}
@@ -173,11 +179,12 @@ type databaseStub struct {
 // blocks and link_to_page reference the DATABASE id, which resolves through
 // its data sources.
 func (c *Converter) discoverDatabase(ctx context.Context, databaseId string, sink importv2.Sink) (string, bool) {
-	if databaseId == "" || c.lateDiscovered >= lateDiscoveryCap {
+	if databaseId == "" || c.lateDiscovered >= lateDiscoveryCap || c.discoveryMisses[databaseId] {
 		return "", false
 	}
 	var database databaseStub
 	if err := c.client.Request(ctx, http.MethodGet, "/databases/"+databaseId, nil, &database); err != nil {
+		c.discoveryMisses[databaseId] = true
 		return "", false
 	}
 	for _, source := range database.DataSources {

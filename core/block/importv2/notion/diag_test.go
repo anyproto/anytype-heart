@@ -38,6 +38,9 @@ func TestCassetteDiagnostic(t *testing.T) {
 	apiClient := client.NewClient("cassette",
 		client.WithTransport(&http.Client{Transport: rec, Timeout: time.Minute}),
 		client.WithRateLimit(100000),
+		// Discovery probes miss the cassette; keep the unmatched-replay
+		// retries cheap (same reasoning as TestCassetteWorkspace).
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: 10 * time.Millisecond, MaxDelay: 50 * time.Millisecond, TotalBudget: 30 * time.Second}),
 	)
 	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir())
 	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error { return nil }))
