@@ -30,6 +30,23 @@ var (
 	ErrPeerFindDeadlineExceeded            = errors.New("peer find deadline exceeded")
 )
 
+const (
+	// responsiblePeersCheckInterval is the online re-dial/refresh cadence.
+	responsiblePeersCheckInterval = time.Second * 20
+	// responsiblePeersCheckIntervalOffline stretches the cadence while the
+	// device is known offline: still probing (a wrong offline belief must
+	// self-correct) but not burning the radio with doomed dials every 20s.
+	// A reconnect signals an immediate rebuild, so this adds no recovery
+	// latency.
+	responsiblePeersCheckIntervalOffline = time.Minute * 2
+	// broadcastPeerFindDeadline bounds how long a broadcast may wait for
+	// responsible peers to appear. Broadcasts run inside the shared streampool
+	// dial workers (only a few of them); without a deadline an offline device
+	// parks a worker per broadcast indefinitely and freezes the send path.
+	// Dropped broadcasts are recovered by the periodic head-sync.
+	broadcastPeerFindDeadline = time.Second * 30
+)
+
 type NodeStatus interface {
 	app.Component
 	SetNodesStatus(spaceId string, status nodestatus.ConnectionStatus)
@@ -103,9 +120,21 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
+	if n.p != nil {
+		n.p.registerManager(n)
+	}
 	go n.peerToPeerStatus.RegisterSpace(n.spaceId)
 	go n.manageResponsiblePeers()
 	return
+}
+
+// signalRebuild requests an immediate responsible-peers re-fetch (non-blocking;
+// coalesces with an already-pending request).
+func (n *clientPeerManager) signalRebuild() {
+	select {
+	case n.rebuildResponsiblePeers <- struct{}{}:
+	default:
+	}
 }
 
 func (n *clientPeerManager) GetNodePeers(ctx context.Context) (peers []peer.Peer, err error) {
@@ -120,6 +149,9 @@ func (n *clientPeerManager) BroadcastMessage(ctx context.Context, msg drpc.Messa
 	// the context which comes here should not be used. It can be cancelled and thus kill the stream,
 	// because the stream can be opened with this context
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
+	// bound the wait for peers: this getter runs inside a shared streampool
+	// dial worker and must not park it until reconnect
+	ctx = context.WithValue(ctx, ContextPeerFindDeadlineKey, time.Now().Add(broadcastPeerFindDeadline))
 	return n.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
 		return n.GetResponsiblePeers(ctx)
 	})
@@ -208,8 +240,12 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 func (n *clientPeerManager) manageResponsiblePeers() {
 	for {
 		n.fetchResponsiblePeers()
+		interval := responsiblePeersCheckInterval
+		if n.p != nil && n.p.isOffline() {
+			interval = responsiblePeersCheckIntervalOffline
+		}
 		select {
-		case <-time.After(time.Second * 20):
+		case <-time.After(interval):
 		case <-n.rebuildResponsiblePeers:
 		case <-n.ctx.Done():
 			return
@@ -292,6 +328,9 @@ func (n *clientPeerManager) KeepAlive(ctx context.Context) {
 }
 
 func (n *clientPeerManager) Close(ctx context.Context) (err error) {
+	if n.p != nil {
+		n.p.unregisterManager(n)
+	}
 	n.ctxCancel()
 	n.peerToPeerStatus.UnregisterSpace(n.spaceId)
 	return

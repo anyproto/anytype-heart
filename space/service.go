@@ -58,6 +58,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -825,7 +826,10 @@ func (s *service) SyncAllSpaceHeads() {
 					}
 					return
 				}
-				if err := sp.CommonSpace().SyncHeads(s.ctx); err != nil && s.ctx.Err() == nil {
+				// Bound the wait for responsible peers: without a deadline an
+				// offline device parks these goroutines until reconnect.
+				ctx := context.WithValue(s.ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(time.Minute))
+				if err := sp.CommonSpace().SyncHeads(ctx); err != nil && s.ctx.Err() == nil {
 					log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
 				}
 			}()

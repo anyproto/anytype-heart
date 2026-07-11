@@ -297,3 +297,70 @@ func newFixtureManager(t *testing.T, spaceId string) *fixture {
 		peerToPeerStatus: peerToPeerStatus,
 	}
 }
+
+type fakeConnectivity struct {
+	offline atomic.Bool
+	hook    func(online bool)
+}
+
+func (f *fakeConnectivity) RegisterConnectivityHook(hook func(online bool)) { f.hook = hook }
+func (f *fakeConnectivity) IsOffline() bool                                 { return f.offline.Load() }
+
+func Test_provider_connectivity(t *testing.T) {
+	t.Run("no device component: never offline", func(t *testing.T) {
+		p := &provider{}
+		assert.False(t, p.isOffline())
+	})
+	t.Run("offline state mirrors connectivity", func(t *testing.T) {
+		conn := &fakeConnectivity{}
+		p := &provider{connectivity: conn, managers: map[*clientPeerManager]struct{}{}}
+		assert.False(t, p.isOffline())
+		conn.offline.Store(true)
+		assert.True(t, p.isOffline())
+	})
+	t.Run("connectivity change signals rebuild on every registered manager", func(t *testing.T) {
+		p := &provider{managers: map[*clientPeerManager]struct{}{}}
+		cm1 := &clientPeerManager{rebuildResponsiblePeers: make(chan struct{}, 1)}
+		cm2 := &clientPeerManager{rebuildResponsiblePeers: make(chan struct{}, 1)}
+		p.registerManager(cm1)
+		p.registerManager(cm2)
+
+		p.onConnectivityChange(true)
+		select {
+		case <-cm1.rebuildResponsiblePeers:
+		default:
+			t.Fatal("manager 1 not signalled")
+		}
+		select {
+		case <-cm2.rebuildResponsiblePeers:
+		default:
+			t.Fatal("manager 2 not signalled")
+		}
+
+		// unregistered managers are not signalled anymore
+		p.unregisterManager(cm2)
+		p.onConnectivityChange(false)
+		select {
+		case <-cm1.rebuildResponsiblePeers:
+		default:
+			t.Fatal("manager 1 not signalled after second change")
+		}
+		select {
+		case <-cm2.rebuildResponsiblePeers:
+			t.Fatal("unregistered manager must not be signalled")
+		default:
+		}
+	})
+}
+
+func Test_signalRebuild_coalesces(t *testing.T) {
+	cm := &clientPeerManager{rebuildResponsiblePeers: make(chan struct{}, 1)}
+	cm.signalRebuild()
+	cm.signalRebuild() // must not block
+	<-cm.rebuildResponsiblePeers
+	select {
+	case <-cm.rebuildResponsiblePeers:
+		t.Fatal("expected exactly one pending rebuild signal")
+	default:
+	}
+}
