@@ -107,6 +107,13 @@ func (s *fileSync) runNodeUsageUpdater() {
 			cancel()
 			if err != nil {
 				log.Warn("updater: can't update node usage", zap.Error(err))
+				// back off while the node is unreachable (e.g. device offline
+				// mid-upload); a successful update with active uploads flips
+				// back to the fast cadence below
+				if !slowMode {
+					ticker.Reset(time.Minute)
+					slowMode = true
+				}
 			} else {
 				updatedUsage, updatedUsageExists, _ := s.getCachedNodeUsage()
 				if cachedUsageExists && updatedUsageExists && cachedUsage.BytesLeft == updatedUsage.BytesLeft {
