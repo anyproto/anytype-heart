@@ -92,7 +92,9 @@ func TestCassetteWorkspace(t *testing.T) {
 	// UPDATE the literals when re-recording the cassette.
 	if mode == recorder.ModeReplayOnly {
 		assert.Equal(t, fidelitySummary{
-			Objects:        763,
+			// 762: select→status (decision §13.8) merged one same-named
+			// select/status relation pair under the name+format dedup.
+			Objects:        762,
 			FileObjects:    41,
 			RootCandidates: 13,
 			Blocks:         5039,
@@ -102,10 +104,12 @@ func TestCassetteWorkspace(t *testing.T) {
 				importv2.IssueDataLoss:         341,
 				importv2.IssueMissingTarget:    171,
 				importv2.IssueUnsupportedBlock: 438,
-				// 9 databases in the recorded workspace match the naive
+				// 10 databases in the recorded workspace match the naive
 				// type suggestor (§11.5): Tasks/Notes/People/Projects by
-				// name, CRM via email+phone, 4 trackers via due+status.
-				importv2.IssueTypeSuggested: 9,
+				// name, CRM via email+phone, 5 trackers via due+status
+				// (one gained by select→status counting as a status
+				// property in the task shape rule).
+				importv2.IssueTypeSuggested: 10,
 			},
 		}, summarizeFidelity(sink))
 	}

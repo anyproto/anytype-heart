@@ -234,7 +234,8 @@ func TestScriptedWorkspace(t *testing.T) {
 
 		priority := sink.relationByName("Priority")
 		require.NotNil(t, priority, "select property emits a relation")
-		assert.Equal(t, int64(model.RelationFormat_tag), priority.Payload.Details.GetInt64(bundle.RelationKeyRelationFormat))
+		assert.Equal(t, int64(model.RelationFormat_status), priority.Payload.Details.GetInt64(bundle.RelationKeyRelationFormat),
+			"single select keeps pick-one cardinality (decision §13.8)")
 
 		score := sink.relationByName("Score")
 		require.NotNil(t, score)
