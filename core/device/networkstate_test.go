@@ -60,6 +60,7 @@ func newNetworkStateFixture(t *testing.T) *networkStateFixture {
 		Register(syncer).
 		Register(ns)
 	require.NoError(t, a.Start(ctx))
+	t.Cleanup(func() { _ = ns.Close(ctx) })
 	return &networkStateFixture{
 		networkState:  ns,
 		a:             a,
@@ -70,36 +71,28 @@ func newNetworkStateFixture(t *testing.T) *networkStateFixture {
 }
 
 func TestNetworkState_SetDeviceState(t *testing.T) {
-	// foreground resume always refreshes opened objects; pool flush and head-sync
-	// are gated by how long the app was backgrounded.
-	t.Run("backgrounded longer than syncHeadsAfter: flush pool and sync all heads", func(t *testing.T) {
+	// foreground resume always refreshes opened objects; the connectivity
+	// recovery (pool flush + head-sync) is gated by how long the app was
+	// backgrounded.
+	t.Run("backgrounded longer than recoverAfter: flush pool and sync all heads", func(t *testing.T) {
 		startTime := time.Now()
 		getTime = func() time.Time { return startTime }
+		defer func() { getTime = time.Now }()
 		fx := newNetworkStateFixture(t)
 		fx.StateChange(int(domain.CompStateAppWentBackground))
-		startTime = startTime.Add(syncHeadsAfter + time.Second)
+		startTime = startTime.Add(recoverAfter + time.Second)
 		fx.mockRefresher.EXPECT().RefreshOpenedObjects(mock.Anything).Times(1)
 		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
 		fx.StateChange(int(domain.CompStateAppWentForeground))
 		assert.Equal(t, 1, fx.syncer.callCount())
 	})
-	t.Run("backgrounded between poolFlushAfter and syncHeadsAfter: flush pool, no head-sync", func(t *testing.T) {
+	t.Run("backgrounded less than recoverAfter: no flush, no head-sync", func(t *testing.T) {
 		startTime := time.Now()
 		getTime = func() time.Time { return startTime }
+		defer func() { getTime = time.Now }()
 		fx := newNetworkStateFixture(t)
 		fx.StateChange(int(domain.CompStateAppWentBackground))
-		startTime = startTime.Add(poolFlushAfter + time.Second)
-		fx.mockRefresher.EXPECT().RefreshOpenedObjects(mock.Anything).Times(1)
-		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
-		fx.StateChange(int(domain.CompStateAppWentForeground))
-		assert.Equal(t, 0, fx.syncer.callCount())
-	})
-	t.Run("backgrounded less than poolFlushAfter: no flush, no head-sync", func(t *testing.T) {
-		startTime := time.Now()
-		getTime = func() time.Time { return startTime }
-		fx := newNetworkStateFixture(t)
-		fx.StateChange(int(domain.CompStateAppWentBackground))
-		startTime = startTime.Add(poolFlushAfter - time.Second)
+		startTime = startTime.Add(recoverAfter - time.Second)
 		fx.mockRefresher.EXPECT().RefreshOpenedObjects(mock.Anything).Times(1)
 		fx.StateChange(int(domain.CompStateAppWentForeground))
 		assert.Equal(t, 0, fx.syncer.callCount())
@@ -173,6 +166,73 @@ func TestNetworkState_SetNetworkState(t *testing.T) {
 		state.SetNetworkState(model.DeviceNetworkType_WIFI)
 		assert.Equal(t, 2, calls)
 		assert.Equal(t, model.DeviceNetworkType_WIFI, last)
+	})
+}
+
+func TestNetworkState_ConnectivityRecovery(t *testing.T) {
+	t.Run("first report does not recover, a later switch does", func(t *testing.T) {
+		fx := newNetworkStateFixture(t)
+		var hookCalls []bool
+		fx.RegisterConnectivityHook(func(online bool) { hookCalls = append(hookCalls, online) })
+
+		// first report: initial state, connections from startup are good
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		assert.Empty(t, hookCalls)
+		assert.Equal(t, 0, fx.syncer.callCount())
+
+		// a real switch flushes the pool, fires hooks and head-syncs
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI)
+		assert.Equal(t, []bool{true}, hookCalls)
+		assert.Equal(t, 1, fx.syncer.callCount())
+	})
+	t.Run("switch to NOT_CONNECTED flushes but does not head-sync", func(t *testing.T) {
+		fx := newNetworkStateFixture(t)
+		var hookCalls []bool
+		fx.RegisterConnectivityHook(func(online bool) { hookCalls = append(hookCalls, online) })
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR) // first report
+
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		fx.SetNetworkState(model.DeviceNetworkType_NOT_CONNECTED)
+		assert.Equal(t, []bool{false}, hookCalls)
+		assert.Equal(t, 0, fx.syncer.callCount())
+		assert.True(t, fx.IsOffline())
+
+		// back online: recovery is suppressed (within the window) but coalesced —
+		// covered by the coalescing test; here just check the offline flag clears
+		fx.networkMu.Lock()
+		fx.networkState.networkState = model.DeviceNetworkType_WIFI
+		fx.networkMu.Unlock()
+		assert.False(t, fx.IsOffline())
+	})
+	t.Run("burst coalesces into one trailing recovery", func(t *testing.T) {
+		now := time.Now()
+		getTime = func() time.Time { return now }
+		defer func() { getTime = time.Now }()
+		var scheduled []func()
+		scheduleAfter = func(d time.Duration, f func()) *time.Timer {
+			scheduled = append(scheduled, f)
+			return time.NewTimer(time.Hour) // never fires in test
+		}
+		defer func() { scheduleAfter = time.AfterFunc }()
+
+		fx := newNetworkStateFixture(t)
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR) // first report, no recovery
+
+		// three rapid switches: first runs immediately, the rest coalesce into
+		// exactly one scheduled trailing run
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI)
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI)
+		assert.Equal(t, 1, fx.syncer.callCount())
+		require.Len(t, scheduled, 1)
+
+		// the trailing run executes the full pipeline once more
+		now = now.Add(recoverySuppressWindow + time.Second)
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		scheduled[0]()
+		assert.Equal(t, 2, fx.syncer.callCount())
 	})
 }
 
