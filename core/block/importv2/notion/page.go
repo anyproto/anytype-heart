@@ -84,17 +84,32 @@ type uniqueIdValue struct {
 	Number int64   `json:"number"`
 }
 
+// convertPage is the serial fetch+emit path (used by the discovery drain;
+// the main loop pipelines fetches via prefetchPages instead).
 func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.Sink) error {
-	var page pageObject
-	if err := c.client.Request(ctx, http.MethodGet, "/pages/"+stub.Id, nil, &page); err != nil {
+	f := &fetchedPage{stub: stub}
+	c.fetchPageData(ctx, f, sink)
+	return c.emitFetchedPage(ctx, f, sink)
+}
+
+// emitFetchedPage is the converter-goroutine half of a page conversion:
+// replays buffered fetch issues in page order, then maps and emits — all
+// shared-state work (properties store, file registry, discovery) lives here.
+func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink importv2.Sink) error {
+	for _, issue := range f.issues {
+		sink.Issue(issue)
+	}
+	stub := f.stub
+	if f.pageErr != nil {
 		if ctx.Err() != nil {
 			// Cancellation must stop the run, not degrade into one bogus
 			// per-object failure per remaining entity.
-			return fmt.Errorf("fetch page: %w", err)
+			return fmt.Errorf("fetch page: %w", f.pageErr)
 		}
-		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch page: %w", err)))
+		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch page: %w", f.pageErr)))
 		return nil
 	}
+	page := f.page
 
 	details := domain.NewDetails()
 	details.SetString(bundle.RelationKeySourceFilePath, stub.Id)
@@ -104,15 +119,18 @@ func (c *Converter) convertPage(ctx context.Context, stub Entity, sink importv2.
 		return err
 	}
 
-	blockIds := map[string]struct{}{}
-	blocks, err := c.fetchBlockTree(ctx, stub.Id, blockIds, sink)
-	if err != nil {
+	blockIds := f.blockIds
+	if blockIds == nil {
+		blockIds = map[string]struct{}{}
+	}
+	blocks := f.blocks
+	if f.blocksErr != nil {
 		if ctx.Err() != nil {
-			return err
+			return f.blocksErr
 		}
 		// The page's properties and title are already in hand — import them
 		// with a placeholder body instead of dropping the whole page.
-		sink.Issue(importv2.Warning(importv2.IssueDataLoss, stub.Id, fmt.Sprintf("page content could not be fetched: %s", err)))
+		sink.Issue(importv2.Warning(importv2.IssueDataLoss, stub.Id, fmt.Sprintf("page content could not be fetched: %s", f.blocksErr)))
 		blocks = []notionBlock{{Id: stub.Id + "-lostcontent", Type: "unreadable"}}
 	}
 	modelBlocks, err := c.mapBlocks(ctx, mapContext{pageId: stub.Id, blockIds: blockIds}, blocks, sink)

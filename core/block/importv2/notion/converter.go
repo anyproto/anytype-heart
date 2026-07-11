@@ -115,8 +115,17 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 			return importv2.RootSpec{}, err
 		}
 	}
-	for _, page := range c.pages {
-		if err := c.convertPage(ctx, page, sink); err != nil {
+	// Pages pipeline: fetches run ahead in parallel (bounded, shared pacer),
+	// emission stays in stub order on this goroutine. On an early return the
+	// engine cancels the run context, which unblocks producer and workers.
+	fetched := c.prefetchPages(ctx, c.pages, sink)
+	for f := range fetched {
+		select {
+		case <-f.done:
+		case <-ctx.Done():
+			return importv2.RootSpec{}, ctx.Err()
+		}
+		if err := c.emitFetchedPage(ctx, f, sink); err != nil {
 			return importv2.RootSpec{}, err
 		}
 	}

@@ -838,10 +838,18 @@ when `Config.ImportV2Markdown` is set (env `ANYTYPE_IMPORTV2MARKDOWN=1`) and Not
 the engine (needs the pb converter and a web converter or their retirement), `ListImports` reimplemented
 or dropped, and `core/block/import/common/filetime` relocated (v2 imports it today).
 
-**Open items tracked for the flip:** multi-path common-parent merging; converter-internal fetch pool
-for Notion (wall-clock, after cassette timings); Workspace/Widget snapshot support (pb phase);
-re-imported files counted as Created in the report; mockery entries for the new seams; §16 items 1–2
-(issue-ledger surfacing, panic firewall) are flip-gating.
+**Open items tracked for the flip:** multi-path common-parent merging; Workspace/Widget snapshot
+support (pb phase); re-imported files counted as Created in the report; mockery entries for the new
+seams; §16 items 1–2 (issue-ledger surfacing, panic firewall) are flip-gating.
+
+**Notion fetch parallelism (done 2026-07-11):** v1 fetched pages through a 10-worker pool with no
+client-side pacer (reactive 429 only); v2's serial fetch was RTT-bound at ~1.5–2 rps, *below* the
+3 rps allowance — a wall-clock regression. Pages now fetch through a bounded prefetch pipeline
+(`notion/prefetch.go`, 6 in flight, shared pacer caps throughput at 3 rps): fetching is parallel,
+emission stays in stub order on the converter goroutine (deterministic output,
+definitions-before-use), and fetch-phase issues are buffered per page and replayed in order.
+Pass-1 `/search` stays serial by nature (cursor chain, ~1 request per 100 entities). The remaining
+ceiling is Notion's documented 3 rps average — no amount of parallelism beats it.
 
 ---
 
