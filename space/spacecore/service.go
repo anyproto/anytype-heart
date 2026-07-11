@@ -97,7 +97,18 @@ type service struct {
 	dbsAreFlushing     atomic.Bool
 	componentCtx       context.Context
 	componentCtxCancel context.CancelFunc
+
+	pubsubCloser spaceCloser
 }
+
+// spaceCloser lets space close/eviction notify the pubsub component without a
+// package cycle (core/pubsub imports spacecore); resolved by name at Init.
+type spaceCloser interface {
+	CloseSpace(spaceId string)
+}
+
+// pubsubCName mirrors core/pubsub.CName (import cycle).
+const pubsubCName = "client.pubsub"
 
 func (s *service) Init(a *app.App) (err error) {
 	s.componentCtx, s.componentCtxCancel = context.WithCancel(context.Background())
@@ -122,6 +133,7 @@ func (s *service) Init(a *app.App) (err error) {
 		ocache.WithTTL(time.Duration(s.conf.GCTTL)*time.Second),
 	)
 	s.streamPool = a.MustComponent(streampool.CName).(streampool.StreamPool)
+	s.pubsubCloser, _ = a.Component(pubsubCName).(spaceCloser)
 	err = spacesyncproto.DRPCRegisterSpaceSync(a.MustComponent(server.CName).(server.DRPCServer), &rpcHandler{s})
 	if err != nil {
 		return
@@ -169,6 +181,9 @@ func (s *service) CreateOneToOneSpace(ctx context.Context, bPk crypto.PubKey) (s
 }
 
 func (s *service) CloseSpace(ctx context.Context, id string) error {
+	if s.pubsubCloser != nil {
+		s.pubsubCloser.CloseSpace(id)
+	}
 	_, err := s.spaceCache.Remove(ctx, id)
 	return err
 }

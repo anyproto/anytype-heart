@@ -11,6 +11,7 @@ import (
 	"github.com/anyproto/any-sync/commonfile/fileservice"
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/acl/aclclient"
+	anysyncpubsub "github.com/anyproto/any-sync/commonspace/pubsub"
 	anysyncinboxclient "github.com/anyproto/any-sync/coordinator/inboxclient"
 
 	"github.com/anyproto/any-sync/coordinator/nodeconfsource"
@@ -99,6 +100,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/payments/emailcollector"
 	"github.com/anyproto/anytype-heart/core/peerstatus"
 	"github.com/anyproto/anytype-heart/core/publish"
+	"github.com/anyproto/anytype-heart/core/pubsub"
 	"github.com/anyproto/anytype-heart/core/pushnotification"
 	"github.com/anyproto/anytype-heart/core/pushnotification/pushclient"
 	"github.com/anyproto/anytype-heart/core/relationutils/formatfetcher"
@@ -234,6 +236,10 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 
+	// the pubsub engine takes its client-side deps (crypto, membership, peers)
+	// from the heart-side component, resolved lazily after Init
+	pubsubService := pubsub.New()
+
 	a.
 		// profiler is registered early so its Init wires the event sender
 		// before any storage component runs its own Init — storage corruption
@@ -278,6 +284,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(device.New()).
 		Register(localdiscovery.New()).
 		Register(peermanager.New()).
+		Register(pubsubService).
+		Register(anysyncpubsub.New(pubsubService.EngineDeps())).
 		Register(typeprovider.New()).
 		Register(fileuploader.New()).
 		Register(rpcstore.New()).

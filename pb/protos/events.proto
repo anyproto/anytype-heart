@@ -141,6 +141,26 @@ message Event {
 
       MembershipV2.Update membershipV2Update = 138;
       MembershipV2.ProductsUpdate membershipV2ProductsUpdate = 139;
+
+      Pubsub.Message pubsubMessage = 147;
+    }
+  }
+
+  message Pubsub {
+    // Message is one decrypted, signature-verified pub/sub message received on
+    // a topic matching at least one active Rpc.Pubsub.Subscribe subscription.
+    // The space is carried by Event.Message.spaceId. Delivery is ephemeral,
+    // at-most-once: messages published while not subscribed are never seen.
+    message Message {
+      // topic is the concrete '/'-separated topic the message was published to
+      string topic = 1;
+      // payload is the application payload, decrypted with the space read key
+      bytes payload = 2;
+      // identity is the signature-verified account id of the sender; a client
+      // also receives its own published messages back (local echo)
+      string identity = 3;
+      // subIds are the local subscription ids whose pattern matched the topic
+      repeated string subIds = 4;
     }
   }
 

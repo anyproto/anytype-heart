@@ -1299,6 +1299,19 @@
     - [Rpc.Publishing.ResolveUri.Request](#anytype-Rpc-Publishing-ResolveUri-Request)
     - [Rpc.Publishing.ResolveUri.Response](#anytype-Rpc-Publishing-ResolveUri-Response)
     - [Rpc.Publishing.ResolveUri.Response.Error](#anytype-Rpc-Publishing-ResolveUri-Response-Error)
+    - [Rpc.Pubsub](#anytype-Rpc-Pubsub)
+    - [Rpc.Pubsub.Publish](#anytype-Rpc-Pubsub-Publish)
+    - [Rpc.Pubsub.Publish.Request](#anytype-Rpc-Pubsub-Publish-Request)
+    - [Rpc.Pubsub.Publish.Response](#anytype-Rpc-Pubsub-Publish-Response)
+    - [Rpc.Pubsub.Publish.Response.Error](#anytype-Rpc-Pubsub-Publish-Response-Error)
+    - [Rpc.Pubsub.Subscribe](#anytype-Rpc-Pubsub-Subscribe)
+    - [Rpc.Pubsub.Subscribe.Request](#anytype-Rpc-Pubsub-Subscribe-Request)
+    - [Rpc.Pubsub.Subscribe.Response](#anytype-Rpc-Pubsub-Subscribe-Response)
+    - [Rpc.Pubsub.Subscribe.Response.Error](#anytype-Rpc-Pubsub-Subscribe-Response-Error)
+    - [Rpc.Pubsub.Unsubscribe](#anytype-Rpc-Pubsub-Unsubscribe)
+    - [Rpc.Pubsub.Unsubscribe.Request](#anytype-Rpc-Pubsub-Unsubscribe-Request)
+    - [Rpc.Pubsub.Unsubscribe.Response](#anytype-Rpc-Pubsub-Unsubscribe-Response)
+    - [Rpc.Pubsub.Unsubscribe.Response.Error](#anytype-Rpc-Pubsub-Unsubscribe-Response-Error)
     - [Rpc.PushNotification](#anytype-Rpc-PushNotification)
     - [Rpc.PushNotification.RegisterToken](#anytype-Rpc-PushNotification-RegisterToken)
     - [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request)
@@ -1838,6 +1851,9 @@
     - [Rpc.Publishing.PublishStatus](#anytype-Rpc-Publishing-PublishStatus)
     - [Rpc.Publishing.Remove.Response.Error.Code](#anytype-Rpc-Publishing-Remove-Response-Error-Code)
     - [Rpc.Publishing.ResolveUri.Response.Error.Code](#anytype-Rpc-Publishing-ResolveUri-Response-Error-Code)
+    - [Rpc.Pubsub.Publish.Response.Error.Code](#anytype-Rpc-Pubsub-Publish-Response-Error-Code)
+    - [Rpc.Pubsub.Subscribe.Response.Error.Code](#anytype-Rpc-Pubsub-Subscribe-Response-Error-Code)
+    - [Rpc.Pubsub.Unsubscribe.Response.Error.Code](#anytype-Rpc-Pubsub-Unsubscribe-Response-Error-Code)
     - [Rpc.PushNotification.Mode](#anytype-Rpc-PushNotification-Mode)
     - [Rpc.PushNotification.RegisterToken.Platform](#anytype-Rpc-PushNotification-RegisterToken-Platform)
     - [Rpc.PushNotification.RegisterToken.Response.Error.Code](#anytype-Rpc-PushNotification-RegisterToken-Response-Error-Code)
@@ -2095,6 +2111,8 @@
     - [Event.Process.Done](#anytype-Event-Process-Done)
     - [Event.Process.New](#anytype-Event-Process-New)
     - [Event.Process.Update](#anytype-Event-Process-Update)
+    - [Event.Pubsub](#anytype-Event-Pubsub)
+    - [Event.Pubsub.Message](#anytype-Event-Pubsub-Message)
     - [Event.Space](#anytype-Event-Space)
     - [Event.Space.SyncStatus](#anytype-Event-Space-SyncStatus)
     - [Event.Space.SyncStatus.Update](#anytype-Event-Space-SyncStatus-Update)
@@ -2705,6 +2723,9 @@
 | AIAutofill | [Rpc.AI.Autofill.Request](#anytype-Rpc-AI-Autofill-Request) | [Rpc.AI.Autofill.Response](#anytype-Rpc-AI-Autofill-Response) |  |
 | AIListSummary | [Rpc.AI.ListSummary.Request](#anytype-Rpc-AI-ListSummary-Request) | [Rpc.AI.ListSummary.Response](#anytype-Rpc-AI-ListSummary-Response) |  |
 | AIObjectCreateFromUrl | [Rpc.AI.ObjectCreateFromUrl.Request](#anytype-Rpc-AI-ObjectCreateFromUrl-Request) | [Rpc.AI.ObjectCreateFromUrl.Response](#anytype-Rpc-AI-ObjectCreateFromUrl-Response) |  |
+| PubsubPublish | [Rpc.Pubsub.Publish.Request](#anytype-Rpc-Pubsub-Publish-Request) | [Rpc.Pubsub.Publish.Response](#anytype-Rpc-Pubsub-Publish-Response) | Pubsub — ephemeral space-scoped publish/subscribe (see Rpc.Pubsub) |
+| PubsubSubscribe | [Rpc.Pubsub.Subscribe.Request](#anytype-Rpc-Pubsub-Subscribe-Request) | [Rpc.Pubsub.Subscribe.Response](#anytype-Rpc-Pubsub-Subscribe-Response) |  |
+| PubsubUnsubscribe | [Rpc.Pubsub.Unsubscribe.Request](#anytype-Rpc-Pubsub-Unsubscribe-Request) | [Rpc.Pubsub.Unsubscribe.Response](#anytype-Rpc-Pubsub-Unsubscribe-Response) |  |
 | PushNotificationRegisterToken | [Rpc.PushNotification.RegisterToken.Request](#anytype-Rpc-PushNotification-RegisterToken-Request) | [Rpc.PushNotification.RegisterToken.Response](#anytype-Rpc-PushNotification-RegisterToken-Response) | Push |
 | PushNotificationSetSpaceMode | [Rpc.PushNotification.SetSpaceMode.Request](#anytype-Rpc-PushNotification-SetSpaceMode-Request) | [Rpc.PushNotification.SetSpaceMode.Response](#anytype-Rpc-PushNotification-SetSpaceMode-Response) |  |
 | PushNotificationSetForceModeIds | [Rpc.PushNotification.SetForceModeIds.Request](#anytype-Rpc-PushNotification-SetForceModeIds-Request) | [Rpc.PushNotification.SetForceModeIds.Response](#anytype-Rpc-PushNotification-SetForceModeIds-Response) |  |
@@ -21579,6 +21600,204 @@ Available undo/redo operations
 
 
 
+<a name="anytype-Rpc-Pubsub"></a>
+
+### Rpc.Pubsub
+Pubsub is an ephemeral, fire-and-forget, at-most-once publish/subscribe
+channel scoped to a space. Messages are end-to-end encrypted with the
+space&#39;s current ACL read key (the same key encrypting object changes) and
+signed with the sender&#39;s account key. Nothing is persisted: subscribers
+only receive messages published while they are subscribed.
+Received messages are delivered as Event.Pubsub.Message on the event stream.
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish"></a>
+
+### Rpc.Pubsub.Publish
+Publish sends one message to a fully-qualified topic within a space.
+Topics are &#39;/&#39;-separated hierarchies (max 16 segments, 256 bytes,
+no leading &#39;/&#39;, no &#39;*&#39; or &#39;&gt;&#39; characters). Topics with the reserved
+prefix &#34;acc/&#34; are publishable only by the account whose id equals the
+topic&#39;s last segment (spoof-proof per-account channels).
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish-Request"></a>
+
+### Rpc.Pubsub.Publish.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| topic | [string](#string) |  | fully-qualified topic, wildcards not allowed |
+| payload | [bytes](#bytes) |  | app payload; encrypted before leaving the device |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish-Response"></a>
+
+### Rpc.Pubsub.Publish.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Pubsub.Publish.Response.Error](#anytype-Rpc-Pubsub-Publish-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Publish-Response-Error"></a>
+
+### Rpc.Pubsub.Publish.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Pubsub.Publish.Response.Error.Code](#anytype-Rpc-Pubsub-Publish-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe"></a>
+
+### Rpc.Pubsub.Subscribe
+Subscribe registers interest in topic patterns within a space under a
+subscription id. Patterns may use NATS-style wildcards: &#39;*&#39; matches
+exactly one segment (&#34;chat/*/typing&#34;), &#39;&gt;&#39; matches one-or-more
+trailing segments (&#34;chat/&gt;&#34;, tail position only). Matching messages
+arrive as Event.Pubsub.Message carrying the matched subIds.
+Subscribing an existing subId replaces its pattern set.
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe-Request"></a>
+
+### Rpc.Pubsub.Subscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| topics | [string](#string) | repeated | concrete topics or wildcard patterns |
+| subId | [string](#string) |  | client-chosen id; generated when empty |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe-Response"></a>
+
+### Rpc.Pubsub.Subscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Pubsub.Subscribe.Response.Error](#anytype-Rpc-Pubsub-Subscribe-Response-Error) |  |  |
+| subId | [string](#string) |  | echoes the request subId or the generated one |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe-Response-Error"></a>
+
+### Rpc.Pubsub.Subscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Pubsub.Subscribe.Response.Error.Code](#anytype-Rpc-Pubsub-Subscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe"></a>
+
+### Rpc.Pubsub.Unsubscribe
+Unsubscribe drops the subscription and withdraws interest in patterns
+no other subscription uses.
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe-Request"></a>
+
+### Rpc.Pubsub.Unsubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe-Response"></a>
+
+### Rpc.Pubsub.Unsubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Pubsub.Unsubscribe.Response.Error](#anytype-Rpc-Pubsub-Unsubscribe-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe-Response-Error"></a>
+
+### Rpc.Pubsub.Unsubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Pubsub.Unsubscribe.Response.Error.Code](#anytype-Rpc-Pubsub-Unsubscribe-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-PushNotification"></a>
 
 ### Rpc.PushNotification
@@ -29171,6 +29390,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Pubsub-Publish-Response-Error-Code"></a>
+
+### Rpc.Pubsub.Publish.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | malformed topic, oversized payload, not a topic owner |
+
+
+
+<a name="anytype-Rpc-Pubsub-Subscribe-Response-Error-Code"></a>
+
+### Rpc.Pubsub.Subscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | malformed pattern or too many patterns |
+
+
+
+<a name="anytype-Rpc-Pubsub-Unsubscribe-Response-Error-Code"></a>
+
+### Rpc.Pubsub.Unsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | unknown subId |
+
+
+
 <a name="anytype-Rpc-PushNotification-Mode"></a>
 
 ### Rpc.PushNotification.Mode
@@ -32704,6 +32962,7 @@ received to update per-message mention read status (if needed |
 | chatStateUpdate | [Event.Chat.UpdateState](#anytype-Event-Chat-UpdateState) |  | in case new unread messages received or chat state changed |
 | membershipV2Update | [Event.MembershipV2.Update](#anytype-Event-MembershipV2-Update) |  |  |
 | membershipV2ProductsUpdate | [Event.MembershipV2.ProductsUpdate](#anytype-Event-MembershipV2-ProductsUpdate) |  |  |
+| pubsubMessage | [Event.Pubsub.Message](#anytype-Event-Pubsub-Message) |  |  |
 
 
 
@@ -33194,6 +33453,37 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | process | [Model.Process](#anytype-Model-Process) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Pubsub"></a>
+
+### Event.Pubsub
+
+
+
+
+
+
+
+<a name="anytype-Event-Pubsub-Message"></a>
+
+### Event.Pubsub.Message
+Message is one decrypted, signature-verified pub/sub message received on
+a topic matching at least one active Rpc.Pubsub.Subscribe subscription.
+The space is carried by Event.Message.spaceId. Delivery is ephemeral,
+at-most-once: messages published while not subscribed are never seen.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| topic | [string](#string) |  | topic is the concrete &#39;/&#39;-separated topic the message was published to |
+| payload | [bytes](#bytes) |  | payload is the application payload, decrypted with the space read key |
+| identity | [string](#string) |  | identity is the signature-verified account id of the sender; a client also receives its own published messages back (local echo) |
+| subIds | [string](#string) | repeated | subIds are the local subscription ids whose pattern matched the topic |
 
 
 

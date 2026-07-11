@@ -9486,6 +9486,90 @@ message Rpc {
         }
 
     }
+
+    // Pubsub is an ephemeral, fire-and-forget, at-most-once publish/subscribe
+    // channel scoped to a space. Messages are end-to-end encrypted with the
+    // space's current ACL read key (the same key encrypting object changes) and
+    // signed with the sender's account key. Nothing is persisted: subscribers
+    // only receive messages published while they are subscribed.
+    // Received messages are delivered as Event.Pubsub.Message on the event stream.
+    message Pubsub {
+        // Publish sends one message to a fully-qualified topic within a space.
+        // Topics are '/'-separated hierarchies (max 16 segments, 256 bytes,
+        // no leading '/', no '*' or '>' characters). Topics with the reserved
+        // prefix "acc/" are publishable only by the account whose id equals the
+        // topic's last segment (spoof-proof per-account channels).
+        message Publish {
+            message Request {
+                string spaceId = 1;
+                string topic = 2;    // fully-qualified topic, wildcards not allowed
+                bytes payload = 3;   // app payload; encrypted before leaving the device
+            }
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;  // malformed topic, oversized payload, not a topic owner
+                    }
+                }
+            }
+        }
+
+        // Subscribe registers interest in topic patterns within a space under a
+        // subscription id. Patterns may use NATS-style wildcards: '*' matches
+        // exactly one segment ("chat/*/typing"), '>' matches one-or-more
+        // trailing segments ("chat/>", tail position only). Matching messages
+        // arrive as Event.Pubsub.Message carrying the matched subIds.
+        // Subscribing an existing subId replaces its pattern set.
+        message Subscribe {
+            message Request {
+                string spaceId = 1;
+                repeated string topics = 2;  // concrete topics or wildcard patterns
+                string subId = 3;            // client-chosen id; generated when empty
+            }
+            message Response {
+                Error error = 1;
+                string subId = 2;  // echoes the request subId or the generated one
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;  // malformed pattern or too many patterns
+                    }
+                }
+            }
+        }
+
+        // Unsubscribe drops the subscription and withdraws interest in patterns
+        // no other subscription uses.
+        message Unsubscribe {
+            message Request {
+                string subId = 1;
+            }
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;  // unknown subId
+                    }
+                }
+            }
+        }
+    }
+
     message PushNotification {
 
         enum Mode {

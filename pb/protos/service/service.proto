@@ -455,6 +455,11 @@ service ClientCommands {
     rpc AIListSummary (anytype.Rpc.AI.ListSummary.Request) returns (anytype.Rpc.AI.ListSummary.Response);
     rpc AIObjectCreateFromUrl (anytype.Rpc.AI.ObjectCreateFromUrl.Request) returns (anytype.Rpc.AI.ObjectCreateFromUrl.Response);
 
+    // Pubsub — ephemeral space-scoped publish/subscribe (see Rpc.Pubsub)
+    rpc PubsubPublish (anytype.Rpc.Pubsub.Publish.Request) returns (anytype.Rpc.Pubsub.Publish.Response);
+    rpc PubsubSubscribe (anytype.Rpc.Pubsub.Subscribe.Request) returns (anytype.Rpc.Pubsub.Subscribe.Response);
+    rpc PubsubUnsubscribe (anytype.Rpc.Pubsub.Unsubscribe.Request) returns (anytype.Rpc.Pubsub.Unsubscribe.Response);
+
     // Push
     rpc PushNotificationRegisterToken(anytype.Rpc.PushNotification.RegisterToken.Request) returns (anytype.Rpc.PushNotification.RegisterToken.Response);
     rpc PushNotificationSetSpaceMode(anytype.Rpc.PushNotification.SetSpaceMode.Request) returns (anytype.Rpc.PushNotification.SetSpaceMode.Response);
