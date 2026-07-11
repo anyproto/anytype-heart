@@ -3,6 +3,7 @@ package persist
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -243,6 +244,33 @@ func TestPersistCreate(t *testing.T) {
 		result := fx.journal.Compensate(context.Background(), fx.objects)
 		assert.Equal(t, 1, result.Compensated)
 		assert.Equal(t, []string{"newId"}, fx.objects.deleted)
+	})
+
+	t.Run("oversized snapshot fails loudly with a typed code", func(t *testing.T) {
+		// given — a single object over the sync ceiling would persist
+		// locally but never replicate (§16 item 8).
+		fx := newFixture(t)
+		obj := pageObject("docs/war-and-peace.md")
+		huge := strings.Repeat("a", maxSnapshotBytes/2+1<<20)
+		for i := 0; i < 2; i++ {
+			obj.Payload.Blocks = append(obj.Payload.Blocks, &model.Block{
+				Id: fmt.Sprintf("b%d", i),
+				Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+					Text: huge,
+				}},
+			})
+		}
+
+		// when
+		_, err := fx.Persist(context.Background(), obj, Target{Id: "newId", Payload: payloadFor("newId")}, fx.report)
+
+		// then
+		require.Error(t, err)
+		issue := importv2.AsIssue(err, importv2.SeverityFatal, importv2.IssueStoreError)
+		assert.Equal(t, importv2.IssueObjectTooLarge, issue.Code)
+		assert.Equal(t, importv2.SeverityObjectError, issue.Severity)
+		assert.Equal(t, "docs/war-and-peace.md", issue.SourceKey)
+		assert.Empty(t, fx.space.initStates, "nothing must be created")
 	})
 
 	t.Run("existing tree falls back to read, not journaled", func(t *testing.T) {

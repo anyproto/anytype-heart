@@ -155,11 +155,28 @@ func (p *Persister) Persist(ctx context.Context, o *importv2.Object, target Targ
 	}
 }
 
+// maxSnapshotBytes bounds one object's snapshot change. Node deployments
+// have historically enforced a 64MB message ceiling (GO-1433) — a change
+// above it persists locally but can never replicate; 48MB leaves headroom
+// for the change envelope and encryption overhead. Better one loud
+// per-object failure than a silently sync-dead object.
+const maxSnapshotBytes = 48 << 20
+
 func (p *Persister) persistRegular(ctx context.Context, o *importv2.Object, target Target, report func(importv2.Issue)) (Outcome, error) {
 	stampProvenance(o, p.origin)
 	ensureRootBlock(o.Payload, target.Id)
 
-	doc, err := state.NewDocFromSnapshot(target.Id, &pb.ChangeSnapshot{Data: o.Payload.ToProto()})
+	snapshot := &pb.ChangeSnapshot{Data: o.Payload.ToProto()}
+	if size := snapshot.Size(); size > maxSnapshotBytes {
+		return Outcome{}, importv2.Issue{
+			Severity:  importv2.SeverityObjectError,
+			Code:      importv2.IssueObjectTooLarge,
+			SourceKey: o.SourceKey,
+			Message: fmt.Sprintf("object is %d MB — larger than the %d MB single-object sync ceiling; split the source document",
+				size>>20, maxSnapshotBytes>>20),
+		}
+	}
+	doc, err := state.NewDocFromSnapshot(target.Id, snapshot)
 	if err != nil {
 		return Outcome{}, fmt.Errorf("doc from snapshot: %w", err)
 	}

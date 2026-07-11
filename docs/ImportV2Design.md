@@ -913,9 +913,16 @@ the working tree, not taken from the synthesis).
 6. **Select cardinality** (decision §13.8). `relationFormatOf` (`notion/properties.go`) maps
    `"select", "multi_select", "people"` → tag; change single `select` → status format. Update the
    §11.3 row's pinning test, scripted-workspace fixtures, and cassette summary literals.
-7. **Quota-specific issue code.** Storage-quota upload failures currently collapse into
-   `FILE_LOAD_ERROR`/`INTERNAL_ERROR` (GO-7037 reported it as a misleading message while images were
-   silently dropped). Add a typed `IssueCode` + wire mapping so quota exhaustion is actionable.
+7. **Quota-specific issue code.** ~~Storage-quota upload failures currently collapse into
+   `FILE_LOAD_ERROR`/`INTERNAL_ERROR`~~ **Resolved by architecture, no code change (verified
+   2026-07-11):** in v2 an import cannot fail or mislead on quota at all. Uploads are local-first —
+   `filesync.AddFile` only queues (no synchronous limit check), so every file lands locally and the
+   run's outcome is quota-independent. Quota exhaustion surfaces asynchronously through the dedicated
+   `EventFileLimitReached` contract; filesync batches those events during an import
+   (`sendImportEvents`) and the v2 adapter flushes them after a successful run
+   (`SendImportEvents`, adapter.go). GO-7037's misleading "not enough space" + silently-dropped
+   images cannot recur: nothing is dropped and the import error-code path is never involved.
+   Client-side quota UX (upgrade prompt on `FileLimitReached`) is the existing, correct surface.
 8. **Oversized-object guard.** Nothing guards the ~64MB CRDT-change ceiling (GO-1433, GO-2635 —
    giant single documents fail downstream with an opaque error). Persist should measure the payload
    and reject/degrade with a typed `ObjectError` naming the object; chunking/splitting oversized
