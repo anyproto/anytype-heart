@@ -39,7 +39,12 @@ type NetworkState interface {
 	app.Component
 	app.ComponentStatable
 	GetNetworkState() model.DeviceNetworkType
-	SetNetworkState(networkState model.DeviceNetworkType)
+	// SetNetworkState records the network state reported by the client on
+	// every OS path-change callback. networkId is the opaque identity of the
+	// current path (may be empty when the client can't provide one): a change
+	// of identity with an unchanged type (Wi-Fi to Wi-Fi switch, cellular
+	// re-attach) still triggers connectivity recovery.
+	SetNetworkState(networkState model.DeviceNetworkType, networkId string)
 	RegisterHook(hook func(network model.DeviceNetworkType))
 	// RegisterConnectivityHook registers a hook fired on every connectivity
 	// recovery (network switch, interface change, wake, foreground resume),
@@ -81,6 +86,7 @@ const (
 
 type networkState struct {
 	networkState          model.DeviceNetworkType
+	networkId             string
 	networkStateReported  bool
 	objectsRefresher      openedObjectRefresher
 	networkMu             sync.Mutex
@@ -164,24 +170,38 @@ func (n *networkState) GetNetworkState() model.DeviceNetworkType {
 	return n.networkState
 }
 
-func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType) {
+func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType, networkId string) {
 	n.networkMu.Lock()
 	first := !n.networkStateReported
 	n.networkStateReported = true
-	changed := n.networkState != networkState
+	typeChanged := n.networkState != networkState
+	// The identity only counts as changed when known both before and after —
+	// an empty id (older clients, callbacks without one) keeps type-only
+	// semantics instead of registering spurious changes.
+	idChanged := networkId != "" && n.networkId != "" && n.networkId != networkId
+	if networkId != "" {
+		n.networkId = networkId
+	}
 	n.networkState = networkState
 	n.networkMu.Unlock()
 
-	if !changed {
+	if !typeChanged && !idChanged {
 		// to avoid unnecessary hook calls
 		return
 	}
-	n.runOnNetworkUpdateHook(networkState)
+	if typeChanged {
+		n.runOnNetworkUpdateHook(networkState)
+	}
 	// The first report is the client telling us the initial state, not a
 	// switch — connections established during startup are still good.
-	if !first {
-		n.triggerRecovery("network type changed to " + networkState.String())
+	if first {
+		return
 	}
+	reason := "network type changed to " + networkState.String()
+	if !typeChanged {
+		reason = "network path changed (same type " + networkState.String() + ")"
+	}
+	n.triggerRecovery(reason)
 }
 
 func (n *networkState) IsOffline() bool {

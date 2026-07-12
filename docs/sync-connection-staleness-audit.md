@@ -157,6 +157,6 @@ here for scheduling. After an any-sync release, set
 | MacBook wake (no client event) | 30–40s+ (transport timeouts) | ≤5s (clock-jump) + dial |
 | Desktop Wi-Fi/VPN switch | up to 40s, mDNS may never rebuild | ≤5s (addr diff) + dial |
 | Mobile Wi-Fi↔cellular, foreground | 30–40s, UI shows Synced | ~1s (RPC hook) + dial |
-| Mobile Wi-Fi→Wi-Fi (same type) | 30–40s | ≤5s (addr diff) |
+| Mobile Wi-Fi→Wi-Fi (same type) | 30–40s | ~1s with `networkId` in the RPC; ≤5s via addr diff otherwise |
 | Silent midstream conn death | 30–40s | ≤20s (yamux); 30s QUIC until M1 |
 | Offline dial burn (N spaces) | N dials/20s forever | N dials/2min, instant snap-back |

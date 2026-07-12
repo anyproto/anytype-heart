@@ -270,9 +270,9 @@ func (_c *MockNetworkState_RegisterConnectivityHook_Call) RunAndReturn(run func(
 	return _c
 }
 
-// SetNetworkState provides a mock function with given fields: networkState
-func (_m *MockNetworkState) SetNetworkState(networkState model.DeviceNetworkType) {
-	_m.Called(networkState)
+// SetNetworkState provides a mock function with given fields: networkState, networkId
+func (_m *MockNetworkState) SetNetworkState(networkState model.DeviceNetworkType, networkId string) {
+	_m.Called(networkState, networkId)
 }
 
 // MockNetworkState_SetNetworkState_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SetNetworkState'
@@ -282,13 +282,14 @@ type MockNetworkState_SetNetworkState_Call struct {
 
 // SetNetworkState is a helper method to define mock.On call
 //   - networkState model.DeviceNetworkType
-func (_e *MockNetworkState_Expecter) SetNetworkState(networkState interface{}) *MockNetworkState_SetNetworkState_Call {
-	return &MockNetworkState_SetNetworkState_Call{Call: _e.mock.On("SetNetworkState", networkState)}
+//   - networkId string
+func (_e *MockNetworkState_Expecter) SetNetworkState(networkState interface{}, networkId interface{}) *MockNetworkState_SetNetworkState_Call {
+	return &MockNetworkState_SetNetworkState_Call{Call: _e.mock.On("SetNetworkState", networkState, networkId)}
 }
 
-func (_c *MockNetworkState_SetNetworkState_Call) Run(run func(networkState model.DeviceNetworkType)) *MockNetworkState_SetNetworkState_Call {
+func (_c *MockNetworkState_SetNetworkState_Call) Run(run func(networkState model.DeviceNetworkType, networkId string)) *MockNetworkState_SetNetworkState_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(model.DeviceNetworkType))
+		run(args[0].(model.DeviceNetworkType), args[1].(string))
 	})
 	return _c
 }
@@ -298,7 +299,7 @@ func (_c *MockNetworkState_SetNetworkState_Call) Return() *MockNetworkState_SetN
 	return _c
 }
 
-func (_c *MockNetworkState_SetNetworkState_Call) RunAndReturn(run func(model.DeviceNetworkType)) *MockNetworkState_SetNetworkState_Call {
+func (_c *MockNetworkState_SetNetworkState_Call) RunAndReturn(run func(model.DeviceNetworkType, string)) *MockNetworkState_SetNetworkState_Call {
 	_c.Run(run)
 	return _c
 }

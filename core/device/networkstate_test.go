@@ -105,7 +105,7 @@ func TestNetworkState_SetNetworkState(t *testing.T) {
 		state := &networkState{}
 
 		// when
-		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
 
 		// then
 		assert.Equal(t, model.DeviceNetworkType_CELLULAR, state.networkState)
@@ -115,8 +115,8 @@ func TestNetworkState_SetNetworkState(t *testing.T) {
 		state := &networkState{}
 
 		// when
-		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
-		state.SetNetworkState(model.DeviceNetworkType_WIFI)
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "")
 
 		// then
 		assert.Equal(t, model.DeviceNetworkType_WIFI, state.networkState)
@@ -131,8 +131,8 @@ func TestNetworkState_SetNetworkState(t *testing.T) {
 		state.RegisterHook(h)
 
 		// when
-		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
-		state.SetNetworkState(model.DeviceNetworkType_WIFI)
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "")
 
 		// then
 		assert.Equal(t, model.DeviceNetworkType_WIFI, state.networkState)
@@ -149,21 +149,21 @@ func TestNetworkState_SetNetworkState(t *testing.T) {
 		})
 
 		// when/then: setting the same-as-current value must not fire the hook
-		state.SetNetworkState(model.DeviceNetworkType_WIFI)
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "")
 		assert.Equal(t, 0, calls, "same-as-default value must not fire the hook")
 
 		// a real change fires exactly once
-		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
 		assert.Equal(t, 1, calls)
 		assert.Equal(t, model.DeviceNetworkType_CELLULAR, last)
 
 		// repeating the same value is a no-op — no extra hook calls
-		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
-		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
 		assert.Equal(t, 1, calls, "repeated same value must be a no-op")
 
 		// switching back fires once more
-		state.SetNetworkState(model.DeviceNetworkType_WIFI)
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "")
 		assert.Equal(t, 2, calls)
 		assert.Equal(t, model.DeviceNetworkType_WIFI, last)
 	})
@@ -176,24 +176,41 @@ func TestNetworkState_ConnectivityRecovery(t *testing.T) {
 		fx.RegisterConnectivityHook(func(online bool) { hookCalls = append(hookCalls, online) })
 
 		// first report: initial state, connections from startup are good
-		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
 		assert.Empty(t, hookCalls)
 		assert.Equal(t, 0, fx.syncer.callCount())
 
 		// a real switch flushes the pool, fires hooks and head-syncs
 		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
-		fx.SetNetworkState(model.DeviceNetworkType_WIFI)
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")
 		assert.Equal(t, []bool{true}, hookCalls)
+		assert.Equal(t, 1, fx.syncer.callCount())
+	})
+	t.Run("same type, different networkId triggers recovery", func(t *testing.T) {
+		fx := newNetworkStateFixture(t)
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "cell-1") // first report
+
+		// same type, new path identity (e.g. Wi-Fi->Wi-Fi or PDP re-attach)
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "cell-2")
+		assert.Equal(t, 1, fx.syncer.callCount())
+
+		// repeating the same id is a no-op
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "cell-2")
+		assert.Equal(t, 1, fx.syncer.callCount())
+
+		// an empty id from an older client does not count as a change
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
 		assert.Equal(t, 1, fx.syncer.callCount())
 	})
 	t.Run("switch to NOT_CONNECTED flushes but does not head-sync", func(t *testing.T) {
 		fx := newNetworkStateFixture(t)
 		var hookCalls []bool
 		fx.RegisterConnectivityHook(func(online bool) { hookCalls = append(hookCalls, online) })
-		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR) // first report
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // first report
 
 		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
-		fx.SetNetworkState(model.DeviceNetworkType_NOT_CONNECTED)
+		fx.SetNetworkState(model.DeviceNetworkType_NOT_CONNECTED, "")
 		assert.Equal(t, []bool{false}, hookCalls)
 		assert.Equal(t, 0, fx.syncer.callCount())
 		assert.True(t, fx.IsOffline())
@@ -217,14 +234,14 @@ func TestNetworkState_ConnectivityRecovery(t *testing.T) {
 		defer func() { scheduleAfter = time.AfterFunc }()
 
 		fx := newNetworkStateFixture(t)
-		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR) // first report, no recovery
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // first report, no recovery
 
 		// three rapid switches: first runs immediately, the rest coalesce into
 		// exactly one scheduled trailing run
 		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
-		fx.SetNetworkState(model.DeviceNetworkType_WIFI)
-		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR)
-		fx.SetNetworkState(model.DeviceNetworkType_WIFI)
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")
 		assert.Equal(t, 1, fx.syncer.callCount())
 		require.Len(t, scheduled, 1)
 
@@ -252,7 +269,7 @@ func TestNetworkState_GetNetworkState(t *testing.T) {
 		state := New()
 
 		// when
-		state.SetNetworkState(model.DeviceNetworkType_CELLULAR)
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
 		networkType := state.GetNetworkState()
 
 		// then

@@ -17,7 +17,7 @@ so the RPC signals matter most there.
 
 | RPC | When heart receives it | Effect |
 |---|---|---|
-| `Device.NetworkState.Set(type)` | type differs from the last report | notifies Wi-Fi-gate/mDNS hooks; **flushes the connection pool, rebuilds responsible peers, head-syncs all spaces** (skipped for the very first report and when switching *to* NOT_CONNECTED — then only flush + fast "offline" status) |
+| `Device.NetworkState.Set(type, networkId)` | type **or** networkId differs from the last report | notifies Wi-Fi-gate/mDNS hooks (on type change); **flushes the connection pool, rebuilds responsible peers, head-syncs all spaces** (skipped for the very first report and when switching *to* NOT_CONNECTED — then only flush + fast "offline" status) |
 | `App.SetDeviceState(FOREGROUND)` | after >15s in background | same recovery pipeline + refreshes opened objects |
 | `App.SetDeviceState(BACKGROUND)` | always | flushes WAL so a frozen/killed process loses nothing |
 
@@ -31,6 +31,16 @@ wait for the 2min probe).
 Signals are debounced heart-side (5s suppression window with one coalesced
 trailing run), so call the RPC on **every** path-change callback and do not
 debounce client-side.
+
+**`networkId`** (added 2026-07) is an opaque identity of the current network
+path. It exists because the type alone cannot express "same type, different
+network" — Wi-Fi→Wi-Fi SSID switch, cellular PDP re-attach, VPN reconnect.
+With an id, the OS callback triggers recovery instantly; without one those
+cases fall back to heart's 5s interface poll. Send whatever is stable per
+network and changes across networks (see per-platform snippets). Empty is
+valid (older clients): type-only semantics apply, and repeated reports with
+the same type+id are cheap no-ops, so you can call the RPC as often as the OS
+fires.
 
 ## iOS — NWPathMonitor
 
@@ -57,9 +67,14 @@ final class HeartNetworkReporter {
                 // wifi / wiredEthernet / other satisfied paths
                 networkType = .wifi
             }
+            // opaque path identity: changes when the underlying network
+            // changes even if the type stays the same (Wi-Fi -> Wi-Fi)
+            let networkId = path.availableInterfaces.map(\.name).sorted().joined(separator: ",")
+                + "|" + path.gateways.map { "\($0)" }.sorted().joined(separator: ",")
             // fire and forget; heart dedupes repeated values
             var req = Anytype_Rpc.Device.NetworkState.Set.Request()
             req.deviceNetworkType = networkType
+            req.networkID = path.status == .satisfied ? networkId : ""
             _ = Lib.ServiceDeviceNetworkStateSet(try? req.serializedData())
         }
         monitor.start(queue: queue)
@@ -102,19 +117,21 @@ class HeartNetworkReporter(context: Context) {
 
     private val callback = object : ConnectivityManager.NetworkCallback() {
         override fun onCapabilitiesChanged(net: Network, caps: NetworkCapabilities) {
-            report(caps)
+            // networkHandle is stable per network instance and changes on
+            // every reconnect — exactly what heart's networkId wants
+            report(caps, net.networkHandle.toString())
         }
         override fun onLost(net: Network) {
             // onLost fires before a replacement network is up; if another
             // network is already active this is followed by
             // onCapabilitiesChanged for it, which heart coalesces.
-            reportType(DeviceNetworkType.NOT_CONNECTED)
+            reportType(DeviceNetworkType.NOT_CONNECTED, "")
         }
     }
 
     fun start() = cm.registerDefaultNetworkCallback(callback)
 
-    private fun report(caps: NetworkCapabilities) {
+    private fun report(caps: NetworkCapabilities, networkId: String) {
         val type = when {
             !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ->
                 DeviceNetworkType.NOT_CONNECTED
@@ -122,13 +139,13 @@ class HeartNetworkReporter(context: Context) {
                 DeviceNetworkType.CELLULAR
             else -> DeviceNetworkType.WIFI // wifi / ethernet / vpn-over-wifi
         }
-        reportType(type)
+        reportType(type, if (type == DeviceNetworkType.NOT_CONNECTED) "" else networkId)
     }
 
-    private fun reportType(type: DeviceNetworkType) {
+    private fun reportType(type: DeviceNetworkType, networkId: String) {
         // middleware wrapper generated from protos
         Service.deviceNetworkStateSet(
-            Rpc.Device.NetworkState.Set.Request(deviceNetworkType = type)
+            Rpc.Device.NetworkState.Set.Request(deviceNetworkType = type, networkId = networkId)
         )
     }
 }

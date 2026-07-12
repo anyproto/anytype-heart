@@ -13212,6 +13212,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | deviceNetworkType | [model.DeviceNetworkType](#anytype-model-DeviceNetworkType) |  |  |
+| networkId | [string](#string) |  | opaque identity of the current network path as reported by the OS (iOS: NWPath interfaces/gateway digest; Android: Network#getNetworkHandle()). When it changes while the type stays the same (Wi-Fi to Wi-Fi switch, cellular re-attach) the middleware still resets connections and re-syncs. Optional: empty means unknown, only type transitions are used then. |
 
 
 
