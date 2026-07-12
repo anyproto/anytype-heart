@@ -73,9 +73,13 @@ JSON payload (UTF-8):
   fresh id per run means a crashed session never blocks its successor — the
   stale entry just expires (Yjs regenerates `clientID` per page load for the
   same reason).
-- `blockId` — the editor block being typed in; empty/absent means the chat
-  input of that object.
-- `active` — `true` = typing (refresh), `false` = stopped/left (clear me).
+- `blockId` — the editor block the sender is typing in / holds focus in;
+  empty/absent means the chat input of that object. Receivers may treat a
+  block-scoped entry as a soft lock on that block (render a "X is editing"
+  chip and make the block read-only locally) — remember the transport is
+  at-most-once, so the lock is advisory UX, not mutual exclusion.
+- `active` — `true` = typing/holding focus (refresh), `false` = stopped/left
+  (clear me).
 
 Receiver state: `objectId → (identity, sessionId) → {blockId, lastSeen}` where
 `lastSeen` is **receiver-local receipt time** (immune to sender clock skew —
@@ -85,11 +89,12 @@ none of the reference systems trust sender clocks for expiry).
 
 | Signal | Rule | Rationale / precedent |
 |---|---|---|
-| Start | publish `active:true` on the first keystroke, immediately | all platforms; latency is the whole feature |
-| Refresh while typing | every **3 s** while keystrokes continue; never faster | Slack emits typing every ~3 s; Matrix clients re-PUT before their timeout; more often is pure waste — the indicator can't get "more on" |
-| Block/context switch | on `blockId` change publish immediately, bypassing the 3 s throttle | the payload is full-state; a stale block marker is worse than an extra message |
-| Idle stop | after **4 s** without keystrokes publish `active:false` | XEP-0085 `paused` after a short pause; matches user perception of "stopped typing" |
-| Receiver expiry (TTL) | drop an entry after **8 s** without refresh | ≥2× refresh interval so a single lost message (at-most-once!) doesn't flicker the indicator; Discord uses ~10 s |
+| Start (chat input) | publish `active:true` on the first input event, immediately | all platforms; latency is the whole feature |
+| Refresh while typing | every **2 s** while input continues; never faster | Slack emits typing every ~3 s; Matrix clients re-PUT before their timeout; more often is pure waste — the indicator can't get "more on" |
+| Editor block focus | publish `active:true` with `blockId` **on the focus edge**, heartbeat every **2 s** while focus is held (independent of keystrokes), publish `active:false` **on the blur edge** | the editor signal is focus presence (a soft lock), not keystrokes: a paused writer still holds the block; focus/blur edges are what makes the lock feel snappy |
+| Block/context switch | on `blockId` change publish immediately, bypassing the throttle | the payload is full-state; a stale block marker is worse than an extra message |
+| Idle stop (chat input) | after **3 s** without input publish `active:false` | XEP-0085 `paused` after a short pause; matches user perception of "stopped typing" |
+| Receiver expiry (TTL) | drop an entry after **5 s** without refresh | ≥2× refresh interval so a single lost message (at-most-once!) doesn't flicker the indicator, and short enough that a crashed peer's block lock clears fast |
 | Message sent (chat) | publish `active:false` immediately; receivers also clear the sender's entry when the actual chat message arrives | every chat platform clears typing on message delivery; the data beats the signal |
 | Heartbeat jitter | add ±10% randomness to refresh timers | avoids synchronized bursts when many clients react to the same event (thundering-herd hygiene, standard gossip practice) |
 
