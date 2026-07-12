@@ -120,6 +120,8 @@ persistence/replay; plaintext publish; exposing keyId/msgId to clients.
 The generic protocol stays app-agnostic; topic conventions, payload schema,
 republish cadence, and closing-message rules for client developers live in
 [CLIENTS.md](./CLIENTS.md). Summary: topic `typing/<objectId>`, JSON payload
-`{sessionId, blockId, active}`, refresh 3s while typing, `active:false` on
-idle (4s) / leave, receiver-side TTL 8s by local clock, identity always from
-the verified event, own sessionId filtered (local echo).
+`{sessionId, blockId, active}`, published on focus/input edges and refreshed
+every 2s while held, `active:false` on blur/idle (3s) / leave, receiver-side
+TTL 5s by local clock, identity always from the verified event, own sessionId
+filtered (local echo). Editor blocks with a remote holder render a participant
+chip and soft-lock locally.
