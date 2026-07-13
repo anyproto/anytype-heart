@@ -12,14 +12,28 @@ import (
 
 	anystore "github.com/anyproto/any-store"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/anyproto/anytype-heart/core/debug/exporter"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/anonymize"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 	"github.com/anyproto/anytype-heart/util/ziputil"
 )
+
+// treeSmartBlockType reads the smartblock type out of the tree's root change
+// payload, so the exporter knows whether to (de)serialize changes as
+// pb.Change or pb.StoreChange (see smartblock.SmartBlockType.IsStoreBacked).
+func treeSmartBlockType(tree objecttree.ReadableObjectTree) (smartblock.SmartBlockType, error) {
+	payload := &model.ObjectChangePayload{}
+	if err := proto.Unmarshal(tree.ChangeInfo().ChangePayload, payload); err != nil {
+		return 0, fmt.Errorf("unmarshal change payload: %w", err)
+	}
+	return smartblock.SmartBlockType(payload.SmartBlockType), nil
+}
 
 type treeExporter struct {
 	log        *stdlog.Logger
@@ -50,10 +64,14 @@ func (e *treeExporter) Export(ctx context.Context, path string, tree objecttree.
 	defer func() {
 		_ = anyStore.Close()
 	}()
+	sbt, sbtErr := treeSmartBlockType(tree)
+	if sbtErr != nil {
+		log.Errorf("can't determine smartblock type for %s, assuming pb.Change: %v", e.id, sbtErr)
+	}
 	exportParams := exporter.ExportParams{
 		Readable:  tree,
 		Store:     anyStore,
-		Converter: &changeDataConverter{anonymize: e.anonymized},
+		Converter: &changeDataConverter{anonymize: e.anonymized, storeBacked: sbtErr == nil && sbt.IsStoreBacked()},
 	}
 	st := time.Now()
 	err = exporter.ExportTree(ctx, exportParams)
