@@ -205,64 +205,84 @@ func (i *inviteService) getExisting(ctx context.Context, spaceId string) (info d
 	return info, nil
 }
 
-// setInviteInfo writes the invite to the object that holds it and updates the other one, so that
-// switching a space between a shared invite and an owner-held one can never leave the previous
-// invite readable where it used to live.
+// setInviteInfo writes the invite to the object that holds its cid and key, and updates the other
+// one, so that switching a space between a shared invite and an owner-held one can never leave the
+// previous invite readable where it used to live.
+//
+// The holder is written before the other object is touched. A failure between the two writes then
+// leaves the invite readable in one more place than intended — never lost from every place — and
+// getExisting reads the space view first, so both transient states resolve to a usable invite and a
+// retry converges.
 func (i *inviteService) setInviteInfo(ctx context.Context, spaceId string, info domain.InviteInfo) error {
-	err := i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
-		if info.HeldByOwner {
-			return obj.SetInviteFileInfo(info)
-		}
-		_, err := obj.RemoveExistingInviteInfo()
-		return err
-	})
-	if err != nil {
-		return fmt.Errorf("set invite info in space view: %w", err)
-	}
 	// the workspace takes the full invite when it is shared within the space, and the marker alone
 	// when the owner holds it
-	err = i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
-		return obj.SetInviteFileInfo(info)
-	})
-	if err != nil {
+	setWorkspace := func() error {
+		return i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
+			return obj.SetInviteFileInfo(info)
+		})
+	}
+	setSpaceView := func() error {
+		return i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
+			if info.HeldByOwner {
+				return obj.SetInviteFileInfo(info)
+			}
+			_, err := obj.RemoveExistingInviteInfo()
+			return err
+		})
+	}
+	if info.HeldByOwner {
+		// the space view holds the invite; write it before reducing the workspace to the marker
+		if err := setSpaceView(); err != nil {
+			return fmt.Errorf("set invite info in space view: %w", err)
+		}
+		if err := setWorkspace(); err != nil {
+			return fmt.Errorf("set invite info in workspace: %w", err)
+		}
+		return nil
+	}
+	// the workspace holds the invite; write it before clearing the space view
+	if err := setWorkspace(); err != nil {
 		return fmt.Errorf("set invite info in workspace: %w", err)
+	}
+	if err := setSpaceView(); err != nil {
+		return fmt.Errorf("clear invite info in space view: %w", err)
 	}
 	return nil
 }
 
 func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
-	// both objects are cleared: the invite lives in one of them, and the other carries the marker or
-	// a pair left behind by an earlier invite of the other kind
-	err = i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
-		info, err = obj.RemoveExistingInviteInfo()
+	// Both objects are cleared: the invite lives in one of them, and the other carries the marker or a
+	// pair left behind by an earlier invite of the other kind. The file is deleted off whichever cid is
+	// recovered even when one of the clears fails, so a failed detail-clear never strands the file on
+	// the node with no object left pointing at it.
+	spaceViewErr := i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
+		spaceViewInfo, err := obj.RemoveExistingInviteInfo()
+		if spaceViewInfo.InviteFileCid != "" {
+			info = spaceViewInfo
+		}
 		return err
 	})
-	if err != nil {
-		return domain.InviteInfo{}, removeInviteError("remove existing invite info from space view", err)
-	}
-	err = i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
+	workspaceErr := i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
 		workspaceInfo, err := obj.RemoveExistingInviteInfo()
-		if err != nil {
-			return err
-		}
 		if info.InviteFileCid == "" {
 			info = workspaceInfo
 		}
-		return nil
+		return err
 	})
-	if err != nil {
-		return domain.InviteInfo{}, removeInviteError("remove existing invite info from workspace", err)
+	if info.InviteFileCid != "" {
+		invCid, decErr := cid.Decode(info.InviteFileCid)
+		if decErr != nil {
+			return info, removeInviteError("decode invite cid", decErr)
+		}
+		if remErr := i.inviteStore.RemoveInvite(ctx, invCid); remErr != nil {
+			return info, removeInviteError("remove invite from store", remErr)
+		}
 	}
-	if len(info.InviteFileCid) == 0 {
-		return info, nil
+	if spaceViewErr != nil {
+		return info, removeInviteError("remove existing invite info from space view", spaceViewErr)
 	}
-	invCid, err := cid.Decode(info.InviteFileCid)
-	if err != nil {
-		return info, removeInviteError("decode invite cid", err)
-	}
-	err = i.inviteStore.RemoveInvite(ctx, invCid)
-	if err != nil {
-		return info, removeInviteError("remove invite from store", err)
+	if workspaceErr != nil {
+		return info, removeInviteError("remove existing invite info from workspace", workspaceErr)
 	}
 	return info, nil
 }
@@ -336,7 +356,12 @@ func (i *inviteService) Generate(ctx context.Context, params GenerateInviteParam
 	}
 	err = i.setInviteInfo(ctx, spaceId, inviteInfo)
 	if err != nil {
-		removeInviteFile()
+		// setInviteInfo may have persisted the cid to one object before failing on the other. Clearing
+		// both removes any dangling reference and deletes the file when a cid was found; the file is
+		// deleted here for the case where nothing was persisted or the rollback itself failed.
+		if removed, removeErr := i.RemoveExisting(ctx, spaceId); removeErr != nil || removed.InviteFileCid == "" {
+			removeInviteFile()
+		}
 		return domain.InviteInfo{}, generateInviteError("set invite file info", err)
 	}
 	err = sendInvite()

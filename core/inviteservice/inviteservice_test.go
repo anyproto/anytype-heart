@@ -209,6 +209,35 @@ func TestInviteService_RemoveExisting(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, want, got)
 	})
+
+	t.Run("the file is deleted even when clearing the workspace fails", func(t *testing.T) {
+		// given an owner-held invite whose cid lives only in the space view
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectSpaceView()
+		fx.expectInviteObject()
+		res, err := cidutil.NewCidFromBytes([]byte("fileCid"))
+		require.NoError(t, err)
+		held := domain.InviteInfo{
+			InviteFileCid: res,
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeDefault,
+			HeldByOwner:   true,
+		}
+		invCid, err := cid.Decode(held.InviteFileCid)
+		require.NoError(t, err)
+		fx.mockSpaceView.EXPECT().RemoveExistingInviteInfo().Return(held, nil)
+		fx.mockInviteObject.EXPECT().RemoveExistingInviteInfo().Return(domain.InviteInfo{}, fmt.Errorf("apply failed"))
+		// the file is still deleted off the cid recovered from the space view, so it is never stranded on
+		// the node with no object left pointing at it
+		fx.mockInviteStore.EXPECT().RemoveInvite(ctx, invCid).Return(nil)
+
+		// when the removal runs and the workspace clear fails
+		_, err = fx.RemoveExisting(ctx, "spaceId")
+
+		// then the error is reported, but the file has already been deleted
+		require.Error(t, err)
+	})
 }
 
 func TestInviteService_ShareWithinSpace(t *testing.T) {
