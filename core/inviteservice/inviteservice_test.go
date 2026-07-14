@@ -221,8 +221,7 @@ func TestInviteService_ShareWithinSpace(t *testing.T) {
 		held := domain.InviteInfo{
 			InviteFileCid: "fileCid",
 			InviteFileKey: "fileKey",
-			InviteType:    domain.InviteTypeAnyone,
-			Permissions:   list.AclPermissionsWriter,
+			InviteType:    domain.InviteTypeDefault,
 			HeldByOwner:   true,
 		}
 		want := held
@@ -247,7 +246,7 @@ func TestInviteService_ShareWithinSpace(t *testing.T) {
 		want := domain.InviteInfo{
 			InviteFileCid: "fileCid",
 			InviteFileKey: "fileKey",
-			InviteType:    domain.InviteTypeAnyone,
+			InviteType:    domain.InviteTypeDefault,
 		}
 		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
 		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(want)
@@ -255,6 +254,27 @@ func TestInviteService_ShareWithinSpace(t *testing.T) {
 		got, err := fx.ShareWithinSpace(ctx, "spaceId")
 		require.NoError(t, err)
 		require.Equal(t, want, got)
+	})
+
+	t.Run("an invite anyone can join with is published only when it grants read access", func(t *testing.T) {
+		// given an anyoneCanJoin invite that lets whoever holds the link write in the space
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectSpaceView()
+		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{
+			InviteFileCid: "fileCid",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+			HeldByOwner:   true,
+		})
+
+		// when it is asked to be shared within the space
+		_, err := fx.ShareWithinSpace(ctx, "spaceId")
+
+		// then it is refused: nobody approves a join through such a link, so handing it to every member
+		// hands every member a way to let strangers write
+		require.ErrorIs(t, err, ErrInviteNotShareable)
 	})
 
 	t.Run("no invite to share", func(t *testing.T) {

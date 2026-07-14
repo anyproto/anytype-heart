@@ -732,6 +732,12 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 		if current.InviteType != domain.InviteTypeAnyone {
 			return inviteservice.ErrInviteNotExists
 		}
+		// the invite is shared within the space, so raising it above read access would leave a link that
+		// lets whoever holds it write, in the hands of every member. Generating such an invite is
+		// refused; changing one into it is refused for the same reason
+		if !current.HeldByOwner && !domain.ShareableWithinSpace(current.InviteType, domain.ConvertParticipantPermissions(permissions)) {
+			return inviteservice.ErrInviteNotShareable
+		}
 	}
 	acceptSpace, err := a.spaceService.Get(ctx, spaceId)
 	if err != nil {
@@ -772,6 +778,9 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 		return
 	}
 	inviteType := domain.InviteType(invType)
+	if shareWithinSpace && !domain.ShareableWithinSpace(inviteType, domain.ConvertParticipantPermissions(permissions)) {
+		return domain.InviteInfo{}, inviteservice.ErrInviteNotShareable
+	}
 	current, err := a.inviteService.GetCurrent(ctx, spaceId)
 	// an invite this device cannot read comes back without a cid: it is held by the owner, and only
 	// they can do anything with it

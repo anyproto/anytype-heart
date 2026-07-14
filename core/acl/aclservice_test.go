@@ -485,6 +485,25 @@ func TestService_ChangeInvite(t *testing.T) {
 		err := fx.ChangeInvite(ctx, spaceId, model.ParticipantPermissions_Writer)
 		require.NoError(t, err)
 	})
+	t.Run("a shared invite anyone can join with cannot be raised above read access", func(t *testing.T) {
+		// given an anyoneCanJoin invite that every member of the space holds
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
+			InviteType:    domain.InviteTypeAnyone,
+			InviteFileCid: "testCid",
+			Permissions:   list.AclPermissionsReader,
+		}, nil)
+
+		// when it is changed to let whoever joins through it write
+		err := fx.ChangeInvite(ctx, spaceId, model.ParticipantPermissions_Writer)
+
+		// then it is refused: generating such an invite is not allowed, and neither is turning one into it
+		require.ErrorIs(t, err, inviteservice.ErrInviteNotShareable)
+	})
+
 	t.Run("different invite type", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
@@ -729,7 +748,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		current := domain.InviteInfo{
 			InviteFileCid: "testCid",
 			InviteFileKey: "testKey",
-			InviteType:    domain.InviteTypeAnyone,
+			InviteType:    domain.InviteTypeDefault,
 			HeldByOwner:   true,
 		}
 		shared := current
@@ -739,12 +758,26 @@ func TestService_GenerateInvite(t *testing.T) {
 		fx.mockInviteService.EXPECT().ShareWithinSpace(ctx, spaceId).Return(shared, nil)
 
 		// when the same invite is asked for with shareWithinSpace
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, true)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, true)
 
 		// then it is published as it stands: no acl record is replaced, no invite file is stored, and the
 		// link the owner already handed out keeps working
 		require.NoError(t, err)
 		require.Equal(t, shared, info)
+	})
+
+	t.Run("an invite anyone can join with is shareable only as a reader's link", func(t *testing.T) {
+		// given a space
+		fx := newFixture(t)
+		defer fx.finish(t)
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+
+		// when an anyoneCanJoin invite that grants write access is asked to be shared within the space
+		_, err := fx.GenerateInvite(ctx, "spaceId", model.InviteType_WithoutApprove, model.ParticipantPermissions_Writer, true)
+
+		// then it is refused before anything is generated: nobody approves a join through such a link, so
+		// it stays in the owner's account
+		require.ErrorIs(t, err, inviteservice.ErrInviteNotShareable)
 	})
 
 	t.Run("an invite shared within the space cannot be taken back", func(t *testing.T) {

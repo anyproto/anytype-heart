@@ -35,6 +35,7 @@ var passthroughErrors = []error{
 	inviteservice.ErrInviteGenerate,
 	inviteservice.ErrInviteRemove,
 	inviteservice.ErrInviteBadContent,
+	inviteservice.ErrInviteNotShareable,
 }
 
 func convertErrorOrReturn(err, otherErr error) error {

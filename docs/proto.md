@@ -22349,6 +22349,7 @@ Available undo/redo operations
 | permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
 | shareWithinSpace | [bool](#bool) |  | shareWithinSpace stores the invite in the space itself, so that every member can share it. Otherwise the invite is kept in the owner&#39;s account and only the owner can share it. |
 | shareWithinSpace | [bool](#bool) |  | shareWithinSpace stores the invite in the space itself, so that every member can share it. Otherwise the invite is kept in the owner&#39;s account and only the owner can share it. |
+| shareWithinSpace | [bool](#bool) |  | shareWithinSpace stores the invite in the space itself, so that every member can share it. Otherwise the invite is kept in the owner&#39;s account and only the owner can share it. |
 
 
 
@@ -22428,6 +22429,7 @@ Available undo/redo operations
 | inviteFileKey | [string](#string) |  |  |
 | inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 | permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| heldByOwner | [bool](#bool) |  | heldByOwner is set when the invite is kept in the owner&#39;s account. Members get it with an empty inviteCid and inviteFileKey: only the owner can share the link. |
 | heldByOwner | [bool](#bool) |  | heldByOwner is set when the invite is kept in the owner&#39;s account. Members get it with an empty inviteCid and inviteFileKey: only the owner can share the link. |
 | heldByOwner | [bool](#bool) |  | heldByOwner is set when the invite is kept in the owner&#39;s account. Members get it with an empty inviteCid and inviteFileKey: only the owner can share the link. |
 
@@ -29368,6 +29370,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | INCORRECT_PERMISSIONS | 105 |  |
+| INVITE_NOT_SHAREABLE | 107 | the invite is shared within the space and these permissions are above read access: whoever holds such a link is in the space, and every member holds it |
 
 
 
@@ -29386,6 +29389,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NOT_SHAREABLE | 105 |  |
+| INVITE_ALREADY_SHARED | 106 | the current invite is already shared within the space and cannot be taken back into the owner&#39;s account: revoke it and generate a new one |
+| INVITE_NOT_SHAREABLE | 107 | an invite anyone can join with can only be shared within the space when it grants read access: whoever holds such a link is in the space, with the permissions it carries |
 | INVITE_ALREADY_SHARED | 106 | the current invite is already shared within the space and cannot be taken back into the owner&#39;s account: revoke it and generate a new one |
 
 

@@ -34,7 +34,9 @@ were originally meant to live.
 
 - `Rpc.Space.InviteGenerate.Request`: `bool shareWithinSpace = 4;`
 - `Rpc.Space.InviteGetCurrent.Response`: `bool heldByOwner = 6;`
-- `Rpc.Space.InviteGenerate.Response.Error.Code`: `INVITE_ALREADY_SHARED = 106;`
+- `Rpc.Space.InviteGenerate.Response.Error.Code`: `INVITE_ALREADY_SHARED = 106;`,
+  `INVITE_NOT_SHAREABLE = 107;`
+- `Rpc.Space.InviteChange.Response.Error.Code`: `INVITE_NOT_SHAREABLE = 107;`
 
 ### Relation (`pkg/lib/bundle/relations.json`, regenerate with `make relations`)
 
@@ -98,6 +100,29 @@ exposes them.
 - `SpaceInviteGenerate` passes `req.ShareWithinSpace` through.
 - `SpaceInviteGetCurrent` sets `heldByOwner` from `InviteInfo.HeldByOwner`.
 
+## What may be shared within the space
+
+`domain.ShareableWithinSpace(inviteType, permissions)` is the single rule, and both `GenerateInvite`
+and `ChangeInvite` go through it:
+
+| invite type | permissions | shareable within the space |
+|---|---|---|
+| request to join (`Member`) | any | yes — a join still needs the owner's approval |
+| anyone can join (`WithoutApprove`) | reader | yes |
+| anyone can join (`WithoutApprove`) | writer and above | **no** — `ErrInviteNotShareable` |
+
+Nobody approves a join made through an anyoneCanJoin link: whoever holds it is in the space, with the
+permissions the invite carries. A reader's link is as much as a member is trusted to give away.
+
+The rule is enforced in three places, because there are three ways to arrive at a shared invite that
+grants too much:
+
+- `aclService.GenerateInvite` — refuses to generate one.
+- `inviteService.ShareWithinSpace` — refuses to publish one. The invite being published is the one
+  the owner *holds*, whose permissions need not be the ones the request carried.
+- `aclService.ChangeInvite` — refuses to raise a shared invite above read access, which would
+  otherwise turn a shared reader's link into a writer's link in every member's hands.
+
 ## Switching an existing invite
 
 When `InviteGenerate` is called for a space that already has an invite **of the requested type**,
@@ -145,4 +170,6 @@ an owner-held invite generated this way is genuinely private.
   switching modes clears the old object; `RemoveExisting` clears both.
 - `core/block/editor`: `Workspaces` marker/full-info branching, `SpaceView` invite accessors.
 - `core/acl`: `GenerateInvite` publishes an owner-held invite instead of replacing it, refuses to
-  take a shared one back, and does not treat a marker-only workspace as a live invite.
+  take a shared one back, refuses to share an anyoneCanJoin invite above read access, and does not
+  treat a marker-only workspace as a live invite. `ChangeInvite` refuses to raise a shared invite
+  above read access.

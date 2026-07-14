@@ -163,6 +163,11 @@ func (i *inviteService) ShareWithinSpace(ctx context.Context, spaceId string) (d
 	if info.InviteFileCid == "" {
 		return domain.InviteInfo{}, ErrInviteNotExists
 	}
+	// the invite that gets published is the one the owner holds, whose permissions may be nothing like
+	// the ones the request carried
+	if !domain.ShareableWithinSpace(info.InviteType, info.Permissions) {
+		return domain.InviteInfo{}, ErrInviteNotShareable
+	}
 	if !info.HeldByOwner {
 		return info, nil
 	}

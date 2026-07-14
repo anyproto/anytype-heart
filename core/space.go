@@ -67,6 +67,7 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 			errToCode(acl.ErrLimitReached, pb.RpcSpaceInviteGenerateResponseError_LIMIT_REACHED),
 			errToCode(acl.ErrNotShareable, pb.RpcSpaceInviteGenerateResponseError_NOT_SHAREABLE),
 			errToCode(acl.ErrInviteAlreadyShared, pb.RpcSpaceInviteGenerateResponseError_INVITE_ALREADY_SHARED),
+			errToCode(inviteservice.ErrInviteNotShareable, pb.RpcSpaceInviteGenerateResponseError_INVITE_NOT_SHAREABLE),
 		)
 		return &pb.RpcSpaceInviteGenerateResponse{
 			Error: &pb.RpcSpaceInviteGenerateResponseError{
@@ -93,6 +94,7 @@ func (mw *Middleware) SpaceInviteChange(cctx context.Context, req *pb.RpcSpaceIn
 			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteChangeResponseError_NO_SUCH_SPACE),
 			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteChangeResponseError_BAD_INPUT),
 			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteChangeResponseError_REQUEST_FAILED),
+			errToCode(inviteservice.ErrInviteNotShareable, pb.RpcSpaceInviteChangeResponseError_INVITE_NOT_SHAREABLE),
 		)
 		return &pb.RpcSpaceInviteChangeResponse{
 			Error: &pb.RpcSpaceInviteChangeResponseError{

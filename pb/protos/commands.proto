@@ -164,6 +164,9 @@ message Rpc {
                         SPACE_IS_DELETED = 102;
                         REQUEST_FAILED = 103;
                         INCORRECT_PERMISSIONS = 105;
+                        // the invite is shared within the space and these permissions are above read access:
+                        // whoever holds such a link is in the space, and every member holds it
+                        INVITE_NOT_SHAREABLE = 107;
                     }
                 }
             }
@@ -203,6 +206,9 @@ message Rpc {
                         // the current invite is already shared within the space and cannot be taken back into the
                         // owner's account: revoke it and generate a new one
                         INVITE_ALREADY_SHARED = 106;
+                        // an invite anyone can join with cannot be shared within the space: whoever holds such a
+                        // link is in, so it stays in the owner's account and is theirs alone to hand out
+                        INVITE_NOT_SHAREABLE = 107;
                     }
                 }
             }

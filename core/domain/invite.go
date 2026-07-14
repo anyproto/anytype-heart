@@ -55,6 +55,19 @@ type InviteInfoObject interface {
 	RemoveExistingInviteInfo() (InviteInfo, error)
 }
 
+// ShareableWithinSpace reports whether an invite may be stored in the workspace, where every member
+// of the space reads it and can hand the link out.
+//
+// An invite anyone can join with needs no approval from anyone: whoever holds the link is in the
+// space, with the permissions the invite carries. Read access is as much as a member is trusted to
+// give away; a link that grants more than that stays in the owner's account.
+func ShareableWithinSpace(inviteType InviteType, permissions list.AclPermissions) bool {
+	if inviteType != InviteTypeAnyone {
+		return true
+	}
+	return permissions == list.AclPermissionsReader
+}
+
 type InviteObject interface {
 	InviteInfoObject
 
