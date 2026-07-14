@@ -34,6 +34,7 @@ were originally meant to live.
 
 - `Rpc.Space.InviteGenerate.Request`: `bool shareWithinSpace = 4;`
 - `Rpc.Space.InviteGetCurrent.Response`: `bool heldByOwner = 6;`
+- `Rpc.Space.InviteGenerate.Response.Error.Code`: `INVITE_ALREADY_SHARED = 106;`
 
 ### Relation (`pkg/lib/bundle/relations.json`, regenerate with `make relations`)
 
@@ -75,6 +76,9 @@ exposes them.
   3. workspace has only the marker → return an empty cid/key with `HeldByOwner = true` and **no
      error**. The client reads `heldByOwner` as the cue to ask the owner for the link.
   4. otherwise → `ErrInviteNotExists`.
+- `ShareWithinSpace` publishes the invite the owner holds into the workspace: it clears the space
+  view and writes the same cid, key, type and permissions to the workspace. The invite itself is
+  untouched.
 - `RemoveExisting` clears both objects and deletes the invite file when a cid was found.
 - `Change` (permissions) applies to whichever object actually holds the invite; on a device that
   holds only the marker it returns `ErrInviteNotExists`.
@@ -82,9 +86,9 @@ exposes them.
 ### Callers that must stop assuming a non-empty cid
 
 - `aclService.GenerateInvite` (`core/acl/aclservice.go:769`) short-circuits on "an invite of the
-  requested type already exists". It must additionally require a non-empty cid **and** a matching
-  sharing mode — otherwise a member holding only the marker would get it handed back as a live
-  invite, and switching a space between shared and owner-held would be a no-op.
+  requested type already exists". It must additionally require a non-empty cid — otherwise a member
+  holding only the marker would get it handed back as a live invite — and then decide on the sharing
+  mode as described under *Switching an existing invite*.
 - `core/publish/service.go:230` formats `InviteLinkUrlTemplate` from the cid and key. On a member's
   device with an owner-held invite both are empty; it must skip the invite link instead of
   publishing `.../<empty>/<empty>`.
@@ -96,10 +100,24 @@ exposes them.
 
 ## Switching an existing invite
 
-Generate always goes through `aclClient.ReplaceInvite`, which revokes the previous invite, and then
-writes to exactly one object while clearing the other. Switching a space from shared to owner-held
-therefore removes the cid and key from the workspace for good, and members lose the link they had
-— which is the point.
+When `InviteGenerate` is called for a space that already has an invite **of the requested type**,
+`aclService.GenerateInvite` decides on the sharing mode before it touches the acl:
+
+- **Same mode** — the existing invite is returned. Unchanged behaviour.
+- **Owner-held → shared** (`shareWithinSpace: true`) — the invite is *published*: it moves out of
+  the owner's space view and into the workspace through `inviteService.ShareWithinSpace`. It is the
+  same invite. No acl record is replaced, no new file is stored, and the link the owner already
+  handed out keeps working.
+- **Shared → owner-held** (`shareWithinSpace: false`) — refused with `ErrInviteAlreadyShared`
+  (`INVITE_ALREADY_SHARED = 106`). The workspace's *change history* has already handed this invite's
+  cid and key to every member of the space; removing the details from the workspace's current state
+  would not take the invite back. The client has to revoke the invite and generate a new one, which
+  is a decision for the user to make — the members lose their link either way, and this way they
+  lose an invite that no longer works rather than one that still does.
+
+An invite of a *different* type still goes through `aclClient.ReplaceInvite` as before, and the new
+invite is stored wherever the request asks for it. Its cid was never in the workspace's history, so
+an owner-held invite generated this way is genuinely private.
 
 ## Compatibility
 
@@ -126,5 +144,5 @@ therefore removes the cid and key from the workspace for good, and members lose 
   marker; generate shared → the reverse; `GetCurrent` on each of the four resolution branches;
   switching modes clears the old object; `RemoveExisting` clears both.
 - `core/block/editor`: `Workspaces` marker/full-info branching, `SpaceView` invite accessors.
-- `core/acl`: `GenerateInvite` does not short-circuit across a sharing-mode change, and does not
-  treat a marker-only workspace as a live invite.
+- `core/acl`: `GenerateInvite` publishes an owner-held invite instead of replacing it, refuses to
+  take a shared one back, and does not treat a marker-only workspace as a live invite.

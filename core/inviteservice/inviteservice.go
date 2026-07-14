@@ -55,6 +55,9 @@ type InviteService interface {
 	// RemoveExisting clears the space's invite info and returns the invite it removed
 	RemoveExisting(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	Generate(ctx context.Context, params GenerateInviteParams, sendInvite func() error) (domain.InviteInfo, error)
+	// ShareWithinSpace publishes the invite the owner holds into the workspace, where every member of
+	// the space can read it. It is the same invite: the acl record and the file stay as they are.
+	ShareWithinSpace(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	Change(ctx context.Context, spaceId string, permissions list.AclPermissions) error
 	GetCurrent(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	GetExistingGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
@@ -148,6 +151,26 @@ func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info do
 	// all they get, and their client turns it into "ask the owner for the link"
 	if info.InviteFileCid == "" && !info.HeldByOwner {
 		return domain.InviteInfo{}, ErrInviteNotExists
+	}
+	return info, nil
+}
+
+func (i *inviteService) ShareWithinSpace(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
+	info, err := i.getExisting(ctx, spaceId)
+	if err != nil {
+		return domain.InviteInfo{}, getInviteError("get existing invite info", err)
+	}
+	if info.InviteFileCid == "" {
+		return domain.InviteInfo{}, ErrInviteNotExists
+	}
+	if !info.HeldByOwner {
+		return info, nil
+	}
+	// the invite moves out of the owner's space view and into the workspace, which every member syncs.
+	// Nothing about the invite itself changes: same acl record, same file, same link
+	info.HeldByOwner = false
+	if err := i.setInviteInfo(ctx, spaceId, info); err != nil {
+		return domain.InviteInfo{}, generateInviteError("set invite file info", err)
 	}
 	return info, nil
 }

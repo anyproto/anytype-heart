@@ -211,6 +211,65 @@ func TestInviteService_RemoveExisting(t *testing.T) {
 	})
 }
 
+func TestInviteService_ShareWithinSpace(t *testing.T) {
+	t.Run("the invite moves from the owner's space view into the workspace", func(t *testing.T) {
+		// given an invite the owner holds in their own account
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectSpaceView()
+		fx.expectInviteObject()
+		held := domain.InviteInfo{
+			InviteFileCid: "fileCid",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+			HeldByOwner:   true,
+		}
+		want := held
+		want.HeldByOwner = false
+		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(held)
+		fx.mockSpaceView.EXPECT().RemoveExistingInviteInfo().Return(held, nil)
+		fx.mockInviteObject.EXPECT().SetInviteFileInfo(want).Return(nil)
+
+		// when it is shared within the space
+		got, err := fx.ShareWithinSpace(ctx, "spaceId")
+
+		// then the workspace holds the very same invite -- same cid, same key, same link
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+
+	t.Run("an invite that is already shared is left alone", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectSpaceView()
+		fx.expectInviteObject()
+		want := domain.InviteInfo{
+			InviteFileCid: "fileCid",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(want)
+
+		got, err := fx.ShareWithinSpace(ctx, "spaceId")
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+
+	t.Run("no invite to share", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectSpaceView()
+		fx.expectInviteObject()
+		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
+
+		_, err := fx.ShareWithinSpace(ctx, "spaceId")
+		require.ErrorIs(t, err, ErrInviteNotExists)
+	})
+}
+
 func TestInviteService_Generate(t *testing.T) {
 	t.Run("generate invite anyone, no existing info", func(t *testing.T) {
 		fx := newFixture(t)
@@ -493,63 +552,6 @@ func TestInviteService_Generate(t *testing.T) {
 		})
 
 		// then it lands in the workspace, where every member of the space can read it
-		require.NoError(t, err)
-		require.Equal(t, want, got)
-	})
-
-	t.Run("an invite of the same type held the other way is replaced", func(t *testing.T) {
-		// given an invite the owner holds in their own account
-		fx := newFixture(t)
-		defer fx.ctrl.Finish()
-		fx.expectSpaceView()
-		fx.expectInviteObject()
-		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{
-			InviteFileCid: "oldCid",
-			InviteFileKey: "oldKey",
-			InviteType:    domain.InviteTypeAnyone,
-			Permissions:   list.AclPermissionsReader,
-			HeldByOwner:   true,
-		})
-		acc, err := accountdata.NewRandom()
-		require.NoError(t, err)
-		fx.mockAccountService.EXPECT().AccountID().Return(acc.SignKey.GetPublic().Account())
-		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
-		fx.mockAccountService.EXPECT().ProfileInfo().Return(account.Profile{
-			Id:        "profileId",
-			AccountId: acc.SignKey.GetPublic().Account(),
-			Name:      "Misha",
-		}, nil)
-		fx.mockAccountService.EXPECT().SignData(mock.Anything).Return([]byte("signature"), nil)
-		spaceDescription := spaceinfo.SpaceDescription{Name: "space", IconImage: "icon"}
-		fx.mockSpaceView.EXPECT().GetSpaceDescription().Return(spaceDescription)
-		fx.mockFileAcl.EXPECT().GetInfoForFileSharing(spaceDescription.IconImage).Return("iconCid", nil, nil)
-		inviteCid, err := newCidFromBytes([]byte("fileCid"))
-		require.NoError(t, err)
-		inviteKey := crypto.NewAES()
-		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything, mock.Anything, mock.Anything).Return(inviteCid, inviteKey, nil)
-		inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteKey)
-		require.NoError(t, err)
-		want := domain.InviteInfo{
-			InviteFileCid: inviteCid.String(),
-			InviteFileKey: inviteFileKeyRaw,
-			InviteType:    domain.InviteTypeAnyone,
-			Permissions:   list.AclPermissionsReader,
-		}
-		fx.mockInviteObject.EXPECT().SetInviteFileInfo(want).Return(nil)
-		fx.mockSpaceView.EXPECT().RemoveExistingInviteInfo().Return(domain.InviteInfo{}, nil)
-
-		// when an invite of the same type is generated to be shared within the space
-		got, err := fx.inviteService.Generate(ctx, GenerateInviteParams{
-			SpaceId:          "spaceId",
-			Key:              acc.PeerKey,
-			InviteType:       domain.InviteTypeAnyone,
-			Permissions:      list.AclPermissionsReader,
-			ShareWithinSpace: true,
-		}, func() error {
-			return nil
-		})
-
-		// then the existing invite is not reused: where an invite is held is part of what it is
 		require.NoError(t, err)
 		require.Equal(t, want, got)
 	})

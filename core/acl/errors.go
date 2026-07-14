@@ -21,6 +21,11 @@ var (
 	ErrLimitReached         = errors.New("limit reached")
 	ErrDifferentNetwork     = errors.New("different network")
 	ErrInternal             = errors.New("internal error")
+	// ErrInviteAlreadyShared is returned when an invite that is shared within the space is asked to be
+	// held by the owner instead. The workspace's change history has already handed its cid and key to
+	// every member, and no amount of clearing details takes that back: the invite has to be revoked
+	// and a new one generated.
+	ErrInviteAlreadyShared = errors.New("invite is already shared within the space")
 )
 
 var passthroughErrors = []error{

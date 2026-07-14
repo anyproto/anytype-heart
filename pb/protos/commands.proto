@@ -200,6 +200,9 @@ message Rpc {
                         REQUEST_FAILED = 103;
                         LIMIT_REACHED = 104;
                         NOT_SHAREABLE = 105;
+                        // the current invite is already shared within the space and cannot be taken back into the
+                        // owner's account: revoke it and generate a new one
+                        INVITE_ALREADY_SHARED = 106;
                     }
                 }
             }

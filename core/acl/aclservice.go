@@ -773,12 +773,22 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 	}
 	inviteType := domain.InviteType(invType)
 	current, err := a.inviteService.GetCurrent(ctx, spaceId)
-	if err == nil {
-		// an invite this device cannot read comes back without a cid: it is held by the owner, and only
-		// they can reuse it. Where the invite is held is part of what identifies it, so a request that
-		// flips that replaces the invite just like a request that changes its type
-		if current.InviteFileCid != "" && current.InviteType == inviteType && current.HeldByOwner == !shareWithinSpace {
+	// an invite this device cannot read comes back without a cid: it is held by the owner, and only
+	// they can do anything with it
+	if err == nil && current.InviteFileCid != "" && current.InviteType == inviteType {
+		switch {
+		case current.HeldByOwner == !shareWithinSpace:
 			return current, nil
+		case shareWithinSpace:
+			// the invite the owner holds is published into the workspace. It is the same invite: nothing
+			// is revoked, no new file is stored, and the link the owner already handed out keeps working
+			return a.inviteService.ShareWithinSpace(ctx, spaceId)
+		default:
+			// the other way round is not something we can honour. The workspace's change history has
+			// already given this invite's cid and key to every member of the space; taking the details
+			// back out of the workspace would not take the invite back. Revoking it would, and that is
+			// the client's call to make, not ours
+			return domain.InviteInfo{}, ErrInviteAlreadyShared
 		}
 	}
 	acceptSpace, err := a.spaceService.Get(ctx, spaceId)

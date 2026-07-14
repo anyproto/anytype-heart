@@ -66,6 +66,7 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteGenerateResponseError_REQUEST_FAILED),
 			errToCode(acl.ErrLimitReached, pb.RpcSpaceInviteGenerateResponseError_LIMIT_REACHED),
 			errToCode(acl.ErrNotShareable, pb.RpcSpaceInviteGenerateResponseError_NOT_SHAREABLE),
+			errToCode(acl.ErrInviteAlreadyShared, pb.RpcSpaceInviteGenerateResponseError_INVITE_ALREADY_SHARED),
 		)
 		return &pb.RpcSpaceInviteGenerateResponse{
 			Error: &pb.RpcSpaceInviteGenerateResponseError{

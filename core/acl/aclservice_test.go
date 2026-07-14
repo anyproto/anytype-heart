@@ -721,6 +721,52 @@ func TestService_GenerateInvite(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
+	t.Run("an invite the owner holds is published into the workspace", func(t *testing.T) {
+		// given an invite of the requested type that the owner keeps in their own account
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		current := domain.InviteInfo{
+			InviteFileCid: "testCid",
+			InviteFileKey: "testKey",
+			InviteType:    domain.InviteTypeAnyone,
+			HeldByOwner:   true,
+		}
+		shared := current
+		shared.HeldByOwner = false
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(current, nil)
+		fx.mockInviteService.EXPECT().ShareWithinSpace(ctx, spaceId).Return(shared, nil)
+
+		// when the same invite is asked for with shareWithinSpace
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, true)
+
+		// then it is published as it stands: no acl record is replaced, no invite file is stored, and the
+		// link the owner already handed out keeps working
+		require.NoError(t, err)
+		require.Equal(t, shared, info)
+	})
+
+	t.Run("an invite shared within the space cannot be taken back", func(t *testing.T) {
+		// given an invite of the requested type that the members of the space already hold
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
+			InviteFileCid: "testCid",
+			InviteFileKey: "testKey",
+			InviteType:    domain.InviteTypeAnyone,
+		}, nil)
+
+		// when the same invite is asked to be held by the owner instead
+		_, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, false)
+
+		// then it is refused: the workspace's history has already handed the invite to every member, and
+		// only revoking it takes it back
+		require.ErrorIs(t, err, ErrInviteAlreadyShared)
+	})
+
 	t.Run("invite already exists", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
