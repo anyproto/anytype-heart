@@ -153,6 +153,24 @@ an owner-held invite generated this way is genuinely private.
 - An old client of a **member** calling `InviteGetCurrent` for an owner-held invite gets success
   with an empty cid instead of `NO_ACTIVE_INVITE`. Accepted: clients are updated in step with this.
 
+## Open decisions (from review)
+
+- **The background cleanup sweep cannot see owner-held invite files.** `invitecleanup` discovers
+  candidate files by walking the **workspace's** change history for `spaceInviteFileCid`. An
+  owner-held invite never writes its cid there — it lives only in the owner's spaceView — so a
+  revoked owner-held invite file is deleted **only** by the eager `onInviteRevoked` path, which is
+  best-effort and does not durably retry. If the holding device is offline when the invite is
+  revoked, the file leaks on the node, which is the exact leak class GO-7222 exists to close. Closing
+  it means teaching `collectCandidates` to also walk the spaceView's history (feasible: the sweep
+  runs on the owner's device, which has that tree) — but that is in the previously-reviewed
+  `core/invitecleanup` package. Decision pending.
+- **Publishing embeds an owner-held link into a public page.** When the owner publishes a space page
+  with `joinSpace=true` (`core/publish/service.go`), `GetCurrent` on the owner's device returns the
+  real cid and key, so the owner-held link — including an anyoneCanJoin one — is written into the
+  public page metadata. Not a regression (such links were always embeddable) and it is the owner's
+  explicit action, but it contradicts the "held by the owner" intent. A warning, or refusing to embed
+  an owner-held link, is a product call.
+
 ## Not handled
 
 - **Stale spaceView invite after a revoke from an unsynced device.** If the owner revokes from a
