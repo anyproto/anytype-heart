@@ -84,6 +84,14 @@ func (s *spaceViewStub) GetSharedSpacesLimit() (limits int) {
 	return
 }
 
+func (s *spaceViewStub) SetInviteCleanupDone(coveredRevocation string) (err error) {
+	return
+}
+
+func (s *spaceViewStub) GetInviteCleanupDone() (coveredRevocation string) {
+	return
+}
+
 func (s *spaceViewStub) SetOwner(owner string, createdDate int64) (err error) {
 	return
 }

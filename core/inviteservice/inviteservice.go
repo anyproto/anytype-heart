@@ -52,7 +52,8 @@ type InviteService interface {
 	app.ComponentRunnable
 	GetPayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*model.InvitePayload, error)
 	View(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error)
-	RemoveExisting(ctx context.Context, spaceId string) error
+	// RemoveExisting clears the space's invite info and returns the invite it removed
+	RemoveExisting(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	Generate(ctx context.Context, params GenerateInviteParams, sendInvite func() error) (domain.InviteInfo, error)
 	Change(ctx context.Context, spaceId string, permissions list.AclPermissions) error
 	GetCurrent(ctx context.Context, spaceId string) (domain.InviteInfo, error)
@@ -146,27 +147,26 @@ func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info do
 	return
 }
 
-func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (err error) {
-	var info domain.InviteInfo
+func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
 	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
 		info, err = obj.RemoveExistingInviteInfo()
 		return err
 	})
 	if err != nil {
-		return removeInviteError("remove existing invite info", err)
+		return domain.InviteInfo{}, removeInviteError("remove existing invite info", err)
 	}
 	if len(info.InviteFileCid) == 0 {
-		return nil
+		return info, nil
 	}
 	invCid, err := cid.Decode(info.InviteFileCid)
 	if err != nil {
-		return removeInviteError("decode invite cid", err)
+		return info, removeInviteError("decode invite cid", err)
 	}
 	err = i.inviteStore.RemoveInvite(ctx, invCid)
 	if err != nil {
-		return removeInviteError("remove invite from store", err)
+		return info, removeInviteError("remove invite from store", err)
 	}
-	return
+	return info, nil
 }
 
 func (i *inviteService) doInviteObject(ctx context.Context, spaceId string, f func(object domain.InviteObject) error) error {
@@ -206,7 +206,9 @@ func (i *inviteService) Generate(ctx context.Context, params GenerateInviteParam
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("build invite", err)
 	}
-	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, invite)
+	// the invite's public key binds the file to the invite on the coordinator, which is what lets it
+	// verify a later deletion against the acl
+	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, spaceId, params.Key.GetPublic(), invite)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("store invite in ipfs", err)
 	}
@@ -236,7 +238,7 @@ func (i *inviteService) Generate(ctx context.Context, params GenerateInviteParam
 	}
 	err = sendInvite()
 	if err != nil {
-		removeErr := i.RemoveExisting(ctx, spaceId)
+		_, removeErr := i.RemoveExisting(ctx, spaceId)
 		if removeErr != nil {
 			log.Error("remove existing invite", zap.Error(removeErr))
 		}
@@ -257,7 +259,7 @@ func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string,
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("build invite", err)
 	}
-	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, invite)
+	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, spaceId, guestUserKey.GetPublic(), invite)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("store invite in ipfs", err)
 	}

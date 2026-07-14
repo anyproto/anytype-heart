@@ -114,6 +114,8 @@ type SpaceView interface {
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
+	SetInviteCleanupDone(coveredRevocation string) (err error)
+	GetInviteCleanupDone() (coveredRevocation string)
 	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error)
 	SetOneToOneIdentity(identity string) error
 	SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error)

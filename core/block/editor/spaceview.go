@@ -29,6 +29,14 @@ var spaceViewLog = logging.Logger("core.block.editor.spaceview")
 
 var ErrIncorrectSpaceInfo = errors.New("space info is incorrect")
 
+// RelationKeyInviteCleanupDone certifies that a space's revoked invite files have been deleted from
+// the file node. Its value is the acl record id of the last invite revocation the cleanup covered,
+// so a later revocation — which appends a record — voids the certificate by itself.
+//
+// It is an internal marker with no entry in relations.json, and it lives in the spaceview tree so
+// that only one of the account's devices does the work.
+const RelationKeyInviteCleanupDone = domain.RelationKey("inviteCleanupDone")
+
 // required relations for spaceview beside the bundle.RequiredInternalRelations
 var spaceViewRequiredRelations = []domain.RelationKey{
 	bundle.RelationKeySpaceLocalStatus,
@@ -282,6 +290,17 @@ func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	st := s.NewState()
 	st.SetDetailAndBundledRelation(bundle.RelationKeySharedSpacesLimit, domain.Int64(limit))
 	return s.Apply(st)
+}
+
+func (s *SpaceView) SetInviteCleanupDone(coveredRevocation string) (err error) {
+	st := s.NewState()
+	// deliberately not a bundled relation: this is an internal marker, not something clients render
+	st.SetDetail(RelationKeyInviteCleanupDone, domain.String(coveredRevocation))
+	return s.Apply(st)
+}
+
+func (s *SpaceView) GetInviteCleanupDone() (coveredRevocation string) {
+	return s.CombinedDetails().GetString(RelationKeyInviteCleanupDone)
 }
 
 func (s *SpaceView) SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error) {

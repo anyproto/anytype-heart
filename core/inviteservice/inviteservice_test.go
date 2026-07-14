@@ -94,7 +94,7 @@ func TestInviteService_RemoveExisting(t *testing.T) {
 		require.NoError(t, err)
 		fx.mockInviteObject.EXPECT().RemoveExistingInviteInfo().Return(returnedInfo, nil)
 		fx.mockInviteStore.EXPECT().RemoveInvite(ctx, invCid).Return(nil)
-		err = fx.RemoveExisting(ctx, "spaceId")
+		_, err = fx.RemoveExisting(ctx, "spaceId")
 		require.NoError(t, err)
 	})
 }
@@ -130,7 +130,7 @@ func TestInviteService_Generate(t *testing.T) {
 		inviteCid, err := newCidFromBytes([]byte("fileCid"))
 		require.NoError(t, err)
 		inviteKey := crypto.NewAES()
-		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything).Return(inviteCid, inviteKey, nil)
+		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything, mock.Anything, mock.Anything).Return(inviteCid, inviteKey, nil)
 		inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteKey)
 		require.NoError(t, err)
 		inviteInfo := domain.InviteInfo{
@@ -187,7 +187,7 @@ func TestInviteService_Generate(t *testing.T) {
 		inviteCid, err := newCidFromBytes([]byte("fileCid"))
 		require.NoError(t, err)
 		inviteKey := crypto.NewAES()
-		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything).Return(inviteCid, inviteKey, nil)
+		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything, mock.Anything, mock.Anything).Return(inviteCid, inviteKey, nil)
 		inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteKey)
 		require.NoError(t, err)
 		inviteInfo := domain.InviteInfo{
@@ -238,7 +238,7 @@ func TestInviteService_Generate(t *testing.T) {
 		inviteCid, err := newCidFromBytes([]byte("fileCid"))
 		require.NoError(t, err)
 		inviteKey := crypto.NewAES()
-		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything).Return(inviteCid, inviteKey, nil)
+		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything, mock.Anything, mock.Anything).Return(inviteCid, inviteKey, nil)
 		inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteKey)
 		require.NoError(t, err)
 		inviteInfo := domain.InviteInfo{
@@ -289,7 +289,7 @@ func TestInviteService_Generate(t *testing.T) {
 		inviteCid, err := newCidFromBytes([]byte("fileCid"))
 		require.NoError(t, err)
 		inviteKey := crypto.NewAES()
-		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything).Return(inviteCid, inviteKey, nil)
+		fx.mockInviteStore.EXPECT().StoreInvite(ctx, mock.Anything, mock.Anything, mock.Anything).Return(inviteCid, inviteKey, nil)
 		inviteFileKeyRaw, err := encode.EncodeKeyToBase58(inviteKey)
 		require.NoError(t, err)
 		inviteInfo := domain.InviteInfo{

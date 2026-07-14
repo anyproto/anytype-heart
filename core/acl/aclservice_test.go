@@ -43,6 +43,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account/mock_account"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/invitecleanup/mock_invitecleanup"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/inviteservice/mock_inviteservice"
 	subscriptionservice "github.com/anyproto/anytype-heart/core/subscription"
@@ -88,6 +89,7 @@ type fixture struct {
 	mockSubscriptionService *mock_subscription.MockService
 	mockAccountService      *mock_account.MockService
 	mockInviteService       *mock_inviteservice.MockInviteService
+	mockInviteCleanup       *mock_invitecleanup.MockService
 	mockCoordinatorClient   *mock_coordinatorclient.MockCoordinatorClient
 	mockTechSpace           *mock_techspace.MockTechSpace
 	mockSpaceView           *mock_techspace.MockSpaceView
@@ -111,6 +113,7 @@ func newFixture(t *testing.T) *fixture {
 		mockSubscriptionService: mock_subscription.NewMockService(t),
 		mockAccountService:      mock_account.NewMockService(t),
 		mockInviteService:       mock_inviteservice.NewMockInviteService(t),
+		mockInviteCleanup:       mock_invitecleanup.NewMockService(t),
 		mockCoordinatorClient:   mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
 		mockTechSpace:           mock_techspace.NewMockTechSpace(t),
 		mockSpaceView:           mock_techspace.NewMockSpaceView(t),
@@ -141,6 +144,7 @@ func newFixture(t *testing.T) *fixture {
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockJoiningClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockSpaceService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteService)).
+		Register(testutil.PrepareMock(ctx, fx.a, fx.mockInviteCleanup)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockSubscriptionService)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCoordinatorClient)).
 		Register(testutil.PrepareMock(ctx, fx.a, fx.mockCrossSpace)).
@@ -262,7 +266,7 @@ func TestService_StopSharing(t *testing.T) {
 		fx.mockAcl.EXPECT().RLock().AnyTimes()
 		fx.mockAcl.EXPECT().RUnlock().AnyTimes()
 		fx.mockAcl.EXPECT().Head().Return(&list.AclRecord{Id: "headId"})
-		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(domain.InviteInfo{}, nil)
 		sleepTime = time.Millisecond
 		fx.mockCoordinatorClient.EXPECT().SpaceMakeUnshareable(ctx, "spaceId", "headId").Return(coordinatorproto.ErrAclHeadIsMissing)
 		fx.mockCoordinatorClient.EXPECT().SpaceMakeUnshareable(ctx, "spaceId", "headId").Return(nil)
@@ -290,7 +294,7 @@ func TestService_StopSharing(t *testing.T) {
 		fx.mockAcl.EXPECT().RLock().AnyTimes()
 		fx.mockAcl.EXPECT().RUnlock().AnyTimes()
 		fx.mockAcl.EXPECT().Head().Return(&list.AclRecord{Id: "headId"})
-		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(domain.InviteInfo{}, nil)
 		err := fx.StopSharing(ctx, "spaceId")
 		require.NoError(t, err)
 	})
@@ -494,7 +498,109 @@ func TestService_ChangeInvite(t *testing.T) {
 	})
 }
 
+func TestService_RevokeInvite(t *testing.T) {
+	revokeMocks := func(fx *fixture) {
+		fx.mockSpaceService.EXPECT().Get(ctx, "spaceId").Return(fx.mockClientSpace, nil)
+		fx.mockClientSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
+		fx.mockCommonSpace.EXPECT().AclClient().Return(fx.mockSpaceClient)
+	}
+
+	t.Run("revoked invite file is deleted", func(t *testing.T) {
+		// given an invite anyone could have used to join
+		fx := newFixture(t)
+		defer fx.finish(t)
+		revoked := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		revokeMocks(fx)
+		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(revoked, nil)
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, "spaceId", revoked).Return(nil)
+
+		// when it is revoked
+		err := fx.RevokeInvite(ctx, "spaceId")
+
+		// then its file is handed to the cleanup service
+		require.NoError(t, err)
+	})
+
+	t.Run("nothing is deleted when the revoke fails", func(t *testing.T) {
+		// given an acl that refuses the revocation. The invite still works, so its key must not
+		// reach the coordinator: no InviteRevoked expectation is set, and the mock fails the test if
+		// it is called anyway.
+		fx := newFixture(t)
+		defer fx.finish(t)
+		revokeMocks(fx)
+		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(errors.New("acl unreachable"))
+
+		err := fx.RevokeInvite(ctx, "spaceId")
+
+		require.Error(t, err)
+	})
+
+	t.Run("cleanup failure does not fail the revoke", func(t *testing.T) {
+		// given a cleanup that cannot reach the coordinator. The invite is revoked either way, and
+		// the background pass will retry the deletion.
+		fx := newFixture(t)
+		defer fx.finish(t)
+		revoked := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		revokeMocks(fx)
+		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(revoked, nil)
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, "spaceId", revoked).Return(errors.New("coordinator unreachable"))
+
+		err := fx.RevokeInvite(ctx, "spaceId")
+
+		require.NoError(t, err)
+	})
+}
+
 func TestService_GenerateInvite(t *testing.T) {
+	t.Run("replacing an invite reports the one it revoked", func(t *testing.T) {
+		// given a space with an anyoneCanJoin invite. Asking for an invite of a different type goes
+		// through ReplaceInvite, which revokes the existing one -- so its file has to be cleaned up.
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		replaced := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(replaced, nil)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rec := &consensusproto.RawRecord{Payload: []byte("test")}
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
+			Return(list.InviteResult{InviteRec: rec, InviteKey: keys.SignKey}, nil)
+		mockAclClient.EXPECT().AddRecord(ctx, rec).Return(nil)
+		fx.mockInviteService.EXPECT().Generate(ctx, mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+				return domain.InviteInfo{InviteFileCid: "newCid"}, f()
+			})
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, spaceId, replaced).Return(nil)
+
+		// when an invite of another type is generated
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+
+		// then the replaced invite is handed to the cleanup service
+		require.NoError(t, err)
+		require.Equal(t, "newCid", info.InviteFileCid)
+	})
+
 	t.Run("new default invite", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)

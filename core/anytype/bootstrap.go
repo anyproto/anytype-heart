@@ -88,6 +88,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/inbox/inboxservice"
 	"github.com/anyproto/anytype-heart/core/indexer"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
+	"github.com/anyproto/anytype-heart/core/invitecleanup"
 	"github.com/anyproto/anytype-heart/core/invitestore"
 	"github.com/anyproto/anytype-heart/core/kanban"
 	"github.com/anyproto/anytype-heart/core/migration"
@@ -298,6 +299,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(idderiverimpl.New()).
 		Register(deletioncontroller.New()).
 		Register(invitestore.New()).
+		Register(invitecleanup.New()).
 		Register(filesync.New()).
 		Register(reconciler.New()).
 		Register(fileobject.New()).

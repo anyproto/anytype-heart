@@ -49,6 +49,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/anytype/account"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/core/invitecleanup"
 	"github.com/anyproto/anytype-heart/core/inviteservice"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
@@ -115,6 +116,7 @@ type aclService struct {
 	joiningClient    aclclient.AclJoiningClient
 	spaceService     space.Service
 	inviteService    inviteservice.InviteService
+	inviteCleanup    invitecleanup.Service
 	accountService   account.Service
 	coordClient      coordinatorclient.CoordinatorClient
 	identityRepo     identityRepoClient
@@ -139,6 +141,7 @@ func (a *aclService) Init(ap *app.App) (err error) {
 	a.spaceService = app.MustComponent[space.Service](ap)
 	a.accountService = app.MustComponent[account.Service](ap)
 	a.inviteService = app.MustComponent[inviteservice.InviteService](ap)
+	a.inviteCleanup = app.MustComponent[invitecleanup.Service](ap)
 	a.coordClient = app.MustComponent[coordinatorclient.CoordinatorClient](ap)
 	a.identityRepo = app.MustComponent[identityRepoClient](ap)
 	subService := app.MustComponent[subscription.Service](ap)
@@ -326,11 +329,26 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return convertedOrAclRequestError(err)
 	}
-	err = a.inviteService.RemoveExisting(ctx, spaceId)
+	revoked, err := a.inviteService.RemoveExisting(ctx, spaceId)
 	if err != nil {
 		return convertedOrInternalError("remove existing invite", err)
 	}
+	a.onInviteRevoked(ctx, spaceId, revoked)
 	return nil
+}
+
+// onInviteRevoked hands an invite the acl has just revoked to the cleanup service, which deletes its
+// file. It runs only once the revocation has gone through, it must not run while aclClientLock is
+// held, and it never fails the caller: the invite is revoked either way, and the background pass
+// retries whatever the deletion does not finish — the revocation record has already voided the
+// space's clean certificate, so the pass will come back for it.
+func (a *aclService) onInviteRevoked(ctx context.Context, spaceId string, revoked domain.InviteInfo) {
+	if revoked.InviteFileCid == "" {
+		return
+	}
+	if err := a.inviteCleanup.InviteRevoked(ctx, spaceId, revoked); err != nil {
+		log.Warn("delete revoked invite file", zap.String("spaceId", spaceId), zap.Error(err))
+	}
 }
 
 func (a *aclService) ChangePermissions(ctx context.Context, spaceId string, perms []AccountPermissions) error {
@@ -477,10 +495,11 @@ func (a *aclService) StopSharing(ctx context.Context, spaceId string) error {
 	acl.RLock()
 	head := acl.Head().Id
 	acl.RUnlock()
-	err = a.inviteService.RemoveExisting(ctx, spaceId)
+	revoked, err := a.inviteService.RemoveExisting(ctx, spaceId)
 	if err != nil {
 		return convertedOrInternalError("remove existing invite", err)
 	}
+	a.onInviteRevoked(ctx, spaceId, revoked)
 	if localInfo.GetShareableStatus() != spaceinfo.ShareableStatusShareable {
 		return nil
 	}
@@ -769,26 +788,39 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 		Permissions: aclPermissions,
 		InviteType:  domain.ConvertInviteType(inviteType),
 	}
-	a.aclClientLock.Lock()
-	defer a.aclClientLock.Unlock()
-	res, err := aclClient.ReplaceInvite(ctx, invitePayload)
-	if err != nil {
-		err = convertedOrInternalError("couldn't generate acl invite", err)
-		return
-	}
-	params := inviteservice.GenerateInviteParams{
-		SpaceId:     spaceId,
-		Key:         res.InviteKey,
-		InviteType:  inviteType,
-		Permissions: aclPermissions,
-	}
-	return a.inviteService.Generate(ctx, params, func() error {
-		err := aclClient.AddRecord(ctx, res.InviteRec)
+	// ReplaceInvite revokes whatever invite the space has, which happens here whenever the invite type
+	// changes: an invite of the same type would have been returned above instead
+	replaces := current.InviteFileCid != ""
+
+	// the lock is released before the invite is reported as revoked: onInviteRevoked reaches the tech
+	// space and the file node, and aclClientLock serializes every acl operation of every space
+	result, err = func() (domain.InviteInfo, error) {
+		a.aclClientLock.Lock()
+		defer a.aclClientLock.Unlock()
+		res, err := aclClient.ReplaceInvite(ctx, invitePayload)
 		if err != nil {
-			return convertedOrAclRequestError(err)
+			return domain.InviteInfo{}, convertedOrInternalError("couldn't generate acl invite", err)
 		}
-		return nil
-	})
+		params := inviteservice.GenerateInviteParams{
+			SpaceId:     spaceId,
+			Key:         res.InviteKey,
+			InviteType:  inviteType,
+			Permissions: aclPermissions,
+		}
+		return a.inviteService.Generate(ctx, params, func() error {
+			if err := aclClient.AddRecord(ctx, res.InviteRec); err != nil {
+				return convertedOrAclRequestError(err)
+			}
+			return nil
+		})
+	}()
+	if err != nil {
+		return result, err
+	}
+	if replaces {
+		a.onInviteRevoked(ctx, spaceId, current)
+	}
+	return result, nil
 }
 
 func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
