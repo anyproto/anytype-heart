@@ -153,6 +153,22 @@ shared invite that grants write access, they cannot have one — that is the poi
 **Lowering an owner-held invite so it can be published**: `InviteChange(Reader)` first, then
 `InviteGenerate(same type, shareWithinSpace: true)`. The link does not change.
 
+## Publishing a space page
+
+When a page is published with `joinSpace: true`, the middleware embeds the space's current invite
+link into the public page — but only when the invite is safe to make public:
+
+| current invite | embedded in the public page |
+|---|---|
+| request to join (`Member`) | yes — a join still needs the owner's approval |
+| anyone can join, Reader | yes |
+| anyone can join, Writer or above | **no** — silently skipped |
+| held by the owner, on a member's device | no (there is no link there) |
+
+A no-approval writer link is never written into a public page. Clients need not special-case this;
+it is enforced middleware-side. If you show the user whether their published page carries an invite,
+mirror this rule so the UI does not promise a link that will not be there.
+
 ## Existing spaces
 
 Every invite created before this change lives in the workspace, and therefore resolves as

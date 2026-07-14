@@ -153,23 +153,21 @@ an owner-held invite generated this way is genuinely private.
 - An old client of a **member** calling `InviteGetCurrent` for an owner-held invite gets success
   with an empty cid instead of `NO_ACTIVE_INVITE`. Accepted: clients are updated in step with this.
 
-## Open decisions (from review)
+## Resolved during review
 
-- **The background cleanup sweep cannot see owner-held invite files.** `invitecleanup` discovers
-  candidate files by walking the **workspace's** change history for `spaceInviteFileCid`. An
-  owner-held invite never writes its cid there — it lives only in the owner's spaceView — so a
-  revoked owner-held invite file is deleted **only** by the eager `onInviteRevoked` path, which is
-  best-effort and does not durably retry. If the holding device is offline when the invite is
-  revoked, the file leaks on the node, which is the exact leak class GO-7222 exists to close. Closing
-  it means teaching `collectCandidates` to also walk the spaceView's history (feasible: the sweep
-  runs on the owner's device, which has that tree) — but that is in the previously-reviewed
-  `core/invitecleanup` package. Decision pending.
-- **Publishing embeds an owner-held link into a public page.** When the owner publishes a space page
-  with `joinSpace=true` (`core/publish/service.go`), `GetCurrent` on the owner's device returns the
-  real cid and key, so the owner-held link — including an anyoneCanJoin one — is written into the
-  public page metadata. Not a regression (such links were always embeddable) and it is the owner's
-  explicit action, but it contradicts the "held by the owner" intent. A warning, or refusing to embed
-  an owner-held link, is a product call.
+- **The background cleanup sweep does not cover owner-held invite files — by design.**
+  `invitecleanup` discovers candidate files by walking the **workspace's** change history, where an
+  owner-held invite's cid never appears. That sweep is a one-off backfill for **legacy** invites that
+  predate the proper delete-invite flow. Every invite created under this feature — owner-held or
+  shared — is removed through the proper path (`onInviteRevoked` → coordinator delete-invite), not
+  the sweep. So an owner-held invite being absent from the sweep is correct, not a gap. No change.
+- **Publishing no longer embeds a no-approval writer link into a public page.** A published page is
+  public, so `applyInviteLink` (`core/publish/service.go`) now embeds the invite link only when
+  `domain.ShareableWithinSpace(inviteType, permissions)` holds — i.e. a request-to-join invite (any
+  permissions; a join still needs approval) or an anyoneCanJoin **reader** invite. An anyoneCanJoin
+  invite that grants write access is skipped: nobody would approve the joins, so a public page must
+  not carry it. This is the same rule that gates sharing within the space, applied to the broadest
+  distribution there is.
 
 ## Not handled
 
