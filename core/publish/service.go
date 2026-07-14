@@ -234,6 +234,10 @@ func (s *service) applyInviteLink(ctx context.Context, spaceId string, snapshot 
 	if err != nil {
 		return err
 	}
+	if inviteInfo.InviteFileCid == "" {
+		// the invite is held by the space owner and this is not their device: there is no link to publish
+		return nil
+	}
 	snapshot.Meta.InviteLink = fmt.Sprintf(s.limitsConfig.InviteLinkUrlTemplate, inviteInfo.InviteFileCid, inviteInfo.InviteFileKey)
 	return nil
 }

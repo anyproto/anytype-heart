@@ -79,7 +79,7 @@ type AccountPermissions struct {
 
 type AclService interface {
 	app.Component
-	GenerateInvite(ctx context.Context, spaceId string, inviteType model.InviteType, permissions model.ParticipantPermissions) (domain.InviteInfo, error)
+	GenerateInvite(ctx context.Context, spaceId string, inviteType model.InviteType, permissions model.ParticipantPermissions, shareWithinSpace bool) (domain.InviteInfo, error)
 	ChangeInvite(ctx context.Context, spaceId string, permissions model.ParticipantPermissions) error
 	RevokeInvite(ctx context.Context, spaceId string) error
 	GetCurrentInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
@@ -766,7 +766,7 @@ func (a *aclService) ChangeInvite(ctx context.Context, spaceId string, permissio
 	return nil
 }
 
-func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType model.InviteType, permissions model.ParticipantPermissions) (result domain.InviteInfo, err error) {
+func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType model.InviteType, permissions model.ParticipantPermissions, shareWithinSpace bool) (result domain.InviteInfo, err error) {
 	if spaceId == a.accountService.PersonalSpaceID() {
 		err = ErrPersonalSpace
 		return
@@ -774,7 +774,10 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 	inviteType := domain.InviteType(invType)
 	current, err := a.inviteService.GetCurrent(ctx, spaceId)
 	if err == nil {
-		if current.InviteType == inviteType {
+		// an invite this device cannot read comes back without a cid: it is held by the owner, and only
+		// they can reuse it. Where the invite is held is part of what identifies it, so a request that
+		// flips that replaces the invite just like a request that changes its type
+		if current.InviteFileCid != "" && current.InviteType == inviteType && current.HeldByOwner == !shareWithinSpace {
 			return current, nil
 		}
 	}
@@ -802,10 +805,11 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 			return domain.InviteInfo{}, convertedOrInternalError("couldn't generate acl invite", err)
 		}
 		params := inviteservice.GenerateInviteParams{
-			SpaceId:     spaceId,
-			Key:         res.InviteKey,
-			InviteType:  inviteType,
-			Permissions: aclPermissions,
+			SpaceId:          spaceId,
+			Key:              res.InviteKey,
+			InviteType:       inviteType,
+			Permissions:      aclPermissions,
+			ShareWithinSpace: shareWithinSpace,
 		}
 		return a.inviteService.Generate(ctx, params, func() error {
 			if err := aclClient.AddRecord(ctx, res.InviteRec); err != nil {

@@ -104,7 +104,7 @@ func (s *spaceViewStub) GetLocalInfo() spaceinfo.SpaceLocalInfo {
 	return spaceinfo.NewSpaceLocalInfo("spaceId")
 }
 
-func (s *spaceViewStub) SetInviteFileInfo(fileCid string, fileKey string) (err error) {
+func (s *spaceViewStub) SetInviteFileInfo(info domain.InviteInfo) (err error) {
 	return
 }
 
@@ -112,7 +112,7 @@ func (s *spaceViewStub) SetAclInfo(empty bool, pushKey crypto.PrivKey, pushEncKe
 	return
 }
 
-func (s *spaceViewStub) RemoveExistingInviteInfo() (fileCid string, err error) {
+func (s *spaceViewStub) RemoveExistingInviteInfo() (info domain.InviteInfo, err error) {
 	return
 }
 
@@ -120,7 +120,7 @@ func (s *spaceViewStub) GetSpaceDescription() (data spaceinfo.SpaceDescription) 
 	return
 }
 
-func (s *spaceViewStub) GetExistingInviteInfo() (fileCid string, fileKey string) {
+func (s *spaceViewStub) GetExistingInviteInfo() (info domain.InviteInfo) {
 	return
 }
 

@@ -292,6 +292,28 @@ func (s *SpaceView) SetSharedSpacesLimit(limit int) (err error) {
 	return s.Apply(st)
 }
 
+// SetInviteFileInfo stores an invite the owner holds in their own account. Only the owner's devices
+// sync the space view, so the cid and the key never reach the members of the space.
+func (s *SpaceView) SetInviteFileInfo(info domain.InviteInfo) (err error) {
+	st := s.NewState()
+	setInviteDetails(st, info)
+	return s.Apply(st)
+}
+
+func (s *SpaceView) GetExistingInviteInfo() (info domain.InviteInfo) {
+	info = getInviteDetails(s.CombinedDetails())
+	// an invite is only ever put here to be held by the owner
+	info.HeldByOwner = info.InviteFileCid != ""
+	return
+}
+
+func (s *SpaceView) RemoveExistingInviteInfo() (info domain.InviteInfo, err error) {
+	info = s.GetExistingInviteInfo()
+	st := s.NewState()
+	removeInviteDetails(st)
+	return info, s.Apply(st)
+}
+
 func (s *SpaceView) SetInviteCleanupDone(coveredRevocation string) (err error) {
 	st := s.NewState()
 	// deliberately not a bundled relation: this is an internal marker, not something clients render

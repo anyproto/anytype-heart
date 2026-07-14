@@ -57,7 +57,7 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
 	aclService := mustService[acl.AclService](mw)
-	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId, req.InviteType, req.Permissions)
+	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId, req.InviteType, req.Permissions, req.ShareWithinSpace)
 	if err != nil {
 		code := mapErrorCode(err,
 			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
@@ -118,12 +118,15 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 			},
 		}
 	}
+	// members of a space whose owner holds the invite get heldByOwner with an empty cid and key: the
+	// link is the owner's to share
 	return &pb.RpcSpaceInviteGetCurrentResponse{
 		InviteCid:     inviteInfo.InviteFileCid,
 		InviteFileKey: inviteInfo.InviteFileKey,
 		// nolint: gosec
 		InviteType:  model.InviteType(inviteInfo.InviteType),
 		Permissions: domain.ConvertAclPermissions(inviteInfo.Permissions),
+		HeldByOwner: inviteInfo.HeldByOwner,
 	}
 }
 

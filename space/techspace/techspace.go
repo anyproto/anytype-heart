@@ -102,6 +102,8 @@ type TechSpace interface {
 
 type SpaceView interface {
 	sync.Locker
+	// InviteInfoObject holds the space's invite when the owner keeps it in their own account
+	domain.InviteInfoObject
 	GetPersistentInfo() spaceinfo.SpacePersistentInfo
 	GetLocalInfo() spaceinfo.SpaceLocalInfo
 	SetSpaceData(details *domain.Details) error

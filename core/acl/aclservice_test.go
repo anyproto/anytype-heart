@@ -458,6 +458,7 @@ func TestService_ChangeInvite(t *testing.T) {
 		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
 			InviteType:    domain.InviteTypeAnyone,
 			InviteFileCid: "testCid",
+			HeldByOwner:   true,
 		}, nil)
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
@@ -594,7 +595,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, spaceId, replaced).Return(nil)
 
 		// when an invite of another type is generated
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
 
 		// then the replaced invite is handed to the cleanup service
 		require.NoError(t, err)
@@ -636,7 +637,7 @@ func TestService_GenerateInvite(t *testing.T) {
 					InviteFileCid: "testCid",
 				}, f()
 			})
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
@@ -675,7 +676,7 @@ func TestService_GenerateInvite(t *testing.T) {
 					InviteFileCid: "testCid",
 				}, f()
 			})
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, false)
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
@@ -716,7 +717,7 @@ func TestService_GenerateInvite(t *testing.T) {
 					InviteFileCid: "testCid",
 				}, f()
 			})
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, false)
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
@@ -728,8 +729,9 @@ func TestService_GenerateInvite(t *testing.T) {
 		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{
 			InviteType:    domain.InviteTypeAnyone,
 			InviteFileCid: "testCid",
+			HeldByOwner:   true,
 		}, nil)
-		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader)
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_WithoutApprove, model.ParticipantPermissions_Reader, false)
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
@@ -1029,6 +1031,7 @@ func TestService_ConcurrentInviteGeneration(t *testing.T) {
 		Return(domain.InviteInfo{
 			InviteType:    domain.InviteTypeDefault,
 			InviteFileCid: "testCid",
+			HeldByOwner:   true,
 		}, nil).Maybe()
 
 	mockSpace := mock_clientspace.NewMockSpace(t)
@@ -1081,7 +1084,7 @@ func TestService_ConcurrentInviteGeneration(t *testing.T) {
 	for i := 0; i < goroutines; i++ {
 		go func() {
 			defer wg.Done()
-			_, genErr := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+			_, genErr := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
 			require.NoError(t, genErr)
 		}()
 	}
@@ -1159,7 +1162,7 @@ func TestService_ConcurrentInviteAndAddAccounts(t *testing.T) {
 	for i := 0; i < 2; i++ {
 		go func() {
 			defer wg.Done()
-			_, genErr := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader)
+			_, genErr := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
 			require.NoError(t, genErr)
 		}()
 	}

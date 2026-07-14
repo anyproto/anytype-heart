@@ -6,8 +6,9 @@ import (
 	context "context"
 
 	app "github.com/anyproto/any-sync/app"
-	domain "github.com/anyproto/anytype-heart/core/domain"
 	clientspace "github.com/anyproto/anytype-heart/space/clientspace"
+
+	domain "github.com/anyproto/anytype-heart/core/domain"
 
 	mock "github.com/stretchr/testify/mock"
 )

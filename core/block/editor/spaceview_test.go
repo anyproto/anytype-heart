@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/tree/objecttree/mock_objecttree"
 	"github.com/anyproto/any-sync/commonspace/object/tree/treechangeproto"
 	"github.com/stretchr/testify/assert"
@@ -291,6 +292,39 @@ func initSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree
 
 func NewSpaceViewTest(t *testing.T, targetSpaceId string, tree *mock_objecttree.MockObjectTree) (*SpaceView, error) {
 	return initSpaceViewTest(t, targetSpaceId, tree, true, nil)
+}
+
+func TestSpaceView_InviteFileInfo(t *testing.T) {
+	t.Run("the owner's space view holds the invite itself", func(t *testing.T) {
+		// given the owner's space view, which no member of the space syncs
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		want := domain.InviteInfo{
+			InviteFileCid: "fileId",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+			HeldByOwner:   true,
+		}
+
+		// when an invite is written to it
+		err := fx.SetInviteFileInfo(want)
+		require.NoError(t, err)
+
+		// then it reads back whole, and as held by the owner: an invite is only ever put here to be
+		// theirs to share
+		require.Equal(t, want, fx.GetExistingInviteInfo())
+
+		removed, err := fx.RemoveExistingInviteInfo()
+		require.NoError(t, err)
+		require.Equal(t, want, removed)
+		require.Empty(t, fx.GetExistingInviteInfo())
+	})
+	t.Run("no invite", func(t *testing.T) {
+		fx := newSpaceViewFixture(t)
+		defer fx.finish()
+		require.Empty(t, fx.GetExistingInviteInfo())
+	})
 }
 
 type spaceViewFixture struct {

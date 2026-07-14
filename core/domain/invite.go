@@ -41,12 +41,22 @@ type InviteInfo struct {
 	InviteFileKey string
 	InviteType    InviteType
 	Permissions   list.AclPermissions
+	// HeldByOwner is set when the invite is kept in the owner's account instead of the space, so that
+	// only the owner can share it. Members see it without the cid and the key: all they can do is ask
+	// the owner for the link.
+	HeldByOwner bool
 }
 
-type InviteObject interface {
+// InviteInfoObject is an object that can hold the current invite of a space: the workspace when the
+// invite is shared within the space, the owner's space view when it is held by the owner.
+type InviteInfoObject interface {
 	SetInviteFileInfo(inviteInfo InviteInfo) (err error)
 	GetExistingInviteInfo() InviteInfo
 	RemoveExistingInviteInfo() (InviteInfo, error)
+}
+
+type InviteObject interface {
+	InviteInfoObject
 
 	SetGuestInviteFileInfo(fileCid string, fileKey string) (err error)
 	GetExistingGuestInviteInfo() (fileCid string, fileKey string)
