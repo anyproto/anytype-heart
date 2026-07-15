@@ -70,10 +70,13 @@ func TestStore(t *testing.T) {
 		Signature: signature,
 	}
 
-	fx.coordinator.EXPECT().AclUploadInvite(ctx, gomock.Any()).Do(func(ctx context.Context, b blocks.Block) {
-		_ = fx.fileStore.Add(ctx, []blocks.Block{b})
-	})
-	id, key, err := fx.StoreInvite(ctx, wantInvite)
+	fx.coordinator.EXPECT().AclUploadInvite(ctx, gomock.Any(), gomock.Any(), gomock.Any()).
+		Do(func(ctx context.Context, spaceId string, inviteKey crypto.PubKey, b blocks.Block) {
+			_ = fx.fileStore.Add(ctx, []blocks.Block{b})
+		})
+	_, invitePubKey, err := crypto.GenerateRandomEd25519KeyPair()
+	require.NoError(t, err)
+	id, key, err := fx.StoreInvite(ctx, "spaceId", invitePubKey, wantInvite)
 	require.NoError(t, err)
 
 	gotInvite, err := fx.GetInvite(ctx, id, key)

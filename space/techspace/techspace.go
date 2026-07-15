@@ -102,6 +102,8 @@ type TechSpace interface {
 
 type SpaceView interface {
 	sync.Locker
+	// InviteInfoObject holds the space's invite when the owner keeps it in their own account
+	domain.InviteInfoObject
 	GetPersistentInfo() spaceinfo.SpacePersistentInfo
 	GetLocalInfo() spaceinfo.SpaceLocalInfo
 	SetSpaceData(details *domain.Details) error
@@ -114,6 +116,8 @@ type SpaceView interface {
 	GetSpaceDescription() (data spaceinfo.SpaceDescription)
 	SetSharedSpacesLimit(limits int) (err error)
 	GetSharedSpacesLimit() (limits int)
+	SetInviteCleanupDone(coveredRevocation string) (err error)
+	GetInviteCleanupDone() (coveredRevocation string)
 	SetPushNotificationMode(ctx session.Context, mode pb.RpcPushNotificationMode) (err error)
 	SetOneToOneIdentity(identity string) error
 	SetOneToOneInboxInviteStatus(status spaceinfo.OneToOneInboxSentStatus) (err error)
