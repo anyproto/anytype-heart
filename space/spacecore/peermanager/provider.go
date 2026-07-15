@@ -27,11 +27,12 @@ import (
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
-// deviceNetworkStateCName mirrors core/device.CName; importing the package
+// DeviceNetworkStateCName mirrors core/device.CName; importing the package
 // would create an import cycle (core/device's devices service reaches back
 // into spacecore), so the component is looked up by name and the minimal
-// networkConnectivity interface below.
-const deviceNetworkStateCName = "networkState"
+// networkConnectivity interface below. A drift test in core/device asserts
+// the two constants stay equal.
+const DeviceNetworkStateCName = "networkState"
 
 func New() peermanager.PeerManagerProvider {
 	return &provider{}
@@ -63,10 +64,14 @@ func (p *provider) Init(a *app.App) (err error) {
 	p.pool = poolService
 	p.managers = make(map[*clientPeerManager]struct{})
 	// optional: absent in some test apps
-	if c := a.Component(deviceNetworkStateCName); c != nil {
+	if c := a.Component(DeviceNetworkStateCName); c != nil {
 		if nc, ok := c.(networkConnectivity); ok {
 			p.connectivity = nc
 			nc.RegisterConnectivityHook(p.onConnectivityChange)
+		} else {
+			// the component exists but no longer satisfies our interface — the
+			// rebuild/backoff feature is silently off, which must not go unnoticed
+			log.Warn("networkState component does not implement networkConnectivity; connectivity-driven peer rebuild disabled")
 		}
 	}
 	return nil

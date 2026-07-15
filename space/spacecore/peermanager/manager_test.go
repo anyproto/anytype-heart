@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/net/peer"
 	"github.com/anyproto/any-sync/net/pool/mock_pool"
 	"github.com/anyproto/any-sync/nodeconf/mock_nodeconf"
@@ -363,4 +364,76 @@ func Test_signalRebuild_coalesces(t *testing.T) {
 		t.Fatal("expected exactly one pending rebuild signal")
 	default:
 	}
+}
+
+// headSyncStub records DiffSync kicks; the rest of headsync.HeadSync is inert.
+type headSyncStub struct {
+	kicked chan struct{}
+}
+
+func (h *headSyncStub) Init(a *app.App) error           { return nil }
+func (h *headSyncStub) Name() string                    { return "headsync" }
+func (h *headSyncStub) Run(ctx context.Context) error   { return nil }
+func (h *headSyncStub) Close(ctx context.Context) error { return nil }
+func (h *headSyncStub) ExternalIds() []string           { return nil }
+func (h *headSyncStub) AllIds() []string                { return nil }
+func (h *headSyncStub) DiffSync(ctx context.Context) error {
+	select {
+	case h.kicked <- struct{}{}:
+	default:
+	}
+	return nil
+}
+func (h *headSyncStub) HandleRangeRequest(ctx context.Context, req *spacesyncproto.HeadSyncRequest) (*spacesyncproto.HeadSyncResponse, error) {
+	return nil, nil
+}
+
+func Test_fetchResponsiblePeers_reconnectKick(t *testing.T) {
+	spaceId := "spaceId"
+	waitKick := func(t *testing.T, h *headSyncStub) bool {
+		select {
+		case <-h.kicked:
+			return true
+		case <-time.After(time.Second):
+			return false
+		}
+	}
+	t.Run("ConnectionError to Online kicks one diff round", func(t *testing.T) {
+		f := newFixtureManager(t, spaceId)
+		hs := &headSyncStub{kicked: make(chan struct{}, 1)}
+		f.cm.headSync = hs
+		f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.ConnectionError)
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+		assert.True(t, waitKick(t, hs), "reconnect must kick an immediate diff round")
+	})
+	t.Run("already online: no kick", func(t *testing.T) {
+		f := newFixtureManager(t, spaceId)
+		hs := &headSyncStub{kicked: make(chan struct{}, 1)}
+		f.cm.headSync = hs
+		f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.Online)
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+		select {
+		case <-hs.kicked:
+			t.Fatal("steady online state must not kick diff rounds")
+		case <-time.After(time.Millisecond * 100):
+		}
+	})
+	t.Run("still offline: no kick", func(t *testing.T) {
+		f := newFixtureManager(t, spaceId)
+		hs := &headSyncStub{kicked: make(chan struct{}, 1)}
+		f.cm.headSync = hs
+		f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.ConnectionError)
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("offline"))
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+		select {
+		case <-hs.kicked:
+			t.Fatal("no kick while the node is still unreachable")
+		case <-time.After(time.Millisecond * 100):
+		}
+	})
 }

@@ -15,6 +15,7 @@ import (
 	"storj.io/drpc"
 
 	//nolint:misspell
+	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
@@ -80,6 +81,8 @@ type clientPeerManager struct {
 	nodeStatus                NodeStatus
 	spaceSyncService          Updater
 	streamPool                streampool.StreamPool
+	headSync                  headsync.HeadSync
+	diffKickRunning           atomic.Bool
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -100,6 +103,11 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.streamPool = app.MustComponent[streampool.StreamPool](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
+	// optional (absent in tests): used to kick an immediate diff round when the
+	// node connection recovers, replacing the broadcasts dropped while offline
+	if c := a.Component(headsync.CName); c != nil {
+		n.headSync, _ = c.(headsync.HeadSync)
+	}
 
 	var keepAliveMsg = &spacesyncproto.SpaceSubscription{
 		SpaceIds: []string{n.spaceId},
@@ -255,10 +263,22 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 
 func (n *clientPeerManager) fetchResponsiblePeers() {
 	var peers []peer.Peer
+	prevStatus := n.nodeStatus.GetNodeStatus(n.spaceId)
 	p, err := n.p.pool.GetOneOf(n.ctx, n.getNodeIds())
 	if err == nil {
 		peers = []peer.Peer{p}
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.Online)
+		if prevStatus == nodestatus.ConnectionError {
+			// Node connection just recovered. Head-update broadcasts attempted
+			// while offline were dropped (bounded by broadcastPeerFindDeadline),
+			// so without a kick the changes made offline would only reach other
+			// devices on the next periodic diff round (up to ~20s later than
+			// pre-drop behavior). An immediate diff round restores — and beats —
+			// the old "parked broadcast fires on reconnect" delivery latency,
+			// and its trailing KeepAlive re-establishes the broadcast stream
+			// and space subscription.
+			n.kickDiffSyncOnReconnect()
+		}
 	} else {
 		log.Info("can't get node peers", zap.Error(err))
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.ConnectionError)
@@ -292,6 +312,23 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		close(n.availableResponsiblePeers)
 		n.availableResponsiblePeers = nil
 	}
+}
+
+// kickDiffSyncOnReconnect runs one immediate head-sync (diff) round in the
+// background. Single-flight: a still-running kick from a rapid
+// offline/online flap is not stacked.
+func (n *clientPeerManager) kickDiffSyncOnReconnect() {
+	if n.headSync == nil || !n.diffKickRunning.CompareAndSwap(false, true) {
+		return
+	}
+	go func() {
+		defer n.diffKickRunning.Store(false)
+		ctx, cancel := context.WithTimeout(n.ctx, time.Minute)
+		defer cancel()
+		if err := n.headSync.DiffSync(ctx); err != nil && n.ctx.Err() == nil {
+			log.Info("diff sync on reconnect", zap.String("spaceId", n.spaceId), zap.Error(err))
+		}
+	}()
 }
 
 func (n *clientPeerManager) watchPeer(p peer.Peer) {
