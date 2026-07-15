@@ -518,15 +518,27 @@ func TestService_ChangeInvite(t *testing.T) {
 	})
 }
 
+// newAcl builds a real acl owned by "a" with the given executor commands already applied, so tests can
+// exercise code that inspects the acl state (e.g. whether an anyone-can-join invite is present).
+func newAcl(t *testing.T, cmds ...string) mockSyncAcl {
+	exec := list.NewAclExecutor("spaceId")
+	require.NoError(t, exec.Execute("a.init::a"))
+	for _, cmd := range cmds {
+		require.NoError(t, exec.Execute(cmd))
+	}
+	return mockSyncAcl{exec.ActualAccounts()["a"].Acl}
+}
+
 func TestService_RevokeInvite(t *testing.T) {
-	revokeMocks := func(fx *fixture) {
+	revokeMocks := func(fx *fixture, acl mockSyncAcl) {
 		fx.mockSpaceService.EXPECT().Get(ctx, "spaceId").Return(fx.mockClientSpace, nil)
 		fx.mockClientSpace.EXPECT().CommonSpace().Return(fx.mockCommonSpace)
 		fx.mockCommonSpace.EXPECT().AclClient().Return(fx.mockSpaceClient)
+		fx.mockCommonSpace.EXPECT().Acl().Return(acl)
 	}
 
 	t.Run("revoked invite file is deleted", func(t *testing.T) {
-		// given an invite anyone could have used to join
+		// given a request-to-join invite (no anyone-can-join invite in the acl, so no rotation)
 		fx := newFixture(t)
 		defer fx.finish(t)
 		revoked := domain.InviteInfo{
@@ -534,7 +546,7 @@ func TestService_RevokeInvite(t *testing.T) {
 			InviteFileKey: "key",
 			InviteType:    domain.InviteTypeAnyone,
 		}
-		revokeMocks(fx)
+		revokeMocks(fx, newAcl(t))
 		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(nil)
 		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(revoked, nil)
 		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, "spaceId", revoked).Return(nil)
@@ -546,13 +558,33 @@ func TestService_RevokeInvite(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	t.Run("revoking an anyone-can-join invite rotates the read key", func(t *testing.T) {
+		// given a space whose acl offers an invite anyone can join with -- it embedded the read key
+		fx := newFixture(t)
+		defer fx.finish(t)
+		revoked := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		revokeMocks(fx, newAcl(t, "a.invite_anyone::invId,r"))
+		// the rotating variant is used, so the key the invite handed out stops working
+		fx.mockSpaceClient.EXPECT().RevokeAllInvitesAndRotate(ctx, gomock.Any()).Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(revoked, nil)
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, "spaceId", revoked).Return(nil)
+
+		err := fx.RevokeInvite(ctx, "spaceId")
+
+		require.NoError(t, err)
+	})
+
 	t.Run("nothing is deleted when the revoke fails", func(t *testing.T) {
 		// given an acl that refuses the revocation. The invite still works, so its key must not
 		// reach the coordinator: no InviteRevoked expectation is set, and the mock fails the test if
 		// it is called anyway.
 		fx := newFixture(t)
 		defer fx.finish(t)
-		revokeMocks(fx)
+		revokeMocks(fx, newAcl(t))
 		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(errors.New("acl unreachable"))
 
 		err := fx.RevokeInvite(ctx, "spaceId")
@@ -570,7 +602,7 @@ func TestService_RevokeInvite(t *testing.T) {
 			InviteFileKey: "key",
 			InviteType:    domain.InviteTypeAnyone,
 		}
-		revokeMocks(fx)
+		revokeMocks(fx, newAcl(t))
 		fx.mockSpaceClient.EXPECT().RevokeAllInvites(ctx).Return(nil)
 		fx.mockInviteService.EXPECT().RemoveExisting(ctx, "spaceId").Return(revoked, nil)
 		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, "spaceId", revoked).Return(errors.New("coordinator unreachable"))
@@ -602,6 +634,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t))
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		rec := &consensusproto.RawRecord{Payload: []byte("test")}
 		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).
@@ -621,6 +654,46 @@ func TestService_GenerateInvite(t *testing.T) {
 		require.Equal(t, "newCid", info.InviteFileCid)
 	})
 
+	t.Run("replacing an anyone-can-join invite rotates the read key before creating the new one", func(t *testing.T) {
+		// given a space whose current invite is one anyone can join with -- it embedded the read key
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		keys, err := accountdata.NewRandom()
+		require.NoError(t, err)
+		replaced := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(replaced, nil)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t, "a.invite_anyone::invId,r"))
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rec := &consensusproto.RawRecord{Payload: []byte("test")}
+		// the leaked key is rotated away first, then the replacement invite is created against the new key
+		rotate := mockAclClient.EXPECT().RevokeAllInvitesAndRotate(ctx, gomock.Any()).Return(nil)
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).After(rotate).
+			Return(list.InviteResult{InviteRec: rec, InviteKey: keys.SignKey}, nil)
+		mockAclClient.EXPECT().AddRecord(ctx, rec).Return(nil)
+		fx.mockInviteService.EXPECT().Generate(ctx, mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx2 context.Context, params inviteservice.GenerateInviteParams, f func() error) (domain.InviteInfo, error) {
+				return domain.InviteInfo{InviteFileCid: "newCid"}, f()
+			})
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, spaceId, replaced).Return(nil)
+
+		// when a request-to-join invite is generated to replace it
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+
+		require.NoError(t, err)
+		require.Equal(t, "newCid", info.InviteFileCid)
+	})
+
 	t.Run("new default invite", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.finish(t)
@@ -634,6 +707,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t))
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
@@ -673,6 +747,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t))
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
@@ -714,6 +789,7 @@ func TestService_GenerateInvite(t *testing.T) {
 		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
 		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
 		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t))
 		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
 		rec := &consensusproto.RawRecord{
 			Payload: []byte("test"),
@@ -1119,6 +1195,7 @@ func TestService_ConcurrentInviteGeneration(t *testing.T) {
 
 	mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace).Maybe()
 	mockCommonSpace.EXPECT().AclClient().Return(mockAclClient).AnyTimes()
+	mockCommonSpace.EXPECT().Acl().Return(newAcl(t)).AnyTimes()
 	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil).Maybe()
 
 	rec := &consensusproto.RawRecord{Payload: []byte("test")}
@@ -1205,6 +1282,7 @@ func TestService_ConcurrentInviteAndAddAccounts(t *testing.T) {
 
 	mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace).Maybe()
 	mockCommonSpace.EXPECT().AclClient().Return(mockAclClient).AnyTimes()
+	mockCommonSpace.EXPECT().Acl().Return(newAcl(t)).AnyTimes()
 	fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil).Maybe()
 
 	rec := &consensusproto.RawRecord{Payload: []byte("test")}

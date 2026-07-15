@@ -322,9 +322,11 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 	if err != nil {
 		return convertedOrSpaceErr(err)
 	}
-	cl := sp.CommonSpace().AclClient()
+	commonSpace := sp.CommonSpace()
+	cl := commonSpace.AclClient()
+	acl := commonSpace.Acl()
 	a.aclClientLock.Lock()
-	err = cl.RevokeAllInvites(ctx)
+	err = revokeAllInvites(ctx, cl, acl)
 	a.aclClientLock.Unlock()
 	if err != nil {
 		return convertedOrAclRequestError(err)
@@ -335,6 +337,35 @@ func (a *aclService) RevokeInvite(ctx context.Context, spaceId string) error {
 	}
 	a.onInviteRevoked(ctx, spaceId, revoked)
 	return nil
+}
+
+// revokeAllInvites revokes every invite the space has, rotating the read key when any of them is one
+// anyone can join with. That kind of invite embeds the read key, so revoking it is not enough — the
+// key it handed out has to be rotated away or it keeps decrypting content created after the revocation.
+func revokeAllInvites(ctx context.Context, cl aclclient.AclSpaceClient, acl list.AclList) error {
+	if !hasAnyoneCanJoinInvite(acl) {
+		return cl.RevokeAllInvites(ctx)
+	}
+	change, err := newReadKeyChange()
+	if err != nil {
+		return err
+	}
+	return cl.RevokeAllInvitesAndRotate(ctx, change)
+}
+
+// hasAnyoneCanJoinInvite reports whether the space currently offers an invite anyone can join with.
+func hasAnyoneCanJoinInvite(acl list.AclList) bool {
+	acl.RLock()
+	defer acl.RUnlock()
+	return len(acl.AclState().Invites(aclrecordproto.AclInviteType_AnyoneCanJoin)) > 0
+}
+
+func newReadKeyChange() (list.ReadKeyChangePayload, error) {
+	metadataKey, _, err := crypto.GenerateRandomEd25519KeyPair()
+	if err != nil {
+		return list.ReadKeyChangePayload{}, err
+	}
+	return list.ReadKeyChangePayload{MetadataKey: metadataKey, ReadKey: crypto.NewAES()}, nil
 }
 
 // onInviteRevoked hands an invite the acl has just revoked to the cleanup service, which deletes its
@@ -804,7 +835,9 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 	if err != nil {
 		return
 	}
-	aclClient := acceptSpace.CommonSpace().AclClient()
+	commonSpace := acceptSpace.CommonSpace()
+	aclClient := commonSpace.AclClient()
+	acl := commonSpace.Acl()
 	aclPermissions := domain.ConvertParticipantPermissions(permissions)
 	invitePayload := aclclient.InvitePayload{
 		Permissions: aclPermissions,
@@ -819,6 +852,19 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 	result, err = func() (domain.InviteInfo, error) {
 		a.aclClientLock.Lock()
 		defer a.aclClientLock.Unlock()
+		// an anyone-can-join invite embeds the read key. Before replacing it, revoke it and rotate, so the
+		// key it handed out cannot read what the new invite's members go on to write. ReplaceInvite cannot
+		// do this in one record — a new invite in the same record would embed the pre-rotation key — so it
+		// is a separate record, and the ReplaceInvite below then has nothing left to revoke.
+		if hasAnyoneCanJoinInvite(acl) {
+			change, err := newReadKeyChange()
+			if err != nil {
+				return domain.InviteInfo{}, convertedOrInternalError("generate read key change", err)
+			}
+			if err := aclClient.RevokeAllInvitesAndRotate(ctx, change); err != nil {
+				return domain.InviteInfo{}, convertedOrInternalError("revoke and rotate invites", err)
+			}
+		}
 		res, err := aclClient.ReplaceInvite(ctx, invitePayload)
 		if err != nil {
 			return domain.InviteInfo{}, convertedOrInternalError("couldn't generate acl invite", err)
