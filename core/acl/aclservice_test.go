@@ -678,6 +678,8 @@ func TestService_GenerateInvite(t *testing.T) {
 		rec := &consensusproto.RawRecord{Payload: []byte("test")}
 		// the leaked key is rotated away first, then the replacement invite is created against the new key
 		rotate := mockAclClient.EXPECT().RevokeAllInvitesAndRotate(ctx, gomock.Any()).Return(nil)
+		// the rotation record revoked the old invite, so its details are cleared right away
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, spaceId).Return(replaced, nil)
 		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).After(rotate).
 			Return(list.InviteResult{InviteRec: rec, InviteKey: keys.SignKey}, nil)
 		mockAclClient.EXPECT().AddRecord(ctx, rec).Return(nil)
@@ -692,6 +694,42 @@ func TestService_GenerateInvite(t *testing.T) {
 
 		require.NoError(t, err)
 		require.Equal(t, "newCid", info.InviteFileCid)
+	})
+
+	t.Run("a failure after the rotation leaves no dead invite advertised", func(t *testing.T) {
+		// given a space whose anyone-can-join invite was revoked and rotated away, but creating the
+		// replacement fails mid-flight. The details were already cleared when the rotation landed, so
+		// GetCurrent answers "no invite" instead of a dead link, and a retry generates cleanly.
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		replaced := domain.InviteInfo{
+			InviteFileCid: "cid",
+			InviteFileKey: "key",
+			InviteType:    domain.InviteTypeAnyone,
+		}
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(replaced, nil)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockAclClient := mock_aclclient.NewMockAclSpaceClient(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		mockCommonSpace.EXPECT().AclClient().Return(mockAclClient)
+		mockCommonSpace.EXPECT().Acl().Return(newAcl(t, "a.invite_anyone::invId,r"))
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+		rotate := mockAclClient.EXPECT().RevokeAllInvitesAndRotate(ctx, gomock.Any()).Return(nil)
+		fx.mockInviteService.EXPECT().RemoveExisting(ctx, spaceId).Return(replaced, nil)
+		mockAclClient.EXPECT().ReplaceInvite(gomock.Any(), gomock.Any()).After(rotate).
+			Return(list.InviteResult{}, errors.New("network gone"))
+		// the old invite is revoked all the same, so its file still goes to the cleanup
+		fx.mockInviteCleanup.EXPECT().InviteRevoked(ctx, spaceId, replaced).Return(nil)
+
+		// when the replacement fails after the rotation record landed
+		_, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+
+		// then the caller sees the failure -- and the details were cleared, not left pointing at a
+		// revoked invite
+		require.Error(t, err)
 	})
 
 	t.Run("new default invite", func(t *testing.T) {

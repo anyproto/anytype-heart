@@ -906,6 +906,7 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 
 	// the lock is released before the invite is reported as revoked: onInviteRevoked reaches the tech
 	// space and the file node, and aclClientLock serializes every acl operation of every space
+	var revokedEarly bool
 	result, err = func() (domain.InviteInfo, error) {
 		a.aclClientLock.Lock()
 		defer a.aclClientLock.Unlock()
@@ -920,6 +921,15 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 			}
 			if err := aclClient.RevokeAllInvitesAndRotate(ctx, change); err != nil {
 				return domain.InviteInfo{}, convertedOrInternalError("revoke and rotate invites", err)
+			}
+			revokedEarly = true
+			// The invite the details point at is revoked as of the record above, so clear them before the
+			// new invite's round trips rather than after: should anything below fail, GetCurrent then
+			// answers "no invite" instead of advertising a dead link, and a retry falls past the
+			// early-return above and generates cleanly. Best effort — on success setInviteInfo overwrites
+			// the details anyway, and a failed clear merely leaves the window this shrinks.
+			if _, err := a.inviteService.RemoveExisting(ctx, spaceId); err != nil {
+				log.Warn("clear details of a replaced invite", zap.String("spaceId", spaceId), zap.Error(err))
 			}
 		}
 		res, err := aclClient.ReplaceInvite(ctx, invitePayload)
@@ -940,13 +950,13 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 			return nil
 		})
 	}()
-	if err != nil {
-		return result, err
-	}
-	if replaces {
+	// on success the old invite is revoked by ReplaceInvite; on a mid-flight failure it is revoked all
+	// the same when the rotation record went through first — report it either way, so its file is
+	// deleted now rather than by the next launch's sweep
+	if replaces && (err == nil || revokedEarly) {
 		a.onInviteRevoked(ctx, spaceId, current)
 	}
-	return result, nil
+	return result, err
 }
 
 func (a *aclService) GetGuestUserInvite(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
