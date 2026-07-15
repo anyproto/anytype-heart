@@ -4,7 +4,6 @@ package service
 import "C"
 
 import (
-	"fmt"
 	"net"
 
 	"github.com/anyproto/anytype-heart/net/addrs"
@@ -73,7 +72,6 @@ func (i *interfaceGetterAdapter) Interfaces() []addrs.Interface {
 			Addrs: i.InterfaceAddrs(addr.InterfaceAddrIter()),
 		}
 		res = append(res, iface)
-		fmt.Println("[printing interface]", iface)
 		addr = iter.Next()
 	}
 	return res

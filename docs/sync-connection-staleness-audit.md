@@ -132,10 +132,19 @@ Recovery signals that exist today:
    `SyncAllSpaceHeads` (skipped when offline). Leading-edge execution with a 5s
    suppression window; a suppressed event schedules one trailing recovery.
 2. **Net monitor** — `core/device/netmonitor.go`: 5s tick; interface-addr
-   snapshot diff + clock-jump (>30s wall-vs-mono drift ⇒ wake) + link-down
-   tracking for `IsOffline()`.
+   snapshots (IPv4 + IPv6 /64) + clock-jump (>30s wall-vs-mono drift ⇒ wake) +
+   link-down tracking for `IsOffline()`. Only a *lost* address triggers
+   recovery — pure additions (docker/VM bridges, VPN tunnels, hotspots) don't
+   tear down healthy connections. Enumeration errors fail open (link assumed
+   up), and an explicit WIFI/CELLULAR report from the client always overrides
+   the interface heuristic, so `IsOffline` cannot wedge a mobile device into
+   offline behavior.
 3. **Offline-aware peer manager** — `space/spacecore/peermanager`: rebuild
-   signal on every connectivity event; 2min dial cadence while offline.
+   signal on every connectivity event; 2min dial cadence while offline; on the
+   node-status edge ConnectionError→Online the manager kicks one immediate
+   per-space diff round, so changes made offline (whose broadcasts were
+   dropped by the 30s deadline) reach other devices at reconnect speed instead
+   of waiting for the next periodic tick.
 4. **Deadlines** — broadcast peer-find 30s; `SyncAllSpaceHeads` peer-find 1min.
 5. **Keepalive tuning** — yamux/QUIC `KeepAlivePeriodSec: 10`.
 6. **filesync stats poller** — slow mode on error.
