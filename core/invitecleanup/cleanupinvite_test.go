@@ -39,6 +39,17 @@ func (d *deleterStub) DeleteObjectByFullID(id domain.FullID) error {
 	return nil
 }
 
+// rotatorStub records the read-key rotations the cleanup asked for.
+type rotatorStub struct {
+	calls []string // expectedHead per call
+	err   error
+}
+
+func (r *rotatorStub) RotateReadKey(ctx context.Context, spaceId string, expectedHead string) error {
+	r.calls = append(r.calls, expectedHead)
+	return r.err
+}
+
 type fixture struct {
 	*service
 	inviteStore *mock_invitestore.MockService
@@ -46,6 +57,7 @@ type fixture struct {
 	fileObjects *mock_fileobject.MockService
 	coordinator *mock_coordinatorclient.MockCoordinatorClient
 	deleter     *deleterStub
+	rotator     *rotatorStub
 	space       *mock_clientspace.MockSpace
 }
 
@@ -63,6 +75,7 @@ func newFixture(t *testing.T) *fixture {
 		fileObjects: mock_fileobject.NewMockService(t),
 		coordinator: mock_coordinatorclient.NewMockCoordinatorClient(ctrl),
 		deleter:     &deleterStub{},
+		rotator:     &rotatorStub{},
 		space:       sp,
 	}
 	fx.service = &service{
@@ -71,6 +84,7 @@ func newFixture(t *testing.T) *fixture {
 		rpcStore:          fx.rpcStore,
 		fileObjectService: fx.fileObjects,
 		objectDeleter:     fx.deleter,
+		readKeyRotator:    fx.rotator,
 		spaceService:      spaceService,
 	}
 	return fx

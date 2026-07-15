@@ -32,6 +32,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
@@ -73,6 +74,13 @@ var retryDelays = []time.Duration{2 * time.Second, 5 * time.Second, 15 * time.Se
 // that triggered it, and whatever it fails to finish is left to the background pass.
 var eagerDeleteTimeout = time.Minute
 
+// eagerDeleteDisabled is a test-only seam; see InviteRevoked. Never set in production.
+var eagerDeleteDisabled atomic.Bool
+
+// SetEagerDeleteDisabledForTest turns the immediate delete-on-revoke off, so a test can exercise the
+// retrospective sweep in isolation.
+func SetEagerDeleteDisabledForTest(v bool) { eagerDeleteDisabled.Store(v) }
+
 // concurrentPasses caps how many spaces are scanned at once. An account can have hundreds, they all
 // load at once, and a scan is not cheap: a coordinator round trip, a replay of the workspace object's
 // whole history, and a fetch per invite file. The jitter in the cleaner spreads their start; this
@@ -96,6 +104,14 @@ type objectDeleter interface {
 	DeleteObjectByFullID(id domain.FullID) error
 }
 
+// readKeyRotator rotates a space's read key when an AnyoneCanJoin invite is retired. It is satisfied
+// by core/acl, which cannot be imported here (it imports this package). expectedHead is the acl head
+// the rotation was decided on: if the acl has moved, the rotation returns ErrAclHeadChanged and the
+// space is left for the next launch — which most often means another device already did it.
+type readKeyRotator interface {
+	RotateReadKey(ctx context.Context, spaceId string, expectedHead string) error
+}
+
 func New() Service {
 	return &service{}
 }
@@ -106,6 +122,7 @@ type service struct {
 	rpcStore          rpcstore.RpcStore
 	fileObjectService fileobject.Service
 	objectDeleter     objectDeleter
+	readKeyRotator    readKeyRotator
 	spaceService      space.Service
 
 	// ctx bounds the detached deletions, so that Close does not have to wait out their backoff
@@ -128,6 +145,7 @@ func (s *service) Init(a *app.App) error {
 	s.rpcStore = app.MustComponent[rpcstore.Service](a).NewStore()
 	s.fileObjectService = app.MustComponent[fileobject.Service](a)
 	s.objectDeleter = app.MustComponent[objectDeleter](a)
+	s.readKeyRotator = app.MustComponent[readKeyRotator](a)
 	s.spaceService = app.MustComponent[space.Service](a)
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.passes = make(chan struct{}, concurrentPasses)
@@ -200,7 +218,11 @@ func (s *service) CleanupSpace(ctx context.Context, sp clientspace.Space) error 
 		return fmt.Errorf("read clean certificate: %w", err)
 	}
 	if certified == acl.lastRevocation {
-		// every revocation the acl carries has already been cleaned up, here or on another device
+		// every revocation the acl carries has already been cleaned up, here or on another device. The
+		// certificate is written last, after any read-key rotation, so a certified space is also rotated
+		// — we do not re-check needsReadKeyRotation here (that holds only because certification and
+		// rotation ship together; an intermediate build that certified without rotating would leave a
+		// gap this early-return would honour).
 		return nil
 	}
 
@@ -230,6 +252,25 @@ func (s *service) CleanupSpace(ctx context.Context, sp clientspace.Space) error 
 		return nil
 	}
 
+	// Rotate the read key before anything else, and leave the rest of this space to the next pass. The
+	// coordinator will not delete the file of an invite the acl still treats as active, and rotating is
+	// what retires it — so the rotation has to land first, and its effect on the node is not instantly
+	// visible, so the file deletion is left to run against a settled acl next time. The rotation is the
+	// point of this pass; deleting the now-defunct file a launch later is cosmetic by comparison.
+	//
+	// It is done against acl.head, the head this was decided on, so a rotation that has meanwhile
+	// happened on another device is not duplicated; the acl having moved leaves the space for the next
+	// launch, by which point needsReadKeyRotation is false.
+	if acl.needsReadKeyRotation {
+		err := s.readKeyRotator.RotateReadKey(ctx, sp.Id(), acl.head)
+		if err != nil && !errors.Is(err, ErrAclHeadChanged) {
+			log.Warn("rotate read key", zap.String("spaceId", sp.Id()), zap.Error(err))
+		}
+		// certify nothing this pass: whether the rotation went through or the acl had moved, the file
+		// cleanup runs next time against an acl that is settled and no longer needs rotation
+		return nil
+	}
+
 	candidates, err := s.collectCandidates(ctx, sp)
 	if err != nil {
 		return fmt.Errorf("collect invite files from workspace history: %w", err)
@@ -251,17 +292,27 @@ func (s *service) CleanupSpace(ctx context.Context, sp clientspace.Space) error 
 			complete = false
 		}
 	}
+
 	if !complete {
 		return nil
 	}
 	// certify against the acl the scan actually ran on. Should a revocation have landed since, the
 	// certificate no longer matches the acl and the next pass runs again — which is exactly right,
 	// because that revocation's file is not in the candidate list this pass worked from.
+	//
+	// A successful rotation added a read-key-change record, not a revoke, so lastRevocation is
+	// unchanged and this certifies correctly. Next launch sees the rotation and needsReadKeyRotation
+	// is false, so it is not repeated.
 	return s.certify(ctx, sp.Id(), acl.lastRevocation)
 }
 
 func (s *service) InviteRevoked(ctx context.Context, spaceId string, info domain.InviteInfo) error {
 	if info.InviteFileCid == "" || info.InviteFileKey == "" {
+		return nil
+	}
+	if eagerDeleteDisabled.Load() {
+		// test-only seam: lets the e2e sweep test leave a revoked file on the node so the retrospective
+		// pass can be exercised on its own. Never set in production.
 		return nil
 	}
 
@@ -311,6 +362,16 @@ type aclView struct {
 	// that is not in here is one this device has never seen a record for, which is not the same thing
 	// as a revoked one.
 	known []crypto.PubKey
+	// head is the acl head id this view was read at. A read-key rotation is only sent while the head is
+	// still this, so the rotation acts on exactly the state that decided it was needed.
+	head string
+	// needsReadKeyRotation is true when a revoked AnyoneCanJoin invite's acl record still maps to the
+	// current read key — i.e. the key has not been rotated since. Deleting the file does not retire such
+	// an invite (its acl record is immutable), so the sweep rotates the read key.
+	needsReadKeyRotation bool
+	// revokedAnyoneRecords are the acl record ids of the revoked AnyoneCanJoin invites. readAcl checks
+	// each against the acl's read-key history to set needsReadKeyRotation.
+	revokedAnyoneRecords []string
 }
 
 func (a aclView) isLive(key crypto.PubKey) bool {
@@ -379,17 +440,39 @@ func (s *service) readAcl(sp clientspace.Space) (aclView, error) {
 		return aclView{}, errors.New("no acl state")
 	}
 	view := readInviteRecords(acl.Records())
+	view.head = acl.Head().Id
 	view.isOwner = state.Permissions(state.AccountKey().GetPublic()).IsOwner()
 	for _, invite := range state.Invites() {
 		view.live = append(view.live, invite.Key)
+	}
+	// A revoked AnyoneCanJoin invite needs the read key rotated while that key is still current. The key
+	// that was current when the invite was created is still current exactly when the invite's record
+	// still maps to CurrentReadKeyId — i.e. nothing rotated it since. StopSharing and the revoke path
+	// rotate, so this only catches a plain revoke that did not.
+	for _, recordId := range view.revokedAnyoneRecords {
+		readKeyId, err := state.ReadKeyForAclId(recordId)
+		if err != nil {
+			// unreachable in a consistent acl — the record came from acl.Records() so it is in the index.
+			// If it ever happened, staying silent would certify the space with the rotation still pending,
+			// so log it.
+			log.Warn("read key for revoked invite record", zap.String("recordId", recordId), zap.Error(err))
+			continue
+		}
+		if readKeyId == state.CurrentReadKeyId() {
+			view.needsReadKeyRotation = true
+			break
+		}
 	}
 	return view, nil
 }
 
 // readInviteRecords walks the acl's raw records for everything it says about invites: which ones it
-// has ever carried, and which revocation came last.
+// has ever carried, which revocation came last, and which revoked invites were AnyoneCanJoin.
 func readInviteRecords(records []*list.AclRecord) aclView {
 	view := aclView{lastRevocation: noRevocations}
+	// AnyoneCanJoin invite record ids seen so far. A revoke references its invite by record id, and
+	// records are in order, so any revoke's target is already in here — no second map, no join pass.
+	anyoneRecords := map[string]struct{}{}
 	for _, record := range records {
 		data, ok := record.Model.(*aclrecordproto.AclData)
 		if !ok {
@@ -397,14 +480,20 @@ func readInviteRecords(records []*list.AclRecord) aclView {
 			continue
 		}
 		for _, content := range data.GetAclContent() {
-			if content.GetInviteRevoke() != nil {
+			if revoke := content.GetInviteRevoke(); revoke != nil {
 				// records are append-only and in order, so the last one to set this wins. A batch that
 				// revokes several invites at once is still one record, and one fingerprint.
 				view.lastRevocation = record.Id
+				if _, anyone := anyoneRecords[revoke.GetInviteRecordId()]; anyone {
+					view.revokedAnyoneRecords = append(view.revokedAnyoneRecords, revoke.GetInviteRecordId())
+				}
 			}
 			invite := content.GetInvite()
 			if invite == nil {
 				continue
+			}
+			if invite.GetInviteType() == aclrecordproto.AclInviteType_AnyoneCanJoin {
+				anyoneRecords[record.Id] = struct{}{}
 			}
 			key, err := crypto.UnmarshalEd25519PublicKeyProto(invite.InviteKey)
 			if err != nil {

@@ -20,6 +20,11 @@ var (
 	errGuestInvite = errors.New("guest invite is never revoked")
 )
 
+// ErrAclHeadChanged means the acl moved between deciding a read-key rotation was needed and sending
+// it. The rotation is abandoned rather than applied to state that has changed under it; the most
+// likely cause is that another of the account's devices already did the rotation.
+var ErrAclHeadChanged = errors.New("acl head changed since the rotation was decided")
+
 // permanentError wraps an error that no amount of retrying will fix. Everything else — an unreachable
 // node, a timeout, an unrecognised transport failure — is treated as transient, so an error we did
 // not anticipate defers the space rather than being silently written off.

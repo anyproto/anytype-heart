@@ -39,6 +39,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/object/acl/aclrecordproto"
 	"github.com/anyproto/any-sync/commonspace/object/acl/list"
 	"github.com/anyproto/any-sync/commonspace/object/acl/recordverifier"
+	"github.com/anyproto/any-sync/consensus/consensusproto/consensuserr"
 	"github.com/anyproto/any-sync/coordinator/coordinatorclient"
 	"github.com/anyproto/any-sync/coordinator/coordinatorproto"
 	"github.com/anyproto/any-sync/identityrepo/identityrepoproto"
@@ -285,6 +286,62 @@ func (a *aclService) Remove(ctx context.Context, spaceId string, identities []cr
 		},
 	})
 	if err != nil {
+		return convertedOrAclRequestError(err)
+	}
+	return nil
+}
+
+// RotateReadKey generates a new space read key when retiring a revoked AnyoneCanJoin invite. It is the
+// invitecleanup.readKeyRotator implementation.
+//
+// It only sends the rotation while the acl head is still expectedHead — the head the cleanup decided
+// the rotation on. If the acl has moved (another device rotated, or any acl change landed), it returns
+// invitecleanup.ErrAclHeadChanged and does nothing, so the rotation is never applied to state that
+// changed under the decision. The record itself carries prevId = the current head, so the coordinator
+// rejects a rotation built on a head it has since advanced past; that rejection maps to the same
+// sentinel.
+func (a *aclService) RotateReadKey(ctx context.Context, spaceId string, expectedHead string) error {
+	sp, err := a.spaceService.Get(ctx, spaceId)
+	if err != nil {
+		return convertedOrSpaceErr(err)
+	}
+	change, err := newReadKeyChange()
+	if err != nil {
+		return convertedOrInternalError("generate read key change", err)
+	}
+	acl := sp.CommonSpace().Acl()
+	cl := sp.CommonSpace().AclClient()
+
+	a.aclClientLock.Lock()
+	defer a.aclClientLock.Unlock()
+
+	acl.RLock()
+	sameHead := acl.Head().Id == expectedHead
+	acl.RUnlock()
+	if !sameHead {
+		return invitecleanup.ErrAclHeadChanged
+	}
+
+	// a bare read-key change, not RevokeAllInvitesAndRotate: the backlog invite is already revoked, and
+	// any invite that is still live is legitimate and must survive — a pure rotation re-keys live
+	// invites and members while excluding the already-revoked ones.
+	acl.Lock()
+	rec, err := acl.RecordBuilder().BuildReadKeyChange(change)
+	acl.Unlock()
+	if err != nil {
+		return convertedOrInternalError("build read key change", err)
+	}
+
+	if err = cl.AddRecord(ctx, rec); err != nil {
+		// the acl head moved between the local head check and the node accepting the record: a local
+		// prev-id mismatch (ErrIncorrectRecordSequence) or the node rejecting a record built on a head
+		// it has advanced past (consensus ErrConflict). Either way the rotation another device most
+		// likely already made stands, and this one is abandoned for the next launch.
+		if errors.Is(err, list.ErrIncorrectRecordSequence) ||
+			errors.Is(err, consensuserr.ErrConflict) ||
+			strings.Contains(err.Error(), "incorrect prev id") {
+			return invitecleanup.ErrAclHeadChanged
+		}
 		return convertedOrAclRequestError(err)
 	}
 	return nil

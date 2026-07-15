@@ -14,10 +14,18 @@ func aclRecord(id string, contents ...*aclrecordproto.AclContentValue) *list.Acl
 }
 
 func inviteContent(key inviteKey) *aclrecordproto.AclContentValue {
+	return inviteContentTyped(key, aclrecordproto.AclInviteType_RequestToJoin)
+}
+
+func anyoneInviteContent(key inviteKey) *aclrecordproto.AclContentValue {
+	return inviteContentTyped(key, aclrecordproto.AclInviteType_AnyoneCanJoin)
+}
+
+func inviteContentTyped(key inviteKey, inviteType aclrecordproto.AclInviteType) *aclrecordproto.AclContentValue {
 	raw, _ := key.pub.Marshall()
 	return &aclrecordproto.AclContentValue{
 		Value: &aclrecordproto.AclContentValue_Invite{
-			Invite: &aclrecordproto.AclAccountInvite{InviteKey: raw},
+			Invite: &aclrecordproto.AclAccountInvite{InviteKey: raw, InviteType: inviteType},
 		},
 	}
 }
@@ -118,6 +126,32 @@ func TestReadInviteRecords(t *testing.T) {
 
 		assert.Equal(t, "rec2", got.lastRevocation)
 		require.Len(t, got.known, 1, "the invite record stays in the acl, so the invite stays known")
+	})
+
+	t.Run("a revoked anyoneCanJoin invite is collected for rotation", func(t *testing.T) {
+		// its acl record carries the read key encrypted to the invite key, so a rotation is needed once
+		// it is revoked (readAcl decides whether the read key is still current)
+		anyone, member := newInviteKey(t), newInviteKey(t)
+		records := []*list.AclRecord{
+			aclRecord("rec1", anyoneInviteContent(anyone)),
+			aclRecord("rec2", inviteContent(member)),
+			aclRecord("rec3", revokeContent("rec1")), // revokes the anyoneCanJoin one
+			aclRecord("rec4", revokeContent("rec2")), // revokes the request-to-join one
+		}
+
+		got := readInviteRecords(records)
+
+		assert.Equal(t, []string{"rec1"}, got.revokedAnyoneRecords,
+			"only the revoked anyoneCanJoin invite is collected, not the request-to-join one")
+	})
+
+	t.Run("a live anyoneCanJoin invite is not collected", func(t *testing.T) {
+		anyone := newInviteKey(t)
+		records := []*list.AclRecord{aclRecord("rec1", anyoneInviteContent(anyone))}
+
+		got := readInviteRecords(records)
+
+		assert.Empty(t, got.revokedAnyoneRecords, "a live invite is not up for rotation")
 	})
 
 	t.Run("the root record carries no invite", func(t *testing.T) {
