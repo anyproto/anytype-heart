@@ -15,6 +15,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain/objectorigin"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/uri"
@@ -138,7 +139,15 @@ func (b *sbookmark) updateBlock(block bookmark.Block, templateId string, apply f
 	}
 
 	content := block.GetContent()
-	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), templateId, block.ToDetails(origin), func() *bookmark.ObjectContent {
+	details := block.ToDetails(origin)
+	// Record the object and block the bookmark was created in, so the bookmark
+	// object keeps a reference back to its origin context. The context (object)
+	// id lives on the smartblock; the inner locator is the bookmark block id.
+	if contextId := b.Id(); contextId != "" {
+		details.SetString(bundle.RelationKeyCreatedInContext, contextId)
+		details.SetString(bundle.RelationKeyCreatedInContextRef, block.Model().Id)
+	}
+	pageID, _, err := b.bookmarkSvc.CreateBookmarkObject(context.Background(), b.SpaceID(), templateId, details, func() *bookmark.ObjectContent {
 		return &bookmark.ObjectContent{BookmarkContent: content}
 	})
 	if err != nil {
