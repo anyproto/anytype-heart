@@ -144,6 +144,48 @@ func (s *subscriptionManager) GetChatState() *model.ChatState {
 	return copyChatState(s.chatState)
 }
 
+// ReconcileChatState re-derives the ChatState and message count from the repository — the
+// persisted read-flags are the source of truth — and replaces the in-memory copies only when
+// they diverged. The in-memory counters can drift from the DB: a change replayed over an
+// already-stored message bumps them before the insert is ignored with ErrDocExists, and an
+// apply error rolls the DB back after they were already bumped. Managers are also cached
+// across object reopens, so drift survives until something reloads. Called under Lock on
+// object open, before the first flush, so clients never observe drifted values.
+func (s *subscriptionManager) ReconcileChatState() {
+	dbState, err := s.repository.LoadChatState(s.componentCtx)
+	if err != nil {
+		log.Error("reconcile chat state: load from repository", zap.Error(err))
+		return
+	}
+	if !chatStateValuesEqual(s.chatState, dbState) {
+		s.UpdateChatState(func(*model.ChatState) *model.ChatState {
+			return dbState
+		})
+	}
+	count, err := s.repository.CountMessages(s.componentCtx)
+	if err != nil {
+		log.Error("reconcile chat state: count messages", zap.Error(err))
+		return
+	}
+	if int32(count) != s.messageCount {
+		s.messageCount = int32(count)
+		s.messageCountUpdated = true
+	}
+}
+
+// chatStateValuesEqual compares everything clients consume (counters and watermarks),
+// ignoring the local event-ordering field Order.
+func chatStateValuesEqual(a, b *model.ChatState) bool {
+	return unreadStateEqual(a.GetMessages(), b.GetMessages()) &&
+		unreadStateEqual(a.GetMentions(), b.GetMentions()) &&
+		a.GetLastStateId() == b.GetLastStateId() &&
+		a.GetUnreadReactionOrderId() == b.GetUnreadReactionOrderId()
+}
+
+func unreadStateEqual(a, b *model.ChatStateUnreadState) bool {
+	return a.GetOldestOrderId() == b.GetOldestOrderId() && a.GetCounter() == b.GetCounter()
+}
+
 func (s *subscriptionManager) UpdateChatState(updater func(*model.ChatState) *model.ChatState) {
 	s.chatState = updater(s.chatState)
 	s.chatStateOrder++

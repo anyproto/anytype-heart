@@ -326,6 +326,12 @@ func (s *storeObject) onInit(ctx *smartblock.InitContext) {
 	s.subscription.Lock()
 	defer s.subscription.Unlock()
 
+	// The cached manager's in-memory counters may have drifted from the persisted
+	// read-flags (e.g. a failed apply rolled the DB back after the counters were bumped).
+	// The repository is authoritative — reconcile before the first flush so clients never
+	// see drifted values.
+	s.subscription.ReconcileChatState()
+
 	// It's important to flush updates to subscriptions after reading a store document, or we can lose some important
 	// updates such as unread counters state
 	s.subscription.Flush(true)
