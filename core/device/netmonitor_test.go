@@ -109,17 +109,30 @@ func TestNetMonitor_ClockJump(t *testing.T) {
 }
 
 func TestNetMonitor_InterfaceChanges(t *testing.T) {
-	t.Run("address change fires event, stable set does not", func(t *testing.T) {
+	t.Run("only losing an address fires, additions and stable sets do not", func(t *testing.T) {
 		fx := newMonitorFixture()
+		// pure addition (docker bridge, VPN tunnel, first Wi-Fi join): existing
+		// connections are not invalidated, so no teardown event
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "192.168.1.10/24")}
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
-		// baseline was empty (no addrs at construction) -> this is a change
-		require.Len(t, fx.events, 1)
+		assert.Empty(t, fx.events, "pure addition must not fire")
 
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
-		assert.Len(t, fx.events, 1, "stable addresses must not fire")
+		assert.Empty(t, fx.events, "stable addresses must not fire")
 
-		fx.addrs.Addrs = []net.Addr{ipNet(t, "10.20.30.40/24")} // new network
+		// another pure addition alongside the existing address
+		fx.addrs.Addrs = []net.Addr{ipNet(t, "192.168.1.10/24"), ipNet(t, "10.99.0.1/24")}
+		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		assert.Empty(t, fx.events, "added second interface must not fire")
+
+		// network switch: old address replaced -> the loss fires
+		fx.addrs.Addrs = []net.Addr{ipNet(t, "10.20.30.40/24"), ipNet(t, "10.99.0.1/24")}
+		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		require.Len(t, fx.events, 1)
+		assert.Contains(t, fx.events[0], "192.168.1.10")
+
+		// losing everything fires too
+		fx.addrs.Addrs = nil
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
 		assert.Len(t, fx.events, 2)
 	})
@@ -135,11 +148,21 @@ func TestNetMonitor_InterfaceChanges(t *testing.T) {
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
 		assert.Equal(t, []bool{true, false, true}, fx.linkDown)
 	})
-	t.Run("enumeration error degrades silently", func(t *testing.T) {
+	t.Run("enumeration error fails open", func(t *testing.T) {
 		fx := newMonitorFixture()
 		fx.addrsErr = assert.AnError
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
 		assert.Empty(t, fx.events)
-		assert.Len(t, fx.linkDown, 1, "no link updates while enumeration fails")
+		// "unknown" must not wedge linkDown=true (Android without the injected
+		// getter, transient failures): the error tick reports link up
+		assert.Equal(t, []bool{true, false}, fx.linkDown)
 	})
+}
+
+func TestMissingFrom(t *testing.T) {
+	assert.Nil(t, missingFrom(nil, []string{"a"}))
+	assert.Nil(t, missingFrom([]string{"a"}, []string{"a", "b"}))
+	assert.Equal(t, []string{"a"}, missingFrom([]string{"a"}, nil))
+	assert.Equal(t, []string{"b"}, missingFrom([]string{"a", "b"}, []string{"a", "c"}))
+	assert.Equal(t, []string{"a", "c"}, missingFrom([]string{"a", "b", "c"}, []string{"b"}))
 }

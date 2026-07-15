@@ -30,6 +30,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -103,20 +104,38 @@ type networkState struct {
 	recoveryMu      sync.Mutex
 	lastRecoveryAt  time.Time
 	recoveryPending bool
+	pendingReason   string
+	pendingTimer    *time.Timer
+	closed          bool
 
 	monitor   *netMonitor
 	runCancel context.CancelFunc
+
+	// test hooks; nil means the real thing (bare-struct construction in tests
+	// must stay safe, hence the nil-tolerant accessors below)
+	now             func() time.Time
+	scheduleAfter   func(d time.Duration, f func()) *time.Timer
+	monitorGetAddrs func() (addrs.InterfacesAddrs, error)
 }
 
-var (
-	getTime       = time.Now       // for testing purposes
-	scheduleAfter = time.AfterFunc // for testing purposes
-)
+func (n *networkState) timeNow() time.Time {
+	if n.now != nil {
+		return n.now()
+	}
+	return time.Now()
+}
+
+func (n *networkState) schedule(d time.Duration, f func()) *time.Timer {
+	if n.scheduleAfter != nil {
+		return n.scheduleAfter(d, f)
+	}
+	return time.AfterFunc(d, f)
+}
 
 func (n *networkState) StateChange(state int) {
 	n.hookMu.Lock()
 	var (
-		curTime    = getTime()
+		curTime    = n.timeNow()
 		curState   = domain.CompState(state)
 		oldState   = n.lastDeviceState
 		timePassed = curTime.Sub(n.lastDeviceStateChange)
@@ -148,12 +167,18 @@ func (n *networkState) Init(a *app.App) (err error) {
 func (n *networkState) Run(ctx context.Context) (err error) {
 	var runCtx context.Context
 	runCtx, n.runCancel = context.WithCancel(context.Background())
-	n.monitor = newNetMonitor(n.triggerRecovery, n.linkDown.Store)
+	n.monitor = newNetMonitor(n.triggerRecovery, n.linkDown.Store, n.monitorGetAddrs)
 	go n.monitor.run(runCtx)
 	return
 }
 
 func (n *networkState) Close(ctx context.Context) (err error) {
+	n.recoveryMu.Lock()
+	n.closed = true
+	if n.pendingTimer != nil {
+		n.pendingTimer.Stop()
+	}
+	n.recoveryMu.Unlock()
 	if n.runCancel != nil {
 		n.runCancel()
 	}
@@ -205,7 +230,22 @@ func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType, net
 }
 
 func (n *networkState) IsOffline() bool {
-	return n.linkDown.Load() || n.GetNetworkState() == model.DeviceNetworkType_NOT_CONNECTED
+	n.networkMu.Lock()
+	reported := n.networkStateReported
+	state := n.networkState
+	n.networkMu.Unlock()
+	if state == model.DeviceNetworkType_NOT_CONNECTED {
+		return true
+	}
+	// A client that actively reports a connected type (mobile OS callbacks) is
+	// authoritative: the interface heuristic must not be able to wedge the
+	// device "offline" when e.g. Android's injected getter doesn't enumerate
+	// cellular interfaces. linkDown only decides when no client reports
+	// (desktop) — there the monitor is the sole signal source.
+	if reported {
+		return false
+	}
+	return n.linkDown.Load()
 }
 
 func (n *networkState) RegisterHook(hook func(network model.DeviceNetworkType)) {
@@ -243,14 +283,19 @@ func (n *networkState) runConnectivityHooks(online bool) {
 // and over during an event burst).
 func (n *networkState) triggerRecovery(reason string) {
 	n.recoveryMu.Lock()
-	now := getTime()
+	if n.closed {
+		n.recoveryMu.Unlock()
+		return
+	}
+	now := n.timeNow()
 	since := now.Sub(n.lastRecoveryAt)
 	if !n.lastRecoveryAt.IsZero() && since < recoverySuppressWindow {
+		// remember the latest reason so the trailing run reports what actually
+		// coalesced last, not the first suppressed signal
+		n.pendingReason = reason
 		if !n.recoveryPending {
 			n.recoveryPending = true
-			scheduleAfter(recoverySuppressWindow-since, func() {
-				n.runPendingRecovery(reason)
-			})
+			n.pendingTimer = n.schedule(recoverySuppressWindow-since, n.runPendingRecovery)
 		}
 		n.recoveryMu.Unlock()
 		log.Info("connectivity recovery coalesced", zap.String("reason", reason))
@@ -261,10 +306,15 @@ func (n *networkState) triggerRecovery(reason string) {
 	n.recover(reason)
 }
 
-func (n *networkState) runPendingRecovery(reason string) {
+func (n *networkState) runPendingRecovery() {
 	n.recoveryMu.Lock()
+	if n.closed {
+		n.recoveryMu.Unlock()
+		return
+	}
+	reason := n.pendingReason
 	n.recoveryPending = false
-	n.lastRecoveryAt = getTime()
+	n.lastRecoveryAt = n.timeNow()
 	n.recoveryMu.Unlock()
 	n.recover("coalesced: " + reason)
 }

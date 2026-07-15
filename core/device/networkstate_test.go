@@ -2,6 +2,7 @@ package device
 
 import (
 	"context"
+	"net"
 	"sync"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/device/mock_device"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -48,6 +50,13 @@ type networkStateFixture struct {
 
 var ctx = context.Background()
 
+// stubAddrs is a deterministic interface set for the net monitor so tests
+// never depend on the host machine's real network state.
+func stubAddrs() (addrs.InterfacesAddrs, error) {
+	_, ipn, _ := net.ParseCIDR("192.0.2.10/24")
+	return addrs.InterfacesAddrs{Addrs: []net.Addr{ipn}}, nil
+}
+
 func newNetworkStateFixture(t *testing.T) *networkStateFixture {
 	ctrl := gomock.NewController(t)
 	mockRefresher := mock_device.NewMockopenedObjectRefresher(t)
@@ -55,6 +64,7 @@ func newNetworkStateFixture(t *testing.T) *networkStateFixture {
 	syncer := &spaceSyncerStub{}
 	a := &app.App{}
 	ns := New().(*networkState)
+	ns.monitorGetAddrs = stubAddrs
 	a.Register(testutil.PrepareMock(ctx, a, mockRefresher)).
 		Register(testutil.PrepareMock(ctx, a, mockPool)).
 		Register(syncer).
@@ -75,10 +85,9 @@ func TestNetworkState_SetDeviceState(t *testing.T) {
 	// recovery (pool flush + head-sync) is gated by how long the app was
 	// backgrounded.
 	t.Run("backgrounded longer than recoverAfter: flush pool and sync all heads", func(t *testing.T) {
-		startTime := time.Now()
-		getTime = func() time.Time { return startTime }
-		defer func() { getTime = time.Now }()
 		fx := newNetworkStateFixture(t)
+		startTime := time.Now()
+		fx.networkState.now = func() time.Time { return startTime }
 		fx.StateChange(int(domain.CompStateAppWentBackground))
 		startTime = startTime.Add(recoverAfter + time.Second)
 		fx.mockRefresher.EXPECT().RefreshOpenedObjects(mock.Anything).Times(1)
@@ -87,10 +96,9 @@ func TestNetworkState_SetDeviceState(t *testing.T) {
 		assert.Equal(t, 1, fx.syncer.callCount())
 	})
 	t.Run("backgrounded less than recoverAfter: no flush, no head-sync", func(t *testing.T) {
-		startTime := time.Now()
-		getTime = func() time.Time { return startTime }
-		defer func() { getTime = time.Now }()
 		fx := newNetworkStateFixture(t)
+		startTime := time.Now()
+		fx.networkState.now = func() time.Time { return startTime }
 		fx.StateChange(int(domain.CompStateAppWentBackground))
 		startTime = startTime.Add(recoverAfter - time.Second)
 		fx.mockRefresher.EXPECT().RefreshOpenedObjects(mock.Anything).Times(1)
@@ -222,18 +230,15 @@ func TestNetworkState_ConnectivityRecovery(t *testing.T) {
 		fx.networkMu.Unlock()
 		assert.False(t, fx.IsOffline())
 	})
-	t.Run("burst coalesces into one trailing recovery", func(t *testing.T) {
+	t.Run("burst coalesces into one trailing recovery, reporting the latest reason", func(t *testing.T) {
+		fx := newNetworkStateFixture(t)
 		now := time.Now()
-		getTime = func() time.Time { return now }
-		defer func() { getTime = time.Now }()
+		fx.networkState.now = func() time.Time { return now }
 		var scheduled []func()
-		scheduleAfter = func(d time.Duration, f func()) *time.Timer {
+		fx.networkState.scheduleAfter = func(d time.Duration, f func()) *time.Timer {
 			scheduled = append(scheduled, f)
 			return time.NewTimer(time.Hour) // never fires in test
 		}
-		defer func() { scheduleAfter = time.AfterFunc }()
-
-		fx := newNetworkStateFixture(t)
 		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // first report, no recovery
 
 		// three rapid switches: first runs immediately, the rest coalesce into
@@ -244,12 +249,62 @@ func TestNetworkState_ConnectivityRecovery(t *testing.T) {
 		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")
 		assert.Equal(t, 1, fx.syncer.callCount())
 		require.Len(t, scheduled, 1)
+		fx.recoveryMu.Lock()
+		assert.Contains(t, fx.pendingReason, "WIFI", "trailing run must report the latest coalesced reason")
+		fx.recoveryMu.Unlock()
 
 		// the trailing run executes the full pipeline once more
 		now = now.Add(recoverySuppressWindow + time.Second)
 		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
 		scheduled[0]()
 		assert.Equal(t, 2, fx.syncer.callCount())
+	})
+	t.Run("close cancels a pending trailing recovery", func(t *testing.T) {
+		fx := newNetworkStateFixture(t)
+		now := time.Now()
+		fx.networkState.now = func() time.Time { return now }
+		var scheduled []func()
+		fx.networkState.scheduleAfter = func(d time.Duration, f func()) *time.Timer {
+			scheduled = append(scheduled, f)
+			return time.NewTimer(time.Hour)
+		}
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")     // immediate recovery
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // suppressed -> pending
+		require.Len(t, scheduled, 1)
+
+		require.NoError(t, fx.Close(ctx))
+		scheduled[0]() // must be a no-op after close: no flush, no head-sync
+		assert.Equal(t, 1, fx.syncer.callCount())
+	})
+}
+
+func TestNetworkState_IsOffline(t *testing.T) {
+	t.Run("explicit online report overrides linkDown", func(t *testing.T) {
+		// the interface heuristic must not wedge a device offline when the
+		// client's OS callbacks say it is connected (e.g. Android getter that
+		// doesn't enumerate cellular interfaces)
+		state := &networkState{}
+		state.linkDown.Store(true)
+		assert.True(t, state.IsOffline(), "no report yet: linkDown decides")
+
+		state.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
+		assert.False(t, state.IsOffline(), "explicit CELLULAR report must win over linkDown")
+	})
+	t.Run("reported NOT_CONNECTED is offline regardless of interfaces", func(t *testing.T) {
+		state := &networkState{}
+		state.SetNetworkState(model.DeviceNetworkType_WIFI, "")
+		state.SetNetworkState(model.DeviceNetworkType_NOT_CONNECTED, "")
+		assert.True(t, state.IsOffline())
+	})
+	t.Run("without reports linkDown decides (desktop)", func(t *testing.T) {
+		state := &networkState{}
+		assert.False(t, state.IsOffline())
+		state.linkDown.Store(true)
+		assert.True(t, state.IsOffline())
+		state.linkDown.Store(false)
+		assert.False(t, state.IsOffline())
 	})
 }
 

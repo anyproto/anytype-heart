@@ -27,6 +27,7 @@ import (
 	"net"
 	"slices"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -60,12 +61,15 @@ type netMonitor struct {
 	addrsErrOnce sync.Once
 }
 
-func newNetMonitor(onEvent func(reason string), onLinkDown func(down bool)) *netMonitor {
+func newNetMonitor(onEvent func(reason string), onLinkDown func(down bool), getAddrs func() (addrs.InterfacesAddrs, error)) *netMonitor {
+	if getAddrs == nil {
+		getAddrs = addrs.GetInterfacesAddrs
+	}
 	start := time.Now()
 	return &netMonitor{
 		onEvent:    onEvent,
 		onLinkDown: onLinkDown,
-		getAddrs:   addrs.GetInterfacesAddrs,
+		getAddrs:   getAddrs,
 		nowWall:    time.Now,
 		// time.Since uses the monotonic reading, which pauses during sleep.
 		elapsed: func() time.Duration { return time.Since(start) },
@@ -103,19 +107,44 @@ func (m *netMonitor) checkInterfaces() {
 	ifAddrs, err := m.getAddrs()
 	if err != nil {
 		// Android without an injected interface getter lands here; the RPC
-		// signals and the clock-jump detector still apply.
+		// signals and the clock-jump detector still apply. Fail open: an
+		// enumeration error means "unknown", and a stale linkDown=true must
+		// not wedge the device into offline behavior.
 		m.addrsErrOnce.Do(func() {
 			log.Info("net monitor: interface enumeration unavailable", zap.Error(err))
 		})
+		m.onLinkDown(false)
 		return
 	}
 	snapshot := connectivitySnapshot(ifAddrs.Addrs)
 	m.onLinkDown(len(snapshot) == 0)
-	if m.snapshotInit && !slices.Equal(snapshot, m.prevSnapshot) {
-		m.onEvent("interface addresses changed")
+	// Only a *disappearing* address signals that an existing network path may
+	// have died. Pure additions (docker/VM bridges, VPN tunnels, hotspots)
+	// don't invalidate established connections — flushing on them would abort
+	// healthy transfers; if a new interface does reroute traffic and breaks a
+	// connection, the transport keepalive catches it within seconds.
+	if m.snapshotInit {
+		if lost := missingFrom(m.prevSnapshot, snapshot); len(lost) > 0 {
+			m.onEvent("interface addresses lost: " + strings.Join(lost, ","))
+		}
 	}
 	m.prevSnapshot = snapshot
 	m.snapshotInit = true
+}
+
+// missingFrom returns the entries of prev absent from cur; both must be
+// sorted (connectivitySnapshot output).
+func missingFrom(prev, cur []string) (lost []string) {
+	i := 0
+	for _, p := range prev {
+		for i < len(cur) && cur[i] < p {
+			i++
+		}
+		if i >= len(cur) || cur[i] != p {
+			lost = append(lost, p)
+		}
+	}
+	return
 }
 
 // connectivitySnapshot reduces interface addresses to a stable network
