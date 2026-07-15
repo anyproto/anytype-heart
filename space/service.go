@@ -175,6 +175,10 @@ type service struct {
 	ctxCancel context.CancelFunc
 	isClosing atomic.Bool
 
+	syncAllMu      sync.Mutex
+	syncAllRunning bool
+	syncAllPending bool
+
 	firstCreatedSpaceId string
 }
 
@@ -809,8 +813,26 @@ func (s *service) SyncAllSpaceHeads() {
 	if s.isClosing.Load() {
 		return
 	}
-	ids := s.AllLoadedSpaceIds()
-	go func() {
+	// Coalesce overlapping sweeps: recovery signals can burst (wake fires the
+	// clock-jump detector, the interface diff and the foreground RPC within
+	// seconds) and a sweep can park up to 1min on peer-find deadlines while
+	// offline. One running sweep plus at most one queued rerun keeps the
+	// behavior (a request arriving mid-sweep still gets a full fresh sweep)
+	// without stacking N_spaces goroutines per signal.
+	s.syncAllMu.Lock()
+	if s.syncAllRunning {
+		s.syncAllPending = true
+		s.syncAllMu.Unlock()
+		return
+	}
+	s.syncAllRunning = true
+	s.syncAllMu.Unlock()
+	go s.runSyncAllSpaceHeads()
+}
+
+func (s *service) runSyncAllSpaceHeads() {
+	for {
+		ids := s.AllLoadedSpaceIds()
 		sem := make(chan struct{}, syncAllHeadsParallelism)
 		var wg sync.WaitGroup
 		for _, id := range ids {
@@ -835,7 +857,17 @@ func (s *service) SyncAllSpaceHeads() {
 			}()
 		}
 		wg.Wait()
-	}()
+
+		s.syncAllMu.Lock()
+		if s.syncAllPending && !s.isClosing.Load() && s.ctx.Err() == nil {
+			s.syncAllPending = false
+			s.syncAllMu.Unlock()
+			continue
+		}
+		s.syncAllRunning = false
+		s.syncAllMu.Unlock()
+		return
+	}
 }
 
 func (s *service) TechSpaceId() string {
