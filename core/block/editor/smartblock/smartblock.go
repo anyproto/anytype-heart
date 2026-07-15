@@ -1504,6 +1504,17 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			})
 		}
 
+		// A bookmark block points at its bookmark object via TargetObjectId. Without this
+		// the bookmark object gets no backlink from the containing page and objectgc
+		// misclassifies it as an orphan (GO-7377).
+		if bm := blockModel.GetBookmark(); bm != nil && bm.TargetObjectId != "" && bm.TargetObjectId != objectId && !linkSet[bm.TargetObjectId] {
+			linkSet[bm.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      bm.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
 		if text := blockModel.GetText(); text != nil && text.Marks != nil {
 			// Extract mentions and inline-object marks from text marks. Object marks
 			// (e.g. @page references) are semantically equivalent to mentions for the

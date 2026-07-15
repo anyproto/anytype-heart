@@ -75,7 +75,10 @@ const (
 	// reindexes objects asynchronously and continue reindex after app F
 	// Bumped to 4 for GO-7237: collection members, inline dataview embeds, and Object-marks
 	// are now indexed as outgoing links — existing objects need a one-shot reindex pass.
-	ForceInvalidateObjectsIndexCounter int32 = 4
+	// Bumped to 5 for GO-7377: bookmark blocks are now indexed as outgoing links, so
+	// existing pages must be reindexed to restore the missing page→bookmark backlinks
+	// (which otherwise make bookmark objects look like orphans in objectgc).
+	ForceInvalidateObjectsIndexCounter int32 = 5
 )
 
 type allDeletedIdsProvider interface {
