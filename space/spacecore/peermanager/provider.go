@@ -20,9 +20,11 @@ import (
 	"sync"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/app/logger"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/net/pool"
+	"go.uber.org/atomic"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
@@ -56,7 +58,46 @@ type provider struct {
 
 	mu       sync.Mutex
 	managers map[*clientPeerManager]struct{}
+
+	stats providerStats
 }
+
+// providerStats counts how the connectivity-driven peer machinery is
+// exercised: single atomic ops on event-driven paths, snapshot built only
+// when the debug stat endpoint asks.
+type providerStats struct {
+	connectivityEvents  atomic.Int64
+	rebuildSignals      atomic.Int64
+	reconnectDiffKicks  atomic.Int64
+	closedPeersFiltered atomic.Int64
+}
+
+type providerStat struct {
+	Managers            int   `json:"managers"`
+	Offline             bool  `json:"offline"`
+	ConnectivityEvents  int64 `json:"connectivityEvents"`
+	RebuildSignals      int64 `json:"rebuildSignals"`
+	ReconnectDiffKicks  int64 `json:"reconnectDiffKicks"`
+	ClosedPeersFiltered int64 `json:"closedPeersFiltered"`
+}
+
+func (p *provider) ProvideStat() any {
+	p.mu.Lock()
+	managers := len(p.managers)
+	p.mu.Unlock()
+	return providerStat{
+		Managers:            managers,
+		Offline:             p.isOffline(),
+		ConnectivityEvents:  p.stats.connectivityEvents.Load(),
+		RebuildSignals:      p.stats.rebuildSignals.Load(),
+		ReconnectDiffKicks:  p.stats.reconnectDiffKicks.Load(),
+		ClosedPeersFiltered: p.stats.closedPeersFiltered.Load(),
+	}
+}
+
+func (p *provider) StatId() string { return CName }
+
+func (p *provider) StatType() string { return CName }
 
 func (p *provider) Init(a *app.App) (err error) {
 	p.peerStore = a.MustComponent(peerstore.CName).(peerstore.PeerStore)
@@ -74,6 +115,9 @@ func (p *provider) Init(a *app.App) (err error) {
 			log.Warn("networkState component does not implement networkConnectivity; connectivity-driven peer rebuild disabled")
 		}
 	}
+	if statService, _ := app.GetComponent[debugstat.StatService](a); statService != nil {
+		statService.AddProvider(p)
+	}
 	return nil
 }
 
@@ -85,8 +129,10 @@ func (p *provider) Name() (name string) {
 // reconnect re-dials immediately (instead of waiting for the periodic tick)
 // and a disconnect flips node status to ConnectionError right away.
 func (p *provider) onConnectivityChange(online bool) {
+	p.stats.connectivityEvents.Inc()
 	p.mu.Lock()
 	defer p.mu.Unlock()
+	p.stats.rebuildSignals.Add(int64(len(p.managers)))
 	for m := range p.managers {
 		m.signalRebuild()
 	}

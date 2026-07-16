@@ -22,10 +22,12 @@ Scope: global
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/anyproto/any-sync/app/debugstat"
 	"github.com/anyproto/any-sync/net/pool"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
@@ -126,8 +128,11 @@ type networkState struct {
 	// must not tear down the connections the leading run just re-established.
 	lastRecoveredFingerprint string
 
-	monitor   *netMonitor
-	runCancel context.CancelFunc
+	monitor     *netMonitor
+	runCancel   context.CancelFunc
+	statService debugstat.StatService
+
+	stats recoveryStats
 
 	// test hooks; nil means the real thing (bare-struct construction in tests
 	// must stay safe, hence the nil-tolerant accessors below)
@@ -135,6 +140,124 @@ type networkState struct {
 	scheduleAfter   func(d time.Duration, f func()) *time.Timer
 	monitorGetAddrs func() (addrs.InterfacesAddrs, error)
 }
+
+// recoveryStats counts how the recovery mechanism is exercised. Every update
+// is a single atomic op on an event-driven path (signals arrive at human
+// timescales — network switches, wakes, RPCs), and the JSON snapshot is built
+// only when the debug stat endpoint asks, so this adds no steady-state
+// overhead.
+type recoveryStats struct {
+	networkReports   atomic.Int64
+	foregroundEvents atomic.Int64
+	backgroundEvents atomic.Int64
+
+	signalsByType          atomic.Int64
+	signalsByPath          atomic.Int64
+	signalsByForeground    atomic.Int64
+	signalsByWake          atomic.Int64
+	signalsByIfaceLost     atomic.Int64
+	signalsByIfaceRegained atomic.Int64
+	signalsOther           atomic.Int64
+	signalsCoalesced       atomic.Int64
+
+	trailingRuns    atomic.Int64
+	trailingSkipped atomic.Int64
+
+	recoveries         atomic.Int64
+	recoveriesOffline  atomic.Int64
+	lastRecoveryUnix   atomic.Int64
+	lastRecoveryReason atomic.String
+}
+
+func (s *recoveryStats) countSignal(reason string) {
+	switch {
+	case strings.HasPrefix(reason, "network type"):
+		s.signalsByType.Inc()
+	case strings.HasPrefix(reason, "network path"):
+		s.signalsByPath.Inc()
+	case reason == "foreground resume":
+		s.signalsByForeground.Inc()
+	case strings.HasPrefix(reason, "wake from sleep"):
+		s.signalsByWake.Inc()
+	case strings.HasPrefix(reason, "interface addresses lost"):
+		s.signalsByIfaceLost.Inc()
+	case reason == "interface addresses regained":
+		s.signalsByIfaceRegained.Inc()
+	default:
+		s.signalsOther.Inc()
+	}
+}
+
+type networkStateStat struct {
+	NetworkType      string `json:"networkType"`
+	NetworkId        string `json:"networkId,omitempty"`
+	ReportedByClient bool   `json:"reportedByClient"`
+	LinkDown         bool   `json:"linkDown"`
+	MonitorSnapshot  string `json:"monitorSnapshot"`
+	MonitorGen       int64  `json:"monitorGeneration"`
+	Offline          bool   `json:"offline"`
+
+	NetworkReports   int64 `json:"networkReports"`
+	ForegroundEvents int64 `json:"foregroundEvents"`
+	BackgroundEvents int64 `json:"backgroundEvents"`
+
+	SignalsNetworkTypeChange int64 `json:"signalsNetworkTypeChange"`
+	SignalsNetworkPathChange int64 `json:"signalsNetworkPathChange"`
+	SignalsForegroundResume  int64 `json:"signalsForegroundResume"`
+	SignalsWakeFromSleep     int64 `json:"signalsWakeFromSleep"`
+	SignalsInterfaceLost     int64 `json:"signalsInterfaceLost"`
+	SignalsInterfaceRegained int64 `json:"signalsInterfaceRegained"`
+	SignalsOther             int64 `json:"signalsOther"`
+	SignalsCoalesced         int64 `json:"signalsCoalesced"`
+
+	TrailingRuns    int64 `json:"trailingRuns"`
+	TrailingSkipped int64 `json:"trailingSkipped"`
+
+	Recoveries         int64  `json:"recoveries"`
+	RecoveriesOffline  int64  `json:"recoveriesOffline"`
+	LastRecoveryUnix   int64  `json:"lastRecoveryUnix,omitempty"`
+	LastRecoveryReason string `json:"lastRecoveryReason,omitempty"`
+}
+
+func (n *networkState) ProvideStat() any {
+	n.networkMu.Lock()
+	state, id, reported := n.networkState, n.networkId, n.networkStateReported
+	n.networkMu.Unlock()
+	return networkStateStat{
+		NetworkType:      state.String(),
+		NetworkId:        id,
+		ReportedByClient: reported,
+		LinkDown:         n.linkDown.Load(),
+		MonitorSnapshot:  n.monitorSnapshot.Load(),
+		MonitorGen:       n.monitorGen.Load(),
+		Offline:          n.IsOffline(),
+
+		NetworkReports:   n.stats.networkReports.Load(),
+		ForegroundEvents: n.stats.foregroundEvents.Load(),
+		BackgroundEvents: n.stats.backgroundEvents.Load(),
+
+		SignalsNetworkTypeChange: n.stats.signalsByType.Load(),
+		SignalsNetworkPathChange: n.stats.signalsByPath.Load(),
+		SignalsForegroundResume:  n.stats.signalsByForeground.Load(),
+		SignalsWakeFromSleep:     n.stats.signalsByWake.Load(),
+		SignalsInterfaceLost:     n.stats.signalsByIfaceLost.Load(),
+		SignalsInterfaceRegained: n.stats.signalsByIfaceRegained.Load(),
+		SignalsOther:             n.stats.signalsOther.Load(),
+		SignalsCoalesced:         n.stats.signalsCoalesced.Load(),
+
+		TrailingRuns:    n.stats.trailingRuns.Load(),
+		TrailingSkipped: n.stats.trailingSkipped.Load(),
+
+		Recoveries:         n.stats.recoveries.Load(),
+		RecoveriesOffline:  n.stats.recoveriesOffline.Load(),
+		LastRecoveryUnix:   n.stats.lastRecoveryUnix.Load(),
+		LastRecoveryReason: n.stats.lastRecoveryReason.Load(),
+	}
+}
+
+func (n *networkState) StatId() string { return CName }
+
+func (n *networkState) StatType() string { return CName }
 
 func (n *networkState) timeNow() time.Time {
 	if n.now != nil {
@@ -161,6 +284,14 @@ func (n *networkState) StateChange(state int) {
 	n.lastDeviceStateChange = curTime
 	n.lastDeviceState = curState
 	n.hookMu.Unlock()
+	if oldState != curState {
+		switch curState {
+		case domain.CompStateAppWentForeground:
+			n.stats.foregroundEvents.Inc()
+		case domain.CompStateAppWentBackground:
+			n.stats.backgroundEvents.Inc()
+		}
+	}
 	if oldState != curState && curState == domain.CompStateAppWentForeground {
 		// Anchor log for measuring how fast per-space diffsync reacts to a wakeup (GO-7302).
 		log.Info("app went foreground", zap.Duration("backgroundedFor", timePassed))
@@ -179,6 +310,10 @@ func (n *networkState) Init(a *app.App) (err error) {
 	n.pool = app.MustComponent[pool.Service](a)
 	n.objectsRefresher = app.MustComponent[openedObjectRefresher](a)
 	n.spaceSyncer = app.MustComponent[spaceHeadSyncer](a)
+	if statService, _ := app.GetComponent[debugstat.StatService](a); statService != nil {
+		n.statService = statService
+		statService.AddProvider(n)
+	}
 	return
 }
 
@@ -197,6 +332,9 @@ func (n *networkState) Close(ctx context.Context) (err error) {
 		n.pendingTimer.Stop()
 	}
 	n.recoveryMu.Unlock()
+	if n.statService != nil {
+		n.statService.RemoveProvider(n)
+	}
 	if n.runCancel != nil {
 		n.runCancel()
 	}
@@ -214,6 +352,7 @@ func (n *networkState) GetNetworkState() model.DeviceNetworkType {
 }
 
 func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType, networkId string) {
+	n.stats.networkReports.Inc()
 	n.networkMu.Lock()
 	first := !n.networkStateReported
 	n.networkStateReported = true
@@ -321,6 +460,7 @@ func (n *networkState) runConnectivityHooks(online bool) {
 // the first must not be lost, but fresh connections must not be flushed over
 // and over during an event burst).
 func (n *networkState) triggerRecovery(reason string) {
+	n.stats.countSignal(reason)
 	n.recoveryMu.Lock()
 	if n.closed {
 		n.recoveryMu.Unlock()
@@ -329,6 +469,7 @@ func (n *networkState) triggerRecovery(reason string) {
 	now := n.timeNow()
 	since := now.Sub(n.lastRecoveryAt)
 	if !n.lastRecoveryAt.IsZero() && since < recoverySuppressWindow {
+		n.stats.signalsCoalesced.Inc()
 		// remember the latest reason so the trailing run reports what actually
 		// coalesced last, not the first suppressed signal
 		n.pendingReason = reason
@@ -361,10 +502,12 @@ func (n *networkState) runPendingRecovery() {
 	// signals of the same physical event must not flush the connections the
 	// leading run just re-established.
 	if n.fingerprint() == lastFingerprint {
+		n.stats.trailingSkipped.Inc()
 		log.Info("connectivity recovery skipped: no network change since the last run",
 			zap.String("reason", reason))
 		return
 	}
+	n.stats.trailingRuns.Inc()
 	n.recover("coalesced: " + reason)
 }
 
@@ -373,6 +516,12 @@ func (n *networkState) recover(reason string) {
 	n.lastRecoveredFingerprint = n.fingerprint()
 	n.recoveryMu.Unlock()
 	online := !n.IsOffline()
+	n.stats.recoveries.Inc()
+	if !online {
+		n.stats.recoveriesOffline.Inc()
+	}
+	n.stats.lastRecoveryUnix.Store(n.timeNow().Unix())
+	n.stats.lastRecoveryReason.Store(reason)
 	log.Info("connectivity recovery", zap.String("reason", reason), zap.Bool("online", online))
 	// Flush drops every pooled connection (closing the underlying sockets), so
 	// the next Get re-dials instead of serving a connection that died with the

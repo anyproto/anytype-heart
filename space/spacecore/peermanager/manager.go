@@ -187,6 +187,9 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 			peers = append(peers, p)
 		}
 	}
+	if dropped := len(n.responsiblePeers) - len(peers); dropped > 0 && n.p != nil {
+		n.p.stats.closedPeersFiltered.Add(int64(dropped))
+	}
 	if len(peers) == 0 {
 		deadline, _ := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
 		if n.availableResponsiblePeers == nil {
@@ -336,6 +339,9 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 func (n *clientPeerManager) kickDiffSyncOnReconnect() {
 	if n.headSync == nil || !n.diffKickRunning.CompareAndSwap(false, true) {
 		return
+	}
+	if n.p != nil {
+		n.p.stats.reconnectDiffKicks.Inc()
 	}
 	go func() {
 		defer n.diffKickRunning.Store(false)

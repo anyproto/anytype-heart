@@ -391,3 +391,29 @@ func TestNetworkState_GetNetworkState(t *testing.T) {
 		assert.Equal(t, model.DeviceNetworkType_CELLULAR, networkType)
 	})
 }
+
+func TestNetworkState_ProvideStat(t *testing.T) {
+	fx := newNetworkStateFixture(t)
+	fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "cell-1") // first report: no recovery
+	fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+	fx.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1") // switch: recovery
+
+	st := fx.ProvideStat().(networkStateStat)
+	assert.Equal(t, model.DeviceNetworkType_WIFI.String(), st.NetworkType)
+	assert.Equal(t, "wifi-1", st.NetworkId)
+	assert.True(t, st.ReportedByClient)
+	assert.False(t, st.Offline)
+	assert.Equal(t, int64(2), st.NetworkReports)
+	assert.Equal(t, int64(1), st.SignalsNetworkTypeChange)
+	assert.Equal(t, int64(1), st.Recoveries)
+	assert.Equal(t, int64(0), st.RecoveriesOffline)
+	assert.Contains(t, st.LastRecoveryReason, "WIFI")
+	assert.NotZero(t, st.LastRecoveryUnix)
+	assert.NotEmpty(t, st.MonitorSnapshot)
+
+	// duplicate report: counted as a report, not as a signal or recovery
+	fx.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
+	st = fx.ProvideStat().(networkStateStat)
+	assert.Equal(t, int64(3), st.NetworkReports)
+	assert.Equal(t, int64(1), st.Recoveries)
+}

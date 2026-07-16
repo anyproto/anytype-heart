@@ -506,3 +506,25 @@ func Test_nextCheckInterval(t *testing.T) {
 	f.store.UpdateLocalPeer("peerId", []string{spaceId})
 	assert.Equal(t, responsiblePeersCheckInterval, f.cm.nextCheckInterval(), "offline with LAN peers: full cadence")
 }
+
+func Test_provider_ProvideStat(t *testing.T) {
+	conn := &fakeConnectivity{}
+	p := &provider{connectivity: conn, managers: map[*clientPeerManager]struct{}{}}
+	cm1 := &clientPeerManager{rebuildResponsiblePeers: make(chan struct{}, 1)}
+	cm2 := &clientPeerManager{rebuildResponsiblePeers: make(chan struct{}, 1)}
+	p.registerManager(cm1)
+	p.registerManager(cm2)
+
+	p.onConnectivityChange(true)
+	p.onConnectivityChange(false)
+	p.stats.reconnectDiffKicks.Inc()
+	p.stats.closedPeersFiltered.Add(3)
+
+	st := p.ProvideStat().(providerStat)
+	assert.Equal(t, 2, st.Managers)
+	assert.False(t, st.Offline)
+	assert.Equal(t, int64(2), st.ConnectivityEvents)
+	assert.Equal(t, int64(4), st.RebuildSignals, "one signal per manager per event")
+	assert.Equal(t, int64(1), st.ReconnectDiffKicks)
+	assert.Equal(t, int64(3), st.ClosedPeersFiltered)
+}
