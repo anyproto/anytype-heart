@@ -437,3 +437,56 @@ func Test_fetchResponsiblePeers_reconnectKick(t *testing.T) {
 		}
 	})
 }
+
+func TestClientPeerManager_GetResponsiblePeers_ClosedPeersNotServed(t *testing.T) {
+	t.Run("waits for rebuild instead of serving closed peers", func(t *testing.T) {
+		// after a pool flush the cached list still holds closed peers until
+		// fetchResponsiblePeers swaps it; they must not be handed out
+		cm := &clientPeerManager{spaceId: "x", Mutex: sync.Mutex{}}
+		dead := newTestPeer("dead")
+		require.NoError(t, dead.Close())
+		cm.responsiblePeers = []peer.Peer{dead}
+
+		live := newTestPeer("live")
+		go func() {
+			time.Sleep(time.Millisecond * 100)
+			// mimic fetchResponsiblePeers completing after a re-dial
+			cm.Lock()
+			cm.responsiblePeers = []peer.Peer{live}
+			if cm.availableResponsiblePeers != nil {
+				close(cm.availableResponsiblePeers)
+				cm.availableResponsiblePeers = nil
+			}
+			cm.Unlock()
+		}()
+
+		ctx := context.WithValue(context.Background(), ContextPeerFindDeadlineKey, time.Now().Add(time.Second*2))
+		peers, err := cm.GetResponsiblePeers(ctx)
+		require.NoError(t, err)
+		require.Len(t, peers, 1)
+		assert.Equal(t, "live", peers[0].Id())
+	})
+	t.Run("only closed peers and no rebuild: deadline exceeded", func(t *testing.T) {
+		cm := &clientPeerManager{spaceId: "x", Mutex: sync.Mutex{}}
+		dead := newTestPeer("dead")
+		require.NoError(t, dead.Close())
+		cm.responsiblePeers = []peer.Peer{dead}
+
+		ctx := context.WithValue(context.Background(), ContextPeerFindDeadlineKey, time.Now().Add(time.Millisecond*200))
+		peers, err := cm.GetResponsiblePeers(ctx)
+		require.ErrorIs(t, err, ErrPeerFindDeadlineExceeded)
+		require.Nil(t, peers)
+	})
+	t.Run("live subset is served, closed peers dropped", func(t *testing.T) {
+		cm := &clientPeerManager{spaceId: "x", Mutex: sync.Mutex{}}
+		dead := newTestPeer("dead")
+		require.NoError(t, dead.Close())
+		live := newTestPeer("live")
+		cm.responsiblePeers = []peer.Peer{dead, live}
+
+		peers, err := cm.GetResponsiblePeers(context.Background())
+		require.NoError(t, err)
+		require.Len(t, peers, 1)
+		assert.Equal(t, "live", peers[0].Id())
+	})
+}

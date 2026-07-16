@@ -176,7 +176,18 @@ func (n *clientPeerManager) SendMessage(ctx context.Context, peerId string, msg 
 
 func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	n.Lock()
-	if len(n.responsiblePeers) == 0 {
+	// Serve only live peers. Right after a connection-pool flush (foreground
+	// resume, network switch) the cached list still holds the just-closed
+	// peers until the rebuild swaps it; handing those out made the immediate
+	// post-recovery head-sync and opened-object refresh silent no-ops that
+	// waited for the next periodic tick (~20s). Filtering makes callers fall
+	// into the wait below and sync the moment the fresh dial lands.
+	for _, p := range n.responsiblePeers {
+		if !p.IsClosed() {
+			peers = append(peers, p)
+		}
+	}
+	if len(peers) == 0 {
 		deadline, _ := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
 		if n.availableResponsiblePeers == nil {
 			n.availableResponsiblePeers = make(chan struct{})
@@ -204,7 +215,6 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 			}
 		}
 	}
-	peers = n.responsiblePeers
 	n.Unlock()
 	log.Debug("get responsible peers", zap.Int("peerCount", len(peers)), zap.String("spaceId", n.spaceId))
 	return
