@@ -191,36 +191,44 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 		n.p.stats.closedPeersFiltered.Add(int64(dropped))
 	}
 	if len(peers) == 0 {
-		deadline, _ := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
 		if n.availableResponsiblePeers == nil {
 			n.availableResponsiblePeers = make(chan struct{})
 		}
 		ch := n.availableResponsiblePeers
 		n.Unlock()
-		if !deadline.IsZero() {
-			if time.Now().After(deadline) {
-				return nil, ErrPeerFindDeadlineExceeded
-			}
-			select {
-			case <-ch:
-				return n.GetResponsiblePeers(ctx)
-			case <-time.After(time.Until(deadline)):
-				return nil, ErrPeerFindDeadlineExceeded
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
-		} else {
-			select {
-			case <-ch:
-				return n.GetResponsiblePeers(ctx)
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
+		if err = n.waitResponsiblePeers(ctx, ch); err != nil {
+			return nil, err
 		}
+		return n.GetResponsiblePeers(ctx)
 	}
 	n.Unlock()
 	log.Debug("get responsible peers", zap.Int("peerCount", len(peers)), zap.String("spaceId", n.spaceId))
 	return
+}
+
+// waitResponsiblePeers blocks until a rebuild publishes live peers (ch is
+// closed), the optional peer-find deadline passes, or ctx is done.
+func (n *clientPeerManager) waitResponsiblePeers(ctx context.Context, ch <-chan struct{}) error {
+	deadline, _ := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
+	if deadline.IsZero() {
+		select {
+		case <-ch:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	if time.Now().After(deadline) {
+		return ErrPeerFindDeadlineExceeded
+	}
+	select {
+	case <-ch:
+		return nil
+	case <-time.After(time.Until(deadline)):
+		return ErrPeerFindDeadlineExceeded
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (peers []peer.Peer, err error) {

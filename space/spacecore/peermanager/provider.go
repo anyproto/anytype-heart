@@ -115,7 +115,7 @@ func (p *provider) Init(a *app.App) (err error) {
 			log.Warn("networkState component does not implement networkConnectivity; connectivity-driven peer rebuild disabled")
 		}
 	}
-	if statService, _ := app.GetComponent[debugstat.StatService](a); statService != nil {
+	if statService, err := app.GetComponent[debugstat.StatService](a); err == nil {
 		statService.AddProvider(p)
 	}
 	return nil

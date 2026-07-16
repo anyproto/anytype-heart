@@ -317,7 +317,7 @@ func (n *networkState) Init(a *app.App) (err error) {
 	n.pool = app.MustComponent[pool.Service](a)
 	n.objectsRefresher = app.MustComponent[openedObjectRefresher](a)
 	n.spaceSyncer = app.MustComponent[spaceHeadSyncer](a)
-	if statService, _ := app.GetComponent[debugstat.StatService](a); statService != nil {
+	if statService, err := app.GetComponent[debugstat.StatService](a); err == nil {
 		n.statService = statService
 		statService.AddProvider(n)
 	}
