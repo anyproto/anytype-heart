@@ -92,11 +92,6 @@ func (l *localDiscovery) Init(a *app.App) (err error) {
 }
 
 func (l *localDiscovery) Run(ctx context.Context) (err error) {
-	if l.manualStart && len(l.nodeConf.Nodes) > 0 {
-		// let's wait for the explicit command to enable local discovery
-		return
-	}
-
 	return l.Start()
 }
 
