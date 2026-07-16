@@ -70,6 +70,7 @@ type Manager interface {
 	UpdateReactionReadStatus(msgId string, unread bool)
 	ReadReactions(newOrderId string, idsModified []string)
 	ForceReloadReactionState()
+	ReconcileChatState()
 }
 
 type Service interface {

@@ -44,6 +44,10 @@ func (r *rpcHandler) FilesDelete(ctx context.Context, request *fileproto.FilesDe
 	return nil, fileprotoerr.ErrForbidden
 }
 
+func (r *rpcHandler) BlockDeleteUnbound(ctx context.Context, request *fileproto.BlockDeleteUnboundRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
 func (r *rpcHandler) FilesInfo(ctx context.Context, request *fileproto.FilesInfoRequest) (*fileproto.FilesInfoResponse, error) {
 	return nil, fileprotoerr.ErrForbidden
 }

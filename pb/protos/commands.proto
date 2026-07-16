@@ -164,6 +164,9 @@ message Rpc {
                         SPACE_IS_DELETED = 102;
                         REQUEST_FAILED = 103;
                         INCORRECT_PERMISSIONS = 105;
+                        // the invite is shared within the space and these permissions are above read access:
+                        // whoever holds such a link is in the space, and every member holds it
+                        INVITE_NOT_SHAREABLE = 107;
                     }
                 }
             }
@@ -174,6 +177,9 @@ message Rpc {
                 string spaceId = 1;
                 model.InviteType inviteType = 2;
                 model.ParticipantPermissions permissions = 3;
+                // shareWithinSpace stores the invite in the space itself, so that every member can share it.
+                // Otherwise the invite is kept in the owner's account and only the owner can share it.
+                bool shareWithinSpace = 4;
             }
 
             message Response {
@@ -197,6 +203,12 @@ message Rpc {
                         REQUEST_FAILED = 103;
                         LIMIT_REACHED = 104;
                         NOT_SHAREABLE = 105;
+                        // the current invite is already shared within the space and cannot be taken back into the
+                        // owner's account: revoke it and generate a new one
+                        INVITE_ALREADY_SHARED = 106;
+                        // an invite anyone can join with cannot be shared within the space: whoever holds such a
+                        // link is in, so it stays in the owner's account and is theirs alone to hand out
+                        INVITE_NOT_SHAREABLE = 107;
                     }
                 }
             }
@@ -239,6 +251,9 @@ message Rpc {
                 string inviteFileKey = 3;
                 model.InviteType inviteType = 4;
                 model.ParticipantPermissions permissions = 5;
+                // heldByOwner is set when the invite is kept in the owner's account. Members get it with an
+                // empty inviteCid and inviteFileKey: only the owner can share the link.
+                bool heldByOwner = 6;
 
                 message Error {
                     Code code = 1;

@@ -57,7 +57,7 @@ func (mw *Middleware) SpaceMakeShareable(cctx context.Context, req *pb.RpcSpaceM
 
 func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpaceInviteGenerateRequest) *pb.RpcSpaceInviteGenerateResponse {
 	aclService := mustService[acl.AclService](mw)
-	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId, req.InviteType, req.Permissions)
+	inviteInfo, err := aclService.GenerateInvite(cctx, req.SpaceId, req.InviteType, req.Permissions, req.ShareWithinSpace)
 	if err != nil {
 		code := mapErrorCode(err,
 			errToCode(space.ErrSpaceDeleted, pb.RpcSpaceInviteGenerateResponseError_SPACE_IS_DELETED),
@@ -66,6 +66,8 @@ func (mw *Middleware) SpaceInviteGenerate(cctx context.Context, req *pb.RpcSpace
 			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteGenerateResponseError_REQUEST_FAILED),
 			errToCode(acl.ErrLimitReached, pb.RpcSpaceInviteGenerateResponseError_LIMIT_REACHED),
 			errToCode(acl.ErrNotShareable, pb.RpcSpaceInviteGenerateResponseError_NOT_SHAREABLE),
+			errToCode(acl.ErrInviteAlreadyShared, pb.RpcSpaceInviteGenerateResponseError_INVITE_ALREADY_SHARED),
+			errToCode(inviteservice.ErrInviteNotShareable, pb.RpcSpaceInviteGenerateResponseError_INVITE_NOT_SHAREABLE),
 		)
 		return &pb.RpcSpaceInviteGenerateResponse{
 			Error: &pb.RpcSpaceInviteGenerateResponseError{
@@ -92,6 +94,7 @@ func (mw *Middleware) SpaceInviteChange(cctx context.Context, req *pb.RpcSpaceIn
 			errToCode(space.ErrSpaceNotExists, pb.RpcSpaceInviteChangeResponseError_NO_SUCH_SPACE),
 			errToCode(acl.ErrPersonalSpace, pb.RpcSpaceInviteChangeResponseError_BAD_INPUT),
 			errToCode(acl.ErrAclRequestFailed, pb.RpcSpaceInviteChangeResponseError_REQUEST_FAILED),
+			errToCode(inviteservice.ErrInviteNotShareable, pb.RpcSpaceInviteChangeResponseError_INVITE_NOT_SHAREABLE),
 		)
 		return &pb.RpcSpaceInviteChangeResponse{
 			Error: &pb.RpcSpaceInviteChangeResponseError{
@@ -118,12 +121,15 @@ func (mw *Middleware) SpaceInviteGetCurrent(cctx context.Context, req *pb.RpcSpa
 			},
 		}
 	}
+	// members of a space whose owner holds the invite get heldByOwner with an empty cid and key: the
+	// link is the owner's to share
 	return &pb.RpcSpaceInviteGetCurrentResponse{
 		InviteCid:     inviteInfo.InviteFileCid,
 		InviteFileKey: inviteInfo.InviteFileKey,
 		// nolint: gosec
 		InviteType:  model.InviteType(inviteInfo.InviteType),
 		Permissions: domain.ConvertAclPermissions(inviteInfo.Permissions),
+		HeldByOwner: inviteInfo.HeldByOwner,
 	}
 }
 

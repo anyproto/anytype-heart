@@ -1242,6 +1242,16 @@
     "source": "details"
   },
   {
+    "description": "Set when the space invite is kept in the owner's account instead of the space, so that only the owner can share it",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "spaceInviteHeldByOwner",
+    "maxCount": 1,
+    "name": "Invite is held by the space owner",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Identity",
     "format": "longtext",
     "hidden": true,
@@ -1619,7 +1629,6 @@
     "readonly": false,
     "source": "details"
   },
-
   {
     "description": "Choose icon for the type among custom Anytype icons",
     "format": "longtext",

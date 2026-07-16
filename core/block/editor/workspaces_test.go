@@ -13,6 +13,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/migration"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 )
 
 func TestWorkspaces_FileInfo(t *testing.T) {
@@ -42,6 +43,60 @@ func TestWorkspaces_FileInfo(t *testing.T) {
 		fileId, err := fx.RemoveExistingInviteInfo()
 		require.NoError(t, err)
 		require.Empty(t, fileId)
+	})
+	t.Run("an invite held by the owner leaves nothing but the marker", func(t *testing.T) {
+		// given a workspace, which every member of the space reads
+		fx := newWorkspacesFixture(t)
+		defer fx.finish()
+
+		// when an invite the owner holds is written to it
+		err := fx.SetInviteFileInfo(domain.InviteInfo{
+			InviteFileCid: "fileId",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+			HeldByOwner:   true,
+		})
+		require.NoError(t, err)
+
+		// then the members learn that an invite exists and that it is the owner's to share, and the
+		// link itself is nowhere in the object they sync
+		require.Equal(t, domain.InviteInfo{HeldByOwner: true}, fx.GetExistingInviteInfo())
+		details := fx.CombinedDetails()
+		require.Empty(t, details.GetString(bundle.RelationKeySpaceInviteFileCid))
+		require.Empty(t, details.GetString(bundle.RelationKeySpaceInviteFileKey))
+	})
+	t.Run("sharing an invite within the space clears the marker", func(t *testing.T) {
+		// given a workspace that carries the marker of an invite the owner held
+		fx := newWorkspacesFixture(t)
+		defer fx.finish()
+		err := fx.SetInviteFileInfo(domain.InviteInfo{InviteFileCid: "oldId", InviteFileKey: "oldKey", HeldByOwner: true})
+		require.NoError(t, err)
+		want := domain.InviteInfo{
+			InviteFileCid: "fileId",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+		}
+
+		// when an invite shared within the space replaces it
+		err = fx.SetInviteFileInfo(want)
+		require.NoError(t, err)
+
+		// then the members read the invite itself, and nothing tells them to ask the owner for it
+		require.Equal(t, want, fx.GetExistingInviteInfo())
+		require.False(t, fx.CombinedDetails().GetBool(bundle.RelationKeySpaceInviteHeldByOwner))
+	})
+	t.Run("removing an invite held by the owner clears the marker", func(t *testing.T) {
+		fx := newWorkspacesFixture(t)
+		defer fx.finish()
+		err := fx.SetInviteFileInfo(domain.InviteInfo{InviteFileCid: "fileId", InviteFileKey: "fileKey", HeldByOwner: true})
+		require.NoError(t, err)
+
+		removed, err := fx.RemoveExistingInviteInfo()
+		require.NoError(t, err)
+		require.Equal(t, domain.InviteInfo{HeldByOwner: true}, removed)
+		require.Empty(t, fx.GetExistingInviteInfo())
 	})
 }
 

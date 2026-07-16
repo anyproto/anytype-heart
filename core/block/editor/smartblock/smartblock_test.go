@@ -322,6 +322,44 @@ func TestSmartBlock_CollectOutgoingLinks(t *testing.T) {
 		assert.Equal(t, "file1", links[0].SourceBlockID)
 	})
 
+	t.Run("collect link from bookmark block", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"bookmark1"}},
+			{Id: "bookmark1", Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{TargetObjectId: "bookmarkTarget1"},
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		require.Len(t, links, 1)
+		assert.Equal(t, "bookmarkTarget1", links[0].TargetID)
+		assert.Equal(t, "bookmark1", links[0].SourceBlockID)
+	})
+
+	t.Run("skip self-reference in bookmark block", func(t *testing.T) {
+		// given
+		objectId := "root"
+		fx := newFixture(objectId, t)
+		fx.init(t, []*model.Block{
+			{Id: objectId, ChildrenIds: []string{"bookmark1"}},
+			{Id: "bookmark1", Content: &model.BlockContentOfBookmark{
+				Bookmark: &model.BlockContentBookmark{TargetObjectId: objectId}, // self-reference
+			}},
+		})
+
+		// when
+		links := fx.collectOutgoingLinks(fx.NewState())
+
+		// then
+		assert.Empty(t, links)
+	})
+
 	t.Run("collect link from text mention", func(t *testing.T) {
 		// given
 		objectId := "root"

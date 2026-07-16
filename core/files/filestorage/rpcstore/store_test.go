@@ -324,6 +324,10 @@ func (t *testServer) FilesDelete(ctx context.Context, req *fileproto.FilesDelete
 	return &fileproto.FilesDeleteResponse{}, nil
 }
 
+func (t *testServer) BlockDeleteUnbound(ctx context.Context, req *fileproto.BlockDeleteUnboundRequest) (*fileproto.Ok, error) {
+	return nil, fileprotoerr.ErrForbidden
+}
+
 func (t *testServer) FilesInfo(ctx context.Context, req *fileproto.FilesInfoRequest) (*fileproto.FilesInfoResponse, error) {
 	resp := &fileproto.FilesInfoResponse{}
 	t.mu.Lock()

@@ -71,6 +71,23 @@ func (d *ChatHandler) Init(ctx context.Context, s *storestate.StoreState) (err e
 }
 
 func (d *ChatHandler) BeforeCreate(ctx context.Context, ch storestate.ChangeOp) error {
+	coll, err := ch.State.Collection(ctx, CollectionName)
+	if err != nil {
+		return fmt.Errorf("get collection: %w", err)
+	}
+	_, err = coll.FindId(ctx, ch.Value.GetString("id"))
+	if err == nil {
+		// The message is already stored: this create is being replayed over an existing
+		// store (e.g. the one-time full-tree replay storeApply runs for a store without
+		// the fullyReplayed marker, which a reindex triggers for every chat). The insert
+		// would hit ErrDocExists anyway; bail out before mutating the subscription
+		// counters, so already-read messages are not resurrected as unread.
+		return storestate.ErrIgnore
+	}
+	if !errors.Is(err, anystore.ErrDocNotFound) {
+		return fmt.Errorf("check for existing message: %w", err)
+	}
+
 	msg, err := chatmodel.UnmarshalMessage(ch.Value)
 	if err != nil {
 		return fmt.Errorf("unmarshal message: %w", err)
