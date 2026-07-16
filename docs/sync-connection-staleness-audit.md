@@ -137,10 +137,13 @@ Recovery signals that exist today:
    *regained from zero* trigger recovery — pure additions on top of existing
    connectivity (docker/VM bridges, VPN tunnels, hotspots) don't tear down
    healthy connections. A trailing coalesced run whose connectivity
-   fingerprint (type + path id + interface snapshot + link state) equals the
-   leading run's is skipped — duplicate signals of one physical event (wake =
-   clock jump + interface diff + foreground RPC) must not flush the
-   connections just re-established. Enumeration errors fail open (link
+   fingerprint (type + path id + monitor generation) equals the leading run's
+   is skipped — duplicate signals of one physical event (wake = clock jump +
+   interface diff + foreground RPC) must not flush the connections just
+   re-established. The generation counter (bumped on every observed monitor
+   change) rather than the raw snapshot keeps a down-and-back link flap
+   visible: the leading run acted while the link was down, so an identical
+   final address set must not count as "already handled". Enumeration errors fail open (link
    assumed up), and an explicit WIFI/CELLULAR report from the client always
    overrides the interface heuristic, so `IsOffline` cannot wedge a mobile
    device into offline behavior.
@@ -157,6 +160,18 @@ Recovery signals that exist today:
 6. **filesync stats poller** — slow mode on error.
 7. **Mobile integration guide** — `docs/mobile-network-integration.md`
    (NWPathMonitor / ConnectivityManager wiring, exact call sequences).
+
+## Known follow-ups (heart, non-blocking)
+
+- Reconnect currently runs ~2 diff rounds per space (the per-space
+  reconnect kick and the recovery sweep overlap within a second) — correct
+  but redundant; worth a cross-component dedup later.
+- Persistent link flapping costs one full flush+sweep per suppression window
+  (~6s) indefinitely — bounded, but a dying router degrades to sync livelock;
+  acceptable at the monitor's granularity.
+- Test fixtures start the real monitor goroutine; a genuine >30s wall-clock
+  jump on a CI VM mid-test could flake — inject the monitor clock if it ever
+  bites.
 
 ## Follow-ups (any-sync)
 

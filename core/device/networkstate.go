@@ -82,8 +82,11 @@ const (
 	// Signals arrive in bursts (wake fires the clock-jump detector, the
 	// interface diff and the client's foreground RPC within seconds); the
 	// first one runs immediately, the rest coalesce into at most one trailing
-	// run so fresh connections aren't torn down repeatedly.
-	recoverySuppressWindow = time.Second * 5
+	// run so fresh connections aren't torn down repeatedly. Deliberately NOT
+	// equal to netMonitorTickInterval: with equal values, an event observed
+	// exactly one tick after a recovery lands on the window boundary and
+	// leading-vs-coalesced is decided by sub-millisecond races.
+	recoverySuppressWindow = time.Second * 6
 )
 
 type networkState struct {
@@ -103,6 +106,13 @@ type networkState struct {
 
 	linkDown        atomic.Bool
 	monitorSnapshot atomic.String
+	// monitorGen counts observed monitor-state changes. The recovery
+	// fingerprint uses it instead of the raw snapshot values: a link that
+	// flapped down and back between two recovery signals yields an identical
+	// snapshot string but a different generation, and the trailing run must
+	// fire then — the leading run acted while the link was down and its dials
+	// failed. Single writer (the monitor goroutine).
+	monitorGen      atomic.Int64
 	recoveryMu      sync.Mutex
 	lastRecoveryAt  time.Time
 	recoveryPending bool
@@ -238,18 +248,24 @@ func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType, net
 }
 
 func (n *networkState) onMonitorSnapshot(key string, down bool) {
-	n.monitorSnapshot.Store(key)
-	n.linkDown.Store(down)
+	// note: no short-circuit — both atomics must be updated every call
+	keyChanged := n.monitorSnapshot.Swap(key) != key
+	downChanged := n.linkDown.Swap(down) != down
+	if keyChanged || downChanged {
+		n.monitorGen.Inc()
+	}
 }
 
 // fingerprint captures the connectivity state a recovery acts on: the
-// client-reported type and path id plus the monitor's interface snapshot and
-// link state. Two recoveries with equal fingerprints saw the same network.
+// client-reported type and path id plus the monitor generation. Equal
+// fingerprints mean nothing was observed to change since the last recovery —
+// the generation (rather than the raw snapshot) makes a down-and-back link
+// flap visible even when the address set ends up identical.
 func (n *networkState) fingerprint() string {
 	n.networkMu.Lock()
 	state, id := n.networkState, n.networkId
 	n.networkMu.Unlock()
-	return fmt.Sprintf("%d|%s|%s|%t", state, id, n.monitorSnapshot.Load(), n.linkDown.Load())
+	return fmt.Sprintf("%d|%s|%d", state, id, n.monitorGen.Load())
 }
 
 func (n *networkState) IsOffline() bool {

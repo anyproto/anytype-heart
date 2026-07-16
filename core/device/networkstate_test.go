@@ -262,6 +262,38 @@ func TestNetworkState_ConnectivityRecovery(t *testing.T) {
 		scheduled[0]()
 		assert.Equal(t, 2, fx.syncer.callCount())
 	})
+	t.Run("trailing run fires when the link flapped even if addresses end up identical", func(t *testing.T) {
+		// a short outage bracketing a wake: the leading run acted while the
+		// link was down (its dials failed), so an identical final address set
+		// must NOT be treated as "already handled" — the monitor generation
+		// makes the flap visible to the fingerprint
+		fx := newNetworkStateFixture(t)
+		now := time.Now()
+		fx.networkState.now = func() time.Time { return now }
+		var scheduled []func()
+		fx.networkState.scheduleAfter = func(d time.Duration, f func()) *time.Timer {
+			scheduled = append(scheduled, f)
+			return time.NewTimer(time.Hour)
+		}
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // first report
+
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "") // leading recovery
+
+		// link drops and comes back with the same address while suppressed
+		key := fx.networkState.monitorSnapshot.Load()
+		fx.onMonitorSnapshot("", true)
+		fx.onMonitorSnapshot(key, false)
+		fx.triggerRecovery("interface addresses regained") // suppressed -> pending
+		require.Len(t, scheduled, 1)
+
+		// same type, same id, same final snapshot — but the generation moved,
+		// so the trailing run must execute the full pipeline
+		now = now.Add(recoverySuppressWindow + time.Second)
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		scheduled[0]()
+		assert.Equal(t, 2, fx.syncer.callCount(), "flapped link must not be swallowed by the skip")
+	})
 	t.Run("trailing run is skipped when the network is unchanged (duplicate signals)", func(t *testing.T) {
 		// a wake fires the clock-jump detector, the interface diff and the
 		// foreground RPC within seconds: the duplicates must not flush the
