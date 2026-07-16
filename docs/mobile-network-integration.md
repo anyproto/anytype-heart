@@ -132,14 +132,17 @@ class HeartNetworkReporter(context: Context) {
     fun start() = cm.registerDefaultNetworkCallback(callback)
 
     private fun report(caps: NetworkCapabilities, networkId: String) {
+        // IMPORTANT: do NOT map missing NET_CAPABILITY_VALIDATED to
+        // NOT_CONNECTED. Validation gates *internet*, but a LAN without
+        // internet (or a captive portal) can still serve local P2P sync —
+        // heart treats NOT_CONNECTED as fully offline and would throttle it.
+        // Report by transport; heart discovers actual reachability itself.
         val type = when {
-            !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) ->
-                DeviceNetworkType.NOT_CONNECTED
             caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ->
                 DeviceNetworkType.CELLULAR
-            else -> DeviceNetworkType.WIFI // wifi / ethernet / vpn-over-wifi
+            else -> DeviceNetworkType.WIFI // wifi / ethernet / vpn-over-wifi, incl. LAN-only
         }
-        reportType(type, if (type == DeviceNetworkType.NOT_CONNECTED) "" else networkId)
+        reportType(type, networkId)
     }
 
     private fun reportType(type: DeviceNetworkType, networkId: String) {
@@ -205,7 +208,8 @@ powerMonitor.on('resume',  () => rpc.AppSetDeviceState({ deviceState: 1 /* FOREG
 
 1. Watch heart logs for `connectivity recovery` entries with the reason
    (`network type changed to …`, `foreground resume`, `wake from sleep`,
-   `interface addresses changed`). Every OS-level transition should produce
+   `interface addresses lost: …`, `interface addresses regained`). Every
+   OS-level transition should produce
    exactly one (bursts coalesce; `connectivity recovery coalesced` lines are
    fine).
 2. Toggle airplane mode: sync status must flip to offline within ~1s and

@@ -852,7 +852,13 @@ func (s *service) runSyncAllSpaceHeads() {
 				// offline device parks these goroutines until reconnect.
 				ctx := context.WithValue(s.ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(time.Minute))
 				if err := sp.CommonSpace().SyncHeads(ctx); err != nil && s.ctx.Err() == nil {
-					log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
+					if errors.Is(err, peermanager.ErrPeerFindDeadlineExceeded) {
+						// expected while offline; one warn per loaded space per
+						// sweep is pure noise on large accounts
+						log.Debug("sync all space heads: no peers", zap.String("spaceId", id))
+					} else {
+						log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
+					}
 				}
 			}()
 		}

@@ -490,3 +490,19 @@ func TestClientPeerManager_GetResponsiblePeers_ClosedPeersNotServed(t *testing.T
 		assert.Equal(t, "live", peers[0].Id())
 	})
 }
+
+func Test_nextCheckInterval(t *testing.T) {
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	conn := &fakeConnectivity{}
+	f.cm.p.connectivity = conn
+
+	assert.Equal(t, responsiblePeersCheckInterval, f.cm.nextCheckInterval(), "online: full cadence")
+
+	conn.offline.Store(true)
+	assert.Equal(t, responsiblePeersCheckIntervalOffline, f.cm.nextCheckInterval(), "offline, no LAN peers: back off")
+
+	// LAN peers present: "no internet" must not slow local-only P2P sync
+	f.store.UpdateLocalPeer("peerId", []string{spaceId})
+	assert.Equal(t, responsiblePeersCheckInterval, f.cm.nextCheckInterval(), "offline with LAN peers: full cadence")
+}

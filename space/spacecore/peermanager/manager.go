@@ -258,17 +258,23 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 func (n *clientPeerManager) manageResponsiblePeers() {
 	for {
 		n.fetchResponsiblePeers()
-		interval := responsiblePeersCheckInterval
-		if n.p != nil && n.p.isOffline() {
-			interval = responsiblePeersCheckIntervalOffline
-		}
 		select {
-		case <-time.After(interval):
+		case <-time.After(n.nextCheckInterval()):
 		case <-n.rebuildResponsiblePeers:
 		case <-n.ctx.Done():
 			return
 		}
 	}
+}
+
+// nextCheckInterval stretches the re-dial cadence while the device is known
+// offline — unless LAN peers are present: "no internet" does not mean "no
+// sync" (local-only P2P must keep refreshing at full cadence).
+func (n *clientPeerManager) nextCheckInterval() time.Duration {
+	if n.p != nil && n.p.isOffline() && len(n.peerStore.LocalPeerIds(n.spaceId)) == 0 {
+		return responsiblePeersCheckIntervalOffline
+	}
+	return responsiblePeersCheckInterval
 }
 
 func (n *clientPeerManager) fetchResponsiblePeers() {
