@@ -71,6 +71,9 @@ func newNetworkStateFixture(t *testing.T) *networkStateFixture {
 		Register(ns)
 	require.NoError(t, a.Start(ctx))
 	t.Cleanup(func() { _ = ns.Close(ctx) })
+	// wait for the monitor's initial snapshot so recovery fingerprints are
+	// deterministic from the first assertion on
+	require.Eventually(t, func() bool { return ns.monitorSnapshot.Load() != "" }, time.Second, time.Millisecond)
 	return &networkStateFixture{
 		networkState:  ns,
 		a:             a,
@@ -230,7 +233,7 @@ func TestNetworkState_ConnectivityRecovery(t *testing.T) {
 		fx.networkMu.Unlock()
 		assert.False(t, fx.IsOffline())
 	})
-	t.Run("burst coalesces into one trailing recovery, reporting the latest reason", func(t *testing.T) {
+	t.Run("burst coalesces into one trailing recovery when the network really changed", func(t *testing.T) {
 		fx := newNetworkStateFixture(t)
 		now := time.Now()
 		fx.networkState.now = func() time.Time { return now }
@@ -241,23 +244,48 @@ func TestNetworkState_ConnectivityRecovery(t *testing.T) {
 		}
 		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // first report, no recovery
 
-		// three rapid switches: first runs immediately, the rest coalesce into
+		// rapid switches: the first runs immediately, the second coalesces into
 		// exactly one scheduled trailing run
 		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
-		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")
-		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "")
-		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")     // leading recovery at WIFI
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // suppressed
 		assert.Equal(t, 1, fx.syncer.callCount())
 		require.Len(t, scheduled, 1)
 		fx.recoveryMu.Lock()
-		assert.Contains(t, fx.pendingReason, "WIFI", "trailing run must report the latest coalesced reason")
+		assert.Contains(t, fx.pendingReason, "CELLULAR", "trailing run must report the latest coalesced reason")
 		fx.recoveryMu.Unlock()
 
-		// the trailing run executes the full pipeline once more
+		// state at trailing time (CELLULAR) differs from what the leading run
+		// acted on (WIFI) -> the trailing run executes the full pipeline
 		now = now.Add(recoverySuppressWindow + time.Second)
 		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
 		scheduled[0]()
 		assert.Equal(t, 2, fx.syncer.callCount())
+	})
+	t.Run("trailing run is skipped when the network is unchanged (duplicate signals)", func(t *testing.T) {
+		// a wake fires the clock-jump detector, the interface diff and the
+		// foreground RPC within seconds: the duplicates must not flush the
+		// connections the leading run just re-established
+		fx := newNetworkStateFixture(t)
+		now := time.Now()
+		fx.networkState.now = func() time.Time { return now }
+		var scheduled []func()
+		fx.networkState.scheduleAfter = func(d time.Duration, f func()) *time.Timer {
+			scheduled = append(scheduled, f)
+			return time.NewTimer(time.Hour)
+		}
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // first report
+
+		fx.mockPool.EXPECT().Flush(gomock.Any()).Times(1)
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")     // leading recovery at WIFI
+		fx.SetNetworkState(model.DeviceNetworkType_CELLULAR, "") // suppressed
+		fx.SetNetworkState(model.DeviceNetworkType_WIFI, "")     // back to the recovered state
+		require.Len(t, scheduled, 1)
+
+		// trailing fingerprint equals the leading one -> no second teardown
+		now = now.Add(recoverySuppressWindow + time.Second)
+		scheduled[0]()
+		assert.Equal(t, 1, fx.syncer.callCount(), "duplicate trailing run must be skipped")
 	})
 	t.Run("close cancels a pending trailing recovery", func(t *testing.T) {
 		fx := newNetworkStateFixture(t)

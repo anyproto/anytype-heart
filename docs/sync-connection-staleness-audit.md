@@ -133,14 +133,21 @@ Recovery signals that exist today:
    suppression window; a suppressed event schedules one trailing recovery.
 2. **Net monitor** — `core/device/netmonitor.go`: 5s tick; interface-addr
    snapshots (IPv4 + IPv6 /64) + clock-jump (>30s wall-vs-mono drift ⇒ wake) +
-   link-down tracking for `IsOffline()`. Only a *lost* address triggers
-   recovery — pure additions (docker/VM bridges, VPN tunnels, hotspots) don't
-   tear down healthy connections. Enumeration errors fail open (link assumed
-   up), and an explicit WIFI/CELLULAR report from the client always overrides
-   the interface heuristic, so `IsOffline` cannot wedge a mobile device into
-   offline behavior.
+   link-down tracking for `IsOffline()`. A *lost* address and connectivity
+   *regained from zero* trigger recovery — pure additions on top of existing
+   connectivity (docker/VM bridges, VPN tunnels, hotspots) don't tear down
+   healthy connections. A trailing coalesced run whose connectivity
+   fingerprint (type + path id + interface snapshot + link state) equals the
+   leading run's is skipped — duplicate signals of one physical event (wake =
+   clock jump + interface diff + foreground RPC) must not flush the
+   connections just re-established. Enumeration errors fail open (link
+   assumed up), and an explicit WIFI/CELLULAR report from the client always
+   overrides the interface heuristic, so `IsOffline` cannot wedge a mobile
+   device into offline behavior.
 3. **Offline-aware peer manager** — `space/spacecore/peermanager`: rebuild
-   signal on every connectivity event; 2min dial cadence while offline; on the
+   signal on every connectivity event; 2min dial cadence while offline —
+   except when LAN peers are present ("no internet" must not slow local-only
+   P2P sync); on the
    node-status edge ConnectionError→Online the manager kicks one immediate
    per-space diff round, so changes made offline (whose broadcasts were
    dropped by the 30s deadline) reach other devices at reconnect speed instead

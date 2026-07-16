@@ -62,14 +62,19 @@ type monitorFixture struct {
 }
 
 func newMonitorFixture() *monitorFixture {
+	return newMonitorFixtureAddrs(nil)
+}
+
+func newMonitorFixtureAddrs(initial []net.Addr) *monitorFixture {
 	fx := &monitorFixture{wall: time.Unix(1000000, 0)}
+	fx.addrs.Addrs = initial
 	m := &netMonitor{
 		getAddrs: func() (addrs.InterfacesAddrs, error) { return fx.addrs, fx.addrsErr },
 		nowWall:  func() time.Time { return fx.wall },
 		elapsed:  func() time.Duration { return fx.elapsed },
 	}
 	m.onEvent = func(reason string) { fx.events = append(fx.events, reason) }
-	m.onLinkDown = func(down bool) { fx.linkDown = append(fx.linkDown, down) }
+	m.onSnapshot = func(key string, down bool) { fx.linkDown = append(fx.linkDown, down) }
 	fx.netMonitor = m
 	// mirror run()'s initialization
 	m.prevWall = fx.wall
@@ -109,21 +114,24 @@ func TestNetMonitor_ClockJump(t *testing.T) {
 }
 
 func TestNetMonitor_InterfaceChanges(t *testing.T) {
-	t.Run("only losing an address fires, additions and stable sets do not", func(t *testing.T) {
-		fx := newMonitorFixture()
-		// pure addition (docker bridge, VPN tunnel, first Wi-Fi join): existing
-		// connections are not invalidated, so no teardown event
+	t.Run("regaining connectivity from zero fires recovery", func(t *testing.T) {
+		fx := newMonitorFixture() // empty baseline = no connectivity
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "192.168.1.10/24")}
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
-		assert.Empty(t, fx.events, "pure addition must not fire")
+		require.Len(t, fx.events, 1, "link coming back must trigger recovery")
+		assert.Contains(t, fx.events[0], "regained")
 
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
-		assert.Empty(t, fx.events, "stable addresses must not fire")
+		assert.Len(t, fx.events, 1, "stable addresses must not fire again")
+	})
+	t.Run("additions on existing connectivity do not fire, losses do", func(t *testing.T) {
+		fx := newMonitorFixtureAddrs([]net.Addr{ipNet(t, "192.168.1.10/24")})
 
-		// another pure addition alongside the existing address
+		// pure addition (docker bridge, VPN tunnel, hotspot): existing
+		// connections are not invalidated, so no teardown event
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "192.168.1.10/24"), ipNet(t, "10.99.0.1/24")}
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
-		assert.Empty(t, fx.events, "added second interface must not fire")
+		assert.Empty(t, fx.events, "pure addition must not fire")
 
 		// network switch: old address replaced -> the loss fires
 		fx.addrs.Addrs = []net.Addr{ipNet(t, "10.20.30.40/24"), ipNet(t, "10.99.0.1/24")}
@@ -131,10 +139,17 @@ func TestNetMonitor_InterfaceChanges(t *testing.T) {
 		require.Len(t, fx.events, 1)
 		assert.Contains(t, fx.events[0], "192.168.1.10")
 
-		// losing everything fires too
+		// losing everything fires the loss path (not regain)
 		fx.addrs.Addrs = nil
 		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
-		assert.Len(t, fx.events, 2)
+		require.Len(t, fx.events, 2)
+		assert.Contains(t, fx.events[1], "lost")
+
+		// and coming back fires regain
+		fx.addrs.Addrs = []net.Addr{ipNet(t, "10.20.30.40/24")}
+		fx.advance(netMonitorTickInterval, netMonitorTickInterval)
+		require.Len(t, fx.events, 3)
+		assert.Contains(t, fx.events[2], "regained")
 	})
 	t.Run("link down and up tracked", func(t *testing.T) {
 		fx := newMonitorFixture()

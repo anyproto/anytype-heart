@@ -21,6 +21,7 @@ Scope: global
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -101,12 +102,19 @@ type networkState struct {
 	spaceSyncer          spaceHeadSyncer
 
 	linkDown        atomic.Bool
+	monitorSnapshot atomic.String
 	recoveryMu      sync.Mutex
 	lastRecoveryAt  time.Time
 	recoveryPending bool
 	pendingReason   string
 	pendingTimer    *time.Timer
 	closed          bool
+	// lastRecoveredFingerprint is the connectivity state the last recovery
+	// acted on; a trailing coalesced run with an identical fingerprint is a
+	// duplicate signal of the same physical event (wake fires the clock-jump
+	// detector, the interface diff and the foreground RPC within seconds) and
+	// must not tear down the connections the leading run just re-established.
+	lastRecoveredFingerprint string
 
 	monitor   *netMonitor
 	runCancel context.CancelFunc
@@ -167,7 +175,7 @@ func (n *networkState) Init(a *app.App) (err error) {
 func (n *networkState) Run(ctx context.Context) (err error) {
 	var runCtx context.Context
 	runCtx, n.runCancel = context.WithCancel(context.Background())
-	n.monitor = newNetMonitor(n.triggerRecovery, n.linkDown.Store, n.monitorGetAddrs)
+	n.monitor = newNetMonitor(n.triggerRecovery, n.onMonitorSnapshot, n.monitorGetAddrs)
 	go n.monitor.run(runCtx)
 	return
 }
@@ -227,6 +235,21 @@ func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType, net
 		reason = "network path changed (same type " + networkState.String() + ")"
 	}
 	n.triggerRecovery(reason)
+}
+
+func (n *networkState) onMonitorSnapshot(key string, down bool) {
+	n.monitorSnapshot.Store(key)
+	n.linkDown.Store(down)
+}
+
+// fingerprint captures the connectivity state a recovery acts on: the
+// client-reported type and path id plus the monitor's interface snapshot and
+// link state. Two recoveries with equal fingerprints saw the same network.
+func (n *networkState) fingerprint() string {
+	n.networkMu.Lock()
+	state, id := n.networkState, n.networkId
+	n.networkMu.Unlock()
+	return fmt.Sprintf("%d|%s|%s|%t", state, id, n.monitorSnapshot.Load(), n.linkDown.Load())
 }
 
 func (n *networkState) IsOffline() bool {
@@ -313,13 +336,26 @@ func (n *networkState) runPendingRecovery() {
 		return
 	}
 	reason := n.pendingReason
+	lastFingerprint := n.lastRecoveredFingerprint
 	n.recoveryPending = false
 	n.lastRecoveryAt = n.timeNow()
 	n.recoveryMu.Unlock()
+	// A trailing run only makes sense when the network actually changed since
+	// the leading run (e.g. Wi-Fi->cellular right after a wake). Duplicate
+	// signals of the same physical event must not flush the connections the
+	// leading run just re-established.
+	if n.fingerprint() == lastFingerprint {
+		log.Info("connectivity recovery skipped: no network change since the last run",
+			zap.String("reason", reason))
+		return
+	}
 	n.recover("coalesced: " + reason)
 }
 
 func (n *networkState) recover(reason string) {
+	n.recoveryMu.Lock()
+	n.lastRecoveredFingerprint = n.fingerprint()
+	n.recoveryMu.Unlock()
 	online := !n.IsOffline()
 	log.Info("connectivity recovery", zap.String("reason", reason), zap.Bool("online", online))
 	// Flush drops every pooled connection (closing the underlying sockets), so
