@@ -147,9 +147,14 @@ type networkState struct {
 // only when the debug stat endpoint asks, so this adds no steady-state
 // overhead.
 type recoveryStats struct {
-	networkReports   atomic.Int64
-	foregroundEvents atomic.Int64
-	backgroundEvents atomic.Int64
+	networkReports atomic.Int64
+	// networkReportsDuplicate counts no-op reports (same type and id). The
+	// ratio to networkReports shows the client's call pattern: near-100%
+	// duplicates is a healthy client reporting on every OS path callback as
+	// documented; 0 raw reports means the client isn't wired up at all.
+	networkReportsDuplicate atomic.Int64
+	foregroundEvents        atomic.Int64
+	backgroundEvents        atomic.Int64
 
 	signalsByType          atomic.Int64
 	signalsByPath          atomic.Int64
@@ -197,9 +202,10 @@ type networkStateStat struct {
 	MonitorGen       int64  `json:"monitorGeneration"`
 	Offline          bool   `json:"offline"`
 
-	NetworkReports   int64 `json:"networkReports"`
-	ForegroundEvents int64 `json:"foregroundEvents"`
-	BackgroundEvents int64 `json:"backgroundEvents"`
+	NetworkReports          int64 `json:"networkReports"`
+	NetworkReportsDuplicate int64 `json:"networkReportsDuplicate"`
+	ForegroundEvents        int64 `json:"foregroundEvents"`
+	BackgroundEvents        int64 `json:"backgroundEvents"`
 
 	SignalsNetworkTypeChange int64 `json:"signalsNetworkTypeChange"`
 	SignalsNetworkPathChange int64 `json:"signalsNetworkPathChange"`
@@ -232,9 +238,10 @@ func (n *networkState) ProvideStat() any {
 		MonitorGen:       n.monitorGen.Load(),
 		Offline:          n.IsOffline(),
 
-		NetworkReports:   n.stats.networkReports.Load(),
-		ForegroundEvents: n.stats.foregroundEvents.Load(),
-		BackgroundEvents: n.stats.backgroundEvents.Load(),
+		NetworkReports:          n.stats.networkReports.Load(),
+		NetworkReportsDuplicate: n.stats.networkReportsDuplicate.Load(),
+		ForegroundEvents:        n.stats.foregroundEvents.Load(),
+		BackgroundEvents:        n.stats.backgroundEvents.Load(),
 
 		SignalsNetworkTypeChange: n.stats.signalsByType.Load(),
 		SignalsNetworkPathChange: n.stats.signalsByPath.Load(),
@@ -369,6 +376,7 @@ func (n *networkState) SetNetworkState(networkState model.DeviceNetworkType, net
 
 	if !typeChanged && !idChanged {
 		// to avoid unnecessary hook calls
+		n.stats.networkReportsDuplicate.Inc()
 		return
 	}
 	if typeChanged {

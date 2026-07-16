@@ -411,9 +411,11 @@ func TestNetworkState_ProvideStat(t *testing.T) {
 	assert.NotZero(t, st.LastRecoveryUnix)
 	assert.NotEmpty(t, st.MonitorSnapshot)
 
-	// duplicate report: counted as a report, not as a signal or recovery
+	// duplicate report: counted as a report and as a duplicate, not as a
+	// signal or recovery
 	fx.SetNetworkState(model.DeviceNetworkType_WIFI, "wifi-1")
 	st = fx.ProvideStat().(networkStateStat)
 	assert.Equal(t, int64(3), st.NetworkReports)
+	assert.Equal(t, int64(1), st.NetworkReportsDuplicate)
 	assert.Equal(t, int64(1), st.Recoveries)
 }
