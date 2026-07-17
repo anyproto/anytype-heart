@@ -704,3 +704,17 @@ func TestService_OnWorkspaceChanged(t *testing.T) {
 		assert.Equal(t, int64(5), lastDetails.GetInt64(bundle.RelationKeyIconOption))
 	})
 }
+
+func TestOrderSpacesOpenedFirst(t *testing.T) {
+	t.Run("opened spaces move to the front, order stable", func(t *testing.T) {
+		got := orderSpacesOpenedFirst(
+			[]string{"a", "b", "c", "d"},
+			map[string]struct{}{"c": {}, "d": {}},
+		)
+		assert.Equal(t, []string{"c", "d", "a", "b"}, got)
+	})
+	t.Run("no opened spaces: unchanged", func(t *testing.T) {
+		ids := []string{"a", "b"}
+		assert.Equal(t, ids, orderSpacesOpenedFirst(ids, nil))
+	})
+}
