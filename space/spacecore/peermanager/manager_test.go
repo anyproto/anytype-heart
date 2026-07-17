@@ -634,3 +634,30 @@ func Test_fetchResponsiblePeers_boundsLocalDials(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, peers, 2, "node and local peer must both be served after the full fetch")
 }
+
+func Test_fetchResponsiblePeers_escalatesDialBound(t *testing.T) {
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.updater.EXPECT().Refresh(spaceId).Times(2)
+	// first attempt: tight bound
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, ids []string) (peer.Peer, error) {
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok)
+			assert.LessOrEqual(t, time.Until(deadline), responsibleNodeDialTimeout)
+			return nil, fmt.Errorf("dial canceled by tight bound")
+		})
+	f.cm.fetchResponsiblePeers()
+	f.cm.consecutiveFetchFailures.Store(2) // as if a second failure occurred
+
+	// after repeated failures: room for the full scheme fallback
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, ids []string) (peer.Peer, error) {
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok)
+			assert.Greater(t, time.Until(deadline), responsibleNodeDialTimeout,
+				"repeated failures must escalate the bound so a QUIC-blocked network's yamux fallback can complete")
+			return newTestPeer("node"), nil
+		})
+	f.cm.fetchResponsiblePeers()
+}

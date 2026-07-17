@@ -56,6 +56,15 @@ const (
 	// early lets the fast retry below re-enter GetOneOf, whose active-conn
 	// check then returns any node that connected meanwhile.
 	responsibleNodeDialTimeout = time.Second * 10
+	// responsibleNodeDialTimeoutSlow replaces the bound after consecutive
+	// failures. The tight bound is right for the common case (live conn or a
+	// fast dial) but it is shorter than a full scheme fallback: on networks
+	// that blackhole QUIC (VPNs, some carriers) every dial needs the whole
+	// quic-attempts-then-yamux chain (observed 20-35s on a desktop with a VPN
+	// up), and a 10s cancel-and-retry loop re-runs the doomed prefix forever —
+	// sync never comes up. Once failures repeat, give the chain room to reach
+	// the working transport.
+	responsibleNodeDialTimeoutSlow = time.Second * 40
 	// responsiblePeersRetryInterval is the re-fetch cadence right after a
 	// failed node lookup while the device believes it is online: quick enough
 	// to pick up a connection established by another space's dial in the
@@ -377,8 +386,13 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	// Bound the lookup: GetOneOf may park single-flight behind another
 	// space's in-flight dial to an unreachable node; waitLoad honors ctx, so
 	// the retry loop stays in control instead of inheriting the slowest
-	// dial's schedule.
-	dialCtx, cancel := context.WithTimeout(n.ctx, responsibleNodeDialTimeout)
+	// dial's schedule. After repeated failures the bound escalates so a slow
+	// but working scheme fallback (QUIC-blocked networks) can complete.
+	bound := responsibleNodeDialTimeout
+	if n.consecutiveFetchFailures.Load() >= 2 {
+		bound = responsibleNodeDialTimeoutSlow
+	}
+	dialCtx, cancel := context.WithTimeout(n.ctx, bound)
 	p, err := n.p.pool.GetOneOf(dialCtx, n.getNodeIds())
 	cancel()
 	if err == nil {
