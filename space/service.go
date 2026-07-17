@@ -58,6 +58,7 @@ import (
 	"github.com/anyproto/anytype-heart/space/internal/spacecontroller"
 	"github.com/anyproto/anytype-heart/space/internal/spaceprocess/mode"
 	"github.com/anyproto/anytype-heart/space/spacecore"
+	"github.com/anyproto/anytype-heart/space/spacecore/peermanager"
 	"github.com/anyproto/anytype-heart/space/spacedomain"
 	"github.com/anyproto/anytype-heart/space/spacefactory"
 	"github.com/anyproto/anytype-heart/space/spaceinfo"
@@ -173,6 +174,10 @@ type service struct {
 	ctx       context.Context // use ctx for the long operations within the lifecycle of the service, excluding Run
 	ctxCancel context.CancelFunc
 	isClosing atomic.Bool
+
+	syncAllMu      sync.Mutex
+	syncAllRunning bool
+	syncAllPending bool
 
 	firstCreatedSpaceId string
 }
@@ -808,8 +813,26 @@ func (s *service) SyncAllSpaceHeads() {
 	if s.isClosing.Load() {
 		return
 	}
-	ids := s.AllLoadedSpaceIds()
-	go func() {
+	// Coalesce overlapping sweeps: recovery signals can burst (wake fires the
+	// clock-jump detector, the interface diff and the foreground RPC within
+	// seconds) and a sweep can park up to 1min on peer-find deadlines while
+	// offline. One running sweep plus at most one queued rerun keeps the
+	// behavior (a request arriving mid-sweep still gets a full fresh sweep)
+	// without stacking N_spaces goroutines per signal.
+	s.syncAllMu.Lock()
+	if s.syncAllRunning {
+		s.syncAllPending = true
+		s.syncAllMu.Unlock()
+		return
+	}
+	s.syncAllRunning = true
+	s.syncAllMu.Unlock()
+	go s.runSyncAllSpaceHeads()
+}
+
+func (s *service) runSyncAllSpaceHeads() {
+	for {
+		ids := s.AllLoadedSpaceIds()
 		sem := make(chan struct{}, syncAllHeadsParallelism)
 		var wg sync.WaitGroup
 		for _, id := range ids {
@@ -825,13 +848,32 @@ func (s *service) SyncAllSpaceHeads() {
 					}
 					return
 				}
-				if err := sp.CommonSpace().SyncHeads(s.ctx); err != nil && s.ctx.Err() == nil {
-					log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
+				// Bound the wait for responsible peers: without a deadline an
+				// offline device parks these goroutines until reconnect.
+				ctx := context.WithValue(s.ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(time.Minute))
+				if err := sp.CommonSpace().SyncHeads(ctx); err != nil && s.ctx.Err() == nil {
+					if errors.Is(err, peermanager.ErrPeerFindDeadlineExceeded) {
+						// expected while offline; one warn per loaded space per
+						// sweep is pure noise on large accounts
+						log.Debug("sync all space heads: no peers", zap.String("spaceId", id))
+					} else {
+						log.Warn("sync all space heads: sync heads", zap.String("spaceId", id), zap.Error(err))
+					}
 				}
 			}()
 		}
 		wg.Wait()
-	}()
+
+		s.syncAllMu.Lock()
+		if s.syncAllPending && !s.isClosing.Load() && s.ctx.Err() == nil {
+			s.syncAllPending = false
+			s.syncAllMu.Unlock()
+			continue
+		}
+		s.syncAllRunning = false
+		s.syncAllMu.Unlock()
+		return
+	}
 }
 
 func (s *service) TechSpaceId() string {

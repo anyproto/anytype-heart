@@ -15,6 +15,7 @@ import (
 	"storj.io/drpc"
 
 	//nolint:misspell
+	"github.com/anyproto/any-sync/commonspace/headsync"
 	"github.com/anyproto/any-sync/commonspace/peermanager"
 	"github.com/anyproto/any-sync/net/peer"
 	"go.uber.org/zap"
@@ -28,6 +29,23 @@ type contextKey string
 var (
 	ContextPeerFindDeadlineKey  contextKey = "peerFindDeadline"
 	ErrPeerFindDeadlineExceeded            = errors.New("peer find deadline exceeded")
+)
+
+const (
+	// responsiblePeersCheckInterval is the online re-dial/refresh cadence.
+	responsiblePeersCheckInterval = time.Second * 20
+	// responsiblePeersCheckIntervalOffline stretches the cadence while the
+	// device is known offline: still probing (a wrong offline belief must
+	// self-correct) but not burning the radio with doomed dials every 20s.
+	// A reconnect signals an immediate rebuild, so this adds no recovery
+	// latency.
+	responsiblePeersCheckIntervalOffline = time.Minute * 2
+	// broadcastPeerFindDeadline bounds how long a broadcast may wait for
+	// responsible peers to appear. Broadcasts run inside the shared streampool
+	// dial workers (only a few of them); without a deadline an offline device
+	// parks a worker per broadcast indefinitely and freezes the send path.
+	// Dropped broadcasts are recovered by the periodic head-sync.
+	broadcastPeerFindDeadline = time.Second * 30
 )
 
 type NodeStatus interface {
@@ -63,6 +81,8 @@ type clientPeerManager struct {
 	nodeStatus                NodeStatus
 	spaceSyncService          Updater
 	streamPool                streampool.StreamPool
+	headSync                  headsync.HeadSync
+	diffKickRunning           atomic.Bool
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -83,6 +103,11 @@ func (n *clientPeerManager) Init(a *app.App) (err error) {
 	n.streamPool = app.MustComponent[streampool.StreamPool](a)
 	n.spaceSyncService = app.MustComponent[Updater](a)
 	n.peerToPeerStatus = app.MustComponent[PeerToPeerStatus](a)
+	// optional (absent in tests): used to kick an immediate diff round when the
+	// node connection recovers, replacing the broadcasts dropped while offline
+	if c := a.Component(headsync.CName); c != nil {
+		n.headSync, _ = c.(headsync.HeadSync)
+	}
 
 	var keepAliveMsg = &spacesyncproto.SpaceSubscription{
 		SpaceIds: []string{n.spaceId},
@@ -103,9 +128,21 @@ func (n *clientPeerManager) Name() (name string) {
 }
 
 func (n *clientPeerManager) Run(ctx context.Context) (err error) {
+	if n.p != nil {
+		n.p.registerManager(n)
+	}
 	go n.peerToPeerStatus.RegisterSpace(n.spaceId)
 	go n.manageResponsiblePeers()
 	return
+}
+
+// signalRebuild requests an immediate responsible-peers re-fetch (non-blocking;
+// coalesces with an already-pending request).
+func (n *clientPeerManager) signalRebuild() {
+	select {
+	case n.rebuildResponsiblePeers <- struct{}{}:
+	default:
+	}
 }
 
 func (n *clientPeerManager) GetNodePeers(ctx context.Context) (peers []peer.Peer, err error) {
@@ -120,6 +157,9 @@ func (n *clientPeerManager) BroadcastMessage(ctx context.Context, msg drpc.Messa
 	// the context which comes here should not be used. It can be cancelled and thus kill the stream,
 	// because the stream can be opened with this context
 	ctx = logger.CtxWithFields(context.Background(), logger.CtxGetFields(ctx)...)
+	// bound the wait for peers: this getter runs inside a shared streampool
+	// dial worker and must not park it until reconnect
+	ctx = context.WithValue(ctx, ContextPeerFindDeadlineKey, time.Now().Add(broadcastPeerFindDeadline))
 	return n.streamPool.Send(ctx, msg, func(ctx context.Context) (peers []peer.Peer, err error) {
 		return n.GetResponsiblePeers(ctx)
 	})
@@ -136,38 +176,59 @@ func (n *clientPeerManager) SendMessage(ctx context.Context, peerId string, msg 
 
 func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []peer.Peer, err error) {
 	n.Lock()
-	if len(n.responsiblePeers) == 0 {
-		deadline, _ := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
+	// Serve only live peers. Right after a connection-pool flush (foreground
+	// resume, network switch) the cached list still holds the just-closed
+	// peers until the rebuild swaps it; handing those out made the immediate
+	// post-recovery head-sync and opened-object refresh silent no-ops that
+	// waited for the next periodic tick (~20s). Filtering makes callers fall
+	// into the wait below and sync the moment the fresh dial lands.
+	for _, p := range n.responsiblePeers {
+		if !p.IsClosed() {
+			peers = append(peers, p)
+		}
+	}
+	if dropped := len(n.responsiblePeers) - len(peers); dropped > 0 && n.p != nil {
+		n.p.stats.closedPeersFiltered.Add(int64(dropped))
+	}
+	if len(peers) == 0 {
 		if n.availableResponsiblePeers == nil {
 			n.availableResponsiblePeers = make(chan struct{})
 		}
 		ch := n.availableResponsiblePeers
 		n.Unlock()
-		if !deadline.IsZero() {
-			if time.Now().After(deadline) {
-				return nil, ErrPeerFindDeadlineExceeded
-			}
-			select {
-			case <-ch:
-				return n.GetResponsiblePeers(ctx)
-			case <-time.After(time.Until(deadline)):
-				return nil, ErrPeerFindDeadlineExceeded
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
-		} else {
-			select {
-			case <-ch:
-				return n.GetResponsiblePeers(ctx)
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
+		if err = n.waitResponsiblePeers(ctx, ch); err != nil {
+			return nil, err
 		}
+		return n.GetResponsiblePeers(ctx)
 	}
-	peers = n.responsiblePeers
 	n.Unlock()
 	log.Debug("get responsible peers", zap.Int("peerCount", len(peers)), zap.String("spaceId", n.spaceId))
 	return
+}
+
+// waitResponsiblePeers blocks until a rebuild publishes live peers (ch is
+// closed), the optional peer-find deadline passes, or ctx is done.
+func (n *clientPeerManager) waitResponsiblePeers(ctx context.Context, ch <-chan struct{}) error {
+	deadline, _ := ctx.Value(ContextPeerFindDeadlineKey).(time.Time)
+	if deadline.IsZero() {
+		select {
+		case <-ch:
+			return nil
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	if time.Now().After(deadline) {
+		return ErrPeerFindDeadlineExceeded
+	}
+	select {
+	case <-ch:
+		return nil
+	case <-time.After(time.Until(deadline)):
+		return ErrPeerFindDeadlineExceeded
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (n *clientPeerManager) getExactPeer(ctx context.Context, peerId string) (peers []peer.Peer, err error) {
@@ -209,7 +270,7 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 	for {
 		n.fetchResponsiblePeers()
 		select {
-		case <-time.After(time.Second * 20):
+		case <-time.After(n.nextCheckInterval()):
 		case <-n.rebuildResponsiblePeers:
 		case <-n.ctx.Done():
 			return
@@ -217,12 +278,34 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 	}
 }
 
+// nextCheckInterval stretches the re-dial cadence while the device is known
+// offline — unless LAN peers are present: "no internet" does not mean "no
+// sync" (local-only P2P must keep refreshing at full cadence).
+func (n *clientPeerManager) nextCheckInterval() time.Duration {
+	if n.p != nil && n.p.isOffline() && len(n.peerStore.LocalPeerIds(n.spaceId)) == 0 {
+		return responsiblePeersCheckIntervalOffline
+	}
+	return responsiblePeersCheckInterval
+}
+
 func (n *clientPeerManager) fetchResponsiblePeers() {
 	var peers []peer.Peer
+	prevStatus := n.nodeStatus.GetNodeStatus(n.spaceId)
 	p, err := n.p.pool.GetOneOf(n.ctx, n.getNodeIds())
 	if err == nil {
 		peers = []peer.Peer{p}
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.Online)
+		if prevStatus == nodestatus.ConnectionError {
+			// Node connection just recovered. Head-update broadcasts attempted
+			// while offline were dropped (bounded by broadcastPeerFindDeadline),
+			// so without a kick the changes made offline would only reach other
+			// devices on the next periodic diff round (up to ~20s later than
+			// pre-drop behavior). An immediate diff round restores — and beats —
+			// the old "parked broadcast fires on reconnect" delivery latency,
+			// and its trailing KeepAlive re-establishes the broadcast stream
+			// and space subscription.
+			n.kickDiffSyncOnReconnect()
+		}
 	} else {
 		log.Info("can't get node peers", zap.Error(err))
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.ConnectionError)
@@ -256,6 +339,26 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		close(n.availableResponsiblePeers)
 		n.availableResponsiblePeers = nil
 	}
+}
+
+// kickDiffSyncOnReconnect runs one immediate head-sync (diff) round in the
+// background. Single-flight: a still-running kick from a rapid
+// offline/online flap is not stacked.
+func (n *clientPeerManager) kickDiffSyncOnReconnect() {
+	if n.headSync == nil || !n.diffKickRunning.CompareAndSwap(false, true) {
+		return
+	}
+	if n.p != nil {
+		n.p.stats.reconnectDiffKicks.Inc()
+	}
+	go func() {
+		defer n.diffKickRunning.Store(false)
+		ctx, cancel := context.WithTimeout(n.ctx, time.Minute)
+		defer cancel()
+		if err := n.headSync.DiffSync(ctx); err != nil && n.ctx.Err() == nil {
+			log.Info("diff sync on reconnect", zap.String("spaceId", n.spaceId), zap.Error(err))
+		}
+	}()
 }
 
 func (n *clientPeerManager) watchPeer(p peer.Peer) {
@@ -292,6 +395,9 @@ func (n *clientPeerManager) KeepAlive(ctx context.Context) {
 }
 
 func (n *clientPeerManager) Close(ctx context.Context) (err error) {
+	if n.p != nil {
+		n.p.unregisterManager(n)
+	}
 	n.ctxCancel()
 	n.peerToPeerStatus.UnregisterSpace(n.spaceId)
 	return
