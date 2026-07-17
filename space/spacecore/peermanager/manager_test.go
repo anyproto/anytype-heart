@@ -539,7 +539,20 @@ func Test_nextCheckInterval_fastRetryAfterFailure(t *testing.T) {
 	// a failed node lookup while online was likely a bounded wait behind a
 	// slow dial — retry quickly to pick up a conn landed by another space
 	f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.ConnectionError)
+	f.cm.consecutiveFetchFailures.Store(1)
 	assert.Equal(t, responsiblePeersRetryInterval, f.cm.nextCheckInterval(), "online + failed lookup: fast retry")
+
+	// steady-state failure (LAN without internet, captive portal): the fast
+	// window decays so nodes aren't hammered every 5s forever while local-only
+	// P2P keeps syncing
+	f.cm.consecutiveFetchFailures.Store(fastRetryMaxAttempts + 1)
+	assert.Equal(t, responsiblePeersCheckInterval, f.cm.nextCheckInterval(), "steady failure: back to normal cadence")
+
+	// a fresh connectivity event (rebuild signal) reopens the fast window
+	// even after steady failure — e.g. a LAN-only device walking out to cellular
+	f.cm.rebuildResponsiblePeers = make(chan struct{}, 1)
+	f.cm.signalRebuild()
+	assert.Equal(t, responsiblePeersRetryInterval, f.cm.nextCheckInterval(), "rebuild signal: fast window reopened")
 }
 
 func Test_fetchResponsiblePeers_boundsNodeLookup(t *testing.T) {

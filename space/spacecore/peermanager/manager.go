@@ -62,6 +62,12 @@ const (
 	// meantime, and not a dial storm — dials are single-flighted in the pool,
 	// so concurrent retries share one attempt.
 	responsiblePeersRetryInterval = time.Second * 5
+	// fastRetryMaxAttempts bounds how many consecutive failed lookups keep the
+	// fast cadence. The fast retry exists for the transient window right after
+	// a network switch; when the node stays unreachable (LAN without internet,
+	// captive portal — local-only P2P keeps syncing meanwhile), decaying back
+	// to the normal cadence avoids permanent doomed-dial pressure every 5s.
+	fastRetryMaxAttempts = 3
 )
 
 type NodeStatus interface {
@@ -99,6 +105,12 @@ type clientPeerManager struct {
 	streamPool                streampool.StreamPool
 	headSync                  headsync.HeadSync
 	diffKickRunning           atomic.Bool
+	// consecutiveFetchFailures counts failed node lookups since the last
+	// success or rebuild signal. A rebuild signal resets it so every fresh
+	// connectivity event gets its own fast-retry window, even when the
+	// previous state was steady failure (LAN-only device walking out to
+	// cellular).
+	consecutiveFetchFailures atomic.Int32
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -153,8 +165,11 @@ func (n *clientPeerManager) Run(ctx context.Context) (err error) {
 }
 
 // signalRebuild requests an immediate responsible-peers re-fetch (non-blocking;
-// coalesces with an already-pending request).
+// coalesces with an already-pending request). It also opens a fresh fast-retry
+// window: the signal means connectivity plausibly changed, so prior steady
+// failures must not slow the retries that follow.
 func (n *clientPeerManager) signalRebuild() {
+	n.consecutiveFetchFailures.Store(0)
 	select {
 	case n.rebuildResponsiblePeers <- struct{}{}:
 	default:
@@ -297,14 +312,17 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 // nextCheckInterval stretches the re-dial cadence while the device is known
 // offline — unless LAN peers are present: "no internet" does not mean "no
 // sync" (local-only P2P must keep refreshing at full cadence). Conversely,
-// after a failed node lookup while online it shortens the cadence: the
-// failure was likely a bounded wait behind a slow dial, and another space's
-// dial may land a usable connection any moment.
+// for the first few failed node lookups it shortens the cadence: right after
+// a network switch the failure was likely a bounded wait behind a slow dial,
+// and another space's dial may land a usable connection any moment. Once the
+// failures look steady-state (node genuinely unreachable, e.g. LAN-only
+// setups) the cadence decays back to normal.
 func (n *clientPeerManager) nextCheckInterval() time.Duration {
 	if n.p != nil && n.p.isOffline() && len(n.peerStore.LocalPeerIds(n.spaceId)) == 0 {
 		return responsiblePeersCheckIntervalOffline
 	}
-	if n.nodeStatus != nil && n.nodeStatus.GetNodeStatus(n.spaceId) == nodestatus.ConnectionError {
+	if n.nodeStatus != nil && n.nodeStatus.GetNodeStatus(n.spaceId) == nodestatus.ConnectionError &&
+		n.consecutiveFetchFailures.Load() <= fastRetryMaxAttempts {
 		return responsiblePeersRetryInterval
 	}
 	return responsiblePeersCheckInterval
@@ -321,6 +339,7 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 	p, err := n.p.pool.GetOneOf(dialCtx, n.getNodeIds())
 	cancel()
 	if err == nil {
+		n.consecutiveFetchFailures.Store(0)
 		peers = []peer.Peer{p}
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.Online)
 		if prevStatus == nodestatus.ConnectionError {
@@ -335,6 +354,7 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 			n.kickDiffSyncOnReconnect()
 		}
 	} else {
+		n.consecutiveFetchFailures.Inc()
 		log.Info("can't get node peers", zap.Error(err))
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.ConnectionError)
 	}
