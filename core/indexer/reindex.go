@@ -237,12 +237,17 @@ func (i *indexer) ReindexSpace(space clientspace.Space) (err error) {
 		// this may happen e.g. if the app got closed in the middle of object updates processing
 		// So here we reindexOutdatedObjects which compare the last indexed heads hash with the actual one
 		go func() {
+			waitStart := time.Now()
+			if !i.reindexLimiter.acquire(i.runCtx, space.Id()) {
+				return
+			}
+			defer i.reindexLimiter.release()
 			start := time.Now()
 			total, success, err := i.reindexOutdatedObjects(ctx, space)
 			if err != nil {
 				log.Errorf("reindex outdated failed: %s", err)
 			}
-			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())))
+			l := log.With(zap.String("space", space.Id()), zap.Int("total", total), zap.Int("succeed", success), zap.Int("spentMs", int(time.Since(start).Milliseconds())), zap.Int("waitedMs", int(start.Sub(waitStart).Milliseconds())))
 			if success != total {
 				l.Errorf("reindex outdated partially failed")
 			} else if total != 0 {

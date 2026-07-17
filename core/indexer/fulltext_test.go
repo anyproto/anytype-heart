@@ -3,6 +3,7 @@ package indexer
 import (
 	"context"
 	"fmt"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -92,6 +93,10 @@ func newFixture(t *testing.T) *fixture {
 	techSpaceIdProvider := mock_spacesyncstatus.NewMockSpaceIdGetter(t)
 	techSpaceIdProvider.EXPECT().TechSpaceId().Return("").Maybe()
 	runCtx, cancel := context.WithCancel(ctx)
+	// registered after the store fixture so it fires first on cleanup: reindex
+	// passes still queued on the limiter exit instead of running against the
+	// closed store and finished mocks
+	t.Cleanup(cancel)
 
 	chatRepo := chatrepository.New()
 	require.NoError(t, chatRepo.Init(testApp))
@@ -110,6 +115,7 @@ func newFixture(t *testing.T) *fixture {
 		config:              &config.Config{NetworkMode: pb.RpcAccount_LocalOnly},
 		btHash:              hasher,
 		forceFt:             make(chan struct{}),
+		reindexLimiter:      newReindexLimiter(maxConcurrentSpaceReindexFor(runtime.GOOS), nil),
 		spaceIndexers:       make(map[string]*spaceIndexer),
 		techSpaceIdProvider: techSpaceIdProvider,
 		spaces:              make(map[string]struct{}),
