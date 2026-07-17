@@ -928,6 +928,39 @@ func TestService_GenerateInvite(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "testCid", info.InviteFileCid)
 	})
+
+	t.Run("admin cannot generate invite", func(t *testing.T) {
+		// given a space where "e" is an admin, not the owner
+		fx := newFixture(t)
+		defer fx.finish(t)
+		spaceId := "spaceId"
+		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteService.EXPECT().GetCurrent(ctx, spaceId).Return(domain.InviteInfo{}, inviteservice.ErrInviteNotExists)
+		mockSpace := mock_clientspace.NewMockSpace(t)
+		mockCommonSpace := mock_commonspace.NewMockSpace(fx.ctrl)
+		mockSpace.EXPECT().CommonSpace().Return(mockCommonSpace)
+		fx.mockSpaceService.EXPECT().Get(ctx, spaceId).Return(mockSpace, nil)
+
+		exec := list.NewAclExecutor(spaceId)
+		cmds := []struct {
+			cmd string
+			err error
+		}{
+			{"a.init::a", nil},
+			{"a.invite::invId", nil},
+			{"e.join::invId", nil},
+			{"a.approve::e,adm", nil},
+		}
+		for _, c := range cmds {
+			require.Equal(t, c.err, exec.Execute(c.cmd), c.cmd)
+		}
+		// the acl is seen from the admin's point of view, so the owner check fails before any invite is built
+		mockCommonSpace.EXPECT().Acl().Return(mockSyncAcl{exec.ActualAccounts()["e"].Acl})
+
+		info, err := fx.GenerateInvite(ctx, spaceId, model.InviteType_Member, model.ParticipantPermissions_Reader, false)
+		require.ErrorIs(t, err, ErrIncorrectPermissions)
+		require.Empty(t, info.InviteFileCid)
+	})
 }
 
 func TestService_Join(t *testing.T) {

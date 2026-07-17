@@ -893,8 +893,16 @@ func (a *aclService) GenerateInvite(ctx context.Context, spaceId string, invType
 		return
 	}
 	commonSpace := acceptSpace.CommonSpace()
-	aclClient := commonSpace.AclClient()
 	acl := commonSpace.Acl()
+	// only the owner may create an invite. The any-sync node rejects a non-owner's invite record too, but
+	// checking here keeps admins from ever building or storing one in the first place.
+	acl.RLock()
+	isOwner := acl.AclState().Permissions(acl.AclState().Identity()).IsOwner()
+	acl.RUnlock()
+	if !isOwner {
+		return domain.InviteInfo{}, ErrIncorrectPermissions
+	}
+	aclClient := commonSpace.AclClient()
 	aclPermissions := domain.ConvertParticipantPermissions(permissions)
 	invitePayload := aclclient.InvitePayload{
 		Permissions: aclPermissions,
