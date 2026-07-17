@@ -185,24 +185,35 @@ func (i *inviteService) ShareWithinSpace(ctx context.Context, spaceId string) (d
 // devices. The workspace then answers for everyone else — with a shared invite, or with the marker
 // of an owner-held one.
 func (i *inviteService) getExisting(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
-	err = i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
-		info = obj.GetExistingInviteInfo()
-		return nil
-	})
-	if err != nil {
-		return domain.InviteInfo{}, fmt.Errorf("read invite info from space view: %w", err)
-	}
-	if info.InviteFileCid != "" {
-		return info, nil
-	}
+	// The workspace is read first and wins whenever it holds a cid. Normally exactly one of the two
+	// objects holds the invite, but an old client can write a cid to the workspace without clearing the
+	// owner's space view (it knows about neither the space view storage nor the marker). That later
+	// write is the live invite, so when both hold a cid the workspace one is the one to trust.
+	var workspaceInfo domain.InviteInfo
 	err = i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
-		info = obj.GetExistingInviteInfo()
+		workspaceInfo = obj.GetExistingInviteInfo()
 		return nil
 	})
 	if err != nil {
 		return domain.InviteInfo{}, fmt.Errorf("read invite info from workspace: %w", err)
 	}
-	return info, nil
+	if workspaceInfo.InviteFileCid != "" {
+		return workspaceInfo, nil
+	}
+	// no cid in the workspace: on the owner's device the invite may be held in their space view
+	var spaceViewInfo domain.InviteInfo
+	err = i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
+		spaceViewInfo = obj.GetExistingInviteInfo()
+		return nil
+	})
+	if err != nil {
+		return domain.InviteInfo{}, fmt.Errorf("read invite info from space view: %w", err)
+	}
+	if spaceViewInfo.InviteFileCid != "" {
+		return spaceViewInfo, nil
+	}
+	// neither holds a cid: the workspace answer carries the held-by-owner marker for members
+	return workspaceInfo, nil
 }
 
 // setInviteInfo writes the invite to the object that holds its cid and key, and updates the other

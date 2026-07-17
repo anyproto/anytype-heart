@@ -204,7 +204,10 @@ func (w *Workspaces) SetInviteFileInfo(info domain.InviteInfo) (err error) {
 func (w *Workspaces) GetExistingInviteInfo() (inviteInfo domain.InviteInfo) {
 	details := w.CombinedDetails()
 	inviteInfo = getInviteDetails(details)
-	inviteInfo.HeldByOwner = details.GetBool(bundle.RelationKeySpaceInviteHeldByOwner)
+	// a cid in the workspace is a shared invite, so it is not held by the owner — even if the marker is
+	// still set. An old client can write a cid without clearing the marker (it does not know about it),
+	// and the held-by-owner marker only means anything when there is no cid to read.
+	inviteInfo.HeldByOwner = inviteInfo.InviteFileCid == "" && details.GetBool(bundle.RelationKeySpaceInviteHeldByOwner)
 	return
 }
 
