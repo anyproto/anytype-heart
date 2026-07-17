@@ -68,6 +68,13 @@ const (
 	// captive portal — local-only P2P keeps syncing meanwhile), decaying back
 	// to the normal cadence avoids permanent doomed-dial pressure every 5s.
 	fastRetryMaxAttempts = 3
+	// localPeerDialTimeout is the shared budget for refreshing all local (mDNS)
+	// peers in one fetch cycle. After a network switch the peer store still
+	// lists peers from the previous network whose addresses are unroutable;
+	// unbounded dials to them parked every manager single-flight for the whole
+	// scheme x addr chain (~20-40s) while a healthy node connection sat idle.
+	// A bounded failure also actually triggers the stale peer's removal.
+	localPeerDialTimeout = time.Second * 5
 )
 
 type NodeStatus interface {
@@ -359,21 +366,42 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.ConnectionError)
 	}
 	n.spaceSyncService.Refresh(n.spaceId)
-	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
-	for _, peerId := range peerIds {
-		p, err := n.p.pool.Get(n.ctx, peerId)
-		if err != nil {
-			n.peerStore.RemoveLocalPeer(peerId)
-			log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))
-			continue
-		}
-		peers = append(peers, p)
+	if len(peers) > 0 {
+		// Publish the node connection before touching local peers: the
+		// head-sync sweep and broadcasts wait on this list, and the local
+		// dials below can burn seconds on stale mDNS entries after a network
+		// switch (observed in the field: all managers parked behind one dial
+		// to a Wi-Fi-era local peer unroutable from cellular, while a healthy
+		// node connection sat idle until the fetch finished).
+		n.publishResponsiblePeers(peers)
 	}
+	peerIds := n.peerStore.LocalPeerIds(n.spaceId)
+	if len(peerIds) > 0 {
+		// Bound the local dials as one budget: on failure the stale peer is
+		// removed, so a Wi-Fi-era entry costs at most one bounded pass after
+		// the switch instead of an unbounded dial chain per cycle.
+		localCtx, cancelLocal := context.WithTimeout(n.ctx, localPeerDialTimeout)
+		for _, peerId := range peerIds {
+			p, err := n.p.pool.Get(localCtx, peerId)
+			if err != nil {
+				n.peerStore.RemoveLocalPeer(peerId)
+				log.Warn("failed to get local from net pool", zap.String("peerId", peerId), zap.Error(err))
+				continue
+			}
+			peers = append(peers, p)
+		}
+		cancelLocal()
+	}
+	n.publishResponsiblePeers(peers)
+}
 
+// publishResponsiblePeers swaps the served list and wakes the waiters; safe to
+// call more than once per fetch (watchers are registered once per peer).
+func (n *clientPeerManager) publishResponsiblePeers(peers []peer.Peer) {
 	n.Lock()
 	defer n.Unlock()
 
-	for _, p = range peers {
+	for _, p := range peers {
 		if _, ok := n.watchingPeers[p.Id()]; !ok {
 			n.watchingPeers[p.Id()] = struct{}{}
 			go func(pr peer.Peer) {

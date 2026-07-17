@@ -113,7 +113,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 
 		// when
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
-		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(newTestPeer("id1"), nil)
+		f.pool.EXPECT().Get(gomock.Any(), "peerId").Return(newTestPeer("id1"), nil)
 		f.updater.EXPECT().Refresh(spaceId)
 		f.cm.fetchResponsiblePeers()
 
@@ -125,7 +125,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 
 		// when
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
-		f.pool.EXPECT().Get(f.cm.ctx, "peerId").Return(nil, fmt.Errorf("error"))
+		f.pool.EXPECT().Get(gomock.Any(), "peerId").Return(nil, fmt.Errorf("error"))
 		f.updater.EXPECT().Refresh(spaceId)
 		f.cm.fetchResponsiblePeers()
 	})
@@ -567,4 +567,70 @@ func Test_fetchResponsiblePeers_boundsNodeLookup(t *testing.T) {
 			return newTestPeer("id"), nil
 		})
 	f.cm.fetchResponsiblePeers()
+}
+
+func Test_fetchResponsiblePeers_nodePublishedBeforeLocalDials(t *testing.T) {
+	// the field failure: a stale mDNS peer from the previous network parks the
+	// fetch in an unroutable dial while a healthy node connection sits idle —
+	// the node peer must be served to waiters before the local dials settle
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.store.UpdateLocalPeer("staleWifiPeer", []string{spaceId})
+	f.updater.EXPECT().Refresh(spaceId)
+
+	localDialStarted := make(chan struct{})
+	releaseLocalDial := make(chan struct{})
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("node"), nil)
+	f.pool.EXPECT().Get(gomock.Any(), "staleWifiPeer").DoAndReturn(
+		func(ctx context.Context, id string) (peer.Peer, error) {
+			close(localDialStarted)
+			select {
+			case <-releaseLocalDial:
+			case <-ctx.Done():
+			}
+			return nil, fmt.Errorf("unroutable from cellular")
+		})
+
+	fetchDone := make(chan struct{})
+	go func() {
+		defer close(fetchDone)
+		f.cm.fetchResponsiblePeers()
+	}()
+
+	<-localDialStarted
+	// local dial is parked; the node peer must already be served
+	ctx := context.WithValue(context.Background(), ContextPeerFindDeadlineKey, time.Now().Add(time.Second))
+	peers, err := f.cm.GetResponsiblePeers(ctx)
+	require.NoError(t, err, "node peer must be available while local dials are in flight")
+	require.Len(t, peers, 1)
+	assert.Equal(t, "node", peers[0].Id())
+
+	close(releaseLocalDial)
+	select {
+	case <-fetchDone:
+	case <-time.After(time.Second * 2):
+		t.Fatal("fetch must finish")
+	}
+	// the failed local dial must evict the stale peer
+	assert.Empty(t, f.store.LocalPeerIds(spaceId), "stale local peer must be removed after a failed bounded dial")
+}
+
+func Test_fetchResponsiblePeers_boundsLocalDials(t *testing.T) {
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.store.UpdateLocalPeer("localPeer", []string{spaceId})
+	f.updater.EXPECT().Refresh(spaceId)
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("node"), nil)
+	f.pool.EXPECT().Get(gomock.Any(), "localPeer").DoAndReturn(
+		func(ctx context.Context, id string) (peer.Peer, error) {
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok, "local dials must carry a deadline: stale mDNS peers must not park the fetch")
+			assert.LessOrEqual(t, time.Until(deadline), localPeerDialTimeout)
+			return newTestPeer("localPeer"), nil
+		})
+	f.cm.fetchResponsiblePeers()
+
+	peers, err := f.cm.GetResponsiblePeers(context.Background())
+	require.NoError(t, err)
+	require.Len(t, peers, 2, "node and local peer must both be served after the full fetch")
 }
