@@ -50,9 +50,9 @@ type localDiscovery struct {
 	// refresh reassigning it.
 	closeWait       *sync.WaitGroup
 	interfacesAddrs addrs.InterfacesAddrs
-	periodicCheck      periodicsync.PeriodicSync
-	drpcServer         clientserver.ClientServer
-	nodeConf           nodeconf.Configuration
+	periodicCheck   periodicsync.PeriodicSync
+	drpcServer      clientserver.ClientServer
+	nodeConf        nodeconf.Configuration
 
 	ipv4        []string
 	ipv6        []string
@@ -306,7 +306,7 @@ func (l *localDiscovery) startServer() (err error) {
 		l.ipv4, // do not include ipv6 addresses, because they are disabled
 		nil,
 		l.interfacesAddrs.NetInterfaces(),
-		zeroconf.TTL(3600),                            // big ttl because we don't have re-broadcasting
+		zeroconf.TTL(3600), // big ttl because we don't have re-broadcasting
 		zeroconf.ServerSelectIPTraffic(zeroconf.IPv4), // disable ipv6 for now
 		zeroconf.WriteTimeout(time.Second*3),
 	)

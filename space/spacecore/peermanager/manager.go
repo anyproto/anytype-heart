@@ -46,6 +46,22 @@ const (
 	// parks a worker per broadcast indefinitely and freezes the send path.
 	// Dropped broadcasts are recovered by the periodic head-sync.
 	broadcastPeerFindDeadline = time.Second * 30
+	// responsibleNodeDialTimeout bounds the node lookup in
+	// fetchResponsiblePeers. pool.GetOneOf parks single-flight behind an
+	// in-flight dial of whichever node id the shuffle picked; on a fresh
+	// cellular path one unreachable node's address chain (schemes x addrs
+	// dialed sequentially, 10s each) can hold that park for tens of seconds
+	// while another responsible node is already connected (observed in the
+	// field: iOS Wi-Fi->cellular, 71 spaces parked behind one dial). Giving up
+	// early lets the fast retry below re-enter GetOneOf, whose active-conn
+	// check then returns any node that connected meanwhile.
+	responsibleNodeDialTimeout = time.Second * 10
+	// responsiblePeersRetryInterval is the re-fetch cadence right after a
+	// failed node lookup while the device believes it is online: quick enough
+	// to pick up a connection established by another space's dial in the
+	// meantime, and not a dial storm — dials are single-flighted in the pool,
+	// so concurrent retries share one attempt.
+	responsiblePeersRetryInterval = time.Second * 5
 )
 
 type NodeStatus interface {
@@ -280,10 +296,16 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 
 // nextCheckInterval stretches the re-dial cadence while the device is known
 // offline — unless LAN peers are present: "no internet" does not mean "no
-// sync" (local-only P2P must keep refreshing at full cadence).
+// sync" (local-only P2P must keep refreshing at full cadence). Conversely,
+// after a failed node lookup while online it shortens the cadence: the
+// failure was likely a bounded wait behind a slow dial, and another space's
+// dial may land a usable connection any moment.
 func (n *clientPeerManager) nextCheckInterval() time.Duration {
 	if n.p != nil && n.p.isOffline() && len(n.peerStore.LocalPeerIds(n.spaceId)) == 0 {
 		return responsiblePeersCheckIntervalOffline
+	}
+	if n.nodeStatus != nil && n.nodeStatus.GetNodeStatus(n.spaceId) == nodestatus.ConnectionError {
+		return responsiblePeersRetryInterval
 	}
 	return responsiblePeersCheckInterval
 }
@@ -291,7 +313,13 @@ func (n *clientPeerManager) nextCheckInterval() time.Duration {
 func (n *clientPeerManager) fetchResponsiblePeers() {
 	var peers []peer.Peer
 	prevStatus := n.nodeStatus.GetNodeStatus(n.spaceId)
-	p, err := n.p.pool.GetOneOf(n.ctx, n.getNodeIds())
+	// Bound the lookup: GetOneOf may park single-flight behind another
+	// space's in-flight dial to an unreachable node; waitLoad honors ctx, so
+	// the retry loop stays in control instead of inheriting the slowest
+	// dial's schedule.
+	dialCtx, cancel := context.WithTimeout(n.ctx, responsibleNodeDialTimeout)
+	p, err := n.p.pool.GetOneOf(dialCtx, n.getNodeIds())
+	cancel()
 	if err == nil {
 		peers = []peer.Peer{p}
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.Online)

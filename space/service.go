@@ -42,6 +42,7 @@ import (
 	"github.com/anyproto/any-sync/commonspace/spacesyncproto"
 	"github.com/anyproto/any-sync/util/crypto"
 	"github.com/ipfs/go-cid"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -178,8 +179,20 @@ type service struct {
 	syncAllMu      sync.Mutex
 	syncAllRunning bool
 	syncAllPending bool
+	openedObjects  openedObjectsProvider
 
 	firstCreatedSpaceId string
+}
+
+// BlockServiceCName mirrors core/block.CName: the block service imports this
+// package, so the sweep's opened-objects source is looked up by name via the
+// minimal interface below. A drift test in core/block keeps them in sync.
+const BlockServiceCName = "block-service"
+
+// openedObjectsProvider is the part of the block service the head-sync sweep
+// needs to know which spaces the user is currently looking at.
+type openedObjectsProvider interface {
+	GetOpenedObjects() []lo.Entry[string, string]
 }
 
 func (s *service) Delete(ctx context.Context, id string) (err error) {
@@ -210,6 +223,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.spaceLoaderListener = app.MustComponent[aclobjectmanager.SpaceLoaderListener](a)
 	s.identityService = app.MustComponent[dependencies.IdentityService](a)
 	s.inboxSender = app.MustComponent[inboxservice.Sender](a)
+	// optional (absent in tests): sweep priority source
+	if c := a.Component(BlockServiceCName); c != nil {
+		s.openedObjects, _ = c.(openedObjectsProvider)
+	}
 	s.waiting = make(map[string]controllerWaiter)
 	s.deferredStatuses = make(map[string]spaceViewStatus)
 	s.preferredSpaceId = s.config.PreferredSpaceId
@@ -830,9 +847,19 @@ func (s *service) SyncAllSpaceHeads() {
 	go s.runSyncAllSpaceHeads()
 }
 
+// syncAllHeadsPeerFindDeadline bounds each sweep worker's wait for responsible
+// peers. It must be short: workers hold semaphore slots while waiting, and
+// after a network switch the spaces whose node dial is stuck must not block
+// the slots from spaces whose node is already reachable (observed in the
+// field: all 10 workers parked behind one slow cellular dial). Stragglers are
+// covered by the per-space reconnect diff-kick and the fast retry cadence.
+const syncAllHeadsPeerFindDeadline = time.Second * 15
+
 func (s *service) runSyncAllSpaceHeads() {
 	for {
-		ids := s.AllLoadedSpaceIds()
+		// The user-visible spaces must not wait behind dozens of background
+		// spaces: sweep spaces with currently-open objects first.
+		ids := orderSpacesOpenedFirst(s.AllLoadedSpaceIds(), s.openedSpaceIds())
 		sem := make(chan struct{}, syncAllHeadsParallelism)
 		var wg sync.WaitGroup
 		for _, id := range ids {
@@ -848,9 +875,7 @@ func (s *service) runSyncAllSpaceHeads() {
 					}
 					return
 				}
-				// Bound the wait for responsible peers: without a deadline an
-				// offline device parks these goroutines until reconnect.
-				ctx := context.WithValue(s.ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(time.Minute))
+				ctx := context.WithValue(s.ctx, peermanager.ContextPeerFindDeadlineKey, time.Now().Add(syncAllHeadsPeerFindDeadline))
 				if err := sp.CommonSpace().SyncHeads(ctx); err != nil && s.ctx.Err() == nil {
 					if errors.Is(err, peermanager.ErrPeerFindDeadlineExceeded) {
 						// expected while offline; one warn per loaded space per
@@ -874,6 +899,37 @@ func (s *service) runSyncAllSpaceHeads() {
 		s.syncAllMu.Unlock()
 		return
 	}
+}
+
+// openedSpaceIds returns the set of spaces with currently-open objects; empty
+// when the block service is unavailable (tests).
+func (s *service) openedSpaceIds() map[string]struct{} {
+	if s.openedObjects == nil {
+		return nil
+	}
+	opened := map[string]struct{}{}
+	for _, entry := range s.openedObjects.GetOpenedObjects() {
+		opened[entry.Value] = struct{}{}
+	}
+	return opened
+}
+
+// orderSpacesOpenedFirst moves the spaces from the opened set to the front,
+// keeping the relative order stable within both groups.
+func orderSpacesOpenedFirst(ids []string, opened map[string]struct{}) []string {
+	if len(opened) == 0 {
+		return ids
+	}
+	ordered := make([]string, 0, len(ids))
+	var rest []string
+	for _, id := range ids {
+		if _, ok := opened[id]; ok {
+			ordered = append(ordered, id)
+		} else {
+			rest = append(rest, id)
+		}
+	}
+	return append(ordered, rest...)
 }
 
 func (s *service) TechSpaceId() string {

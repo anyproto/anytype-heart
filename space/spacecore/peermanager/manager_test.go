@@ -528,3 +528,30 @@ func Test_provider_ProvideStat(t *testing.T) {
 	assert.Equal(t, int64(1), st.ReconnectDiffKicks)
 	assert.Equal(t, int64(3), st.ClosedPeersFiltered)
 }
+
+func Test_nextCheckInterval_fastRetryAfterFailure(t *testing.T) {
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+
+	f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.Online)
+	assert.Equal(t, responsiblePeersCheckInterval, f.cm.nextCheckInterval(), "online + healthy: full cadence")
+
+	// a failed node lookup while online was likely a bounded wait behind a
+	// slow dial — retry quickly to pick up a conn landed by another space
+	f.cm.nodeStatus.SetNodesStatus(spaceId, nodestatus.ConnectionError)
+	assert.Equal(t, responsiblePeersRetryInterval, f.cm.nextCheckInterval(), "online + failed lookup: fast retry")
+}
+
+func Test_fetchResponsiblePeers_boundsNodeLookup(t *testing.T) {
+	spaceId := "spaceId"
+	f := newFixtureManager(t, spaceId)
+	f.updater.EXPECT().Refresh(spaceId)
+	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
+		func(ctx context.Context, ids []string) (peer.Peer, error) {
+			deadline, ok := ctx.Deadline()
+			assert.True(t, ok, "node lookup must carry a deadline so it can't park behind a slow dial")
+			assert.LessOrEqual(t, time.Until(deadline), responsibleNodeDialTimeout)
+			return newTestPeer("id"), nil
+		})
+	f.cm.fetchResponsiblePeers()
+}
