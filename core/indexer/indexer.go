@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/anyproto/any-sync/app"
+	"github.com/samber/lo"
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/anytype/config"
@@ -27,8 +29,16 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/space"
 	"github.com/anyproto/anytype-heart/space/clientspace"
 )
+
+// openedObjectsProvider is the part of the block service used to prioritize
+// reindex slots for spaces the user currently has objects open in; entry.Value
+// is the object's space id.
+type openedObjectsProvider interface {
+	GetOpenedObjects() []lo.Entry[string, string]
+}
 
 const (
 	CName = "indexer"
@@ -70,6 +80,9 @@ type indexer struct {
 	ftQueueStop     context.CancelFunc
 	ftQueueFinished chan struct{}
 	config          *config.Config
+	// reindexLimiter bounds cross-space concurrency of the outdated-objects
+	// reindex pass and prioritizes spaces the user is looking at
+	reindexLimiter *reindexLimiter
 
 	btHash  Hasher
 	forceFt chan struct{}
@@ -93,6 +106,21 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.picker = app.MustComponent[cache.CachedObjectGetter](a)
 	i.runCtx, i.runCtxCancel = context.WithCancel(context.Background())
 	i.forceFt = make(chan struct{})
+	// optional (absent in tests): reindex slot priority source, resolved by name
+	// to avoid importing core/block (same pattern as space/service.go's sweep)
+	var openedSpaceIds func() map[string]struct{}
+	if c := a.Component(space.BlockServiceCName); c != nil {
+		if provider, ok := c.(openedObjectsProvider); ok {
+			openedSpaceIds = func() map[string]struct{} {
+				opened := map[string]struct{}{}
+				for _, entry := range provider.GetOpenedObjects() {
+					opened[entry.Value] = struct{}{}
+				}
+				return opened
+			}
+		}
+	}
+	i.reindexLimiter = newReindexLimiter(maxConcurrentSpaceReindexFor(runtime.GOOS), openedSpaceIds)
 	i.config = app.MustComponent[*config.Config](a)
 	i.spaceIndexers = map[string]*spaceIndexer{}
 	i.techSpaceIdProvider = app.MustComponent[objectstore.TechSpaceIdProvider](a)
