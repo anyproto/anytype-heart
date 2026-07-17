@@ -98,6 +98,21 @@ func TestWorkspaces_FileInfo(t *testing.T) {
 		require.Equal(t, domain.InviteInfo{HeldByOwner: true}, removed)
 		require.Empty(t, fx.GetExistingInviteInfo())
 	})
+	t.Run("a cid alongside a stale marker reads as a shared invite", func(t *testing.T) {
+		// an old client can write a cid without clearing the held-by-owner marker (it knows about
+		// neither). The cid means a shared invite, so the marker must not make it look owner-held.
+		fx := newWorkspacesFixture(t)
+		defer fx.finish()
+		st := fx.NewState()
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteHeldByOwner, domain.Bool(true))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String("fileId"))
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String("fileKey"))
+		require.NoError(t, fx.Apply(st))
+
+		info := fx.GetExistingInviteInfo()
+		require.Equal(t, "fileId", info.InviteFileCid)
+		require.False(t, info.HeldByOwner)
+	})
 }
 
 type migratorStub struct {

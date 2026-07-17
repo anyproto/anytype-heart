@@ -73,10 +73,9 @@ func newCidFromBytes(data []byte) (cid.Cid, error) {
 
 func TestInviteService_GetCurrent(t *testing.T) {
 	t.Run("invite shared within the space is read from the workspace", func(t *testing.T) {
-		// given a space whose invite the members can share
+		// given a space whose invite the members can share: it lives in the workspace, which is read first
 		fx := newFixture(t)
 		defer fx.ctrl.Finish()
-		fx.expectSpaceView()
 		fx.expectInviteObject()
 		want := domain.InviteInfo{
 			InviteFileCid: "fileCid",
@@ -84,8 +83,32 @@ func TestInviteService_GetCurrent(t *testing.T) {
 			InviteType:    domain.InviteTypeAnyone,
 			Permissions:   list.AclPermissionsWriter,
 		}
-		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
 		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(want)
+
+		// when the current invite is asked for
+		got, err := fx.GetCurrent(ctx, "spaceId")
+
+		// then it comes back whole, and the space view is never consulted
+		require.NoError(t, err)
+		require.Equal(t, want, got)
+	})
+
+	t.Run("invite held by the owner is read from their space view", func(t *testing.T) {
+		// given the owner's device: the workspace holds only the marker, so the invite is read from the
+		// space view after the workspace comes back without a cid
+		fx := newFixture(t)
+		defer fx.ctrl.Finish()
+		fx.expectInviteObject()
+		fx.expectSpaceView()
+		want := domain.InviteInfo{
+			InviteFileCid: "fileCid",
+			InviteFileKey: "fileKey",
+			InviteType:    domain.InviteTypeAnyone,
+			Permissions:   list.AclPermissionsWriter,
+			HeldByOwner:   true,
+		}
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{HeldByOwner: true})
+		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(want)
 
 		// when the current invite is asked for
 		got, err := fx.GetCurrent(ctx, "spaceId")
@@ -95,26 +118,27 @@ func TestInviteService_GetCurrent(t *testing.T) {
 		require.Equal(t, want, got)
 	})
 
-	t.Run("invite held by the owner is read from their space view", func(t *testing.T) {
-		// given the owner's device, which is the only one that holds the invite
+	t.Run("a stale space view invite is ignored when the workspace holds one too", func(t *testing.T) {
+		// given the anomaly an old client can leave behind: it wrote a cid to the workspace without
+		// clearing the owner's space view, so both hold a cid. The workspace one is the live invite.
 		fx := newFixture(t)
 		defer fx.ctrl.Finish()
-		fx.expectSpaceView()
-		want := domain.InviteInfo{
-			InviteFileCid: "fileCid",
-			InviteFileKey: "fileKey",
+		fx.expectInviteObject()
+		workspaceInvite := domain.InviteInfo{
+			InviteFileCid: "liveCid",
+			InviteFileKey: "liveKey",
 			InviteType:    domain.InviteTypeAnyone,
-			Permissions:   list.AclPermissionsWriter,
-			HeldByOwner:   true,
+			Permissions:   list.AclPermissionsReader,
 		}
-		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(want)
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(workspaceInvite)
 
 		// when the current invite is asked for
 		got, err := fx.GetCurrent(ctx, "spaceId")
 
-		// then it comes back whole, and the workspace is never consulted
+		// then the workspace invite wins and the stale space view is never read
 		require.NoError(t, err)
-		require.Equal(t, want, got)
+		require.Equal(t, workspaceInvite, got)
+		require.False(t, got.HeldByOwner)
 	})
 
 	t.Run("member of a space gets the marker without the invite", func(t *testing.T) {
@@ -255,6 +279,8 @@ func TestInviteService_ShareWithinSpace(t *testing.T) {
 		}
 		want := held
 		want.HeldByOwner = false
+		// the workspace is read first and carries only the marker, so the invite is read from the space view
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{HeldByOwner: true})
 		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(held)
 		fx.mockSpaceView.EXPECT().RemoveExistingInviteInfo().Return(held, nil)
 		fx.mockInviteObject.EXPECT().SetInviteFileInfo(want).Return(nil)
@@ -270,14 +296,12 @@ func TestInviteService_ShareWithinSpace(t *testing.T) {
 	t.Run("an invite that is already shared is left alone", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.ctrl.Finish()
-		fx.expectSpaceView()
 		fx.expectInviteObject()
 		want := domain.InviteInfo{
 			InviteFileCid: "fileCid",
 			InviteFileKey: "fileKey",
 			InviteType:    domain.InviteTypeDefault,
 		}
-		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
 		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(want)
 
 		got, err := fx.ShareWithinSpace(ctx, "spaceId")
@@ -289,7 +313,9 @@ func TestInviteService_ShareWithinSpace(t *testing.T) {
 		// given an anyoneCanJoin invite that lets whoever holds the link write in the space
 		fx := newFixture(t)
 		defer fx.ctrl.Finish()
+		fx.expectInviteObject()
 		fx.expectSpaceView()
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{HeldByOwner: true})
 		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{
 			InviteFileCid: "fileCid",
 			InviteFileKey: "fileKey",
@@ -380,7 +406,6 @@ func TestInviteService_Generate(t *testing.T) {
 			InviteType:    domain.InviteTypeDefault,
 			Permissions:   list.AclPermissionsReader,
 		}
-		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{})
 		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(returnedInfo)
 		acc, err := accountdata.NewRandom()
 		require.NoError(t, err)
@@ -531,6 +556,7 @@ func TestInviteService_Generate(t *testing.T) {
 	t.Run("generate invite anyone, invite exists", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.ctrl.Finish()
+		fx.expectInviteObject()
 		fx.expectSpaceView()
 		returnedInfo := domain.InviteInfo{
 			InviteFileCid: "fileCid",
@@ -540,6 +566,7 @@ func TestInviteService_Generate(t *testing.T) {
 			HeldByOwner:   true,
 		}
 		fx.mockAccountService.EXPECT().PersonalSpaceID().Return("personal")
+		fx.mockInviteObject.EXPECT().GetExistingInviteInfo().Return(domain.InviteInfo{HeldByOwner: true})
 		fx.mockSpaceView.EXPECT().GetExistingInviteInfo().Return(returnedInfo)
 		info, err := fx.inviteService.Generate(ctx, GenerateInviteParams{
 			SpaceId:     "spaceId",
