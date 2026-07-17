@@ -131,6 +131,10 @@ type clientPeerManager struct {
 	// provider stat counts dead loops to expose managers that can no longer
 	// refresh their peers (diagnostics for field stalls).
 	loopRunning atomic.Bool
+	// lastFetchError carries the most recent node-lookup failure so the
+	// empty-peers warning can say WHY the list is empty ("can't get node
+	// peers" is Info-level and filtered from the default file sink).
+	lastFetchError atomic.String
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -277,7 +281,8 @@ func (n *clientPeerManager) warnEmptyPeersWait() {
 		zap.Bool("loopRunning", n.loopRunning.Load()),
 		zap.Bool("offline", n.p.isOffline()),
 		zap.Int("localPeers", len(n.peerStore.LocalPeerIds(n.spaceId))),
-		zap.Int32("consecutiveFetchFailures", n.consecutiveFetchFailures.Load()))
+		zap.Int32("consecutiveFetchFailures", n.consecutiveFetchFailures.Load()),
+		zap.String("lastFetchError", n.lastFetchError.Load()))
 }
 
 // waitResponsiblePeers blocks until a rebuild publishes live peers (ch is
@@ -412,6 +417,7 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		}
 	} else {
 		n.consecutiveFetchFailures.Inc()
+		n.lastFetchError.Store(err.Error())
 		log.Info("can't get node peers", zap.Error(err))
 		n.nodeStatus.SetNodesStatus(n.spaceId, nodestatus.ConnectionError)
 	}
