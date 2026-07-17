@@ -118,6 +118,10 @@ type clientPeerManager struct {
 	// previous state was steady failure (LAN-only device walking out to
 	// cellular).
 	consecutiveFetchFailures atomic.Int32
+	// loopRunning marks the manageResponsiblePeers goroutine as alive; the
+	// provider stat counts dead loops to expose managers that can no longer
+	// refresh their peers (diagnostics for field stalls).
+	loopRunning atomic.Bool
 
 	ctx       context.Context
 	ctxCancel context.CancelFunc
@@ -234,6 +238,7 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 		}
 		ch := n.availableResponsiblePeers
 		n.Unlock()
+		n.warnEmptyPeersWait()
 		if err = n.waitResponsiblePeers(ctx, ch); err != nil {
 			return nil, err
 		}
@@ -242,6 +247,28 @@ func (n *clientPeerManager) GetResponsiblePeers(ctx context.Context) (peers []pe
 	n.Unlock()
 	log.Debug("get responsible peers", zap.Int("peerCount", len(peers)), zap.String("spaceId", n.spaceId))
 	return
+}
+
+// warnEmptyPeersWait surfaces (rate-limited process-wide, 30s) that callers
+// are waiting on an empty responsible-peers list, with the fields that decide
+// whether the manager can ever refresh it — the exact data needed to diagnose
+// a field stall where sync waits silently.
+func (n *clientPeerManager) warnEmptyPeersWait() {
+	if n.p == nil {
+		return
+	}
+	now := time.Now().Unix()
+	last := n.p.stats.lastEmptyWaitWarnUnix.Load()
+	if now-last < 30 || !n.p.stats.lastEmptyWaitWarnUnix.CompareAndSwap(last, now) {
+		return
+	}
+	log.Warn("waiting on empty responsible peers",
+		zap.String("spaceId", n.spaceId),
+		zap.Bool("managerClosed", n.ctx.Err() != nil),
+		zap.Bool("loopRunning", n.loopRunning.Load()),
+		zap.Bool("offline", n.p.isOffline()),
+		zap.Int("localPeers", len(n.peerStore.LocalPeerIds(n.spaceId))),
+		zap.Int32("consecutiveFetchFailures", n.consecutiveFetchFailures.Load()))
 }
 
 // waitResponsiblePeers blocks until a rebuild publishes live peers (ch is
@@ -305,6 +332,8 @@ func (n *clientPeerManager) getStreamResponsiblePeers(ctx context.Context) (peer
 }
 
 func (n *clientPeerManager) manageResponsiblePeers() {
+	n.loopRunning.Store(true)
+	defer n.loopRunning.Store(false)
 	for {
 		n.fetchResponsiblePeers()
 		select {
@@ -326,11 +355,18 @@ func (n *clientPeerManager) manageResponsiblePeers() {
 // setups) the cadence decays back to normal.
 func (n *clientPeerManager) nextCheckInterval() time.Duration {
 	if n.p != nil && n.p.isOffline() && len(n.peerStore.LocalPeerIds(n.spaceId)) == 0 {
+		n.p.stats.choseOfflineInterval.Inc()
 		return responsiblePeersCheckIntervalOffline
 	}
 	if n.nodeStatus != nil && n.nodeStatus.GetNodeStatus(n.spaceId) == nodestatus.ConnectionError &&
 		n.consecutiveFetchFailures.Load() <= fastRetryMaxAttempts {
+		if n.p != nil {
+			n.p.stats.choseFastRetry.Inc()
+		}
 		return responsiblePeersRetryInterval
+	}
+	if n.p != nil {
+		n.p.stats.choseNormalInterval.Inc()
 	}
 	return responsiblePeersCheckInterval
 }

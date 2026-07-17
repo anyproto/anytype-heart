@@ -70,6 +70,13 @@ type providerStats struct {
 	rebuildSignals      atomic.Int64
 	reconnectDiffKicks  atomic.Int64
 	closedPeersFiltered atomic.Int64
+	// interval decisions per manage-loop cycle: names which cadence branch
+	// fired, so a field dump shows why loops wait as long as they do
+	choseOfflineInterval atomic.Int64
+	choseFastRetry       atomic.Int64
+	choseNormalInterval  atomic.Int64
+	// lastEmptyWaitWarnUnix rate-limits the empty-peers wait warning
+	lastEmptyWaitWarnUnix atomic.Int64
 }
 
 type providerStat struct {
@@ -79,11 +86,29 @@ type providerStat struct {
 	RebuildSignals      int64 `json:"rebuildSignals"`
 	ReconnectDiffKicks  int64 `json:"reconnectDiffKicks"`
 	ClosedPeersFiltered int64 `json:"closedPeersFiltered"`
+
+	ChoseOfflineInterval int64 `json:"choseOfflineInterval"`
+	ChoseFastRetry       int64 `json:"choseFastRetry"`
+	ChoseNormalInterval  int64 `json:"choseNormalInterval"`
+	// live registry introspection (computed on stat query only)
+	ManagersNoPeers  int `json:"managersNoPeers"`
+	ManagersLoopDead int `json:"managersLoopDead"`
 }
 
 func (p *provider) ProvideStat() any {
 	p.mu.Lock()
 	managers := len(p.managers)
+	noPeers, loopDead := 0, 0
+	for m := range p.managers {
+		m.Lock()
+		if len(m.responsiblePeers) == 0 {
+			noPeers++
+		}
+		m.Unlock()
+		if !m.loopRunning.Load() {
+			loopDead++
+		}
+	}
 	p.mu.Unlock()
 	return providerStat{
 		Managers:            managers,
@@ -92,6 +117,12 @@ func (p *provider) ProvideStat() any {
 		RebuildSignals:      p.stats.rebuildSignals.Load(),
 		ReconnectDiffKicks:  p.stats.reconnectDiffKicks.Load(),
 		ClosedPeersFiltered: p.stats.closedPeersFiltered.Load(),
+
+		ChoseOfflineInterval: p.stats.choseOfflineInterval.Load(),
+		ChoseFastRetry:       p.stats.choseFastRetry.Load(),
+		ChoseNormalInterval:  p.stats.choseNormalInterval.Load(),
+		ManagersNoPeers:      noPeers,
+		ManagersLoopDead:     loopDead,
 	}
 }
 
