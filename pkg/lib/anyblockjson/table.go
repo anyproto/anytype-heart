@@ -1,0 +1,325 @@
+package anyblockjson
+
+// table.go maps the internal table block subtree (table → row/column layout
+// wrappers → cells with composite <rowId>-<colId> ids) to the §6.1
+// columns/rows JSON form and back.
+
+import (
+	"fmt"
+	"sort"
+	"strings"
+
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+)
+
+const tableWidthField = "width"
+
+// tableToJSON flattens the table subtree into columns/rows, mirroring the
+// editor's normalization: header rows first, cells sorted into column order,
+// orphan cells dropped. Only a structurally unrecognizable subtree (missing
+// wrappers) is an error (§6.1).
+func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
+	m.set("type", "table")
+
+	var colsWrapper, rowsWrapper *model.Block
+	for _, id := range b.ChildrenIds {
+		child := e.blocks[id]
+		if child == nil {
+			continue
+		}
+		if l, ok := child.Content.(*model.BlockContentOfLayout); ok {
+			switch l.Layout.Style {
+			case model.BlockContentLayout_TableColumns:
+				colsWrapper = child
+			case model.BlockContentLayout_TableRows:
+				rowsWrapper = child
+			}
+		}
+	}
+	if colsWrapper == nil || rowsWrapper == nil {
+		return fmt.Errorf("table %s: missing row/column wrappers", b.Id)
+	}
+
+	var colIds []string
+	var columns []any
+	for _, colId := range colsWrapper.ChildrenIds {
+		col := e.blocks[colId]
+		if col == nil {
+			continue
+		}
+		if _, ok := col.Content.(*model.BlockContentOfTableColumn); !ok {
+			continue // orphan blocks in the columns wrapper are dropped
+		}
+		colIds = append(colIds, colId)
+		cm := &omap{}
+		if !e.opts.OmitIds {
+			cm.setNonEmpty("id", e.localId(colId))
+		}
+		lifted := map[string]bool{}
+		if col.Fields != nil {
+			if w := col.Fields.Fields[tableWidthField]; w != nil {
+				if _, isNum := w.GetKind().(*types.Value_NumberValue); isNum {
+					cm.setNonEmpty("width", w.GetNumberValue())
+					lifted[tableWidthField] = true
+				}
+			}
+		}
+		cm.setNonEmpty("fields", e.fieldsToJSON(col.Fields, lifted))
+		columns = append(columns, cm)
+	}
+
+	// header rows come first (editor invariant); stable to keep row order
+	var rowBlocks []*model.Block
+	for _, rowId := range rowsWrapper.ChildrenIds {
+		row := e.blocks[rowId]
+		if row == nil {
+			continue
+		}
+		if _, ok := row.Content.(*model.BlockContentOfTableRow); !ok {
+			continue
+		}
+		rowBlocks = append(rowBlocks, row)
+	}
+	sort.SliceStable(rowBlocks, func(i, j int) bool {
+		hi := rowBlocks[i].Content.(*model.BlockContentOfTableRow).TableRow.IsHeader
+		hj := rowBlocks[j].Content.(*model.BlockContentOfTableRow).TableRow.IsHeader
+		return hi && !hj
+	})
+
+	var rows []any
+	for _, row := range rowBlocks {
+		rm := &omap{}
+		if !e.opts.OmitIds {
+			rm.setNonEmpty("id", e.localId(row.Id))
+		}
+		rm.setNonEmpty("isHeader", row.Content.(*model.BlockContentOfTableRow).TableRow.IsHeader)
+
+		// cells sorted into column order; orphans dropped
+		byCol := map[string]*model.Block{}
+		for _, cellId := range row.ChildrenIds {
+			colId, ok := strings.CutPrefix(cellId, row.Id+"-")
+			if !ok {
+				continue
+			}
+			if cell := e.blocks[cellId]; cell != nil {
+				byCol[colId] = cell
+			}
+		}
+		cells := make([]any, 0, len(colIds))
+		for _, colId := range colIds {
+			cell := byCol[colId]
+			cv, err := e.cellToJSON(cell)
+			if err != nil {
+				return err
+			}
+			cells = append(cells, cv)
+		}
+		// trailing empty cells are omitted (import pads, §6.1)
+		for len(cells) > 0 && cells[len(cells)-1] == nil {
+			cells = cells[:len(cells)-1]
+		}
+		rm.setNonEmpty("cells", cells)
+		rows = append(rows, rm)
+	}
+
+	m.setNonEmpty("columns", columns)
+	m.setNonEmpty("rows", rows)
+	return nil
+}
+
+// cellToJSON renders a cell: nil for empty, the string shorthand for a plain
+// paragraph, a block object (without id — derived) otherwise.
+func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
+	if cell == nil {
+		return nil, nil
+	}
+	if t, ok := cell.Content.(*model.BlockContentOfText); ok &&
+		t.Text.Style == model.BlockContentText_Paragraph &&
+		t.Text.Color == "" && !t.Text.Checked &&
+		cell.Align == model.Block_AlignLeft &&
+		cell.VerticalAlign == model.Block_VerticalAlignTop &&
+		cell.BackgroundColor == "" &&
+		(cell.Fields == nil || len(cell.Fields.Fields) == 0) &&
+		len(cell.ChildrenIds) == 0 {
+		md := RenderInline(t.Text.Text, e.compactMarks(t.Text.Marks.GetMarks()))
+		if md == "" {
+			return nil, nil // empty paragraph collapses to an empty cell (§11)
+		}
+		return md, nil
+	}
+	m, err := e.blockToJSON(cell)
+	if err != nil {
+		return nil, err
+	}
+	if m == nil {
+		return nil, nil
+	}
+	// cell ids are derived, never serialized (§6.1)
+	if len(m.keys) > 0 && m.keys[0] == "id" {
+		m.keys = m.keys[1:]
+		m.vals = m.vals[1:]
+	}
+	return m, nil
+}
+
+//
+// ---- import ----
+//
+
+type jsonTableColumn struct {
+	Id     string         `json:"id"`
+	Width  float64        `json:"width"`
+	Fields map[string]any `json:"fields"`
+}
+
+type jsonTableRow struct {
+	Id       string     `json:"id"`
+	IsHeader bool       `json:"isHeader"`
+	Cells    []jsonCell `json:"cells"`
+}
+
+// jsonCell is string | null | block object (§6.1).
+type jsonCell struct {
+	Text  *string
+	Block *jsonBlock
+}
+
+func (c *jsonCell) UnmarshalJSON(data []byte) error {
+	trimmed := strings.TrimSpace(string(data))
+	if trimmed == "null" {
+		return nil
+	}
+	if strings.HasPrefix(trimmed, `"`) {
+		var s string
+		if err := jsonUnmarshal(data, &s); err != nil {
+			return err
+		}
+		c.Text = &s
+		return nil
+	}
+	var b jsonBlock
+	if err := jsonUnmarshal(data, &b); err != nil {
+		return err
+	}
+	c.Block = &b
+	return nil
+}
+
+// tableFromJSON rebuilds the internal subtree. It returns the table block
+// and every block of the subtree (wrappers, columns, rows, cells).
+func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block, []*model.Block, error) {
+	table := &model.Block{
+		Id:      tableId,
+		Content: &model.BlockContentOfTable{Table: &model.BlockContentTable{}},
+	}
+	var extra []*model.Block
+
+	colsWrapper := &model.Block{
+		Id:      imp.genId(),
+		Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableColumns}},
+	}
+	rowsWrapper := &model.Block{
+		Id:      imp.genId(),
+		Content: &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_TableRows}},
+	}
+	table.ChildrenIds = []string{colsWrapper.Id, rowsWrapper.Id}
+
+	var colIds []string
+	for _, jc := range jb.Columns {
+		id := jc.Id
+		if id == "" {
+			id = imp.genId()
+		}
+		colIds = append(colIds, id)
+		fields := jsonMapToProtoStruct(jc.Fields)
+		if jc.Width != 0 {
+			if fields == nil || fields.Fields == nil {
+				fields = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			fields.Fields[tableWidthField] = &types.Value{Kind: &types.Value_NumberValue{NumberValue: jc.Width}}
+		}
+		if len(fields.GetFields()) == 0 {
+			fields = nil
+		}
+		col := &model.Block{
+			Id:      id,
+			Fields:  fields,
+			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
+		}
+		colsWrapper.ChildrenIds = append(colsWrapper.ChildrenIds, id)
+		extra = append(extra, col)
+	}
+
+	// header rows first: import reorders rather than rejects (§6.1)
+	rows := make([]jsonTableRow, len(jb.Rows))
+	copy(rows, jb.Rows)
+	sort.SliceStable(rows, func(i, j int) bool { return rows[i].IsHeader && !rows[j].IsHeader })
+
+	for _, jr := range rows {
+		rowId := jr.Id
+		if rowId == "" {
+			rowId = imp.genId()
+		}
+		row := &model.Block{
+			Id:      rowId,
+			Content: &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{IsHeader: jr.IsHeader}},
+		}
+		if len(jr.Cells) > len(colIds) {
+			return nil, nil, fmt.Errorf("table %s row %s: %d cells for %d columns", tableId, rowId, len(jr.Cells), len(colIds))
+		}
+		for i, cell := range jr.Cells {
+			cellBlocks, err := imp.cellFromJSON(cell, rowId+"-"+colIds[i])
+			if err != nil {
+				return nil, nil, err
+			}
+			if len(cellBlocks) > 0 {
+				row.ChildrenIds = append(row.ChildrenIds, cellBlocks[0].Id)
+				extra = append(extra, cellBlocks...)
+			}
+		}
+		rowsWrapper.ChildrenIds = append(rowsWrapper.ChildrenIds, rowId)
+		extra = append(extra, row)
+	}
+
+	extra = append([]*model.Block{colsWrapper, rowsWrapper}, extra...)
+	return table, extra, nil
+}
+
+// cellFromJSON builds a cell block (with its derived id) and any nested
+// children. Empty cells produce no blocks.
+func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block, error) {
+	if cell.Text != nil {
+		if *cell.Text == "" {
+			return nil, nil
+		}
+		text, marks, err := ParseInline(*cell.Text)
+		if err != nil {
+			return nil, fmt.Errorf("cell %s: %w", cellId, err)
+		}
+		imp.resolveMarkTargets(marks)
+		return []*model.Block{{
+			Id: cellId,
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+				Text:  text,
+				Marks: &model.BlockContentTextMarks{Marks: marks},
+			}},
+		}}, nil
+	}
+	if cell.Block == nil {
+		return nil, nil
+	}
+	// an empty plain paragraph collapses to an empty cell (§11)
+	b := cell.Block
+	if b.Type == "paragraph" && b.Text == "" && b.Color == "" && !b.Checked &&
+		b.Align == "" && b.VerticalAlign == "" && b.BackgroundColor == "" &&
+		len(b.Fields) == 0 && len(b.Children) == 0 {
+		return nil, nil
+	}
+	blocks, err := imp.blockFromJSON(b, cellId)
+	if err != nil {
+		return nil, err
+	}
+	return blocks, nil
+}

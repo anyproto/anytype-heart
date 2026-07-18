@@ -1,0 +1,182 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "version": 1,
+  "id": "bafyreiobject",
+  "type": "page",
+  "properties": {
+    "name": "Project Phoenix",
+    "description": "The subtitle",
+    "iconEmoji": "🔥",
+    "assignee": [
+      "bafyreiroman"
+    ],
+    "createdDate": "2025-07-06T08:44:05Z",
+    "customDate": "2025-07-06T08:44:05Z",
+    "customStatus": [
+      "In progress"
+    ]
+  },
+  "blocks": [
+    {
+      "type": "heading2",
+      "text": "Goals"
+    },
+    {
+      "type": "paragraph",
+      "text": "Ship the **new export** with <mention objectId=\"bafyreiroman\">Roman</mention>"
+    },
+    {
+      "type": "bulletedListItem",
+      "text": "Nested item"
+    },
+    {
+      "type": "checkbox",
+      "text": "Draft spec"
+    },
+    {
+      "type": "code",
+      "language": "go",
+      "text": "func main() {\n\tprintln(\"hi\")\n}"
+    },
+    {
+      "type": "divider",
+      "style": "dots"
+    },
+    {
+      "type": "image",
+      "objectId": "bafyreiimage",
+      "name": "cat.png",
+      "mimeType": "image/png",
+      "size": 2048,
+      "addedAt": "2025-07-06T08:44:05Z"
+    },
+    {
+      "type": "bookmark",
+      "url": "https://anytype.io",
+      "objectId": "bafyreibookmark"
+    },
+    {
+      "type": "row",
+      "children": [
+        {
+          "type": "column",
+          "children": [
+            {
+              "type": "paragraph",
+              "text": "left"
+            }
+          ]
+        },
+        {
+          "type": "column",
+          "children": [
+            {
+              "type": "paragraph",
+              "text": "right"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "columns": [
+        {},
+        {
+          "width": 120
+        }
+      ],
+      "rows": [
+        {
+          "isHeader": true,
+          "cells": [
+            "Name",
+            "Status"
+          ]
+        },
+        {
+          "cells": [
+            null,
+            {
+              "type": "checkbox",
+              "checked": true,
+              "text": "done"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "embed",
+      "processor": "mermaid",
+      "text": "graph TD; A-->B"
+    },
+    {
+      "type": "dataview",
+      "objectId": "bafyreitasks",
+      "properties": [
+        {
+          "key": "name",
+          "format": "shortText"
+        },
+        {
+          "key": "customStatus",
+          "format": "select"
+        },
+        {
+          "key": "dueDate",
+          "format": "date"
+        }
+      ],
+      "views": [
+        {
+          "type": "kanban",
+          "name": "By status",
+          "groupBy": "customStatus",
+          "sorts": [
+            {
+              "property": "dueDate",
+              "emptyPlacement": "end"
+            }
+          ],
+          "filters": [
+            {
+              "property": "dueDate",
+              "condition": "less",
+              "datePreset": "currentWeek"
+            },
+            {
+              "operator": "or",
+              "filters": [
+                {
+                  "property": "customStatus",
+                  "condition": "in",
+                  "value": [
+                    "In progress",
+                    "Done"
+                  ]
+                },
+                {
+                  "property": "done",
+                  "condition": "empty"
+                }
+              ]
+            }
+          ],
+          "columns": [
+            {
+              "property": "name"
+            },
+            {
+              "property": "dueDate",
+              "hidden": true,
+              "width": 30,
+              "aggregation": "countDistinct",
+              "align": "right"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
