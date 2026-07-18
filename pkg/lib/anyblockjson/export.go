@@ -146,8 +146,10 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 		typeKey = typeKeys[0]
 	}
 
-	// kind is omitted whenever derivable (§2)
-	derivable := sbType == model.SmartBlockType_Page ||
+	// kind is omitted whenever derivable (§2). A Page whose type key is
+	// "template" must keep its explicit kind, or import would derive
+	// Template from the type.
+	derivable := (sbType == model.SmartBlockType_Page && typeKey != "template") ||
 		(sbType == model.SmartBlockType_Template && typeKey == "template")
 	if !derivable {
 		name := kindNames.name(sbType)
@@ -197,18 +199,24 @@ func (e *exporter) buildStore() ([]any, *omap) {
 	if coll == nil || len(coll.Fields) == 0 {
 		return nil, nil
 	}
+	// the objects key lifts into items only when it is a list; any other
+	// shape stays in store so nothing is silently dropped
 	var items []any
+	objectsLifted := false
 	if v := coll.Fields[storeKeyItems]; v != nil {
-		for _, el := range v.GetListValue().GetValues() {
-			if id := el.GetStringValue(); id != "" {
-				items = append(items, e.compactObjectId(id))
+		if lv, ok := v.GetKind().(*types.Value_ListValue); ok {
+			objectsLifted = true
+			for _, el := range lv.ListValue.GetValues() {
+				if id := el.GetStringValue(); id != "" {
+					items = append(items, e.compactObjectId(id))
+				}
 			}
 		}
 	}
 	store := &omap{}
 	keys := make([]string, 0, len(coll.Fields))
 	for k := range coll.Fields {
-		if k != storeKeyItems {
+		if k != storeKeyItems || !objectsLifted {
 			keys = append(keys, k)
 		}
 	}
@@ -345,14 +353,24 @@ func valueStringList(v *types.Value) []string {
 // ---- blocks ----
 //
 
+// orEmpty substitutes an empty message for a nil one (proto semantics: a nil
+// message equals its zero value).
+func orEmpty[T any](p *T) *T {
+	if p == nil {
+		return new(T)
+	}
+	return p
+}
+
 // isStructural reports blocks that are derivable and dropped on export (§7).
 func isStructural(b *model.Block) bool {
 	switch c := b.Content.(type) {
 	case *model.BlockContentOfLayout:
-		return c.Layout.Style == model.BlockContentLayout_Header
+		return orEmpty(c.Layout).Style == model.BlockContentLayout_Header
 	case *model.BlockContentOfText:
-		return c.Text.Style == model.BlockContentText_Title ||
-			c.Text.Style == model.BlockContentText_Description
+		style := orEmpty(c.Text).Style
+		return style == model.BlockContentText_Title ||
+			style == model.BlockContentText_Description
 	case *model.BlockContentOfFeaturedRelations:
 		return true
 	}
@@ -405,39 +423,44 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 	liftedFields := map[string]bool{}
 	withChildren := true
 
+	// nil inner messages are proto-equivalent to empty ones — never panic
 	switch c := b.Content.(type) {
 	case *model.BlockContentOfText:
-		e.textToJSON(m, b, c.Text, liftedFields)
+		if err := e.textToJSON(m, b, orEmpty(c.Text), liftedFields); err != nil {
+			return nil, err
+		}
 	case *model.BlockContentOfFile:
-		e.fileToJSON(m, c.File)
+		e.fileToJSON(m, orEmpty(c.File))
 		withChildren = false
 	case *model.BlockContentOfBookmark:
+		bm := orEmpty(c.Bookmark)
 		m.set("type", "bookmark")
-		m.setNonEmpty("url", c.Bookmark.Url)
-		m.setNonEmpty("objectId", e.compactObjectId(c.Bookmark.TargetObjectId))
+		m.setNonEmpty("url", bm.Url)
+		m.setNonEmpty("objectId", e.compactObjectId(bm.TargetObjectId))
 		withChildren = false
 	case *model.BlockContentOfLink:
+		l := orEmpty(c.Link)
 		m.set("type", "link")
-		m.setNonEmpty("objectId", e.compactObjectId(c.Link.TargetBlockId))
-		if c.Link.CardStyle != model.BlockContentLink_Text {
-			m.set("cardStyle", cardStyleNames.name(c.Link.CardStyle))
+		m.setNonEmpty("objectId", e.compactObjectId(l.TargetBlockId))
+		if l.CardStyle != model.BlockContentLink_Text {
+			m.setNonEmpty("cardStyle", cardStyleNames.name(l.CardStyle))
 		}
-		if c.Link.IconSize != model.BlockContentLink_SizeNone {
-			m.set("iconSize", iconSizeNames.name(c.Link.IconSize))
+		if l.IconSize != model.BlockContentLink_SizeNone {
+			m.setNonEmpty("iconSize", iconSizeNames.name(l.IconSize))
 		}
-		if c.Link.Description != model.BlockContentLink_None {
-			m.set("description", linkDescriptionNames.name(c.Link.Description))
+		if l.Description != model.BlockContentLink_None {
+			m.setNonEmpty("description", linkDescriptionNames.name(l.Description))
 		}
-		m.setNonEmpty("properties", stringsToAny(c.Link.Relations))
+		m.setNonEmpty("properties", stringsToAny(l.Relations))
 		withChildren = false
 	case *model.BlockContentOfDiv:
 		m.set("type", "divider")
-		if c.Div.Style != model.BlockContentDiv_Line {
-			m.set("style", divStyleNames.name(c.Div.Style))
+		if style := orEmpty(c.Div).Style; style != model.BlockContentDiv_Line {
+			m.setNonEmpty("style", divStyleNames.name(style))
 		}
 		withChildren = false
 	case *model.BlockContentOfLayout:
-		switch c.Layout.Style {
+		switch orEmpty(c.Layout).Style {
 		case model.BlockContentLayout_Row:
 			m.set("type", "row")
 		case model.BlockContentLayout_Column:
@@ -454,32 +477,34 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 		}
 		withChildren = false
 	case *model.BlockContentOfLatex:
+		lx := orEmpty(c.Latex)
 		m.set("type", "embed")
-		if c.Latex.Processor != model.BlockContentLatex_Latex {
-			m.set("processor", processorNames.name(c.Latex.Processor))
+		if lx.Processor != model.BlockContentLatex_Latex {
+			m.setNonEmpty("processor", processorNames.name(lx.Processor))
 		}
-		m.setNonEmpty("text", c.Latex.Text)
+		m.setNonEmpty("text", lx.Text)
 		withChildren = false
 	case *model.BlockContentOfTableOfContents:
 		m.set("type", "tableOfContents")
 		withChildren = false
 	case *model.BlockContentOfRelation:
 		m.set("type", "property")
-		m.setNonEmpty("key", c.Relation.Key)
+		m.setNonEmpty("key", orEmpty(c.Relation).Key)
 		withChildren = false
 	case *model.BlockContentOfDataview:
-		if err := e.dataviewToJSON(m, c.Dataview); err != nil {
+		if err := e.dataviewToJSON(m, orEmpty(c.Dataview)); err != nil {
 			return nil, err
 		}
 		withChildren = false
 	case *model.BlockContentOfWidget:
+		w := orEmpty(c.Widget)
 		m.set("type", "widget")
-		if c.Widget.Layout != model.BlockContentWidget_Link {
-			m.set("layout", widgetLayoutNames.name(c.Widget.Layout))
+		if w.Layout != model.BlockContentWidget_Link {
+			m.setNonEmpty("layout", widgetLayoutNames.name(w.Layout))
 		}
-		m.setNonEmpty("limit", c.Widget.Limit)
-		m.setNonEmpty("viewId", c.Widget.ViewId)
-		m.setNonEmpty("autoAdded", c.Widget.AutoAdded)
+		m.setNonEmpty("limit", w.Limit)
+		m.setNonEmpty("viewId", w.ViewId)
+		m.setNonEmpty("autoAdded", w.AutoAdded)
 	case *model.BlockContentOfChat:
 		m.set("type", "chat")
 		withChildren = false
@@ -488,7 +513,7 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 		withChildren = false
 	case *model.BlockContentOfIcon:
 		m.set("type", "icon")
-		m.setNonEmpty("name", c.Icon.Name)
+		m.setNonEmpty("name", orEmpty(c.Icon).Name)
 		withChildren = false
 	case *model.BlockContentOfSmartblock:
 		return nil, nil
@@ -497,10 +522,10 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 	}
 
 	if b.Align != model.Block_AlignLeft {
-		m.set("align", alignNames.name(b.Align))
+		m.setNonEmpty("align", alignNames.name(b.Align))
 	}
 	if b.VerticalAlign != model.Block_VerticalAlignTop {
-		m.set("verticalAlign", verticalAlignNames.name(b.VerticalAlign))
+		m.setNonEmpty("verticalAlign", verticalAlignNames.name(b.VerticalAlign))
 	}
 	m.setNonEmpty("backgroundColor", b.BackgroundColor)
 	m.setNonEmpty("fields", e.fieldsToJSON(b.Fields, liftedFields))
@@ -532,13 +557,16 @@ func (e *exporter) fieldsToJSON(fields *types.Struct, lifted map[string]bool) *o
 	return m
 }
 
-func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText, liftedFields map[string]bool) {
+func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText, liftedFields map[string]bool) error {
 	style := t.Style
 	// deprecated Header4 exports as heading3 (§5)
 	if style == model.BlockContentText_Header4 {
 		style = model.BlockContentText_Header3
 	}
 	typ := textStyleNames.name(style)
+	if typ == "" {
+		return fmt.Errorf("block %s: text style %v has no JSON mapping", b.Id, t.Style)
+	}
 	m.set("type", typ)
 
 	if style == model.BlockContentText_Checkbox {
@@ -555,12 +583,13 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 				liftedFields["lang"] = true
 			}
 		}
-		// literal text; stored marks dropped (§8.4)
+		// literal text; stored marks and color dropped (§8.4, §11)
 		m.setNonEmpty("text", t.Text)
-		return
+		return nil
 	}
 	m.setNonEmpty("color", t.Color)
 	m.setNonEmpty("text", RenderInline(t.Text, e.compactMarks(t.Marks.GetMarks())))
+	return nil
 }
 
 // compactMarks rewrites mention/object mark targets through the refs legend
@@ -598,7 +627,7 @@ func (e *exporter) fileToJSON(m *omap, f *model.BlockContentFile) {
 	m.setNonEmpty("mimeType", f.Mime)
 	m.setNonEmpty("size", f.Size_)
 	if f.Style != model.BlockContentFile_Auto {
-		m.set("style", fileStyleNames.name(f.Style))
+		m.setNonEmpty("style", fileStyleNames.name(f.Style))
 	}
 	if f.AddedAt != 0 {
 		m.set("addedAt", formatDate(f.AddedAt))
@@ -731,8 +760,23 @@ func (e *exporter) buildCompactIds() {
 	// the envelope id is never compacted (§9a)
 	delete(objects, e.objectId())
 
-	e.objectRefs = shortestUniqueSuffixes(setToSlice(objects), compactIdMinLen)
-	e.localIds = shortestUniqueSuffixes(setToSlice(locals), compactIdMinLen)
+	// refs keys must not equal a full id present in the document (§9a); the
+	// avoid set covers every id this export knows about
+	fullIds := map[string]bool{e.objectId(): true}
+	for id := range objects {
+		fullIds[id] = true
+	}
+	for id := range locals {
+		fullIds[id] = true
+	}
+	e.objectRefs = shortestUniqueSuffixes(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
+		return fullIds[candidate]
+	})
+	// local relabels stay dash-free: '-' is the derived-cell-id separator
+	// and forbidden in row/column ids (§6.1)
+	e.localIds = shortestUniqueSuffixes(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
+		return strings.ContainsRune(candidate, '-')
+	})
 }
 
 func flattenFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {

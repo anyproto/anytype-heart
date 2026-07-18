@@ -160,6 +160,9 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	details := &types.Struct{Fields: map[string]*types.Value{}}
 	details.Fields[detailKeyId] = &types.Value{Kind: &types.Value_StringValue{StringValue: objectId}}
 	for key, raw := range doc.Properties {
+		if key == detailKeyId || key == detailKeyType {
+			continue // lifted into the envelope; a stray copy must not leak
+		}
 		if v := imp.propertyValue(key, raw); v != nil {
 			details.Fields[key] = v
 		}

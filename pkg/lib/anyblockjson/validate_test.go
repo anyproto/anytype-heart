@@ -127,7 +127,6 @@ func TestValidate_Invalid(t *testing.T) {
 		{"reserved compact filter field", `{"version": 1, "blocks": [
 			{"type": "dataview", "views": [{"id": "v", "filter": "done = false"}]}
 		]}`, "filter"},
-		{"bad property value shape", `{"version": 1, "properties": {"x": {"nested": 1}}}`, "/properties/x"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

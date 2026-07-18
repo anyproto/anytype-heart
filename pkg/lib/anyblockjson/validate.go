@@ -9,6 +9,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -152,7 +153,13 @@ func checkVersion(doc map[string]any) error {
 	}
 	v, err := num.Int64()
 	if err != nil {
-		return &ValidationError{Issues: []Issue{{Path: "/version", Message: "version must be an integer"}}}
+		// accept integer-valued floats like 1.0, matching JSON Schema
+		// numeric equality
+		f, ferr := num.Float64()
+		if ferr != nil || f != math.Trunc(f) {
+			return &ValidationError{Issues: []Issue{{Path: "/version", Message: "version must be an integer"}}}
+		}
+		v = int64(f)
 	}
 	if v > FormatVersion {
 		return &ValidationError{
@@ -260,7 +267,7 @@ func semanticIssues(doc map[string]any) []Issue {
 			}
 		}
 		if typ == "table" {
-			walkTable(block, path, claimId, addIssue, checkText, &walkBlock)
+			walkTable(block, path, claimId, addIssue, &walkBlock)
 		}
 		if children, _ := block["children"].([]any); children != nil {
 			for i, c := range children {
@@ -283,7 +290,7 @@ func semanticIssues(doc map[string]any) []Issue {
 
 func walkTable(block map[string]any, path string,
 	claimId func(id, path string), addIssue func(path, format string, args ...any),
-	checkText func(block map[string]any, path string), walkBlock *func(block map[string]any, path string)) {
+	walkBlock *func(block map[string]any, path string)) {
 
 	columns, _ := block["columns"].([]any)
 	var colIds []string
@@ -321,14 +328,9 @@ func walkTable(block map[string]any, path string,
 					}
 				}
 			case map[string]any:
-				checkText(cell, cellPath)
-				if children, _ := cell["children"].([]any); children != nil {
-					for k, ch := range children {
-						if cb, ok := ch.(map[string]any); ok {
-							(*walkBlock)(cb, fmt.Sprintf("%s/children/%d", cellPath, k))
-						}
-					}
-				}
+				// a full walk: nested tables and children join the id
+				// uniqueness domain and get their text checked
+				(*walkBlock)(cell, cellPath)
 			}
 		}
 	}

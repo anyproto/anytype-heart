@@ -557,8 +557,10 @@ func defaultGenerateId() string {
 }
 
 // shortestUniqueSuffixes labels each id with its shortest suffix (minimum
-// minLen chars) unique among all given ids (§9a).
-func shortestUniqueSuffixes(ids []string, minLen int) map[string]string {
+// minLen chars) unique among all given ids (§9a). Candidates rejected by
+// disallow are skipped (longer suffixes are tried); labeling an id with
+// itself is the always-allowed fallback.
+func shortestUniqueSuffixes(ids []string, minLen int, disallow func(candidate string) bool) map[string]string {
 	out := make(map[string]string, len(ids))
 	for _, id := range ids {
 		runes := []rune(id)
@@ -568,6 +570,9 @@ func shortestUniqueSuffixes(ids []string, minLen int) map[string]string {
 				break
 			}
 			suffix := string(runes[len(runes)-l:])
+			if disallow != nil && disallow(suffix) {
+				continue
+			}
 			unique := true
 			for _, other := range ids {
 				if other == id {

@@ -42,7 +42,8 @@
       "additionalProperties": {
         "anyOf": [
           { "type": ["string", "number", "boolean", "null"] },
-          { "type": "array", "items": { "type": ["string", "number", "boolean"] } }
+          { "type": "array" },
+          { "type": "object" }
         ]
       }
     },
