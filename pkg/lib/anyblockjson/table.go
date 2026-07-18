@@ -46,12 +46,13 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 	var columns []any
 	for _, colId := range colsWrapper.ChildrenIds {
 		col := e.blocks[colId]
-		if col == nil {
+		if col == nil || e.visited[colId] {
 			continue
 		}
 		if _, ok := col.Content.(*model.BlockContentOfTableColumn); !ok {
 			continue // orphan blocks in the columns wrapper are dropped
 		}
+		e.visited[colId] = true
 		colIds = append(colIds, colId)
 		cm := &omap{}
 		if !e.opts.OmitIds {
@@ -74,12 +75,13 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 	var rowBlocks []*model.Block
 	for _, rowId := range rowsWrapper.ChildrenIds {
 		row := e.blocks[rowId]
-		if row == nil {
+		if row == nil || e.visited[rowId] {
 			continue
 		}
 		if _, ok := row.Content.(*model.BlockContentOfTableRow); !ok {
 			continue
 		}
+		e.visited[rowId] = true
 		rowBlocks = append(rowBlocks, row)
 	}
 	isHeader := func(b *model.Block) bool {

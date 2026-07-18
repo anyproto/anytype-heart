@@ -66,7 +66,7 @@ func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase
 	if snapshot == nil {
 		return nil, fmt.Errorf("nil snapshot")
 	}
-	e := &exporter{opts: opts, snapshot: snapshot, blocks: map[string]*model.Block{}}
+	e := &exporter{opts: opts, snapshot: snapshot, blocks: map[string]*model.Block{}, visited: map[string]bool{}}
 	e.indexBlocks()
 	if opts.CompactIds {
 		e.buildCompactIds()
@@ -83,6 +83,7 @@ type exporter struct {
 	snapshot *model.SmartBlockSnapshotBase
 	blocks   map[string]*model.Block
 	rootId   string
+	visited  map[string]bool // emitted block ids: breaks ChildrenIds cycles, dedupes shared children
 
 	objectRefs map[string]string // full object id -> refs label (§9a)
 	localIds   map[string]string // block/row/column/view id -> short label
@@ -416,6 +417,15 @@ func (e *exporter) localId(id string) string {
 }
 
 func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
+	// a snapshot's block graph is untrusted: without this, a ChildrenIds
+	// cycle recurses to an unrecoverable stack overflow, and a block shared
+	// by two parents is emitted twice (duplicate ids fail validation)
+	if b.Id != "" {
+		if e.visited[b.Id] {
+			return nil, nil
+		}
+		e.visited[b.Id] = true
+	}
 	m := &omap{}
 	if !e.opts.OmitIds {
 		m.setNonEmpty("id", e.localId(b.Id))
@@ -600,12 +610,19 @@ func (e *exporter) compactMarks(marks []*model.BlockContentTextMark) []*model.Bl
 	}
 	out := make([]*model.BlockContentTextMark, 0, len(marks))
 	for _, mk := range marks {
-		if mk != nil && mk.Param != "" &&
-			(mk.Type == model.BlockContentTextMark_Mention || mk.Type == model.BlockContentTextMark_Object) {
+		switch {
+		case mk == nil || mk.Param == "":
+			out = append(out, mk)
+		case mk.Type == model.BlockContentTextMark_Mention || mk.Type == model.BlockContentTextMark_Object:
 			clone := *mk
 			clone.Param = e.compactObjectId(mk.Param)
 			out = append(out, &clone)
-		} else {
+		case mk.Type == model.BlockContentTextMark_Link && strings.HasPrefix(mk.Param, objectLinkPrefix):
+			// rendered as an Object mark (§8.3), so its target compacts too
+			clone := *mk
+			clone.Param = objectLinkPrefix + e.compactObjectId(strings.TrimPrefix(mk.Param, objectLinkPrefix))
+			out = append(out, &clone)
+		default:
 			out = append(out, mk)
 		}
 	}
@@ -678,25 +695,35 @@ func (e *exporter) buildCompactIds() {
 		}
 		switch c := b.Content.(type) {
 		case *model.BlockContentOfText:
-			for _, mk := range c.Text.Marks.GetMarks() {
-				if mk != nil && (mk.Type == model.BlockContentTextMark_Mention || mk.Type == model.BlockContentTextMark_Object) {
+			t := orEmpty(c.Text)
+			for _, mk := range t.Marks.GetMarks() {
+				if mk == nil {
+					continue
+				}
+				switch {
+				case mk.Type == model.BlockContentTextMark_Mention || mk.Type == model.BlockContentTextMark_Object:
 					addObject(mk.Param)
+				case mk.Type == model.BlockContentTextMark_Link && strings.HasPrefix(mk.Param, objectLinkPrefix):
+					// normalizes to an Object mark on render (§8.3)
+					addObject(strings.TrimPrefix(mk.Param, objectLinkPrefix))
 				}
 			}
-			addObject(c.Text.IconImage)
+			addObject(t.IconImage)
 		case *model.BlockContentOfFile:
-			if c.File.TargetObjectId != "" {
-				addObject(c.File.TargetObjectId)
+			f := orEmpty(c.File)
+			if f.TargetObjectId != "" {
+				addObject(f.TargetObjectId)
 			} else {
-				addObject(c.File.Hash)
+				addObject(f.Hash)
 			}
 		case *model.BlockContentOfBookmark:
-			addObject(c.Bookmark.TargetObjectId)
+			addObject(orEmpty(c.Bookmark).TargetObjectId)
 		case *model.BlockContentOfLink:
-			addObject(c.Link.TargetBlockId)
+			addObject(orEmpty(c.Link).TargetBlockId)
 		case *model.BlockContentOfDataview:
-			addObject(c.Dataview.TargetObjectId)
-			for _, v := range c.Dataview.Views {
+			dv := orEmpty(c.Dataview)
+			addObject(dv.TargetObjectId)
+			for _, v := range dv.Views {
 				if v == nil {
 					continue
 				}
@@ -704,7 +731,7 @@ func (e *exporter) buildCompactIds() {
 				addObject(v.DefaultTemplateId)
 				addObject(v.DefaultObjectTypeId)
 				for _, f := range flattenFilters(v.Filters) {
-					if format, ok := e.dvFormat(c.Dataview, f.RelationKey); ok &&
+					if format, ok := e.dvFormat(dv, f.RelationKey); ok &&
 						(format == model.RelationFormat_object || format == model.RelationFormat_file) {
 						for _, id := range valueStringList(f.Value) {
 							addObject(id)
@@ -715,7 +742,7 @@ func (e *exporter) buildCompactIds() {
 					if s == nil {
 						continue
 					}
-					if format, ok := e.dvFormat(c.Dataview, s.RelationKey); ok &&
+					if format, ok := e.dvFormat(dv, s.RelationKey); ok &&
 						(format == model.RelationFormat_object || format == model.RelationFormat_file) {
 						for _, cv := range s.CustomOrder {
 							for _, id := range valueStringList(cv) {
@@ -725,7 +752,7 @@ func (e *exporter) buildCompactIds() {
 					}
 				}
 			}
-			for _, oo := range c.Dataview.ObjectOrders {
+			for _, oo := range dv.ObjectOrders {
 				if oo == nil {
 					continue
 				}
@@ -770,13 +797,56 @@ func (e *exporter) buildCompactIds() {
 		fullIds[id] = true
 	}
 	e.objectRefs = shortestUniqueSuffixes(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
-		return fullIds[candidate]
+		return fullIds[candidate] || !isValidRefsKey(candidate)
 	})
 	// local relabels stay dash-free: '-' is the derived-cell-id separator
 	// and forbidden in row/column ids (§6.1)
-	e.localIds = shortestUniqueSuffixes(setToSlice(locals), compactIdMinLen, func(candidate string) bool {
-		return strings.ContainsRune(candidate, '-')
-	})
+	e.localIds = shortestUniqueSuffixes(setToSlice(locals), compactIdMinLen, isInvalidLocalLabel)
+	// ids whose every usable label would violate the schema charset (odd
+	// characters, over-length full-id fallbacks) stay uncompacted
+	dropInvalidLabels(e.objectRefs, isValidRefsKey)
+	dropInvalidLabels(e.localIds, func(label string) bool { return !isInvalidLocalLabel(label) })
+}
+
+// isValidRefsKey reports whether s matches the schema's refs-key pattern
+// ^[A-Za-z0-9_-]{1,64}$.
+func isValidRefsKey(s string) bool {
+	if len(s) == 0 || len(s) > 64 {
+		return false
+	}
+	for _, r := range s {
+		if !isLabelRune(r) && r != '-' {
+			return false
+		}
+	}
+	return true
+}
+
+// isInvalidLocalLabel rejects relabel candidates for blocks/rows/columns/
+// views: the row/column charset has no dash (§6.1), which also keeps labels
+// clear of derived cell ids.
+func isInvalidLocalLabel(s string) bool {
+	if len(s) == 0 || len(s) > 64 {
+		return true
+	}
+	for _, r := range s {
+		if !isLabelRune(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func isLabelRune(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_'
+}
+
+func dropInvalidLabels(labels map[string]string, valid func(string) bool) {
+	for id, label := range labels {
+		if !valid(label) {
+			delete(labels, id)
+		}
+	}
 }
 
 func flattenFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {

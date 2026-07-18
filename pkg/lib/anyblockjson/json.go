@@ -559,36 +559,41 @@ func defaultGenerateId() string {
 // shortestUniqueSuffixes labels each id with its shortest suffix (minimum
 // minLen chars) unique among all given ids (§9a). Candidates rejected by
 // disallow are skipped (longer suffixes are tried); labeling an id with
-// itself is the always-allowed fallback.
+// itself is the always-allowed fallback. Suffixes are bucketed per length so
+// the whole computation is O(ids × max id length), not quadratic in the
+// number of ids.
 func shortestUniqueSuffixes(ids []string, minLen int, disallow func(candidate string) bool) map[string]string {
 	out := make(map[string]string, len(ids))
-	for _, id := range ids {
-		runes := []rune(id)
-		for l := minLen; ; l++ {
-			if l >= len(runes) {
-				out[id] = id
-				break
-			}
-			suffix := string(runes[len(runes)-l:])
-			if disallow != nil && disallow(suffix) {
-				continue
-			}
-			unique := true
-			for _, other := range ids {
-				if other == id {
-					continue
-				}
-				or := []rune(other)
-				if len(or) >= l && string(or[len(or)-l:]) == suffix {
-					unique = false
-					break
-				}
-			}
-			if unique {
-				out[id] = suffix
-				break
+	allRunes := make([][]rune, len(ids))
+	for i, id := range ids {
+		allRunes[i] = []rune(id)
+	}
+	remaining := make([]int, len(ids))
+	for i := range ids {
+		remaining[i] = i
+	}
+	for l := minLen; len(remaining) > 0; l++ {
+		counts := make(map[string]int)
+		for i := range ids {
+			if r := allRunes[i]; len(r) >= l {
+				counts[string(r[len(r)-l:])]++
 			}
 		}
+		var next []int
+		for _, i := range remaining {
+			r := allRunes[i]
+			if l >= len(r) {
+				out[ids[i]] = ids[i]
+				continue
+			}
+			suffix := string(r[len(r)-l:])
+			if counts[suffix] == 1 && (disallow == nil || !disallow(suffix)) {
+				out[ids[i]] = suffix
+			} else {
+				next = append(next, i)
+			}
+		}
+		remaining = next
 	}
 	return out
 }
