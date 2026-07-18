@@ -82,10 +82,11 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 		}
 		rowBlocks = append(rowBlocks, row)
 	}
+	isHeader := func(b *model.Block) bool {
+		return orEmpty(b.Content.(*model.BlockContentOfTableRow).TableRow).IsHeader
+	}
 	sort.SliceStable(rowBlocks, func(i, j int) bool {
-		hi := rowBlocks[i].Content.(*model.BlockContentOfTableRow).TableRow.IsHeader
-		hj := rowBlocks[j].Content.(*model.BlockContentOfTableRow).TableRow.IsHeader
-		return hi && !hj
+		return isHeader(rowBlocks[i]) && !isHeader(rowBlocks[j])
 	})
 
 	var rows []any
@@ -94,7 +95,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 		if !e.opts.OmitIds {
 			rm.setNonEmpty("id", e.localId(row.Id))
 		}
-		rm.setNonEmpty("isHeader", row.Content.(*model.BlockContentOfTableRow).TableRow.IsHeader)
+		rm.setNonEmpty("isHeader", isHeader(row))
 
 		// cells sorted into column order; orphans dropped
 		byCol := map[string]*model.Block{}
@@ -135,19 +136,21 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	if cell == nil {
 		return nil, nil
 	}
-	if t, ok := cell.Content.(*model.BlockContentOfText); ok &&
-		t.Text.Style == model.BlockContentText_Paragraph &&
-		t.Text.Color == "" && !t.Text.Checked &&
-		cell.Align == model.Block_AlignLeft &&
-		cell.VerticalAlign == model.Block_VerticalAlignTop &&
-		cell.BackgroundColor == "" &&
-		(cell.Fields == nil || len(cell.Fields.Fields) == 0) &&
-		len(cell.ChildrenIds) == 0 {
-		md := RenderInline(t.Text.Text, e.compactMarks(t.Text.Marks.GetMarks()))
-		if md == "" {
-			return nil, nil // empty paragraph collapses to an empty cell (§11)
+	if c, ok := cell.Content.(*model.BlockContentOfText); ok {
+		t := orEmpty(c.Text)
+		if t.Style == model.BlockContentText_Paragraph &&
+			t.Color == "" && !t.Checked &&
+			cell.Align == model.Block_AlignLeft &&
+			cell.VerticalAlign == model.Block_VerticalAlignTop &&
+			cell.BackgroundColor == "" &&
+			(cell.Fields == nil || len(cell.Fields.Fields) == 0) &&
+			len(cell.ChildrenIds) == 0 {
+			md := RenderInline(t.Text, e.compactMarks(t.Marks.GetMarks()))
+			if md == "" {
+				return nil, nil // empty paragraph collapses to an empty cell (§11)
+			}
+			return md, nil
 		}
-		return md, nil
 	}
 	m, err := e.blockToJSON(cell)
 	if err != nil {

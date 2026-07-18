@@ -61,7 +61,7 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 		vm.setNonEmpty("id", e.localId(v.Id))
 	}
 	if v.Type != model.BlockContentDataviewView_Table {
-		vm.set("type", viewTypeNames.name(v.Type))
+		vm.setNonEmpty("type", viewTypeNames.name(v.Type))
 	}
 	vm.setNonEmpty("name", v.Name)
 	vm.setNonEmpty("groupBy", v.GroupRelationKey)
@@ -69,7 +69,7 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 	vm.setNonEmpty("endProperty", v.EndRelationKey)
 	vm.setNonEmpty("hideIcon", v.HideIcon)
 	if v.CardSize != model.BlockContentDataviewView_Small {
-		vm.set("cardSize", cardSizeNames.name(v.CardSize))
+		vm.setNonEmpty("cardSize", cardSizeNames.name(v.CardSize))
 	}
 	vm.setNonEmpty("coverFit", v.CoverFit)
 	vm.setNonEmpty("coloredGroups", v.GroupBackgroundColors)
@@ -78,13 +78,14 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 	vm.setNonEmpty("defaultTypeId", e.compactObjectId(v.DefaultObjectTypeId))
 	vm.setNonEmpty("wrapContent", v.WrapContent)
 	if v.ListSize != model.BlockContentDataviewView_Compact {
-		vm.set("listSize", listSizeNames.name(v.ListSize))
+		vm.setNonEmpty("listSize", listSizeNames.name(v.ListSize))
 	}
 	vm.setNonEmpty("alternateRows", v.AlternateRows)
 
 	var sorts []any
 	for _, s := range v.Sorts {
-		if s != nil {
+		// a sort without a property key is junk and would fail the schema
+		if s != nil && s.RelationKey != "" {
 			sorts = append(sorts, e.sortToJSON(s, dv))
 		}
 	}
@@ -92,8 +93,11 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 
 	var filters []any
 	for _, f := range v.Filters {
-		if f != nil {
-			filters = append(filters, e.filterToJSON(f, dv))
+		if f == nil {
+			continue
+		}
+		if fm := e.filterToJSON(f, dv); fm != nil {
+			filters = append(filters, fm)
 		}
 	}
 	vm.setNonEmpty("filters", filters)
@@ -163,7 +167,7 @@ func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.Block
 	sm := &omap{}
 	sm.setNonEmpty("property", s.RelationKey)
 	if s.Type != model.BlockContentDataviewSort_Asc {
-		sm.set("direction", sortDirectionNames.name(s.Type))
+		sm.setNonEmpty("direction", sortDirectionNames.name(s.Type))
 	}
 	if len(s.CustomOrder) > 0 {
 		var order []any
@@ -173,7 +177,7 @@ func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.Block
 		sm.set("customOrder", order)
 	}
 	if s.EmptyPlacement != model.BlockContentDataviewSort_NotSpecified {
-		sm.set("emptyPlacement", emptyPlacementNames.name(s.EmptyPlacement))
+		sm.setNonEmpty("emptyPlacement", emptyPlacementNames.name(s.EmptyPlacement))
 	}
 	sm.setNonEmpty("includeTime", s.IncludeTime)
 	sm.setNonEmpty("noCollate", s.NoCollate)
@@ -192,19 +196,25 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		if f.Operator == model.BlockContentDataviewFilter_Or {
 			op = "or"
 		}
-		fm.set("operator", op)
 		var nested []any
 		for _, nf := range f.NestedFilters {
-			if nf != nil {
-				nested = append(nested, e.filterToJSON(nf, dv))
+			if nf == nil {
+				continue
+			}
+			if nm := e.filterToJSON(nf, dv); nm != nil {
+				nested = append(nested, nm)
 			}
 		}
+		if len(nested) == 0 {
+			return nil // a group with no live children is a no-op
+		}
+		fm.set("operator", op)
 		fm.set("filters", nested)
 		return fm
 	}
 	fm.setNonEmpty("property", f.RelationKey)
 	if f.Condition != model.BlockContentDataviewFilter_None {
-		fm.set("condition", conditionNames.name(f.Condition))
+		fm.setNonEmpty("condition", conditionNames.name(f.Condition))
 	}
 	switch f.Condition {
 	case model.BlockContentDataviewFilter_Empty,
@@ -217,12 +227,16 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		}
 	}
 	if f.QuickOption != model.BlockContentDataviewFilter_ExactDate {
-		fm.set("datePreset", datePresetNames.name(f.QuickOption))
+		fm.setNonEmpty("datePreset", datePresetNames.name(f.QuickOption))
 	}
 	fm.setNonEmpty("includeTime", f.IncludeTime)
 	fm.setNonEmpty("nestedProperty", f.RelationProperty)
 	if !e.opts.OmitIds {
 		fm.setNonEmpty("id", f.Id)
+	}
+	// a contentless leaf (at most an id) is a no-op node: drop it
+	if len(fm.keys) == 0 || (len(fm.keys) == 1 && fm.keys[0] == "id") {
+		return nil
 	}
 	return fm
 }
@@ -525,10 +539,10 @@ func (e *exporter) viewColumnToJSON(r *model.BlockContentDataviewRelation) *omap
 	cm.setNonEmpty("hidden", !r.IsVisible)
 	cm.setNonEmpty("width", r.Width)
 	if r.Formula != model.BlockContentDataviewRelation_None {
-		cm.set("aggregation", aggregationNames.name(r.Formula))
+		cm.setNonEmpty("aggregation", aggregationNames.name(r.Formula))
 	}
 	if r.Align != model.Block_AlignLeft {
-		cm.set("align", alignNames.name(r.Align))
+		cm.setNonEmpty("align", alignNames.name(r.Align))
 	}
 	// deprecated per-column date/time fields are dropped (§6.2)
 	return cm

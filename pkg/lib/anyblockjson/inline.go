@@ -236,7 +236,10 @@ func isWSUnit(u16 []uint16, i int) bool {
 // resolveSameTypeOverlaps applies §8.3 step 3: same-type marks with equal
 // params merge when overlapping or adjacent; with different params the
 // earlier-starting mark wins and the later is truncated to start where the
-// earlier ends. At equal starts the longer range wins (sort order).
+// earlier ends. At equal starts the longer range wins (sort order). A merge
+// that extends an accepted range can create a fresh overlap with a
+// later-accepted range, so each group re-runs until stable — resolution must
+// be idempotent for §11.2 byte-stability.
 func resolveSameTypeOverlaps(spans []span) []span {
 	byType := make(map[model.BlockContentTextMarkType][]span)
 	for _, s := range spans {
@@ -248,35 +251,45 @@ func resolveSameTypeOverlaps(spans []span) []span {
 		if len(group) == 0 {
 			continue
 		}
-		sortSpans(group)
-		var acc []span
-		for _, m := range group {
-			dropped := false
-			for i := range acc {
-				a := &acc[i]
-				if m.from > a.to {
-					continue
-				}
-				if m.param == a.param {
-					if m.to > a.to {
-						a.to = m.to
+		for {
+			sortSpans(group)
+			var acc []span
+			extended := false
+			for _, m := range group {
+				dropped := false
+				for i := range acc {
+					a := &acc[i]
+					if m.from > a.to {
+						continue
 					}
-					dropped = true
-					break
-				}
-				if m.from < a.to {
-					m.from = a.to
-					if m.from >= m.to {
+					if m.param == a.param {
+						if m.to > a.to {
+							a.to = m.to
+							extended = true
+						}
 						dropped = true
 						break
 					}
+					if m.from < a.to {
+						m.from = a.to
+						if m.from >= m.to {
+							dropped = true
+							break
+						}
+					}
+				}
+				if !dropped {
+					acc = append(acc, m)
 				}
 			}
-			if !dropped {
-				acc = append(acc, m)
+			group = acc
+			// every extending pass consumed at least one span, so this
+			// terminates
+			if !extended {
+				break
 			}
 		}
-		out = append(out, acc...)
+		out = append(out, group...)
 	}
 	sortSpans(out)
 	return out
@@ -696,8 +709,14 @@ func entityAhead(rs []rune) bool {
 	return ok
 }
 
+// escapeAttr entity-encodes attribute values. Brackets and backticks are
+// encoded too: raw ones would derail the link-label scan when the tag sits
+// inside a link label (the scan runs before tag parsing).
 func escapeAttr(s string) string {
-	r := strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;")
+	r := strings.NewReplacer(
+		"&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;",
+		"[", "&#91;", "]", "&#93;", "`", "&#96;",
+	)
 	return r.Replace(s)
 }
 
@@ -724,9 +743,11 @@ func escapeDest(dest string) string {
 		b.WriteByte('>')
 		return b.String()
 	}
+	// '<' is escaped too: a bare destination starting with '<' would
+	// otherwise be misread as the angle-wrapped form
 	for _, r := range dest {
 		switch r {
-		case '\\', '(', ')', '&':
+		case '\\', '(', ')', '&', '<':
 			b.WriteByte('\\')
 		}
 		b.WriteRune(r)

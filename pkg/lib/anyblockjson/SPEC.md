@@ -273,7 +273,7 @@ mapping:
 | `toggle` | Text/Toggle | `color`, `text` |
 | `callout` | Text/Callout | `iconEmoji`, `iconImage` (file object id), `color`, `text` |
 | `toggleHeading1` … `toggleHeading3` | Text/ToggleHeader1..3 | `color`, `text` |
-| `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11). `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise |
+| `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11); when both are set, `objectId` wins and the hash is dropped. `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise |
 | `bookmark` | Bookmark | `url`, `objectId` (target bookmark object). `state` handled like file blocks. Deprecated preview fields and `type` (derivable) are dropped — preview data lives on the target object |
 | `link` | Link | `objectId` (target object), `cardStyle` (`text · card · inline`), `iconSize` (`none · small · medium`), `description` (`none · manual · content`), `properties` (string array: property keys shown on the card). Deprecated `style` and legacy `fields` are dropped |
 | `divider` | Div | `style` (`line · dots`, default `line`) |
@@ -489,7 +489,12 @@ import rehydrates it from the dataview `properties` list and `bundle`
 
 Proto-default edge cases (implementation decisions): a leaf whose proto
 condition is `None` (0) omits `condition` — absent means `None`; a proto
-group node with operator `No` (0) exports as `"and"`.
+group node with operator `No` (0) exports as `"and"`; contentless filter
+nodes (groups with no live children, leaves carrying at most an id) and
+sorts without a property key are no-ops and are dropped on export;
+out-of-range proto enum values are omitted rather than serialized (an
+unknown *text style* is an export error — silently restyling content would
+be worse).
 
 #### 6.2.1 Compact filter syntax — reserved extension (post-v1)
 
