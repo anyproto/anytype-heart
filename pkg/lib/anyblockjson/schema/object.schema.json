@@ -1,0 +1,454 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "title": "AnyBlock object",
+  "description": "A single Anytype object in AnyBlock JSON interchange format, version 1",
+  "x-app": "Anytype",
+  "type": "object",
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+    "kind": {
+      "enum": [
+        "accountOld", "page", "profilePage", "home", "archive", "widget",
+        "file", "template", "bundledTemplate", "bundledRelation", "subObject",
+        "bundledObjectType", "anytypeProfile", "date", "workspace",
+        "relation", "objectType", "relationOption", "spaceView", "identity",
+        "participant", "missingObject", "fileObject", "notification",
+        "devices", "chatObject", "chatDerived", "account", "discussion",
+        "techSpace", "techSpaceVirtual"
+      ]
+    },
+    "id": { "type": "string" },
+    "type": { "type": "string" },
+    "templateFor": { "type": "string" },
+    "key": { "type": "string" },
+    "properties": { "$ref": "#/$defs/propertyMap" },
+    "refs": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } },
+    "items": { "type": "array", "items": { "type": "string" } },
+    "store": { "type": "object", "x-output-only": true },
+    "root": { "type": "object", "x-output-only": true }
+  },
+  "required": ["version"],
+  "additionalProperties": false,
+  "$defs": {
+    "propertyMap": {
+      "type": "object",
+      "additionalProperties": {
+        "anyOf": [
+          { "type": ["string", "number", "boolean", "null"] },
+          { "type": "array", "items": { "type": ["string", "number", "boolean"] } }
+        ]
+      }
+    },
+    "blockId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{1,64}$" },
+    "tableInnerId": { "type": "string", "pattern": "^[A-Za-z0-9_]{1,64}$" },
+    "color": { "type": "string" },
+    "block": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "id": { "$ref": "#/$defs/blockId" },
+        "type": {
+          "enum": [
+            "paragraph", "heading1", "heading2", "heading3", "heading4",
+            "header4", "quote", "code", "title", "description", "checkbox",
+            "bulletedListItem", "numberedListItem", "toggle", "callout",
+            "toggleHeading1", "toggleHeading2", "toggleHeading3", "file",
+            "image", "video", "audio", "pdf", "bookmark", "link", "divider",
+            "row", "column", "group", "table", "embed", "equation",
+            "tableOfContents", "property", "dataview", "widget", "chat",
+            "featuredProperties", "icon"
+          ]
+        },
+        "align": { "enum": ["left", "center", "right", "justify"] },
+        "verticalAlign": { "enum": ["top", "middle", "bottom"] },
+        "backgroundColor": { "type": "string" },
+        "fields": { "type": "object", "x-output-only": true },
+        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "paragraph", "quote", "toggle", "bulletedListItem",
+                  "numberedListItem", "toggleHeading1", "toggleHeading2",
+                  "toggleHeading3", "title", "description"
+                ]
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "color": { "$ref": "#/$defs/color" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": { "enum": ["heading1", "heading2", "heading3", "heading4", "header4"] }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "color": { "$ref": "#/$defs/color" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "checkbox" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "checked": { "type": "boolean" },
+              "color": { "$ref": "#/$defs/color" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "code" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "language": { "type": "string" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "callout" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "iconEmoji": { "type": "string" },
+              "iconImage": { "type": "string" },
+              "color": { "$ref": "#/$defs/color" },
+              "text": { "type": "string" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "enum": ["embed", "equation"] } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "processor": {
+                "enum": [
+                  "latex", "mermaid", "chart", "youtube", "vimeo",
+                  "soundcloud", "googleMaps", "miro", "figma", "twitter",
+                  "openStreetMap", "reddit", "facebook", "instagram",
+                  "telegram", "githubGist", "codepen", "bilibili",
+                  "excalidraw", "kroki", "graphviz", "sketchfab", "image",
+                  "drawio", "spotify"
+                ]
+              },
+              "text": { "type": "string" },
+              "url": { "type": "string" },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "enum": ["file", "image", "video", "audio", "pdf"] } },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "objectId": { "type": "string" },
+              "name": { "type": "string" },
+              "mimeType": { "type": "string" },
+              "size": { "type": "integer" },
+              "style": { "enum": ["auto", "link", "embed"] },
+              "addedAt": { "type": "string" },
+              "hash": { "type": "string" },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "bookmark" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "url": { "type": "string" },
+              "objectId": { "type": "string" },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "link" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "objectId": { "type": "string" },
+              "cardStyle": { "enum": ["text", "card", "inline"] },
+              "iconSize": { "enum": ["none", "small", "medium"] },
+              "description": { "enum": ["none", "manual", "content"] },
+              "properties": { "type": "array", "items": { "type": "string" } },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "divider" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "style": { "enum": ["line", "dots"] },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "row" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "children": {
+                "items": { "properties": { "type": { "const": "column" } } }
+              }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "table" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "columns": { "type": "array", "items": { "$ref": "#/$defs/tableColumn" } },
+              "rows": { "type": "array", "items": { "$ref": "#/$defs/tableRow" } },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "property" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "key": { "type": "string" },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "dataview" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "objectId": { "type": "string" },
+              "isCollection": { "type": "boolean" },
+              "source": {
+                "type": "array",
+                "items": { "type": "string" },
+                "x-output-only": true
+              },
+              "properties": { "type": "array", "items": { "$ref": "#/$defs/dataviewProperty" } },
+              "views": { "type": "array", "items": { "$ref": "#/$defs/view" } },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "widget" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "layout": { "enum": ["link", "tree", "list", "compactList", "view"] },
+              "limit": { "type": "integer" },
+              "viewId": { "type": "string" },
+              "autoAdded": { "type": "boolean" }
+            }
+          }
+        },
+        {
+          "if": { "properties": { "type": { "const": "icon" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "name": { "type": "string" },
+              "children": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "enum": ["tableOfContents", "featuredProperties", "chat"] } },
+            "required": ["type"]
+          },
+          "then": { "properties": { "children": false } }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "tableColumn": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/tableInnerId" },
+        "width": { "type": "number" },
+        "fields": { "type": "object", "x-output-only": true }
+      },
+      "additionalProperties": false
+    },
+    "tableRow": {
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/tableInnerId" },
+        "isHeader": { "type": "boolean" },
+        "cells": { "type": "array", "items": { "$ref": "#/$defs/tableCell" } }
+      },
+      "additionalProperties": false
+    },
+    "tableCell": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "null" },
+        {
+          "allOf": [{ "$ref": "#/$defs/block" }],
+          "properties": { "id": false }
+        }
+      ]
+    },
+    "dataviewProperty": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string" },
+        "format": {
+          "enum": [
+            "text", "shortText", "number", "select", "multiSelect", "date",
+            "files", "checkbox", "url", "email", "phone", "emoji", "objects",
+            "properties"
+          ]
+        }
+      },
+      "required": ["key"],
+      "additionalProperties": false
+    },
+    "view": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "enum": ["table", "list", "gallery", "kanban", "calendar", "graph"] },
+        "name": { "type": "string" },
+        "groupBy": { "type": "string" },
+        "coverProperty": { "type": "string" },
+        "endProperty": { "type": "string" },
+        "hideIcon": { "type": "boolean" },
+        "cardSize": { "enum": ["small", "medium", "large"] },
+        "coverFit": { "type": "boolean" },
+        "coloredGroups": { "type": "boolean" },
+        "pageSize": { "type": "integer" },
+        "defaultTemplateId": { "type": "string" },
+        "defaultTypeId": { "type": "string" },
+        "wrapContent": { "type": "boolean" },
+        "listSize": { "enum": ["compact", "regular"] },
+        "alternateRows": { "type": "boolean" },
+        "sorts": { "type": "array", "items": { "$ref": "#/$defs/sort" } },
+        "filters": { "type": "array", "items": { "$ref": "#/$defs/filterNode" } },
+        "columns": { "type": "array", "items": { "$ref": "#/$defs/viewColumn" } },
+        "groups": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/viewGroup" },
+          "x-output-only": true
+        },
+        "objectOrders": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/objectOrder" },
+          "x-output-only": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "sort": {
+      "type": "object",
+      "properties": {
+        "property": { "type": "string" },
+        "direction": { "enum": ["asc", "desc", "custom"] },
+        "customOrder": { "type": "array" },
+        "emptyPlacement": { "enum": ["start", "end"] },
+        "includeTime": { "type": "boolean" },
+        "noCollate": { "type": "boolean" },
+        "id": { "type": "string", "x-output-only": true }
+      },
+      "required": ["property"],
+      "additionalProperties": false
+    },
+    "filterNode": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "operator": { "enum": ["and", "or"] },
+            "filters": { "type": "array", "items": { "$ref": "#/$defs/filterNode" } }
+          },
+          "required": ["operator", "filters"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "property": { "type": "string" },
+            "condition": {
+              "enum": [
+                "equal", "notEqual", "greater", "less", "greaterOrEqual",
+                "lessOrEqual", "contains", "notContains", "in", "notIn",
+                "empty", "notEmpty", "allIn", "notAllIn", "exactIn",
+                "notExactIn", "exists"
+              ]
+            },
+            "value": {},
+            "datePreset": {
+              "enum": [
+                "yesterday", "today", "tomorrow", "lastWeek", "currentWeek",
+                "nextWeek", "lastMonth", "currentMonth", "nextMonth",
+                "numberOfDaysAgo", "numberOfDaysNow", "lastYear",
+                "currentYear", "nextYear"
+              ]
+            },
+            "includeTime": { "type": "boolean" },
+            "nestedProperty": { "type": "string", "x-output-only": true },
+            "id": { "type": "string", "x-output-only": true }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "viewColumn": {
+      "type": "object",
+      "properties": {
+        "property": { "type": "string" },
+        "hidden": { "type": "boolean" },
+        "width": { "type": "number" },
+        "aggregation": {
+          "enum": [
+            "count", "countValue", "countDistinct", "countEmpty",
+            "countNotEmpty", "percentEmpty", "percentNotEmpty", "sum",
+            "average", "median", "min", "max", "range"
+          ]
+        },
+        "align": { "enum": ["left", "center", "right", "justify"] }
+      },
+      "required": ["property"],
+      "additionalProperties": false
+    },
+    "viewGroup": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "hidden": { "type": "boolean" },
+        "backgroundColor": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "objectOrder": {
+      "type": "object",
+      "properties": {
+        "groupId": { "type": "string" },
+        "objectIds": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}
