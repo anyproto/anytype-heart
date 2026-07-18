@@ -98,7 +98,7 @@ Fields, in **canonical order** (§4):
 | `properties` | object | no | The object's properties, §3. |
 | `refs` | object | no | Short-id legend for compact documents (§9a): maps labels to full object ids. Placed before `blocks` so the legend precedes use when read linearly. |
 | `blocks` | array | no | Children of the (implicit) root block, §4. |
-| `items` | array | no | For collection objects: member object ids, in order (from the internal collection store key `objects`). Present on a non-collection document → validation error. |
+| `items` | array | no | For collection objects: member object ids, in order (from the internal collection store key `objects`). Present on a non-collection document → validation error — enforced by the import *wiring* (collection-ness resolves against the space's types, not offline); the package's `Validate` checks structure only (implementation decision). |
 | `store` | object | no | Escape hatch: remaining internal store content as a free-form JSON object, with the `objects` key lifted into `items`. Output-only (§4a). (Named `store` — its internal name — to avoid colliding with the collection concept.) |
 | `root` | object | no | Escape hatch for non-default root-block attributes (`fields`, `backgroundColor`); absent in the common case. Output-only (§4a). |
 
@@ -171,6 +171,17 @@ just unprettified.
 | `coverId` / `coverType` | shortText / number | page cover — output-only (§4a) |
 | `done` | checkbox | completion state on task-like types |
 | `dueDate` | date | due date on task-like types |
+
+**Canonical key order in `properties`** (implementation decision): the
+well-known keys `name`, `description`, `iconEmoji`, `iconImage` first (in
+that order, when present), then all remaining keys alphabetically. The §4
+omit-empty canon applies to property values too: empty strings/arrays and
+`false`/`0` scalars are not written.
+
+**Value shape** (implementation decision): select/multiSelect and
+objects/files values are always JSON arrays; import stores them as lists, so
+internally scalar-stored values (e.g. `creator`) normalize to
+single-element lists on round-trip (§11).
 
 **Stripping.** Export removes internal/derived properties
 (`bundle.LocalAndDerivedRelationKeys`) **except** those the importer
@@ -262,7 +273,7 @@ mapping:
 | `toggle` | Text/Toggle | `color`, `text` |
 | `callout` | Text/Callout | `iconEmoji`, `iconImage` (file object id), `color`, `text` |
 | `toggleHeading1` … `toggleHeading3` | Text/ToggleHeader1..3 | `color`, `text` |
-| `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise |
+| `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11). `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise |
 | `bookmark` | Bookmark | `url`, `objectId` (target bookmark object). `state` handled like file blocks. Deprecated preview fields and `type` (derivable) are dropped — preview data lives on the target object |
 | `link` | Link | `objectId` (target object), `cardStyle` (`text · card · inline`), `iconSize` (`none · small · medium`), `description` (`none · manual · content`), `properties` (string array: property keys shown on the card). Deprecated `style` and legacy `fields` are dropped |
 | `divider` | Div | `style` (`line · dots`, default `line`) |
@@ -356,6 +367,10 @@ machinery:
   normalization: cells sorted into column order, orphan cells dropped. Only
   a structurally unrecognizable subtree (missing row/column wrappers) is an
   export error.
+- An empty plain-paragraph cell and an absent cell are the same thing:
+  export writes `null` for both, import creates no cell block for `null`,
+  `""`, or a bare empty paragraph (normalization, §11). Trailing empty
+  cells are omitted (import pads).
 
 ### 6.2 Dataview
 
@@ -471,6 +486,10 @@ a group exists only for `or` or nesting):
 Sorts and filters do **not** carry the proto's cached per-node `format`:
 import rehydrates it from the dataview `properties` list and `bundle`
 (unresolvable keys get format 0, which the query engine tolerates).
+
+Proto-default edge cases (implementation decisions): a leaf whose proto
+condition is `None` (0) omits `condition` — absent means `None`; a proto
+group node with operator `No` (0) exports as `"and"`.
 
 #### 6.2.1 Compact filter syntax — reserved extension (post-v1)
 
@@ -760,7 +779,8 @@ behavior belongs to the wiring, not this package.
 | envelope `id`, `refs` values themselves | **never** |
 
 Block/row/column/view ids are relabeled to their shortest unique suffix
-(doc-local, no legend needed).
+(doc-local, no legend needed; same 5-character minimum as refs keys —
+implementation decision).
 
 `CompactIds` and `OmitIds` compose: together they yield the most
 prompt-friendly form (no block ids, short object refs with legend). Both are
@@ -798,9 +818,12 @@ blocks dropped (§5); marks normalized — emoji materialized, whitespace
 boundaries shrunk, same-type overlaps truncated, adjacent ranges merged
 (§8.3); file/bookmark `state` recomputed (§5); empty strings/arrays/objects
 and default scalars dropped (§4); tables normalized and ids canonicalized
-(§6.1); dataview `activeView`, cached sort/filter formats, deprecated
-per-column date/time fields and `value` on `empty`/`notEmpty`/`exists`
-leaves dropped, group `index` derived from order (§6.2).
+(§6.1, including empty-paragraph cells collapsing to absent cells); dataview
+`activeView`, cached sort/filter formats, deprecated per-column date/time
+fields and `value` on `empty`/`notEmpty`/`exists` leaves dropped, group
+`index` derived from order (§6.2); scalar-stored select/objects/files
+property values become single-element lists and the legacy file `hash`
+migrates into `objectId` (§3, §5).
 
 1. `Import(Export(S)) ≡ N(S)` — state-level equality on the snapshot after
    normalization.
@@ -850,7 +873,10 @@ pkg/lib/anyblockjson/
   table.go                   — table subtree ↔ columns/rows
   dataview.go                — dataview content mapping (§6.2)
   validate.go                — schema + semantic validation
-  roundtrip_test.go          — §11 property tests + golden files
+  json.go                    — ordered canonical-JSON writer, enum tables,
+                               proto value bridges, id helpers
+  roundtrip_test.go          — §11 property tests + state assertions
+  golden_gen_test.go         — golden files (testdata/, -update to refresh)
 ```
 
 ```go
@@ -881,17 +907,22 @@ type Options struct {
     ResolveOptions OptionResolver // optional; nil = option values pass through as ids
     OmitIds        bool           // export only: drop every id (§9)
     CompactIds     bool           // export only: shorten ids, emit refs legend (§9a)
+    GenerateId     func() string  // import only: id generator for missing ids;
+                                  // nil = random 24-hex (editor-shaped). The wiring
+                                  // passes the editor's generator.
     // CompactFilters (reserved): filters as query strings — post-v1, §6.2.1
 }
 ```
 
 The package is deliberately **pipeline-agnostic**: it depends only on
-`pkg/lib/pb/model`, `core/domain`, `pkg/lib/bundle`, `util/text` and the
-Markdown library (goldmark, already a dependency). It must not import anything
-from `core/block/import` or `core/block/export` — including `anymark`; the
-inline codec is implemented in-package because canonical, byte-stable
-rendering needs stricter guarantees than `anymark`'s best-effort import
-parsing, while staying syntax-compatible with it (§8.1).
+`pkg/lib/pb/model`, `core/domain`, `pkg/lib/bundle`, `util/text`, the proto
+runtime (`gogo/protobuf/types`) and `santhosh-tekuri/jsonschema/v6` (§12).
+It must not import anything from `core/block/import` or `core/block/export`
+— including `anymark`; the inline codec is implemented in-package because
+canonical, byte-stable rendering needs stricter guarantees than `anymark`'s
+best-effort import parsing, while staying syntax-compatible with it (§8.1).
+(Goldmark was authorized but turned out unnecessary: the deterministic
+stack parser in §8.3 replaces CommonMark emphasis resolution entirely.)
 
 Wiring (follow-up work, not this package):
 - Export: a `core/converter/anyblockjson` shim implementing
