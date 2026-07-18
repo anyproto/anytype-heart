@@ -603,6 +603,33 @@ content containing backticks is delimited by the shortest backtick run not
 present in the content, space-padded when the content starts or ends with a
 backtick (`` `` `code` `` ``).
 
+**Canonical escaping, made precise** (implementation decision — "minimally"
+is defined as the following deterministic rule set; at internal mark
+boundaries the unseen neighbor is treated as punctuation, conservatively):
+
+- `*` — escaped unless whitespace on both sides.
+- `_` — escaped iff it could open or close under underscore flanking
+  (intraword underscores stay literal).
+- `` ` `` — always escaped in prose.
+- `~` — escaped when adjacent to another tilde or sitting at a mark
+  boundary. On input, only runs of exactly two tildes are strikethrough
+  delimiters; other run lengths are literal.
+- `[` — always escaped in prose (a bare `[` could assemble a false link
+  with text from a later mark segment; no local lookahead can rule it out).
+- `]` — escaped only inside link labels.
+- `<` — escaped only before a whitelisted tag prefix (`</?` + `u`/`font`/
+  `mention` + delimiter).
+- `&` — escaped only where a valid entity follows. Recognized entities:
+  `lt gt amp quot apos nbsp` and numeric (`&#65;`, `&#x41;`).
+- `\` — escaped when followed by ASCII punctuation (input accepts a
+  backslash before any ASCII punctuation as an escape, per CommonMark).
+
+Link destinations render bare with `\`-escaped `\ ( ) &`, or angle-wrapped
+(`<…>`) when the URL contains whitespace; entities are decoded in
+destinations and attribute values on input. `_` delimiter runs parse exactly
+like `*` runs (so `__x__` is bold — liberal input; canonical output always
+uses stars).
+
 ### 8.3 Canonical rendering (the round-trip contract for marks)
 
 Internal marks are ranges over UTF-16 code units and may overlap arbitrarily.
@@ -626,9 +653,37 @@ Export:
    one tag), `<u>`, `~~`, `**`, `*`, `` ` ``. Delimiters shared by adjacent
    segments stay open (maximal runs).
 
+Implementation decisions (v0.4 freeze):
+
+- **Step 1 details**: "invalid" ranges are out-of-bounds, inverted,
+  zero-length, or splitting a UTF-16 surrogate pair; a param-carrying mark
+  (link, mention, object, colors, emoji) with an empty param is dropped;
+  a param on a param-less mark type is cleared (so equal ranges merge).
+- **Step 2 extension**: emphasis-family marks (`**`, `*`, `~~`) additionally
+  exclude any whitespace run touched by a *stack-outer* mark's endpoint —
+  the outer change forces the emphasis delimiter to close/reopen inside the
+  run, and an emphasis delimiter against whitespace cannot re-parse
+  (flanking). Whitespace styling is invisible for these types, so the split
+  is a rendering no-op.
+- **Step 3 tie-break**: at equal starts the longer range wins; the shorter
+  same-type range is truncated to nothing and dropped.
+
 Import parses the grammar back to ranges: each maximal contiguous run of a
 mark becomes one range; offsets are computed in UTF-16 code units (matching
 editor semantics; `util/text` helpers).
+
+**Parser discipline** (implementation decision): the parser is the exact
+inverse of the canonical renderer — a deterministic delimiter stack (close
+the top entry while it matches, open with the remainder, demote what can do
+neither to literal text), *not* CommonMark's delimiter-run algorithm. The
+rule-of-three resolution is not invertible, and §11.2's byte-stability over
+arbitrarily overlapping ranges requires an exact inverse; the grammar stays
+syntax-compatible with CommonMark/anymark for well-formed input. Unmatched
+Markdown delimiters demote to literal text (CommonMark spirit); malformed,
+unclosed, or misnested *whitelisted tags* are validation errors (§12) —
+once `<u`/`<font`/`<mention` is recognized, strictness gives agents a real
+error instead of silent text. Import emits marks sorted by (from asc, to
+desc, nesting order, param).
 
 Consequence: a document whose overlapping ranges are exported and re-imported
 gets equivalent-but-normalized marks (same styled rendering, possibly
