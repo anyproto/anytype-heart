@@ -1,0 +1,233 @@
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json",
+  "version": 1,
+  "id": "bafyreiobject",
+  "type": "page",
+  "properties": {
+    "name": "Project Phoenix",
+    "description": "The subtitle",
+    "iconEmoji": "🔥",
+    "assignee": [
+      "roman"
+    ],
+    "createdDate": "2025-07-06T08:44:05Z",
+    "customDate": "2025-07-06T08:44:05Z",
+    "customStatus": [
+      "In progress"
+    ]
+  },
+  "refs": {
+    "image": "bafyreiimage",
+    "kmark": "bafyreibookmark",
+    "roman": "bafyreiroman",
+    "task1": "bafyreitask1",
+    "tasks": "bafyreitasks"
+  },
+  "blocks": [
+    {
+      "id": "b1",
+      "type": "heading2",
+      "text": "Goals"
+    },
+    {
+      "id": "b2",
+      "type": "paragraph",
+      "text": "Ship the **new export** with <mention objectId=\"roman\">Roman</mention>"
+    },
+    {
+      "id": "b3",
+      "type": "bulletedListItem",
+      "text": "Nested item"
+    },
+    {
+      "id": "b5",
+      "type": "checkbox",
+      "text": "Draft spec"
+    },
+    {
+      "id": "b6",
+      "type": "code",
+      "language": "go",
+      "text": "func main() {\n\tprintln(\"hi\")\n}"
+    },
+    {
+      "id": "b7",
+      "type": "divider",
+      "style": "dots"
+    },
+    {
+      "id": "b8",
+      "type": "image",
+      "objectId": "image",
+      "name": "cat.png",
+      "mimeType": "image/png",
+      "size": 2048,
+      "addedAt": "2025-07-06T08:44:05Z"
+    },
+    {
+      "id": "b9",
+      "type": "bookmark",
+      "url": "https://anytype.io",
+      "objectId": "kmark"
+    },
+    {
+      "id": "row1",
+      "type": "row",
+      "children": [
+        {
+          "id": "col1",
+          "type": "column",
+          "children": [
+            {
+              "id": "b11",
+              "type": "paragraph",
+              "text": "left"
+            }
+          ]
+        },
+        {
+          "id": "col2",
+          "type": "column",
+          "children": [
+            {
+              "id": "b12",
+              "type": "paragraph",
+              "text": "right"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "able1",
+      "type": "table",
+      "columns": [
+        {
+          "id": "c1"
+        },
+        {
+          "id": "c2",
+          "width": 120
+        }
+      ],
+      "rows": [
+        {
+          "id": "r1",
+          "isHeader": true,
+          "cells": [
+            "Name",
+            "Status"
+          ]
+        },
+        {
+          "id": "r2",
+          "cells": [
+            null,
+            {
+              "type": "checkbox",
+              "checked": true,
+              "text": "done"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "b10",
+      "type": "embed",
+      "processor": "mermaid",
+      "text": "graph TD; A-->B"
+    },
+    {
+      "id": "dv1",
+      "type": "dataview",
+      "objectId": "tasks",
+      "properties": [
+        {
+          "key": "name",
+          "format": "shortText"
+        },
+        {
+          "key": "customStatus",
+          "format": "select"
+        },
+        {
+          "key": "dueDate",
+          "format": "date"
+        }
+      ],
+      "views": [
+        {
+          "id": "v1",
+          "type": "kanban",
+          "name": "By status",
+          "groupBy": "customStatus",
+          "sorts": [
+            {
+              "property": "dueDate",
+              "emptyPlacement": "end",
+              "id": "s1"
+            }
+          ],
+          "filters": [
+            {
+              "property": "dueDate",
+              "condition": "less",
+              "datePreset": "currentWeek",
+              "id": "f1"
+            },
+            {
+              "operator": "or",
+              "filters": [
+                {
+                  "property": "customStatus",
+                  "condition": "in",
+                  "value": [
+                    "In progress",
+                    "Done"
+                  ],
+                  "id": "f2"
+                },
+                {
+                  "property": "done",
+                  "condition": "empty",
+                  "id": "f3"
+                }
+              ]
+            }
+          ],
+          "columns": [
+            {
+              "property": "name"
+            },
+            {
+              "property": "dueDate",
+              "hidden": true,
+              "width": 30,
+              "aggregation": "countDistinct",
+              "align": "right"
+            }
+          ],
+          "groups": [
+            {
+              "id": "g1",
+              "backgroundColor": "red"
+            },
+            {
+              "id": "g2",
+              "hidden": true
+            }
+          ],
+          "objectOrders": [
+            {
+              "groupId": "g1",
+              "objectIds": [
+                "task1"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
