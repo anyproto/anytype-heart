@@ -73,8 +73,8 @@ func sortSpans(s []span) {
 	})
 }
 
-// RenderInline serializes text and its marks into §8 inline Markdown.
-func RenderInline(txt string, marks []*model.BlockContentTextMark) string {
+// renderInline serializes text and its marks into §8 inline Markdown.
+func renderInline(txt string, marks []*model.BlockContentTextMark) string {
 	u16 := text.StrToUTF16(txt)
 	spans := sanitizeSpans(u16, marks)
 	u16, spans = materializeEmoji(u16, spans)
@@ -798,13 +798,13 @@ func escapeDest(dest string) string {
 // ---- parsing ----
 //
 
-// InlineError is a grammar error in a text string's inline markup (§12).
-type InlineError struct {
+// inlineError is a grammar error in a text string's inline markup (§12).
+type inlineError struct {
 	Msg     string
 	Snippet string
 }
 
-func (e *InlineError) Error() string {
+func (e *inlineError) Error() string {
 	if e.Snippet == "" {
 		return e.Msg
 	}
@@ -820,12 +820,12 @@ func inlineErr(rs []rune, pos int, msg string) error {
 	if start > len(rs) {
 		start = len(rs)
 	}
-	return &InlineError{Msg: msg, Snippet: string(rs[start:end])}
+	return &inlineError{Msg: msg, Snippet: string(rs[start:end])}
 }
 
-// ParseInline parses §8 inline Markdown back into plain text and marks with
+// parseInline parses §8 inline Markdown back into plain text and marks with
 // UTF-16 code-unit ranges.
-func ParseInline(md string) (string, []*model.BlockContentTextMark, error) {
+func parseInline(md string) (string, []*model.BlockContentTextMark, error) {
 	rs := []rune(md)
 	toks, err := tokenizeInline(rs, 0)
 	if err != nil {
@@ -1205,7 +1205,7 @@ func parseTag(rs []rune, i int) (*token, int, bool, error) {
 	if name != "u" && name != "font" && name != "mention" {
 		return nil, 0, false, nil
 	}
-	if j >= len(rs) || !(rs[j] == '>' || rs[j] == '/' || unicode.IsSpace(rs[j])) {
+	if j >= len(rs) || (rs[j] != '>' && rs[j] != '/' && !unicode.IsSpace(rs[j])) {
 		return nil, 0, false, nil
 	}
 	attrs := map[string]string{}
@@ -1269,39 +1269,49 @@ func parseTag(rs []rune, i int) (*token, int, bool, error) {
 		attrs[attrName] = decodeEntities(string(rs[valStart:j]))
 		j++
 	}
-	if !closing {
-		switch name {
-		case "u":
-			if len(attrs) > 0 {
-				return nil, 0, false, inlineErr(rs, i, "unexpected attribute on <u> tag")
-			}
-		case "font":
-			for k := range attrs {
-				if k != "color" && k != "background" {
-					return nil, 0, false, inlineErr(rs, i, fmt.Sprintf("unknown attribute %q on <font> tag", k))
-				}
-			}
-			if len(attrs) == 0 {
-				return nil, 0, false, inlineErr(rs, i, "<font> tag needs a color or background attribute")
-			}
-		case "mention":
-			for k := range attrs {
-				if k != "objectId" {
-					return nil, 0, false, inlineErr(rs, i, fmt.Sprintf("unknown attribute %q on <mention> tag", k))
-				}
-			}
-			if _, ok := attrs["objectId"]; !ok {
-				return nil, 0, false, inlineErr(rs, i, "<mention> tag needs an objectId attribute")
-			}
-		}
-	} else if selfClose {
+	if closing && selfClose {
 		return nil, 0, false, inlineErr(rs, i, fmt.Sprintf("malformed </%s> tag", name))
+	}
+	if !closing {
+		if err := validateTagAttrs(name, attrs); err != "" {
+			return nil, 0, false, inlineErr(rs, i, err)
+		}
 	}
 	if selfClose {
 		// zero-length tag: dropped
 		return nil, j - i, true, nil
 	}
 	return &token{kind: tokTag, tagName: name, closing: closing, attrs: attrs}, j - i, true, nil
+}
+
+// validateTagAttrs enforces the per-tag attribute rules (§8.1); returns an
+// error message or "".
+func validateTagAttrs(name string, attrs map[string]string) string {
+	switch name {
+	case "u":
+		if len(attrs) > 0 {
+			return "unexpected attribute on <u> tag"
+		}
+	case "font":
+		for k := range attrs {
+			if k != "color" && k != "background" {
+				return fmt.Sprintf("unknown attribute %q on <font> tag", k)
+			}
+		}
+		if len(attrs) == 0 {
+			return "<font> tag needs a color or background attribute"
+		}
+	case "mention":
+		for k := range attrs {
+			if k != "objectId" {
+				return fmt.Sprintf("unknown attribute %q on <mention> tag", k)
+			}
+		}
+		if _, ok := attrs["objectId"]; !ok {
+			return "<mention> tag needs an objectId attribute"
+		}
+	}
+	return ""
 }
 
 // scanLink matches the [label](dest) pattern at rs[i] without tokenizing the
@@ -1328,66 +1338,14 @@ func scanLink(rs []rune, i int, ctx *inlineScanCtx) (labelEnd int, dest string, 
 		return 0, "", 0, false
 	}
 	destLimit := k + maxLinkDestLen
-	var db strings.Builder
+	var destOk bool
 	if rs[k] == '<' {
-		k++
-		for {
-			if k >= len(rs) || k > destLimit {
-				return 0, "", 0, false
-			}
-			c := rs[k]
-			if c == '>' {
-				k++
-				break
-			}
-			if c == '\\' && k+1 < len(rs) && isASCIIPunct(rs[k+1]) {
-				db.WriteRune(rs[k+1])
-				k += 2
-				continue
-			}
-			if c == '&' {
-				if dec, esize, eok := parseEntity(rs[k:]); eok {
-					db.WriteString(dec)
-					k += esize
-					continue
-				}
-			}
-			db.WriteRune(c)
-			k++
-		}
+		dest, k, destOk = scanAngleDest(rs, k+1, destLimit)
 	} else {
-		parens := 0
-		for {
-			if k >= len(rs) || k > destLimit {
-				return 0, "", 0, false
-			}
-			c := rs[k]
-			if unicode.IsSpace(c) {
-				break
-			}
-			if c == ')' {
-				if parens == 0 {
-					break
-				}
-				parens--
-			} else if c == '(' {
-				parens++
-			}
-			if c == '\\' && k+1 < len(rs) && isASCIIPunct(rs[k+1]) {
-				db.WriteRune(rs[k+1])
-				k += 2
-				continue
-			}
-			if c == '&' {
-				if dec, esize, eok := parseEntity(rs[k:]); eok {
-					db.WriteString(dec)
-					k += esize
-					continue
-				}
-			}
-			db.WriteRune(c)
-			k++
-		}
+		dest, k, destOk = scanBareDest(rs, k, destLimit)
+	}
+	if !destOk {
+		return 0, "", 0, false
 	}
 	ws = 0
 	for k < len(rs) && unicode.IsSpace(rs[k]) {
@@ -1400,7 +1358,75 @@ func scanLink(rs []rune, i int, ctx *inlineScanCtx) (labelEnd int, dest string, 
 	if k >= len(rs) || rs[k] != ')' {
 		return 0, "", 0, false
 	}
-	return labelEnd, db.String(), k + 1 - i, true
+	return labelEnd, dest, k + 1 - i, true
+}
+
+// scanAngleDest reads an angle-wrapped destination up to the closing '>',
+// decoding escapes and entities; limit bounds the scan (§8 resource bounds).
+func scanAngleDest(rs []rune, k, limit int) (string, int, bool) {
+	var db strings.Builder
+	for {
+		if k >= len(rs) || k > limit {
+			return "", 0, false
+		}
+		c := rs[k]
+		if c == '>' {
+			return db.String(), k + 1, true
+		}
+		if c == '\\' && k+1 < len(rs) && isASCIIPunct(rs[k+1]) {
+			db.WriteRune(rs[k+1])
+			k += 2
+			continue
+		}
+		if c == '&' {
+			if dec, esize, eok := parseEntity(rs[k:]); eok {
+				db.WriteString(dec)
+				k += esize
+				continue
+			}
+		}
+		db.WriteRune(c)
+		k++
+	}
+}
+
+// scanBareDest reads a bare destination up to whitespace or the closing
+// unbalanced ')', decoding escapes and entities; limit bounds the scan.
+func scanBareDest(rs []rune, k, limit int) (string, int, bool) {
+	var db strings.Builder
+	parens := 0
+	for {
+		if k >= len(rs) || k > limit {
+			return "", 0, false
+		}
+		c := rs[k]
+		if unicode.IsSpace(c) {
+			return db.String(), k, true
+		}
+		switch c {
+		case ')':
+			if parens == 0 {
+				return db.String(), k, true
+			}
+			parens--
+		case '(':
+			parens++
+		case '\\':
+			if k+1 < len(rs) && isASCIIPunct(rs[k+1]) {
+				db.WriteRune(rs[k+1])
+				k += 2
+				continue
+			}
+		case '&':
+			if dec, esize, eok := parseEntity(rs[k:]); eok {
+				db.WriteString(dec)
+				k += esize
+				continue
+			}
+		}
+		db.WriteRune(c)
+		k++
+	}
 }
 
 func parseLink(rs []rune, i int, ctx *inlineScanCtx, depth int) (*token, int, bool, error) {
@@ -1514,7 +1540,7 @@ func (ib *inlineBuilder) applyInserts() {
 				idx++
 			}
 		}
-		return int32(cum[idx])
+		return int32(cum[idx]) //nolint:gosec // UTF-16 offsets are bounded by the text length
 	}
 	for _, m := range ib.marks {
 		from, to := int(m.Range.From), int(m.Range.To)
@@ -1532,7 +1558,7 @@ func (ib *inlineBuilder) addMark(typ model.BlockContentTextMarkType, param strin
 		return
 	}
 	ib.marks = append(ib.marks, &model.BlockContentTextMark{
-		Range: &model.Range{From: int32(from), To: int32(to)},
+		Range: &model.Range{From: int32(from), To: int32(to)}, //nolint:gosec // UTF-16 offsets are bounded by the text length
 		Type:  typ,
 		Param: param,
 	})
@@ -1563,14 +1589,14 @@ func resolveTokens(toks []token, ib *inlineBuilder) error {
 			for i := len(stack) - 1; i >= 0; i-- {
 				if stack[i].kind == entryTag {
 					if stack[i].tagName != t.tagName {
-						return &InlineError{Msg: fmt.Sprintf("misnested tags: </%s> closes across <%s>", t.tagName, stack[i].tagName)}
+						return &inlineError{Msg: fmt.Sprintf("misnested tags: </%s> closes across <%s>", t.tagName, stack[i].tagName)}
 					}
 					idx = i
 					break
 				}
 			}
 			if idx < 0 {
-				return &InlineError{Msg: fmt.Sprintf("unmatched closing </%s> tag", t.tagName)}
+				return &inlineError{Msg: fmt.Sprintf("unmatched closing </%s> tag", t.tagName)}
 			}
 			for i := len(stack) - 1; i > idx; i-- {
 				ib.insertLiteral(stack[i].start16, stack[i].rawDelim())
@@ -1593,7 +1619,7 @@ func resolveTokens(toks []token, ib *inlineBuilder) error {
 	for i := len(stack) - 1; i >= 0; i-- {
 		e := stack[i]
 		if e.kind == entryTag {
-			return &InlineError{Msg: fmt.Sprintf("unclosed <%s> tag", e.tagName)}
+			return &inlineError{Msg: fmt.Sprintf("unclosed <%s> tag", e.tagName)}
 		}
 		ib.insertLiteral(e.start16, e.rawDelim())
 	}
@@ -1655,8 +1681,8 @@ func canonicalizeMarks(marks []*model.BlockContentTextMark) []*model.BlockConten
 		return nil
 	}
 	type key struct {
-		typ   model.BlockContentTextMarkType
-		param string
+		typ   model.BlockContentTextMarkType //nolint:unused // map-key equality is the use
+		param string                         //nolint:unused // map-key equality is the use
 	}
 	groups := make(map[key][]*model.BlockContentTextMark)
 	var order []key

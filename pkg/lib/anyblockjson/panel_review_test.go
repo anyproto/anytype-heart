@@ -25,15 +25,15 @@ func TestInline_ObjectDeepLinkNormalizes(t *testing.T) {
 		mark(mObject, 0, 2, "outerid"),
 		mark(mLink, 1, 2, objectLinkPrefix+"innerlink"),
 	}
-	md1 := RenderInline("ab", marks)
-	text1, marks1, err := ParseInline(md1)
+	md1 := renderInline("ab", marks)
+	text1, marks1, err := parseInline(md1)
 	require.NoError(t, err)
-	md2 := RenderInline(text1, marks1)
+	md2 := renderInline(text1, marks1)
 	require.Equal(t, md1, md2, "must be byte-stable")
 
 	// standalone equivalence: the deep-link Link renders as an Object link
-	asLink := RenderInline("x", []*model.BlockContentTextMark{mark(mLink, 0, 1, objectLinkPrefix+"id9")})
-	asObject := RenderInline("x", []*model.BlockContentTextMark{mark(mObject, 0, 1, "id9")})
+	asLink := renderInline("x", []*model.BlockContentTextMark{mark(mLink, 0, 1, objectLinkPrefix+"id9")})
+	asObject := renderInline("x", []*model.BlockContentTextMark{mark(mObject, 0, 1, "id9")})
 	assert.Equal(t, asObject, asLink)
 }
 
@@ -45,11 +45,11 @@ func TestInline_BracketInDestInsideLabel(t *testing.T) {
 			mark(mObject, 0, 1, "z"),
 			mark(mLink, 0, 1, dest),
 		}
-		md1 := RenderInline("k", marks)
-		text1, marks1, err := ParseInline(md1)
+		md1 := renderInline("k", marks)
+		text1, marks1, err := parseInline(md1)
 		require.NoError(t, err, "dest %q", dest)
 		assert.Equal(t, "k", text1)
-		md2 := RenderInline(text1, marks1)
+		md2 := renderInline(text1, marks1)
 		require.Equal(t, md1, md2, "dest %q must be byte-stable", dest)
 	}
 }
@@ -184,7 +184,7 @@ func TestInline_ParseIsLinearish(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			start := time.Now()
-			_, _, err := ParseInline(tc.md)
+			_, _, err := parseInline(tc.md)
 			require.NoError(t, err)
 			require.Less(t, time.Since(start), 10*time.Second, "quadratic behavior reintroduced")
 		})
@@ -196,29 +196,57 @@ func TestInline_ResourceBounds(t *testing.T) {
 	// an over-long link destination is not recognized; the mark drops on
 	// export and the text stays intact
 	longDest := "https://x.io/" + strings.Repeat("a", maxLinkDestLen)
-	md := RenderInline("ab", []*model.BlockContentTextMark{mark(mLink, 0, 2, longDest)})
+	md := renderInline("ab", []*model.BlockContentTextMark{mark(mLink, 0, 2, longDest)})
 	assert.Equal(t, "ab", md, "over-long link param is dropped")
 
 	doc := fmt.Sprintf("[a](%s)", longDest)
-	text, marks, err := ParseInline(doc)
+	text, marks, err := parseInline(doc)
 	require.NoError(t, err)
 	assert.Empty(t, marks)
 	assert.Equal(t, doc, text, "over-long dest stays literal")
 
 	// an over-long emoji param is invalid and dropped
-	md = RenderInline("ab", []*model.BlockContentTextMark{
+	md = renderInline("ab", []*model.BlockContentTextMark{
 		mark(mEmoji, 0, 1, strings.Repeat("😀", maxEmojiParamLen)),
 	})
 	assert.Equal(t, "ab", md)
 
 	// links nested beyond the cap stay literal but still parse cleanly
 	deep := strings.Repeat("[", 40) + "x" + strings.Repeat("](u)", 40)
-	text, _, err = ParseInline(deep)
+	text, _, err = parseInline(deep)
 	require.NoError(t, err)
 	assert.Contains(t, text, "x")
-	canonical := RenderInline(text, nil)
-	text2, marks2, err := ParseInline(canonical)
+	canonical := renderInline(text, nil)
+	text2, marks2, err := parseInline(canonical)
 	require.NoError(t, err)
 	assert.Equal(t, text, text2)
 	assert.Empty(t, marks2)
+}
+
+// Lens 4: the wiring dispatches on the version/$schema markers (§13).
+func TestDetectFormat(t *testing.T) {
+	v, schema, ok := DetectFormat([]byte(`{"$schema": "https://schemas.anytype.io/anyblock/1.0/object.schema.json", "version": 1}`))
+	require.True(t, ok)
+	assert.Equal(t, 1, v)
+	assert.Equal(t, SchemaURL, schema)
+
+	v, _, ok = DetectFormat([]byte(`{"version": 2}`))
+	require.True(t, ok)
+	assert.Equal(t, 2, v)
+
+	_, _, ok = DetectFormat([]byte(`{"blocks": []}`))
+	assert.False(t, ok)
+	_, _, ok = DetectFormat([]byte(`not json`))
+	assert.False(t, ok)
+}
+
+// Lens 4: the default id generator (no GenerateId option) mints
+// editor-shaped 24-hex ids.
+func TestImport_DefaultIdGenerator(t *testing.T) {
+	_, snap, err := Unmarshal([]byte(`{"version": 1, "blocks": [{"type": "paragraph", "text": "x"}]}`), Options{})
+	require.NoError(t, err)
+	require.Len(t, snap.Blocks, 2)
+	for _, b := range snap.Blocks {
+		assert.Regexp(t, "^[0-9a-f]{24}$", b.Id)
+	}
 }

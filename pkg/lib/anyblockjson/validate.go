@@ -82,6 +82,29 @@ var compileSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
 	return sch, nil
 })
 
+// DetectFormat reports the version and $schema markers of a document without
+// validating or importing it — the cheap dispatch probe for import wiring
+// (§13). ok is false when data is not a JSON object carrying an integer
+// version.
+func DetectFormat(data []byte) (version int, schemaURL string, ok bool) {
+	var probe struct {
+		Schema  string      `json:"$schema"`
+		Version json.Number `json:"version"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return 0, "", false
+	}
+	v, err := probe.Version.Int64()
+	if err != nil {
+		f, ferr := probe.Version.Float64()
+		if ferr != nil || f != math.Trunc(f) {
+			return 0, "", false
+		}
+		v = int64(f)
+	}
+	return int(v), probe.Schema, true
+}
+
 // Validate checks data against the embedded schema and the semantic rules
 // without building a snapshot (§12).
 func Validate(data []byte) error {
@@ -245,7 +268,7 @@ func semanticIssues(doc map[string]any) []Issue {
 		if text == "" {
 			return
 		}
-		if _, _, err := ParseInline(text); err != nil {
+		if _, _, err := parseInline(text); err != nil {
 			addIssue(path+"/text", "inline markup: %v", err)
 		}
 	}
@@ -257,17 +280,11 @@ func semanticIssues(doc map[string]any) []Issue {
 			claimId(id, path+"/id")
 		}
 		checkText(block, path)
-		if typ == "code" {
-			if _, hasLang := block["language"]; hasLang {
-				if fields, _ := block["fields"].(map[string]any); fields != nil {
-					if _, conflict := fields["lang"]; conflict {
-						addIssue(path, "language and fields.lang are both set")
-					}
-				}
-			}
+		if typ == "code" && codeLangConflict(block) {
+			addIssue(path, "language and fields.lang are both set")
 		}
 		if typ == "table" {
-			walkTable(block, path, claimId, addIssue, &walkBlock)
+			walkTable(block, path, claimId, addIssue, walkBlock)
 		}
 		if children, _ := block["children"].([]any); children != nil {
 			for i, c := range children {
@@ -288,12 +305,26 @@ func semanticIssues(doc map[string]any) []Issue {
 	return issues
 }
 
+// codeLangConflict reports a code block carrying both the first-class
+// language prop and the internal fields.lang it lifts (§5.1).
+func codeLangConflict(block map[string]any) bool {
+	if _, hasLang := block["language"]; !hasLang {
+		return false
+	}
+	fields, _ := block["fields"].(map[string]any)
+	if fields == nil {
+		return false
+	}
+	_, conflict := fields[codeLangField]
+	return conflict
+}
+
 func walkTable(block map[string]any, path string,
 	claimId func(id, path string), addIssue func(path, format string, args ...any),
-	walkBlock *func(block map[string]any, path string)) {
+	walkBlock func(block map[string]any, path string)) {
 
 	columns, _ := block["columns"].([]any)
-	var colIds []string
+	colIds := make([]string, 0, len(columns))
 	for i, c := range columns {
 		col, _ := c.(map[string]any)
 		id, _ := col["id"].(string)
@@ -323,14 +354,14 @@ func walkTable(block map[string]any, path string,
 			switch cell := c.(type) {
 			case string:
 				if cell != "" {
-					if _, _, err := ParseInline(cell); err != nil {
+					if _, _, err := parseInline(cell); err != nil {
 						addIssue(cellPath, "inline markup: %v", err)
 					}
 				}
 			case map[string]any:
 				// a full walk: nested tables and children join the id
 				// uniqueness domain and get their text checked
-				(*walkBlock)(cell, cellPath)
+				walkBlock(cell, cellPath)
 			}
 		}
 	}

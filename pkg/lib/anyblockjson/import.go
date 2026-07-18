@@ -10,7 +10,6 @@ import (
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -125,13 +124,7 @@ func (imp *importer) resolveId(s string) string {
 }
 
 func (imp *importer) resolveFormat(key string) (model.RelationFormat, bool) {
-	if f, err := bundle.GetRelationFormat(domain.RelationKey(key)); err == nil {
-		return f, true
-	}
-	if imp.opts.ResolveFormat != nil {
-		return imp.opts.ResolveFormat(domain.RelationKey(key))
-	}
-	return 0, false
+	return resolveFormatWith(imp.opts, key)
 }
 
 func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBase, error) {
@@ -197,7 +190,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 		}
 		blocks, err := imp.blockFromJSON(jb, "")
 		if err != nil {
-			return 0, nil, err
+			return 0, nil, fmt.Errorf("build blocks: %w", err)
 		}
 		root.ChildrenIds = append(root.ChildrenIds, blocks[0].Id)
 		all = append(all, blocks...)
@@ -222,7 +215,7 @@ func (imp *importer) absorbIntoProperty(details *types.Struct, key, md string) {
 	if existing := details.Fields[key]; existing.GetStringValue() != "" {
 		return
 	}
-	plain, _, err := ParseInline(md)
+	plain, _, err := parseInline(md)
 	if err != nil || plain == "" {
 		return
 	}
@@ -291,7 +284,7 @@ func (imp *importer) parseText(md string) (string, *model.BlockContentTextMarks,
 	if md == "" {
 		return "", nil, nil
 	}
-	text, marks, err := ParseInline(md)
+	text, marks, err := parseInline(md)
 	if err != nil {
 		return "", nil, err
 	}
@@ -308,6 +301,80 @@ func (imp *importer) resolveMarkTargets(marks []*model.BlockContentTextMark) {
 			m.Param = imp.resolveId(m.Param)
 		}
 	}
+}
+
+// textFromJSON builds a text-family block content (§5), applying the
+// heading4/header4 aliases and the per-style prop rules.
+func (imp *importer) textFromJSON(jb *jsonBlock) (*model.BlockContentText, error) {
+	style, isAlias := textStyleAliases[jb.Type]
+	if !isAlias {
+		style = textStyleNames.value(jb.Type)
+	}
+	text, marks, err := imp.parseText(jb.Text)
+	if err != nil {
+		return nil, err
+	}
+	t := &model.BlockContentText{Style: style, Text: text, Marks: marks, Color: jb.Color}
+	if style == model.BlockContentText_Checkbox {
+		t.Checked = jb.Checked
+	}
+	if style == model.BlockContentText_Callout {
+		t.IconEmoji = jb.IconEmoji
+		t.IconImage = imp.resolveId(jb.IconImage)
+	}
+	return t, nil
+}
+
+// fileFromJSON builds a file-family block content (§5); state is recomputed,
+// never serialized.
+func (imp *importer) fileFromJSON(jb *jsonBlock) *model.BlockContentFile {
+	f := &model.BlockContentFile{
+		Type:           fileTypeNames.value(jb.Type),
+		TargetObjectId: imp.resolveId(jb.ObjectId),
+		Hash:           jb.Hash,
+		Name:           jb.Name,
+		Mime:           jb.MimeType,
+		Size_:          jb.Size,
+		Style:          fileStyleNames.value(jb.Style),
+	}
+	if jb.AddedAt != "" {
+		if sec, ok := parseDate(jb.AddedAt); ok {
+			f.AddedAt = sec
+		}
+	}
+	if f.TargetObjectId != "" || f.Hash != "" {
+		f.State = model.BlockContentFile_Done
+	}
+	return f
+}
+
+// bookmarkFromJSON builds a bookmark content; state is recomputed (§5).
+func (imp *importer) bookmarkFromJSON(jb *jsonBlock) *model.BlockContentBookmark {
+	bm := &model.BlockContentBookmark{
+		Url:            jb.Url,
+		TargetObjectId: imp.resolveId(jb.ObjectId),
+	}
+	if bm.TargetObjectId != "" {
+		bm.State = model.BlockContentBookmark_Done
+	}
+	return bm
+}
+
+// linkFromJSON builds a link content, decoding the shown-property key list.
+func (imp *importer) linkFromJSON(jb *jsonBlock) (*model.BlockContentLink, error) {
+	var propKeys []string
+	if len(jb.Properties) > 0 {
+		if err := jsonUnmarshal(jb.Properties, &propKeys); err != nil {
+			return nil, fmt.Errorf("link properties: %w", err)
+		}
+	}
+	return &model.BlockContentLink{
+		TargetBlockId: imp.resolveId(jb.ObjectId),
+		CardStyle:     cardStyleNames.value(jb.CardStyle),
+		IconSize:      iconSizeNames.value(jb.IconSize),
+		Description:   linkDescriptionNames.value(jb.Description),
+		Relations:     propKeys,
+	}, nil
 }
 
 // blockFromJSON converts one block and its subtree; the returned slice is in
@@ -334,67 +401,23 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		}}
 		liftedLang = jb.Language
 	case textStyleNames.has(jb.Type) || textStyleAliases[jb.Type] != 0:
-		style, isAlias := textStyleAliases[jb.Type]
-		if !isAlias {
-			style = textStyleNames.value(jb.Type)
-		}
-		text, marks, err := imp.parseText(jb.Text)
+		t, err := imp.textFromJSON(jb)
 		if err != nil {
 			return nil, fmt.Errorf("block %s: %w", id, err)
 		}
-		t := &model.BlockContentText{Style: style, Text: text, Marks: marks, Color: jb.Color}
-		if style == model.BlockContentText_Checkbox {
-			t.Checked = jb.Checked
-		}
-		if style == model.BlockContentText_Callout {
-			t.IconEmoji = jb.IconEmoji
-			t.IconImage = imp.resolveId(jb.IconImage)
-		}
 		b.Content = &model.BlockContentOfText{Text: t}
 	case fileTypeNames.has(jb.Type):
-		f := &model.BlockContentFile{
-			Type:           fileTypeNames.value(jb.Type),
-			TargetObjectId: imp.resolveId(jb.ObjectId),
-			Hash:           jb.Hash,
-			Name:           jb.Name,
-			Mime:           jb.MimeType,
-			Size_:          jb.Size,
-			Style:          fileStyleNames.value(jb.Style),
-		}
-		if jb.AddedAt != "" {
-			if sec, ok := parseDate(jb.AddedAt); ok {
-				f.AddedAt = sec
-			}
-		}
-		if f.TargetObjectId != "" || f.Hash != "" {
-			f.State = model.BlockContentFile_Done
-		}
-		b.Content = &model.BlockContentOfFile{File: f}
+		b.Content = &model.BlockContentOfFile{File: imp.fileFromJSON(jb)}
 		withChildren = false
 	case jb.Type == "bookmark":
-		bm := &model.BlockContentBookmark{
-			Url:            jb.Url,
-			TargetObjectId: imp.resolveId(jb.ObjectId),
-		}
-		if bm.TargetObjectId != "" {
-			bm.State = model.BlockContentBookmark_Done
-		}
-		b.Content = &model.BlockContentOfBookmark{Bookmark: bm}
+		b.Content = &model.BlockContentOfBookmark{Bookmark: imp.bookmarkFromJSON(jb)}
 		withChildren = false
 	case jb.Type == "link":
-		var propKeys []string
-		if len(jb.Properties) > 0 {
-			if err := jsonUnmarshal(jb.Properties, &propKeys); err != nil {
-				return nil, fmt.Errorf("block %s: link properties: %w", id, err)
-			}
+		link, err := imp.linkFromJSON(jb)
+		if err != nil {
+			return nil, fmt.Errorf("block %s: %w", id, err)
 		}
-		b.Content = &model.BlockContentOfLink{Link: &model.BlockContentLink{
-			TargetBlockId: imp.resolveId(jb.ObjectId),
-			CardStyle:     cardStyleNames.value(jb.CardStyle),
-			IconSize:      iconSizeNames.value(jb.IconSize),
-			Description:   linkDescriptionNames.value(jb.Description),
-			Relations:     propKeys,
-		}}
+		b.Content = &model.BlockContentOfLink{Link: link}
 		withChildren = false
 	case jb.Type == "divider":
 		b.Content = &model.BlockContentOfDiv{Div: &model.BlockContentDiv{
@@ -459,6 +482,20 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		return nil, fmt.Errorf("block %s: unknown type %q", id, jb.Type)
 	}
 
+	imp.applyBlockCommon(b, jb, liftedLang)
+	if withChildren {
+		childBlocks, err := imp.childrenFromJSON(b, jb.Children)
+		if err != nil {
+			return nil, err
+		}
+		extra = append(extra, childBlocks...)
+	}
+	return append([]*model.Block{b}, extra...), nil
+}
+
+// applyBlockCommon writes the shared block tail: align, verticalAlign,
+// backgroundColor, fields, and the lifted code language (§4, §5.1).
+func (imp *importer) applyBlockCommon(b *model.Block, jb *jsonBlock, liftedLang string) {
 	b.Align = alignNames.value(jb.Align)
 	b.VerticalAlign = verticalAlignNames.value(jb.VerticalAlign)
 	b.BackgroundColor = jb.BackgroundColor
@@ -469,21 +506,24 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		if b.Fields == nil {
 			b.Fields = &types.Struct{Fields: map[string]*types.Value{}}
 		}
-		b.Fields.Fields["lang"] = &types.Value{Kind: &types.Value_StringValue{StringValue: liftedLang}}
+		b.Fields.Fields[codeLangField] = &types.Value{Kind: &types.Value_StringValue{StringValue: liftedLang}}
 	}
+}
 
-	if withChildren {
-		for _, child := range jb.Children {
-			if child == nil {
-				continue
-			}
-			childBlocks, err := imp.blockFromJSON(child, "")
-			if err != nil {
-				return nil, err
-			}
-			b.ChildrenIds = append(b.ChildrenIds, childBlocks[0].Id)
-			extra = append(extra, childBlocks...)
+// childrenFromJSON converts the children subtrees, appending their ids to
+// the parent in document order.
+func (imp *importer) childrenFromJSON(parent *model.Block, children []*jsonBlock) ([]*model.Block, error) {
+	var extra []*model.Block
+	for _, child := range children {
+		if child == nil {
+			continue
 		}
+		childBlocks, err := imp.blockFromJSON(child, "")
+		if err != nil {
+			return nil, err
+		}
+		parent.ChildrenIds = append(parent.ChildrenIds, childBlocks[0].Id)
+		extra = append(extra, childBlocks...)
 	}
-	return append([]*model.Block{b}, extra...), nil
+	return extra, nil
 }

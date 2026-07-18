@@ -23,10 +23,10 @@ func TestInline_MergeExtensionReresolvesOverlaps(t *testing.T) {
 		mark(mLink, 3, 30, "http://p2"),
 		mark(mLink, 4, 20, "http://p1"),
 	}
-	md1 := RenderInline(text, marks)
-	text1, marks1, err := ParseInline(md1)
+	md1 := renderInline(text, marks)
+	text1, marks1, err := parseInline(md1)
 	require.NoError(t, err)
-	md2 := RenderInline(text1, marks1)
+	md2 := renderInline(text1, marks1)
 	require.Equal(t, md1, md2, "must be byte-stable")
 	// the resolved decomposition: p1 wins [0,20), p2 truncated to [20,30)
 	assert.Equal(t, "[abcdeabcdeabcdeabcde](http://p1)[abcdeabcde](http://p2)", md1)
@@ -36,13 +36,13 @@ func TestInline_MergeExtensionReresolvesOverlaps(t *testing.T) {
 // as the angle-wrapped form on re-parse.
 func TestInline_DestLeadingAngle(t *testing.T) {
 	marks := []*model.BlockContentTextMark{mark(mLink, 0, 2, "<x>y")}
-	md := RenderInline("ab", marks)
-	text, parsed, err := ParseInline(md)
+	md := renderInline("ab", marks)
+	text, parsed, err := parseInline(md)
 	require.NoError(t, err)
 	assert.Equal(t, "ab", text)
 	require.Len(t, parsed, 1)
 	assert.Equal(t, "<x>y", parsed[0].Param)
-	assert.Equal(t, md, RenderInline(text, parsed))
+	assert.Equal(t, md, renderInline(text, parsed))
 }
 
 // Finding 9: brackets/backticks inside tag attribute values must be
@@ -53,14 +53,14 @@ func TestInline_BracketInAttrInsideLabel(t *testing.T) {
 		mark(mLink, 0, 2, "http://u"),
 		mark(mColor, 0, 2, "a]b"),
 	}
-	md := RenderInline("hi", marks)
-	text, parsed, err := ParseInline(md)
+	md := renderInline("hi", marks)
+	text, parsed, err := parseInline(md)
 	require.NoError(t, err)
 	assert.Equal(t, "hi", text)
 	require.Len(t, parsed, 2)
 	assert.Equal(t, "http://u", parsed[0].Param)
 	assert.Equal(t, "a]b", parsed[1].Param)
-	assert.Equal(t, md, RenderInline(text, parsed))
+	assert.Equal(t, md, renderInline(text, parsed))
 }
 
 // Finding 2: verbatim property passthrough (structs, nulls inside lists)

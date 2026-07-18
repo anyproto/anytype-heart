@@ -648,11 +648,21 @@ boundaries the unseen neighbor is treated as punctuation, conservatively):
 - `\` — escaped when followed by ASCII punctuation (input accepts a
   backslash before any ASCII punctuation as an escape, per CommonMark).
 
-Link destinations render bare with `\`-escaped `\ ( ) &`, or angle-wrapped
-(`<…>`) when the URL contains whitespace; entities are decoded in
-destinations and attribute values on input. `_` delimiter runs parse exactly
-like `*` runs (so `__x__` is bold — liberal input; canonical output always
-uses stars).
+Link destinations render bare with `\`-escaped `` \ ( ) & < [ ] ` ``, or
+angle-wrapped (`<…>`) when the URL contains whitespace (brackets and
+backticks escaped there too — raw ones would join the enclosing label or
+code-span scan when links nest); entities are decoded in destinations and
+attribute values on input. `_` delimiter runs parse exactly like `*` runs
+(so `__x__` is bold — liberal input; canonical output always uses stars).
+
+**Resource bounds** (implementation decision — deterministic local rules
+that keep parsing linear on the untrusted-document boundary): link
+destinations longer than 2048 UTF-16 code units, destinations surrounded by
+more than 32 whitespace characters, and link labels nested more than 32
+deep are not recognized — the `[` stays literal. Export drops Link/Object
+marks whose rendered destination would exceed the bound, and Emoji marks
+whose param exceeds 64 code units, as invalid (§8.3 step 1), so round trips
+stay byte-stable.
 
 ### 8.3 Canonical rendering (the round-trip contract for marks)
 
@@ -682,7 +692,12 @@ Implementation decisions (v0.4 freeze):
 - **Step 1 details**: "invalid" ranges are out-of-bounds, inverted,
   zero-length, or splitting a UTF-16 surrogate pair; a param-carrying mark
   (link, mention, object, colors, emoji) with an empty param is dropped;
-  a param on a param-less mark type is cleared (so equal ranges merge).
+  a param on a param-less mark type is cleared (so equal ranges merge);
+  params beyond the §8.2 resource bounds are dropped. A **Link mark whose
+  param is an `anytype://object?objectId=` deep-link normalizes to an
+  Object mark** — the two render identically, and without the
+  normalization the parse-back type flip would change same-type overlap
+  resolution.
 - **Step 2 extension**: emphasis-family marks (`**`, `*`, `~~`) additionally
   exclude any whitespace run touched by a *stack-outer* mark's endpoint —
   the outer change forces the emphasis delimiter to close/reopen inside the
@@ -785,7 +800,9 @@ behavior belongs to the wiring, not this package.
 
 Block/row/column/view ids are relabeled to their shortest unique suffix
 (doc-local, no legend needed; same 5-character minimum as refs keys —
-implementation decision).
+implementation decision). Labels are constrained to the schema charsets
+(refs keys `[A-Za-z0-9_-]{1,64}`, local relabels additionally dash-free);
+an id no valid label can be derived from stays uncompacted.
 
 `CompactIds` and `OmitIds` compose: together they yield the most
 prompt-friendly form (no block ids, short object refs with legend). Both are
@@ -829,6 +846,12 @@ fields and `value` on `empty`/`notEmpty`/`exists` leaves dropped, group
 `index` derived from order (§6.2); scalar-stored select/objects/files
 property values become single-element lists and the legacy file `hash`
 migrates into `objectId` (§3, §5).
+
+The snapshot's block graph is untrusted: export emits each block **once**
+(the first parent listing it wins), which both terminates on cyclic
+`ChildrenIds` and keeps duplicate/shared blocks from producing invalid
+documents; duplicate table column/row ids are likewise dropped
+(implementation decision).
 
 1. `Import(Export(S)) ≡ N(S)` — state-level equality on the snapshot after
    normalization.
@@ -906,6 +929,14 @@ func Unmarshal(data []byte, opts Options) (model.SmartBlockType, *model.SmartBlo
 // Validate checks data against the embedded schema and semantic rules
 // without building a snapshot.
 func Validate(data []byte) error
+
+// DetectFormat reports the version and $schema markers without validating —
+// the cheap dispatch probe for import wiring.
+func DetectFormat(data []byte) (version int, schemaURL string, ok bool)
+
+// FormatVersion (= 1) and SchemaURL (the published schema location) are
+// exported constants for the wiring's dispatch. The §8 inline codec is
+// internal to the package — it is not part of the public API.
 
 type Options struct {
     ResolveFormat  FormatResolver // optional; nil = bundle-only resolution (§3)

@@ -170,7 +170,7 @@ func (e *exporter) sortToJSON(s *model.BlockContentDataviewSort, dv *model.Block
 		sm.setNonEmpty("direction", sortDirectionNames.name(s.Type))
 	}
 	if len(s.CustomOrder) > 0 {
-		var order []any
+		order := make([]any, 0, len(s.CustomOrder))
 		for _, cv := range s.CustomOrder {
 			order = append(order, e.dvValueToJSON(dv, s.RelationKey, cv))
 		}

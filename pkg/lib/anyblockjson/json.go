@@ -187,7 +187,6 @@ func newEnumNames[T comparable](pairs map[T]string) enumNames[T] {
 func (e enumNames[T]) name(v T) string   { return e.toName[v] }
 func (e enumNames[T]) value(n string) T  { return e.toVal[n] }
 func (e enumNames[T]) has(n string) bool { _, ok := e.toVal[n]; return ok }
-func (e enumNames[T]) known(v T) bool    { _, ok := e.toName[v]; return ok }
 
 var kindNames = newEnumNames(map[model.SmartBlockType]string{
 	model.SmartBlockType_AccountOld:             "accountOld",
@@ -499,7 +498,10 @@ func jsonToProtoValue(v any) *types.Value {
 	case float64:
 		return &types.Value{Kind: &types.Value_NumberValue{NumberValue: x}}
 	case json.Number:
-		f, _ := x.Float64()
+		f, err := x.Float64()
+		if err != nil {
+			return &types.Value{Kind: &types.Value_NullValue{}}
+		}
 		return &types.Value{Kind: &types.Value_NumberValue{NumberValue: f}}
 	case string:
 		return &types.Value{Kind: &types.Value_StringValue{StringValue: x}}

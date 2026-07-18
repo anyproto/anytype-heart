@@ -42,6 +42,9 @@ const (
 	detailKeyId   = "id"
 	detailKeyType = "type"
 	storeKeyItems = "objects"
+	// codeLangField is the internal fields key holding a code block's
+	// language (§5.1)
+	codeLangField = "lang"
 )
 
 // propertiesKeptOnExport are the internal properties the importer
@@ -73,7 +76,7 @@ func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase
 	}
 	doc, err := e.buildDoc(sbType)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build document: %w", err)
 	}
 	return marshalCanonical(doc)
 }
@@ -291,11 +294,17 @@ func (e *exporter) buildProperties() *omap {
 }
 
 func (e *exporter) resolveFormat(key string) (model.RelationFormat, bool) {
+	return resolveFormatWith(e.opts, key)
+}
+
+// resolveFormatWith applies the §3 resolution order: bundle first, then the
+// caller's resolver.
+func resolveFormatWith(opts Options, key string) (model.RelationFormat, bool) {
 	if f, err := bundle.GetRelationFormat(domain.RelationKey(key)); err == nil {
 		return f, true
 	}
-	if e.opts.ResolveFormat != nil {
-		return e.opts.ResolveFormat(domain.RelationKey(key))
+	if opts.ResolveFormat != nil {
+		return opts.ResolveFormat(domain.RelationKey(key))
 	}
 	return 0, false
 }
@@ -531,6 +540,15 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 		return nil, fmt.Errorf("block %s: content type %T has no JSON mapping", b.Id, b.Content)
 	}
 
+	if err := e.finishBlockJSON(m, b, liftedFields, withChildren); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// finishBlockJSON writes the common block tail: align, verticalAlign,
+// backgroundColor, fields, children — in the §4 canonical order.
+func (e *exporter) finishBlockJSON(m *omap, b *model.Block, liftedFields map[string]bool, withChildren bool) error {
 	if b.Align != model.Block_AlignLeft {
 		m.setNonEmpty("align", alignNames.name(b.Align))
 	}
@@ -542,11 +560,11 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 	if withChildren {
 		children, err := e.childrenToJSON(b.ChildrenIds, false)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		m.setNonEmpty("children", children)
 	}
-	return m, nil
+	return nil
 }
 
 func (e *exporter) fieldsToJSON(fields *types.Struct, lifted map[string]bool) *omap {
@@ -588,9 +606,9 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 	}
 	if style == model.BlockContentText_Code {
 		if b.Fields != nil {
-			if lang := b.Fields.Fields["lang"].GetStringValue(); lang != "" {
+			if lang := b.Fields.Fields[codeLangField].GetStringValue(); lang != "" {
 				m.set("language", lang)
-				liftedFields["lang"] = true
+				liftedFields[codeLangField] = true
 			}
 		}
 		// literal text; stored marks and color dropped (§8.4, §11)
@@ -598,7 +616,7 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 		return nil
 	}
 	m.setNonEmpty("color", t.Color)
-	m.setNonEmpty("text", RenderInline(t.Text, e.compactMarks(t.Marks.GetMarks())))
+	m.setNonEmpty("text", renderInline(t.Text, e.compactMarks(t.Marks.GetMarks())))
 	return nil
 }
 
