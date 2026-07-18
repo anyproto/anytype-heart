@@ -147,7 +147,7 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 			cell.BackgroundColor == "" &&
 			(cell.Fields == nil || len(cell.Fields.Fields) == 0) &&
 			len(cell.ChildrenIds) == 0 {
-			md := RenderInline(t.Text, e.compactMarks(t.Marks.GetMarks()))
+			md := renderInline(t.Text, e.compactMarks(t.Marks.GetMarks()))
 			if md == "" {
 				return nil, nil // empty paragraph collapses to an empty cell (§11)
 			}
@@ -231,7 +231,7 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 	}
 	table.ChildrenIds = []string{colsWrapper.Id, rowsWrapper.Id}
 
-	var colIds []string
+	colIds := make([]string, 0, len(jb.Columns))
 	for _, jc := range jb.Columns {
 		id := jc.Id
 		if id == "" {
@@ -299,7 +299,7 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 		if *cell.Text == "" {
 			return nil, nil
 		}
-		text, marks, err := ParseInline(*cell.Text)
+		text, marks, err := parseInline(*cell.Text)
 		if err != nil {
 			return nil, fmt.Errorf("cell %s: %w", cellId, err)
 		}

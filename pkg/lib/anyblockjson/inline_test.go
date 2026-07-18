@@ -109,13 +109,13 @@ func TestRenderInline_Golden(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := RenderInline(tc.text, tc.marks)
+			got := renderInline(tc.text, tc.marks)
 			assert.Equal(t, tc.want, got)
 
 			// canonical form must be byte-stable: parse it and render again
-			txt, marks, err := ParseInline(got)
+			txt, marks, err := parseInline(got)
 			require.NoError(t, err)
-			again := RenderInline(txt, marks)
+			again := renderInline(txt, marks)
 			assert.Equal(t, got, again, "Export ∘ Import must be byte-stable")
 		})
 	}
@@ -167,19 +167,19 @@ func TestParseInline_Golden(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			text, marks, err := ParseInline(tc.md)
+			text, marks, err := parseInline(tc.md)
 			require.NoError(t, err)
 			assert.Equal(t, tc.wantText, text)
 			assert.Equal(t, tc.wantMarks, marks)
 
 			// render(parse(J)) is the canonical form; parsing it again must
 			// reproduce the same state (idempotence, §11.2)
-			canonical := RenderInline(text, marks)
-			text2, marks2, err := ParseInline(canonical)
+			canonical := renderInline(text, marks)
+			text2, marks2, err := parseInline(canonical)
 			require.NoError(t, err)
 			assert.Equal(t, text, text2)
 			assert.Equal(t, marks, marks2)
-			assert.Equal(t, canonical, RenderInline(text2, marks2))
+			assert.Equal(t, canonical, renderInline(text2, marks2))
 		})
 	}
 }
@@ -202,7 +202,7 @@ func TestParseInline_Errors(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, _, err := ParseInline(tc.md)
+			_, _, err := parseInline(tc.md)
 			require.Error(t, err)
 		})
 	}
@@ -212,7 +212,7 @@ func TestParseInline_Errors(t *testing.T) {
 // literal text with correct mark offset shifting.
 func TestInline_UnmatchedDelimiterLiteralization(t *testing.T) {
 	// the '*' opener never closes; the code span mark must shift right
-	text, marks, err := ParseInline("*`c`")
+	text, marks, err := parseInline("*`c`")
 	require.NoError(t, err)
 	assert.Equal(t, "*c", text)
 	assert.Equal(t, []*model.BlockContentTextMark{mark(mCode, 1, 2, "")}, marks)
@@ -244,12 +244,12 @@ func TestInline_PropertyRoundTrip(t *testing.T) {
 			to := rnd.Int31n(u16len + 1)
 			marks = append(marks, mark(types[rnd.Intn(len(types))], from, to, params[rnd.Intn(len(params))]))
 		}
-		md1 := RenderInline(txt, marks)
-		text1, marks1, err := ParseInline(md1)
+		md1 := renderInline(txt, marks)
+		text1, marks1, err := parseInline(md1)
 		require.NoErrorf(t, err, "case %d: canonical output must parse: text=%q marks=%v md=%q", i, txt, marks, md1)
-		md2 := RenderInline(text1, marks1)
+		md2 := renderInline(text1, marks1)
 		require.Equalf(t, md1, md2, "case %d: not byte-stable: text=%q marks=%v", i, txt, marks)
-		text2, marks2, err := ParseInline(md2)
+		text2, marks2, err := parseInline(md2)
 		require.NoError(t, err)
 		require.Equalf(t, text1, text2, "case %d", i)
 		require.Equalf(t, marks1, marks2, "case %d: marks not stable: md=%q", i, md1)
