@@ -103,8 +103,16 @@ func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 		if _, known := markPriority[m.Type]; !known && m.Type != model.BlockContentTextMark_Emoji {
 			continue
 		}
+		typ := m.Type
 		param := m.Param
-		if markNeedsParam(m.Type) {
+		// a Link whose target is an object deep-link renders identically to
+		// an Object mark, so it normalizes to one — otherwise the parse-back
+		// type flip would break same-type overlap resolution (§8.3)
+		if typ == model.BlockContentTextMark_Link && strings.HasPrefix(param, objectLinkPrefix) {
+			typ = model.BlockContentTextMark_Object
+			param = param[len(objectLinkPrefix):]
+		}
+		if markNeedsParam(typ) {
 			if param == "" {
 				continue
 			}
@@ -113,7 +121,23 @@ func sanitizeSpans(u16 []uint16, marks []*model.BlockContentTextMark) []span {
 			// empty lets equal-range marks merge (§8.3)
 			param = ""
 		}
-		spans = append(spans, span{typ: m.Type, param: param, from: from, to: to})
+		// params beyond the §8 resource bounds are invalid: the parser will
+		// not recognize them, so rendering them would not round-trip
+		switch typ {
+		case model.BlockContentTextMark_Link:
+			if text.UTF16RuneCountString(param) > maxLinkDestLen {
+				continue
+			}
+		case model.BlockContentTextMark_Object:
+			if len(objectLinkPrefix)+text.UTF16RuneCountString(param) > maxLinkDestLen {
+				continue
+			}
+		case model.BlockContentTextMark_Emoji:
+			if text.UTF16RuneCountString(param) > maxEmojiParamLen {
+				continue
+			}
+		}
+		spans = append(spans, span{typ: typ, param: param, from: from, to: to})
 	}
 	return spans
 }
@@ -155,18 +179,25 @@ func materializeEmoji(u16 []uint16, spans []span) ([]uint16, []span) {
 			acc = append(acc, e)
 		}
 	}
-	for i := len(acc) - 1; i >= 0; i-- {
-		e := acc[i]
-		rep := text.StrToUTF16(e.param)
-		nu := make([]uint16, 0, len(u16)+len(rep)-(e.to-e.from))
-		nu = append(nu, u16[:e.from]...)
-		nu = append(nu, rep...)
-		nu = append(nu, u16[e.to:]...)
-		u16 = nu
-		for j := range rest {
-			rest[j].from = adjustSplicePoint(rest[j].from, e.from, e.to, len(rep), true)
-			rest[j].to = adjustSplicePoint(rest[j].to, e.from, e.to, len(rep), false)
-		}
+	// splice all replacements in one pass; acc is ascending and disjoint
+	reps := make([][]uint16, len(acc))
+	total := 0
+	for i, e := range acc {
+		reps[i] = text.StrToUTF16(e.param)
+		total += len(reps[i]) - (e.to - e.from)
+	}
+	nu := make([]uint16, 0, len(u16)+total)
+	prev := 0
+	for i, e := range acc {
+		nu = append(nu, u16[prev:e.from]...)
+		nu = append(nu, reps[i]...)
+		prev = e.to
+	}
+	nu = append(nu, u16[prev:]...)
+	u16 = nu
+	for j := range rest {
+		rest[j].from = adjustAcrossSplices(rest[j].from, acc, reps, true)
+		rest[j].to = adjustAcrossSplices(rest[j].to, acc, reps, false)
 	}
 	out := rest[:0]
 	for _, s := range rest {
@@ -177,20 +208,25 @@ func materializeEmoji(u16 []uint16, spans []span) ([]uint16, []span) {
 	return u16, out
 }
 
-// adjustSplicePoint maps offset p across a splice of [f,t) by a replacement
-// of length l. Points strictly inside the replaced range retract to exclude
-// the replacement: starts land after it, ends before it.
-func adjustSplicePoint(p, f, t, l int, isStart bool) int {
-	switch {
-	case p <= f:
-		return p
-	case p >= t:
-		return p + l - (t - f)
-	case isStart:
-		return f + l
-	default:
-		return f
+// adjustAcrossSplices maps offset p across the ordered disjoint splices.
+// Points strictly inside a replaced range retract to exclude the
+// replacement: starts land after it, ends before it.
+func adjustAcrossSplices(p int, acc []span, reps [][]uint16, isStart bool) int {
+	delta := 0
+	for k, e := range acc {
+		if p <= e.from {
+			break
+		}
+		if p >= e.to {
+			delta += len(reps[k]) - (e.to - e.from)
+			continue
+		}
+		if isStart {
+			return e.from + delta + len(reps[k])
+		}
+		return e.from + delta
 	}
+	return p + delta
 }
 
 func isMarkdownDelimited(t model.BlockContentTextMarkType) bool {
@@ -731,11 +767,14 @@ func escapeDest(dest string) string {
 		}
 	}
 	var b strings.Builder
+	// brackets and backticks are escaped in both forms: a raw ']' (or a
+	// backtick pairing with one in prose) inside a destination would derail
+	// the enclosing label scan when the link nests in another label
 	if needsAngle {
 		b.WriteByte('<')
 		for _, r := range dest {
 			switch r {
-			case '\\', '<', '>', '&':
+			case '\\', '<', '>', '&', '[', ']', '`':
 				b.WriteByte('\\')
 			}
 			b.WriteRune(r)
@@ -747,7 +786,7 @@ func escapeDest(dest string) string {
 	// otherwise be misread as the angle-wrapped form
 	for _, r := range dest {
 		switch r {
-		case '\\', '(', ')', '&', '<':
+		case '\\', '(', ')', '&', '<', '[', ']', '`':
 			b.WriteByte('\\')
 		}
 		b.WriteRune(r)
@@ -788,7 +827,7 @@ func inlineErr(rs []rune, pos int, msg string) error {
 // UTF-16 code-unit ranges.
 func ParseInline(md string) (string, []*model.BlockContentTextMark, error) {
 	rs := []rune(md)
-	toks, err := tokenizeInline(rs)
+	toks, err := tokenizeInline(rs, 0)
 	if err != nil {
 		return "", nil, err
 	}
@@ -796,8 +835,87 @@ func ParseInline(md string) (string, []*model.BlockContentTextMark, error) {
 	if err := resolveTokens(toks, ib); err != nil {
 		return "", nil, err
 	}
+	ib.applyInserts()
 	marks := canonicalizeMarks(ib.marks)
 	return text.UTF16ToStr(ib.out), marks, nil
+}
+
+// Resource bounds (deterministic local rules, recorded in SPEC §8): they keep
+// parsing linear on the untrusted-document boundary.
+const (
+	// maxLinkDestLen bounds a link destination; longer candidates are not
+	// links (the '[' stays literal). Export drops Link/Object marks whose
+	// param exceeds it, keeping the round trip stable.
+	maxLinkDestLen = 2048
+	// maxLinkDestWS bounds the whitespace tolerated around a destination.
+	maxLinkDestWS = 32
+	// maxLinkNesting bounds link-label nesting (CommonMark caps labels
+	// similarly); deeper '[' stay literal.
+	maxLinkNesting = 32
+	// maxEmojiParamLen bounds an emoji mark's replacement text; longer
+	// params are invalid and dropped (§8.3 step 1).
+	maxEmojiParamLen = 64
+)
+
+// inlineScanCtx holds per-text precomputed scan tables so link and code-span
+// lookups are O(log n) instead of rescanning the tail per candidate.
+type inlineScanCtx struct {
+	btRuns   map[int][]int // backtick run length -> ascending start positions
+	brackets map[int]int   // '[' position -> matching ']' position
+}
+
+func newInlineScanCtx(rs []rune) *inlineScanCtx {
+	ctx := &inlineScanCtx{btRuns: map[int][]int{}, brackets: map[int]int{}}
+	for i := 0; i < len(rs); {
+		if rs[i] == '`' {
+			n := runLen(rs, i, '`')
+			ctx.btRuns[n] = append(ctx.btRuns[n], i)
+			i += n
+		} else {
+			i++
+		}
+	}
+	// bracket pairing with the tokenizer's exact skip rules (escapes, code
+	// spans); LIFO pairing equals the per-'[' depth scan it replaces
+	var stack []int
+	for i := 0; i < len(rs); {
+		c := rs[i]
+		if c == '\\' && i+1 < len(rs) && isASCIIPunct(rs[i+1]) {
+			i += 2
+			continue
+		}
+		if c == '`' {
+			n := runLen(rs, i, '`')
+			if end, ok := ctx.backtickClose(i+n, n); ok {
+				i = end + n
+			} else {
+				i += n
+			}
+			continue
+		}
+		switch c {
+		case '[':
+			stack = append(stack, i)
+		case ']':
+			if len(stack) > 0 {
+				ctx.brackets[stack[len(stack)-1]] = i
+				stack = stack[:len(stack)-1]
+			}
+		}
+		i++
+	}
+	return ctx
+}
+
+// backtickClose finds the next maximal backtick run of exactly n starting at
+// or after from.
+func (ctx *inlineScanCtx) backtickClose(from, n int) (int, bool) {
+	runs := ctx.btRuns[n]
+	idx := sort.SearchInts(runs, from)
+	if idx < len(runs) {
+		return runs[idx], true
+	}
+	return 0, false
 }
 
 type tokenKind int
@@ -824,17 +942,22 @@ type token struct {
 	dest              string            // tokLink
 }
 
-func tokenizeInline(rs []rune) ([]token, error) {
+func tokenizeInline(rs []rune, depth int) ([]token, error) {
+	ctx := newInlineScanCtx(rs)
 	var toks []token
+	var pending strings.Builder
+	flushText := func() {
+		if pending.Len() > 0 {
+			toks = append(toks, token{kind: tokText, txt: pending.String()})
+			pending.Reset()
+		}
+	}
 	appendText := func(s string) {
-		if s == "" {
-			return
-		}
-		if len(toks) > 0 && toks[len(toks)-1].kind == tokText {
-			toks[len(toks)-1].txt += s
-		} else {
-			toks = append(toks, token{kind: tokText, txt: s})
-		}
+		pending.WriteString(s)
+	}
+	emit := func(t token) {
+		flushText()
+		toks = append(toks, t)
 	}
 	i := 0
 	for i < len(rs) {
@@ -857,8 +980,8 @@ func tokenizeInline(rs []rune) ([]token, error) {
 			}
 		case '`':
 			n := runLen(rs, i, '`')
-			if end, ok := findBacktickClose(rs, i+n, n); ok {
-				toks = append(toks, token{kind: tokCode, content: stripCodePadding(string(rs[i+n : end]))})
+			if end, ok := ctx.backtickClose(i+n, n); ok {
+				emit(token{kind: tokCode, content: stripCodePadding(string(rs[i+n : end]))})
 				i = end + n
 			} else {
 				appendText(strings.Repeat("`", n))
@@ -875,16 +998,16 @@ func tokenizeInline(rs []rune) ([]token, error) {
 				break
 			}
 			if tok != nil {
-				toks = append(toks, *tok)
+				emit(*tok)
 			}
 			i += size
 		case '[':
-			tok, size, ok, err := parseLink(rs, i)
+			tok, size, ok, err := parseLink(rs, i, ctx, depth)
 			if err != nil {
 				return nil, err
 			}
 			if ok {
-				toks = append(toks, *tok)
+				emit(*tok)
 				i += size
 			} else {
 				appendText("[")
@@ -894,7 +1017,7 @@ func tokenizeInline(rs []rune) ([]token, error) {
 			n := runLen(rs, i, r)
 			canOpen, canClose := delimFlanking(rs, i, n, r)
 			if canOpen || canClose {
-				toks = append(toks, token{kind: tokDelim, ch: r, n: n, canOpen: canOpen, canClose: canClose})
+				emit(token{kind: tokDelim, ch: r, n: n, canOpen: canOpen, canClose: canClose})
 			} else {
 				appendText(strings.Repeat(string(r), n))
 			}
@@ -904,7 +1027,7 @@ func tokenizeInline(rs []rune) ([]token, error) {
 			if n == 2 {
 				canOpen, canClose := delimFlanking(rs, i, n, '~')
 				if canOpen || canClose {
-					toks = append(toks, token{kind: tokDelim, ch: '~', n: n, canOpen: canOpen, canClose: canClose})
+					emit(token{kind: tokDelim, ch: '~', n: n, canOpen: canOpen, canClose: canClose})
 				} else {
 					appendText("~~")
 				}
@@ -913,11 +1036,25 @@ func tokenizeInline(rs []rune) ([]token, error) {
 			}
 			i += n
 		default:
-			appendText(string(r))
-			i++
+			// batch the plain run up to the next special character
+			j := i + 1
+			for j < len(rs) && !isInlineSpecial(rs[j]) {
+				j++
+			}
+			appendText(string(rs[i:j]))
+			i = j
 		}
 	}
+	flushText()
 	return toks, nil
+}
+
+func isInlineSpecial(r rune) bool {
+	switch r {
+	case '\\', '&', '`', '<', '[', '*', '_', '~':
+		return true
+	}
+	return false
 }
 
 func runLen(rs []rune, i int, ch rune) int {
@@ -946,22 +1083,6 @@ func delimFlanking(rs []rune, i, n int, ch rune) (canOpen, canClose bool) {
 		canClose = canClose && next != edgeWord
 	}
 	return canOpen, canClose
-}
-
-func findBacktickClose(rs []rune, from, n int) (int, bool) {
-	j := from
-	for j < len(rs) {
-		if rs[j] == '`' {
-			m := runLen(rs, j, '`')
-			if m == n {
-				return j, true
-			}
-			j += m
-		} else {
-			j++
-		}
-	}
-	return 0, false
 }
 
 func stripCodePadding(content string) string {
@@ -1184,38 +1305,10 @@ func parseTag(rs []rune, i int) (*token, int, bool, error) {
 }
 
 // scanLink matches the [label](dest) pattern at rs[i] without tokenizing the
-// label. Shared by the parser and the renderer's escape decision.
-func scanLink(rs []rune, i int) (labelEnd int, dest string, size int, ok bool) {
-	j := i + 1
-	depth := 0
-	labelEnd = -1
-	for j < len(rs) {
-		c := rs[j]
-		if c == '\\' && j+1 < len(rs) && isASCIIPunct(rs[j+1]) {
-			j += 2
-			continue
-		}
-		if c == '`' {
-			n := runLen(rs, j, '`')
-			if end, found := findBacktickClose(rs, j+n, n); found {
-				j = end + n
-			} else {
-				j += n
-			}
-			continue
-		}
-		if c == '[' {
-			depth++
-		} else if c == ']' {
-			if depth == 0 {
-				labelEnd = j
-				break
-			}
-			depth--
-		}
-		j++
-	}
-	if labelEnd < 0 {
+// label, using the precomputed bracket table.
+func scanLink(rs []rune, i int, ctx *inlineScanCtx) (labelEnd int, dest string, size int, ok bool) {
+	labelEnd, ok = ctx.brackets[i]
+	if !ok {
 		return 0, "", 0, false
 	}
 	k := labelEnd + 1
@@ -1223,17 +1316,23 @@ func scanLink(rs []rune, i int) (labelEnd int, dest string, size int, ok bool) {
 		return 0, "", 0, false
 	}
 	k++
+	ws := 0
 	for k < len(rs) && unicode.IsSpace(rs[k]) {
 		k++
+		ws++
+		if ws > maxLinkDestWS {
+			return 0, "", 0, false
+		}
 	}
 	if k >= len(rs) {
 		return 0, "", 0, false
 	}
+	destLimit := k + maxLinkDestLen
 	var db strings.Builder
 	if rs[k] == '<' {
 		k++
 		for {
-			if k >= len(rs) {
+			if k >= len(rs) || k > destLimit {
 				return 0, "", 0, false
 			}
 			c := rs[k]
@@ -1259,7 +1358,7 @@ func scanLink(rs []rune, i int) (labelEnd int, dest string, size int, ok bool) {
 	} else {
 		parens := 0
 		for {
-			if k >= len(rs) {
+			if k >= len(rs) || k > destLimit {
 				return 0, "", 0, false
 			}
 			c := rs[k]
@@ -1290,8 +1389,13 @@ func scanLink(rs []rune, i int) (labelEnd int, dest string, size int, ok bool) {
 			k++
 		}
 	}
+	ws = 0
 	for k < len(rs) && unicode.IsSpace(rs[k]) {
 		k++
+		ws++
+		if ws > maxLinkDestWS {
+			return 0, "", 0, false
+		}
 	}
 	if k >= len(rs) || rs[k] != ')' {
 		return 0, "", 0, false
@@ -1299,12 +1403,15 @@ func scanLink(rs []rune, i int) (labelEnd int, dest string, size int, ok bool) {
 	return labelEnd, db.String(), k + 1 - i, true
 }
 
-func parseLink(rs []rune, i int) (*token, int, bool, error) {
-	labelEnd, dest, size, ok := scanLink(rs, i)
+func parseLink(rs []rune, i int, ctx *inlineScanCtx, depth int) (*token, int, bool, error) {
+	if depth >= maxLinkNesting {
+		return nil, 0, false, nil
+	}
+	labelEnd, dest, size, ok := scanLink(rs, i, ctx)
 	if !ok {
 		return nil, 0, false, nil
 	}
-	labelToks, err := tokenizeInline(rs[i+1 : labelEnd])
+	labelToks, err := tokenizeInline(rs[i+1:labelEnd], depth+1)
 	if err != nil {
 		return nil, 0, false, err
 	}
@@ -1337,31 +1444,84 @@ func (e *openEntry) rawDelim() string {
 }
 
 type inlineBuilder struct {
-	out   []uint16
-	marks []*model.BlockContentTextMark
+	out     []uint16
+	marks   []*model.BlockContentTextMark
+	inserts []pendingInsert
+}
+
+type pendingInsert struct {
+	pos int // in pre-insertion coordinates
+	seq int
+	s   string
 }
 
 func (ib *inlineBuilder) appendString(s string) {
 	ib.out = append(ib.out, text.StrToUTF16(s)...)
 }
 
-// insertLiteral splices literal text at pos (used when an unmatched opening
-// delimiter is demoted back to text), shifting affected mark offsets.
+// insertLiteral records literal text to splice at pos (an unmatched opening
+// delimiter demoted back to text). Splices are deferred and applied in one
+// batch by applyInserts — per-demotion slice rebuilds would be quadratic.
+// All recorded positions (marks, open entries, inserts) share the
+// pre-insertion coordinate space, so deferral is exact.
 func (ib *inlineBuilder) insertLiteral(pos int, s string) {
-	ins := text.StrToUTF16(s)
-	out := make([]uint16, 0, len(ib.out)+len(ins))
-	out = append(out, ib.out[:pos]...)
-	out = append(out, ins...)
-	out = append(out, ib.out[pos:]...)
-	ib.out = out
-	for _, m := range ib.marks {
-		if int(m.Range.From) >= pos {
-			m.Range.From += int32(len(ins))
-		}
-		if int(m.Range.To) > pos {
-			m.Range.To += int32(len(ins))
-		}
+	ib.inserts = append(ib.inserts, pendingInsert{pos: pos, seq: len(ib.inserts), s: s})
+}
+
+// applyInserts splices all pending literals in one pass and shifts mark
+// offsets. At equal positions, later-recorded inserts land first — a later
+// insert at pos pushes earlier-inserted text right, matching the sequential
+// semantics the deferral replaces.
+func (ib *inlineBuilder) applyInserts() {
+	if len(ib.inserts) == 0 {
+		return
 	}
+	ins := ib.inserts
+	sort.SliceStable(ins, func(i, j int) bool {
+		if ins[i].pos != ins[j].pos {
+			return ins[i].pos < ins[j].pos
+		}
+		return ins[i].seq > ins[j].seq
+	})
+	encoded := make([][]uint16, len(ins))
+	total := 0
+	for i := range ins {
+		encoded[i] = text.StrToUTF16(ins[i].s)
+		total += len(encoded[i])
+	}
+	out := make([]uint16, 0, len(ib.out)+total)
+	prev := 0
+	for i := range ins {
+		out = append(out, ib.out[prev:ins[i].pos]...)
+		out = append(out, encoded[i]...)
+		prev = ins[i].pos
+	}
+	out = append(out, ib.out[prev:]...)
+	ib.out = out
+
+	// prefix sums over insert lengths for O(log n) shift lookups
+	positions := make([]int, len(ins))
+	cum := make([]int, len(ins)+1)
+	for i := range ins {
+		positions[i] = ins[i].pos
+		cum[i+1] = cum[i] + len(encoded[i])
+	}
+	shift := func(p int, inclusive bool) int32 {
+		// sum of insert lengths with pos < p (or <= p when inclusive)
+		idx := sort.SearchInts(positions, p)
+		if inclusive {
+			for idx < len(positions) && positions[idx] == p {
+				idx++
+			}
+		}
+		return int32(cum[idx])
+	}
+	for _, m := range ib.marks {
+		from, to := int(m.Range.From), int(m.Range.To)
+		m.Range.From += shift(from, true)
+		m.Range.To += shift(to, false)
+	}
+	ib.inserts = nil
 }
 
 func (ib *inlineBuilder) addMark(typ model.BlockContentTextMarkType, param string, from, to int) {
