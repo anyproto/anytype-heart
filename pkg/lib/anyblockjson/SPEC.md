@@ -767,9 +767,11 @@ ids and adds a `refs` legend to the envelope:
 
 **`refs` is an authoritative opaque map.** Keys match
 `[A-Za-z0-9_-]{1,64}`; values are full object ids. Keys need **not** be
-suffixes of their values — "shortest unique suffix, minimum 5 characters"
-is merely export's key-choice algorithm (suffixes, because CIDs share
-prefixes). Agents editing a document may add entries with any label
+suffixes of their values — "the id's last 5 characters" is merely export's
+key-choice algorithm (suffixes, because CIDs share prefixes; a suffix that
+collides with another referenced id's, or that the charset rejects, makes
+that id stay uncompacted — the full-id fallback is always correct under the
+resolution rule below). Agents editing a document may add entries with any label
 (`"roman": "bafyrei…"`) and reference them; humans may rename keys.
 
 **Resolution rule** — total, wherever an object id is expected: if the
@@ -798,11 +800,14 @@ behavior belongs to the wiring, not this package.
 | filter `value` / sort `customOrder` entries of `objects`/`files` properties | yes |
 | envelope `id`, `refs` values themselves | **never** |
 
-Block/row/column/view ids are relabeled to their shortest unique suffix
-(doc-local, no legend needed; same 5-character minimum as refs keys —
-implementation decision). Labels are constrained to the schema charsets
-(refs keys `[A-Za-z0-9_-]{1,64}`, local relabels additionally dash-free);
-an id no valid label can be derived from stays uncompacted.
+Block/row/column/view ids are relabeled to their last 5 characters
+(doc-local, no legend needed — same rule as refs keys). Labels are
+constrained to the schema charsets (refs keys `[A-Za-z0-9_-]{1,64}`, local
+relabels additionally dash-free); an id whose suffix collides or yields no
+valid label stays uncompacted (implementation decision — fixed-width
+suffixes with a full-id fallback, chosen over shortest-unique lengthening
+for simplicity; 5 characters over CID/hex alphabets make collisions
+birthday-rare).
 
 `CompactIds` and `OmitIds` compose: together they yield the most
 prompt-friendly form (no block ids, short object refs with legend). Both are

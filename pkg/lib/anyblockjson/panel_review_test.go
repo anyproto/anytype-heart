@@ -250,3 +250,39 @@ func TestImport_DefaultIdGenerator(t *testing.T) {
 		assert.Regexp(t, "^[0-9a-f]{24}$", b.Id)
 	}
 }
+
+// Suffix labels are a fixed 5 characters; ids whose suffixes collide stay
+// uncompacted (full-id fallback) rather than resolving ambiguously.
+func TestExport_SuffixCollisionFallsBackToFullId(t *testing.T) {
+	snap := &model.SmartBlockSnapshotBase{
+		Details: fields(map[string]*types.Value{"id": str("obj1")}),
+		Blocks: []*model.Block{
+			{Id: "obj1", ChildrenIds: []string{"b1"},
+				Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+			textBlock("b1", model.BlockContentText_Paragraph, "ab",
+				mark(mMention, 0, 1, "bafyreiaaaa11111"),
+				mark(mMention, 1, 2, "bafyreibbbb11111")),
+		},
+	}
+	data, err := Marshal(model.SmartBlockType_Page, snap, Options{CompactIds: true})
+	require.NoError(t, err)
+	require.NoError(t, Validate(data))
+	s := string(data)
+	// both ids share the suffix "11111": neither may claim it
+	assert.NotContains(t, s, `"11111"`)
+	assert.Contains(t, s, `objectId=\"bafyreiaaaa11111\"`)
+	assert.Contains(t, s, `objectId=\"bafyreibbbb11111\"`)
+
+	impOpts := Options{GenerateId: seqIds("g")}
+	_, snap2, err := Unmarshal(data, impOpts)
+	require.NoError(t, err)
+	var params []string
+	for _, b := range snap2.Blocks {
+		if txt, ok := b.Content.(*model.BlockContentOfText); ok && txt.Text.Marks != nil {
+			for _, m := range txt.Text.Marks.Marks {
+				params = append(params, m.Param)
+			}
+		}
+	}
+	assert.Equal(t, []string{"bafyreiaaaa11111", "bafyreibbbb11111"}, params)
+}
