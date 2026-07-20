@@ -558,44 +558,30 @@ func defaultGenerateId() string {
 	return hex.EncodeToString(b[:])
 }
 
-// shortestUniqueSuffixes labels each id with its shortest suffix (minimum
-// minLen chars) unique among all given ids (§9a). Candidates rejected by
-// disallow are skipped (longer suffixes are tried); labeling an id with
-// itself is the always-allowed fallback. Suffixes are bucketed per length so
-// the whole computation is O(ids × max id length), not quadratic in the
-// number of ids.
-func shortestUniqueSuffixes(ids []string, minLen int, disallow func(candidate string) bool) map[string]string {
+// suffixLabels labels each id with its last size characters (§9a). An id
+// whose suffix collides with another id's or is rejected by disallow gets no
+// label and stays uncompacted — with 5 characters over CID/hex alphabets
+// collisions are birthday-rare, and falling back to the full id is always
+// correct under the total resolution rule. Ids no longer than size label as
+// themselves.
+func suffixLabels(ids []string, size int, disallow func(candidate string) bool) map[string]string {
+	counts := make(map[string]int, len(ids))
+	for _, id := range ids {
+		if r := []rune(id); len(r) > size {
+			counts[string(r[len(r)-size:])]++
+		}
+	}
 	out := make(map[string]string, len(ids))
-	allRunes := make([][]rune, len(ids))
-	for i, id := range ids {
-		allRunes[i] = []rune(id)
-	}
-	remaining := make([]int, len(ids))
-	for i := range ids {
-		remaining[i] = i
-	}
-	for l := minLen; len(remaining) > 0; l++ {
-		counts := make(map[string]int)
-		for i := range ids {
-			if r := allRunes[i]; len(r) >= l {
-				counts[string(r[len(r)-l:])]++
-			}
+	for _, id := range ids {
+		r := []rune(id)
+		if len(r) <= size {
+			out[id] = id
+			continue
 		}
-		var next []int
-		for _, i := range remaining {
-			r := allRunes[i]
-			if l >= len(r) {
-				out[ids[i]] = ids[i]
-				continue
-			}
-			suffix := string(r[len(r)-l:])
-			if counts[suffix] == 1 && (disallow == nil || !disallow(suffix)) {
-				out[ids[i]] = suffix
-			} else {
-				next = append(next, i)
-			}
+		suffix := string(r[len(r)-size:])
+		if counts[suffix] == 1 && (disallow == nil || !disallow(suffix)) {
+			out[id] = suffix
 		}
-		remaining = next
 	}
 	return out
 }

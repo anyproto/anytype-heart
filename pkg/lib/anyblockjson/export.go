@@ -814,14 +814,13 @@ func (e *exporter) buildCompactIds() {
 	for id := range locals {
 		fullIds[id] = true
 	}
-	e.objectRefs = shortestUniqueSuffixes(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
+	e.objectRefs = suffixLabels(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
 		return fullIds[candidate] || !isValidRefsKey(candidate)
 	})
 	// local relabels stay dash-free: '-' is the derived-cell-id separator
 	// and forbidden in row/column ids (§6.1)
-	e.localIds = shortestUniqueSuffixes(setToSlice(locals), compactIdMinLen, isInvalidLocalLabel)
-	// ids whose every usable label would violate the schema charset (odd
-	// characters, over-length full-id fallbacks) stay uncompacted
+	e.localIds = suffixLabels(setToSlice(locals), compactIdMinLen, isInvalidLocalLabel)
+	// short ids label as themselves; drop those the schema charsets reject
 	dropInvalidLabels(e.objectRefs, isValidRefsKey)
 	dropInvalidLabels(e.localIds, func(label string) bool { return !isInvalidLocalLabel(label) })
 }
