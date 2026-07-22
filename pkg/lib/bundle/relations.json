@@ -1470,12 +1470,13 @@
   {
     "description": "Objects that are mentioned in blocks of this object",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "mentions",
     "maxCount": 0,
     "name": "Mentions",
     "readonly": true,
-    "source": "local"
+    "source": "local",
+    "revision": 1
   },
   {
     "description": "Unix time representation of date object",

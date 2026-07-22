@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "cb8c8504438f2846044f86bbc2274d236d682c9f088ac3514d5268dbad219f3b"
+const RelationChecksum = "8600dd60a66928508dfca8bc3d250d341b02e4660811f8b8f725bff6f6ee3248"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -1535,12 +1535,12 @@ var (
 			DataSource:       model.Relation_local,
 			Description:      "Objects that are mentioned in blocks of this object",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Id:               "_brmentions",
 			Key:              "mentions",
 			Name:             "Mentions",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
+			Revision:         1,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyMigrationObjectContext: {
