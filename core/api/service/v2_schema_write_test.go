@@ -83,6 +83,59 @@ func TestV2CreateType(t *testing.T) {
 		assert.Empty(t, pbtypes.GetString(details, "id"), "the minted document id never travels into the RPC")
 	})
 
+	t.Run("all-featured typeProperties keep the featured list (regular seeded)", func(t *testing.T) {
+		// FillRecommendedRelations detects "already filled" by the FIRST
+		// entry of recommendedRelations; an empty regular section would send
+		// it down the layout-defaults path and clobber the featured list.
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String("rel-createdDate"),
+				bundle.RelationKeyRelationKey:    domain.String("createdDate"),
+				bundle.RelationKeyName:           domain.String("Created date"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel-creator"),
+				bundle.RelationKeyRelationKey:    domain.String("creator"),
+				bundle.RelationKeyName:           domain.String("Creator"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			},
+			{
+				bundle.RelationKeyId:             domain.String("rel-links"),
+				bundle.RelationKeyRelationKey:    domain.String("links"),
+				bundle.RelationKeyName:           domain.String("Links"),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+			},
+		})
+		var createdDetails *pb.RpcObjectCreateObjectTypeRequest
+		fx.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
+				createdDetails = req
+				return &pb.RpcObjectCreateObjectTypeResponse{
+					ObjectId: "type-workout",
+					Error:    &pb.RpcObjectCreateObjectTypeResponseError{Code: pb.RpcObjectCreateObjectTypeResponseError_NULL},
+				}
+			})
+		fx.expectEtagRead("type-workout")
+
+		// when
+		_, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
+			"kind":"objectType","key":"workout",
+			"typeProperties":[{"key":"severity","section":"featured"}]}`), false)
+
+		// then
+		require.NoError(t, err)
+		details := createdDetails.Details
+		assert.Equal(t, []string{"rel-severity"}, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedFeaturedRelations.String()),
+			"the document's featured list survives")
+		assert.Equal(t, []string{"rel-createdDate", "rel-creator", "rel-links"},
+			pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()),
+			"the empty regular section is seeded with the system defaults")
+	})
+
 	t.Run("dry run reports would-be properties without creating", func(t *testing.T) {
 		// given: no RPC expectations — any call fails the test
 		fx := newV2Fixture(t)

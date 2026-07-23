@@ -29,12 +29,13 @@ import (
 // docEnvelope is the light envelope decode used for referential validation
 // before Unmarshal runs (no side effects yet at that point).
 type docEnvelope struct {
-	Kind        string                     `json:"kind"`
-	Type        string                     `json:"type"`
-	TemplateFor string                     `json:"templateFor"`
-	Key         string                     `json:"key"`
-	Properties  map[string]json.RawMessage `json:"properties"`
-	Items       []string                   `json:"items"`
+	Kind           string                     `json:"kind"`
+	Type           string                     `json:"type"`
+	TemplateFor    string                     `json:"templateFor"`
+	Key            string                     `json:"key"`
+	Properties     map[string]json.RawMessage `json:"properties"`
+	TypeProperties json.RawMessage            `json:"typeProperties"`
+	Items          []string                   `json:"items"`
 }
 
 // v2ObjectShortcut is the R7 shortcut body: {type, name, properties,

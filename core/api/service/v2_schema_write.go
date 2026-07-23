@@ -105,6 +105,12 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 	if err != nil {
 		return nil, err
 	}
+	if len(envelope.TypeProperties) > 0 {
+		ensureRegularRecommendedList(details, resolvers)
+		if err := resolvers.err(); err != nil {
+			return nil, fmt.Errorf("resolve default recommended properties: %w", err)
+		}
+	}
 	resp := s.mw.ObjectCreateObjectType(ctx, &pb.RpcObjectCreateObjectTypeRequest{
 		SpaceId: spaceId,
 		Details: details,
@@ -124,6 +130,34 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 		result.Etag = ComputeEtag(read.Heads)
 	}
 	return result, nil
+}
+
+// ensureRegularRecommendedList keeps ObjectCreateObjectType's
+// FillRecommendedRelations on its "already filled" path: it detects filled
+// lists by the FIRST entry of recommendedRelations being a space-local id,
+// so a type document whose typeProperties are all featured/hidden/file
+// (regular section empty) would get its lists clobbered by layout defaults.
+// Seed the regular list with the system default sidebar properties
+// (relationutils.defaultRecommendedRelationKeys) — the set every type in
+// the product carries.
+func ensureRegularRecommendedList(details *types.Struct, resolvers *creatingResolvers) {
+	key := bundle.RelationKeyRecommendedRelations.String()
+	if v, ok := details.Fields[key]; ok && len(v.GetListValue().GetValues()) > 0 {
+		return
+	}
+	var ids []string
+	for _, defKey := range []domain.RelationKey{
+		bundle.RelationKeyCreatedDate,
+		bundle.RelationKeyCreator,
+		bundle.RelationKeyLinks,
+	} {
+		if id, ok := resolvers.PropertyId(anyblockjson.PropertyDefinition{Key: defKey}); ok {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) > 0 {
+		details.Fields[key] = pbtypes.StringList(ids)
+	}
 }
 
 // typeDetailsFromSnapshot converts the unmarshaled type snapshot into the
