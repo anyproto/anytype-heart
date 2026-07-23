@@ -86,7 +86,7 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 		plan.compactRefs = false
 	default:
 		return plan, apimodel.V2ValidationFailed("invalid ids value",
-			apimodel.V2Issue{Path: "ids", Message: fmt.Sprintf("unknown value %q — allowed: compact, full", q.Ids)})
+			apimodel.V2Issue{Path: "ids", Message: fmt.Sprintf("unknown value %q", q.Ids), Hint: "allowed: compact, full"})
 	}
 
 	switch q.Format {
@@ -95,7 +95,7 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 		plan.markdown = true
 	default:
 		return plan, apimodel.V2ValidationFailed("invalid format value",
-			apimodel.V2Issue{Path: "format", Message: fmt.Sprintf("unknown value %q — allowed: anyblock, md", q.Format)})
+			apimodel.V2Issue{Path: "format", Message: fmt.Sprintf("unknown value %q", q.Format), Hint: "allowed: anyblock, md"})
 	}
 
 	if q.Include != "" {
@@ -109,7 +109,7 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 			case "":
 			default:
 				return plan, apimodel.V2ValidationFailed("invalid include value",
-					apimodel.V2Issue{Path: "include", Message: fmt.Sprintf("unknown value %q — allowed: properties, blocks", strings.TrimSpace(part))})
+					apimodel.V2Issue{Path: "include", Message: fmt.Sprintf("unknown value %q", strings.TrimSpace(part)), Hint: "allowed: properties, blocks"})
 			}
 		}
 	}
@@ -165,7 +165,11 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 	etag := ComputeEtag(read.Heads)
 
 	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
-	opts.CompactObjectRefs = plan.compactRefs
+	// object refs compact via the refs legend (C4) — but the outline drops the
+	// legend when it drops the properties map, so a compacted object ref left
+	// in a heading's text would become an unresolvable label. Keep object refs
+	// full in the outline shape (T7).
+	opts.CompactObjectRefs = plan.compactRefs && !plan.outline
 	// block ids stay full on default reads (C4); the outline shape is the
 	// read-only exception and uses compact block labels
 	opts.CompactBlockLabels = plan.outline
@@ -451,10 +455,22 @@ func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []st
 
 	rows := make([]apimodel.V2ObjectRow, 0, len(records))
 	for _, record := range records {
+		typeId := record.Details.GetString(bundle.RelationKeyType)
+		typeKey := typeKeys[typeId]
+		if typeKey == "" && typeId != "" {
+			// the bulk map misses edge type ids (hidden/bundled); resolve the
+			// one type object directly so no row carries an empty type (C5).
+			if det, err := index.GetDetails(typeId); err == nil {
+				if k, err := domain.GetTypeKeyFromRawUniqueKey(det.GetString(bundle.RelationKeyUniqueKey)); err == nil {
+					typeKey = string(k)
+				}
+			}
+			typeKeys[typeId] = typeKey // memoize (including "" to avoid re-querying)
+		}
 		row := apimodel.V2ObjectRow{
 			Id:   record.Details.GetString(bundle.RelationKeyId),
 			Name: record.Details.GetString(bundle.RelationKeyName),
-			Type: typeKeys[record.Details.GetString(bundle.RelationKeyType)],
+			Type: typeKey,
 		}
 		if len(fields) > 0 {
 			values := map[string]any{}

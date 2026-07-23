@@ -508,11 +508,38 @@ wrong type) and NOT the store snapshot (it lags live edits/sync). Derive the
 per-object read is exactly `cmd/anyblockroundtrip`'s snapshot→Marshal path,
 minus the round-trip.
 
+**`?block=` subtree, concrete.** Indents stay **absolute** (not rebased to
+the anchor) so a block's id and depth are identical whether read in full or
+as a subtree — an agent can cache and cross-reference either way. The block
+reference resolves by **exact id or unique suffix** (§9a): a compact outline
+label (the id's last few chars) round-trips to `?block=`; a suffix matching
+more than one id is a 400 steering to the full id; zero matches is a 404.
+`?block=` implies blocks (an accompanying `include=properties` adds the
+properties map rather than emptying the read).
+
+**`/validate` result semantics, concrete.** `POST /v2/validate` returns
+**200 with `{issues, warnings}`** even for an invalid document — the issues
+are the repair-loop's food, never a 4xx. A document produced by a newer
+format version surfaces as a `/version` issue with a hint (SPEC §10), not a
+transport error. (The `version_unsupported` HTTP error exists for Phase-2
+*body* rejection on create/replace, where an unparseable version must fail
+the write.)
+
+**C11 read warnings, concrete.** A read never fails on content the format
+can't represent: unmapped block types and over-deep nesting degrade to
+`warnings[]` on the envelope (the `anyblockjson.Options.OnWarning` sink);
+canonical export leaves the sink nil and still errors. The markdown export
+path has no loss channel yet, so `format=md` carries no warnings (build
+item: md-export loss detector).
+
 **Idempotency store (C8).** In-process, keyed by `(space, Idempotency-Key)` →
-`(body-hash, stored-result)`. Same key + same body-hash ⇒ replay stored
-result; same key + different body-hash ⇒ 409 `idempotency_conflict`. TTL is
-an impl detail (a bounded LRU is fine); persistence across restart is not
-required for v2.0.
+`(body-hash, stored-result)`, with an in-flight reservation so concurrent
+same-key requests never double-execute (the second blocks then replays).
+Same key + same body-hash ⇒ replay stored result; same key + different
+body-hash ⇒ 409 `idempotency_conflict`. Only successful (2xx) responses are
+cached; a failed/panicked request releases the reservation so a retry
+re-executes. TTL is an impl detail (a bounded LRU is fine); persistence
+across restart is not required for v2.0.
 
 **Eval-harness ordering (correction to §2 Phase 0).** Phase 0 delivers the
 **scoring primitives + plumbing + `/validate`**, NOT the full agent-loop

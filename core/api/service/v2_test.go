@@ -47,6 +47,13 @@ func TestEtagMatches(t *testing.T) {
 	t.Run("stale etag does not match", func(t *testing.T) {
 		assert.False(t, EtagMatches(ComputeEtag([]string{"other"}), heads))
 	})
+
+	t.Run("quoted and weak header forms match (RFC 7232)", func(t *testing.T) {
+		etag := ComputeEtag(heads)
+		assert.Equal(t, `"`+etag+`"`, QuoteEtag(etag))
+		assert.True(t, EtagMatches(QuoteEtag(etag), heads), "a client echoing the quoted ETag header must match")
+		assert.True(t, EtagMatches(`W/"`+etag+`"`, heads), "a weak indicator is tolerated")
+	})
 }
 
 func TestEncodeEnvelope(t *testing.T) {

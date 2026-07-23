@@ -72,6 +72,19 @@ func TestCompare(t *testing.T) {
 		assert.Contains(t, got[0], `detail "name" changed`)
 	})
 
+	t.Run("added detail is reported", func(t *testing.T) {
+		// given: the round trip introduced a detail absent from the original
+		a := snapshot(map[string]*types.Value{"name": str("Doc")})
+		b := snapshot(map[string]*types.Value{"name": str("Doc"), "description": str("new")})
+
+		// when
+		got := Compare(a, b, anyblockjson.Options{})
+
+		// then
+		require.Len(t, got, 1)
+		assert.Contains(t, got[0], `detail "description" added`)
+	})
+
 	t.Run("date sub-second truncation is not drift", func(t *testing.T) {
 		// given: dueDate is a bundled date relation
 		a := snapshot(map[string]*types.Value{"dueDate": num(1700000000.7)})

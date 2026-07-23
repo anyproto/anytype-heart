@@ -44,7 +44,7 @@ func GetObjectV2Handler(s *service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.Header("ETag", etag)
+		c.Header("ETag", service.QuoteEtag(etag))
 		c.Data(http.StatusOK, "application/json", body)
 	}
 }

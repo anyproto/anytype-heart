@@ -64,6 +64,32 @@ func Compare(orig, got *model.SmartBlockSnapshotBase, opts anyblockjson.Options)
 		}
 	}
 
+	// added details: keys present in got but not orig. The orig-key loop
+	// above already flags changed/removed (detailEqual against a nil got
+	// value), but never sees keys the round trip introduced.
+	if got.Details != nil {
+		gotOnly := make([]string, 0)
+		for k := range got.Details.Fields {
+			if strippedKeys[k] {
+				continue
+			}
+			if orig.Details != nil {
+				if _, inOrig := orig.Details.Fields[k]; inOrig {
+					continue
+				}
+			}
+			gotOnly = append(gotOnly, k)
+		}
+		sort.Strings(gotOnly)
+		for _, k := range gotOnly {
+			out = append(out, fmt.Sprintf("detail %q added: %s", k, valuePreview(got.Details.Fields[k])))
+		}
+	}
+
+	// Compare is intentionally order-insensitive on text (a multiset): the
+	// round-trip verifier tolerates legitimate normalization reordering.
+	// Order-sensitive scoring lives in the eval corruption metric via
+	// TextSequence, where a backtranslation must restore exact order.
 	origTexts := TextInventory(orig)
 	gotTexts := TextInventory(got)
 	for text, n := range origTexts {
@@ -196,6 +222,34 @@ func TextInventory(s *model.SmartBlockSnapshotBase) map[string]int {
 		}
 		if !skip {
 			out[t.Text]++
+		}
+	}
+	return out
+}
+
+// TextSequence is the ordered analog of TextInventory: the preserved text of
+// text blocks in snapshot block order, with the same structural/emoji
+// filtering. Used to detect pure reordering, which the multiset cannot.
+func TextSequence(s *model.SmartBlockSnapshotBase) []string {
+	var out []string
+	for _, b := range s.Blocks {
+		t := b.GetText()
+		if t == nil || t.Text == "" {
+			continue
+		}
+		switch t.Style {
+		case model.BlockContentText_Title, model.BlockContentText_Description:
+			continue
+		}
+		skip := false
+		for _, m := range t.Marks.GetMarks() {
+			if m != nil && m.Type == model.BlockContentTextMark_Emoji {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			out = append(out, t.Text)
 		}
 	}
 	return out

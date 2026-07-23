@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
@@ -77,15 +78,33 @@ func ComputeEtag(heads []string) string {
 	return headsHash(heads)[:etagDisplayLen]
 }
 
+// QuoteEtag renders an etag as an RFC 7232 entity-tag for the ETag / If-Match
+// headers (double-quoted). The envelope `etag` field stays bare.
+func QuoteEtag(etag string) string {
+	return `"` + etag + `"`
+}
+
+// unquoteEtag normalizes a client If-Match value: it strips an optional weak
+// indicator and surrounding quotes, so both the header form (`"abc"`, `W/"abc"`)
+// and the bare envelope form (`abc`) compare equal.
+func unquoteEtag(v string) string {
+	v = strings.TrimPrefix(v, "W/")
+	v = strings.TrimPrefix(v, `"`)
+	v = strings.TrimSuffix(v, `"`)
+	return v
+}
+
 // EtagMatches checks a client-supplied If-Match value against the current
 // head set. The comparison is done server-side against the full head-set
-// hash; the 8-char display form is accepted as its prefix (C7/§8).
+// hash; the 8-char display form is accepted as its prefix (C7/§8). The
+// If-Match value is normalized first, so a quoted header tag matches (RFC 7232).
 func EtagMatches(ifMatch string, heads []string) bool {
 	if ifMatch == "" {
 		return true // advisory by default: absent If-Match = last-write-wins
 	}
+	tag := unquoteEtag(ifMatch)
 	full := headsHash(heads)
-	return ifMatch == full || ifMatch == full[:etagDisplayLen]
+	return tag == full || tag == full[:etagDisplayLen]
 }
 
 //

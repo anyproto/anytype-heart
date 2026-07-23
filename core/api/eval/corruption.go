@@ -33,7 +33,9 @@ func (r CorruptionReport) Clean() bool {
 }
 
 // ScoreCorruption compares the untouched snapshot with the snapshot after
-// the forward+inverse edit sequence.
+// the forward+inverse edit sequence. Unlike the round-trip verifier it is
+// order-sensitive: a backtranslation must restore exact document order, so
+// pure reordering (same text multiset, different sequence) is corruption.
 func ScoreCorruption(original, after *model.SmartBlockSnapshotBase, opts anyblockjson.Options) CorruptionReport {
 	report := CorruptionReport{Findings: snapshotdiff.Compare(original, after, opts)}
 
@@ -49,7 +51,26 @@ func ScoreCorruption(original, after *model.SmartBlockSnapshotBase, opts anybloc
 			report.TextAdded += n - origTexts[text]
 		}
 	}
+	// pure reordering keeps the multiset but the sequence differs — invisible
+	// to Compare's multiset, so the restructure fixture would falsely score
+	// Clean without this.
+	if report.TextLost == 0 && report.TextAdded == 0 &&
+		!equalSeq(snapshotdiff.TextSequence(original), snapshotdiff.TextSequence(after)) {
+		report.Findings = append(report.Findings, "text block order changed")
+	}
 	return report
+}
+
+func equalSeq(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // ScoreCorruptionJSON scores two AnyBlock JSON documents — the harness's

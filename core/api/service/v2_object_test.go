@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/anyproto/any-sync/commonspace/object/tree/treestorage"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -313,6 +315,22 @@ func TestV2GetObject(t *testing.T) {
 
 		// then
 		require.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("a missing object maps to 404, not 500", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "gone").
+			Return(apicore.ObjectRead{}, treestorage.ErrUnknownTreeId)
+
+		// when
+		_, _, err := fx.GetObject(context.Background(), testSpaceId, "gone", V2ObjectQuery{})
+
+		// then
+		var apiErr *apimodel.V2Error
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status)
+		assert.Equal(t, apimodel.V2CodeNotFound, apiErr.Code)
 	})
 }
 

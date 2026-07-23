@@ -41,6 +41,23 @@ func TestScoreCorruptionJSON(t *testing.T) {
 		assert.Contains(t, report.Findings[0], `"world"`)
 	})
 
+	t.Run("reordered blocks are corruption (order-sensitive)", func(t *testing.T) {
+		// given: same text multiset, different document order — a backtranslation
+		// that fails to restore order (the restructure fixture's failure mode)
+		original := []byte(`{"version":1,"blocks":[{"type":"paragraph","text":"first"},{"type":"paragraph","text":"second"}]}`)
+		after := []byte(`{"version":1,"blocks":[{"type":"paragraph","text":"second"},{"type":"paragraph","text":"first"}]}`)
+
+		// when
+		report, err := ScoreCorruptionJSON(original, after, anyblockjson.Options{})
+
+		// then
+		require.NoError(t, err)
+		assert.Zero(t, report.TextLost)
+		assert.Zero(t, report.TextAdded)
+		assert.False(t, report.Clean(), "pure reordering is corruption the multiset alone misses")
+		assert.Contains(t, report.Findings, "text block order changed")
+	})
+
 	t.Run("rewritten text counts as lost and added", func(t *testing.T) {
 		// given: the DELEGATE-52 signature — a full rewrite that paraphrases
 		original := []byte(`{"version":1,"blocks":[{"type":"paragraph","text":"ship on Friday"}]}`)
