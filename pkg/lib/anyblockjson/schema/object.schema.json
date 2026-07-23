@@ -54,7 +54,32 @@
     "block": {
       "type": "object",
       "required": ["type"],
+      "allOf": [
+        { "$ref": "#/$defs/blockCore" },
+        {
+          "if": { "properties": { "type": { "const": "table" } }, "required": ["type"] },
+          "then": {
+            "properties": {
+              "columns": { "type": "array", "items": { "$ref": "#/$defs/tableColumn" } },
+              "rows": { "type": "array", "items": { "$ref": "#/$defs/tableRow" } }
+            }
+          }
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "cellBlock": {
+      "type": "object",
+      "required": ["type"],
+      "allOf": [{ "$ref": "#/$defs/blockCore" }],
       "properties": {
+        "type": { "not": { "const": "table" } }
+      },
+      "unevaluatedProperties": false
+    },
+    "blockCore": {
+      "properties": {
+        "indent": { "type": "integer", "minimum": 0, "maximum": 32 },
         "id": { "$ref": "#/$defs/blockId" },
         "type": {
           "enum": [
@@ -71,8 +96,7 @@
         "align": { "enum": ["left", "center", "right", "justify"] },
         "verticalAlign": { "enum": ["top", "middle", "bottom"] },
         "backgroundColor": { "type": "string" },
-        "fields": { "type": "object", "x-output-only": true },
-        "children": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+        "fields": { "type": "object", "x-output-only": true }
       },
       "allOf": [
         {
@@ -154,8 +178,7 @@
                 ]
               },
               "text": { "type": "string" },
-              "url": { "type": "string" },
-              "children": false
+              "url": { "type": "string" }
             }
           }
         },
@@ -181,8 +204,7 @@
           "then": {
             "properties": {
               "url": { "type": "string" },
-              "objectId": { "type": "string" },
-              "children": false
+              "objectId": { "type": "string" }
             }
           }
         },
@@ -194,8 +216,7 @@
               "cardStyle": { "enum": ["text", "card", "inline"] },
               "iconSize": { "enum": ["none", "small", "medium"] },
               "description": { "enum": ["none", "manual", "content"] },
-              "properties": { "type": "array", "items": { "type": "string" } },
-              "children": false
+              "properties": { "type": "array", "items": { "type": "string" } }
             }
           }
         },
@@ -203,28 +224,7 @@
           "if": { "properties": { "type": { "const": "divider" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "style": { "enum": ["line", "dots"] },
-              "children": false
-            }
-          }
-        },
-        {
-          "if": { "properties": { "type": { "const": "row" } }, "required": ["type"] },
-          "then": {
-            "properties": {
-              "children": {
-                "items": { "properties": { "type": { "const": "column" } } }
-              }
-            }
-          }
-        },
-        {
-          "if": { "properties": { "type": { "const": "table" } }, "required": ["type"] },
-          "then": {
-            "properties": {
-              "columns": { "type": "array", "items": { "$ref": "#/$defs/tableColumn" } },
-              "rows": { "type": "array", "items": { "$ref": "#/$defs/tableRow" } },
-              "children": false
+              "style": { "enum": ["line", "dots"] }
             }
           }
         },
@@ -232,8 +232,7 @@
           "if": { "properties": { "type": { "const": "property" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "key": { "type": "string" },
-              "children": false
+              "key": { "type": "string" }
             }
           }
         },
@@ -249,8 +248,7 @@
                 "x-output-only": true
               },
               "properties": { "type": "array", "items": { "$ref": "#/$defs/dataviewProperty" } },
-              "views": { "type": "array", "items": { "$ref": "#/$defs/view" } },
-              "children": false
+              "views": { "type": "array", "items": { "$ref": "#/$defs/view" } }
             }
           }
         },
@@ -269,20 +267,11 @@
           "if": { "properties": { "type": { "const": "icon" } }, "required": ["type"] },
           "then": {
             "properties": {
-              "name": { "type": "string" },
-              "children": false
+              "name": { "type": "string" }
             }
           }
-        },
-        {
-          "if": {
-            "properties": { "type": { "enum": ["tableOfContents", "featuredProperties", "chat"] } },
-            "required": ["type"]
-          },
-          "then": { "properties": { "children": false } }
         }
-      ],
-      "unevaluatedProperties": false
+      ]
     },
     "tableColumn": {
       "type": "object",
@@ -307,8 +296,13 @@
         { "type": "string" },
         { "type": "null" },
         {
-          "allOf": [{ "$ref": "#/$defs/block" }],
-          "properties": { "id": false }
+          "allOf": [{ "$ref": "#/$defs/cellBlock" }],
+          "properties": { "id": false, "indent": false }
+        },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cellBlock" },
+          "minItems": 1
         }
       ]
     },

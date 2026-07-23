@@ -42,8 +42,9 @@ type jsonRootEscape struct {
 // jsonBlock is the union of every §5 block shape; the schema guarantees only
 // type-appropriate fields are present.
 type jsonBlock struct {
-	Id   string `json:"id"`
-	Type string `json:"type"`
+	Indent int    `json:"indent"`
+	Id     string `json:"id"`
+	Type   string `json:"type"`
 
 	Checked   bool   `json:"checked"`
 	Color     string `json:"color"`
@@ -83,13 +84,12 @@ type jsonBlock struct {
 	VerticalAlign   string         `json:"verticalAlign"`
 	BackgroundColor string         `json:"backgroundColor"`
 	Fields          map[string]any `json:"fields"`
-	Children        []*jsonBlock   `json:"children"`
 }
 
 // Unmarshal validates data and reconstructs a snapshot (§13). Errors wrap
 // *ValidationError with JSON-path-addressed issues.
 func Unmarshal(data []byte, opts Options) (model.SmartBlockType, *model.SmartBlockSnapshotBase, error) {
-	if _, err := validateToDoc(data); err != nil {
+	if _, err := validateToDoc(data, opts.NormalizeIndent, opts.OnWarning); err != nil {
 		return 0, nil, err
 	}
 	var doc jsonDoc
@@ -175,28 +175,12 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 	}
 
 	all := []*model.Block{root}
-	for _, jb := range doc.Blocks {
-		if jb == nil {
-			continue
-		}
-		// top-level structural blocks are absorbed or dropped (§7)
-		switch jb.Type {
-		case "title":
-			imp.absorbIntoProperty(details, "name", jb.Text)
-			continue
-		case "description":
-			imp.absorbIntoProperty(details, "description", jb.Text)
-			continue
-		case "featuredProperties":
-			continue
-		}
-		blocks, err := imp.blockFromJSON(jb, "")
-		if err != nil {
-			return 0, nil, fmt.Errorf("build blocks: %w", err)
-		}
-		root.ChildrenIds = append(root.ChildrenIds, blocks[0].Id)
-		all = append(all, blocks...)
+	jbs, indents := imp.topLevelBlocks(details)
+	blocks, err := imp.flatSubtree(jbs, indents, root, -1)
+	if err != nil {
+		return 0, nil, fmt.Errorf("build blocks: %w", err)
 	}
+	all = append(all, blocks...)
 
 	snapshot := &model.SmartBlockSnapshotBase{
 		Blocks:      all,
@@ -279,6 +263,94 @@ func wrapToList(v *types.Value) *types.Value {
 //
 // ---- blocks ----
 //
+
+// blockIndents extracts the effective indent of every entry, clamping per
+// §4's lenient rule when NormalizeIndent is set (base is the indent of the
+// run's implicit parent: −1 for the document, 0 for a cell's descendants).
+// Clamps are silent here — validation already reported each one as a
+// warning-grade issue on the same input, with the same rule.
+func (imp *importer) blockIndents(jbs []*jsonBlock, base int) []int {
+	indents := make([]int, len(jbs))
+	for i, jb := range jbs {
+		if jb != nil {
+			indents[i] = jb.Indent
+		}
+	}
+	if imp.opts.NormalizeIndent {
+		clampIndents(indents, base, nil)
+	}
+	return indents
+}
+
+// topLevelBlocks resolves the document's blocks array for the tree rebuild:
+// structural blocks at indent 0 are absorbed into properties or dropped,
+// together with their whole subtree (§7 — matching the nested encoding, which
+// never descended into them).
+func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int) {
+	raw := imp.doc.Blocks
+	indents := imp.blockIndents(raw, -1)
+	jbs := make([]*jsonBlock, 0, len(raw))
+	kept := make([]int, 0, len(raw))
+	for i := 0; i < len(raw); i++ {
+		jb := raw[i]
+		if jb == nil {
+			continue
+		}
+		if indents[i] == 0 {
+			structural := true
+			switch jb.Type {
+			case "title":
+				imp.absorbIntoProperty(details, "name", jb.Text)
+			case "description":
+				imp.absorbIntoProperty(details, "description", jb.Text)
+			case "featuredProperties":
+			default:
+				structural = false
+			}
+			if structural {
+				for i+1 < len(raw) && indents[i+1] > 0 {
+					i++
+				}
+				continue
+			}
+		}
+		jbs = append(jbs, jb)
+		kept = append(kept, indents[i])
+	}
+	return jbs, kept
+}
+
+type stackEntry struct {
+	b      *model.Block
+	indent int
+}
+
+// flatSubtree rebuilds the tree from a flat pre-order run (§4 F6): walk with
+// a stack seeded (root, rootIndent); a block at indent k attaches to the
+// nearest stack entry shallower than k. Validation guarantees indents are
+// monotone (or already clamped), so that entry is exactly at k−1.
+func (imp *importer) flatSubtree(jbs []*jsonBlock, indents []int, root *model.Block, rootIndent int) ([]*model.Block, error) {
+	var all []*model.Block
+	stack := []stackEntry{{root, rootIndent}}
+	for i, jb := range jbs {
+		if jb == nil {
+			continue
+		}
+		blocks, err := imp.blockFromJSON(jb, "")
+		if err != nil {
+			return nil, err
+		}
+		k := indents[i]
+		for len(stack) > 1 && stack[len(stack)-1].indent >= k {
+			stack = stack[:len(stack)-1]
+		}
+		parent := stack[len(stack)-1].b
+		parent.ChildrenIds = append(parent.ChildrenIds, blocks[0].Id)
+		all = append(all, blocks...)
+		stack = append(stack, stackEntry{blocks[0], k})
+	}
+	return all, nil
+}
 
 // textStyleAliases extends the canonical inventory with the §5 input aliases.
 var textStyleAliases = map[string]model.BlockContentTextStyle{
@@ -383,9 +455,10 @@ func (imp *importer) linkFromJSON(jb *jsonBlock) (*model.BlockContentLink, error
 	}, nil
 }
 
-// blockFromJSON converts one block and its subtree; the returned slice is in
-// pre-order with the block itself first. forcedId overrides the block id
-// (used for derived table cell ids).
+// blockFromJSON converts one block; the returned slice has the block first,
+// followed by any internal blocks it owns (the table subtree). Document
+// children are attached by the flatSubtree stack rebuild, not here. forcedId
+// overrides the block id (used for derived table cell ids).
 func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Block, error) {
 	id := forcedId
 	if id == "" {
@@ -396,7 +469,6 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 	}
 	b := &model.Block{Id: id}
 	var extra []*model.Block
-	withChildren := true
 	liftedLang := ""
 
 	switch {
@@ -416,19 +488,16 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		b.Content = &model.BlockContentOfFile{File: imp.fileFromJSON(jb)}
 	case jb.Type == "bookmark":
 		b.Content = &model.BlockContentOfBookmark{Bookmark: imp.bookmarkFromJSON(jb)}
-		withChildren = false
 	case jb.Type == "link":
 		link, err := imp.linkFromJSON(jb)
 		if err != nil {
 			return nil, fmt.Errorf("block %s: %w", id, err)
 		}
 		b.Content = &model.BlockContentOfLink{Link: link}
-		withChildren = false
 	case jb.Type == "divider":
 		b.Content = &model.BlockContentOfDiv{Div: &model.BlockContentDiv{
 			Style: divStyleNames.value(jb.Style),
 		}}
-		withChildren = false
 	case jb.Type == "row":
 		b.Content = &model.BlockContentOfLayout{Layout: &model.BlockContentLayout{Style: model.BlockContentLayout_Row}}
 	case jb.Type == "column":
@@ -442,7 +511,6 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		}
 		b = table
 		extra = tExtra
-		withChildren = false
 	case jb.Type == "embed" || jb.Type == "equation":
 		processor := processorNames.value(jb.Processor)
 		text := jb.Text
@@ -453,20 +521,16 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 			Text:      text,
 			Processor: processor,
 		}}
-		withChildren = false
 	case jb.Type == "tableOfContents":
 		b.Content = &model.BlockContentOfTableOfContents{TableOfContents: &model.BlockContentTableOfContents{}}
-		withChildren = false
 	case jb.Type == "property":
 		b.Content = &model.BlockContentOfRelation{Relation: &model.BlockContentRelation{Key: jb.Key}}
-		withChildren = false
 	case jb.Type == "dataview":
 		dv, err := imp.dataviewFromJSON(jb)
 		if err != nil {
 			return nil, fmt.Errorf("block %s: %w", id, err)
 		}
 		b.Content = &model.BlockContentOfDataview{Dataview: dv}
-		withChildren = false
 	case jb.Type == "widget":
 		b.Content = &model.BlockContentOfWidget{Widget: &model.BlockContentWidget{
 			Layout:    widgetLayoutNames.value(jb.Layout),
@@ -476,25 +540,15 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		}}
 	case jb.Type == "chat":
 		b.Content = &model.BlockContentOfChat{Chat: &model.BlockContentChat{}}
-		withChildren = false
 	case jb.Type == "featuredProperties":
 		b.Content = &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}}
-		withChildren = false
 	case jb.Type == "icon":
 		b.Content = &model.BlockContentOfIcon{Icon: &model.BlockContentIcon{Name: jb.Name}}
-		withChildren = false
 	default:
 		return nil, fmt.Errorf("block %s: unknown type %q", id, jb.Type)
 	}
 
 	imp.applyBlockCommon(b, jb, liftedLang)
-	if withChildren {
-		childBlocks, err := imp.childrenFromJSON(b, jb.Children)
-		if err != nil {
-			return nil, err
-		}
-		extra = append(extra, childBlocks...)
-	}
 	return append([]*model.Block{b}, extra...), nil
 }
 
@@ -513,22 +567,4 @@ func (imp *importer) applyBlockCommon(b *model.Block, jb *jsonBlock, liftedLang 
 		}
 		b.Fields.Fields[codeLangField] = &types.Value{Kind: &types.Value_StringValue{StringValue: liftedLang}}
 	}
-}
-
-// childrenFromJSON converts the children subtrees, appending their ids to
-// the parent in document order.
-func (imp *importer) childrenFromJSON(parent *model.Block, children []*jsonBlock) ([]*model.Block, error) {
-	var extra []*model.Block
-	for _, child := range children {
-		if child == nil {
-			continue
-		}
-		childBlocks, err := imp.blockFromJSON(child, "")
-		if err != nil {
-			return nil, err
-		}
-		parent.ChildrenIds = append(parent.ChildrenIds, childBlocks[0].Id)
-		extra = append(extra, childBlocks...)
-	}
-	return extra, nil
 }

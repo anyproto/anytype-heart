@@ -176,21 +176,36 @@ func TestImport_PropertiesIdDoesNotLeak(t *testing.T) {
 
 // Finding 8: tables nested inside table cells join the id-uniqueness domain
 // and get their inline text checked.
+// A table inside a table cell is rejected at the schema level: cells use the
+// non-recursive cellBlock definition — the guarantee that keeps the whole
+// schema free of block recursion (§12). Cell arrays get the same treatment,
+// and their inline text still reaches the markup checks.
 func TestValidate_NestedTableInCell(t *testing.T) {
-	dupId := `{"version": 1, "blocks": [
-		{"id": "x1", "type": "paragraph"},
+	nestedTable := `{"version": 1, "blocks": [
 		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [
-			{"type": "table", "columns": [{"id": "x1"}], "rows": []}
+			{"type": "table", "columns": [{"id": "c2"}], "rows": []}
 		]}]}
 	]}`
-	err := Validate([]byte(dupId))
+	err := Validate([]byte(nestedTable))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "/blocks/0/rows/0/cells/0")
+
+	dupIdInCellArray := `{"version": 1, "blocks": [
+		{"id": "x1", "type": "paragraph"},
+		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[
+			{"type": "toggle", "text": "cell"},
+			{"indent": 1, "id": "x1", "type": "paragraph", "text": "dup"}
+		]]}]}
+	]}`
+	err = Validate([]byte(dupIdInCellArray))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "duplicate id")
 
 	badInline := `{"version": 1, "blocks": [
-		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [
-			{"type": "table", "columns": [{"id": "c2"}], "rows": [{"id": "r2", "cells": ["<u>unclosed"]}]}
-		]}]}
+		{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[
+			{"type": "toggle", "text": "cell"},
+			{"indent": 1, "type": "paragraph", "text": "<u>unclosed"}
+		]]}]}
 	]}`
 	err = Validate([]byte(badInline))
 	require.Error(t, err)

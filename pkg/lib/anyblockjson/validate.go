@@ -106,15 +106,17 @@ func DetectFormat(data []byte) (version int, schemaURL string, ok bool) {
 }
 
 // Validate checks data against the embedded schema and the semantic rules
-// without building a snapshot (§12).
+// without building a snapshot (§12). Validate is always strict; the lenient
+// indent mode exists only on Unmarshal (Options.NormalizeIndent).
 func Validate(data []byte) error {
-	_, err := validateToDoc(data)
+	_, err := validateToDoc(data, false, nil)
 	return err
 }
 
 // validateToDoc runs the full validation pipeline and returns the decoded
-// document for the importer to consume.
-func validateToDoc(data []byte) (map[string]any, error) {
+// document for the importer to consume. With lenient set, over-deep indents
+// are clamped instead of rejected, each clamp reported through warn (§4).
+func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any, error) {
 	raw, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
 	if err != nil {
 		return nil, &ValidationError{Issues: []Issue{{Message: fmt.Sprintf("invalid JSON: %v", err)}}}
@@ -156,7 +158,7 @@ func validateToDoc(data []byte) (map[string]any, error) {
 		return nil, ve
 	}
 
-	if issues := semanticIssues(doc); len(issues) > 0 {
+	if issues := semanticIssues(doc, lenient, warn); len(issues) > 0 {
 		return nil, &ValidationError{Issues: issues, NewerFormat: newer}
 	}
 	return doc, nil
@@ -231,14 +233,68 @@ func textBearing(typ string) bool {
 	return false
 }
 
+// leafBlockTypes are the block types that cannot be parents (V2) — the same
+// list as the export side's withChildren = false sites and the editor's
+// leaf blocks, plus the equation input alias.
+var leafBlockTypes = map[string]bool{
+	"embed": true, "equation": true, "bookmark": true, "link": true,
+	"divider": true, "table": true, "property": true, "dataview": true,
+	"icon": true, "tableOfContents": true, "featuredProperties": true,
+	"chat": true,
+}
+
+// clampIndents applies the §4 lenient rule in place: an indent more than one
+// deeper than its predecessor clamps to predecessor+1 (CommonMark's "a level
+// that hasn't been established cannot be opened"); the first entry's
+// predecessor is base. onClamp, when non-nil, receives each clamp.
+func clampIndents(indents []int, base int, onClamp func(i, from, to int)) {
+	prev := base
+	for i, k := range indents {
+		if k > prev+1 {
+			if onClamp != nil {
+				onClamp(i, k, prev+1)
+			}
+			k = prev + 1
+			indents[i] = k
+		}
+		prev = k
+	}
+}
+
+// indentOf reads a block's indent; absent means 0. The schema guarantees an
+// integer in [0, 32] (V4) when present.
+func indentOf(block map[string]any) int {
+	raw, ok := block["indent"]
+	if !ok {
+		return 0
+	}
+	num, ok := raw.(json.Number)
+	if !ok {
+		return 0
+	}
+	v, err := num.Int64()
+	if err != nil {
+		return 0
+	}
+	return int(v)
+}
+
 // semanticIssues runs the checks the schema cannot express: envelope
-// combinations, id uniqueness over the flattened tree including derived
+// combinations, indent monotonicity and containment over the flat blocks
+// array (V1–V3), id uniqueness over the flattened tree including derived
 // table cell ids, table arity, language-vs-fields.lang conflicts, and inline
-// markup grammar (§12).
-func semanticIssues(doc map[string]any) []Issue {
+// markup grammar (§12). With lenient set, V1 violations clamp (reported via
+// warn) instead of erroring; V2/V3 are evaluated on the clamped indents and
+// stay errors.
+func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue {
 	var issues []Issue
 	addIssue := func(path, format string, args ...any) {
 		issues = append(issues, Issue{Path: path, Message: fmt.Sprintf(format, args...)})
+	}
+	warnIssue := func(path, format string, args ...any) {
+		if warn != nil {
+			warn(Issue{Path: path, Message: fmt.Sprintf(format, args...)})
+		}
 	}
 
 	if _, ok := doc["templateFor"]; ok {
@@ -288,6 +344,7 @@ func semanticIssues(doc map[string]any) []Issue {
 		}
 	}
 
+	var checkFlatRun func(blocks []any, basePath string, inCell bool)
 	var walkBlock func(block map[string]any, path string)
 	walkBlock = func(block map[string]any, path string) {
 		typ, _ := block["type"].(string)
@@ -299,23 +356,68 @@ func semanticIssues(doc map[string]any) []Issue {
 			addIssue(path, "language and fields.lang are both set")
 		}
 		if typ == "table" {
-			walkTable(block, path, claimId, addIssue, walkBlock)
+			walkTable(block, path, claimId, addIssue, walkBlock, checkFlatRun)
 		}
-		if children, _ := block["children"].([]any); children != nil {
-			for i, c := range children {
-				if cb, ok := c.(map[string]any); ok {
-					walkBlock(cb, fmt.Sprintf("%s/children/%d", path, i))
+	}
+
+	// checkFlatRun validates one flat pre-order run (the document's blocks
+	// array, or a table cell's array form): V1 monotonicity, V2 leaf
+	// containment, V3 row→column, then the per-block checks. inCell bans an
+	// id on the first element (cell ids are derived, §6.1).
+	checkFlatRun = func(blocks []any, basePath string, inCell bool) {
+		type frame struct {
+			indent int
+			typ    string
+		}
+		prev := -1
+		var stack []frame
+		for i, raw := range blocks {
+			block, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			path := fmt.Sprintf("%s/%d", basePath, i)
+			typ, _ := block["type"].(string)
+			if inCell && i == 0 {
+				if _, has := block["id"]; has {
+					addIssue(path+"/id", "cell blocks cannot carry an id — cell ids are derived")
 				}
 			}
+			k := indentOf(block)
+			if k > prev+1 {
+				// V1: continue with the clamped value either way so one bad
+				// indent does not cascade into follow-on errors
+				switch {
+				case lenient && prev < 0:
+					warnIssue(path, "indent %d on the first block — clamped to 0", k)
+				case lenient:
+					warnIssue(path, "indent %d follows indent %d — clamped to %d", k, prev, prev+1)
+				case prev < 0:
+					addIssue(path, "indent %d on the first block — the first block must be at indent 0", k)
+				default:
+					addIssue(path, "indent %d follows indent %d — a block can be at most one level deeper than its predecessor", k, prev)
+				}
+				k = prev + 1
+			}
+			for len(stack) > 0 && stack[len(stack)-1].indent >= k {
+				stack = stack[:len(stack)-1]
+			}
+			if len(stack) > 0 {
+				parent := stack[len(stack)-1]
+				if leafBlockTypes[parent.typ] {
+					addIssue(path, "nested under a %s block — %s blocks cannot have children", parent.typ, parent.typ)
+				} else if parent.typ == "row" && typ != "column" {
+					addIssue(path, "a row block can only contain column blocks, got %s", typ)
+				}
+			}
+			stack = append(stack, frame{k, typ})
+			prev = k
+			walkBlock(block, path)
 		}
 	}
 
 	if blocks, _ := doc["blocks"].([]any); blocks != nil {
-		for i, b := range blocks {
-			if bb, ok := b.(map[string]any); ok {
-				walkBlock(bb, fmt.Sprintf("/blocks/%d", i))
-			}
-		}
+		checkFlatRun(blocks, "/blocks", false)
 	}
 	return issues
 }
@@ -336,7 +438,8 @@ func codeLangConflict(block map[string]any) bool {
 
 func walkTable(block map[string]any, path string,
 	claimId func(id, path string), addIssue func(path, format string, args ...any),
-	walkBlock func(block map[string]any, path string)) {
+	walkBlock func(block map[string]any, path string),
+	checkFlatRun func(blocks []any, basePath string, inCell bool)) {
 
 	columns, _ := block["columns"].([]any)
 	colIds := make([]string, 0, len(columns))
@@ -374,9 +477,13 @@ func walkTable(block map[string]any, path string,
 					}
 				}
 			case map[string]any:
-				// a full walk: nested tables and children join the id
-				// uniqueness domain and get their text checked
+				// a full walk: nested tables join the id uniqueness domain
+				// and get their text checked
 				walkBlock(cell, cellPath)
+			case []any:
+				// array form (§6.1 F10): a flat run — cell block first at
+				// indent 0, descendants following
+				checkFlatRun(cell, cellPath, true)
 			}
 		}
 	}

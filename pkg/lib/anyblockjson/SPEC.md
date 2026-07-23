@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.5** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.6** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -24,6 +24,22 @@ canonical); mark-boundary whitespace and same-type-overlap rules added;
 global absent-vs-empty canon; table arity/cell-id rules and string-shorthand
 cells; column `visible` flipped to `hidden`; `collections` renamed `store`;
 Header4 export defined; OmitIds scope widened.
+
+Changes from v0.5: **flat blocks** — `blocks` is a flat pre-order array with a
+per-block `indent` integer; the nested `children` key is removed from the
+format entirely (a breaking change made while the format is a draft with no
+external consumers; the format version stays 1 and there is no legacy-input
+mode). The block schema is thereby non-recursive, which makes it usable under
+strict/constrained decoding (Anthropic structured outputs reject recursive
+schemas; FSM-class guided decoders cannot express them) and keeps truncated
+generations parseable — see `docs/AgentApiV2Research.md`, Addendum A, for the
+decision record. Nesting rules are specified in §4: strict monotonicity
+validation by default, a `NormalizeIndent` lenient import mode with
+CommonMark-style clamping, and the containment rules formerly expressed in
+the schema (leaf types, row→column) re-provided as path-addressed semantic
+checks (§12). Table cells with descendants use an array-of-flat-blocks form,
+and cells can no longer contain `table` blocks — the cell definition is the
+schema's recursion cut (§6.1, §12).
 
 Changes from v0.4: type documents specified (§2a) — `kind: "objectType"` with a
 `typeProperties` array replacing the four recommended-relation id lists; a
@@ -104,13 +120,14 @@ Fields, in **canonical order** (§4):
 | `properties` | object | no | The object's properties, §3. |
 | `typeProperties` | array | no | Only for `kind: "objectType"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
 | `refs` | object | no | Short-id legend for compact documents (§9a): maps labels to full object ids. Placed before `blocks` so the legend precedes use when read linearly. |
-| `blocks` | array | no | Children of the (implicit) root block, §4. |
+| `blocks` | array | no | The document's blocks as a **flat pre-order array**; nesting via `indent` (§4). |
 | `items` | array | no | For collection objects: member object ids, in order (from the internal collection store key `objects`). Present on a non-collection document → validation error — enforced by the import *wiring* (collection-ness resolves against the space's types, not offline); the package's `Validate` checks structure only (implementation decision). |
 | `store` | object | no | Escape hatch: remaining internal store content as a free-form JSON object, with the `objects` key lifted into `items`. Output-only (§4a). (Named `store` — its internal name — to avoid colliding with the collection concept.) |
 | `root` | object | no | Escape hatch for non-default root-block attributes (`fields`, `backgroundColor`); absent in the common case. Output-only (§4a). |
 
 The root block of the snapshot (whose id equals the object id) is
-**implicit**: its children become the top-level `blocks` array.
+**implicit**: its subtree becomes the `blocks` array (its direct children are
+the indent-0 blocks).
 
 **The title, description, icon, and cover are properties (§3), not blocks.**
 There is no title block in a document (§7).
@@ -291,27 +308,53 @@ provide this.
 
 ## 4. Blocks — common structure
 
-Every block is an object:
+`blocks` is a **flat array in pre-order**: a parent precedes its descendants
+and a subtree is a contiguous run. Nesting is expressed by the per-block
+`indent` integer — there is no `children` key (a document containing one
+fails schema validation). Every block is an object:
 
 ```json
-{
-  "id": "b1",
-  "type": "checkbox",
-  "checked": true,
-  "text": "Draft spec",
-  "children": [ … ]
-}
+[
+  { "id": "b1", "type": "bulletedListItem", "text": "top level" },
+  { "indent": 1, "id": "b2", "type": "bulletedListItem", "text": "nested" },
+  { "indent": 2, "id": "b3", "type": "paragraph", "text": "deeper" }
+]
 ```
 
 | Field | Type | Req | Notes |
 |---|---|---|---|
+| `indent` | integer ≥ 0 | no | Nesting depth. Absent = `0` (top level); canonical form omits `indent: 0`. Values above **32** fail validation (adversarial-input bound; real documents reach ~6). See the nesting rules below. |
 | `type` | string | **yes** | Discriminator; full inventory in §5. Unrecognized values fail schema validation (see §10 for forward compatibility). |
-| `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the **flattened** tree, including derived table cell ids `<rowId>-<colId>` (§6.1) — a non-table block id that collides with a derived cell id is a validation error. Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
-| `children` | array of block | no | Order is document order. Absent on types that cannot have children; `row` children must be `column` blocks (both schema-enforced). |
+| `id` | string | no | `[A-Za-z0-9_-]{1,64}`. Uniqueness is enforced over the whole document, including derived table cell ids `<rowId>-<colId>` (§6.1) — a non-table block id that collides with a derived cell id is a validation error. Export writes ids by default — the `OmitIds` option drops them (§9); import generates missing ids with the editor's standard id generator. |
 | `align` | `left · center · right · justify` | no | Omit when default (`left`). |
 | `verticalAlign` | `top · middle · bottom` | no | Omit when default (`top`). |
 | `backgroundColor` | string | no | Anytype color name. Omit when empty. |
 | `fields` | object | no | Verbatim internal per-block key-value data **minus** keys lifted into first-class props (e.g. `lang` §5.1, `width` §6.1). Output-only escape hatch (§4a) that keeps unknown data lossless. |
+
+### Nesting
+
+- **Reconstruction** (import semantics, normative): walk the array with a
+  stack seeded `(root, indent = −1)`. For a block with indent *k*: pop the
+  stack until the top's indent is *k − 1*; the top is the parent; append the
+  block to the parent's children; push `(block, k)`.
+- **Validity** (strict, the default): the first block's indent MUST be 0,
+  and a block's indent MUST be at most one greater than its predecessor's.
+  Violations are **errors**, path-addressed and naming both indents
+  (`blocks[7]: indent 3 follows indent 1 — a block can be at most one level
+  deeper than its predecessor`). A consequence worth stating: every prefix
+  of a valid `blocks` array is itself valid — a truncated document parses as
+  a well-formed prefix of blocks (enforced by test).
+- **Lenient mode** (`Options.NormalizeIndent`, import only, default off):
+  an over-deep indent (jump > +1) is **clamped to the previous block's
+  indent + 1** — CommonMark's list rule: a level that hasn't been
+  established cannot be opened — and a first block with indent > 0 is
+  clamped to 0. Every clamp is reported as a warning-grade issue with the
+  block's JSON path (`Options.OnWarning`). Indents outside [0, 32] are
+  errors even in lenient mode.
+- **Containment** (semantic checks, §12): leaf block types cannot be
+  parents — a block indented under one is an error naming the parent type
+  (the leaf types are marked in §5); a block whose parent is a `row` must
+  be a `column`.
 
 Block restrictions are **not** part of the format: they are runtime policy,
 reconstructed by the editor on import.
@@ -321,15 +364,17 @@ byte-stable over it (§11):
 
 - UTF-8, LF, two-space indent.
 - **Key order = spec order.** Envelope keys in the §2 table order. Block
-  keys: `id`, `type`, then the type-specific props **in the order listed for
-  that type in §5** (`text` always last), then `align`, `verticalAlign`,
-  `backgroundColor`, `fields`, `children` last. Nested dataview/table
-  objects: the order listed in §6. `refs` entries sorted by key.
+  keys: `indent` first (structure before identity, and generation commits
+  the cheap structural token first), then `id`, `type`, then the
+  type-specific props **in the order listed for that type in §5** (`text`
+  always last), then `align`, `verticalAlign`, `backgroundColor`, `fields`.
+  Nested dataview/table objects: the order listed in §6. `refs` entries
+  sorted by key.
 - **Omit empty and default.** Canonical form never writes an empty string,
   empty array, or empty object (envelope included — no `"properties": {}`),
-  nor a default scalar (`"checked": false`, `"align": "left"`,
-  `"hidden": false`…). Absent `text` means empty text. Import accepts
-  explicit empties/defaults and canonicalizes them away.
+  nor a default scalar (`"indent": 0`, `"checked": false`, `"align":
+  "left"`, `"hidden": false`…). Absent `text` means empty text. Import
+  accepts explicit empties/defaults and canonicalizes them away.
 
 ### 4a. Output-only fields
 
@@ -365,11 +410,11 @@ mapping:
 | `toggle` | Text/Toggle | `color`, `text` |
 | `callout` | Text/Callout | `iconEmoji`, `iconImage` (file object id), `color`, `text` |
 | `toggleHeading1` … `toggleHeading3` | Text/ToggleHeader1..3 | `color`, `text` |
-| `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11); when both are set, `objectId` wins and the hash is dropped. `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise. File blocks are leaves in the editor, but legacy data can nest real blocks under them — `children` are allowed and round-trip verbatim |
+| `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11); when both are set, `objectId` wins and the hash is dropped. `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise. File blocks are leaves in the editor, but legacy data can nest real blocks under them — indented descendants are allowed and round-trip verbatim |
 | `bookmark` | Bookmark | `url`, `objectId` (target bookmark object). `state` handled like file blocks. Deprecated preview fields and `type` (derivable) are dropped — preview data lives on the target object |
 | `link` | Link | `objectId` (target object), `cardStyle` (`text · card · inline`), `iconSize` (`none · small · medium`), `description` (`none · manual · content`), `properties` (string array: property keys shown on the card). Deprecated `style` and legacy `fields` are dropped |
 | `divider` | Div | `style` (`line · dots`, default `line`) |
-| `row` / `column` | Layout/Row, Layout/Column | — (children carry content; a `row` contains only `column`s) |
+| `row` / `column` | Layout/Row, Layout/Column | — (descendants carry content; a `row` contains only `column`s — §4 containment) |
 | `group` | Layout/Div (legacy) | semantics-free container |
 | `table` | Table (+ structural children) | `columns`, `rows` — see §6.1 |
 | `embed` | Latex | `processor`, `text` (**literal**, §8.4) — see §5.2 |
@@ -382,6 +427,12 @@ mapping:
 | `icon` | Icon | `name` (legacy profile objects only) |
 
 Enum values serialize as lowerCamel strings; defaults are omitted.
+
+**Leaf types.** `embed` (and its `equation` alias), `bookmark`, `link`,
+`divider`, `table`, `property`, `dataview`, `icon`, `tableOfContents`,
+`featuredProperties`, and `chat` cannot be parents: a block indented under
+one is a validation error naming the parent type (§4 containment, §12).
+Every other type may be a parent.
 
 Normalization notes:
 
@@ -443,11 +494,19 @@ machinery:
 - `cells[i]` corresponds to `columns[i]`; `null` = empty cell. A row with
   **fewer** cells than columns is padded with trailing empties; **more**
   cells than columns is a validation error.
-- A cell is a plain string, `null`, or a block object. The string form is
-  shorthand for a plain paragraph and is **canonical** whenever the cell
-  qualifies (a `paragraph` with only `text` set); a block object is used
-  otherwise. Cells **never carry `id`** — cell ids are derived
-  (`<rowId>-<colId>`); an `id` on a cell block is a validation error.
+- A cell is a plain string, `null`, a block object, or an array of flat
+  blocks. The string form is shorthand for a plain paragraph and is
+  **canonical** whenever the cell qualifies (a `paragraph` with only `text`
+  set); a block object is used otherwise. A bare cell block carries no
+  `indent` (validation error if present). The **array form** exists for the
+  legacy case of a cell block with descendants: the cell block first at
+  indent 0, its descendants following per the §4 rules; export uses it only
+  when descendants exist (single-block cells stay bare — canonical). Cells
+  **never carry `id`** — cell ids are derived (`<rowId>-<colId>`); an `id`
+  on a cell block (bare, or first element of the array form) is a
+  validation error. Cell blocks (and their array-form descendants) **cannot
+  be `table` blocks**: cells use a dedicated non-recursive block definition,
+  which is what keeps the whole block schema recursion-free (§12).
 - Column/row `id`s are optional; when present they must match
   `[A-Za-z0-9_]{1,64}` — **no `-`**, which is the composite-cell-id
   separator. Import generates missing ids.
@@ -659,11 +718,11 @@ preserves `resolvedLayout` in `properties` (§3) and leaves structural blocks
 absent; the editor regenerates them on open. `N(S)` in §11 is defined
 accordingly.
 
-A document that nevertheless contains such blocks at the top level is
-accepted (agents will produce them): import merges `title` / `description`
-text into the corresponding properties when those are unset and drops the
-blocks otherwise; `featuredProperties` blocks (which carry no content) are
-simply dropped.
+A document that nevertheless contains such blocks at indent 0 is accepted
+(agents will produce them): import merges `title` / `description` text into
+the corresponding properties when those are unset and drops the blocks
+otherwise — together with any blocks indented under them; a top-level
+`featuredProperties` block (which carries no content) is simply dropped.
 
 **Content-less blocks** (legacy data): old accounts hold blocks whose
 content oneof is unset — relation objects wrap their "used in" dataview in
@@ -952,6 +1011,12 @@ fields and `value` on `empty`/`notEmpty`/`exists` leaves dropped, group
 property values become single-element lists and the legacy file `hash`
 migrates into `objectId` (§3, §5).
 
+Export emits `blocks` in pre-order with exact depths, so export can never
+produce a monotonicity violation and the flat shape does not disturb
+byte-stability. Strict inputs add nothing to `N(S)`; for lenient
+(`NormalizeIndent`) inputs, the clamped indents are part of the documented
+normalization.
+
 The snapshot's block graph is untrusted: export emits each block **once**
 (the first parent listing it wins), which both terminates on cyclic
 `ChildrenIds` and keeps duplicate/shared blocks from producing invalid
@@ -975,8 +1040,16 @@ emoji, tables, dataviews, UTF-16 payloads such as astral-plane characters).
 ## 12. Validation
 
 - Schema: JSON Schema **draft 2020-12**, hand-authored (the format
-  deliberately diverges from proto shape), one file, blocks as a recursive
-  `$ref` discriminated on `type`. To keep validation errors usable for LLM
+  deliberately diverges from proto shape), one file, blocks discriminated on
+  `type`. The block definition is **non-recursive** — the flat encoding has
+  no `children`, and table cells reference a dedicated `cellBlock`
+  definition (same core, no table arm) so the block↔cell cycle is cut —
+  which is what makes the block schema usable under strict/constrained
+  decoding (see the v0.6 changelog). The one remaining recursive definition
+  is the dataview **filter tree** (`filterNode` groups nest, §6.2) — it is
+  inherent to the filter model; a reduced core-profile schema (planned
+  follow-up) without dataview is fully non-recursive, and the reserved
+  compact filter string (§6.2.1) removes it from the generation path. To keep validation errors usable for LLM
   producers, validation dispatches on the `type` const first (per-type
   `if/then` or programmatic pre-dispatch) instead of a flat 30-branch
   `oneOf` whose error output is noise. Output-only fields carry
@@ -986,13 +1059,16 @@ emoji, tables, dataviews, UTF-16 payloads such as astral-plane characters).
   validated with `santhosh-tekuri/jsonschema/v6` (new dependency; the repo's
   existing `gojsonschema` is draft-07 only).
 - Import = schema validation first, then semantic checks the schema can't
-  express: id uniqueness over the flattened tree (§4), table shape and cell
-  rules (§6.1), envelope combinations (`items`/`templateFor`/`kind`, §2),
+  express: **indent monotonicity** (§4 validity — errors name both
+  indents), **leaf containment** and **row→column** (§4 containment), id
+  uniqueness over the whole document (§4), table shape and cell rules
+  (§6.1), envelope combinations (`items`/`templateFor`/`kind`, §2),
   `language`-vs-`fields.lang` conflicts, and **inline-markup parsing** (§8)
   — grammar errors report the block's JSON path and the offending snippet.
-- Since neither OpenAI nor Anthropic constrained decoding supports recursive
-  schemas, these path-addressed errors are the guardrail for agent-generated
-  documents: generate → validate → feed errors back.
+  The indent bound [0, 32] lives in the schema.
+- These path-addressed errors are the guardrail for agent-generated
+  documents: generate → validate → feed errors back. With the flat schema
+  the generate step can also run under strict/guided decoding end to end.
 
 ## 13. Package layout and API
 
@@ -1074,6 +1150,10 @@ type Options struct {
     GenerateId        func() string    // import only: id generator for missing ids;
                                       // nil = random 24-hex (editor-shaped). The wiring
                                       // passes the editor's generator.
+    NormalizeIndent   bool             // import only: clamp over-deep indents instead of
+                                      // rejecting (§4 lenient mode)
+    OnWarning         func(Issue)      // optional sink for warning-grade issues
+                                      // (NormalizeIndent clamps, path-addressed)
     // CompactFilters (reserved): filters as query strings — post-v1, §6.2.1
 }
 ```
@@ -1115,10 +1195,8 @@ Wiring (follow-up work, not this package):
     { "id": "b1", "type": "heading2", "text": "Goals" },
     { "id": "b2", "type": "paragraph",
       "text": "Ship the **new export** by Q3 with <mention objectId=\"bafyreidf…\">Roman</mention>" },
-    { "id": "b3", "type": "bulletedListItem", "text": "Nested JSON schema",
-      "children": [
-        { "id": "b4", "type": "bulletedListItem", "text": "Validate in CI" }
-      ] },
+    { "id": "b3", "type": "bulletedListItem", "text": "Flat JSON schema" },
+    { "indent": 1, "id": "b4", "type": "bulletedListItem", "text": "Validate in CI" },
     { "id": "b5", "type": "checkbox", "checked": true, "text": "Draft spec" },
     { "id": "b6", "type": "code", "language": "go",
       "text": "func main() {\n\tfmt.Println(\"hi\")\n}" },

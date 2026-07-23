@@ -63,27 +63,25 @@
       "objectId": "kmark"
     },
     {
-      "type": "row",
-      "children": [
-        {
-          "type": "column",
-          "children": [
-            {
-              "type": "paragraph",
-              "text": "left"
-            }
-          ]
-        },
-        {
-          "type": "column",
-          "children": [
-            {
-              "type": "paragraph",
-              "text": "right"
-            }
-          ]
-        }
-      ]
+      "type": "row"
+    },
+    {
+      "indent": 1,
+      "type": "column"
+    },
+    {
+      "indent": 2,
+      "type": "paragraph",
+      "text": "left"
+    },
+    {
+      "indent": 1,
+      "type": "column"
+    },
+    {
+      "indent": 2,
+      "type": "paragraph",
+      "text": "right"
     },
     {
       "type": "table",

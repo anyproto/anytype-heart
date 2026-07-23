@@ -543,6 +543,17 @@ func TestImport_TitleAbsorption(t *testing.T) {
 	assert.Equal(t, "Kept", snap2.Details.Fields["name"].GetStringValue())
 }
 
+// TestExplicitIndentZero: an explicit "indent": 0 is accepted on input and
+// canonicalized away on re-export (§4 omit-default canon).
+func TestExplicitIndentZero(t *testing.T) {
+	doc := `{"version": 1, "blocks": [{"indent": 0, "id": "a", "type": "paragraph", "text": "x"}]}`
+	sbType, snap, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	out, err := Marshal(sbType, snap, Options{})
+	require.NoError(t, err)
+	assert.NotContains(t, string(out), `"indent"`)
+}
+
 // TestGeneratedDocs_ByteStable: for generated valid documents J,
 // Export(Import(J)) is canonical and re-import/re-export is byte-identical
 // (§11.2).
@@ -561,8 +572,26 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 			return fmt.Sprintf(`{"type": "checkbox", "checked": %v, "text": %q}`, i%2 == 0, texts[i%len(texts)])
 		},
 		func(i int) string {
-			return fmt.Sprintf(`{"type": "heading%d", "text": "h", "children": [{"type": "paragraph", "text": %q}]}`,
+			return fmt.Sprintf(`{"type": "heading%d", "text": "h"},{"indent": 1, "type": "paragraph", "text": %q}`,
 				1+i%3, texts[i%len(texts)])
+		},
+		func(i int) string {
+			// a deep chain: covers the real-world ~6-level maximum and beyond
+			depth := 4 + i%8
+			parts := []string{fmt.Sprintf(`{"type": "bulletedListItem", "text": %q}`, texts[i%len(texts)])}
+			for d := 1; d <= depth; d++ {
+				parts = append(parts, fmt.Sprintf(`{"indent": %d, "type": "bulletedListItem", "text": %q}`,
+					d, texts[(i+d)%len(texts)]))
+			}
+			return strings.Join(parts, ",")
+		},
+		func(i int) string {
+			// mixed wide/deep: siblings appearing after a pop back up
+			return fmt.Sprintf(`{"type": "toggle", "text": "t"},`+
+				`{"indent": 1, "type": "paragraph", "text": %q},`+
+				`{"indent": 2, "type": "paragraph", "text": "deep"},`+
+				`{"indent": 1, "type": "paragraph", "text": "sibling"},`+
+				`{"type": "paragraph", "text": "top"}`, texts[i%len(texts)])
 		},
 		func(i int) string {
 			return fmt.Sprintf(`{"type": "table",
