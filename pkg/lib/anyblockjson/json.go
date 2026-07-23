@@ -426,6 +426,13 @@ var aggregationNames = newEnumNames(map[model.BlockContentDataviewRelationFormul
 })
 
 // formatNames follows the public REST API vocabulary (§3).
+// FormatName returns the format's canonical JSON name for a property format
+// ("text", "select", "objects", …) — the one vocabulary shared by documents
+// and API surfaces (APIV2.md C2). Unknown formats return "".
+func FormatName(f model.RelationFormat) string {
+	return formatNames.name(f)
+}
+
 var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_longtext:  "text",
 	model.RelationFormat_shorttext: "shortText",

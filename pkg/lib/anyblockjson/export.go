@@ -75,6 +75,17 @@ var propertiesKeptOnExport = map[string]bool{
 // decision).
 var wellKnownPropertyOrder = []string{"name", "description", "iconEmoji", "iconImage"}
 
+// MarshalPropertyValue converts one property value to its JSON form under
+// the §3 rules (dates → RFC 3339, select options → names, object/file →
+// id lists, scalars wrap into lists for list-shaped formats). It is the
+// row-level building block for API list surfaces that carry requested
+// property values (APIV2.md C5) without a full document export. The result
+// marshals with encoding/json.
+func MarshalPropertyValue(key string, v *types.Value, opts Options) any {
+	e := &exporter{opts: opts}
+	return e.propertyValue(key, v)
+}
+
 // Marshal serializes a snapshot into canonical AnyBlock JSON (§13).
 func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase, opts Options) ([]byte, error) {
 	if snapshot == nil {

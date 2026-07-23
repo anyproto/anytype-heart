@@ -19,12 +19,12 @@ import (
 )
 
 const (
-	defaultSSELimit          = 50
-	sseChannelBufSize        = 256
-	heartbeatHeader          = "Anytype-Heartbeat-Seconds"
-	defaultHeartbeatSeconds  = 30
-	minHeartbeatSeconds      = 1
-	maxHeartbeatSeconds      = 60
+	defaultSSELimit         = 50
+	sseChannelBufSize       = 256
+	heartbeatHeader         = "Anytype-Heartbeat-Seconds"
+	defaultHeartbeatSeconds = 30
+	minHeartbeatSeconds     = 1
+	maxHeartbeatSeconds     = 60
 )
 
 // parseHeartbeatSeconds reads the Anytype-Heartbeat-Seconds header. Missing,

@@ -15,10 +15,12 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/server"
+	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/chats/chatsubscription"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/core/files/fileobject"
 	"github.com/anyproto/anytype-heart/core/subscription/crossspacesub"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 )
 
@@ -53,6 +55,8 @@ type apiService struct {
 	crossSpaceSubService apicore.CrossSpaceSubscriptionService
 	chatSubService       apicore.ChatSubscriptionService
 	fileObjectService    apicore.FileObjectService
+	objectReader         apicore.ObjectReader
+	objectStore          objectstore.ObjectStore
 
 	listenAddr string
 
@@ -92,6 +96,8 @@ func (s *apiService) Init(a *app.App) error {
 	s.crossSpaceSubService = a.MustComponent(crossspacesub.CName).(apicore.CrossSpaceSubscriptionService)
 	s.chatSubService = &chatSubAdapter{svc: a.MustComponent(chatsubscription.CName).(chatsubscription.Service)}
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
+	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a))
+	s.objectStore = app.MustComponent[objectstore.ObjectStore](a)
 	return nil
 }
 
@@ -126,6 +132,7 @@ func (s *apiService) startServer() error {
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
+		server.V2Deps{Reader: s.objectReader, Store: s.objectStore},
 		s.listenAddr,
 		openapiYAML,
 		openapiJSON,

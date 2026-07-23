@@ -37,6 +37,21 @@ type FileObjectService interface {
 	GetImageDataFromRawId(ctx context.Context, fileId domain.FileId) (files.Image, error)
 }
 
+// ObjectRead is one consistent read of an object's live state: snapshot and
+// tree heads come from the same locked state read, so the derived etag and
+// the content always agree (APIV2.md §8 read path).
+type ObjectRead struct {
+	SbType   model.SmartBlockType
+	Snapshot *model.SmartBlockSnapshotBase
+	Heads    []string
+}
+
+// ObjectReader reads the live smartblock state of an object — the API v2
+// read path (APIV2.md §8: not ObjectShow, not the store snapshot).
+type ObjectReader interface {
+	ReadObject(ctx context.Context, spaceId string, objectId string) (ObjectRead, error)
+}
+
 type ClientCommands interface {
 	// Wallet
 	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse

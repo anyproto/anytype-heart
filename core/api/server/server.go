@@ -9,6 +9,7 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/service"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
 type ApiSessionEntry struct {
@@ -20,6 +21,7 @@ type ApiSessionEntry struct {
 type Server struct {
 	engine     *gin.Engine
 	service    *service.Service
+	v2Service  *service.V2Service
 	chatSubSvc apicore.ChatSubscriptionService
 
 	mu         sync.Mutex
@@ -28,8 +30,16 @@ type Server struct {
 	initOnce sync.Once
 }
 
+// V2Deps carries the API v2 dependencies (APIV2.md §8: live smartblock
+// reads + objectstore-backed lists/resolvers). With either dependency nil,
+// the /v2 route group is not registered — v1 keeps working standalone.
+type V2Deps struct {
+	Reader apicore.ObjectReader
+	Store  objectstore.ObjectStore
+}
+
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, chatSubSvc apicore.ChatSubscriptionService, fileObjectService apicore.FileObjectService, apiListenAddr string, openapiYAML []byte, openapiJSON []byte) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, chatSubSvc apicore.ChatSubscriptionService, fileObjectService apicore.FileObjectService, v2Deps V2Deps, apiListenAddr string, openapiYAML []byte, openapiJSON []byte) *Server {
 	techSpaceId, err := getTechSpaceId(accountService)
 	if err != nil {
 		panic(err)
@@ -39,6 +49,9 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 	s := &Server{
 		service:    service.NewService(mw, fileObjectService, apiBaseUrl, techSpaceId, crossSpaceSubService),
 		chatSubSvc: chatSubSvc,
+	}
+	if v2Deps.Reader != nil && v2Deps.Store != nil {
+		s.v2Service = service.NewV2Service(mw, v2Deps.Reader, v2Deps.Store, techSpaceId)
 	}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)

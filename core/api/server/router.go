@@ -57,7 +57,76 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	srv.registerTemplateRoutes(v1, eventService)
 	srv.registerTypeRoutes(v1, eventService, writeRateLimitMW)
 
+	srv.registerV2Routes(router, mw, eventService)
+
 	return router
+}
+
+// v2DefaultPageSize is the C10 default list page size for /v2.
+const v2DefaultPageSize = 25
+
+// registerV2Routes registers the /v2 route group (APIV2.md §8): same
+// middleware stack and auth as /v1, C10 pagination defaults, plus the C8
+// idempotency and C9 dry-run plumbing. Skipped when the v2 service has no
+// dependencies (v1-only construction, e.g. in isolated tests).
+func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommands, eventService apicore.EventService) {
+	if srv.v2Service == nil {
+		return
+	}
+
+	v2 := router.Group("/v2")
+	v2.Use(pagination.New(pagination.Config{
+		DefaultPage:     defaultPage,
+		DefaultPageSize: v2DefaultPageSize,
+		MinPageSize:     minPageSize,
+		MaxPageSize:     maxPageSize,
+	}))
+	v2.Use(srv.ensureCacheInitialized())
+	v2.Use(srv.ensureAuthenticated(mw))
+	v2.Use(ensureDryRun())
+	idempotencyMW := ensureIdempotency(newIdempotencyStore(idempotencyMaxEntries))
+
+	v2.POST("/validate",
+		idempotencyMW,
+		ensureAnalyticsEvent("V2Validate", eventService),
+		handler.ValidateV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces",
+		ensureAnalyticsEvent("V2ListSpaces", eventService),
+		handler.ListSpacesV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/objects",
+		ensureAnalyticsEvent("V2ListObjects", eventService),
+		handler.ListObjectsV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/objects/:object_id",
+		ensureAnalyticsEvent("V2GetObject", eventService),
+		handler.GetObjectV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/members",
+		ensureAnalyticsEvent("V2ListMembers", eventService),
+		handler.ListMembersV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/types",
+		ensureAnalyticsEvent("V2ListTypes", eventService),
+		handler.ListTypesV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/types/:type",
+		ensureAnalyticsEvent("V2GetType", eventService),
+		handler.GetTypeV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/types/:type/schema",
+		ensureAnalyticsEvent("V2GetTypeSchema", eventService),
+		handler.GetTypeSchemaV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/properties",
+		ensureAnalyticsEvent("V2ListProperties", eventService),
+		handler.ListPropertiesV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/properties/:key/options",
+		ensureAnalyticsEvent("V2ListPropertyOptions", eventService),
+		handler.ListPropertyOptionsV2Handler(srv.v2Service),
+	)
 }
 
 // setupMiddleware configures the base middleware for the router
