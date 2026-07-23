@@ -1,6 +1,6 @@
 # Anytype Local API v2 — specification and phased plan
 
-Status: **draft v0.3** · 2026-07-23 · GO-7383 follow-on
+Status: **draft v0.3.1** · 2026-07-23 · GO-7383 follow-on
 Depends on: AnyBlock JSON v1 flat (`pkg/lib/anyblockjson/SPEC.md` v0.6).
 Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) and
 `pkg/lib/anyblockjson/FLAT.md` — decisions cite sections there instead of
@@ -476,3 +476,64 @@ artifacts · `@me` self-resolution · relative-date input resolution. These
 join `replaceText`/`setCell` (now launch ops) and the filter-string parser
 (now a launch dependency) as the small-model launch set. Benchmark **B4**
 tunes the wrapper's tool descriptions / SKILL guidance per model tier.
+
+## 8. Implementation notes (v0.3.1 — closes Phase-0/1 gaps for a fresh build)
+
+Concrete decisions a fresh implementer needs, so the design ambiguities that
+would stall Phase 0/1 are resolved (genuine format/design ambiguities still
+surface as spec bugs per the package's tradition).
+
+**Server & auth.** `/v2` **extends the existing `core/api` gin server** — a
+new route group under the same middleware stack (Recovery / Metadata /
+Logger / Pagination / Cache / Auth / RateLimit / Analytics) and the same
+layering as v1 (handlers in `core/api/handler`, services in
+`core/api/service`, DTOs in `core/api/model`, routes in
+`core/api/server/routes.go`; follow `core/api/CLAUDE.md` — fixture pattern,
+mockery, error wrapping). **Auth is shared with v1**: `/v2` reuses the v1
+bearer token, api-key, and challenge endpoints and the Auth middleware — no
+new auth surface. Pagination is offset/limit as in v1.
+
+**etag (C7), concrete.** The agent-facing token = first 8 hex of
+`sha256(sorted object tree heads)` (`sb.source.Heads()` on the live
+smartblock). Returned as the `ETag` header and the envelope `etag`. `If-Match`
+comparison is done server-side against the **full** head-set (the 8-char form
+is display only). It is NOT the `revision` relation. Advisory by default
+(C7): absent `If-Match` ⇒ last-write-wins.
+
+**Read path (C5/Phase 1), concrete.** Read via the **live smartblock state**
+→ snapshot → `anyblockjson.Marshal` with objectstore-backed
+format/option/property resolvers — NOT `ObjectShow` (its `ObjectView` is the
+wrong type) and NOT the store snapshot (it lags live edits/sync). Derive the
+`etag` from that same state read so token and content are consistent. The
+per-object read is exactly `cmd/anyblockroundtrip`'s snapshot→Marshal path,
+minus the round-trip.
+
+**Idempotency store (C8).** In-process, keyed by `(space, Idempotency-Key)` →
+`(body-hash, stored-result)`. Same key + same body-hash ⇒ replay stored
+result; same key + different body-hash ⇒ 409 `idempotency_conflict`. TTL is
+an impl detail (a bounded LRU is fine); persistence across restart is not
+required for v2.0.
+
+**Eval-harness ordering (correction to §2 Phase 0).** Phase 0 delivers the
+**scoring primitives + plumbing + `/validate`**, NOT the full agent-loop
+runner (which has nothing to score until an edit path exists). Scoring
+primitives: (a) the **corruption metric** — DELEGATE-52 backtranslation: apply
+a forward edit instruction and its inverse in sequence, then measure residual
+drift against the untouched document using the state-diff / text-multiset
+comparator already in `cmd/anyblockroundtrip`; (b) token and turn counters;
+(c) the task fixtures. The **agent-loop runner pairs with Phase 3a** — the
+first point at which benchmark B1 has competing methods to score. Scratch
+space = an ephemeral test account/space provisioned as
+`cmd/anyblockroundtrip` does (data-dir copy). The small-tier model runner
+MUST support grammar-constrained decoding (GBNF via Ollama/llama.cpp), per
+the constrained-decoding requirement (C13, R13).
+
+**First-increment scope (fresh build).** Phase 0 plumbing (C6 error contract
+incl. the named codes; C7 etag; C8 idempotency store; C9 dry-run scaffold) +
+`POST /v2/validate` (exposes `anyblockjson.Validate`, structural/format-
+semantic only) + Phase 1 read endpoints (`GET object` with
+`include`/`outline`/`block`/`ids`/`format`; `GET objects`/`types`/
+`properties`/`spaces`/`members` lists) + the Phase-0 scoring primitives above.
+Exit criterion: Phase 1 reads pass the fixture task set at parity-or-better
+vs the v1 GET flow (fewer tokens for the same content), and the scoring
+primitives run against the fixtures. Phases 2–7 are out of this increment.
