@@ -4,6 +4,7 @@ package apimodel
 // envelope, and the Phase-1 read shapes (APIV2.md).
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -164,4 +165,115 @@ type V2OutlineEntry struct {
 	Id     string `json:"id"`
 	Type   string `json:"type"`
 	Text   string `json:"text,omitempty"`
+}
+
+//
+// ---- Phase 2: create surface ----
+//
+
+// V2CreateResult is the response of every v2 create/update endpoint. C8:
+// created ids are always returned. On a dry run (C9) nothing is committed:
+// Id/Etag stay empty, DryRun is true, and Issues/Created report the would-be
+// outcome.
+type V2CreateResult struct {
+	Id       string         `json:"id,omitempty"`
+	Type     string         `json:"type,omitempty"` // type key of the created object (C2)
+	Key      string         `json:"key,omitempty"`  // identity key (types, properties)
+	Etag     string         `json:"etag,omitempty"` // C7 etag of the created object
+	DryRun   bool           `json:"dry_run,omitempty"`
+	Created  *V2SideEffects `json:"created,omitempty"`
+	Issues   []V2Issue      `json:"issues,omitempty"`
+	Warnings []V2Issue      `json:"warnings,omitempty"`
+}
+
+// V2SideEffects lists the schema entities a create materialized on the way
+// (create-missing, SPEC §3/§2a) — or would materialize, on a dry run.
+type V2SideEffects struct {
+	Properties []V2PropertyRow   `json:"properties,omitempty"`
+	Options    []V2CreatedOption `json:"options,omitempty"`
+}
+
+// V2CreatedOption names one select/multiSelect option created by
+// create-missing resolution (SPEC §3: option names, never ids).
+type V2CreatedOption struct {
+	Property string `json:"property"` // property key
+	Name     string `json:"name"`
+}
+
+// V2CreatePropertyRequest is the POST properties body:
+// {key?, name, format, options?:[{name,color?}]} (APIV2.md Phase 2).
+type V2CreatePropertyRequest struct {
+	Key     string                  `json:"key,omitempty"`
+	Name    string                  `json:"name"`
+	Format  string                  `json:"format"`
+	Options []V2CreateOptionRequest `json:"options,omitempty"`
+}
+
+// V2CreateOptionRequest is one select option in a property create.
+type V2CreateOptionRequest struct {
+	Name  string `json:"name"`
+	Color string `json:"color,omitempty"`
+}
+
+// V2UpdatePropertyRequest is the PATCH properties/{key} body.
+type V2UpdatePropertyRequest struct {
+	Name *string `json:"name,omitempty"`
+}
+
+// V2CreateSetRequest is the POST sets body. filter (compact string) is
+// reserved for the Phase-4 parser; filters/sorts follow the AnyBlock §6.2
+// shapes and are passed into the set's initial dataview verbatim. views, when
+// given, replaces the default single view and is mutually exclusive with
+// top-level filters/sorts (ambiguous_input otherwise).
+type V2CreateSetRequest struct {
+	Name    string          `json:"name"`
+	Type    string          `json:"type"`
+	Filter  string          `json:"filter,omitempty"`
+	Filters json.RawMessage `json:"filters,omitempty"`
+	Sorts   json.RawMessage `json:"sorts,omitempty"`
+	Views   json.RawMessage `json:"views,omitempty"`
+}
+
+// V2CreateCollectionRequest is the POST collections body.
+type V2CreateCollectionRequest struct {
+	Name  string   `json:"name"`
+	Items []string `json:"items,omitempty"`
+}
+
+// V2UploadFileRequest is the JSON form of POST files (URL upload); the
+// multipart form is the byte-upload alternative.
+type V2UploadFileRequest struct {
+	Url  string `json:"url"`
+	Name string `json:"name,omitempty"`
+}
+
+// V2FileUploadResult is the POST files response: the file object id that
+// file/image blocks and iconImage values need (R11).
+type V2FileUploadResult struct {
+	Id       string `json:"id"`
+	Name     string `json:"name,omitempty"`
+	MimeType string `json:"mimeType,omitempty"`
+	Size     int64  `json:"size,omitempty"`
+	DryRun   bool   `json:"dry_run,omitempty"`
+}
+
+// V2SchemaEntry is one GET /v2/schemas/{kind} payload: the strict-mode
+// generation schema (C13) plus one worked example (C12).
+type V2SchemaEntry struct {
+	Kind     string          `json:"kind"`
+	Endpoint string          `json:"endpoint"`
+	Schema   json.RawMessage `json:"schema"`
+	Example  json.RawMessage `json:"example"`
+}
+
+// V2SchemaIndex is the GET /v2/schemas payload.
+type V2SchemaIndex struct {
+	Kinds []V2SchemaIndexEntry `json:"kinds"`
+}
+
+// V2SchemaIndexEntry is one row of the schema index.
+type V2SchemaIndexEntry struct {
+	Kind     string `json:"kind"`
+	Endpoint string `json:"endpoint"`
+	Url      string `json:"url"`
 }

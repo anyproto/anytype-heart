@@ -57,7 +57,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	srv.registerTemplateRoutes(v1, eventService)
 	srv.registerTypeRoutes(v1, eventService, writeRateLimitMW)
 
-	srv.registerV2Routes(router, mw, eventService)
+	srv.registerV2Routes(router, mw, eventService, writeRateLimitMW)
 
 	return router
 }
@@ -69,7 +69,7 @@ const v2DefaultPageSize = 25
 // middleware stack and auth as /v1, C10 pagination defaults, plus the C8
 // idempotency and C9 dry-run plumbing. Skipped when the v2 service has no
 // dependencies (v1-only construction, e.g. in isolated tests).
-func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommands, eventService apicore.EventService) {
+func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommands, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
 	if srv.v2Service == nil {
 		return
 	}
@@ -126,6 +126,88 @@ func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommand
 	v2.GET("/spaces/:space_id/properties/:key/options",
 		ensureAnalyticsEvent("V2ListPropertyOptions", eventService),
 		handler.ListPropertyOptionsV2Handler(srv.v2Service),
+	)
+	v2.GET("/schemas",
+		ensureAnalyticsEvent("V2ListSchemas", eventService),
+		handler.SchemaIndexV2Handler(srv.v2Service),
+	)
+	v2.GET("/schemas/:kind",
+		ensureAnalyticsEvent("V2GetSchema", eventService),
+		handler.SchemaKindV2Handler(srv.v2Service),
+	)
+
+	srv.registerV2CreateRoutes(v2, eventService, idempotencyMW, writeRateLimitMW)
+}
+
+// registerV2CreateRoutes registers the Phase-2 create surface (APIV2.md §2).
+// Every POST runs behind the C8 idempotency middleware; all mutations parse
+// ?dry_run=true via the group-level dry-run middleware. Skipped when no
+// creator dependency was provided (read-only construction).
+func (srv *Server) registerV2CreateRoutes(v2 *gin.RouterGroup, eventService apicore.EventService, idempotencyMW, writeRateLimitMW gin.HandlerFunc) {
+	if srv.v2CreateDisabled {
+		return
+	}
+	v2.POST("/spaces/:space_id/objects",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2CreateObject", eventService),
+		handler.CreateObjectV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/templates",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2CreateTemplate", eventService),
+		handler.CreateTemplateV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/types",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2CreateType", eventService),
+		handler.CreateTypeV2Handler(srv.v2Service),
+	)
+	v2.PATCH("/spaces/:space_id/types/:type",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("V2UpdateType", eventService),
+		handler.UpdateTypeV2Handler(srv.v2Service),
+	)
+	v2.DELETE("/spaces/:space_id/types/:type",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("V2DeleteType", eventService),
+		handler.DeleteTypeV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/properties",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2CreateProperty", eventService),
+		handler.CreatePropertyV2Handler(srv.v2Service),
+	)
+	v2.PATCH("/spaces/:space_id/properties/:key",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("V2UpdateProperty", eventService),
+		handler.UpdatePropertyV2Handler(srv.v2Service),
+	)
+	v2.DELETE("/spaces/:space_id/properties/:key",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("V2DeleteProperty", eventService),
+		handler.DeletePropertyV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/sets",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2CreateSet", eventService),
+		handler.CreateSetV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/collections",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2CreateCollection", eventService),
+		handler.CreateCollectionV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/files",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2UploadFile", eventService),
+		handler.UploadFileV2Handler(srv.v2Service),
 	)
 }
 

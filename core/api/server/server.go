@@ -19,10 +19,13 @@ type ApiSessionEntry struct {
 
 // Server wraps the HTTP server and service logic.
 type Server struct {
-	engine     *gin.Engine
-	service    *service.Service
-	v2Service  *service.V2Service
-	chatSubSvc apicore.ChatSubscriptionService
+	engine    *gin.Engine
+	service   *service.Service
+	v2Service *service.V2Service
+	// v2CreateDisabled skips the Phase-2 create routes when no creator
+	// dependency was provided (read-only construction, e.g. in tests).
+	v2CreateDisabled bool
+	chatSubSvc       apicore.ChatSubscriptionService
 
 	mu         sync.Mutex
 	KeyToToken map[string]ApiSessionEntry // appKey -> token
@@ -31,11 +34,13 @@ type Server struct {
 }
 
 // V2Deps carries the API v2 dependencies (APIV2.md §8: live smartblock
-// reads + objectstore-backed lists/resolvers). With either dependency nil,
-// the /v2 route group is not registered — v1 keeps working standalone.
+// reads + objectstore-backed lists/resolvers, plus the Phase-2 create path).
+// With Reader or Store nil, the /v2 route group is not registered — v1 keeps
+// working standalone. With Creator nil, only the read surface registers.
 type V2Deps struct {
-	Reader apicore.ObjectReader
-	Store  objectstore.ObjectStore
+	Reader  apicore.ObjectReader
+	Creator apicore.ObjectCreator
+	Store   objectstore.ObjectStore
 }
 
 // NewServer constructs a new Server with the default config and sets up the routes.
@@ -51,7 +56,8 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		chatSubSvc: chatSubSvc,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = service.NewV2Service(mw, v2Deps.Reader, v2Deps.Store, techSpaceId)
+		s.v2Service = service.NewV2Service(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Store, techSpaceId)
+		s.v2CreateDisabled = v2Deps.Creator == nil
 	}
 	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)

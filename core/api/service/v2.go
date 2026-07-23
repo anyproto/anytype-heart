@@ -17,19 +17,22 @@ import (
 )
 
 // V2Service implements the API v2 endpoints. It reads objects via the live
-// smartblock state (apicore.ObjectReader) and lists via the objectstore —
-// per APIV2.md §8, not via ObjectShow and not via lagging store snapshots
-// for object content.
+// smartblock state (apicore.ObjectReader), creates them via the snapshot
+// create path (apicore.ObjectCreator), and lists via the objectstore — per
+// APIV2.md §8, not via ObjectShow and not via lagging store snapshots for
+// object content.
 type V2Service struct {
 	mw          apicore.ClientCommands
 	reader      apicore.ObjectReader
+	creator     apicore.ObjectCreator
 	store       objectstore.ObjectStore
 	techSpaceId string
 }
 
-// NewV2Service creates the API v2 service.
-func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, store objectstore.ObjectStore, techSpaceId string) *V2Service {
-	return &V2Service{mw: mw, reader: reader, store: store, techSpaceId: techSpaceId}
+// NewV2Service creates the API v2 service. creator may be nil when only the
+// read surface is served (the router skips the create routes then).
+func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, store objectstore.ObjectStore, techSpaceId string) *V2Service {
+	return &V2Service{mw: mw, reader: reader, creator: creator, store: store, techSpaceId: techSpaceId}
 }
 
 // ensureSpace rejects an unknown space_id before any per-space objectstore

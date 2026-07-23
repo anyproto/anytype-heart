@@ -52,6 +52,18 @@ type ObjectReader interface {
 	ReadObject(ctx context.Context, spaceId string, objectId string) (ObjectRead, error)
 }
 
+// ObjectCreator creates objects from AnyBlock snapshots — the API v2 create
+// path (APIV2.md §2 Phase 2). CreateObjectFromSnapshot builds the object's
+// initial state from the snapshot and creates it in one change set (atomic
+// composite creates, §8/R10); the object's type keys come from the
+// snapshot's ObjectTypes. TypeIdByKey derives the space-local object id of a
+// type key (needed for setOf/targetObjectType details before the object
+// exists).
+type ObjectCreator interface {
+	CreateObjectFromSnapshot(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (id string, err error)
+	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)
+}
+
 type ClientCommands interface {
 	// Wallet
 	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse

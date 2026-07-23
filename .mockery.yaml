@@ -276,6 +276,7 @@ packages:
       ChatSubscriptionService:
       FileObjectService:
       ObjectReader:
+      ObjectCreator:
   github.com/anyproto/anytype-heart/core/api/filter:
     interfaces:
       ApiService:
