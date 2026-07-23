@@ -29,18 +29,18 @@ import (
 	"github.com/anyproto/any-sync/app"
 	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/event"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/snapshotdiff"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	libcore "github.com/anyproto/anytype-heart/pkg/lib/core"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
-	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 )
@@ -295,12 +295,7 @@ func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.Ob
 		files = files[:limit]
 	}
 
-	resolvers := newSpaceResolvers(store.SpaceIndex(spaceId))
-	opts := anyblockjson.Options{
-		ResolveFormat:     resolvers.resolveFormat,
-		ResolveOptions:    resolvers,
-		ResolveProperties: resolvers,
-	}
+	opts := storeresolver.New(store.SpaceIndex(spaceId)).Options()
 
 	ss := &spaceSummary{SpaceId: spaceId, Total: len(files), Categories: map[string]int{}, IndentHistogram: map[int]int{}}
 	for _, f := range files {
@@ -412,7 +407,7 @@ func roundtripFile(path string, opts anyblockjson.Options) ([]issue, *artifactSe
 		fail("not_byte_stable", "first divergence: %s", firstDiff(json1, json2))
 	}
 
-	for _, d := range lossIssues(base, reimported, opts) {
+	for _, d := range snapshotdiff.Compare(base, reimported, opts) {
 		fail("data_loss", "%s", d)
 	}
 	return issues, arts, nil
@@ -507,204 +502,6 @@ func firstDiff(a, b []byte) string {
 }
 
 //
-// ---- loss heuristics ----
-//
-
-// strippedKeys mirrors the export-side strip set (§3): LocalAndDerived minus
-// the keys the importer meaningfully preserves.
-var strippedKeys = func() map[string]bool {
-	kept := map[string]bool{
-		"createdDate": true, "lastModifiedDate": true, "creator": true,
-		"isFavorite": true, "isArchived": true, "resolvedLayout": true,
-	}
-	out := map[string]bool{"id": true, "type": true}
-	for _, k := range bundle.LocalAndDerivedRelationKeys {
-		if !kept[string(k)] {
-			out[string(k)] = true
-		}
-	}
-	return out
-}()
-
-// lossIssues compares the original snapshot with the reimported one on the
-// axes the format promises to preserve: detail values (up to the documented
-// normalizations) and the text content of non-structural text blocks. It is a
-// heuristic — findings are triage input, not proof.
-func lossIssues(orig, got *model.SmartBlockSnapshotBase, opts anyblockjson.Options) []string {
-	var out []string
-
-	if orig.Details != nil {
-		gotFields := map[string]*types.Value{}
-		if got.Details != nil {
-			gotFields = got.Details.Fields
-		}
-		keys := make([]string, 0, len(orig.Details.Fields))
-		for k := range orig.Details.Fields {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			if strippedKeys[k] {
-				continue
-			}
-			if !detailEqual(k, orig.Details.Fields[k], gotFields[k], opts) {
-				out = append(out, fmt.Sprintf("detail %q changed: %s -> %s",
-					k, valuePreview(orig.Details.Fields[k]), valuePreview(gotFields[k])))
-			}
-		}
-	}
-
-	origTexts := textInventory(orig)
-	gotTexts := textInventory(got)
-	for text, n := range origTexts {
-		if gotTexts[text] < n {
-			out = append(out, fmt.Sprintf("text block lost (%dx): %q", n-gotTexts[text], preview(text)))
-		}
-	}
-	return out
-}
-
-// detailEqual compares one detail value up to the documented normalizations:
-// scalars of list-shaped formats become single-element lists, dates truncate
-// to whole seconds.
-func detailEqual(key string, a, b *types.Value, opts anyblockjson.Options) bool {
-	if b == nil {
-		return false
-	}
-	if recommendedDetailKeys[key] && opts.ResolveProperties != nil {
-		return equalStrings(
-			normalizeRecommended(stringsOf(a), opts.ResolveProperties),
-			normalizeRecommended(stringsOf(b), opts.ResolveProperties))
-	}
-	format, _ := resolveFormat(key, opts)
-	switch format {
-	case model.RelationFormat_object, model.RelationFormat_file,
-		model.RelationFormat_status, model.RelationFormat_tag:
-		// mirror the format's list extraction: scalars wrap, empty strings drop
-		return equalStrings(stringsOf(a), stringsOf(b))
-	case model.RelationFormat_date:
-		return int64(a.GetNumberValue()) == int64(b.GetNumberValue())
-	}
-	return proto.Equal(a, b)
-}
-
-// recommendedDetailKeys are the four lists §2a lifts into typeProperties.
-// They round-trip by property KEY, and legacy data mixes ids and bare keys,
-// so comparison normalizes both sides to keys and skips entries neither
-// side can resolve (dropped-by-design, like missing-object sentinels).
-var recommendedDetailKeys = map[string]bool{
-	"recommendedFeaturedRelations": true,
-	"recommendedRelations":         true,
-	"recommendedFileRelations":     true,
-	"recommendedHiddenRelations":   true,
-}
-
-func normalizeRecommended(entries []string, r anyblockjson.PropertyResolver) []string {
-	var out []string
-	for _, id := range entries {
-		if def, ok := r.PropertyById(id); ok {
-			out = append(out, string(def.Key))
-			continue
-		}
-		if _, ok := r.PropertyId(anyblockjson.PropertyDefinition{Key: domain.RelationKey(id)}); ok {
-			out = append(out, id) // already a key
-			continue
-		}
-		if _, err := bundle.GetRelation(domain.RelationKey(id)); err == nil {
-			out = append(out, id) // bundle key without a space object
-		}
-		// otherwise unresolvable: dropped by design on export, skip
-	}
-	return out
-}
-
-func equalStrings(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-// missingObjectSentinel marks a dangling object reference in stored details
-// (pkg/lib/localstore/addr). Export legitimately drops these unresolvable
-// refs, so the comparison must not count them as loss.
-const missingObjectSentinel = "_missing_object"
-
-// stringsOf reads a value as the format's string list: single strings wrap,
-// empty strings drop (the export-side valueStringList semantics), and
-// pre-broken missing-object sentinels are ignored.
-func stringsOf(v *types.Value) []string {
-	if s := v.GetStringValue(); s != "" && s != missingObjectSentinel {
-		return []string{s}
-	}
-	var out []string
-	for _, el := range v.GetListValue().GetValues() {
-		if s := el.GetStringValue(); s != "" && s != missingObjectSentinel {
-			out = append(out, s)
-		}
-	}
-	return out
-}
-
-func resolveFormat(key string, opts anyblockjson.Options) (model.RelationFormat, bool) {
-	if f, err := bundle.GetRelationFormat(domain.RelationKey(key)); err == nil {
-		return f, true
-	}
-	if opts.ResolveFormat != nil {
-		return opts.ResolveFormat(domain.RelationKey(key))
-	}
-	return 0, false
-}
-
-// textInventory counts the plain text of text blocks the format preserves.
-// Structural styles are dropped by design; blocks with emoji marks are skipped
-// because emoji materialization changes the text lossily by design (§8).
-func textInventory(s *model.SmartBlockSnapshotBase) map[string]int {
-	out := map[string]int{}
-	for _, b := range s.Blocks {
-		t := b.GetText()
-		if t == nil || t.Text == "" {
-			continue
-		}
-		switch t.Style {
-		case model.BlockContentText_Title, model.BlockContentText_Description:
-			continue
-		}
-		skip := false
-		for _, m := range t.Marks.GetMarks() {
-			if m != nil && m.Type == model.BlockContentTextMark_Emoji {
-				skip = true
-				break
-			}
-		}
-		if !skip {
-			out[t.Text]++
-		}
-	}
-	return out
-}
-
-func preview(s string) string {
-	if len(s) > 80 {
-		return s[:80] + "…"
-	}
-	return s
-}
-
-func valuePreview(v *types.Value) string {
-	if v == nil {
-		return "<absent>"
-	}
-	s := v.String()
-	return preview(s)
-}
-
-//
 // ---- artifacts ----
 //
 
@@ -756,131 +553,6 @@ func writeArtifacts(dir, pbPath string, issues []issue, arts *artifactSet) error
 		return fmt.Errorf("write report: %w", err)
 	}
 	return nil
-}
-
-//
-// ---- objectstore-backed resolvers ----
-//
-
-type spaceResolvers struct {
-	index      spaceindex.Store
-	optionsFor map[domain.RelationKey][]*model.RelationOption
-
-	relsLoaded bool
-	relById    map[string]anyblockjson.PropertyDefinition
-	relKeyToId map[string]string
-}
-
-func newSpaceResolvers(index spaceindex.Store) *spaceResolvers {
-	return &spaceResolvers{index: index, optionsFor: map[domain.RelationKey][]*model.RelationOption{}}
-}
-
-// loadRelations snapshots the space's relation objects once: the point
-// lookups (GetRelationByKey) miss for some legacy relations that the full
-// listing still returns, so the map is the primary source and the point
-// lookups are the fallback.
-func (r *spaceResolvers) loadRelations() {
-	if r.relsLoaded {
-		return
-	}
-	r.relsLoaded = true
-	r.relById = map[string]anyblockjson.PropertyDefinition{}
-	r.relKeyToId = map[string]string{}
-	rels, err := r.index.ListAllRelations()
-	if err != nil {
-		return
-	}
-	for _, rel := range rels {
-		if rel == nil || rel.Relation == nil {
-			continue
-		}
-		def := anyblockjson.PropertyDefinition{
-			Key:    domain.RelationKey(rel.Key),
-			Name:   rel.Name,
-			Format: rel.Format,
-		}
-		r.relById[rel.Id] = def
-		if _, taken := r.relKeyToId[rel.Key]; !taken {
-			r.relKeyToId[rel.Key] = rel.Id
-		}
-	}
-}
-
-func (r *spaceResolvers) resolveFormat(key domain.RelationKey) (model.RelationFormat, bool) {
-	rel, err := r.index.GetRelationByKey(string(key))
-	if err != nil || rel == nil {
-		return 0, false
-	}
-	return rel.Format, true
-}
-
-func (r *spaceResolvers) options(key domain.RelationKey) []*model.RelationOption {
-	if cached, ok := r.optionsFor[key]; ok {
-		return cached
-	}
-	opts, err := r.index.ListRelationOptions(key)
-	if err != nil {
-		opts = nil
-	}
-	r.optionsFor[key] = opts
-	return opts
-}
-
-func (r *spaceResolvers) OptionName(key domain.RelationKey, id string) (string, bool) {
-	for _, o := range r.options(key) {
-		if o.Id == id {
-			return o.Text, true
-		}
-	}
-	return "", false
-}
-
-func (r *spaceResolvers) OptionId(key domain.RelationKey, name string) (string, bool) {
-	for _, o := range r.options(key) {
-		if o.Text == name {
-			return o.Id, true
-		}
-	}
-	return "", false
-}
-
-func (r *spaceResolvers) PropertyById(id string) (anyblockjson.PropertyDefinition, bool) {
-	r.loadRelations()
-	if def, ok := r.relById[id]; ok {
-		return def, true
-	}
-	rel, err := r.index.GetRelationById(id)
-	if err != nil || rel == nil {
-		return anyblockjson.PropertyDefinition{}, false
-	}
-	def := anyblockjson.PropertyDefinition{
-		Key:    domain.RelationKey(rel.Key),
-		Name:   rel.Name,
-		Format: rel.Format,
-	}
-	// cache the point-lookup hit both ways: some relations resolve by id but
-	// are absent from the listing AND the by-key lookup (deleted or index
-	// gap — anomaly #9 class), so without this PropertyId cannot invert the
-	// key export just produced and the entry is dropped on re-export
-	// (resolvers must be equivalent both directions, SPEC §2a/§13)
-	r.relById[id] = def
-	if _, taken := r.relKeyToId[rel.Key]; !taken {
-		r.relKeyToId[rel.Key] = id
-	}
-	return def, true
-}
-
-func (r *spaceResolvers) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
-	r.loadRelations()
-	if id, ok := r.relKeyToId[string(def.Key)]; ok {
-		return id, true
-	}
-	rel, err := r.index.GetRelationByKey(string(def.Key))
-	if err != nil || rel == nil {
-		return "", false
-	}
-	r.relKeyToId[rel.Key] = rel.Id
-	return rel.Id, true
 }
 
 func sortedKeys(m map[string]int) []string {
