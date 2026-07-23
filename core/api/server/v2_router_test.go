@@ -27,11 +27,13 @@ func newV2ServerFixture(t *testing.T) *fixture {
 	readerMock := mock_apicore.NewMockObjectReader(t)
 	store := objectstore.NewStoreFixture(t)
 
+	creatorMock := mock_apicore.NewMockObjectCreator(t)
+
 	crossSpaceSubService.On("Subscribe", mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{}, nil).Maybe()
 	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{TechSpaceId: mockedTechSpaceId}, nil).Once()
 
 	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, chatSubService, fileObjectMock,
-		V2Deps{Reader: readerMock, Store: store}, mockedListenAddr, []byte{}, []byte{})
+		V2Deps{Reader: readerMock, Creator: creatorMock, Store: store}, mockedListenAddr, []byte{}, []byte{})
 
 	return &fixture{
 		Server:               server,
@@ -89,5 +91,34 @@ func TestV2Routes(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("create routes are registered and require auth", func(t *testing.T) {
+		// given
+		fx := newV2ServerFixture(t)
+
+		for _, route := range []struct{ method, path string }{
+			{"POST", "/v2/spaces/space1/objects"},
+			{"POST", "/v2/spaces/space1/types"},
+			{"PATCH", "/v2/spaces/space1/types/task"},
+			{"DELETE", "/v2/spaces/space1/types/task"},
+			{"POST", "/v2/spaces/space1/properties"},
+			{"PATCH", "/v2/spaces/space1/properties/status"},
+			{"DELETE", "/v2/spaces/space1/properties/status"},
+			{"POST", "/v2/spaces/space1/sets"},
+			{"POST", "/v2/spaces/space1/collections"},
+			{"POST", "/v2/spaces/space1/templates"},
+			{"POST", "/v2/spaces/space1/files"},
+			{"GET", "/v2/schemas"},
+		} {
+			// when
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(route.method, route.path, strings.NewReader(`{}`))
+			req.Host = localApiHost
+			fx.Engine().ServeHTTP(w, req)
+
+			// then: 401 (not 404) proves the route exists behind shared auth
+			require.Equal(t, http.StatusUnauthorized, w.Code, "%s %s", route.method, route.path)
+		}
 	})
 }

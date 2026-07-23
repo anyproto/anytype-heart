@@ -1,0 +1,376 @@
+package service
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+// addSelectProperty registers a select property "severity" with one existing
+// option "High" in the test space.
+func (fx *v2Fixture) addSelectProperty(t *testing.T) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("rel-severity"),
+			bundle.RelationKeyRelationKey:    domain.String("severity"),
+			bundle.RelationKeyName:           domain.String("Severity"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_status)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		},
+		{
+			bundle.RelationKeyId:             domain.String("opt-high"),
+			bundle.RelationKeyRelationKey:    domain.String("severity"),
+			bundle.RelationKeyName:           domain.String("High"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+		},
+	})
+}
+
+// expectCreate captures the snapshot handed to the creator and returns id.
+func (fx *v2Fixture) expectCreate(id string) **model.SmartBlockSnapshotBase {
+	var captured *model.SmartBlockSnapshotBase
+	fx.creatorMock.EXPECT().CreateObjectFromSnapshot(mock.Anything, testSpaceId, mock.Anything).
+		RunAndReturn(func(ctx context.Context, spaceId string, snapshot *model.SmartBlockSnapshotBase) (string, error) {
+			captured = snapshot
+			return id, nil
+		})
+	return &captured
+}
+
+func (fx *v2Fixture) expectEtagRead(objectId string) {
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, objectId).
+		Return(apicore.ObjectRead{Heads: []string{"headX"}}, nil)
+}
+
+func v2Err(t *testing.T, err error) *apimodel.V2Error {
+	t.Helper()
+	var apiErr *apimodel.V2Error
+	require.ErrorAs(t, err, &apiErr)
+	return apiErr
+}
+
+func TestV2CreateObjectShortcut(t *testing.T) {
+	t.Run("shortcut creates a typed object with name", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"task","name":"Buy milk"}`), false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "newObj", result.Id)
+		assert.Equal(t, "task", result.Type)
+		assert.Equal(t, ComputeEtag([]string{"headX"}), result.Etag)
+		require.NotNil(t, *captured)
+		snapshot := *captured
+		assert.Equal(t, []string{"ot-task"}, snapshot.ObjectTypes)
+		assert.Equal(t, "Buy milk", pbtypes.GetString(snapshot.Details, "name"))
+	})
+
+	t.Run("markdown is pasted after create", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+		fx.mwMock.EXPECT().BlockCreate(mock.Anything, mock.Anything).
+			Return(&pb.RpcBlockCreateResponse{BlockId: "b1", Error: &pb.RpcBlockCreateResponseError{Code: pb.RpcBlockCreateResponseError_NULL}})
+		fx.mwMock.EXPECT().BlockPaste(mock.Anything, mock.MatchedBy(func(req *pb.RpcBlockPasteRequest) bool {
+			return req.ContextId == "newObj" && req.TextSlot == "# Hello"
+		})).Return(&pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: pb.RpcBlockPasteResponseError_NULL}})
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Doc","markdown":"# Hello"}`), false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "newObj", result.Id)
+	})
+
+	t.Run("unknown shortcut key steers to the full document", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"task","title":"oops"}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/title", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, `"version": 1`)
+	})
+
+	t.Run("missing type is rejected", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId, []byte(`{"name":"x"}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/type", apiErr.Issues[0].Path)
+	})
+}
+
+func TestV2CreateObjectDocument(t *testing.T) {
+	t.Run("full document creates with blocks", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"page","properties":{"name":"Doc"},"blocks":[{"type":"paragraph","text":"hi"}]}`), false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "newObj", result.Id)
+		snapshot := *captured
+		require.NotNil(t, snapshot)
+		require.Len(t, snapshot.Blocks, 2, "root + paragraph")
+		assert.NotNil(t, snapshot.Blocks[0].GetSmartblock())
+		assert.Equal(t, "hi", snapshot.Blocks[1].GetText().GetText())
+	})
+
+	t.Run("absent type defaults to page", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"blocks":[{"type":"paragraph","text":"hi"}]}`), false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "page", result.Type)
+		assert.Equal(t, []string{"ot-page"}, (*captured).ObjectTypes)
+	})
+
+	t.Run("unknown type key gets a did-you-mean 400", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("type-recipe"),
+			bundle.RelationKeyName:           domain.String("Recipe"),
+			bundle.RelationKeyUniqueKey:      domain.String("ot-recipe"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+		}})
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"recipes","blocks":[]}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/type", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "recipe")
+		assert.Contains(t, apiErr.Issues[0].Hint, "recipe")
+	})
+
+	t.Run("unknown property key is rejected, never silently created", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"page","properties":{"name":"ok","madeUpProp":"x"}}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/properties/madeUpProp", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/"+testSpaceId+"/properties")
+	})
+
+	t.Run("structurally invalid document returns path-addressed issues", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"page","blocks":[{"type":"wat"}]}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Path, "/blocks/0")
+	})
+
+	t.Run("newer format version is version_unsupported", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":2,"type":"page"}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeVersionUnsupported, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "document version 2")
+		assert.Contains(t, apiErr.Message, "supported version 1")
+	})
+
+	t.Run("restricted type cannot be created", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"participant"}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+	})
+
+	t.Run("objectType kind steers to POST types", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"kind":"objectType","key":"thing","typeProperties":[]}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Hint, "/types")
+	})
+
+	t.Run("items on a non-collection document is rejected", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"page","items":["obj1"]}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/items", apiErr.Issues[0].Path)
+	})
+
+	t.Run("unknown select option names are created (SPEC §3)", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		captured := fx.expectCreate("newObj")
+		fx.expectEtagRead("newObj")
+		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationOptionRequest) bool {
+			return req.SpaceId == testSpaceId &&
+				pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == "severity" &&
+				pbtypes.GetString(req.Details, bundle.RelationKeyName.String()) == "Blocker"
+		})).Return(&pb.RpcObjectCreateRelationOptionResponse{
+			ObjectId: "opt-blocker",
+			Error:    &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
+		})
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"task","properties":{"severity":["High","Blocker"]}}`), false)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, result.Created)
+		assert.Equal(t, []apimodel.V2CreatedOption{{Property: "severity", Name: "Blocker"}}, result.Created.Options)
+		values := pbtypes.GetStringList((*captured).Details, "severity")
+		assert.Equal(t, []string{"opt-high", "opt-blocker"}, values, "existing option resolved, missing one created")
+	})
+
+	t.Run("dry run creates nothing and reports would-be side effects", func(t *testing.T) {
+		// given: no creator or RPC expectations — any call would fail the test
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"task","properties":{"severity":["Blocker"]}}`), true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		assert.Empty(t, result.Id)
+		require.NotNil(t, result.Created)
+		assert.Equal(t, []apimodel.V2CreatedOption{{Property: "severity", Name: "Blocker"}}, result.Created.Options)
+	})
+}
+
+func TestV2CreateTemplate(t *testing.T) {
+	t.Run("template resolves templateFor into targetObjectType", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectCreate("newTemplate")
+		fx.expectEtagRead("newTemplate")
+		fx.creatorMock.EXPECT().TypeIdByKey(mock.Anything, testSpaceId, domain.TypeKey("task")).
+			Return("taskTypeId", nil)
+
+		// when
+		result, err := fx.CreateTemplate(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"template","templateFor":"task","properties":{"name":"Weekly"}}`), false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "newTemplate", result.Id)
+		snapshot := *captured
+		assert.Equal(t, []string{"ot-template", "ot-task"}, snapshot.ObjectTypes)
+		assert.Equal(t, "taskTypeId", pbtypes.GetString(snapshot.Details, bundle.RelationKeyTargetObjectType.String()))
+	})
+
+	t.Run("templateFor is required", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateTemplate(context.Background(), testSpaceId,
+			[]byte(`{"version":1,"type":"template","properties":{"name":"Weekly"}}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/templateFor", apiErr.Issues[0].Path)
+	})
+
+	t.Run("unknown space is a 404", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), "ghost", []byte(`{"type":"page"}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status)
+	})
+}

@@ -1,0 +1,405 @@
+package service
+
+import (
+	"context"
+	"net/http"
+	"testing"
+
+	"github.com/gogo/protobuf/types"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pb"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
+)
+
+// addTaskType registers a custom type "chore" with one recommended property
+// (the select property from addSelectProperty) in the test space.
+func (fx *v2Fixture) addTaskType(t *testing.T) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:                           domain.String("type-chore"),
+		bundle.RelationKeyName:                         domain.String("Chore"),
+		bundle.RelationKeyUniqueKey:                    domain.String("ot-chore"),
+		bundle.RelationKeyResolvedLayout:               domain.Int64(int64(model.ObjectType_objectType)),
+		bundle.RelationKeyRecommendedFeaturedRelations: domain.StringList([]string{"rel-severity"}),
+	}})
+}
+
+func TestV2CreateType(t *testing.T) {
+	t.Run("type document creates missing properties atomically", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t) // "severity" exists — must NOT be re-created
+		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationRequest) bool {
+			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == "spiciness" &&
+				pbtypes.GetString(req.Details, bundle.RelationKeyName.String()) == "Spiciness" &&
+				pbtypes.GetInt64(req.Details, bundle.RelationKeyRelationFormat.String()) == int64(model.RelationFormat_number)
+		})).Return(&pb.RpcObjectCreateRelationResponse{
+			ObjectId: "rel-spiciness", Key: "spiciness",
+			Error: &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
+		})
+		var createdDetails *pb.RpcObjectCreateObjectTypeRequest
+		fx.mwMock.EXPECT().ObjectCreateObjectType(mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx context.Context, req *pb.RpcObjectCreateObjectTypeRequest) *pb.RpcObjectCreateObjectTypeResponse {
+				createdDetails = req
+				return &pb.RpcObjectCreateObjectTypeResponse{
+					ObjectId: "type-workout",
+					Error:    &pb.RpcObjectCreateObjectTypeResponseError{Code: pb.RpcObjectCreateObjectTypeResponseError_NULL},
+				}
+			})
+		fx.expectEtagRead("type-workout")
+
+		// when
+		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
+			"kind":"objectType","key":"workout",
+			"properties":{"name":"Workout","recommendedLayout":"todo"},
+			"typeProperties":[
+				{"key":"severity","section":"featured"},
+				{"key":"spiciness","name":"Spiciness","format":"number"}
+			]}`), false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "type-workout", result.Id)
+		assert.Equal(t, "workout", result.Key)
+		require.NotNil(t, result.Created)
+		require.Len(t, result.Created.Properties, 1, "only the unknown key is created")
+		assert.Equal(t, "spiciness", result.Created.Properties[0].Key)
+
+		require.NotNil(t, createdDetails)
+		details := createdDetails.Details
+		assert.Equal(t, "ot-workout", pbtypes.GetString(details, bundle.RelationKeyUniqueKey.String()))
+		assert.Equal(t, "Workout", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+		assert.Equal(t, int64(model.ObjectType_todo), pbtypes.GetInt64(details, bundle.RelationKeyRecommendedLayout.String()),
+			"the layout NAME maps to the stored enum")
+		assert.Equal(t, []string{"rel-severity"}, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedFeaturedRelations.String()))
+		assert.Equal(t, []string{"rel-spiciness"}, pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()))
+		assert.Empty(t, pbtypes.GetString(details, "id"), "the minted document id never travels into the RPC")
+	})
+
+	t.Run("dry run reports would-be properties without creating", func(t *testing.T) {
+		// given: no RPC expectations — any call fails the test
+		fx := newV2Fixture(t)
+
+		// when
+		result, err := fx.CreateType(context.Background(), testSpaceId, []byte(`{
+			"kind":"objectType","key":"workout",
+			"typeProperties":[{"key":"spiciness","format":"number"}]}`), true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		require.NotNil(t, result.Created)
+		require.Len(t, result.Created.Properties, 1)
+		assert.Equal(t, "spiciness", result.Created.Properties[0].Key)
+	})
+
+	t.Run("bundled type key is rejected", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"objectType","key":"task"}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/key", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "bundled")
+	})
+
+	t.Run("existing type key is rejected with PATCH steering", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t)
+
+		// when
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"objectType","key":"chore"}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Hint, "PATCH /v2/spaces/"+testSpaceId+"/types/chore")
+	})
+
+	t.Run("blocks on a type document are rejected explicitly", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"objectType","key":"workout","blocks":[{"type":"dataview"}]}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/blocks", apiErr.Issues[0].Path)
+	})
+
+	t.Run("wrong kind is rejected", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateType(context.Background(), testSpaceId,
+			[]byte(`{"kind":"page","key":"workout"}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+	})
+}
+
+func TestV2UpdateType(t *testing.T) {
+	t.Run("patch updates details and rebuilds recommended lists", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t)
+		var setDetails *pb.RpcObjectSetDetailsRequest
+		fx.mwMock.EXPECT().ObjectSetDetails(mock.Anything, mock.Anything).
+			RunAndReturn(func(ctx context.Context, req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
+				setDetails = req
+				return &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}}
+			})
+		fx.expectEtagRead("type-chore")
+
+		// when
+		result, err := fx.UpdateType(context.Background(), testSpaceId, "chore", []byte(`{
+			"properties":{"name":"Chores"},
+			"typeProperties":[{"key":"severity","section":"featured"}]}`), false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "type-chore", result.Id)
+		require.NotNil(t, setDetails)
+		assert.Equal(t, "type-chore", setDetails.ContextId)
+		byKey := map[string]*types.Value{}
+		for _, d := range setDetails.Details {
+			byKey[d.Key] = d.Value
+		}
+		require.Contains(t, byKey, "name")
+		assert.Equal(t, "Chores", byKey["name"].GetStringValue())
+		require.Contains(t, byKey, bundle.RelationKeyRecommendedFeaturedRelations.String())
+		require.Contains(t, byKey, bundle.RelationKeyRecommendedRelations.String())
+	})
+
+	t.Run("non-updatable property key is rejected", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t)
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "chore",
+			[]byte(`{"properties":{"uniqueKey":"ot-hack"}}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/properties/uniqueKey", apiErr.Issues[0].Path)
+	})
+
+	t.Run("unknown type is a 404", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.UpdateType(context.Background(), testSpaceId, "ghost", []byte(`{}`), false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status)
+	})
+}
+
+func TestV2DeleteType(t *testing.T) {
+	t.Run("delete archives the type object", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t)
+		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
+			ContextId: "type-chore", IsArchived: true,
+		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+
+		// when
+		result, err := fx.DeleteType(context.Background(), testSpaceId, "chore", false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "type-chore", result.Id)
+		assert.Equal(t, "chore", result.Key)
+	})
+
+	t.Run("dry run does not archive", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.addTaskType(t)
+
+		// when
+		result, err := fx.DeleteType(context.Background(), testSpaceId, "chore", true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+	})
+}
+
+func TestV2CreateProperty(t *testing.T) {
+	t.Run("create with options", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.mwMock.EXPECT().ObjectCreateRelation(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationRequest) bool {
+			return pbtypes.GetString(req.Details, bundle.RelationKeyRelationKey.String()) == "vibe" &&
+				pbtypes.GetInt64(req.Details, bundle.RelationKeyRelationFormat.String()) == int64(model.RelationFormat_status)
+		})).Return(&pb.RpcObjectCreateRelationResponse{
+			ObjectId: "rel-vibe", Key: "vibe",
+			Error: &pb.RpcObjectCreateRelationResponseError{Code: pb.RpcObjectCreateRelationResponseError_NULL},
+		})
+		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectCreateRelationOptionRequest) bool {
+			return pbtypes.GetString(req.Details, bundle.RelationKeyName.String()) == "Happy" &&
+				pbtypes.GetString(req.Details, bundle.RelationKeyRelationOptionColor.String()) == "yellow"
+		})).Return(&pb.RpcObjectCreateRelationOptionResponse{
+			ObjectId: "opt-happy",
+			Error:    &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
+		})
+
+		// when
+		result, err := fx.CreateProperty(context.Background(), testSpaceId, apimodel.V2CreatePropertyRequest{
+			Key: "vibe", Name: "Mood", Format: "select",
+			Options: []apimodel.V2CreateOptionRequest{{Name: "Happy", Color: "yellow"}},
+		}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "rel-vibe", result.Id)
+		assert.Equal(t, "vibe", result.Key)
+		require.NotNil(t, result.Created)
+		assert.Equal(t, []apimodel.V2CreatedOption{{Property: "vibe", Name: "Happy"}}, result.Created.Options)
+	})
+
+	t.Run("unknown format names the allowed set", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateProperty(context.Background(), testSpaceId,
+			apimodel.V2CreatePropertyRequest{Name: "X", Format: "picklist"}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/format", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Hint, "multiSelect")
+	})
+
+	t.Run("options on a non-select format are rejected", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateProperty(context.Background(), testSpaceId, apimodel.V2CreatePropertyRequest{
+			Name: "X", Format: "number", Options: []apimodel.V2CreateOptionRequest{{Name: "One"}},
+		}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/options", apiErr.Issues[0].Path)
+	})
+
+	t.Run("existing key is rejected", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+
+		// when
+		_, err := fx.CreateProperty(context.Background(), testSpaceId,
+			apimodel.V2CreatePropertyRequest{Key: "severity", Name: "Again", Format: "select"}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/key", apiErr.Issues[0].Path)
+	})
+
+	t.Run("dry run reports without creating", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		result, err := fx.CreateProperty(context.Background(), testSpaceId, apimodel.V2CreatePropertyRequest{
+			Key: "vibe", Name: "Mood", Format: "select",
+			Options: []apimodel.V2CreateOptionRequest{{Name: "Happy"}},
+		}, true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		require.NotNil(t, result.Created)
+		require.Len(t, result.Created.Properties, 1)
+		require.Len(t, result.Created.Options, 1)
+	})
+}
+
+func TestV2UpdateDeleteProperty(t *testing.T) {
+	t.Run("update renames the property", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		newName := "Urgency"
+		fx.mwMock.EXPECT().ObjectSetDetails(mock.Anything, mock.MatchedBy(func(req *pb.RpcObjectSetDetailsRequest) bool {
+			return req.ContextId == "rel-severity" && len(req.Details) == 1 && req.Details[0].Key == "name"
+		})).Return(&pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: pb.RpcObjectSetDetailsResponseError_NULL}})
+
+		// when
+		result, err := fx.UpdateProperty(context.Background(), testSpaceId, "severity",
+			apimodel.V2UpdatePropertyRequest{Name: &newName}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "rel-severity", result.Id)
+	})
+
+	t.Run("unknown property is a 404 with steering", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		name := "X"
+
+		// when
+		_, err := fx.UpdateProperty(context.Background(), testSpaceId, "ghost",
+			apimodel.V2UpdatePropertyRequest{Name: &name}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status)
+		assert.Contains(t, apiErr.Message, "GET /v2/spaces/"+testSpaceId+"/properties")
+	})
+
+	t.Run("delete archives the property object", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.mwMock.EXPECT().ObjectSetIsArchived(mock.Anything, &pb.RpcObjectSetIsArchivedRequest{
+			ContextId: "rel-severity", IsArchived: true,
+		}).Return(&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_NULL}})
+
+		// when
+		result, err := fx.DeleteProperty(context.Background(), testSpaceId, "severity", false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "rel-severity", result.Id)
+	})
+}

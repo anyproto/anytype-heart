@@ -145,7 +145,8 @@ func didYouMean(input string, known []string, fallback string) string {
 
 // closestKeys ranks known keys by simple similarity to input:
 // case-insensitive equality, then prefix, then substring containment either
-// way. Deterministic (rank, then alphabetical).
+// way, then small edit distance (typos). Deterministic (rank, then
+// alphabetical).
 func closestKeys(input string, known []string, max int) []string {
 	in := strings.ToLower(input)
 	type scored struct {
@@ -162,6 +163,8 @@ func closestKeys(input string, known []string, max int) []string {
 			out = append(out, scored{k, 1})
 		case strings.Contains(lk, in) || strings.Contains(in, lk):
 			out = append(out, scored{k, 2})
+		case editDistanceAtMost(lk, in, 2):
+			out = append(out, scored{k, 3})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -178,6 +181,53 @@ func closestKeys(input string, known []string, max int) []string {
 		keys[i] = sc.key
 	}
 	return keys
+}
+
+// editDistanceAtMost reports whether the Levenshtein distance between a and
+// b is ≤ bound. Inputs longer than 64 runes never match (cost guard; keys
+// are short).
+func editDistanceAtMost(a, b string, bound int) bool {
+	ra, rb := []rune(a), []rune(b)
+	if len(ra) > 64 || len(rb) > 64 {
+		return false
+	}
+	if abs(len(ra)-len(rb)) > bound {
+		return false
+	}
+	prev := make([]int, len(rb)+1)
+	curr := make([]int, len(rb)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(ra); i++ {
+		curr[0] = i
+		for j := 1; j <= len(rb); j++ {
+			cost := 1
+			if ra[i-1] == rb[j-1] {
+				cost = 0
+			}
+			curr[j] = minInt(prev[j]+1, curr[j-1]+1, prev[j-1]+cost)
+		}
+		prev, curr = curr, prev
+	}
+	return prev[len(rb)] <= bound
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
+func minInt(values ...int) int {
+	out := values[0]
+	for _, v := range values[1:] {
+		if v < out {
+			out = v
+		}
+	}
+	return out
 }
 
 // typePropertyKeys collects the property keys a type actually recommends
