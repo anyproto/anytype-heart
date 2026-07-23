@@ -34,6 +34,8 @@ type Options struct {
 	OmitIds           bool             // export only: drop every id (§9)
 	CompactIds        bool             // export only: shorten ids, emit refs legend (§9a)
 	GenerateId        func() string    // import only: id generator for missing ids; nil = random 24-hex
+	NormalizeIndent   bool             // import only: clamp over-deep indents instead of rejecting (§4)
+	OnWarning         func(Issue)      // optional sink for warning-grade issues (NormalizeIndent clamps)
 }
 
 const (
@@ -402,11 +404,18 @@ func (e *exporter) buildBlocks() ([]any, error) {
 	if root == nil {
 		return nil, nil
 	}
-	return e.childrenToJSON(root.ChildrenIds, true)
+	var out []any
+	if err := e.appendBlocksFlat(&out, root.ChildrenIds, 0, true); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-func (e *exporter) childrenToJSON(ids []string, topLevel bool) ([]any, error) {
-	var out []any
+// appendBlocksFlat walks a subtree in pre-order and appends each block to out
+// with its depth as the indent field — the flat encoding (§4 F1–F2). A block
+// dropped by blockToJSON (structural, visited, content-less leaf) drops its
+// whole subtree, matching the nested encoding's semantics.
+func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLevel bool) error {
 	for _, id := range ids {
 		b := e.blocks[id]
 		if b == nil {
@@ -415,15 +424,21 @@ func (e *exporter) childrenToJSON(ids []string, topLevel bool) ([]any, error) {
 		if topLevel && isStructural(b) {
 			continue
 		}
-		m, err := e.blockToJSON(b)
+		m, withChildren, err := e.blockToJSON(b, depth)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		if m != nil {
-			out = append(out, m)
+		if m == nil {
+			continue
+		}
+		*out = append(*out, m)
+		if withChildren {
+			if err := e.appendBlocksFlat(out, b.ChildrenIds, depth+1, false); err != nil {
+				return err
+			}
 		}
 	}
-	return out, nil
+	return nil
 }
 
 func (e *exporter) localId(id string) string {
@@ -435,17 +450,21 @@ func (e *exporter) localId(id string) string {
 	return id
 }
 
-func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
+// blockToJSON renders one block at the given depth (its indent, written
+// first per the §4 canonical key order). The returned bool reports whether
+// the caller should descend into the block's children.
+func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 	// a snapshot's block graph is untrusted: without this, a ChildrenIds
 	// cycle recurses to an unrecoverable stack overflow, and a block shared
 	// by two parents is emitted twice (duplicate ids fail validation)
 	if b.Id != "" {
 		if e.visited[b.Id] {
-			return nil, nil
+			return nil, false, nil
 		}
 		e.visited[b.Id] = true
 	}
 	m := &omap{}
+	m.setNonEmpty("indent", depth)
 	if !e.opts.OmitIds {
 		m.setNonEmpty("id", e.localId(b.Id))
 	}
@@ -460,12 +479,12 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 		// hold orphaned empty leaves. A childless one is dropped; one with
 		// children exports as a transparent group so the subtree survives.
 		if len(b.ChildrenIds) == 0 {
-			return nil, nil
+			return nil, false, nil
 		}
 		m.set("type", "group")
 	case *model.BlockContentOfText:
 		if err := e.textToJSON(m, b, orEmpty(c.Text), liftedFields); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 	case *model.BlockContentOfFile:
 		// file blocks are leaves in the editor, but legacy data holds real
@@ -508,11 +527,11 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 			m.set("type", "group")
 		default:
 			// header and stray table wrappers are structural (§7)
-			return nil, nil
+			return nil, false, nil
 		}
 	case *model.BlockContentOfTable:
 		if err := e.tableToJSON(m, b); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		withChildren = false
 	case *model.BlockContentOfLatex:
@@ -532,7 +551,7 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 		withChildren = false
 	case *model.BlockContentOfDataview:
 		if err := e.dataviewToJSON(m, orEmpty(c.Dataview)); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		withChildren = false
 	case *model.BlockContentOfWidget:
@@ -555,20 +574,18 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 		m.setNonEmpty("name", orEmpty(c.Icon).Name)
 		withChildren = false
 	case *model.BlockContentOfSmartblock:
-		return nil, nil
+		return nil, false, nil
 	default:
-		return nil, fmt.Errorf("block %s: content type %T has no JSON mapping", b.Id, b.Content)
+		return nil, false, fmt.Errorf("block %s: content type %T has no JSON mapping", b.Id, b.Content)
 	}
 
-	if err := e.finishBlockJSON(m, b, liftedFields, withChildren); err != nil {
-		return nil, err
-	}
-	return m, nil
+	e.finishBlockJSON(m, b, liftedFields)
+	return m, withChildren, nil
 }
 
 // finishBlockJSON writes the common block tail: align, verticalAlign,
-// backgroundColor, fields, children — in the §4 canonical order.
-func (e *exporter) finishBlockJSON(m *omap, b *model.Block, liftedFields map[string]bool, withChildren bool) error {
+// backgroundColor, fields — in the §4 canonical order.
+func (e *exporter) finishBlockJSON(m *omap, b *model.Block, liftedFields map[string]bool) {
 	if b.Align != model.Block_AlignLeft {
 		m.setNonEmpty("align", alignNames.name(b.Align))
 	}
@@ -577,14 +594,6 @@ func (e *exporter) finishBlockJSON(m *omap, b *model.Block, liftedFields map[str
 	}
 	m.setNonEmpty("backgroundColor", b.BackgroundColor)
 	m.setNonEmpty("fields", e.fieldsToJSON(b.Fields, liftedFields))
-	if withChildren {
-		children, err := e.childrenToJSON(b.ChildrenIds, false)
-		if err != nil {
-			return err
-		}
-		m.setNonEmpty("children", children)
-	}
-	return nil
 }
 
 func (e *exporter) fieldsToJSON(fields *types.Struct, lifted map[string]bool) *omap {

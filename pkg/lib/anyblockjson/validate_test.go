@@ -1,12 +1,15 @@
 package anyblockjson
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func TestValidate_Valid(t *testing.T) {
@@ -24,16 +27,16 @@ func TestValidate_Valid(t *testing.T) {
 			"blocks": [
 				{"id": "b1", "type": "heading2", "text": "Goals"},
 				{"id": "b2", "type": "paragraph", "text": "Ship the **new export**"},
-				{"type": "bulletedListItem", "text": "item", "children": [
-					{"type": "bulletedListItem", "text": "nested"}
-				]},
+				{"type": "bulletedListItem", "text": "item"},
+				{"indent": 1, "type": "bulletedListItem", "text": "nested"},
 				{"type": "checkbox", "checked": true, "text": "Draft"},
 				{"type": "code", "language": "go", "text": "func main() {}"},
 				{"type": "divider", "style": "dots"},
-				{"type": "row", "children": [
-					{"type": "column", "children": [{"type": "paragraph", "text": "left"}]},
-					{"type": "column", "children": [{"type": "paragraph", "text": "right"}]}
-				]}
+				{"type": "row"},
+				{"indent": 1, "type": "column"},
+				{"indent": 2, "type": "paragraph", "text": "left"},
+				{"indent": 1, "type": "column"},
+				{"indent": 2, "type": "paragraph", "text": "right"}
 			]
 		}`},
 		{"table", `{"version": 1, "blocks": [
@@ -64,7 +67,15 @@ func TestValidate_Valid(t *testing.T) {
 		{"template", `{"version": 1, "type": "template", "templateFor": "task"}`},
 		{"collection items", `{"version": 1, "type": "collection", "items": ["obj1", "obj2"]}`},
 		{"widget", `{"version": 1, "kind": "widget", "blocks": [
-			{"type": "widget", "layout": "tree", "limit": 6, "children": [{"type": "link", "objectId": "obj1"}]}
+			{"type": "widget", "layout": "tree", "limit": 6},
+			{"indent": 1, "type": "link", "objectId": "obj1"}
+		]}`},
+		{"explicit indent 0", `{"version": 1, "blocks": [{"indent": 0, "type": "paragraph", "text": "x"}]}`},
+		{"cell array with descendants", `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[
+				{"type": "toggle", "text": "cell"},
+				{"indent": 1, "type": "paragraph", "text": "nested"}
+			]]}]}
 		]}`},
 		{"heading4 alias", `{"version": 1, "blocks": [{"type": "heading4", "text": "deep"}]}`},
 		{"equation alias", `{"version": 1, "blocks": [{"type": "equation", "text": "E=mc^2"}]}`},
@@ -96,8 +107,31 @@ func TestValidate_Invalid(t *testing.T) {
 		{"prop from wrong type", `{"version": 1, "blocks": [{"type": "paragraph", "checked": true}]}`, "checked"},
 		{"bad align", `{"version": 1, "blocks": [{"type": "paragraph", "align": "top"}]}`, "align"},
 		{"bad block id charset", `{"version": 1, "blocks": [{"type": "paragraph", "id": "a b"}]}`, "/blocks/0/id"},
-		{"children on leaf block", `{"version": 1, "blocks": [{"type": "divider", "children": [{"type": "paragraph"}]}]}`, "children"},
-		{"row child not column", `{"version": 1, "blocks": [{"type": "row", "children": [{"type": "paragraph"}]}]}`, "/blocks/0/children/0"},
+		{"children removed from the format", `{"version": 1, "blocks": [{"type": "toggle", "children": [{"type": "paragraph"}]}]}`, "children"},
+		{"first block indented", `{"version": 1, "blocks": [{"indent": 1, "type": "paragraph", "text": "x"}]}`, "first block must be at indent 0"},
+		{"indent jump", `{"version": 1, "blocks": [
+			{"type": "paragraph", "text": "a"},
+			{"indent": 2, "type": "paragraph", "text": "b"}
+		]}`, "indent 2 follows indent 0"},
+		{"nested under leaf block", `{"version": 1, "blocks": [
+			{"type": "divider"},
+			{"indent": 1, "type": "paragraph", "text": "x"}
+		]}`, "divider blocks cannot have children"},
+		{"row child not column", `{"version": 1, "blocks": [
+			{"type": "row"},
+			{"indent": 1, "type": "paragraph", "text": "x"}
+		]}`, "a row block can only contain column blocks"},
+		{"indent above bound", `{"version": 1, "blocks": [{"indent": 33, "type": "paragraph", "text": "x"}]}`, "/blocks/0/indent"},
+		{"negative indent", `{"version": 1, "blocks": [{"indent": -1, "type": "paragraph", "text": "x"}]}`, "/blocks/0/indent"},
+		{"indent on bare cell block", `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [{"indent": 1, "type": "paragraph", "text": "x"}]}]}
+		]}`, "/blocks/0/rows/0/cells/0"},
+		{"id on cell array first block", `{"version": 1, "blocks": [
+			{"type": "table", "columns": [{"id": "c1"}], "rows": [{"id": "r1", "cells": [[
+				{"id": "x", "type": "toggle", "text": "cell"},
+				{"indent": 1, "type": "paragraph", "text": "nested"}
+			]]}]}
+		]}`, "cell blocks cannot carry an id"},
 		{"duplicate ids", `{"version": 1, "blocks": [{"id": "b1", "type": "paragraph"}, {"id": "b1", "type": "quote"}]}`, "duplicate id"},
 		{"derived cell id collision", `{"version": 1, "blocks": [
 			{"id": "r1-c1", "type": "paragraph"},
@@ -156,14 +190,101 @@ func TestValidate_NewerFormatHint(t *testing.T) {
 func TestValidate_PathAddressing(t *testing.T) {
 	doc := `{"version": 1, "blocks": [
 		{"type": "paragraph", "text": "fine"},
-		{"type": "toggle", "children": [
-			{"type": "paragraph", "text": "bad </font> here"}
-		]}
+		{"type": "toggle", "text": "parent"},
+		{"indent": 1, "type": "paragraph", "text": "bad </font> here"}
 	]}`
 	err := Validate([]byte(doc))
 	require.Error(t, err)
 	var ve *ValidationError
 	require.True(t, errors.As(err, &ve))
 	require.Len(t, ve.Issues, 1)
-	assert.Equal(t, "/blocks/1/children/0/text", ve.Issues[0].Path)
+	assert.Equal(t, "/blocks/2/text", ve.Issues[0].Path)
+}
+
+// TestValidate_IndentErrorMessage: the V1 message is the agent-facing repair
+// loop — it must name both indents (§12).
+func TestValidate_IndentErrorMessage(t *testing.T) {
+	doc := `{"version": 1, "blocks": [
+		{"type": "paragraph", "text": "a"},
+		{"indent": 1, "type": "paragraph", "text": "b"},
+		{"indent": 3, "type": "paragraph", "text": "c"}
+	]}`
+	err := Validate([]byte(doc))
+	require.Error(t, err)
+	var ve *ValidationError
+	require.True(t, errors.As(err, &ve))
+	require.Len(t, ve.Issues, 1)
+	assert.Equal(t, "/blocks/2", ve.Issues[0].Path)
+	assert.Equal(t, "indent 3 follows indent 1 — a block can be at most one level deeper than its predecessor", ve.Issues[0].Message)
+}
+
+// TestNormalizeIndent: lenient mode clamps over-deep indents to the deepest
+// establishable level with a path-addressed warning, and the imported state
+// equals the equivalent valid document's (§4).
+func TestNormalizeIndent(t *testing.T) {
+	invalid := `{"version": 1, "blocks": [
+		{"id": "a", "type": "paragraph", "text": "a"},
+		{"indent": 3, "id": "b", "type": "paragraph", "text": "b"}
+	]}`
+	valid := `{"version": 1, "blocks": [
+		{"id": "a", "type": "paragraph", "text": "a"},
+		{"indent": 1, "id": "b", "type": "paragraph", "text": "b"}
+	]}`
+
+	// strict rejects
+	_, _, err := Unmarshal([]byte(invalid), Options{GenerateId: seqIds("g")})
+	require.Error(t, err)
+
+	var warnings []Issue
+	opts := Options{GenerateId: seqIds("g"), NormalizeIndent: true, OnWarning: func(i Issue) { warnings = append(warnings, i) }}
+	_, snap, err := Unmarshal([]byte(invalid), opts)
+	require.NoError(t, err)
+	require.Len(t, warnings, 1)
+	assert.Equal(t, "/blocks/1", warnings[0].Path)
+	assert.Contains(t, warnings[0].Message, "clamped to 1")
+
+	_, want, err := Unmarshal([]byte(valid), Options{GenerateId: seqIds("g")})
+	require.NoError(t, err)
+	assert.Equal(t, want.Blocks, snap.Blocks)
+
+	t.Run("first block clamps to 0", func(t *testing.T) {
+		doc := `{"version": 1, "blocks": [{"indent": 2, "id": "a", "type": "paragraph", "text": "a"}]}`
+		var w []Issue
+		o := Options{GenerateId: seqIds("g"), NormalizeIndent: true, OnWarning: func(i Issue) { w = append(w, i) }}
+		_, snap, err := Unmarshal([]byte(doc), o)
+		require.NoError(t, err)
+		require.Len(t, w, 1)
+		assert.Equal(t, "/blocks/0", w[0].Path)
+		assert.Contains(t, w[0].Message, "clamped to 0")
+		root := snap.Blocks[0]
+		assert.Equal(t, []string{"a"}, root.ChildrenIds)
+	})
+
+	t.Run("bounds stay errors in lenient mode", func(t *testing.T) {
+		doc := `{"version": 1, "blocks": [{"indent": 33, "type": "paragraph", "text": "x"}]}`
+		o := Options{GenerateId: seqIds("g"), NormalizeIndent: true}
+		_, _, err := Unmarshal([]byte(doc), o)
+		require.Error(t, err)
+	})
+}
+
+// TestValidate_PrefixProperty: pre-order plus the monotonicity rule makes
+// every prefix of an exported blocks array a valid document — the truncation
+// guarantee, made testable (§4).
+func TestValidate_PrefixProperty(t *testing.T) {
+	data, err := Marshal(model.SmartBlockType_Page, richSnapshot(), testOptions())
+	require.NoError(t, err)
+	var doc struct {
+		Blocks []json.RawMessage `json:"blocks"`
+	}
+	require.NoError(t, json.Unmarshal(data, &doc))
+	require.NotEmpty(t, doc.Blocks)
+	for n := 0; n <= len(doc.Blocks); n++ {
+		parts := make([]string, 0, n)
+		for _, b := range doc.Blocks[:n] {
+			parts = append(parts, string(b))
+		}
+		prefix := `{"version": 1, "blocks": [` + strings.Join(parts, ",") + `]}`
+		require.NoError(t, Validate([]byte(prefix)), "prefix of %d blocks", n)
+	}
 }

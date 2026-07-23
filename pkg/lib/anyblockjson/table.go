@@ -133,7 +133,9 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 }
 
 // cellToJSON renders a cell: nil for empty, the string shorthand for a plain
-// paragraph, a block object (without id — derived) otherwise.
+// paragraph, a block object (without id — derived) otherwise. A cell whose
+// block has descendants renders as an array of flat blocks — the cell block
+// first at indent 0, the descendants following with their depths (§6.1 F10).
 func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	if cell == nil {
 		return nil, nil
@@ -154,7 +156,7 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 			return md, nil
 		}
 	}
-	m, err := e.blockToJSON(cell)
+	m, withChildren, err := e.blockToJSON(cell, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +167,17 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	if len(m.keys) > 0 && m.keys[0] == "id" {
 		m.keys = m.keys[1:]
 		m.vals = m.vals[1:]
+	}
+	if withChildren && len(cell.ChildrenIds) > 0 {
+		arr := []any{m}
+		if err := e.appendBlocksFlat(&arr, cell.ChildrenIds, 1, false); err != nil {
+			return nil, err
+		}
+		if len(arr) > 1 {
+			return arr, nil
+		}
+		// every descendant was dropped (visited/content-less): bare form stays
+		// canonical
 	}
 	return m, nil
 }
@@ -185,10 +198,11 @@ type jsonTableRow struct {
 	Cells    []jsonCell `json:"cells"`
 }
 
-// jsonCell is string | null | block object (§6.1).
+// jsonCell is string | null | block object | array of flat blocks (§6.1).
 type jsonCell struct {
-	Text  *string
-	Block *jsonBlock
+	Text   *string
+	Block  *jsonBlock
+	Blocks []*jsonBlock // array form: cell block first, descendants flat (F10)
 }
 
 func (c *jsonCell) UnmarshalJSON(data []byte) error {
@@ -203,6 +217,9 @@ func (c *jsonCell) UnmarshalJSON(data []byte) error {
 		}
 		c.Text = &s
 		return nil
+	}
+	if strings.HasPrefix(trimmed, `[`) {
+		return jsonUnmarshal(data, &c.Blocks)
 	}
 	var b jsonBlock
 	if err := jsonUnmarshal(data, &b); err != nil {
@@ -292,8 +309,8 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 	return table, extra, nil
 }
 
-// cellFromJSON builds a cell block (with its derived id) and any nested
-// children. Empty cells produce no blocks.
+// cellFromJSON builds a cell block (with its derived id) and, for the array
+// form, its flat descendants (F10). Empty cells produce no blocks.
 func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block, error) {
 	if cell.Text != nil {
 		if *cell.Text == "" {
@@ -312,6 +329,20 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 			}},
 		}}, nil
 	}
+	if len(cell.Blocks) > 0 {
+		// array form: first element is the cell block, the rest its
+		// descendants per the §4 F6 stack rebuild
+		blocks, err := imp.blockFromJSON(cell.Blocks[0], cellId)
+		if err != nil {
+			return nil, err
+		}
+		rest := cell.Blocks[1:]
+		extra, err := imp.flatSubtree(rest, imp.blockIndents(rest, 0), blocks[0], 0)
+		if err != nil {
+			return nil, err
+		}
+		return append(blocks, extra...), nil
+	}
 	if cell.Block == nil {
 		return nil, nil
 	}
@@ -319,7 +350,7 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 	b := cell.Block
 	if b.Type == "paragraph" && b.Text == "" && b.Color == "" && !b.Checked &&
 		b.Align == "" && b.VerticalAlign == "" && b.BackgroundColor == "" &&
-		len(b.Fields) == 0 && len(b.Children) == 0 {
+		len(b.Fields) == 0 {
 		return nil, nil
 	}
 	blocks, err := imp.blockFromJSON(b, cellId)

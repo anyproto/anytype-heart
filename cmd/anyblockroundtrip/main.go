@@ -145,7 +145,7 @@ func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, k
 	}
 	fmt.Printf("spaces to check: %d\n", len(spaces))
 
-	summary := &summary{Account: accountId, Categories: map[string]int{}}
+	summary := &summary{Account: accountId, Categories: map[string]int{}, IndentHistogram: map[int]int{}}
 	for _, s := range spaces {
 		fmt.Printf("\n== space %s (%s)\n", s.id, s.name)
 		ss, err := processSpace(ctx, mw, store, s.id, outDir, limit, keepExports)
@@ -162,6 +162,10 @@ func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, k
 		for c, n := range ss.Categories {
 			summary.Categories[c] += n
 		}
+		for d, n := range ss.IndentHistogram {
+			summary.IndentHistogram[d] += n
+		}
+		summary.CellsWithChildren += ss.CellsWithChildren
 	}
 
 	summaryPath := filepath.Join(outDir, "summary.json")
@@ -177,6 +181,9 @@ func run(mnemonic, accountId, rootPath, outDir, spaceFilter string, limit int, k
 	for _, c := range sortedKeys(summary.Categories) {
 		fmt.Printf("     %-16s %d\n", c, summary.Categories[c])
 	}
+	p50, p95, maxD := indentPercentiles(summary.IndentHistogram)
+	fmt.Printf("     block depth (max indent per object): p50=%d p95=%d max=%d\n", p50, p95, maxD)
+	fmt.Printf("     cells with children: %d\n", summary.CellsWithChildren)
 	fmt.Println("summary:", summaryPath)
 	if summary.Failed > 0 || len(summary.SpaceErrors) > 0 {
 		fmt.Println("artifacts:", filepath.Join(outDir, "artifacts"))
@@ -226,6 +233,12 @@ type spaceSummary struct {
 	Passed     int            `json:"passed"`
 	Failed     int            `json:"failed"`
 	Categories map[string]int `json:"categories,omitempty"`
+	// IndentHistogram maps each object's max block indent to how many
+	// objects have that maximum — verifies the "~6 typical max" depth datum.
+	IndentHistogram map[int]int `json:"indentHistogram,omitempty"`
+	// CellsWithChildren counts table cell blocks with real descendants (the
+	// §6.1 array-form trigger).
+	CellsWithChildren int `json:"cellsWithChildren"`
 }
 
 type spaceError struct {
@@ -234,13 +247,15 @@ type spaceError struct {
 }
 
 type summary struct {
-	Account     string         `json:"account"`
-	Total       int            `json:"total"`
-	Passed      int            `json:"passed"`
-	Failed      int            `json:"failed"`
-	Categories  map[string]int `json:"categories"`
-	Spaces      []spaceSummary `json:"spaces"`
-	SpaceErrors []spaceError   `json:"spaceErrors,omitempty"`
+	Account           string         `json:"account"`
+	Total             int            `json:"total"`
+	Passed            int            `json:"passed"`
+	Failed            int            `json:"failed"`
+	Categories        map[string]int `json:"categories"`
+	IndentHistogram   map[int]int    `json:"indentHistogram"`
+	CellsWithChildren int            `json:"cellsWithChildren"`
+	Spaces            []spaceSummary `json:"spaces"`
+	SpaceErrors       []spaceError   `json:"spaceErrors,omitempty"`
 }
 
 func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.ObjectStore,
@@ -287,12 +302,20 @@ func processSpace(ctx context.Context, mw *core.Middleware, store objectstore.Ob
 		ResolveProperties: resolvers,
 	}
 
-	ss := &spaceSummary{SpaceId: spaceId, Total: len(files), Categories: map[string]int{}}
+	ss := &spaceSummary{SpaceId: spaceId, Total: len(files), Categories: map[string]int{}, IndentHistogram: map[int]int{}}
 	for _, f := range files {
 		objectId := strings.TrimSuffix(filepath.Base(f), ".pb")
 		issues, artifacts, err := roundtripFile(f, opts)
 		if err != nil {
 			return nil, fmt.Errorf("object %s: %w", objectId, err)
+		}
+		if artifacts != nil {
+			if artifacts.json1 != nil {
+				ss.IndentHistogram[maxIndentOf(artifacts.json1)]++
+			}
+			if artifacts.original != nil {
+				ss.CellsWithChildren += countCellsWithChildren(artifacts.original.Snapshot.GetData())
+			}
 		}
 		if len(issues) == 0 {
 			ss.Passed++
@@ -393,6 +416,83 @@ func roundtripFile(path string, opts anyblockjson.Options) ([]issue, *artifactSe
 		fail("data_loss", "%s", d)
 	}
 	return issues, arts, nil
+}
+
+// maxIndentOf reads the deepest block indent in an exported document — the
+// per-object depth datum for the sweep histogram.
+func maxIndentOf(jsonDoc []byte) int {
+	var doc struct {
+		Blocks []struct {
+			Indent int `json:"indent"`
+		} `json:"blocks"`
+	}
+	if err := json.Unmarshal(jsonDoc, &doc); err != nil {
+		return 0
+	}
+	maxIndent := 0
+	for _, b := range doc.Blocks {
+		if b.Indent > maxIndent {
+			maxIndent = b.Indent
+		}
+	}
+	return maxIndent
+}
+
+// countCellsWithChildren counts table cell blocks carrying real descendants —
+// the trigger for the §6.1 array-form cell encoding.
+func countCellsWithChildren(base *model.SmartBlockSnapshotBase) int {
+	if base == nil {
+		return 0
+	}
+	byId := map[string]*model.Block{}
+	for _, b := range base.Blocks {
+		if b != nil {
+			byId[b.Id] = b
+		}
+	}
+	n := 0
+	for _, b := range base.Blocks {
+		if b == nil {
+			continue
+		}
+		if _, ok := b.Content.(*model.BlockContentOfTableRow); !ok {
+			continue
+		}
+		for _, cid := range b.ChildrenIds {
+			if cell := byId[cid]; cell != nil && len(cell.ChildrenIds) > 0 {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// indentPercentiles reads p50/p95/max of the per-object max-indent histogram.
+func indentPercentiles(hist map[int]int) (p50, p95, maxDepth int) {
+	total := 0
+	depths := make([]int, 0, len(hist))
+	for d, n := range hist {
+		depths = append(depths, d)
+		total += n
+	}
+	if total == 0 {
+		return 0, 0, 0
+	}
+	sort.Ints(depths)
+	maxDepth = depths[len(depths)-1]
+	cum := 0
+	got50, got95 := false, false
+	for _, d := range depths {
+		cum += hist[d]
+		if !got50 && cum*100 >= total*50 {
+			p50, got50 = d, true
+		}
+		if !got95 && cum*100 >= total*95 {
+			p95, got95 = d, true
+			break
+		}
+	}
+	return p50, p95, maxDepth
 }
 
 // firstDiff reports the first differing line between two JSON generations.
@@ -753,11 +853,21 @@ func (r *spaceResolvers) PropertyById(id string) (anyblockjson.PropertyDefinitio
 	if err != nil || rel == nil {
 		return anyblockjson.PropertyDefinition{}, false
 	}
-	return anyblockjson.PropertyDefinition{
+	def := anyblockjson.PropertyDefinition{
 		Key:    domain.RelationKey(rel.Key),
 		Name:   rel.Name,
 		Format: rel.Format,
-	}, true
+	}
+	// cache the point-lookup hit both ways: some relations resolve by id but
+	// are absent from the listing AND the by-key lookup (deleted or index
+	// gap — anomaly #9 class), so without this PropertyId cannot invert the
+	// key export just produced and the entry is dropped on re-export
+	// (resolvers must be equivalent both directions, SPEC §2a/§13)
+	r.relById[id] = def
+	if _, taken := r.relKeyToId[rel.Key]; !taken {
+		r.relKeyToId[rel.Key] = id
+	}
+	return def, true
 }
 
 func (r *spaceResolvers) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
@@ -769,6 +879,7 @@ func (r *spaceResolvers) PropertyId(def anyblockjson.PropertyDefinition) (string
 	if err != nil || rel == nil {
 		return "", false
 	}
+	r.relKeyToId[rel.Key] = rel.Id
 	return rel.Id, true
 }
 
