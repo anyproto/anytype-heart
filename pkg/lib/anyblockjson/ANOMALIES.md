@@ -154,11 +154,14 @@ The v0.6 flat-blocks change carried assumptions the flat-encoding sweep
   the §6.1 array form is implemented losslessly anyway (and #2's historical
   case proves the class exists), but it is effectively absent from current
   data.
-- **Tables nested inside table cells**: none — zero `import_error` failures,
-  so the non-recursive `cellBlock` restriction (§12) matches reality.
+- **Tables nested inside table cells**: none — zero failures, so the
+  non-recursive `cellBlock` restriction (§12) matches reality. Should such
+  data ever appear, Marshal now rejects it loudly (`export_error` in the
+  sweep) instead of emitting a document its own validation rejects; the
+  depth bound (32) is enforced at export the same way.
 - **Depth histogram** (per-object max indent): 0 → 34 057, 1 → 816,
   2 → 323, 3 → 119, 4 → 37, 5 → 5, 6 → 6, 7–8 → 2, and a long-tail of
-  8 outliers at 16–26. The "~6 typical max" datum holds for the bulk; the
+  7 outliers at 16–26. The "~6 typical max" datum holds for the bulk; the
   outliers stay comfortably under the 32 bound (`indent` > 32 is a
   validation error).
 - **Run 4 result**: 21 failures = 7 accepted duplicate-name option swaps

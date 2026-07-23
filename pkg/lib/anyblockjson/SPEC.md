@@ -340,7 +340,7 @@ fails schema validation). Every block is an object:
 - **Validity** (strict, the default): the first block's indent MUST be 0,
   and a block's indent MUST be at most one greater than its predecessor's.
   Violations are **errors**, path-addressed and naming both indents
-  (`blocks[7]: indent 3 follows indent 1 — a block can be at most one level
+  (`/blocks/7: indent 3 follows indent 1 — a block can be at most one level
   deeper than its predecessor`). A consequence worth stating: every prefix
   of a valid `blocks` array is itself valid — a truncated document parses as
   a well-formed prefix of blocks (enforced by test).
@@ -977,7 +977,9 @@ default full-id export.
   than they support, with a dedicated error naming both versions (not a
   generic schema failure).
 - Within version 1, evolution is **additive only**: new block types, new
-  props, new mark syntax. The published schema is re-released with a minor
+  props, new mark syntax. This rule binds from the first non-draft release;
+  while the format is a draft with no external consumers, breaking changes
+  may occur under version 1 (as the v0.6 children→indent change did). The published schema is re-released with a minor
   suffix (`1.1`, `1.2`, …); documents citing an older `$schema` stay valid.
   When validation fails and the document's `$schema` minor is newer than the
   reader's, the error must say "produced by a newer version" rather than
@@ -1015,7 +1017,10 @@ Export emits `blocks` in pre-order with exact depths, so export can never
 produce a monotonicity violation and the flat shape does not disturb
 byte-stability. Strict inputs add nothing to `N(S)`; for lenient
 (`NormalizeIndent`) inputs, the clamped indents are part of the documented
-normalization.
+normalization. **Marshal never emits a document its own validation
+rejects**: a snapshot nested deeper than the indent bound (32) fails export
+with an error naming the block, as does a table anywhere inside a table
+cell (§6.1).
 
 The snapshot's block graph is untrusted: export emits each block **once**
 (the first parent listing it wins), which both terminates on cyclic

@@ -42,9 +42,11 @@ type jsonRootEscape struct {
 // jsonBlock is the union of every §5 block shape; the schema guarantees only
 // type-appropriate fields are present.
 type jsonBlock struct {
-	Indent int    `json:"indent"`
-	Id     string `json:"id"`
-	Type   string `json:"type"`
+	// json.Number, not int: the schema's integer type admits integer-valued
+	// floats like 1.0, and Unmarshal must accept everything Validate does
+	Indent json.Number `json:"indent"`
+	Id     string      `json:"id"`
+	Type   string      `json:"type"`
 
 	Checked   bool   `json:"checked"`
 	Color     string `json:"color"`
@@ -272,8 +274,11 @@ func wrapToList(v *types.Value) *types.Value {
 func (imp *importer) blockIndents(jbs []*jsonBlock, base int) []int {
 	indents := make([]int, len(jbs))
 	for i, jb := range jbs {
-		if jb != nil {
-			indents[i] = jb.Indent
+		if jb == nil || jb.Indent == "" {
+			continue
+		}
+		if v, ok := jsonIntValue(jb.Indent); ok {
+			indents[i] = int(v)
 		}
 	}
 	if imp.opts.NormalizeIndent {

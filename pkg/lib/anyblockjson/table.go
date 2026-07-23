@@ -163,6 +163,13 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 	if m == nil {
 		return nil, nil
 	}
+	// cells cannot contain tables — the schema's recursion cut (§6.1, §12).
+	// Erring here keeps the invariant that Marshal never emits output its
+	// own Validate rejects; the prod sweep found zero such cells, so this is
+	// an adversarial/legacy guard, not a live path.
+	if blockJSONType(m) == "table" {
+		return nil, fmt.Errorf("cell %s: a table block cannot be a cell (cells cannot contain tables)", cell.Id)
+	}
 	// cell ids are derived, never serialized (§6.1)
 	if len(m.keys) > 0 && m.keys[0] == "id" {
 		m.keys = m.keys[1:]
@@ -173,6 +180,11 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 		if err := e.appendBlocksFlat(&arr, cell.ChildrenIds, 1, false); err != nil {
 			return nil, err
 		}
+		for _, el := range arr[1:] {
+			if bm, ok := el.(*omap); ok && blockJSONType(bm) == "table" {
+				return nil, fmt.Errorf("cell %s: a table block among cell descendants cannot be represented (cells cannot contain tables)", cell.Id)
+			}
+		}
 		if len(arr) > 1 {
 			return arr, nil
 		}
@@ -180,6 +192,17 @@ func (e *exporter) cellToJSON(cell *model.Block) (any, error) {
 		// canonical
 	}
 	return m, nil
+}
+
+// blockJSONType reads the rendered block's type discriminator.
+func blockJSONType(m *omap) string {
+	for i, k := range m.keys {
+		if k == "type" {
+			s, _ := m.vals[i].(string)
+			return s
+		}
+	}
+	return ""
 }
 
 //

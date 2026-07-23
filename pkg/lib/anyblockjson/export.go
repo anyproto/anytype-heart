@@ -424,6 +424,9 @@ func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLeve
 		if topLevel && isStructural(b) {
 			continue
 		}
+		if depth > maxBlockIndent {
+			return fmt.Errorf("block %s: nesting depth %d exceeds the format bound %d", id, depth, maxBlockIndent)
+		}
 		m, withChildren, err := e.blockToJSON(b, depth)
 		if err != nil {
 			return err
