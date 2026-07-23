@@ -32,11 +32,19 @@ type Options struct {
 	ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
 	ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
 	OmitIds           bool             // export only: drop every id (§9)
-	CompactIds        bool             // export only: shorten ids, emit refs legend (§9a)
+	CompactIds        bool             // export only: shorthand for CompactObjectRefs+CompactBlockLabels (§9a)
+	CompactObjectRefs bool             // export only: shorten object refs via the refs legend (§9a; lossless)
+	CompactBlockLabels bool            // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; legend-less, lossy)
 	GenerateId        func() string    // import only: id generator for missing ids; nil = random 24-hex
 	NormalizeIndent   bool             // import only: clamp over-deep indents instead of rejecting (§4)
 	OnWarning         func(Issue)      // optional sink for warning-grade issues (NormalizeIndent clamps)
 }
+
+// compactObjectRefs reports whether object-ref compaction (refs legend) is on.
+func (o Options) compactObjectRefs() bool { return o.CompactObjectRefs || o.CompactIds }
+
+// compactBlockLabels reports whether doc-local id relabeling is on.
+func (o Options) compactBlockLabels() bool { return o.CompactBlockLabels || o.CompactIds }
 
 const (
 	compactIdMinLen = 5
@@ -74,7 +82,7 @@ func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase
 	}
 	e := &exporter{opts: opts, snapshot: snapshot, sbType: sbType, blocks: map[string]*model.Block{}, visited: map[string]bool{}}
 	e.indexBlocks()
-	if opts.CompactIds {
+	if opts.compactObjectRefs() || opts.compactBlockLabels() {
 		e.buildCompactIds()
 	}
 	doc, err := e.buildDoc(sbType)
@@ -445,7 +453,7 @@ func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLeve
 }
 
 func (e *exporter) localId(id string) string {
-	if e.opts.CompactIds {
+	if e.opts.compactBlockLabels() {
 		if short, ok := e.localIds[id]; ok {
 			return short
 		}
@@ -655,7 +663,7 @@ func (e *exporter) textToJSON(m *omap, b *model.Block, t *model.BlockContentText
 // compactMarks rewrites mention/object mark targets through the refs legend
 // without mutating the snapshot (§9a).
 func (e *exporter) compactMarks(marks []*model.BlockContentTextMark) []*model.BlockContentTextMark {
-	if !e.opts.CompactIds || len(marks) == 0 {
+	if !e.opts.compactObjectRefs() || len(marks) == 0 {
 		return marks
 	}
 	out := make([]*model.BlockContentTextMark, 0, len(marks))
@@ -716,7 +724,7 @@ func stringsToAny(ss []string) []any {
 //
 
 func (e *exporter) compactObjectId(id string) string {
-	if e.opts.CompactIds && id != "" {
+	if e.opts.compactObjectRefs() && id != "" {
 		if label, ok := e.objectRefs[id]; ok {
 			return label
 		}
@@ -847,15 +855,23 @@ func (e *exporter) buildCompactIds() {
 	for id := range locals {
 		fullIds[id] = true
 	}
-	e.objectRefs = suffixLabels(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
-		return fullIds[candidate] || !isValidRefsKey(candidate)
-	})
-	// local relabels stay dash-free: '-' is the derived-cell-id separator
-	// and forbidden in row/column ids (§6.1)
-	e.localIds = suffixLabels(setToSlice(locals), compactIdMinLen, isInvalidLocalLabel)
-	// short ids label as themselves; drop those the schema charsets reject
-	dropInvalidLabels(e.objectRefs, isValidRefsKey)
-	dropInvalidLabels(e.localIds, func(label string) bool { return !isInvalidLocalLabel(label) })
+	// each half builds only when its flag is on (C4 split: object-ref
+	// compaction is lossless via the legend, block relabeling is lossy);
+	// the collision-avoid set always covers both id populations because
+	// un-relabeled ids stay in the document verbatim
+	if e.opts.compactObjectRefs() {
+		e.objectRefs = suffixLabels(setToSlice(objects), compactIdMinLen, func(candidate string) bool {
+			return fullIds[candidate] || !isValidRefsKey(candidate)
+		})
+		// short ids label as themselves; drop those the schema charsets reject
+		dropInvalidLabels(e.objectRefs, isValidRefsKey)
+	}
+	if e.opts.compactBlockLabels() {
+		// local relabels stay dash-free: '-' is the derived-cell-id separator
+		// and forbidden in row/column ids (§6.1)
+		e.localIds = suffixLabels(setToSlice(locals), compactIdMinLen, isInvalidLocalLabel)
+		dropInvalidLabels(e.localIds, func(label string) bool { return !isInvalidLocalLabel(label) })
+	}
 }
 
 // isValidRefsKey reports whether s matches the schema's refs-key pattern

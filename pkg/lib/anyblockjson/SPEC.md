@@ -915,8 +915,15 @@ on such blocks are dropped on export (§5).
 ### 9a. Compact ids
 
 Full object ids are ~59-character CIDs; a single mention costs more tokens
-than the sentence around it. The `CompactIds` marshal option (§13) shortens
-ids and adds a `refs` legend to the envelope:
+than the sentence around it. Compaction has two independent halves (§13):
+`CompactObjectRefs` shortens object references and adds a `refs` legend to
+the envelope (lossless — the legend inverts it); `CompactBlockLabels`
+relabels doc-local block/row/column/view ids to short suffixes (legend-less,
+lossy). `CompactIds` remains as shorthand for both. The split exists because
+consumers legitimately want one without the other: API v2 default reads
+compact object refs but keep block ids full for edit round-trips, while
+read-only outline/prompt shapes use block labels (API spec C4). Legend
+example:
 
 ```json
 "refs": { "miovm": "bafyreieqh63jv…miovm", "roman": "bafyreidfmzjh…" }
@@ -943,7 +950,8 @@ additionally resolve unresolved ids by unique suffix against the target
 space (useful for hand-written documents referencing known objects); that
 behavior belongs to the wiring, not this package.
 
-**Coverage** — with `CompactIds`, export rewrites every id-valued surface:
+**Coverage** — with `CompactObjectRefs` (or `CompactIds`), export rewrites
+every id-valued surface:
 
 | Surface | Compacted |
 |---|---|
@@ -957,7 +965,8 @@ behavior belongs to the wiring, not this package.
 | filter `value` / sort `customOrder` entries of `objects`/`files` properties | yes |
 | envelope `id`, `refs` values themselves | **never** |
 
-Block/row/column/view ids are relabeled to their last 5 characters
+With `CompactBlockLabels` (or `CompactIds`), block/row/column/view ids are
+relabeled to their last 5 characters
 (doc-local, no legend needed — same rule as refs keys). Labels are
 constrained to the schema charsets (refs keys `[A-Za-z0-9_-]{1,64}`, local
 relabels additionally dash-free); an id whose suffix collides or yields no
@@ -1151,7 +1160,9 @@ type Options struct {
     ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
     ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
     OmitIds           bool             // export only: drop every id (§9)
-    CompactIds        bool             // export only: shorten ids, emit refs legend (§9a)
+    CompactIds        bool             // export only: shorthand for the two flags below (§9a)
+    CompactObjectRefs bool             // export only: shorten object refs, emit refs legend (§9a; lossless)
+    CompactBlockLabels bool            // export only: relabel doc-local block/row/column/view ids (§9a; lossy)
     GenerateId        func() string    // import only: id generator for missing ids;
                                       // nil = random 24-hex (editor-shaped). The wiring
                                       // passes the editor's generator.
