@@ -1,0 +1,1 @@
+{"version":1,"type":"page","properties":{"name":"Project brief"},"blocks":[{"id":"headplan","type":"heading2","text":"Plan"},{"id":"paraplan","type":"paragraph","text":"Build the importer first, then the exporter."},{"id":"headrisk","type":"heading2","text":"Risks"},{"id":"pararisk","type":"paragraph","text":"The legacy data may not round-trip."}]}

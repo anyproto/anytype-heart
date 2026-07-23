@@ -28,16 +28,16 @@ type OptionResolver interface {
 
 // Options configures Marshal and Unmarshal (§13).
 type Options struct {
-	ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
-	ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
-	ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
-	OmitIds           bool             // export only: drop every id (§9)
-	CompactIds        bool             // export only: shorthand for CompactObjectRefs+CompactBlockLabels (§9a)
-	CompactObjectRefs bool             // export only: shorten object refs via the refs legend (§9a; lossless)
-	CompactBlockLabels bool            // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; legend-less, lossy)
-	GenerateId        func() string    // import only: id generator for missing ids; nil = random 24-hex
-	NormalizeIndent   bool             // import only: clamp over-deep indents instead of rejecting (§4)
-	OnWarning         func(Issue)      // optional sink for warning-grade issues (NormalizeIndent clamps)
+	ResolveFormat      FormatResolver   // optional; nil = bundle-only resolution (§3)
+	ResolveOptions     OptionResolver   // optional; nil = option values pass through as ids
+	ResolveProperties  PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
+	OmitIds            bool             // export only: drop every id (§9)
+	CompactIds         bool             // export only: shorthand for CompactObjectRefs+CompactBlockLabels (§9a)
+	CompactObjectRefs  bool             // export only: shorten object refs via the refs legend (§9a; lossless)
+	CompactBlockLabels bool             // export only: relabel doc-local block/row/column/view ids to short suffixes (§9a; legend-less, lossy)
+	GenerateId         func() string    // import only: id generator for missing ids; nil = random 24-hex
+	NormalizeIndent    bool             // import only: clamp over-deep indents instead of rejecting (§4)
+	OnWarning          func(Issue)      // optional sink for warning-grade issues (NormalizeIndent clamps)
 }
 
 // compactObjectRefs reports whether object-ref compaction (refs legend) is on.
