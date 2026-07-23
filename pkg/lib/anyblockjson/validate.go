@@ -247,6 +247,21 @@ func semanticIssues(doc map[string]any) []Issue {
 		}
 	}
 
+	if _, ok := doc["typeProperties"]; ok {
+		if kind, _ := doc["kind"].(string); kind != "objectType" {
+			addIssue("/typeProperties", `typeProperties is only valid on type documents (kind "objectType")`)
+		}
+		// typeProperties replaces the recommended-relation lists (§2a): a
+		// document carrying both is ambiguous
+		if props, _ := doc["properties"].(map[string]any); props != nil {
+			for _, l := range recommendedListKeys {
+				if _, dup := props[l.detailKey]; dup {
+					addIssue("/properties/"+l.detailKey, "conflicts with typeProperties, which replaces this list")
+				}
+			}
+		}
+	}
+
 	seenIds := map[string]string{} // id -> path of first occurrence
 	claimId := func(id, path string) {
 		if id == "" {
