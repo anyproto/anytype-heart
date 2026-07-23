@@ -74,7 +74,15 @@ func newIdempotencyRouter(store *idempotencyStore, calls *int) *gin.Engine {
 }
 
 func postWithKey(router *gin.Engine, key, body string) *httptest.ResponseRecorder {
-	req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/things", strings.NewReader(body))
+	return postWithKeyAndQuery(router, key, body, "")
+}
+
+func postWithKeyAndQuery(router *gin.Engine, key, body, query string) *httptest.ResponseRecorder {
+	target := "/v2/spaces/space1/things"
+	if query != "" {
+		target += "?" + query
+	}
+	req := httptest.NewRequest(http.MethodPost, target, strings.NewReader(body))
 	if key != "" {
 		req.Header.Set(IdempotencyKeyHeader, key)
 	}
@@ -113,6 +121,23 @@ func TestEnsureIdempotency(t *testing.T) {
 		// then
 		assert.Equal(t, http.StatusConflict, conflict.Code)
 		assert.Contains(t, conflict.Body.String(), `"idempotency_conflict"`)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("a cached dry run never replays as the real request (C9)", func(t *testing.T) {
+		// given: same key and body, but the first request was ?dry_run=true —
+		// the query string is part of the request identity
+		calls := 0
+		router := newIdempotencyRouter(newIdempotencyStore(8), &calls)
+		dry := postWithKeyAndQuery(router, "key1", `{"a":1}`, "dry_run=true")
+
+		// when
+		real := postWithKey(router, "key1", `{"a":1}`)
+
+		// then
+		assert.Equal(t, http.StatusOK, dry.Code)
+		assert.Equal(t, http.StatusConflict, real.Code, "different query under one key is a conflict, not a replay")
+		assert.Contains(t, real.Body.String(), `"idempotency_conflict"`)
 		assert.Equal(t, 1, calls)
 	})
 

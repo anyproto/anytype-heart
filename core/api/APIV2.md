@@ -1,6 +1,6 @@
 # Anytype Local API v2 — specification and phased plan
 
-Status: **draft v0.3.1** · 2026-07-23 · GO-7383 follow-on
+Status: **draft v0.3.2** · 2026-07-24 · GO-7383 follow-on
 Depends on: AnyBlock JSON v1 flat (`pkg/lib/anyblockjson/SPEC.md` v0.6).
 Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) and
 `pkg/lib/anyblockjson/FLAT.md` — decisions cite sections there instead of
@@ -564,3 +564,76 @@ semantic only) + Phase 1 read endpoints (`GET object` with
 Exit criterion: Phase 1 reads pass the fixture task set at parity-or-better
 vs the v1 GET flow (fewer tokens for the same content), and the scoring
 primitives run against the fixtures. Phases 2–7 are out of this increment.
+
+### 8.1 Phase-2 implementation notes (v0.3.2 — decisions as built)
+
+**The create path, decided.** One mechanism for every create:
+`anyblockjson.Unmarshal` → `state.NewDocFromSnapshot` →
+`objectcreator.CreateSmartBlockFromState` (a new `apicore.ObjectCreator`
+port + `core/api` adapter, the same pattern as Phase 0's `ObjectReader`).
+The whole document lands as the object's **initial state — one change set**,
+which is what makes composite creates (a set with its dataview) honestly
+atomic (R10). Rejected alternatives: the import engine's
+`common/objectcreator.Create` (needs the whole import DataObject machinery —
+id remapping, payload pre-creation, file syncers — the wrong altitude for a
+single-object API create) and create-empty-then-`ResetToVersion` (two change
+sets, plus the `canUpdateObject` exclusions; that diff-apply shape is
+Phase 3b's PUT, not create). §7 structural blocks (title/description) stay
+absent per SPEC §7 — the editor regenerates them at first open. Bundled
+types/relations a document references are installed on the way (mirrors the
+import path's `installBundledRelationsAndTypes`); the `origin` detail is
+stamped `api`. The create response's `etag` comes from an immediate Phase-1
+read-back (best effort — failure degrades to a warning, never a 5xx after a
+successful create).
+
+**Create-vs-reject policy (R9), explicit.** Select/multiSelect option
+*names* → **create-missing** everywhere they appear as values (SPEC §3);
+`typeProperties` keys on POST/PATCH types → **create-missing** (SPEC §2a);
+property keys in an object's `properties` map → **reject** with a
+path-addressed did-you-mean listing the space's actual keys; type keys
+(`type`, `templateFor`, a set's `type`) → **reject** with did-you-mean;
+set filter/sort/view property keys → **reject** unless among the queried
+type's recommended keys (+ `name`), listing the type's actual keys.
+Did-you-mean ranks by prefix/containment and edit distance ≤ 2. Created
+side effects (real or would-be, on dry runs) are reported under `created`
+in the response.
+
+**Types.** POST /types routes through the `ObjectCreateObjectType` RPC (it
+owns unique-key derivation, recommended-relation filling/install, layout
+detail, orderId, bundled-template install) with details built from the
+unmarshaled type document; `typeProperties` resolves through the
+create-missing resolver first. `recommendedLayout` accepts the layout
+**name** (`"todo"` — the §2a worked example's shape) as well as the stored
+number; note the anyblockjson exporter currently passes the stored int64
+through verbatim, so the SPEC §2a example and export disagree (flagged as a
+SPEC bug, resolution pending). A type document carrying `blocks` (its
+dataview) is **rejected explicitly** for now — the editor generates default
+views at first open (the case SPEC §2a already blesses); silently dropping
+the views would violate C11's write rule. Deferral, not a decision.
+
+**Sets.** The synthesized set document pins the dataview block id to
+`"dataview"` (`template.DataviewBlockId`) — any other id makes the editor
+add a second, default dataview at first open. The compact `filter` string
+returns 501 `not_implemented` steering to `filters` (the parser is the
+Phase-4 build item); `filter`+`filters` → 400 `ambiguous_input` (C6);
+`views` is mutually exclusive with top-level `filters`/`sorts`.
+
+**Shortcut markdown.** `{type,name,properties,markdown}` creates from the
+synthesized document, then lands `markdown` via the v1 block-paste path —
+the one place a create takes two change sets, accepted as a convenience
+until the markdown→flat-blocks parser (Phase-5 build item) exists; dry runs
+validate type/properties only and say so in `warnings`.
+
+**Idempotency hash covers the query string.** `(space, key)` →
+`sha256(body ‖ 0x00 ‖ rawQuery)`: a cached `?dry_run=true` result must never
+replay as its later real twin — same key with a different query is a 409
+`idempotency_conflict`, per C8's "different body" rule read as "different
+request".
+
+**Discovery (§5) as shipped.** `GET /v2/schemas` + `/v2/schemas/{kind}` for
+kinds `object · shortcut · type · template · property · set · collection ·
+file · filters`. AnyBlock-document kinds serve the format's embedded schema
+verbatim; the rest are hand-written strict (C13) schemas; `filters` is the
+documented recursive exception. Every served example passes
+`anyblockjson.Validate` (enforced by test). `/v2/schemas/ops/{op}` waits for
+Phase 3 (no ops exist yet).

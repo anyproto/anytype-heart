@@ -188,8 +188,14 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 			return
 		}
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))
-		hash := sha256.Sum256(body)
-		bodyHash := hex.EncodeToString(hash[:])
+		// the hash covers body AND query string: a ?dry_run=true request and
+		// its later real twin share a body but are different requests — a
+		// cached dry-run result must never replay as the real one (C8/C9)
+		hasher := sha256.New()
+		hasher.Write(body)
+		hasher.Write([]byte{0})
+		hasher.Write([]byte(c.Request.URL.RawQuery))
+		bodyHash := hex.EncodeToString(hasher.Sum(nil))
 		spaceId := c.Param("space_id")
 
 		stored, replay, owner := store.begin(spaceId, key)
