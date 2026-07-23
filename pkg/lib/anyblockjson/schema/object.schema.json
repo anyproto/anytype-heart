@@ -24,6 +24,7 @@
     "templateFor": { "type": "string" },
     "key": { "type": "string" },
     "properties": { "$ref": "#/$defs/propertyMap" },
+    "typeProperties": { "type": "array", "items": { "$ref": "#/$defs/typeProperty" } },
     "refs": {
       "type": "object",
       "propertyNames": { "pattern": "^[A-Za-z0-9_-]{1,64}$" },
@@ -171,8 +172,7 @@
               "size": { "type": "integer" },
               "style": { "enum": ["auto", "link", "embed"] },
               "addedAt": { "type": "string" },
-              "hash": { "type": "string" },
-              "children": false
+              "hash": { "type": "string" }
             }
           }
         },
@@ -311,6 +311,23 @@
           "properties": { "id": false }
         }
       ]
+    },
+    "typeProperty": {
+      "type": "object",
+      "properties": {
+        "key": { "type": "string", "minLength": 1 },
+        "name": { "type": "string" },
+        "format": {
+          "enum": [
+            "text", "shortText", "number", "select", "multiSelect", "date",
+            "files", "checkbox", "url", "email", "phone", "emoji", "objects",
+            "properties"
+          ]
+        },
+        "section": { "enum": ["featured", "hidden", "file"] }
+      },
+      "required": ["key"],
+      "additionalProperties": false
     },
     "dataviewProperty": {
       "type": "object",

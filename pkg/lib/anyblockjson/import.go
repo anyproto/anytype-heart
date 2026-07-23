@@ -18,19 +18,20 @@ func jsonUnmarshal(data []byte, v any) error {
 }
 
 type jsonDoc struct {
-	Schema      string            `json:"$schema"`
-	Version     int               `json:"version"`
-	Kind        string            `json:"kind"`
-	Id          string            `json:"id"`
-	Type        string            `json:"type"`
-	TemplateFor string            `json:"templateFor"`
-	Key         string            `json:"key"`
-	Properties  map[string]any    `json:"properties"`
-	Refs        map[string]string `json:"refs"`
-	Blocks      []*jsonBlock      `json:"blocks"`
-	Items       []string          `json:"items"`
-	Store       map[string]any    `json:"store"`
-	Root        *jsonRootEscape   `json:"root"`
+	Schema      string              `json:"$schema"`
+	Version     int                 `json:"version"`
+	Kind        string              `json:"kind"`
+	Id          string              `json:"id"`
+	Type        string              `json:"type"`
+	TemplateFor string              `json:"templateFor"`
+	Key         string              `json:"key"`
+	Properties  map[string]any      `json:"properties"`
+	TypeProps   *[]jsonTypeProperty `json:"typeProperties"` // pointer: [] and absent differ (§2a)
+	Refs        map[string]string   `json:"refs"`
+	Blocks      []*jsonBlock        `json:"blocks"`
+	Items       []string            `json:"items"`
+	Store       map[string]any      `json:"store"`
+	Root        *jsonRootEscape     `json:"root"`
 }
 
 type jsonRootEscape struct {
@@ -160,6 +161,7 @@ func (imp *importer) build() (model.SmartBlockType, *model.SmartBlockSnapshotBas
 			details.Fields[key] = v
 		}
 	}
+	imp.applyTypeProperties(details)
 
 	root := &model.Block{
 		Id:      objectId,
@@ -242,8 +244,12 @@ func (imp *importer) buildCollections() *types.Struct {
 }
 
 // propertyValue decodes a property per its resolved format (§3). Scalars of
-// list-shaped formats normalize to single-element lists (§11).
+// list-shaped formats normalize to single-element lists (§11). An explicit
+// null stays a null value — presence of the key is preserved (§3).
 func (imp *importer) propertyValue(key string, v any) *types.Value {
+	if v == nil {
+		return &types.Value{Kind: &types.Value_NullValue{}}
+	}
 	format, ok := imp.resolveFormat(key)
 	if !ok {
 		return jsonToProtoValue(v)
@@ -408,7 +414,6 @@ func (imp *importer) blockFromJSON(jb *jsonBlock, forcedId string) ([]*model.Blo
 		b.Content = &model.BlockContentOfText{Text: t}
 	case fileTypeNames.has(jb.Type):
 		b.Content = &model.BlockContentOfFile{File: imp.fileFromJSON(jb)}
-		withChildren = false
 	case jb.Type == "bookmark":
 		b.Content = &model.BlockContentOfBookmark{Bookmark: imp.bookmarkFromJSON(jb)}
 		withChildren = false

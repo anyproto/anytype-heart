@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.4** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.5** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -24,6 +24,12 @@ canonical); mark-boundary whitespace and same-type-overlap rules added;
 global absent-vs-empty canon; table arity/cell-id rules and string-shorthand
 cells; column `visible` flipped to `hidden`; `collections` renamed `store`;
 Header4 export defined; OmitIds scope widened.
+
+Changes from v0.4: type documents specified (§2a) — `kind: "objectType"` with a
+`typeProperties` array replacing the four recommended-relation id lists; a
+type's dataview exports as an ordinary block when present; per-type
+validation schemas become one-way derived artifacts (retiring the
+`pkg/lib/schema` x-key approach).
 
 ## 1. Goals
 
@@ -96,6 +102,7 @@ Fields, in **canonical order** (§4):
 | `templateFor` | string | no | Only for templates: the target type key (`objectTypes[1]`). Present with `type != "template"` → validation error. |
 | `key` | string | no | Identity key of *system* objects (types, properties); matches the public API's `key`. Never emitted for ordinary documents. |
 | `properties` | object | no | The object's properties, §3. |
+| `typeProperties` | array | no | Only for `kind: "objectType"` documents: the type's property definitions, §2a. Present on any other kind → validation error. |
 | `refs` | object | no | Short-id legend for compact documents (§9a): maps labels to full object ids. Placed before `blocks` so the legend precedes use when read linearly. |
 | `blocks` | array | no | Children of the (implicit) root block, §4. |
 | `items` | array | no | For collection objects: member object ids, in order (from the internal collection store key `objects`). Present on a non-collection document → validation error — enforced by the import *wiring* (collection-ness resolves against the space's types, not offline); the package's `Validate` checks structure only (implementation decision). |
@@ -117,6 +124,84 @@ Snapshot fields **excluded** from the format:
 - `removedCollectionKeys` — dropped (meaningful only for change replay, not
   for fresh imports).
 - `fileKeys`, `extraRelations` — deprecated in proto.
+
+### 2a. Type documents (`kind: "objectType"`)
+
+A type is not just a schema: it also owns the views over its objects
+(columns, filters, sorts — presented through a dataview). Both live on one
+object in the underlying model, so the format keeps them in **one
+document** — a type never splits across files, and no JSON Schema file is
+involved.
+
+```json
+{
+  "version": 1,
+  "kind": "objectType",
+  "key": "task",
+  "properties": { "name": "Task", "iconEmoji": "✅", "recommendedLayout": "todo" },
+  "typeProperties": [
+    { "key": "dueDate",  "name": "Due date", "format": "date",    "section": "featured" },
+    { "key": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
+    { "key": "status",   "name": "Status",   "format": "select" }
+  ],
+  "blocks": [ { "type": "dataview", … } ]
+}
+```
+
+The type's own details (`name`, `iconEmoji`, `recommendedLayout`, …) stay in
+`properties` under their stored keys (§3). The four recommended-relation id
+lists (`recommendedFeaturedRelations`, `recommendedRelations`,
+`recommendedFileRelations`, `recommendedHiddenRelations`) are **replaced**
+by `typeProperties` — resolved entries, never raw relation ids.
+
+`typeProperties` entry fields (canonical order):
+
+| Field | Type | Req | Notes |
+|---|---|---|---|
+| `key` | string | **yes** | Property key (as stored). |
+| `name` | string | no | Display name. Import uses it only when the property must be created; an existing property's name wins. |
+| `format` | string | no | Property format (§3 names). Same import rule as `name`; a conflict with an existing property's format is an error at the wiring level (the package cannot see the space). |
+| `section` | string | no | `featured` \| `hidden` \| `file` — which list the property belongs to. Absent = a regular (sidebar) property. |
+
+Export emits entries in section order featured → regular → file → hidden,
+preserving order within each list, and drops ids that no longer resolve to a
+property (including the `_missing_object` sentinel of already-dangling
+references); legacy lists that store bare property **keys** instead of ids
+resolve through the reverse lookup, falling back to the bundle for system
+properties. The canonical form writes `name` and `format` on every entry
+(`format` defaults to `text` when absent on input), and writes the
+`typeProperties` array **even when empty** — its presence is what tells
+import to rebuild the lists. Import then rebuilds all four id lists — empty
+sections become explicit empty lists, matching how type objects store them —
+resolving each `key` against the space and creating missing properties (the
+same policy as select option names, §3). A document without a
+`typeProperties` field leaves the lists untouched.
+
+Property ids are space-local, so the rewrite requires a property resolver
+(`Options.ResolveProperties`, §13). Without one, export leaves the four
+lists in `properties` as raw id lists, and import passes unresolved keys
+through in place of ids for the wiring to reconcile — the same degradation
+as option values without an option resolver (§3). A document carrying both
+`typeProperties` and any of the four raw lists in `properties` is ambiguous
+and fails validation.
+
+**Dataview.** A type's views live in a single dataview block on the type
+object itself. When the snapshot contains it, export writes it as an
+ordinary `dataview` block in `blocks` (§6.2) — most types customize their
+views, so this is the common case and it round-trips losslessly. When the
+document has no dataview block, import leaves it absent and the editor
+generates the default at first open (from the recommended properties, as it
+does today); import never fabricates or rewrites one. Export performs no
+"is this the default?" comparison — presence in the snapshot is the only
+criterion.
+
+**Derived schemas.** `kind: "objectType"` documents are the canonical type
+definition. Per-type validation artifacts — a JSON Schema constraining
+objects of that type, a TypeScript-style declaration, a prompt-ready
+property table — are **generated one-way** from the type document (planned
+`GenerateSchema`, §13) and are never imported or treated as authoritative.
+This retires the legacy per-type JSON Schema export (`pkg/lib/schema`) with
+its `x-` extension keys.
 
 ## 3. Properties
 
@@ -174,9 +259,16 @@ just unprettified.
 
 **Canonical key order in `properties`** (implementation decision): the
 well-known keys `name`, `description`, `iconEmoji`, `iconImage` first (in
-that order, when present), then all remaining keys alphabetically. The §4
-omit-empty canon applies to property values too: empty strings/arrays and
-`false`/`0` scalars are not written.
+that order, when present), then all remaining keys alphabetically.
+
+**Presence is meaningful.** A key's presence in `properties` records that the
+property was set on the object — clients use it to show the property even
+when its value is empty. The §4 omit-empty canon therefore does **not**
+apply to property values: every key present in the snapshot is written, with
+its value verbatim — including `false`, `0`, `""`, `[]`, and explicit
+`null`. Import preserves them all (an explicit `null` stays a null value).
+Omitting a key and writing an empty value are different statements: absent =
+property not set; empty value = property set, currently empty.
 
 **Value shape** (implementation decision): select/multiSelect and
 objects/files values are always JSON arrays; import stores them as lists, so
@@ -273,7 +365,7 @@ mapping:
 | `toggle` | Text/Toggle | `color`, `text` |
 | `callout` | Text/Callout | `iconEmoji`, `iconImage` (file object id), `color`, `text` |
 | `toggleHeading1` … `toggleHeading3` | Text/ToggleHeader1..3 | `color`, `text` |
-| `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11); when both are set, `objectId` wins and the hash is dropped. `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise |
+| `file` `image` `video` `audio` `pdf` | File (Type enum promoted; `Type_None` → `file` with no `objectId`) | `objectId` (target file object), `name`, `mimeType`, `size` (bytes), `style` (`auto · link · embed`), `addedAt` (RFC 3339). Legacy `hash` accepted on input. On export, a block with only the legacy `hash` set writes it as `objectId` (the hash migrates on round-trip, §11); when both are set, `objectId` wins and the hash is dropped. `state` is not serialized: import sets `Done` when `objectId`/`hash` is present, `Empty` otherwise. File blocks are leaves in the editor, but legacy data can nest real blocks under them — `children` are allowed and round-trip verbatim |
 | `bookmark` | Bookmark | `url`, `objectId` (target bookmark object). `state` handled like file blocks. Deprecated preview fields and `type` (derivable) are dropped — preview data lives on the target object |
 | `link` | Link | `objectId` (target object), `cardStyle` (`text · card · inline`), `iconSize` (`none · small · medium`), `description` (`none · manual · content`), `properties` (string array: property keys shown on the card). Deprecated `style` and legacy `fields` are dropped |
 | `divider` | Div | `style` (`line · dots`, default `line`) |
@@ -573,6 +665,12 @@ text into the corresponding properties when those are unset and drops the
 blocks otherwise; `featuredProperties` blocks (which carry no content) are
 simply dropped.
 
+**Content-less blocks** (legacy data): old accounts hold blocks whose
+content oneof is unset — relation objects wrap their "used in" dataview in
+one, and pages can contain orphaned empty leaves. Export drops a childless
+content-less block and serializes one with children as a transparent
+`group`, so the subtree survives (part of `N(S)`, §11).
+
 ## 8. Rich text: inline markup
 
 Text-bearing blocks carry a single `text` string. Formatting is expressed
@@ -844,7 +942,9 @@ and block fields cleared (§2, §5); deprecated `Header4` re-styled to
 blocks dropped (§5); marks normalized — emoji materialized, whitespace
 boundaries shrunk, same-type overlaps truncated, adjacent ranges merged
 (§8.3); file/bookmark `state` recomputed (§5); empty strings/arrays/objects
-and default scalars dropped (§4); tables normalized and ids canonicalized
+and default scalars dropped from block attributes and envelope fields — but
+never from property values, whose presence is meaningful (§3, §4); tables
+normalized and ids canonicalized
 (§6.1, including empty-paragraph cells collapsing to absent cells); dataview
 `activeView`, cached sort/filter formats, deprecated per-column date/time
 fields and `value` on `empty`/`notEmpty`/`exists` leaves dropped, group
@@ -899,6 +999,9 @@ emoji, tables, dataviews, UTF-16 payloads such as astral-plane characters).
 ```
 pkg/lib/anyblockjson/
   SPEC.md                    — this document
+  ANOMALIES.md               — real-world data anomalies found by prod
+                               round-trip testing, and how the format
+                               handles each
   schema/object.schema.json  — the published JSON Schema (embedded)
   export.go                  — snapshot → JSON
   import.go                  — JSON → snapshot
@@ -908,6 +1011,9 @@ pkg/lib/anyblockjson/
   validate.go                — schema + semantic validation
   json.go                    — ordered canonical-JSON writer, enum tables,
                                proto value bridges, id helpers
+  typeproperties.go          — typeProperties ↔ recommended lists (§2a);
+                               GenerateSchema derived artifacts are planned
+                               here (post-v1)
   roundtrip_test.go          — §11 property tests + state assertions
   golden_gen_test.go         — golden files (testdata/, -update to refresh)
 ```
@@ -922,6 +1028,22 @@ type FormatResolver func(key domain.RelationKey) (model.RelationFormat, bool)
 type OptionResolver interface {
     OptionName(key domain.RelationKey, id string) (string, bool)
     OptionId(key domain.RelationKey, name string) (string, bool)
+}
+
+// PropertyDefinition describes a property object referenced by a type
+// document (§2a).
+type PropertyDefinition struct {
+    Key    domain.RelationKey
+    Name   string
+    Format model.RelationFormat
+}
+
+// PropertyResolver maps property object ids to definitions on export and
+// definitions back to ids on import; PropertyId receives the full definition
+// so the wiring can create-and-return missing properties in one step (§2a).
+type PropertyResolver interface {
+    PropertyById(id string) (PropertyDefinition, bool)
+    PropertyId(def PropertyDefinition) (string, bool)
 }
 
 // Marshal serializes a snapshot into canonical AnyBlock JSON.
@@ -944,13 +1066,14 @@ func DetectFormat(data []byte) (version int, schemaURL string, ok bool)
 // internal to the package — it is not part of the public API.
 
 type Options struct {
-    ResolveFormat  FormatResolver // optional; nil = bundle-only resolution (§3)
-    ResolveOptions OptionResolver // optional; nil = option values pass through as ids
-    OmitIds        bool           // export only: drop every id (§9)
-    CompactIds     bool           // export only: shorten ids, emit refs legend (§9a)
-    GenerateId     func() string  // import only: id generator for missing ids;
-                                  // nil = random 24-hex (editor-shaped). The wiring
-                                  // passes the editor's generator.
+    ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
+    ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
+    ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
+    OmitIds           bool             // export only: drop every id (§9)
+    CompactIds        bool             // export only: shorten ids, emit refs legend (§9a)
+    GenerateId        func() string    // import only: id generator for missing ids;
+                                      // nil = random 24-hex (editor-shaped). The wiring
+                                      // passes the editor's generator.
     // CompactFilters (reserved): filters as query strings — post-v1, §6.2.1
 }
 ```
@@ -1054,3 +1177,21 @@ Wiring (follow-up work, not this package):
    still need the mark itself?
 6. **Icon block**: only appears in legacy profile objects — confirm it must
    round-trip or can be dropped like other structural blocks.
+7. **`typeProperties` naming** (§2a): alternatives considered —
+   `definition.properties` (extra nesting) and a `schema` field (collides
+   with `$schema`, and the section is more than a schema). The `section`
+   enum vs three booleans is also open; the enum gets mutual exclusion for
+   free.
+8. **Property documents** (`kind: "property"`?): custom select/multiSelect
+   properties own their option lists; a future section may specify them the
+   same way types are specified in §2a (resolved options by name, not id).
+9. **Trim system-property noise** (follow-up): refine §3 "presence is
+   meaningful" — keys in `bundle.SystemRelations` are machine-stamped
+   metadata (`isHidden`, `revision`, `relationFormatIncludeTime`, …) and
+   could safely omit empty/default values, keeping documents compact for
+   LLMs; presence stays preserved for user-intent keys via a small
+   exception list (`name`, `description`, `iconEmoji`, `iconImage`,
+   `done`) and for every non-system key. Deliberately static (no
+   type-schema lookup at export time) to keep the canonical form
+   deterministic. Decide `done` membership and wire `buildProperties` +
+   the round-trip comparator accordingly.

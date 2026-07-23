@@ -28,11 +28,12 @@ type OptionResolver interface {
 
 // Options configures Marshal and Unmarshal (§13).
 type Options struct {
-	ResolveFormat  FormatResolver // optional; nil = bundle-only resolution (§3)
-	ResolveOptions OptionResolver // optional; nil = option values pass through as ids
-	OmitIds        bool           // export only: drop every id (§9)
-	CompactIds     bool           // export only: shorten ids, emit refs legend (§9a)
-	GenerateId     func() string  // import only: id generator for missing ids; nil = random 24-hex
+	ResolveFormat     FormatResolver   // optional; nil = bundle-only resolution (§3)
+	ResolveOptions    OptionResolver   // optional; nil = option values pass through as ids
+	ResolveProperties PropertyResolver // optional; nil = type documents keep raw recommended-relation ids (§2a)
+	OmitIds           bool             // export only: drop every id (§9)
+	CompactIds        bool             // export only: shorten ids, emit refs legend (§9a)
+	GenerateId        func() string    // import only: id generator for missing ids; nil = random 24-hex
 }
 
 const (
@@ -69,7 +70,7 @@ func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase
 	if snapshot == nil {
 		return nil, fmt.Errorf("nil snapshot")
 	}
-	e := &exporter{opts: opts, snapshot: snapshot, blocks: map[string]*model.Block{}, visited: map[string]bool{}}
+	e := &exporter{opts: opts, snapshot: snapshot, sbType: sbType, blocks: map[string]*model.Block{}, visited: map[string]bool{}}
 	e.indexBlocks()
 	if opts.CompactIds {
 		e.buildCompactIds()
@@ -84,6 +85,7 @@ func Marshal(sbType model.SmartBlockType, snapshot *model.SmartBlockSnapshotBase
 type exporter struct {
 	opts     Options
 	snapshot *model.SmartBlockSnapshotBase
+	sbType   model.SmartBlockType
 	blocks   map[string]*model.Block
 	rootId   string
 	visited  map[string]bool // emitted block ids: breaks ChildrenIds cycles, dedupes shared children
@@ -170,6 +172,9 @@ func (e *exporter) buildDoc(sbType model.SmartBlockType) (*omap, error) {
 	}
 	doc.setNonEmpty("key", e.snapshot.Key)
 	doc.setNonEmpty("properties", e.buildProperties())
+	if tp := e.buildTypeProperties(); tp != nil {
+		doc.set("typeProperties", tp) // present even when empty (§2a)
+	}
 
 	if len(e.objectRefs) > 0 {
 		refs := &omap{}
@@ -264,9 +269,10 @@ func (e *exporter) buildProperties() *omap {
 		return nil
 	}
 	stripped := strippedDetailKeys()
+	lifted := e.typePropDetailKeys()
 	var keys []string
 	for k := range e.snapshot.Details.Fields {
-		if !stripped[k] {
+		if !stripped[k] && !lifted[k] {
 			keys = append(keys, k)
 		}
 	}
@@ -288,7 +294,11 @@ func (e *exporter) buildProperties() *omap {
 	}
 	m := &omap{}
 	for _, k := range ordered {
-		m.setNonEmpty(k, e.propertyValue(k, e.snapshot.Details.Fields[k]))
+		// presence of a property key is meaningful — it records that the
+		// property was set on the object — so values are written verbatim,
+		// including empty and default ones (§3); the omit-empty canon applies
+		// to block attributes and envelope fields only
+		m.set(k, e.propertyValue(k, e.snapshot.Details.Fields[k]))
 	}
 	return m
 }
@@ -444,13 +454,23 @@ func (e *exporter) blockToJSON(b *model.Block) (*omap, error) {
 
 	// nil inner messages are proto-equivalent to empty ones — never panic
 	switch c := b.Content.(type) {
+	case nil:
+		// legacy content-less blocks exist in old accounts: relation objects
+		// carry a bare wrapper around their "used in" dataview, and pages can
+		// hold orphaned empty leaves. A childless one is dropped; one with
+		// children exports as a transparent group so the subtree survives.
+		if len(b.ChildrenIds) == 0 {
+			return nil, nil
+		}
+		m.set("type", "group")
 	case *model.BlockContentOfText:
 		if err := e.textToJSON(m, b, orEmpty(c.Text), liftedFields); err != nil {
 			return nil, err
 		}
 	case *model.BlockContentOfFile:
+		// file blocks are leaves in the editor, but legacy data holds real
+		// text children under them — dropping those would be silent loss
 		e.fileToJSON(m, orEmpty(c.File))
-		withChildren = false
 	case *model.BlockContentOfBookmark:
 		bm := orEmpty(c.Bookmark)
 		m.set("type", "bookmark")
@@ -783,9 +803,10 @@ func (e *exporter) buildCompactIds() {
 
 	if e.snapshot.Details != nil {
 		stripped := strippedDetailKeys()
+		lifted := e.typePropDetailKeys()
 		for key, v := range e.snapshot.Details.Fields {
-			if stripped[key] {
-				continue // stripped properties never appear, so no legend entry
+			if stripped[key] || lifted[key] {
+				continue // stripped/lifted properties never appear as ids, so no legend entry
 			}
 			format, ok := e.resolveFormat(key)
 			if ok && (format == model.RelationFormat_object || format == model.RelationFormat_file) {
