@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ import (
 func TestV2ListSpaces(t *testing.T) {
 	t.Run("space views become minimal rows", func(t *testing.T) {
 		// given
-		fx := newV2Fixture(t)
+		fx := newV2FixtureBare(t)
 		fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{
 			{
 				bundle.RelationKeyId:             domain.String("spaceView1"),
@@ -50,7 +51,7 @@ func TestV2ListSpaces(t *testing.T) {
 
 	t.Run("empty tech space lists nothing", func(t *testing.T) {
 		// given
-		fx := newV2Fixture(t)
+		fx := newV2FixtureBare(t)
 
 		// when
 		rows, total, _, err := fx.ListSpaces(context.Background(), 0, 25)
@@ -58,6 +59,36 @@ func TestV2ListSpaces(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Empty(t, rows)
+		assert.Zero(t, total)
+	})
+}
+
+func TestV2EnsureSpace(t *testing.T) {
+	// C2: an unknown space_id must be rejected with 404 before any per-space
+	// objectstore access, so a bogus id cannot mint an unbounded store index.
+	t.Run("unknown space is rejected 404 without touching the store", func(t *testing.T) {
+		// given: fixture registers only testSpaceId
+		fx := newV2Fixture(t)
+
+		// when: a space that has no spaceView
+		_, _, _, err := fx.ListObjects(context.Background(), "bogus-space", nil, 0, 25)
+
+		// then
+		var apiErr *apimodel.V2Error
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status)
+		assert.Equal(t, apimodel.V2CodeNotFound, apiErr.Code)
+	})
+
+	t.Run("a registered space passes the guard", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when: testSpaceId is registered by the fixture
+		_, total, _, err := fx.ListObjects(context.Background(), testSpaceId, nil, 0, 25)
+
+		// then: no space error (empty result is fine)
+		require.NoError(t, err)
 		assert.Zero(t, total)
 	})
 }

@@ -16,7 +16,10 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/service"
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 type v2HandlerFixture struct {
@@ -30,6 +33,14 @@ func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
 	store := objectstore.NewStoreFixture(t)
+	// register space1 so the C2 ensureSpace guard resolves the test space
+	store.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("spaceView_space1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:  domain.String("space1"),
+		},
+	})
 	svc := service.NewV2Service(mwMock, readerMock, store, objectstore.TestTechSpaceId)
 	return &v2HandlerFixture{svc: svc, readerMock: readerMock, router: gin.New()}
 }

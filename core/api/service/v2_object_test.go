@@ -32,7 +32,10 @@ type v2Fixture struct {
 	objectStore *objectstore.StoreFixture
 }
 
-func newV2Fixture(t *testing.T) *v2Fixture {
+// newV2FixtureBare builds the service with an empty tech space (no space
+// registered). Used by the ListSpaces tests, which manage the tech space's
+// spaceViews themselves.
+func newV2FixtureBare(t *testing.T) *v2Fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
 	objectStore := objectstore.NewStoreFixture(t)
@@ -42,6 +45,26 @@ func newV2Fixture(t *testing.T) *v2Fixture {
 		readerMock:  readerMock,
 		objectStore: objectStore,
 	}
+}
+
+// newV2Fixture builds the service with the default test space registered, so
+// the C2 ensureSpace guard resolves testSpaceId as a real space.
+func newV2Fixture(t *testing.T) *v2Fixture {
+	fx := newV2FixtureBare(t)
+	fx.registerSpace(t, testSpaceId)
+	return fx
+}
+
+// registerSpace adds a spaceView for spaceId to the tech space so
+// ensureSpace (via GetSpaceViewDetails) resolves it.
+func (fx *v2Fixture) registerSpace(t *testing.T, spaceId string) {
+	fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("spaceView_" + spaceId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:  domain.String(spaceId),
+		},
+	})
 }
 
 func textContent(text string, style model.BlockContentTextStyle) *model.BlockContentOfText {

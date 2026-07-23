@@ -11,6 +11,7 @@ import (
 	"sort"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
@@ -28,6 +29,25 @@ type V2Service struct {
 // NewV2Service creates the API v2 service.
 func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, store objectstore.ObjectStore, techSpaceId string) *V2Service {
 	return &V2Service{mw: mw, reader: reader, store: store, techSpaceId: techSpaceId}
+}
+
+// ensureSpace rejects an unknown space_id before any per-space objectstore
+// access (C2). objectstore.SpaceIndex mints — and persists to disk — a fresh
+// index for ANY id, so without this guard an agent passing bogus space ids
+// could grow the in-memory registry and backing DBs without bound.
+// GetSpaceViewDetails resolves the spaceView against the tech space only and
+// never mints an index for spaceId; the tech space itself is trusted.
+func (s *V2Service) ensureSpace(spaceId string) error {
+	if spaceId == "" {
+		return apimodel.V2NotFound("space id is required")
+	}
+	if spaceId == s.techSpaceId {
+		return nil
+	}
+	if _, err := s.store.GetSpaceViewDetails(spaceId); err != nil {
+		return apimodel.V2NotFound(fmt.Sprintf("space %q not found", spaceId))
+	}
+	return nil
 }
 
 //

@@ -9,6 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // objectReadAdapter implements apicore.ObjectReader over the block service's
@@ -32,7 +33,13 @@ func (a *objectReadAdapter) ReadObject(ctx context.Context, spaceId string, obje
 			Blocks:      st.BlocksToSave(),
 			Details:     st.CombinedDetails().ToProto(),
 			ObjectTypes: domain.MarshalTypeKeys(st.ObjectTypeKeys()),
-			Collections: st.Store(),
+			// C1: st.Store() returns the LIVE shared *types.Struct (no copy,
+			// unlike BlocksToSave/CombinedDetails above). It is marshaled after
+			// this lock releases, so a concurrent editor mutating the store
+			// (e.g. adding/removing a collection item) would race the marshal —
+			// an uncatchable "concurrent map read and map write" fatal. Copy it
+			// under the lock. Must stay a copy.
+			Collections: pbtypes.CopyStruct(st.Store(), true),
 			Key:         st.UniqueKeyInternal(),
 			FileInfo:    st.GetFileInfo().ToModel(),
 		}

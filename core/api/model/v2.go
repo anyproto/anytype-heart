@@ -18,6 +18,7 @@ const (
 	V2CodeNotFound            = "not_found"
 	V2CodeNotImplemented      = "not_implemented"
 	V2CodeInternalError       = "internal_error"
+	V2CodeRequestTooLarge     = "request_too_large"
 )
 
 // V2Issue is one path-addressed problem (C6): path into the request
@@ -60,6 +61,11 @@ func V2ValidationFailed(message string, issues ...V2Issue) *V2Error {
 // V2NotFound is the 404 for missing resources.
 func V2NotFound(message string) *V2Error {
 	return NewV2Error(http.StatusNotFound, V2CodeNotFound, message)
+}
+
+// V2RequestTooLarge is the 413 for an oversized request body (C3).
+func V2RequestTooLarge(message string) *V2Error {
+	return NewV2Error(http.StatusRequestEntityTooLarge, V2CodeRequestTooLarge, message)
 }
 
 // V2EtagMismatch is the 409 for a stale If-Match (C7), carrying the current

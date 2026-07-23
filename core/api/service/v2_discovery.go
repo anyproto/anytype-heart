@@ -8,6 +8,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sort"
 	"strings"
 
@@ -54,6 +55,9 @@ func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]apimod
 // ListMembers returns minimal member rows (active participants) — agents
 // need member ids for assignee/creator property values.
 func (s *V2Service) ListMembers(ctx context.Context, spaceId string, offset, limit int) ([]apimodel.V2MemberRow, int, bool, error) {
+	if err := s.ensureSpace(spaceId); err != nil {
+		return nil, 0, false, err
+	}
 	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -113,6 +117,9 @@ func memberRole(permissions model.ParticipantPermissions) string {
 
 // ListTypes returns minimal type rows: keys + names.
 func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit int) ([]apimodel.V2TypeRow, int, bool, error) {
+	if err := s.ensureSpace(spaceId); err != nil {
+		return nil, 0, false, err
+	}
 	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -155,6 +162,9 @@ func (s *V2Service) ListTypes(ctx context.Context, spaceId string, offset, limit
 // GetType returns the kind:"objectType" AnyBlock document for one type key,
 // read via the live smartblock state like any object (§8).
 func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string) ([]byte, string, error) {
+	if err := s.ensureSpace(spaceId); err != nil {
+		return nil, "", err
+	}
 	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, typeKey)
 	if err != nil {
 		return nil, "", apimodel.V2ValidationFailed("invalid type key",
@@ -171,12 +181,18 @@ func (s *V2Service) GetType(ctx context.Context, spaceId, typeKey string) ([]byt
 // artifact does not exist yet (SPEC §2a: planned, not implemented), so the
 // route reports 501 until it lands.
 func (s *V2Service) GetTypeSchema(ctx context.Context, spaceId, typeKey string) error {
-	return apimodel.NewV2Error(501, apimodel.V2CodeNotImplemented,
+	if err := s.ensureSpace(spaceId); err != nil {
+		return err
+	}
+	return apimodel.NewV2Error(http.StatusNotImplemented, apimodel.V2CodeNotImplemented,
 		fmt.Sprintf("type schema generation is not implemented yet — read the type document at GET /v2/spaces/%s/types/%s instead", spaceId, typeKey))
 }
 
 // ListProperties returns minimal property rows: key, name, format.
 func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, limit int) ([]apimodel.V2PropertyRow, int, bool, error) {
+	if err := s.ensureSpace(spaceId); err != nil {
+		return nil, 0, false, err
+	}
 	records, total, err := s.store.SpaceIndex(spaceId).QueryAndCount(database.Query{
 		Filters: []database.FilterRequest{
 			{
@@ -224,6 +240,9 @@ func (s *V2Service) ListProperties(ctx context.Context, spaceId string, offset, 
 // select/multiSelect property, with a prefix filter (C10 — tag-like
 // properties can hold thousands of options).
 func (s *V2Service) ListPropertyOptions(ctx context.Context, spaceId, propertyKey, prefix string, offset, limit int) ([]apimodel.V2OptionRow, int, bool, error) {
+	if err := s.ensureSpace(spaceId); err != nil {
+		return nil, 0, false, err
+	}
 	index := s.store.SpaceIndex(spaceId)
 	if _, err := index.GetRelationByKey(propertyKey); err != nil {
 		return nil, 0, false, apimodel.V2NotFound(fmt.Sprintf("property %q not found in space %q — list available keys with GET /v2/spaces/%s/properties", propertyKey, spaceId, spaceId))

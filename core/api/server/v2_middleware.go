@@ -9,6 +9,7 @@ import (
 	"container/list"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -28,6 +29,12 @@ const (
 	// idempotencyMaxBody caps stored replay bodies; larger responses are
 	// not replayable and simply re-execute.
 	idempotencyMaxBody = 1 << 20 // 1 MiB
+	// maxV2RequestBody bounds the request body the idempotency middleware
+	// buffers before the handler runs (C3). Without it, io.ReadAll here is
+	// unbounded and bypasses the per-handler size caps (e.g. /v2/validate),
+	// so a keyed POST with a huge body could OOM the process. Sized to match
+	// the largest handler cap (validate = 10 MiB).
+	maxV2RequestBody = 10 << 20 // 10 MiB
 )
 
 // storedResult is a replayable response.
@@ -122,9 +129,13 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 			return
 		}
 
-		body, err := io.ReadAll(c.Request.Body)
+		body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxV2RequestBody+1))
 		if err != nil {
 			respondV2Error(c, apimodel.V2ValidationFailed("read request body: "+err.Error()))
+			return
+		}
+		if len(body) > maxV2RequestBody {
+			respondV2Error(c, apimodel.V2RequestTooLarge(fmt.Sprintf("request body exceeds the %d-byte limit", maxV2RequestBody)))
 			return
 		}
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))

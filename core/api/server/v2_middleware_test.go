@@ -67,6 +67,23 @@ func TestEnsureIdempotency(t *testing.T) {
 		assert.Equal(t, 1, calls)
 	})
 
+	t.Run("body over the size limit is rejected 413 before the handler", func(t *testing.T) {
+		// C3: the middleware buffers the body ahead of the handler, so it must
+		// bound the read or a keyed POST could OOM the process.
+		// given
+		calls := 0
+		router := newIdempotencyRouter(newIdempotencyStore(8), &calls)
+		oversized := strings.Repeat("x", maxV2RequestBody+1)
+
+		// when
+		w := postWithKey(router, "key1", oversized)
+
+		// then
+		assert.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+		assert.Contains(t, w.Body.String(), `"request_too_large"`)
+		assert.Equal(t, 0, calls, "the handler never ran")
+	})
+
 	t.Run("no key passes through every time", func(t *testing.T) {
 		// given
 		calls := 0
