@@ -443,10 +443,17 @@ func (e *exporter) appendBlocksFlat(out *[]any, ids []string, depth int, topLeve
 		if topLevel && isStructural(b) {
 			continue
 		}
+		emitDepth := depth
 		if depth > maxBlockIndent {
-			return fmt.Errorf("block %s: nesting depth %d exceeds the format bound %d", id, depth, maxBlockIndent)
+			if e.opts.OnWarning == nil {
+				return fmt.Errorf("block %s: nesting depth %d exceeds the format bound %d", id, depth, maxBlockIndent)
+			}
+			// read path (C11): degrade rather than fail — clamp the indent and
+			// keep the content instead of erroring the whole document.
+			e.opts.OnWarning(Issue{Path: "/blocks", Message: fmt.Sprintf("block %s: nesting depth %d exceeds the bound %d — indent clamped", id, depth, maxBlockIndent)})
+			emitDepth = maxBlockIndent
 		}
-		m, withChildren, err := e.blockToJSON(b, depth)
+		m, withChildren, err := e.blockToJSON(b, emitDepth)
 		if err != nil {
 			return err
 		}
@@ -598,6 +605,12 @@ func (e *exporter) blockToJSON(b *model.Block, depth int) (*omap, bool, error) {
 	case *model.BlockContentOfSmartblock:
 		return nil, false, nil
 	default:
+		if e.opts.OnWarning != nil {
+			// read path (C11): drop the unrepresentable block with a warning
+			// instead of failing the whole read.
+			e.opts.OnWarning(Issue{Path: "/blocks", Message: fmt.Sprintf("block %s: content type %T has no JSON mapping — dropped", b.Id, b.Content)})
+			return nil, false, nil
+		}
 		return nil, false, fmt.Errorf("block %s: content type %T has no JSON mapping", b.Id, b.Content)
 	}
 

@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/gogo/protobuf/types"
@@ -93,6 +94,55 @@ func testObjectRead() apicore.ObjectRead {
 		},
 		Heads: []string{"headB", "headA"},
 	}
+}
+
+// testObjectReadLongIds mirrors testObjectRead but with block ids longer than
+// the compact-label width, so outline relabeling is a real (not identity)
+// operation — the case the short-id fixtures cannot exercise (M1).
+func testObjectReadLongIds() apicore.ObjectRead {
+	return apicore.ObjectRead{
+		SbType: model.SmartBlockType_Page,
+		Snapshot: &model.SmartBlockSnapshotBase{
+			Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("obj1"),
+				"name": pbtypes.String("Doc"),
+			}},
+			ObjectTypes: []string{"ot-page"},
+			Blocks: []*model.Block{
+				{Id: "obj1", ChildrenIds: []string{"blockHeading", "blockParent", "blockSibling"},
+					Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}},
+				{Id: "blockHeading", Content: textContent("Section", model.BlockContentText_Header1)},
+				{Id: "blockParent", ChildrenIds: []string{"blockChild"}, Content: textContent("parent", model.BlockContentText_Paragraph)},
+				{Id: "blockChild", Content: textContent("child", model.BlockContentText_Paragraph)},
+				{Id: "blockSibling", Content: textContent("sibling", model.BlockContentText_Paragraph)},
+			},
+		},
+		Heads: []string{"headB", "headA"},
+	}
+}
+
+func TestV2OutlineBlockRoundTrip(t *testing.T) {
+	// M1: a compact outline label must resolve in a follow-up ?block= read —
+	// the core outline-then-fetch flow on a large document.
+	fx := newV2Fixture(t)
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectReadLongIds(), nil).Times(2)
+
+	// outline read yields compact block labels (not the full ids)
+	outlineBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Outline: true})
+	require.NoError(t, err)
+	entries := decodeBody(t, outlineBody)["outline"].([]any)
+	require.Len(t, entries, 4)
+	label := entries[1].(map[string]any)["id"].(string) // the parent paragraph
+	require.NotEqual(t, "blockParent", label, "outline must emit a compact label, not the full id")
+	require.True(t, strings.HasSuffix("blockParent", label), "label is the id suffix")
+
+	// the label round-trips: ?block=<label> returns the parent + its child
+	blockBody, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: label})
+	require.NoError(t, err, "the outline label must resolve in ?block=")
+	blocks := decodeBody(t, blockBody)["blocks"].([]any)
+	require.Len(t, blocks, 2, "subtree = parent + child, not the sibling")
+	assert.Equal(t, "blockParent", blocks[0].(map[string]any)["id"])
+	assert.Equal(t, "blockChild", blocks[1].(map[string]any)["id"])
 }
 
 func decodeBody(t *testing.T, body []byte) map[string]any {

@@ -160,6 +160,37 @@ func TestMarshal_DepthBound(t *testing.T) {
 	})
 }
 
+// M3 (C11): with an OnWarning sink the read path degrades content the format
+// can't represent (here: over-deep nesting) to a warning instead of failing
+// the whole document, and the degraded output still validates.
+func TestMarshal_OnWarningDegradesOverDeep(t *testing.T) {
+	deepChain := func(depth int) *model.SmartBlockSnapshotBase {
+		blocks := []*model.Block{{Id: "obj1", ChildrenIds: []string{"n0"},
+			Content: &model.BlockContentOfSmartblock{Smartblock: &model.BlockContentSmartblock{}}}}
+		for i := 0; i <= depth; i++ {
+			b := textBlock(fmt.Sprintf("n%d", i), model.BlockContentText_Toggle, fmt.Sprintf("level %d", i))
+			if i < depth {
+				b.ChildrenIds = []string{fmt.Sprintf("n%d", i+1)}
+			}
+			blocks = append(blocks, b)
+		}
+		return &model.SmartBlockSnapshotBase{Blocks: blocks}
+	}
+
+	// without a sink the over-deep document still fails loudly (canonical export)
+	_, err := Marshal(model.SmartBlockType_Page, deepChain(40), Options{})
+	require.Error(t, err)
+
+	// with a sink it degrades: clamp + warn, and the result validates
+	var warnings []Issue
+	data, err := Marshal(model.SmartBlockType_Page, deepChain(40),
+		Options{OnWarning: func(i Issue) { warnings = append(warnings, i) }})
+	require.NoError(t, err, "the read must succeed with a warning sink")
+	require.NotEmpty(t, warnings, "the clamp emits a warning")
+	assert.Contains(t, warnings[0].Message, "clamped")
+	require.NoError(t, Validate(data), "clamped indents stay within the format bound")
+}
+
 // Finding 4: unknown properties are rejected with a message naming the key;
 // `children` additionally gets the flat-migration hint.
 func TestValidate_UnknownPropertyMessages(t *testing.T) {

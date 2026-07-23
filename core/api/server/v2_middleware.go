@@ -50,7 +50,8 @@ type storedResult struct {
 type idempotencyStore struct {
 	mu      sync.Mutex
 	entries map[string]*list.Element
-	order   *list.List // front = most recent
+	order   *list.List               // front = most recent
+	pending map[string]chan struct{} // in-flight reservations (M4)
 	max     int
 }
 
@@ -63,12 +64,71 @@ func newIdempotencyStore(maxEntries int) *idempotencyStore {
 	return &idempotencyStore{
 		entries: map[string]*list.Element{},
 		order:   list.New(),
+		pending: map[string]chan struct{}{},
 		max:     maxEntries,
 	}
 }
 
 func idempotencyStoreKey(spaceId, key string) string {
 	return spaceId + "\x00" + key
+}
+
+// begin claims (space, key) for execution or returns a completed result to
+// replay (M4). It blocks while another request with the same key is in-flight,
+// then re-checks — so concurrent retries never double-execute. When it returns
+// owner=true the caller MUST call finish exactly once (use defer, so a handler
+// panic still releases the reservation).
+func (s *idempotencyStore) begin(spaceId, key string) (result storedResult, replay bool, owner bool) {
+	storeKey := idempotencyStoreKey(spaceId, key)
+	for {
+		s.mu.Lock()
+		if el, ok := s.entries[storeKey]; ok {
+			s.order.MoveToFront(el)
+			res := el.Value.(*idempotencyEntry).result
+			s.mu.Unlock()
+			return res, true, false
+		}
+		if ch, ok := s.pending[storeKey]; ok {
+			s.mu.Unlock()
+			<-ch // wait for the in-flight owner, then re-check
+			continue
+		}
+		s.pending[storeKey] = make(chan struct{})
+		s.mu.Unlock()
+		return storedResult{}, false, true
+	}
+}
+
+// finish releases the reservation taken by begin, storing result for replay
+// when it is non-nil (only successful responses are cached; a nil result lets
+// a subsequent retry re-execute).
+func (s *idempotencyStore) finish(spaceId, key string, result *storedResult) {
+	storeKey := idempotencyStoreKey(spaceId, key)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if result != nil {
+		s.putLocked(storeKey, *result)
+	}
+	if ch, ok := s.pending[storeKey]; ok {
+		close(ch)
+		delete(s.pending, storeKey)
+	}
+}
+
+// putLocked stores a result under storeKey, evicting the least recent entry
+// beyond the bound. The caller holds s.mu.
+func (s *idempotencyStore) putLocked(storeKey string, result storedResult) {
+	if el, ok := s.entries[storeKey]; ok {
+		el.Value.(*idempotencyEntry).result = result
+		s.order.MoveToFront(el)
+		return
+	}
+	s.entries[storeKey] = s.order.PushFront(&idempotencyEntry{key: storeKey, result: result})
+	for s.order.Len() > s.max {
+		last := s.order.Back()
+		s.order.Remove(last)
+		delete(s.entries, last.Value.(*idempotencyEntry).key)
+	}
 }
 
 // get returns the stored result for (space, key), refreshing recency.
@@ -83,23 +143,12 @@ func (s *idempotencyStore) get(spaceId, key string) (storedResult, bool) {
 	return el.Value.(*idempotencyEntry).result, true
 }
 
-// put stores a result for (space, key), evicting the least recent entry
-// beyond the bound.
+// put stores a result for (space, key) directly (used in tests; the request
+// path goes through begin/finish).
 func (s *idempotencyStore) put(spaceId, key string, result storedResult) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	storeKey := idempotencyStoreKey(spaceId, key)
-	if el, ok := s.entries[storeKey]; ok {
-		el.Value.(*idempotencyEntry).result = result
-		s.order.MoveToFront(el)
-		return
-	}
-	s.entries[storeKey] = s.order.PushFront(&idempotencyEntry{key: storeKey, result: result})
-	for s.order.Len() > s.max {
-		last := s.order.Back()
-		s.order.Remove(last)
-		delete(s.entries, last.Value.(*idempotencyEntry).key)
-	}
+	s.putLocked(idempotencyStoreKey(spaceId, key), result)
 }
 
 // bodyRecorder captures the response for replay while streaming it through.
@@ -143,7 +192,8 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 		bodyHash := hex.EncodeToString(hash[:])
 		spaceId := c.Param("space_id")
 
-		if stored, ok := store.get(spaceId, key); ok {
+		stored, replay, owner := store.begin(spaceId, key)
+		if replay {
 			if stored.bodyHash != bodyHash {
 				respondV2Error(c, apimodel.NewV2Error(http.StatusConflict, apimodel.V2CodeIdempotencyConflict,
 					"Idempotency-Key was already used with a different request body — use a fresh key per distinct request"))
@@ -154,6 +204,14 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		_ = owner // begin returns owner==true here; finish is deferred below
+
+		// Release the reservation on the way out — via defer so a handler panic
+		// (recovered upstream by gin.Recovery) still frees waiters (M4). result
+		// stays nil unless the handler succeeded, so a failed/ panicked request
+		// is not cached and a retry re-executes.
+		var result *storedResult
+		defer func() { store.finish(spaceId, key, result) }()
 
 		recorder := &bodyRecorder{ResponseWriter: c.Writer}
 		c.Writer = recorder
@@ -162,12 +220,12 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 		// only successful results replay; failures may be retried fresh
 		status := recorder.Status()
 		if status >= 200 && status < 300 && !recorder.overflow {
-			store.put(spaceId, key, storedResult{
+			result = &storedResult{
 				bodyHash:    bodyHash,
 				status:      status,
 				contentType: recorder.Header().Get("Content-Type"),
 				body:        append([]byte(nil), recorder.buf.Bytes()...),
-			})
+			}
 		}
 	}
 }

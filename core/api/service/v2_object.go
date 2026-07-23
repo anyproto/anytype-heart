@@ -154,22 +154,27 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 		return nil, "", err
 	}
 
+	if plan.markdown {
+		return s.markdownEnvelope(ctx, spaceId, objectId)
+	}
+
 	read, err := s.reader.ReadObject(ctx, spaceId, objectId)
 	if err != nil {
 		return nil, "", mapReadError(spaceId, objectId, err)
 	}
 	etag := ComputeEtag(read.Heads)
 
-	if plan.markdown {
-		body, err := s.markdownEnvelope(ctx, spaceId, objectId, read, etag)
-		return body, etag, err
-	}
-
 	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
 	opts.CompactObjectRefs = plan.compactRefs
 	// block ids stay full on default reads (C4); the outline shape is the
 	// read-only exception and uses compact block labels
 	opts.CompactBlockLabels = plan.outline
+	// C11 (M3): a read never fails on content the format can't represent —
+	// unmapped/over-deep blocks degrade to warnings that ride the envelope.
+	var warnings []apimodel.V2Issue
+	opts.OnWarning = func(iss anyblockjson.Issue) {
+		warnings = append(warnings, apimodel.V2Issue{Path: iss.Path, Message: iss.Message})
+	}
 
 	doc, err := anyblockjson.Marshal(read.SbType, read.Snapshot, opts)
 	if err != nil {
@@ -202,6 +207,12 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 		}
 	}
 
+	if len(warnings) > 0 {
+		if fields["warnings"], err = rawJSON(warnings); err != nil {
+			return nil, "", err
+		}
+	}
+
 	body, err := encodeEnvelope(fields)
 	if err != nil {
 		return nil, "", fmt.Errorf("object %s: %w", objectId, err)
@@ -209,38 +220,48 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 	return body, etag, nil
 }
 
-// markdownEnvelope builds the format=md response. The markdown converter has
-// no loss channel today, so the response carries no warnings.
-// TODO(GO-7383): surface C11 warnings for nodes the markdown export drops
-// once core/converter/md grows a loss channel (APIV2.md §3 build item
+// markdownEnvelope builds the format=md response. The etag is read AFTER the
+// export (§8, M2): a concurrent edit between the two can only make the etag
+// reflect a state at or after the markdown, never before it, so the returned
+// markdown is never newer than the etag advertises (over-reporting freshness
+// is the safe direction for a later If-Match).
+// The markdown converter has no loss channel today, so the response carries no
+// warnings. TODO(GO-7383): surface C11 warnings for nodes the markdown export
+// drops once core/converter/md grows a loss channel (APIV2.md §3 build item
 // "md-export loss detector").
-func (s *V2Service) markdownEnvelope(ctx context.Context, spaceId, objectId string, read apicore.ObjectRead, etag string) ([]byte, error) {
+func (s *V2Service) markdownEnvelope(ctx context.Context, spaceId, objectId string) ([]byte, string, error) {
 	resp := s.mw.ObjectExport(ctx, &pb.RpcObjectExportRequest{
 		SpaceId:  spaceId,
 		ObjectId: objectId,
 		Format:   model.Export_Markdown,
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectExportResponseError_NULL {
-		return nil, fmt.Errorf("export markdown for object %s: %s", objectId, resp.Error.Description)
+		return nil, "", fmt.Errorf("export markdown for object %s: %s", objectId, resp.Error.Description)
 	}
 
+	read, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	if err != nil {
+		return nil, "", mapReadError(spaceId, objectId, err)
+	}
+	etag := ComputeEtag(read.Heads)
+
 	fields := map[string]json.RawMessage{}
-	var err error
 	if fields["id"], err = rawJSON(objectId); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if typeKey := objectTypeKey(read); typeKey != "" {
 		if fields["type"], err = rawJSON(typeKey); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	if fields["etag"], err = rawJSON(etag); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if fields["markdown"], err = rawJSON(resp.Result); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return encodeEnvelope(fields)
+	body, err := encodeEnvelope(fields)
+	return body, etag, err
 }
 
 // objectTypeKey extracts the object's type key from the snapshot.
@@ -303,8 +324,10 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 
 // filterBlockSubtree keeps only the addressed block and its contiguous
 // indent-run of descendants. Indents stay absolute so ids and depths are
-// stable across full and subtree reads.
-func filterBlockSubtree(fields map[string]json.RawMessage, blockId string) error {
+// stable across full and subtree reads. The block reference resolves by exact
+// id or by unique suffix (§9a), so a short outline label round-trips to
+// ?block= (M1).
+func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string) error {
 	var blocks []json.RawMessage
 	if raw, ok := fields["blocks"]; ok {
 		if err := json.Unmarshal(raw, &blocks); err != nil {
@@ -315,29 +338,27 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockId string) error
 		Indent int    `json:"indent"`
 		Id     string `json:"id"`
 	}
-	anchor := -1
-	anchorIndent := 0
-	var run []json.RawMessage
+	probes := make([]blockProbe, len(blocks))
+	ids := make([]string, len(blocks))
 	for i, raw := range blocks {
-		var probe blockProbe
-		if err := json.Unmarshal(raw, &probe); err != nil {
+		if err := json.Unmarshal(raw, &probes[i]); err != nil {
 			return fmt.Errorf("decode block %d for subtree read: %w", i, err)
 		}
-		if anchor == -1 {
-			if probe.Id == blockId {
-				anchor = i
-				anchorIndent = probe.Indent
-				run = append(run, raw)
-			}
-			continue
-		}
-		if probe.Indent <= anchorIndent {
+		ids[i] = probes[i].Id
+	}
+
+	anchor, err := resolveBlockRef(ids, blockRef)
+	if err != nil {
+		return err
+	}
+
+	anchorIndent := probes[anchor].Indent
+	run := []json.RawMessage{blocks[anchor]}
+	for i := anchor + 1; i < len(blocks); i++ {
+		if probes[i].Indent <= anchorIndent {
 			break
 		}
-		run = append(run, raw)
-	}
-	if anchor == -1 {
-		return apimodel.V2NotFound(fmt.Sprintf("block %q not found — read the object without ?block= or with ?outline=true to list block ids", blockId))
+		run = append(run, blocks[i])
 	}
 	raw, err := rawJSON(run)
 	if err != nil {
@@ -345,6 +366,32 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockId string) error
 	}
 	fields["blocks"] = raw
 	return nil
+}
+
+// resolveBlockRef maps a block reference to an index into ids: an exact id
+// match wins; otherwise the unique id whose full value ends with ref (a
+// compact outline label is the id's last few characters, §9a). Zero matches →
+// 404; an ambiguous suffix → 400 steering to the full id.
+func resolveBlockRef(ids []string, ref string) (int, error) {
+	suffix, suffixCount := -1, 0
+	for i, id := range ids {
+		if id == ref {
+			return i, nil
+		}
+		if ref != "" && strings.HasSuffix(id, ref) {
+			suffix, suffixCount = i, suffixCount+1
+		}
+	}
+	switch {
+	case suffixCount == 1:
+		return suffix, nil
+	case suffixCount > 1:
+		return -1, apimodel.V2AmbiguousInput(
+			fmt.Sprintf("block label %q matches more than one block — use the full block id", ref),
+			apimodel.V2Issue{Path: "block", Message: "the label is a suffix of several block ids"})
+	default:
+		return -1, apimodel.V2NotFound(fmt.Sprintf("block %q not found — read the object without ?block= or with ?outline=true to list block ids", ref))
+	}
 }
 
 //

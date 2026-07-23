@@ -6,11 +6,60 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestIdempotencyReservation(t *testing.T) {
+	// M4: begin must reserve the key so a concurrent same-key caller blocks
+	// until the owner finishes, then replays — never double-executes.
+	t.Run("a concurrent caller blocks on the reservation then replays", func(t *testing.T) {
+		store := newIdempotencyStore(8)
+
+		_, replay, owner := store.begin("space1", "key1")
+		require.False(t, replay)
+		require.True(t, owner, "first caller owns execution")
+
+		type outcome struct {
+			replay bool
+			res    storedResult
+		}
+		done := make(chan outcome, 1)
+		go func() {
+			res, replay, _ := store.begin("space1", "key1")
+			done <- outcome{replay, res}
+		}()
+
+		// the second begin must not return while the reservation is held
+		select {
+		case <-done:
+			t.Fatal("second begin returned before finish — the reservation did not block")
+		case <-time.After(20 * time.Millisecond):
+		}
+
+		store.finish("space1", "key1", &storedResult{bodyHash: "h", status: 200, body: []byte("ok")})
+
+		got := <-done
+		assert.True(t, got.replay, "the second caller replays the stored result")
+		assert.Equal(t, "h", got.res.bodyHash)
+	})
+
+	t.Run("a retry after a failed owner re-executes", func(t *testing.T) {
+		store := newIdempotencyStore(8)
+
+		_, _, owner := store.begin("space1", "key2")
+		require.True(t, owner)
+		store.finish("space1", "key2", nil) // failure: nothing cached
+
+		_, replay, owner2 := store.begin("space1", "key2")
+		assert.False(t, replay, "the retry is not served a cached result")
+		assert.True(t, owner2, "the retry becomes the new owner and re-executes")
+		store.finish("space1", "key2", nil)
+	})
+}
 
 // newIdempotencyRouter builds a tiny router with the C8 middleware in front
 // of a counting handler, so replay behavior is observable.
