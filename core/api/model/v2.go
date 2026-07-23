@@ -62,6 +62,20 @@ func V2NotFound(message string) *V2Error {
 	return NewV2Error(http.StatusNotFound, V2CodeNotFound, message)
 }
 
+// V2EtagMismatch is the 409 for a stale If-Match (C7), carrying the current
+// etag so the agent can re-read and retry.
+func V2EtagMismatch(currentEtag string) *V2Error {
+	return NewV2Error(http.StatusConflict, V2CodeEtagMismatch,
+		fmt.Sprintf("the object changed since the etag in If-Match was read — current etag is %q; re-read the object and retry", currentEtag))
+}
+
+// V2VersionUnsupported is the 400 for a document produced by a newer format
+// version (C6: surfaces SPEC §10's wording, naming both versions).
+func V2VersionUnsupported(documentVersion, supportedVersion int) *V2Error {
+	return NewV2Error(http.StatusBadRequest, V2CodeVersionUnsupported,
+		fmt.Sprintf("the document was produced by a newer version of the AnyBlock format: document version %d is newer than the supported version %d", documentVersion, supportedVersion))
+}
+
 // V2ListResponse is the C10 paginated list envelope: default limit 25,
 // has_more, and a steering message when the result is truncated.
 type V2ListResponse[T any] struct {

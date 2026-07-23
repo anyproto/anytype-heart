@@ -122,6 +122,11 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 		plan.wantProperties = false
 	}
 	plan.block = q.Block
+	// a subtree read implies blocks, like outline does — include=properties
+	// alongside block= adds the properties map instead of emptying the read
+	if plan.block != "" {
+		plan.wantBlocks = true
+	}
 	return plan, nil
 }
 
