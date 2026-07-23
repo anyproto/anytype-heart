@@ -24,6 +24,13 @@ import (
 //go:embed schema/object.schema.json
 var schemaJSON []byte
 
+// SchemaJSON returns the embedded published JSON Schema (§12). Callers must
+// not mutate the returned slice; discovery surfaces (API v2 §5) serve it
+// verbatim.
+func SchemaJSON() []byte {
+	return schemaJSON
+}
+
 const (
 	// FormatVersion is the AnyBlock JSON format version this package reads
 	// and writes (§10).

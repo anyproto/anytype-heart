@@ -433,6 +433,15 @@ func FormatName(f model.RelationFormat) string {
 	return formatNames.name(f)
 }
 
+// FormatByName is FormatName's inverse: it maps a §3 format name back to the
+// internal relation format. ok is false for names outside the vocabulary.
+func FormatByName(name string) (model.RelationFormat, bool) {
+	if !formatNames.has(name) {
+		return 0, false
+	}
+	return formatNames.value(name), true
+}
+
 var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_longtext:  "text",
 	model.RelationFormat_shorttext: "shortText",

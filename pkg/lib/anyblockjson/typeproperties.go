@@ -110,11 +110,55 @@ func (e *exporter) resolveTypeProperty(id string) (PropertyDefinition, bool) {
 	return PropertyDefinition{}, false
 }
 
-type jsonTypeProperty struct {
+// TypeProperty is one §2a typeProperties entry in its JSON shape — exported
+// so API wiring can accept typeProperties outside a full document (the
+// PATCH type surface).
+type TypeProperty struct {
 	Key     string `json:"key"`
-	Name    string `json:"name"`
-	Format  string `json:"format"`
-	Section string `json:"section"`
+	Name    string `json:"name,omitempty"`
+	Format  string `json:"format,omitempty"`
+	Section string `json:"section,omitempty"`
+}
+
+type jsonTypeProperty = TypeProperty
+
+// RecommendedList is one of the four §2a recommended-relation lists in
+// detail-key form, produced by BuildRecommendedLists.
+type RecommendedList struct {
+	DetailKey string
+	Ids       []string
+}
+
+// BuildRecommendedLists resolves a typeProperties array into the four
+// recommended-relation id lists (§2a), in canonical section order. All four
+// lists are always present — type objects store empty sections as explicit
+// empty lists. Keys the resolver cannot (or, on a dry run, will not) resolve
+// pass through in place of ids, the same degradation as import (§2a).
+func BuildRecommendedLists(props []TypeProperty, resolver PropertyResolver) []RecommendedList {
+	bySection := map[string][]string{}
+	for _, tp := range props {
+		id := tp.Key
+		if resolver != nil {
+			def := PropertyDefinition{
+				Key:    domain.RelationKey(tp.Key),
+				Name:   tp.Name,
+				Format: formatNames.value(tp.Format),
+			}
+			if resolved, ok := resolver.PropertyId(def); ok {
+				id = resolved
+			}
+		}
+		bySection[tp.Section] = append(bySection[tp.Section], id)
+	}
+	out := make([]RecommendedList, 0, len(recommendedListKeys))
+	for _, l := range recommendedListKeys {
+		ids := bySection[l.section]
+		if ids == nil {
+			ids = []string{}
+		}
+		out = append(out, RecommendedList{DetailKey: l.detailKey, Ids: ids})
+	}
+	return out
 }
 
 // applyTypeProperties rebuilds the four recommended-relation lists from the
