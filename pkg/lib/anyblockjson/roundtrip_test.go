@@ -630,6 +630,8 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 		require.NoError(t, err, "case %d", i)
 		canonical, err := Marshal(sbType, snap, testOptions())
 		require.NoError(t, err, "case %d", i)
+		// Marshal must never emit output its own Validate rejects
+		require.NoError(t, Validate(canonical), "case %d: canonical must validate: %s", i, canonical)
 
 		opts2 := testOptions()
 		opts2.GenerateId = seqIds(fmt.Sprintf("b%d_", i))

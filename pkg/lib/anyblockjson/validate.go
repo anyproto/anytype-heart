@@ -16,6 +16,7 @@ import (
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
@@ -30,6 +31,11 @@ const (
 	// SchemaURL is the published schema location written into exported
 	// documents.
 	SchemaURL = "https://schemas.anytype.io/anyblock/1.0/object.schema.json"
+
+	// maxBlockIndent is the F4 resource bound on nesting depth, mirrored by
+	// the schema's indent maximum. Export enforces it too — Marshal must
+	// never emit output its own Validate rejects.
+	maxBlockIndent = 32
 )
 
 // Issue is a single path-addressed validation problem.
@@ -94,13 +100,9 @@ func DetectFormat(data []byte) (version int, schemaURL string, ok bool) {
 	if err := json.Unmarshal(data, &probe); err != nil {
 		return 0, "", false
 	}
-	v, err := probe.Version.Int64()
-	if err != nil {
-		f, ferr := probe.Version.Float64()
-		if ferr != nil || f != math.Trunc(f) {
-			return 0, "", false
-		}
-		v = int64(f)
+	v, ok := jsonIntValue(probe.Version)
+	if !ok {
+		return 0, "", false
 	}
 	return int(v), probe.Schema, true
 }
@@ -142,7 +144,7 @@ func validateToDoc(data []byte, lenient bool, warn func(Issue)) (map[string]any,
 			if len(e.Causes) == 0 {
 				ve.Issues = append(ve.Issues, Issue{
 					Path:    jsonPath(e.InstanceLocation),
-					Message: e.ErrorKind.LocalizedString(printer),
+					Message: schemaIssueMessage(e, printer),
 				})
 				return
 			}
@@ -176,15 +178,9 @@ func checkVersion(doc map[string]any) error {
 	if !ok {
 		return &ValidationError{Issues: []Issue{{Path: "/version", Message: "version must be an integer"}}}
 	}
-	v, err := num.Int64()
-	if err != nil {
-		// accept integer-valued floats like 1.0, matching JSON Schema
-		// numeric equality
-		f, ferr := num.Float64()
-		if ferr != nil || f != math.Trunc(f) {
-			return &ValidationError{Issues: []Issue{{Path: "/version", Message: "version must be an integer"}}}
-		}
-		v = int64(f)
+	v, ok := jsonIntValue(num)
+	if !ok {
+		return &ValidationError{Issues: []Issue{{Path: "/version", Message: "version must be an integer"}}}
 	}
 	if v > FormatVersion {
 		return &ValidationError{
@@ -218,6 +214,26 @@ func jsonPath(tokens []string) string {
 		return ""
 	}
 	return "/" + strings.Join(tokens, "/")
+}
+
+// schemaIssueMessage renders one schema error. Unknown properties fail
+// against a `false` schema (unevaluatedProperties / removed keys), whose
+// stock text "false schema" names neither the rule nor the key — rewrite it
+// to name the property, with a migration hint for `children` (the error
+// every nested-era generator will hit).
+func schemaIssueMessage(e *jsonschema.ValidationError, printer *message.Printer) string {
+	if _, isFalse := e.ErrorKind.(*kind.FalseSchema); isFalse {
+		if toks := e.InstanceLocation; len(toks) > 0 {
+			prop := toks[len(toks)-1]
+			if prop == "children" {
+				return `property "children" is not allowed — the flat format has no children; nest with indent instead (§4)`
+			}
+			if _, err := strconv.Atoi(prop); err != nil { // numeric = array index, not a property
+				return fmt.Sprintf("property %q is not allowed", prop)
+			}
+		}
+	}
+	return e.ErrorKind.LocalizedString(printer)
 }
 
 // textBearing reports whether the block type's text is parsed for inline
@@ -261,8 +277,25 @@ func clampIndents(indents []int, base int, onClamp func(i, from, to int)) {
 	}
 }
 
+// jsonIntValue reads a json.Number as an integer, accepting integer-valued
+// floats like 2.0 and 1e0 — JSON Schema numeric equality treats them as
+// integers, so every reader of a schema-integer field must too.
+func jsonIntValue(num json.Number) (int64, bool) {
+	v, err := num.Int64()
+	if err == nil {
+		return v, true
+	}
+	f, ferr := num.Float64()
+	if ferr != nil || f != math.Trunc(f) {
+		return 0, false
+	}
+	return int64(f), true
+}
+
 // indentOf reads a block's indent; absent means 0. The schema guarantees an
-// integer in [0, 32] (V4) when present.
+// integer in [0, 32] (V4) when present, which includes integer-valued
+// floats — jsonIntValue keeps this reader in agreement with the schema and
+// with Unmarshal.
 func indentOf(block map[string]any) int {
 	raw, ok := block["indent"]
 	if !ok {
@@ -272,8 +305,8 @@ func indentOf(block map[string]any) int {
 	if !ok {
 		return 0
 	}
-	v, err := num.Int64()
-	if err != nil {
+	v, ok := jsonIntValue(num)
+	if !ok {
 		return 0
 	}
 	return int(v)
@@ -477,8 +510,9 @@ func walkTable(block map[string]any, path string,
 					}
 				}
 			case map[string]any:
-				// a full walk: nested tables join the id uniqueness domain
-				// and get their text checked
+				// a full walk: the cell joins the id uniqueness domain and
+				// gets its text checked (tables inside cells are already
+				// rejected by the schema's cellBlock definition)
 				walkBlock(cell, cellPath)
 			case []any:
 				// array form (§6.1 F10): a flat run — cell block first at
