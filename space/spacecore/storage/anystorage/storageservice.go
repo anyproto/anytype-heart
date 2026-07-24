@@ -195,9 +195,39 @@ func (s *storageService) WaitSpaceStorage(ctx context.Context, id string) (space
 	}
 	st, err := spacestorage.New(ctx, id, db)
 	if err != nil {
-		return nil, err
+		return nil, s.handleStorageBuildError(id, db, err)
 	}
-	return NewClientStorage(ctx, st)
+	cs, err := NewClientStorage(ctx, st)
+	if err != nil {
+		return nil, s.handleStorageBuildError(id, db, err)
+	}
+	return cs, nil
+}
+
+// handleStorageBuildError converts a build failure on an openable store.db into
+// ErrSpaceStorageMissing when the db is valid but uninitialized (its mandatory
+// collections were never durably created, e.g. a create interrupted by process
+// kill or power loss). The db passes every corruption check, so without this the
+// space can never load and never self-heal (GO-7393). The db dir is backed up
+// and the caller re-downloads the space from peers.
+func (s *storageService) handleStorageBuildError(id string, db anystore.DB, err error) error {
+	if !errors.Is(err, anystore.ErrCollectionNotFound) {
+		_ = db.Close()
+		return err
+	}
+	log.With(zap.String("spaceId", id), zap.Error(err)).Error("space store is uninitialized, backing up for re-download")
+	if s.reporter != nil {
+		s.reporter.Report("DB_UNINITIALIZED", map[string]any{
+			"db":      filepath.Join(id, "store.db"),
+			"spaceId": id,
+			"error":   err.Error(),
+		}, debugreporter.Capture{Kind: debugreporter.KindNone})
+	}
+	_ = db.Close()
+	if _, backupErr := s.backupCorruptedSpace(id); backupErr != nil {
+		log.With(zap.String("spaceId", id), zap.Error(backupErr)).Error("failed to backup uninitialized space")
+	}
+	return spacestorage.ErrSpaceStorageMissing
 }
 
 func (s *storageService) SpaceExists(id string) bool {
