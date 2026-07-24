@@ -270,7 +270,7 @@ func (s *provider) setDefaultConfig() {
 	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "normal"
 	s.anyStoreConfig.SQLiteConnectionOptions["wal_autocheckpoint"] = "10000"
-
+	anystorehelper.ApplyPlatformPragmas(s.anyStoreConfig.SQLiteConnectionOptions)
 }
 
 func (s *provider) GetCommonDb() anystore.DB {
@@ -523,7 +523,13 @@ func (s *provider) DeleteSpaceData(spaceId string) error {
 	return errs
 }
 
-func (s *provider) Flush(timeout time.Duration, waitPending bool) {
+// flushWaitSlack bounds how long Flush may wait past the per-DB timeout. SQLite does not
+// promptly honor context cancellation inside a checkpoint (a goroutine blocked in a read
+// syscall ignores sqlite3_interrupt until it returns), so a plain wg.Wait() can overrun by
+// minutes on throttled mobile background I/O (GO-7393).
+const flushWaitSlack = time.Second * 2
+
+func (s *provider) Flush(timeout time.Duration, waitPending bool, mode anystore.FlushMode) {
 	if !s.dbsAreFlushing.CompareAndSwap(false, true) {
 		return
 	}
@@ -531,7 +537,6 @@ func (s *provider) Flush(timeout time.Duration, waitPending bool) {
 	if waitPending {
 		idleDuration = time.Millisecond * 30
 	}
-	defer s.dbsAreFlushing.Store(false)
 	s.spaceIndexDbsLock.Lock()
 	s.crtdStoreLock.Lock()
 	var dbs = make([]anystore.DB, 0, len(s.spaceIndexDbs)+len(s.crdtDbs)+1)
@@ -546,7 +551,7 @@ func (s *provider) Flush(timeout time.Duration, waitPending bool) {
 	}
 	s.spaceIndexDbsLock.Unlock()
 	s.crtdStoreLock.Unlock()
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 
 	dbs = append(dbs, s.commonDb)
 	for _, db := range dbs {
@@ -555,13 +560,24 @@ func (s *provider) Flush(timeout time.Duration, waitPending bool) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(s.componentCtx, timeout)
 			defer cancel()
-			err := db.Flush(ctx, idleDuration, anystore.FlushModeCheckpointPassive)
+			err := db.Flush(ctx, idleDuration, mode)
 			if err != nil {
 				log.With(zap.Error(err)).Error("failed to flush db")
 			}
 		}(db)
 	}
-	wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		// unlock the next flush only after the goroutines actually finished
+		s.dbsAreFlushing.Store(false)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(timeout + flushWaitSlack):
+		log.With(zap.Int("dbs", len(dbs)), zap.Duration("timeout", timeout)).Warn("flush overran its budget, returning early")
+	}
 }
 
 func ensureDirExists(dir string) error {

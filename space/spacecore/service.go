@@ -301,11 +301,15 @@ func (s *service) Close(ctx context.Context) (err error) {
 	return s.spaceCache.Close()
 }
 
-func (s *service) Flush(timeout time.Duration, waitPending bool) {
+// flushWaitSlack bounds how long Flush may wait past the per-DB timeout. SQLite does not
+// promptly honor context cancellation inside a checkpoint, so a plain wg.Wait() can overrun
+// by minutes on throttled mobile background I/O (GO-7393).
+const flushWaitSlack = time.Second * 2
+
+func (s *service) Flush(timeout time.Duration, waitPending bool, mode anystore.FlushMode) {
 	if !s.dbsAreFlushing.CompareAndSwap(false, true) {
 		return
 	}
-	defer s.dbsAreFlushing.Store(false)
 
 	var dbs []anystore.DB
 	s.spaceCache.ForEach(func(v ocache.Object) (isContinue bool) {
@@ -319,18 +323,29 @@ func (s *service) Flush(timeout time.Duration, waitPending bool) {
 		idleDuration = time.Millisecond * 50
 	}
 
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 	for _, db := range dbs {
 		wg.Add(1)
 		go func(db anystore.DB) {
 			defer wg.Done()
 			ctx, cancel := context.WithTimeout(s.componentCtx, timeout)
 			defer cancel()
-			err := db.Flush(ctx, idleDuration, anystore.FlushModeCheckpointPassive)
+			err := db.Flush(ctx, idleDuration, mode)
 			if err != nil {
 				log.With(zap.Error(err)).Error("failed to flush db")
 			}
 		}(db)
 	}
-	wg.Wait()
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		// unlock the next flush only after the goroutines actually finished
+		s.dbsAreFlushing.Store(false)
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(timeout + flushWaitSlack):
+		log.With(zap.Int("dbs", len(dbs)), zap.Duration("timeout", timeout)).Warn("flush overran its budget, returning early")
+	}
 }
