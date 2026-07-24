@@ -270,7 +270,9 @@ func (s *provider) setDefaultConfig() {
 	s.anyStoreConfig.SQLiteConnectionOptions = maps.Clone(s.anyStoreConfig.SQLiteConnectionOptions)
 	s.anyStoreConfig.SQLiteConnectionOptions["synchronous"] = "normal"
 	s.anyStoreConfig.SQLiteConnectionOptions["wal_autocheckpoint"] = "10000"
-	anystorehelper.ApplyPlatformPragmas(s.anyStoreConfig.SQLiteConnectionOptions)
+	// No fullfsync here (unlike space stores): these dbs are derived state, rebuilt by
+	// reindex/replay, and openDatabaseWithReinit self-heals corruption. They also checkpoint
+	// far more often, so F_FULLFSYNC per checkpoint would be a real cost on Apple platforms.
 }
 
 func (s *provider) GetCommonDb() anystore.DB {
