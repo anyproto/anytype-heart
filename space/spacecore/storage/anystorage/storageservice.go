@@ -242,6 +242,7 @@ func (s *storageService) anyStoreConfig() *anystore.Config {
 	}
 	opts["synchronous"] = "normal"
 	opts["wal_autocheckpoint"] = "10000"
+	anystorehelper.ApplyPlatformPragmas(opts)
 
 	return &anystore.Config{
 		ReadConnections:                           4,
