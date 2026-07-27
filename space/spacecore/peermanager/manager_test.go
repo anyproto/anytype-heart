@@ -555,15 +555,20 @@ func Test_nextCheckInterval_fastRetryAfterFailure(t *testing.T) {
 	assert.Equal(t, responsiblePeersRetryInterval, f.cm.nextCheckInterval(), "rebuild signal: fast window reopened")
 }
 
-func Test_fetchResponsiblePeers_boundsNodeLookup(t *testing.T) {
+// Regression guard for the GO-7379 dial-budget starvation: the node lookup must
+// NOT carry a deadline. GetOneOf walks every responsible node x scheme x
+// address, and any bound smaller than that whole product truncates the walk --
+// one address that accepts UDP and never replies then consumes the budget and
+// the yamux fallback is never attempted. Per-attempt transport caps already
+// guarantee the walk terminates. A bound may only return once GO-7410 lands.
+func Test_fetchResponsiblePeers_nodeLookupIsNotTruncated(t *testing.T) {
 	spaceId := "spaceId"
 	f := newFixtureManager(t, spaceId)
 	f.updater.EXPECT().Refresh(spaceId)
 	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).DoAndReturn(
 		func(ctx context.Context, ids []string) (peer.Peer, error) {
-			deadline, ok := ctx.Deadline()
-			assert.True(t, ok, "node lookup must carry a deadline so it can't park behind a slow dial")
-			assert.LessOrEqual(t, time.Until(deadline), responsibleNodeDialTimeout)
+			_, ok := ctx.Deadline()
+			assert.False(t, ok, "node lookup must not carry a deadline: it truncates the address walk before the yamux fallback")
 			return newTestPeer("id"), nil
 		})
 	f.cm.fetchResponsiblePeers()
@@ -615,22 +620,39 @@ func Test_fetchResponsiblePeers_nodePublishedBeforeLocalDials(t *testing.T) {
 	assert.Empty(t, f.store.LocalPeerIds(spaceId), "stale local peer must be removed after a failed bounded dial")
 }
 
-func Test_fetchResponsiblePeers_boundsLocalDials(t *testing.T) {
+// Local (mDNS) dials are bounded PER DIAL, not by one budget shared across the
+// loop. A shared budget is the GO-7409 defect in miniature: the first stale
+// entry consumes it and every peer behind it is evicted without being tried --
+// and in LocalOnly mode, where there are no nodes, that costs sync outright.
+func Test_fetchResponsiblePeers_boundsEachLocalDialSeparately(t *testing.T) {
 	spaceId := "spaceId"
 	f := newFixtureManager(t, spaceId)
-	f.store.UpdateLocalPeer("localPeer", []string{spaceId})
+	f.store.UpdateLocalPeer("stalePeer", []string{spaceId})
+	f.store.UpdateLocalPeer("healthyPeer", []string{spaceId})
 	f.updater.EXPECT().Refresh(spaceId)
 	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("node"), nil)
-	f.pool.EXPECT().Get(gomock.Any(), "localPeer").DoAndReturn(
+
+	// the stale peer burns its whole budget, as an unroutable Wi-Fi-era entry does
+	f.pool.EXPECT().Get(gomock.Any(), "stalePeer").DoAndReturn(
+		func(ctx context.Context, id string) (peer.Peer, error) {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		})
+	// the healthy peer behind it must still get a full budget of its own
+	f.pool.EXPECT().Get(gomock.Any(), "healthyPeer").DoAndReturn(
 		func(ctx context.Context, id string) (peer.Peer, error) {
 			deadline, ok := ctx.Deadline()
-			assert.True(t, ok, "local dials must carry a deadline: stale mDNS peers must not park the fetch")
-			assert.LessOrEqual(t, time.Until(deadline), localPeerDialTimeout)
-			return newTestPeer("localPeer"), nil
+			require.True(t, ok, "local dials must carry a deadline")
+			assert.Greater(t, time.Until(deadline), localPeerDialTimeout/2,
+				"each local dial needs its own budget: a stale peer must not starve the ones behind it")
+			return newTestPeer("healthyPeer"), nil
 		})
+
 	f.cm.fetchResponsiblePeers()
 
 	peers, err := f.cm.GetResponsiblePeers(context.Background())
 	require.NoError(t, err)
-	require.Len(t, peers, 2, "node and local peer must both be served after the full fetch")
+	require.Len(t, peers, 2, "node and healthy local peer must both be served")
+	assert.Equal(t, []string{"healthyPeer"}, f.store.LocalPeerIds(spaceId),
+		"only the stale peer may be evicted")
 }
