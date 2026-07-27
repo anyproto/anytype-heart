@@ -1369,6 +1369,51 @@ message Rpc {
                             INVALID_CHALLENGE_ID = 102;
                             CHALLENGE_ATTEMPTS_EXCEEDED = 103;
                             INCORRECT_ANSWER = 104;
+                            // the user has not approved this challenge yet, so
+                            // no code exists to compare against
+                            CHALLENGE_NOT_APPROVED = 105;
+                        }
+                    }
+                }
+            }
+            // ApproveChallenge is the user's decision on a pending challenge.
+            // It is the only call that mints the code, and it answers the
+            // caller rather than broadcasting, so the code never reaches
+            // sessions other than the one that approved.
+            //
+            // The pending challenge is addressed by the caller it came from,
+            // which is what the prompt showed the user. Only one challenge can
+            // be pending per caller, so the pair is unambiguous, and it is the
+            // durable identity a future "always allow" would key on.
+            //
+            // Desktop UI only: it must never be listed in noAuthMethods or
+            // limitedScopeMethods, so authorization admits full scope alone.
+            message ApproveChallenge {
+                message Request {
+                    // both taken verbatim from the ClientInfo of the
+                    // LinkApprovalRequest event being answered; either may be empty
+                    string processPath = 1;
+                    string origin = 2;
+                    bool allow = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    string challenge = 2; // the 4-digit code; empty when allow is false
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+
+                            ACCOUNT_IS_NOT_RUNNING = 101;
+                            // nothing pending for this caller: never requested,
+                            // already decided, or expired
+                            NO_PENDING_CHALLENGE = 102;
                         }
                     }
                 }

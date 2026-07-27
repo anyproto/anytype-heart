@@ -12,12 +12,26 @@ Scope: global
 - Session context for request/response event correlation
 
 ## Documentation
-Challenge flow: StartNewChallenge generates 4-digit code displayed to user ->
-client calls SolveChallenge with code -> on success, creates session with requested scope.
-Limited to 5 tries per challenge and 50 challenge requests per app run. Wrong
-verifications are also counted across the whole run: after 20 the flow locks
-until the process restarts, so fresh codes cannot be cycled to brute-force the
-code. A correct verification resets both counters.
+Challenge flow: StartNewChallenge registers a pending request and returns its id,
+minting nothing -> the client shows the user who is asking (process path and
+browser origin) and the user approves -> ApproveChallenge mints the 4-digit code
+and returns it to the approving session only, never on the event bus -> the user
+types it into the requesting client, which calls SolveChallenge -> on success,
+creates session with requested scope.
+
+An unapproved request has no code associated with it, so there is nothing to
+brute-force before a human has named and accepted the caller. The remaining
+limits guard the user's attention rather than the secret: one pending prompt per
+caller, denials remembered for the app run, 5 tries per approved challenge, 30
+challenge requests per run and 10 per caller, and a run-wide cap of 20 wrong
+verifications. A correct verification resets the counters; denials survive it.
+Prompts nobody answers expire after a minute, codes five minutes after approval;
+SweepExpired drops them and reports which prompts to hide.
+
+Callers are told apart by origin, else process path — see callerKey. Everything
+we cannot name shares one bucket and is excluded from decisions that outlive a
+request.
+
 Full scope (AccountAuth_Full) not available via challenge - only Limited and JsonAPI.
 */
 
@@ -25,6 +39,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 
@@ -37,8 +52,10 @@ const CName = "session"
 type Service interface {
 	StartSession(privKey []byte, scope model.AccountAuthLocalApiScope) (string, error)
 	ValidateToken(privKey []byte, token string) (model.AccountAuthLocalApiScope, error)
-	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo) (id string, value string, err error)
-	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, scope model.AccountAuthLocalApiScope, err error)
+	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkApprovalRequestClientInfo) (id string, err error)
+	ApproveChallenge(processPath string, origin string, allow bool) (value string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error)
+	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, token string, scope model.AccountAuthLocalApiScope, err error)
+	SweepExpired() []*pb.EventAccountLinkApprovalRequestClientInfo
 
 	CloseSession(token string) error
 }
@@ -52,6 +69,19 @@ type service struct {
 	lock       *sync.RWMutex
 	sessions   map[string]session
 	challenges map[string]challenge
+	// challengeRequestsByCaller counts challenge requests per caller for the
+	// app run, so one client cannot spend the whole run's budget.
+	challengeRequestsByCaller map[string]int
+	// pendingByCaller points a caller at its unanswered prompt, enforcing one
+	// prompt per caller and making a pending challenge addressable by the
+	// caller the prompt displayed.
+	pendingByCaller map[string]string
+	// deniedCallers remembers, for the app run, callers the user refused, so
+	// they cannot make the user press Deny repeatedly. Attributable callers
+	// only — see isAttributable.
+	deniedCallers map[string]struct{}
+	// clock is injectable so TTL expiry is testable; nil means time.Now.
+	clock func() time.Time
 }
 
 func (s session) Scope() model.AccountAuthLocalApiScope {
@@ -60,9 +90,12 @@ func (s session) Scope() model.AccountAuthLocalApiScope {
 
 func New() Service {
 	return &service{
-		lock:       &sync.RWMutex{},
-		sessions:   map[string]session{},
-		challenges: map[string]challenge{},
+		lock:                      &sync.RWMutex{},
+		sessions:                  map[string]session{},
+		challenges:                map[string]challenge{},
+		challengeRequestsByCaller: map[string]int{},
+		pendingByCaller:           map[string]string{},
+		deniedCallers:             map[string]struct{}{},
 	}
 }
 

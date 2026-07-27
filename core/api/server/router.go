@@ -120,7 +120,9 @@ func (srv *Server) registerDocumentationRoutes(router *gin.Engine, openapiYAML [
 func (srv *Server) registerAuthRoutes(router *gin.Engine) {
 	authGroup := router.Group("/v1")
 	{
-		authGroup.POST("/auth/challenges", handler.CreateChallengeHandler(srv.service))
+		// Only this route asks a human to trust the caller, so it is the only
+		// one that pays for resolving the caller's process.
+		authGroup.POST("/auth/challenges", ensureClientProcess(), handler.CreateChallengeHandler(srv.service))
 		authGroup.POST("/auth/api_keys", handler.CreateApiKeyHandler(srv.service))
 	}
 }

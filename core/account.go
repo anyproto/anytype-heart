@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/anyproto/any-sync/net"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/space/spacecore/storage/migrator"
 	"github.com/anyproto/anytype-heart/util/grpcprocess"
+	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
 func (mw *Middleware) AccountCreate(cctx context.Context, req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -266,6 +269,7 @@ func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request 
 	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info)
 	code := mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		errToCode(session.ErrTooManyCallerChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
@@ -277,6 +281,56 @@ func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request 
 			Description: getErrorDescription(err),
 		},
 	}
+}
+
+// AccountLocalLinkApproveChallenge carries the user's answer to a pairing
+// prompt. It is the only place a challenge code is minted, and the code is
+// returned here rather than broadcast, so it reaches only the session that
+// approved.
+//
+// This method must stay out of both noAuthMethods and limitedScopeMethods in
+// core/auth.go: falling through both is what restricts it to AccountAuth_Full,
+// i.e. the desktop UI. Listing it in noAuthMethods would let any local process
+// approve its own pairing.
+func (mw *Middleware) AccountLocalLinkApproveChallenge(ctx context.Context, req *pb.RpcAccountLocalLinkApproveChallengeRequest) *pb.RpcAccountLocalLinkApproveChallengeResponse {
+	err := mw.rejectBrowserCaller(ctx)
+	if err == nil {
+		var challenge string
+		challenge, _, err = mw.applicationService.LinkLocalApproveChallenge(req.ProcessPath, req.Origin, req.Allow)
+		if err == nil {
+			return &pb.RpcAccountLocalLinkApproveChallengeResponse{
+				Challenge: challenge,
+				Error: &pb.RpcAccountLocalLinkApproveChallengeResponseError{
+					Code: pb.RpcAccountLocalLinkApproveChallengeResponseError_NULL,
+				},
+			}
+		}
+	}
+	code := mapErrorCode(err,
+		errToCode(session.ErrNoPendingChallenge, pb.RpcAccountLocalLinkApproveChallengeResponseError_NO_PENDING_CHALLENGE),
+		errToCode(errBrowserCallerNotAllowed, pb.RpcAccountLocalLinkApproveChallengeResponseError_BAD_INPUT),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkApproveChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountLocalLinkApproveChallengeResponse{
+		Error: &pb.RpcAccountLocalLinkApproveChallengeResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+// errBrowserCallerNotAllowed rejects a request that came from a browser context.
+var errBrowserCallerNotAllowed = errors.New("this method cannot be called from a browser")
+
+// rejectBrowserCaller refuses callers that carry an Origin header. Approving a
+// pairing is a desktop-UI action; the gRPC-Web proxy trusts the Webclipper
+// extension's origins, so a browser context can reach the RPC surface and must
+// be turned away here even when it holds a valid token.
+func (mw *Middleware) rejectBrowserCaller(ctx context.Context) error {
+	if origin := localorigin.OriginFromContext(ctx); origin != "" {
+		return fmt.Errorf("%w: origin %q", errBrowserCallerNotAllowed, origin)
+	}
+	return nil
 }
 
 func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.RpcAccountLocalLinkSolveChallengeRequest) *pb.RpcAccountLocalLinkSolveChallengeResponse {
@@ -341,13 +395,17 @@ func (mw *Middleware) AccountLocalLinkRevokeApp(_ context.Context, req *pb.RpcAc
 	}
 }
 
-func getClientInfo(ctx context.Context) pb.EventAccountLinkChallengeClientInfo {
+func getClientInfo(ctx context.Context) pb.EventAccountLinkApprovalRequestClientInfo {
+	// Browser callers reach the JSON API over HTTP and have no process to
+	// inspect; the Origin header is what names them instead.
+	origin := localorigin.OriginFromContext(ctx)
 	info, ok := grpcprocess.FromContext(ctx)
 	if !ok {
-		return pb.EventAccountLinkChallengeClientInfo{}
+		return pb.EventAccountLinkApprovalRequestClientInfo{Origin: origin}
 	}
-	return pb.EventAccountLinkChallengeClientInfo{
+	return pb.EventAccountLinkApprovalRequestClientInfo{
 		ProcessName: info.Name,
 		ProcessPath: info.Path,
+		Origin:      origin,
 	}
 }
