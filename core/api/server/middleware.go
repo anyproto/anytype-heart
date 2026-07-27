@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/grpcprocess"
 	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
@@ -57,6 +59,12 @@ func ensureMetadataHeader() gin.HandlerFunc {
 func ensureTrustedOrigin(policy *localorigin.Policy) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if policy.AllowRequest(c.Request) {
+			// Carry the accepted origin so the pairing challenge can name the
+			// caller. Browsers set this header themselves, so unlike the
+			// app_name in the body it is not the caller's to choose.
+			if origin := c.GetHeader("Origin"); origin != "" {
+				c.Request = c.Request.WithContext(localorigin.WithOrigin(c.Request.Context(), origin))
+			}
 			c.Next()
 			return
 		}
@@ -69,6 +77,38 @@ func ensureTrustedOrigin(policy *localorigin.Policy) gin.HandlerFunc {
 // apiSessionContextKey is the gin-context key under which ensureAuthenticated
 // stores the resolved ApiSessionEntry for downstream authorization middleware.
 const apiSessionContextKey = "apiSession"
+
+// ensureClientProcess resolves the process on the other end of the connection
+// so the pairing dialog can name a native caller, which has no Origin to show.
+// For a browser it names the browser itself, which pairs usefully with the
+// extension origin.
+//
+// It is deliberately not global middleware: resolving walks the machine's TCP
+// table (lsof on macOS), which is far too expensive to do per API request.
+// Mount it only where a human is about to be asked to trust the caller.
+func ensureClientProcess() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		host, port, err := net.SplitHostPort(c.Request.RemoteAddr)
+		if err != nil {
+			c.Next()
+			return
+		}
+		if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
+			// Only loopback peers are on this machine to be resolved at all.
+			c.Next()
+			return
+		}
+		info, err := grpcprocess.ResolveProcess(host, port)
+		if err != nil {
+			// Best effort: the dialog falls back to the origin and app name.
+			log.With("error", err).Debugf("could not resolve client process for pairing")
+			c.Next()
+			return
+		}
+		c.Request = c.Request.WithContext(grpcprocess.WithProcessInfo(c.Request.Context(), info))
+		c.Next()
+	}
+}
 
 // ensureAuthenticated is a middleware that ensures the request is
 // authenticated: bearer parse, key→session exchange and cache, and per-request

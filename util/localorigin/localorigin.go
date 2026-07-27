@@ -17,10 +17,32 @@
 package localorigin
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"strings"
 )
+
+type originCtxKey struct{}
+
+// WithOrigin carries the caller's Origin header down to code that needs to name
+// the caller, notably the local-link challenge event shown to the user. Only
+// set it after the policy has accepted the request: a rejected request has no
+// business naming itself, and the value must come from the header the browser
+// sets rather than from anything in the request body.
+func WithOrigin(ctx context.Context, origin string) context.Context {
+	if origin == "" {
+		return ctx
+	}
+	return context.WithValue(ctx, originCtxKey{}, origin)
+}
+
+// OriginFromContext returns the Origin header of the current request, or "" for
+// native clients, which send none.
+func OriginFromContext(ctx context.Context) string {
+	origin, _ := ctx.Value(originCtxKey{}).(string)
+	return origin
+}
 
 // fileOrigin is the origin an Electron renderer loaded over file:// sends on a
 // WebSocket handshake. A remote page can never obtain it.

@@ -887,22 +887,28 @@ func TestChallengeFlowGrant(t *testing.T) {
 		s, w, sender := newChallengeService(t)
 		requested := testProtoGrant()
 
-		var challengeValue string
 		var broadcastGrant *model.AccountAuthAppGrant
+		var broadcastInfo *pb.EventAccountLinkApprovalRequestClientInfo
 		sender.EXPECT().Broadcast(mock.Anything).Run(func(ev *pb.Event) {
 			for _, msg := range ev.Messages {
-				if ch := msg.GetAccountLinkChallenge(); ch != nil {
-					challengeValue = ch.Challenge
+				if ch := msg.GetAccountLinkApprovalRequest(); ch != nil {
 					broadcastGrant = ch.RequestedGrant
+					broadcastInfo = ch.ClientInfo
 				}
 			}
 		}).Return()
 
-		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, &pb.EventAccountLinkChallengeClientInfo{Name: "cli-grant"}, requested)
+		clientInfo := &pb.EventAccountLinkApprovalRequestClientInfo{Name: "cli-grant", ProcessPath: "/usr/bin/cli-grant"}
+		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, requested)
+		require.NoError(t, err)
+		// the consent picker sees exactly what was requested, and no code
+		require.Equal(t, requested, broadcastGrant)
+		require.NotNil(t, broadcastInfo)
+
+		// the code exists only once the user approves
+		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true)
 		require.NoError(t, err)
 		require.NotEmpty(t, challengeValue)
-		// the future consent picker sees exactly what was requested
-		require.Equal(t, requested, broadcastGrant)
 
 		// when
 		_, appKey, err := s.LinkLocalSolveChallenge(&pb.RpcAccountLocalLinkSolveChallengeRequest{
@@ -926,15 +932,11 @@ func TestChallengeFlowGrant(t *testing.T) {
 	t.Run("challenge without grant persists an unscoped key", func(t *testing.T) {
 		// given
 		s, w, sender := newChallengeService(t)
-		var challengeValue string
-		sender.EXPECT().Broadcast(mock.Anything).Run(func(ev *pb.Event) {
-			for _, msg := range ev.Messages {
-				if ch := msg.GetAccountLinkChallenge(); ch != nil {
-					challengeValue = ch.Challenge
-				}
-			}
-		}).Return()
-		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, &pb.EventAccountLinkChallengeClientInfo{Name: "cli-plain"}, nil)
+		sender.EXPECT().Broadcast(mock.Anything).Return()
+		clientInfo := &pb.EventAccountLinkApprovalRequestClientInfo{Name: "cli-plain", ProcessPath: "/usr/bin/cli-plain"}
+		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, clientInfo, nil)
+		require.NoError(t, err)
+		challengeValue, _, err := s.LinkLocalApproveChallenge(clientInfo.ProcessPath, "", true)
 		require.NoError(t, err)
 
 		// when
@@ -956,7 +958,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 		s, _, _ := newChallengeService(t)
 
 		// when: a grant with no spaces
-		_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, &pb.EventAccountLinkChallengeClientInfo{Name: "cli-bad"}, &model.AccountAuthAppGrant{Perm: model.AccountAuthAppGrant_Read})
+		_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI, &pb.EventAccountLinkApprovalRequestClientInfo{Name: "cli-bad"}, &model.AccountAuthAppGrant{Perm: model.AccountAuthAppGrant_Read})
 
 		// then
 		require.ErrorIs(t, err, walletComp.ErrInvalidGrant)
@@ -967,7 +969,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 		s, _, _ := newChallengeService(t)
 
 		// when
-		_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_Limited, &pb.EventAccountLinkChallengeClientInfo{Name: "clipper"}, testProtoGrant())
+		_, err := s.LinkLocalStartNewChallenge(model.AccountAuth_Limited, &pb.EventAccountLinkApprovalRequestClientInfo{Name: "clipper"}, testProtoGrant())
 
 		// then
 		require.ErrorIs(t, err, walletComp.ErrInvalidGrant)
@@ -980,10 +982,10 @@ func TestChallengeFlowGrant(t *testing.T) {
 		// fires at solve time fails here on the unexpected broadcast.
 		cases := []struct {
 			name string
-			info *pb.EventAccountLinkChallengeClientInfo
+			info *pb.EventAccountLinkApprovalRequestClientInfo
 		}{
 			{"nil client info", nil},
-			{"both names empty", &pb.EventAccountLinkChallengeClientInfo{}},
+			{"both names empty", &pb.EventAccountLinkApprovalRequestClientInfo{}},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -1006,7 +1008,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 		sender.EXPECT().Broadcast(mock.Anything).Return()
 
 		challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI,
-			&pb.EventAccountLinkChallengeClientInfo{ProcessName: "SomeApp.exe"}, nil)
+			&pb.EventAccountLinkApprovalRequestClientInfo{ProcessName: "SomeApp.exe"}, nil)
 
 		require.NoError(t, err)
 		require.NotEmpty(t, challengeId)
@@ -1020,10 +1022,10 @@ func TestChallengeFlowGrant(t *testing.T) {
 		tooLong := strings.Repeat("x", domain.MaxIntegrationNameLen+1)
 		cases := []struct {
 			name string
-			info *pb.EventAccountLinkChallengeClientInfo
+			info *pb.EventAccountLinkApprovalRequestClientInfo
 		}{
-			{"requested name too long", &pb.EventAccountLinkChallengeClientInfo{Name: tooLong}},
-			{"process-name fallback too long", &pb.EventAccountLinkChallengeClientInfo{ProcessName: tooLong}},
+			{"requested name too long", &pb.EventAccountLinkApprovalRequestClientInfo{Name: tooLong}},
+			{"process-name fallback too long", &pb.EventAccountLinkApprovalRequestClientInfo{ProcessName: tooLong}},
 		}
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
@@ -1044,7 +1046,7 @@ func TestChallengeFlowGrant(t *testing.T) {
 			sender.EXPECT().Broadcast(mock.Anything).Return()
 
 			challengeId, err := s.LinkLocalStartNewChallenge(model.AccountAuth_JsonAPI,
-				&pb.EventAccountLinkChallengeClientInfo{Name: "Fine", ProcessName: tooLong}, nil)
+				&pb.EventAccountLinkApprovalRequestClientInfo{Name: "Fine", ProcessName: tooLong}, nil)
 
 			require.NoError(t, err)
 			require.NotEmpty(t, challengeId)

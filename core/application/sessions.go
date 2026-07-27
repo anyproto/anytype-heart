@@ -214,7 +214,7 @@ func (s *Service) ValidateSessionToken(token string) (model.AccountAuthLocalApiS
 	return s.sessions.ValidateToken(s.sessionSigningKey, token)
 }
 
-func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkChallengeClientInfo, requestedGrant *model.AccountAuthAppGrant) (id string, err error) {
+func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScope, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, requestedGrant *model.AccountAuthAppGrant) (id string, err error) {
 	if s.app == nil {
 		return "", ErrApplicationIsNotRunning
 	}
@@ -245,14 +245,19 @@ func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScop
 	if len(effectiveName) > domain.MaxIntegrationNameLen {
 		return "", errors.Join(ErrBadInput, fmt.Errorf("app name exceeds %d bytes", domain.MaxIntegrationNameLen))
 	}
+	s.hideExpiredChallenges()
 
-	id, value, err := s.sessions.StartNewChallenge(scope, clientInfo, requestedGrant)
+	id, err = s.sessions.StartNewChallenge(scope, clientInfo, requestedGrant)
 	if err != nil {
 		return "", fmt.Errorf("start new challenge: %w", err)
 	}
-	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkChallenge{
-		AccountLinkChallenge: &pb.EventAccountLinkChallenge{
-			Challenge:      value,
+
+	// No code in this event: it does not exist yet. The client shows who is
+	// asking and calls LinkLocalApproveChallenge with the user's answer.
+	// Headless deployments that have no UI to approve mint an app key directly
+	// through LinkLocalCreateApp instead of pairing.
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkApprovalRequest{
+		AccountLinkApprovalRequest: &pb.EventAccountLinkApprovalRequest{
 			ClientInfo:     clientInfo,
 			Scope:          scope,
 			RequestedGrant: requestedGrant,
@@ -261,10 +266,45 @@ func (s *Service) LinkLocalStartNewChallenge(scope model.AccountAuthLocalApiScop
 	return id, nil
 }
 
+// LinkLocalApproveChallenge records the user's decision and, when allowed,
+// returns the freshly minted code to this caller alone. On refusal the prompt is
+// hidden and the caller is remembered as denied for the rest of the run.
+func (s *Service) LinkLocalApproveChallenge(processPath string, origin string, allow bool) (challenge string, clientInfo *pb.EventAccountLinkApprovalRequestClientInfo, err error) {
+	if s.app == nil {
+		return "", nil, ErrApplicationIsNotRunning
+	}
+
+	challenge, clientInfo, err = s.sessions.ApproveChallenge(processPath, origin, allow)
+	if err != nil {
+		return "", nil, err
+	}
+	if !allow {
+		s.hideChallenge(clientInfo)
+	}
+	return challenge, clientInfo, nil
+}
+
+// hideExpiredChallenges drops timed-out challenges and takes their prompts off
+// the screen. Nothing else cleans up a prompt the user never answered.
+func (s *Service) hideExpiredChallenges() {
+	for _, clientInfo := range s.sessions.SweepExpired() {
+		s.hideChallenge(clientInfo)
+	}
+}
+
+func (s *Service) hideChallenge(clientInfo *pb.EventAccountLinkApprovalRequestClientInfo) {
+	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkApprovalHide{
+		AccountLinkApprovalHide: &pb.EventAccountLinkApprovalHide{
+			ClientInfo: clientInfo,
+		},
+	}))
+}
+
 func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChallengeRequest) (token string, appKey string, err error) {
 	if s.app == nil {
 		return "", "", ErrApplicationIsNotRunning
 	}
+	s.hideExpiredChallenges()
 	clientInfo, token, scope, requestedGrant, err := s.sessions.SolveChallenge(req.ChallengeId, req.Answer, s.sessionSigningKey)
 	if err != nil {
 		return "", "", fmt.Errorf("solve challenge: %w", err)
@@ -289,11 +329,7 @@ func (s *Service) LinkLocalSolveChallenge(req *pb.RpcAccountLocalLinkSolveChalle
 	s.trackAppSessionLocked(appInfo.AppHash, token)
 	s.appSessionsLock.Unlock()
 	appKey = appInfo.AppKey
-	s.eventSender.Broadcast(event.NewEventSingleMessage("", &pb.EventMessageValueOfAccountLinkChallengeHide{
-		AccountLinkChallengeHide: &pb.EventAccountLinkChallengeHide{
-			Challenge: req.Answer,
-		},
-	}))
+	s.hideChallenge(clientInfo)
 	return
 }
 
