@@ -447,6 +447,56 @@ var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_relations: "properties",
 })
 
+// layoutNames maps the object layout enum to the names this format uses.
+// Layout is *stored* as a number (its bundled relation's format is `number`),
+// but a bare integer would be the one opaque enum in an otherwise
+// self-describing format — every other enum here is a name (§3).
+var layoutNames = newEnumNames(map[model.ObjectTypeLayout]string{
+	model.ObjectType_basic:               "basic",
+	model.ObjectType_profile:             "profile",
+	model.ObjectType_todo:                "todo",
+	model.ObjectType_set:                 "set",
+	model.ObjectType_objectType:          "objectType",
+	model.ObjectType_relation:            "relation",
+	model.ObjectType_file:                "file",
+	model.ObjectType_dashboard:           "dashboard",
+	model.ObjectType_image:               "image",
+	model.ObjectType_note:                "note",
+	model.ObjectType_space:               "space",
+	model.ObjectType_bookmark:            "bookmark",
+	model.ObjectType_relationOptionsList: "relationOptionsList",
+	model.ObjectType_relationOption:      "relationOption",
+	model.ObjectType_collection:          "collection",
+	model.ObjectType_audio:               "audio",
+	model.ObjectType_video:               "video",
+	model.ObjectType_date:                "date",
+	model.ObjectType_spaceView:           "spaceView",
+	model.ObjectType_participant:         "participant",
+	model.ObjectType_pdf:                 "pdf",
+	model.ObjectType_chatDeprecated:      "chatDeprecated",
+	model.ObjectType_chatDerived:         "chatDerived",
+	model.ObjectType_tag:                 "tag",
+	model.ObjectType_notification:        "notification",
+	model.ObjectType_missingObject:       "missingObject",
+	model.ObjectType_devices:             "devices",
+	model.ObjectType_discussion:          "discussion",
+})
+
+// layoutValuedKeys are the properties whose stored number is an
+// ObjectTypeLayout. The other layout-ish bundled keys hold *different* enums
+// — layoutAlign is a block align, layoutWidth a fraction, widgetLayout a
+// widget layout, headerRelationsLayout its own enum — so they are left alone.
+var layoutValuedKeys = map[string]struct{}{
+	"recommendedLayout": {},
+	"layout":            {},
+	"resolvedLayout":    {},
+}
+
+func isLayoutKey(key string) bool {
+	_, ok := layoutValuedKeys[key]
+	return ok
+}
+
 // formatName is the export-side name of a stored format: the canonical name
 // from formatNames, with legacy shorttext folded into "text" (§3).
 func formatName(f model.RelationFormat) string {

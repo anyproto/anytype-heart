@@ -336,6 +336,21 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
+	// layout properties are named, not numbered (§3). A typo would otherwise
+	// import as a raw string onto a number-format property: no error anywhere,
+	// and every consumer reads it with an int getter and silently sees "basic".
+	if props, _ := doc["properties"].(map[string]any); props != nil {
+		for key, v := range props {
+			s, isStr := v.(string)
+			if !isLayoutKey(key) || !isStr {
+				continue // a raw number is still accepted (§3)
+			}
+			if !layoutNames.has(s) {
+				addIssue("/properties/"+key, "unknown layout %q", s)
+			}
+		}
+	}
+
 	if _, ok := doc["typeProperties"]; ok {
 		if kind, _ := doc["kind"].(string); kind != "objectType" {
 			addIssue("/typeProperties", `typeProperties is only valid on type documents (kind "objectType")`)
