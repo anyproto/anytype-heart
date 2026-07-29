@@ -313,7 +313,7 @@
         "name": { "type": "string" },
         "format": {
           "enum": [
-            "text", "shortText", "number", "select", "multiSelect", "date",
+            "text", "number", "select", "multiSelect", "date",
             "files", "checkbox", "url", "email", "phone", "emoji", "objects",
             "properties"
           ]
@@ -329,7 +329,7 @@
         "key": { "type": "string" },
         "format": {
           "enum": [
-            "text", "shortText", "number", "select", "multiSelect", "date",
+            "text", "number", "select", "multiSelect", "date",
             "files", "checkbox", "url", "email", "phone", "emoji", "objects",
             "properties"
           ]

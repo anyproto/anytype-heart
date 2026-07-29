@@ -126,6 +126,25 @@ func (imp *importer) resolveId(s string) string {
 	return s
 }
 
+// declaredFormat maps a document's format name to a stored format. "text"
+// is deliberately ambiguous (§3): it names both longtext and the legacy
+// shorttext, so for that one name the property's *existing* format decides,
+// which is what keeps a bundled short-text property (name, iconEmoji, …)
+// from being rewritten to longtext on every round-trip. An absent or
+// unrecognized name resolves the same way — it too lands on longtext. Every
+// other name is taken literally: the document is authoritative about which
+// format a property has, and only the text/text collapse needs repairing.
+func (imp *importer) declaredFormat(key, name string) model.RelationFormat {
+	f := formatNames.value(name)
+	if f != model.RelationFormat_longtext {
+		return f
+	}
+	if resolved, ok := imp.resolveFormat(key); ok && resolved == model.RelationFormat_shorttext {
+		return resolved
+	}
+	return f
+}
+
 func (imp *importer) resolveFormat(key string) (model.RelationFormat, bool) {
 	return resolveFormatWith(imp.opts, key)
 }
