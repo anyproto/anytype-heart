@@ -217,7 +217,7 @@ func richSnapshot() *model.SmartBlockSnapshotBase {
 				},
 				Relations: []*model.BlockContentDataviewRelation{
 					{Key: "name", IsVisible: true},
-					{Key: "dueDate", IsVisible: false, Width: 30,
+					{Key: "dueDate", IsVisible: false, Width: 120,
 						Formula: model.BlockContentDataviewRelation_CountDistinct,
 						Align:   model.Block_AlignRight},
 				},

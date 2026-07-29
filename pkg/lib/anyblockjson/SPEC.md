@@ -555,7 +555,7 @@ string enums, and defaults omitted:
       ],
       "columns": [
         { "property": "name" },
-        { "property": "dueDate", "width": 30, "align": "right" },
+        { "property": "dueDate", "width": 120, "align": "right" },
         { "property": "status", "aggregation": "countDistinct" }
       ]
     }
@@ -598,11 +598,34 @@ Editor state nested per view, both output-only (§4a):
 
 **Column** (`View.Relation`), canonical order: `property` (the property
 key), `hidden` (inverse of proto `isVisible`; omitted = visible, so the
-common case costs nothing), `width` (displayed column **%**), `aggregation`
+common case costs nothing), `width` (displayed column width in **pixels**,
+see below), `aggregation`
 (`count · countValue · countDistinct · countEmpty · countNotEmpty ·
 percentEmpty · percentNotEmpty · sum · average · median · min · max · range`
 — from proto `formula`; omit `none`), `align`. Deprecated per-column
 date/time fields are dropped.
+
+**Column `width` is in pixels**, the same unit as the proto's `width` — not
+a percentage, and not a share of the table. A row of columns summing to
+`100` produces four unreadable slivers, not four proportional columns.
+Serialization passes the number through unchanged: the client owns
+rendering, and this package neither clamps nor defaults it. What the client
+does with it (`anytype-ts`, `J.Size.dataview.cell` / `Relation.width`):
+
+| value | rendered width |
+|---|---|
+| omitted / `0`, a property stored as `shorttext` (`name`, …) | `500` |
+| omitted / `0`, any other format | `192` |
+| any non-zero `n` | exactly `n` — **no clamping on render** |
+
+So **omitting `width` is the better default than guessing one**: the client
+picks per format, and the choice tracks the client rather than freezing here.
+Write a number only to pin a deliberate layout — the editor's own drag-resize
+stays within `54…1000` (`min`/`max`), and columns at or below `70` (`small`)
+and `120` (`medium`) get progressively stripped-down cell rendering, so
+anything under ~`54` is a slice of a column with no room for its content.
+Widths written by the editor itself land in the low hundreds (`150`–`320` for
+text and object columns, `60`–`100` for numbers and short values).
 
 **Sort** (`Dataview.Sort`), canonical order: `property` (from
 `RelationKey`), `direction` (`asc · desc · custom`, omit `asc`),
@@ -1232,7 +1255,7 @@ Wiring (follow-up work, not this package):
           ],
           "columns": [
             { "property": "name" },
-            { "property": "dueDate", "width": 30, "align": "right" },
+            { "property": "dueDate", "width": 120, "align": "right" },
             { "property": "status", "aggregation": "countDistinct" }
           ]
         }
