@@ -222,7 +222,17 @@ func (e *exporter) filterToJSON(f *model.BlockContentDataviewFilter, dv *model.B
 		model.BlockContentDataviewFilter_Exists:
 		// value is dropped on presence-only conditions (§11)
 	default:
-		if f.Value != nil {
+		// the day-count presets take their operand from value (§6.2), so a
+		// zero count is meaningful data rather than an absent field: it must
+		// survive the usual empty-elision, or the document silently stops
+		// saying which day it means
+		if countingPreset(f.QuickOption) {
+			if f.Value == nil {
+				fm.set("value", float64(0))
+			} else {
+				fm.set("value", e.dvValueToJSON(dv, f.RelationKey, f.Value))
+			}
+		} else if f.Value != nil {
 			fm.setNonEmpty("value", e.dvValueToJSON(dv, f.RelationKey, f.Value))
 		}
 	}

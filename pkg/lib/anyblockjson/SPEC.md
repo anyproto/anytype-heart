@@ -669,6 +669,16 @@ values verbatim), `emptyPlacement` (`start · end`, omit unspecified),
 `includeTime` (include time-of-day when comparing dates), `noCollate`
 (disable locale-aware collation; compare raw strings), `id` (output-only).
 
+**Dates are not empty-safe.** An object with no value for a date property
+matches `less` and `lessOrEqual` regardless of the threshold: `Compare`
+returns `1` when the filter carries a value and the record does not, and `1`
+is what `Less` tests for (`pkg/lib/database/filter.go`). An "overdue" view
+must therefore pair the comparison with a `notEmpty` on the same property
+inside an `and` group; a `notEmpty` under an `or` guards nothing.
+`greater`/`greaterOrEqual` are unaffected. Import warns on an unguarded
+comparison rather than rejecting it — including undated objects is a legal
+thing to want, and stored data contains such filters.
+
 **Filter** (`Dataview.Filter`) — a filter node is either a **group** or a
 **leaf** (schema `oneOf`); the top-level `filters` array combines its nodes
 with an implicit **AND** (canonical form uses bare leaves at the top level;
@@ -691,6 +701,17 @@ a group exists only for `or` or nesting):
   option **names** per §3; dates stay unix numbers in the structured form;
   everything else verbatim. `value` is **dropped** on
   `empty`/`notEmpty`/`exists` leaves (§11).
+
+  `numberOfDaysAgo` and `numberOfDaysNow` are the two presets that **take an
+  operand**: `getDateRange` reads the day count from `value`
+  (`pkg/lib/database/quickoptions.go`), so they are the one case where a
+  preset and a `value` legitimately coexist, and a leaf carrying one without
+  a `value` is a validation error — the count would default to `0`, silently
+  meaning today. Because the count is meaningful data rather than an absent
+  field, export writes it even when it is `0`, overriding the usual
+  empty-elision (§4). A preset resolves to a day *range*, and the condition
+  picks the endpoint: `less`/`greaterOrEqual` compare against the range
+  start, `greater`/`lessOrEqual` against its end.
 
 Sorts and filters do **not** carry the proto's cached per-node `format`:
 import rehydrates it from the dataview `properties` list and `bundle`

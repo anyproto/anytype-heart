@@ -595,6 +595,7 @@ func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue f
 		if !ok {
 			continue
 		}
+		checkDateFilters(view, formats, fmt.Sprintf("%s/views/%d", path, i), addIssue, warnIssue)
 		groupBy, _ := view["groupBy"].(string)
 		if groupBy == "" {
 			continue
@@ -630,3 +631,75 @@ func sortedKeys(m map[string]struct{}) []string {
 	return out
 }
 
+// checkDateFilters warns about `less`/`lessOrEqual` on a date property that
+// is not guarded by a `notEmpty`/`exists` on the same property in an
+// enclosing AND. An object with no value for that date matches: the filter's
+// value is set and the record's is not, so domain.Value.Compare returns 1,
+// which is exactly what Less tests for. A freshness view written the obvious
+// way ("verifiedUntil less today") therefore lists every never-verified
+// object alongside the genuinely stale ones. It is a warning, not an error —
+// including undated objects is a legal thing to want, and real exported data
+// contains such filters.
+func checkDateFilters(view map[string]any, formats map[string]string, path string, addIssue, warnIssue func(string, string, ...any)) {
+	nodes, _ := view["filters"].([]any)
+	if len(nodes) == 0 {
+		return
+	}
+	var walk func(nodes []any, path string, and bool, guarded map[string]bool)
+	walk = func(nodes []any, path string, and bool, guarded map[string]bool) {
+		// only an AND lets a sibling notEmpty guarantee anything: under an OR
+		// the comparison can be reached without it
+		scope := guarded
+		if and {
+			scope = map[string]bool{}
+			for k := range guarded {
+				scope[k] = true
+			}
+			for _, raw := range nodes {
+				n, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				cond, _ := n["condition"].(string)
+				if prop, _ := n["property"].(string); prop != "" &&
+					(cond == "notEmpty" || cond == "exists") {
+					scope[prop] = true
+				}
+			}
+		}
+		for i, raw := range nodes {
+			n, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			nPath := fmt.Sprintf("%s/%d", path, i)
+			if sub, isGroup := n["filters"].([]any); isGroup {
+				op, _ := n["operator"].(string)
+				walk(sub, nPath+"/filters", op != "or", scope)
+				continue
+			}
+			// the day-count presets read their operand from value; without
+			// one the count is 0, which quietly means "today" rather than
+			// "n days ago" (pkg/lib/database.getDateRange)
+			if preset, _ := n["datePreset"].(string); preset != "" {
+				if _, counts := countingPresetNames[preset]; counts {
+					if _, has := n["value"]; !has {
+						addIssue(nPath, "datePreset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
+					}
+				}
+			}
+			cond, _ := n["condition"].(string)
+			if cond != "less" && cond != "lessOrEqual" {
+				continue
+			}
+			prop, _ := n["property"].(string)
+			if formats[prop] != "date" || scope[prop] {
+				continue
+			}
+			warnIssue(nPath, "%q on date %q also matches objects with no %s; "+
+				"pair it with a %q leaf in an \"and\" group to exclude them",
+				cond, prop, prop, "notEmpty")
+		}
+	}
+	walk(nodes, path+"/filters", true, map[string]bool{})
+}
