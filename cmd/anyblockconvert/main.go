@@ -109,7 +109,11 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		fmt.Fprintf(os.Stderr, "warning: %d propert%s with no declared format:\n%s",
 			len(undeclared), plural(len(undeclared)), anyblockbatch.Report(undeclared))
 	}
-	b := newBatch(formats)
+	typeIds, err := anyblockbatch.TypeIds(files)
+	if err != nil {
+		return fmt.Errorf("index type ids: %w", err)
+	}
+	b := newBatch(formats, typeIds)
 
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", outDir, err)

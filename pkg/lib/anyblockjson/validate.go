@@ -409,6 +409,19 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 						seen[n] = true
 					}
 				}
+				// objectTypes restricts what an object reference may point
+				// at; on any other format there is nothing to restrict and
+				// the array would be silently dropped
+				if ots, has := tp["objectTypes"].([]any); has && len(ots) > 0 {
+					if f, _ := tp["format"].(string); f != "objects" && f != "files" {
+						shown := f
+						if shown == "" {
+							shown = "text"
+						}
+						addIssue(fmt.Sprintf("/typeProperties/%d/objectTypes", i),
+							"objectTypes is only meaningful on objects/files, not %q", shown)
+					}
+				}
 				name, _ := tp["name"].(string)
 				if key == "" || name == "" {
 					continue

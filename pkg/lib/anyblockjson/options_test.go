@@ -88,3 +88,36 @@ func TestValidate_OptionsRules(t *testing.T) {
 		}
 	})
 }
+
+func TestImport_ObjectTypesReachTheWiring(t *testing.T) {
+	doc := `{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+		"typeProperties": [
+			{"key": "owner", "name": "Owner", "format": "objects",
+			 "objectTypes": ["wikiPerson", "participant"]},
+			{"key": "anything", "name": "Anything", "format": "objects"}]}`
+	r := &recordingPropertyResolver{}
+	_, _, err := Unmarshal([]byte(doc), Options{GenerateId: seqIds("g"), ResolveProperties: r})
+	require.NoError(t, err)
+
+	require.Len(t, r.defs, 2)
+	assert.Equal(t, []string{"wikiPerson", "participant"}, r.defs[0].ObjectTypes,
+		"priority order is preserved")
+	assert.Empty(t, r.defs[1].ObjectTypes, "untargeted accepts any object")
+}
+
+func TestValidate_ObjectTypesRules(t *testing.T) {
+	t.Run("rejected on a non-object format", func(t *testing.T) {
+		for _, f := range []string{"select", "date", "text"} {
+			err := Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+				"typeProperties": [{"key": "p", "format": "` + f + `", "objectTypes": ["participant"]}]}`))
+			require.Error(t, err, f)
+			assert.Contains(t, err.Error(), "only meaningful on objects/files")
+		}
+	})
+	t.Run("accepted on objects and files", func(t *testing.T) {
+		for _, f := range []string{"objects", "files"} {
+			assert.NoError(t, Validate([]byte(`{"version": 1, "kind": "objectType", "id": "t1", "key": "k",
+				"typeProperties": [{"key": "p", "format": "`+f+`", "objectTypes": ["participant"]}]}`)), f)
+		}
+	})
+}

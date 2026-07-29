@@ -45,6 +45,11 @@ type batch struct {
 	// the lexid alphabet, after it otherwise.
 	optOrder map[string]string
 
+	// typeIDs maps a type key this bundle defines to the id its document
+	// carries, so a property targeting it references the same id every other
+	// reference in the batch uses.
+	typeIDs map[string]string
+
 	pending []pendingSnapshot
 }
 
@@ -53,12 +58,13 @@ type batch struct {
 // some object is minted without an orderId, and the directory walk reaches
 // objects/ before types/, so declaring lazily would leave the used values
 // unordered and the unused ones ordered.
-func newBatch(formats map[string]anyblockbatch.FormatInfo) (b *batch) {
+func newBatch(formats map[string]anyblockbatch.FormatInfo, typeIds map[string]string) (b *batch) {
 	b = &batch{
 		formats:  formats,
 		relIDs:   map[string]string{},
 		optIDs:   map[string]string{},
 		optOrder: map[string]string{},
+		typeIDs:  typeIds,
 	}
 	keys := make([]string, 0, len(formats))
 	for k := range formats {
@@ -141,6 +147,27 @@ func (b *batch) declareOptions(key domain.RelationKey, names []string) {
 	}
 }
 
+// objectTypeIds turns the type keys a property targets into the ids a
+// snapshot references them by, the same split PropertyId makes for
+// relations: a type this batch defines is referenced by the id its own
+// document carries, so the importer relinks it along with everything else,
+// and a bundled type is referenced by its bundled url (_ot<key>), the form
+// recommendedRelations already uses for bundled properties (_br<key>).
+func (b *batch) objectTypeIds(def anyblockjson.PropertyDefinition) []string {
+	if len(def.ObjectTypes) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(def.ObjectTypes))
+	for _, key := range def.ObjectTypes {
+		if id, local := b.typeIDs[key]; local {
+			out = append(out, id)
+			continue
+		}
+		out = append(out, domain.TypeKey(key).BundledURL())
+	}
+	return out
+}
+
 // optionLexId mirrors core/block/editor/order.LexId. It is duplicated rather
 // than imported because that package pulls in the whole smartblock editor;
 // the two must stay in step or ids minted here will not interleave with ones
@@ -198,6 +225,9 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 	}}
 	if format == model.RelationFormat_status {
 		details.Fields[detailRelationMaxCount] = numVal(1)
+	}
+	if ids := b.objectTypeIds(def); len(ids) > 0 {
+		details.Fields[detailRelationFormatObjectTypes] = strListVal(ids)
 	}
 
 	snap := &model.SmartBlockSnapshotBase{
@@ -260,13 +290,14 @@ func rootOnlyBlocks(id string) []*model.Block {
 }
 
 const (
-	detailID               = "id"
-	detailName             = "name"
-	detailRelationKey      = "relationKey"
-	detailRelationFormat   = "relationFormat"
-	detailOrderId          = "orderId"
-	detailRelationMaxCount = "relationMaxCount"
-	detailLayout           = "layout"
+	detailID                        = "id"
+	detailName                      = "name"
+	detailRelationKey               = "relationKey"
+	detailRelationFormat            = "relationFormat"
+	detailOrderId                   = "orderId"
+	detailRelationFormatObjectTypes = "relationFormatObjectTypes"
+	detailRelationMaxCount          = "relationMaxCount"
+	detailLayout                    = "layout"
 )
 
 func strVal(s string) *types.Value {
@@ -275,4 +306,12 @@ func strVal(s string) *types.Value {
 
 func numVal(n float64) *types.Value {
 	return &types.Value{Kind: &types.Value_NumberValue{NumberValue: n}}
+}
+
+func strListVal(ss []string) *types.Value {
+	vals := make([]*types.Value, 0, len(ss))
+	for _, s := range ss {
+		vals = append(vals, strVal(s))
+	}
+	return &types.Value{Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}}}
 }

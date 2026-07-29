@@ -15,6 +15,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -48,7 +49,7 @@ func TestBatch_DeclaredVocabularyKeepsDeclarationOrder(t *testing.T) {
 			Format:  model.RelationFormat_status,
 			Options: []string{"Backlog", "In progress", "In review", "Blocked", "Done"},
 		},
-	})
+	}, nil)
 	assert.Equal(t,
 		[]string{"Backlog", "In progress", "In review", "Blocked", "Done"},
 		mintedOptions(t, b),
@@ -63,7 +64,7 @@ func TestBatch_UndeclaredValueSortsAfterVocabulary(t *testing.T) {
 			Format:  model.RelationFormat_status,
 			Options: []string{"Backlog", "In progress", "Done"},
 		},
-	})
+	}, nil)
 	// "Abandoned" sorts first alphabetically and would jump the queue
 	b.OptionId(domain.RelationKey("stage"), "Abandoned")
 	b.OptionId(domain.RelationKey("stage"), "Zebra")
@@ -77,7 +78,7 @@ func TestBatch_UndeclaredValueSortsAfterVocabulary(t *testing.T) {
 func TestBatch_UndeclaredOnlyStillGetsOrderIds(t *testing.T) {
 	b := newBatch(map[string]anyblockbatch.FormatInfo{
 		"stage": {Format: model.RelationFormat_status},
-	})
+	}, nil)
 	b.OptionId(domain.RelationKey("stage"), "Zebra")
 	b.OptionId(domain.RelationKey("stage"), "Abandoned")
 	assert.Equal(t, []string{"Zebra", "Abandoned"}, mintedOptions(t, b),
@@ -89,7 +90,7 @@ func TestBatch_OrderIdsArePerProperty(t *testing.T) {
 	b := newBatch(map[string]anyblockbatch.FormatInfo{
 		"stage":    {Format: model.RelationFormat_status, Options: []string{"A", "B"}},
 		"priority": {Format: model.RelationFormat_status, Options: []string{"Low", "High"}},
-	})
+	}, nil)
 	firsts := map[string]string{}
 	for _, p := range b.pending {
 		if p.sbType != model.SmartBlockType_STRelationOption {
@@ -104,4 +105,22 @@ func TestBatch_OrderIdsArePerProperty(t *testing.T) {
 	require.Len(t, firsts, 2)
 	assert.Equal(t, firsts["stage"], firsts["priority"],
 		"each property starts its own sequence at the same midpoint")
+}
+
+// A property's target types are written as ids, split the same way
+// PropertyId splits relations: a type this bundle defines is referenced by
+// its own document id so the importer relinks it, a bundled type by its
+// bundled url — the form recommendedRelations already uses for _br<key>.
+func TestBatch_ObjectTypeIdsSplitLocalAndBundled(t *testing.T) {
+	b := newBatch(nil, map[string]string{"wikiPerson": "type-person"})
+	got := b.objectTypeIds(anyblockjson.PropertyDefinition{
+		Key:         "owner",
+		ObjectTypes: []string{"wikiPerson", "participant"},
+	})
+	assert.Equal(t, []string{"type-person", "_otparticipant"}, got)
+}
+
+func TestBatch_NoObjectTypesLeavesPropertyUntargeted(t *testing.T) {
+	b := newBatch(nil, nil)
+	assert.Nil(t, b.objectTypeIds(anyblockjson.PropertyDefinition{Key: "owner"}))
 }

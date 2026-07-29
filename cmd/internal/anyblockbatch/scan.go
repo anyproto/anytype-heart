@@ -48,13 +48,16 @@ type FormatInfo struct {
 	Name       string
 	// Options is the declared select vocabulary, in display order (§2a).
 	Options []string
+	// ObjectTypes are the type keys an objects/files property may point at.
+	ObjectTypes []string
 }
 
 type typePropRaw struct {
-	Key     string   `json:"key"`
-	Name    string   `json:"name"`
-	Format  string   `json:"format"`
-	Options []string `json:"options"`
+	Key         string   `json:"key"`
+	Name        string   `json:"name"`
+	Format      string   `json:"format"`
+	Options     []string `json:"options"`
+	ObjectTypes []string `json:"objectTypes"`
 }
 
 type prescanDoc struct {
@@ -108,7 +111,7 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 					f, tp.Key, existing.FormatName, tp.Format)
 				continue
 			}
-			out[tp.Key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name, Options: tp.Options}
+			out[tp.Key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name, Options: tp.Options, ObjectTypes: tp.ObjectTypes}
 		}
 	}
 	return out, nil
@@ -192,6 +195,31 @@ func Report(us []Undeclared) string {
 		fmt.Fprintf(&b, "  %s: property %q has no declared format — add it to some type's typeProperties\n", u.File, u.Key)
 	}
 	return b.String()
+}
+
+// TypeIds maps each type key the bundle defines to the id its document
+// carries. A property targeting one of those types must reference it by that
+// id, so the importer relinks it with every other reference in the batch.
+func TypeIds(files []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var probe struct {
+			Kind string `json:"kind"`
+			Key  string `json:"key"`
+			Id   string `json:"id"`
+		}
+		if err := json.Unmarshal(data, &probe); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		if probe.Kind == "objectType" && probe.Key != "" && probe.Id != "" {
+			out[probe.Key] = probe.Id
+		}
+	}
+	return out, nil
 }
 
 // OrderTypesFirst puts type documents ahead of everything else, preserving
