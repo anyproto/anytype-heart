@@ -318,6 +318,7 @@
             "properties"
           ]
         },
+        "options": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "section": { "enum": ["featured", "hidden", "file"] }
       },
       "required": ["key"],
