@@ -17,6 +17,9 @@ import (
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -372,6 +375,29 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 				if _, dup := props[l.detailKey]; dup {
 					addIssue("/properties/"+l.detailKey, "conflicts with typeProperties, which replaces this list")
 				}
+			}
+		}
+		// name is used only when the property has to be created (§2a); an
+		// existing one keeps its own, so renaming a bundled key here reads as
+		// working and silently does nothing
+		if list, _ := doc["typeProperties"].([]any); list != nil {
+			for i, raw := range list {
+				tp, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				key, _ := tp["key"].(string)
+				name, _ := tp["name"].(string)
+				if key == "" || name == "" {
+					continue
+				}
+				rel, err := bundle.GetRelation(domain.RelationKey(key))
+				if err != nil || rel == nil || rel.Name == name {
+					continue
+				}
+				warnIssue(fmt.Sprintf("/typeProperties/%d/name", i),
+					"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
+					key, rel.Name)
 			}
 		}
 	}

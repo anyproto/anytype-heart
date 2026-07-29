@@ -176,7 +176,7 @@ by `typeProperties` — resolved entries, never raw relation ids.
 | Field | Type | Req | Notes |
 |---|---|---|---|
 | `key` | string | **yes** | Property key (as stored). |
-| `name` | string | no | Display name. Import uses it only when the property must be created; an existing property's name wins. |
+| `name` | string | no | Display name. Import uses it only when the property must be **created**; an existing property keeps its own name. Every bundled key already exists, so a name given for one is inert — `{"key": "description", "name": "Summary"}` renders as *Description*. Validation warns. If the label is the point, mint a custom key instead of reusing a bundled one. |
 | `format` | string | no | Property format (§3 names). Same import rule as `name`; a conflict with an existing property's format is an error at the wiring level (the package cannot see the space). |
 | `section` | string | no | `featured` \| `hidden` \| `file` — which list the property belongs to. Absent = a regular (sidebar) property. |
 
