@@ -175,7 +175,7 @@
             {
               "property": "dueDate",
               "hidden": true,
-              "width": 30,
+              "width": 120,
               "aggregation": "countDistinct",
               "align": "right"
             }
