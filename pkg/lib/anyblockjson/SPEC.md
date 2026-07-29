@@ -747,6 +747,26 @@ the corresponding properties when those are unset and drops the blocks
 otherwise — together with any blocks indented under them; a top-level
 `featuredProperties` block (which carries no content) is simply dropped.
 
+**The primary dataview** is the one structural id import *does* rebuild.
+Object types, sets and collections keep their own dataview at the fixed
+block id `dataview` (`state.DataviewBlockID`); the editor recreates it on
+open only *if absent* (`template.WithDataviewIDIfNotExists`), so a document
+whose dataview lands on a generated id gets a second, empty dataview
+alongside the configured one. Unlike `title`/`description`, the block cannot
+simply be dropped and regenerated — its views, columns and widths are the
+author's configuration, not derivable — so import **pins the id** instead:
+
+> the first indent-0 `dataview` block with neither an explicit `id` nor an
+> `objectId` becomes `dataview`.
+
+`objectId` is what separates the two cases: an inline view of *another* set
+or collection has it set (§6.2) and keeps its generated id, as does any
+dataview nested below indent 0, and any dataview after the first. If some
+block already claims `dataview`, that block wins and nothing is pinned — an
+explicit id stays authoritative and cannot collide (§13). Export is
+unchanged: it emits the id verbatim, and under `omitIds` (§9) the rule
+restores it on the way back in.
+
 **Content-less blocks** (legacy data): old accounts hold blocks whose
 content oneof is unset — relation objects wrap their "used in" dataview in
 one, and pages can contain orphaned empty leaves. Export drops a childless
