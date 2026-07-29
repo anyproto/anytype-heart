@@ -387,6 +387,28 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 					continue
 				}
 				key, _ := tp["key"].(string)
+				// options declare a select's vocabulary and its display
+				// order (§2a); on any other format there is nothing to
+				// declare and the array would be silently dropped
+				if opts, has := tp["options"].([]any); has && len(opts) > 0 {
+					if f, _ := tp["format"].(string); f != "select" && f != "multiSelect" {
+						shown := f
+						if shown == "" {
+							shown = "text"
+						}
+						addIssue(fmt.Sprintf("/typeProperties/%d/options", i),
+							"options is only meaningful on select/multiSelect, not %q", shown)
+					}
+					seen := map[string]bool{}
+					for j, o := range opts {
+						n, _ := o.(string)
+						if seen[n] {
+							addIssue(fmt.Sprintf("/typeProperties/%d/options/%d", i, j),
+								"duplicate option %q", n)
+						}
+						seen[n] = true
+					}
+				}
 				name, _ := tp["name"].(string)
 				if key == "" || name == "" {
 					continue

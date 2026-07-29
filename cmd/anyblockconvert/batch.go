@@ -4,6 +4,8 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
+	"github.com/anyproto/lexid"
+	"sort"
 
 	"github.com/gogo/protobuf/types"
 
@@ -38,12 +40,26 @@ type batch struct {
 	pending []pendingSnapshot
 }
 
-func newBatch(formats map[string]anyblockbatch.FormatInfo) *batch {
-	return &batch{
+// newBatch pre-declares every select vocabulary the batch knows about before
+// any document converts. Order matters: an option first seen as a value on
+// some object is minted without an orderId, and the directory walk reaches
+// objects/ before types/, so declaring lazily would leave the used values
+// unordered and the unused ones ordered.
+func newBatch(formats map[string]anyblockbatch.FormatInfo) (b *batch) {
+	b = &batch{
 		formats: formats,
 		relIDs:  map[string]string{},
 		optIDs:  map[string]string{},
 	}
+	keys := make([]string, 0, len(formats))
+	for k := range formats {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys) // deterministic option ids across runs
+	for _, k := range keys {
+		b.declareOptions(domain.RelationKey(k), formats[k].Options)
+	}
+	return b
 }
 
 func (b *batch) relationCount() int { return len(b.relIDs) }
@@ -64,7 +80,7 @@ func (b *batch) OptionId(key domain.RelationKey, name string) (string, bool) {
 	if id, ok := b.optIDs[mapKey]; ok {
 		return id, true
 	}
-	id := b.mintOption(key, name)
+	id := b.mintOption(key, name, "")
 	b.optIDs[mapKey] = id
 	return id, true
 }
@@ -82,9 +98,12 @@ func (b *batch) OptionName(key domain.RelationKey, id string) (string, bool) {
 // (core/block/import/common/objectcreator) installs those automatically.
 func (b *batch) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
 	if bundle.HasRelation(def.Key) {
+		// a bundled select still needs its options to exist in this space
+		b.declareOptions(def.Key, def.Options)
 		return def.Key.BundledURL(), true
 	}
 	key := string(def.Key)
+	b.declareOptions(def.Key, def.Options)
 	if id, ok := b.relIDs[key]; ok {
 		return id, true
 	}
@@ -97,6 +116,24 @@ func (b *batch) PropertyId(def anyblockjson.PropertyDefinition) (string, bool) {
 // export; this tool only imports, so it's never called.
 func (b *batch) PropertyById(id string) (anyblockjson.PropertyDefinition, bool) {
 	return anyblockjson.PropertyDefinition{}, false
+}
+
+// declareOptions pre-mints the vocabulary a typeProperties entry declares
+// (§2a), in declaration order, so every value exists whether or not any
+// record happens to use it and the order is the author's rather than
+// alphabetical. Names already minted from usage are adopted, not duplicated.
+func (b *batch) declareOptions(key domain.RelationKey, names []string) {
+	order := lexid.Must(lexid.CharsBase64, 4, 4000)
+	next := order.Middle()
+	for _, name := range names {
+		mapKey := string(key) + "\x00" + name
+		if _, done := b.optIDs[mapKey]; done {
+			next = order.Next(next)
+			continue
+		}
+		b.optIDs[mapKey] = b.mintOption(key, name, next)
+		next = order.Next(next)
+	}
 }
 
 // mintRelation builds a Relation object snapshot matching the shape
@@ -150,7 +187,7 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 // mintOption builds a RelationOption object snapshot, matching the shape
 // core/block/import/notion builds for select/multiSelect/status options:
 // Details{name, relationKey, layout}, ObjectTypes = [ot-relationOption].
-func (b *batch) mintOption(key domain.RelationKey, name string) string {
+func (b *batch) mintOption(key domain.RelationKey, name string, orderId string) string {
 	localKey := optionLocalKey(key, name)
 	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelationOption, localKey)
 	if err != nil {
@@ -164,6 +201,14 @@ func (b *batch) mintOption(key domain.RelationKey, name string) string {
 		detailRelationKey: strVal(string(key)),
 		detailLayout:      numVal(float64(model.ObjectType_relationOption)),
 	}}
+	// options sort by [orderId, name] (pkg/lib/database.BuildOrderMap): with
+	// no orderId every select falls back to alphabetical, in kanban columns,
+	// dropdowns and sorts alike. A declared vocabulary gets lexid ids in
+	// declaration order; a name discovered from usage gets none, and keeps
+	// sorting after the declared ones by name.
+	if orderId != "" {
+		details.Fields[detailOrderId] = strVal(orderId)
+	}
 
 	snap := &model.SmartBlockSnapshotBase{
 		Blocks:      rootOnlyBlocks(id),
@@ -196,6 +241,7 @@ const (
 	detailName             = "name"
 	detailRelationKey      = "relationKey"
 	detailRelationFormat   = "relationFormat"
+	detailOrderId          = "orderId"
 	detailRelationMaxCount = "relationMaxCount"
 	detailLayout           = "layout"
 )

@@ -46,12 +46,15 @@ type FormatInfo struct {
 	Format     model.RelationFormat
 	FormatName string
 	Name       string
+	// Options is the declared select vocabulary, in display order (§2a).
+	Options []string
 }
 
 type typePropRaw struct {
-	Key    string `json:"key"`
-	Name   string `json:"name"`
-	Format string `json:"format"`
+	Key     string   `json:"key"`
+	Name    string   `json:"name"`
+	Format  string   `json:"format"`
+	Options []string `json:"options"`
 }
 
 type prescanDoc struct {
@@ -95,12 +98,17 @@ func ScanFormats(files []string) (map[string]FormatInfo, error) {
 			if name == "" {
 				name = tp.Key
 			}
+			if existing, seen := out[tp.Key]; seen && len(tp.Options) == 0 && len(existing.Options) > 0 {
+				// a second type referencing the same property need not
+				// repeat its vocabulary
+				continue
+			}
 			if existing, seen := out[tp.Key]; seen && existing.Format != format {
 				fmt.Fprintf(os.Stderr, "warning: %s: property %q declared with conflicting formats (%s vs %s) — keeping the first seen\n",
 					f, tp.Key, existing.FormatName, tp.Format)
 				continue
 			}
-			out[tp.Key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name}
+			out[tp.Key] = FormatInfo{Format: format, FormatName: tp.Format, Name: name, Options: tp.Options}
 		}
 	}
 	return out, nil
@@ -184,4 +192,32 @@ func Report(us []Undeclared) string {
 		fmt.Fprintf(&b, "  %s: property %q has no declared format — add it to some type's typeProperties\n", u.File, u.Key)
 	}
 	return b.String()
+}
+
+// OrderTypesFirst puts type documents ahead of everything else, preserving
+// relative order within each group. A bundle's types declare the schema its
+// objects reference — property formats, select vocabularies, the relations
+// that must exist — so converting them first means every declaration is in
+// place before the first usage of it. Alphabetically the walk yields
+// chats/, objects/, pages/, types/, i.e. exactly backwards.
+func OrderTypesFirst(files []string) ([]string, error) {
+	var types, rest []string
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var probe struct {
+			Kind string `json:"kind"`
+		}
+		if err := json.Unmarshal(data, &probe); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		if probe.Kind == "objectType" {
+			types = append(types, f)
+		} else {
+			rest = append(rest, f)
+		}
+	}
+	return append(types, rest...), nil
 }

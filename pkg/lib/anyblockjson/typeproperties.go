@@ -17,6 +17,13 @@ type PropertyDefinition struct {
 	Key    domain.RelationKey
 	Name   string
 	Format model.RelationFormat
+	// Options is the declared vocabulary of a select/multiSelect property,
+	// in display order (§2a). Options are otherwise only discovered from
+	// values that happen to be used, so a vocabulary entry no record carries
+	// would never exist, and minted options carry no orderId and fall back to
+	// sorting by name. Empty means "whatever usage produces", the pre-options
+	// behaviour.
+	Options []string
 }
 
 // PropertyResolver maps property object ids to definitions on export and
@@ -81,6 +88,7 @@ func (e *exporter) buildTypeProperties() []any {
 			m.set("key", string(def.Key))
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
+			m.setNonEmpty("options", stringsToAny(def.Options))
 			m.setNonEmpty("section", l.section)
 			out = append(out, m)
 		}
@@ -111,10 +119,11 @@ func (e *exporter) resolveTypeProperty(id string) (PropertyDefinition, bool) {
 }
 
 type jsonTypeProperty struct {
-	Key     string `json:"key"`
-	Name    string `json:"name"`
-	Format  string `json:"format"`
-	Section string `json:"section"`
+	Key     string   `json:"key"`
+	Name    string   `json:"name"`
+	Format  string   `json:"format"`
+	Options []string `json:"options"`
+	Section string   `json:"section"`
 }
 
 // applyTypeProperties rebuilds the four recommended-relation lists from the
@@ -130,9 +139,10 @@ func (imp *importer) applyTypeProperties(details *types.Struct) {
 	lists := map[string][]*types.Value{}
 	for _, tp := range *imp.doc.TypeProps {
 		def := PropertyDefinition{
-			Key:    domain.RelationKey(tp.Key),
-			Name:   tp.Name,
-			Format: imp.declaredFormat(tp.Key, tp.Format),
+			Key:     domain.RelationKey(tp.Key),
+			Name:    tp.Name,
+			Format:  imp.declaredFormat(tp.Key, tp.Format),
+			Options: tp.Options,
 		}
 		id := tp.Key
 		if imp.opts.ResolveProperties != nil {

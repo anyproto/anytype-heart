@@ -78,6 +78,12 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		return fmt.Errorf("no .json files found under %s", inDir)
 	}
 
+	// types declare what objects reference, so convert them first
+	files, err = anyblockbatch.OrderTypesFirst(files)
+	if err != nil {
+		return fmt.Errorf("order input files: %w", err)
+	}
+
 	formats, err := anyblockbatch.ScanFormats(files)
 	if err != nil {
 		return fmt.Errorf("scan property formats: %w", err)
