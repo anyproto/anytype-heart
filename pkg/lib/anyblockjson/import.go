@@ -105,6 +105,9 @@ func Unmarshal(data []byte, opts Options) (model.SmartBlockType, *model.SmartBlo
 type importer struct {
 	opts Options
 	doc  *jsonDoc
+	// tableIds tracks row/column ids already used anywhere in the document,
+	// so a generated one never collides with an authored one (§6.1).
+	tableIds map[string]struct{}
 }
 
 func (imp *importer) genId() string {
