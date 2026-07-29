@@ -15,7 +15,7 @@
         "bundledObjectType", "anytypeProfile", "date", "workspace",
         "relation", "objectType", "relationOption", "spaceView", "identity",
         "participant", "missingObject", "fileObject", "notification",
-        "devices", "chatObject", "chatDerived", "account", "discussion",
+        "devices", "chatObject", "chat", "account", "discussion",
         "techSpace", "techSpaceVirtual"
       ]
     },

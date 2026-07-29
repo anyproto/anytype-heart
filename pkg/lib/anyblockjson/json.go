@@ -215,7 +215,7 @@ var kindNames = newEnumNames(map[model.SmartBlockType]string{
 	model.SmartBlockType_NotificationObject:     "notification",
 	model.SmartBlockType_DevicesObject:          "devices",
 	model.SmartBlockType_ChatObjectDeprecated:   "chatObject",
-	model.SmartBlockType_ChatDerivedObject:      "chatDerived",
+	model.SmartBlockType_ChatDerivedObject:      "chat",
 	model.SmartBlockType_AccountObject:          "account",
 	model.SmartBlockType_DiscussionObject:       "discussion",
 	model.SmartBlockType_TechSpaceObject:        "techSpace",
