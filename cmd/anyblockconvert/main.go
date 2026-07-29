@@ -89,6 +89,11 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		return fmt.Errorf("scan property formats: %w", err)
 	}
 
+	if shared, serr := anyblockbatch.CheckSharedSelects(files); serr == nil && len(shared) > 0 {
+		fmt.Fprintf(os.Stderr, "warning: %d select propert%s shared across types:\n%s",
+			len(shared), plural(len(shared)), anyblockbatch.ReportSharedSelects(shared))
+	}
+
 	// a property whose format nothing declares is decoded as raw JSON: dates
 	// stay strings, selects mint no options, and object references are never
 	// remapped, so cross-object links break silently after import

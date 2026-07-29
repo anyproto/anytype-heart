@@ -54,6 +54,11 @@ func main() {
 		}
 		fmt.Printf("ok      %s\n", f)
 	}
+	if shared, serr := anyblockbatch.CheckSharedSelects(files); serr == nil && len(shared) > 0 {
+		warned += len(shared)
+		fmt.Printf("\nSHARED select properties:\n%s", anyblockbatch.ReportSharedSelects(shared))
+	}
+
 	// batch-wide: a property whose format no type declares converts to raw
 	// JSON — dates stay strings, selects mint no options, object references
 	// are never remapped. Per-file validation cannot see it.

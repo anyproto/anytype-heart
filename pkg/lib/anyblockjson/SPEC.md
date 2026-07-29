@@ -279,6 +279,13 @@ Any other format name is taken literally — the document is authoritative
 about its properties, and only the text/text collapse needs a key to
 disambiguate.
 
+**Properties are space-wide, not per-type.** Two types whose
+`typeProperties` name the same select share one option pool, so their
+vocabularies merge into a single dropdown. That is the point for a property
+whose values are genuinely common (`tag`) and a defect for the lifecycle
+selects a schema reaches for, where the same word means different things per
+type. Documents that want distinct vocabularies must use distinct keys.
+
 **Select options are names, not ids — everywhere.** This rule covers
 property values here, filter `value`s, and sort `customOrder` entries
 (§6.2). Export writes option names (`"status": ["In progress"]`); import
