@@ -37,6 +37,14 @@ type batch struct {
 	relIDs map[string]string // property key -> minted relation object id
 	optIDs map[string]string // "key\x00name" -> minted option object id
 
+	// optOrder is the last order id handed out per property key. Every option
+	// needs one: options sort on orderId+name concatenated
+	// (database.OrderMap.BuildOrder), so an option without an order id is
+	// compared by name against everyone else's order id and lands
+	// arbitrarily — before the declared vocabulary when its name sorts below
+	// the lexid alphabet, after it otherwise.
+	optOrder map[string]string
+
 	pending []pendingSnapshot
 }
 
@@ -47,9 +55,10 @@ type batch struct {
 // unordered and the unused ones ordered.
 func newBatch(formats map[string]anyblockbatch.FormatInfo) (b *batch) {
 	b = &batch{
-		formats: formats,
-		relIDs:  map[string]string{},
-		optIDs:  map[string]string{},
+		formats:  formats,
+		relIDs:   map[string]string{},
+		optIDs:   map[string]string{},
+		optOrder: map[string]string{},
 	}
 	keys := make([]string, 0, len(formats))
 	for k := range formats {
@@ -80,7 +89,7 @@ func (b *batch) OptionId(key domain.RelationKey, name string) (string, bool) {
 	if id, ok := b.optIDs[mapKey]; ok {
 		return id, true
 	}
-	id := b.mintOption(key, name, "")
+	id := b.mintOption(key, name, b.nextOptionOrder(key))
 	b.optIDs[mapKey] = id
 	return id, true
 }
@@ -123,17 +132,34 @@ func (b *batch) PropertyById(id string) (anyblockjson.PropertyDefinition, bool) 
 // record happens to use it and the order is the author's rather than
 // alphabetical. Names already minted from usage are adopted, not duplicated.
 func (b *batch) declareOptions(key domain.RelationKey, names []string) {
-	order := lexid.Must(lexid.CharsBase64, 4, 4000)
-	next := order.Middle()
 	for _, name := range names {
 		mapKey := string(key) + "\x00" + name
 		if _, done := b.optIDs[mapKey]; done {
-			next = order.Next(next)
 			continue
 		}
-		b.optIDs[mapKey] = b.mintOption(key, name, next)
-		next = order.Next(next)
+		b.optIDs[mapKey] = b.mintOption(key, name, b.nextOptionOrder(key))
 	}
+}
+
+// optionLexId mirrors core/block/editor/order.LexId. It is duplicated rather
+// than imported because that package pulls in the whole smartblock editor;
+// the two must stay in step or ids minted here will not interleave with ones
+// the app generates later.
+var optionLexId = lexid.Must(lexid.CharsBase64, 4, 4000)
+
+// nextOptionOrder hands out the next order id for a property, continuing
+// after whatever was assigned last. Declared vocabulary is laid down first
+// (newBatch), so an option discovered later from a value nobody declared
+// lands after it rather than in the middle of it.
+func (b *batch) nextOptionOrder(key domain.RelationKey) string {
+	last, seen := b.optOrder[string(key)]
+	if !seen {
+		last = optionLexId.Middle()
+	} else {
+		last = optionLexId.Next(last)
+	}
+	b.optOrder[string(key)] = last
+	return last
 }
 
 // mintRelation builds a Relation object snapshot matching the shape
@@ -201,14 +227,11 @@ func (b *batch) mintOption(key domain.RelationKey, name string, orderId string) 
 		detailRelationKey: strVal(string(key)),
 		detailLayout:      numVal(float64(model.ObjectType_relationOption)),
 	}}
-	// options sort by [orderId, name] (pkg/lib/database.BuildOrderMap): with
-	// no orderId every select falls back to alphabetical, in kanban columns,
-	// dropdowns and sorts alike. A declared vocabulary gets lexid ids in
-	// declaration order; a name discovered from usage gets none, and keeps
-	// sorting after the declared ones by name.
-	if orderId != "" {
-		details.Fields[detailOrderId] = strVal(orderId)
-	}
+	// options sort on orderId+name concatenated (database.OrderMap.BuildOrder),
+	// so every option needs an order id: without one it is compared by name
+	// against everyone else's order id and lands arbitrarily. Declared
+	// vocabulary comes first, discovered names after it.
+	details.Fields[detailOrderId] = strVal(orderId)
 
 	snap := &model.SmartBlockSnapshotBase{
 		Blocks:      rootOnlyBlocks(id),
