@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -112,6 +113,15 @@ func DetectFormat(data []byte) (version int, schemaURL string, ok bool) {
 // indent mode exists only on Unmarshal (Options.NormalizeIndent).
 func Validate(data []byte) error {
 	_, err := validateToDoc(data, false, nil)
+	return err
+}
+
+// ValidateWarn is Validate with a sink for warning-grade issues: things that
+// do not make a document invalid but do mean part of it is dead weight — a
+// groupBy on a view type that cannot group (§6.2), for instance. Validate
+// discards them, so a tool that wants to show them must call this.
+func ValidateWarn(data []byte, onWarning func(Issue)) error {
+	_, err := validateToDoc(data, false, onWarning)
 	return err
 }
 
@@ -406,6 +416,9 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		if typ == "table" {
 			walkTable(block, path, claimId, addIssue, walkBlock, checkFlatRun)
 		}
+		if typ == "dataview" {
+			checkDataviewViews(block, path, addIssue, warnIssue)
+		}
 	}
 
 	// checkFlatRun validates one flat pre-order run (the document's blocks
@@ -537,3 +550,83 @@ func walkTable(block map[string]any, path string,
 		}
 	}
 }
+
+// groupableFormats lists, per view type, the property formats that view can
+// group by. Only kanban and calendar group at all: the middleware assigns
+// groupRelationKey for exactly these pairs (converter.insertGroupRelationKey,
+// whose default branch is a no-op), the kanban service registers groupers for
+// exactly these formats (core/kanban.Service.Init), and the client offers the
+// same set (Relation.getGroupTypes). Every other view type ignores groupBy.
+var groupableFormats = map[string]map[string]struct{}{
+	"kanban":   {"select": {}, "multiSelect": {}, "checkbox": {}},
+	"calendar": {"date": {}},
+}
+
+// checkDataviewViews runs the per-view semantic checks that need the
+// dataview's own properties[] to know a key's format: groupBy viability and
+// the date-filter empty trap.
+//
+// It reports a groupBy a view cannot honour. An impossible pair on
+// a grouping view is an error: it can only come from authoring, and it
+// renders as a single empty group. groupBy on a non-grouping view is only a
+// warning — switching a kanban to a table in the editor leaves the stale
+// groupRelationKey behind, so real exported data legitimately carries it.
+func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue func(string, string, ...any)) {
+	views, _ := block["views"].([]any)
+	if len(views) == 0 {
+		return
+	}
+	formats := map[string]string{}
+	props, _ := block["properties"].([]any)
+	for _, raw := range props {
+		p, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		key, _ := p["key"].(string)
+		if f, isStr := p["format"].(string); isStr && key != "" {
+			formats[key] = f
+		} else if key != "" {
+			formats[key] = "text" // §3: an omitted format is text
+		}
+	}
+	for i, raw := range views {
+		view, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		groupBy, _ := view["groupBy"].(string)
+		if groupBy == "" {
+			continue
+		}
+		vPath := fmt.Sprintf("%s/views/%d/groupBy", path, i)
+		viewType, _ := view["type"].(string)
+		if viewType == "" {
+			viewType = "table" // §6.2: the default view type
+		}
+		allowed, groups := groupableFormats[viewType]
+		if !groups {
+			warnIssue(vPath, "%q views do not group; groupBy is ignored", viewType)
+			continue
+		}
+		// a key absent from properties has no declared format to check
+		format, declared := formats[groupBy]
+		if !declared {
+			continue
+		}
+		if _, ok := allowed[format]; !ok {
+			addIssue(vPath, "%q views cannot group by %q (format %q); expected %s",
+				viewType, groupBy, format, strings.Join(sortedKeys(allowed), " · "))
+		}
+	}
+}
+
+func sortedKeys(m map[string]struct{}) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
