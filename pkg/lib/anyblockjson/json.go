@@ -425,10 +425,14 @@ var aggregationNames = newEnumNames(map[model.BlockContentDataviewRelationFormul
 	model.BlockContentDataviewRelation_Range:           "range",
 })
 
-// formatNames follows the public REST API vocabulary (§3).
+// formatNames follows the public REST API vocabulary (§3). Text has exactly
+// one name: the editor offers a single Text format, so the stored
+// longtext/shorttext split stays out of this serialization — shorttext has
+// no name of its own and folds into "text" via formatName. The map must
+// remain a bijection (newEnumNames inverts it, and a duplicated name would
+// invert nondeterministically), which is why the fold lives outside it.
 var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_longtext:  "text",
-	model.RelationFormat_shorttext: "shortText",
 	model.RelationFormat_number:    "number",
 	model.RelationFormat_status:    "select",
 	model.RelationFormat_tag:       "multiSelect",
@@ -442,6 +446,15 @@ var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_object:    "objects",
 	model.RelationFormat_relations: "properties",
 })
+
+// formatName is the export-side name of a stored format: the canonical name
+// from formatNames, with legacy shorttext folded into "text" (§3).
+func formatName(f model.RelationFormat) string {
+	if f == model.RelationFormat_shorttext {
+		f = model.RelationFormat_longtext
+	}
+	return formatNames.name(f)
+}
 
 //
 // ---- proto value bridges ----

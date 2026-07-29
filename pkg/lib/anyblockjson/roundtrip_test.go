@@ -603,7 +603,7 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 		},
 		func(i int) string {
 			return fmt.Sprintf(`{"type": "dataview", "objectId": "bafyreiset%d",
-				"properties": [{"key": "name", "format": "shortText"}],
+				"properties": [{"key": "name", "format": "text"}],
 				"views": [{"type": "list", "name": "v",
 					"sorts": [{"property": "name", "direction": "desc"}],
 					"filters": [{"property": "name", "condition": "contains", "value": "x"}]}]}`, i)

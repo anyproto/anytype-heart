@@ -38,7 +38,7 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 		}
 		pm := &omap{}
 		pm.set("key", rl.Key)
-		pm.setNonEmpty("format", formatNames.name(rl.Format))
+		pm.setNonEmpty("format", formatName(rl.Format))
 		props = append(props, pm)
 	}
 	m.setNonEmpty("properties", props)
@@ -367,7 +367,7 @@ func (imp *importer) dataviewFromJSON(jb *jsonBlock) (*model.BlockContentDatavie
 	for _, p := range props {
 		dv.RelationLinks = append(dv.RelationLinks, &model.RelationLink{
 			Key:    p.Key,
-			Format: formatNames.value(p.Format),
+			Format: imp.declaredFormat(p.Key, p.Format),
 		})
 	}
 	for _, jv := range jb.Views {

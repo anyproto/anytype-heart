@@ -229,7 +229,7 @@ Values are encoded by the property's format:
 
 | Format | JSON encoding |
 |---|---|
-| `text` (default), `shortText`, `url`, `email`, `phone` | string |
+| `text` (default), `url`, `email`, `phone` | string |
 | `number` | number |
 | `checkbox` | boolean |
 | `date` | RFC 3339 date-time string, UTC (`"2026-07-06T15:04:05Z"`); import converts back to unix seconds. Import also accepts date-only strings (UTC midnight), non-UTC offsets (converted to UTC), and fractional seconds (truncated to whole seconds). Export always writes the full UTC form. |
@@ -266,11 +266,11 @@ just unprettified.
 
 | Key | Format | Meaning |
 |---|---|---|
-| `name` | shortText | the object's title |
+| `name` | text | the object's title |
 | `description` | text | subtitle/description line |
-| `iconEmoji` | shortText | page icon as emoji |
+| `iconEmoji` | text | page icon as emoji |
 | `iconImage` | files | page icon as image (object id) |
-| `coverId` / `coverType` | shortText / number | page cover — output-only (§4a) |
+| `coverId` / `coverType` | text / number | page cover — output-only (§4a) |
 | `done` | checkbox | completion state on task-like types |
 | `dueDate` | date | due date on task-like types |
 
@@ -536,7 +536,7 @@ string enums, and defaults omitted:
   "type": "dataview",
   "objectId": "bafyrei…targetSet",
   "properties": [
-    { "key": "name", "format": "shortText" },
+    { "key": "name", "format": "text" },
     { "key": "status", "format": "select" },
     { "key": "dueDate", "format": "date" }
   ],
@@ -1259,7 +1259,7 @@ Wiring (follow-up work, not this package):
     { "id": "b9", "type": "dataview",
       "objectId": "bafyrei…tasksSet",
       "properties": [
-        { "key": "name", "format": "shortText" },
+        { "key": "name", "format": "text" },
         { "key": "status", "format": "select" },
         { "key": "dueDate", "format": "date" }
       ],

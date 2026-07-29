@@ -86,7 +86,7 @@ func TestTypePropertiesExport(t *testing.T) {
     {
       "key": "fileExt",
       "name": "File extension",
-      "format": "shortText",
+      "format": "text",
       "section": "file"
     },
     {

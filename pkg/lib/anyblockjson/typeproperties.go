@@ -80,7 +80,7 @@ func (e *exporter) buildTypeProperties() []any {
 			m := &omap{}
 			m.set("key", string(def.Key))
 			m.setNonEmpty("name", def.Name)
-			m.setNonEmpty("format", formatNames.name(def.Format))
+			m.setNonEmpty("format", formatName(def.Format))
 			m.setNonEmpty("section", l.section)
 			out = append(out, m)
 		}
@@ -132,7 +132,7 @@ func (imp *importer) applyTypeProperties(details *types.Struct) {
 		def := PropertyDefinition{
 			Key:    domain.RelationKey(tp.Key),
 			Name:   tp.Name,
-			Format: formatNames.value(tp.Format),
+			Format: imp.declaredFormat(tp.Key, tp.Format),
 		}
 		id := tp.Key
 		if imp.opts.ResolveProperties != nil {

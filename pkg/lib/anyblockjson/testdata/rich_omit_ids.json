@@ -115,7 +115,7 @@
       "properties": [
         {
           "key": "name",
-          "format": "shortText"
+          "format": "text"
         },
         {
           "key": "customStatus",
