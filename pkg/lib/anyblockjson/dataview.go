@@ -48,19 +48,29 @@ func (e *exporter) dataviewToJSON(m *omap, dv *model.BlockContentDataview) error
 		if v == nil {
 			continue
 		}
-		views = append(views, e.viewToJSON(v, dv))
+		vm, err := e.viewToJSON(v, dv)
+		if err != nil {
+			return err
+		}
+		views = append(views, vm)
 	}
 	m.setNonEmpty("views", views)
 	// activeView and the deprecated relations field are dropped (§6.2)
 	return nil
 }
 
-func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.BlockContentDataview) *omap {
+func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.BlockContentDataview) (*omap, error) {
 	vm := &omap{}
 	if !e.opts.OmitIds {
 		vm.setNonEmpty("id", e.localId(v.Id))
 	}
 	if v.Type != model.BlockContentDataviewView_Table {
+		// an out-of-range view type is omitted rather than emitted as an
+		// empty string, which the schema would reject; it therefore reads
+		// back as table. The only value this can be today is the client's
+		// experimental Timeline (ViewType.Timeline = 6, gated behind
+		// config.experimental and absent from the proto enum), so the loss
+		// is confined to a view the protocol cannot describe anyway.
 		vm.setNonEmpty("type", viewTypeNames.name(v.Type))
 	}
 	vm.setNonEmpty("name", v.Name)
@@ -114,7 +124,7 @@ func (e *exporter) viewToJSON(v *model.BlockContentDataviewView, dv *model.Block
 		vm.setNonEmpty("groups", e.viewGroupsToJSON(v.Id, dv))
 		vm.setNonEmpty("objectOrders", e.objectOrdersToJSON(v.Id, dv))
 	}
-	return vm
+	return vm, nil
 }
 
 // viewGroupsToJSON emits the kanban group display order: array order, the

@@ -635,8 +635,8 @@ excludes it from changes) and the deprecated proto `relations` field.
 (`table · list · gallery · kanban · calendar · graph`, omit `table` — note
 the public API currently says `grid`; `table` is the more familiar term),
 `name`, `groupBy` (property key; from `groupRelationKey`), `coverProperty`
-(from `coverRelationKey`), `endProperty` (from `endRelationKey`; end date
-for calendar/timeline), `hideIcon`, `cardSize` (`small · medium · large`,
+(from `coverRelationKey`), `endProperty` (from `endRelationKey`; the end
+date of a range — **inert today**, see below), `hideIcon`, `cardSize` (`small · medium · large`,
 omit `small`), `coverFit`, `coloredGroups` (from `groupBackgroundColors`),
 `pageSize` (from `pageLimit`), `defaultTemplateId`, `defaultTypeId` (from
 `defaultObjectTypeId`), `wrapContent`, `listSize` (`compact · regular`,
@@ -681,6 +681,17 @@ and `120` (`medium`) get progressively stripped-down cell rendering, so
 anything under ~`54` is a slice of a column with no room for its content.
 Widths written by the editor itself land in the low hundreds (`150`–`320` for
 text and object columns, `60`–`100` for numbers and short values).
+
+**There is no timeline/Gantt view, and `endProperty` currently does
+nothing.** The proto's view type enum ends at `Graph = 5`; the client
+carries a sixth, `Timeline`, but it is gated behind `config.experimental`
+and has no proto value, so it cannot be described here. `endRelationKey` is
+read by that timeline component and by nothing else — a calendar view does
+**not** use it, and shows single dates from `groupBy` alone. `endProperty`
+round-trips faithfully for data that already carries it, but setting it on
+any expressible view type has no effect. A view stored with the
+experimental type reads back as `table`, since an out-of-range enum is
+omitted rather than emitted as a schema-invalid empty string.
 
 **Sort** (`Dataview.Sort`), canonical order: `property` (from
 `RelationKey`), `direction` (`asc · desc · custom`, omit `asc`),
