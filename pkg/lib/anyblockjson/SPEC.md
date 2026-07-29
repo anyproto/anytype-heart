@@ -237,11 +237,46 @@ Values are encoded by the property's format:
 | `objects`, `files` | array of object ids (strings) |
 | unresolvable format | value passes through verbatim in both directions |
 
+**Layout is named, not numbered.** `recommendedLayout`, `layout` and
+`resolvedLayout` are stored as numbers (their bundled relations have format
+`number`), but the format writes the enum **name** — `basic · profile · todo ·
+set · objectType · relation · file · dashboard · image · note · space ·
+bookmark · relationOptionsList · relationOption · collection · audio · video ·
+date · spaceView · participant · pdf · chatDeprecated · chatDerived · tag ·
+notification · missingObject · devices · discussion`. A bare integer would be
+the one opaque enum in an otherwise self-describing format. Import maps the
+name to its number and still accepts a raw number, so older documents keep
+working; export always writes the name; an unrecognized name is a validation
+error. Note this applies only to these three keys — `layoutAlign`,
+`layoutWidth`, `widgetLayout` and `headerRelationsLayout` hold *different*
+enums and pass through as numbers.
+
 Format names follow the public REST API (`select`, `multiSelect`, …);
 internally they map to `model.RelationFormat` (`status`→`select`,
-`tag`→`multiSelect`, `longtext`→`text`, `shorttext`→`shortText`,
+`tag`→`multiSelect`, `longtext`→`text`,
 `object`→`objects`, `file`→`files`; `emoji` and `properties` exist for
 internal formats).
+
+**There is one text format, `text`.** The editor offers a single Text
+property type; the stored `longtext`/`shorttext` split is legacy, carries no
+meaning an author could act on, and is **not part of this format** —
+`shortText` is not a valid format name and is rejected by the schema.
+
+The collapse is not lossy, because `text` resolves per key rather than
+blindly:
+
+- **Export** writes `text` for both stored formats.
+- **Import** reads `text` as the key's *existing* format when that key is
+  already known to be `shorttext` — bundled properties (`name`, `iconEmoji`,
+  `coverId`, …) and anything the wiring's `ResolveFormat` recognizes. So a
+  short-text property keeps its stored format across a round-trip even
+  though the document never names it.
+- Otherwise `text` means `longtext`, which is what a **new** property
+  declared as `text` becomes.
+
+Any other format name is taken literally — the document is authoritative
+about its properties, and only the text/text collapse needs a key to
+disambiguate.
 
 **Select options are names, not ids — everywhere.** This rule covers
 property values here, filter `value`s, and sort `customOrder` entries

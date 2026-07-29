@@ -322,6 +322,15 @@ func resolveFormatWith(opts Options, key string) (model.RelationFormat, bool) {
 }
 
 func (e *exporter) propertyValue(key string, v *types.Value) any {
+	// layout is stored as a number and named in the format (§3); a number
+	// outside the enum falls through and exports unchanged.
+	if isLayoutKey(key) {
+		if n, isNum := v.GetKind().(*types.Value_NumberValue); isNum {
+			if name := layoutNames.name(model.ObjectTypeLayout(int32(n.NumberValue))); name != "" {
+				return name
+			}
+		}
+	}
 	format, ok := e.resolveFormat(key)
 	if !ok {
 		return protoValueToJSON(v)
