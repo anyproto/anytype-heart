@@ -392,6 +392,26 @@ var conditionNames = newEnumNames(map[model.BlockContentDataviewFilterCondition]
 	model.BlockContentDataviewFilter_Exists:         "exists",
 })
 
+// countingPresets take a day count from the filter's `value` rather than
+// naming a fixed period: getDateRange reads f.Value.Int64() for these two and
+// for no others (pkg/lib/database/quickoptions.go). Without a value the count
+// is 0, which silently means "today".
+var countingPresets = map[model.BlockContentDataviewFilterQuickOption]struct{}{
+	model.BlockContentDataviewFilter_NumberOfDaysAgo: {},
+	model.BlockContentDataviewFilter_NumberOfDaysNow: {},
+}
+
+func countingPreset(q model.BlockContentDataviewFilterQuickOption) bool {
+	_, ok := countingPresets[q]
+	return ok
+}
+
+// countingPresetNames is the same set by name, for validation.
+var countingPresetNames = map[string]struct{}{
+	"numberOfDaysAgo": {},
+	"numberOfDaysNow": {},
+}
+
 var datePresetNames = newEnumNames(map[model.BlockContentDataviewFilterQuickOption]string{
 	model.BlockContentDataviewFilter_Yesterday:       "yesterday",
 	model.BlockContentDataviewFilter_Today:           "today",
