@@ -215,7 +215,11 @@ func TypeIds(files []string) (map[string]string, error) {
 		if err := json.Unmarshal(data, &probe); err != nil {
 			return nil, fmt.Errorf("parse %s: %w", f, err)
 		}
-		if probe.Kind == "objectType" && probe.Key != "" && probe.Id != "" {
+		if probe.Kind == "objectType" && probe.Key != "" {
+			// an id-less type still has to be registered: without it,
+			// objectTypeIds cannot tell "defined here, but unaddressable"
+			// from "bundled", and silently emits a bundled url for a type
+			// that is not bundled
 			out[probe.Key] = probe.Id
 		}
 	}
@@ -329,6 +333,59 @@ func ReportSharedSelects(ss []SharedSelect) string {
 	for _, s := range ss {
 		fmt.Fprintf(&b, "  property %q is a select shared by %d types (%s) — one option pool space-wide, so their vocabularies merge; split per type unless the union is the point\n",
 			s.Key, len(s.Types), strings.Join(s.Types, ", "))
+	}
+	return b.String()
+}
+
+// CheckTargetTypes finds objectTypes entries that cannot resolve to anything.
+// A target key must name either a bundled type or a type this bundle defines
+// *and* gives an id — a document without an id has nothing for a reference to
+// point at, and the reference would otherwise be emitted as a bundled url for
+// a type that is not bundled: valid, converted, and dangling.
+func CheckTargetTypes(files []string, typeIds map[string]string) ([]BadTarget, error) {
+	var out []BadTarget
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var doc struct {
+			TypeProperties []typePropRaw `json:"typeProperties"`
+		}
+		if err := json.Unmarshal(data, &doc); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		for _, tp := range doc.TypeProperties {
+			for _, target := range tp.ObjectTypes {
+				if bundle.HasObjectTypeByKey(domain.TypeKey(target)) {
+					continue
+				}
+				id, defined := typeIds[target]
+				switch {
+				case !defined:
+					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "no such type: not bundled, and not defined by this bundle"})
+				case id == "":
+					out = append(out, BadTarget{File: f, Property: tp.Key, Target: target, Reason: "that type is defined here but its document carries no \"id\", so nothing can reference it"})
+				}
+			}
+		}
+	}
+	return out, nil
+}
+
+// BadTarget is an objectTypes entry that cannot resolve to a type.
+type BadTarget struct {
+	File     string
+	Property string
+	Target   string
+	Reason   string
+}
+
+// ReportTargets renders unresolvable target types, one per line.
+func ReportTargets(bs []BadTarget) string {
+	var b strings.Builder
+	for _, t := range bs {
+		fmt.Fprintf(&b, "  %s: property %q targets %q — %s\n", t.File, t.Property, t.Target, t.Reason)
 	}
 	return b.String()
 }

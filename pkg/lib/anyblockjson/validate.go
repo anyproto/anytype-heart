@@ -422,17 +422,23 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 							"objectTypes is only meaningful on objects/files, not %q", shown)
 					}
 				}
-				name, _ := tp["name"].(string)
-				if key == "" || name == "" {
-					continue
+				// a bundled property is used as-is: only the wiring's
+				// create path reads these, and it never runs for a key that
+				// already exists (§2a)
+				if key != "" {
+					if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel != nil {
+						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
+							warnIssue(fmt.Sprintf("/typeProperties/%d/name", i),
+								"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
+								key, rel.Name)
+						}
+						if ots, has := tp["objectTypes"].([]any); has && len(ots) > 0 {
+							warnIssue(fmt.Sprintf("/typeProperties/%d/objectTypes", i),
+								"%q is a bundled property; its target types are fixed by the bundle and this list is ignored — mint a custom key to target different types",
+								key)
+						}
+					}
 				}
-				rel, err := bundle.GetRelation(domain.RelationKey(key))
-				if err != nil || rel == nil || rel.Name == name {
-					continue
-				}
-				warnIssue(fmt.Sprintf("/typeProperties/%d/name", i),
-					"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
-					key, rel.Name)
 			}
 		}
 	}

@@ -113,6 +113,16 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 	if err != nil {
 		return fmt.Errorf("index type ids: %w", err)
 	}
+	badTargets, err := anyblockbatch.CheckTargetTypes(files, typeIds)
+	if err != nil {
+		return fmt.Errorf("check target types: %w", err)
+	}
+	if len(badTargets) > 0 {
+		return fmt.Errorf("%d unresolvable objectTypes target%s:\n%s",
+			len(badTargets), map[bool]string{true: "", false: "s"}[len(badTargets) == 1],
+			anyblockbatch.ReportTargets(badTargets))
+	}
+
 	b := newBatch(formats, typeIds)
 
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
