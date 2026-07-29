@@ -721,6 +721,23 @@ a group exists only for `or` or nesting):
   everything else verbatim. `value` is **dropped** on
   `empty`/`notEmpty`/`exists` leaves (§11).
 
+  **Dynamic values.** A `value` entry of the form `_filter_template_<n>_` is
+  a placeholder the *client* substitutes for a real object id before issuing
+  the query (`Dataview.valueTemplateMapper`): `_filter_template_2_` is the
+  current user, resolving to `_participant_<space>_<account>`, and
+  `_filter_template_1_` is the object hosting an inline dataview, resolving
+  to its id. They are stored verbatim and are **opaque to the middleware** —
+  nothing in Go resolves them, so a query evaluated server-side compares
+  against the literal string and matches nothing. They are not object ids:
+  import must not remap them and export must not compact them into the refs
+  legend (§9a). Valid only on `objects`/`files` properties, since they
+  resolve to an object id; anywhere else is a validation error. Note the
+  date presets are a *different* mechanism — a first-class `quickOption`
+  field with real Go-side semantics (§6.2, `quickoptions.go`) — and the
+  template-placeholder feature (`model.Placeholder_PlaceholderCurrentUser`)
+  is unrelated: it fills property defaults when an object is created from a
+  template, is resolved in Go, and never appears in a filter.
+
   `numberOfDaysAgo` and `numberOfDaysNow` are the two presets that **take an
   operand**: `getDateRange` reads the day count from `value`
   (`pkg/lib/database/quickoptions.go`), so they are the one case where a

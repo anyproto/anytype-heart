@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -466,6 +467,24 @@ var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_object:    "objects",
 	model.RelationFormat_relations: "properties",
 })
+
+// filterTemplatePrefix marks a dynamic filter value: a placeholder the
+// client substitutes for a real object id before it issues the query
+// (anytype-ts Dataview.valueTemplateMapper). The tokens are built as
+// sprintf("_filter_template_%d_", FilterValueTemplate) — _filter_template_2_
+// is the current user, resolving to _participant_<space>_<account>, and
+// _filter_template_1_ is the object hosting an inline dataview, resolving to
+// its id.
+//
+// They are stored verbatim in the filter's value and are opaque to the
+// middleware: nothing in Go resolves them, so a query evaluated server-side
+// compares against the literal string and matches nothing. They are not
+// object ids and must never be remapped as such.
+const filterTemplatePrefix = "_filter_template_"
+
+func isFilterTemplate(v string) bool {
+	return strings.HasPrefix(v, filterTemplatePrefix)
+}
 
 // layoutNames maps the object layout enum to the names this format uses.
 // Layout is *stored* as a number (its bundled relation's format is `number`),

@@ -736,6 +736,17 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 					}
 				}
 			}
+			// a dynamic filter token resolves to an object id, so it can
+			// only match an object/file property; anywhere else it is
+			// compared as a literal string and matches nothing
+			if prop, _ := n["property"].(string); prop != "" {
+				if f, declared := formats[prop]; declared && f != "objects" && f != "files" {
+					for _, tok := range filterTemplateValues(n["value"]) {
+						addIssue(nPath+"/value",
+							"%q resolves to an object id and cannot match %q (format %q)", tok, prop, f)
+					}
+				}
+			}
 			cond, _ := n["condition"].(string)
 			if cond != "less" && cond != "lessOrEqual" {
 				continue
@@ -750,4 +761,23 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 		}
 	}
 	walk(nodes, path+"/filters", true, map[string]bool{})
+}
+
+// filterTemplateValues returns the dynamic filter tokens (§6.2) inside a
+// filter value, which may be a bare string or an array of them.
+func filterTemplateValues(v any) []string {
+	var out []string
+	switch x := v.(type) {
+	case string:
+		if isFilterTemplate(x) {
+			out = append(out, x)
+		}
+	case []any:
+		for _, e := range x {
+			if s, ok := e.(string); ok && isFilterTemplate(s) {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
 }
