@@ -94,6 +94,11 @@ type exporter struct {
 
 	objectRefs map[string]string // full object id -> refs label (§9a)
 	localIds   map[string]string // block/row/column/view id -> short label
+
+	// tableIds maps a stored row/column id to the sanitized label written for
+	// it (§6.1), and tableIdsUsed keeps those labels distinct.
+	tableIds     map[string]string
+	tableIdsUsed map[string]struct{}
 }
 
 func (e *exporter) detail(key string) *types.Value {

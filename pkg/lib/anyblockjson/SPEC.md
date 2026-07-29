@@ -547,6 +547,17 @@ machinery:
   separator. Import generates missing ids.
 - `width` on a column entry (pixels) is first-class (lifted from the
   internal `fields["width"]`); other column data round-trips via `fields`.
+- **Generated row/column ids obey the same charset as authored ones.** A
+  cell's id is `rowId + "-" + colId`, and the editor recovers the column with
+  `SplitN(id, "-", 2)` (`table.ParseCellID`, which every column
+  insert/delete/move, the HTML converter and table normalization depend on),
+  so a `-` anywhere in a row or column id silently reassigns cells to the
+  wrong column. `Options.GenerateId` belongs to the caller and need not
+  respect that — the convert wiring derives ids from file paths — so import
+  sanitizes generated ids into `[A-Za-z0-9_]{1,64}` and disambiguates
+  collisions rather than trusting the generator. Export sanitizes stored ids
+  the same way, since data predating this rule contains dashes and `Marshal`
+  must never emit a document its own `Validate` rejects.
 - Header rows must come first (editor invariant); import reorders
   (normalizes) rather than rejects, same as the editor does.
 - Export normalizes before flattening, mirroring the editor's own table
