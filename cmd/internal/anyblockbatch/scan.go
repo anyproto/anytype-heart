@@ -221,3 +221,86 @@ func OrderTypesFirst(files []string) ([]string, error) {
 	}
 	return append(types, rest...), nil
 }
+
+// SharedSelect is a select property declared by more than one type.
+type SharedSelect struct {
+	Key   string
+	Types []string // type keys, in declaration order
+}
+
+// CheckSharedSelects finds select/multiSelect properties declared by more
+// than one type. Properties are space-wide, not per-type: two types sharing
+// one select share one option pool, so their vocabularies merge into a
+// single dropdown and each type's board grows the other's empty columns.
+//
+// That is right for a property whose value set is genuinely common — `tag`
+// exists to be shared — and wrong for the lifecycle selects every schema
+// reaches for, where "Status" on a Task and "Status" on a Project name
+// different things. Splitting them (taskStatus / projectStatus, labelled
+// "Task status") keeps each vocabulary clean.
+//
+// Reported rather than rejected: only the author knows whether the union is
+// the point.
+func CheckSharedSelects(files []string) ([]SharedSelect, error) {
+	type decl struct {
+		types []string
+		seen  map[string]bool
+	}
+	byKey := map[string]*decl{}
+	var order []string
+
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var doc struct {
+			Kind           string        `json:"kind"`
+			Key            string        `json:"key"`
+			TypeProperties []typePropRaw `json:"typeProperties"`
+		}
+		if err := json.Unmarshal(data, &doc); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		if doc.Kind != "objectType" {
+			continue
+		}
+		typeName := doc.Key
+		if typeName == "" {
+			typeName = filepath.Base(f)
+		}
+		for _, tp := range doc.TypeProperties {
+			if tp.Format != "select" && tp.Format != "multiSelect" {
+				continue
+			}
+			d, ok := byKey[tp.Key]
+			if !ok {
+				d = &decl{seen: map[string]bool{}}
+				byKey[tp.Key] = d
+				order = append(order, tp.Key)
+			}
+			if !d.seen[typeName] {
+				d.seen[typeName] = true
+				d.types = append(d.types, typeName)
+			}
+		}
+	}
+
+	var out []SharedSelect
+	for _, key := range order {
+		if d := byKey[key]; len(d.types) > 1 {
+			out = append(out, SharedSelect{Key: key, Types: d.types})
+		}
+	}
+	return out, nil
+}
+
+// ReportSharedSelects renders shared selects as one line each.
+func ReportSharedSelects(ss []SharedSelect) string {
+	var b strings.Builder
+	for _, s := range ss {
+		fmt.Fprintf(&b, "  property %q is a select shared by %d types (%s) — one option pool space-wide, so their vocabularies merge; split per type unless the union is the point\n",
+			s.Key, len(s.Types), strings.Join(s.Types, ", "))
+	}
+	return b.String()
+}
