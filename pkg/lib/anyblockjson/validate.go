@@ -279,6 +279,24 @@ var leafBlockTypes = map[string]bool{
 	"chat": true,
 }
 
+// LeafBlockType reports whether typ cannot be a parent (§5 leaf types, the
+// V2 containment check). Exported for wiring that pre-checks edits before a
+// full document validation (API v2 Phase 3).
+func LeafBlockType(typ string) bool {
+	return leafBlockTypes[typ]
+}
+
+// TextBlockType reports whether typ carries a `text` prop — the §5
+// text-bearing styles plus the literal-text blocks (`code`, `embed` and its
+// `equation` alias, §8.4). Exported for the same wiring as LeafBlockType.
+func TextBlockType(typ string) bool {
+	switch typ {
+	case "code", "embed", "equation":
+		return true
+	}
+	return textBearing(typ)
+}
+
 // clampIndents applies the §4 lenient rule in place: an indent more than one
 // deeper than its predecessor clamps to predecessor+1 (CommonMark's "a level
 // that hasn't been established cannot be opened"); the first entry's
