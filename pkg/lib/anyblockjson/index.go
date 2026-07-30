@@ -76,23 +76,41 @@ type Index struct {
 	// matches (builtinobjects.getNewAvatarId). It therefore needs the image
 	// object and its file present in the archive, which is why a generated
 	// bundle normally sets IconEmoji instead.
-	IconImage string   `json:"iconImage"`
-	Homepage  string   `json:"homepage"`
-	Widgets   []Widget `json:"widgets"`
+	IconImage string `json:"iconImage"`
+	// Entrypoint is the object opened once, right after the space is created
+	// — the first thing a user ever sees. Distinct from Homepage, which is
+	// what opens on every later entry, and deliberately not the widget order:
+	// the wire format carries the entry point as widgets[0]
+	// (builtinobjects.inject), but making authors express it by sorting a list
+	// means reordering the sidebar silently changes what opens.
+	Entrypoint string   `json:"entrypoint"`
+	Homepage   string   `json:"homepage"`
+	Widgets    []Widget `json:"widgets"`
 }
 
-// EntryPoint returns the object the install opens: the first widget's target,
-// which is what builtinobjects.inject uses as its starting page. Empty when
-// the bundle declares no widgets, or when the first one names a reserved
-// listing rather than an object.
+// EntryPoint returns the object the install opens. Normally the declared
+// entrypoint; for a bundle written before the field existed, the first widget
+// naming an object, which is what the wire format has always meant.
 func (i *Index) EntryPoint() string {
-	if len(i.Widgets) == 0 {
-		return ""
+	if i.Entrypoint != "" {
+		return i.Entrypoint
 	}
-	if t := i.Widgets[0].Target; !IsReservedWidgetTarget(t) {
-		return t
+	for _, w := range i.Widgets {
+		if !IsReservedWidgetTarget(w.Target) {
+			return w.Target
+		}
 	}
 	return ""
+}
+
+// SpaceHomepage returns what opens on entering the space: the declared
+// homepage, else the entry point. Only an explicit reserved value gives up a
+// real page — omitting homepage does not.
+func (i *Index) SpaceHomepage() string {
+	if i.Homepage != "" {
+		return i.Homepage
+	}
+	return i.EntryPoint()
 }
 
 var compileIndexSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
@@ -170,6 +188,7 @@ func MarshalIndex(idx *Index) ([]byte, error) {
 	doc.setNonEmpty("description", idx.Description)
 	doc.setNonEmpty("iconEmoji", idx.IconEmoji)
 	doc.setNonEmpty("iconImage", idx.IconImage)
+	doc.setNonEmpty("entrypoint", idx.Entrypoint)
 	doc.setNonEmpty("homepage", idx.Homepage)
 
 	var widgets []any

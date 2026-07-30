@@ -15,19 +15,57 @@ func main() {
 		fmt.Println("usage: anyblockvalidate <file-or-dir>...")
 		os.Exit(2)
 	}
-	var files []string
+	var files, indexes []string
 	for _, arg := range os.Args[1:] {
 		_ = filepath.Walk(arg, func(p string, info os.FileInfo, err error) error {
 			if err != nil {
 				return nil
 			}
-			if !info.IsDir() && strings.HasSuffix(p, ".json") {
-				files = append(files, p)
+			if info.IsDir() || !strings.HasSuffix(p, ".json") {
+				return nil
 			}
+			// the bundle index (§2c) describes the bundle, not an object: it
+			// has its own schema and would fail every object-level check
+			if filepath.Base(p) == anyblockjson.IndexFileName {
+				indexes = append(indexes, p)
+				return nil
+			}
+			files = append(files, p)
 			return nil
 		})
 	}
 	fail, warned := 0, 0
+
+	if len(indexes) == 0 {
+		warned++
+		fmt.Printf("warn    no index.json found\n         without one the space has no name, no entry point and no sidebar (§2c)\n")
+	}
+	for _, idxPath := range indexes {
+		data, err := os.ReadFile(idxPath)
+		if err != nil {
+			fmt.Printf("READERR %s: %v\n", idxPath, err)
+			fail++
+		} else if idx, err := anyblockjson.UnmarshalIndex(data); err != nil {
+			fmt.Printf("INVALID %s\n         %v\n", idxPath, err)
+			fail++
+		} else {
+			dangling := anyblockbatch.CheckIndexTargets(idx, files)
+			if len(dangling) > 0 {
+				fmt.Printf("INVALID %s\n%s", idxPath, anyblockbatch.ReportTargets(dangling))
+				fail += len(dangling)
+			} else {
+				entry := idx.EntryPoint()
+				if entry == "" {
+					entry = "(nothing — no entrypoint declared)"
+				}
+				home := idx.SpaceHomepage()
+				if home == "" {
+					home = "(the widgets screen)"
+				}
+				fmt.Printf("ok      %s\n         install opens %s · space homepage %s\n", idxPath, entry, home)
+			}
+		}
+	}
 	for _, f := range files {
 		data, err := os.ReadFile(f)
 		if err != nil {

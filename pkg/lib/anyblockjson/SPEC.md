@@ -262,16 +262,44 @@ collection — or one of the reserved listings `favorite · recent · set ·
 collection · allObjects · recentOpen`, which name a built-in rather than
 something the bundle ships.
 
-**Why this file exists rather than a flag on an object.** The installer reads
-a bundle's entry point from a `pb.Profile` at the archive root
-(`util/builtinobjects`, which is how the built-in use cases work):
-`spaceDashboardId` becomes the space's `homepage`, `widgets[]` become sidebar
-widgets, and `widgets[0].targetObjectId` is the object the install opens.
-`index.json` is that profile in this format's terms, and the wiring is
-responsible for emitting it. Nothing per-object can express it —
-in particular **`isFavorite` is not an entry point**: it adds an object to
-Favorites and nothing more. It does not open anything, create a widget, or
-set the homepage.
+### How it reaches the space
+
+The installer reads all of this from a `pb.Profile` at the archive root
+(`util/builtinobjects`, which is how the built-in use cases work).
+`index.json` is that profile in this format's terms, and emitting it is the
+wiring's job:
+
+| `index.json` | `pb.Profile` | effect |
+|---|---|---|
+| `name` | `name` | the space's name |
+| `iconImage` | `avatar` | the space icon, resolved by name |
+| `homepage`, falling back to `entrypoint` | `spaceDashboardId` | the space's `homepage` detail — what opens on **every** entry |
+| `widgets` | `widgets` | sidebar widgets, in order |
+| `entrypoint` | `widgets[0].targetObjectId` | the object the install opens, **once** |
+
+Two consequences worth stating, because neither is obvious from the wire
+format:
+
+- **`entrypoint` is encoded as the first widget.** There is no independent
+  field for "open this after import" — `inject` takes
+  `widgets[0].targetObjectId` as its starting page, and the deprecated
+  `startingPage` is only read when `widgets` is empty, so it cannot coexist
+  with a sidebar. The wiring therefore has to make the entrypoint
+  `widgets[0]`, prepending a widget for it when the author listed something
+  else first. The entry point consequently always appears first in the
+  sidebar. `entrypoint` exists as a separate field anyway, because expressing
+  it by sorting `widgets` means reordering the sidebar silently changes what
+  a new user sees.
+- **Omitting `homepage` does not mean the widgets screen.** An absent
+  `spaceDashboardId` makes `setWorkspaceSettings` default to `widgets`, which
+  is the right default for a *blank* space and the wrong one for a use case:
+  on desktop the widgets are already in the sidebar, so it leaves the main
+  pane empty. So an omitted `homepage` resolves to the `entrypoint` instead,
+  and only an explicit `"widgets"` or `"graph"` gives up a real page.
+
+Nothing per-object substitutes for this file. In particular **`isFavorite` is
+not an entry point**: it adds an object to Favorites and nothing more. It
+does not open anything, create a widget, or set the homepage.
 
 Ids in `index.json` are the bundle's own — the same slugs every other
 document uses — and the wiring relinks them like any other reference. Whether
