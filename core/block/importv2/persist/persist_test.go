@@ -120,7 +120,7 @@ func (f *fakeFlags) SetIsFavorite(objectId string, isFavorite bool) error {
 	return nil
 }
 
-func (f *fakeFlags) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error {
+func (f *fakeFlags) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error {
 	f.archived = append(f.archived, objectId)
 	return nil
 }

@@ -53,7 +53,7 @@ type FileUploader interface {
 // FlagSetter applies favorite/archive outside the object state.
 type FlagSetter interface {
 	SetIsFavorite(objectId string, isFavorite bool) error
-	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
+	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error
 }
 
 // ObjectChecker probes whether an id was already indexed in the space —
@@ -303,7 +303,7 @@ func (p *Persister) applyFlags(ctx context.Context, o *importv2.Object, objectId
 		}
 	}
 	if o.Archived {
-		if err := p.flags.SetIsArchived(nil, ctx, objectId, true); err != nil {
+		if err := p.flags.SetIsArchived(nil, ctx, objectId, true, true); err != nil {
 			report(flagIssue(objectId, "archived", err))
 		}
 	}

@@ -161,7 +161,7 @@ func sanitizeId(localPath string) string {
 type nopFlags struct{}
 
 func (nopFlags) SetIsFavorite(objectId string, isFavorite bool) error { return nil }
-func (nopFlags) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error {
+func (nopFlags) SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error {
 	return nil
 }
 
