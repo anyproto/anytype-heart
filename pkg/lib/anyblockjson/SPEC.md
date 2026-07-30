@@ -267,7 +267,9 @@ something the bundle ships.
 The installer reads all of this from a `pb.Profile` at the archive root
 (`util/builtinobjects`, which is how the built-in use cases work).
 `index.json` is that profile in this format's terms, and emitting it is the
-wiring's job:
+wiring's job — `cmd/anyblockconvert` writes it as `profile` at the output
+root, raw protobuf, since `getProfile` reads it with `pb.Profile.Unmarshal`
+whatever format the snapshots are in:
 
 | `index.json` | `pb.Profile` | effect |
 |---|---|---|

@@ -529,3 +529,30 @@ func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
 	}
 	return out
 }
+
+// ObjectNames maps every id the bundle defines to that object's name. The
+// installer resolves a space icon by image name rather than by id
+// (builtinobjects.getNewAvatarId), so the wiring needs this to turn an
+// index.json iconImage reference into the name the profile carries.
+func ObjectNames(files []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var probe struct {
+			Id         string `json:"id"`
+			Properties struct {
+				Name string `json:"name"`
+			} `json:"properties"`
+		}
+		if err := json.Unmarshal(data, &probe); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		if probe.Id != "" {
+			out[probe.Id] = probe.Properties.Name
+		}
+	}
+	return out, nil
+}
