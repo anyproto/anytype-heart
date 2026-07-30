@@ -497,6 +497,38 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, apimodel.V2CodeEtagMismatch, apiErr.Code)
 	})
 
+	t.Run("dry run reports a created option once (C′2)", func(t *testing.T) {
+		// prewarm and the op itself both resolve the same name; dry_run must
+		// preview exactly what the real run reports
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"severity":["BrandNewOption"]}}`), "", true)
+
+		require.NoError(t, err)
+		require.NotNil(t, result.Created)
+		assert.Len(t, result.Created.Options, 1, "the option is previewed once, not once per resolution")
+		assert.Equal(t, "BrandNewOption", result.Created.Options[0].Name)
+	})
+
+	t.Run("a restricted object is refused on the dry run too (C′3)", func(t *testing.T) {
+		// the restriction verdict rides the read, so dry_run cannot report a
+		// success the real edit would refuse
+		fx := newV2Fixture(t)
+		read := editRead(t, editBaseDoc)
+		read.EditRefused = apimodel.V2ValidationFailed("this object's blocks cannot be edited through the API")
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"deleteBlock","id":"blockChild1"}`), "", true)
+
+		apiErr := v2Err(t, err)
+		assert.Contains(t, apiErr.Message, "cannot be edited")
+	})
+
 	t.Run("V3 row→column containment is enforced on the spliced result (B′1)", func(t *testing.T) {
 		// a paragraph inside a row is legal as an isolated fragment — only the
 		// whole document shows the violation, which is why the post-op validate

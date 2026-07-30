@@ -259,6 +259,41 @@ func invalidDocError(err error) error {
 	return verr
 }
 
+// invalidFragmentError is invalidDocError for a payload fragment: it rebases
+// the format's run-relative issue paths onto the op that carried them, so the
+// repair loop can locate the failing op (review C′1). Without this a 4-op
+// batch reported every payload problem as "/blocks/0/type" — indistinguishable
+// between ops. base is the op's payload path ("ops[2].blocks", "ops[2].block",
+// "ops[2].set"); a run-relative "/blocks/3/text" becomes "ops[2].blocks[3].text".
+func invalidFragmentError(base string, err error) error {
+	rebased := invalidDocError(err)
+	var v2Err *apimodel.V2Error
+	if !errors.As(rebased, &v2Err) {
+		return rebased
+	}
+	for i := range v2Err.Issues {
+		v2Err.Issues[i].Path = rebaseFragmentPath(base, v2Err.Issues[i].Path)
+	}
+	return v2Err
+}
+
+// rebaseFragmentPath maps a run-relative issue path onto the op's payload.
+func rebaseFragmentPath(base, path string) string {
+	if path == "" {
+		return base
+	}
+	// the fragment is validated inside a synthetic document, so paths arrive as
+	// /blocks/<j>/<rest>; keep the index with the op's payload path
+	if rest, ok := strings.CutPrefix(path, "/blocks/"); ok {
+		idx, tail, found := strings.Cut(rest, "/")
+		if found {
+			return fmt.Sprintf("%s[%s].%s", base, idx, strings.ReplaceAll(tail, "/", "."))
+		}
+		return fmt.Sprintf("%s[%s]", base, idx)
+	}
+	return base + strings.ReplaceAll(path, "/", ".")
+}
+
 // duplicateIdError is the R5-net rejection for a payload id that already
 // exists in the document (the document-level pipeline caught this via the
 // format's id-uniqueness check; the state pipeline checks it explicitly,
@@ -493,7 +528,7 @@ func targetPosition(mode, pos string) model.BlockPosition {
 
 // fragmentBlocks converts a decoded payload run (relative indents, minted
 // ids) into model blocks via the fragment import.
-func (a *v2StateApplier) fragmentBlocks(run []map[string]any) ([]*model.Block, []string, error) {
+func (a *v2StateApplier) fragmentBlocks(base string, run []map[string]any) ([]*model.Block, []string, error) {
 	raws := make([]json.RawMessage, len(run))
 	for j, block := range run {
 		raw, err := json.Marshal(block)
@@ -504,7 +539,7 @@ func (a *v2StateApplier) fragmentBlocks(run []map[string]any) ([]*model.Block, [
 	}
 	blocks, topIds, err := anyblockjson.UnmarshalBlocks(raws, a.importOptions())
 	if err != nil {
-		return nil, nil, invalidDocError(err)
+		return nil, nil, invalidFragmentError(base, err)
 	}
 	return blocks, topIds, nil
 }
@@ -720,7 +755,7 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 	}
 	blocks, err := anyblockjson.UnmarshalBlock(raw, fullId, a.importOptions())
 	if err != nil {
-		return invalidDocError(err)
+		return invalidFragmentError(opPath+".set", err)
 	}
 	if err := a.checkFreshIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".set" }); err != nil {
 		return err
@@ -766,7 +801,7 @@ func (a *v2StateApplier) applyReplaceBlock(op opReplaceBlock, opPath string) err
 	}
 	blocks, err := anyblockjson.UnmarshalBlock(raw, fullId, a.importOptions())
 	if err != nil {
-		return invalidDocError(err)
+		return invalidFragmentError(opPath+".block", err)
 	}
 	if err := a.checkFreshIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".block" }); err != nil {
 		return err
@@ -790,7 +825,7 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 	}
 	oldId := blockId(doc.blocks[idx])
 	oldSubtree := collectSubtreeIds(a.st, oldId)
-	blocks, topIds, err := a.fragmentBlocks(run)
+	blocks, topIds, err := a.fragmentBlocks(opPath+".blocks", run)
 	if err != nil {
 		return err
 	}
@@ -878,7 +913,7 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	if err != nil {
 		return err
 	}
-	blocks, topIds, err := a.fragmentBlocks(run)
+	blocks, topIds, err := a.fragmentBlocks(opPath+".blocks", run)
 	if err != nil {
 		return err
 	}

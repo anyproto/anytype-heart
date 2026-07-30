@@ -58,5 +58,8 @@ func readLiveState(sb smartblock.SmartBlock) apicore.ObjectRead {
 			FileInfo:    st.GetFileInfo().ToModel(),
 		},
 		Heads: append([]string(nil), sb.GetDocInfo().Heads...),
+		// captured under the same lock so a dry run sees the same verdict the
+		// real edit will (review C′3)
+		EditRefused: checkObjectEditable(sb),
 	}
 }

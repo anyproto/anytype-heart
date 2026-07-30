@@ -45,6 +45,10 @@ type ObjectRead struct {
 	SbType   model.SmartBlockType
 	Snapshot *model.SmartBlockSnapshotBase
 	Heads    []string
+	// EditRefused carries the object-level restriction verdict from the same
+	// locked read, so a dry run reaches the same conclusion as the real edit
+	// (review C′3). nil means the object accepts block/property edits.
+	EditRefused error
 }
 
 // ObjectReader reads the live smartblock state of an object — the API v2

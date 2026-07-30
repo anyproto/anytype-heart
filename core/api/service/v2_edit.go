@@ -71,6 +71,12 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
 		return nil, err
 	}
+	// the object's own restrictions, from the same read — so a dry run reaches
+	// the same verdict as the real edit rather than reporting a success the
+	// adapter would refuse (review C′3)
+	if cur.EditRefused != nil {
+		return nil, cur.EditRefused
+	}
 	s.prewarmCreateMissing(ops, resolvers)
 
 	var result *apimodel.V2EditResult

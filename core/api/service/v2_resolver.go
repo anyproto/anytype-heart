@@ -53,6 +53,10 @@ type creatingResolvers struct {
 	dryRun  bool
 
 	createdOptions map[optionRef]string
+	// dryReported are option refs already reported as would-be-created on a
+	// dry run, so resolving the same name twice (prewarm, then the op) does
+	// not list it twice (review C′2).
+	dryReported    map[optionRef]bool
 	createdProps   map[string]anyblockjson.PropertyDefinition // key → created def
 	createdPropIds map[string]string                          // key → id
 	sideEffects    apimodel.V2SideEffects
@@ -67,6 +71,7 @@ func newCreatingResolvers(ctx context.Context, mw apicore.ClientCommands, spaceI
 		reads:          storeresolver.New(index),
 		dryRun:         dryRun,
 		createdOptions: map[optionRef]string{},
+		dryReported:    map[optionRef]bool{},
 		createdProps:   map[string]anyblockjson.PropertyDefinition{},
 		createdPropIds: map[string]string{},
 	}
@@ -127,12 +132,18 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 	if id, ok := r.reads.OptionId(key, name); ok {
 		return id, true
 	}
-	r.sideEffects.Options = append(r.sideEffects.Options, apimodel.V2CreatedOption{Property: string(key), Name: name})
 	if r.dryRun {
 		// nothing is created; the name passes through verbatim in the
-		// discarded snapshot
+		// discarded snapshot. Report it once: prewarm and the op itself both
+		// resolve the same name, and dry_run must preview exactly what the
+		// real run reports (review C′2).
+		if !r.dryReported[ref] {
+			r.dryReported[ref] = true
+			r.sideEffects.Options = append(r.sideEffects.Options, apimodel.V2CreatedOption{Property: string(key), Name: name})
+		}
 		return "", false
 	}
+	r.sideEffects.Options = append(r.sideEffects.Options, apimodel.V2CreatedOption{Property: string(key), Name: name})
 	resp := r.mw.ObjectCreateRelationOption(r.ctx, &pb.RpcObjectCreateRelationOptionRequest{
 		SpaceId: r.spaceId,
 		Details: &types.Struct{Fields: map[string]*types.Value{
