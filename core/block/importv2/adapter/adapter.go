@@ -273,6 +273,7 @@ func (s *service) executeMarkdown(ctx context.Context, request importv2.Request,
 	if err != nil {
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueSourceInvalid, err)}
 	}
+	params.Planner = plannerFromRequest(req)
 	request.NoCollection = params.NoCollection
 
 	// Multiple paths run as independent sequential engine runs (v1 built one
@@ -309,8 +310,15 @@ func (s *service) executeNotion(ctx context.Context, request importv2.Request, r
 		return &importv2.Result{Err: importv2.Fatal(importv2.IssueAuthFailed, fmt.Errorf("notion import requires an api key"))}
 	}
 	apiClient := notionclient.NewClient(params.GetApiKey())
+	var opts []notion.Option
+	if planner := plannerFromRequest(req); planner.planner != nil {
+		opts = append(opts, notion.WithPlanner(planner.planner))
+		if planner.includeSamples {
+			opts = append(opts, notion.WithContentSamples())
+		}
+	}
 	converter := notion.New(apiClient, notionclient.NewFileFetcher(),
-		&collectionFactory{service: s.collectionService}, spillDir)
+		&collectionFactory{service: s.collectionService}, spillDir, opts...)
 	return s.runEngine(ctx, request, converter, spc, spillDir, progress)
 }
 
@@ -319,6 +327,7 @@ type mdParams struct {
 	CreateDirectoryPages     bool
 	IncludePropertiesAsBlock bool
 	Flavour                  string
+	Planner                  plannerParams
 }
 
 func markdownParams(req *pb.RpcObjectImportRequest) ([]string, mdParams, error) {
@@ -351,6 +360,8 @@ func (s *service) runOne(ctx context.Context, request importv2.Request, spc clie
 		CreateDirectoryPages:     params.CreateDirectoryPages,
 		IncludePropertiesAsBlock: params.IncludePropertiesAsBlock,
 		Flavour:                  params.Flavour,
+		Planner:                  params.Planner.planner,
+		IncludeContentSamples:    params.Planner.includeSamples,
 	}, &collectionFactory{service: s.collectionService})
 	return s.runEngine(ctx, request, converter, spc, spillDir, progress)
 }
