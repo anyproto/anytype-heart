@@ -39,6 +39,32 @@ func (fx *v2Fixture) addSelectProperty(t *testing.T) {
 	})
 }
 
+// addTagProperty registers a multiSelect property "tags" with two existing
+// options "Urgent" and "Later" in the test space.
+func (fx *v2Fixture) addTagProperty(t *testing.T) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+		{
+			bundle.RelationKeyId:             domain.String("rel-tags"),
+			bundle.RelationKeyRelationKey:    domain.String("tags"),
+			bundle.RelationKeyName:           domain.String("Tags"),
+			bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_tag)),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+		},
+		{
+			bundle.RelationKeyId:             domain.String("opt-urgent"),
+			bundle.RelationKeyRelationKey:    domain.String("tags"),
+			bundle.RelationKeyName:           domain.String("Urgent"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+		},
+		{
+			bundle.RelationKeyId:             domain.String("opt-later"),
+			bundle.RelationKeyRelationKey:    domain.String("tags"),
+			bundle.RelationKeyName:           domain.String("Later"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relationOption)),
+		},
+	})
+}
+
 // expectCreate captures the snapshot handed to the creator and returns id.
 func (fx *v2Fixture) expectCreate(id string) **model.SmartBlockSnapshotBase {
 	var captured *model.SmartBlockSnapshotBase

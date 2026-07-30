@@ -15,6 +15,7 @@ import (
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -700,6 +701,135 @@ func TestPatchObject(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, result.Created)
+	})
+
+	t.Run("setProperties add appends to a multiSelect without duplicating", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTagProperty(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		// when: op 0 adds Urgent (twice — dedupe within one op), op 1 adds
+		// Urgent again plus Later — the existing entry is never duplicated
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(
+				`{"op":"setProperties","add":{"tags":["Urgent","Urgent"]}}`,
+				`{"op":"setProperties","add":{"tags":["Urgent","Later"]}}`), "", false)
+
+		// then
+		require.NoError(t, err)
+		got := (*captured).CombinedDetails().Get(domain.RelationKey("tags")).StringList()
+		assert.Equal(t, []string{"opt-urgent", "opt-later"}, got)
+	})
+
+	t.Run("setProperties remove deletes matching entries and no-ops on absent ones", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addTagProperty(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		// when: seed both tags, then remove one plus a name that resolves to
+		// nothing — removal must never create the option it names
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(
+				`{"op":"setProperties","add":{"tags":["Urgent","Later"]}}`,
+				`{"op":"setProperties","remove":{"tags":["Urgent","Nonexistent"]}}`), "", false)
+
+		// then: no ObjectCreateRelationOption expectation is wired — a create
+		// RPC for "Nonexistent" would fail the test
+		require.NoError(t, err)
+		got := (*captured).CombinedDetails().Get(domain.RelationKey("tags")).StringList()
+		assert.Equal(t, []string{"opt-later"}, got)
+	})
+
+	t.Run("setProperties remove on an absent key stays absent", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addTagProperty(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","remove":{"tags":["Urgent"]}}`), "", false)
+
+		require.NoError(t, err)
+		assert.False(t, (*captured).CombinedDetails().Has(domain.RelationKey("tags")),
+			"remove never creates presence")
+	})
+
+	t.Run("setProperties add on a scalar format names the format", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","add":{"done":[true]}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].add.done", apiErr.Issues[0].Path)
+		assert.Equal(t, `"done" has format "checkbox" — add only applies to list-shaped formats (select, multiSelect, objects, files); use set`, apiErr.Issues[0].Message)
+	})
+
+	t.Run("setProperties rejects a key in more than one of set/unset/add/remove", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addTagProperty(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"tags":["Urgent"]},"add":{"tags":["Later"]}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].add.tags", apiErr.Issues[0].Path)
+		assert.Equal(t, `"tags" appears in both set and add — pick one`, apiErr.Issues[0].Message)
+	})
+
+	t.Run("setProperties add validates keys like set", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","add":{"resolvedLayout":["todo"],"totallyUnknown":["x"]}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 2)
+		assert.Equal(t, "ops[0].add.resolvedLayout", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "output-only")
+		assert.Equal(t, "ops[0].add.totallyUnknown", apiErr.Issues[1].Path)
+		assert.Contains(t, apiErr.Issues[1].Message, "unknown property key")
+	})
+
+	t.Run("setProperties add takes an array, not a scalar", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.addTagProperty(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","add":{"tags":"Urgent"}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].add.tags", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "add takes an array of entries")
+	})
+
+	t.Run("setProperties add creates missing option names and reports them", func(t *testing.T) {
+		// the same create-missing resolution as set, including the pre-lock
+		// prewarm (which scans add too)
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.mwMock.EXPECT().ObjectCreateRelationOption(mock.Anything, mock.Anything).Return(&pb.RpcObjectCreateRelationOptionResponse{
+			ObjectId: "opt-critical",
+			Error:    &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
+		}).Once()
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+		want := &apimodel.V2SideEffects{Options: []apimodel.V2CreatedOption{{Property: "severity", Name: "Critical"}}}
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","add":{"severity":["Critical"]}}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, want, result.Created, "created once — prewarm and the op share the resolver cache")
+		got := (*captured).CombinedDetails().Get(domain.RelationKey("severity")).StringList()
+		assert.Equal(t, []string{"opt-critical"}, got)
 	})
 
 	t.Run("addItems and removeItems edit the collection membership", func(t *testing.T) {

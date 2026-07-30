@@ -604,9 +604,9 @@ func pinTableWrappers(st *state.State, blocks []*model.Block) {
 //
 
 func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) error {
-	if len(op.Set) == 0 && len(op.Unset) == 0 {
-		return apimodel.V2ValidationFailed("setProperties needs set and/or unset",
-			apimodel.V2Issue{Path: opPath, Message: "both set and unset are empty"})
+	if len(op.Set) == 0 && len(op.Unset) == 0 && len(op.Add) == 0 && len(op.Remove) == 0 {
+		return apimodel.V2ValidationFailed("setProperties needs at least one of set, unset, add, remove",
+			apimodel.V2Issue{Path: opPath, Message: "set, unset, add and remove are all empty"})
 	}
 	doc, err := a.doc()
 	if err != nil {
@@ -614,20 +614,19 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	}
 	var issues []apimodel.V2Issue
 	var known []string
-	setKeys := make([]string, 0, len(op.Set))
-	for key := range op.Set {
-		setKeys = append(setKeys, key)
-	}
-	sort.Strings(setKeys)
-	for _, key := range setKeys {
-		path := opPath + ".set." + key
+
+	// checkKey is the shared key validation (envelope keys, output-only,
+	// unknown with did-you-mean); false = the key is unusable.
+	checkKey := func(key, path string) bool {
 		switch {
 		case key == "id" || key == "type":
 			issues = append(issues, apimodel.V2Issue{Path: path,
 				Message: fmt.Sprintf("%q is not a property — it is lifted to the document envelope and cannot be set here", key)})
+			return false
 		case v2OutputOnlyPropertyKeys[key]:
 			issues = append(issues, apimodel.V2Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only (SPEC §4a) — export writes it, writes must not", key)})
+			return false
 		default:
 			if _, inDoc := doc.properties[key]; !inDoc && !a.s.propertyKeyExists(a.spaceId, key) {
 				if known == nil {
@@ -635,8 +634,30 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 				}
 				issues = append(issues, unknownPropertyIssue(key, path, known,
 					fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", a.spaceId, a.spaceId)))
+				return false
 			}
 		}
+		return true
+	}
+	// claim enforces that a key appears in at most one of set/unset/add/
+	// remove (v0.3.5); the fields are claimed in documentation order, so the
+	// error names the earlier field.
+	seenIn := map[string]string{}
+	claim := func(key, field, path string) bool {
+		if prev, ok := seenIn[key]; ok {
+			issues = append(issues, apimodel.V2Issue{Path: path,
+				Message: fmt.Sprintf("%q appears in both %s and %s — pick one", key, prev, field)})
+			return false
+		}
+		seenIn[key] = field
+		return true
+	}
+
+	setKeys := sortedKeys(op.Set)
+	for _, key := range setKeys {
+		path := opPath + ".set." + key
+		claim(key, "set", path) // set goes first — it can never collide
+		checkKey(key, path)
 	}
 	unset := map[string]bool{}
 	for _, key := range op.Unset {
@@ -646,13 +667,37 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 				Message: fmt.Sprintf("%q is output-only (SPEC §4a) and cannot be unset", key)})
 			continue
 		}
-		if _, also := op.Set[key]; also {
-			issues = append(issues, apimodel.V2Issue{Path: path,
-				Message: fmt.Sprintf("%q appears in both set and unset — pick one", key)})
+		if !claim(key, "unset", path) {
 			continue
 		}
 		unset[key] = true
 	}
+	// add/remove get the same key validation as set, plus the list-shape
+	// gate: they only apply to formats whose §3 encoding is a list.
+	checkListField := func(field string, m map[string]json.RawMessage) map[string][]any {
+		decoded := map[string][]any{}
+		for _, key := range sortedKeys(m) {
+			path := opPath + "." + field + "." + key
+			if !claim(key, field, path) || !checkKey(key, path) {
+				continue
+			}
+			if format := a.propertyFormat(key); !v2ListShapedFormats[format] {
+				issues = append(issues, apimodel.V2Issue{Path: path,
+					Message: fmt.Sprintf("%q has format %q — %s only applies to list-shaped formats (%s); use set", key, anyblockjson.FormatName(format), field, v2ListShapedFormatNames)})
+				continue
+			}
+			var entries []any
+			if err := json.Unmarshal(m[key], &entries); err != nil {
+				issues = append(issues, apimodel.V2Issue{Path: path,
+					Message: fmt.Sprintf("%s takes an array of entries (option names or object ids): %s", field, err.Error())})
+				continue
+			}
+			decoded[key] = entries
+		}
+		return decoded
+	}
+	addEntries := checkListField("add", op.Add)
+	removeEntries := checkListField("remove", op.Remove)
 	if len(issues) > 0 {
 		return apimodel.V2ValidationFailed("setProperties rejected", issues...)
 	}
@@ -670,6 +715,47 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	}
 	for key := range unset {
 		a.st.RemoveDetail(domain.RelationKey(key)) // unsetting an absent key is a no-op
+	}
+	// add appends without duplicating an existing entry; entry resolution is
+	// the same create-missing path as set (option names → ids, §3)
+	for _, key := range sortedKeys(addEntries) {
+		value := anyblockjson.UnmarshalPropertyValue(key, addEntries[key], a.resolvers.Options())
+		toAdd := domain.ValueFromProto(value).WrapToStringList()
+		current := a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()
+		present := make(map[string]bool, len(current)+len(toAdd))
+		merged := make([]string, 0, len(current)+len(toAdd))
+		for _, lst := range [][]string{current, toAdd} {
+			for _, id := range lst {
+				if !present[id] {
+					present[id] = true
+					merged = append(merged, id)
+				}
+			}
+		}
+		a.st.SetDetail(domain.RelationKey(key), domain.StringList(merged))
+		a.st.AddRelationLinks(&model.RelationLink{Key: key, Format: a.propertyFormat(key)})
+	}
+	// remove deletes matching entries and is a no-op when absent. Entry
+	// resolution is READ-ONLY (a.marshalOptions() — store-backed, never
+	// creating): a remove must never mint the very option it names; an
+	// unresolved name simply matches nothing.
+	for _, key := range sortedKeys(removeEntries) {
+		if !a.st.CombinedDetails().Has(domain.RelationKey(key)) {
+			continue // an absent key stays absent — remove never creates presence
+		}
+		value := anyblockjson.UnmarshalPropertyValue(key, removeEntries[key], a.marshalOptions())
+		drop := map[string]bool{}
+		for _, id := range domain.ValueFromProto(value).WrapToStringList() {
+			drop[id] = true
+		}
+		current := a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()
+		kept := make([]string, 0, len(current))
+		for _, id := range current {
+			if !drop[id] {
+				kept = append(kept, id)
+			}
+		}
+		a.st.SetDetail(domain.RelationKey(key), domain.StringList(kept))
 	}
 	a.mutated()
 	return nil

@@ -61,8 +61,10 @@ var v2OpSchemas = map[string]v2SchemaKind{
 		schema: opSchema(`"op"`,
 			`"op":{"const":"setProperties"}`,
 			`"set":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]},"description":"property key → value; presence is meaningful — an empty array means present-but-empty (SPEC §3); unknown select option NAMES are created"}`,
-			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`),
-		example: `{"ops":[{"op":"setProperties","set":{"status":["Done"]},"unset":["dueDate"]}]}`,
+			`"unset":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":256},"description":"property keys to remove"}`,
+			`"add":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only (select, multiSelect, objects, files): append entries without rewriting the array — existing entries are never duplicated; unknown option NAMES are created"}`,
+			`"remove":{"type":"object","maxProperties":128,"additionalProperties":{"type":"array","maxItems":128,"items":{"type":"string","maxLength":4096}},"description":"list-shaped keys only: delete matching entries — absent entries (and absent keys) are a no-op; a key may appear in only one of set/unset/add/remove"}`),
+		example: `{"ops":[{"op":"setProperties","set":{"status":["Done"]},"add":{"tags":["Urgent"]},"unset":["dueDate"]}]}`,
 	},
 	"updateBlock": {
 		endpoint: v2OpsEndpoint,

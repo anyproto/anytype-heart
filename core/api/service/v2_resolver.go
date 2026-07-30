@@ -173,26 +173,32 @@ func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creat
 		var probe struct {
 			Op  string                     `json:"op"`
 			Set map[string]json.RawMessage `json:"set"`
+			// add resolves option names with the same create-missing
+			// semantics as set (v0.3.5), so it prewarms too — otherwise
+			// option creation moves back inside the object lock
+			Add map[string]json.RawMessage `json:"add"`
 		}
 		if err := json.Unmarshal(raw, &probe); err != nil || probe.Op != "setProperties" {
 			continue
 		}
-		for key, rawValue := range probe.Set {
-			format, err := bundle.GetRelationFormat(domain.RelationKey(key))
-			if err != nil {
-				var ok bool
-				if format, ok = resolvers.ResolveFormat(domain.RelationKey(key)); !ok {
+		for _, values := range []map[string]json.RawMessage{probe.Set, probe.Add} {
+			for key, rawValue := range values {
+				format, err := bundle.GetRelationFormat(domain.RelationKey(key))
+				if err != nil {
+					var ok bool
+					if format, ok = resolvers.ResolveFormat(domain.RelationKey(key)); !ok {
+						continue
+					}
+				}
+				if format != model.RelationFormat_status && format != model.RelationFormat_tag {
 					continue
 				}
+				var value any
+				if err := json.Unmarshal(rawValue, &value); err != nil {
+					continue
+				}
+				anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
 			}
-			if format != model.RelationFormat_status && format != model.RelationFormat_tag {
-				continue
-			}
-			var value any
-			if err := json.Unmarshal(rawValue, &value); err != nil {
-				continue
-			}
-			anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
 		}
 	}
 }

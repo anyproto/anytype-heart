@@ -35,6 +35,18 @@ var v2OutputOnlyPropertyKeys = map[string]bool{
 	"resolvedLayout": true,
 }
 
+// v2ListShapedFormats are the property formats whose SPEC §3 value encoding
+// is a list — the only formats setProperties add/remove apply to.
+var v2ListShapedFormats = map[model.RelationFormat]bool{
+	model.RelationFormat_status: true, // select
+	model.RelationFormat_tag:    true, // multiSelect
+	model.RelationFormat_object: true, // objects
+	model.RelationFormat_file:   true, // files
+}
+
+// v2ListShapedFormatNames is the agent-facing list for the rejection text.
+const v2ListShapedFormatNames = "select, multiSelect, objects, files"
+
 //
 // ---- the document view ----
 //
@@ -125,6 +137,11 @@ type opSetProperties struct {
 	Op    string                     `json:"op"`
 	Set   map[string]json.RawMessage `json:"set"`
 	Unset []string                   `json:"unset"`
+	// Add/Remove are the per-key list edits (v0.3.5): append entries to /
+	// delete entries from a list-shaped property without rewriting the whole
+	// array. Values are arrays of entries (option names or object/file ids).
+	Add    map[string]json.RawMessage `json:"add"`
+	Remove map[string]json.RawMessage `json:"remove"`
 }
 
 type opUpdateBlock struct {

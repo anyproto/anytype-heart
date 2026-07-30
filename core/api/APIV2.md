@@ -222,6 +222,17 @@ exist → error naming the descendant count.
   present-but-empty (SPEC §3 presence-is-meaningful); `unset` removes
   presence. Output-only properties (SPEC §4a) are rejected with a
   path-addressed error.
+- **`setProperties` `add`/`remove` (v0.3.5)**: per-key list edits for
+  list-shaped formats only (select, multiSelect, objects, files — SPEC §3).
+  `{"op":"setProperties","add":{"tags":["urgent"]},"remove":{"assignee":["bafy…"]}}`
+  — `add` appends entries without duplicating existing ones; `remove`
+  deletes matching entries and is a no-op when absent (never creates
+  presence, never creates the option it names). Scalar-format keys are
+  rejected with a path-addressed error naming the format. A key may appear
+  in at most one of `set`/`unset`/`add`/`remove` per op. Rationale:
+  appending one tag to a 40-entry multiSelect used to require read →
+  whole-array rewrite → write — the corruption pattern in miniature, plus a
+  token tax; collections already had `addItems`/`removeItems`.
 - Collection ops: `addItems` / `removeItems` (member ids).
 - Block-id references accept full ids (canonical) and unique-suffix labels
   (lenient, C4).
@@ -835,6 +846,21 @@ addressable anchors and PUT was the only way to give it content. More than
 one targeting field is now "at most one of after, before, inside is allowed"
 (was "exactly one … is required" — reworded because zero is legal now).
 Payload indents stay R3-relative: at root, indent 0 = document top level.
+
+**`setProperties` per-key `add`/`remove`.** Only for list-shaped formats
+(select/multiSelect/objects/files); scalar-format keys are rejected
+path-addressed, naming the format. `add` resolves entries with the same
+create-missing option-name semantics as `set` — including in the pre-lock
+prewarm, which scans `add` alongside `set` so no create-RPC runs under the
+object lock. `remove` resolves entries READ-ONLY (store-backed resolver):
+a remove must never mint the very option it names; unresolved names match
+nothing. `remove` of the last entry leaves the key present-but-empty
+(`unset` removes presence); `remove` of an absent key stays absent. SPEC §3
+presence semantics unchanged: `set: []` still means present-but-empty. Key
+validation matches `set` (output-only rejected, unknown keys did-you-mean);
+a key in more than one of set/unset/add/remove is a path-addressed error.
+The empty-op error is now "setProperties needs at least one of set, unset,
+add, remove".
 
 **Idempotency-Key covers PATCH and PUT (C8 widened).** The store, body+query
 hash, in-flight reservation and replay were POST-only wiring; agents

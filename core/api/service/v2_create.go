@@ -384,7 +384,7 @@ func rejectRestrictedType(typeKey string) error {
 }
 
 // sortedKeys returns the map's keys in deterministic order.
-func sortedKeys(m map[string]json.RawMessage) []string {
+func sortedKeys[V any](m map[string]V) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {
 		keys = append(keys, k)
