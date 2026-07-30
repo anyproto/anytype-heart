@@ -104,3 +104,104 @@ func TestDerivedObject_GetIDAndPayload(t *testing.T) {
 		assert.Equal(t, "oldId", id)
 	})
 }
+
+func TestDerivedObject_GetIDAndPayload_ObjectType(t *testing.T) {
+	const bundledProjectId = "bundledProjectId"
+
+	// newObjectTypeSnapshot builds an imported object type snapshot with the given unique key
+	// and name; an empty unique key stands for a legacy export that predates unique keys.
+	newObjectTypeSnapshot := func(uniqueKey, name string) *common.Snapshot {
+		details := domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+			bundle.RelationKeyName: domain.String(name),
+		})
+		if uniqueKey != "" {
+			details.SetString(bundle.RelationKeyUniqueKey, uniqueKey)
+		}
+		return &common.Snapshot{
+			Id: "type-project",
+			Snapshot: &common.SnapshotModel{
+				SbType: coresb.SmartBlockTypeObjectType,
+				Data:   &common.StateSnapshot{Key: "pmProject", Details: details},
+			},
+		}
+	}
+
+	// newFixture returns a store already holding the bundled Project type, as every space does.
+	newFixture := func(t *testing.T) (*objectstore.StoreFixture, *derivedObject) {
+		sf := objectstore.NewStoreFixture(t)
+		sf.AddObjects(t, "spaceId", []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:             domain.String(bundledProjectId),
+				bundle.RelationKeyUniqueKey:      domain.String("ot-project"),
+				bundle.RelationKeyName:           domain.String("Project"),
+				bundle.RelationKeySourceObject:   domain.String("_otproject"),
+				bundle.RelationKeyRevision:       domain.Int64(3),
+				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
+				bundle.RelationKeySpaceId:        domain.String("spaceId"),
+			},
+		})
+		service := mock_space.NewMockService(t)
+		space := mock_clientspace.NewMockSpace(t)
+		service.EXPECT().Get(mock.Anything, "spaceId").Return(space, nil).Maybe()
+		space.EXPECT().DeriveTreePayload(mock.Anything, mock.Anything).Return(treestorage.TreeStorageCreatePayload{
+			RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: "freshTypeId"},
+		}, nil).Maybe()
+		return sf, newDerivedObject(newExistingObject(sf), service, sf)
+	}
+
+	t.Run("type with own unique key is not merged into a same-named type", func(t *testing.T) {
+		// given
+		_, deriveObject := newFixture(t)
+		sn := newObjectTypeSnapshot("ot-pmProject", "Project")
+
+		// when
+		id, payload, err := deriveObject.GetIDAndPayload(context.Background(), "spaceId", sn, time.Now(), false, objectorigin.Import(model.Import_Pb))
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "freshTypeId", id)
+		assert.NotNil(t, payload.RootRawChange, "a new type must be created, not merged into the bundled one")
+	})
+
+	t.Run("type is merged into an existing type with the same unique key", func(t *testing.T) {
+		// given
+		_, deriveObject := newFixture(t)
+		sn := newObjectTypeSnapshot("ot-project", "Project renamed by the user")
+
+		// when
+		id, payload, err := deriveObject.GetIDAndPayload(context.Background(), "spaceId", sn, time.Now(), false, objectorigin.Import(model.Import_Pb))
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, bundledProjectId, id)
+		assert.Nil(t, payload.RootRawChange)
+	})
+
+	t.Run("legacy type without unique key is merged by name", func(t *testing.T) {
+		// given
+		_, deriveObject := newFixture(t)
+		sn := newObjectTypeSnapshot("", "Project")
+
+		// when
+		id, payload, err := deriveObject.GetIDAndPayload(context.Background(), "spaceId", sn, time.Now(), false, objectorigin.Import(model.Import_Pb))
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, bundledProjectId, id)
+		assert.Nil(t, payload.RootRawChange)
+	})
+
+	t.Run("type with neither unique key nor name gets a new id", func(t *testing.T) {
+		// given
+		_, deriveObject := newFixture(t)
+		sn := newObjectTypeSnapshot("", "")
+
+		// when
+		id, payload, err := deriveObject.GetIDAndPayload(context.Background(), "spaceId", sn, time.Now(), false, objectorigin.Import(model.Import_Pb))
+
+		// then
+		assert.Nil(t, err)
+		assert.Equal(t, "freshTypeId", id)
+		assert.NotNil(t, payload.RootRawChange)
+	})
+}
