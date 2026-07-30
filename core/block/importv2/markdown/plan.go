@@ -1,0 +1,307 @@
+package markdown
+
+import (
+	"context"
+	"fmt"
+	"path"
+	"sort"
+	"strings"
+
+	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/pkg/lib/schema/yaml"
+)
+
+const (
+	// dirContainerPrefix distinguishes folder containers from csv containers
+	// (whose ids are entry names) in the plan's id space.
+	dirContainerPrefix = "dir:"
+	sampleTitleCap     = 8
+	optionSampleCap    = 20
+)
+
+// planStructure is the markdown plan phase (docs/ImportV2LLM.md §3): render
+// the run's containers — csv collections under SuggestTypes profiles, folders
+// under FolderContainers profiles — as planner evidence, plan once, sanitize,
+// then surface type verdicts (in container order, where suggestCsvTypes used
+// to speak) and emit the plan's new types.
+func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error {
+	schemas := c.containerSchemas(ctx)
+	if len(schemas) == 0 {
+		return nil
+	}
+	order := make([]string, 0, len(schemas))
+	for _, schema := range schemas {
+		c.planned[schema.Id] = true
+		order = append(order, schema.Id)
+	}
+	plan, err := c.planner.Plan(ctx, schemas)
+	if err != nil {
+		if ctx.Err() != nil {
+			return fmt.Errorf("plan structure: %w", ctx.Err())
+		}
+		sink.Issue(importv2.Warning(importv2.IssueLLMPlanFailed, "plan",
+			fmt.Sprintf("structure analysis unavailable (%s); imported with built-in rules", err)))
+		plan, _ = schemaplan.NewNaive().Plan(ctx, schemas)
+	}
+	c.plan = schemaplan.Sanitize(plan, schemas, sink.Issue)
+	if err := c.emitPlanTypes(ctx, sink); err != nil {
+		return err
+	}
+	c.applyPlanTypes(order, sink)
+	return nil
+}
+
+// containerSchemas builds the planner evidence: csv collections carry
+// name-only evidence (csv rows are never parsed — v1 parity), folders carry
+// the union of their pages' front-matter schemas from a sweep over the
+// re-readable source.
+func (c *Converter) containerSchemas(ctx context.Context) []schemaplan.ContainerSchema {
+	var out []schemaplan.ContainerSchema
+	if c.flavour.SuggestTypes && c.flavour.CSVCollections {
+		for _, entry := range c.csvEntries {
+			if len(c.csvMembers(entry.Name)) == 0 {
+				continue // no member pages: nothing to type
+			}
+			out = append(out, schemaplan.ContainerSchema{
+				Id:   entry.Name,
+				Name: notionPageTitle(entry.Name),
+			})
+		}
+	}
+	if c.flavour.FolderContainers {
+		out = append(out, c.folderSchemas(ctx)...)
+	}
+	return out
+}
+
+// folderSchemas sweeps every folder's markdown front matter into one
+// container schema per folder. Read or parse failures are skipped silently —
+// page conversion reports them properly later.
+func (c *Converter) folderSchemas(ctx context.Context) []schemaplan.ContainerSchema {
+	byDir := map[string][]string{}
+	var dirs []string
+	for _, entry := range c.mdEntries {
+		dir := path.Dir(entry.Name)
+		if dir == "." {
+			continue // the root mixes everything; only real folders are containers
+		}
+		if _, seen := byDir[dir]; !seen {
+			dirs = append(dirs, dir)
+		}
+		byDir[dir] = append(byDir[dir], entry.Name)
+	}
+	sort.Strings(dirs)
+
+	var out []schemaplan.ContainerSchema
+	for _, dir := range dirs {
+		schema := schemaplan.ContainerSchema{
+			Id:   dirContainerPrefix + dir,
+			Name: path.Base(dir),
+		}
+		properties := map[string]*schemaplan.PropertySchema{}
+		var propertyOrder []string
+		var titles []string
+		for _, entryName := range byDir[dir] {
+			if c.includeSamples() && len(titles) < sampleTitleCap {
+				titles = append(titles, pageTitleFromPath(entryName))
+			}
+			c.sweepFrontMatter(ctx, entryName, properties, &propertyOrder)
+		}
+		sort.Strings(propertyOrder)
+		for _, name := range propertyOrder {
+			schema.Properties = append(schema.Properties, *properties[name])
+		}
+		if len(titles) > 0 {
+			schema.Samples = &schemaplan.ContainerSamples{Titles: titles}
+		}
+		out = append(out, schema)
+	}
+	return out
+}
+
+// sweepFrontMatter merges one page's front-matter properties into the
+// folder's union schema, using a throwaway resolver so the sweep leaves no
+// trace in the run's real key/option state.
+func (c *Converter) sweepFrontMatter(ctx context.Context, entryName string, properties map[string]*schemaplan.PropertySchema, order *[]string) {
+	content, err := c.readEntry(ctx, entryName)
+	if err != nil {
+		return
+	}
+	frontMatter, _, err := yaml.ExtractYAMLFrontMatter(content)
+	if err != nil || len(frontMatter) == 0 {
+		return
+	}
+	sweep := newResolver(nil)
+	parsed, err := yaml.ParseYAMLFrontMatterWithResolverAndPath(frontMatter, sweep, path.Dir(entryName))
+	if err != nil || parsed == nil {
+		return
+	}
+	optionsByKey := map[string][]string{}
+	for _, option := range sweep.takePending() {
+		optionsByKey[option.relationKey] = append(optionsByKey[option.relationKey], option.optionName)
+	}
+	for _, property := range parsed.Properties {
+		if property.Name == "" || property.Name == "_collection" {
+			continue
+		}
+		schema, seen := properties[property.Name]
+		if !seen {
+			schema = &schemaplan.PropertySchema{Id: property.Name, Name: property.Name, Format: property.Format}
+			properties[property.Name] = schema
+			*order = append(*order, property.Name)
+		}
+		for _, option := range optionsByKey[property.Key] {
+			if len(schema.Options) >= optionSampleCap {
+				break
+			}
+			if !containsString(schema.Options, option) {
+				schema.Options = append(schema.Options, option)
+			}
+		}
+	}
+}
+
+func containsString(list []string, value string) bool {
+	for _, item := range list {
+		if item == value {
+			return true
+		}
+	}
+	return false
+}
+
+// emitPlanTypes emits the plan's referenced new types with the non-bundled
+// relations they name (definitions before use).
+func (c *Converter) emitPlanTypes(ctx context.Context, sink importv2.Sink) error {
+	if len(c.plan.NewTypes) == 0 {
+		return nil
+	}
+	referenced := map[string]bool{}
+	for _, containerPlan := range c.plan.Containers {
+		if containerPlan.TypeKey != "" {
+			referenced[containerPlan.TypeKey.String()] = true
+		}
+	}
+	for _, def := range c.plan.NewTypes {
+		if !referenced[def.Key.String()] {
+			continue
+		}
+		for _, prop := range def.Properties {
+			if bundle.HasRelation(prop.Key) {
+				continue
+			}
+			key := schemaplan.CustomRelationKey(prop.Key).String()
+			if c.emittedRelations[key] {
+				continue
+			}
+			c.emittedRelations[key] = true
+			if err := sink.Object(ctx, schemaplan.RelationObject(prop.Key, prop.Name, prop.Format)); err != nil {
+				return err
+			}
+		}
+		object, minted, err := schemaplan.TypeObject(def)
+		if err != nil {
+			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, string(def.Key),
+				fmt.Sprintf("plan type not emitted: %s", err)))
+			continue
+		}
+		if err := sink.Object(ctx, object); err != nil {
+			return err
+		}
+		c.planTypeKeys[def.Key] = minted
+	}
+	return nil
+}
+
+// applyPlanTypes surfaces every container's type verdict, in container order,
+// and records it under the directory suggestedDirTypes serves page conversion
+// from (the same fill-the-Page-gap application as before the plan phase).
+func (c *Converter) applyPlanTypes(order []string, sink importv2.Sink) {
+	for _, containerId := range order {
+		containerPlan, ok := c.plan.Containers[containerId]
+		if !ok || containerPlan.TypeKey == "" {
+			continue
+		}
+		typeKey := containerPlan.TypeKey
+		if minted, ok := c.planTypeKeys[typeKey]; ok {
+			typeKey = minted
+		}
+		if dir, isDir := strings.CutPrefix(containerId, dirContainerPrefix); isDir {
+			c.suggestedDirTypes[dir] = typeKey
+			sink.Issue(importv2.Info(importv2.IssueTypeSuggested,
+				fmt.Sprintf("folder %q pages imported as %s (%s)", path.Base(dir), typeKey, containerPlan.Reason)))
+			continue
+		}
+		// csv container: id is the entry name, members live in its directory
+		dir := strings.TrimSuffix(containerId, path.Ext(containerId))
+		c.suggestedDirTypes[dir] = typeKey
+		sink.Issue(importv2.Info(importv2.IssueTypeSuggested,
+			fmt.Sprintf("collection %q pages imported as %s (%s)", notionPageTitle(containerId), typeKey, containerPlan.Reason)))
+	}
+}
+
+// planRedirect is one property's plan target, resolved for page conversion:
+// key redirects during yaml parsing (option values embed the key), name and
+// format rewrite after.
+type planRedirect struct {
+	key     string
+	name    string
+	format  model.RelationFormat
+	bundled bool
+}
+
+// planRedirectsFor resolves a folder's property remaps by front-matter name.
+func (c *Converter) planRedirectsFor(dir string) map[string]planRedirect {
+	containerPlan, ok := c.plan.Containers[dirContainerPrefix+dir]
+	if !ok || len(containerPlan.Properties) == 0 {
+		return nil
+	}
+	redirects := make(map[string]planRedirect, len(containerPlan.Properties))
+	for name, propertyPlan := range containerPlan.Properties {
+		if bundle.HasRelation(propertyPlan.Key) {
+			bundled := bundle.MustGetRelation(propertyPlan.Key)
+			redirects[name] = planRedirect{
+				key:     propertyPlan.Key.String(),
+				name:    bundled.Name,
+				format:  bundled.Format,
+				bundled: true,
+			}
+			continue
+		}
+		redirects[name] = planRedirect{
+			key:    schemaplan.CustomRelationKey(propertyPlan.Key).String(),
+			name:   propertyPlan.Name,
+			format: propertyPlan.Format,
+		}
+	}
+	return redirects
+}
+
+// applyPlanRedirects rewrites parsed front-matter properties onto their plan
+// targets (the resolver already redirected the keys) and reports each
+// adoption once per folder.
+func (c *Converter) applyPlanRedirects(dir string, properties []yaml.Property, redirects map[string]planRedirect, sink importv2.Sink) {
+	for i := range properties {
+		property := &properties[i]
+		redirect, ok := redirects[property.Name]
+		if !ok {
+			continue
+		}
+		sourceName := property.Name
+		if redirect.name != "" {
+			property.Name = redirect.name
+		}
+		if redirect.format != 0 {
+			property.Format = redirect.format
+		}
+		reportKey := dir + "\x00" + sourceName
+		if !c.reportedMappings[reportKey] {
+			c.reportedMappings[reportKey] = true
+			sink.Issue(importv2.Info(importv2.IssuePropertyMapped,
+				fmt.Sprintf("folder %q property %q imported as %q (%s)", path.Base(dir), sourceName, property.Name, property.Key)))
+		}
+	}
+}

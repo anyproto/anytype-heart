@@ -19,8 +19,8 @@ import (
 	"strings"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/source"
-	"github.com/anyproto/anytype-heart/core/block/importv2/typesuggest"
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -36,6 +36,12 @@ type Params struct {
 	// Flavour forces a dialect profile by name (§11.4); empty means
 	// detect from the listing.
 	Flavour string
+	// Planner is the structure planner (docs/ImportV2LLM.md); nil means the
+	// naive typesuggest wrapper.
+	Planner schemaplan.Planner
+	// IncludeContentSamples lets the planner see member page titles
+	// (request flag includeContentSamples).
+	IncludeContentSamples bool
 }
 
 type Converter struct {
@@ -50,10 +56,16 @@ type Converter struct {
 	flavour        Flavour
 	flavourForced  bool
 	sawObsidianDir bool
-	// suggestedDirTypes maps a csv collection's directory to the member
-	// type its title suggests (§11.5, SuggestTypes profiles only).
-	suggestor         typesuggest.Suggestor
+	// suggestedDirTypes maps a container's directory to its member type —
+	// filled by the schema plan (csv collections under SuggestTypes,
+	// folders under FolderContainers).
 	suggestedDirTypes map[string]domain.TypeKey
+	// plan phase state (docs/ImportV2LLM.md §3-4).
+	planner          schemaplan.Planner
+	plan             schemaplan.Plan
+	planned          map[string]bool
+	planTypeKeys     map[domain.TypeKey]domain.TypeKey
+	reportedMappings map[string]bool
 	// listing metadata (small strings), built during pass 1.
 	mdEntries  []source.Entry
 	csvEntries []source.Entry
@@ -67,13 +79,20 @@ type Converter struct {
 
 // New builds a per-run converter instance (never shared between runs).
 func New(src source.Source, params Params, factory importv2.CollectionFactory) *Converter {
+	planner := params.Planner
+	if planner == nil {
+		planner = schemaplan.NewNaive()
+	}
 	return &Converter{
 		source:            src,
 		params:            params,
 		factory:           factory,
 		flavour:           flavours[FlavourGeneric], // resolved for real in pass 1
-		suggestor:         typesuggest.NewNaive(),
 		suggestedDirTypes: map[string]domain.TypeKey{},
+		planner:           planner,
+		planned:           map[string]bool{},
+		planTypeKeys:      map[domain.TypeKey]domain.TypeKey{},
+		reportedMappings:  map[string]bool{},
 		baseNames:         map[string][]string{},
 		emittedRelations:  map[string]bool{},
 		emittedOptions:    map[string]bool{},
@@ -81,6 +100,8 @@ func New(src source.Source, params Params, factory importv2.CollectionFactory) *
 		emittedFiles:      map[string]bool{},
 	}
 }
+
+func (c *Converter) includeSamples() bool { return c.params.IncludeContentSamples }
 
 // Schemas force-disable directory pages and properties-as-blocks (v1 rule);
 // otherwise the request param or the flavour default enables them.
@@ -166,7 +187,9 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	if issue, ok := c.flavourIssue(); ok {
 		sink.Issue(issue)
 	}
-	c.suggestCsvTypes(sink)
+	if err := c.planStructure(ctx, sink); err != nil {
+		return importv2.RootSpec{}, err
+	}
 	for _, rejected := range c.source.Rejected() {
 		sink.Issue(importv2.Warning(importv2.IssueSourceInvalid, rejected,
 			"archive entry rejected: path escapes the archive root"))

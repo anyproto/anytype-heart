@@ -24,6 +24,22 @@ type mdResolver struct {
 	nameToKey   map[string]string
 	pending     []pendingOption
 	pendingSeen map[string]bool
+	// redirectKeys is the current page's schema-plan property remap
+	// (front-matter name → target key). It must act during parsing — option
+	// values embed the relation key — and is cleared after each page.
+	redirectKeys map[string]string
+}
+
+// setPlanRedirects installs (or clears, with nil) the page's key remaps.
+func (r *mdResolver) setPlanRedirects(redirects map[string]planRedirect) {
+	if len(redirects) == 0 {
+		r.redirectKeys = nil
+		return
+	}
+	r.redirectKeys = make(map[string]string, len(redirects))
+	for name, redirect := range redirects {
+		r.redirectKeys[name] = redirect.key
+	}
 }
 
 type pendingOption struct {
@@ -40,6 +56,9 @@ func newResolver(schemas *schemaSet) *mdResolver {
 }
 
 func (r *mdResolver) ResolvePropertyKey(objectTypeName, name string) string {
+	if key, ok := r.redirectKeys[name]; ok {
+		return key
+	}
 	if r.schemas != nil {
 		if key := r.schemas.propertyKey(objectTypeName, name); key != "" {
 			return key

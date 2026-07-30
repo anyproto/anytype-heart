@@ -1,14 +1,11 @@
 package markdown
 
 import (
-	"fmt"
 	"net/url"
 	"path"
 	"regexp"
 	"strings"
 
-	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
-	"github.com/anyproto/anytype-heart/core/block/importv2/typesuggest"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	textutil "github.com/anyproto/anytype-heart/util/text"
 )
@@ -135,29 +132,6 @@ func splitNotionPropertyLine(line string) (key string, refs []string, ok bool) {
 		return "", nil, false
 	}
 	return key, strings.Split(values, ","), true
-}
-
-// suggestCsvTypes maps each csv collection's directory to the member type
-// its title suggests (§11.5). Title is the only evidence — csv rows are
-// never parsed; the Notion id suffix is stripped before matching.
-func (c *Converter) suggestCsvTypes(sink importv2.Sink) {
-	if !c.flavour.SuggestTypes || !c.flavour.CSVCollections {
-		return
-	}
-	for _, entry := range c.csvEntries {
-		title := notionPageTitle(entry.Name)
-		suggestion, ok := c.suggestor.Suggest(typesuggest.Evidence{ContainerName: title})
-		if !ok {
-			continue
-		}
-		dir := strings.TrimSuffix(entry.Name, path.Ext(entry.Name))
-		if len(c.csvMembers(entry.Name)) == 0 {
-			continue // no member pages: nothing to type
-		}
-		c.suggestedDirTypes[dir] = suggestion.TypeKey
-		sink.Issue(importv2.Info(importv2.IssueTypeSuggested,
-			fmt.Sprintf("collection %q pages imported as %s (%s)", title, suggestion.TypeKey, suggestion.Reason)))
-	}
 }
 
 // lookupNotionRef resolves one field-block reference: unescape and unquote,

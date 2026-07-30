@@ -60,6 +60,12 @@ type Flavour struct {
 	// SuggestTypes types csv-collection member pages by the collection's
 	// title (§11.5, name-only evidence — csv rows are never parsed).
 	SuggestTypes bool
+	// FolderContainers treats each folder of markdown pages as a schema-plan
+	// container (docs/ImportV2LLM.md §3): a front-matter sweep unions the
+	// folder's property schema and the planner may type its pages and remap
+	// their properties. Obsidian only — vault folders are usually
+	// homogeneous; arbitrary markdown trees are not.
+	FolderContainers bool
 }
 
 // pageContext is the page-local data a metadata hook may inspect and mutate.
@@ -78,7 +84,7 @@ const (
 
 var flavours = map[string]Flavour{
 	FlavourGeneric:  {Name: FlavourGeneric, CSVCollections: true},
-	FlavourObsidian: {Name: FlavourObsidian, CSVCollections: true},
+	FlavourObsidian: {Name: FlavourObsidian, CSVCollections: true, FolderContainers: true},
 	FlavourNotionExport: {
 		Name:            FlavourNotionExport,
 		ExtractMetadata: notionExtractMetadata,
