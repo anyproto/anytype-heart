@@ -1,6 +1,6 @@
 # Anytype Local API v2 — specification and phased plan
 
-Status: **draft v0.3.2** · 2026-07-24 · GO-7383 follow-on
+Status: **draft v0.3.3** · 2026-07-30 · GO-7383 follow-on
 Depends on: AnyBlock JSON v1 flat (`pkg/lib/anyblockjson/SPEC.md` v0.6).
 Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) and
 `pkg/lib/anyblockjson/FLAT.md` — decisions cite sections there instead of
@@ -635,5 +635,113 @@ kinds `object · shortcut · type · template · property · set · collection �
 file · filters`. AnyBlock-document kinds serve the format's embedded schema
 verbatim; the rest are hand-written strict (C13) schemas; `filters` is the
 documented recursive exception. Every served example passes
-`anyblockjson.Validate` (enforced by test). `/v2/schemas/ops/{op}` waits for
-Phase 3 (no ops exist yet).
+`anyblockjson.Validate` (enforced by test). `/v2/schemas/ops/{op}` shipped
+with Phase 3 (§8.2).
+
+### 8.2 Phase-3 implementation notes (v0.3.3 — decisions as built)
+
+**The edit pipeline, decided.** Both PATCH and PUT run ONE pipeline under the
+object lock: marshal the live state to its flat document → mutate that
+document (apply the ops, or take the client's body on PUT) →
+`anyblockjson.Validate` → `Unmarshal` with the Phase-2 create-missing
+resolvers → one diff-apply. The ops work at the **document level**, not on
+`state.State` directly — rejected alternative: per-op `simple.Block`
+mutations, because op payload blocks ARE AnyBlock JSON (inline markup,
+tables, relative indents) and only the format package can interpret them;
+the document route also makes R5 exact by construction (the post-op document
+is literally validated) and lets PATCH and PUT share one apply core.
+
+**The mutation port.** `apicore.ObjectMutator.MutateObject(ctx, spaceId,
+objectId, build func(cur ObjectRead) (*SmartBlockSnapshotBase, error))
+([]heads, error)` — the adapter locks the object (`cache.DoContextFullID`),
+hands `build` the same consistent read the Phase-1 reader produces (so the
+If-Match check, the edit, and the marshal all see one state), diff-applies
+the returned snapshot, and returns the post-apply heads (the new etag's
+input). `build` returning `(nil, nil)` commits nothing; dry runs never call
+the mutator (a plain `ObjectReader` read feeds the same pipeline).
+
+**The apply is reset-to-version.** `state.NewDocFromSnapshot` →
+`history.ResetToVersion` (the proven
+`import/common/objectcreator.updateExistingObject` shape): SetParent, local
+detail injection, bundled-relation-link repair (GO-7217) and migrations all
+ride it, and the change lands as one change set. Known consequence:
+`ResetToVersion` applies `NoHistory` and resets the undo stack — an API edit
+is not in-editor-undoable. Accepted: reimplementing the reset machinery just
+to keep undo would trade proven safety for a nicety. The import path's
+bundled-revision guard is mirrored in the adapter (never downgrade a
+revision-carrying object; preserve `sourceObject`/`revision` when the
+incoming state lacks them).
+
+**R5 post-op validity = the format's own Validate.** Op-shaped violations
+(cycle, leaf-parent naming the descendant count, delete-without-recursive,
+payload monotonicity, insert-inside-leaf) are pre-checked at op-apply time
+with `ops[i]…` paths and the agent-facing messages; everything else is the
+net: the edited document must pass SPEC §12 V1–V5 wholesale, and a failure
+rejects the whole PATCH as "the ops would produce an invalid document — no
+op was applied" with the format's block-path issues. The package exports
+`LeafBlockType`/`TextBlockType` for the pre-checks (single source of truth).
+
+**C11 write-safety guard (PATCH only).** If the internal marshal of the live
+state reports any loss warning (unmapped block, over-deep nesting), the
+PATCH is refused (422) — otherwise the write-back would silently drop the
+unrepresentable content, exactly what C11 forbids. PUT skips the guard (a
+full replace is explicitly destructive; the GET the body came from carried
+the same warnings) and surfaces the warnings instead.
+
+**diffStats.** Canonical-before vs canonical-after document diff (the after
+side is the applied snapshot re-marshaled, so import/export normalization
+cancels): added/removed by block-id set; changed = same id, different
+content (block JSON minus indent/id); moved = parent changed OR the nearest
+*common* preceding sibling changed (pure insertions don't mark their
+followers moved). `propertiesChanged` counts differing keys.
+`addItems`/`removeItems` changes are not counted (no diffStats field for
+membership; deliberate — the schema is closed at the five integers).
+
+**Relative indent (R3), exact.** Payload `indent` 0 = the anchor's level
+(after/before/replaceSubtree) or the container's child level (inside);
+payload runs must start at 0 and obey +1 monotonicity internally, checked
+with `ops[i].blocks[j].indent` paths before the document-level net.
+`insertBlocks` inserts after the anchor's whole subtree for `after`;
+`inside` defaults `position` to `last`; `position` with `after`/`before` is
+an error. `moveBlock` moves the whole subtree and re-bases its indents.
+
+**Small op decisions.** `updateBlock`: `set` is merge; explicit `null`
+clears a field; `id`/`indent` in `set` are rejected (steering to moveBlock).
+`replaceBlock`: payload `indent` rejected (position is kept), payload `id`
+must match or be omitted, addressed id and indent survive. `replaceSubtree`
+mints fresh ids for id-less payload blocks (the old subtree's ids die with
+it). Every payload block — minted or client-supplied — lands in
+`createdBlocks` keyed `ops[i].blocks[j]`. `replaceText` requires a
+text-bearing type and a non-empty `find`; error texts are the Anthropic
+shapes ("no match found…", "found N matches — provide more context…").
+`setCell` resolves row/col ids with the same unique-suffix leniency as block
+refs and accepts all §6.1 cell forms (string, null, block object, array);
+invalid inner shapes fall to the R5 net. `addItems`/`removeItems` require a
+collection (type `collection` or a collection-layout type), dedupe/no-op
+respectively, and do not existence-check member ids (v1 parity).
+`setProperties`: §4a output-only keys rejected (`isFavorite` stays
+authorable per SPEC §3), unknown keys rejected with did-you-mean (Phase-2
+policy), select option names create-missing and ride `created`, `unset` of
+an absent key is a no-op, a key in both `set` and `unset` is an error.
+
+**PUT.** The envelope `etag`/`warnings` a GET body carries are stripped
+before validation (C7: preconditions are the If-Match header only); a
+non-matching envelope `id` is rejected, and the id is pinned to the URL's. A
+body without `type` keeps the live object's type (a replace is about
+content, not retyping by omission). The R9 referential layer guards PUT like
+create. `canUpdateObject` mirrored as smartblock-type exclusions
+(relation, relation option, file object, participant) — applied to PATCH
+too, same machinery, same risks.
+
+**Structural blocks.** As with Phase-2 creates, SPEC §7 structural blocks
+(title/description) are absent from the format, so an edit re-lands the
+document without them; name/description content lives in `properties` and
+survives, and the editor regenerates the header blocks (same §7 contract).
+
+**Per-op discovery (§5) as shipped.** `GET /v2/schemas/ops/{op}` for the 11
+launch ops; each schema is C13-strict and self-contained, with a shared
+payload-block definition covering the realistic edit fields
+(`additionalProperties:false` — the full block inventory stays at
+`/v2/schemas/object`, which the def points to). Every example is a full
+single-op PATCH body (enforced by test); the index (`GET /v2/schemas`) grew
+an `ops` list.
