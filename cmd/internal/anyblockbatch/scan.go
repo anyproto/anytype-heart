@@ -386,6 +386,86 @@ type BadTarget struct {
 	Reason   string
 }
 
+// BadTemplateTarget is a template whose target type cannot be wired.
+type BadTemplateTarget struct {
+	File   string
+	Target string // the templateFor key, empty when the document has none
+	Reason string
+}
+
+// CheckTemplateTargets finds templates that would import belonging to no type.
+// A type's templates are found by querying the targetObjectType detail
+// (core/block/template/templateimpl.queryTemplatesByType), and that detail
+// holds the target type's *object id* — so templateFor has to name a type this
+// bundle defines and gives an id, exactly like an objectTypes target.
+//
+// Unlike an objectTypes target, a bundled type key is not good enough: a
+// bundled url in an object-format detail is passed through untouched on import
+// (common.UpdateObjectIDsInRelations -> isBundledObjects), so "_otpage" would
+// survive as a literal and match no type in the space. Real exports have a
+// type document for every type their templates target, bundled ones included
+// (util/builtinobjects/data/*.zip), and so must a bundle here.
+//
+// Nothing downstream reports any of this — the document validates, converts
+// and imports; the template simply never appears under a type — so the batch
+// has to catch it.
+func CheckTemplateTargets(files []string, typeIds map[string]string) ([]BadTemplateTarget, error) {
+	var out []BadTemplateTarget
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", f, err)
+		}
+		var doc struct {
+			Type        string                     `json:"type"`
+			TemplateFor string                     `json:"templateFor"`
+			Properties  map[string]json.RawMessage `json:"properties"`
+		}
+		if err := json.Unmarshal(data, &doc); err != nil {
+			return nil, fmt.Errorf("parse %s: %w", f, err)
+		}
+		if doc.Type != "template" {
+			continue
+		}
+		if _, authored := doc.Properties[string(bundle.RelationKeyTargetObjectType)]; authored {
+			// an explicit id (what a round-tripped export carries) is what the
+			// converter keeps, whatever templateFor says
+			continue
+		}
+		if doc.TemplateFor == "" {
+			out = append(out, BadTemplateTarget{File: f,
+				Reason: `no "templateFor": the template would belong to no type, and no type would list it`})
+			continue
+		}
+		id, defined := typeIds[doc.TemplateFor]
+		switch {
+		case !defined && bundle.HasObjectTypeByKey(domain.TypeKey(doc.TemplateFor)):
+			out = append(out, BadTemplateTarget{File: f, Target: doc.TemplateFor,
+				Reason: `that type is bundled, but a template's target must be a document in this bundle: a bundled url is never relinked on import, so it would match no type — add an objectType document with this key and an "id"`})
+		case !defined:
+			out = append(out, BadTemplateTarget{File: f, Target: doc.TemplateFor,
+				Reason: "no such type: not bundled, and not defined by this bundle"})
+		case id == "":
+			out = append(out, BadTemplateTarget{File: f, Target: doc.TemplateFor,
+				Reason: `that type is defined here but its document carries no "id", so nothing can reference it`})
+		}
+	}
+	return out, nil
+}
+
+// ReportTemplateTargets renders unwirable template targets, one per line.
+func ReportTemplateTargets(bs []BadTemplateTarget) string {
+	var b strings.Builder
+	for _, t := range bs {
+		if t.Target == "" {
+			fmt.Fprintf(&b, "  %s: %s\n", t.File, t.Reason)
+			continue
+		}
+		fmt.Fprintf(&b, "  %s: templateFor %q — %s\n", t.File, t.Target, t.Reason)
+	}
+	return b.String()
+}
+
 // ReportTargets renders unresolvable target types, one per line.
 func ReportTargets(bs []BadTarget) string {
 	var b strings.Builder
