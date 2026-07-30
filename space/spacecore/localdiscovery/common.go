@@ -13,7 +13,6 @@ import (
 
 	"github.com/anyproto/anytype-heart/net/addrs"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
-	"github.com/anyproto/anytype-heart/util/slice"
 )
 
 const (
@@ -63,14 +62,18 @@ type NetworkStateService interface {
 // Also filters out loopback interfaces to make less mess.
 // Please note: this call do a number of underlying syscalls to get addrs for each interface, but they will be cached after first call.
 func filterMulticastInterfaces(ifaces []addrs.NetInterfaceWithAddrCache) []addrs.NetInterfaceWithAddrCache {
-	return slice.Filter(ifaces, func(iface addrs.NetInterfaceWithAddrCache) bool {
+	filtered := make([]addrs.NetInterfaceWithAddrCache, 0, len(ifaces))
+	// iterate by index so GetAddr caches into the elements; the kept copies
+	// carry the populated cache with them
+	for i := range ifaces {
+		iface := &ifaces[i]
 		if iface.Flags&gonet.FlagUp != 0 && iface.Flags&gonet.FlagMulticast != 0 && iface.Flags&gonet.FlagLoopback == 0 {
 			if len(iface.GetAddr()) > 0 {
-				return true
+				filtered = append(filtered, ifaces[i])
 			}
 		}
-		return false
-	})
+	}
+	return filtered
 }
 
 func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs) DiscoveryPossibility {
@@ -79,7 +82,8 @@ func (l *localDiscovery) getDiscoveryPossibility(newAddrs addrs.InterfacesAddrs)
 	// we can extend it later to check on another platforms
 	var checkSelfConnect = runtime.GOOS == "ios"
 	interfaces := newAddrs.Interfaces
-	for _, iface := range interfaces {
+	for i := range interfaces {
+		iface := &interfaces[i]
 		if runtime.GOOS == "ios" {
 			// on ios we have to check only en interfaces
 			if !strings.HasPrefix(iface.Name, "en") {
@@ -145,8 +149,8 @@ func (l *localDiscovery) RegisterDiscoveryPossibilityHook(hook func(state Discov
 }
 
 func (l *localDiscovery) getAddresses() (ipv4, ipv6 []gonet.IP) {
-	for _, iface := range l.interfacesAddrs.Interfaces {
-		for _, addr := range iface.GetAddr() {
+	for i := range l.interfacesAddrs.Interfaces {
+		for _, addr := range l.interfacesAddrs.Interfaces[i].GetAddr() {
 			ip, ok := addrs.AddrToIP(addr)
 			if !ok {
 				continue

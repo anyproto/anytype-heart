@@ -3,6 +3,7 @@ package clipboard
 import (
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/samber/lo"
@@ -32,6 +33,10 @@ type pasteCtrl struct {
 	caretPos  int32
 	uploadArr []pb.RpcBlockUploadRequest
 	blockIds  []string
+
+	// formerly-empty focused block that got paste content written in place;
+	// forked to a fresh id at the end of Exec (see forkFilledEmptyBlock)
+	filledEmptyBlockId string
 }
 
 type pasteMode struct {
@@ -75,9 +80,38 @@ func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 	if p.mode.removeSelection {
 		p.removeSelection()
 	}
+	if err = p.forkFilledEmptyBlock(); err != nil {
+		return
+	}
 	p.normalize()
 	p.processFiles()
 	return
+}
+
+// forkFilledEmptyBlock re-creates a formerly-empty block that paste filled in
+// place under a fresh id. An empty block is a shared LWW register: its id is
+// known to all peers, so concurrent first-writes into it clobber each other.
+// A fresh id turns the concurrent case into two independent creates — both
+// texts survive the merge. The new id is prepended to blockIds so the client
+// re-targets focus from the replaced block.
+func (p *pasteCtrl) forkFilledEmptyBlock() (err error) {
+	if p.filledEmptyBlockId == "" {
+		return nil
+	}
+	old := p.s.Pick(p.filledEmptyBlockId)
+	if old == nil {
+		return nil
+	}
+	m := old.Copy().Model()
+	m.Id = ""
+	forked := simple.New(m)
+	p.s.Add(forked)
+	if err = p.s.InsertTo(p.filledEmptyBlockId, model.Block_Top, forked.Model().Id); err != nil {
+		return fmt.Errorf("insert forked block: %w", err)
+	}
+	p.s.Unlink(p.filledEmptyBlockId)
+	p.blockIds = append([]string{forked.Model().Id}, p.blockIds...)
+	return nil
 }
 
 // configure determines the paste mode based on the request parameters:
@@ -274,6 +308,9 @@ func (p *pasteCtrl) singleRange() (err error) {
 			// block"; the single-block toggle case is handled by intoBlock mode.
 			selText.SetText(firstPasteText.GetText(), firstPasteText.Model().GetText().Marks)
 			p.ps.Unlink(firstPasteText.Model().Id)
+			// an empty block's id is shared with peers — fork it (never a
+			// required block here: those returned earlier)
+			p.filledEmptyBlockId = targetId
 		}
 	}
 	return
@@ -292,8 +329,16 @@ func (p *pasteCtrl) intoBlock() (err error) {
 	if firstSelText == nil || firstPasteText == nil {
 		return
 	}
+	wasEmpty := firstSelText.GetText() == "" && !state.IsRequiredBlockId(firstSelText.Model().Id)
 	p.caretPos, err = firstSelText.RangeTextPaste(p.selRange.From, p.selRange.To, firstPasteText.Model(), p.mode.intoBlockCopyStyle)
 	p.ps.Unlink(firstPasteText.Model().Id)
+	if err == nil && wasEmpty {
+		// an empty block's id is shared with peers — fork it. The caret is
+		// reported through blockIds instead of a position in the (replaced)
+		// focused block.
+		p.filledEmptyBlockId = firstSelText.Model().Id
+		p.caretPos = -1
+	}
 	return
 }
 

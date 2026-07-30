@@ -27,8 +27,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/cache"
 	"github.com/anyproto/anytype-heart/core/block/editor/basic"
 	"github.com/anyproto/anytype-heart/core/block/object/idresolver"
-	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/block/objectgc"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/session"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
@@ -59,12 +59,16 @@ type Service interface {
 	SetSpaceInfo(spaceId string, details *domain.Details) error
 
 	SetIsFavorite(objectId string, isFavorite bool) error
-	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool) error
+	SetIsArchived(sctx session.Context, ctx context.Context, objectId string, isArchived bool, skipCascade bool) error
 	SetListIsFavorite(objectIds []string, isFavorite bool) error
-	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool) error
+	SetListIsArchived(sctx session.Context, ctx context.Context, objectIds []string, isArchived bool, skipCascade bool) error
 	// SetListIsArchivedNoGC archives/unarchives objects without triggering another GC pass.
 	// Used by callers that must act on GC results without re-entering the GC loop.
 	SetListIsArchivedNoGC(ctx context.Context, objectIds []string, isArchived bool) error
+
+	// SetCreatedInContextIgnored detaches (or re-attaches) an object's lifecycle from its creation context.
+	// Written with ChangeTypeCreatedInContext so it syncs without bumping lastModifiedDate.
+	SetCreatedInContextIgnored(ctx context.Context, objectIds []string, ignored bool) error
 }
 
 func New() Service {

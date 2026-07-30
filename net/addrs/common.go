@@ -64,8 +64,10 @@ func AddrToIP(addr net.Addr) (net.IP, bool) {
 	}
 }
 
-// GetAddr returns ipv4 only addresses for interface or cached one if set
-func (i NetInterfaceWithAddrCache) GetAddr() []net.Addr {
+// GetAddr returns ipv4 only addresses for interface or cached one if set.
+// The pointer receiver is essential: with a value receiver the result is
+// cached into a copy and every call re-runs the underlying syscalls.
+func (i *NetInterfaceWithAddrCache) GetAddr() []net.Addr {
 	if i.cachedAddrs != nil {
 		return i.cachedAddrs
 	}
@@ -305,10 +307,11 @@ func getStrings(i InterfacesAddrs) (allStrings []string) {
 }
 
 func (i InterfacesAddrs) GetInterfaceByAddr(addr net.Addr) (net.Interface, bool) {
-	for _, iface := range i.Interfaces {
-		for _, addrInIface := range iface.GetAddr() {
+	// iterate by index so GetAddr caches into the slice elements
+	for pos := range i.Interfaces {
+		for _, addrInIface := range i.Interfaces[pos].GetAddr() {
 			if addr.String() == addrInIface.String() {
-				return iface.Interface, true
+				return i.Interfaces[pos].Interface, true
 			}
 		}
 	}
@@ -343,8 +346,9 @@ func (i InterfacesAddrs) SortIPsLikeInterfaces(ips []net.IP) {
 }
 
 func (i InterfacesAddrs) findInterfacePosByIP(ip net.IP) (pos int, equal bool) {
-	for position, iface := range i.Interfaces {
-		for _, addr := range iface.GetAddr() {
+	// iterate by index so GetAddr caches into the slice elements
+	for position := range i.Interfaces {
+		for _, addr := range i.Interfaces[position].GetAddr() {
 			switch a := addr.(type) {
 			case *net.IPNet:
 				if a.Contains(ip) {

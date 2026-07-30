@@ -634,6 +634,11 @@ func (c *Config) GetYamux() yamux.Config {
 		ListenAddrs:     []string{},
 		WriteTimeoutSec: 10,
 		DialTimeoutSec:  10,
+		// Keepalive ping every 10s (any-sync leaves the hashicorp/yamux 30s
+		// default when this is 0): a silently dead TCP conn (sleep, network
+		// switch, NAT reset) is detected in <=20s (ping interval + 10s pong
+		// wait) instead of 30-40s.
+		KeepAlivePeriodSec: 10,
 	}
 }
 
@@ -643,6 +648,11 @@ func (c *Config) GetQuic() quic.Config {
 		WriteTimeoutSec:   10,
 		InitialPacketSize: 1200,
 		DialTimeoutSec:    10,
+		// PING every 10s (default 25s): keeps NAT bindings fresh so QUIC
+		// survives more network transitions via passive rebinding. Note the
+		// 30s quic-go idle timeout (not configurable through any-sync yet)
+		// still bounds silent-death detection.
+		KeepAlivePeriodSec: 10,
 	}
 }
 

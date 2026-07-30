@@ -2,6 +2,7 @@ package localdiscovery
 
 import (
 	"context"
+	"fmt"
 	gonet "net"
 	"strings"
 	"sync"
@@ -49,10 +50,15 @@ type localDiscovery struct {
 	manualStart   bool
 	periodicCheck periodicsync.PeriodicSync
 
-	hookMu          sync.Mutex
-	hookState       DiscoveryPossibility
-	hooks           []HookCallback
-	networkState    NetworkStateService
+	hookMu       sync.Mutex
+	hookState    DiscoveryPossibility
+	hooks        []HookCallback
+	networkState NetworkStateService
+
+	// m guards interfacesAddrs: refreshInterfaces writes it from the periodic
+	// goroutine and the networkState hook while PeerDiscovered reads it from a
+	// binder thread (mirrors the desktop locking discipline)
+	m               sync.Mutex
 	interfacesAddrs addrs.InterfacesAddrs
 }
 
@@ -63,7 +69,9 @@ func (l *localDiscovery) PeerDiscovered(ctx context.Context, peer DiscoveredPeer
 	}
 
 	var ips []string
+	l.m.Lock()
 	v4addresses, _ := l.getAddresses()
+	l.m.Unlock()
 	for _, addr := range v4addresses {
 		ip := strings.Split(addr.String(), "/")[0]
 		if gonet.ParseIP(ip).To4() != nil {
@@ -106,9 +114,12 @@ func (l *localDiscovery) Run(ctx context.Context) (err error) {
 }
 
 func (l *localDiscovery) refreshInterfaces(_ context.Context) error {
+	// serializes the periodic check against the networkState hook as well
+	l.m.Lock()
+	defer l.m.Unlock()
 	newAddrs, err := addrs.GetInterfacesAddrs()
 	if err != nil {
-		return err
+		return fmt.Errorf("get interfaces addrs: %w", err)
 	}
 	if addrs.NetAddrsEqualUnordered(newAddrs.Addrs, l.interfacesAddrs.Addrs) {
 		return nil

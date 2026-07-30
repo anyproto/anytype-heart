@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"net"
+	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/anyproto/anytype-heart/space/spacecore/localdiscovery"
 )
@@ -31,26 +33,40 @@ func SetDiscoveryProxy(proxy AndroidDiscoveryProxy) {
 }
 
 type notifierProvider struct {
-	proxy  AndroidDiscoveryProxy
-	ctx    context.Context
+	proxy AndroidDiscoveryProxy
+
+	// the context is per Provide generation: the provider outlives an
+	// account (SetDiscoveryProxy is called once per process), so Remove
+	// canceling a provider-lifetime context would leave every later
+	// Provide with a dead context and kill discovery after the first
+	// account switch
+	mu     sync.Mutex
 	cancel context.CancelFunc
 }
 
 func newNotifierProvider(proxy AndroidDiscoveryProxy) *notifierProvider {
-	ctx, cancel := context.WithCancel(context.Background())
-	return &notifierProvider{
-		proxy:  proxy,
-		ctx:    ctx,
-		cancel: cancel,
-	}
+	return &notifierProvider{proxy: proxy}
 }
 
 func (n *notifierProvider) Provide(notifier localdiscovery.Notifier, port int, peerId, serviceName string) {
-	n.proxy.SetObserver(newDiscoveryObserver(n.ctx, port, peerId, serviceName, notifier))
+	ctx, cancel := context.WithCancel(context.Background())
+	n.mu.Lock()
+	if n.cancel != nil {
+		n.cancel()
+	}
+	n.cancel = cancel
+	n.mu.Unlock()
+	n.proxy.SetObserver(newDiscoveryObserver(ctx, port, peerId, serviceName, notifier))
 }
 
 func (n *notifierProvider) Remove() {
-	n.cancel() // in order to cancel undergoing peers' space exchange requests
+	n.mu.Lock()
+	cancel := n.cancel
+	n.cancel = nil
+	n.mu.Unlock()
+	if cancel != nil {
+		cancel() // in order to cancel undergoing peers' space exchange requests
+	}
 	n.proxy.RemoveObserver()
 }
 
@@ -90,8 +106,14 @@ func (d *discoveryObserver) ObserveChange(result ObservationResult) {
 	// sorry, slices are not supported in the bridge :'(
 	var ips = strings.Split(result.Ip(), ",")
 	var addrs = make([]string, 0, len(ips))
+	port := strconv.Itoa(result.Port())
 	for _, ip := range ips {
-		addrs = append(addrs, fmt.Sprintf("%s:%d", ip, result.Port()))
+		if ip == "" {
+			continue
+		}
+		// JoinHostPort brackets IPv6 addresses; "%s:%d" produced unparseable
+		// fe80::1:4006-style strings
+		addrs = append(addrs, net.JoinHostPort(ip, port))
 	}
 	peer := localdiscovery.DiscoveredPeer{
 		Addrs:  addrs,

@@ -506,9 +506,16 @@ func (sb *smartBlock) fetchMeta() (details []*model.ObjectViewDetailsSet, err er
 	})
 
 	for _, rec := range records {
+		recId := rec.Details.GetString(bundle.RelationKeyId)
+		recDetails := rec.Details
+		if recId != sb.Id() {
+			// strip dependents only; a self-reference (rare) keeps full details,
+			// matching the self entry added above and the onMetaChange self branch
+			recDetails = rec.Details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+		}
 		details = append(details, &model.ObjectViewDetailsSet{
-			Id:      rec.Details.GetString(bundle.RelationKeyId),
-			Details: rec.Details.ToProto(),
+			Id:      recId,
+			Details: recDetails.ToProto(),
 		})
 	}
 	go sb.metaListener(recordsCh)
@@ -568,6 +575,12 @@ func (sb *smartBlock) onMetaChange(details *domain.Details) {
 		return
 	}
 	id := details.GetString(bundle.RelationKeyId)
+	if id != sb.Id() {
+		// dependents never carry strip-by-default keys (sync/usage churn);
+		// strip before diffing/storing so a later change to those keys produces
+		// an empty diff and no event for the client
+		details = details.CopyWithoutKeys(bundle.DefaultStrippedKeys...)
+	}
 	var msgs []*pb.EventMessage
 	if v, exists := sb.lastDepDetails[id]; exists {
 		diff, keysToUnset := domain.StructDiff(v, details)
@@ -1491,6 +1504,17 @@ func (sb *smartBlock) collectOutgoingLinks(st *state.State) []OutgoingLink {
 			})
 		}
 
+		// A bookmark block points at its bookmark object via TargetObjectId. Without this
+		// the bookmark object gets no backlink from the containing page and objectgc
+		// misclassifies it as an orphan (GO-7377).
+		if bm := blockModel.GetBookmark(); bm != nil && bm.TargetObjectId != "" && bm.TargetObjectId != objectId && !linkSet[bm.TargetObjectId] {
+			linkSet[bm.TargetObjectId] = true
+			outgoingLinks = append(outgoingLinks, OutgoingLink{
+				TargetID:      bm.TargetObjectId,
+				SourceBlockID: blockModel.Id,
+			})
+		}
+
 		if text := blockModel.GetText(); text != nil && text.Marks != nil {
 			// Extract mentions and inline-object marks from text marks. Object marks
 			// (e.g. @page references) are semantically equivalent to mentions for the
@@ -1649,17 +1673,35 @@ func (sb *smartBlock) performGCOnLinksRemoval(sctx session.Context, spaceId, con
 	if len(removedLinks) == 0 {
 		return
 	}
-	archivedIds, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
+	res, err := sb.objectGC.ArchiveOrphansOnLinksRemoval(spaceId, contextId, removedLinks, false, nil)
 	if err != nil {
 		log.With("objectId", contextId).Errorf("object gc on links removal failed: %v", err)
 	}
-	if sctx != nil && len(archivedIds) > 0 {
+	if sctx != nil {
 		msgs := sctx.GetMessages()
-		msgs = append(msgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfObjectAutoArchive{
-				ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: archivedIds},
-			},
-		})
-		sctx.SetMessages(contextId, msgs)
+		changed := false
+		if len(res.Files) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectAutoArchive{
+					ObjectAutoArchive: &pb.EventObjectAutoArchive{ObjectIds: res.Files},
+				},
+			})
+			changed = true
+		}
+		if len(res.Candidates) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
+						ObjectIds: res.Candidates,
+						ContextId: contextId,
+						Trigger:   pb.EventObjectCleanupSuggestion_linkRemoval,
+					},
+				},
+			})
+			changed = true
+		}
+		if changed {
+			sctx.SetMessages(contextId, msgs)
+		}
 	}
 }

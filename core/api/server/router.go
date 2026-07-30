@@ -10,6 +10,7 @@ import (
 	_ "github.com/anyproto/anytype-heart/core/api/docs"
 	"github.com/anyproto/anytype-heart/core/api/handler"
 	"github.com/anyproto/anytype-heart/core/api/pagination"
+	"github.com/anyproto/anytype-heart/util/localorigin"
 )
 
 const (
@@ -20,6 +21,14 @@ const (
 	maxWriteRequestsPerSecond = 1  // allow sustained 1 request per second
 	maxBurstRequests          = 60 // allow all requests in the first second
 )
+
+// envApiAllowedOrigins adds comma-separated exact origins to the allowlist, for
+// local clients that are not served from a loopback host.
+const envApiAllowedOrigins = "ANYTYPE_API_ALLOWED_ORIGINS"
+
+// envApiAllowedHosts adds comma-separated Host header values to the allowlist,
+// for operators who bind the API to a routable interface and reach it by name.
+const envApiAllowedHosts = "ANYTYPE_API_ALLOWED_HOSTS"
 
 // NewRouter builds and returns a *gin.Engine with all routes configured.
 func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.EventService, openapiYAML []byte, openapiJSON []byte) *gin.Engine {
@@ -61,6 +70,12 @@ func (srv *Server) setupMiddleware() *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(ensureMetadataHeader())
+	// Before every route, including the unauthenticated /v1/auth ones.
+	// Only native clients talk to this API, so file:// is not trusted here.
+	router.Use(ensureTrustedOrigin(localorigin.New(
+		os.Getenv(envApiAllowedOrigins),
+		localorigin.AllowHosts(os.Getenv(envApiAllowedHosts)),
+	)))
 
 	if isDebug {
 		router.Use(gin.Logger())

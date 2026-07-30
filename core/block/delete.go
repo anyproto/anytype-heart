@@ -43,12 +43,24 @@ func (s *Service) DeleteObjectByFullID(id domain.FullID) error {
 
 	if sbType != coresb.SmartBlockTypeFileObject {
 		// in case client skips archiving, lets still call objectGC
-		gcIds, err := s.objectGC.CheckObjectsOnObjectArchived(id.SpaceID, id.ObjectID, true)
+		res, err := s.objectGC.CheckObjectsOnObjectArchived(id.SpaceID, id.ObjectID, true)
 		if err != nil {
 			log.With("objectId", id.ObjectID).Warnf("failed to check objects on context deletion: %v", err)
-		} else if len(gcIds) > 0 {
-			if err := s.detailsService.SetListIsArchivedNoGC(context.Background(), gcIds, true); err != nil {
-				log.With("objectId", id.ObjectID).Warnf("failed to archive children on context deletion: %v", err)
+		} else {
+			if len(res.Files) > 0 {
+				if err := s.detailsService.SetListIsArchivedNoGC(context.Background(), res.Files, true); err != nil {
+					log.With("objectId", id.ObjectID).Warnf("failed to archive children on context deletion: %v", err)
+				}
+			}
+			if len(res.Candidates) > 0 {
+				// no session context here — broadcast so the initiating client can prompt the user
+				s.eventSender.Broadcast(event.NewEventSingleMessage(id.SpaceID, &pb.EventMessageValueOfObjectCleanupSuggestion{
+					ObjectCleanupSuggestion: &pb.EventObjectCleanupSuggestion{
+						ObjectIds: res.Candidates,
+						ContextId: id.ObjectID,
+						Trigger:   pb.EventObjectCleanupSuggestion_delete,
+					},
+				}))
 			}
 		}
 	}

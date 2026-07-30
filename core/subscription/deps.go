@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"slices"
 	"sort"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -58,9 +59,14 @@ func newDepTracker(parent *coreSub, spec subSpec, idx spaceindex.Store) *depTrac
 		keySet[string(k)] = struct{}{}
 	}
 	child := &coreSub{
-		subId:            spec.subId + "/dep",
-		spaceId:          spec.spaceId,
-		keys:             spec.keys,
+		subId:   spec.subId + "/dep",
+		spaceId: spec.spaceId,
+		// dependent objects are rendered as name/icon chips; never stream the
+		// high-churn strip-by-default keys (sync/usage) for them, even if the
+		// parent lists those keys for its own rows. depKeys above are derived
+		// from spec.keys and are unaffected (stripped keys are never object/file
+		// format).
+		keys:             slices.DeleteFunc(slices.Clone(spec.keys), bundle.IsDefaultStrippedKey),
 		members:          make(map[string]struct{}),
 		vis:              make(map[string]*visEntry),
 		detailEventsOnly: true,

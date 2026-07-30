@@ -812,7 +812,7 @@ func (s *dsObjectStore) EnqueueAllForFulltextIndexing(ctx context.Context) error
 			obj.Set(ftGenKey, arena.NewNumberFloat64(float64(gen)))
 			// Chat objects keep their searchable text in messages, not in object
 			// relations/blocks. Tag them with FtAllOrderId so a full FT rebuild
-			// reindexes the whole message history via prepareChatSearchDocs;
+			// reindexes the whole message history via indexChatMessages;
 			// otherwise the consume path treats them as a regular object and chat
 			// search stays empty after the index is rebuilt (GO-7316). Both
 			// chatDerived (space chats) and discussion (object chats) use the chat

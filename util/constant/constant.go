@@ -1,6 +1,9 @@
 package constant
 
-import "math/rand"
+import (
+	"math/rand"
+	"slices"
+)
 
 const ProfileFile = "profile"
 
@@ -33,4 +36,12 @@ var colors = []OptionColor{
 
 func RandomOptionColor() OptionColor {
 	return colors[rand.Intn(len(colors))]
+}
+
+// OptionColors is the palette in canonical order. Callers that assign colors
+// deliberately rather than at random — an AnyBlock JSON bundle declaring a
+// select vocabulary, say — cycle it so a vocabulary that names no colors
+// still ends up with distinct ones.
+func OptionColors() []OptionColor {
+	return slices.Clone(colors)
 }

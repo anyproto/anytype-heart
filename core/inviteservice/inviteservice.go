@@ -52,8 +52,12 @@ type InviteService interface {
 	app.ComponentRunnable
 	GetPayload(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (*model.InvitePayload, error)
 	View(ctx context.Context, inviteCid cid.Cid, inviteFileKey crypto.SymKey) (domain.InviteView, error)
-	RemoveExisting(ctx context.Context, spaceId string) error
+	// RemoveExisting clears the space's invite info and returns the invite it removed
+	RemoveExisting(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	Generate(ctx context.Context, params GenerateInviteParams, sendInvite func() error) (domain.InviteInfo, error)
+	// ShareWithinSpace publishes the invite the owner holds into the workspace, where every member of
+	// the space can read it. It is the same invite: the acl record and the file stay as they are.
+	ShareWithinSpace(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	Change(ctx context.Context, spaceId string, permissions list.AclPermissions) error
 	GetCurrent(ctx context.Context, spaceId string) (domain.InviteInfo, error)
 	GetExistingGuestUserInvite(ctx context.Context, spaceId string) (domain.InviteInfo, error)
@@ -69,6 +73,9 @@ type GenerateInviteParams struct {
 	Key         crypto.PrivKey
 	InviteType  domain.InviteType
 	Permissions list.AclPermissions
+	// ShareWithinSpace stores the invite in the workspace, where every member of the space can read it
+	// and share the link. Otherwise it is stored in the owner's space view and only they can share it.
+	ShareWithinSpace bool
 }
 
 type inviteService struct {
@@ -123,53 +130,175 @@ func (i *inviteService) View(ctx context.Context, inviteCid cid.Cid, inviteFileK
 }
 
 func (i *inviteService) Change(ctx context.Context, spaceId string, permissions list.AclPermissions) error {
-	return i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		info := obj.GetExistingInviteInfo()
-		info.Permissions = permissions
-		return obj.SetInviteFileInfo(info)
-	})
+	info, err := i.getExisting(ctx, spaceId)
+	if err != nil {
+		return getInviteError("get existing invite info", err)
+	}
+	if info.InviteFileCid == "" {
+		// the invite is held by the owner and this is not their device: it cannot be changed from here
+		return ErrInviteNotExists
+	}
+	info.Permissions = permissions
+	return i.setInviteInfo(ctx, spaceId, info)
 }
 
 func (i *inviteService) GetCurrent(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
-	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		info = obj.GetExistingInviteInfo()
-		return nil
-	})
+	info, err = i.getExisting(ctx, spaceId)
 	if err != nil {
-		err = getInviteError("get existing invite info", err)
-		return
+		return domain.InviteInfo{}, getInviteError("get existing invite info", err)
+	}
+	// an invite held by the owner is reported to their members without its cid and key: the marker is
+	// all they get, and their client turns it into "ask the owner for the link"
+	if info.InviteFileCid == "" && !info.HeldByOwner {
+		return domain.InviteInfo{}, ErrInviteNotExists
+	}
+	return info, nil
+}
+
+func (i *inviteService) ShareWithinSpace(ctx context.Context, spaceId string) (domain.InviteInfo, error) {
+	info, err := i.getExisting(ctx, spaceId)
+	if err != nil {
+		return domain.InviteInfo{}, getInviteError("get existing invite info", err)
 	}
 	if info.InviteFileCid == "" {
-		err = ErrInviteNotExists
-		return
+		return domain.InviteInfo{}, ErrInviteNotExists
 	}
-	return
+	// the invite that gets published is the one the owner holds, whose permissions may be nothing like
+	// the ones the request carried
+	if !domain.ShareableWithinSpace(info.InviteType, info.Permissions) {
+		return domain.InviteInfo{}, ErrInviteNotShareable
+	}
+	if !info.HeldByOwner {
+		return info, nil
+	}
+	// the invite moves out of the owner's space view and into the workspace, which every member syncs.
+	// Nothing about the invite itself changes: same acl record, same file, same link
+	info.HeldByOwner = false
+	if err := i.setInviteInfo(ctx, spaceId, info); err != nil {
+		return domain.InviteInfo{}, generateInviteError("set invite file info", err)
+	}
+	return info, nil
 }
 
-func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (err error) {
-	var info domain.InviteInfo
-	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		info, err = obj.RemoveExistingInviteInfo()
-		return err
+// getExisting reports what this device knows about the space's current invite. The space view is
+// asked first: an owner-held invite exists nowhere else, and the owner syncs it across their own
+// devices. The workspace then answers for everyone else — with a shared invite, or with the marker
+// of an owner-held one.
+func (i *inviteService) getExisting(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
+	// The workspace is read first and wins whenever it holds a cid. Normally exactly one of the two
+	// objects holds the invite, but an old client can write a cid to the workspace without clearing the
+	// owner's space view (it knows about neither the space view storage nor the marker). That later
+	// write is the live invite, so when both hold a cid the workspace one is the one to trust.
+	var workspaceInfo domain.InviteInfo
+	err = i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
+		workspaceInfo = obj.GetExistingInviteInfo()
+		return nil
 	})
 	if err != nil {
-		return removeInviteError("remove existing invite info", err)
+		return domain.InviteInfo{}, fmt.Errorf("read invite info from workspace: %w", err)
 	}
-	if len(info.InviteFileCid) == 0 {
+	if workspaceInfo.InviteFileCid != "" {
+		return workspaceInfo, nil
+	}
+	// no cid in the workspace: on the owner's device the invite may be held in their space view
+	var spaceViewInfo domain.InviteInfo
+	err = i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
+		spaceViewInfo = obj.GetExistingInviteInfo()
 		return nil
-	}
-	invCid, err := cid.Decode(info.InviteFileCid)
+	})
 	if err != nil {
-		return removeInviteError("decode invite cid", err)
+		return domain.InviteInfo{}, fmt.Errorf("read invite info from space view: %w", err)
 	}
-	err = i.inviteStore.RemoveInvite(ctx, invCid)
-	if err != nil {
-		return removeInviteError("remove invite from store", err)
+	if spaceViewInfo.InviteFileCid != "" {
+		return spaceViewInfo, nil
 	}
-	return
+	// neither holds a cid: the workspace answer carries the held-by-owner marker for members
+	return workspaceInfo, nil
 }
 
-func (i *inviteService) doInviteObject(ctx context.Context, spaceId string, f func(object domain.InviteObject) error) error {
+// setInviteInfo writes the invite to the object that holds its cid and key, and updates the other
+// one, so that switching a space between a shared invite and an owner-held one can never leave the
+// previous invite readable where it used to live.
+//
+// The holder is written before the other object is touched. A failure between the two writes then
+// leaves the invite readable in one more place than intended — never lost from every place — and
+// getExisting reads the space view first, so both transient states resolve to a usable invite and a
+// retry converges.
+func (i *inviteService) setInviteInfo(ctx context.Context, spaceId string, info domain.InviteInfo) error {
+	// the workspace takes the full invite when it is shared within the space, and the marker alone
+	// when the owner holds it
+	setWorkspace := func() error {
+		return i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
+			return obj.SetInviteFileInfo(info)
+		})
+	}
+	setSpaceView := func() error {
+		return i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
+			if info.HeldByOwner {
+				return obj.SetInviteFileInfo(info)
+			}
+			_, err := obj.RemoveExistingInviteInfo()
+			return err
+		})
+	}
+	if info.HeldByOwner {
+		// the space view holds the invite; write it before reducing the workspace to the marker
+		if err := setSpaceView(); err != nil {
+			return fmt.Errorf("set invite info in space view: %w", err)
+		}
+		if err := setWorkspace(); err != nil {
+			return fmt.Errorf("set invite info in workspace: %w", err)
+		}
+		return nil
+	}
+	// the workspace holds the invite; write it before clearing the space view
+	if err := setWorkspace(); err != nil {
+		return fmt.Errorf("set invite info in workspace: %w", err)
+	}
+	if err := setSpaceView(); err != nil {
+		return fmt.Errorf("clear invite info in space view: %w", err)
+	}
+	return nil
+}
+
+func (i *inviteService) RemoveExisting(ctx context.Context, spaceId string) (info domain.InviteInfo, err error) {
+	// Both objects are cleared: the invite lives in one of them, and the other carries the marker or a
+	// pair left behind by an earlier invite of the other kind. The file is deleted off whichever cid is
+	// recovered even when one of the clears fails, so a failed detail-clear never strands the file on
+	// the node with no object left pointing at it.
+	spaceViewErr := i.doSpaceView(ctx, spaceId, func(obj domain.InviteInfoObject) error {
+		spaceViewInfo, err := obj.RemoveExistingInviteInfo()
+		if spaceViewInfo.InviteFileCid != "" {
+			info = spaceViewInfo
+		}
+		return err
+	})
+	workspaceErr := i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
+		workspaceInfo, err := obj.RemoveExistingInviteInfo()
+		if info.InviteFileCid == "" {
+			info = workspaceInfo
+		}
+		return err
+	})
+	if info.InviteFileCid != "" {
+		invCid, decErr := cid.Decode(info.InviteFileCid)
+		if decErr != nil {
+			return info, removeInviteError("decode invite cid", decErr)
+		}
+		if remErr := i.inviteStore.RemoveInvite(ctx, invCid); remErr != nil {
+			return info, removeInviteError("remove invite from store", remErr)
+		}
+	}
+	if spaceViewErr != nil {
+		return info, removeInviteError("remove existing invite info from space view", spaceViewErr)
+	}
+	if workspaceErr != nil {
+		return info, removeInviteError("remove existing invite info from workspace", workspaceErr)
+	}
+	return info, nil
+}
+
+func (i *inviteService) doWorkspace(ctx context.Context, spaceId string, f func(object domain.InviteObject) error) error {
 	sp, err := i.spaceService.Get(ctx, spaceId)
 	if err != nil {
 		return err
@@ -183,6 +312,12 @@ func (i *inviteService) doInviteObject(ctx context.Context, spaceId string, f fu
 	})
 }
 
+func (i *inviteService) doSpaceView(ctx context.Context, spaceId string, f func(object domain.InviteInfoObject) error) error {
+	return i.spaceService.TechSpace().DoSpaceView(ctx, spaceId, func(spaceView techspace.SpaceView) error {
+		return f(spaceView)
+	})
+}
+
 func (i *inviteService) GenerateGuestUserInvite(ctx context.Context, spaceId string, guestUserKey crypto.PrivKey) (domain.InviteInfo, error) {
 	return i.generateGuestInvite(ctx, spaceId, guestUserKey)
 }
@@ -192,21 +327,23 @@ func (i *inviteService) Generate(ctx context.Context, params GenerateInviteParam
 	if spaceId == i.accountService.PersonalSpaceID() {
 		return domain.InviteInfo{}, ErrPersonalSpace
 	}
-	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		result = obj.GetExistingInviteInfo()
-		return nil
-	})
+	result, err = i.getExisting(ctx, spaceId)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("get existing invite info", err)
 	}
-	if result.InviteFileCid != "" && result.InviteType == params.InviteType {
+	heldByOwner := !params.ShareWithinSpace
+	// an invite that differs in where it is held is replaced like one that differs in type: the point
+	// of the switch is that the invite the other side could read stops working
+	if result.InviteFileCid != "" && result.InviteType == params.InviteType && result.HeldByOwner == heldByOwner {
 		return result, nil
 	}
 	invite, err := i.buildInvite(ctx, params)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("build invite", err)
 	}
-	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, invite)
+	// the invite's public key binds the file to the invite on the coordinator, which is what lets it
+	// verify a later deletion against the acl
+	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, spaceId, params.Key.GetPublic(), invite)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("store invite in ipfs", err)
 	}
@@ -226,17 +363,21 @@ func (i *inviteService) Generate(ctx context.Context, params GenerateInviteParam
 		InviteFileKey: inviteFileKeyRaw,
 		InviteType:    params.InviteType,
 		Permissions:   params.Permissions,
+		HeldByOwner:   heldByOwner,
 	}
-	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
-		return obj.SetInviteFileInfo(inviteInfo)
-	})
+	err = i.setInviteInfo(ctx, spaceId, inviteInfo)
 	if err != nil {
-		removeInviteFile()
+		// setInviteInfo may have persisted the cid to one object before failing on the other. Clearing
+		// both removes any dangling reference and deletes the file when a cid was found; the file is
+		// deleted here for the case where nothing was persisted or the rollback itself failed.
+		if removed, removeErr := i.RemoveExisting(ctx, spaceId); removeErr != nil || removed.InviteFileCid == "" {
+			removeInviteFile()
+		}
 		return domain.InviteInfo{}, generateInviteError("set invite file info", err)
 	}
 	err = sendInvite()
 	if err != nil {
-		removeErr := i.RemoveExisting(ctx, spaceId)
+		_, removeErr := i.RemoveExisting(ctx, spaceId)
 		if removeErr != nil {
 			log.Error("remove existing invite", zap.Error(removeErr))
 		}
@@ -257,7 +398,7 @@ func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string,
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("build invite", err)
 	}
-	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, invite)
+	inviteFileCid, inviteFileKey, err := i.inviteStore.StoreInvite(ctx, spaceId, guestUserKey.GetPublic(), invite)
 	if err != nil {
 		return domain.InviteInfo{}, generateInviteError("store invite in ipfs", err)
 	}
@@ -277,7 +418,7 @@ func (i *inviteService) generateGuestInvite(ctx context.Context, spaceId string,
 		InviteFileKey: inviteFileKeyRaw,
 		InviteType:    domain.InviteTypeGuest,
 	}
-	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
+	err = i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
 		return obj.SetGuestInviteFileInfo(inviteFileCid.String(), inviteFileKeyRaw)
 	})
 	if err != nil {
@@ -442,7 +583,7 @@ func (i *inviteService) GetExistingGuestUserInvite(ctx context.Context, spaceId 
 	if !isChat {
 		return domain.InviteInfo{}, ErrInvalidSpaceType
 	}
-	err = i.doInviteObject(ctx, spaceId, func(obj domain.InviteObject) error {
+	err = i.doWorkspace(ctx, spaceId, func(obj domain.InviteObject) error {
 		fileCid, fileKey = obj.GetExistingGuestInviteInfo()
 		return nil
 	})

@@ -187,36 +187,35 @@ func (w *Workspaces) CreationStateMigration(ctx *smartblock.InitContext) migrati
 	}
 }
 
+// SetInviteFileInfo writes an owner-held invite as the marker alone: its cid and key belong to the
+// owner's space view, and the workspace is read by every member of the space.
 func (w *Workspaces) SetInviteFileInfo(info domain.InviteInfo) (err error) {
 	st := w.NewState()
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInvitePermissions, domain.Int64(domain.ConvertAclPermissions(info.Permissions)))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteType, domain.Int64(info.InviteType))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileCid, domain.String(info.InviteFileCid))
-	st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteFileKey, domain.String(info.InviteFileKey))
+	if info.HeldByOwner {
+		removeInviteDetails(st)
+		st.SetDetailAndBundledRelation(bundle.RelationKeySpaceInviteHeldByOwner, domain.Bool(true))
+	} else {
+		st.RemoveDetail(bundle.RelationKeySpaceInviteHeldByOwner)
+		setInviteDetails(st, info)
+	}
 	return w.Apply(st)
 }
 
 func (w *Workspaces) GetExistingInviteInfo() (inviteInfo domain.InviteInfo) {
 	details := w.CombinedDetails()
-	inviteInfo.InviteType = domain.InviteType(details.GetInt64(bundle.RelationKeySpaceInviteType))
-	// nolint: gosec
-	inviteInfo.Permissions = domain.ConvertParticipantPermissions(model.ParticipantPermissions(details.GetInt64(bundle.RelationKeySpaceInvitePermissions)))
-	inviteInfo.InviteFileCid = details.GetString(bundle.RelationKeySpaceInviteFileCid)
-	inviteInfo.InviteFileKey = details.GetString(bundle.RelationKeySpaceInviteFileKey)
-	if inviteInfo.InviteType == domain.InviteTypeDefault {
-		inviteInfo.Permissions = list.AclPermissionsNone
-	}
+	inviteInfo = getInviteDetails(details)
+	// a cid in the workspace is a shared invite, so it is not held by the owner — even if the marker is
+	// still set. An old client can write a cid without clearing the marker (it does not know about it),
+	// and the held-by-owner marker only means anything when there is no cid to read.
+	inviteInfo.HeldByOwner = inviteInfo.InviteFileCid == "" && details.GetBool(bundle.RelationKeySpaceInviteHeldByOwner)
 	return
 }
 
 func (w *Workspaces) RemoveExistingInviteInfo() (info domain.InviteInfo, err error) {
 	info = w.GetExistingInviteInfo()
 	newState := w.NewState()
-	newState.RemoveDetail(
-		bundle.RelationKeySpaceInviteFileCid,
-		bundle.RelationKeySpaceInviteFileKey,
-		bundle.RelationKeySpaceInvitePermissions,
-		bundle.RelationKeySpaceInviteType)
+	removeInviteDetails(newState)
+	newState.RemoveDetail(bundle.RelationKeySpaceInviteHeldByOwner)
 	return info, w.Apply(newState)
 }
 

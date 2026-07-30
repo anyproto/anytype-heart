@@ -96,6 +96,11 @@ type fixture struct {
 
 	generateOrderIdFunc func(tx *storestate.StoreStateTx) string
 	lastOrder           string
+
+	// appliedChangeSets records every change set committed through applyToStore so a
+	// test can faithfully re-drive the store's replay (as storeApply does on reopen)
+	// without needing a real object tree.
+	appliedChangeSets []storestate.ChangeSet
 }
 
 const (
@@ -607,13 +612,14 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 		_ = tx.Rollback()
 	}()
 	order := fx.generateOrderId(tx)
-	err = tx.ApplyChangeSetReturnAllErrors(storestate.ChangeSet{
+	changeSet := storestate.ChangeSet{
 		Id:        changeId,
 		Order:     order,
 		Changes:   params.Changes,
 		Creator:   fx.sourceCreator,
 		Timestamp: params.Time.Unix(),
-	})
+	}
+	err = tx.ApplyChangeSetReturnAllErrors(changeSet)
 	if err != nil {
 		return "", fmt.Errorf("apply change set: %w", err)
 	}
@@ -621,6 +627,7 @@ func (fx *fixture) applyToStore(ctx context.Context, params source.PushStoreChan
 	if err != nil {
 		return "", err
 	}
+	fx.appliedChangeSets = append(fx.appliedChangeSets, changeSet)
 	fx.onUpdate()
 	return changeId, nil
 }

@@ -1,7 +1,11 @@
+//go:build !android
+
 package localdiscovery
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -18,6 +22,8 @@ import (
 	"github.com/anyproto/anytype-heart/core/anytype/config"
 	"github.com/anyproto/anytype-heart/core/device/mock_device"
 	"github.com/anyproto/anytype-heart/core/event/mock_event"
+	"github.com/anyproto/anytype-heart/net/addrs"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space/spacecore/clientserver/mock_clientserver"
 	"github.com/anyproto/anytype-heart/tests/testutil"
 )
@@ -116,6 +122,132 @@ func TestLocalDiscovery_checkAddrs(t *testing.T) {
 	})
 }
 
+func TestLocalDiscovery_networkStateHookDoesNotBlockOnSlowRefresh(t *testing.T) {
+	// given: a started discovery whose refresh pipeline is busy
+	// (refreshMu held simulates an in-flight teardown/rebuild)
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true)
+	f.clientServer.EXPECT().Port().Return(6789)
+	var hook func(model.DeviceNetworkType)
+	f.deviceService.EXPECT().RegisterHook(mock.Anything).Run(func(h func(model.DeviceNetworkType)) {
+		hook = h
+	}).Return()
+	err := f.Start()
+	assert.Nil(t, err)
+
+	ld := f.LocalDiscovery.(*localDiscovery)
+	ld.refreshMu.Lock()
+
+	// when: the device reports a network change (this call happens on the
+	// DeviceNetworkStateSet RPC path and must stay fast)
+	done := make(chan struct{})
+	go func() {
+		hook(model.DeviceNetworkType_CELLULAR)
+		close(done)
+	}()
+
+	// then
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("network-state hook blocked behind an in-flight refresh")
+	}
+	ld.refreshMu.Unlock()
+	assert.Nil(t, f.Close(context.Background()))
+}
+
+func TestLocalDiscovery_refreshRetriesFailedServerStart(t *testing.T) {
+	// given: the first refresh fails to start the mdns server (port 0 is
+	// rejected by RegisterProxy), simulating a transient start failure
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*localDiscovery)
+	ld.port = 0
+	err := ld.refreshInterfaces(context.Background())
+	assert.Error(t, err)
+
+	// when: the failure condition is gone but the addresses are unchanged
+	ld.port = 6789
+	err = ld.refreshInterfaces(context.Background())
+
+	// then: the next tick must retry instead of treating the state as done
+	assert.Nil(t, err)
+	ld.m.Lock()
+	server := ld.server
+	ld.m.Unlock()
+	assert.NotNil(t, server, "failed server start was never retried")
+	assert.Nil(t, f.Close(context.Background()))
+}
+
+func TestLocalDiscovery_refreshKeepsServerOnEnumerationError(t *testing.T) {
+	// given: a healthy running server
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*localDiscovery)
+	ld.port = 6789
+	err := ld.refreshInterfaces(context.Background())
+	assert.Nil(t, err)
+	ld.m.Lock()
+	assert.NotNil(t, ld.server)
+	ld.m.Unlock()
+
+	// when: interface enumeration fails transiently
+	origGetter := getInterfacesAddrs
+	getInterfacesAddrs = func() (addrs.InterfacesAddrs, error) {
+		return addrs.InterfacesAddrs{}, fmt.Errorf("transient enumeration failure")
+	}
+	t.Cleanup(func() { getInterfacesAddrs = origGetter })
+	err = ld.refreshInterfaces(context.Background())
+
+	// then: the error is surfaced and the running server is not torn down
+	assert.Error(t, err)
+	ld.m.Lock()
+	server := ld.server
+	ld.m.Unlock()
+	assert.NotNil(t, server, "transient enumeration error must not tear down the server")
+	getInterfacesAddrs = origGetter
+	assert.Nil(t, f.Close(context.Background()))
+}
+
+func TestLocalDiscovery_refreshSurvivesStuckQueryGoroutine(t *testing.T) {
+	// given
+	origTimeout := queryStopTimeout
+	queryStopTimeout = 200 * time.Millisecond
+	t.Cleanup(func() { queryStopTimeout = origTimeout })
+
+	f := newFixture(t)
+	f.clientServer.EXPECT().ServerStarted().Return(true).Maybe()
+	ld := f.LocalDiscovery.(*localDiscovery)
+	ld.port = 6789
+	err := ld.refreshInterfaces(context.Background())
+	assert.Nil(t, err)
+
+	// simulate a query goroutine of the current generation that never exits
+	// (e.g. an entries channel that is never closed), and clear the cached
+	// addresses to force a full teardown + rebuild like a network change does
+	ld.m.Lock()
+	ld.closeWait.Add(1)
+	ld.interfacesAddrs = addrs.InterfacesAddrs{}
+	ld.m.Unlock()
+
+	// when: a forced rebuild tears the current generation down
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		if err := ld.refreshInterfaces(context.Background()); err != nil {
+			t.Error(err)
+		}
+	}()
+
+	// then: the refresh must not wedge on the stuck goroutine
+	select {
+	case <-done:
+	case <-time.After(3 * time.Second):
+		t.Fatal("refreshInterfaces wedged on a stuck query goroutine")
+	}
+	assert.Nil(t, f.Close(context.Background()))
+}
+
 func TestLocalDiscovery_readAnswers(t *testing.T) {
 	t.Run("readAnswers - send peer update for itself", func(t *testing.T) {
 		// given
@@ -126,8 +258,9 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		// when
 		ld := f.LocalDiscovery.(*localDiscovery)
 		peerUpdate := make(chan *zeroconf.ServiceEntry)
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
 		go func() {
-			ld.closeWait.Add(1)
 			peerUpdate <- &zeroconf.ServiceEntry{
 				ServiceRecord: zeroconf.ServiceRecord{
 					Instance: ld.peerId,
@@ -135,7 +268,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 			}
 			close(peerUpdate)
 		}()
-		ld.readAnswers(peerUpdate)
+		ld.readAnswers(closeWait, peerUpdate)
 
 		// then
 		notifier.AssertNotCalled(t, "PeerDiscovered")
@@ -167,8 +300,9 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 		}, mock.Anything).Return()
 		ld.SetNotifier(notifier)
 
+		closeWait := &sync.WaitGroup{}
+		closeWait.Add(1)
 		go func() {
-			ld.closeWait.Add(1)
 			peerUpdate <- &zeroconf.ServiceEntry{
 				ServiceRecord: zeroconf.ServiceRecord{
 					Instance: accountKeys.PeerId,
@@ -176,7 +310,7 @@ func TestLocalDiscovery_readAnswers(t *testing.T) {
 			}
 			close(peerUpdate)
 		}()
-		ld.readAnswers(peerUpdate)
+		ld.readAnswers(closeWait, peerUpdate)
 
 		select {
 		case <-called:

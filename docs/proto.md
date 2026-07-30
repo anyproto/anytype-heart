@@ -971,6 +971,15 @@
     - [Rpc.Object.ChatAdd.Request](#anytype-Rpc-Object-ChatAdd-Request)
     - [Rpc.Object.ChatAdd.Response](#anytype-Rpc-Object-ChatAdd-Response)
     - [Rpc.Object.ChatAdd.Response.Error](#anytype-Rpc-Object-ChatAdd-Response-Error)
+    - [Rpc.Object.CleanupSuggestionIgnore](#anytype-Rpc-Object-CleanupSuggestionIgnore)
+    - [Rpc.Object.CleanupSuggestionIgnore.Request](#anytype-Rpc-Object-CleanupSuggestionIgnore-Request)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response.Error](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error)
+    - [Rpc.Object.CleanupSuggestions](#anytype-Rpc-Object-CleanupSuggestions)
+    - [Rpc.Object.CleanupSuggestions.Request](#anytype-Rpc-Object-CleanupSuggestions-Request)
+    - [Rpc.Object.CleanupSuggestions.Response](#anytype-Rpc-Object-CleanupSuggestions-Response)
+    - [Rpc.Object.CleanupSuggestions.Response.Error](#anytype-Rpc-Object-CleanupSuggestions-Response-Error)
+    - [Rpc.Object.CleanupSuggestions.Response.Item](#anytype-Rpc-Object-CleanupSuggestions-Response-Item)
     - [Rpc.Object.Close](#anytype-Rpc-Object-Close)
     - [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request)
     - [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response)
@@ -1745,6 +1754,9 @@
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
     - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.ChatAdd.Response.Error.Code](#anytype-Rpc-Object-ChatAdd-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestions.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code)
+    - [Rpc.Object.CleanupSuggestions.Response.Item.Reason](#anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
     - [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code)
     - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
@@ -2055,6 +2067,7 @@
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive)
     - [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore)
+    - [Event.Object.CleanupSuggestion](#anytype-Event-Object-CleanupSuggestion)
     - [Event.Object.Close](#anytype-Event-Object-Close)
     - [Event.Object.Details](#anytype-Event-Object-Details)
     - [Event.Object.Details.Amend](#anytype-Event-Object-Details-Amend)
@@ -2110,6 +2123,7 @@
     - [ResponseEvent](#anytype-ResponseEvent)
   
     - [Event.Block.Dataview.SliceOperation](#anytype-Event-Block-Dataview-SliceOperation)
+    - [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger)
     - [Event.P2PStatus.Status](#anytype-Event-P2PStatus-Status)
     - [Event.Space.Network](#anytype-Event-Space-Network)
     - [Event.Space.Status](#anytype-Event-Space-Status)
@@ -2452,6 +2466,8 @@
 | ObjectListDuplicate | [Rpc.Object.ListDuplicate.Request](#anytype-Rpc-Object-ListDuplicate-Request) | [Rpc.Object.ListDuplicate.Response](#anytype-Rpc-Object-ListDuplicate-Response) |  |
 | ObjectListDelete | [Rpc.Object.ListDelete.Request](#anytype-Rpc-Object-ListDelete-Request) | [Rpc.Object.ListDelete.Response](#anytype-Rpc-Object-ListDelete-Response) |  |
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype-Rpc-Object-ListSetIsArchived-Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype-Rpc-Object-ListSetIsArchived-Response) |  |
+| ObjectCleanupSuggestions | [Rpc.Object.CleanupSuggestions.Request](#anytype-Rpc-Object-CleanupSuggestions-Request) | [Rpc.Object.CleanupSuggestions.Response](#anytype-Rpc-Object-CleanupSuggestions-Response) |  |
+| ObjectCleanupSuggestionIgnore | [Rpc.Object.CleanupSuggestionIgnore.Request](#anytype-Rpc-Object-CleanupSuggestionIgnore-Request) | [Rpc.Object.CleanupSuggestionIgnore.Response](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response) |  |
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype-Rpc-Object-ListSetIsFavorite-Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype-Rpc-Object-ListSetIsFavorite-Response) |  |
 | ObjectListSetObjectType | [Rpc.Object.ListSetObjectType.Request](#anytype-Rpc-Object-ListSetObjectType-Request) | [Rpc.Object.ListSetObjectType.Response](#anytype-Rpc-Object-ListSetObjectType-Response) |  |
 | ObjectListSetDetails | [Rpc.Object.ListSetDetails.Request](#anytype-Rpc-Object-ListSetDetails-Request) | [Rpc.Object.ListSetDetails.Response](#anytype-Rpc-Object-ListSetDetails-Response) |  |
@@ -12711,9 +12727,10 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| durationInSeconds | [int32](#int32) |  | 0 = save heap snapshot only; &gt;0 = run full profiler (CPU, heap, trace, goroutines) for this many seconds |
+| durationInSeconds | [int32](#int32) |  | 0 = save heap snapshot only; &gt;0 = run timed profiler (CPU, heap, goroutines) for this many seconds. Set includeTrace to also capture the runtime execution trace. |
 | reason | [Rpc.Debug.RunProfiler.Request.Reason](#anytype-Rpc-Debug-RunProfiler-Request-Reason) |  |  |
 | reasonDesc | [string](#string) |  | Optional free-form description to attach to the profile |
+| includeTrace | [bool](#bool) |  | Also capture the runtime execution trace (runtime/trace). Off by default: it is the heaviest artifact in both archive size and runtime overhead. Only applies when durationInSeconds &gt; 0. |
 
 
 
@@ -13195,6 +13212,7 @@ Get marks list in the selected range in text block.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | deviceNetworkType | [model.DeviceNetworkType](#anytype-model-DeviceNetworkType) |  |  |
+| networkId | [string](#string) |  | opaque identity of the current network path as reported by the OS (iOS: NWPath interfaces/gateway digest; Android: Network#getNetworkHandle()). When it changes while the type stays the same (Wi-Fi to Wi-Fi switch, cellular re-attach) the middleware still resets connections and re-syncs. Optional: empty means unknown, only type transitions are used then. |
 
 
 
@@ -16710,6 +16728,138 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Request"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+| ignored | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CleanupSuggestionIgnore.Response.Error](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions"></a>
+
+### Rpc.Object.CleanupSuggestions
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Request"></a>
+
+### Rpc.Object.CleanupSuggestions.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| spaceId | [string](#string) |  |  |
+| keys | [string](#string) | repeated | relation keys to return; empty =&gt; a default set. id, createdInContext and resolvedLayout are always included. |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response"></a>
+
+### Rpc.Object.CleanupSuggestions.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CleanupSuggestions.Response.Error](#anytype-Rpc-Object-CleanupSuggestions-Response-Error) |  |  |
+| items | [Rpc.Object.CleanupSuggestions.Response.Item](#anytype-Rpc-Object-CleanupSuggestions-Response-Item) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Error"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CleanupSuggestions.Response.Error.Code](#anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Item"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Item
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| details | [google.protobuf.Struct](#google-protobuf-Struct) |  |  |
+| isRoot | [bool](#bool) |  | true for forest roots (createdInContext parent is outside the orphan set) |
+| reason | [Rpc.Object.CleanupSuggestions.Response.Item.Reason](#anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason) |  | set on roots only; none for descendants |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Close"></a>
 
 ### Rpc.Object.Close
@@ -18534,6 +18684,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | ----- | ---- | ----- | ----------- |
 | objectIds | [string](#string) | repeated |  |
 | isArchived | [bool](#bool) |  |  |
+| skipCascade | [bool](#bool) |  | when true, skip the orphan cascade entirely (see SetIsArchived.Request). |
 
 
 
@@ -19383,6 +19534,7 @@ DEPRECATED, GO-1926 |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | isArchived | [bool](#bool) |  |  |
+| skipCascade | [bool](#bool) |  | when true, skip the orphan cascade entirely (no file auto-archive, no CleanupSuggestion event). Used by the client when archiving objects the user confirmed in the popup, to avoid re-prompting. |
 
 
 
@@ -22196,6 +22348,7 @@ Available undo/redo operations
 | spaceId | [string](#string) |  |  |
 | inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 | permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| shareWithinSpace | [bool](#bool) |  | shareWithinSpace stores the invite in the space itself, so that every member can share it. Otherwise the invite is kept in the owner&#39;s account and only the owner can share it. |
 
 
 
@@ -22275,6 +22428,7 @@ Available undo/redo operations
 | inviteFileKey | [string](#string) |  |  |
 | inviteType | [model.InviteType](#anytype-model-InviteType) |  |  |
 | permissions | [model.ParticipantPermissions](#anytype-model-ParticipantPermissions) |  |  |
+| heldByOwner | [bool](#bool) |  | heldByOwner is set when the invite is kept in the owner&#39;s account. Members get it with an empty inviteCid and inviteFileKey: only the owner can share the link. |
 
 
 
@@ -27889,6 +28043,46 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-CleanupSuggestionIgnore-Response-Error-Code"></a>
+
+### Rpc.Object.CleanupSuggestionIgnore.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Error-Code"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype-Rpc-Object-CleanupSuggestions-Response-Item-Reason"></a>
+
+### Rpc.Object.CleanupSuggestions.Response.Item.Reason
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| none | 0 |  |
+| contextArchived | 1 |  |
+| contextDeleted | 2 |  |
+| contextUnlinked | 3 |  |
+
+
+
 <a name="anytype-Rpc-Object-Close-Response-Error-Code"></a>
 
 ### Rpc.Object.Close.Response.Error.Code
@@ -29173,6 +29367,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | SPACE_IS_DELETED | 102 |  |
 | REQUEST_FAILED | 103 |  |
 | INCORRECT_PERMISSIONS | 105 |  |
+| INVITE_NOT_SHAREABLE | 107 | the invite is shared within the space and these permissions are above read access: whoever holds such a link is in the space, and every member holds it |
 
 
 
@@ -29191,6 +29386,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | REQUEST_FAILED | 103 |  |
 | LIMIT_REACHED | 104 |  |
 | NOT_SHAREABLE | 105 |  |
+| INVITE_ALREADY_SHARED | 106 | the current invite is already shared within the space and cannot be taken back into the owner&#39;s account: revoke it and generate a new one |
+| INVITE_NOT_SHAREABLE | 107 | an invite anyone can join with cannot be shared within the space: whoever holds such a link is in, so it stays in the owner&#39;s account and is theirs alone to hand out |
 
 
 
@@ -32327,6 +32524,8 @@ response already carries the path.
 | rootCollectionID | [string](#string) |  |  |
 | objectsCount | [int64](#int64) |  |  |
 | importType | [model.Import.Type](#anytype-model-Import-Type) |  |  |
+| reportObjectId | [string](#string) |  | id of the import report page listing per-object issues; empty when the run was clean (importv2) |
+| issuesCount | [int64](#int64) |  | number of issues recorded during the run (importv2) |
 
 
 
@@ -32506,6 +32705,7 @@ received to update per-message mention read status (if needed |
 | chatUpdateReactionReadStatus | [Event.Chat.UpdateReactionReadStatus](#anytype-Event-Chat-UpdateReactionReadStatus) |  |  |
 | objectAutoArchive | [Event.Object.AutoArchive](#anytype-Event-Object-AutoArchive) |  |  |
 | objectAutoRestore | [Event.Object.AutoRestore](#anytype-Event-Object-AutoRestore) |  |  |
+| objectCleanupSuggestion | [Event.Object.CleanupSuggestion](#anytype-Event-Object-CleanupSuggestion) |  |  |
 | debugProfileCreated | [Event.Debug.ProfileCreated](#anytype-Event-Debug-ProfileCreated) |  |  |
 | chatUpdateMessageCount | [Event.Chat.UpdateMessageCount](#anytype-Event-Chat-UpdateMessageCount) |  | received whenever the total number of non-deleted messages in |
 | chatDelete | [Event.Chat.Delete](#anytype-Event-Chat-Delete) |  |  |
@@ -32592,6 +32792,23 @@ received to update per-message mention read status (if needed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Event-Object-CleanupSuggestion"></a>
+
+### Event.Object.CleanupSuggestion
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated | orphan ids (objects at any level &#43; files at level &gt;= 2) created within contextId |
+| contextId | [string](#string) |  | the object that was archived / deleted / had a link removed |
+| trigger | [Event.Object.CleanupSuggestion.Trigger](#anytype-Event-Object-CleanupSuggestion-Trigger) |  |  |
 
 
 
@@ -33387,6 +33604,19 @@ scenario: Precondition: user A and user B opened the same block
 | SliceOperationMove | 2 |  |
 | SliceOperationRemove | 3 |  |
 | SliceOperationReplace | 4 |  |
+
+
+
+<a name="anytype-Event-Object-CleanupSuggestion-Trigger"></a>
+
+### Event.Object.CleanupSuggestion.Trigger
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| archive | 0 |  |
+| delete | 1 |  |
+| linkRemoval | 2 |  |
 
 
 
@@ -35358,6 +35588,8 @@ if current user&#39;s top level product has isUpgradeable flag -&gt; show incent
 | spaceId | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | spaceName | [string](#string) |  |  |
+| reportObjectId | [string](#string) |  | id of the import report page listing per-object issues; empty when the run was clean (importv2) |
+| issuesCount | [int64](#int64) |  | number of issues recorded during the run, for &#34;imported with N issues&#34; UI (importv2) |
 
 
 

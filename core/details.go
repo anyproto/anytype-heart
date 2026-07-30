@@ -115,7 +115,7 @@ func (mw *Middleware) ObjectSetIsArchived(cctx context.Context, req *pb.RpcObjec
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetIsArchived(sctx, cctx, req.ContextId, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetIsArchived(sctx, cctx, req.ContextId, req.IsArchived, req.SkipCascade)
 	if err != nil {
 		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
@@ -133,7 +133,7 @@ func (mw *Middleware) ObjectListSetIsArchived(cctx context.Context, req *pb.RpcO
 		}
 		return m
 	}
-	err := mustService[detailservice.Service](mw).SetListIsArchived(sctx, cctx, req.ObjectIds, req.IsArchived)
+	err := mustService[detailservice.Service](mw).SetListIsArchived(sctx, cctx, req.ObjectIds, req.IsArchived, req.SkipCascade)
 	if err != nil {
 		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
@@ -208,4 +208,19 @@ func (mw *Middleware) extractRelationFormat(current *domain.Details, objectStore
 		format = relation[0].Format
 	}
 	return format, nil
+}
+
+func (mw *Middleware) ObjectCleanupSuggestionIgnore(cctx context.Context, req *pb.RpcObjectCleanupSuggestionIgnoreRequest) *pb.RpcObjectCleanupSuggestionIgnoreResponse {
+	response := func(code pb.RpcObjectCleanupSuggestionIgnoreResponseErrorCode, err error) *pb.RpcObjectCleanupSuggestionIgnoreResponse {
+		m := &pb.RpcObjectCleanupSuggestionIgnoreResponse{Error: &pb.RpcObjectCleanupSuggestionIgnoreResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = getErrorDescription(err)
+		}
+		return m
+	}
+	err := mustService[detailservice.Service](mw).SetCreatedInContextIgnored(cctx, req.ObjectIds, req.Ignored)
+	if err != nil {
+		return response(pb.RpcObjectCleanupSuggestionIgnoreResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectCleanupSuggestionIgnoreResponseError_NULL, nil)
 }

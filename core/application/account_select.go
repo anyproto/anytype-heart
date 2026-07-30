@@ -49,7 +49,7 @@ func (s *Service) AccountSelect(ctx context.Context, req *pb.RpcAccountSelectReq
 		return nil, ErrMigrationRunning
 	}
 
-	if runtime.GOOS != "android" && runtime.GOOS != "ios" {
+	if startupTraceEnabled && runtime.GOOS != "android" && runtime.GOOS != "ios" {
 		s.traceRecorder.start()
 		defer s.traceRecorder.stop()
 	}

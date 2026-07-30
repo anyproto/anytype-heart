@@ -9,7 +9,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-const RelationChecksum = "0df340fee18663c4f1584c3116f1da177ae6fcdf96a2493e15c6ca81b7aa50c5"
+const RelationChecksum = "cb8c8504438f2846044f86bbc2274d236d682c9f088ac3514d5268dbad219f3b"
 const (
 	RelationKeyTag                                  domain.RelationKey = "tag"
 	RelationKeyCamera                               domain.RelationKey = "camera"
@@ -131,6 +131,7 @@ const (
 	RelationKeyGuestKey                             domain.RelationKey = "guestKey"
 	RelationKeyParticipantPermissions               domain.RelationKey = "participantPermissions"
 	RelationKeySpaceInvitePermissions               domain.RelationKey = "spaceInvitePermissions"
+	RelationKeySpaceInviteHeldByOwner               domain.RelationKey = "spaceInviteHeldByOwner"
 	RelationKeyIdentity                             domain.RelationKey = "identity"
 	RelationKeyParticipantStatus                    domain.RelationKey = "participantStatus"
 	RelationKeyMyParticipantStatus                  domain.RelationKey = "myParticipantStatus"
@@ -143,6 +144,7 @@ const (
 	RelationKeyImageKind                            domain.RelationKey = "imageKind"
 	RelationKeyCreatedInContext                     domain.RelationKey = "createdInContext"
 	RelationKeyCreatedInContextRef                  domain.RelationKey = "createdInContextRef"
+	RelationKeyCreatedInContextIgnored              domain.RelationKey = "createdInContextIgnored"
 	RelationKeyImportType                           domain.RelationKey = "importType"
 	RelationKeyGlobalName                           domain.RelationKey = "globalName"
 	RelationKeySyncStatus                           domain.RelationKey = "syncStatus"
@@ -546,6 +548,20 @@ var (
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Revision:         1,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyCreatedInContextIgnored: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Ignore this object's createdInContext link: it is excluded from cleanup suggestions and from automatic context-driven archival",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brcreatedInContextIgnored",
+			Key:              "createdInContextIgnored",
+			MaxCount:         1,
+			Name:             "Created in context ignored",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
 		RelationKeyCreatedInContextRef: {
@@ -2270,6 +2286,20 @@ var (
 			Key:              "spaceInviteGuestFileKey",
 			MaxCount:         1,
 			Name:             "Guest user invite file key",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySpaceInviteHeldByOwner: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Set when the space invite is kept in the owner's account instead of the space, so that only the owner can share it",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Id:               "_brspaceInviteHeldByOwner",
+			Key:              "spaceInviteHeldByOwner",
+			MaxCount:         1,
+			Name:             "Invite is held by the space owner",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

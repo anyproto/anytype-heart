@@ -259,7 +259,6 @@ func TestUpdateParticipantFromAclState(t *testing.T) {
 	})
 }
 
-
 func TestConvertPermissions_Admin(t *testing.T) {
 	require.Equal(t, model.ParticipantPermissions_Admin, convertPermissions(list.AclPermissionsAdmin))
 }
