@@ -44,7 +44,7 @@ func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
 		},
 	})
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
-	svc := service.NewV2Service(mwMock, readerMock, creatorMock, store, objectstore.TestTechSpaceId)
+	svc := service.NewV2Service(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), store, objectstore.TestTechSpaceId)
 	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, router: gin.New()}
 }
 

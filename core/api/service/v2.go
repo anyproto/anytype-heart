@@ -25,14 +25,16 @@ type V2Service struct {
 	mw          apicore.ClientCommands
 	reader      apicore.ObjectReader
 	creator     apicore.ObjectCreator
+	mutator     apicore.ObjectMutator
 	store       objectstore.ObjectStore
 	techSpaceId string
 }
 
 // NewV2Service creates the API v2 service. creator may be nil when only the
-// read surface is served (the router skips the create routes then).
-func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, store objectstore.ObjectStore, techSpaceId string) *V2Service {
-	return &V2Service{mw: mw, reader: reader, creator: creator, store: store, techSpaceId: techSpaceId}
+// read surface is served (the router skips the create routes then); mutator
+// may be nil when the edit surface is not served.
+func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, creator apicore.ObjectCreator, mutator apicore.ObjectMutator, store objectstore.ObjectStore, techSpaceId string) *V2Service {
+	return &V2Service{mw: mw, reader: reader, creator: creator, mutator: mutator, store: store, techSpaceId: techSpaceId}
 }
 
 // ensureSpace rejects an unknown space_id before any per-space objectstore

@@ -277,6 +277,7 @@ packages:
       FileObjectService:
       ObjectReader:
       ObjectCreator:
+      ObjectMutator:
   github.com/anyproto/anytype-heart/core/api/filter:
     interfaces:
       ApiService:

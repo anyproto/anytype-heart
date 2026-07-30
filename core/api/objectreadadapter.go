@@ -27,9 +27,23 @@ func newObjectReadAdapter(getter cache.ObjectGetter) apicore.ObjectReader {
 func (a *objectReadAdapter) ReadObject(ctx context.Context, spaceId string, objectId string) (apicore.ObjectRead, error) {
 	var read apicore.ObjectRead
 	err := cache.DoContextFullID(a.getter, ctx, domain.FullID{SpaceID: spaceId, ObjectID: objectId}, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-		read.SbType = sb.Type().ToProto()
-		read.Snapshot = &model.SmartBlockSnapshotBase{
+		read = readLiveState(sb)
+		return nil
+	})
+	if err != nil {
+		return apicore.ObjectRead{}, fmt.Errorf("read live object state: %w", err)
+	}
+	return read, nil
+}
+
+// readLiveState captures one consistent read of a locked smartblock:
+// snapshot and tree heads under the same lock, so the derived etag and the
+// content always agree. Shared by the read and mutate adapters.
+func readLiveState(sb smartblock.SmartBlock) apicore.ObjectRead {
+	st := sb.NewState()
+	return apicore.ObjectRead{
+		SbType: sb.Type().ToProto(),
+		Snapshot: &model.SmartBlockSnapshotBase{
 			Blocks:      st.BlocksToSave(),
 			Details:     st.CombinedDetails().ToProto(),
 			ObjectTypes: domain.MarshalTypeKeys(st.ObjectTypeKeys()),
@@ -42,12 +56,7 @@ func (a *objectReadAdapter) ReadObject(ctx context.Context, spaceId string, obje
 			Collections: pbtypes.CopyStruct(st.Store(), true),
 			Key:         st.UniqueKeyInternal(),
 			FileInfo:    st.GetFileInfo().ToModel(),
-		}
-		read.Heads = append([]string(nil), sb.GetDocInfo().Heads...)
-		return nil
-	})
-	if err != nil {
-		return apicore.ObjectRead{}, fmt.Errorf("read live object state: %w", err)
+		},
+		Heads: append([]string(nil), sb.GetDocInfo().Heads...),
 	}
-	return read, nil
 }

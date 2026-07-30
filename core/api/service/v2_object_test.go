@@ -33,6 +33,7 @@ type v2Fixture struct {
 	mwMock      *mock_apicore.MockClientCommands
 	readerMock  *mock_apicore.MockObjectReader
 	creatorMock *mock_apicore.MockObjectCreator
+	mutatorMock *mock_apicore.MockObjectMutator
 	objectStore *objectstore.StoreFixture
 }
 
@@ -43,12 +44,14 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 	mwMock := mock_apicore.NewMockClientCommands(t)
 	readerMock := mock_apicore.NewMockObjectReader(t)
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
+	mutatorMock := mock_apicore.NewMockObjectMutator(t)
 	objectStore := objectstore.NewStoreFixture(t)
 	return &v2Fixture{
-		V2Service:   NewV2Service(mwMock, readerMock, creatorMock, objectStore, objectstore.TestTechSpaceId),
+		V2Service:   NewV2Service(mwMock, readerMock, creatorMock, mutatorMock, objectStore, objectstore.TestTechSpaceId),
 		mwMock:      mwMock,
 		readerMock:  readerMock,
 		creatorMock: creatorMock,
+		mutatorMock: mutatorMock,
 		objectStore: objectStore,
 	}
 }

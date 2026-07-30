@@ -64,6 +64,18 @@ type ObjectCreator interface {
 	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)
 }
 
+// ObjectMutator applies one atomic mutation to a live object — the API v2
+// edit path (APIV2.md §2 Phase 3). MutateObject locks the object, hands the
+// current consistent read to build, and — when build returns a snapshot —
+// diff-applies it onto the live state as ONE change set (the smartblock
+// reset-to-version machinery, so local details, migrations and bundled
+// relation links are handled like the import path). build returning
+// (nil, nil) commits nothing. The returned heads are the post-apply tree
+// heads, the input of the new etag.
+type ObjectMutator interface {
+	MutateObject(ctx context.Context, spaceId string, objectId string, build func(cur ObjectRead) (*model.SmartBlockSnapshotBase, error)) (heads []string, err error)
+}
+
 type ClientCommands interface {
 	// Wallet
 	AccountLocalLinkNewChallenge(context.Context, *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse
