@@ -341,7 +341,11 @@ single-element lists on round-trip (§11).
 meaningfully preserves (mirroring `core/block/import/pb`): `createdDate`,
 `lastModifiedDate`, `creator`, `isFavorite`, `isArchived`, `resolvedLayout`.
 Those six are **output-only** (§4a): export writes them, generators should
-not. `id` is lifted to the envelope and `type` to `type`. Everything else
+not — with one deliberate exception. **`isFavorite` is authorable**, because
+the pb importer reads it to choose a space's root objects
+(`core/block/import/pb/space.go`), which is how a generated bundle
+designates the object a user should land on. A bundle with no favourite, no
+`homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
 Validation: the schema types `properties` loosely (`object` with scalar/array
