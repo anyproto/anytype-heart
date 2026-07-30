@@ -40,11 +40,22 @@ const (
 	// Informational — run diagnostics, never a problem.
 	IssueFlavourDetected IssueCode = "flavourDetected"
 	IssueTypeSuggested   IssueCode = "typeSuggested"
+	// IssuePropertyMapped records one adopted schema-plan property decision:
+	// a remap onto a bundled relation, a cross-container merge, or a format
+	// fix (docs/ImportV2LLM.md §8).
+	IssuePropertyMapped IssueCode = "propertyMapped"
 
 	// Warnings — deliberate data decisions and placeholders.
 	IssueUnsupportedBlock IssueCode = "unsupportedBlock"
 	IssueDataLoss         IssueCode = "dataLoss"
 	IssueMissingTarget    IssueCode = "missingTarget"
+	// IssueLLMPlanFailed means the optional LLM structure analysis was
+	// requested but unavailable (endpoint, auth, budget, invalid response);
+	// the run degraded to built-in rules. Never fatal.
+	IssueLLMPlanFailed IssueCode = "llmPlanFailed"
+	// IssueLLMPlanEntryDropped means one plan entry failed validation and was
+	// ignored while the rest of the plan applied.
+	IssueLLMPlanEntryDropped IssueCode = "llmPlanEntryDropped"
 
 	// Object errors.
 	IssueObjectFailed    IssueCode = "objectFailed"
