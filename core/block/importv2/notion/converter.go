@@ -7,6 +7,7 @@ import (
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/block/importv2/notion/client"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/typesuggest"
 	"github.com/anyproto/anytype-heart/core/domain"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -51,15 +52,41 @@ type Converter struct {
 
 	// suggestor types database rows that would otherwise import as plain
 	// Pages (§11.5); suggestedTypes is keyed by data-source AND entity id
-	// so both parent forms on a page stub resolve.
+	// so both parent forms on a page stub resolve. The suggestor only serves
+	// late-discovered databases — pass-1 containers go through the plan.
 	suggestor      typesuggest.Suggestor
 	suggestedTypes map[string]domain.TypeKey
+
+	// plan phase state (docs/ImportV2LLM.md): the planner sees every pass-1
+	// schema at once; the sanitized plan drives container types and property
+	// remaps for the containers in `planned`.
+	planner        schemaplan.Planner
+	includeSamples bool
+	plan           schemaplan.Plan
+	planned        map[string]bool
+	planTypeKeys   map[domain.TypeKey]domain.TypeKey
+	schemaFetches  map[string]*schemaFetch
+}
+
+// Option configures a per-run converter.
+type Option func(*Converter)
+
+// WithPlanner injects the structure planner (the LLM one when the request
+// carries provider config). Default is the naive typesuggest wrapper.
+func WithPlanner(planner schemaplan.Planner) Option {
+	return func(c *Converter) { c.planner = planner }
+}
+
+// WithContentSamples lets the planner see member page titles
+// (request flag includeContentSamples).
+func WithContentSamples() Option {
+	return func(c *Converter) { c.includeSamples = true }
 }
 
 // New builds a per-run converter. tempDir is the run-scoped download
 // directory (removed by the adapter with the run).
-func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.CollectionFactory, tempDir string) *Converter {
-	return &Converter{
+func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.CollectionFactory, tempDir string, opts ...Option) *Converter {
+	c := &Converter{
 		client:                apiClient,
 		fetcher:               fetcher,
 		factory:               factory,
@@ -71,7 +98,15 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		files:                 newFileRegistry(),
 		suggestor:             typesuggest.NewNaive(),
 		suggestedTypes:        map[string]domain.TypeKey{},
+		planner:               schemaplan.NewNaive(),
+		planned:               map[string]bool{},
+		planTypeKeys:          map[domain.TypeKey]domain.TypeKey{},
+		schemaFetches:         map[string]*schemaFetch{},
 	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 func (c *Converter) Name() string { return "Notion" }
@@ -109,6 +144,9 @@ func (c *Converter) Convert(ctx context.Context, sink importv2.Sink) (importv2.R
 	if c.searchTruncated {
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, "search",
 			"workspace search pagination stopped early (inconsistent cursor from the API); importing what was gathered"))
+	}
+	if err := c.planStructure(ctx, sink); err != nil {
+		return importv2.RootSpec{}, err
 	}
 	for _, database := range c.databases {
 		if err := c.convertDatabase(ctx, database, sink); err != nil {

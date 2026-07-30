@@ -3,10 +3,10 @@ package notion
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"sort"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/block/importv2/typesuggest"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -41,38 +41,20 @@ func (d *databaseObject) title() string {
 // options, then the collection object whose members are the data source's
 // pages (known from the pass-1 hierarchy).
 func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink importv2.Sink) error {
-	schemaId := stub.Id
-	if stub.Kind == kindDatabase {
-		// Defensive: a bare database result — resolve its first data source
-		// for the schema (search normally returns data_source objects).
-		var database struct {
-			DataSources []struct {
-				Id string `json:"id"`
-			} `json:"data_sources"`
+	fetch := c.schemaFetches[stub.Id]
+	if fetch == nil {
+		// Late discovery — pass-1 schemas were prefetched by the plan phase,
+		// this stub was found during pass 2.
+		var err error
+		if fetch, err = c.fetchSchema(ctx, stub); err != nil {
+			return err
 		}
-		if err := c.client.Request(ctx, http.MethodGet, "/databases/"+stub.Id, nil, &database); err != nil {
-			if ctx.Err() != nil {
-				return fmt.Errorf("fetch database: %w", err)
-			}
-			sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch database: %w", err)))
-			return nil
-		}
-		if len(database.DataSources) == 0 {
-			sink.Issue(importv2.Warning(importv2.IssueDataLoss, stub.Id, "database exposes no data sources; skipped"))
-			return nil
-		}
-		schemaId = database.DataSources[0].Id
-		c.dataSourcesByDatabase[stub.Id] = append(c.dataSourcesByDatabase[stub.Id], stub.Id)
 	}
-
-	var database databaseObject
-	if err := c.client.Request(ctx, http.MethodGet, "/data_sources/"+schemaId, nil, &database); err != nil {
-		if ctx.Err() != nil {
-			return fmt.Errorf("fetch data source: %w", err)
-		}
-		sink.Issue(importv2.ObjectError(importv2.IssueObjectFailed, stub.Id, fmt.Errorf("fetch data source: %w", err)))
+	if fetch.issue != nil {
+		sink.Issue(*fetch.issue)
 		return nil
 	}
+	database, schemaId := fetch.database, fetch.schemaId
 
 	for name := range database.Properties {
 		c.properties.noteName(name)
@@ -83,6 +65,11 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 	}
 	sort.Strings(names)
 
+	var containerPlan schemaplan.ContainerPlan
+	if c.planned[stub.Id] {
+		containerPlan = c.plan.Containers[stub.Id]
+	}
+
 	details := domain.NewDetails()
 	var schemaDefs []*relationDef
 	for _, name := range names {
@@ -91,10 +78,15 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		if property.Type == "title" {
 			continue // the title property is the object name, not a relation
 		}
+		planProp := containerPlan.Properties[property.Id]
 		if property.Type == "formula" || property.Type == "rollup" {
 			// Their format is value-typed (a date formula must become a date
 			// relation); the first page value defines the relation instead
 			// of the schema committing a generic text format.
+			if planProp.Key != "" {
+				sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, stub.Id,
+					fmt.Sprintf("property %q is value-typed and cannot be remapped", name)))
+			}
 			continue
 		}
 		if property.Type == "verification" {
@@ -102,7 +94,7 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 				fmt.Sprintf("property %q (verification) has no anytype counterpart and was skipped", name)))
 			continue
 		}
-		def, err := c.emitProperty(ctx, property, sink)
+		def, err := c.emitProperty(ctx, property, planProp, database.title(), sink)
 		if err != nil {
 			return err
 		}
@@ -115,7 +107,11 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		details.Set(domain.RelationKey(def.key), zeroValueOf(def.format))
 	}
 
-	c.suggestPageType(stub.Id, schemaId, &database, names, sink)
+	if c.planned[stub.Id] {
+		c.applyPlanType(stub.Id, schemaId, database, sink)
+	} else {
+		c.suggestPageType(stub.Id, schemaId, database, names, sink)
+	}
 
 	object, err := c.factory.MakeCollection(database.title(), c.databaseMembers(stub.Id, schemaId))
 	if err != nil {
@@ -168,14 +164,24 @@ func (c *Converter) suggestPageType(entityId, schemaId string, database *databas
 }
 
 // emitProperty resolves one property against the shared store and emits the
-// relation and its schema-declared options on first sight.
-func (c *Converter) emitProperty(ctx context.Context, property propertySchema, sink importv2.Sink) (*relationDef, error) {
+// relation and its schema-declared options on first sight. A non-zero
+// planProp redirects the property onto the plan's target relation instead of
+// minting one from the notion id (docs/ImportV2LLM.md §4).
+func (c *Converter) emitProperty(ctx context.Context, property propertySchema, planProp schemaplan.PropertyPlan, containerName string, sink importv2.Sink) (*relationDef, error) {
 	if _, supported := relationFormatOf(property.Type); !supported {
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, property.Id,
 			fmt.Sprintf("property %q of type %q is not supported and was skipped", property.Name, property.Type)))
 		return nil, nil
 	}
-	def, created := c.properties.resolveRelation(property)
+	var def *relationDef
+	var created bool
+	if planProp.Key != "" {
+		def, created = c.properties.resolvePlanTarget(property, planProp)
+		sink.Issue(importv2.Info(importv2.IssuePropertyMapped,
+			fmt.Sprintf("database %q property %q imported as %q (%s)", containerName, property.Name, def.name, def.key)))
+	} else {
+		def, created = c.properties.resolveRelation(property)
+	}
 	if def == nil {
 		return nil, nil
 	}

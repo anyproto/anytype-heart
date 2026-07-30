@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -195,11 +196,15 @@ func (c *Converter) convertProperties(ctx context.Context, pageId string, proper
 				fmt.Sprintf("property %q (verification) has no anytype counterpart and was skipped", name)))
 			continue
 		}
+		// Page-side definitions carry no plan target: schema-declared
+		// properties were already resolved (and possibly remapped) by their
+		// database, and the rest are value-typed formula/rollup or orphan-page
+		// properties the plan does not cover (docs/ImportV2LLM.md §4).
 		def, err := c.emitProperty(ctx, propertySchema{
 			Id:   value.Id,
 			Type: effectivePropertyType(value),
 			Name: name,
-		}, sink)
+		}, schemaplan.PropertyPlan{}, "", sink)
 		if err != nil || def == nil {
 			if err != nil {
 				return err

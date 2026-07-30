@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
@@ -50,8 +51,11 @@ type relationDef struct {
 // property exists — redirect to the bundled Tag relation; first match wins;
 // status and people are never redirected.
 type propertiesStore struct {
-	byNotionId    map[string]*relationDef
-	byNameFormat  map[string]*relationDef
+	byNotionId   map[string]*relationDef
+	byNameFormat map[string]*relationDef
+	// byKey dedupes by final anytype key — the identity plan targets share
+	// (two containers remapping onto dueDate resolve to one def).
+	byKey         map[string]*relationDef
 	options       map[string]bool // option source key → emitted
 	tagRedirected bool
 	hasTagNamed   bool // a property named exactly "Tag" was seen
@@ -61,6 +65,7 @@ func newPropertiesStore() *propertiesStore {
 	return &propertiesStore{
 		byNotionId:   map[string]*relationDef{},
 		byNameFormat: map[string]*relationDef{},
+		byKey:        map[string]*relationDef{},
 		options:      map[string]bool{},
 	}
 }
@@ -93,6 +98,7 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 		}
 		p.byNotionId[property.Id] = def
 		p.byNameFormat[nameFormat] = def
+		p.byKey[def.key] = def
 		return def, false
 	}
 
@@ -105,7 +111,68 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 	}
 	p.byNotionId[property.Id] = def
 	p.byNameFormat[nameFormat] = def
+	p.byKey[key] = def
 	return def, true
+}
+
+// resolvePlanTarget resolves a property onto its schema-plan target: the
+// bundled relation, or the plan's shared custom key. created follows the
+// resolveRelation contract (the caller emits the relation object once).
+func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schemaplan.PropertyPlan) (def *relationDef, created bool) {
+	if def, ok := p.byNotionId[property.Id]; ok {
+		return def, false
+	}
+	if bundle.HasRelation(plan.Key) {
+		key := plan.Key.String()
+		if def, ok := p.byKey[key]; ok {
+			p.byNotionId[property.Id] = def
+			return def, false
+		}
+		bundled := bundle.MustGetRelation(plan.Key)
+		def = &relationDef{
+			key:       key,
+			sourceKey: plan.Key.BundledURL(),
+			format:    bundled.Format,
+			name:      bundled.Name,
+			bundled:   true,
+		}
+		p.byKey[key] = def
+		p.byNotionId[property.Id] = def
+		return def, false
+	}
+	key := schemaplan.CustomRelationKey(plan.Key).String()
+	if def, ok := p.byKey[key]; ok {
+		p.byNotionId[property.Id] = def
+		return def, false
+	}
+	name := plan.Name
+	if name == "" {
+		name = property.Name
+	}
+	format := plan.Format
+	if format == 0 {
+		format, _ = relationFormatOf(property.Type)
+	}
+	def = &relationDef{
+		key:       key,
+		sourceKey: "relation:" + key,
+		format:    format,
+		name:      name,
+	}
+	p.byKey[key] = def
+	p.byNotionId[property.Id] = def
+	return def, true
+}
+
+// registerPlanDef seeds a plan-minted relation def ahead of use (plan type
+// definitions emit their relations before any container resolves them).
+// Returns whether the def was new — i.e. whether the caller must emit it.
+func (p *propertiesStore) registerPlanDef(key, sourceKey, name string, format model.RelationFormat) bool {
+	if _, ok := p.byKey[key]; ok {
+		return false
+	}
+	p.byKey[key] = &relationDef{key: key, sourceKey: sourceKey, format: format, name: name}
+	return true
 }
 
 func (p *propertiesStore) isTagRedirect(property propertySchema) bool {
