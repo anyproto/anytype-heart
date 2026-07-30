@@ -35,6 +35,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"os"
 )
 
@@ -70,14 +71,6 @@ func main() {
 }
 
 func run(inDir, outDir string, normalizeIndent, lenient bool, format outputFormat) error {
-	// TODO(GO-7383): emit the archive's `profile` file from index.json (§2c) —
-	// name/iconImage -> name/avatar, homepage-or-entrypoint -> spaceDashboardId,
-	// widgets -> widgets. Note that `entrypoint` is TEMPORARILY ignored by the
-	// installer: pb.Profile carries no entry-point field, so
-	// builtinobjects.inject opens widgets[0].targetObjectId. Until the
-	// heart-side profile handling reads an entry point of its own, a bundle has
-	// to list its entrypoint first in `widgets` for it to be honoured, and
-	// anyblockvalidate warns when it does not.
 	files, err := anyblockbatch.DiscoverJSONFiles(inDir)
 	if err != nil {
 		return fmt.Errorf("discover input files: %w", err)
@@ -165,6 +158,45 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		converted++
 	}
 
+	// the bundle index (§2c) becomes the archive's profile file: the space's
+	// name, its entry point and its sidebar. Written after the snapshots so a
+	// failed conversion does not leave a profile pointing at nothing.
+	if idxPath, ok := anyblockbatch.IndexPath(inDir); ok {
+		data, readErr := os.ReadFile(idxPath)
+		if readErr != nil {
+			return fmt.Errorf("read %s: %w", idxPath, readErr)
+		}
+		idx, idxErr := anyblockjson.UnmarshalIndex(data)
+		if idxErr != nil {
+			return fmt.Errorf("%s: %w", anyblockjson.IndexFileName, idxErr)
+		}
+		if dangling := anyblockbatch.CheckIndexTargets(idx, files); len(dangling) > 0 {
+			return fmt.Errorf("%d unresolvable reference%s in %s:\n%s",
+				len(dangling), plural2(len(dangling)), anyblockjson.IndexFileName,
+				anyblockbatch.ReportTargets(dangling))
+		}
+		names, nameErr := anyblockbatch.ObjectNames(files)
+		if nameErr != nil {
+			return fmt.Errorf("index object names: %w", nameErr)
+		}
+		if err := writeProfile(outDir, idx, names); err != nil {
+			return fmt.Errorf("write profile: %w", err)
+		}
+		entry := idx.EffectiveEntryPoint()
+		if entry == "" {
+			entry = "(nothing — no widget names an object)"
+		}
+		fmt.Printf("profile written: space %q, install opens %s, %d widget(s)\n",
+			idx.Name, entry, len(idx.Widgets))
+		if declared := idx.EntryPoint(); declared != "" && declared != entry {
+			fmt.Fprintf(os.Stderr, "warning: entrypoint %q is not the first widget, so it is not what opens — the installer uses widgets[0] (%s)\n",
+				declared, entry)
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "warning: no %s — the space gets no name, no entry point and no sidebar (SPEC.md \u00a72c)\n",
+			anyblockjson.IndexFileName)
+	}
+
 	for _, p := range b.pending {
 		if err := writeSnapshot(outDir, p.id, p.sbType, p.snapshot, format); err != nil {
 			return fmt.Errorf("write synthesized %s: %w", p.id, err)
@@ -185,4 +217,11 @@ func plural(n int) string {
 		return "y"
 	}
 	return "ies"
+}
+
+func plural2(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
