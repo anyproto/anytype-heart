@@ -34,6 +34,11 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
+// v2MaxOpsPerPatch bounds one PATCH batch. Each op re-renders the document
+// view while the object lock is held, so an unbounded batch would hold the
+// lock for O(ops × document) work (review A′2).
+const v2MaxOpsPerPatch = 512
+
 // v2PatchRequest is the PATCH body: the closed op list, nothing else.
 type v2PatchRequest struct {
 	Ops []json.RawMessage `json:"ops"`
@@ -50,15 +55,27 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	if err != nil {
 		return nil, err
 	}
-	// create-missing option resolution happens here, BEFORE the object lock,
-	// so no create-RPC ever runs inside it (review B6/A6). In-lock resolution
-	// then hits the resolver's cache.
 	resolvers := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), dryRun)
+
+	// Create-missing option resolution runs before the object lock, so no
+	// create-RPC ever holds it (review B6/A6) — but it must NOT run before the
+	// request is known to be legitimate: prewarming first meant a PATCH to a
+	// nonexistent object (404), with a stale If-Match (412) or on a restricted
+	// object (403) still permanently created every option the batch named
+	// (review A′1). So: read the object and check the preconditions first,
+	// prewarm only once they pass, then take the lock.
+	cur, err := s.reader.ReadObject(ctx, spaceId, objectId)
+	if err != nil {
+		return nil, mapReadError(spaceId, objectId, err)
+	}
+	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
+		return nil, err
+	}
 	s.prewarmCreateMissing(ops, resolvers)
 
 	var result *apimodel.V2EditResult
 	run := func(edit apicore.ObjectEdit) error {
-		res, err := s.applyPatchOps(spaceId, objectId, ops, ifMatch, edit, resolvers)
+		res, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers)
 		if err != nil {
 			return err
 		}
@@ -66,10 +83,6 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 		return nil
 	}
 	if dryRun {
-		cur, err := s.reader.ReadObject(ctx, spaceId, objectId)
-		if err != nil {
-			return nil, mapReadError(spaceId, objectId, err)
-		}
 		edit, err := editFromRead(objectId, cur)
 		if err != nil {
 			return nil, err
@@ -107,7 +120,7 @@ func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, 
 // applied to the state), the resolver error check, the flag-gated safety
 // net, and the diffStats. The caller commits (or, on dry run, discards) the
 // state.
-func (s *V2Service) applyPatchOps(spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*apimodel.V2EditResult, error) {
+func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*apimodel.V2EditResult, error) {
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
 		return nil, err
 	}
@@ -117,6 +130,11 @@ func (s *V2Service) applyPatchOps(spaceId, objectId string, ops []json.RawMessag
 		return nil, err
 	}
 	for i, raw := range ops {
+		// the loop runs under the object lock: honour cancellation so an
+		// abandoned request stops holding it (review A′2)
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		if err := applier.apply(i, raw); err != nil {
 			return nil, err
 		}
@@ -124,7 +142,8 @@ func (s *V2Service) applyPatchOps(spaceId, objectId string, ops []json.RawMessag
 	if err := resolvers.err(); err != nil {
 		return nil, fmt.Errorf("resolve document references: %w", err)
 	}
-	afterDoc, err := applier.marshalDoc(nil)
+	// reuse the view's document when the last op left it valid (review A′2)
+	afterDoc, err := applier.currentDoc()
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +244,16 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 	if len(req.Ops) == 0 {
 		return nil, apimodel.V2ValidationFailed("ops must not be empty",
 			apimodel.V2Issue{Path: "/ops", Message: "give at least one op", Hint: "allowed ops: " + joinOpNames()})
+	}
+	// bound the batch: every op re-renders the document view under the object
+	// lock, so an unbounded batch is a self-inflicted DoS (review A′2/B6).
+	if len(req.Ops) > v2MaxOpsPerPatch {
+		return nil, apimodel.V2ValidationFailed("too many ops in one PATCH",
+			apimodel.V2Issue{
+				Path:    "/ops",
+				Message: fmt.Sprintf("%d ops exceeds the %d-op limit", len(req.Ops), v2MaxOpsPerPatch),
+				Hint:    "split the edit across several PATCH requests",
+			})
 	}
 	return req.Ops, nil
 }

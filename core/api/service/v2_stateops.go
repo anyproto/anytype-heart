@@ -69,6 +69,13 @@ type v2StateApplier struct {
 	// mutating op. Everything agent-facing (refs, indents, error texts) reads
 	// it; nothing writes it.
 	view *v2EditDoc
+	// viewBody is the marshaled form the current view was parsed from, so the
+	// caller can reuse it as the after-document instead of marshaling again
+	// (review A′2).
+	viewBody []byte
+	// marshalResolver is the ONE store-backed resolver reused across every
+	// marshal of this PATCH (review A′2).
+	marshalResolver *storeresolver.Resolvers
 }
 
 func newV2StateApplier(s *V2Service, spaceId, objectId string, sbType model.SmartBlockType, st *state.State, resolvers *creatingResolvers) *v2StateApplier {
@@ -98,9 +105,20 @@ func snapshotFromState(st *state.State) *model.SmartBlockSnapshotBase {
 	}
 }
 
+// marshalOptions returns the applier's export options, reusing ONE
+// storeresolver for the whole PATCH. A fresh resolver per marshal would start
+// with empty caches and re-run ListAllRelations/ListRelationOptions against
+// the space index on every op — under the object lock (review A′2).
+func (a *v2StateApplier) marshalOptions() anyblockjson.Options {
+	if a.marshalResolver == nil {
+		a.marshalResolver = storeresolver.New(a.s.store.SpaceIndex(a.spaceId))
+	}
+	return a.marshalResolver.Options()
+}
+
 // marshalDoc renders the current state as its canonical flat document.
 func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte, error) {
-	opts := storeresolver.New(a.s.store.SpaceIndex(a.spaceId)).Options()
+	opts := a.marshalOptions()
 	if onWarning == nil {
 		onWarning = func(anyblockjson.Issue) {} // degrade, never fail, on view rebuilds
 	}
@@ -128,7 +146,23 @@ func (a *v2StateApplier) begin() ([]byte, error) {
 			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it (C11); edit it in the app or replace it wholesale with PUT",
 			warnings...)
 	}
+	// seed the view from the document we just rendered: without this the first
+	// op re-marshals immediately, so even a 1-op PATCH marshaled three times
+	// (review A′2).
+	if err := a.seedView(doc); err != nil {
+		return nil, err
+	}
 	return doc, nil
+}
+
+// seedView installs an already-marshaled document as the current view.
+func (a *v2StateApplier) seedView(body []byte) error {
+	view, err := parseEditDoc(body)
+	if err != nil {
+		return fmt.Errorf("object %s: %w", a.objectId, err)
+	}
+	a.view, a.viewBody = view, body
+	return nil
 }
 
 // doc returns the current view, rebuilding it when a mutation invalidated it.
@@ -140,17 +174,32 @@ func (a *v2StateApplier) doc() (*v2EditDoc, error) {
 	if err != nil {
 		return nil, err
 	}
-	view, err := parseEditDoc(body)
-	if err != nil {
-		return nil, fmt.Errorf("object %s: %w", a.objectId, err)
+	if err := a.seedView(body); err != nil {
+		return nil, err
 	}
-	a.view = view
-	return view, nil
+	return a.view, nil
+}
+
+// currentDoc returns the marshaled form of the current state, reusing the
+// view's body when it is still valid (review A′2: the after-document for
+// diffStats is the view we already rendered).
+func (a *v2StateApplier) currentDoc() ([]byte, error) {
+	if a.viewBody != nil {
+		return a.viewBody, nil
+	}
+	body, err := a.marshalDoc(nil)
+	if err != nil {
+		return nil, err
+	}
+	if err := a.seedView(body); err != nil {
+		return nil, err
+	}
+	return a.viewBody, nil
 }
 
 // mutated invalidates the view after a state mutation.
 func (a *v2StateApplier) mutated() {
-	a.view = nil
+	a.view, a.viewBody = nil, nil
 }
 
 // importOptions are the fragment-import options: the Phase-2 create-missing
@@ -446,8 +495,45 @@ func (a *v2StateApplier) replaceLive(oldWasTable bool, blocks []*model.Block) {
 			newRoot.ChildrenIds = append([]string(nil), old.Model().ChildrenIds...)
 		}
 	}
+	if oldWasTable && newIsTable {
+		pinTableWrappers(a.st, blocks)
+	}
 	a.setBlocks(blocks)
 	a.mutated()
+}
+
+// pinTableWrappers reuses the live table's column/row wrapper ids for the
+// re-imported table. The format does not carry the wrappers (they are
+// §6.1-internal), so the importer mints fresh ids for them — which turned
+// every table op into "replace both wrappers, re-parent every row and
+// column", and made concurrent cell edits on two devices merge into a table
+// with duplicated rows and columns (review A′3).
+func pinTableWrappers(st *state.State, blocks []*model.Block) {
+	table := blocks[0]
+	live := st.Pick(table.Id)
+	if live == nil || len(live.Model().ChildrenIds) != len(table.ChildrenIds) {
+		return
+	}
+	rename := map[string]string{}
+	for i, newId := range table.ChildrenIds {
+		liveId := live.Model().ChildrenIds[i]
+		if newId != liveId && st.Pick(liveId) != nil {
+			rename[newId] = liveId
+		}
+	}
+	if len(rename) == 0 {
+		return
+	}
+	for _, b := range blocks {
+		if to, ok := rename[b.Id]; ok {
+			b.Id = to
+		}
+		for i, child := range b.ChildrenIds {
+			if to, ok := rename[child]; ok {
+				b.ChildrenIds[i] = to
+			}
+		}
+	}
 }
 
 //

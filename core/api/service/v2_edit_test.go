@@ -49,6 +49,10 @@ func editRead(t *testing.T, doc string) apicore.ObjectRead {
 // mutated state is captured for assertions and newHeads reported.
 func (fx *v2Fixture) expectMutate(read apicore.ObjectRead, newHeads ...string) **state.State {
 	var captured *state.State
+	// PatchObject reads the object and checks preconditions BEFORE prewarming
+	// create-missing refs and taking the lock (review A′1), so every PATCH
+	// test needs the read wired.
+	fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil).Maybe()
 	fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", mock.Anything).
 		RunAndReturn(func(ctx context.Context, spaceId, objectId string, apply func(apicore.ObjectEdit) error) ([]string, error) {
 			st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: read.Snapshot})
@@ -392,6 +396,36 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, []any{"Export", "done"}, cells)
 	})
 
+	t.Run("setCell keeps the table's wrapper block ids (A′3)", func(t *testing.T) {
+		// the format does not carry the column/row layout wrappers, so the
+		// importer mints fresh ids for them. Reusing the live ids keeps a cell
+		// edit a cell edit — otherwise every table op replaces both wrappers
+		// and re-parents every row and column, and concurrent edits on two
+		// devices merge into a table with duplicated rows/columns.
+		fx := newV2Fixture(t)
+		read := editRead(t, editTableDoc)
+		var liveWrappers []string
+		for _, b := range read.Snapshot.Blocks {
+			if b.Id == "tblOne1" {
+				liveWrappers = append([]string(nil), b.ChildrenIds...)
+			}
+		}
+		require.Len(t, liveWrappers, 2, "table has column and row wrappers")
+		captured := fx.expectMutate(read, "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setCell","tableId":"tblOne1","row":"rowB","col":"colB","value":"done"}`), "", false)
+
+		require.NoError(t, err)
+		table := (*captured).Pick("tblOne1")
+		require.NotNil(t, table)
+		assert.Equal(t, liveWrappers, table.Model().ChildrenIds,
+			"the wrapper ids must survive a cell edit")
+		for _, id := range liveWrappers {
+			assert.NotNil(t, (*captured).Pick(id), "wrapper %s must still exist", id)
+		}
+	})
+
 	t.Run("setCell unknown row lists the rows", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editTableDoc))
@@ -433,6 +467,43 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, true, props["done"])
 		_, hasDescription := props["description"]
 		assert.False(t, hasDescription)
+	})
+
+	t.Run("a rejected precondition creates no options (A′1)", func(t *testing.T) {
+		// create-missing resolution must run only after the request is known
+		// to be legitimate: prewarming first meant a stale If-Match (412), a
+		// missing object (404) or a restricted object (403) still permanently
+		// created every option the batch named.
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+		// no ObjectCreateRelationOption expectation and no mutator expectation:
+		// reaching either fails the test
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","set":{"severity":["BrandNewOption"]}}`), `"deadbeef"`, false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusConflict, apiErr.Status)
+		assert.Equal(t, apimodel.V2CodeEtagMismatch, apiErr.Code)
+	})
+
+	t.Run("a batch beyond the op cap is refused (A′2)", func(t *testing.T) {
+		// every op re-renders the view under the object lock, so the batch is
+		// bounded; the cap is checked before any read or lock
+		fx := newV2Fixture(t)
+		ops := make([]string, v2MaxOpsPerPatch+1)
+		for i := range ops {
+			ops[i] = `{"op":"setProperties","set":{"name":"x"}}`
+		}
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", patchBody(ops...), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, "/ops", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "exceeds the 512-op limit")
 	})
 
 	t.Run("setProperties rejects output-only and unknown keys path-addressed", func(t *testing.T) {
@@ -530,9 +601,14 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Hint, "replaceText")
 	})
 
-	t.Run("stale If-Match is a 409 with the current etag", func(t *testing.T) {
+	t.Run("stale If-Match is a 409 with the current etag, before the lock", func(t *testing.T) {
+		// A′1: the precondition is checked on a plain read BEFORE prewarming
+		// create-missing refs and before taking the object lock — so a stale
+		// If-Match never reaches the mutator and can never mint options.
 		fx := newV2Fixture(t)
-		fx.expectMutate(editRead(t, editBaseDoc))
+		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").
+			Return(editRead(t, editBaseDoc), nil)
+		// deliberately NO mutator expectation: reaching it would fail the test
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"deleteBlock","id":"blockChild1"}`), `"deadbeef"`, false)
