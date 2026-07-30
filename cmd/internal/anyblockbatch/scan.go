@@ -176,15 +176,18 @@ func CheckPropertyFormats(files []string, formats map[string]FormatInfo) ([]Unde
 	return out, nil
 }
 
-// DiscoverJSONFiles walks root and returns every .json file, sorted so a
-// batch is deterministic regardless of directory order.
+// DiscoverJSONFiles walks root and returns every .json object document,
+// sorted so a batch is deterministic regardless of directory order. The
+// bundle index (§2c) is excluded: it describes the bundle rather than an
+// object, has its own schema, and would fail every object-level check.
 func DiscoverJSONFiles(root string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(root, func(p string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.HasSuffix(p, ".json") {
+		if !info.IsDir() && strings.HasSuffix(p, ".json") &&
+			filepath.Base(p) != anyblockjson.IndexFileName {
 			files = append(files, p)
 		}
 		return nil
@@ -473,4 +476,56 @@ func ReportTargets(bs []BadTarget) string {
 		fmt.Fprintf(&b, "  %s: property %q targets %q — %s\n", t.File, t.Property, t.Target, t.Reason)
 	}
 	return b.String()
+}
+
+// IndexPath returns the bundle index's path, and whether it exists.
+func IndexPath(root string) (string, bool) {
+	p := filepath.Join(root, anyblockjson.IndexFileName)
+	if st, err := os.Stat(p); err == nil && !st.IsDir() {
+		return p, true
+	}
+	return "", false
+}
+
+// CheckIndexTargets finds index.json references that name nothing the bundle
+// defines. Reserved homepages and reserved widget targets name built-in
+// screens and listings, so they are not expected to resolve.
+func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
+	ids := map[string]bool{}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		var probe struct {
+			Id string `json:"id"`
+		}
+		if json.Unmarshal(data, &probe) == nil && probe.Id != "" {
+			ids[probe.Id] = true
+		}
+	}
+
+	var out []BadTarget
+	if e := idx.Entrypoint; e != "" && !ids[e] {
+		out = append(out, BadTarget{
+			File: anyblockjson.IndexFileName, Property: "entrypoint", Target: e,
+			Reason: "no object with that id in the bundle — the install would open nothing",
+		})
+	}
+	if h := idx.Homepage; h != "" && !anyblockjson.IsReservedHomepage(h) && !ids[h] {
+		out = append(out, BadTarget{
+			File: anyblockjson.IndexFileName, Property: "homepage", Target: h,
+			Reason: "no object with that id in the bundle (and it is not a reserved homepage)",
+		})
+	}
+	for i, w := range idx.Widgets {
+		if anyblockjson.IsReservedWidgetTarget(w.Target) || ids[w.Target] {
+			continue
+		}
+		out = append(out, BadTarget{
+			File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
+			Reason: "no object with that id in the bundle (and it is not a reserved widget target)",
+		})
+	}
+	return out
 }

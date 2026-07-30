@@ -47,17 +47,56 @@ func TestIndex_Roundtrip(t *testing.T) {
 }
 
 func TestIndex_EntryPoint(t *testing.T) {
-	t.Run("no widgets means no entry point", func(t *testing.T) {
+	t.Run("the declared entrypoint wins over widget order", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+			"entrypoint": "page-home",
+			"widgets": [{"target": "type-task", "layout": "view"}]}`))
+		require.NoError(t, err)
+		assert.Equal(t, "page-home", idx.EntryPoint(),
+			"reordering the sidebar must not change what opens")
+	})
+
+	t.Run("nothing declared means no entry point", func(t *testing.T) {
 		idx, err := UnmarshalIndex([]byte(`{"version": 1, "name": "X"}`))
 		require.NoError(t, err)
 		assert.Empty(t, idx.EntryPoint())
 	})
-	// a reserved listing is not an object, so it cannot be what opens
-	t.Run("a reserved first widget yields none", func(t *testing.T) {
+
+	// bundles written before entrypoint existed carried it as widgets[0]
+	t.Run("falls back to the first widget naming an object", func(t *testing.T) {
 		idx, err := UnmarshalIndex([]byte(`{"version": 1,
 			"widgets": [{"target": "recent"}, {"target": "page-home"}]}`))
 		require.NoError(t, err)
-		assert.Empty(t, idx.EntryPoint())
+		assert.Equal(t, "page-home", idx.EntryPoint(), "reserved listings are skipped")
+	})
+
+	t.Run("a reserved listing cannot be an entrypoint", func(t *testing.T) {
+		for _, bad := range []string{"widgets", "graph", "favorite", "recent"} {
+			_, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "` + bad + `"}`))
+			require.Error(t, err, bad)
+		}
+	})
+}
+
+// homepage is what opens on every later entry; omitting it means "the same
+// page you landed on", never the widgets screen
+func TestIndex_SpaceHomepage(t *testing.T) {
+	t.Run("defaults to the entrypoint", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1, "entrypoint": "page-home"}`))
+		require.NoError(t, err)
+		assert.Equal(t, "page-home", idx.SpaceHomepage())
+	})
+	t.Run("an explicit value wins", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+			"entrypoint": "page-welcome", "homepage": "page-dashboard"}`))
+		require.NoError(t, err)
+		assert.Equal(t, "page-dashboard", idx.SpaceHomepage())
+	})
+	t.Run("a reserved homepage is still allowed, deliberately", func(t *testing.T) {
+		idx, err := UnmarshalIndex([]byte(`{"version": 1,
+			"entrypoint": "page-home", "homepage": "graph"}`))
+		require.NoError(t, err)
+		assert.Equal(t, "graph", idx.SpaceHomepage())
 	})
 }
 

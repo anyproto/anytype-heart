@@ -29,15 +29,21 @@
       "description": "The space's icon as an image, given as the **name** of an image object shipped in the bundle — not its id. The installer resolves it by querying for an image whose name matches, so the bundle must contain both the image object and its file. A bundle written without image assets should use iconEmoji instead."
     },
 
+    "entrypoint": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "enum": ["widgets", "graph", "favorite", "recent", "set", "collection", "allObjects", "recentOpen"] },
+      "description": "The object opened once, immediately after the space is created from this bundle — the first thing a user ever sees. Must be an object id from this bundle: a reserved listing cannot be opened."
+    },
     "homepage": {
       "type": "string",
       "minLength": 1,
-      "description": "What opens when the user enters the space. An object id from this bundle, or a reserved name: `widgets` shows the sidebar dashboard (the default), `graph` opens the graph. Reaches the space as the `homepage` detail."
+      "description": "What opens whenever the user enters the space afterwards. An object id from this bundle; defaults to `entrypoint`. The reserved `widgets` (sidebar dashboard) and `graph` are accepted but are rarely right for a use case — on desktop the widgets are always in the sidebar anyway, so `widgets` wastes the main pane; it only reads well on mobile, which shows one screen at a time. Name a page."
     },
 
     "widgets": {
       "type": "array",
-      "description": "Sidebar widgets, in order. The first one is what the installer opens after import, so put the entry point first.",
+      "description": "Sidebar widgets, in the order they should appear. Independent of `entrypoint` — declaring one does not require a widget for it. Only give a type a widget when you want fast access to its objects (`layout: \"view\"`); the sidebar already lists every type automatically, so a link or list widget on a type just duplicates that.",
       "items": { "$ref": "#/$defs/widget" }
     }
   },
