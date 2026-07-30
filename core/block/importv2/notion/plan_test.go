@@ -133,6 +133,41 @@ func TestScriptedPlan(t *testing.T) {
 		require.NotNil(t, high, "remapped select options attach to the bundled key")
 	})
 
+	t.Run("select remapped onto a number-format type property drops safely", func(t *testing.T) {
+		// given — the reviewed corruption scenario: db1's Priority (select →
+		// status format) onto a type property declared number
+		planner := schemaplan.PlannerFunc(func(context.Context, []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+			return schemaplan.Plan{
+				NewTypes: []schemaplan.TypeDefinition{{
+					Key: "sprint", Name: "Sprint",
+					Properties: []schemaplan.TypeProperty{{Key: "effort", Name: "Effort", Format: model.RelationFormat_number}},
+				}},
+				Containers: map[string]schemaplan.ContainerPlan{
+					"db1": {TypeKey: "sprint", Properties: map[string]schemaplan.PropertyPlan{
+						"prio": {Key: "effort"},
+					}},
+				},
+			}, nil
+		})
+
+		// when
+		sink := runScriptedWithOptions(t, WithPlanner(planner))
+
+		// then — the entry dropped at sanitize; Priority imports unmapped
+		dropped := issueMessages(sink, importv2.IssueLLMPlanEntryDropped)
+		require.NotEmpty(t, dropped)
+		priority := sink.relationByName("Priority")
+		require.NotNil(t, priority, "Priority keeps its own relation")
+		assert.Equal(t, int64(model.RelationFormat_status), priority.Payload.Details.GetInt64(bundle.RelationKeyRelationFormat))
+		// the Effort relation, if emitted for the type, stays number and holds
+		// no option values
+		effortKey := schemaplan.CustomRelationKey("effort").String()
+		page := sink.byKey("p1")
+		require.NotNil(t, page)
+		assert.False(t, page.Payload.Details.Has(domain.RelationKey(effortKey)),
+			"no select values may land under the number relation")
+	})
+
 	t.Run("planner failure degrades to naive with a warning", func(t *testing.T) {
 		// given
 		planner := schemaplan.PlannerFunc(func(context.Context, []schemaplan.ContainerSchema) (schemaplan.Plan, error) {

@@ -101,7 +101,7 @@ var containerNames = map[string]domain.TypeKey{
 	"film": bundle.TypeKeyMovie, "films": bundle.TypeKeyMovie,
 
 	"recipe": bundle.TypeKeyRecipe, "recipes": bundle.TypeKeyRecipe,
-	"cookbook": bundle.TypeKeyRecipe,
+	"cookbook":  bundle.TypeKeyRecipe,
 	"meal plan": bundle.TypeKeyRecipe, "meal plans": bundle.TypeKeyRecipe,
 }
 

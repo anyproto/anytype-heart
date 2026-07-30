@@ -245,6 +245,14 @@ func (p *Persister) updateObject(objectId string, doc *state.State, report func(
 			return nil // never downgrade (bundled types/relations carry revisions)
 		}
 		if doc.ObjectTypeKey() == bundle.TypeKeyObjectType {
+			// A same-named type the USER authored (not import-created, not
+			// bundled) is reused, never rewritten: imports may only redefine
+			// types that imports created. Matters doubly for LLM-planned
+			// types, whose names come from an untrusted source.
+			existingOrigin := sb.Details().GetInt64(bundle.RelationKeyOrigin)
+			if currentRevision == 0 && existingOrigin != int64(model.ObjectOrigin_import) {
+				return nil
+			}
 			template.InitTemplate(doc, template.WithDetail(bundle.RelationKeyRecommendedLayout, domain.Int64(int64(model.ObjectType_basic))))
 		}
 		if err := history.ResetToVersion(sb, doc); err != nil {

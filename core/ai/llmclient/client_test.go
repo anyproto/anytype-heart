@@ -183,6 +183,52 @@ func TestCompleteJSON(t *testing.T) {
 		require.ErrorIs(t, err, ErrEmptyResponse)
 	})
 
+	t.Run("temperature rejection drops the parameter and retries once", func(t *testing.T) {
+		// given — a reasoning-model endpoint that 400s on any temperature
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) {})
+		fs.respond = func(w http.ResponseWriter, call int64) {
+			if _, hasTemp := fs.lastBody["temperature"]; hasTemp {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":{"message":"Unsupported value: 'temperature' does not support 1e-45 with this model."}}`))
+				return
+			}
+			respondContent(w, `{"answer":"ok"}`)
+		}
+		c := newTestClient(t, fs.URL)
+
+		// when
+		got, _, err := c.CompleteJSON(context.Background(), Request{Schema: testSchema})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, json.RawMessage(`{"answer":"ok"}`), got)
+		assert.Equal(t, int64(2), fs.calls.Load())
+		_, hasTemp := fs.lastBody["temperature"]
+		assert.False(t, hasTemp, "second attempt must omit temperature")
+	})
+
+	t.Run("oversized response body is truncated and fails cleanly", func(t *testing.T) {
+		// given — an endpoint streaming far past the cap
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) {
+			_, _ = w.Write([]byte(`{"choices":[{"message":{"role":"assistant","content":"`))
+			junk := make([]byte, 1<<20)
+			for i := range junk {
+				junk[i] = 'a'
+			}
+			for i := 0; i < 12; i++ { // ~12MB > maxResponseBytes
+				_, _ = w.Write(junk)
+			}
+			_, _ = w.Write([]byte(`"}}]}`))
+		})
+		c := newTestClient(t, fs.URL)
+
+		// when
+		_, _, err := c.CompleteJSON(context.Background(), Request{Schema: testSchema})
+
+		// then — decode fails at the cap instead of buffering 12MB
+		require.Error(t, err)
+	})
+
 	t.Run("cancelled context stops the retry loop", func(t *testing.T) {
 		// given
 		ctx, cancel := context.WithCancel(context.Background())
@@ -238,6 +284,29 @@ func TestFromProto(t *testing.T) {
 	t.Run("openai without token is an error", func(t *testing.T) {
 		_, _, err := FromProto(&pb.RpcAIProviderConfig{Provider: pb.RpcAI_OPENAI, Model: "gpt-4o"})
 		require.Error(t, err)
+	})
+
+	t.Run("unknown provider without endpoint is an error", func(t *testing.T) {
+		_, _, err := FromProto(&pb.RpcAIProviderConfig{Provider: pb.RpcAIProvider(99), Model: "m"})
+		require.Error(t, err)
+	})
+
+	t.Run("openai key over plain http to a remote host is refused", func(t *testing.T) {
+		_, _, err := FromProto(&pb.RpcAIProviderConfig{
+			Provider: pb.RpcAI_OPENAI, Model: "gpt-4o", Token: "sk-x",
+			Endpoint: "http://proxy.example.com/v1",
+		})
+		require.ErrorContains(t, err, "plain http")
+	})
+
+	t.Run("openai key over http to localhost is fine", func(t *testing.T) {
+		cfg, ok, err := FromProto(&pb.RpcAIProviderConfig{
+			Provider: pb.RpcAI_OPENAI, Model: "gpt-4o", Token: "sk-x",
+			Endpoint: "http://localhost:8080/v1",
+		})
+		require.NoError(t, err)
+		require.True(t, ok)
+		assert.Equal(t, "http://localhost:8080/v1", cfg.Endpoint)
 	})
 
 	t.Run("openai with token", func(t *testing.T) {

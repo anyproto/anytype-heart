@@ -44,9 +44,11 @@ func TestSanitize(t *testing.T) {
 		var issues []importv2.Issue
 		want := Plan{Containers: map[string]ContainerPlan{
 			"ds1": {
-				TypeKey:    bundle.TypeKeyTask,
-				Reason:     "LLM plan",
-				Properties: map[string]PropertyPlan{"p1": {Key: bundle.RelationKeyDueDate}},
+				TypeKey: bundle.TypeKeyTask,
+				Reason:  "LLM plan",
+				Properties: map[string]PropertyPlan{
+					"p1": {Key: bundle.RelationKeyDueDate, Format: model.RelationFormat_date},
+				},
 			},
 		}}
 
@@ -95,7 +97,7 @@ func TestSanitize(t *testing.T) {
 		// then
 		require.Contains(t, got.Containers, "ds1")
 		assert.Empty(t, got.Containers["ds1"].TypeKey)
-		assert.Equal(t, PropertyPlan{Key: bundle.RelationKeyDueDate}, got.Containers["ds1"].Properties["p1"])
+		assert.Equal(t, PropertyPlan{Key: bundle.RelationKeyDueDate, Format: model.RelationFormat_date}, got.Containers["ds1"].Properties["p1"])
 		require.Len(t, issues, 1)
 	})
 
@@ -178,7 +180,7 @@ func TestSanitize(t *testing.T) {
 		got := Sanitize(plan, taskSchemas(), nil)
 
 		// then
-		assert.Equal(t, PropertyPlan{Key: bundle.RelationKeyDueDate}, got.Containers["ds1"].Properties["p1"])
+		assert.Equal(t, PropertyPlan{Key: bundle.RelationKeyDueDate, Format: model.RelationFormat_date}, got.Containers["ds1"].Properties["p1"])
 	})
 
 	t.Run("custom target keeps overrides within the format family", func(t *testing.T) {
@@ -197,11 +199,170 @@ func TestSanitize(t *testing.T) {
 		assert.Equal(t, want, got.Containers["ds1"].Properties["p3"])
 	})
 
+	t.Run("system bundled relations are not allowed targets", func(t *testing.T) {
+		// given — isArchived/isHidden are checkbox-format system relations a
+		// checkbox source would otherwise legally remap onto
+		plan := Plan{Containers: map[string]ContainerPlan{
+			"ds1": {Properties: map[string]PropertyPlan{
+				"p1": {Key: bundle.RelationKeyLastModifiedDate}, // date→date
+				"p3": {Key: bundle.RelationKeyCoverId},          // text→text
+			}},
+		}}
+		var issues []importv2.Issue
+
+		// when
+		got := Sanitize(plan, taskSchemas(), collectIssues(&issues))
+
+		// then — the allow-list, not format legality, decides
+		assert.Empty(t, got.Containers)
+		require.Len(t, issues, 2)
+		for _, issue := range issues {
+			assert.Contains(t, issue.Message, "not an allowed plan target")
+		}
+	})
+
+	t.Run("duplicate targets within a container keep the first source", func(t *testing.T) {
+		// given — two properties onto dueDate would collide on page details
+		schemas := []ContainerSchema{{
+			Id: "ds1",
+			Properties: []PropertySchema{
+				{Id: "a", Name: "Deadline", Format: model.RelationFormat_date},
+				{Id: "b", Name: "Finish by", Format: model.RelationFormat_date},
+			},
+		}}
+		plan := Plan{Containers: map[string]ContainerPlan{
+			"ds1": {Properties: map[string]PropertyPlan{
+				"a": {Key: bundle.RelationKeyDueDate},
+				"b": {Key: bundle.RelationKeyDueDate},
+			}},
+		}}
+		var issues []importv2.Issue
+
+		// when
+		got := Sanitize(plan, schemas, collectIssues(&issues))
+
+		// then — sorted order: "a" wins, "b" drops
+		require.Len(t, got.Containers["ds1"].Properties, 1)
+		assert.Contains(t, got.Containers["ds1"].Properties, "a")
+		require.Len(t, issues, 1)
+		assert.Contains(t, issues[0].Message, "duplicates target")
+	})
+
+	t.Run("custom target format anchors across containers", func(t *testing.T) {
+		// given — two containers merge onto one key: date first (sorted
+		// order), text second — incompatible with the settled anchor
+		schemas := []ContainerSchema{
+			{Id: "a", Properties: []PropertySchema{{Id: "p", Name: "When", Format: model.RelationFormat_date}}},
+			{Id: "b", Properties: []PropertySchema{{Id: "p", Name: "When", Format: model.RelationFormat_longtext}}},
+		}
+		plan := Plan{Containers: map[string]ContainerPlan{
+			"a": {Properties: map[string]PropertyPlan{"p": {Key: "when"}}},
+			"b": {Properties: map[string]PropertyPlan{"p": {Key: "when"}}},
+		}}
+		var issues []importv2.Issue
+
+		// when
+		got := Sanitize(plan, schemas, collectIssues(&issues))
+
+		// then
+		assert.Equal(t, model.RelationFormat_date, got.Containers["a"].Properties["p"].Format)
+		assert.NotContains(t, got.Containers, "b")
+		require.Len(t, issues, 1)
+		assert.Contains(t, issues[0].Message, "conflicts with target")
+	})
+
+	t.Run("type definition anchors the format, incompatible container entry drops", func(t *testing.T) {
+		// given — the verified corruption scenario: a select property onto a
+		// number-format type property
+		schemas := []ContainerSchema{{
+			Id: "ds1",
+			Properties: []PropertySchema{
+				{Id: "prio", Name: "Priority", Format: model.RelationFormat_status},
+			},
+		}}
+		plan := Plan{
+			NewTypes: []TypeDefinition{{
+				Key: "sprint", Name: "Sprint",
+				Properties: []TypeProperty{{Key: "effort", Format: model.RelationFormat_number}},
+			}},
+			Containers: map[string]ContainerPlan{
+				"ds1": {TypeKey: "sprint", Properties: map[string]PropertyPlan{
+					"prio": {Key: "effort"},
+				}},
+			},
+		}
+		var issues []importv2.Issue
+
+		// when
+		got := Sanitize(plan, schemas, collectIssues(&issues))
+
+		// then — the entry drops; the type keeps its declared format
+		assert.Empty(t, got.Containers["ds1"].Properties)
+		assert.Equal(t, domain.TypeKey("sprint"), got.Containers["ds1"].TypeKey)
+		require.Len(t, issues, 1)
+	})
+
+	t.Run("format-less type property inherits the containers' anchor", func(t *testing.T) {
+		// given
+		schemas := []ContainerSchema{{
+			Id:         "ds1",
+			Properties: []PropertySchema{{Id: "d", Name: "When", Format: model.RelationFormat_date}},
+		}}
+		plan := Plan{
+			NewTypes: []TypeDefinition{{
+				Key: "sprint", Name: "Sprint",
+				Properties: []TypeProperty{{Key: "when"}}, // format 0
+			}},
+			Containers: map[string]ContainerPlan{
+				"ds1": {TypeKey: "sprint", Properties: map[string]PropertyPlan{"d": {Key: "when"}}},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, schemas, nil)
+
+		// then
+		require.Len(t, got.NewTypes, 1)
+		assert.Equal(t, model.RelationFormat_date, got.NewTypes[0].Properties[0].Format)
+		assert.Equal(t, model.RelationFormat_date, got.Containers["ds1"].Properties["d"].Format)
+	})
+
+	t.Run("dropped-entry issue order is deterministic", func(t *testing.T) {
+		// given — many invalid entries across several containers
+		plan := Plan{Containers: map[string]ContainerPlan{}}
+		var schemas []ContainerSchema
+		for _, id := range []string{"c1", "c2", "c3", "c4", "c5"} {
+			schemas = append(schemas, ContainerSchema{Id: id, Properties: []PropertySchema{
+				{Id: "x", Name: "X", Format: model.RelationFormat_longtext},
+				{Id: "y", Name: "Y", Format: model.RelationFormat_longtext},
+			}})
+			plan.Containers[id] = ContainerPlan{Properties: map[string]PropertyPlan{
+				"x": {Key: bundle.RelationKeyName},
+				"y": {Key: bundle.RelationKeyId},
+			}}
+		}
+		var first []string
+		for run := 0; run < 20; run++ {
+			var issues []importv2.Issue
+			Sanitize(plan, schemas, collectIssues(&issues))
+			var messages []string
+			for _, issue := range issues {
+				messages = append(messages, issue.SourceKey+": "+issue.Message)
+			}
+			if run == 0 {
+				first = messages
+				require.Len(t, first, 10)
+				continue
+			}
+			require.Equal(t, first, messages, "issue order must not vary between runs")
+		}
+	})
+
 	t.Run("status to tag allowed, date to checkbox not", func(t *testing.T) {
-		assert.True(t, formatChangeAllowed(model.RelationFormat_status, model.RelationFormat_tag))
-		assert.True(t, formatChangeAllowed(model.RelationFormat_email, model.RelationFormat_longtext))
-		assert.False(t, formatChangeAllowed(model.RelationFormat_date, model.RelationFormat_checkbox))
-		assert.False(t, formatChangeAllowed(model.RelationFormat_longtext, model.RelationFormat_status))
+		assert.True(t, FormatChangeAllowed(model.RelationFormat_status, model.RelationFormat_tag))
+		assert.True(t, FormatChangeAllowed(model.RelationFormat_email, model.RelationFormat_longtext))
+		assert.False(t, FormatChangeAllowed(model.RelationFormat_date, model.RelationFormat_checkbox))
+		assert.False(t, FormatChangeAllowed(model.RelationFormat_longtext, model.RelationFormat_status))
 	})
 }
 

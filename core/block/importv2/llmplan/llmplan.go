@@ -22,6 +22,10 @@ import (
 // must never hang on a wedged endpoint.
 const defaultBudget = 90 * time.Second
 
+// maxCompletionTokens caps the plan completion. A legitimate plan is a few
+// KB; an endpoint streaming more than this is broken or hostile.
+const maxCompletionTokens = 8192
+
 type planner struct {
 	client *llmclient.Client
 	budget time.Duration
@@ -57,6 +61,7 @@ func (p *planner) Plan(ctx context.Context, schemas []schemaplan.ContainerSchema
 		User:       userPrompt,
 		SchemaName: "import_plan",
 		Schema:     responseSchema,
+		MaxTokens:  maxCompletionTokens,
 	}
 	raw, _, err := p.client.CompleteJSON(ctx, request)
 	if err != nil {

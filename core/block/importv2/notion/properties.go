@@ -118,9 +118,18 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 // resolvePlanTarget resolves a property onto its schema-plan target: the
 // bundled relation, or the plan's shared custom key. created follows the
 // resolveRelation contract (the caller emits the relation object once).
+// A nil def means the target's already-settled format cannot carry this
+// property's values — the caller degrades to the unplanned path with a
+// warning. Sanitize normalizes plans so this is a belt against unsanitized
+// or type-definition-seeded format divergence.
 func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schemaplan.PropertyPlan) (def *relationDef, created bool) {
 	if def, ok := p.byNotionId[property.Id]; ok {
 		return def, false
+	}
+	sourceFormat, _ := relationFormatOf(property.Type)
+	effective := plan.Format
+	if effective == 0 {
+		effective = sourceFormat
 	}
 	if bundle.HasRelation(plan.Key) {
 		key := plan.Key.String()
@@ -142,6 +151,9 @@ func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schema
 	}
 	key := schemaplan.CustomRelationKey(plan.Key).String()
 	if def, ok := p.byKey[key]; ok {
+		if !schemaplan.FormatChangeAllowed(effective, def.format) {
+			return nil, false
+		}
 		p.byNotionId[property.Id] = def
 		return def, false
 	}
@@ -149,14 +161,10 @@ func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schema
 	if name == "" {
 		name = property.Name
 	}
-	format := plan.Format
-	if format == 0 {
-		format, _ = relationFormatOf(property.Type)
-	}
 	def = &relationDef{
 		key:       key,
 		sourceKey: "relation:" + key,
-		format:    format,
+		format:    effective,
 		name:      name,
 	}
 	p.byKey[key] = def

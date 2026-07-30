@@ -146,6 +146,44 @@ func TestFolderPlan(t *testing.T) {
 		assert.NotNil(t, sink.byKey("option:"+stateKey+":Done"))
 	})
 
+	t.Run("page value that does not fit the target reverts per page", func(t *testing.T) {
+		// given — Effort is a number on one page and prose on another; the
+		// plan (validated against the sweep's number verdict) targets the
+		// bundled number-format priority relation
+		files := map[string]string{
+			".obsidian/app.json": "{}",
+			"Work/a.md":          "---\nEffort: 3\n---\n# A\n\nBody.\n",
+			"Work/b.md":          "---\nEffort: three days\n---\n# B\n\nBody.\n",
+		}
+		planner := schemaplan.PlannerFunc(func(context.Context, []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+			return schemaplan.Plan{Containers: map[string]schemaplan.ContainerPlan{
+				"dir:Work": {Properties: map[string]schemaplan.PropertyPlan{
+					"Effort": {Key: bundle.RelationKeyPriority},
+				}},
+			}}, nil
+		})
+
+		// when
+		sink, _ := runConverterWithParams(t, files, Params{Flavour: FlavourObsidian, Planner: planner})
+
+		// then — the numeric page follows the remap, the prose page reverts
+		a := sink.byKey("Work/a.md")
+		require.NotNil(t, a)
+		assert.True(t, a.Payload.Details.Has(bundle.RelationKeyPriority))
+
+		b := sink.byKey("Work/b.md")
+		require.NotNil(t, b)
+		assert.False(t, b.Payload.Details.Has(bundle.RelationKeyPriority),
+			"a string must not land in the bundled number relation")
+		mdKey := domain.RelationKey(stableKey("md", "Effort"))
+		assert.Equal(t, "three days", b.Payload.Details.GetString(mdKey),
+			"the value survives under the original md property")
+
+		dropped := planIssueMessages(sink, importv2.IssueLLMPlanEntryDropped)
+		require.Len(t, dropped, 1)
+		assert.Contains(t, dropped[0], `values that do not fit`)
+	})
+
 	t.Run("planner failure degrades to naive with a warning", func(t *testing.T) {
 		// given — folder named Tasks so the naive fallback has a verdict
 		files := map[string]string{

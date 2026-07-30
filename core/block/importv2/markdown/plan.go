@@ -29,6 +29,11 @@ const (
 // to speak) and emit the plan's new types.
 func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error {
 	schemas := c.containerSchemas(ctx)
+	// The sweep swallows read errors (page conversion reports them properly),
+	// so a cancelled run must be recognized here, not misattributed later.
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("plan structure: %w", err)
+	}
 	if len(schemas) == 0 {
 		return nil
 	}
@@ -43,7 +48,7 @@ func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error
 			return fmt.Errorf("plan structure: %w", ctx.Err())
 		}
 		sink.Issue(importv2.Warning(importv2.IssueLLMPlanFailed, "plan",
-			fmt.Sprintf("structure analysis unavailable (%s); imported with built-in rules", err)))
+			fmt.Sprintf("structure analysis unavailable (%s); imported with built-in rules", schemaplan.SummarizeError(err))))
 		plan, _ = schemaplan.NewNaive().Plan(ctx, schemas)
 	}
 	c.plan = schemaplan.Sanitize(plan, schemas, sink.Issue)
@@ -228,6 +233,8 @@ func (c *Converter) applyPlanTypes(order []string, sink importv2.Sink) {
 		typeKey := containerPlan.TypeKey
 		if minted, ok := c.planTypeKeys[typeKey]; ok {
 			typeKey = minted
+		} else if !bundle.HasObjectTypeByKey(typeKey) {
+			continue // the plan type was dropped at emission; keep default Page
 		}
 		if dir, isDir := strings.CutPrefix(containerId, dirContainerPrefix); isDir {
 			c.suggestedDirTypes[dir] = typeKey
@@ -282,26 +289,57 @@ func (c *Converter) planRedirectsFor(dir string) map[string]planRedirect {
 
 // applyPlanRedirects rewrites parsed front-matter properties onto their plan
 // targets (the resolver already redirected the keys) and reports each
-// adoption once per folder.
-func (c *Converter) applyPlanRedirects(dir string, properties []yaml.Property, redirects map[string]planRedirect, sink importv2.Sink) {
+// adoption once per folder. A page whose value cannot carry the target's
+// format — the plan was validated against the folder's UNION schema, and
+// pages may disagree with it — degrades per page: scalar values revert to
+// the original md property, option-list values drop (their option source
+// keys already embed the target relation key).
+func (c *Converter) applyPlanRedirects(dir string, properties []yaml.Property, redirects map[string]planRedirect, sink importv2.Sink) []yaml.Property {
+	if len(redirects) == 0 {
+		return properties
+	}
+	kept := properties[:0]
 	for i := range properties {
 		property := &properties[i]
 		redirect, ok := redirects[property.Name]
 		if !ok {
+			kept = append(kept, *property)
 			continue
 		}
 		sourceName := property.Name
+		if redirect.format != 0 && !schemaplan.FormatChangeAllowed(property.Format, redirect.format) {
+			c.reportOnce(dir, "drop\x00"+sourceName, sink, importv2.Warning(importv2.IssueLLMPlanEntryDropped, dir,
+				fmt.Sprintf("folder %q property %q has values that do not fit %q (%s)",
+					path.Base(dir), sourceName, redirect.key, redirect.format.String())))
+			if listFormat(property.Format) {
+				continue // value is option refs minted under the target key — unusable
+			}
+			property.Key = c.resolver.ResolvePropertyKey("", sourceName)
+			kept = append(kept, *property)
+			continue
+		}
 		if redirect.name != "" {
 			property.Name = redirect.name
 		}
 		if redirect.format != 0 {
 			property.Format = redirect.format
 		}
-		reportKey := dir + "\x00" + sourceName
-		if !c.reportedMappings[reportKey] {
-			c.reportedMappings[reportKey] = true
-			sink.Issue(importv2.Info(importv2.IssuePropertyMapped,
-				fmt.Sprintf("folder %q property %q imported as %q (%s)", path.Base(dir), sourceName, property.Name, property.Key)))
-		}
+		c.reportOnce(dir, sourceName, sink, importv2.Info(importv2.IssuePropertyMapped,
+			fmt.Sprintf("folder %q property %q imported as %q (%s)", path.Base(dir), sourceName, property.Name, property.Key)))
+		kept = append(kept, *property)
 	}
+	return kept
+}
+
+func (c *Converter) reportOnce(dir, name string, sink importv2.Sink, issue importv2.Issue) {
+	reportKey := dir + "\x00" + name
+	if c.reportedMappings[reportKey] {
+		return
+	}
+	c.reportedMappings[reportKey] = true
+	sink.Issue(issue)
+}
+
+func listFormat(format model.RelationFormat) bool {
+	return format == model.RelationFormat_status || format == model.RelationFormat_tag
 }

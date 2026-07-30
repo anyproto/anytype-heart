@@ -126,14 +126,29 @@ also finally makes the suggestor injectable — the hardcoded `typesuggest` fiel
   the plan types nearly everything there.
 - **Property plans apply regardless of type origin** — remapping `Deadline` → `dueDate` is correct
   even on a page whose type was explicit.
-- The engine-side emission keeps its own guarantees: a plan can only *redirect* a property onto a
-  bundled key or onto one shared minted key (deterministic `stableKey`-style hash of the normalized
-  target name, matching the markdown converter's pattern); it cannot rename `name`, touch
-  destination-owned identity (§13.10), or change a format into one the source values can't render —
-  those entries are dropped at validation with a warning issue, never trusted blindly.
+- The engine-side emission keeps its own guarantees: a plan can only *redirect* a property onto an
+  **allowed** bundled key — `schemaplan.AllowedBundledTargets`, the same closed set the prompt
+  advertises; `bundle.HasRelation` alone would admit ~200 system relations (`isArchived`,
+  `isHidden`, …) — or onto one shared minted key (deterministic hash of the plan key), and cannot
+  change a format into one the source values can't render. Everything else is dropped at
+  validation with a warning issue, never trusted blindly.
+- **One format per shared key.** `Sanitize` anchors every custom target key to a single relation
+  format — type definitions declare first, containers follow in sorted order — normalizes each
+  surviving entry's `Format` to that anchor, and drops contributors whose source format can't
+  render into it. Within one container, two properties may not claim the same target (silent
+  last-writer-wins on page details); the first in sorted order keeps it.
 - Cross-container merge = two containers' property plans naming the same `Key`. Options from both
   sources union under the shared relation, same as today's same-key handling.
-- Dropped/invalid plan entries degrade *per entry*, not per run.
+- **Markdown degrades per page.** The plan is validated against the folder's *union* schema; a page
+  whose parsed value can't carry the target's format keeps its original md property (scalar
+  values) or drops the value (option lists), each with a warning — a prose string never lands in a
+  bundled number relation because one sibling page held a number.
+- A same-named type the **user** authored is reused, never rewritten: `persist.updateObject` skips
+  objectType updates when the existing type has no import origin (and no bundled revision). Imports
+  may only redefine types imports created — load-bearing here because plan type names come from an
+  untrusted source.
+- Dropped/invalid plan entries degrade *per entry*, not per run, and all `Sanitize` iteration is
+  sorted so drop warnings are deterministic (contract rule 5 extends to the issue stream).
 
 ## 5. Prompt & response format
 
@@ -188,15 +203,24 @@ package (no app component) so future AI features can share it — proposed home 
 - Structured output: `ChatCompletionResponseFormatJSONSchema{Strict: true}` with the hand-written
   flat plan schema (§5) passed as `json.RawMessage` — no reflection, no extra schema dep. The
   schema is deliberately within the JSON Schema subset local servers can compile to grammars.
-- **Retry/pacing layered on top** (go-openai has none): the importv2 Notion client pattern —
-  `RetryPolicy{MaxAttempts, BaseDelay, MaxDelay, TotalBudget}`, honor `Retry-After` on 429.
-- Temperature forced to 0 (determinism contract); provider enum maps to endpoint defaults the way
-  the stubbed AI RPCs intended (ollama/lmstudio/llamacpp = localhost defaults, openai = api key
-  required).
-- Error mapping onto the existing AI codes: 401 → auth, 404 → model not found, 429 → rate limit,
-  dial failure → endpoint unreachable. These become the warning-issue text (§7).
-- Hard wall-clock budget for the whole plan step (default 90s, covering retries); the http client
-  is injectable via `ClientConfig.HTTPClient` for httptest fakes.
+- **Retry layered on top** (go-openai has none): `RetryPolicy{MaxAttempts, BaseDelay, MaxDelay}`
+  with exponential backoff (shift-clamped) on 429/5xx/transport errors; the wall-clock budget is a
+  ctx deadline, not a policy field.
+- Temperature forced to ~0 (`math.SmallestNonzeroFloat32` — go-openai's `omitempty` drops a true
+  zero); on a reasoning-model 400 rejecting the parameter, it is dropped once and the attempt
+  retried — those models are deterministic by default.
+- **Bounded responses**: completion capped via `MaxTokens` (8192) and the transport truncates
+  bodies at 10 MB — a hostile or wedged endpoint cannot stream unbounded bytes.
+- An OpenAI api key is refused over plain `http` to a non-local endpoint (cleartext leak); local
+  hosts and other providers (dummy tokens) are exempt.
+- Error mapping onto the existing AI codes: 401/403 → auth, 404 → model not found, 429 → rate
+  limit, 5xx/dial failure → endpoint unreachable. Issue text renders through
+  `schemaplan.SummarizeError` — first line, 200 runes — because provider errors can embed whole
+  response bodies and the warning persists onto the import report page.
+- Hard wall-clock budget for the whole plan step (default 90s, covering retries). Budget expiry is
+  a planner failure (degrade to naive + warning); *run* cancellation aborts the import — the outer
+  ctx is checked to tell them apart.
+- The http client is injectable for httptest fakes.
 
 Adds `sashabaranov/go-openai` to go.mod (it brings essentially no transitive dependencies). The
 official `openai/openai-go` SDK was considered (built-in retry, first-party durability) and passed
@@ -205,8 +229,9 @@ over for dependency weight; local-server behavior is identical either way.
 ## 7. Failure model
 
 The plan step can **never fail an import**. Any terminal condition — no config, endpoint
-unreachable, auth/rate-limit, budget exceeded, twice-invalid response, `ctx` cancelled — collapses
-to `naivePlanner` for the whole run plus a single warning issue
+unreachable, auth/rate-limit, budget exceeded, twice-invalid response — collapses to `naivePlanner`
+for the whole run plus a single warning issue. (Run *cancellation* is the exception: a cancelled
+import aborts, it does not continue on naive rules.) The warning:
 (`IssueLLMPlanFailed`: "structure analysis unavailable (…reason…); imported with built-in rules").
 Per-entry validation failures (§4) degrade that entry only, with their own warning. The LLM is
 advisory; the import's correctness properties (identity, resolution, journal/compensation) are

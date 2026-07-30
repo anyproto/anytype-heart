@@ -177,8 +177,16 @@ func (c *Converter) emitProperty(ctx context.Context, property propertySchema, p
 	var created bool
 	if planProp.Key != "" {
 		def, created = c.properties.resolvePlanTarget(property, planProp)
-		sink.Issue(importv2.Info(importv2.IssuePropertyMapped,
-			fmt.Sprintf("database %q property %q imported as %q (%s)", containerName, property.Name, def.name, def.key)))
+		if def == nil {
+			// The shared target settled on a format this property's values
+			// cannot carry — degrade to the unplanned path, loudly.
+			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, property.Id,
+				fmt.Sprintf("property %q cannot share target %q (format mismatch); imported unmapped", property.Name, planProp.Key)))
+			def, created = c.properties.resolveRelation(property)
+		} else {
+			sink.Issue(importv2.Info(importv2.IssuePropertyMapped,
+				fmt.Sprintf("database %q property %q imported as %q (%s)", containerName, property.Name, def.name, def.key)))
+		}
 	} else {
 		def, created = c.properties.resolveRelation(property)
 	}
@@ -260,10 +268,14 @@ func wireDataview(object *importv2.Object, defs []*relationDef) {
 			viewRelation.IsVisible = true
 			continue
 		}
-		view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{
+		appended := &model.BlockContentDataviewRelation{
 			Key:       def.key,
 			IsVisible: true,
-		})
+		}
+		// Track appends too: plan remaps can resolve two source properties
+		// onto one def, which must not duplicate the column.
+		existing[def.key] = appended
+		view.Relations = append(view.Relations, appended)
 		dataview.RelationLinks = append(dataview.RelationLinks, &model.RelationLink{
 			Key:    def.key,
 			Format: def.format,

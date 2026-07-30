@@ -54,9 +54,13 @@ func (c *Converter) convertPage(ctx context.Context, entry source.Entry, sink im
 			sink.Issue(importv2.Warning(importv2.IssueDataLoss, entry.Name, fmt.Sprintf("front-matter skipped: %s", err)))
 		} else if parsed != nil {
 			collectionRefs, parsed.Properties, isCollection = c.extractCollectionProperty(parsed.Properties)
-			c.applyPlanRedirects(path.Dir(entry.Name), parsed.Properties, redirects, sink)
-			// The yaml parser yields properties in map order; sort for
-			// deterministic emission (contract rule 5).
+			// The yaml parser yields properties in map order; sort BEFORE the
+			// redirects so their propertyMapped issues are deterministic
+			// (contract rule 5), and re-sort after — redirects rename.
+			sort.SliceStable(parsed.Properties, func(i, j int) bool {
+				return parsed.Properties[i].Name < parsed.Properties[j].Name
+			})
+			parsed.Properties = c.applyPlanRedirects(path.Dir(entry.Name), parsed.Properties, redirects, sink)
 			sort.SliceStable(parsed.Properties, func(i, j int) bool {
 				return parsed.Properties[i].Name < parsed.Properties[j].Name
 			})

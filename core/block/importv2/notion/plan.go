@@ -50,7 +50,7 @@ func (c *Converter) planStructure(ctx context.Context, sink importv2.Sink) error
 			return fmt.Errorf("plan structure: %w", ctx.Err())
 		}
 		sink.Issue(importv2.Warning(importv2.IssueLLMPlanFailed, "plan",
-			fmt.Sprintf("structure analysis unavailable (%s); imported with built-in rules", err)))
+			fmt.Sprintf("structure analysis unavailable (%s); imported with built-in rules", schemaplan.SummarizeError(err))))
 		plan, _ = schemaplan.NewNaive().Plan(ctx, schemas)
 	}
 	c.plan = schemaplan.Sanitize(plan, schemas, sink.Issue)
@@ -217,6 +217,8 @@ func (c *Converter) applyPlanType(entityId, schemaId string, database *databaseO
 	typeKey := containerPlan.TypeKey
 	if minted, ok := c.planTypeKeys[typeKey]; ok {
 		typeKey = minted
+	} else if !bundle.HasObjectTypeByKey(typeKey) {
+		return // the plan type was dropped at emission; keep default Page
 	}
 	c.suggestedTypes[entityId] = typeKey
 	c.suggestedTypes[schemaId] = typeKey

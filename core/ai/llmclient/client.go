@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 
 	openai "github.com/sashabaranov/go-openai"
@@ -62,6 +64,10 @@ func WithHTTPClient(hc *http.Client) Option { return func(o *options) { o.httpCl
 // WithRetryPolicy overrides DefaultRetryPolicy.
 func WithRetryPolicy(p RetryPolicy) Option { return func(o *options) { o.retry = p } }
 
+// maxResponseBytes caps how much of a completion response the client will
+// read — a wedged or hostile endpoint must not stream unbounded bytes.
+const maxResponseBytes = 10 << 20
+
 func New(cfg Config, opts ...Option) (*Client, error) {
 	if cfg.Endpoint == "" || cfg.Model == "" {
 		return nil, fmt.Errorf("llm client requires endpoint and model")
@@ -70,11 +76,18 @@ func New(cfg Config, opts ...Option) (*Client, error) {
 	for _, opt := range opts {
 		opt(&o)
 	}
+	if o.retry.MaxAttempts < 1 {
+		o.retry.MaxAttempts = 1
+	}
 	apiCfg := openai.DefaultConfig(cfg.Token)
 	apiCfg.BaseURL = cfg.Endpoint
-	if o.httpClient != nil {
-		apiCfg.HTTPClient = o.httpClient
+	httpClient := o.httpClient
+	if httpClient == nil {
+		httpClient = &http.Client{}
 	}
+	bounded := *httpClient
+	bounded.Transport = &boundedTransport{base: httpClient.Transport, limit: maxResponseBytes}
+	apiCfg.HTTPClient = &bounded
 	return &Client{
 		api:   openai.NewClientWithConfig(apiCfg),
 		model: cfg.Model,
@@ -82,6 +95,32 @@ func New(cfg Config, opts ...Option) (*Client, error) {
 		sleep: sleepCtx,
 	}, nil
 }
+
+// boundedTransport truncates every response body at limit bytes; an
+// over-limit JSON body simply fails to decode.
+type boundedTransport struct {
+	base  http.RoundTripper
+	limit int64
+}
+
+func (t *boundedTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	resp, err := base.RoundTrip(req)
+	if resp != nil && resp.Body != nil {
+		resp.Body = &limitedBody{Reader: io.LimitReader(resp.Body, t.limit), closer: resp.Body}
+	}
+	return resp, err
+}
+
+type limitedBody struct {
+	io.Reader
+	closer io.Closer
+}
+
+func (b *limitedBody) Close() error { return b.closer.Close() }
 
 // CompleteJSON runs one non-streaming completion constrained by req.Schema and
 // returns the raw JSON content. Temperature is forced to zero. Transient
@@ -110,14 +149,24 @@ func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage
 	}
 
 	var lastErr error
+	temperatureDropped := false
 	for attempt := 0; attempt < c.retry.MaxAttempts; attempt++ {
 		if attempt > 0 {
 			if err := c.sleep(ctx, c.backoff(attempt)); err != nil {
-				return nil, Usage{}, err
+				return nil, Usage{}, fmt.Errorf("retry backoff: %w", err)
 			}
 		}
 		resp, err := c.api.CreateChatCompletion(ctx, apiReq)
 		if err != nil {
+			// Reasoning models (o-series, gpt-5 class) reject any explicit
+			// temperature with a 400: drop the parameter once and retry the
+			// same attempt — determinism is those models' default anyway.
+			if !temperatureDropped && isTemperatureRejection(err) {
+				temperatureDropped = true
+				apiReq.Temperature = 0 // omitempty: the field disappears
+				attempt--
+				continue
+			}
 			mapped, retryable := classify(err)
 			lastErr = mapped
 			if !retryable || ctx.Err() != nil {
@@ -142,11 +191,28 @@ func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage
 }
 
 func (c *Client) backoff(attempt int) time.Duration {
-	d := c.retry.BaseDelay << (attempt - 1)
+	shift := attempt - 1
+	if shift > 16 { // beyond any sane policy; prevents duration overflow
+		shift = 16
+	}
+	d := c.retry.BaseDelay << shift
+	if d <= 0 {
+		d = c.retry.BaseDelay
+	}
 	if c.retry.MaxDelay > 0 && d > c.retry.MaxDelay {
 		d = c.retry.MaxDelay
 	}
 	return d
+}
+
+// isTemperatureRejection spots the reasoning-model 400 for an explicit
+// temperature parameter.
+func isTemperatureRejection(err error) bool {
+	var apiErr *openai.APIError
+	if !errors.As(err, &apiErr) || apiErr.HTTPStatusCode != http.StatusBadRequest {
+		return false
+	}
+	return strings.Contains(strings.ToLower(apiErr.Message), "temperature")
 }
 
 // classify maps a go-openai error onto the package sentinels and decides

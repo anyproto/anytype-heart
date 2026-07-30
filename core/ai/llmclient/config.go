@@ -10,6 +10,7 @@ package llmclient
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/anyproto/anytype-heart/pb"
@@ -58,10 +59,36 @@ func FromProto(cfg *pb.RpcAIProviderConfig) (Config, bool, error) {
 			return Config{}, false, fmt.Errorf("unknown provider %v and no endpoint given", cfg.Provider)
 		}
 	}
-	if cfg.Provider == pb.RpcAI_OPENAI && cfg.Token == "" {
-		return Config{}, false, fmt.Errorf("provider openai requires an api token")
+	if cfg.Provider == pb.RpcAI_OPENAI {
+		if cfg.Token == "" {
+			return Config{}, false, fmt.Errorf("provider openai requires an api token")
+		}
+		// Local-server tokens are usually dummies; an OpenAI key is real.
+		if err := checkTokenTransport(endpoint, cfg.Token); err != nil {
+			return Config{}, false, err
+		}
 	}
 	return Config{Endpoint: endpoint, Model: cfg.Model, Token: cfg.Token}, true, nil
+}
+
+// checkTokenTransport refuses to send a bearer token in cleartext to a
+// non-local endpoint — a BYOK key must not leak over plain http.
+func checkTokenTransport(endpoint, token string) error {
+	if token == "" {
+		return nil
+	}
+	parsed, err := url.Parse(endpoint)
+	if err != nil {
+		return fmt.Errorf("parse endpoint: %w", err)
+	}
+	if parsed.Scheme != "http" {
+		return nil
+	}
+	host := parsed.Hostname()
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" {
+		return nil
+	}
+	return fmt.Errorf("refusing to send the api token over plain http to %q; use https or a local endpoint", host)
 }
 
 // RetryPolicy bounds the client's retries of transient failures (429, 5xx,

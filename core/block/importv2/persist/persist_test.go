@@ -215,6 +215,20 @@ func pageObject(sourceKey string) *importv2.Object {
 	}
 }
 
+func typeObject(sourceKey string) *importv2.Object {
+	return &importv2.Object{
+		SourceKey: sourceKey,
+		SbType:    coresb.SmartBlockTypeObjectType,
+		Payload: &importv2.Snapshot{
+			Details: domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
+				bundle.RelationKeyName:        domain.String("Meeting"),
+				bundle.RelationKeyCreatedDate: domain.Int64(1700000000),
+			}),
+			ObjectTypes: []string{bundle.TypeKeyObjectType.String()},
+		},
+	}
+}
+
 func payloadFor(id string) treestorage.TreeStorageCreatePayload {
 	return treestorage.TreeStorageCreatePayload{
 		RootRawChange: &treechangeproto.RawTreeChangeWithId{Id: id},
@@ -327,6 +341,42 @@ func TestPersistUpdate(t *testing.T) {
 		assert.Equal(t, []string{"existingId"}, fx.journal.Updated())
 		result := fx.journal.Compensate(context.Background(), fx.objects)
 		assert.Equal(t, []string{"existingId"}, result.Uncovered)
+	})
+
+	t.Run("user-authored type is reused, never rewritten", func(t *testing.T) {
+		// given — an existing type with no import origin and no revision:
+		// the user made it in the UI
+		fx := newFixture(t)
+		existing := smarttest.New("typeId")
+		fx.objects.objects["typeId"] = existing
+		obj := typeObject("type:meeting")
+
+		// when
+		outcome, err := fx.Persist(context.Background(), obj, Target{Id: "typeId", IsExisting: true}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ActionSkipped, outcome.Action)
+		assert.Empty(t, fx.journal.Updated())
+	})
+
+	t.Run("import-created type is updated on re-import", func(t *testing.T) {
+		// given — the existing type carries an import origin
+		fx := newFixture(t)
+		existing := smarttest.New("typeId")
+		require.NoError(t, existing.SetDetails(nil, []domain.Detail{
+			{Key: bundle.RelationKeyOrigin, Value: domain.Int64(int64(model.ObjectOrigin_import))},
+		}, false))
+		fx.objects.objects["typeId"] = existing
+		obj := typeObject("type:meeting")
+
+		// when
+		outcome, err := fx.Persist(context.Background(), obj, Target{Id: "typeId", IsExisting: true}, fx.report)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, ActionUpdated, outcome.Action)
+		assert.Equal(t, []string{"typeId"}, fx.journal.Updated())
 	})
 
 	t.Run("matched relation is never updated in place", func(t *testing.T) {
