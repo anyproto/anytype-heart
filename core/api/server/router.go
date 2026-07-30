@@ -135,8 +135,33 @@ func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommand
 		ensureAnalyticsEvent("V2GetSchema", eventService),
 		handler.SchemaKindV2Handler(srv.v2Service),
 	)
+	v2.GET("/schemas/ops/:op",
+		ensureAnalyticsEvent("V2GetOpSchema", eventService),
+		handler.SchemaOpV2Handler(srv.v2Service),
+	)
 
 	srv.registerV2CreateRoutes(v2, eventService, idempotencyMW, writeRateLimitMW)
+	srv.registerV2EditRoutes(v2, eventService, writeRateLimitMW)
+}
+
+// registerV2EditRoutes registers the Phase-3 edit surface (APIV2.md §2
+// Phase 3). PATCH/PUT concurrency safety is the If-Match header (C7), not
+// Idempotency-Key — the idempotency middleware acts on POST only. Skipped
+// when no mutator dependency was provided.
+func (srv *Server) registerV2EditRoutes(v2 *gin.RouterGroup, eventService apicore.EventService, writeRateLimitMW gin.HandlerFunc) {
+	if srv.v2EditDisabled {
+		return
+	}
+	v2.PATCH("/spaces/:space_id/objects/:object_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("V2PatchObject", eventService),
+		handler.PatchObjectV2Handler(srv.v2Service),
+	)
+	v2.PUT("/spaces/:space_id/objects/:object_id",
+		writeRateLimitMW,
+		ensureAnalyticsEvent("V2PutObject", eventService),
+		handler.PutObjectV2Handler(srv.v2Service),
+	)
 }
 
 // registerV2CreateRoutes registers the Phase-2 create surface (APIV2.md §2).

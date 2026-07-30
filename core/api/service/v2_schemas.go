@@ -120,6 +120,13 @@ func (s *V2Service) SchemaIndex() apimodel.V2SchemaIndex {
 			Url:      "/v2/schemas/" + kind,
 		})
 	}
+	for _, op := range v2OpNames {
+		index.Ops = append(index.Ops, apimodel.V2SchemaIndexEntry{
+			Kind:     op,
+			Endpoint: v2OpsEndpoint,
+			Url:      "/v2/schemas/ops/" + op,
+		})
+	}
 	return index
 }
 

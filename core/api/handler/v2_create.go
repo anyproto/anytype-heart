@@ -481,3 +481,26 @@ func SchemaKindV2Handler(s *service.V2Service) gin.HandlerFunc {
 		c.JSON(http.StatusOK, entry)
 	}
 }
+
+// SchemaOpV2Handler serves one PATCH op's schema + minimal example
+//
+//	@Summary		Get schema for a PATCH op
+//	@Description	One op's tiny strict schema (C13) and a single-op minimal example. Ops: setProperties, updateBlock, replaceBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, addItems, removeItems.
+//	@Id				v2_get_op_schema
+//	@Tags			V2
+//	@Produce		json
+//	@Param			op	path		string					true	"Op name"
+//	@Success		200	{object}	apimodel.V2SchemaEntry	"Schema + example"
+//	@Failure		404	{object}	apimodel.V2Error		"Unknown op"
+//	@Security		bearerauth
+//	@Router			/v2/schemas/ops/{op} [get]
+func SchemaOpV2Handler(s *service.V2Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		entry, err := s.SchemaOp(c.Param("op"))
+		if err != nil {
+			RespondV2Error(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, entry)
+	}
+}

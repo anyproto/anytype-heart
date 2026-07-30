@@ -28,12 +28,13 @@ func newV2ServerFixture(t *testing.T) *fixture {
 	store := objectstore.NewStoreFixture(t)
 
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
+	mutatorMock := mock_apicore.NewMockObjectMutator(t)
 
 	crossSpaceSubService.On("Subscribe", mock.Anything, mock.Anything).Return(&subscription.SubscribeResponse{}, nil).Maybe()
 	accountMock.On("GetInfo", mock.Anything).Return(&model.AccountInfo{TechSpaceId: mockedTechSpaceId}, nil).Once()
 
 	server := NewServer(mwMock, accountMock, eventMock, crossSpaceSubService, chatSubService, fileObjectMock,
-		V2Deps{Reader: readerMock, Creator: creatorMock, Store: store}, mockedListenAddr, []byte{}, []byte{})
+		V2Deps{Reader: readerMock, Creator: creatorMock, Mutator: mutatorMock, Store: store}, mockedListenAddr, []byte{}, []byte{})
 
 	return &fixture{
 		Server:               server,
@@ -110,6 +111,10 @@ func TestV2Routes(t *testing.T) {
 			{"POST", "/v2/spaces/space1/templates"},
 			{"POST", "/v2/spaces/space1/files"},
 			{"GET", "/v2/schemas"},
+			{"GET", "/v2/schemas/object"},
+			{"GET", "/v2/schemas/ops/replaceText"},
+			{"PATCH", "/v2/spaces/space1/objects/obj1"},
+			{"PUT", "/v2/spaces/space1/objects/obj1"},
 		} {
 			// when
 			w := httptest.NewRecorder()
