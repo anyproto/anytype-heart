@@ -34,6 +34,10 @@ const editTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 	`"columns":[{"id":"colA"},{"id":"colB"}],` +
 	`"rows":[{"id":"rowH","isHeader":true,"cells":["Name","Status"]},{"id":"rowB","cells":["Export"]}]}]}`
 
+// editEmptyDoc has no blocks at all — SPEC §7 keeps title/description out of
+// the document, so a fresh object has zero addressable blocks.
+const editEmptyDoc = `{"version":1,"id":"obj1","type":"page","properties":{"name":"Empty"},"blocks":[]}`
+
 // editCollectionDoc is a collection with one member.
 const editCollectionDoc = `{"version":1,"id":"obj1","type":"collection","properties":{"name":"List"},"items":["memberA"]}`
 
@@ -213,7 +217,7 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, float64(1), blocks[2]["indent"], "inside: payload indent 0 = the container's child level")
 	})
 
-	t.Run("insertBlocks needs exactly one target", func(t *testing.T) {
+	t.Run("insertBlocks with more than one target is ambiguous", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editBaseDoc))
 
@@ -222,7 +226,70 @@ func TestPatchObject(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, apimodel.V2CodeAmbiguousInput, apiErr.Code)
-		assert.Contains(t, apiErr.Message, "exactly one of after, before, inside")
+		assert.Contains(t, apiErr.Message, "at most one of after, before, inside")
+	})
+
+	t.Run("insertBlocks with no anchor appends at the document end", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		// when: no after/before/inside — root-append, with a nested payload
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","blocks":[{"type":"paragraph","text":"appended"},{"indent":1,"type":"paragraph","text":"nested"}]}`), "", false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, apimodel.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"Section", "parent", "child", "the Q3 report and Q3 plan", "appended", "nested"}, blockTexts(blocks))
+		_, hasIndent := blocks[4]["indent"]
+		assert.False(t, hasIndent, "root-append lands at document level 0")
+		assert.Equal(t, float64(1), blocks[5]["indent"], "payload indent stays relative to the insertion level")
+	})
+
+	t.Run("insertBlocks with no anchor gives an empty object its first content", func(t *testing.T) {
+		// given: zero blocks — nothing is addressable, so anchored targeting
+		// cannot work and PUT used to be the only way in (the corruption vector)
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editEmptyDoc), "headB")
+
+		// when
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","blocks":[{"type":"heading1","text":"First"},{"type":"paragraph","text":"body"}]}`), "", false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, apimodel.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"First", "body"}, blockTexts(blocks))
+	})
+
+	t.Run("insertBlocks position without a target is rejected", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","position":"first","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Contains(t, apiErr.Message, "position only applies to inside")
+		assert.Contains(t, apiErr.Issues[0].Message, "appends at the end of the document")
+	})
+
+	t.Run("moveBlock with no anchor moves the subtree to the end", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"moveBlock","id":"blockParent1"}`), "", false)
+
+		require.NoError(t, err)
+		// both reordered siblings count as moved (the documented diff rule)
+		assert.Equal(t, apimodel.V2DiffStats{BlocksMoved: 2}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"Section", "the Q3 report and Q3 plan", "parent", "child"}, blockTexts(blocks))
+		assert.Equal(t, float64(1), blocks[3]["indent"], "the subtree rides along")
 	})
 
 	t.Run("insertBlocks inside a leaf block is rejected", func(t *testing.T) {

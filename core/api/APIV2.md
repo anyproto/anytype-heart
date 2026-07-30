@@ -1,6 +1,6 @@
 # Anytype Local API v2 — specification and phased plan
 
-Status: **draft v0.3.3** · 2026-07-30 · GO-7383 follow-on
+Status: **draft v0.3.5** · 2026-07-31 · GO-7383 follow-on
 Depends on: AnyBlock JSON v1 flat (`pkg/lib/anyblockjson/SPEC.md` v0.6).
 Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) and
 `pkg/lib/anyblockjson/FLAT.md` — decisions cite sections there instead of
@@ -206,6 +206,15 @@ exist → error naming the descendant count.
   `after`/`before`/`inside`+`position: first|last` — so reorder-to-slot,
   indent (`inside` previous sibling), and outdent (`after` the parent) are
   all expressible (R14).
+- **Root targeting (v0.3.5)**: omitting all of `after`/`before`/`inside` on
+  `insertBlocks` and `moveBlock` appends at the **end of the document root**.
+  This is the ops-path into an empty object: SPEC §7 keeps title/description
+  out of the document, so a fresh object has zero addressable blocks and an
+  anchor-required contract left PUT as the only way to give it content — the
+  corruption vector the design steers agents away from. It also backs the §7
+  wrapper's `add_blocks(object, after?, markdown)` omitted-`after` case.
+  Payload `indent: 0` = the document's top level; `position` still requires
+  `inside` (no root-prepend — one shape, fewer fields for a small model).
 - **`deleteBlock`**: `recursive` defaults to false; deleting a block that
   has descendants without `recursive:true` → error naming the descendant
   count (R14).
@@ -801,10 +810,28 @@ too, same machinery, same risks.
 document without them; name/description content lives in `properties` and
 survives, and the editor regenerates the header blocks (same §7 contract).
 
-**Per-op discovery (§5) as shipped.** `GET /v2/schemas/ops/{op}` for the 11
+**Per-op discovery (§5) as shipped.** `GET /v2/schemas/ops/{op}` for the
 launch ops; each schema is C13-strict and self-contained, with a shared
 payload-block definition covering the realistic edit fields
 (`additionalProperties:false` — the full block inventory stays at
 `/v2/schemas/object`, which the def points to). Every example is a full
 single-op PATCH body (enforced by test); the index (`GET /v2/schemas`) grew
 an `ops` list.
+
+### 8.3 Phase-3 revisions (v0.3.5 — pre-release design review, decisions as built)
+
+Four contract changes from the modification-surface design review, taken
+while the API is unreleased and breaking changes are cheap.
+
+**Root targeting for `insertBlocks`/`moveBlock`.** Omitting all of
+`after`/`before`/`inside` appends at the end of the document root (state:
+`InsertTo("", Block_Inner)`). Chosen shape: the omitted-anchor form, not an
+explicit `at: "start"|"end"` field — fewer fields for a small model, and it
+is exactly the §7 wrapper's omitted-`after` case. No root-prepend; `position`
+still requires `inside` (position without any targeting field is a 400
+naming the root-append behavior). This closes the structural hole where an
+empty object (SPEC §7: no title/description blocks in the document) had zero
+addressable anchors and PUT was the only way to give it content. More than
+one targeting field is now "at most one of after, before, inside is allowed"
+(was "exactly one … is required" — reworded because zero is legal now).
+Payload indents stay R3-relative: at root, indent 0 = document top level.

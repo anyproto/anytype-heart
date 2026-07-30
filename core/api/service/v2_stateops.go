@@ -512,7 +512,9 @@ func (a *v2StateApplier) insertAt(parentId string, index int, ids []string) erro
 
 // targetPosition maps the R14 targeting vocabulary to the state's insert
 // positions. Note the state's naming: Block_Inner appends (last child),
-// Block_InnerFirst prepends (first child).
+// Block_InnerFirst prepends (first child). Root mode falls through to
+// Block_Inner — with an empty target id InsertTo appends at the document
+// root's end.
 func targetPosition(mode, pos string) model.BlockPosition {
 	switch mode {
 	case "before":
@@ -857,7 +859,12 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 
 // resolveTarget resolves the shared after/before/inside targeting vocabulary
 // (insertBlocks and moveBlock, R14). It returns the anchor index, the mode
-// ("after"|"before"|"inside") and the inside position ("first"|"last").
+// ("after"|"before"|"inside"|"root") and the inside position
+// ("first"|"last"). Omitting all three targeting fields means the document
+// root: append at the end of the document (§8.2 v0.3.5) — the only ops-path
+// into an object that has no addressable blocks yet (SPEC §7 keeps
+// title/description out of the document, so an empty object has none). The
+// anchor index is -1 in root mode.
 func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, position, opPath string) (anchor int, mode string, pos string, err error) {
 	var refs []string
 	if after != "" {
@@ -869,9 +876,16 @@ func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, po
 	if inside != "" {
 		refs, mode = append(refs, "inside"), "inside"
 	}
-	if len(refs) != 1 {
-		return 0, "", "", apimodel.V2AmbiguousInput("exactly one of after, before, inside is required",
+	if len(refs) > 1 {
+		return 0, "", "", apimodel.V2AmbiguousInput("at most one of after, before, inside is allowed",
 			apimodel.V2Issue{Path: opPath, Message: fmt.Sprintf("got %d targeting fields (%s)", len(refs), strings.Join(refs, ", "))})
+	}
+	if len(refs) == 0 {
+		if position != "" {
+			return 0, "", "", apimodel.V2ValidationFailed("position only applies to inside",
+				apimodel.V2Issue{Path: opPath + ".position", Message: "position without a targeting field is meaningless — omitting after/before/inside appends at the end of the document"})
+		}
+		return -1, "root", "last", nil
 	}
 	pos = "last"
 	if position != "" {
@@ -921,9 +935,14 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 		return err
 	}
 	a.setBlocks(blocks)
-	anchorId := blockId(doc.blocks[anchor])
+	// root mode: an empty anchor id makes InsertTo target the document root
+	// (append at the end for any non-InnerFirst position)
+	anchorId := ""
+	if mode != "root" {
+		anchorId = blockId(doc.blocks[anchor])
+	}
 	if err := a.st.InsertTo(anchorId, targetPosition(mode, pos), topIds...); err != nil {
-		return fmt.Errorf("insert blocks at %s: %w", anchorId, err)
+		return fmt.Errorf("insert blocks at %q: %w", anchorId, err)
 	}
 	a.mutated()
 	return nil
@@ -949,10 +968,15 @@ func (a *v2StateApplier) applyMoveBlock(op opMoveBlock, opPath string) error {
 			apimodel.V2Issue{Path: opPath, Message: "the target block is a descendant of (or is) the moved block — that would create a cycle; pick a target outside the moved subtree"})
 	}
 	fullId := blockId(doc.blocks[idx])
-	anchorId := blockId(doc.blocks[anchor])
+	// root mode (anchor -1, no targeting fields): move to the end of the
+	// document root — the root can never be inside the moved subtree
+	anchorId := ""
+	if mode != "root" {
+		anchorId = blockId(doc.blocks[anchor])
+	}
 	a.st.Unlink(fullId)
 	if err := a.st.InsertTo(anchorId, targetPosition(mode, pos), fullId); err != nil {
-		return fmt.Errorf("move block %s to %s: %w", fullId, anchorId, err)
+		return fmt.Errorf("move block %s to %q: %w", fullId, anchorId, err)
 	}
 	a.mutated()
 	return nil
