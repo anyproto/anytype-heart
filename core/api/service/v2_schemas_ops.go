@@ -74,14 +74,6 @@ var v2OpSchemas = map[string]v2SchemaKind{
 			`"set":{"type":"object","maxProperties":32,"description":"merge semantics: only the named fields change — text included only if named; null clears a field; id and indent are rejected (use moveBlock to re-nest)"}`),
 		example: `{"ops":[{"op":"updateBlock","id":"b5","set":{"checked":true}}]}`,
 	},
-	"replaceBlock": {
-		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","id","block"`,
-			`"op":{"const":"replaceBlock"}`,
-			`"id":{"$ref":"#/$defs/blockRef"}`,
-			`"block":{"$ref":"#/$defs/block","description":"the whole replacement block — absent text means empty text (use updateBlock to keep it); descendants are kept; position is kept (no indent)"}`),
-		example: `{"ops":[{"op":"replaceBlock","id":"b3","block":{"type":"paragraph","text":"new **text**"}}]}`,
-	},
 	"replaceSubtree": {
 		endpoint: v2OpsEndpoint,
 		schema: opSchema(`"op","id","blocks"`,

@@ -45,8 +45,7 @@ func mustDoc(name string) []byte {
 
 // Tasks returns the fixed Phase-0 task set: append paragraph · edit one
 // word · toggle a checkbox · restructure a section · fill a table cell
-// (expressed at launch as whole-table replaceBlock — R4) · create task with
-// properties · build a set with filter.
+// (setCell) · create task with properties · build a set with filter.
 func Tasks() []Task {
 	return []Task{
 		{

@@ -71,9 +71,8 @@ that does not exist yet and must be built (not assumed).
   against a scratch space, scores **apply-success, corruption
   (round-trip backtranslation, DELEGATE-52 method), output tokens, turns**.
   Task set: append paragraph · edit one word · toggle a checkbox ·
-  restructure a section · fill a table cell (expressed at launch as
-  whole-`table` `replaceBlock` — R4) · create task with properties · build
-  a set with filter. Model tiers: small (3–8B local), mid (Haiku-class),
+  restructure a section · fill a table cell (`setCell`) · create task with
+  properties · build a set with filter. Model tiers: small (3–8B local), mid (Haiku-class),
   frontier. **The small tier runs under grammar-constrained decoding**
   (XGrammar-class) — without that floor, 3–8B loops produce null data and
   gates are undecidable (R13; §3.5 evidence).
@@ -169,9 +168,9 @@ Two modes at launch, one gated addition, additive extensions later.
 format's semantic checks (SPEC §12, V1–V5 — monotonicity, leaf containment,
 row→column, bounds, id uniqueness). Any violation rejects the **whole
 PATCH** with path-addressed errors (`ops[i]` + block path). `moveBlock`
-into the moved block's own subtree is a cycle → error. `replaceBlock` /
-`updateBlock` changing a parent's type to a leaf type while descendants
-exist → error naming the descendant count.
+into the moved block's own subtree is a cycle → error. `updateBlock`
+changing a parent's type to a leaf type while descendants exist → error
+naming the descendant count.
 
 **(a) `PATCH /v2/spaces/{spaceId}/objects/{objectId}` — batched ops (default path)**
 
@@ -179,7 +178,7 @@ exist → error naming the descendant count.
 { "ops": [
     { "op": "setProperties", "set": { "status": ["Done"] }, "unset": ["oldKey"] },
     { "op": "updateBlock",   "id": "b5", "set": { "checked": true } },
-    { "op": "replaceBlock",  "id": "b3", "block": { "type": "paragraph", "text": "new **text**" } },
+    { "op": "updateBlock",   "id": "b3", "set": { "text": "new **text**" } },
     { "op": "replaceSubtree","id": "b7", "blocks": [ { "type": "bulletedListItem", "text": "a" },
                                                      { "indent": 1, "type": "paragraph", "text": "b" } ] },
     { "op": "insertBlocks",  "after": "b3", "blocks": [ { "type": "checkbox", "text": "todo" } ] },
@@ -190,12 +189,12 @@ exist → error naming the descendant count.
 
 - Closed op set, id-addressed, atomic (one `state.Apply` per request), no
   positional/index/offset addressing anywhere (§3.1–3.2).
-- **`updateBlock` (R4)**: merge semantics — only the fields in `set`
-  change; everything else (including `text`) is untouched. The op for
-  checkbox toggles, color/align changes, language switches.
-  **`replaceBlock` replaces the whole block** (absent `text` = empty text
-  per SPEC §4 — resend `text` or use `updateBlock`); descendants kept.
-  `replaceSubtree` swaps block + descendants for the payload run.
+- **`updateBlock` (R4)**: THE one block-update op (v0.3.5 — `replaceBlock`
+  removed). Merge semantics — only the fields in `set` change; everything
+  else (including `text`) is untouched; explicit `null` clears a field. The
+  op for checkbox toggles, color/align changes, language switches, retypes
+  and text rewrites alike. `replaceSubtree` swaps block + descendants for
+  the payload run.
 - **Relative indent in payloads** (R3): for `after`/`before` and
   `replaceSubtree`, payload `indent: 0` = the anchor's level. For
   `inside`, payload `indent: 0` = **the container's child level**
@@ -279,9 +278,9 @@ prefer it over `updateBlock`.
 
 `value` is a string (paragraph-cell shorthand), `null` (clear), or a block
 object (SPEC §6.1 cell forms). **In the launch op set** (moved from
-deferred): it backs the `set_cell` wrapper tool, and whole-`table`
-`replaceBlock` for a one-cell change is the same verbatim-collapse trap as
-(c). Flat, non-recursive — trivially grammar-constrainable.
+deferred): it backs the `set_cell` wrapper tool, and a whole-`table`
+rewrite for a one-cell change is the same verbatim-collapse trap as (c).
+Flat, non-recursive — trivially grammar-constrainable.
 
 **(e) Deferred, additive later** (closed op set, versioned): dataview view
 ops, `replaceProperties` full-map swap, cross-object batch, block-scoped
@@ -699,7 +698,7 @@ is wiped on replay, the A1 class); values decode via
 `UnmarshalPropertyValue` (dates, option names, ref lists — §3 rules).
 updateBlock → merge on the block's exported JSON form → `UnmarshalBlock`
 with the forced id → set in place, live ChildrenIds kept (non-table).
-replaceBlock → same without merge. replaceSubtree → fragment run →
+replaceSubtree → fragment run →
 unlink old subtree, splice the run's top blocks at the old position (id
 reuse from the replaced subtree is allowed). insertBlocks →
 `st.InsertTo` (after→Bottom, before→Top, inside last→Inner, inside
@@ -789,9 +788,8 @@ with `ops[i].blocks[j].indent` paths before the document-level net.
 an error. `moveBlock` moves the whole subtree and re-bases its indents.
 
 **Small op decisions.** `updateBlock`: `set` is merge; explicit `null`
-clears a field; `id`/`indent` in `set` are rejected (steering to moveBlock).
-`replaceBlock`: payload `indent` rejected (position is kept), payload `id`
-must match or be omitted, addressed id and indent survive. `replaceSubtree`
+clears a field; `id`/`indent` in `set` are rejected (steering to moveBlock);
+the addressed id and indent survive a retype. `replaceSubtree`
 mints fresh ids for id-less payload blocks (the old subtree's ids die with
 it). Every payload block — minted or client-supplied — lands in
 `createdBlocks` keyed `ops[i].blocks[j]`. `replaceText` requires a
@@ -846,6 +844,18 @@ addressable anchors and PUT was the only way to give it content. More than
 one targeting field is now "at most one of after, before, inside is allowed"
 (was "exactly one … is required" — reworded because zero is legal now).
 Payload indents stay R3-relative: at root, indent 0 = document top level.
+
+**`replaceBlock` removed (BREAKING, deliberate — the API is unreleased).**
+Four routes to changing a block's text (updateBlock/replaceBlock/
+replaceSubtree/replaceText) was the surface's largest disambiguation load,
+and `replaceBlock`'s silent text-wipe (a checkbox toggle via replaceBlock
+losing the text) was the documented small-model trap; BlockNote and Tiptap
+each ship ONE block-update op. `updateBlock {id, set}` — merge with
+explicit-null-clears — expresses everything replaceBlock did except the
+wipe (a full wipe is `set` naming every field, `null`ing the rest, or
+`replaceSubtree`). The op set is 10 ops. An agent that sends `replaceBlock`
+gets the unknown-op error with a hint that names updateBlock's semantics
+before listing the allowed ops. All other error texts are unchanged.
 
 **`setProperties` per-key `add`/`remove`.** Only for list-shaped formats
 (select/multiSelect/objects/files); scalar-format keys are rejected

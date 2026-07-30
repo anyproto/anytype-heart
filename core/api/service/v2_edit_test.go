@@ -331,32 +331,66 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, []string{"Section", "a", "b", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 	})
 
-	t.Run("replaceBlock keeps id, position and descendants", func(t *testing.T) {
+	t.Run("updateBlock retypes a block keeping id, position and descendants", func(t *testing.T) {
+		// migrated from replaceBlock (folded into updateBlock, v0.3.5)
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceBlock","id":"blockParent1","block":{"type":"quote","text":"new **text**"}}`), "", false)
+			patchBody(`{"op":"updateBlock","id":"blockParent1","set":{"type":"quote","text":"new **text**"}}`), "", false)
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, "quote", blocks[1]["type"])
 		assert.Equal(t, "blockParent1", blocks[1]["id"])
+		assert.Equal(t, "new **text**", blocks[1]["text"])
 		assert.Equal(t, "child", blocks[2]["text"], "descendants are kept")
 		assert.Equal(t, float64(1), blocks[2]["indent"])
 	})
 
-	t.Run("replaceBlock to a leaf type with descendants names the count", func(t *testing.T) {
+	t.Run("updateBlock null clears a field, unnamed fields stay", func(t *testing.T) {
+		// the merge-with-null-clears semantics that made replaceBlock redundant
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"updateBlock","id":"blockSibling2","set":{"text":null}}`), "", false)
+
+		require.NoError(t, err)
+		blocks := docBlocks(stateDoc(t, *captured))
+		text, _ := blocks[3]["text"].(string)
+		assert.Empty(t, text, "explicit null clears the text")
+		assert.Equal(t, "paragraph", blocks[3]["type"], "unnamed fields survive the merge")
+	})
+
+	t.Run("updateBlock to a leaf type with descendants names the count", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.expectMutate(editRead(t, editBaseDoc))
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
-			patchBody(`{"op":"replaceBlock","id":"blockParent1","block":{"type":"divider"}}`), "", false)
+			patchBody(`{"op":"updateBlock","id":"blockParent1","set":{"type":"divider"}}`), "", false)
 
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, `cannot change block "blockParent1" to leaf type "divider"`)
 		assert.Contains(t, apiErr.Message, "1 descendant block")
+	})
+
+	t.Run("replaceBlock is gone and the hint names updateBlock", func(t *testing.T) {
+		// folded into updateBlock pre-release (v0.3.5) — the unknown-op error
+		// must steer an agent that learned the old vocabulary
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"replaceBlock","id":"blockParent1","block":{"type":"quote"}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Contains(t, apiErr.Message, `unknown op "replaceBlock"`)
+		require.NotEmpty(t, apiErr.Issues)
+		assert.Contains(t, apiErr.Issues[0].Hint, "replaceBlock was removed — use updateBlock {id, set}")
+		assert.NotContains(t, apiErr.Issues[0].Hint, "allowed ops: setProperties, updateBlock, replaceBlock",
+			"the op list no longer carries replaceBlock")
 	})
 
 	t.Run("moveBlock inside moves the subtree and reindents", func(t *testing.T) {

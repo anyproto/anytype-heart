@@ -351,12 +351,6 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 			return err
 		}
 		return a.applyUpdateBlock(op, opPath)
-	case "replaceBlock":
-		var op opReplaceBlock
-		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
-			return err
-		}
-		return a.applyReplaceBlock(op, opPath)
 	case "replaceSubtree":
 		var op opReplaceSubtree
 		if err := decodeStrictOp(raw, probe.Op, opPath, &op); err != nil {
@@ -403,8 +397,13 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 		return apimodel.V2ValidationFailed("op is required",
 			apimodel.V2Issue{Path: opPath + ".op", Message: "missing op", Hint: "allowed ops: " + strings.Join(v2OpNames, ", ")})
 	default:
+		hint := "allowed ops: " + strings.Join(v2OpNames, ", ")
+		if probe.Op == "replaceBlock" {
+			// removed pre-release (v0.3.5): steer to the one block-update op
+			hint = "replaceBlock was removed — use updateBlock {id, set}: name every field you want changed (text included), null clears a field, everything else stays. " + hint
+		}
 		return apimodel.V2ValidationFailed(fmt.Sprintf("unknown op %q", probe.Op),
-			apimodel.V2Issue{Path: opPath + ".op", Message: fmt.Sprintf("unknown op %q", probe.Op), Hint: "allowed ops: " + strings.Join(v2OpNames, ", ")})
+			apimodel.V2Issue{Path: opPath + ".op", Message: fmt.Sprintf("unknown op %q", probe.Op), Hint: hint})
 	}
 }
 
@@ -849,52 +848,6 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		return err
 	}
 	a.replaceLive(oldWasTable, blocks)
-	return nil
-}
-
-func (a *v2StateApplier) applyReplaceBlock(op opReplaceBlock, opPath string) error {
-	doc, err := a.doc()
-	if err != nil {
-		return err
-	}
-	idx, err := a.resolveRef(doc, op.Id, opPath+".id")
-	if err != nil {
-		return err
-	}
-	if len(op.Block) == 0 {
-		return apimodel.V2ValidationFailed("replaceBlock needs a block",
-			apimodel.V2Issue{Path: opPath + ".block", Message: "block is required — the whole replacement block object"})
-	}
-	payload, err := decodeOpBlock(op.Block, opPath+".block")
-	if err != nil {
-		return err
-	}
-	if _, hasIndent := payload["indent"]; hasIndent {
-		return apimodel.V2ValidationFailed("replaceBlock keeps the block's position",
-			apimodel.V2Issue{Path: opPath + ".block.indent", Message: "indent is not accepted here — the block stays at its level; use moveBlock or replaceSubtree to restructure"})
-	}
-	old := doc.blocks[idx]
-	fullId := blockId(old)
-	if pid := blockId(payload); pid != "" && pid != fullId {
-		return apimodel.V2ValidationFailed("the payload id must match the addressed block",
-			apimodel.V2Issue{Path: opPath + ".block.id", Message: fmt.Sprintf("got %q, the addressed block is %q — omit id or repeat the addressed one", pid, fullId)})
-	}
-	if descendants := doc.subtreeEnd(idx) - idx - 1; descendants > 0 && anyblockjson.LeafBlockType(blockType(payload)) {
-		return leafWithDescendantsError(fullId, blockType(payload), descendants, opPath+".block.type")
-	}
-	payload["id"] = fullId
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return fmt.Errorf("encode replacement block: %w", err)
-	}
-	blocks, err := anyblockjson.UnmarshalBlock(raw, fullId, a.importOptions())
-	if err != nil {
-		return invalidFragmentError(opPath+".block", err)
-	}
-	if err := a.checkFreshIds(blocks, collectSubtreeIds(a.st, fullId), func(string) string { return opPath + ".block" }); err != nil {
-		return err
-	}
-	a.replaceLive(blockType(old) == "table", blocks)
 	return nil
 }
 

@@ -19,9 +19,14 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// v2OpNames is the closed op set, in documentation order.
+// v2OpNames is the closed op set, in documentation order. replaceBlock was
+// deliberately folded into updateBlock before release (v0.3.5): four routes
+// to changing a block's text was the surface's largest disambiguation load,
+// and replaceBlock's silent text-wipe (a checkbox toggle losing the text)
+// was the documented small-model trap. updateBlock's merge-with-null-clears
+// expresses everything replaceBlock did except the wipe.
 var v2OpNames = []string{
-	"setProperties", "updateBlock", "replaceBlock", "replaceSubtree",
+	"setProperties", "updateBlock", "replaceSubtree",
 	"insertBlocks", "moveBlock", "deleteBlock", "replaceText", "setCell",
 	"addItems", "removeItems",
 }
@@ -148,12 +153,6 @@ type opUpdateBlock struct {
 	Op  string                     `json:"op"`
 	Id  string                     `json:"id"`
 	Set map[string]json.RawMessage `json:"set"`
-}
-
-type opReplaceBlock struct {
-	Op    string          `json:"op"`
-	Id    string          `json:"id"`
-	Block json.RawMessage `json:"block"`
 }
 
 type opReplaceSubtree struct {
