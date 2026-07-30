@@ -70,6 +70,14 @@ func main() {
 }
 
 func run(inDir, outDir string, normalizeIndent, lenient bool, format outputFormat) error {
+	// TODO(GO-7383): emit the archive's `profile` file from index.json (§2c) —
+	// name/iconImage -> name/avatar, homepage-or-entrypoint -> spaceDashboardId,
+	// widgets -> widgets. Note that `entrypoint` is TEMPORARILY ignored by the
+	// installer: pb.Profile carries no entry-point field, so
+	// builtinobjects.inject opens widgets[0].targetObjectId. Until the
+	// heart-side profile handling reads an entry point of its own, a bundle has
+	// to list its entrypoint first in `widgets` for it to be honoured, and
+	// anyblockvalidate warns when it does not.
 	files, err := anyblockbatch.DiscoverJSONFiles(inDir)
 	if err != nil {
 		return fmt.Errorf("discover input files: %w", err)

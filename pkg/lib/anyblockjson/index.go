@@ -71,11 +71,13 @@ type Index struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	IconEmoji   string `json:"iconEmoji"`
-	// IconImage is the name of an image object in the bundle, not an id: the
-	// installer resolves the space icon by querying for an image whose name
-	// matches (builtinobjects.getNewAvatarId). It therefore needs the image
-	// object and its file present in the archive, which is why a generated
-	// bundle normally sets IconEmoji instead.
+	// IconImage is the object id of an image in the bundle — the same thing
+	// iconImage means on any object (§3), so an author never has to remember a
+	// second convention. The installer resolves the space icon by image *name*
+	// (builtinobjects.getNewAvatarId queries name + image layout), so the
+	// wiring looks the name up from this id; that asymmetry is the wire
+	// format's, not the author's. Needs the image object and its file in the
+	// archive, which is why a generated bundle sets IconEmoji instead.
 	IconImage string `json:"iconImage"`
 	// Entrypoint is the object opened once, right after the space is created
 	// — the first thing a user ever sees. Distinct from Homepage, which is
@@ -88,13 +90,31 @@ type Index struct {
 	Widgets    []Widget `json:"widgets"`
 }
 
-// EntryPoint returns the object the install opens. Normally the declared
-// entrypoint; for a bundle written before the field existed, the first widget
-// naming an object, which is what the wire format has always meant.
+// EntryPoint returns the entry point the bundle *declares*: the entrypoint
+// field, or for a bundle written before it existed, the first widget naming an
+// object.
+//
+// TEMPORARY: this is intent, not behaviour. pb.Profile has no field for an
+// entry point — builtinobjects.inject opens widgets[0].targetObjectId — so
+// until the profile handling grows one, what actually opens is
+// EffectiveEntryPoint. The two differ exactly when a bundle declares an
+// entrypoint that is not its first widget, which is worth reporting.
 func (i *Index) EntryPoint() string {
 	if i.Entrypoint != "" {
 		return i.Entrypoint
 	}
+	for _, w := range i.Widgets {
+		if !IsReservedWidgetTarget(w.Target) {
+			return w.Target
+		}
+	}
+	return ""
+}
+
+// EffectiveEntryPoint returns what the installer opens *today*: the first
+// widget naming an object, which is all pb.Profile can express. Compare with
+// EntryPoint to detect a declared entry point that will not be honoured yet.
+func (i *Index) EffectiveEntryPoint() string {
 	for _, w := range i.Widgets {
 		if !IsReservedWidgetTarget(w.Target) {
 			return w.Target

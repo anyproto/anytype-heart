@@ -26,14 +26,14 @@
     "iconImage": {
       "type": "string",
       "minLength": 1,
-      "description": "The space's icon as an image, given as the **name** of an image object shipped in the bundle — not its id. The installer resolves it by querying for an image whose name matches, so the bundle must contain both the image object and its file. A bundle written without image assets should use iconEmoji instead."
+      "description": "The space's icon as an image: the **object id** of an image in the bundle, exactly as `iconImage` means on any object. The bundle must contain that image object and its file, so this is for hand-assembled bundles; a generated one uses iconEmoji. (The installer actually resolves the space icon by image *name*, not id — the wiring does that lookup so this field stays consistent with every other id in the format.)"
     },
 
     "entrypoint": {
       "type": "string",
       "minLength": 1,
       "not": { "enum": ["widgets", "graph", "favorite", "recent", "set", "collection", "allObjects", "recentOpen"] },
-      "description": "The object opened once, immediately after the space is created from this bundle — the first thing a user ever sees. Must be an object id from this bundle: a reserved listing cannot be opened."
+      "description": "The object opened once, immediately after the space is created from this bundle — the first thing a user ever sees. Must be an object id from this bundle: a reserved listing cannot be opened. TEMPORARY: the installer does not read this yet — it opens the first widget instead (pb.Profile has no field for it). Until the heart-side profile handling is improved, also list the entrypoint as your first widget, or what opens will not be what you declared."
     },
     "homepage": {
       "type": "string",

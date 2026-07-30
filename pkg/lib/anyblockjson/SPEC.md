@@ -251,7 +251,7 @@ object. That is `index.json`, one file at the bundle root, validated against
 | Field | Meaning |
 |---|---|
 | `name` · `description` · `iconEmoji` | the space's own identity, applied on install |
-| `iconImage` | the space icon as an image — the **name** of an image object in the bundle, not its id, because the installer resolves it by querying for an image with that name. Needs the image object *and* its file in the archive, so a generated bundle normally uses `iconEmoji` |
+| `iconImage` | the space icon as an image: the **object id** of an image in the bundle, as `iconImage` means everywhere else (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `iconEmoji` |
 | `homepage` | what opens on entering the space: an object id, or the reserved `widgets` (the sidebar dashboard, the default) or `graph` |
 | `widgets` | sidebar widgets, in order. **The first one is what the install opens**, so the entry point goes first |
 
@@ -272,7 +272,7 @@ wiring's job:
 | `index.json` | `pb.Profile` | effect |
 |---|---|---|
 | `name` | `name` | the space's name |
-| `iconImage` | `avatar` | the space icon, resolved by name |
+| `iconImage` | `avatar` | the space icon. The field holds an object id; `avatar` wants the image's **name**, because `getNewAvatarId` resolves it by querying name + image layout — so the wiring reads the name off the referenced object. Authors keep writing ids, as everywhere else in the format |
 | `homepage`, falling back to `entrypoint` | `spaceDashboardId` | the space's `homepage` detail — what opens on **every** entry |
 | `widgets` | `widgets` | sidebar widgets, in order |
 | `entrypoint` | `widgets[0].targetObjectId` | the object the install opens, **once** |
