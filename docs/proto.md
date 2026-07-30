@@ -1052,6 +1052,7 @@
     - [Rpc.Object.Import.Notion.ValidateToken.Response](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response)
     - [Rpc.Object.Import.Notion.ValidateToken.Response.Error](#anytype-Rpc-Object-Import-Notion-ValidateToken-Response-Error)
     - [Rpc.Object.Import.Request](#anytype-Rpc-Object-Import-Request)
+    - [Rpc.Object.Import.Request.AIParams](#anytype-Rpc-Object-Import-Request-AIParams)
     - [Rpc.Object.Import.Request.BookmarksParams](#anytype-Rpc-Object-Import-Request-BookmarksParams)
     - [Rpc.Object.Import.Request.CsvParams](#anytype-Rpc-Object-Import-Request-CsvParams)
     - [Rpc.Object.Import.Request.HtmlParams](#anytype-Rpc-Object-Import-Request-HtmlParams)
@@ -17956,6 +17957,23 @@ DEPRECATED, GO-1926 |
 | noProgress | [bool](#bool) |  |  |
 | isMigration | [bool](#bool) |  |  |
 | isNewSpace | [bool](#bool) |  |  |
+| aiParams | [Rpc.Object.Import.Request.AIParams](#anytype-Rpc-Object-Import-Request-AIParams) |  | optional BYOK LLM enrichment of the imported structure (importv2, docs/ImportV2LLM.md); absent = feature off, import runs with built-in rules only |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-Import-Request-AIParams"></a>
+
+### Rpc.Object.Import.Request.AIParams
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [Rpc.AI.ProviderConfig](#anytype-Rpc-AI-ProviderConfig) |  | OpenAI-compatible provider; feature is off when endpoint and model are empty |
+| includeContentSamples | [bool](#bool) |  | allow sample property values and page titles in the analysis prompt (default: schema only) |
 
 
 
