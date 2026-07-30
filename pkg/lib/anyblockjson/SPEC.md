@@ -224,6 +224,61 @@ property table — are **generated one-way** from the type document (planned
 This retires the legacy per-type JSON Schema export (`pkg/lib/schema`) with
 its `x-` extension keys.
 
+## 2c. The bundle index (`index.json`)
+
+Every document described so far is one object. **A bundle also needs to say
+things about itself** — what the space is called, what opens when a user
+enters it, what the sidebar shows — and none of that belongs to any single
+object. That is `index.json`, one file at the bundle root, validated against
+`index.schema.json`:
+
+```json
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1.0/index.schema.json",
+  "version": 1,
+  "name": "Company Wiki",
+  "description": "Everything we know, with an owner.",
+  "iconEmoji": "📚",
+  "homepage": "page-wiki-home",
+  "widgets": [
+    { "target": "page-wiki-home" },
+    { "target": "type-wiki-page", "layout": "view", "limit": 6 },
+    { "target": "favorite", "layout": "compactList" }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `name` · `description` · `iconEmoji` | the space's own identity, applied on install |
+| `iconImage` | the space icon as an image — the **name** of an image object in the bundle, not its id, because the installer resolves it by querying for an image with that name. Needs the image object *and* its file in the archive, so a generated bundle normally uses `iconEmoji` |
+| `homepage` | what opens on entering the space: an object id, or the reserved `widgets` (the sidebar dashboard, the default) or `graph` |
+| `widgets` | sidebar widgets, in order. **The first one is what the install opens**, so the entry point goes first |
+
+A widget is `{ target, layout, limit }`. `layout` is `link · tree · list ·
+compactList · view`, defaulting to `link` and omitted when default (§4).
+`target` is an object id from the bundle — a page, a type, a set, a
+collection — or one of the reserved listings `favorite · recent · set ·
+collection · allObjects · recentOpen`, which name a built-in rather than
+something the bundle ships.
+
+**Why this file exists rather than a flag on an object.** The installer reads
+a bundle's entry point from a `pb.Profile` at the archive root
+(`util/builtinobjects`, which is how the built-in use cases work):
+`spaceDashboardId` becomes the space's `homepage`, `widgets[]` become sidebar
+widgets, and `widgets[0].targetObjectId` is the object the install opens.
+`index.json` is that profile in this format's terms, and the wiring is
+responsible for emitting it. Nothing per-object can express it —
+in particular **`isFavorite` is not an entry point**: it adds an object to
+Favorites and nothing more. It does not open anything, create a widget, or
+set the homepage.
+
+Ids in `index.json` are the bundle's own — the same slugs every other
+document uses — and the wiring relinks them like any other reference. Whether
+they resolve is a cross-document question this package does not answer
+(§13): an index validates on its own terms while naming an object no
+document defines.
+
 ## 3. Properties
 
 `properties` is a JSON object keyed by **property key** (as stored,
@@ -1313,6 +1368,14 @@ type Options struct {
     OnWarning         func(Issue)      // optional sink for warning-grade issues
                                       // (NormalizeIndent clamps, path-addressed)
     // CompactFilters (reserved): filters as query strings — post-v1, §6.2.1
+}
+```
+
+The bundle index (§2c) has its own pair, since it is not an object snapshot:
+
+```go
+func UnmarshalIndex(data []byte) (*Index, error)
+func MarshalIndex(idx *Index) ([]byte, error)
 }
 ```
 

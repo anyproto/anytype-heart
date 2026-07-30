@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anytype.io/anyblock/1.0/index.schema.json",
+  "title": "AnyBlock JSON bundle index",
+  "description": "One index.json at the root of a bundle describes the bundle as a whole: what the space is called, where a user lands after installing it, and what the sidebar shows. Everything else in a bundle describes a single object; this is the only document that describes the set.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The space's name, applied on install."
+    },
+    "description": {
+      "type": "string",
+      "description": "One line on what the space is for. Author-facing and applied to the space where the client shows one."
+    },
+    "iconEmoji": {
+      "type": "string",
+      "description": "The space's icon, as an emoji."
+    },
+    "iconImage": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The space's icon as an image, given as the **name** of an image object shipped in the bundle — not its id. The installer resolves it by querying for an image whose name matches, so the bundle must contain both the image object and its file. A bundle written without image assets should use iconEmoji instead."
+    },
+
+    "homepage": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What opens when the user enters the space. An object id from this bundle, or a reserved name: `widgets` shows the sidebar dashboard (the default), `graph` opens the graph. Reaches the space as the `homepage` detail."
+    },
+
+    "widgets": {
+      "type": "array",
+      "description": "Sidebar widgets, in order. The first one is what the installer opens after import, so put the entry point first.",
+      "items": { "$ref": "#/$defs/widget" }
+    }
+  },
+  "$defs": {
+    "widget": {
+      "type": "object",
+      "required": ["target"],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the widget points at: an object id from this bundle (a page, a type, a set or a collection), or one of the reserved targets `favorite`, `recent`, `set`, `collection`, `allObjects`, `recentOpen`."
+        },
+        "layout": {
+          "enum": ["link", "tree", "list", "compactList", "view"],
+          "default": "link",
+          "description": "How the widget renders. `link` is a single row; `tree` expands children; `list` and `compactList` show contents; `view` renders a type's or set's own view."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "How many entries a listing widget shows. Ignored by `link`."
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,192 @@
+package anyblockjson
+
+// index.go implements §2c: the bundle-level index.json. Every other document
+// in this format describes one object; index.json describes the set — the
+// space's name, what opens on entry, and what the sidebar shows.
+//
+// It exists because none of that is expressible per-object. The installer
+// reads it from a `profile` file at the archive root (pb.Profile, consumed by
+// util/builtinobjects.inject): spaceDashboardId becomes the space's homepage,
+// widgets[] become sidebar widgets, and widgets[0] is the object the install
+// opens. A bundle without one imports as an undifferentiated object list.
+
+import (
+	"bytes"
+	_ "embed"
+	"fmt"
+	"sync"
+
+	"github.com/santhosh-tekuri/jsonschema/v6"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
+)
+
+//go:embed schema/index.schema.json
+var indexSchemaJSON []byte
+
+// IndexSchemaURL is the published location of the index schema.
+const IndexSchemaURL = "https://schemas.anytype.io/anyblock/1.0/index.schema.json"
+
+// IndexFileName is the name a bundle's index must have, at the bundle root.
+const IndexFileName = "index.json"
+
+// Reserved homepage values (core/domain/homepage.go). Anything else is an
+// object id.
+const (
+	HomepageWidgets = "widgets"
+	HomepageGraph   = "graph"
+)
+
+// reservedWidgetTargets are the widget targets that name a built-in listing
+// rather than an object in the bundle (core/block/editor/widget).
+var reservedWidgetTargets = map[string]struct{}{
+	"favorite": {}, "recent": {}, "set": {}, "collection": {},
+	"allObjects": {}, "recentOpen": {},
+}
+
+// IsReservedWidgetTarget reports whether target names a built-in listing, in
+// which case it does not have to resolve to an object in the bundle.
+func IsReservedWidgetTarget(target string) bool {
+	_, ok := reservedWidgetTargets[target]
+	return ok
+}
+
+// IsReservedHomepage reports whether homepage names a built-in screen rather
+// than an object in the bundle.
+func IsReservedHomepage(homepage string) bool {
+	return homepage == HomepageWidgets || homepage == HomepageGraph
+}
+
+// Widget is one sidebar widget (§2c).
+type Widget struct {
+	Target string `json:"target"`
+	Layout string `json:"layout"`
+	Limit  int32  `json:"limit"`
+}
+
+// Index is a bundle's index.json (§2c).
+type Index struct {
+	Schema      string `json:"$schema"`
+	Version     int    `json:"version"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IconEmoji   string `json:"iconEmoji"`
+	// IconImage is the name of an image object in the bundle, not an id: the
+	// installer resolves the space icon by querying for an image whose name
+	// matches (builtinobjects.getNewAvatarId). It therefore needs the image
+	// object and its file present in the archive, which is why a generated
+	// bundle normally sets IconEmoji instead.
+	IconImage string   `json:"iconImage"`
+	Homepage  string   `json:"homepage"`
+	Widgets   []Widget `json:"widgets"`
+}
+
+// EntryPoint returns the object the install opens: the first widget's target,
+// which is what builtinobjects.inject uses as its starting page. Empty when
+// the bundle declares no widgets, or when the first one names a reserved
+// listing rather than an object.
+func (i *Index) EntryPoint() string {
+	if len(i.Widgets) == 0 {
+		return ""
+	}
+	if t := i.Widgets[0].Target; !IsReservedWidgetTarget(t) {
+		return t
+	}
+	return ""
+}
+
+var compileIndexSchema = sync.OnceValues(func() (*jsonschema.Schema, error) {
+	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(indexSchemaJSON))
+	if err != nil {
+		return nil, fmt.Errorf("decode embedded index schema: %w", err)
+	}
+	c := jsonschema.NewCompiler()
+	if err := c.AddResource(IndexSchemaURL, doc); err != nil {
+		return nil, fmt.Errorf("add index schema resource: %w", err)
+	}
+	sch, err := c.Compile(IndexSchemaURL)
+	if err != nil {
+		return nil, fmt.Errorf("compile index schema: %w", err)
+	}
+	return sch, nil
+})
+
+// UnmarshalIndex validates data against the index schema and decodes it
+// (§2c). Errors wrap *ValidationError with path-addressed issues, like
+// Unmarshal.
+//
+// Whether the ids it names exist is a cross-document question the wiring
+// answers, not this package: an index is valid on its own terms while
+// pointing at an object no document defines.
+func UnmarshalIndex(data []byte) (*Index, error) {
+	raw, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
+	if err != nil {
+		return nil, &ValidationError{Issues: []Issue{{Message: fmt.Sprintf("invalid JSON: %v", err)}}}
+	}
+	sch, err := compileIndexSchema()
+	if err != nil {
+		return nil, fmt.Errorf("embedded index schema: %w", err)
+	}
+	if err := sch.Validate(raw); err != nil {
+		ve := &ValidationError{}
+		printer := message.NewPrinter(language.English)
+		var flatten func(e *jsonschema.ValidationError)
+		flatten = func(e *jsonschema.ValidationError) {
+			if len(e.Causes) == 0 {
+				ve.Issues = append(ve.Issues, Issue{
+					Path:    jsonPath(e.InstanceLocation),
+					Message: schemaIssueMessage(e, printer),
+				})
+				return
+			}
+			for _, c := range e.Causes {
+				flatten(c)
+			}
+		}
+		if verr, ok := err.(*jsonschema.ValidationError); ok {
+			flatten(verr)
+		} else {
+			ve.Issues = append(ve.Issues, Issue{Message: err.Error()})
+		}
+		return nil, ve
+	}
+
+	var idx Index
+	if err := jsonUnmarshal(data, &idx); err != nil {
+		return nil, fmt.Errorf("decode index: %w", err)
+	}
+	return &idx, nil
+}
+
+// MarshalIndex renders an index in the canonical byte form (§4).
+func MarshalIndex(idx *Index) ([]byte, error) {
+	if idx == nil {
+		return nil, fmt.Errorf("nil index")
+	}
+	doc := &omap{}
+	doc.set("$schema", IndexSchemaURL)
+	doc.set("version", FormatVersion)
+	doc.setNonEmpty("name", idx.Name)
+	doc.setNonEmpty("description", idx.Description)
+	doc.setNonEmpty("iconEmoji", idx.IconEmoji)
+	doc.setNonEmpty("iconImage", idx.IconImage)
+	doc.setNonEmpty("homepage", idx.Homepage)
+
+	var widgets []any
+	for _, w := range idx.Widgets {
+		if w.Target == "" {
+			continue
+		}
+		wm := &omap{}
+		wm.set("target", w.Target)
+		// link is the default layout and is omitted, like every other
+		// default in this format (§4)
+		if w.Layout != "" && w.Layout != "link" {
+			wm.set("layout", w.Layout)
+		}
+		wm.setNonEmpty("limit", w.Limit)
+		widgets = append(widgets, wm)
+	}
+	doc.setNonEmpty("widgets", widgets)
+	return marshalCanonical(doc)
+}
