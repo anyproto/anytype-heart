@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -35,6 +36,13 @@ const editTableDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
 
 // editCollectionDoc is a collection with one member.
 const editCollectionDoc = `{"version":1,"id":"obj1","type":"collection","properties":{"name":"List"},"items":["memberA"]}`
+
+// editLayoutDoc holds a row/column layout — the V3 containment case a payload
+// fragment cannot see on its own (review B′1).
+const editLayoutDoc = `{"version":1,"id":"obj1","type":"page","blocks":[` +
+	`{"id":"rowOne1","type":"row"},` +
+	`{"indent":1,"id":"colOne1","type":"column"},` +
+	`{"indent":2,"id":"inCol1","type":"paragraph","text":"in column"}]}`
 
 // editRead builds a live read from an AnyBlock document.
 func editRead(t *testing.T, doc string) apicore.ObjectRead {
@@ -487,6 +495,60 @@ func TestPatchObject(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusConflict, apiErr.Status)
 		assert.Equal(t, apimodel.V2CodeEtagMismatch, apiErr.Code)
+	})
+
+	t.Run("V3 row→column containment is enforced on the spliced result (B′1)", func(t *testing.T) {
+		// a paragraph inside a row is legal as an isolated fragment — only the
+		// whole document shows the violation, which is why the post-op validate
+		// has to run
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editLayoutDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","inside":"rowOne1","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, v2InvalidDocMessage, apiErr.Message)
+	})
+
+	t.Run("a legal edit inside a column still passes (no false rejection)", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editLayoutDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","inside":"colOne1","blocks":[{"type":"paragraph","text":"added"}]}`), "", false)
+
+		require.NoError(t, err)
+		assert.NotNil(t, *captured)
+	})
+
+	t.Run("an over-deep insert is refused, not silently clamped (B′2)", func(t *testing.T) {
+		// fragment validation is run-RELATIVE, so a deep run passes on its own;
+		// spliced in it can push the document past the format's depth bound.
+		// The exporter clamps rather than failing when a warning sink is
+		// installed, which used to corrupt the view for later ops in the same
+		// batch (deleteBlock then saw no descendants and dropped a subtree) and
+		// leave the object permanently un-PATCHable.
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		run := make([]string, 0, 34)
+		for i := 0; i < 34; i++ {
+			indent := ""
+			if i > 0 {
+				indent = fmt.Sprintf(`"indent":%d,`, i)
+			}
+			run = append(run, fmt.Sprintf(`{%s"type":"toggle","text":"d%d"}`, indent, i))
+		}
+		body := patchBody(fmt.Sprintf(
+			`{"op":"insertBlocks","after":"blockSibling2","blocks":[%s]}`, strings.Join(run, ",")))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1", body, "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.NotEmpty(t, apiErr.Issues)
 	})
 
 	t.Run("a batch beyond the op cap is refused (A′2)", func(t *testing.T) {

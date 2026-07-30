@@ -37,10 +37,15 @@ import (
 	"github.com/anyproto/anytype-heart/util/slice"
 )
 
-// v2DebugValidateEdits gates the read-only post-op safety net: when set, the
-// would-be document is validated after the ops and any issue is logged (not
-// failed) — off by default so it is never on the damage path.
-var v2DebugValidateEdits = os.Getenv("ANYTYPE_API_V2_VALIDATE_EDITS") == "1"
+// v2SkipPostOpValidate disables the post-op document validation. The check is
+// ON by default (review B′3): the whole-document Validate the state pipeline
+// replaced was load-bearing for invariants no single fragment can see — V3
+// row→column containment, the document-wide id domain (derived rowId-colId
+// cells, other tables' row/column ids), and the absolute nesting bound. The
+// after-document is already marshaled for diffStats, so the check is nearly
+// free. The escape hatch exists only for debugging a suspected false
+// rejection.
+var v2SkipPostOpValidate = os.Getenv("ANYTYPE_API_V2_SKIP_EDIT_VALIDATE") == "1"
 
 // v2InvalidDocMessage is the R5-net rejection message (kept verbatim from
 // the document-level pipeline — it is part of the agent-facing contract).
@@ -117,15 +122,30 @@ func (a *v2StateApplier) marshalOptions() anyblockjson.Options {
 }
 
 // marshalDoc renders the current state as its canonical flat document.
+//
+// With a nil sink (view rebuilds and the after-document) a marshal warning is
+// an ERROR, not something to swallow (review B′2). The exporter degrades
+// rather than failing when a sink is installed — it clamps an over-deep
+// indent — so a silently-clamped view made later ops in the same batch read
+// wrong depths: deleteBlock saw `descendants == 0`, skipped the recursive
+// guard and dropped a whole subtree, and the clamped after-document then
+// validated clean. Failing here rejects the whole PATCH instead.
 func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte, error) {
 	opts := a.marshalOptions()
+	var degraded []apimodel.V2Issue
 	if onWarning == nil {
-		onWarning = func(anyblockjson.Issue) {} // degrade, never fail, on view rebuilds
+		onWarning = func(iss anyblockjson.Issue) {
+			degraded = append(degraded, apimodel.V2Issue{Path: iss.Path, Message: iss.Message})
+		}
 	}
 	opts.OnWarning = onWarning
 	doc, err := anyblockjson.Marshal(a.sbType, snapshotFromState(a.st), opts)
 	if err != nil {
 		return nil, fmt.Errorf("marshal object %s: %w", a.objectId, err)
+	}
+	if len(degraded) > 0 {
+		return nil, apimodel.NewV2Error(http.StatusBadRequest, apimodel.V2CodeValidationFailed,
+			v2InvalidDocMessage, degraded...)
 	}
 	return doc, nil
 }
@@ -251,15 +271,21 @@ func duplicateIdError(path string, id string) error {
 		})
 }
 
-// debugValidateEditedDoc is the flag-gated safety net: validate the would-be
-// document read-only and log (never fail) any issue.
-func debugValidateEditedDoc(objectId string, doc []byte) {
-	if !v2DebugValidateEdits {
-		return
+// validateEditedDoc is the R5 whole-document net, restored (review B′3):
+// fragment validation only sees a payload run in isolation, so invariants
+// that span the spliced result — V3 row→column containment, the
+// document-wide id domain, the absolute nesting bound — are checked here on
+// the would-be document. A failure rejects the whole PATCH under the
+// unchanged agent-facing message; nothing is applied.
+func validateEditedDoc(objectId string, doc []byte) error {
+	if v2SkipPostOpValidate {
+		return nil
 	}
 	if err := anyblockjson.Validate(doc); err != nil {
-		log.Warnf("api v2 edit safety net: object %s post-op document fails validation: %v", objectId, err)
+		log.Warnf("api v2 edit: object %s post-op document fails validation: %v", objectId, err)
+		return invalidDocError(err)
 	}
+	return nil
 }
 
 //

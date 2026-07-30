@@ -147,7 +147,12 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 	if err != nil {
 		return nil, err
 	}
-	debugValidateEditedDoc(objectId, afterDoc)
+	// R5: the whole-document net, on by default (review B′3) — catches what a
+	// payload fragment cannot see (V3 containment, the document-wide id
+	// domain, the absolute depth bound)
+	if err := validateEditedDoc(objectId, afterDoc); err != nil {
+		return nil, err
+	}
 	stats, err := diffEditDocs(beforeDoc, afterDoc)
 	if err != nil {
 		return nil, err
