@@ -122,6 +122,17 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 			len(badTargets), map[bool]string{true: "", false: "s"}[len(badTargets) == 1],
 			anyblockbatch.ReportTargets(badTargets))
 	}
+	// a template whose target type cannot be wired imports as an object no type
+	// lists — valid, converted, and unreachable
+	badTemplates, err := anyblockbatch.CheckTemplateTargets(files, typeIds)
+	if err != nil {
+		return fmt.Errorf("check template targets: %w", err)
+	}
+	if len(badTemplates) > 0 {
+		return fmt.Errorf("%d template%s with no wirable target type:\n%s",
+			len(badTemplates), map[bool]string{true: "", false: "s"}[len(badTemplates) == 1],
+			anyblockbatch.ReportTemplateTargets(badTemplates))
+	}
 
 	b := newBatch(formats, typeIds)
 

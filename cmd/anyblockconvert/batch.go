@@ -196,6 +196,17 @@ func (b *batch) objectTypeIds(def anyblockjson.PropertyDefinition) []string {
 	return out
 }
 
+// targetTypeId resolves a template's target type key to the id that type's own
+// document carries — the value targetObjectType has to hold for the pb importer
+// to relink it along with every other reference in the batch. A type the bundle
+// does not define, or defines without an id, has no usable value: unlike a
+// property's objectTypes, a bundled url will not do (see
+// anyblockbatch.CheckTemplateTargets, which rejects that bundle up front).
+func (b *batch) targetTypeId(key string) (string, bool) {
+	id, defined := b.typeIDs[key]
+	return id, defined && id != ""
+}
+
 // optionLexId mirrors core/block/editor/order.LexId. It is duplicated rather
 // than imported because that package pulls in the whole smartblock editor;
 // the two must stay in step or ids minted here will not interleave with ones
@@ -343,8 +354,11 @@ func rootOnlyBlocks(id string) []*model.Block {
 }
 
 const (
-	detailID                        = "id"
-	detailName                      = "name"
+	detailID   = "id"
+	detailName = "name"
+	// the relation a type's templates are queried by
+	// (core/block/template/templateimpl.queryTemplatesByType)
+	detailTargetObjectType          = string(bundle.RelationKeyTargetObjectType)
 	detailRelationKey               = "relationKey"
 	detailRelationFormat            = "relationFormat"
 	detailOrderId                   = "orderId"

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/gogo/protobuf/types"
+
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -34,6 +36,7 @@ func convertFile(inDir, path string, b *batch, normalizeIndent bool) (string, mo
 		return "", 0, nil, fmt.Errorf("unmarshal: %w", err)
 	}
 	patchObjectTypes(sbType, snap)
+	patchTemplateTarget(sbType, snap, b)
 
 	id := snap.Details.GetFields()["id"].GetStringValue()
 	if id == "" {
@@ -65,6 +68,59 @@ func patchObjectTypes(sbType model.SmartBlockType, snap *model.SmartBlockSnapsho
 	case model.SmartBlockType_DiscussionObject:
 		snap.ObjectTypes = []string{bundle.TypeKeyDiscussion.URL()}
 	}
+}
+
+// patchTemplateTarget wires a template to the type it is a template *for*.
+// §2's templateFor reaches the snapshot as objectTypes[1] and nothing else, but
+// that entry is a derived cache: a type's templates are found by querying the
+// targetObjectType detail (core/block/template/templateimpl.
+// queryTemplatesByType), and the derivation only runs the other way
+// (core/block/editor/template.go, util/builtintemplate). Without the detail the
+// template imports fine and belongs to no type — invisible everywhere a type
+// offers its templates.
+//
+// The value is the target type document's own id, so the pb importer relinks it
+// with every other reference in the batch; anyblockbatch.CheckTemplateTargets
+// has already rejected the bundle if it cannot resolve. An authored
+// targetObjectType — what a round-tripped export carries — stays authoritative,
+// and is rewritten as a plain string: object-format property values normalize to
+// single-element lists (SPEC.md §11), while this relation is maxCount 1 and
+// every reader takes it as a string.
+func patchTemplateTarget(sbType model.SmartBlockType, snap *model.SmartBlockSnapshotBase, b *batch) {
+	if sbType != model.SmartBlockType_Template {
+		return
+	}
+	id := firstString(snap.Details.GetFields()[detailTargetObjectType])
+	if id == "" {
+		if len(snap.ObjectTypes) < 2 {
+			return
+		}
+		key, err := bundle.TypeKeyFromUrl(snap.ObjectTypes[1])
+		if err != nil {
+			return
+		}
+		if id, _ = b.targetTypeId(string(key)); id == "" {
+			return
+		}
+	}
+	if snap.Details == nil {
+		snap.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	snap.Details.Fields[detailTargetObjectType] = strVal(id)
+}
+
+// firstString reads a detail written either as a string or as the
+// single-element list an object-format property normalizes to.
+func firstString(v *types.Value) string {
+	if s := v.GetStringValue(); s != "" {
+		return s
+	}
+	for _, item := range v.GetListValue().GetValues() {
+		if s := item.GetStringValue(); s != "" {
+			return s
+		}
+	}
+	return ""
 }
 
 // genIdFactory returns a deterministic id generator seeded from a document's
