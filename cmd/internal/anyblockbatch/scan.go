@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -46,18 +47,22 @@ type FormatInfo struct {
 	Format     model.RelationFormat
 	FormatName string
 	Name       string
-	// Options is the declared select vocabulary, in display order (§2a).
-	Options []string
+	// Options is the declared select vocabulary, in display order (§2a),
+	// each entry carrying the color it declares (empty = the batch picks).
+	Options []anyblockjson.OptionDefinition
 	// ObjectTypes are the type keys an objects/files property may point at.
 	ObjectTypes []string
 }
 
 type typePropRaw struct {
-	Key         string   `json:"key"`
-	Name        string   `json:"name"`
-	Format      string   `json:"format"`
-	Options     []string `json:"options"`
-	ObjectTypes []string `json:"objectTypes"`
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Format string `json:"format"`
+	// OptionDefinition decodes both §2a forms (a bare name, or an object with
+	// a color), so the prescan shares one decoder with anyblockjson rather
+	// than restating the union.
+	Options     []anyblockjson.OptionDefinition `json:"options"`
+	ObjectTypes []string                        `json:"objectTypes"`
 }
 
 type prescanDoc struct {

@@ -318,12 +318,32 @@
             "properties"
           ]
         },
-        "options": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/vocabularyOption" } },
         "objectTypes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "section": { "enum": ["featured", "hidden", "file"] }
       },
       "required": ["key"],
       "additionalProperties": false
+    },
+    "vocabularyOption": {
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "color": { "$ref": "#/$defs/optionColor" }
+          },
+          "required": ["name"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "optionColor": {
+      "enum": [
+        "grey", "yellow", "orange", "red", "pink",
+        "purple", "blue", "ice", "teal", "lime"
+      ]
     },
     "dataviewProperty": {
       "type": "object",

@@ -4,6 +4,8 @@ package anyblockjson
 // from the four recommended-relation id lists on the snapshot's details.
 
 import (
+	"strings"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -23,7 +25,7 @@ type PropertyDefinition struct {
 	// would never exist, and minted options carry no orderId and fall back to
 	// sorting by name. Empty means "whatever usage produces", the pre-options
 	// behaviour.
-	Options []string
+	Options []OptionDefinition
 	// ObjectTypes restricts which types an objects/files property may point
 	// at, in priority order, given as **type keys** (§2a). Empty means any
 	// object, which is also what an untargeted property accepts — a task
@@ -32,6 +34,64 @@ type PropertyDefinition struct {
 	// filter value available on the property (§6.2) while still allowing the
 	// seeded people as values.
 	ObjectTypes []string
+}
+
+// OptionDefinition is one entry of a declared select vocabulary (§2a). Color
+// is an Anytype option color name (util/constant.OptionColors); empty leaves
+// the choice to the import wiring, which is why the canonical JSON form of a
+// colorless option is the bare name rather than an object.
+//
+// The color belongs to the option rather than to a parallel array on the
+// property so that inserting or reordering an option cannot shift it — the
+// silent-failure class SPEC goal 2 exists to avoid.
+type OptionDefinition struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+// UnmarshalJSON accepts both §2a forms: a bare name, or an object carrying a
+// color. Same shape as jsonCell (§6.1), minus the null and array arms.
+func (o *OptionDefinition) UnmarshalJSON(data []byte) error {
+	if strings.HasPrefix(strings.TrimSpace(string(data)), `"`) {
+		return jsonUnmarshal(data, &o.Name)
+	}
+	type plain OptionDefinition // shed this method, or it recurses
+	return jsonUnmarshal(data, (*plain)(o))
+}
+
+// optionsToAny renders a declared vocabulary for export: the bare name when
+// the option carries no color, an object otherwise. The string form is
+// canonical whenever it qualifies, as for table cells (§6.1).
+func optionsToAny(opts []OptionDefinition) []any {
+	var out []any
+	for _, o := range opts {
+		if o.Name == "" {
+			continue
+		}
+		if o.Color == "" {
+			out = append(out, o.Name)
+			continue
+		}
+		m := &omap{}
+		m.set("name", o.Name)
+		m.set("color", o.Color)
+		out = append(out, m)
+	}
+	return out
+}
+
+// optionEntryName reads the name out of either §2a option form. The semantic
+// checks (§12) run on the raw document, before it decodes into
+// OptionDefinition, so they need this rather than the struct.
+func optionEntryName(entry any) string {
+	switch e := entry.(type) {
+	case string:
+		return e
+	case map[string]any:
+		name, _ := e["name"].(string)
+		return name
+	}
+	return ""
 }
 
 // PropertyResolver maps property object ids to definitions on export and
@@ -96,7 +156,7 @@ func (e *exporter) buildTypeProperties() []any {
 			m.set("key", string(def.Key))
 			m.setNonEmpty("name", def.Name)
 			m.setNonEmpty("format", formatName(def.Format))
-			m.setNonEmpty("options", stringsToAny(def.Options))
+			m.setNonEmpty("options", optionsToAny(def.Options))
 			m.setNonEmpty("objectTypes", stringsToAny(def.ObjectTypes))
 			m.setNonEmpty("section", l.section)
 			out = append(out, m)
@@ -128,12 +188,12 @@ func (e *exporter) resolveTypeProperty(id string) (PropertyDefinition, bool) {
 }
 
 type jsonTypeProperty struct {
-	Key         string   `json:"key"`
-	Name        string   `json:"name"`
-	Format      string   `json:"format"`
-	Options     []string `json:"options"`
-	ObjectTypes []string `json:"objectTypes"`
-	Section     string   `json:"section"`
+	Key         string             `json:"key"`
+	Name        string             `json:"name"`
+	Format      string             `json:"format"`
+	Options     []OptionDefinition `json:"options"`
+	ObjectTypes []string           `json:"objectTypes"`
+	Section     string             `json:"section"`
 }
 
 // applyTypeProperties rebuilds the four recommended-relation lists from the
