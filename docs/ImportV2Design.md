@@ -724,6 +724,13 @@ positives. The counts are pinned in the cassette fidelity snapshot.
 collection view (blocked on resolver passthrough + installed-type ids for bundled types); csv header
 line as property evidence; per-page content signals; multilingual/learned matching.
 
+**LLM enrichment.** The "learned model behind the same interface" iteration is designed in
+[ImportV2LLM.md](ImportV2LLM.md): an optional BYOK (OpenAI-compatible) schema-plan step that sees
+all container schemas before conversion and returns whole-workspace types *plus* property
+normalization (bundled-key remaps, format fixes, cross-container merges). It generalizes this seam
+into an injectable `Planner`; absent config or on any failure the import degrades to exactly the
+naive rules above.
+
 ---
 
 ## 12. Package layout
