@@ -15,8 +15,12 @@ import (
 
 // convertFile parses one AnyBlock JSON document and returns its object id
 // (read back off the resulting snapshot, since a document may omit "id" and
-// get a generated one) alongside the reconstructed snapshot.
-func convertFile(inDir, path string, b *batch, normalizeIndent bool) (string, model.SmartBlockType, *model.SmartBlockSnapshotBase, error) {
+// get a generated one) alongside the reconstructed snapshot. warn receives
+// every warning-grade issue — an authored thing that converts but silently
+// does nothing (a dropped back-relation value, an ignored bundled name, a
+// grouping with nothing to group on); leaving it nil discards them, which is
+// what the per-document severity tier exists to prevent.
+func convertFile(inDir, path string, b *batch, normalizeIndent bool, warn func(anyblockjson.Issue)) (string, model.SmartBlockType, *model.SmartBlockSnapshotBase, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", 0, nil, fmt.Errorf("read: %w", err)
@@ -29,6 +33,7 @@ func convertFile(inDir, path string, b *batch, normalizeIndent bool) (string, mo
 		ResolveProperties: b,
 		GenerateId:        genId,
 		NormalizeIndent:   normalizeIndent,
+		OnWarning:         warn,
 	}
 
 	sbType, snap, err := anyblockjson.Unmarshal(data, opts)

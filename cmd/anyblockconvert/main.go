@@ -143,8 +143,12 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 
 	var failed int
 	var converted int
+	var warned int
 	for _, f := range files {
-		id, sbType, snap, err := convertFile(inDir, f, b, normalizeIndent)
+		id, sbType, snap, err := convertFile(inDir, f, b, normalizeIndent, func(is anyblockjson.Issue) {
+			warned++
+			fmt.Fprintf(os.Stderr, "warning: %s: %v\n", f, is)
+		})
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "FAIL %s: %v\n", f, err)
 			failed++
@@ -203,7 +207,11 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		}
 	}
 
-	fmt.Printf("\n%d documents converted, %d failed\n", converted, failed)
+	fmt.Printf("\n%d documents converted, %d failed", converted, failed)
+	if warned > 0 {
+		fmt.Printf(", %d warning(s)", warned)
+	}
+	fmt.Println()
 	fmt.Printf("synthesized %d relations, %d relation options\n", b.relationCount(), b.optionCount())
 	fmt.Println("output:", outDir)
 	if failed > 0 {
