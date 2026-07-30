@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.anytype.io/anyblock/1.0/index.schema.json",
+  "title": "AnyBlock JSON bundle index",
+  "description": "One index.json at the root of a bundle describes the bundle as a whole: what the space is called, where a user lands after installing it, and what the sidebar shows. Everything else in a bundle describes a single object; this is the only document that describes the set.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "const": 1 },
+
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The space's name, applied on install."
+    },
+    "description": {
+      "type": "string",
+      "description": "One line on what the space is for. Author-facing and applied to the space where the client shows one."
+    },
+    "iconEmoji": {
+      "type": "string",
+      "description": "The space's icon, as an emoji."
+    },
+    "iconImage": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The space's icon as an image: the **object id** of an image in the bundle, exactly as `iconImage` means on any object. The bundle must contain that image object and its file, so this is for hand-assembled bundles; a generated one uses iconEmoji. (The installer actually resolves the space icon by image *name*, not id — the wiring does that lookup so this field stays consistent with every other id in the format.)"
+    },
+
+    "entrypoint": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "enum": ["widgets", "graph", "favorite", "recent", "set", "collection", "allObjects", "recentOpen"] },
+      "description": "The object opened once, immediately after the space is created from this bundle — the first thing a user ever sees. Must be an object id from this bundle: a reserved listing cannot be opened. TEMPORARY: the installer does not read this yet — it opens the first widget instead (pb.Profile has no field for it). Until the heart-side profile handling is improved, also list the entrypoint as your first widget, or what opens will not be what you declared."
+    },
+    "homepage": {
+      "type": "string",
+      "minLength": 1,
+      "description": "What opens whenever the user enters the space afterwards. An object id from this bundle; defaults to `entrypoint`. The reserved `widgets` (sidebar dashboard) and `graph` are accepted but are rarely right for a use case — on desktop the widgets are always in the sidebar anyway, so `widgets` wastes the main pane; it only reads well on mobile, which shows one screen at a time. Name a page."
+    },
+
+    "widgets": {
+      "type": "array",
+      "description": "Sidebar widgets, in the order they should appear. Independent of `entrypoint` — declaring one does not require a widget for it. Only give a type a widget when you want fast access to its objects (`layout: \"view\"`); the sidebar already lists every type automatically, so a link or list widget on a type just duplicates that.",
+      "items": { "$ref": "#/$defs/widget" }
+    }
+  },
+  "$defs": {
+    "widget": {
+      "type": "object",
+      "required": ["target"],
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the widget points at: an object id from this bundle (a page, a type, a set or a collection), or one of the reserved targets `favorite`, `recent`, `set`, `collection`, `allObjects`, `recentOpen`."
+        },
+        "layout": {
+          "enum": ["link", "tree", "list", "compactList", "view"],
+          "default": "link",
+          "description": "How the widget renders. `link` is a single row; `tree` expands children; `list` and `compactList` show contents; `view` renders a type's or set's own view."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "How many entries a listing widget shows. Ignored by `link`."
+        }
+      }
+    }
+  }
+}

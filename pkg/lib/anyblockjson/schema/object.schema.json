@@ -15,7 +15,7 @@
         "bundledObjectType", "anytypeProfile", "date", "workspace",
         "relation", "objectType", "relationOption", "spaceView", "identity",
         "participant", "missingObject", "fileObject", "notification",
-        "devices", "chatObject", "chatDerived", "account", "discussion",
+        "devices", "chatObject", "chat", "account", "discussion",
         "techSpace", "techSpaceVirtual"
       ]
     },
@@ -313,15 +313,37 @@
         "name": { "type": "string" },
         "format": {
           "enum": [
-            "text", "shortText", "number", "select", "multiSelect", "date",
+            "text", "number", "select", "multiSelect", "date",
             "files", "checkbox", "url", "email", "phone", "emoji", "objects",
             "properties"
           ]
         },
+        "options": { "type": "array", "items": { "$ref": "#/$defs/vocabularyOption" } },
+        "objectTypes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
         "section": { "enum": ["featured", "hidden", "file"] }
       },
       "required": ["key"],
       "additionalProperties": false
+    },
+    "vocabularyOption": {
+      "anyOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string", "minLength": 1 },
+            "color": { "$ref": "#/$defs/optionColor" }
+          },
+          "required": ["name"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "optionColor": {
+      "enum": [
+        "grey", "yellow", "orange", "red", "pink",
+        "purple", "blue", "ice", "teal", "lime"
+      ]
     },
     "dataviewProperty": {
       "type": "object",
@@ -329,7 +351,7 @@
         "key": { "type": "string" },
         "format": {
           "enum": [
-            "text", "shortText", "number", "select", "multiSelect", "date",
+            "text", "number", "select", "multiSelect", "date",
             "files", "checkbox", "url", "email", "phone", "emoji", "objects",
             "properties"
           ]

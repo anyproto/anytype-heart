@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/types"
@@ -215,7 +216,7 @@ var kindNames = newEnumNames(map[model.SmartBlockType]string{
 	model.SmartBlockType_NotificationObject:     "notification",
 	model.SmartBlockType_DevicesObject:          "devices",
 	model.SmartBlockType_ChatObjectDeprecated:   "chatObject",
-	model.SmartBlockType_ChatDerivedObject:      "chatDerived",
+	model.SmartBlockType_ChatDerivedObject:      "chat",
 	model.SmartBlockType_AccountObject:          "account",
 	model.SmartBlockType_DiscussionObject:       "discussion",
 	model.SmartBlockType_TechSpaceObject:        "techSpace",
@@ -392,6 +393,26 @@ var conditionNames = newEnumNames(map[model.BlockContentDataviewFilterCondition]
 	model.BlockContentDataviewFilter_Exists:         "exists",
 })
 
+// countingPresets take a day count from the filter's `value` rather than
+// naming a fixed period: getDateRange reads f.Value.Int64() for these two and
+// for no others (pkg/lib/database/quickoptions.go). Without a value the count
+// is 0, which silently means "today".
+var countingPresets = map[model.BlockContentDataviewFilterQuickOption]struct{}{
+	model.BlockContentDataviewFilter_NumberOfDaysAgo: {},
+	model.BlockContentDataviewFilter_NumberOfDaysNow: {},
+}
+
+func countingPreset(q model.BlockContentDataviewFilterQuickOption) bool {
+	_, ok := countingPresets[q]
+	return ok
+}
+
+// countingPresetNames is the same set by name, for validation.
+var countingPresetNames = map[string]struct{}{
+	"numberOfDaysAgo": {},
+	"numberOfDaysNow": {},
+}
+
 var datePresetNames = newEnumNames(map[model.BlockContentDataviewFilterQuickOption]string{
 	model.BlockContentDataviewFilter_Yesterday:       "yesterday",
 	model.BlockContentDataviewFilter_Today:           "today",
@@ -425,16 +446,18 @@ var aggregationNames = newEnumNames(map[model.BlockContentDataviewRelationFormul
 	model.BlockContentDataviewRelation_Range:           "range",
 })
 
-// formatNames follows the public REST API vocabulary (§3).
 // FormatName returns the format's canonical JSON name for a property format
 // ("text", "select", "objects", …) — the one vocabulary shared by documents
-// and API surfaces (APIV2.md C2). Unknown formats return "".
+// and API surfaces (APIV2.md C2). It is the exported form of formatName, so
+// it applies the same shorttext→"text" fold. Unknown formats return "".
 func FormatName(f model.RelationFormat) string {
-	return formatNames.name(f)
+	return formatName(f)
 }
 
 // FormatByName is FormatName's inverse: it maps a §3 format name back to the
 // internal relation format. ok is false for names outside the vocabulary.
+// "text" maps to longtext (the map's side of the fold); where an existing
+// property's stored format matters, the import path resolves it instead.
 func FormatByName(name string) (model.RelationFormat, bool) {
 	if !formatNames.has(name) {
 		return 0, false
@@ -442,9 +465,14 @@ func FormatByName(name string) (model.RelationFormat, bool) {
 	return formatNames.value(name), true
 }
 
+// formatNames follows the public REST API vocabulary (§3). Text has exactly
+// one name: the editor offers a single Text format, so the stored
+// longtext/shorttext split stays out of this serialization — shorttext has
+// no name of its own and folds into "text" via formatName. The map must
+// remain a bijection (newEnumNames inverts it, and a duplicated name would
+// invert nondeterministically), which is why the fold lives outside it.
 var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_longtext:  "text",
-	model.RelationFormat_shorttext: "shortText",
 	model.RelationFormat_number:    "number",
 	model.RelationFormat_status:    "select",
 	model.RelationFormat_tag:       "multiSelect",
@@ -458,6 +486,83 @@ var formatNames = newEnumNames(map[model.RelationFormat]string{
 	model.RelationFormat_object:    "objects",
 	model.RelationFormat_relations: "properties",
 })
+
+// filterTemplatePrefix marks a dynamic filter value: a placeholder the
+// client substitutes for a real object id before it issues the query
+// (anytype-ts Dataview.valueTemplateMapper). The tokens are built as
+// sprintf("_filter_template_%d_", FilterValueTemplate) — _filter_template_2_
+// is the current user, resolving to _participant_<space>_<account>, and
+// _filter_template_1_ is the object hosting an inline dataview, resolving to
+// its id.
+//
+// They are stored verbatim in the filter's value and are opaque to the
+// middleware: nothing in Go resolves them, so a query evaluated server-side
+// compares against the literal string and matches nothing. They are not
+// object ids and must never be remapped as such.
+const filterTemplatePrefix = "_filter_template_"
+
+func isFilterTemplate(v string) bool {
+	return strings.HasPrefix(v, filterTemplatePrefix)
+}
+
+// layoutNames maps the object layout enum to the names this format uses.
+// Layout is *stored* as a number (its bundled relation's format is `number`),
+// but a bare integer would be the one opaque enum in an otherwise
+// self-describing format — every other enum here is a name (§3).
+var layoutNames = newEnumNames(map[model.ObjectTypeLayout]string{
+	model.ObjectType_basic:               "basic",
+	model.ObjectType_profile:             "profile",
+	model.ObjectType_todo:                "todo",
+	model.ObjectType_set:                 "set",
+	model.ObjectType_objectType:          "objectType",
+	model.ObjectType_relation:            "relation",
+	model.ObjectType_file:                "file",
+	model.ObjectType_dashboard:           "dashboard",
+	model.ObjectType_image:               "image",
+	model.ObjectType_note:                "note",
+	model.ObjectType_space:               "space",
+	model.ObjectType_bookmark:            "bookmark",
+	model.ObjectType_relationOptionsList: "relationOptionsList",
+	model.ObjectType_relationOption:      "relationOption",
+	model.ObjectType_collection:          "collection",
+	model.ObjectType_audio:               "audio",
+	model.ObjectType_video:               "video",
+	model.ObjectType_date:                "date",
+	model.ObjectType_spaceView:           "spaceView",
+	model.ObjectType_participant:         "participant",
+	model.ObjectType_pdf:                 "pdf",
+	model.ObjectType_chatDeprecated:      "chatDeprecated",
+	model.ObjectType_chatDerived:         "chatDerived",
+	model.ObjectType_tag:                 "tag",
+	model.ObjectType_notification:        "notification",
+	model.ObjectType_missingObject:       "missingObject",
+	model.ObjectType_devices:             "devices",
+	model.ObjectType_discussion:          "discussion",
+})
+
+// layoutValuedKeys are the properties whose stored number is an
+// ObjectTypeLayout. The other layout-ish bundled keys hold *different* enums
+// — layoutAlign is a block align, layoutWidth a fraction, widgetLayout a
+// widget layout, headerRelationsLayout its own enum — so they are left alone.
+var layoutValuedKeys = map[string]struct{}{
+	"recommendedLayout": {},
+	"layout":            {},
+	"resolvedLayout":    {},
+}
+
+func isLayoutKey(key string) bool {
+	_, ok := layoutValuedKeys[key]
+	return ok
+}
+
+// formatName is the export-side name of a stored format: the canonical name
+// from formatNames, with legacy shorttext folded into "text" (§3).
+func formatName(f model.RelationFormat) string {
+	if f == model.RelationFormat_shorttext {
+		f = model.RelationFormat_longtext
+	}
+	return formatNames.name(f)
+}
 
 //
 // ---- proto value bridges ----

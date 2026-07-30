@@ -217,7 +217,7 @@ func richSnapshot() *model.SmartBlockSnapshotBase {
 				},
 				Relations: []*model.BlockContentDataviewRelation{
 					{Key: "name", IsVisible: true},
-					{Key: "dueDate", IsVisible: false, Width: 30,
+					{Key: "dueDate", IsVisible: false, Width: 120,
 						Formula: model.BlockContentDataviewRelation_CountDistinct,
 						Align:   model.Block_AlignRight},
 				},
@@ -603,7 +603,7 @@ func TestGeneratedDocs_ByteStable(t *testing.T) {
 		},
 		func(i int) string {
 			return fmt.Sprintf(`{"type": "dataview", "objectId": "bafyreiset%d",
-				"properties": [{"key": "name", "format": "shortText"}],
+				"properties": [{"key": "name", "format": "text"}],
 				"views": [{"type": "list", "name": "v",
 					"sorts": [{"property": "name", "direction": "desc"}],
 					"filters": [{"property": "name", "condition": "contains", "value": "x"}]}]}`, i)

@@ -7,6 +7,7 @@ package anyblockjson
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -56,7 +57,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 		colIds = append(colIds, colId)
 		cm := &omap{}
 		if !e.opts.OmitIds {
-			cm.setNonEmpty("id", e.localId(colId))
+			cm.setNonEmpty("id", e.tableInnerId(e.localId(colId)))
 		}
 		lifted := map[string]bool{}
 		if col.Fields != nil {
@@ -95,7 +96,7 @@ func (e *exporter) tableToJSON(m *omap, b *model.Block) error {
 	for _, row := range rowBlocks {
 		rm := &omap{}
 		if !e.opts.OmitIds {
-			rm.setNonEmpty("id", e.localId(row.Id))
+			rm.setNonEmpty("id", e.tableInnerId(e.localId(row.Id)))
 		}
 		rm.setNonEmpty("isHeader", isHeader(row))
 
@@ -275,7 +276,9 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 	for _, jc := range jb.Columns {
 		id := jc.Id
 		if id == "" {
-			id = imp.genId()
+			id = imp.newTableInnerId()
+		} else {
+			imp.claimTableInnerId(id)
 		}
 		colIds = append(colIds, id)
 		fields := jsonMapToProtoStruct(jc.Fields)
@@ -305,7 +308,9 @@ func (imp *importer) tableFromJSON(jb *jsonBlock, tableId string) (*model.Block,
 	for _, jr := range rows {
 		rowId := jr.Id
 		if rowId == "" {
-			rowId = imp.genId()
+			rowId = imp.newTableInnerId()
+		} else {
+			imp.claimTableInnerId(rowId)
 		}
 		row := &model.Block{
 			Id:      rowId,
@@ -381,4 +386,101 @@ func (imp *importer) cellFromJSON(cell jsonCell, cellId string) ([]*model.Block,
 		return nil, err
 	}
 	return blocks, nil
+}
+
+// claimTableInnerId reserves an authored row/column id so a generated one
+// cannot collide with it.
+func (imp *importer) claimTableInnerId(id string) string {
+	if imp.tableIds == nil {
+		imp.tableIds = map[string]struct{}{}
+	}
+	imp.tableIds[id] = struct{}{}
+	return id
+}
+
+// newTableInnerId mints a row or column id that is safe to build a cell id
+// from. A cell's id is rowId + "-" + colId, and the whole editor recovers the
+// column from it with SplitN(id, "-", 2) (table.ParseCellID, which drives
+// every column insert/delete/move, HTML export and table normalization), so a
+// row or column id must contain no "-" at all — hence the schema's
+// [A-Za-z0-9_]{1,64} on authored ones.
+//
+// Generated ids have to honour the same rule, and Options.GenerateId belongs
+// to the caller: the convert wiring derives ids from file paths, which are
+// full of dashes. So sanitize rather than trust, and disambiguate on
+// collision instead of hoping the sanitized forms stay distinct.
+func (imp *importer) newTableInnerId() string {
+	base := sanitizeTableInnerId(imp.genId())
+	if imp.tableIds == nil {
+		imp.tableIds = map[string]struct{}{}
+	}
+	id := base
+	for n := 2; ; n++ {
+		if _, taken := imp.tableIds[id]; !taken {
+			imp.tableIds[id] = struct{}{}
+			return id
+		}
+		suffix := "_" + strconv.Itoa(n)
+		trimmed := base
+		if len(trimmed)+len(suffix) > maxTableInnerId {
+			trimmed = trimmed[:maxTableInnerId-len(suffix)]
+		}
+		id = trimmed + suffix
+	}
+}
+
+// maxTableInnerId mirrors the schema's tableInnerId length bound, so a
+// generated id validates on re-export.
+const maxTableInnerId = 64
+
+func sanitizeTableInnerId(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('_')
+		}
+	}
+	out := b.String()
+	if out == "" {
+		out = "c"
+	}
+	if len(out) > maxTableInnerId {
+		out = out[:maxTableInnerId]
+	}
+	return out
+}
+
+// tableInnerId renders a stored row/column id for output. Stored ids can hold
+// characters the format forbids in that position (§6.1): historical data and
+// any generator that derives ids from file paths both produce "-", which is
+// the cell-id separator. Emitting one verbatim would make Marshal write a
+// document its own Validate rejects, so normalize it once here. Only the
+// label changes — the cell mapping keys off the stored id.
+func (e *exporter) tableInnerId(stored string) string {
+	if e.tableIds == nil {
+		e.tableIds = map[string]string{}
+		e.tableIdsUsed = map[string]struct{}{}
+	}
+	if got, ok := e.tableIds[stored]; ok {
+		return got
+	}
+	base := sanitizeTableInnerId(stored)
+	id := base
+	for n := 2; ; n++ {
+		if _, taken := e.tableIdsUsed[id]; !taken {
+			e.tableIdsUsed[id] = struct{}{}
+			e.tableIds[stored] = id
+			return id
+		}
+		suffix := "_" + strconv.Itoa(n)
+		trimmed := base
+		if len(trimmed)+len(suffix) > maxTableInnerId {
+			trimmed = trimmed[:maxTableInnerId-len(suffix)]
+		}
+		id = trimmed + suffix
+	}
 }

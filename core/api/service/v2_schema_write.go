@@ -331,7 +331,7 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req apim
 	format, ok := anyblockjson.FormatByName(req.Format)
 	if !ok {
 		return nil, apimodel.V2ValidationFailed("unknown property format",
-			apimodel.V2Issue{Path: "/format", Message: fmt.Sprintf("unknown format %q", req.Format), Hint: "allowed: text, shortText, number, select, multiSelect, date, files, checkbox, url, email, phone, objects"})
+			apimodel.V2Issue{Path: "/format", Message: fmt.Sprintf("unknown format %q", req.Format), Hint: "allowed: text, number, select, multiSelect, date, files, checkbox, url, email, phone, objects"})
 	}
 	isSelect := format == model.RelationFormat_status || format == model.RelationFormat_tag
 	if len(req.Options) > 0 && !isSelect {

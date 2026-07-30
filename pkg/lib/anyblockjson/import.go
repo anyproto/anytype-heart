@@ -105,6 +105,9 @@ func Unmarshal(data []byte, opts Options) (model.SmartBlockType, *model.SmartBlo
 type importer struct {
 	opts Options
 	doc  *jsonDoc
+	// tableIds tracks row/column ids already used anywhere in the document,
+	// so a generated one never collides with an authored one (§6.1).
+	tableIds map[string]struct{}
 }
 
 func (imp *importer) genId() string {
@@ -124,6 +127,25 @@ func (imp *importer) resolveId(s string) string {
 		return full
 	}
 	return s
+}
+
+// declaredFormat maps a document's format name to a stored format. "text"
+// is deliberately ambiguous (§3): it names both longtext and the legacy
+// shorttext, so for that one name the property's *existing* format decides,
+// which is what keeps a bundled short-text property (name, iconEmoji, …)
+// from being rewritten to longtext on every round-trip. An absent or
+// unrecognized name resolves the same way — it too lands on longtext. Every
+// other name is taken literally: the document is authoritative about which
+// format a property has, and only the text/text collapse needs repairing.
+func (imp *importer) declaredFormat(key, name string) model.RelationFormat {
+	f := formatNames.value(name)
+	if f != model.RelationFormat_longtext {
+		return f
+	}
+	if resolved, ok := imp.resolveFormat(key); ok && resolved == model.RelationFormat_shorttext {
+		return resolved
+	}
+	return f
 }
 
 func (imp *importer) resolveFormat(key string) (model.RelationFormat, bool) {
@@ -236,6 +258,15 @@ func (imp *importer) propertyValue(key string, v any) *types.Value {
 	if v == nil {
 		return &types.Value{Kind: &types.Value_NullValue{}}
 	}
+	// layout is named in the format, stored as a number (§3). A number is
+	// still accepted so legacy documents keep importing unchanged.
+	if isLayoutKey(key) {
+		if s, isStr := v.(string); isStr && layoutNames.has(s) {
+			return &types.Value{Kind: &types.Value_NumberValue{
+				NumberValue: float64(layoutNames.value(s)),
+			}}
+		}
+	}
 	format, ok := imp.resolveFormat(key)
 	if !ok {
 		return jsonToProtoValue(v)
@@ -287,6 +318,38 @@ func (imp *importer) blockIndents(jbs []*jsonBlock, base int) []int {
 	return indents
 }
 
+// dataviewBlockId is the editor's fixed id for an object's *own* dataview
+// (mirrors state.DataviewBlockID, which this package must not import, §12).
+// Object types, sets and collections all reconstruct their primary dataview
+// at this id and merge into an existing block rather than adding a second
+// one, so a document that omits the id has to resolve to it (§7).
+const dataviewBlockId = "dataview"
+
+// pinPrimaryDataview gives the document's own dataview the editor's fixed id
+// (§7). The primary dataview is the first indent-0 dataview block carrying
+// neither an explicit id nor an objectId — an objectId means the block is an
+// inline view of some *other* set or collection (§6.2) and keeps a generated
+// id, as does any dataview nested below indent 0. A block that already claims
+// the id anywhere in the document wins, so an explicit "id": "dataview" stays
+// authoritative and no duplicate is minted (§13).
+func pinPrimaryDataview(raw []*jsonBlock, indents []int) {
+	for _, jb := range raw {
+		if jb != nil && jb.Id == dataviewBlockId {
+			return
+		}
+	}
+	for i, jb := range raw {
+		if jb == nil || indents[i] != 0 {
+			continue
+		}
+		if jb.Type != "dataview" || jb.Id != "" || jb.ObjectId != "" {
+			continue
+		}
+		jb.Id = dataviewBlockId
+		return
+	}
+}
+
 // topLevelBlocks resolves the document's blocks array for the tree rebuild:
 // structural blocks at indent 0 are absorbed into properties or dropped,
 // together with their whole subtree (§7 — matching the nested encoding, which
@@ -294,6 +357,7 @@ func (imp *importer) blockIndents(jbs []*jsonBlock, base int) []int {
 func (imp *importer) topLevelBlocks(details *types.Struct) ([]*jsonBlock, []int) {
 	raw := imp.doc.Blocks
 	indents := imp.blockIndents(raw, -1)
+	pinPrimaryDataview(raw, indents)
 	jbs := make([]*jsonBlock, 0, len(raw))
 	kept := make([]int, 0, len(raw))
 	for i := 0; i < len(raw); i++ {

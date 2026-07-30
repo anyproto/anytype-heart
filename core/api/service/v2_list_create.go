@@ -298,13 +298,13 @@ func (s *V2Service) dataviewProperties(spaceId string, referenced []viewKeyRef) 
 	}
 	out := make([]map[string]string, 0, len(keys))
 	for _, key := range keys {
-		format := "shortText"
-		if key != "name" {
-			format = "text"
-			if f, ok := resolve(domain.RelationKey(key)); ok {
-				if name := anyblockjson.FormatName(f); name != "" {
-					format = name
-				}
+		// the format vocabulary has a single text name: the stored
+		// longtext/shorttext split folds into "text" (§3), so `name` resolves
+		// through the same path as every other key
+		format := "text"
+		if f, ok := resolve(domain.RelationKey(key)); ok {
+			if name := anyblockjson.FormatName(f); name != "" {
+				format = name
 			}
 		}
 		out = append(out, map[string]string{"key": key, "format": format})

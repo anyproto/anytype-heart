@@ -112,7 +112,7 @@ Fields, in **canonical order** (§4):
 |---|---|---|---|
 | `$schema` | string | no | Schema URL; written by export, ignored by import except for version detection (§10). |
 | `version` | int | **yes** | Format version. This spec defines `1`. Evolution is additive within a version (ADF model); a breaking change bumps it. |
-| `kind` | string | no | System-level object kind, lowerCamel (`page`, `profilePage`, `template`, `archive`, `widget`, …) — from `model.SmartBlockType`. **Omitted whenever derivable**: absent means `page`, and `type: "template"` implies `template`. An unrecognized value is a validation error listing the allowed values. |
+| `kind` | string | no | System-level object kind, lowerCamel (`page`, `profilePage`, `template`, `archive`, `widget`, `chat`, …) — from `model.SmartBlockType`. `chat` is `ChatDerivedObject`: a standalone chat object whose identity is `key`, like a type's; its messages live in the CRDT store, not in snapshots, so it always imports empty. (`chatObject` is the deprecated predecessor; `discussion` is a hidden type.) **Omitted whenever derivable**: absent means `page`, and `type: "template"` implies `template`. An unrecognized value is a validation error listing the allowed values. |
 | `id` | string | no | Object id. Written by export; import treats it as informational (a new id is minted on import) except for resolving intra-export links. Never compacted (§9a). |
 | `type` | string | no | The object's type key without the `ot-` prefix (`page`, `task`, `bookmark`…). Maps to `objectTypes[0]` in the snapshot. Absent when the snapshot has no object types (legacy/system objects). Import preserves the key verbatim; the import wiring resolves it — matching an existing type or creating one (the Markdown importer's behavior). |
 | `templateFor` | string | no | Only for templates: the target type key (`objectTypes[1]`). Present with `type != "template"` → validation error. |
@@ -159,7 +159,9 @@ involved.
   "typeProperties": [
     { "key": "dueDate",  "name": "Due date", "format": "date",    "section": "featured" },
     { "key": "assignee", "name": "Assignee", "format": "objects", "section": "featured" },
-    { "key": "status",   "name": "Status",   "format": "select" }
+    { "key": "status",   "name": "Status",   "format": "select",
+      "options": ["Backlog", {"name": "In progress", "color": "blue"},
+                  {"name": "Done", "color": "lime"}] }
   ],
   "blocks": [ { "type": "dataview", … } ]
 }
@@ -176,8 +178,10 @@ by `typeProperties` — resolved entries, never raw relation ids.
 | Field | Type | Req | Notes |
 |---|---|---|---|
 | `key` | string | **yes** | Property key (as stored). |
-| `name` | string | no | Display name. Import uses it only when the property must be created; an existing property's name wins. |
+| `name` | string | no | Display name. Import uses it only when the property must be **created**; an existing property keeps its own name. Every bundled key already exists, so a name given for one is inert — `{"key": "description", "name": "Summary"}` renders as *Description*. Validation warns. If the label is the point, mint a custom key instead of reusing a bundled one. |
 | `format` | string | no | Property format (§3 names). Same import rule as `name`; a conflict with an existing property's format is an error at the wiring level (the package cannot see the space). |
+| `options` | (string \| object)[] | no | A select/multiSelect property's **vocabulary, in display order**. Each entry is a bare option name, or `{"name": …, "color": …}` when the option's color is part of the design — the color belongs to the option rather than to a parallel array, so inserting or reordering an option cannot shift it. `color` is one of `grey`, `yellow`, `orange`, `red`, `pink`, `purple`, `blue`, `ice`, `teal`, `lime` (`util/constant`); anything else is a validation error rather than a silently ignored value. The bare string is **canonical** whenever the option declares no color, the object form otherwise — the same rule cells follow in §6.1. Leaving a color out does not mean *no* color: the wiring assigns one, cycling the palette in declaration order and skipping whatever the vocabulary claims explicitly, so a vocabulary that names no colors still gets distinct ones. (The app assigns one at random on every other creation path; cycling keeps a converted bundle identical run to run.) Options are otherwise discovered only from values that happen to be used, so a vocabulary entry no record carries would never exist — its kanban column simply absent — and a discovered option carries no `orderId`, which makes every select sort alphabetically (options order by `[orderId, name]`, `pkg/lib/database.BuildOrderMap`). Declaring them lets the wiring create each one up front with an order id. Every option needs one: the sort concatenates `orderId + name` before comparing, so an option missing an order id is compared by *name* against the others' order ids and lands arbitrarily — ahead of the whole vocabulary when its name sorts below the id alphabet, behind it otherwise. Names discovered from usage rather than declared are ordered after the declared ones. Only meaningful on `select`/`multiSelect`; duplicate names are a validation error, across both forms. |
+| `objectTypes` | string[] | no | The **type keys** an `objects`/`files` property may point at, in priority order. Empty means any object — an untargeted property will happily accept a random page as a task's assignee. Listing the built-in `participant` alongside a bundle's own people type is what makes the current-user filter value usable on that property (§6.2) while still allowing the seeded people as values; the client only offers it when the relation's targets include Participant. The wiring resolves each key to an id the way it resolves properties: a type the batch defines by the id its own document carries, a bundled type by its bundled url (`_ot<key>`). Only meaningful on `objects`/`files`. |
 | `section` | string | no | `featured` \| `hidden` \| `file` — which list the property belongs to. Absent = a regular (sidebar) property. |
 
 Export emits entries in section order featured → regular → file → hidden,
@@ -220,6 +224,91 @@ property table — are **generated one-way** from the type document (planned
 This retires the legacy per-type JSON Schema export (`pkg/lib/schema`) with
 its `x-` extension keys.
 
+## 2c. The bundle index (`index.json`)
+
+Every document described so far is one object. **A bundle also needs to say
+things about itself** — what the space is called, what opens when a user
+enters it, what the sidebar shows — and none of that belongs to any single
+object. That is `index.json`, one file at the bundle root, validated against
+`index.schema.json`:
+
+```json
+{
+  "$schema": "https://schemas.anytype.io/anyblock/1.0/index.schema.json",
+  "version": 1,
+  "name": "Company Wiki",
+  "description": "Everything we know, with an owner.",
+  "iconEmoji": "📚",
+  "homepage": "page-wiki-home",
+  "widgets": [
+    { "target": "page-wiki-home" },
+    { "target": "type-wiki-page", "layout": "view", "limit": 6 },
+    { "target": "favorite", "layout": "compactList" }
+  ]
+}
+```
+
+| Field | Meaning |
+|---|---|
+| `name` · `description` · `iconEmoji` | the space's own identity, applied on install |
+| `iconImage` | the space icon as an image: the **object id** of an image in the bundle, as `iconImage` means everywhere else (§3). Needs the image object *and* its file in the archive, so a generated bundle uses `iconEmoji` |
+| `homepage` | what opens on entering the space: an object id, or the reserved `widgets` (the sidebar dashboard, the default) or `graph` |
+| `widgets` | sidebar widgets, in order. **The first one is what the install opens**, so the entry point goes first |
+
+A widget is `{ target, layout, limit }`. `layout` is `link · tree · list ·
+compactList · view`, defaulting to `link` and omitted when default (§4).
+`target` is an object id from the bundle — a page, a type, a set, a
+collection — or one of the reserved listings `favorite · recent · set ·
+collection · allObjects · recentOpen`, which name a built-in rather than
+something the bundle ships.
+
+### How it reaches the space
+
+The installer reads all of this from a `pb.Profile` at the archive root
+(`util/builtinobjects`, which is how the built-in use cases work).
+`index.json` is that profile in this format's terms, and emitting it is the
+wiring's job — `cmd/anyblockconvert` writes it as `profile` at the output
+root, raw protobuf, since `getProfile` reads it with `pb.Profile.Unmarshal`
+whatever format the snapshots are in:
+
+| `index.json` | `pb.Profile` | effect |
+|---|---|---|
+| `name` | `name` | the space's name |
+| `iconImage` | `avatar` | the space icon. The field holds an object id; `avatar` wants the image's **name**, because `getNewAvatarId` resolves it by querying name + image layout — so the wiring reads the name off the referenced object. Authors keep writing ids, as everywhere else in the format |
+| `homepage`, falling back to `entrypoint` | `spaceDashboardId` | the space's `homepage` detail — what opens on **every** entry |
+| `widgets` | `widgets` | sidebar widgets, in order |
+| `entrypoint` | `widgets[0].targetObjectId` | the object the install opens, **once** |
+
+Two consequences worth stating, because neither is obvious from the wire
+format:
+
+- **`entrypoint` is encoded as the first widget.** There is no independent
+  field for "open this after import" — `inject` takes
+  `widgets[0].targetObjectId` as its starting page, and the deprecated
+  `startingPage` is only read when `widgets` is empty, so it cannot coexist
+  with a sidebar. The wiring therefore has to make the entrypoint
+  `widgets[0]`, prepending a widget for it when the author listed something
+  else first. The entry point consequently always appears first in the
+  sidebar. `entrypoint` exists as a separate field anyway, because expressing
+  it by sorting `widgets` means reordering the sidebar silently changes what
+  a new user sees.
+- **Omitting `homepage` does not mean the widgets screen.** An absent
+  `spaceDashboardId` makes `setWorkspaceSettings` default to `widgets`, which
+  is the right default for a *blank* space and the wrong one for a use case:
+  on desktop the widgets are already in the sidebar, so it leaves the main
+  pane empty. So an omitted `homepage` resolves to the `entrypoint` instead,
+  and only an explicit `"widgets"` or `"graph"` gives up a real page.
+
+Nothing per-object substitutes for this file. In particular **`isFavorite` is
+not an entry point**: it adds an object to Favorites and nothing more. It
+does not open anything, create a widget, or set the homepage.
+
+Ids in `index.json` are the bundle's own — the same slugs every other
+document uses — and the wiring relinks them like any other reference. Whether
+they resolve is a cross-document question this package does not answer
+(§13): an index validates on its own terms while naming an object no
+document defines.
+
 ## 3. Properties
 
 `properties` is a JSON object keyed by **property key** (as stored,
@@ -229,7 +318,7 @@ Values are encoded by the property's format:
 
 | Format | JSON encoding |
 |---|---|
-| `text` (default), `shortText`, `url`, `email`, `phone` | string |
+| `text` (default), `url`, `email`, `phone` | string |
 | `number` | number |
 | `checkbox` | boolean |
 | `date` | RFC 3339 date-time string, UTC (`"2026-07-06T15:04:05Z"`); import converts back to unix seconds. Import also accepts date-only strings (UTC midnight), non-UTC offsets (converted to UTC), and fractional seconds (truncated to whole seconds). Export always writes the full UTC form. |
@@ -237,11 +326,53 @@ Values are encoded by the property's format:
 | `objects`, `files` | array of object ids (strings) |
 | unresolvable format | value passes through verbatim in both directions |
 
+**Layout is named, not numbered.** `recommendedLayout`, `layout` and
+`resolvedLayout` are stored as numbers (their bundled relations have format
+`number`), but the format writes the enum **name** — `basic · profile · todo ·
+set · objectType · relation · file · dashboard · image · note · space ·
+bookmark · relationOptionsList · relationOption · collection · audio · video ·
+date · spaceView · participant · pdf · chatDeprecated · chatDerived · tag ·
+notification · missingObject · devices · discussion`. A bare integer would be
+the one opaque enum in an otherwise self-describing format. Import maps the
+name to its number and still accepts a raw number, so older documents keep
+working; export always writes the name; an unrecognized name is a validation
+error. Note this applies only to these three keys — `layoutAlign`,
+`layoutWidth`, `widgetLayout` and `headerRelationsLayout` hold *different*
+enums and pass through as numbers.
+
 Format names follow the public REST API (`select`, `multiSelect`, …);
 internally they map to `model.RelationFormat` (`status`→`select`,
-`tag`→`multiSelect`, `longtext`→`text`, `shorttext`→`shortText`,
+`tag`→`multiSelect`, `longtext`→`text`,
 `object`→`objects`, `file`→`files`; `emoji` and `properties` exist for
 internal formats).
+
+**There is one text format, `text`.** The editor offers a single Text
+property type; the stored `longtext`/`shorttext` split is legacy, carries no
+meaning an author could act on, and is **not part of this format** —
+`shortText` is not a valid format name and is rejected by the schema.
+
+The collapse is not lossy, because `text` resolves per key rather than
+blindly:
+
+- **Export** writes `text` for both stored formats.
+- **Import** reads `text` as the key's *existing* format when that key is
+  already known to be `shorttext` — bundled properties (`name`, `iconEmoji`,
+  `coverId`, …) and anything the wiring's `ResolveFormat` recognizes. So a
+  short-text property keeps its stored format across a round-trip even
+  though the document never names it.
+- Otherwise `text` means `longtext`, which is what a **new** property
+  declared as `text` becomes.
+
+Any other format name is taken literally — the document is authoritative
+about its properties, and only the text/text collapse needs a key to
+disambiguate.
+
+**Properties are space-wide, not per-type.** Two types whose
+`typeProperties` name the same select share one option pool, so their
+vocabularies merge into a single dropdown. That is the point for a property
+whose values are genuinely common (`tag`) and a defect for the lifecycle
+selects a schema reaches for, where the same word means different things per
+type. Documents that want distinct vocabularies must use distinct keys.
 
 **Select options are names, not ids — everywhere.** This rule covers
 property values here, filter `value`s, and sort `customOrder` entries
@@ -266,11 +397,11 @@ just unprettified.
 
 | Key | Format | Meaning |
 |---|---|---|
-| `name` | shortText | the object's title |
+| `name` | text | the object's title |
 | `description` | text | subtitle/description line |
-| `iconEmoji` | shortText | page icon as emoji |
+| `iconEmoji` | text | page icon as emoji |
 | `iconImage` | files | page icon as image (object id) |
-| `coverId` / `coverType` | shortText / number | page cover — output-only (§4a) |
+| `coverId` / `coverType` | text / number | page cover — output-only (§4a) |
 | `done` | checkbox | completion state on task-like types |
 | `dueDate` | date | due date on task-like types |
 
@@ -297,7 +428,11 @@ single-element lists on round-trip (§11).
 meaningfully preserves (mirroring `core/block/import/pb`): `createdDate`,
 `lastModifiedDate`, `creator`, `isFavorite`, `isArchived`, `resolvedLayout`.
 Those six are **output-only** (§4a): export writes them, generators should
-not. `id` is lifted to the envelope and `type` to `type`. Everything else
+not — with one deliberate exception. **`isFavorite` is authorable**, because
+the pb importer reads it to choose a space's root objects
+(`core/block/import/pb/space.go`), which is how a generated bundle
+designates the object a user should land on. A bundle with no favourite, no
+`homepage` and no `spaceDashboardId` imports as an undifferentiated list. `id` is lifted to the envelope and `type` to `type`. Everything else
 round-trips.
 
 Validation: the schema types `properties` loosely (`object` with scalar/array
@@ -512,6 +647,17 @@ machinery:
   separator. Import generates missing ids.
 - `width` on a column entry (pixels) is first-class (lifted from the
   internal `fields["width"]`); other column data round-trips via `fields`.
+- **Generated row/column ids obey the same charset as authored ones.** A
+  cell's id is `rowId + "-" + colId`, and the editor recovers the column with
+  `SplitN(id, "-", 2)` (`table.ParseCellID`, which every column
+  insert/delete/move, the HTML converter and table normalization depend on),
+  so a `-` anywhere in a row or column id silently reassigns cells to the
+  wrong column. `Options.GenerateId` belongs to the caller and need not
+  respect that — the convert wiring derives ids from file paths — so import
+  sanitizes generated ids into `[A-Za-z0-9_]{1,64}` and disambiguates
+  collisions rather than trusting the generator. Export sanitizes stored ids
+  the same way, since data predating this rule contains dashes and `Marshal`
+  must never emit a document its own `Validate` rejects.
 - Header rows must come first (editor invariant); import reorders
   (normalizes) rather than rejects, same as the editor does.
 - Export normalizes before flattening, mirroring the editor's own table
@@ -536,7 +682,7 @@ string enums, and defaults omitted:
   "type": "dataview",
   "objectId": "bafyrei…targetSet",
   "properties": [
-    { "key": "name", "format": "shortText" },
+    { "key": "name", "format": "text" },
     { "key": "status", "format": "select" },
     { "key": "dueDate", "format": "date" }
   ],
@@ -555,7 +701,7 @@ string enums, and defaults omitted:
       ],
       "columns": [
         { "property": "name" },
-        { "property": "dueDate", "width": 30, "align": "right" },
+        { "property": "dueDate", "width": 120, "align": "right" },
         { "property": "status", "aggregation": "countDistinct" }
       ]
     }
@@ -580,8 +726,8 @@ excludes it from changes) and the deprecated proto `relations` field.
 (`table · list · gallery · kanban · calendar · graph`, omit `table` — note
 the public API currently says `grid`; `table` is the more familiar term),
 `name`, `groupBy` (property key; from `groupRelationKey`), `coverProperty`
-(from `coverRelationKey`), `endProperty` (from `endRelationKey`; end date
-for calendar/timeline), `hideIcon`, `cardSize` (`small · medium · large`,
+(from `coverRelationKey`), `endProperty` (from `endRelationKey`; the end
+date of a range — **inert today**, see below), `hideIcon`, `cardSize` (`small · medium · large`,
 omit `small`), `coverFit`, `coloredGroups` (from `groupBackgroundColors`),
 `pageSize` (from `pageLimit`), `defaultTemplateId`, `defaultTypeId` (from
 `defaultObjectTypeId`), `wrapContent`, `listSize` (`compact · regular`,
@@ -598,11 +744,45 @@ Editor state nested per view, both output-only (§4a):
 
 **Column** (`View.Relation`), canonical order: `property` (the property
 key), `hidden` (inverse of proto `isVisible`; omitted = visible, so the
-common case costs nothing), `width` (displayed column **%**), `aggregation`
+common case costs nothing), `width` (displayed column width in **pixels**,
+see below), `aggregation`
 (`count · countValue · countDistinct · countEmpty · countNotEmpty ·
 percentEmpty · percentNotEmpty · sum · average · median · min · max · range`
 — from proto `formula`; omit `none`), `align`. Deprecated per-column
 date/time fields are dropped.
+
+**Column `width` is in pixels**, the same unit as the proto's `width` — not
+a percentage, and not a share of the table. A row of columns summing to
+`100` produces four unreadable slivers, not four proportional columns.
+Serialization passes the number through unchanged: the client owns
+rendering, and this package neither clamps nor defaults it. What the client
+does with it (`anytype-ts`, `J.Size.dataview.cell` / `Relation.width`):
+
+| value | rendered width |
+|---|---|
+| omitted / `0`, a property stored as `shorttext` (`name`, …) | `500` |
+| omitted / `0`, any other format | `192` |
+| any non-zero `n` | exactly `n` — **no clamping on render** |
+
+So **omitting `width` is the better default than guessing one**: the client
+picks per format, and the choice tracks the client rather than freezing here.
+Write a number only to pin a deliberate layout — the editor's own drag-resize
+stays within `54…1000` (`min`/`max`), and columns at or below `70` (`small`)
+and `120` (`medium`) get progressively stripped-down cell rendering, so
+anything under ~`54` is a slice of a column with no room for its content.
+Widths written by the editor itself land in the low hundreds (`150`–`320` for
+text and object columns, `60`–`100` for numbers and short values).
+
+**There is no timeline/Gantt view, and `endProperty` currently does
+nothing.** The proto's view type enum ends at `Graph = 5`; the client
+carries a sixth, `Timeline`, but it is gated behind `config.experimental`
+and has no proto value, so it cannot be described here. `endRelationKey` is
+read by that timeline component and by nothing else — a calendar view does
+**not** use it, and shows single dates from `groupBy` alone. `endProperty`
+round-trips faithfully for data that already carries it, but setting it on
+any expressible view type has no effect. A view stored with the
+experimental type reads back as `table`, since an out-of-range enum is
+omitted rather than emitted as a schema-invalid empty string.
 
 **Sort** (`Dataview.Sort`), canonical order: `property` (from
 `RelationKey`), `direction` (`asc · desc · custom`, omit `asc`),
@@ -610,6 +790,16 @@ date/time fields are dropped.
 values verbatim), `emptyPlacement` (`start · end`, omit unspecified),
 `includeTime` (include time-of-day when comparing dates), `noCollate`
 (disable locale-aware collation; compare raw strings), `id` (output-only).
+
+**Dates are not empty-safe.** An object with no value for a date property
+matches `less` and `lessOrEqual` regardless of the threshold: `Compare`
+returns `1` when the filter carries a value and the record does not, and `1`
+is what `Less` tests for (`pkg/lib/database/filter.go`). An "overdue" view
+must therefore pair the comparison with a `notEmpty` on the same property
+inside an `and` group; a `notEmpty` under an `or` guards nothing.
+`greater`/`greaterOrEqual` are unaffected. Import warns on an unguarded
+comparison rather than rejecting it — including undated objects is a legal
+thing to want, and stored data contains such filters.
 
 **Filter** (`Dataview.Filter`) — a filter node is either a **group** or a
 **leaf** (schema `oneOf`); the top-level `filters` array combines its nodes
@@ -633,6 +823,34 @@ a group exists only for `or` or nesting):
   option **names** per §3; dates stay unix numbers in the structured form;
   everything else verbatim. `value` is **dropped** on
   `empty`/`notEmpty`/`exists` leaves (§11).
+
+  **Dynamic values.** A `value` entry of the form `_filter_template_<n>_` is
+  a placeholder the *client* substitutes for a real object id before issuing
+  the query (`Dataview.valueTemplateMapper`): `_filter_template_2_` is the
+  current user, resolving to `_participant_<space>_<account>`, and
+  `_filter_template_1_` is the object hosting an inline dataview, resolving
+  to its id. They are stored verbatim and are **opaque to the middleware** —
+  nothing in Go resolves them, so a query evaluated server-side compares
+  against the literal string and matches nothing. They are not object ids:
+  import must not remap them and export must not compact them into the refs
+  legend (§9a). Valid only on `objects`/`files` properties, since they
+  resolve to an object id; anywhere else is a validation error. Note the
+  date presets are a *different* mechanism — a first-class `quickOption`
+  field with real Go-side semantics (§6.2, `quickoptions.go`) — and the
+  template-placeholder feature (`model.Placeholder_PlaceholderCurrentUser`)
+  is unrelated: it fills property defaults when an object is created from a
+  template, is resolved in Go, and never appears in a filter.
+
+  `numberOfDaysAgo` and `numberOfDaysNow` are the two presets that **take an
+  operand**: `getDateRange` reads the day count from `value`
+  (`pkg/lib/database/quickoptions.go`), so they are the one case where a
+  preset and a `value` legitimately coexist, and a leaf carrying one without
+  a `value` is a validation error — the count would default to `0`, silently
+  meaning today. Because the count is meaningful data rather than an absent
+  field, export writes it even when it is `0`, overriding the usual
+  empty-elision (§4). A preset resolves to a day *range*, and the condition
+  picks the endpoint: `less`/`greaterOrEqual` compare against the range
+  start, `greater`/`lessOrEqual` against its end.
 
 Sorts and filters do **not** carry the proto's cached per-node `format`:
 import rehydrates it from the dataview `properties` list and `bundle`
@@ -723,6 +941,26 @@ A document that nevertheless contains such blocks at indent 0 is accepted
 the corresponding properties when those are unset and drops the blocks
 otherwise — together with any blocks indented under them; a top-level
 `featuredProperties` block (which carries no content) is simply dropped.
+
+**The primary dataview** is the one structural id import *does* rebuild.
+Object types, sets and collections keep their own dataview at the fixed
+block id `dataview` (`state.DataviewBlockID`); the editor recreates it on
+open only *if absent* (`template.WithDataviewIDIfNotExists`), so a document
+whose dataview lands on a generated id gets a second, empty dataview
+alongside the configured one. Unlike `title`/`description`, the block cannot
+simply be dropped and regenerated — its views, columns and widths are the
+author's configuration, not derivable — so import **pins the id** instead:
+
+> the first indent-0 `dataview` block with neither an explicit `id` nor an
+> `objectId` becomes `dataview`.
+
+`objectId` is what separates the two cases: an inline view of *another* set
+or collection has it set (§6.2) and keeps its generated id, as does any
+dataview nested below indent 0, and any dataview after the first. If some
+block already claims `dataview`, that block wins and nothing is pinned — an
+explicit id stays authoritative and cannot collide (§13). Export is
+unchanged: it emits the id verbatim, and under `omitIds` (§9) the rule
+restores it on the way back in.
 
 **Content-less blocks** (legacy data): old accounts hold blocks whose
 content oneof is unset — relation objects wrap their "used in" dataview in
@@ -1174,6 +1412,14 @@ type Options struct {
 }
 ```
 
+The bundle index (§2c) has its own pair, since it is not an object snapshot:
+
+```go
+func UnmarshalIndex(data []byte) (*Index, error)
+func MarshalIndex(idx *Index) ([]byte, error)
+}
+```
+
 The package is deliberately **pipeline-agnostic**: it depends only on
 `pkg/lib/pb/model`, `core/domain`, `pkg/lib/bundle`, `util/text`, the proto
 runtime (`gogo/protobuf/types`) and `santhosh-tekuri/jsonschema/v6` (§12).
@@ -1227,7 +1473,7 @@ Wiring (follow-up work, not this package):
     { "id": "b9", "type": "dataview",
       "objectId": "bafyrei…tasksSet",
       "properties": [
-        { "key": "name", "format": "shortText" },
+        { "key": "name", "format": "text" },
         { "key": "status", "format": "select" },
         { "key": "dueDate", "format": "date" }
       ],
@@ -1243,7 +1489,7 @@ Wiring (follow-up work, not this package):
           ],
           "columns": [
             { "property": "name" },
-            { "property": "dueDate", "width": 30, "align": "right" },
+            { "property": "dueDate", "width": 120, "align": "right" },
             { "property": "status", "aggregation": "countDistinct" }
           ]
         }

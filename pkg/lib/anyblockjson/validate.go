@@ -11,11 +11,15 @@ import (
 	"fmt"
 	"math"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
+
+	"github.com/anyproto/anytype-heart/core/domain"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
@@ -119,6 +123,15 @@ func DetectFormat(data []byte) (version int, schemaURL string, ok bool) {
 // indent mode exists only on Unmarshal (Options.NormalizeIndent).
 func Validate(data []byte) error {
 	_, err := validateToDoc(data, false, nil)
+	return err
+}
+
+// ValidateWarn is Validate with a sink for warning-grade issues: things that
+// do not make a document invalid but do mean part of it is dead weight — a
+// groupBy on a view type that cannot group (§6.2), for instance. Validate
+// discards them, so a tool that wants to show them must call this.
+func ValidateWarn(data []byte, onWarning func(Issue)) error {
+	_, err := validateToDoc(data, false, onWarning)
 	return err
 }
 
@@ -343,6 +356,21 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 	}
 
+	// layout properties are named, not numbered (§3). A typo would otherwise
+	// import as a raw string onto a number-format property: no error anywhere,
+	// and every consumer reads it with an int getter and silently sees "basic".
+	if props, _ := doc["properties"].(map[string]any); props != nil {
+		for key, v := range props {
+			s, isStr := v.(string)
+			if !isLayoutKey(key) || !isStr {
+				continue // a raw number is still accepted (§3)
+			}
+			if !layoutNames.has(s) {
+				addIssue("/properties/"+key, "unknown layout %q", s)
+			}
+		}
+	}
+
 	if _, ok := doc["typeProperties"]; ok {
 		if kind, _ := doc["kind"].(string); kind != "objectType" {
 			addIssue("/typeProperties", `typeProperties is only valid on type documents (kind "objectType")`)
@@ -353,6 +381,73 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 			for _, l := range recommendedListKeys {
 				if _, dup := props[l.detailKey]; dup {
 					addIssue("/properties/"+l.detailKey, "conflicts with typeProperties, which replaces this list")
+				}
+			}
+		}
+		// name is used only when the property has to be created (§2a); an
+		// existing one keeps its own, so renaming a bundled key here reads as
+		// working and silently does nothing
+		if list, _ := doc["typeProperties"].([]any); list != nil {
+			for i, raw := range list {
+				tp, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				key, _ := tp["key"].(string)
+				// options declare a select's vocabulary and its display
+				// order (§2a); on any other format there is nothing to
+				// declare and the array would be silently dropped
+				if opts, has := tp["options"].([]any); has && len(opts) > 0 {
+					if f, _ := tp["format"].(string); f != "select" && f != "multiSelect" {
+						shown := f
+						if shown == "" {
+							shown = "text"
+						}
+						addIssue(fmt.Sprintf("/typeProperties/%d/options", i),
+							"options is only meaningful on select/multiSelect, not %q", shown)
+					}
+					// an option is a bare name or an object carrying a color
+					// (§2a), and the two forms name the same vocabulary: the
+					// duplicate check has to read across both
+					seen := map[string]bool{}
+					for j, o := range opts {
+						n := optionEntryName(o)
+						if seen[n] {
+							addIssue(fmt.Sprintf("/typeProperties/%d/options/%d", i, j),
+								"duplicate option %q", n)
+						}
+						seen[n] = true
+					}
+				}
+				// objectTypes restricts what an object reference may point
+				// at; on any other format there is nothing to restrict and
+				// the array would be silently dropped
+				if ots, has := tp["objectTypes"].([]any); has && len(ots) > 0 {
+					if f, _ := tp["format"].(string); f != "objects" && f != "files" {
+						shown := f
+						if shown == "" {
+							shown = "text"
+						}
+						addIssue(fmt.Sprintf("/typeProperties/%d/objectTypes", i),
+							"objectTypes is only meaningful on objects/files, not %q", shown)
+					}
+				}
+				// a bundled property is used as-is: only the wiring's
+				// create path reads these, and it never runs for a key that
+				// already exists (§2a)
+				if key != "" {
+					if rel, err := bundle.GetRelation(domain.RelationKey(key)); err == nil && rel != nil {
+						if name, _ := tp["name"].(string); name != "" && name != rel.Name {
+							warnIssue(fmt.Sprintf("/typeProperties/%d/name", i),
+								"%q is a bundled property named %q — this name is ignored; mint a custom key if the label matters",
+								key, rel.Name)
+						}
+						if ots, has := tp["objectTypes"].([]any); has && len(ots) > 0 {
+							warnIssue(fmt.Sprintf("/typeProperties/%d/objectTypes", i),
+								"%q is a bundled property; its target types are fixed by the bundle and this list is ignored — mint a custom key to target different types",
+								key)
+						}
+					}
 				}
 			}
 		}
@@ -397,6 +492,9 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 		}
 		if typ == "table" {
 			walkTable(block, path, claimId, addIssue, walkBlock, checkFlatRun)
+		}
+		if typ == "dataview" {
+			checkDataviewViews(block, path, addIssue, warnIssue)
 		}
 	}
 
@@ -528,4 +626,187 @@ func walkTable(block map[string]any, path string,
 			}
 		}
 	}
+}
+
+// groupableFormats lists, per view type, the property formats that view can
+// group by. Only kanban and calendar group at all: the middleware assigns
+// groupRelationKey for exactly these pairs (converter.insertGroupRelationKey,
+// whose default branch is a no-op), the kanban service registers groupers for
+// exactly these formats (core/kanban.Service.Init), and the client offers the
+// same set (Relation.getGroupTypes). Every other view type ignores groupBy.
+var groupableFormats = map[string]map[string]struct{}{
+	"kanban":   {"select": {}, "multiSelect": {}, "checkbox": {}},
+	"calendar": {"date": {}},
+}
+
+// checkDataviewViews runs the per-view semantic checks that need the
+// dataview's own properties[] to know a key's format: groupBy viability and
+// the date-filter empty trap.
+//
+// It reports a groupBy a view cannot honour. An impossible pair on
+// a grouping view is an error: it can only come from authoring, and it
+// renders as a single empty group. groupBy on a non-grouping view is only a
+// warning — switching a kanban to a table in the editor leaves the stale
+// groupRelationKey behind, so real exported data legitimately carries it.
+func checkDataviewViews(block map[string]any, path string, addIssue, warnIssue func(string, string, ...any)) {
+	views, _ := block["views"].([]any)
+	if len(views) == 0 {
+		return
+	}
+	formats := map[string]string{}
+	props, _ := block["properties"].([]any)
+	for _, raw := range props {
+		p, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		key, _ := p["key"].(string)
+		if f, isStr := p["format"].(string); isStr && key != "" {
+			formats[key] = f
+		} else if key != "" {
+			formats[key] = "text" // §3: an omitted format is text
+		}
+	}
+	for i, raw := range views {
+		view, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		checkDateFilters(view, formats, fmt.Sprintf("%s/views/%d", path, i), addIssue, warnIssue)
+		groupBy, _ := view["groupBy"].(string)
+		if groupBy == "" {
+			continue
+		}
+		vPath := fmt.Sprintf("%s/views/%d/groupBy", path, i)
+		viewType, _ := view["type"].(string)
+		if viewType == "" {
+			viewType = "table" // §6.2: the default view type
+		}
+		allowed, groups := groupableFormats[viewType]
+		if !groups {
+			warnIssue(vPath, "%q views do not group; groupBy is ignored", viewType)
+			continue
+		}
+		// a key absent from properties has no declared format to check
+		format, declared := formats[groupBy]
+		if !declared {
+			continue
+		}
+		if _, ok := allowed[format]; !ok {
+			addIssue(vPath, "%q views cannot group by %q (format %q); expected %s",
+				viewType, groupBy, format, strings.Join(sortedKeys(allowed), " · "))
+		}
+	}
+}
+
+func sortedKeys(m map[string]struct{}) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// checkDateFilters warns about `less`/`lessOrEqual` on a date property that
+// is not guarded by a `notEmpty`/`exists` on the same property in an
+// enclosing AND. An object with no value for that date matches: the filter's
+// value is set and the record's is not, so domain.Value.Compare returns 1,
+// which is exactly what Less tests for. A freshness view written the obvious
+// way ("verifiedUntil less today") therefore lists every never-verified
+// object alongside the genuinely stale ones. It is a warning, not an error —
+// including undated objects is a legal thing to want, and real exported data
+// contains such filters.
+func checkDateFilters(view map[string]any, formats map[string]string, path string, addIssue, warnIssue func(string, string, ...any)) {
+	nodes, _ := view["filters"].([]any)
+	if len(nodes) == 0 {
+		return
+	}
+	var walk func(nodes []any, path string, and bool, guarded map[string]bool)
+	walk = func(nodes []any, path string, and bool, guarded map[string]bool) {
+		// only an AND lets a sibling notEmpty guarantee anything: under an OR
+		// the comparison can be reached without it
+		scope := guarded
+		if and {
+			scope = map[string]bool{}
+			for k := range guarded {
+				scope[k] = true
+			}
+			for _, raw := range nodes {
+				n, ok := raw.(map[string]any)
+				if !ok {
+					continue
+				}
+				cond, _ := n["condition"].(string)
+				if prop, _ := n["property"].(string); prop != "" &&
+					(cond == "notEmpty" || cond == "exists") {
+					scope[prop] = true
+				}
+			}
+		}
+		for i, raw := range nodes {
+			n, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			nPath := fmt.Sprintf("%s/%d", path, i)
+			if sub, isGroup := n["filters"].([]any); isGroup {
+				op, _ := n["operator"].(string)
+				walk(sub, nPath+"/filters", op != "or", scope)
+				continue
+			}
+			// the day-count presets read their operand from value; without
+			// one the count is 0, which quietly means "today" rather than
+			// "n days ago" (pkg/lib/database.getDateRange)
+			if preset, _ := n["datePreset"].(string); preset != "" {
+				if _, counts := countingPresetNames[preset]; counts {
+					if _, has := n["value"]; !has {
+						addIssue(nPath, "datePreset %q needs a day count in \"value\"; without one it means 0 days, i.e. today", preset)
+					}
+				}
+			}
+			// a dynamic filter token resolves to an object id, so it can
+			// only match an object/file property; anywhere else it is
+			// compared as a literal string and matches nothing
+			if prop, _ := n["property"].(string); prop != "" {
+				if f, declared := formats[prop]; declared && f != "objects" && f != "files" {
+					for _, tok := range filterTemplateValues(n["value"]) {
+						addIssue(nPath+"/value",
+							"%q resolves to an object id and cannot match %q (format %q)", tok, prop, f)
+					}
+				}
+			}
+			cond, _ := n["condition"].(string)
+			if cond != "less" && cond != "lessOrEqual" {
+				continue
+			}
+			prop, _ := n["property"].(string)
+			if formats[prop] != "date" || scope[prop] {
+				continue
+			}
+			warnIssue(nPath, "%q on date %q also matches objects with no %s; "+
+				"pair it with a %q leaf in an \"and\" group to exclude them",
+				cond, prop, prop, "notEmpty")
+		}
+	}
+	walk(nodes, path+"/filters", true, map[string]bool{})
+}
+
+// filterTemplateValues returns the dynamic filter tokens (§6.2) inside a
+// filter value, which may be a bare string or an array of them.
+func filterTemplateValues(v any) []string {
+	var out []string
+	switch x := v.(type) {
+	case string:
+		if isFilterTemplate(x) {
+			out = append(out, x)
+		}
+	case []any:
+		for _, e := range x {
+			if s, ok := e.(string); ok && isFilterTemplate(s) {
+				out = append(out, s)
+			}
+		}
+	}
+	return out
 }

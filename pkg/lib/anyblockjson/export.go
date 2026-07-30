@@ -113,6 +113,11 @@ type exporter struct {
 
 	objectRefs map[string]string // full object id -> refs label (§9a)
 	localIds   map[string]string // block/row/column/view id -> short label
+
+	// tableIds maps a stored row/column id to the sanitized label written for
+	// it (§6.1), and tableIdsUsed keeps those labels distinct.
+	tableIds     map[string]string
+	tableIdsUsed map[string]struct{}
 }
 
 func (e *exporter) detail(key string) *types.Value {
@@ -341,6 +346,15 @@ func resolveFormatWith(opts Options, key string) (model.RelationFormat, bool) {
 }
 
 func (e *exporter) propertyValue(key string, v *types.Value) any {
+	// layout is stored as a number and named in the format (§3); a number
+	// outside the enum falls through and exports unchanged.
+	if isLayoutKey(key) {
+		if n, isNum := v.GetKind().(*types.Value_NumberValue); isNum {
+			if name := layoutNames.name(model.ObjectTypeLayout(int32(n.NumberValue))); name != "" {
+				return name
+			}
+		}
+	}
 	format, ok := e.resolveFormat(key)
 	if !ok {
 		return protoValueToJSON(v)

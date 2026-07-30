@@ -143,7 +143,7 @@
       "properties": [
         {
           "key": "name",
-          "format": "shortText"
+          "format": "text"
         },
         {
           "key": "customStatus",
@@ -201,7 +201,7 @@
             {
               "property": "dueDate",
               "hidden": true,
-              "width": 30,
+              "width": 120,
               "aggregation": "countDistinct",
               "align": "right"
             }

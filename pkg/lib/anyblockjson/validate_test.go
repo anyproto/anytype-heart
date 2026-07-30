@@ -50,7 +50,7 @@ func TestValidate_Valid(t *testing.T) {
 		]}`},
 		{"dataview", `{"version": 1, "blocks": [
 			{"type": "dataview", "objectId": "bafyset",
-			 "properties": [{"key": "name", "format": "shortText"}, {"key": "status", "format": "select"}],
+			 "properties": [{"key": "name", "format": "text"}, {"key": "status", "format": "select"}],
 			 "views": [
 				{"id": "v1", "type": "kanban", "name": "By status", "groupBy": "status",
 				 "sorts": [{"property": "dueDate", "direction": "asc", "emptyPlacement": "end"}],

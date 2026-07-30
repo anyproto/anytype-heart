@@ -55,7 +55,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"required":["name","format"],"properties":{` +
 			`"key":{"type":"string","maxLength":256,"pattern":"^[a-zA-Z0-9_]+$"},` +
 			`"name":{"type":"string","maxLength":4096},` +
-			`"format":{"type":"string","enum":["text","shortText","number","select","multiSelect","date","files","checkbox","url","email","phone","objects"]},` +
+			`"format":{"type":"string","enum":["text","number","select","multiSelect","date","files","checkbox","url","email","phone","objects"]},` +
 			`"options":{"type":"array","maxItems":100,"items":{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},"color":{"type":"string","maxLength":64}}}}}}`,
 		example: `{"key":"priority","name":"Priority","format":"select","options":[{"name":"High","color":"red"},{"name":"Low"}]}`,
