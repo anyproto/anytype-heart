@@ -638,48 +638,111 @@ documented recursive exception. Every served example passes
 `anyblockjson.Validate` (enforced by test). `/v2/schemas/ops/{op}` shipped
 with Phase 3 (§8.2).
 
-### 8.2 Phase-3 implementation notes (v0.3.3 — decisions as built)
+### 8.2 Phase-3 implementation notes (v0.3.4 — decisions as built)
 
-**The edit pipeline, decided.** Both PATCH and PUT run ONE pipeline under the
-object lock: marshal the live state to its flat document → mutate that
-document (apply the ops, or take the client's body on PUT) →
-`anyblockjson.Validate` → `Unmarshal` with the Phase-2 create-missing
-resolvers → one diff-apply. The ops work at the **document level**, not on
-`state.State` directly — rejected alternative: per-op `simple.Block`
-mutations, because op payload blocks ARE AnyBlock JSON (inline markup,
-tables, relative indents) and only the format package can interpret them;
-the document route also makes R5 exact by construction (the post-op document
-is literally validated) and lets PATCH and PUT share one apply core.
+**The edit pipeline, redecided (v0.3.4 — supersedes v0.3.3's
+document-level apply).** PATCH ops are **operations**: they apply to a
+child `*state.State` of the live object and the adapter commits with ONE
+ordinary `sb.Apply(st)` — exactly the Block* RPC handler model. The
+v0.3.3 pipeline (marshal → mutate flat JSON → Unmarshal →
+`ResetToVersion`) reset onto the live object a snapshot the format
+deliberately does not fully carry (no RelationLinks, no structural
+blocks, no resolvedLayout, no extra type keys) and applied it with
+`NoHistory`/`DoSnapshot`/`NoRestrictions` — the Tier-A cluster of the
+Phase-3 review. The state route fixes those **by construction**: a child
+state inherits everything the live doc owns, Apply runs per-block
+restriction checks, records undo, fires hooks/events, and emits the
+minimal id-matched change diff with no forced full snapshot. The flat
+document is still rendered under the lock, but only as the **read-only
+view** the ops address (refs, suffixes, indent arithmetic, error texts —
+the same shape agents read) and as the diffStats input; payload blocks
+are interpreted by the format package at **fragment granularity**
+(`anyblockjson.UnmarshalBlocks`/`UnmarshalBlock`/`UnmarshalPropertyValue`
++ the inline codec), so only the format package ever parses AnyBlock
+JSON.
 
-**The mutation port.** `apicore.ObjectMutator.MutateObject(ctx, spaceId,
-objectId, build func(cur ObjectRead) (*SmartBlockSnapshotBase, error))
-([]heads, error)` — the adapter locks the object (`cache.DoContextFullID`),
-hands `build` the same consistent read the Phase-1 reader produces (so the
-If-Match check, the edit, and the marshal all see one state), diff-applies
-the returned snapshot, and returns the post-apply heads (the new etag's
-input). `build` returning `(nil, nil)` commits nothing; dry runs never call
-the mutator (a plain `ObjectReader` read feeds the same pipeline).
+**The mutation port (v0.3.4).** `apicore.ObjectMutator` has two methods.
+`MutateObject(ctx, spaceId, objectId, apply func(edit ObjectEdit) error)`
+is PATCH: the adapter locks the object, checks the object-level
+Blocks/Details restrictions, hands `apply` an `ObjectEdit{SbType, Heads,
+State}` (State = `sb.NewState()`), runs the bundled-revision guard (never
+downgrade `revision`; untouched keys are simply inherited now), and
+commits with a plain `sb.Apply`. `ResetObject(ctx, spaceId, objectId,
+build func(cur ObjectRead) (*SmartBlockSnapshotBase, error))` keeps the
+v0.3.3 reset-to-version machinery (with `preserveEditorOwnedState`) for
+PUT until its own rework. Dry runs never touch the mutator: the same op
+applier runs on a private `state.NewDocFromSnapshot` of a plain read.
 
-**The apply is reset-to-version.** `state.NewDocFromSnapshot` →
-`history.ResetToVersion` (the proven
-`import/common/objectcreator.updateExistingObject` shape): SetParent, local
-detail injection, bundled-relation-link repair (GO-7217) and migrations all
-ride it, and the change lands as one change set. Known consequence:
-`ResetToVersion` applies `NoHistory` and resets the undo stack — an API edit
-is not in-editor-undoable. Accepted: reimplementing the reset machinery just
-to keep undo would trade proven safety for a nicety. The import path's
-bundled-revision guard is mirrored in the adapter (never downgrade a
-revision-carrying object; preserve `sourceObject`/`revision` when the
-incoming state lacks them).
+**Ops → state, exact.** setProperties → `st.SetDetail`/`RemoveDetail` +
+`st.AddRelationLinks` for the key (mandatory — a value without its link
+is wiped on replay, the A1 class); values decode via
+`UnmarshalPropertyValue` (dates, option names, ref lists — §3 rules).
+updateBlock → merge on the block's exported JSON form → `UnmarshalBlock`
+with the forced id → set in place, live ChildrenIds kept (non-table).
+replaceBlock → same without merge. replaceSubtree → fragment run →
+unlink old subtree, splice the run's top blocks at the old position (id
+reuse from the replaced subtree is allowed). insertBlocks →
+`st.InsertTo` (after→Bottom, before→Top, inside last→Inner, inside
+first→InnerFirst). moveBlock → `st.Unlink` + `st.InsertTo` (children
+ride along). deleteBlock → `st.Unlink` (apply-side normalization drops
+the orphaned subtree). replaceText → find/replace on the block's
+document text (markup source; literal for code/embed §8.4) →
+`ParseInlineText` back to text+marks. setCell → edit the cell on the
+table's document form, re-import the one table block (rows/columns/
+derived cell ids round-trip, so untouched cells land unchanged; the
+internal wrapper blocks are re-minted — accepted churn, strictly less
+than v0.3.3's whole-document reimport). addItems/removeItems →
+`st.GetStoreSlice("objects")`/`UpdateStoreSlice`.
 
-**R5 post-op validity = the format's own Validate.** Op-shaped violations
-(cycle, leaf-parent naming the descendant count, delete-without-recursive,
-payload monotonicity, insert-inside-leaf) are pre-checked at op-apply time
-with `ops[i]…` paths and the agent-facing messages; everything else is the
-net: the edited document must pass SPEC §12 V1–V5 wholesale, and a failure
-rejects the whole PATCH as "the ops would produce an invalid document — no
-op was applied" with the format's block-path issues. The package exports
-`LeafBlockType`/`TextBlockType` for the pre-checks (single source of truth).
+**R5 post-op validity without the whole-document Validate.** V1
+monotonicity is now structural — a state tree has no indent arithmetic to
+get wrong — plus the unchanged payload-run monotonicity pre-check.
+Fragment payloads are validated by wrapping the run in a minimal
+synthetic page document and running the format's document validation
+(so the §5 shape checks apply verbatim); a failure rejects the whole
+PATCH under the unchanged message "the ops would produce an invalid
+document — no op was applied", with fragment-relative block paths.
+Structural block types (`title`/`description`/`featuredProperties`) are
+rejected explicitly in payloads (the whole-document import would have
+absorbed them silently), and no primary-dataview pinning happens on
+fragments. Id uniqueness — v0.3.3's V5 net — is an explicit check
+against the live state and the PATCH's own claims, with op-shaped
+`ops[i].blocks[j].id` paths (an improvement over the old document
+paths); it also covers ids the format keeps out of the document (table
+internals, structural blocks), which the old net could not see. The
+op-shaped pre-checks (cycle, leaf containment, delete-without-recursive,
+leaf-anchor) are unchanged, running against the view. Two knowingly
+dropped document-level checks: total nesting depth beyond the format
+bound and cross-op invariants no single fragment can violate — the
+editor itself has no such limits, and the read side clamps depth (C11
+warning). A **debug-gated safety net** (`ANYTYPE_API_V2_VALIDATE_EDITS=1`)
+marshals + validates the would-be document read-only after the ops and
+logs (never fails) any issue.
+
+**Create-missing runs before the lock (v0.3.4, review B6/A6).** The only
+create surface in PATCH payloads is setProperties select/multiSelect
+option names; a lenient pre-pass resolves (and creates) them before
+`MutateObject`, so no create-RPC ever runs while holding the edited
+object's lock. In-lock resolution hits the resolver cache. Trade-off,
+documented: an op that fails validation later can now leave an option
+created (v0.3.3 leaked the same way for post-Unmarshal failures).
+
+**diffStats stay the canonical document diff.** Considered and rejected:
+deriving them from `st.GetChanges()` — the change list only exists after
+a real Apply, so dry runs (which never Apply) would diverge from real
+runs, breaking C9's dry≡real contract. The before/after documents are
+rendered under the lock anyway (the view), so the numbers are unchanged —
+and with the Tier-A churn gone from the emitted changes, the diff is no
+longer blind to anything real (C9's concern).
+
+**Untouched state is untouched (v0.3.4).** Because nothing round-trips
+the whole document anymore: relation links, structural blocks,
+resolvedLayout, extra type keys, hidden legacy children (link/bookmark/
+content-less blocks), big integers in untouched blocks' fields, stored
+option ids — all simply inherited by the child state. The C11 marshal
+guard remains on PATCH (a loss warning on the live state still refuses
+the edit — the view itself would be lossy), and B8's float64 concern is
+narrowed to the one block an op re-imports.
 
 **C11 write-safety guard (PATCH only).** If the internal marshal of the live
 state reports any loss warning (unmapped block, over-deep nesting), the
