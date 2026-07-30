@@ -14,6 +14,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
 )
 
 // pendingSnapshot is a Relation/RelationOption object the batch mints the
@@ -45,6 +46,16 @@ type batch struct {
 	// the lexid alphabet, after it otherwise.
 	optOrder map[string]string
 
+	// optColor is the next palette position per property key, and optClaimed
+	// the colors that property's vocabulary names explicitly (§2a) so the
+	// cycle never hands one of them out a second time. Every option needs a
+	// color too: the app assigns one on creation (pkg/lib/schema.Relation
+	// CreateOptionDetails, core/block/import/markdown), so an option minted
+	// without one is not "default-colored", it is the only kind of option in
+	// the space missing the detail entirely.
+	optColor   map[string]int
+	optClaimed map[string]map[string]bool
+
 	// typeIDs maps a type key this bundle defines to the id its document
 	// carries, so a property targeting it references the same id every other
 	// reference in the batch uses.
@@ -60,11 +71,13 @@ type batch struct {
 // unordered and the unused ones ordered.
 func newBatch(formats map[string]anyblockbatch.FormatInfo, typeIds map[string]string) (b *batch) {
 	b = &batch{
-		formats:  formats,
-		relIDs:   map[string]string{},
-		optIDs:   map[string]string{},
-		optOrder: map[string]string{},
-		typeIDs:  typeIds,
+		formats:    formats,
+		relIDs:     map[string]string{},
+		optIDs:     map[string]string{},
+		optOrder:   map[string]string{},
+		optColor:   map[string]int{},
+		optClaimed: map[string]map[string]bool{},
+		typeIDs:    typeIds,
 	}
 	keys := make([]string, 0, len(formats))
 	for k := range formats {
@@ -95,7 +108,7 @@ func (b *batch) OptionId(key domain.RelationKey, name string) (string, bool) {
 	if id, ok := b.optIDs[mapKey]; ok {
 		return id, true
 	}
-	id := b.mintOption(key, name, b.nextOptionOrder(key))
+	id := b.mintOption(key, name, b.nextOptionOrder(key), b.nextOptionColor(key))
 	b.optIDs[mapKey] = id
 	return id, true
 }
@@ -137,13 +150,28 @@ func (b *batch) PropertyById(id string) (anyblockjson.PropertyDefinition, bool) 
 // (§2a), in declaration order, so every value exists whether or not any
 // record happens to use it and the order is the author's rather than
 // alphabetical. Names already minted from usage are adopted, not duplicated.
-func (b *batch) declareOptions(key domain.RelationKey, names []string) {
-	for _, name := range names {
-		mapKey := string(key) + "\x00" + name
+// Options that declare no color take the next palette entry the vocabulary
+// has not claimed, which is why the explicit colors are collected first.
+func (b *batch) declareOptions(key domain.RelationKey, opts []anyblockjson.OptionDefinition) {
+	for _, o := range opts {
+		if o.Color == "" {
+			continue
+		}
+		if b.optClaimed[string(key)] == nil {
+			b.optClaimed[string(key)] = map[string]bool{}
+		}
+		b.optClaimed[string(key)][o.Color] = true
+	}
+	for _, o := range opts {
+		mapKey := string(key) + "\x00" + o.Name
 		if _, done := b.optIDs[mapKey]; done {
 			continue
 		}
-		b.optIDs[mapKey] = b.mintOption(key, name, b.nextOptionOrder(key))
+		color := o.Color
+		if color == "" {
+			color = b.nextOptionColor(key)
+		}
+		b.optIDs[mapKey] = b.mintOption(key, o.Name, b.nextOptionOrder(key), color)
 	}
 }
 
@@ -187,6 +215,27 @@ func (b *batch) nextOptionOrder(key domain.RelationKey) string {
 	}
 	b.optOrder[string(key)] = last
 	return last
+}
+
+// nextOptionColor hands out the next palette color for a property, skipping
+// the ones its vocabulary claims explicitly. Cycling rather than picking at
+// random (constant.RandomOptionColor, what the app does) gives a vocabulary
+// that names no colors ten distinct ones instead of the same color three
+// times, and keeps a converted bundle byte-identical across runs.
+func (b *batch) nextOptionColor(key domain.RelationKey) string {
+	palette := constant.OptionColors()
+	claimed := b.optClaimed[string(key)]
+	take := func() string {
+		c := palette[b.optColor[string(key)]%len(palette)]
+		b.optColor[string(key)]++
+		return c.String()
+	}
+	for range palette {
+		if c := take(); !claimed[c] {
+			return c
+		}
+	}
+	return take() // a vocabulary claiming all ten: reuse, in cycle order
 }
 
 // mintRelation builds a Relation object snapshot matching the shape
@@ -243,7 +292,7 @@ func (b *batch) mintRelation(def anyblockjson.PropertyDefinition) string {
 // mintOption builds a RelationOption object snapshot, matching the shape
 // core/block/import/notion builds for select/multiSelect/status options:
 // Details{name, relationKey, layout}, ObjectTypes = [ot-relationOption].
-func (b *batch) mintOption(key domain.RelationKey, name string, orderId string) string {
+func (b *batch) mintOption(key domain.RelationKey, name, orderId, color string) string {
 	localKey := optionLocalKey(key, name)
 	uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelationOption, localKey)
 	if err != nil {
@@ -262,6 +311,10 @@ func (b *batch) mintOption(key domain.RelationKey, name string, orderId string) 
 	// against everyone else's order id and lands arbitrarily. Declared
 	// vocabulary comes first, discovered names after it.
 	details.Fields[detailOrderId] = strVal(orderId)
+	// an option's color is a detail like any other, and every creation path in
+	// the app sets one (pkg/lib/schema.Relation.CreateOptionDetails); a
+	// declared vocabulary says which, rather than leaving it to chance (§2a).
+	details.Fields[detailRelationOptionColor] = strVal(color)
 
 	snap := &model.SmartBlockSnapshotBase{
 		Blocks:      rootOnlyBlocks(id),
@@ -295,6 +348,7 @@ const (
 	detailRelationKey               = "relationKey"
 	detailRelationFormat            = "relationFormat"
 	detailOrderId                   = "orderId"
+	detailRelationOptionColor       = string(bundle.RelationKeyRelationOptionColor)
 	detailRelationFormatObjectTypes = "relationFormatObjectTypes"
 	detailRelationMaxCount          = "relationMaxCount"
 	detailLayout                    = "layout"

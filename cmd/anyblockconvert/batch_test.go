@@ -7,6 +7,7 @@ package main
 // behind it. Every option therefore needs an order id.
 
 import (
+	"fmt"
 	"sort"
 	"testing"
 
@@ -17,7 +18,36 @@ import (
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/constant"
 )
+
+// vocab is a declared vocabulary that names no colors.
+func vocab(names ...string) []anyblockjson.OptionDefinition {
+	out := make([]anyblockjson.OptionDefinition, 0, len(names))
+	for _, n := range names {
+		out = append(out, anyblockjson.OptionDefinition{Name: n})
+	}
+	return out
+}
+
+// mintedColors maps option name to the relationOptionColor minted for it,
+// for one property.
+func mintedColors(t *testing.T, b *batch, key string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	for _, p := range b.pending {
+		if p.sbType != model.SmartBlockType_STRelationOption {
+			continue
+		}
+		d := p.snapshot.Details.Fields
+		if d[detailRelationKey].GetStringValue() != key {
+			continue
+		}
+		name := d[detailName].GetStringValue()
+		out[name] = d[detailRelationOptionColor].GetStringValue()
+	}
+	return out
+}
 
 // mintedOptions returns option names in the order BuildOrder would compare
 // them: the orderId and name concatenated.
@@ -47,7 +77,7 @@ func TestBatch_DeclaredVocabularyKeepsDeclarationOrder(t *testing.T) {
 	b := newBatch(map[string]anyblockbatch.FormatInfo{
 		"stage": {
 			Format:  model.RelationFormat_status,
-			Options: []string{"Backlog", "In progress", "In review", "Blocked", "Done"},
+			Options: vocab("Backlog", "In progress", "In review", "Blocked", "Done"),
 		},
 	}, nil)
 	assert.Equal(t,
@@ -62,7 +92,7 @@ func TestBatch_UndeclaredValueSortsAfterVocabulary(t *testing.T) {
 	b := newBatch(map[string]anyblockbatch.FormatInfo{
 		"stage": {
 			Format:  model.RelationFormat_status,
-			Options: []string{"Backlog", "In progress", "Done"},
+			Options: vocab("Backlog", "In progress", "Done"),
 		},
 	}, nil)
 	// "Abandoned" sorts first alphabetically and would jump the queue
@@ -88,8 +118,8 @@ func TestBatch_UndeclaredOnlyStillGetsOrderIds(t *testing.T) {
 // order ids are per property, so two selects do not interleave
 func TestBatch_OrderIdsArePerProperty(t *testing.T) {
 	b := newBatch(map[string]anyblockbatch.FormatInfo{
-		"stage":    {Format: model.RelationFormat_status, Options: []string{"A", "B"}},
-		"priority": {Format: model.RelationFormat_status, Options: []string{"Low", "High"}},
+		"stage":    {Format: model.RelationFormat_status, Options: vocab("A", "B")},
+		"priority": {Format: model.RelationFormat_status, Options: vocab("Low", "High")},
 	}, nil)
 	firsts := map[string]string{}
 	for _, p := range b.pending {
@@ -105,6 +135,94 @@ func TestBatch_OrderIdsArePerProperty(t *testing.T) {
 	require.Len(t, firsts, 2)
 	assert.Equal(t, firsts["stage"], firsts["priority"],
 		"each property starts its own sequence at the same midpoint")
+}
+
+func TestBatch_DeclaredColorsReachTheOption(t *testing.T) {
+	b := newBatch(map[string]anyblockbatch.FormatInfo{
+		"stage": {Format: model.RelationFormat_status, Options: []anyblockjson.OptionDefinition{
+			{Name: "Backlog", Color: "grey"},
+			{Name: "In progress", Color: "blue"},
+			{Name: "Done", Color: "lime"},
+		}},
+	}, nil)
+	assert.Equal(t,
+		map[string]string{"Backlog": "grey", "In progress": "blue", "Done": "lime"},
+		mintedColors(t, b, "stage"))
+}
+
+// A vocabulary that declares no colors still gets distinct ones: the palette
+// is cycled in declaration order, so a five-status select does not render as
+// five identical chips. Deterministic, unlike constant.RandomOptionColor.
+func TestBatch_ColorlessVocabularyCyclesThePalette(t *testing.T) {
+	newFixture := func() *batch {
+		return newBatch(map[string]anyblockbatch.FormatInfo{
+			"tag": {Format: model.RelationFormat_tag,
+				Options: vocab("design", "research", "infra", "ops")},
+		}, nil)
+	}
+	want := map[string]string{
+		"design": "grey", "research": "yellow", "infra": "orange", "ops": "red",
+	}
+
+	assert.Equal(t, want, mintedColors(t, newFixture(), "tag"))
+	assert.Equal(t, want, mintedColors(t, newFixture(), "tag"),
+		"same input, same colors on every run")
+}
+
+// the cycle never hands out a color the vocabulary names explicitly
+func TestBatch_ColorCycleSkipsDeclaredColors(t *testing.T) {
+	b := newBatch(map[string]anyblockbatch.FormatInfo{
+		"stage": {Format: model.RelationFormat_status, Options: []anyblockjson.OptionDefinition{
+			{Name: "Backlog"},
+			{Name: "In progress", Color: "yellow"}, // second in the palette
+			{Name: "Done"},
+		}},
+	}, nil)
+	assert.Equal(t,
+		map[string]string{"Backlog": "grey", "In progress": "yellow", "Done": "orange"},
+		mintedColors(t, b, "stage"),
+		"Done takes orange, not the claimed yellow")
+}
+
+// a vocabulary claiming the whole palette leaves the cycle nothing to pick:
+// it must still terminate and produce a real color
+func TestBatch_ColorCycleTerminatesWhenPaletteFullyClaimed(t *testing.T) {
+	declared := make([]anyblockjson.OptionDefinition, 0, len(constant.OptionColors())+1)
+	for i, c := range constant.OptionColors() {
+		declared = append(declared, anyblockjson.OptionDefinition{
+			Name: fmt.Sprintf("claim%d", i), Color: c.String()})
+	}
+	declared = append(declared, anyblockjson.OptionDefinition{Name: "uncolored"})
+
+	b := newBatch(map[string]anyblockbatch.FormatInfo{
+		"tag": {Format: model.RelationFormat_tag, Options: declared},
+	}, nil)
+	assert.Contains(t, constant.OptionColors(),
+		constant.OptionColor(mintedColors(t, b, "tag")["uncolored"]))
+}
+
+// a value nobody declared continues its property's cycle rather than
+// restarting it, so it does not collide with the vocabulary's first color
+func TestBatch_DiscoveredValueContinuesTheColorCycle(t *testing.T) {
+	b := newBatch(map[string]anyblockbatch.FormatInfo{
+		"stage": {Format: model.RelationFormat_status, Options: vocab("Backlog", "Done")},
+	}, nil)
+	b.OptionId(domain.RelationKey("stage"), "Abandoned")
+
+	assert.Equal(t,
+		map[string]string{"Backlog": "grey", "Done": "yellow", "Abandoned": "orange"},
+		mintedColors(t, b, "stage"))
+}
+
+// colors are per property: one select's palette position is not advanced by
+// another's, the way order ids are already scoped (TestBatch_OrderIdsArePerProperty)
+func TestBatch_ColorsArePerProperty(t *testing.T) {
+	b := newBatch(map[string]anyblockbatch.FormatInfo{
+		"stage":    {Format: model.RelationFormat_status, Options: vocab("A", "B")},
+		"priority": {Format: model.RelationFormat_status, Options: vocab("Low", "High")},
+	}, nil)
+	assert.Equal(t, map[string]string{"A": "grey", "B": "yellow"}, mintedColors(t, b, "stage"))
+	assert.Equal(t, map[string]string{"Low": "grey", "High": "yellow"}, mintedColors(t, b, "priority"))
 }
 
 // A property's target types are written as ids, split the same way

@@ -399,9 +399,12 @@ func semanticIssues(doc map[string]any, lenient bool, warn func(Issue)) []Issue 
 						addIssue(fmt.Sprintf("/typeProperties/%d/options", i),
 							"options is only meaningful on select/multiSelect, not %q", shown)
 					}
+					// an option is a bare name or an object carrying a color
+					// (§2a), and the two forms name the same vocabulary: the
+					// duplicate check has to read across both
 					seen := map[string]bool{}
 					for j, o := range opts {
-						n, _ := o.(string)
+						n := optionEntryName(o)
 						if seen[n] {
 							addIssue(fmt.Sprintf("/typeProperties/%d/options/%d", i, j),
 								"duplicate option %q", n)
