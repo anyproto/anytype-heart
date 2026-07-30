@@ -372,24 +372,32 @@ func filterBlockSubtree(fields map[string]json.RawMessage, blockRef string) erro
 	return nil
 }
 
-// resolveBlockRef maps a block reference to an index into ids: an exact id
-// match wins; otherwise the unique id whose full value ends with ref (a
-// compact outline label is the id's last few characters, §9a). Zero matches →
-// 404; an ambiguous suffix → 400 steering to the full id.
-func resolveBlockRef(ids []string, ref string) (int, error) {
+// matchBlockRef maps a block reference to an index into ids: an exact id
+// match wins (matches = 1); otherwise ids whose full value ends with ref are
+// counted (a compact outline label is the id's last few characters, §9a) and
+// idx points at the last suffix match. Shared by the ?block= read and the
+// PATCH ops (C4).
+func matchBlockRef(ids []string, ref string) (idx, matches int) {
 	suffix, suffixCount := -1, 0
 	for i, id := range ids {
 		if id == ref {
-			return i, nil
+			return i, 1
 		}
 		if ref != "" && strings.HasSuffix(id, ref) {
 			suffix, suffixCount = i, suffixCount+1
 		}
 	}
+	return suffix, suffixCount
+}
+
+// resolveBlockRef wraps matchBlockRef with the ?block= read errors: zero
+// matches → 404; an ambiguous suffix → 400 steering to the full id.
+func resolveBlockRef(ids []string, ref string) (int, error) {
+	idx, matches := matchBlockRef(ids, ref)
 	switch {
-	case suffixCount == 1:
-		return suffix, nil
-	case suffixCount > 1:
+	case matches == 1:
+		return idx, nil
+	case matches > 1:
 		return -1, apimodel.V2AmbiguousInput(
 			fmt.Sprintf("block label %q matches more than one block — use the full block id", ref),
 			apimodel.V2Issue{Path: "block", Message: "the label is a suffix of several block ids"})

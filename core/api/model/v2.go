@@ -257,6 +257,34 @@ type V2FileUploadResult struct {
 	DryRun   bool   `json:"dry_run,omitempty"`
 }
 
+//
+// ---- Phase 3: edit surface ----
+//
+
+// V2DiffStats summarizes what a mutation changed (APIV2.md Phase 3): the
+// accidental-full-rewrite signal on PUT, the receipt on PATCH.
+type V2DiffStats struct {
+	BlocksAdded       int `json:"blocksAdded"`
+	BlocksRemoved     int `json:"blocksRemoved"`
+	BlocksChanged     int `json:"blocksChanged"`
+	BlocksMoved       int `json:"blocksMoved"`
+	PropertiesChanged int `json:"propertiesChanged"`
+}
+
+// V2EditResult is the PATCH/PUT response: the new etag, the created-block id
+// map keyed by payload position (client-supplied ids echoed), the schema
+// side effects (created select options, like Phase 2's create), and the
+// diff stats. On a dry run nothing is committed: Etag stays empty and DryRun
+// is true; CreatedBlocks/Created/DiffStats report the would-be outcome.
+type V2EditResult struct {
+	Etag          string            `json:"etag,omitempty"`
+	DryRun        bool              `json:"dry_run,omitempty"`
+	CreatedBlocks map[string]string `json:"createdBlocks,omitempty"`
+	Created       *V2SideEffects    `json:"created,omitempty"`
+	DiffStats     V2DiffStats       `json:"diffStats"`
+	Warnings      []V2Issue         `json:"warnings,omitempty"`
+}
+
 // V2SchemaEntry is one GET /v2/schemas/{kind} payload: the strict-mode
 // generation schema (C13) plus one worked example (C12).
 type V2SchemaEntry struct {
@@ -266,9 +294,11 @@ type V2SchemaEntry struct {
 	Example  json.RawMessage `json:"example"`
 }
 
-// V2SchemaIndex is the GET /v2/schemas payload.
+// V2SchemaIndex is the GET /v2/schemas payload. Ops lists the Phase-3 PATCH
+// ops (per-op schemas at /v2/schemas/ops/{op}).
 type V2SchemaIndex struct {
 	Kinds []V2SchemaIndexEntry `json:"kinds"`
+	Ops   []V2SchemaIndexEntry `json:"ops,omitempty"`
 }
 
 // V2SchemaIndexEntry is one row of the schema index.
