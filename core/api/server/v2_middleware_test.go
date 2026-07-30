@@ -158,6 +158,62 @@ func TestEnsureIdempotency(t *testing.T) {
 		assert.Equal(t, 0, calls, "the handler never ran")
 	})
 
+	t.Run("a replayed PATCH with the same key and body runs the handler once", func(t *testing.T) {
+		// C8 v0.3.5: PATCH is where a blind agent retry does damage — a
+		// retried successful insertBlocks duplicates blocks — so the
+		// middleware covers it exactly like POST.
+		// given
+		gin.SetMode(gin.TestMode)
+		store := newIdempotencyStore(8)
+		calls := 0
+		router := gin.New()
+		router.PATCH("/v2/spaces/:space_id/objects/:object_id", ensureIdempotency(store), func(c *gin.Context) {
+			calls++
+			c.JSON(http.StatusOK, gin.H{"call": calls})
+		})
+		patch := func() *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodPatch, "/v2/spaces/space1/objects/obj1",
+				strings.NewReader(`{"ops":[{"op":"deleteBlock","id":"b1"}]}`))
+			req.Header.Set(IdempotencyKeyHeader, "key1")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			return w
+		}
+
+		// when
+		first := patch()
+		second := patch()
+
+		// then
+		assert.Equal(t, http.StatusOK, first.Code)
+		assert.Equal(t, http.StatusOK, second.Code)
+		assert.Equal(t, first.Body.String(), second.Body.String(), "the stored result is replayed")
+		assert.Equal(t, 1, calls, "the handler ran once")
+		assert.Equal(t, "true", second.Header().Get("Idempotency-Replayed"))
+	})
+
+	t.Run("a keyed GET passes through untouched", func(t *testing.T) {
+		// the middleware acts on mutation methods only
+		gin.SetMode(gin.TestMode)
+		store := newIdempotencyStore(8)
+		calls := 0
+		router := gin.New()
+		router.GET("/v2/spaces/:space_id/things", ensureIdempotency(store), func(c *gin.Context) {
+			calls++
+			c.JSON(http.StatusOK, gin.H{"call": calls})
+		})
+		get := func() {
+			req := httptest.NewRequest(http.MethodGet, "/v2/spaces/space1/things", nil)
+			req.Header.Set(IdempotencyKeyHeader, "key1")
+			router.ServeHTTP(httptest.NewRecorder(), req)
+		}
+
+		get()
+		get()
+
+		assert.Equal(t, 2, calls, "GETs are never keyed or replayed")
+	})
+
 	t.Run("no key passes through every time", func(t *testing.T) {
 		// given
 		calls := 0

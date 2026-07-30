@@ -167,13 +167,23 @@ func (r *bodyRecorder) Write(p []byte) (int, error) {
 	return r.ResponseWriter.Write(p)
 }
 
-// ensureIdempotency implements C8 on POST routes: replay with the same key
-// and body returns the stored result; the same key with a different body →
-// 409 idempotency_conflict. Requests without the header pass through.
+// ensureIdempotency implements C8 on mutation routes (POST, PATCH, PUT):
+// replay with the same key and body returns the stored result; the same key
+// with a different body → 409 idempotency_conflict. Requests without the
+// header pass through. PATCH is where a blind agent retry does the most
+// damage — a retried successful insertBlocks duplicates blocks, a retried
+// deleteBlock 404s misleadingly — so the middleware covers it like POST
+// (v0.3.5).
 func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		key := c.GetHeader(IdempotencyKeyHeader)
-		if key == "" || c.Request.Method != http.MethodPost {
+		switch c.Request.Method {
+		case http.MethodPost, http.MethodPatch, http.MethodPut:
+		default:
+			c.Next()
+			return
+		}
+		if key == "" {
 			c.Next()
 			return
 		}

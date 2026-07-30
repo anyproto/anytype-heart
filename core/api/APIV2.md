@@ -44,7 +44,7 @@ repair loop with path-addressed errors.
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
 | C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
-| C8 | `Idempotency-Key` honored on all POSTs; replay with the same key returns the stored result; same key with a different body → 409 `idempotency_conflict`. Response always returns created ids. | agent auto-retry (§3.7); R15 |
+| C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, PUT — v0.3.5; was POST-only); replay with the same key returns the stored result; same key with a different body → 409 `idempotency_conflict`. Response always returns created ids. | agent auto-retry (§3.7); R15 |
 | C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. | highest-leverage affordance (§3.7) |
 | C10 | Pagination on **every** list surface — objects, search, and the discovery lists (types, properties, **options**): default `limit=25`, `has_more`, truncation messages steer ("312 matches — narrow with filter…"). Options lists take a `prefix=` filter (tag-like properties can hold thousands of options). | Linear/AXI (§3.4, §3.7); R-minor |
 | C11 | Reads never fail on unknown *content*; anything a representation cannot express is listed in `warnings` (array of the C6 issue shape, warning-grade). Writes never pass through a lossy representation. | ADF disaster (§3.3) |
@@ -835,3 +835,12 @@ addressable anchors and PUT was the only way to give it content. More than
 one targeting field is now "at most one of after, before, inside is allowed"
 (was "exactly one … is required" — reworded because zero is legal now).
 Payload indents stay R3-relative: at root, indent 0 = document top level.
+
+**Idempotency-Key covers PATCH and PUT (C8 widened).** The store, body+query
+hash, in-flight reservation and replay were POST-only wiring; agents
+auto-retry on timeout, and PATCH is where a blind retry does damage (a
+retried successful `insertBlocks` duplicates blocks; a retried `deleteBlock`
+404s misleadingly). The middleware now acts on POST, PATCH and PUT and is
+registered on the object PATCH/PUT routes and the types/properties PATCH
+routes. Semantics unchanged: same key + same body+query ⇒ replay; different
+body/query ⇒ 409 `idempotency_conflict`; only 2xx results are cached.
