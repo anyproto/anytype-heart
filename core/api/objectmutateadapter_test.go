@@ -1,11 +1,14 @@
 package api
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/block/editor/smartblock"
 	"github.com/anyproto/anytype-heart/core/block/editor/smartblock/smarttest"
 	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/block/restriction"
@@ -139,6 +142,98 @@ func TestCheckObjectEditable(t *testing.T) {
 		err := checkObjectEditable(sb)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "properties cannot be edited")
+	})
+}
+
+// fakeGetter serves one smartblock to the adapter's DoContextFullID.
+type fakeGetter struct {
+	sb smartblock.SmartBlock
+}
+
+func (g fakeGetter) GetObject(_ context.Context, _ string) (smartblock.SmartBlock, error) {
+	return g.sb, nil
+}
+
+func (g fakeGetter) GetObjectByFullID(_ context.Context, _ domain.FullID) (smartblock.SmartBlock, error) {
+	return g.sb, nil
+}
+
+// TestMutateObject covers the PATCH commit path: apply receives a child
+// state of the live doc, and a nil return commits it with one ordinary
+// Apply.
+func TestMutateObject(t *testing.T) {
+	ctx := context.Background()
+
+	newSb := func() *smarttest.SmartTest {
+		sb := smarttest.New("obj1")
+		sb.AddBlock(simple.New(&model.Block{Id: "obj1", ChildrenIds: []string{"p1"}}))
+		sb.AddBlock(simple.New(&model.Block{Id: "p1",
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "body"}}}))
+		return sb
+	}
+
+	t.Run("apply on the child state commits", func(t *testing.T) {
+		// given
+		sb := newSb()
+		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
+
+		// when
+		heads, err := adapter.MutateObject(ctx, "space1", "obj1", func(edit apicore.ObjectEdit) error {
+			b := edit.State.Get("p1")
+			require.NotNil(t, b)
+			b.Model().GetText().Text = "edited"
+			return nil
+		})
+
+		// then
+		require.NoError(t, err)
+		assert.NotEmpty(t, heads)
+		assert.Equal(t, "edited", sb.Doc.(*state.State).Pick("p1").Model().GetText().Text,
+			"the child state landed on the live doc")
+	})
+
+	t.Run("an apply error commits nothing", func(t *testing.T) {
+		sb := newSb()
+		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
+
+		_, err := adapter.MutateObject(ctx, "space1", "obj1", func(edit apicore.ObjectEdit) error {
+			edit.State.Get("p1").Model().GetText().Text = "edited"
+			return assert.AnError
+		})
+
+		require.Error(t, err)
+		assert.Equal(t, "body", sb.Doc.(*state.State).Pick("p1").Model().GetText().Text)
+	})
+
+	t.Run("object restrictions refuse the edit before apply runs", func(t *testing.T) {
+		sb := newSb()
+		sb.TestRestrictions = restriction.Restrictions{
+			Object: restriction.ObjectRestrictions{model.Restrictions_Blocks: {}},
+		}
+		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
+
+		called := false
+		_, err := adapter.MutateObject(ctx, "space1", "obj1", func(apicore.ObjectEdit) error {
+			called = true
+			return nil
+		})
+
+		require.Error(t, err)
+		assert.False(t, called)
+	})
+
+	t.Run("a revision downgrade is refused", func(t *testing.T) {
+		sb := newSb()
+		sb.Doc.(*state.State).SetDetail(bundle.RelationKeyRevision, domain.Int64(3))
+		adapter := newObjectMutateAdapter(fakeGetter{sb: sb})
+
+		_, err := adapter.MutateObject(ctx, "space1", "obj1", func(edit apicore.ObjectEdit) error {
+			edit.State.SetDetail(bundle.RelationKeyRevision, domain.Int64(1))
+			return nil
+		})
+
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "never downgraded")
 	})
 }
 

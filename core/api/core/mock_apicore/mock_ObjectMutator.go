@@ -23,12 +23,73 @@ func (_m *MockObjectMutator) EXPECT() *MockObjectMutator_Expecter {
 	return &MockObjectMutator_Expecter{mock: &_m.Mock}
 }
 
-// MutateObject provides a mock function with given fields: ctx, spaceId, objectId, build
-func (_m *MockObjectMutator) MutateObject(ctx context.Context, spaceId string, objectId string, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error)) ([]string, error) {
-	ret := _m.Called(ctx, spaceId, objectId, build)
+// MutateObject provides a mock function with given fields: ctx, spaceId, objectId, apply
+func (_m *MockObjectMutator) MutateObject(ctx context.Context, spaceId string, objectId string, apply func(apicore.ObjectEdit) error) ([]string, error) {
+	ret := _m.Called(ctx, spaceId, objectId, apply)
 
 	if len(ret) == 0 {
 		panic("no return value specified for MutateObject")
+	}
+
+	var r0 []string
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, func(apicore.ObjectEdit) error) ([]string, error)); ok {
+		return rf(ctx, spaceId, objectId, apply)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string, func(apicore.ObjectEdit) error) []string); ok {
+		r0 = rf(ctx, spaceId, objectId, apply)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]string)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string, func(apicore.ObjectEdit) error) error); ok {
+		r1 = rf(ctx, spaceId, objectId, apply)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockObjectMutator_MutateObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MutateObject'
+type MockObjectMutator_MutateObject_Call struct {
+	*mock.Call
+}
+
+// MutateObject is a helper method to define mock.On call
+//   - ctx context.Context
+//   - spaceId string
+//   - objectId string
+//   - apply func(apicore.ObjectEdit) error
+func (_e *MockObjectMutator_Expecter) MutateObject(ctx interface{}, spaceId interface{}, objectId interface{}, apply interface{}) *MockObjectMutator_MutateObject_Call {
+	return &MockObjectMutator_MutateObject_Call{Call: _e.mock.On("MutateObject", ctx, spaceId, objectId, apply)}
+}
+
+func (_c *MockObjectMutator_MutateObject_Call) Run(run func(ctx context.Context, spaceId string, objectId string, apply func(apicore.ObjectEdit) error)) *MockObjectMutator_MutateObject_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(func(apicore.ObjectEdit) error))
+	})
+	return _c
+}
+
+func (_c *MockObjectMutator_MutateObject_Call) Return(heads []string, err error) *MockObjectMutator_MutateObject_Call {
+	_c.Call.Return(heads, err)
+	return _c
+}
+
+func (_c *MockObjectMutator_MutateObject_Call) RunAndReturn(run func(context.Context, string, string, func(apicore.ObjectEdit) error) ([]string, error)) *MockObjectMutator_MutateObject_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ResetObject provides a mock function with given fields: ctx, spaceId, objectId, build
+func (_m *MockObjectMutator) ResetObject(ctx context.Context, spaceId string, objectId string, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error)) ([]string, error) {
+	ret := _m.Called(ctx, spaceId, objectId, build)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResetObject")
 	}
 
 	var r0 []string
@@ -53,33 +114,33 @@ func (_m *MockObjectMutator) MutateObject(ctx context.Context, spaceId string, o
 	return r0, r1
 }
 
-// MockObjectMutator_MutateObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'MutateObject'
-type MockObjectMutator_MutateObject_Call struct {
+// MockObjectMutator_ResetObject_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResetObject'
+type MockObjectMutator_ResetObject_Call struct {
 	*mock.Call
 }
 
-// MutateObject is a helper method to define mock.On call
+// ResetObject is a helper method to define mock.On call
 //   - ctx context.Context
 //   - spaceId string
 //   - objectId string
 //   - build func(apicore.ObjectRead)(*model.SmartBlockSnapshotBase , error)
-func (_e *MockObjectMutator_Expecter) MutateObject(ctx interface{}, spaceId interface{}, objectId interface{}, build interface{}) *MockObjectMutator_MutateObject_Call {
-	return &MockObjectMutator_MutateObject_Call{Call: _e.mock.On("MutateObject", ctx, spaceId, objectId, build)}
+func (_e *MockObjectMutator_Expecter) ResetObject(ctx interface{}, spaceId interface{}, objectId interface{}, build interface{}) *MockObjectMutator_ResetObject_Call {
+	return &MockObjectMutator_ResetObject_Call{Call: _e.mock.On("ResetObject", ctx, spaceId, objectId, build)}
 }
 
-func (_c *MockObjectMutator_MutateObject_Call) Run(run func(ctx context.Context, spaceId string, objectId string, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error))) *MockObjectMutator_MutateObject_Call {
+func (_c *MockObjectMutator_ResetObject_Call) Run(run func(ctx context.Context, spaceId string, objectId string, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error))) *MockObjectMutator_ResetObject_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(context.Context), args[1].(string), args[2].(string), args[3].(func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error)))
 	})
 	return _c
 }
 
-func (_c *MockObjectMutator_MutateObject_Call) Return(heads []string, err error) *MockObjectMutator_MutateObject_Call {
+func (_c *MockObjectMutator_ResetObject_Call) Return(heads []string, err error) *MockObjectMutator_ResetObject_Call {
 	_c.Call.Return(heads, err)
 	return _c
 }
 
-func (_c *MockObjectMutator_MutateObject_Call) RunAndReturn(run func(context.Context, string, string, func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error)) ([]string, error)) *MockObjectMutator_MutateObject_Call {
+func (_c *MockObjectMutator_ResetObject_Call) RunAndReturn(run func(context.Context, string, string, func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error)) ([]string, error)) *MockObjectMutator_ResetObject_Call {
 	_c.Call.Return(run)
 	return _c
 }

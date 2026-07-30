@@ -3,6 +3,7 @@ package apicore
 import (
 	"context"
 
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/files"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -64,16 +65,34 @@ type ObjectCreator interface {
 	TypeIdByKey(ctx context.Context, spaceId string, key domain.TypeKey) (string, error)
 }
 
+// ObjectEdit is one locked editing session on a live object — what the
+// PATCH pipeline works on (APIV2.md §2 Phase 3). SbType and Heads are the
+// same consistent read the Phase-1 reader produces (the If-Match inputs);
+// State is a child state of the live document, so ops mutate it directly and
+// the adapter commits it with ONE ordinary smartblock Apply — per-block
+// restriction checks, undo recording, hooks/events and the minimal
+// id-matched change diff all ride the normal editor path.
+type ObjectEdit struct {
+	SbType model.SmartBlockType
+	Heads  []string
+	State  *state.State
+}
+
 // ObjectMutator applies one atomic mutation to a live object — the API v2
-// edit path (APIV2.md §2 Phase 3). MutateObject locks the object, hands the
+// edit path (APIV2.md §2 Phase 3).
+//
+// MutateObject (PATCH) locks the object, hands apply an ObjectEdit whose
+// State is a fresh child of the live state, and — when apply returns nil —
+// commits that state with one ordinary Apply. The returned heads are the
+// post-apply tree heads, the input of the new etag.
+//
+// ResetObject (PUT, stage-3 rework pending) locks the object, hands the
 // current consistent read to build, and — when build returns a snapshot —
-// diff-applies it onto the live state as ONE change set (the smartblock
-// reset-to-version machinery, so local details, migrations and bundled
-// relation links are handled like the import path). build returning
-// (nil, nil) commits nothing. The returned heads are the post-apply tree
-// heads, the input of the new etag.
+// diff-applies it onto the live state as ONE change set via the smartblock
+// reset-to-version machinery. build returning (nil, nil) commits nothing.
 type ObjectMutator interface {
-	MutateObject(ctx context.Context, spaceId string, objectId string, build func(cur ObjectRead) (*model.SmartBlockSnapshotBase, error)) (heads []string, err error)
+	MutateObject(ctx context.Context, spaceId string, objectId string, apply func(edit ObjectEdit) error) (heads []string, err error)
+	ResetObject(ctx context.Context, spaceId string, objectId string, build func(cur ObjectRead) (*model.SmartBlockSnapshotBase, error)) (heads []string, err error)
 }
 
 type ClientCommands interface {

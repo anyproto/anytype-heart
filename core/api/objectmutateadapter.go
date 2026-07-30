@@ -18,14 +18,23 @@ import (
 
 // objectMutateAdapter implements apicore.ObjectMutator over the block
 // service's object cache: the API v2 edit path (APIV2.md §2 Phase 3). The
-// whole mutation happens under one object lock — the current read handed to
-// build, the diff-apply of the snapshot build returns, and the post-apply
-// heads — so the If-Match check, the edit, and the new etag are all
-// consistent. The apply is the smartblock reset-to-version machinery (the
-// pattern proven by core/block/import/common/objectcreator.updateExistingObject
-// and core/block/history): NewDocFromSnapshot → ResetToVersion, which handles
-// SetParent, local-detail injection, bundled relation links, and migrations,
-// and lands the change as ONE change set.
+// whole mutation happens under one object lock — the consistent read handed
+// to the callback, the edit, and the post-apply heads — so the If-Match
+// check, the edit, and the new etag are all consistent.
+//
+// PATCH (MutateObject) is the ordinary editor apply: a child state of the
+// live doc is handed to the op applier and committed with ONE plain
+// sb.Apply — exactly what the Block* RPC handlers do. Apply gives per-block
+// restriction checks, undo recording, hooks/events, and the minimal
+// id-matched change diff; nothing the state already owns (relation links,
+// structural blocks, resolvedLayout, extra object types) is ever dropped,
+// because a child state inherits it all (review findings A1–A3/A5 fixed by
+// construction).
+//
+// PUT (ResetObject) still runs the document-replacement machinery
+// (NewDocFromSnapshot → ResetToVersion, the import/history pattern) until
+// its stage-3 rework; preserveEditorOwnedState repairs what the AnyBlock
+// format deliberately does not carry.
 type objectMutateAdapter struct {
 	getter cache.ObjectGetter
 }
@@ -34,7 +43,47 @@ func newObjectMutateAdapter(getter cache.ObjectGetter) apicore.ObjectMutator {
 	return &objectMutateAdapter{getter: getter}
 }
 
-func (a *objectMutateAdapter) MutateObject(ctx context.Context, spaceId string, objectId string, build func(cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error)) ([]string, error) {
+// MutateObject is the PATCH path: one lock, one child state, one ordinary
+// Apply.
+func (a *objectMutateAdapter) MutateObject(ctx context.Context, spaceId string, objectId string, apply func(edit apicore.ObjectEdit) error) ([]string, error) {
+	var heads []string
+	err := cache.DoContextFullID(a.getter, ctx, domain.FullID{SpaceID: spaceId, ObjectID: objectId}, func(sb smartblock.SmartBlock) error {
+		// object-level Blocks/Details restrictions are a service-layer concern
+		// (Apply checks per-block restrictions, not these).
+		if err := checkObjectEditable(sb); err != nil {
+			return err
+		}
+		st := sb.NewState()
+		edit := apicore.ObjectEdit{
+			SbType: sb.Type().ToProto(),
+			Heads:  append([]string(nil), sb.GetDocInfo().Heads...),
+			State:  st,
+		}
+		if err := apply(edit); err != nil {
+			return err
+		}
+		// the bundled-revision guard still applies: an op that downgrades an
+		// installed object's revision must be refused, exactly like the import
+		// mirror. Untouched revision/sourceObject are inherited by the child
+		// state, so the guard is a no-op on ordinary PATCHes.
+		if err := guardBundledRevision(sb, st); err != nil {
+			return err
+		}
+		if err := sb.Apply(st); err != nil {
+			return fmt.Errorf("apply edit state: %w", err)
+		}
+		heads = append([]string(nil), sb.GetDocInfo().Heads...)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return heads, nil
+}
+
+// ResetObject is the PUT path (stage-3 rework pending): document-level
+// replace through the reset-to-version machinery.
+func (a *objectMutateAdapter) ResetObject(ctx context.Context, spaceId string, objectId string, build func(cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error)) ([]string, error) {
 	var heads []string
 	err := cache.DoContextFullID(a.getter, ctx, domain.FullID{SpaceID: spaceId, ObjectID: objectId}, func(sb smartblock.SmartBlock) error {
 		// A4: the apply below runs with NoRestrictions (the reset machinery
