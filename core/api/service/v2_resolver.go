@@ -17,6 +17,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
@@ -146,6 +147,43 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 	}
 	r.createdOptions[ref] = resp.ObjectId
 	return resp.ObjectId, true
+}
+
+// prewarmCreateMissing resolves a PATCH's create-missing references BEFORE
+// the object lock is taken (review B6/A6): the only create surface in PATCH
+// payloads is setProperties select/multiSelect option names, so those are
+// resolved (and, on a real run, created) here; in-lock resolution then hits
+// the resolver's cache and never fires a create-RPC while holding the edited
+// object's lock. The scan is deliberately lenient — every validation error
+// still surfaces from the in-lock op pass, in unchanged order — and create
+// failures ride resolvers.err(), exactly where the in-lock path checks them.
+func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creatingResolvers) {
+	for _, raw := range ops {
+		var probe struct {
+			Op  string                     `json:"op"`
+			Set map[string]json.RawMessage `json:"set"`
+		}
+		if err := json.Unmarshal(raw, &probe); err != nil || probe.Op != "setProperties" {
+			continue
+		}
+		for key, rawValue := range probe.Set {
+			format, err := bundle.GetRelationFormat(domain.RelationKey(key))
+			if err != nil {
+				var ok bool
+				if format, ok = resolvers.ResolveFormat(domain.RelationKey(key)); !ok {
+					continue
+				}
+			}
+			if format != model.RelationFormat_status && format != model.RelationFormat_tag {
+				continue
+			}
+			var value any
+			if err := json.Unmarshal(rawValue, &value); err != nil {
+				continue
+			}
+			anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
+		}
+	}
 }
 
 // PropertyById implements anyblockjson.PropertyResolver (export side).

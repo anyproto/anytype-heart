@@ -2,12 +2,21 @@ package service
 
 // v2_edit.go implements the Phase-3 edit surface (APIV2.md §2 Phase 3):
 // PATCH /v2/spaces/{spaceId}/objects/{objectId} (the batched, atomic op set —
-// v2_ops.go) and PUT (full-document replace, the escape hatch). Both run one
-// pipeline under the object lock: marshal the live state → mutate the
-// document (ops) or take the client's (PUT) → full format validation (the R5
-// normative post-op check, SPEC §12 V1–V5) → Unmarshal with the Phase-2
-// create-missing resolvers → ONE diff-apply through apicore.ObjectMutator.
-// diffStats come from the canonical before/after documents (v2_diff.go).
+// v2_ops.go) and PUT (full-document replace, the escape hatch).
+//
+// PATCH applies the ops to a child *state.State of the live object
+// (v2_stateops.go) and the adapter commits it with ONE ordinary sb.Apply —
+// the Block* RPC handler model. The flat document is still rendered under
+// the lock, but only as the read-only view the ops address (refs, indents,
+// error texts) and as the diffStats input; nothing round-trips the whole
+// document through Unmarshal anymore. Create-missing option resolution runs
+// BEFORE the object lock (v2_resolver.go prewarm), so no create-RPC ever
+// holds the lock.
+//
+// PUT still runs the document-level pipeline (marshal live → validate the
+// client body → Unmarshal → reset-to-version diff-apply via ResetObject);
+// its stage-3 rework is pending. diffStats for both come from the canonical
+// before/after documents (v2_diff.go).
 
 import (
 	"context"
@@ -18,6 +27,8 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -28,7 +39,9 @@ type v2PatchRequest struct {
 	Ops []json.RawMessage `json:"ops"`
 }
 
-// PatchObject implements PATCH /v2/spaces/{spaceId}/objects/{objectId}.
+// PatchObject implements PATCH /v2/spaces/{spaceId}/objects/{objectId}: the
+// ops apply to a child state of the live object, committed with one ordinary
+// Apply (v2_stateops.go).
 func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*apimodel.V2EditResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
@@ -37,17 +50,94 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	if err != nil {
 		return nil, err
 	}
+	// create-missing option resolution happens here, BEFORE the object lock,
+	// so no create-RPC ever runs inside it (review B6/A6). In-lock resolution
+	// then hits the resolver's cache.
+	resolvers := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), dryRun)
+	s.prewarmCreateMissing(ops, resolvers)
 
 	var result *apimodel.V2EditResult
-	build := func(cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error) {
-		snapshot, res, err := s.patchPipeline(ctx, spaceId, objectId, ops, ifMatch, dryRun, cur)
+	run := func(edit apicore.ObjectEdit) error {
+		res, err := s.applyPatchOps(spaceId, objectId, ops, ifMatch, edit, resolvers)
+		if err != nil {
+			return err
+		}
+		result = res
+		return nil
+	}
+	if dryRun {
+		cur, err := s.reader.ReadObject(ctx, spaceId, objectId)
+		if err != nil {
+			return nil, mapReadError(spaceId, objectId, err)
+		}
+		edit, err := editFromRead(objectId, cur)
 		if err != nil {
 			return nil, err
 		}
-		result = res
-		return snapshot, nil
+		if err := run(edit); err != nil {
+			return nil, err
+		}
+		result.DryRun = true
+		return result, nil
 	}
-	return s.runEdit(ctx, spaceId, objectId, dryRun, build, &result)
+	heads, err := s.mutator.MutateObject(ctx, spaceId, objectId, run)
+	if err != nil {
+		var v2Err *apimodel.V2Error
+		if errors.As(err, &v2Err) {
+			return nil, v2Err
+		}
+		return nil, mapReadError(spaceId, objectId, err)
+	}
+	result.Etag = ComputeEtag(heads)
+	return result, nil
+}
+
+// editFromRead builds a dry-run editing session from a plain read: a private
+// state reconstructed from the snapshot, never committed (C9).
+func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, error) {
+	st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: cur.Snapshot})
+	if err != nil {
+		return apicore.ObjectEdit{}, fmt.Errorf("state from read snapshot: %w", err)
+	}
+	return apicore.ObjectEdit{SbType: cur.SbType, Heads: cur.Heads, State: st}, nil
+}
+
+// applyPatchOps runs the whole PATCH against one editing session: the C11
+// write-safety guard, the ops (each validated with its ops[i] paths and
+// applied to the state), the resolver error check, the flag-gated safety
+// net, and the diffStats. The caller commits (or, on dry run, discards) the
+// state.
+func (s *V2Service) applyPatchOps(spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*apimodel.V2EditResult, error) {
+	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
+		return nil, err
+	}
+	applier := newV2StateApplier(s, spaceId, objectId, edit.SbType, edit.State, resolvers)
+	beforeDoc, err := applier.begin()
+	if err != nil {
+		return nil, err
+	}
+	for i, raw := range ops {
+		if err := applier.apply(i, raw); err != nil {
+			return nil, err
+		}
+	}
+	if err := resolvers.err(); err != nil {
+		return nil, fmt.Errorf("resolve document references: %w", err)
+	}
+	afterDoc, err := applier.marshalDoc(nil)
+	if err != nil {
+		return nil, err
+	}
+	debugValidateEditedDoc(objectId, afterDoc)
+	stats, err := diffEditDocs(beforeDoc, afterDoc)
+	if err != nil {
+		return nil, err
+	}
+	result := &apimodel.V2EditResult{Created: resolvers.created(), DiffStats: stats}
+	if len(applier.createdBlocks) > 0 {
+		result.CreatedBlocks = applier.createdBlocks
+	}
+	return result, nil
 }
 
 // PutObject implements PUT /v2/spaces/{spaceId}/objects/{objectId}: the body
@@ -88,7 +178,7 @@ func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, bod
 	return s.runEdit(ctx, spaceId, objectId, dryRun, build, &result)
 }
 
-// runEdit executes an edit build: through the mutator (one locked
+// runEdit executes a PUT build: through the mutator's reset path (one locked
 // diff-apply) on a real run, through a plain read on a dry run (C9 — nothing
 // is committed, the would-be outcome rides the result).
 func (s *V2Service) runEdit(ctx context.Context, spaceId, objectId string, dryRun bool, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error), result **apimodel.V2EditResult) (*apimodel.V2EditResult, error) {
@@ -103,7 +193,7 @@ func (s *V2Service) runEdit(ctx context.Context, spaceId, objectId string, dryRu
 		(*result).DryRun = true
 		return *result, nil
 	}
-	heads, err := s.mutator.MutateObject(ctx, spaceId, objectId, build)
+	heads, err := s.mutator.ResetObject(ctx, spaceId, objectId, build)
 	if err != nil {
 		var v2Err *apimodel.V2Error
 		if errors.As(err, &v2Err) {
@@ -139,56 +229,9 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 	return req.Ops, nil
 }
 
-// patchPipeline runs the whole PATCH against one consistent read. It returns
-// the snapshot to diff-apply plus the response (sans etag, which the caller
-// derives from the post-apply heads).
-func (s *V2Service) patchPipeline(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, dryRun bool, cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, *apimodel.V2EditResult, error) {
-	if err := checkEditPreconditions(cur, ifMatch); err != nil {
-		return nil, nil, err
-	}
-	beforeDoc, err := s.marshalForEdit(spaceId, objectId, cur, true)
-	if err != nil {
-		return nil, nil, err
-	}
-	doc, err := parseEditDoc(beforeDoc)
-	if err != nil {
-		return nil, nil, fmt.Errorf("object %s: %w", objectId, err)
-	}
-	applier := newV2PatchApplier(s, spaceId, doc)
-	for i, raw := range ops {
-		if err := applier.apply(i, raw); err != nil {
-			return nil, nil, err
-		}
-	}
-	edited, err := doc.encode()
-	if err != nil {
-		return nil, nil, err
-	}
-	// R5, normative: the post-op document must satisfy the format's semantic
-	// checks (SPEC §12 V1–V5); a violation rejects the whole PATCH with the
-	// format's path-addressed errors (block paths; op-shaped cases were
-	// already caught above with ops[i] paths)
-	if err := anyblockjson.Validate(edited); err != nil {
-		verr := mapUnmarshalError(edited, err)
-		var v2Err *apimodel.V2Error
-		if errors.As(verr, &v2Err) && v2Err.Code == apimodel.V2CodeValidationFailed {
-			v2Err.Message = "the ops would produce an invalid document — no op was applied"
-		}
-		return nil, nil, verr
-	}
-	snapshot, result, err := s.finishEdit(ctx, spaceId, edited, beforeDoc, dryRun)
-	if err != nil {
-		return nil, nil, err
-	}
-	if len(applier.createdBlocks) > 0 {
-		result.CreatedBlocks = applier.createdBlocks
-	}
-	return snapshot, result, nil
-}
-
 // putPipeline runs the PUT against one consistent read.
 func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, body []byte, envelope docEnvelope, ifMatch string, dryRun bool, cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, *apimodel.V2EditResult, error) {
-	if err := checkEditPreconditions(cur, ifMatch); err != nil {
+	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
 		return nil, nil, err
 	}
 	// an absent type keeps the live object's (a full replace is about
@@ -246,16 +289,16 @@ func (s *V2Service) finishEdit(ctx context.Context, spaceId string, targetDoc, b
 // heads (advisory: absent = last-write-wins) and the canUpdateObject system
 // exclusions (system-managed smartblock types are not editable through the
 // generic object surface).
-func checkEditPreconditions(cur apicore.ObjectRead, ifMatch string) error {
-	switch cur.SbType {
+func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch string) error {
+	switch sbType {
 	case model.SmartBlockType_STRelation, model.SmartBlockType_STRelationOption,
 		model.SmartBlockType_FileObject, model.SmartBlockType_Participant:
 		return apimodel.V2ValidationFailed(
-			fmt.Sprintf("this object is system-managed (%s) and cannot be edited through the object surface", cur.SbType.String()),
+			fmt.Sprintf("this object is system-managed (%s) and cannot be edited through the object surface", sbType.String()),
 			apimodel.V2Issue{Message: "properties, types and files have their own endpoints"})
 	}
-	if !EtagMatches(ifMatch, cur.Heads) {
-		return apimodel.V2EtagMismatch(ComputeEtag(cur.Heads))
+	if !EtagMatches(ifMatch, heads) {
+		return apimodel.V2EtagMismatch(ComputeEtag(heads))
 	}
 	return nil
 }

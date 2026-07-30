@@ -13,6 +13,7 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/block/editor/state"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -43,11 +44,31 @@ func editRead(t *testing.T, doc string) apicore.ObjectRead {
 	return apicore.ObjectRead{SbType: sbType, Snapshot: snapshot, Heads: []string{"headA"}}
 }
 
-// expectMutate wires the mutator mock to hand read to build and report
-// newHeads; the snapshot build returns is captured for assertions.
-func (fx *v2Fixture) expectMutate(read apicore.ObjectRead, newHeads ...string) **model.SmartBlockSnapshotBase {
-	var captured *model.SmartBlockSnapshotBase
+// expectMutate wires the mutator mock the way the adapter behaves: apply
+// runs against a state built from read's snapshot and, on success, that
+// mutated state is captured for assertions and newHeads reported.
+func (fx *v2Fixture) expectMutate(read apicore.ObjectRead, newHeads ...string) **state.State {
+	var captured *state.State
 	fx.mutatorMock.EXPECT().MutateObject(mock.Anything, testSpaceId, "obj1", mock.Anything).
+		RunAndReturn(func(ctx context.Context, spaceId, objectId string, apply func(apicore.ObjectEdit) error) ([]string, error) {
+			st, err := state.NewDocFromSnapshot(objectId, &pb.ChangeSnapshot{Data: read.Snapshot})
+			if err != nil {
+				return nil, err
+			}
+			if err := apply(apicore.ObjectEdit{SbType: read.SbType, Heads: read.Heads, State: st}); err != nil {
+				return nil, err
+			}
+			captured = st
+			return newHeads, nil
+		})
+	return &captured
+}
+
+// expectReset wires the PUT reset path: build gets read, the returned
+// snapshot is captured for assertions.
+func (fx *v2Fixture) expectReset(read apicore.ObjectRead, newHeads ...string) **model.SmartBlockSnapshotBase {
+	var captured *model.SmartBlockSnapshotBase
+	fx.mutatorMock.EXPECT().ResetObject(mock.Anything, testSpaceId, "obj1", mock.Anything).
 		RunAndReturn(func(ctx context.Context, spaceId, objectId string, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error)) ([]string, error) {
 			snapshot, err := build(read)
 			if err != nil {
@@ -68,6 +89,13 @@ func snapshotDoc(t *testing.T, snapshot *model.SmartBlockSnapshotBase) map[strin
 	var doc map[string]any
 	require.NoError(t, json.Unmarshal(body, &doc))
 	return doc
+}
+
+// stateDoc marshals a captured edit state back to its document form.
+func stateDoc(t *testing.T, st *state.State) map[string]any {
+	t.Helper()
+	require.NotNil(t, st)
+	return snapshotDoc(t, snapshotFromState(st))
 }
 
 // docBlocks extracts the blocks array of a marshaled document.
@@ -121,7 +149,7 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, ComputeEtag([]string{"headB"}), result.Etag)
 		assert.Equal(t, want, result.DiffStats)
 		assert.Empty(t, result.CreatedBlocks)
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "parent", "edited child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 		assert.Equal(t, "blockChild1", blocks[2]["id"], "the block id survives the merge")
 	})
@@ -154,7 +182,7 @@ func TestPatchObject(t *testing.T) {
 		require.Len(t, result.CreatedBlocks, 2)
 		assert.Len(t, result.CreatedBlocks["ops[0].blocks[0]"], 24, "minted id is editor-shaped")
 		assert.Equal(t, "clientId1", result.CreatedBlocks["ops[0].blocks[1]"], "client-supplied ids are echoed")
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "todo", "note", "parent", "child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 		assert.Equal(t, float64(1), blocks[2]["indent"], "payload indent is relative to the anchor level")
 	})
@@ -168,7 +196,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{BlocksAdded: 1}, result.DiffStats)
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "parent", "first child", "child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 		assert.Equal(t, float64(1), blocks[2]["indent"], "inside: payload indent 0 = the container's child level")
 	})
@@ -219,7 +247,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{BlocksAdded: 2, BlocksRemoved: 2}, result.DiffStats)
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "a", "b", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 	})
 
@@ -232,7 +260,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, "quote", blocks[1]["type"])
 		assert.Equal(t, "blockParent1", blocks[1]["id"])
 		assert.Equal(t, "child", blocks[2]["text"], "descendants are kept")
@@ -260,7 +288,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{BlocksMoved: 1}, result.DiffStats)
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "parent", "child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 		assert.Equal(t, float64(1), blocks[3]["indent"], "moved under the parent")
 	})
@@ -297,7 +325,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{BlocksRemoved: 2}, result.DiffStats)
-		assert.Equal(t, []string{"Section", "the Q3 report and Q3 plan"}, blockTexts(docBlocks(snapshotDoc(t, *captured))))
+		assert.Equal(t, []string{"Section", "the Q3 report and Q3 plan"}, blockTexts(docBlocks(stateDoc(t, *captured))))
 	})
 
 	t.Run("replaceText no match steers to exact copy", func(t *testing.T) {
@@ -333,7 +361,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, "the Q4 report and Q3 plan", blocks[3]["text"])
 	})
 
@@ -345,7 +373,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"replaceText","id":"blockSibling2","find":"Q3","replace":"Q4","replace_all":true}`), "", false)
 
 		require.NoError(t, err)
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, "the Q4 report and Q4 plan", blocks[3]["text"])
 	})
 
@@ -358,7 +386,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
-		blocks := docBlocks(snapshotDoc(t, *captured))
+		blocks := docBlocks(stateDoc(t, *captured))
 		rows := blocks[0]["rows"].([]any)
 		cells := rows[1].(map[string]any)["cells"].([]any)
 		assert.Equal(t, []any{"Export", "done"}, cells)
@@ -399,7 +427,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		assert.Equal(t, apimodel.V2DiffStats{PropertiesChanged: 3}, result.DiffStats)
-		doc := snapshotDoc(t, *captured)
+		doc := stateDoc(t, *captured)
 		props := doc["properties"].(map[string]any)
 		assert.Equal(t, "Renamed", props["name"])
 		assert.Equal(t, true, props["done"])
@@ -450,7 +478,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"addItems","items":["memberB","memberA"]}`, `{"op":"removeItems","items":["memberA"]}`), "", false)
 
 		require.NoError(t, err)
-		doc := snapshotDoc(t, *captured)
+		doc := stateDoc(t, *captured)
 		assert.Equal(t, []any{"memberB"}, doc["items"])
 	})
 
@@ -572,7 +600,7 @@ func TestPutObject(t *testing.T) {
 	t.Run("id round-trip gives a minimal diff", func(t *testing.T) {
 		// given: the natural loop — GET body, one text edited, PUT back
 		fx := newV2Fixture(t)
-		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+		captured := fx.expectReset(editRead(t, editBaseDoc), "headB")
 		edited := jsonReplace(t, editBaseDoc, "child", "edited child")
 
 		// when
@@ -588,7 +616,7 @@ func TestPutObject(t *testing.T) {
 
 	t.Run("a body without block ids is the full-rewrite signal", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		fx.expectMutate(editRead(t, editBaseDoc), "headB")
+		fx.expectReset(editRead(t, editBaseDoc), "headB")
 		body := `{"version":1,"type":"page","properties":{"name":"Doc","description":"about"},"blocks":[` +
 			`{"type":"heading1","text":"Section"},{"type":"paragraph","text":"parent"}]}`
 
@@ -601,7 +629,7 @@ func TestPutObject(t *testing.T) {
 
 	t.Run("a GET body with etag round-trips (etag is stripped)", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		fx.expectMutate(editRead(t, editBaseDoc), "headB")
+		fx.expectReset(editRead(t, editBaseDoc), "headB")
 		body := `{"version":1,"etag":"abcd1234","id":"obj1","type":"page","blocks":[{"id":"blockHeading1","type":"heading1","text":"Section"}]}`
 
 		result, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(body), "", false)
@@ -631,7 +659,7 @@ func TestPutObject(t *testing.T) {
 
 	t.Run("stale If-Match is a 409", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		fx.expectMutate(editRead(t, editBaseDoc))
+		fx.expectReset(editRead(t, editBaseDoc))
 
 		_, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(editBaseDoc), `"deadbeef"`, false)
 
@@ -643,7 +671,7 @@ func TestPutObject(t *testing.T) {
 		fx := newV2Fixture(t)
 		read := editRead(t, editBaseDoc)
 		read.SbType = model.SmartBlockType_FileObject
-		fx.expectMutate(read)
+		fx.expectReset(read)
 
 		_, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(editBaseDoc), "", false)
 
@@ -665,7 +693,7 @@ func TestPutObject(t *testing.T) {
 
 	t.Run("an absent type keeps the live object's type", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+		captured := fx.expectReset(editRead(t, editBaseDoc), "headB")
 		body := `{"version":1,"id":"obj1","blocks":[{"id":"blockHeading1","type":"heading1","text":"Section"}]}`
 
 		_, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(body), "", false)
