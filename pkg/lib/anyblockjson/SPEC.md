@@ -1282,6 +1282,25 @@ emoji, tables, dataviews, UTF-16 payloads such as astral-plane characters).
 
 ## 12. Validation
 
+**What earns a check.** A validation rule has to meet both of these, or it
+does not belong here:
+
+1. **It catches something silent.** The document validates, converts and
+   imports, and is wrong somewhere the author will not look — a width read as
+   pixels when written as a percent, a `groupBy` the view cannot honour, a
+   `less` on a date matching every record that has none, a target type that
+   resolves to nothing. If the defect is visible the moment the object is
+   opened, looking at the result catches it and a check only adds noise.
+2. **It traces to a mechanism.** Every rule below points at the code that
+   makes it true. A rule justified by taste rather than by behaviour cannot
+   be argued with, and mixing the two is what turns warnings into something
+   readers skip.
+
+The cost of a marginal check is not the code, it is that every warning
+becomes cheaper to ignore — including the ones that matter. Conventions that
+fail neither test belong in authoring guidance and in review.
+
+
 - Schema: JSON Schema **draft 2020-12**, hand-authored (the format
   deliberately diverges from proto shape), one file, blocks discriminated on
   `type`. The block definition is **non-recursive** — the flat encoding has
