@@ -176,23 +176,31 @@ plan (§7).
 
 ## 6. LLM client
 
-Resurrected from git history (`core/ai` at `7c7a0dfbc`) as a plain package (no app component) so
-future AI features can share it — proposed home `core/ai/llmclient`:
+Built on **`github.com/sashabaranov/go-openai`** (decision 2026-07-30; near-zero-dependency
+community client, v1.41.x, the same package the historical `api-tools` draft used) as a thin plain
+package (no app component) so future AI features can share it — proposed home `core/ai/llmclient`:
 
-- `POST {endpoint}/chat/completions`, `Authorization: Bearer` when a token is set, **non-streaming**
-  (the old client hardcoded `Stream: true`; a plan is one blob, streaming buys nothing).
-- `response_format` json_schema via a small builder (the old `parsing.BuildJSONSchema` shape).
-- **Retry/pacing layered on** from the importv2 Notion client pattern (`RetryPolicy{MaxAttempts,
-  BaseDelay, MaxDelay, TotalBudget}`, honor `Retry-After`) — the historical client had none.
+- One non-streaming `ChatCompletion` call; `openai.DefaultConfig(token)` + `cfg.BaseURL` from the
+  provider config covers every OpenAI-compatible server. Local-server compatibility is wire-level
+  and verified: ollama's compat layer translates `response_format: json_schema` into its native
+  grammar-constrained `format` (api key required but ignored — send the token or a dummy);
+  LM Studio and llama.cpp enforce the schema via GBNF grammar sampling.
+- Structured output: `ChatCompletionResponseFormatJSONSchema{Strict: true}` with the hand-written
+  flat plan schema (§5) passed as `json.RawMessage` — no reflection, no extra schema dep. The
+  schema is deliberately within the JSON Schema subset local servers can compile to grammars.
+- **Retry/pacing layered on top** (go-openai has none): the importv2 Notion client pattern —
+  `RetryPolicy{MaxAttempts, BaseDelay, MaxDelay, TotalBudget}`, honor `Retry-After` on 429.
 - Temperature forced to 0 (determinism contract); provider enum maps to endpoint defaults the way
   the stubbed AI RPCs intended (ollama/lmstudio/llamacpp = localhost defaults, openai = api key
   required).
 - Error mapping onto the existing AI codes: 401 → auth, 404 → model not found, 429 → rate limit,
   dial failure → endpoint unreachable. These become the warning-issue text (§7).
-- Hard wall-clock budget for the whole plan step (default 90s, covering retries); `HttpClient`
-  interface seam for tests.
+- Hard wall-clock budget for the whole plan step (default 90s, covering retries); the http client
+  is injectable via `ClientConfig.HTTPClient` for httptest fakes.
 
-No new SDK dependency (`go-openai` stays out of go.mod).
+Adds `sashabaranov/go-openai` to go.mod (it brings essentially no transitive dependencies). The
+official `openai/openai-go` SDK was considered (built-in retry, first-party durability) and passed
+over for dependency weight; local-server behavior is identical either way.
 
 ## 7. Failure model
 
