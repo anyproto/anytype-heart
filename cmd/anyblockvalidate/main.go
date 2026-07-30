@@ -54,15 +54,25 @@ func main() {
 				fmt.Printf("INVALID %s\n%s", idxPath, anyblockbatch.ReportTargets(dangling))
 				fail += len(dangling)
 			} else {
-				entry := idx.EntryPoint()
-				if entry == "" {
-					entry = "(nothing — no entrypoint declared)"
-				}
+				declared, effective := idx.EntryPoint(), idx.EffectiveEntryPoint()
 				home := idx.SpaceHomepage()
 				if home == "" {
 					home = "(the widgets screen)"
 				}
-				fmt.Printf("ok      %s\n         install opens %s · space homepage %s\n", idxPath, entry, home)
+				shown := effective
+				if shown == "" {
+					shown = "(nothing — no widget names an object)"
+				}
+				fmt.Printf("ok      %s\n         install opens %s · space homepage %s\n", idxPath, shown, home)
+				// TEMPORARY: pb.Profile has no entry-point field, so the
+				// installer opens widgets[0]. A declared entrypoint that is
+				// not the first widget is silently not honoured.
+				if declared != "" && declared != effective {
+					warned++
+					fmt.Printf("         warn: entrypoint %q is not the first widget, so it is NOT what opens —\n"+
+						"               the installer uses widgets[0] (%s) until heart-side profile handling reads entrypoint.\n"+
+						"               List the entrypoint first in widgets.\n", declared, effective)
+				}
 			}
 		}
 	}
