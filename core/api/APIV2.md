@@ -371,15 +371,15 @@ illustration):
   registration is per-route, so the idempotency middleware is simply not
   attached) and from `dry_run` — a supplied `dry_run` is **ignored** (a
   read is its own dry run; erroring would punish a harmless habit).
-- **The filter-string parser [build]** (R6): `pkg/lib/anyblockjson/
-  filterstring` — the SPEC §6.2.1 grammar (scope now split there: the
+- **The filter-string parser (built — §8.4)** (R6): `pkg/lib/anyblockjson/
+  filterstring` — the SPEC §6.2.1 grammar (scope split there: the
   grammar + parser ship as a library; only the *document* view field stays
   reserved post-v1). Parse → the §6.2 structured tree; offset-addressed
   parse errors naming the offending token and position, with did-you-mean.
   The string uses RFC 3339 dates / preset functions; the structured form
-  uses unix numbers — the §6.2.1 mapping applies. **In scope here too:
-  wiring the parser into `POST /sets` (replacing the §8.1 501)**, through
-  the same R9 referential layer.
+  uses unix numbers — the §6.2.1 mapping applies. The `POST /sets`
+  wiring (replacing the §8.1 501), through the same R9 referential layer,
+  shipped with it.
 - **Validation & resolution rules** (previously a one-line "design deltas"
   note; now decided):
   1. **Key scope.** With a top-level `type`, filter/sort/field keys
@@ -449,15 +449,14 @@ illustration):
   (v1's closed sort enum is purely an API-layer artifact). Also shipped
   and reusable: read-only option resolution (the Phase-3 `remove` path),
   `typePropertyKeys` + did-you-mean (`v2_refs.go`), `fields` row shaping
-  (ListObjects + `MarshalPropertyValue`). What must be BUILT is the
-  translation layer — §3's Phase-4 build items: the filter-string parser,
-  the exported filter/sort fragment codec (today `filterFromJSON`/
-  `sortFromJSON` are unexported document-scoped internals, so the two
-  request forms cannot land on one tree), the view-execution resolver over
-  the **direct store-query path** (explicitly NOT v1's shared-subId
+  (ListObjects + `MarshalPropertyValue`). The translation layer — the
+  filter-string parser, the exported filter/sort fragment codec
+  (`anyblockjson.UnmarshalFilters`/`UnmarshalSorts`, the one tree both
+  request forms land on), the view-execution resolver over the **direct
+  store-query path** (explicitly NOT v1's shared-subId
   `ObjectSearchSubscribe` hack — the constant `subId = "json-api-internal"`
-  is racy under concurrent requests), the global-search merge, and the
-  [B3] rows encoder.
+  is racy under concurrent requests), and the global-search merge — is
+  **built** (§8.4); only the [B3] rows encoder stays gated.
 - Sort by any property key. **[B3]** `resultFormat=rows` gated as before
   (now runnable — the harness prerequisite, Phase 3a, is met).
 
@@ -532,24 +531,6 @@ strict schema (FLAT.md §7.3) · `?permanent=true` hard delete.
 
 **Named build items** (open today; budget them):
 
-- **filter-string parser** — `pkg/lib/anyblockjson/filterstring` (per
-  §8.2's "only the format package ever parses AnyBlock JSON" and the
-  shared §6.2.1 vocabulary): parse → the SPEC §6.2 structured filter tree,
-  offset-addressed errors with did-you-mean. Backs Phase-4 search, the
-  POST /sets `filter` field (un-501s it), and the wrapper's `find`.
-  [Phase 4]
-- **exported filter/sort fragment codec** —
-  `anyblockjson.UnmarshalFilters`/`UnmarshalSorts` (→
-  `model.BlockContentDataviewFilter`/`Sort`): today `filterFromJSON`/
-  `sortFromJSON` are unexported document-scoped internals and the fragment
-  API has no filters entry, so the two request forms cannot land on one
-  internal tree. [Phase 4]
-- **view-execution resolver** — set source (setOf) and collection
-  store-slice membership → a direct `database.Query`, with the §6.2
-  placeholder substitution; explicitly NOT v1's shared-subId
-  `ObjectSearchSubscribe` hack. [Phase 4]
-- **global-search per-space loop + merge** with honest `total`/`has_more`
-  (Phase-4 rule 4). [Phase 4]
 - **`resultFormat=rows` encoder**. [B3-gated]
 - **`GenerateSchema` + store-backed option join** — backs `describe`; the
   `types/{type}/schema` route is a 501 stub today. [before Phase 5]
@@ -576,7 +557,16 @@ re-budgets them): resolver wiring (create-missing properties/options —
 §8.1 policy, Phase 2) · `anyblockjson.Options` id-compaction split
 (`CompactObjectRefs`/`CompactBlockLabels`, `CompactIds` shorthand — C4) ·
 scalar→array coercion for list-shaped formats
-(`anyblockjson.UnmarshalPropertyValue`, on every write path).
+(`anyblockjson.UnmarshalPropertyValue`, on every write path) ·
+**filter-string parser** (`pkg/lib/anyblockjson/filterstring`, Phase 4 —
+§8.4) · **exported filter/sort fragment codec**
+(`anyblockjson.UnmarshalFilters`/`UnmarshalSorts`, Phase 4) ·
+**view-execution resolver** (direct store query over setOf / the
+collection store slice, with placeholder substitution — Phase 4, §8.4) ·
+**global-search per-space loop + merge** with honest totals (Phase 4,
+§8.4) · **POST /sets `filter` wiring** (the §8.1 501 is gone) · the
+Phase-4 discovery additions (`search` kind; the grammar on the `filters`
+kind) and the R9 sets-rule system-key widening.
 
 ## 4. Benchmark program
 
@@ -1243,3 +1233,96 @@ read and the precondition checks pass (read → preconditions → prewarm →
 lock): a PATCH to a nonexistent or restricted object, or with a stale
 If-Match, no longer creates the options it named — §8.2's documented
 option-leak trade-off is thereby narrowed to validation failures only.
+
+### 8.4 Phase-4 implementation notes (decisions as built)
+
+**The parser** (`pkg/lib/anyblockjson/filterstring`). Recursive-descent
+over the §6.2.1 grammar; emits the §6.2 structured filters ARRAY as
+canonical JSON — the literal convergence point: the API feeds either the
+client's structured array or the parser's output through the same
+`anyblockjson.UnmarshalFilters` call, so there is exactly one
+JSON-tree→model translation. Decisions a reader of §6.2.1 needs: keywords
+match case-insensitively (canonical rendering stays uppercase — small
+models write `and`); the keywords are reserved words, rejected as property
+keys; RFC 3339 → unix conversion happens at parse time and only for keys
+whose format resolves to `date` through the wired resolver (a date-looking
+string on a text property stays a string; a non-RFC-3339 string on a date
+property is a parse error steering to the preset functions); a preset
+function on a non-date key is a parse error naming the actual format; the
+counting presets require a whole non-negative operand and keep it as
+`value`; presets are excluded from value lists; set literals require `=` /
+`!=` (a list after an ordering operator errors). Reference sets are wired
+per call site: `KnownKeys` (offset-addressed unknown-key error +
+did-you-mean), `KnownOptions` (read-only option names — the QUERY path
+wires it; the SETS-CREATE path deliberately does not, because a set create
+is a write where option names create-missing per R9/§8.1). Every error is
+`*filterstring.Error{Offset, Token, Message, Hint}`; the API maps it to
+one C6 issue at `/filter` carrying the offset text. The EBNF the parser
+pins is exported (`filterstring.EBNF` + `Examples`) and served on the
+`filters` discovery kind (§5) via new `grammar`/`grammarExamples` fields
+on the schema-entry payload — every served example is
+asserted-parseable by test.
+
+**The fragment codec** (`anyblockjson.UnmarshalFilters`/`UnmarshalSorts`).
+Validates the enum vocabulary (conditions, datePresets, directions,
+emptyPlacement, operators) with `/filters/i/…`-`/sorts/i/…` paths, then
+reuses the document path's per-view semantic checks (counting-preset
+operand, placeholder-on-non-object rule, and the unguarded-date-comparison
+WARNING — the same text, riding `Options.OnWarning`, which the search
+handler forwards onto the response `warnings`; for the string form the
+issue path is remapped to `/filter`). Conversion runs through the same
+importer the whole-document dataview path uses, so option-name→id
+resolution and format rehydration behave identically on both request
+forms.
+
+**Search execution.** One `searchPlan` per space: reference set (rules
+1–2, plus `type` as a pseudo-key), both filter forms → one model tree,
+read-only option pre-validation (rule 3 — structured form path-addressed
+here, string form offset-addressed in the parser), `type`-leaf key→id
+resolution AFTER the shared codec (both forms converge before it), and an
+**effective sort list**: explicit sorts win; a full-text query without a
+score sort gets `_final_score desc` appended as tiebreak (which also
+stops the engine from PREPENDING its own score sort — explicit sorts stay
+primary under full-text); no sorts and no query defaults to
+`lastModifiedDate desc` (the ListObjects order). Non-text queries run
+`QueryAndCount` (store-side paging + honest total); full-text queries
+materialize the (candidate-bounded) result set and page in memory — the
+engine's `QueryAndCount` cannot do fulltext, and `total = len(matches)`
+of the materialized set is the honest count within the engine's
+documented candidate budget. Base row scope mirrors ListObjects (object
+layouts, no templates, no hidden). Global search merges per-space pages
+by the effective sort list with a value comparator (no locale collation —
+an accepted approximation of the store's order; ties break by space id
+then object id for determinism); per-space failures skip the space with a
+"space X was skipped: …" warning, and only when NO space resolves does
+the first per-space error become the response. Global rows carry
+`spaceId` (addressing info for the follow-up read — a deliberate C5
+extension). `V2ListResponse` gained `warnings` (C6-shaped, deduped).
+The request schema is strict: an unknown body field 400s, and
+`limit`/`offset` in the body get the C10 steering hint. Search routes
+carry no idempotency middleware (asserted by a router test: a keyed
+oversized search reaches auth instead of the middleware's 413) and the
+handlers never read the dry-run flag.
+
+**Sets/collections reads.** Layout is read from the live snapshot's
+`resolvedLayout` (the same locked read as the content); the wrong-layout
+400 names the other route verbatim. A set's `setOf` resolves like
+dataview sources (unique keys, type ids, relation ids → `type In` /
+`NotEmpty`, OR-combined); an EMPTY or unresolvable `setOf` is an explicit
+400 ("queries nothing"), never an unscoped full-space query. A collection
+without stored-view sorts reads in store-slice order: the matching
+members are fetched in one `id In` query and reordered to the slice
+in memory (honest `total` = matching members; dangling ids drop out); a
+stored view's sorts override membership order via the store-side path.
+`?view=` resolves by exact id or unique suffix (the C4 leniency); the
+0/2+ errors list the view ids / steer to the full id. Placeholder
+substitution runs on the per-read snapshot copy (never live state):
+`_filter_template_2_` → `domain.NewParticipantId(space, account)` — the
+account identity rides `V2Deps.AccountId`, probed from the account
+component (the `apicore.AccountService` port stays GetInfo-only); an
+unresolvable placeholder (unknown index, or a missing account identity)
+DROPS its leaf and warns — evaluated literally it would match nothing,
+which is v1's silent-empty-result bug. Groups whose children all drop are
+dropped. The views read renders the live dataview block through
+`MarshalBlockSubtree` (no compaction — a fragment has no refs legend), so
+views come back in the §6.2 vocabulary with option names resolved.
