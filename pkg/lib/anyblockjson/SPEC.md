@@ -1,6 +1,6 @@
 # AnyBlock JSON — format specification
 
-Status: **draft v0.6** · Format version: **1** · Package: `pkg/lib/anyblockjson`
+Status: **draft v0.7** · Format version: **1** · Package: `pkg/lib/anyblockjson`
 
 A human- and agent-readable JSON serialization of Anytype objects (the "anyblock"
 model), designed for export, import, and generation by external tools and LLM
@@ -14,6 +14,17 @@ strings; the vocabulary follows Notion's API and Anytype's public REST API
 (`core/api`) wherever an established term exists — the format should be
 readable, and mostly writable, by someone who has never seen Anytype
 internals.
+
+Changes from v0.6: the §6.2.1 compact filter syntax is **split in scope**,
+resolving the contradiction with API v2 (`core/api/APIV2.md`), which made
+the filter-string parser a launch dependency while this document still
+called the whole feature reserved/post-v1. The grammar and its parser ship
+**now** as a library subpackage (`filterstring/`, §13) consumed by the API
+v2 search/sets request surface; the **document** side is unchanged — the
+view field `filter` stays reserved post-v1, export keeps writing the
+structured array, and a v1.0 reader on a document carrying `filter` still
+reports "produced by a newer version". §12's generation-path note updated
+to match.
 
 Changes from v0.3 (freeze review): select values are option names in filters
 and custom orders too, not only in properties; canonical key order redefined
@@ -865,28 +876,44 @@ out-of-range proto enum values are omitted rather than serialized (an
 unknown *text style* is an export error — silently restyling content would
 be worse).
 
-#### 6.2.1 Compact filter syntax — reserved extension (post-v1)
+#### 6.2.1 Compact filter syntax — shipped grammar, reserved document field
 
-**Status: designed but not part of v1.** v1 ships the structured `filters`
-array only. The view field name `filter` (singular, string) is **reserved**
-for this extension: v1 schemas do not define it, so introducing it later is
-an additive 1.x release (§10 — a v1.0 reader encountering it reports
-"produced by a newer version"). The two forms will coexist permanently —
-`filter` and `filters` mutually exclusive per view, import accepting both,
-export choosing via option.
+**Status: split scope (v0.7).** The grammar below and its parser ship
+**now**, as the library subpackage `pkg/lib/anyblockjson/filterstring`
+(§13): parse a filter string → the §6.2 structured filter tree
+(`model.BlockContentDataviewFilter` nodes), with **offset-addressed
+errors** naming the offending token and its position. Its consumer is the
+API v2 request surface (`core/api/APIV2.md` Phase 4 — `POST …/search` and
+the `filter` field of `POST …/sets`), where the string is the documented
+small-model form and both request forms land on one internal tree. The
+grammar is thereby pinned by the parser and served via the API's discovery
+surface (APIV2.md §5).
 
-The agreed design, recorded so the extension stays buildable as specified:
-a view carries its filter as a single SQL/JQL-flavored query string:
+The **document** side is unchanged and stays reserved: v1 documents ship
+the structured `filters` array only. The view field name `filter`
+(singular, string) is **reserved** for a post-v1 extension: v1 schemas do
+not define it, so introducing it later is an additive 1.x release (§10 — a
+v1.0 reader encountering it reports "produced by a newer version"; export
+keeps writing the structured array; the `CompactFilters` export option
+stays reserved in `Options`). When that lands, the two forms coexist
+permanently — `filter` and `filters` mutually exclusive per view, import
+accepting both, export choosing via option.
+
+The design, normative for the parser (and unchanged for the future
+document extension): a view carries its filter as a single SQL/JQL-flavored
+query string:
 
 ```json
 { "type": "kanban", "groupBy": "status",
   "filter": "done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)" }
 ```
 
-Grammar (informal): `OR` over `AND` over parenthesized groups over leaves;
-`AND` binds tighter, parentheses group. There is deliberately **no
-free-standing `NOT (…)`** — the internal model has no NOT-group; negation
-exists only in negated conditions, keeping string ⇄ structured 1:1.
+Grammar (informal here; the `filterstring` parser is the normative
+artifact, and the EBNF it pins is what the API discovery surface serves):
+`OR` over `AND` over parenthesized groups over leaves; `AND` binds tighter,
+parentheses group. There is deliberately **no free-standing `NOT (…)`** —
+the internal model has no NOT-group; negation exists only in negated
+conditions, keeping string ⇄ structured 1:1.
 
 | Condition | Syntax |
 |---|---|
@@ -1300,8 +1327,10 @@ emoji, tables, dataviews, UTF-16 payloads such as astral-plane characters).
   decoding (see the v0.6 changelog). The one remaining recursive definition
   is the dataview **filter tree** (`filterNode` groups nest, §6.2) — it is
   inherent to the filter model; a reduced core-profile schema (planned
-  follow-up) without dataview is fully non-recursive, and the reserved
-  compact filter string (§6.2.1) removes it from the generation path. To keep validation errors usable for LLM
+  follow-up) without dataview is fully non-recursive, and the compact
+  filter string (§6.2.1 — its parser ships as the `filterstring`
+  subpackage for the API query surface; the *document* field stays
+  reserved) removes it from the generation path. To keep validation errors usable for LLM
   producers, validation dispatches on the `type` const first (per-type
   `if/then` or programmatic pre-dispatch) instead of a flat 30-branch
   `oneOf` whose error output is noise. Output-only fields carry
@@ -1342,6 +1371,10 @@ pkg/lib/anyblockjson/
   typeproperties.go          — typeProperties ↔ recommended lists (§2a);
                                GenerateSchema derived artifacts are planned
                                here (post-v1)
+  filterstring/              — compact filter string parser (§6.2.1):
+                               string → §6.2 filter tree, offset-addressed
+                               errors (planned with API v2 Phase 4; the
+                               document-field integration stays post-v1)
   roundtrip_test.go          — §11 property tests + state assertions
   golden_gen_test.go         — golden files (testdata/, -update to refresh)
 ```

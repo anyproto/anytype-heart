@@ -1,10 +1,39 @@
 # Anytype Local API v2 — specification and phased plan
 
-Status: **draft v0.3.5** · 2026-07-31 · GO-7383 follow-on
-Depends on: AnyBlock JSON v1 flat (`pkg/lib/anyblockjson/SPEC.md` v0.6).
+Status: **draft v0.4** · 2026-07-31 · GO-7383 follow-on
+Depends on: AnyBlock JSON v1 flat (`pkg/lib/anyblockjson/SPEC.md` v0.7).
 Evidence base: `docs/AgentApiV2Research.md` (+ Addendum A) and
 `pkg/lib/anyblockjson/FLAT.md` — decisions cite sections there instead of
 re-arguing. v1 (`/v1`) stays untouched for the deprecation window.
+
+Changes from v0.3.5 (this refresh): three read-only reviews checked the
+Phase-4/5 plan and the cross-cutting text against the shipped Phase-0–3
+surface; this version applies their findings. Phases 0–3 now read as fact
+(resolver wiring, the referential validation layer and the `Options`
+id-compaction split moved from build items to built; §8.2's
+post-op-validation paragraph corrected — the whole-document net is ON by
+default and rejecting, per review B′3; the idempotency hash and etag
+comparison passages corrected to the shipped formulas). **Phase 4 was
+replanned against the current primitives**: collections gained a read/query
+path, the search body follows C2/C10 (`sorts`, query-param pagination), the
+primary example is single-form, the former one-line "design deltas" are now
+explicit rules (key scope without a type, a system-key allowlist, read-only
+option resolution, per-space global semantics, the empty-date warning,
+`type` as a filter pseudo-key), stored-view execution substitutes the SPEC
+§6.2 dynamic placeholders, search is declared a read (exempt from C8/C9),
+and the internal build-vs-reuse inventory is named. **Phase 5's §7 was
+aligned with the shipped op set**: create-missing option names per R9,
+`add`/`remove` on `set_properties`, a `check_item` tool over `updateBlock`,
+markdown decided as an `insertBlocks` payload alternative, the reference
+and editing channels qualified (full-read relabeling; D′1 markup caveat),
+and the hard dependency order stated. §3/§4 refreshed so every gate is
+still decidable (B1/B2 reworded — `replaceText`/`setCell` and both filter
+forms ship regardless). The SPEC §6.2.1 contradiction is **resolved**: the
+filter grammar + parser ship now as a library
+(`pkg/lib/anyblockjson/filterstring`) consumed by the API; only the
+*document* view field `filter` stays reserved post-v1 (SPEC v0.7). One
+Phase-1 route — `DELETE /objects` (archive) — was found never registered
+and is re-marked [build], due before Phase 5.
 
 Changes from v0.2: applied the small-model (3–4B) review
 (`core/api/APIV2_REVIEW_SMALLMODEL.md`). The small-model contract is now a
@@ -40,7 +69,7 @@ repair loop with path-addressed errors.
 | C1 | Base path `/v2`, localhost, bearer auth and `Anytype-Version` date header as in v1. | migration §4.8 |
 | C2 | **One vocabulary: the format's.** camelCase, property **keys**, option **names** — everywhere, both directions. The object-type field is **`type`** (a type key) on every surface: envelope, rows, search, shortcuts. No id/key duality, no snake_case. Object ids remain ids. | v1's top agent trap (§2.1) |
 | C3 | **Compact JSON always** (no pretty-printing). | free 38–46% (§3.6) |
-| C4 | **Object ids compact by default** (refs legend per SPEC §9a — lossless); `?ids=full` opts out. **Block ids are always full on default reads** — block-label compaction (5-char, legend-less, lossy) appears only in explicitly read-only shapes (`outline`, prompt/example exports). Write endpoints MAY additionally resolve block-id references by unique-suffix match against the live object (SPEC §9a wiring allowance). Never require echoing a full CID. *Package change required: split object-ref compaction from block relabeling in `anyblockjson.Options` (today one `CompactIds` flag does both).* | ~24×/id, −89% id errors (§3.6); id round-trip contract (R1) |
+| C4 | **Object ids compact by default** (refs legend per SPEC §9a — lossless); `?ids=full` opts out. **Block ids are always full on default reads** — block-label compaction (5-char, legend-less, lossy) appears only in explicitly read-only shapes (`outline`, prompt/example exports). Write endpoints MAY additionally resolve block-id references by unique-suffix match against the live object (SPEC §9a wiring allowance). Never require echoing a full CID. *(Built: `Options.CompactObjectRefs` and `Options.CompactBlockLabels` are separate flags; `CompactIds` is the shorthand for both.)* **Outline exception (T7)**: the outline shape compacts block labels but keeps object refs **full** — it drops the refs legend with the properties map, so a legend-compacted ref inside a heading's text would be unresolvable; `?ids=` is ignored there. | ~24×/id, −89% id errors (§3.6); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
 | C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
@@ -87,7 +116,7 @@ GET /v2/spaces/{spaceId}/objects/{objectId}
     ?ids=compact|full               # object ids only (C4); default compact
     ?format=anyblock|md             # md read-only, with warnings (C11)
 GET /v2/spaces/{spaceId}/objects            # minimal rows (C5)
-DELETE /v2/spaces/{spaceId}/objects/{objectId}   # archive (v1 parity); ?permanent=true later
+DELETE /v2/spaces/{spaceId}/objects/{objectId}   # archive (v1 parity); ?permanent=true later  [build — never registered, see below]
 GET /v2/spaces                              # spaces list (read)
 GET /v2/spaces/{spaceId}/members            # members list (read) — agents need member ids for assignee/creator values
 GET /v2/spaces/{spaceId}/types              # keys + names (paginated, C10)
@@ -108,15 +137,25 @@ GET /v2/spaces/{spaceId}/properties/{key}/options    # option names (+color), pa
   without blocks suppresses `blocks` entirely); `ids` affects any shape
   that contains object ids; illegal combinations → 400 `ambiguous_input`
   naming the conflicting params. The outline shape uses compact block
-  labels (read-only shape, C4).
+  labels but **full object refs** (read-only shape; the C4 outline
+  exception — `ids` is ignored there).
 - The object response is the flat AnyBlock document + `etag` (+
   `warnings`).
 - `types/{type}/schema` **[build]**: the derived artifact (SPEC §2a
   `GenerateSchema` — *planned there, not implemented*; this endpoint is
   its first consumer). `table` flavor = prompt-ready property table with
   live option names — requires an objectstore join per select property
-  (options live on option objects, not in `typeProperties`) (R6). Still
-  Phase 1: it is the highest-leverage accuracy lever (§3.4).
+  (options live on option objects, not in `typeProperties`) (R6). **As
+  shipped, the route is a 501 `not_implemented` stub** (no flavor parsing)
+  steering to `GET types/{type}`; the `GenerateSchema` artifact +
+  store-backed option join stays an open §3 build item, **due before the
+  wrapper's `describe` tool (Phase 5)**. It remains the highest-leverage
+  accuracy lever (§3.4).
+- **`DELETE /objects` (archive) is an open build item**: the route was
+  specced with Phase 1 but never registered — v2 DELETE exists only for
+  types and properties; object archive is v1-only today. §6's v1-parity
+  note depends on it; build it **before Phase 5** so the wrapper/CLI can
+  carry an object-archive verb (§2 Phase 5).
 - Implementation note: read via the **live smartblock state** →
   snapshot → `anyblockjson.Marshal` (not `ObjectShow`, whose ObjectView is
   the wrong type; not the store snapshot, which lags). Derive `etag` from
@@ -150,13 +189,14 @@ PATCH/DELETE /v2/spaces/{spaceId}/properties/{key}    # update / archive
 - **Templates**: no create-from-body RPC exists; `POST /templates` targets
   the generic AnyBlock create path (Template kind + `templateFor`), which
   the importer already supports (R-note).
-- **Resolver wiring is the substance of this phase [build]**: the
+- **Resolver wiring was the substance of this phase** (shipped:
+  `core/api/service/v2_resolver.go`, `creatingResolvers`): the
   create-missing property/option bridging from `anyblockjson`'s
   `PropertyResolver`/`OptionResolver` to objectstore +
-  `ObjectCreateRelation`/`ObjectCreateRelationOption` does not exist yet
-  (R-note). The **referential validation layer** (R9) lands here: a set
-  filter naming a property the type lacks → error listing the type's
-  actual keys.
+  `ObjectCreateRelation`/`ObjectCreateRelationOption`. The **referential
+  validation layer** (R9) landed here too: a set filter naming a property
+  the type lacks errors listing the type's actual keys (policy as built:
+  §8.1 "Create-vs-reject policy").
 - Every kind: schema + worked example (C12/C13); `Idempotency-Key`;
   `dry_run`.
 
@@ -290,41 +330,166 @@ preconditions (C7 note).
 
 ```
 POST /v2/spaces/{spaceId}/search        (+ POST /v2/search global)
-{ "query": "…", "type": "task",
-  "filter":  "done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)",
+GET  /v2/spaces/{spaceId}/sets/{setId}/objects?view={viewId}&fields=…
+GET  /v2/spaces/{spaceId}/sets/{setId}/views
+GET  /v2/spaces/{spaceId}/collections/{collectionId}/objects?fields=…
+GET  /v2/spaces/{spaceId}/collections/{collectionId}/views
+```
+
+Primary worked example (single-filter form — the small-model form, C12):
+
+```json
+{ "query": "report", "type": "task",
+  "filter": "done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)",
+  "sorts": [ { "property": "dueDate", "direction": "asc" } ],
+  "fields": ["name", "dueDate", "status"] }
+```
+
+Secondary example — programmatic composition (the structured array;
+mid/frontier and round-trip flows, mirroring §5's secondary multi-op
+illustration):
+
+```json
+{ "type": "task",
   "filters": [ { "property": "done", "condition": "equal", "value": false } ],
-  "sort": [ { "property": "dueDate", "direction": "asc" } ],
-  "fields": ["name","dueDate","status"], "limit": 25 }
-GET /v2/spaces/{spaceId}/sets/{setId}/objects?view={viewId}&fields=…
-GET /v2/spaces/{spaceId}/sets/{setId}/views
+  "sorts": [ { "property": "dueDate", "direction": "asc" } ] }
 ```
 
 - `filter` (compact string) and `filters` (structured array) are mutually
   exclusive; **both supplied → 400 `ambiguous_input`** ("provide `filter`
-  or `filters`, not both") (R15). One internal tree.
-- **The filter string is a build item [build]** (R6): SPEC §6.2.1 reserves
-  the grammar as a *post-v1, dataview-scoped* extension — no parser
-  exists, and search scope adds design deltas (the string uses RFC 3339
-  dates / preset functions; the structured form uses unix numbers — the
-  §6.2.1 mapping applies). Position-addressed parse errors with
-  did-you-mean, validated against the type's real property keys and
-  option names.
+  or `filters`, not both") (R15). Both forms land on **one internal tree**
+  (the SPEC §6.2 filter node).
+- **Request-shape conventions** (fixes v0.3.x drift): the sort field is
+  **`sorts`** — the SPEC §6.2 view name and the shipped POST /sets name
+  (research §4.5 introduced the singular; one concept two names is exactly
+  the duality C2 bans). Pagination is the **C10 query params**
+  (`offset`/`limit`, default 25, `has_more`) like every shipped v2 list —
+  no body `limit` (body-vs-query duality with no offset story); a body
+  `limit` is rejected as an unknown field by the strict request schema.
+- **Search is a read** (POST only because the request needs a body): exempt
+  from `Idempotency-Key` (responses are never stored or replayed —
+  registration is per-route, so the idempotency middleware is simply not
+  attached) and from `dry_run` — a supplied `dry_run` is **ignored** (a
+  read is its own dry run; erroring would punish a harmless habit).
+- **The filter-string parser [build]** (R6): `pkg/lib/anyblockjson/
+  filterstring` — the SPEC §6.2.1 grammar (scope now split there: the
+  grammar + parser ship as a library; only the *document* view field stays
+  reserved post-v1). Parse → the §6.2 structured tree; offset-addressed
+  parse errors naming the offending token and position, with did-you-mean.
+  The string uses RFC 3339 dates / preset functions; the structured form
+  uses unix numbers — the §6.2.1 mapping applies. **In scope here too:
+  wiring the parser into `POST /sets` (replacing the §8.1 501)**, through
+  the same R9 referential layer.
+- **Validation & resolution rules** (previously a one-line "design deltas"
+  note; now decided):
+  1. **Key scope.** With a top-level `type`, filter/sort/field keys
+     validate against the type's recommended keys + `name` (the shipped R9
+     sets rule, `typePropertyKeys`) plus the system allowlist below.
+     Without `type`, and on global search, keys validate against the
+     **space's property keys** (per space, for global). Unknown keys →
+     path-addressed did-you-mean.
+  2. **System-key allowlist.** `createdDate`, `lastModifiedDate`,
+     `creator`, `lastOpenedDate` — §3-output-only/system keys that appear
+     in no type's recommended lists yet back bread-and-butter queries
+     (`lastModifiedDate > yesterday()`; v2 ListObjects itself sorts by
+     lastModifiedDate). Always part of the query-surface reference set —
+     for search AND for set filters/sorts (widening the shipped R9 sets
+     rule is part of this phase's wiring).
+  3. **Option names resolve READ-ONLY on the query path.** SPEC §3's
+     create-missing is write/import behavior; a query must never mint the
+     very option it names (the §8.3 `remove` precedent). Unresolved names →
+     did-you-mean error, never a silent no-match.
+  4. **Global search resolves per space** (v1 GlobalSearch precedent):
+     type keys and option names resolve inside each space's loop
+     iteration; a name that resolves in only some spaces queries those
+     spaces and carries a C6 warning naming the spaces where it did not
+     resolve. **Honest totals**: results merge per-space queries by the
+     requested sort; `has_more` is true when any space reported more;
+     `total` is the sum of per-space store counts — do NOT copy v1's
+     `total = len(fetched)` approximation.
+  5. **Empty-date hazard surfaces.** SPEC §6.2: an unguarded `less`/
+     `lessOrEqual` date comparison matches undated objects (`dueDate <
+     currentWeek()` matches objects with no dueDate). Document import
+     warns; the search path must too — the same warning text rides the C6
+     `warnings` channel on the response.
+  6. **`type` is a filterable pseudo-key.** The top-level `type` stays a
+     single type key (the small-model form, C2). Multi-type queries use
+     the filter channel: `type IN ("task", "bug")` — resolved key→id
+     server-side like any reference. A top-level `type` and a `type`
+     filter compose by AND (same channel, two convenience levels — no
+     ambiguity error).
+- **Stored-view execution (`?view=`) substitutes dynamic placeholders.**
+  SPEC §6.2's `_filter_template_<n>_` values are client-substituted and
+  opaque to the middleware — a query evaluated server-side against the
+  literal string matches nothing (v1 GetObjectsInList has exactly this
+  silent-empty-result bug; do not copy it). The handler substitutes
+  `_filter_template_2_` → the caller's participant id
+  (`_participant_<space>_<account>` — the same identity §7.3's `@me`
+  needs) and `_filter_template_1_` → the hosting object id before building
+  the store query; any other placeholder degrades to a C6 warning on the
+  response, never a silent no-match.
+- **Sets AND collections both get a read path.** Phases 2–3 shipped a full
+  collection write surface (POST /collections, `addItems`/`removeItems`)
+  with no read/query endpoint — a collection's members were readable only
+  as the raw `items` id array on GET object (unpaginated bare ids), a
+  regression vs v1's `/lists/{listId}`. The GET routes above cover both:
+  `sets/{id}/*` requires a set (its dataview source drives the query),
+  `collections/{id}/*` requires a collection (membership rows = the store
+  slice, in its order); one handler branches on layout exactly as v1's
+  GetObjectsInList does, and a wrong-layout target is a 400 naming the
+  other route. Rows follow C5.
 - **Small-model form is settled** (C13): the structured `filters` array is
   recursive and not constrained-decodable, so the string is the documented
   default for small models; the array serves round-trip and programmatic
-  composition.
-- Sort by any property key. **[B3]** `resultFormat=rows` gated as before.
+  composition (both ship — B2 only tunes steering, §4).
+- **Engine exists; translation is the build.** `database.Query` already
+  expresses the whole surface: full-text via `TextQuery`, any-key filters
+  with `QuickOption` date presets and `NestedFilters`, any-key
+  `SortRequest` with `Format`/`EmptyPlacement`/`IncludeTime`/`NoCollate`
+  (v1's closed sort enum is purely an API-layer artifact). Also shipped
+  and reusable: read-only option resolution (the Phase-3 `remove` path),
+  `typePropertyKeys` + did-you-mean (`v2_refs.go`), `fields` row shaping
+  (ListObjects + `MarshalPropertyValue`). What must be BUILT is the
+  translation layer — §3's Phase-4 build items: the filter-string parser,
+  the exported filter/sort fragment codec (today `filterFromJSON`/
+  `sortFromJSON` are unexported document-scoped internals, so the two
+  request forms cannot land on one tree), the view-execution resolver over
+  the **direct store-query path** (explicitly NOT v1's shared-subId
+  `ObjectSearchSubscribe` hack — the constant `subId = "json-api-internal"`
+  is racy under concurrent requests), the global-search merge, and the
+  [B3] rows encoder.
+- Sort by any property key. **[B3]** `resultFormat=rows` gated as before
+  (now runnable — the harness prerequisite, Phase 3a, is met).
 
 ### Phase 5 — the task-tool wrapper (CLI + skill + on-device manifest)
 
 The Phase-5 deliverable is the **task-tool wrapper** (§7): the curated
-~9-tool layer over `/v2`, delivered as (a) CLI verbs (`anytype find | read |
-describe | create | set-properties | add-blocks | edit-text | set-cell |
-move | delete`) with AXI/Chow output conventions and SKILL.md three-tier
-packaging for coding-agent harnesses, and (b) a function-calling/MCP
-manifest of the same tools for on-device small models. Both are thin over
-the same server primitives; bulk work via scripts. (Evidence §3.7; §7 for
-the tool contract.)
+~10-tool layer over `/v2`, delivered as (a) CLI verbs (`anytype find | read |
+describe | create | set-properties | add-blocks | edit-text | check-item |
+set-cell | move-block | delete-block`) with AXI/Chow output conventions and
+SKILL.md three-tier packaging for coding-agent harnesses, and (b) a
+function-calling/MCP manifest of the same tools for on-device small models.
+Both are thin over the same server primitives; bulk work via scripts.
+(Evidence §3.7; §7 for the tool contract.)
+
+- **Hard dependency order.** The wrapper is code-complete only after:
+  (1) **Phase-4 search + the filter-string parser** — backs `find`, the
+  true blocker (no degraded form beyond ListObjects paging); (2)
+  **`GenerateSchema` + the store-backed option join** — backs `describe`,
+  a 501 stub today; an interim degraded describe can be assembled
+  wrapper-side from `GET /types/{t}` + `GET /properties/{key}/options` so
+  wrapper development can start; (3) the **markdown→flat-blocks parser**
+  as an `insertBlocks` `markdown` payload alternative — backs `add_blocks`
+  and upgrades the create shortcut off the two-change-set paste path
+  (§8.1). Everything else — handle state, full-read relabeling, `@me`,
+  relative dates, the GBNF artifacts, the D′1 escape decision — is §7.4
+  wrapper-layer work that should not block starting.
+- **CLI verb naming**: `move-block`/`delete-block`, matching the tool
+  names — a plain `delete` would be read by coding agents as *object*
+  deletion, which no v2 surface offers today (`DELETE /objects` is the
+  open Phase-1 build item, due before this phase; when it ships, a plain
+  `archive` verb may take the object meaning — until then object archive
+  stays out of the wrapper).
 
 ## 3. Decisions ledger
 
@@ -332,35 +497,86 @@ the tool contract.)
 addressing · `updateBlock` merge op + `replaceText` + `setCell` in the
 launch op set (they back wrapper tools — §7/S1) · PUT-with-server-diff as
 escape hatch (excluded from the small-model wrapper), full-block-id
-round-trip default, diffStats · flat AnyBlock as the only content
-representation on the REST write path; **markdown-in on the wrapper's
-`add_blocks`** channel; markdown read-only on REST · compact object ids +
-full block ids on REST reads / **short handles on wrapper reads** · one
-vocabulary incl. `type` (C2) · per-endpoint schema + worked example,
-strict-mode-compatible (C12/C13) · path-addressed errors + /validate +
-dry_run + idempotency · etag advisory by default · filter string as the
-small-model filter form · atomic composite creates (sets via initial-state
-dataview) · **the small-model contract is the task-tool wrapper (§7), not a
-REST mode**.
+round-trip default, diffStats · flat AnyBlock as the primary content
+representation on the REST write path, plus **one markdown-in alternative:
+an `insertBlocks` `markdown` payload** (mutually exclusive with `blocks`,
+same targeting incl. root-append — the server parses; it backs the
+wrapper's `add_blocks` channel and, once landed, the create shortcut);
+markdown read-only otherwise · compact object ids + full block ids on REST
+reads / **short handles on wrapper reads** · one vocabulary incl. `type`
+(C2) · per-endpoint schema + worked example, strict-mode-compatible
+(C12/C13) · path-addressed errors + /validate + dry_run + idempotency ·
+etag advisory by default · filter string as the small-model filter form
+(parser home: `pkg/lib/anyblockjson/filterstring` — it backs `find` in the
+wrapper, Phase-4 search, and the POST /sets `filter` field; SPEC §6.2.1
+scope split, v0.7) · atomic composite creates (sets via initial-state
+dataview) · **search is a read** — exempt from Idempotency-Key and
+dry_run (Phase 4) · **`type` as a filter pseudo-key**; top-level `type`
+stays a single key · stored-view execution substitutes the §6.2 dynamic
+placeholders (template_2 → caller participant, template_1 → host object;
+others degrade to C6 warnings) · `@me` identity served by
+`GET /members/me` server-side; sentinel + relative-date math in the
+wrapper handler (§7.3) · **the small-model contract is the task-tool
+wrapper (§7), not a REST mode**.
 
-**Benchmark-gated**: B1 `replaceText`/`setCell` value for *large* models
-(they are already launch primitives for the wrapper) · B2 structured-filters
-value for mid/frontier programmatic composition (small-model primacy is
-settled — R8) · B3 tabular result format · B4 wrapper-tool prompt/skill
-guidance.
+**Benchmark-gated**: B1 — whether *large*-model docs/steering prefer
+`replaceText`/`setCell` over `updateBlock` (all are launch ops; nothing
+ships or unships on B1) · B2 — which filter form the docs/steering
+recommend per tier (both forms ship regardless; small-model primacy of the
+string is settled — R8) · B3 tabular result format · B4 wrapper-tool
+prompt/skill guidance.
 
 **Deferred**: dataview/view ops · cross-object batch · block-scoped
 preconditions · conflict rebase · events/subscriptions · core-profile
 strict schema (FLAT.md §7.3) · `?permanent=true` hard delete.
 
-**Named build items** (exist nowhere today; budget them): filter-string
-parser (search-scoped — now a launch dependency, backs `find`/`set` in the
-wrapper) · `GenerateSchema` + store-backed option join (backs `describe`) ·
-resolver wiring (create-missing properties/options) · referential
-validation layer · md-export loss detector (converter/md has no warning
-channel) · **markdown→flat-blocks parser for `add_blocks`** (the wrapper's
-authoring channel) · **handle↔CID resolver** (the wrapper's reference
-channel) · `anyblockjson.Options` id-compaction split (C4).
+**Named build items** (open today; budget them):
+
+- **filter-string parser** — `pkg/lib/anyblockjson/filterstring` (per
+  §8.2's "only the format package ever parses AnyBlock JSON" and the
+  shared §6.2.1 vocabulary): parse → the SPEC §6.2 structured filter tree,
+  offset-addressed errors with did-you-mean. Backs Phase-4 search, the
+  POST /sets `filter` field (un-501s it), and the wrapper's `find`.
+  [Phase 4]
+- **exported filter/sort fragment codec** —
+  `anyblockjson.UnmarshalFilters`/`UnmarshalSorts` (→
+  `model.BlockContentDataviewFilter`/`Sort`): today `filterFromJSON`/
+  `sortFromJSON` are unexported document-scoped internals and the fragment
+  API has no filters entry, so the two request forms cannot land on one
+  internal tree. [Phase 4]
+- **view-execution resolver** — set source (setOf) and collection
+  store-slice membership → a direct `database.Query`, with the §6.2
+  placeholder substitution; explicitly NOT v1's shared-subId
+  `ObjectSearchSubscribe` hack. [Phase 4]
+- **global-search per-space loop + merge** with honest `total`/`has_more`
+  (Phase-4 rule 4). [Phase 4]
+- **`resultFormat=rows` encoder**. [B3-gated]
+- **`GenerateSchema` + store-backed option join** — backs `describe`; the
+  `types/{type}/schema` route is a 501 stub today. [before Phase 5]
+- **markdown→flat-blocks parser** as an `insertBlocks` `markdown` payload
+  alternative — backs the wrapper's `add_blocks` and upgrades the create
+  shortcut off the two-change-set paste path. Smaller than it sounds:
+  inline text is already §8 markdown, so only block-level parsing
+  (headings, lists/indent, fences, tables) is new. [Phase 5 critical path]
+- **handle↔CID resolver + wrapper relabeling** (§7.4: session handle
+  state, full-read relabeling, suffix pass-through, ambiguity retry).
+  [Phase 5]
+- **`@me` + `GET /v2/spaces/{spaceId}/members/me`** (server-side identity)
+  and **relative-date input resolution** (wrapper-handler math — placement
+  decided in §7.3). [Phase 5]
+- **per-tool GBNF/CFG artifacts** + the filter-string CFG — sequenced
+  after the Phase-4 parser pins the grammar (§7.3/§7.4). [Phase 5]
+- **`DELETE /v2/spaces/{spaceId}/objects/{objectId}` (archive)** — specced
+  with Phase 1, never registered. [before Phase 5]
+- **md-export loss detector** (converter/md has no warning channel).
+
+**Built** (previously listed as build items; moved out so no one
+re-budgets them): resolver wiring (create-missing properties/options —
+`v2_resolver.go`, Phase 2) · referential validation layer (did-you-mean,
+§8.1 policy, Phase 2) · `anyblockjson.Options` id-compaction split
+(`CompactObjectRefs`/`CompactBlockLabels`, `CompactIds` shorthand — C4) ·
+scalar→array coercion for list-shaped formats
+(`anyblockjson.UnmarshalPropertyValue`, on every write path).
 
 ## 4. Benchmark program
 
@@ -368,17 +584,23 @@ All on the Phase-0 harness; small tiers run under constrained decoding
 (R13). Metrics: apply-success, corruption (round-trip backtranslation),
 output tokens, turns; per model tier.
 
-- **B1 — edit primitives** (gates 3c): arms = launch ops · launch ops +
-  `replaceText`. **PUT-only runs as the corruption baseline**, anchoring
-  the DELEGATE-52 comparison — it is not a gate arm (PUT's existence is
-  decided). Decision rule: `replaceText` ships iff it improves small-model
-  apply-success or corruption on the one-word/sentence-edit tasks without
-  regressing the rest.
-- **B2 — structured filters for composition**: does the array ever beat
-  the string for mid/frontier programmatic flows (round-trip, multi-step
-  composition)? Scored by execution semantics, never string equality.
+- **B1 — edit-primitive steering** (tunes documentation; ships nothing —
+  `replaceText`/`setCell` are launch ops per §2(c)/(d), so B1 no longer
+  gates them): arms = **updateBlock-only** (`replaceText`/`setCell`
+  withheld from the prompt) · **full launch op set**. **PUT-only runs as
+  the corruption baseline**, anchoring the DELEGATE-52 comparison — it is
+  not a gate arm (PUT's existence is decided). Decision rule: whether the
+  REST docs and B4 guidance point *large* models at `replaceText`/`setCell`
+  for text/cell edits or leave them on `updateBlock` (small-model steering
+  is settled — the wrapper channels).
+- **B2 — filter-form steering**: both forms ship regardless (the array is
+  load-bearing for sets creation and round-trip; the string is the settled
+  small-model form — R8), so B2 decides which form the docs/steering
+  recommend for mid/frontier programmatic flows (round-trip, multi-step
+  composition). Scored by execution semantics, never string equality.
 - **B3 — result format** (gates `resultFormat=rows`): reading-accuracy +
-  tokens, compact JSON vs rows over 10/100/1000-row results.
+  tokens, compact JSON vs rows over 10/100/1000-row results. Now runnable —
+  the harness prerequisite (Phase 3a) is met.
 - **B4 — creation guidance** (tunes prompt/SKILL.md guidance — *not* the
   C12 endpoint docs, which always ship schema + example): which in-context
   combination (example-only / schema+example / constrained core-profile)
@@ -387,23 +609,42 @@ output tokens, turns; per model tier.
 ## 5. Discovery
 
 ```
-GET /v2/schemas                     # index: kinds, endpoints, examples
-GET /v2/schemas/{kind}              # JSON Schema + worked example (object|type|property|set|collection|template|filters)
+GET /v2/schemas                     # index: kinds, endpoints, examples, ops list (§8.2)
+GET /v2/schemas/{kind}              # JSON Schema + worked example
+                                    #   shipped kinds: object · shortcut · type · template ·
+                                    #   property · set · collection · file · filters
+                                    #   Phase 4 adds: search
 GET /v2/schemas/ops/{op}            # per-op tiny strict schema + single-op minimal example
 ```
 
 Per-op fetch keeps the smallest consumers at the smallest schema surface
-(§3.5 capability cliff); the 6-op composite example remains as a secondary
-"multiple ops in one request" illustration. All generation-facing schemas
-follow C13. The per-type artifact lives in Phase 1.
+(§3.5 capability cliff); the multi-op composite example (currently 7 ops,
+§2a) remains as a secondary "multiple ops in one request" illustration. All
+generation-facing schemas follow C13. **Phase-4 discovery**: a `search`
+kind (strict request schema; its `filters` property references the
+documented recursive exception), and the compact filter-string **grammar**
+gets its discovery slot — served on the existing `filters` kind (one
+concept, one slot, C2): that kind's response carries the structured-array
+schema AND the string grammar (EBNF + examples), the same artifact the
+Phase-5 GBNF conversion consumes (this assigns the C13 "filter string"
+discovery slot, previously unassigned). The per-type artifact's route
+shipped with Phase 1 as a 501 stub; the `GenerateSchema` artifact is an
+open §3 build item.
 
 ## 6. Rollout
 
-1. Phase 0+1 behind an experimental flag; OpenAPI generated from day one.
-2. Phase 2, then 3a/3b. **v1-parity note**: full parity additionally
-   requires the Phase 1–2 surface additions of R11 (files, spaces/members
-   reads, archive); §6's earlier "superset" claim is scoped to the object
-   surface *including those*.
+1. As built: `/v2` ships **ungated** alongside v1 on the same localhost
+   server — no experimental flag exists (`V2Deps` is always fully
+   populated; the only gating is nil-dependency skips for degraded test
+   construction). Whether a flag is wanted before the first public release
+   is an **open rollout task**, not a shipped fact. OpenAPI generated from
+   day one.
+2. Phase 2, then 3a/3b — shipped. **v1-parity note**: full parity
+   additionally requires the Phase 1–2 surface additions of R11 — files
+   and spaces/members reads shipped; **object archive (`DELETE /objects`)
+   is the one R11 item still outstanding** (§2 Phase 1 [build]); §6's
+   earlier "superset" claim is scoped to the object surface *including
+   those*.
 3. Benchmarks run once the harness + Phase 3a exist; gated items land in
    minor releases (additive to the closed op set).
 4. Phase 4, Phase 5. v1 deprecation clock starts when the CLI ships.
@@ -428,11 +669,15 @@ evidence actively recommends (Anthropic writing-tools-for-agents; Linear;
 Notion markdown-for-agents).
 
 **One artifact, two deliveries.** The wrapper is a single tool manifest
-mapping ~9 task tools to `/v2` primitives; it is exposed as **CLI verbs**
+mapping ~10 task tools to `/v2` primitives; it is exposed as **CLI verbs**
 (coding-agent harnesses; the CLI-over-MCP finding) and as an **on-device
 function-calling / MCP manifest** (3B models). It is the Phase-5 deliverable.
 Full REST + wrapper = two surfaces sharing one AnyBlock format, one
-validation contract, one error contract.
+validation contract, one error contract. The two deliveries share the
+manifest but NOT a state story: `find`'s enumerated handles outlive a tool
+call, which a long-lived MCP process holds in memory while the
+process-per-invocation CLI must persist — §7.4 states where handle state
+lives.
 
 ### 7.1 The three channels that close the review's structural findings
 
@@ -440,28 +685,48 @@ The wrapper's leverage is that a tool argument can be a friendlier channel
 than the REST body:
 
 - **Authoring channel = markdown** (not AnyBlock JSON). `add_blocks` takes a
-  markdown string; the server parses it to flat blocks. Removes inline-
-  markup-in-JSON escaping (the top 3B failure) and the relative-indent
-  arithmetic (markdown indentation → server computes `indent`). [closes S2]
+  markdown string; the server parses it to flat blocks. **Decided (v0.4):
+  the parser's home is an `insertBlocks` `markdown` payload alternative** —
+  mutually exclusive with `blocks`, same targeting incl. root-append — so
+  markdown-in rides the whole op pipeline (validation, `createdBlocks`,
+  `diffStats`, dry-run, idempotency) and the CLI vendors nothing; this is
+  the "real server-side primitive" §7.3 item 1 demands (the create
+  shortcut's two-change-set BlockPaste stopgap, §8.1, cannot back it).
+  Removes inline-markup-in-JSON escaping (the top 3B failure) and the
+  relative-indent arithmetic (markdown indentation → server computes
+  `indent`). [closes S2]
 - **Editing channel = anchor + deterministic server edit.** `edit_text`
   takes `find`/`replace`; the server does the string replace in code and
   applies it via the `replaceText` primitive. The model supplies a short
   anchor, never reproduces the block. [closes S1's change-one-word collapse]
+  **Caveat — anchors and replacements are markup SOURCE**: `replaceText`
+  matches the block's §8 markup text and re-parses the result, so a
+  replacement containing `*`, `[` or mention syntax mints real marks —
+  JSON-escaping is removed, markup-awareness is NOT (the open D′1 debt,
+  a **named Phase-5 dependency for the small tier**; until it lands the
+  tool description must say find/replace text is treated as markup). The
+  tool also deliberately omits `replaceText`'s `replace_all` — single-match
+  only for the small tier; the CLI may expose `--all` for larger consumers.
 - **Reference channel = enumerated handles.** `find` returns `1,2,3`; `read`
-  exposes short block labels; the wrapper resolves handles/labels → CIDs
-  server-side. The model never sees or emits a 24-hex id. [closes S3]
+  exposes short block labels **in outline mode — full body-bearing reads
+  carry full 24-hex block ids (C4/T7), so the wrapper relabels them
+  itself** (labels are unique suffixes; every write path resolves suffixes
+  unconditionally via `matchBlockRef`, so labels pass straight through
+  writes). The wrapper resolves handles/labels → CIDs, with the §7.4
+  ambiguity retry. The model never sees or emits a 24-hex id. [closes S3]
 
-### 7.2 Tool set (~9; flat, grammar-constrainable args)
+### 7.2 Tool set (~10; flat, grammar-constrainable args)
 
 | Tool | Args (flat) | Backing primitive | Channel notes |
 |---|---|---|---|
-| `find` | `space, query?, type?, filter?, limit?` | Phase 4 search | filter = string form; results are enumerated handles + minimal fields |
-| `read` | `object, mode=full\|outline` | Phase 1 read | returns short block labels; `full` includes text |
-| `describe` | `type` | Phase 1 `types/{type}/schema?flavor=table` | the accuracy lever, **called before create/set** (folds A1 into the flow) |
-| `create` | `space, type, name, properties?, markdown?` | Phase 2 create | `type`/options validated with did-you-mean; no silent create-missing (A2) |
-| `set_properties` | `object, {key: value}` | `setProperties` op | server coerces scalar→array, `@me`, relative dates |
-| `add_blocks` | `object, after?\|under?, markdown` | `insertBlocks` op | **markdown channel**; server parses → flat blocks |
-| `edit_text` | `object, block, find, replace` | `replaceText` op | **anchor channel**; deterministic server replace |
+| `find` | `space, query?, type?, filter?, limit?` | Phase 4 search **[build — the true §7 blocker]** | filter = string form; results are enumerated handles + minimal fields |
+| `read` | `object, mode=full\|outline` | Phase 1 read | outline returns short block labels; `full` carries full block ids the wrapper relabels (§7.1/§7.4) |
+| `describe` | `type` | Phase 1 `types/{type}/schema?flavor=table` **[build — 501 stub today]** | the accuracy lever, **called before create/set** (folds A1 into the flow); interim degraded form assembled wrapper-side (§2 Phase 5) |
+| `create` | `space, type, name, properties?, markdown?` | Phase 2 create | type and property keys validated with did-you-mean; **select option names create-missing by default (R9/§8.1)** — the small-tier pre-validation guard is wrapper-side (§7.4); markdown caveats until the parser lands (below) |
+| `set_properties` | `object, set?{key: value}, add?{key: […]}, remove?{key: […]}` | `setProperties` op incl. per-key `add`/`remove` (§8.3) | mirrors the op so a one-tag append never rewrites the whole array (the op's entire rationale — reintroducing the read→rewrite→write trap at the wrapper layer would defeat it); `add` on a non-empty select errors, steering to `set`; scalar→array coercion is server-side |
+| `check_item` | `object, block, checked` | `updateBlock` op | the one block-field tool: checkbox **blocks** are a common note shape and `updateBlock` is THE block-update op post-§8.3; other block-field updates (color/align/language/retype) stay excluded — SKILL.md steers task completion to properties (the E4 recipe) |
+| `add_blocks` | `object, after?\|under?, markdown` | `insertBlocks` op, `markdown` payload **[build]** | **markdown channel**; server parses → flat blocks (§7.1) |
+| `edit_text` | `object, block, find, replace` | `replaceText` op | **anchor channel**; deterministic server replace; find/replace text is markup source until D′1 lands (§7.1) |
 | `set_cell` | `table, row, col, value` | `setCell` op | flat cell write |
 | `move_block` / `delete_block` | `object, block, after?\|under?` / `object, block, recursive?` | `moveBlock`/`deleteBlock` ops | handle-addressed |
 
@@ -469,7 +734,22 @@ Excluded from the wrapper: PUT full-document replace (the DELEGATE-52
 corruption vector — REST-only, large models), multi-op batch (single tool
 call per intent), the structured `filters` array (recursive, not
 constrained-decodable — string only), relative-indent authoring (markdown
-channel replaces it).
+channel replaces it), block-field updates beyond `checked` (deliberate
+curation, recorded so the gap is not read as an artifact of the
+replaceBlock-era table), object archive (no v2 route yet — §2 Phase 1
+[build]), set building (`POST /sets` is the REST path; the "build a set
+with filter" eval task runs on the REST surface, not the wrapper).
+
+**Create-with-markdown caveats (until the markdown→flat-blocks parser
+lands).** As built, `create` with markdown is two server-side operations
+(create snapshot, then v1 BlockPaste — §8.1): dry runs validate
+type/properties only and say so in a warning; a paste failure after a
+successful create returns 5xx with a half-built object; and C8 caches only
+2xx results, so a blind same-key retry would create a second object. The
+wrapper must surface the created id from the error path and never
+blind-retry the composite. All three caveats dissolve when the parser folds
+markdown into the single-change-set create — another reason it is the
+load-bearing Phase-5 build item.
 
 ### 7.3 What the wrapper does NOT let us skip
 
@@ -481,20 +761,64 @@ channel replaces it).
    function-calling (Ollama/llama.cpp GBNF) needs the *tool* schemas
    grammar-emittable; C13 applies to the small flat tool args here instead of
    the recursive block tree. The wrapper serves a GBNF/CFG artifact per tool
-   (a Phase-5 build item), including the filter-string grammar for `find`.
-3. **Server conveniences owned by the handler** — `@me` (+ `GET /members/me`),
-   relative-date resolution on property values, scalar→array coercion,
-   validate-not-create-missing, and If-Match/Idempotency-Key management
-   (the model authors none of these; the wrapper does).
+   (a Phase-5 build item), including the filter-string grammar for `find` —
+   **sequenced after the Phase-4 parser pins the grammar** (§6.2.1's design
+   is the source; no GBNF or JSON-Schema→grammar seam exists anywhere yet).
+3. **Conveniences, placed** — scalar→array coercion is **already served**
+   (`anyblockjson.UnmarshalPropertyValue` wraps scalars of list-shaped
+   formats; every write path routes through it — not wrapper work). Still
+   to build, placement decided: `GET /v2/spaces/{spaceId}/members/me`
+   **server-side** (only the server knows the account identity — the same
+   identity Phase 4's placeholder substitution uses); `@me` sentinel
+   resolution and relative-date math **in the wrapper handler** (simplest,
+   matches this section's framing — the REST value path stays literal).
+   Option-name accuracy for the small tier is a **wrapper-side
+   pre-validation pass** (§7.4) — the REST primitives create missing
+   select option names by design (R9/§8.1), so the A2 guard the wrapper
+   wants must sit in front of them, not be assumed of them.
+   If-Match/Idempotency-Key management stays wrapper-owned (the model
+   authors none of these).
 
 ### 7.4 New build items for the wrapper
 
-Beyond §3's list: markdown→flat-blocks parser (`add_blocks` authoring
-channel) · handle↔CID resolver (reference channel) · per-tool GBNF/CFG
-artifacts · `@me` self-resolution · relative-date input resolution. These
-join `replaceText`/`setCell` (now launch ops) and the filter-string parser
-(now a launch dependency) as the small-model launch set. Benchmark **B4**
-tunes the wrapper's tool descriptions / SKILL guidance per model tier.
+Beyond §3's list:
+
+- **markdown→flat-blocks parser** — the `insertBlocks` `markdown` payload
+  alternative (§7.1; also dissolves the create-shortcut caveats in §7.2).
+- **handle↔CID resolver, fully stated**: (a) *handle state outlives a CLI
+  invocation* — persisted in a session file (scratch dir, keyed by space),
+  written by `find`, read by the id-taking verbs, invalidated/renumbered
+  by each new `find`; the MCP delivery keeps the same table in memory.
+  (Alternative considered: stateless short unique object-id prefixes
+  resolved server-side like block suffixes — a simpler state story, but
+  handles stop being small stable integers and prefixes grow with the
+  space; revisit if the session file proves fragile under concurrent
+  harnesses.) (b) *wrapper-side relabeling of full-read block ids* — full
+  body-bearing reads carry full ids (C4/T7; the S3 `?ids=compact` shape
+  was consciously not adopted), so the wrapper relabels and keeps the
+  label→full-id map. (c) *suffix pass-through* as the write mechanism
+  (`matchBlockRef` resolves unique suffixes on every op). (d) *the
+  ambiguity retry* — a suffix unique at read time can become ambiguous
+  after inserts, producing a 400 `ambiguous_input` a small model cannot
+  answer; the wrapper transparently retries with the retained full id.
+- **wrapper-side option-name pre-validation** (the A2 guard for the small
+  tier): `GET /properties/{key}/options` + did-you-mean before
+  `create`/`set_properties`, stated as wrapper logic the REST primitive
+  does not perform (R9/§8.1 create-missing stands on REST).
+- **per-tool GBNF/CFG artifacts** — after the Phase-4 parser pins the
+  filter grammar; keep the served op/tool schemas' `$ref`/`$defs` style
+  within what the chosen GBNF converter supports, and assert
+  convertibility by test to keep C13 honest.
+- **`@me` self-resolution** (+ server-side `GET /members/me`) ·
+  **relative-date input resolution** (placement per §7.3 item 3).
+- **the D′1 escape decision** for `edit_text` (§7.1 — escape `replace` for
+  text-bearing blocks, or plain-text find/replace with offset-shifted
+  marks; a named Phase-5 dependency for the small tier).
+
+These join `replaceText`/`setCell` (launch ops) and the filter-string
+parser (a launch dependency) as the small-model launch set. Benchmark
+**B4** tunes the wrapper's tool descriptions / SKILL guidance per model
+tier.
 
 ## 8. Implementation notes (v0.3.1 — closes Phase-0/1 gaps for a fresh build)
 
@@ -507,17 +831,20 @@ new route group under the same middleware stack (Recovery / Metadata /
 Logger / Pagination / Cache / Auth / RateLimit / Analytics) and the same
 layering as v1 (handlers in `core/api/handler`, services in
 `core/api/service`, DTOs in `core/api/model`, routes in
-`core/api/server/routes.go`; follow `core/api/CLAUDE.md` — fixture pattern,
+`core/api/server/router.go`; follow `core/api/CLAUDE.md` — fixture pattern,
 mockery, error wrapping). **Auth is shared with v1**: `/v2` reuses the v1
 bearer token, api-key, and challenge endpoints and the Auth middleware — no
 new auth surface. Pagination is offset/limit as in v1.
 
 **etag (C7), concrete.** The agent-facing token = first 8 hex of
-`sha256(sorted object tree heads)` (`sb.source.Heads()` on the live
-smartblock). Returned as the `ETag` header and the envelope `etag`. `If-Match`
-comparison is done server-side against the **full** head-set (the 8-char form
-is display only). It is NOT the `revision` relation. Advisory by default
-(C7): absent `If-Match` ⇒ last-write-wins.
+`sha256(sorted object tree heads)` (heads via `sb.GetDocInfo().Heads` in
+the adapter, captured under the same locked read as the snapshot). Returned
+as the `ETag` header and the envelope `etag`. `If-Match` comparison runs
+server-side against the **full** head-set hash; **the 8-char display form
+is accepted as its prefix**, so the etag a GET returned can be sent back
+verbatim in `If-Match` (quoted, `W/`-prefixed and bare forms are all
+normalized — RFC 7232). It is NOT the `revision` relation. Advisory by
+default (C7): absent `If-Match` ⇒ last-write-wins.
 
 **Read path (C5/Phase 1), concrete.** Read via the **live smartblock state**
 → snapshot → `anyblockjson.Marshal` with objectstore-backed
@@ -643,11 +970,15 @@ the one place a create takes two change sets, accepted as a convenience
 until the markdown→flat-blocks parser (Phase-5 build item) exists; dry runs
 validate type/properties only and say so in `warnings`.
 
-**Idempotency hash covers the query string.** `(space, key)` →
-`sha256(body ‖ 0x00 ‖ rawQuery)`: a cached `?dry_run=true` result must never
-replay as its later real twin — same key with a different query is a 409
-`idempotency_conflict`, per C8's "different body" rule read as "different
-request".
+**Idempotency hash identifies the whole request** (corrected in v0.4 to the
+shipped formula): `(space, key)` → `sha256(method ‖ 0x00 ‖ path ‖ 0x00 ‖
+rawQuery ‖ 0x00 ‖ body)`. The query inclusion means a cached `?dry_run=true`
+result never replays as its later real twin; the method+path inclusion is
+equally load-bearing and agent-visible — one key reused across two
+byte-identical PATCHes to *different objects* (the object id lives in the
+path) 409s instead of silently replaying the first object's success. Same
+key with any differing part is a 409 `idempotency_conflict`, per C8's
+"different body" rule read as "different request".
 
 **Discovery (§5) as shipped.** `GET /v2/schemas` + `/v2/schemas/{kind}` for
 kinds `object · shortcut · type · template · property · set · collection ·
@@ -713,38 +1044,47 @@ internal wrapper blocks are re-minted — accepted churn, strictly less
 than v0.3.3's whole-document reimport). addItems/removeItems →
 `st.GetStoreSlice("objects")`/`UpdateStoreSlice`.
 
-**R5 post-op validity without the whole-document Validate.** V1
-monotonicity is now structural — a state tree has no indent arithmetic to
-get wrong — plus the unchanged payload-run monotonicity pre-check.
-Fragment payloads are validated by wrapping the run in a minimal
-synthetic page document and running the format's document validation
-(so the §5 shape checks apply verbatim); a failure rejects the whole
-PATCH under the unchanged message "the ops would produce an invalid
-document — no op was applied", with fragment-relative block paths.
-Structural block types (`title`/`description`/`featuredProperties`) are
-rejected explicitly in payloads (the whole-document import would have
-absorbed them silently), and no primary-dataview pinning happens on
-fragments. Id uniqueness — v0.3.3's V5 net — is an explicit check
-against the live state and the PATCH's own claims, with op-shaped
-`ops[i].blocks[j].id` paths (an improvement over the old document
-paths); it also covers ids the format keeps out of the document (table
-internals, structural blocks), which the old net could not see. The
-op-shaped pre-checks (cycle, leaf containment, delete-without-recursive,
-leaf-anchor) are unchanged, running against the view. Two knowingly
-dropped document-level checks: total nesting depth beyond the format
-bound and cross-op invariants no single fragment can violate — the
-editor itself has no such limits, and the read side clamps depth (C11
-warning). A **debug-gated safety net** (`ANYTYPE_API_V2_VALIDATE_EDITS=1`)
-marshals + validates the would-be document read-only after the ops and
-logs (never fails) any issue.
+**R5 post-op validity: fragment pre-checks + the restored whole-document
+net** (corrected in v0.4 — the previous text described a dropped-checks
+draft with an opt-in log-only net that never shipped; the shipped design
+is review B′3's, see §8.3). V1 monotonicity is structural — a state tree
+has no indent arithmetic to get wrong — plus the unchanged payload-run
+monotonicity pre-check. Fragment payloads are validated by wrapping the
+run in a minimal synthetic page document and running the format's
+document validation (so the §5 shape checks apply verbatim); a failure
+rejects the whole PATCH under the unchanged message "the ops would
+produce an invalid document — no op was applied", with fragment-relative
+block paths. Structural block types
+(`title`/`description`/`featuredProperties`) are rejected explicitly in
+payloads (the whole-document import would have absorbed them silently),
+and no primary-dataview pinning happens on fragments. Id uniqueness —
+v0.3.3's V5 net — is an explicit check against the live state and the
+PATCH's own claims, with op-shaped `ops[i].blocks[j].id` paths (an
+improvement over the old document paths); it also covers ids the format
+keeps out of the document (table internals, structural blocks), which
+the old net could not see. The op-shaped pre-checks (cycle, leaf
+containment, delete-without-recursive, leaf-anchor) are unchanged,
+running against the view. **On top of the pre-checks, the R5
+whole-document net is ON by default and rejecting**:
+`anyblockjson.Validate` runs on the marshaled would-be after-document —
+nearly free, since the after-document is already marshaled for
+diffStats — restoring the invariants no single fragment can see (V3
+row→column containment, the document-wide id domain, the absolute
+nesting bound). A failure rejects the whole PATCH under the same
+message. `ANYTYPE_API_V2_SKIP_EDIT_VALIDATE=1` is the **debug-only
+disable** (for a suspected false rejection); there is no log-only mode.
 
 **Create-missing runs before the lock (v0.3.4, review B6/A6).** The only
 create surface in PATCH payloads is setProperties select/multiSelect
 option names; a lenient pre-pass resolves (and creates) them before
 `MutateObject`, so no create-RPC ever runs while holding the edited
 object's lock. In-lock resolution hits the resolver cache. Trade-off,
-documented: an op that fails validation later can now leave an option
-created (v0.3.3 leaked the same way for post-Unmarshal failures).
+documented — and narrowed in v0.3.5 (review A′1, §8.3): the prewarm now
+runs only after the object read and the precondition checks pass, so the
+leak is confined to ops that fail **validation** later; a PATCH to a
+nonexistent/restricted object or with a stale If-Match no longer creates
+the options it named (v0.3.3 leaked the same way for post-Unmarshal
+failures).
 
 **diffStats stay the canonical document diff.** Considered and rejected:
 deriving them from `st.GetChanges()` — the change list only exists after
@@ -829,7 +1169,7 @@ an `ops` list.
 
 ### 8.3 Phase-3 revisions (v0.3.5 — pre-release design review, decisions as built)
 
-Four contract changes from the modification-surface design review, taken
+Six contract changes from the modification-surface design review, taken
 while the API is unreleased and breaking changes are cheap.
 
 **Root targeting for `insertBlocks`/`moveBlock`.** Omitting all of
@@ -872,11 +1212,34 @@ a key in more than one of set/unset/add/remove is a path-addressed error.
 The empty-op error is now "setProperties needs at least one of set, unset,
 add, remove".
 
-**Idempotency-Key covers PATCH and PUT (C8 widened).** The store, body+query
+**Idempotency-Key covers PATCH and PUT (C8 widened).** The store, request
 hash, in-flight reservation and replay were POST-only wiring; agents
 auto-retry on timeout, and PATCH is where a blind retry does damage (a
 retried successful `insertBlocks` duplicates blocks; a retried `deleteBlock`
 404s misleadingly). The middleware now acts on POST, PATCH and PUT and is
 registered on the object PATCH/PUT routes and the types/properties PATCH
-routes. Semantics unchanged: same key + same body+query ⇒ replay; different
-body/query ⇒ 409 `idempotency_conflict`; only 2xx results are cached.
+routes. Semantics unchanged: same key + same request (the §8.1 hash —
+method ‖ path ‖ query ‖ body) ⇒ replay; any differing part ⇒ 409
+`idempotency_conflict`; only 2xx results are cached.
+
+**The R5 whole-document net restored (review B′3).** The state pipeline's
+fragment validation cannot see invariants that span the spliced result —
+V3 row→column containment, the document-wide id domain, the absolute
+nesting bound — so the whole-document `anyblockjson.Validate` runs on the
+marshaled would-be after-document **by default** and **rejects** the PATCH
+on failure (same agent-facing message; nearly free — the after-document is
+already marshaled for diffStats). `ANYTYPE_API_V2_SKIP_EDIT_VALIDATE=1` is
+the debug-only disable. §8.2's post-op-validity paragraph is corrected
+accordingly (it previously described a dropped-checks draft with an opt-in
+log-only net that never shipped).
+
+**Edit-path ordering and dry-run parity (reviews A′1/C′3).**
+`apicore.ObjectRead` carries `EditRefused` — the object-level restriction
+verdict captured under the same locked read as the snapshot and heads —
+checked before the prewarm and on dry runs, so a dry run reaches the same
+403 the adapter would return (C9's dry≡real contract now covers
+restrictions). And the create-missing prewarm runs only AFTER the object
+read and the precondition checks pass (read → preconditions → prewarm →
+lock): a PATCH to a nonexistent or restricted object, or with a stale
+If-Match, no longer creates the options it named — §8.2's documented
+option-leak trade-off is thereby narrowed to validation failures only.
