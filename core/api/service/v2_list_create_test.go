@@ -116,19 +116,77 @@ func TestV2CreateSet(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "not both")
 	})
 
-	t.Run("the compact filter string is not implemented yet", func(t *testing.T) {
+	t.Run("the compact filter string parses into the stored structured array", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		captured := fx.expectCreate("newSet")
+		fx.expectEtagRead("newSet")
+
+		// when
+		result, err := fx.CreateSet(context.Background(), testSpaceId, apimodel.V2CreateSetRequest{
+			Name:   "High chores",
+			Type:   "chore",
+			Filter: `severity IN ("High") AND name CONTAINS "fix"`,
+		}, false)
+
+		// then — the set document stores the structured array (SPEC §6.2.1:
+		// the document field `filter` stays reserved; export writes filters)
+		require.NoError(t, err)
+		assert.Equal(t, "newSet", result.Id)
+		snapshot := *captured
+		require.NotNil(t, snapshot)
+		dv := snapshot.Blocks[1].GetDataview()
+		require.NotNil(t, dv)
+		require.Len(t, dv.Views, 1)
+		filters := dv.Views[0].Filters
+		require.Len(t, filters, 2)
+		assert.Equal(t, "severity", filters[0].RelationKey)
+		assert.Equal(t, model.BlockContentDataviewFilter_In, filters[0].Condition)
+		assert.Equal(t, []string{"opt-high"}, pbtypes.GetStringListValue(filters[0].Value),
+			"the option NAME in the string resolves to the existing option id")
+		assert.Equal(t, "name", filters[1].RelationKey)
+		assert.Equal(t, model.BlockContentDataviewFilter_Like, filters[1].Condition)
+	})
+
+	t.Run("a filter-string parse error is offset-addressed with did-you-mean", func(t *testing.T) {
 		// given
 		fx := setup(t)
 
-		// when
+		// when — "sevirity" is a typo of the type's "severity"
 		_, err := fx.CreateSet(context.Background(), testSpaceId, apimodel.V2CreateSetRequest{
-			Name: "X", Type: "chore", Filter: `done = false`,
+			Name: "X", Type: "chore", Filter: `sevirity IN ("High")`,
 		}, false)
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, http.StatusNotImplemented, apiErr.Status)
-		assert.Contains(t, apiErr.Message, "filters")
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/filter", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `parse error at offset 0 near "sevirity"`)
+		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "sevirity"`)
+		assert.Equal(t, "did you mean severity?", apiErr.Issues[0].Hint)
+	})
+
+	t.Run("system keys pass the sets reference set (rule 2)", func(t *testing.T) {
+		// given
+		fx := setup(t)
+		captured := fx.expectCreate("newSet")
+		fx.expectEtagRead("newSet")
+
+		// when — lastModifiedDate is in no type's recommended lists
+		result, err := fx.CreateSet(context.Background(), testSpaceId, apimodel.V2CreateSetRequest{
+			Name: "Fresh chores", Type: "chore",
+			Filter: `lastModifiedDate > daysAgo(7)`,
+		}, false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "newSet", result.Id)
+		dv := (*captured).Blocks[1].GetDataview()
+		require.Len(t, dv.Views[0].Filters, 1)
+		assert.Equal(t, "lastModifiedDate", dv.Views[0].Filters[0].RelationKey)
+		assert.Equal(t, model.BlockContentDataviewFilter_NumberOfDaysAgo, dv.Views[0].Filters[0].QuickOption)
 	})
 
 	t.Run("views with top-level filters are ambiguous_input", func(t *testing.T) {

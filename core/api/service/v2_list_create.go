@@ -10,10 +10,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -42,13 +44,8 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req apimodel.
 			apimodel.V2Issue{Path: "/filter", Message: "conflicts with filters"},
 			apimodel.V2Issue{Path: "/filters", Message: "conflicts with filter"})
 	}
-	if req.Filter != "" {
-		// the compact filter string is the Phase-4 parser build item
-		return nil, apimodel.NewV2Error(501, apimodel.V2CodeNotImplemented,
-			"the compact filter string is not implemented yet — use the structured filters array (SPEC §6.2)")
-	}
-	if len(req.Views) > 0 && (len(req.Filters) > 0 || len(req.Sorts) > 0) {
-		return nil, apimodel.V2AmbiguousInput("provide views or top-level filters/sorts, not both",
+	if len(req.Views) > 0 && (req.Filter != "" || len(req.Filters) > 0 || len(req.Sorts) > 0) {
+		return nil, apimodel.V2AmbiguousInput("provide views or top-level filter/filters/sorts, not both",
 			apimodel.V2Issue{Path: "/views", Message: "views carry their own filters and sorts"})
 	}
 
@@ -57,6 +54,27 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req apimodel.
 	typeId, ok := s.typeIdInSpace(spaceId, req.Type)
 	if !ok {
 		return nil, s.unknownTypeKeyError(spaceId, req.Type, "/type")
+	}
+
+	// the compact filter string (SPEC §6.2.1) parses to the structured array
+	// through the same reference set the structured form is validated
+	// against; the set document stores the structured array (export keeps
+	// writing it — the document field `filter` stays reserved post-v1).
+	// Option names are deliberately NOT parse-validated here: a set create is
+	// a WRITE, where select option names create-missing (R9/§8.1) — unlike
+	// the read-only query path.
+	if req.Filter != "" {
+		refKeys := appendMissing(append(s.typePropertyKeys(spaceId, typeId), "name"), v2SystemQueryKeys...)
+		sort.Strings(refKeys)
+		parsed, err := filterstring.Parse(req.Filter, filterstring.Options{
+			KnownKeys:     refKeys,
+			ResolveFormat: s.formatNameResolver(spaceId),
+		})
+		if err != nil {
+			return nil, filterStringError(err)
+		}
+		req.Filter = ""
+		req.Filters = parsed
 	}
 
 	// R9 referential validation: every property key the view addresses must
@@ -214,13 +232,20 @@ func collectFilterKeys(nodes []filterNodeProbe, path string, refs *[]viewKeyRef)
 }
 
 // validateViewKeys rejects filter/sort/view property keys the type lacks —
-// the R9 error lists the type's actual keys.
+// the R9 error lists the type's actual keys. The Phase-4 system-key
+// allowlist (createdDate, lastModifiedDate, creator, lastOpenedDate) is
+// always part of the reference set: those keys appear in no type's
+// recommended lists yet back bread-and-butter queries (rule 2 — the
+// widening of the shipped R9 sets rule).
 func (s *V2Service) validateViewKeys(spaceId, typeId, typeKey string, refs []viewKeyRef) error {
 	if len(refs) == 0 {
 		return nil
 	}
 	typeKeys := s.typePropertyKeys(spaceId, typeId)
 	allowed := map[string]bool{"name": true} // universal
+	for _, key := range v2SystemQueryKeys {
+		allowed[key] = true
+	}
 	for _, key := range typeKeys {
 		allowed[key] = true
 	}
