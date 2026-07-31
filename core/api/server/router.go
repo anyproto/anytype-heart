@@ -127,6 +127,33 @@ func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommand
 		ensureAnalyticsEvent("V2ListPropertyOptions", eventService),
 		handler.ListPropertyOptionsV2Handler(srv.v2Service),
 	)
+	// Phase-4 query surface. Search is a READ (POST only because the request
+	// needs a body): no idempotency middleware, no write rate limit, and the
+	// group-level dry-run middleware's flag is ignored by the handlers.
+	v2.POST("/search",
+		ensureAnalyticsEvent("V2GlobalSearch", eventService),
+		handler.GlobalSearchObjectsV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces/:space_id/search",
+		ensureAnalyticsEvent("V2Search", eventService),
+		handler.SearchObjectsV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/sets/:set_id/objects",
+		ensureAnalyticsEvent("V2GetSetObjects", eventService),
+		handler.GetSetObjectsV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/sets/:set_id/views",
+		ensureAnalyticsEvent("V2GetSetViews", eventService),
+		handler.GetSetViewsV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/collections/:collection_id/objects",
+		ensureAnalyticsEvent("V2GetCollectionObjects", eventService),
+		handler.GetCollectionObjectsV2Handler(srv.v2Service),
+	)
+	v2.GET("/spaces/:space_id/collections/:collection_id/views",
+		ensureAnalyticsEvent("V2GetCollectionViews", eventService),
+		handler.GetCollectionViewsV2Handler(srv.v2Service),
+	)
 	v2.GET("/schemas",
 		ensureAnalyticsEvent("V2ListSchemas", eventService),
 		handler.SchemaIndexV2Handler(srv.v2Service),

@@ -22,6 +22,7 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/storeresolver"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore/spaceindex"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/space"
 )
@@ -452,49 +453,78 @@ func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []st
 		records = records[:limit]
 	}
 
-	typeKeys, err := s.typeKeysById(spaceId)
+	builder, err := s.newObjectRowBuilder(spaceId, fields)
 	if err != nil {
 		return nil, 0, false, err
 	}
-	var opts anyblockjson.Options
-	if len(fields) > 0 {
-		opts = storeresolver.New(index).Options()
-	}
-
 	rows := make([]apimodel.V2ObjectRow, 0, len(records))
 	for _, record := range records {
-		typeId := record.Details.GetString(bundle.RelationKeyType)
-		typeKey := typeKeys[typeId]
-		if typeKey == "" && typeId != "" {
-			// the bulk map misses edge type ids (hidden/bundled); resolve the
-			// one type object directly so no row carries an empty type (C5).
-			if det, err := index.GetDetails(typeId); err == nil {
-				if k, err := domain.GetTypeKeyFromRawUniqueKey(det.GetString(bundle.RelationKeyUniqueKey)); err == nil {
-					typeKey = string(k)
-				}
-			}
-			typeKeys[typeId] = typeKey // memoize (including "" to avoid re-querying)
-		}
-		row := apimodel.V2ObjectRow{
-			Id:   record.Details.GetString(bundle.RelationKeyId),
-			Name: record.Details.GetString(bundle.RelationKeyName),
-			Type: typeKey,
-		}
-		if len(fields) > 0 {
-			values := map[string]any{}
-			proto := record.Details.ToProto()
-			for _, key := range fields {
-				if v, ok := proto.Fields[key]; ok {
-					values[key] = anyblockjson.MarshalPropertyValue(key, v, opts)
-				}
-			}
-			if len(values) > 0 {
-				row.Properties = values
-			}
-		}
-		rows = append(rows, row)
+		rows = append(rows, builder.row(record))
 	}
 	return rows, total, hasMore, nil
+}
+
+// objectRowBuilder assembles C5 minimal rows (id, name, type + requested
+// property values) for one space, caching the type-key map and the property
+// resolvers across rows. Shared by the object list, the query surface and
+// the set/collection reads.
+type objectRowBuilder struct {
+	index    spaceindex.Store
+	typeKeys map[string]string
+	fields   []string
+	opts     anyblockjson.Options
+	spaceId  string // set on rows only when includeSpaceId (global search)
+
+	includeSpaceId bool
+}
+
+func (s *V2Service) newObjectRowBuilder(spaceId string, fields []string) (*objectRowBuilder, error) {
+	typeKeys, err := s.typeKeysById(spaceId)
+	if err != nil {
+		return nil, err
+	}
+	index := s.store.SpaceIndex(spaceId)
+	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId}
+	if len(fields) > 0 {
+		b.opts = storeresolver.New(index).Options()
+	}
+	return b, nil
+}
+
+func (b *objectRowBuilder) row(record database.Record) apimodel.V2ObjectRow {
+	typeId := record.Details.GetString(bundle.RelationKeyType)
+	typeKey, cached := b.typeKeys[typeId]
+	if !cached && typeId != "" {
+		// the bulk map misses edge type ids (hidden/bundled); resolve the
+		// one type object directly so no row carries an empty type (C5).
+		if det, err := b.index.GetDetails(typeId); err == nil {
+			if k, err := domain.GetTypeKeyFromRawUniqueKey(det.GetString(bundle.RelationKeyUniqueKey)); err == nil {
+				typeKey = string(k)
+			}
+		}
+		b.typeKeys[typeId] = typeKey // memoize (including "" to avoid re-querying)
+	}
+	row := apimodel.V2ObjectRow{
+		Id:   record.Details.GetString(bundle.RelationKeyId),
+		Name: record.Details.GetString(bundle.RelationKeyName),
+		Type: typeKey,
+	}
+	if b.includeSpaceId {
+		row.SpaceId = b.spaceId
+	}
+	if len(b.fields) > 0 {
+		values := map[string]any{}
+		proto := record.Details.ToProto()
+		for _, key := range b.fields {
+			if v, ok := proto.Fields[key]; ok {
+				values[key] = anyblockjson.MarshalPropertyValue(key, v, b.opts)
+			}
+		}
+		if len(values) > 0 {
+			row.Properties = values
+		}
+	}
+	return row
 }
 
 // typeKeysById maps type object ids to type keys — rows carry the type key

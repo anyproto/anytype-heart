@@ -84,14 +84,17 @@ func V2VersionUnsupported(documentVersion, supportedVersion int) *V2Error {
 }
 
 // V2ListResponse is the C10 paginated list envelope: default limit 25,
-// has_more, and a steering message when the result is truncated.
+// has_more, and a steering message when the result is truncated. Warnings
+// carry warning-grade C6 issues (C11 — e.g. the unguarded-date-comparison
+// hazard on search, or spaces a global search skipped).
 type V2ListResponse[T any] struct {
-	Data    []T    `json:"data"`
-	Total   int    `json:"total"`
-	Offset  int    `json:"offset"`
-	Limit   int    `json:"limit"`
-	HasMore bool   `json:"has_more"`
-	Message string `json:"message,omitempty"`
+	Data     []T       `json:"data"`
+	Total    int       `json:"total"`
+	Offset   int       `json:"offset"`
+	Limit    int       `json:"limit"`
+	HasMore  bool      `json:"has_more"`
+	Message  string    `json:"message,omitempty"`
+	Warnings []V2Issue `json:"warnings,omitempty"`
 }
 
 // NewV2ListResponse assembles the envelope and, when truncated, the C10
@@ -108,11 +111,13 @@ func NewV2ListResponse[T any](data []T, total, offset, limit int, hasMore bool, 
 }
 
 // V2ObjectRow is the C5 minimal list row: id, name, type (a type key) plus
-// requested property values.
+// requested property values. SpaceId is set only on global search rows —
+// the addressing info a follow-up space-scoped read needs.
 type V2ObjectRow struct {
 	Id         string         `json:"id"`
 	Name       string         `json:"name"`
 	Type       string         `json:"type"`
+	SpaceId    string         `json:"spaceId,omitempty"`
 	Properties map[string]any `json:"properties,omitempty"`
 }
 
@@ -258,6 +263,25 @@ type V2FileUploadResult struct {
 }
 
 //
+// ---- Phase 4: query surface ----
+//
+
+// V2SearchRequest is the POST search body (space-scoped and global). filter
+// (the compact string, SPEC §6.2.1) and filters (the structured §6.2 array)
+// are mutually exclusive — both → 400 ambiguous_input; both land on one
+// internal tree. Pagination is the C10 query params (offset/limit) — a body
+// limit is rejected by the strict request schema. Search is a read: exempt
+// from Idempotency-Key, and a supplied dry_run is ignored.
+type V2SearchRequest struct {
+	Query   string          `json:"query,omitempty"`
+	Type    string          `json:"type,omitempty"`
+	Filter  string          `json:"filter,omitempty"`
+	Filters json.RawMessage `json:"filters,omitempty"`
+	Sorts   json.RawMessage `json:"sorts,omitempty"`
+	Fields  []string        `json:"fields,omitempty"`
+}
+
+//
 // ---- Phase 3: edit surface ----
 //
 
@@ -286,12 +310,17 @@ type V2EditResult struct {
 }
 
 // V2SchemaEntry is one GET /v2/schemas/{kind} payload: the strict-mode
-// generation schema (C13) plus one worked example (C12).
+// generation schema (C13) plus one worked example (C12). The filters kind
+// additionally carries the compact filter-string grammar (EBNF + examples) —
+// one concept, one discovery slot (§5), the artifact the Phase-5 GBNF
+// conversion consumes.
 type V2SchemaEntry struct {
-	Kind     string          `json:"kind"`
-	Endpoint string          `json:"endpoint"`
-	Schema   json.RawMessage `json:"schema"`
-	Example  json.RawMessage `json:"example"`
+	Kind            string          `json:"kind"`
+	Endpoint        string          `json:"endpoint"`
+	Schema          json.RawMessage `json:"schema"`
+	Example         json.RawMessage `json:"example"`
+	Grammar         string          `json:"grammar,omitempty"`
+	GrammarExamples []string        `json:"grammarExamples,omitempty"`
 }
 
 // V2SchemaIndex is the GET /v2/schemas payload. Ops lists the Phase-3 PATCH

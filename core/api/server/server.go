@@ -46,6 +46,10 @@ type V2Deps struct {
 	Creator apicore.ObjectCreator
 	Mutator apicore.ObjectMutator
 	Store   objectstore.ObjectStore
+	// AccountId is the caller's account identity, used by Phase 4's
+	// stored-view placeholder substitution (`_filter_template_2_` → the
+	// caller's participant id). Empty degrades the placeholder to a warning.
+	AccountId string
 }
 
 // NewServer constructs a new Server with the default config and sets up the routes.
@@ -61,7 +65,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		chatSubSvc: chatSubSvc,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = service.NewV2Service(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Store, techSpaceId)
+		s.v2Service = service.NewV2Service(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 	}

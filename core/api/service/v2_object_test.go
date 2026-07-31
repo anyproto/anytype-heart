@@ -26,6 +26,9 @@ import (
 
 const (
 	testSpaceId = "space1"
+	// testAccountId feeds the §6.2 current-user placeholder substitution
+	// (Phase 4): _participant_<space>_<account>.
+	testAccountId = "accountA"
 )
 
 type v2Fixture struct {
@@ -47,7 +50,7 @@ func newV2FixtureBare(t *testing.T) *v2Fixture {
 	mutatorMock := mock_apicore.NewMockObjectMutator(t)
 	objectStore := objectstore.NewStoreFixture(t)
 	return &v2Fixture{
-		V2Service:   NewV2Service(mwMock, readerMock, creatorMock, mutatorMock, objectStore, objectstore.TestTechSpaceId),
+		V2Service:   NewV2Service(mwMock, readerMock, creatorMock, mutatorMock, objectStore, objectstore.TestTechSpaceId, testAccountId),
 		mwMock:      mwMock,
 		readerMock:  readerMock,
 		creatorMock: creatorMock,

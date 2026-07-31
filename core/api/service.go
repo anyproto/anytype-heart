@@ -114,6 +114,18 @@ func (s *apiService) Run(ctx context.Context) error {
 	return nil
 }
 
+// accountId returns the caller's account identity for API v2's stored-view
+// placeholder substitution (`_filter_template_2_` → participant id). The
+// apicore.AccountService port only exposes GetInfo, so the richer concrete
+// account component is probed for its AccountID; a foreign implementation
+// degrades to "" (the placeholder then warns instead of resolving).
+func (s *apiService) accountId() string {
+	if withId, ok := s.accountService.(interface{ AccountID() string }); ok {
+		return withId.AccountID()
+	}
+	return ""
+}
+
 func (s *apiService) Close(ctx context.Context) error {
 	if s.srv != nil {
 		s.srv.Stop()
@@ -138,7 +150,7 @@ func (s *apiService) startServer() error {
 		s.crossSpaceSubService,
 		s.chatSubService,
 		s.fileObjectService,
-		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Store: s.objectStore},
+		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Store: s.objectStore, AccountId: s.accountId()},
 		s.listenAddr,
 		openapiYAML,
 		openapiJSON,

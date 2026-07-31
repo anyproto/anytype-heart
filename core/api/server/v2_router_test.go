@@ -118,6 +118,29 @@ func TestV2Routes(t *testing.T) {
 		}
 	})
 
+	t.Run("search is a read: no idempotency middleware on the search routes", func(t *testing.T) {
+		// Phase 4: search is exempt from Idempotency-Key — the middleware is
+		// per-route and deliberately not attached. Its body-size guard fires
+		// pre-auth for keyed requests, so a keyed oversized search reaching
+		// the auth layer (401, not 413) proves the middleware is absent.
+		for _, path := range []string{"/v2/search", "/v2/spaces/space1/search"} {
+			t.Run(path, func(t *testing.T) {
+				fx := newV2ServerFixture(t)
+
+				req := httptest.NewRequest("POST", path,
+					strings.NewReader(strings.Repeat("x", maxV2RequestBody+1)))
+				req.Host = localApiHost
+				req.Header.Set(IdempotencyKeyHeader, "routekey1")
+				w := httptest.NewRecorder()
+
+				fx.Engine().ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusUnauthorized, w.Code,
+					"a keyed oversized search must reach auth — search carries no idempotency middleware")
+			})
+		}
+	})
+
 	t.Run("v2 group absent without deps", func(t *testing.T) {
 		// given: the plain fixture constructs NewServer with V2Deps{}
 		fx := newFixture(t)
@@ -153,6 +176,12 @@ func TestV2Routes(t *testing.T) {
 			{"GET", "/v2/schemas/ops/replaceText"},
 			{"PATCH", "/v2/spaces/space1/objects/obj1"},
 			{"PUT", "/v2/spaces/space1/objects/obj1"},
+			{"POST", "/v2/search"},
+			{"POST", "/v2/spaces/space1/search"},
+			{"GET", "/v2/spaces/space1/sets/set1/objects"},
+			{"GET", "/v2/spaces/space1/sets/set1/views"},
+			{"GET", "/v2/spaces/space1/collections/col1/objects"},
+			{"GET", "/v2/spaces/space1/collections/col1/views"},
 		} {
 			// when
 			w := httptest.NewRecorder()
