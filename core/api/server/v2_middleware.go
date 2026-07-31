@@ -198,13 +198,21 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 			return
 		}
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))
-		// the hash covers body AND query string: a ?dry_run=true request and
-		// its later real twin share a body but are different requests — a
-		// cached dry-run result must never replay as the real one (C8/C9)
+		// The hash identifies the whole request, not just its body:
+		//   - method and path, because PATCH carries the target object in the
+		//     PATH — two byte-identical edits to different objects under one
+		//     reused key would otherwise replay the first object's success
+		//     with its etag, silently leaving the second object unedited
+		//     (no error an agent could repair from);
+		//   - the query string, because a ?dry_run=true request and its later
+		//     real twin share a body but must never replay for each other
+		//     (C8/C9).
 		hasher := sha256.New()
+		for _, part := range []string{c.Request.Method, c.Request.URL.Path, c.Request.URL.RawQuery} {
+			hasher.Write([]byte(part))
+			hasher.Write([]byte{0})
+		}
 		hasher.Write(body)
-		hasher.Write([]byte{0})
-		hasher.Write([]byte(c.Request.URL.RawQuery))
 		bodyHash := hex.EncodeToString(hasher.Sum(nil))
 		spaceId := c.Param("space_id")
 

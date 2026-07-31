@@ -19,6 +19,7 @@ import (
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
+	"github.com/anyproto/anytype-heart/util/pbtypes"
 )
 
 // editBaseDoc is the base test document: a heading, a parent paragraph with
@@ -735,6 +736,42 @@ func TestPatchObject(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, result.Created)
+	})
+
+	t.Run("setProperties add on a select that already has a value is refused", func(t *testing.T) {
+		// select holds ONE value; appending would leave a two-valued
+		// single-select the UI renders arbitrarily. No create expectation:
+		// the guard must fire before the option is minted.
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		read := editRead(t, editBaseDoc)
+		read.Snapshot.Details.Fields["severity"] = pbtypes.StringList([]string{"opt-high"})
+		fx.expectMutate(read)
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","add":{"severity":["High"]}}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		assert.Equal(t, "ops[0].add.severity", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "single value")
+		assert.Contains(t, apiErr.Issues[0].Hint, "use set")
+	})
+
+	t.Run("setProperties add on an EMPTY select is allowed", func(t *testing.T) {
+		// the guard is about overflowing an occupied single slot, not about
+		// forbidding add on selects outright
+		fx := newV2Fixture(t)
+		fx.addSelectProperty(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"setProperties","add":{"severity":["High"]}}`), "", false)
+
+		require.NoError(t, err)
+		props := stateDoc(t, *captured)["properties"].(map[string]any)
+		assert.Equal(t, []any{"opt-high"}, props["severity"],
+			"stateDoc marshals without an option resolver, so the stored id shows")
 	})
 
 	t.Run("setProperties add appends to a multiSelect without duplicating", func(t *testing.T) {

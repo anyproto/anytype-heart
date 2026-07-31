@@ -80,6 +80,44 @@ func TestV2Routes(t *testing.T) {
 		require.Contains(t, w.Body.String(), `"issues":[]`)
 	})
 
+	t.Run("the idempotency middleware is wired on the edit routes", func(t *testing.T) {
+		// the middleware itself is unit-tested, but its REGISTRATION is the
+		// user-visible half of C8 on PATCH/PUT: dropping idempotencyMW from
+		// registerV2EditRoutes would silently stop replay on every edit route
+		// while every other test stayed green. A replayed request is answered
+		// from the store before auth runs, so the marker proves the middleware
+		// is in the chain without needing a full edit to succeed.
+		// The body-size guard lives in the idempotency middleware and fires
+		// only for a keyed mutation, so a keyed oversized request answered
+		// with 413 request_too_large proves the middleware is in that route's
+		// chain — without needing the edit itself to succeed.
+		for _, route := range []struct{ method, path string }{
+			{"PATCH", "/v2/spaces/space1/objects/obj1"},
+			{"PUT", "/v2/spaces/space1/objects/obj1"},
+			{"PATCH", "/v2/spaces/space1/types/task"},
+			{"PATCH", "/v2/spaces/space1/properties/status"},
+		} {
+			t.Run(route.method+" "+route.path, func(t *testing.T) {
+				fx := newV2ServerFixture(t)
+				fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
+				fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+
+				req := httptest.NewRequest(route.method, route.path,
+					strings.NewReader(strings.Repeat("x", maxV2RequestBody+1)))
+				req.Host = localApiHost
+				req.Header.Set("Authorization", "Bearer validKey")
+				req.Header.Set(IdempotencyKeyHeader, "routekey1")
+				w := httptest.NewRecorder()
+
+				fx.Engine().ServeHTTP(w, req)
+
+				require.Equal(t, http.StatusRequestEntityTooLarge, w.Code,
+					"the idempotency middleware must be registered on this route")
+				require.Contains(t, w.Body.String(), `"request_too_large"`)
+			})
+		}
+	})
+
 	t.Run("v2 group absent without deps", func(t *testing.T) {
 		// given: the plain fixture constructs NewServer with V2Deps{}
 		fx := newFixture(t)

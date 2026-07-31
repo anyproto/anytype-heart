@@ -192,6 +192,87 @@ func TestEnsureIdempotency(t *testing.T) {
 		assert.Equal(t, "true", second.Header().Get("Idempotency-Replayed"))
 	})
 
+	t.Run("the same key and body on a DIFFERENT object never replays", func(t *testing.T) {
+		// the target object lives in the PATH, so hashing only the body would
+		// replay object A's success for an edit of object B — leaving B
+		// unedited with a 2xx and A's etag, which no error message can repair
+		gin.SetMode(gin.TestMode)
+		store := newIdempotencyStore(8)
+		calls := 0
+		router := gin.New()
+		router.PATCH("/v2/spaces/:space_id/objects/:object_id", ensureIdempotency(store), func(c *gin.Context) {
+			calls++
+			c.JSON(http.StatusOK, gin.H{"object": c.Param("object_id")})
+		})
+		patch := func(objectId string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodPatch, "/v2/spaces/space1/objects/"+objectId,
+				strings.NewReader(`{"ops":[{"op":"updateBlock","id":"b5","set":{"checked":true}}]}`))
+			req.Header.Set(IdempotencyKeyHeader, "key1")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			return w
+		}
+
+		first := patch("objA")
+		second := patch("objB")
+
+		assert.Equal(t, http.StatusOK, first.Code)
+		assert.Contains(t, first.Body.String(), "objA")
+		assert.Equal(t, http.StatusConflict, second.Code,
+			"a reused key against another object is a conflict, never a replay")
+		assert.Contains(t, second.Body.String(), `"idempotency_conflict"`)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("the same key and body under a different METHOD never replays", func(t *testing.T) {
+		gin.SetMode(gin.TestMode)
+		store := newIdempotencyStore(8)
+		calls := 0
+		router := gin.New()
+		handler := func(c *gin.Context) { calls++; c.JSON(http.StatusOK, gin.H{"m": c.Request.Method}) }
+		router.PATCH("/v2/spaces/:space_id/objects/:object_id", ensureIdempotency(store), handler)
+		router.PUT("/v2/spaces/:space_id/objects/:object_id", ensureIdempotency(store), handler)
+		call := func(method string) *httptest.ResponseRecorder {
+			req := httptest.NewRequest(method, "/v2/spaces/space1/objects/obj1", strings.NewReader(`{"a":1}`))
+			req.Header.Set(IdempotencyKeyHeader, "key1")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			return w
+		}
+
+		assert.Equal(t, http.StatusOK, call(http.MethodPatch).Code)
+		assert.Equal(t, http.StatusConflict, call(http.MethodPut).Code)
+		assert.Equal(t, 1, calls)
+	})
+
+	t.Run("a replayed PUT with the same key and body runs the handler once", func(t *testing.T) {
+		// C8 v0.3.5 covers POST, PATCH and PUT; PUT is the full-document
+		// replace, where a re-executed retry is the most destructive
+		gin.SetMode(gin.TestMode)
+		store := newIdempotencyStore(8)
+		calls := 0
+		router := gin.New()
+		router.PUT("/v2/spaces/:space_id/objects/:object_id", ensureIdempotency(store), func(c *gin.Context) {
+			calls++
+			c.JSON(http.StatusOK, gin.H{"call": calls})
+		})
+		put := func() *httptest.ResponseRecorder {
+			req := httptest.NewRequest(http.MethodPut, "/v2/spaces/space1/objects/obj1",
+				strings.NewReader(`{"version":1,"blocks":[]}`))
+			req.Header.Set(IdempotencyKeyHeader, "key1")
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, req)
+			return w
+		}
+
+		first, second := put(), put()
+
+		assert.Equal(t, http.StatusOK, first.Code)
+		assert.Equal(t, first.Body.String(), second.Body.String())
+		assert.Equal(t, 1, calls, "the handler ran once")
+		assert.Equal(t, "true", second.Header().Get("Idempotency-Replayed"))
+	})
+
 	t.Run("a keyed GET passes through untouched", func(t *testing.T) {
 		// the middleware acts on mutation methods only
 		gin.SetMode(gin.TestMode)

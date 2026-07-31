@@ -181,8 +181,16 @@ func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creat
 		if err := json.Unmarshal(raw, &probe); err != nil || probe.Op != "setProperties" {
 			continue
 		}
-		for _, values := range []map[string]json.RawMessage{probe.Set, probe.Add} {
+		for field, values := range map[string]map[string]json.RawMessage{"set": probe.Set, "add": probe.Add} {
 			for key, rawValue := range values {
+				// A key claimed by more than one field is rejected by the apply
+				// path, so prewarming it would create an option for a PATCH
+				// that cannot succeed. Skip it here and let the op error.
+				if field == "add" {
+					if _, alsoInSet := probe.Set[key]; alsoInSet {
+						continue
+					}
+				}
 				format, err := bundle.GetRelationFormat(domain.RelationKey(key))
 				if err != nil {
 					var ok bool
@@ -196,6 +204,13 @@ func (s *V2Service) prewarmCreateMissing(ops []json.RawMessage, resolvers *creat
 				var value any
 				if err := json.Unmarshal(rawValue, &value); err != nil {
 					continue
+				}
+				// add always takes an array; a scalar is rejected by the apply
+				// path, so prewarming it would orphan an option (v0.3.5 review).
+				if field == "add" {
+					if _, isList := value.([]any); !isList {
+						continue
+					}
 				}
 				anyblockjson.UnmarshalPropertyValue(key, value, resolvers.Options())
 			}

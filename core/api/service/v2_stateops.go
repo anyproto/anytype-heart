@@ -718,6 +718,18 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	// add appends without duplicating an existing entry; entry resolution is
 	// the same create-missing path as set (option names → ids, §3)
 	for _, key := range sortedKeys(addEntries) {
+		// select holds ONE value: appending to a non-empty one would leave a
+		// two-valued single-select the UI renders arbitrarily. Steer to set
+		// rather than silently breaking the invariant (v0.3.5 review).
+		if a.propertyFormat(key) == model.RelationFormat_status &&
+			len(a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()) > 0 {
+			return apimodel.V2ValidationFailed("add on a select property that already has a value",
+				apimodel.V2Issue{
+					Path:    opPath + ".add." + key,
+					Message: fmt.Sprintf("%q has format \"select\" and holds a single value", key),
+					Hint:    "use set to replace it, or unset to clear it first",
+				})
+		}
 		value := anyblockjson.UnmarshalPropertyValue(key, addEntries[key], a.resolvers.Options())
 		toAdd := domain.ValueFromProto(value).WrapToStringList()
 		current := a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()
