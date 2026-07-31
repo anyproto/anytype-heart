@@ -1,13 +1,16 @@
 package service
 
-// v2_schemas.go implements the §5 discovery surface for the create kinds:
-// GET /v2/schemas (index) and GET /v2/schemas/{kind} (JSON Schema + one
-// worked example, C12). All generation-facing schemas are strict-mode-
-// compatible (C13): additionalProperties:false, bounded, non-recursive —
-// with the documented exception of the AnyBlock document schema's filter
-// tree (served verbatim from the format package) and the `filters` kind
-// itself, which is recursive by nature and documented as such (small models
-// are steered to the future compact filter string).
+// v2_schemas.go implements the §5 discovery surface for the create kinds
+// and the Phase-4 search kind: GET /v2/schemas (index) and
+// GET /v2/schemas/{kind} (JSON Schema + one worked example, C12). All
+// generation-facing schemas are strict-mode-compatible (C13):
+// additionalProperties:false, bounded, non-recursive — with the documented
+// exception of the AnyBlock document schema's filter tree (served verbatim
+// from the format package) and the `filters` kind itself, which is
+// recursive by nature and documented as such; small models are steered to
+// the compact filter string, whose grammar (EBNF + examples) is served ON
+// the `filters` kind — one concept, one discovery slot (C2), the artifact
+// the Phase-5 GBNF conversion consumes.
 
 import (
 	"encoding/json"
@@ -17,6 +20,7 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 )
 
 // v2SchemaKind is one discoverable kind.
@@ -65,7 +69,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"required":["name","type"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"type":{"type":"string","maxLength":256,"description":"the queried type's key"},` +
-			`"filter":{"type":"string","maxLength":4096,"description":"reserved — compact filter string, not implemented yet"},` +
+			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); mutually exclusive with filters"},` +
 			`"filters":{"type":"array","maxItems":50,"description":"SPEC §6.2 filter nodes; see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
@@ -86,8 +90,20 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"name":{"type":"string","maxLength":4096}}}`,
 		example: `{"url":"https://example.org/report.pdf"}`,
 	},
+	"search": {
+		endpoint: "POST /v2/spaces/{spaceId}/search (and POST /v2/search global)",
+		schema: `{"type":"object","additionalProperties":false,"properties":{` +
+			`"query":{"type":"string","maxLength":4096,"description":"full-text query"},` +
+			`"type":{"type":"string","maxLength":256,"description":"one type key; multi-type queries use the type pseudo-key in the filter channel"},` +
+			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); mutually exclusive with filters"},` +
+			`"filters":{"type":"array","maxItems":50,"description":"SPEC §6.2 filter nodes (RECURSIVE, see kind filters); mutually exclusive with filter"},` +
+			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
+			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
+			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row"}}}`,
+		example: `{"query":"report","type":"task","filter":"done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)","sorts":[{"property":"dueDate","direction":"asc"}],"fields":["name","dueDate","status"]}`,
+	},
 	"filters": {
-		endpoint: "POST /v2/spaces/{spaceId}/sets (filters field)",
+		endpoint: "POST /v2/spaces/{spaceId}/search (filters field) · POST /v2/spaces/{spaceId}/sets (filters field)",
 		// documented C13 exception: the structured filter tree is recursive
 		// (SPEC §12 filterNode) and therefore not constrained-decodable
 		schema: `{"$defs":{"filterNode":{"oneOf":[` +
@@ -148,10 +164,17 @@ func (s *V2Service) SchemaKind(kind string) (apimodel.V2SchemaEntry, error) {
 		// format's published schema verbatim
 		schema = json.RawMessage(anyblockjson.SchemaJSON())
 	}
-	return apimodel.V2SchemaEntry{
+	result := apimodel.V2SchemaEntry{
 		Kind:     kind,
 		Endpoint: entry.endpoint,
 		Schema:   schema,
 		Example:  json.RawMessage(entry.example),
-	}, nil
+	}
+	if kind == "filters" {
+		// the compact filter-string grammar rides the filters kind: one
+		// concept, one slot (§5) — the parser pins the grammar (SPEC §6.2.1)
+		result.Grammar = filterstring.EBNF
+		result.GrammarExamples = filterstring.Examples
+	}
+	return result, nil
 }

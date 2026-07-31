@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 )
 
 func TestV2Schemas(t *testing.T) {
@@ -26,7 +27,7 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters"} {
+		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters", "search"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
 		}
 	})
@@ -55,6 +56,40 @@ func TestV2Schemas(t *testing.T) {
 		entry, err := fx.SchemaKind("object")
 		require.NoError(t, err)
 		assert.JSONEq(t, string(anyblockjson.SchemaJSON()), string(entry.Schema))
+	})
+
+	t.Run("the filters kind carries the filter-string grammar (§5 Phase 4)", func(t *testing.T) {
+		// one concept, one slot (C2): the structured-array schema AND the
+		// string grammar ride the same kind — the artifact the Phase-5 GBNF
+		// conversion consumes
+		entry, err := fx.SchemaKind("filters")
+		require.NoError(t, err)
+		assert.Contains(t, entry.Grammar, "orExpr", "the EBNF the parser pins")
+		assert.Contains(t, entry.Grammar, `"HAS" , "ALL"`)
+		require.NotEmpty(t, entry.GrammarExamples)
+		for _, example := range entry.GrammarExamples {
+			_, err := filterstring.Parse(example, filterstring.Options{})
+			assert.NoError(t, err, "served grammar example %q must parse", example)
+		}
+	})
+
+	t.Run("no other kind carries a grammar", func(t *testing.T) {
+		entry, err := fx.SchemaKind("search")
+		require.NoError(t, err)
+		assert.Empty(t, entry.Grammar)
+		assert.Empty(t, entry.GrammarExamples)
+	})
+
+	t.Run("the search example's filter string parses", func(t *testing.T) {
+		entry, err := fx.SchemaKind("search")
+		require.NoError(t, err)
+		var example struct {
+			Filter string `json:"filter"`
+		}
+		require.NoError(t, json.Unmarshal(entry.Example, &example))
+		require.NotEmpty(t, example.Filter)
+		_, err = filterstring.Parse(example.Filter, filterstring.Options{})
+		assert.NoError(t, err, "the served worked example must parse (C12)")
 	})
 
 	t.Run("unknown kind is a 404 naming the available kinds", func(t *testing.T) {
