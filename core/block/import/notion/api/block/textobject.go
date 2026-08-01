@@ -42,7 +42,7 @@ func (t *TextObject) GetTextBlocks(style model.BlockContentTextStyle, childIds [
 		if rt.Type == api.Mention {
 			marks = append(marks, t.handleMentionType(rt, &text, req)...)
 		}
-		if rt.Type == api.Equation {
+		if rt.Type == api.Equation && rt.Equation != nil {
 			text.WriteByte('$')
 			text.WriteString(rt.Equation.Expression)
 			text.WriteByte('$')
