@@ -63,14 +63,18 @@ func main() {
 				if shown == "" {
 					shown = "(nothing — no widget names an object)"
 				}
-				fmt.Printf("ok      %s\n         install opens %s · space homepage %s\n", idxPath, shown, home)
+				fmt.Printf("ok      %s\n         space homepage %s · %d sidebar widget(s)\n",
+					idxPath, home, len(idx.Widgets))
 				// TEMPORARY: pb.Profile has no entry-point field, so the
-				// installer opens widgets[0]. A declared entrypoint that is
-				// not the first widget is silently not honoured.
+				// built-in-archive path (inject) opens widgets[0]. A declared
+				// entrypoint that is not the first widget is silently not
+				// honoured there. On the experience path — what a bundle
+				// actually takes — nothing opens once at all, so the entrypoint
+				// only reaches the space as the homepage fallback (§2c).
 				if declared != "" && declared != effective {
 					warned++
-					fmt.Printf("         warn: entrypoint %q is not the first widget, so it is NOT what opens —\n"+
-						"               the installer uses widgets[0] (%s) until heart-side profile handling reads entrypoint.\n"+
+					fmt.Printf("         warn: entrypoint %q is not the first widget, so on the built-in-archive path\n"+
+						"               it is NOT what opens — inject uses widgets[0] (%s).\n"+
 						"               List the entrypoint first in widgets.\n", declared, effective)
 				}
 			}

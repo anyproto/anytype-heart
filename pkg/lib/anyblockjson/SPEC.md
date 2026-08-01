@@ -259,29 +259,46 @@ A widget is `{ target, layout, limit }`. `layout` is `link · tree · list ·
 compactList · view`, defaulting to `link` and omitted when default (§4).
 `target` is an object id from the bundle — a page, a type, a set, a
 collection — or one of the reserved listings `favorite · recent · set ·
-collection · allObjects · recentOpen`, which name a built-in rather than
-something the bundle ships.
+collection`, which name a built-in rather than something the bundle ships.
+Those four and no others: a live space also has `allObjects` and `recentOpen`
+widgets, but the import path does not know those names
+(`widget.IsPredefinedWidgetTargetId`), so a widget declaring one is **dropped
+on install with no error** — see below. The tooling rejects them.
 
 ### How it reaches the space
 
-The installer reads all of this from a `pb.Profile` at the archive root
-(`util/builtinobjects`, which is how the built-in use cases work).
-`index.json` is that profile in this format's terms, and emitting it is the
-wiring's job — `cmd/anyblockconvert` writes it as `profile` at the output
-root, raw protobuf, since `getProfile` reads it with `pb.Profile.Unmarshal`
-whatever format the snapshots are in:
+A bundle is installed with `ObjectImportExperience`, which reaches
+`builtinobjects.CreateObjectsForExperience`. That is a different path from the
+one the built-in use cases take (`inject`), and it reads much less. The two
+outputs the wiring produces, and who reads them:
 
-| `index.json` | `pb.Profile` | effect |
+| output | written by | read by |
 |---|---|---|
-| `name` | `name` | the space's name |
-| `iconImage` | `avatar` | the space icon. The field holds an object id; `avatar` wants the image's **name**, because `getNewAvatarId` resolves it by querying name + image layout — so the wiring reads the name off the referenced object. Authors keep writing ids, as everywhere else in the format |
-| `homepage`, falling back to `entrypoint` | `spaceDashboardId` | the space's `homepage` detail — what opens on **every** entry |
-| `widgets` | `widgets` | sidebar widgets, in order |
-| `entrypoint` | `widgets[0].targetObjectId` | the object the install opens, **once** |
+| `profile` at the archive root — `pb.Profile`, raw protobuf whatever format the snapshots are in, since `getProfile` reads it with `pb.Profile.Unmarshal` | `cmd/anyblockconvert` (`profile.go`) | `CreateObjectsForExperience` reads **`spaceDashboardId` only** |
+| a snapshot with `sbType: Widget` among the objects — one root block plus a wrapper-and-link pair per widget | `cmd/anyblockconvert` (`widgets.go`) | the pb importer: `shouldImportSnapshot` admits a Widget snapshot precisely when the import type is `EXPERIENCE`, and `objectcreator.updateWidgetObject` merges its widgets into the space's own widget object |
 
-Two consequences worth stating, because neither is obvious from the wire
-format:
+| `index.json` | reaches the space as | effect |
+|---|---|---|
+| `homepage`, falling back to `entrypoint` | `profile.spaceDashboardId` | the space's `homepage` detail — what opens on **every** entry, and on this path the only thing that decides what a new user sees |
+| `widgets` | the Widget snapshot's root children, in order | the sidebar |
+| `entrypoint` | `profile.widgets[0].targetObjectId` | the object the install opens **once** — on the `inject` path only. On a bundle's own path it lands only through the `homepage` fallback above |
+| `name` | `profile.name` | nothing, on this path |
+| `iconImage` | `profile.avatar` | nothing, on this path |
 
+Five consequences worth stating, because none is obvious from the wire format:
+
+- **`profile.widgets` is inert here.** `CreateObjectsForExperience` never
+  calls `getWidgets` or `createWidgets`; those belong to `inject`. The wiring
+  still fills the field, so an archive it produces is also a valid built-in
+  archive, but nothing on a bundle's own path reads it. **The sidebar comes
+  from the Widget snapshot**, which is also how a real app export carries it —
+  export a space and the widget object is a file under `objects/` while the
+  export's own `profile` has `"widgets": []`.
+- **`name` and `iconImage` are discarded on this path.**
+  `CreateObjectsForExperience` calls `setWorkspaceSettings(profile, spaceId,
+  false)`, and that function applies `profile.Name` and `profile.Avatar` only
+  when `isBundle` is true. The space keeps whatever name the caller of
+  `ObjectImportExperience` gave it.
 - **`entrypoint` is encoded as the first widget.** There is no independent
   field for "open this after import" — `inject` takes
   `widgets[0].targetObjectId` as its starting page, and the deprecated
@@ -292,12 +309,28 @@ format:
   sidebar. `entrypoint` exists as a separate field anyway, because expressing
   it by sorting `widgets` means reordering the sidebar silently changes what
   a new user sees.
+
+  On a bundle's own path even that does not fire: `CreateObjectsForExperience`
+  computes no starting page and `ObjectImportExperience` returns none, so
+  nothing is opened once. What a new user lands on is the space `homepage` —
+  which is why an omitted `homepage` falling back to `entrypoint` is what
+  makes the field mean anything at all here.
 - **Omitting `homepage` does not mean the widgets screen.** An absent
   `spaceDashboardId` makes `setWorkspaceSettings` default to `widgets`, which
   is the right default for a *blank* space and the wrong one for a use case:
   on desktop the widgets are already in the sidebar, so it leaves the main
   pane empty. So an omitted `homepage` resolves to the `entrypoint` instead,
   and only an explicit `"widgets"` or `"graph"` gives up a real page.
+
+**A widget target that does not resolve loses the widget, silently.** This is
+the only reference in the format whose failure produces no diagnostic at all:
+`common.handleLinkBlock` rewrites a link target it cannot resolve to
+`addr.MissingObject`, and `WidgetObject.Init` then removes the broken link
+*and* its now-empty wrapper. The import succeeds, the widget is not there, and
+the only trace is a log line. That covers both an id no document in the bundle
+defines and a reserved listing the importer does not recognise
+(`allObjects`, `recentOpen`). Both are therefore errors in `anyblockvalidate`
+and `anyblockconvert` rather than something an author discovers by installing.
 
 Nothing per-object substitutes for this file. In particular **`isFavorite` is
 not an entry point**: it adds an object to Favorites and nothing more. It

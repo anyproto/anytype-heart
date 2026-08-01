@@ -7,7 +7,8 @@
 #   anyblockinstall.sh --token <t> --port <p> --bundle <dir> [--name "Space"]
 #
 # Does three things:
-#   1. anyblockconvert  bundle -> pb snapshots + the `profile` file (SPEC §2c)
+#   1. anyblockconvert  bundle -> pb snapshots, the `profile` file and the
+#                        Widget snapshot that carries the sidebar (SPEC §2c)
 #   2. zip              archive laid out the way builtinobjects expects
 #   3. grpcurl          WorkspaceCreate, then ObjectImportExperience
 #
@@ -23,7 +24,7 @@ note() { printf '    %s\n' "$*"; }
 TOKEN=""; PORT=""; BUNDLE=""; SPACE_NAME=""; KEEP=0; FORMAT="pb"; DRY=0
 
 usage() {
-  sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'
   cat <<'EOF'
 
 Options:
@@ -78,7 +79,11 @@ step "Converting $(basename "$BUNDLE")"
 ( cd "$REPO" && go run ./cmd/anyblockconvert -in "$BUNDLE" -out "$BUILD/archive" -format "$FORMAT" ) \
   || die "conversion failed — fix the bundle before installing it"
 
-[[ -f "$BUILD/archive/profile" ]] || die "no profile file was produced: the bundle needs an index.json (SPEC §2c), or the space gets no name, entry point or sidebar"
+# both outputs come from index.json; without it the space gets no homepage and
+# no sidebar (SPEC §2c). The widget snapshot is the sidebar on this path —
+# ObjectImportExperience never reads profile.widgets.
+[[ -f "$BUILD/archive/profile" ]] || die "no profile file was produced: the bundle needs an index.json (SPEC §2c), or the space gets no homepage and no sidebar"
+[[ -f "$BUILD/archive/objects/widgets.$FORMAT" ]] || note "no widget snapshot: index.json declares no widgets, so the sidebar will be empty"
 
 # --------------------------------------------------------------------- zip ---
 # Entries sit at the archive root (objects/, types/, ..., profile), matching
