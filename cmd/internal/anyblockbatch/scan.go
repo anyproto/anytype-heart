@@ -490,6 +490,12 @@ func IndexPath(root string) (string, bool) {
 // CheckIndexTargets finds index.json references that name nothing the bundle
 // defines. Reserved homepages and reserved widget targets name built-in
 // screens and listings, so they are not expected to resolve.
+//
+// A widget target is checked harder than the others, because it is the only
+// reference in the format whose failure is silent: an unresolvable link target
+// becomes addr.MissingObject (common.handleLinkBlock), and WidgetObject.Init
+// then removes the link and its wrapper. No error reaches the import result —
+// the widget simply is not there.
 func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
 	ids := map[string]bool{}
 	for _, f := range files {
@@ -519,13 +525,23 @@ func CheckIndexTargets(idx *anyblockjson.Index, files []string) []BadTarget {
 		})
 	}
 	for i, w := range idx.Widgets {
-		if anyblockjson.IsReservedWidgetTarget(w.Target) || ids[w.Target] {
-			continue
+		switch {
+		case anyblockjson.IsReservedWidgetTarget(w.Target):
+			if anyblockjson.IsImportableWidgetTarget(w.Target) {
+				continue
+			}
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
+				Reason: "a reserved listing the importer does not recognise — " +
+					"widget.IsPredefinedWidgetTargetId knows only favorite, recent, set and collection, " +
+					"so this link is rewritten to _missing_object and the widget is dropped without an error",
+			})
+		case !ids[w.Target]:
+			out = append(out, BadTarget{
+				File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
+				Reason: "no object with that id in the bundle (and it is not a reserved widget target)",
+			})
 		}
-		out = append(out, BadTarget{
-			File: anyblockjson.IndexFileName, Property: fmt.Sprintf("widgets[%d]", i), Target: w.Target,
-			Reason: "no object with that id in the bundle (and it is not a reserved widget target)",
-		})
 	}
 	return out
 }

@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 )
 
 // writeDocs lays out a bundle in a temp dir and returns its files, sorted the
@@ -110,4 +112,52 @@ func TestCheckTemplateTargets_NonTemplatesAreIgnored(t *testing.T) {
 	bad, err := CheckTemplateTargets(files, map[string]string{})
 	require.NoError(t, err)
 	assert.Empty(t, bad)
+}
+
+// A widget target is the one reference in the format whose failure is silent:
+// handleLinkBlock rewrites an unresolvable target to _missing_object and
+// WidgetObject.Init then removes the link and its wrapper, so the widget is
+// gone without an error anywhere.
+func TestCheckIndexTargets_Widgets(t *testing.T) {
+	files := writeDocs(t, map[string]string{
+		"types/wiki-page.type.json": wikiPageType,
+		"objects/home.json":         `{"version": 1, "type": "wikiPage", "id": "page-home"}`,
+	})
+
+	index := func(targets ...string) *anyblockjson.Index {
+		idx := &anyblockjson.Index{}
+		for _, target := range targets {
+			idx.Widgets = append(idx.Widgets, anyblockjson.Widget{Target: target})
+		}
+		return idx
+	}
+
+	t.Run("an object in the bundle passes", func(t *testing.T) {
+		assert.Empty(t, CheckIndexTargets(index("page-home"), files))
+	})
+
+	// the four widget.IsPredefinedWidgetTargetId knows, which handleLinkBlock
+	// leaves alone
+	t.Run("the importable reserved listings pass", func(t *testing.T) {
+		assert.Empty(t, CheckIndexTargets(index("favorite", "recent", "set", "collection"), files))
+	})
+
+	t.Run("an unknown id is reported", func(t *testing.T) {
+		bad := CheckIndexTargets(index("page-gone"), files)
+		require.Len(t, bad, 1)
+		assert.Equal(t, "widgets[0]", bad[0].Property)
+		assert.Contains(t, bad[0].Reason, "no object with that id")
+	})
+
+	// allObjects and recentOpen are real targets in a live space — the All
+	// Objects widget comes from WidgetObject's migration 3 — but the importer
+	// does not know them, so a bundle naming one loses that widget silently
+	t.Run("a reserved listing the importer does not know is reported", func(t *testing.T) {
+		for _, target := range []string{"allObjects", "recentOpen"} {
+			bad := CheckIndexTargets(index(target), files)
+			require.Len(t, bad, 1, target)
+			assert.Equal(t, target, bad[0].Target)
+			assert.Contains(t, bad[0].Reason, "the importer does not recognise", target)
+		}
+	})
 }

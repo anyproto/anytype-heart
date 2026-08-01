@@ -56,7 +56,7 @@
         "target": {
           "type": "string",
           "minLength": 1,
-          "description": "What the widget points at: an object id from this bundle (a page, a type, a set or a collection), or one of the reserved targets `favorite`, `recent`, `set`, `collection`, `allObjects`, `recentOpen`."
+          "description": "What the widget points at: an object id from this bundle (a page, a type, a set or a collection), or one of the reserved listings `favorite`, `recent`, `set`, `collection`. Those four are the ones the importer recognises; `allObjects` and `recentOpen` exist in a live space but not in the import path, so a widget naming one is dropped on install without an error and the tooling rejects it instead."
         },
         "layout": {
           "enum": ["link", "tree", "list", "compactList", "view"],

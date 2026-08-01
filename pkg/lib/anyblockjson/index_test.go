@@ -136,6 +136,24 @@ func TestIndex_Validation(t *testing.T) {
 	})
 }
 
+// Not every reserved listing survives import. handleLinkBlock leaves a target
+// alone only when widget.IsPredefinedWidgetTargetId knows it; anything else it
+// cannot resolve becomes addr.MissingObject, and WidgetObject.Init then strips
+// the link and its wrapper. So allObjects and recentOpen — real targets in a
+// live space — would cost the author a widget with no error to explain it,
+// which is why the two questions are asked separately.
+func TestIndex_ImportableWidgetTargets(t *testing.T) {
+	for _, target := range []string{"favorite", "recent", "set", "collection"} {
+		assert.True(t, IsReservedWidgetTarget(target), target)
+		assert.True(t, IsImportableWidgetTarget(target), target)
+	}
+	for _, target := range []string{"allObjects", "recentOpen"} {
+		assert.True(t, IsReservedWidgetTarget(target), "still names a built-in, not an object: "+target)
+		assert.False(t, IsImportableWidgetTarget(target), "the importer does not know it: "+target)
+	}
+	assert.False(t, IsImportableWidgetTarget("page-wiki-home"))
+}
+
 // iconImage names an image object rather than referencing its id, because the
 // installer resolves the space icon by name (getNewAvatarId).
 func TestIndex_IconImage(t *testing.T) {

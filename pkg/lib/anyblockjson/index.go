@@ -4,11 +4,12 @@ package anyblockjson
 // in this format describes one object; index.json describes the set — the
 // space's name, what opens on entry, and what the sidebar shows.
 //
-// It exists because none of that is expressible per-object. The installer
-// reads it from a `profile` file at the archive root (pb.Profile, consumed by
-// util/builtinobjects.inject): spaceDashboardId becomes the space's homepage,
-// widgets[] become sidebar widgets, and widgets[0] is the object the install
-// opens. A bundle without one imports as an undifferentiated object list.
+// It exists because none of that is expressible per-object. The wiring splits
+// it across two outputs, because the installer takes them from two places: a
+// `profile` file at the archive root (pb.Profile, read by util/builtinobjects)
+// carries spaceDashboardId, and the sidebar travels as a Widget snapshot among
+// the objects, the way an app export carries it. See §2c. A bundle without an
+// index imports as an undifferentiated object list.
 
 import (
 	"bytes"
@@ -44,10 +45,34 @@ var reservedWidgetTargets = map[string]struct{}{
 	"allObjects": {}, "recentOpen": {},
 }
 
+// importableWidgetTargets are the reserved targets the *importer* recognises:
+// exactly widget.IsPredefinedWidgetTargetId, which is what
+// common.handleLinkBlock consults before deciding a link target it cannot
+// resolve is broken.
+//
+// allObjects and recentOpen are real targets in a live space — the All Objects
+// widget is created by WidgetObject's migration 3 — but they are not in that
+// list, and the difference is not cosmetic: a bundle declaring one gets its
+// link rewritten to addr.MissingObject, and WidgetObject.Init then strips the
+// link *and* its now-empty wrapper. The widget disappears with no error and no
+// diagnostic beyond a log line. So a bundle may not name them, and the wiring
+// says so rather than shipping one that silently loses a widget.
+var importableWidgetTargets = map[string]struct{}{
+	"favorite": {}, "recent": {}, "set": {}, "collection": {},
+}
+
 // IsReservedWidgetTarget reports whether target names a built-in listing, in
-// which case it does not have to resolve to an object in the bundle.
+// which case it does not name an object in the bundle.
 func IsReservedWidgetTarget(target string) bool {
 	_, ok := reservedWidgetTargets[target]
+	return ok
+}
+
+// IsImportableWidgetTarget reports whether a reserved target survives import.
+// A target that is reserved but not importable is the one case where a widget
+// is dropped silently, so callers must reject it rather than emit it.
+func IsImportableWidgetTarget(target string) bool {
+	_, ok := importableWidgetTargets[target]
 	return ok
 }
 
