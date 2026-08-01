@@ -366,6 +366,7 @@ const (
 	detailRelationFormatObjectTypes = "relationFormatObjectTypes"
 	detailRelationMaxCount          = "relationMaxCount"
 	detailLayout                    = "layout"
+	detailIsHidden                  = string(bundle.RelationKeyIsHidden)
 )
 
 func strVal(s string) *types.Value {
@@ -374,6 +375,10 @@ func strVal(s string) *types.Value {
 
 func numVal(n float64) *types.Value {
 	return &types.Value{Kind: &types.Value_NumberValue{NumberValue: n}}
+}
+
+func boolVal(b bool) *types.Value {
+	return &types.Value{Kind: &types.Value_BoolValue{BoolValue: b}}
 }
 
 func strListVal(ss []string) *types.Value {

@@ -162,9 +162,11 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		converted++
 	}
 
-	// the bundle index (§2c) becomes the archive's profile file: the space's
-	// name, its entry point and its sidebar. Written after the snapshots so a
-	// failed conversion does not leave a profile pointing at nothing.
+	// the bundle index (§2c) becomes two outputs: the profile file, which the
+	// installer reads for the space's homepage, and a Widget snapshot, which is
+	// how the sidebar reaches a space installed as an experience (see
+	// widgets.go). Written after the snapshots so a failed conversion does not
+	// leave either pointing at nothing.
 	if idxPath, ok := anyblockbatch.IndexPath(inDir); ok {
 		data, readErr := os.ReadFile(idxPath)
 		if readErr != nil {
@@ -186,14 +188,31 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 		if err := writeProfile(outDir, idx, names); err != nil {
 			return fmt.Errorf("write profile: %w", err)
 		}
+		// the Widget snapshot carries the id "widgets"; an object claiming the
+		// same one would share both that id — and so the importer's relinking
+		// entry for it — and the output file with the sidebar
+		if _, taken := names[widgetsObjectId]; taken {
+			return fmt.Errorf("an object in the bundle has id %q, which is reserved for the sidebar snapshot (SPEC.md §2c) — rename it", widgetsObjectId)
+		}
+		if err := writeWidgets(outDir, idx, format); err != nil {
+			return fmt.Errorf("write widgets: %w", err)
+		}
 		entry := idx.EffectiveEntryPoint()
 		if entry == "" {
 			entry = "(nothing — no widget names an object)"
 		}
-		fmt.Printf("profile written: space %q, install opens %s, %d widget(s)\n",
-			idx.Name, entry, len(idx.Widgets))
+		home := idx.SpaceHomepage()
+		if home == "" {
+			home = "(the widgets screen)"
+		}
+		fmt.Printf("profile written: space %q, homepage %s\n", idx.Name, home)
+		fmt.Printf("widgets written: %d sidebar widget(s), in index.json order\n", len(idx.Widgets))
+		// TEMPORARY: on the built-in-archive path inject() opens
+		// widgets[0].targetObjectId, because pb.Profile has no entry-point
+		// field. (On the experience path nothing opens once at all — see §2c —
+		// so there the entrypoint only matters through the homepage fallback.)
 		if declared := idx.EntryPoint(); declared != "" && declared != entry {
-			fmt.Fprintf(os.Stderr, "warning: entrypoint %q is not the first widget, so it is not what opens — the installer uses widgets[0] (%s)\n",
+			fmt.Fprintf(os.Stderr, "warning: entrypoint %q is not the first widget, so on the built-in-archive path it is not what opens — inject uses widgets[0] (%s)\n",
 				declared, entry)
 		}
 	} else {
