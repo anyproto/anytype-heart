@@ -57,7 +57,6 @@ var excludedSystemProperties = map[string]bool{
 	bundle.RelationKeyCoverScale.String():             true,
 	bundle.RelationKeyCoverX.String():                 true,
 	bundle.RelationKeyCoverY.String():                 true,
-	bundle.RelationKeyMentions.String():               true,
 	bundle.RelationKeyOldAnytypeID.String():           true,
 	bundle.RelationKeySourceFilePath.String():         true,
 	bundle.RelationKeyImportType.String():             true,
