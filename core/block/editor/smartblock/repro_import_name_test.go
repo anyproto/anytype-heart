@@ -55,12 +55,12 @@ func TestResolveLayoutOfObjectWithNotIndexedType(t *testing.T) {
 	})
 
 	t.Run("type is indexed -> layout comes from the type and the name is kept", func(t *testing.T) {
-		// given
+		// given: a layout distinct from the guessed one, so this cannot pass on the fallback
 		fx := newFixture(id, t)
 		st := newImportedState()
 		fx.lastDepDetails = map[string]*domain.Details{
 			"typeObjectId": domain.NewDetailsFromMap(map[domain.RelationKey]domain.Value{
-				bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_basic),
+				bundle.RelationKeyRecommendedLayout: domain.Int64(model.ObjectType_todo),
 			}),
 		}
 
@@ -68,7 +68,9 @@ func TestResolveLayoutOfObjectWithNotIndexedType(t *testing.T) {
 		fx.resolveLayout(st)
 
 		// then
-		require.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
+		resolved, ok := st.LocalDetails().TryInt64(bundle.RelationKeyResolvedLayout)
+		require.True(t, ok, "resolvedLayout must be written")
+		assert.Equal(t, int64(model.ObjectType_todo), resolved)
 		assert.Equal(t, "Ship import fix to prod", st.Details().GetString(bundle.RelationKeyName))
 	})
 
@@ -86,7 +88,10 @@ func TestResolveLayoutOfObjectWithNotIndexedType(t *testing.T) {
 		// then
 		assert.Equal(t, int64(model.ObjectType_basic), st.LocalDetails().GetInt64(bundle.RelationKeyResolvedLayout))
 		assert.Equal(t, "", st.Details().GetString(bundle.RelationKeyName))
-		assert.True(t, st.Exists("textBlock"), "text block was consumed on a guessed layout")
+		// Exists() would stay true either way - WithNameFromFirstBlock only unlinks the
+		// block - so assert it is still in the tree.
+		assert.Contains(t, st.Pick(id).Model().ChildrenIds, "textBlock",
+			"text block was consumed on a guessed layout")
 	})
 
 	t.Run("known layout still converts blocks", func(t *testing.T) {

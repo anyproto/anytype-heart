@@ -232,7 +232,8 @@ func (p *importProcessor) createObjects(ctx context.Context) (map[string]*domain
 		}
 		batchDetails := p.createObjectsBatch(dataObject, batch)
 		if batchDetails == nil {
-			// import was cancelled mid-batch
+			// batch was cancelled, or failed under ALL_OR_NOTHING - either way the
+			// remaining batches must not run, matching the old single-pool behaviour
 			return nil, ""
 		}
 		for id, d := range batchDetails {
@@ -259,12 +260,14 @@ func splitSchemaSnapshots(snapshots []*common.Snapshot) (schema, rest []*common.
 	return schema, rest
 }
 
-// createObjectsBatch runs a batch to completion, returning nil if the import was cancelled.
+// createObjectsBatch runs a batch to completion, returning nil if it was cancelled or, under
+// ALL_OR_NOTHING, aborted by a failed object. Draining it is what makes the objects it created
+// observable to the next batch: Apply indexes synchronously, so a result here means committed.
 func (p *importProcessor) createObjectsBatch(dataObject *creator.DataObject, snapshots []*common.Snapshot) map[string]*domain.Details {
-	workerCount := workerPoolSize
-	if len(snapshots) < workerCount {
-		workerCount = 1
-	}
+	// Scale to the batch, not down to a single worker: batches are smaller than the whole
+	// import, and dropping to one worker would serialize every archive with fewer snapshots
+	// than the pool size.
+	workerCount := min(workerPoolSize, len(snapshots))
 	pool := workerpool.NewPool(workerCount)
 
 	go p.addWork(snapshots, pool)
