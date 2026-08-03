@@ -13,6 +13,9 @@ import (
 
 func (s *service) PeerDiscovered(ctx context.Context, peer localdiscovery.DiscoveredPeer, own localdiscovery.OwnAddresses) {
 	s.peerService.SetPeerAddrs(peer.PeerId, s.addSchema(peer.Addrs))
+	// heart-side copy of the raw ip:port list — peerService keeps its addrs
+	// private, and the peer manager's pre-dial liveness probe needs them
+	s.peerStore.SetLocalPeerAddrs(peer.PeerId, peer.Addrs)
 	unaryPeer, err := s.poolManager.UnaryPeerPool().Get(ctx, peer.PeerId)
 	if err != nil {
 		return

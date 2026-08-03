@@ -113,6 +113,7 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 
 		// when
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Pick(gomock.Any(), "peerId").Return(nil, fmt.Errorf("not connected"))
 		f.pool.EXPECT().Get(gomock.Any(), "peerId").Return(newTestPeer("id1"), nil)
 		f.updater.EXPECT().Refresh(spaceId)
 		f.cm.fetchResponsiblePeers()
@@ -125,9 +126,45 @@ func Test_fetchResponsiblePeers(t *testing.T) {
 
 		// when
 		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Pick(gomock.Any(), "peerId").Return(nil, fmt.Errorf("not connected"))
 		f.pool.EXPECT().Get(gomock.Any(), "peerId").Return(nil, fmt.Errorf("error"))
 		f.updater.EXPECT().Refresh(spaceId)
 		f.cm.fetchResponsiblePeers()
+	})
+	t.Run("local peer with live connection is picked without dial", func(t *testing.T) {
+		// given
+		f := newFixtureManager(t, spaceId)
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+
+		// when: Pick returns a live peer, so no Get (dial) is expected
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Pick(gomock.Any(), "peerId").Return(newTestPeer("peerId"), nil)
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+
+		// then
+		f.cm.Lock()
+		defer f.cm.Unlock()
+		require.Len(t, f.cm.responsiblePeers, 2)
+	})
+	t.Run("local peer with provably dead port is evicted without dial", func(t *testing.T) {
+		// given: an address nothing listens on — grab a loopback UDP port and free it
+		f := newFixtureManager(t, spaceId)
+		udpConn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
+		require.NoError(t, err)
+		deadAddr := udpConn.LocalAddr().String()
+		require.NoError(t, udpConn.Close())
+		f.store.UpdateLocalPeer("peerId", []string{spaceId})
+		f.store.SetLocalPeerAddrs("peerId", []string{deadAddr})
+
+		// when: no Get (dial) is expected — the probe verdict skips it
+		f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("id"), nil)
+		f.pool.EXPECT().Pick(gomock.Any(), "peerId").Return(nil, fmt.Errorf("not connected"))
+		f.updater.EXPECT().Refresh(spaceId)
+		f.cm.fetchResponsiblePeers()
+
+		// then
+		require.Empty(t, f.store.LocalPeerIds(spaceId))
 	})
 }
 
@@ -586,6 +623,7 @@ func Test_fetchResponsiblePeers_nodePublishedBeforeLocalDials(t *testing.T) {
 	localDialStarted := make(chan struct{})
 	releaseLocalDial := make(chan struct{})
 	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("node"), nil)
+	f.pool.EXPECT().Pick(gomock.Any(), "staleWifiPeer").Return(nil, fmt.Errorf("not connected"))
 	f.pool.EXPECT().Get(gomock.Any(), "staleWifiPeer").DoAndReturn(
 		func(ctx context.Context, id string) (peer.Peer, error) {
 			close(localDialStarted)
@@ -631,6 +669,7 @@ func Test_fetchResponsiblePeers_boundsEachLocalDialSeparately(t *testing.T) {
 	f.store.UpdateLocalPeer("healthyPeer", []string{spaceId})
 	f.updater.EXPECT().Refresh(spaceId)
 	f.pool.EXPECT().GetOneOf(gomock.Any(), gomock.Any()).Return(newTestPeer("node"), nil)
+	f.pool.EXPECT().Pick(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("not connected")).Times(2)
 
 	// the stale peer burns its whole budget, as an unroutable Wi-Fi-era entry does
 	f.pool.EXPECT().Get(gomock.Any(), "stalePeer").DoAndReturn(

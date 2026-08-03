@@ -69,6 +69,7 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 		// addSchema adds discovered protocol for connection.
 		// Otherwise localdiscovery fallbacks to tcp, but anytype clients are listening on udp
 		r.s.peerService.SetPeerAddrs(peerId, r.s.addSchema(portAddrs))
+		r.s.peerStore.SetLocalPeerAddrs(peerId, portAddrs)
 		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)
 		log.Info("updated local peer", zap.Strings("ips", r.s.addSchema(portAddrs)), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
 	}

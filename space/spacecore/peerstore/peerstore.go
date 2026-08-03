@@ -34,6 +34,12 @@ type PeerStore interface {
 	AllLocalPeers() []string
 	UpdateLocalPeer(peerId string, spaceIds []string)
 	RemoveLocalPeer(peerId string)
+	// SetLocalPeerAddrs remembers the raw "ip:port" addresses a local peer was
+	// discovered on. any-sync's peerService keeps its own copy behind a
+	// write-only interface, so this heart-side copy is what pre-dial liveness
+	// probes read.
+	SetLocalPeerAddrs(peerId string, addrs []string)
+	LocalPeerAddrs(peerId string) []string
 	AddObserver(observer Observer)
 }
 
@@ -41,6 +47,7 @@ func New() PeerStore {
 	return &peerStore{
 		localPeerIdsBySpace:  map[string][]string{},
 		spacesByLocalPeerIds: map[string][]string{},
+		addrsByLocalPeerIds:  map[string][]string{},
 		Mutex:                sync.Mutex{},
 	}
 }
@@ -53,6 +60,7 @@ type peerStore struct {
 	localPeerIds         []string
 	localPeerIdsBySpace  map[string][]string
 	spacesByLocalPeerIds map[string][]string
+	addrsByLocalPeerIds  map[string][]string
 	observers            []Observer
 	sync.Mutex
 }
@@ -142,8 +150,21 @@ func (p *peerStore) LocalPeerIds(spaceId string) []string {
 	return p.localPeerIdsBySpace[spaceId]
 }
 
+func (p *peerStore) SetLocalPeerAddrs(peerId string, addrs []string) {
+	p.Lock()
+	defer p.Unlock()
+	p.addrsByLocalPeerIds[peerId] = addrs
+}
+
+func (p *peerStore) LocalPeerAddrs(peerId string) []string {
+	p.Lock()
+	defer p.Unlock()
+	return p.addrsByLocalPeerIds[peerId]
+}
+
 func (p *peerStore) RemoveLocalPeer(peerId string) {
 	p.Lock()
+	delete(p.addrsByLocalPeerIds, peerId)
 	spaceIds, exists := p.spacesByLocalPeerIds[peerId]
 	if !exists {
 		p.Unlock()

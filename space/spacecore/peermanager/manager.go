@@ -21,6 +21,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/anyproto/anytype-heart/core/syncstatus/nodestatus"
+	"github.com/anyproto/anytype-heart/net/udpprobe"
 	"github.com/anyproto/anytype-heart/space/spacecore/peerstore"
 )
 
@@ -74,6 +75,11 @@ const (
 	// dropped on a coin flip. In LocalOnly mode there are no nodes at all and
 	// these peers are the only sync path, so that eviction costs sync outright.
 	localPeerDialTimeout = time.Second * 5
+	// localPeerProbeTimeout bounds the pre-dial UDP liveness probe of a local
+	// peer's discovered addresses. A dead loopback/LAN port answers with ICMP
+	// unreachable within milliseconds; the budget is only consumed when the
+	// verdict is inconclusive, and then the normal dial follows anyway.
+	localPeerProbeTimeout = time.Millisecond * 300
 )
 
 type NodeStatus interface {
@@ -384,6 +390,22 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		// costs at most one bounded attempt after the switch instead of an
 		// unbounded dial chain per cycle.
 		for _, peerId := range peerIds {
+			// an existing live connection needs neither probe nor dial
+			if pr, pickErr := n.p.pool.Pick(n.ctx, peerId); pickErr == nil && !pr.IsClosed() {
+				peers = append(peers, pr)
+				continue
+			}
+			// Fail fast when nothing listens on any of the peer's UDP ports
+			// (peer app quit, port changed): the kernel's ICMP unreachable
+			// proves it in milliseconds, where the dial below would burn its
+			// full timeout retransmitting QUIC Initials into the void.
+			// Inconclusive probes (firewalled, or a live listener silently
+			// dropping the probe datagram) fall through to the normal dial.
+			if n.localPeerProvedDead(peerId) {
+				n.peerStore.RemoveLocalPeer(peerId)
+				log.Warn("local peer ports provably dead, skipping dial", zap.String("peerId", peerId))
+				continue
+			}
 			localCtx, cancelLocal := context.WithTimeout(n.ctx, localPeerDialTimeout)
 			p, err := n.p.pool.Get(localCtx, peerId)
 			cancelLocal()
@@ -396,6 +418,20 @@ func (n *clientPeerManager) fetchResponsiblePeers() {
 		}
 	}
 	n.publishResponsiblePeers(peers)
+}
+
+// localPeerProvedDead reports whether every discovered address of the peer is
+// provably not listening (ICMP port-unreachable on all of them). False on any
+// doubt — unknown addresses, inconclusive probes — so it can only ever skip
+// dials that were guaranteed to fail.
+func (n *clientPeerManager) localPeerProvedDead(peerId string) bool {
+	addrs := n.peerStore.LocalPeerAddrs(peerId)
+	if len(addrs) == 0 {
+		return false
+	}
+	ctx, cancel := context.WithTimeout(n.ctx, localPeerProbeTimeout)
+	defer cancel()
+	return udpprobe.AllDead(ctx, addrs)
 }
 
 // publishResponsiblePeers swaps the served list and wakes the waiters; safe to
