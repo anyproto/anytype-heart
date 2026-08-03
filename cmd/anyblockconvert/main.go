@@ -37,6 +37,7 @@ import (
 	"github.com/anyproto/anytype-heart/cmd/internal/anyblockbatch"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -134,11 +135,33 @@ func run(inDir, outDir string, normalizeIndent, lenient bool, format outputForma
 			len(badTemplates), map[bool]string{true: "", false: "s"}[len(badTemplates) == 1],
 			anyblockbatch.ReportTemplateTargets(badTemplates))
 	}
+	// a fileObject's real bytes are found by its "source" property
+	// (SPEC.md §3) at import time — catch a bundle pointing at a file that
+	// was never placed under files/ now, not as a silently blank icon later
+	danglingSources, err := checkFileSources(inDir, files)
+	if err != nil {
+		return fmt.Errorf("check file sources: %w", err)
+	}
+	if len(danglingSources) > 0 {
+		return fmt.Errorf("%d dangling file source%s:\n%s",
+			len(danglingSources), plural2(len(danglingSources)), reportDanglingSources(danglingSources))
+	}
 
 	b := newBatch(formats, typeIds)
 
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return fmt.Errorf("mkdir %s: %w", outDir, err)
+	}
+
+	// real binary assets (SPEC.md §2c, §3: iconImage, fileObject "source")
+	// live in files/ alongside the JSON documents; DiscoverJSONFiles only
+	// ever sees the *.json ones, so nothing else copies these into outDir
+	copiedFiles, err := copyBundleFiles(inDir, outDir)
+	if err != nil {
+		return fmt.Errorf("copy bundle files: %w", err)
+	}
+	if copiedFiles > 0 {
+		fmt.Printf("copied %d file(s) into %s\n", copiedFiles, filepath.Join(outDir, "files"))
 	}
 
 	var failed int
