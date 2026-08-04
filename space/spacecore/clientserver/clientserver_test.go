@@ -127,11 +127,24 @@ func TestListen(t *testing.T) {
 		lisPort, err := fx.parsePort(fx.yamux.listeners[0].Addr().String())
 		require.NoError(t, err)
 		assert.Equal(t, port, lisPort)
+	})
 
-		failedPort, err := fx.parsePort(fx.quic.calls[0])
+	t.Run("saved port busy on tcp falls back to another port", func(t *testing.T) {
+		// given
+		fx := newFixture(t)
+		occupied, err := net.Listen("tcp", ":")
 		require.NoError(t, err)
-		_, err = net.Dial("tcp", "127.0.0.1:"+strconv.Itoa(failedPort))
-		assert.Error(t, err)
+		defer occupied.Close()
+		savedPort, err := fx.parsePort(occupied.Addr().String())
+		require.NoError(t, err)
+
+		// when
+		port, err := fx.listen(context.Background(), savedPort)
+
+		// then
+		require.NoError(t, err)
+		require.Greater(t, port, 0)
+		assert.NotEqual(t, savedPort, port)
 	})
 
 	t.Run("gives up after all attempts fail", func(t *testing.T) {

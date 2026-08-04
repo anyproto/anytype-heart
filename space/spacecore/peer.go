@@ -39,10 +39,12 @@ func (s *service) PeerDiscovered(ctx context.Context, peer localdiscovery.Discov
 }
 
 // addSchema expands each discovered ip:port into explicit transport URLs.
-// Local peers are dialed over yamux (TCP) only: a dead peer answers the dial
-// with an RST in one RTT, while a QUIC dial to a dead port has to wait out the
-// whole handshake timeout (quic-go has no ICMP/ECONNREFUSED handling on the
-// unconnected sockets any-sync uses). The QUIC listener stays bound so
+// Local peers are dialed over yamux (TCP) only: a live host whose app has
+// quit answers the dial with an RST in one RTT, while a QUIC dial to a dead
+// port has to wait out the whole handshake timeout (quic-go has no
+// ICMP/ECONNREFUSED handling on the unconnected sockets any-sync uses). A
+// host that left the network answers neither transport — that case still
+// costs the full dial timeout. The QUIC listener stays bound so
 // not-yet-updated clients can still dial us; that inbound connection is
 // bidirectional, so mixed versions keep syncing.
 func (s *service) addSchema(addrs []string) (res []string) {

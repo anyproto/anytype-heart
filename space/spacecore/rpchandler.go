@@ -3,7 +3,9 @@ package spacecore
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/url"
+	"strconv"
 
 	"github.com/anyproto/any-sync/commonspace"
 	"github.com/anyproto/any-sync/commonspace/clientspaceproto"
@@ -53,9 +55,11 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 		peerAddr := peer.CtxPeerAddr(ctx)
 
 		if peerAddr != "" {
-			// prioritize address remote peer connected us from
-			if u, errParse := url.Parse(peerAddr); errParse == nil {
-				portAddrs = append(portAddrs, u.Host)
+			// prioritize the address the remote peer connected us from — but
+			// with its advertised listening port: the port in peerAddr is the
+			// dialer's ephemeral source port, nothing listens on it
+			if u, errParse := url.Parse(peerAddr); errParse == nil && u.Hostname() != "" {
+				portAddrs = append(portAddrs, net.JoinHostPort(u.Hostname(), strconv.Itoa(int(request.LocalServer.Port))))
 			}
 		}
 
@@ -67,9 +71,10 @@ func (r *rpcHandler) SpaceExchange(ctx context.Context, request *clientspaceprot
 			portAddrs = append(portAddrs, addr)
 		}
 		// addSchema pins the transport for local peers (yamux); see its comment
-		r.s.peerService.SetPeerAddrs(peerId, r.s.addSchema(portAddrs))
+		addrsWithSchema := r.s.addSchema(portAddrs)
+		r.s.peerService.SetPeerAddrs(peerId, addrsWithSchema)
 		r.s.peerStore.UpdateLocalPeer(peerId, request.SpaceIds)
-		log.Info("updated local peer", zap.Strings("ips", r.s.addSchema(portAddrs)), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
+		log.Info("updated local peer", zap.Strings("ips", addrsWithSchema), zap.String("peerId", peerId), zap.Strings("spaceIds", request.SpaceIds))
 	}
 	log.Debug("returning list with ids", zap.Strings("spaceIds", allIds))
 	resp = &clientspaceproto.SpaceExchangeResponse{SpaceIds: allIds}

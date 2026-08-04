@@ -39,10 +39,6 @@ type ClientServer interface {
 	ServerStarted() bool
 }
 
-type DbProvider interface {
-	GetCommonDb() anystore.DB
-}
-
 // udpListener is the part of quic.Quic used here; narrowed for tests.
 type udpListener interface {
 	ListenAddrs(ctx context.Context, addrs ...string) ([]net.Addr, error)
@@ -52,6 +48,13 @@ type udpListener interface {
 type tcpListenerRegistry interface {
 	AddListener(lis net.Listener)
 }
+
+// keep the narrowed interfaces in sync with any-sync at compile time, so an
+// upstream API change fails the build instead of panicking in Init
+var (
+	_ udpListener         = (quic.Quic)(nil)
+	_ tcpListenerRegistry = (yamux.Yamux)(nil)
+)
 
 type clientServer struct {
 	quic          udpListener
@@ -75,7 +78,9 @@ func (s *clientServer) Name() (name string) {
 
 func (s *clientServer) Run(ctx context.Context) error {
 	if err := s.startServer(ctx); err != nil {
-		log.InfoCtx(ctx, "failed to start drpc server", zap.Error(err))
+		// the app stays up without local P2P, but both local listeners are
+		// missing — warn, don't bury it at info
+		log.WarnCtx(ctx, "failed to start local p2p server", zap.Error(err))
 	} else {
 		s.serverStarted = true
 	}
@@ -95,7 +100,7 @@ func (s *clientServer) startServer(ctx context.Context) (err error) {
 	}
 	s.port, err = s.listen(ctx, oldPort)
 	if err != nil {
-		return fmt.Errorf("listen: %w", err)
+		return fmt.Errorf("bind local listeners: %w", err)
 	}
 	if oldPort == s.port {
 		return nil
@@ -158,13 +163,19 @@ func (s *clientServer) listenPort(ctx context.Context, tryPort int) (port int, e
 		_ = list.Close()
 		return 0, fmt.Errorf("listen udp on port %d: %w", port, err)
 	}
+	port, err = s.parsePort(addrs[0].String())
+	if err != nil {
+		_ = list.Close()
+		return 0, fmt.Errorf("parse udp listener port: %w", err)
+	}
 	// Hand the TCP listener to the yamux transport so local peers can dial us
 	// over TCP as well. AddListener starts the accept loop itself, and
 	// yamux.Run starts one per registered listener — so this must run after
 	// yamux.Run. Component registration order guarantees it: yamux is
-	// registered before clientserver, and this is only called from Run.
+	// registered before clientserver, and this is only called from Run. It is
+	// also the last step of an attempt, so a failed attempt never registers.
 	s.yamux.AddListener(list)
-	return s.parsePort(addrs[0].String())
+	return port, nil
 }
 
 func (s *clientServer) Close(_ context.Context) (err error) {
