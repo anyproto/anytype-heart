@@ -770,7 +770,28 @@ func checkDateFilters(view map[string]any, formats map[string]string, path strin
 			nPath := fmt.Sprintf("%s/%d", path, i)
 			if sub, isGroup := n["filters"].([]any); isGroup {
 				op, _ := n["operator"].(string)
-				walk(sub, nPath+"/filters", op != "or", scope)
+				childScope := scope
+				if op == "or" {
+					// an `empty` sibling on the same property under an OR is
+					// intent to INCLUDE the undated objects ("… OR dueDate IS
+					// EMPTY") — warning that the comparison also matches them
+					// would contradict the filter's own text
+					childScope = map[string]bool{}
+					for k := range scope {
+						childScope[k] = true
+					}
+					for _, subRaw := range sub {
+						leaf, isLeaf := subRaw.(map[string]any)
+						if !isLeaf {
+							continue
+						}
+						cond, _ := leaf["condition"].(string)
+						if prop, _ := leaf["property"].(string); prop != "" && cond == "empty" {
+							childScope[prop] = true
+						}
+					}
+				}
+				walk(sub, nPath+"/filters", op != "or", childScope)
 				continue
 			}
 			// the day-count presets read their operand from value; without
