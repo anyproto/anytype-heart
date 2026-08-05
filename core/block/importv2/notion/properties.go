@@ -44,15 +44,22 @@ type relationDef struct {
 	bundled   bool
 }
 
-// propertiesStore dedupes relations and options across the whole workspace
-// (a property shared by a database and its pages yields one relation), and
-// implements the v1 Tag redirection rules exactly:
-// select/multi_select named "Tag" — or "Tags"/"tags" only when no "Tag"
-// property exists — redirect to the bundled Tag relation; first match wins;
-// status and people are never redirected.
+// propertiesStore dedupes relations and options, and implements the v1 Tag
+// redirection rules exactly: select/multi_select named "Tag" — or
+// "Tags"/"tags" only when no "Tag" property exists — redirect to the bundled
+// Tag relation; first match wins; status and people are never redirected.
+//
+// A property belongs to the database that declares it. Dedup is by notion
+// property id, which resolves the one case that must collapse — a database
+// and its pages describing the same property — while leaving same-named
+// properties in different databases as separate relations. Merging those by
+// name would give them one option pool: in a real workspace "Status" appeared
+// in 18 databases, and sharing it puts every database's lifecycle values in
+// one dropdown and every other database's empty columns on every board.
+// Sharing is opt-in and whitelisted: the bundled Tag redirect here, and
+// schemaplan.AllowedBundledTargets on the plan path.
 type propertiesStore struct {
-	byNotionId   map[string]*relationDef
-	byNameFormat map[string]*relationDef
+	byNotionId map[string]*relationDef
 	// byKey dedupes by final anytype key — the identity plan targets share
 	// (two containers remapping onto dueDate resolve to one def).
 	byKey         map[string]*relationDef
@@ -63,10 +70,9 @@ type propertiesStore struct {
 
 func newPropertiesStore() *propertiesStore {
 	return &propertiesStore{
-		byNotionId:   map[string]*relationDef{},
-		byNameFormat: map[string]*relationDef{},
-		byKey:        map[string]*relationDef{},
-		options:      map[string]bool{},
+		byNotionId: map[string]*relationDef{},
+		byKey:      map[string]*relationDef{},
+		options:    map[string]bool{},
 	}
 }
 
@@ -81,14 +87,15 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 	if def, ok := p.byNotionId[property.Id]; ok {
 		return def, false
 	}
-	nameFormat := property.Name + "\x00" + format.String()
-	if def, ok := p.byNameFormat[nameFormat]; ok {
-		p.byNotionId[property.Id] = def
-		return def, false
-	}
 
 	if p.isTagRedirect(property) {
 		p.tagRedirected = true
+		// The bundled tag relation is whitelisted-shared: one vocabulary for
+		// the whole space is the entire point of tags.
+		if existing, ok := p.byKey[bundle.RelationKeyTag.String()]; ok {
+			p.byNotionId[property.Id] = existing
+			return existing, false
+		}
 		def = &relationDef{
 			key:       bundle.RelationKeyTag.String(),
 			sourceKey: bundle.RelationKeyTag.BundledURL(),
@@ -97,7 +104,6 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 			bundled:   true,
 		}
 		p.byNotionId[property.Id] = def
-		p.byNameFormat[nameFormat] = def
 		p.byKey[def.key] = def
 		return def, false
 	}
@@ -110,7 +116,6 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 		name:      property.Name,
 	}
 	p.byNotionId[property.Id] = def
-	p.byNameFormat[nameFormat] = def
 	p.byKey[key] = def
 	return def, true
 }

@@ -75,9 +75,14 @@ type PropertyPlan struct {
 
 // TypeDefinition is a new type the plan introduces, in anyblockjson §2a shape.
 type TypeDefinition struct {
-	Key        domain.TypeKey // plan-scoped key; CustomTypeKey mints the emitted one
-	Name       string
-	Layout     model.ObjectTypeLayout
+	Key    domain.TypeKey // plan-scoped key; CustomTypeKey mints the emitted one
+	Name   string
+	Layout model.ObjectTypeLayout
+	// PluralName labels collections of this type ("Tasks"); empty keeps Name.
+	PluralName string
+	// IconName is a member of the closed icon vocabulary
+	// (core/api/model.IconName); anything else is dropped by Sanitize.
+	IconName   string
 	Properties []TypeProperty
 }
 

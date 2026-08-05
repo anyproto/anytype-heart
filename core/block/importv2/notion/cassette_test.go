@@ -92,9 +92,13 @@ func TestCassetteWorkspace(t *testing.T) {
 	// UPDATE the literals when re-recording the cassette.
 	if mode == recorder.ModeReplayOnly {
 		assert.Equal(t, fidelitySummary{
-			// 762: select→status (decision §13.8) merged one same-named
-			// select/status relation pair under the name+format dedup.
-			Objects:        762,
+			// 865: a property belongs to the database that declares it, so
+			// same-named properties in different databases no longer collapse
+			// into one relation (762 before that fix). The whole delta is
+			// definition objects — relations 140→208, options 178→213 — with
+			// content unchanged at 444; "Status" alone appeared in 18 of this
+			// workspace's databases, sharing one option pool between them.
+			Objects:        865,
 			FileObjects:    41,
 			RootCandidates: 13,
 			Blocks:         5039,

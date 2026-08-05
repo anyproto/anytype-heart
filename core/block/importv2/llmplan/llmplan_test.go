@@ -185,3 +185,38 @@ func TestPlan(t *testing.T) {
 		assert.Empty(t, got.NewTypes)
 	})
 }
+
+func TestAlwaysMintPrompt(t *testing.T) {
+	t.Run("plural name and icon reach the plan", func(t *testing.T) {
+		// given
+		reply := `{"types":[{"key":"sprint","name":"Sprint","pluralName":"Sprints","icon":"checkbox","layout":"todo","typeProperties":[]}],"containers":[]}`
+		fake := newFakeLLM(t, reply)
+		planner := newTestPlanner(t, fake)
+
+		// when
+		got, err := planner.Plan(context.Background(), testSchemas)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got.NewTypes, 1)
+		assert.Equal(t, "Sprints", got.NewTypes[0].PluralName)
+		assert.Equal(t, "checkbox", got.NewTypes[0].IconName)
+	})
+
+	t.Run("system prompt stops offering bundled types and offers icons instead", func(t *testing.T) {
+		// given
+		fake := newFakeLLM(t, validReply)
+		planner := newTestPlanner(t, fake)
+
+		// when
+		_, err := planner.Plan(context.Background(), testSchemas)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, fake.requests, 1)
+		system := fake.requests[0]["messages"].([]any)[0].(map[string]any)["content"].(string)
+		assert.NotContains(t, system, "Bundled types:", "the plan must always mint its own type")
+		assert.Contains(t, system, "musical-notes", "the icon vocabulary must be offered")
+		assert.Contains(t, system, "one option pool per space", "the select-merge rule must be stated")
+	})
+}

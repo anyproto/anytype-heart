@@ -85,6 +85,15 @@ func TypeObject(def TypeDefinition) (*importv2.Object, domain.TypeKey, error) {
 		bundle.RelationKeyRecommendedLayout: domain.Int64(int64(layout)),
 		bundle.RelationKeyResolvedLayout:    domain.Int64(int64(model.ObjectType_objectType)),
 	})
+	// Every bundled type has a plural name and an icon; a minted one reads as
+	// unfinished without them, and minting is now the only path. Both arrive
+	// from the plan already bounded and vocabulary-checked by Sanitize.
+	if def.PluralName != "" {
+		details.SetString(bundle.RelationKeyPluralName, def.PluralName)
+	}
+	if def.IconName != "" {
+		details.SetString(bundle.RelationKeyIconName, def.IconName)
+	}
 	if len(featured) > 0 {
 		details.SetStringList(bundle.RelationKeyRecommendedFeaturedRelations, featured)
 	}

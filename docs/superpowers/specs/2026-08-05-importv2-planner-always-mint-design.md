@@ -69,13 +69,53 @@ Remove `bundledTypeTargets` from the prompt. Every container the planner is conf
 gets a `TypeDefinition` with its own key; `CustomTypeKey` mints the emitted key as today.
 
 `sanitizeNewTypes` currently drops a definition whose key collides with a bundled type
-("the bundled type wins") and `sanitizeContainer` accepts `bundle.HasObjectTypeByKey` as a
-valid container type. Both change: a plan naming a bundled type key for a container is now
-a dropped entry, reported as `llmPlanEntryDropped`. A definition whose key collides with a
-bundled key is re-keyed rather than dropped, so the model spelling its type `task` still
-yields a working minted type instead of silently losing the container.
+("the bundled type wins"). That changes: such a definition is re-keyed rather than dropped,
+so the model spelling its type `task` still yields a working minted type instead of silently
+losing the container.
 
-### 3.2 Properties: per-container keys for lifecycle selects
+**Corrected during implementation.** An earlier draft also made a container *naming* a
+bundled type key a dropped entry. That was wrong and broke every no-LLM path: the naive
+planner's verdicts are all bundled type keys, so the rule dropped every one of them. Two
+different things were conflated:
+
+- *Defining* a type document under a bundled key reshapes the built-in type space-wide —
+  dangerous, and re-keyed.
+- *Pointing* a container's pages at a bundled type changes nothing about that type — safe,
+  and exactly what `typesuggest` has always done.
+
+Always-mint is therefore enforced in the **prompt**, which governs what the LLM proposes.
+`Sanitize` also governs the naive planner, so it stays policy-neutral here and enforces only
+the invariants that hold for every planner.
+
+### 3.2 Properties belong to their type; sharing is whitelisted
+
+**Revised 2026-08-06 (user ruling), broader than the original select-only rule.** A property
+belongs to the type that declares it. If two databases are different types, their "Status" is
+two different properties. Sharing one property across types is the *exception*, and it is
+requested explicitly by naming a whitelisted bundled target (§3.3) — `tag` and `genre` exist
+for exactly that.
+
+This applies to every format, not only selects. Selects are merely where the damage is
+loudest, because a shared select shares an option pool.
+
+The scope is the container's type when it has one, so two containers the plan calls the same
+kind of thing do share properties; otherwise the container itself.
+
+**It also applies with no plan at all.** The Notion converter deduped relations by
+`name + format`, so same-named properties in different databases collapsed into one relation
+on the plain, non-LLM path. In the 2026-08-04 workspace `Status` appeared in **18** databases
+and shared a single option pool between them; `Category` in 5, `Type` in 4. Dedup is now by
+notion property id only — which still collapses the one case that must (a database and its
+pages describing the same property) — with the bundled Tag redirect as the whitelisted
+exception. This changes the cassette fidelity snapshot from 762 to 865 objects: relations
+140→208, options 178→213, content unchanged at 444.
+
+**Not changed: markdown/Obsidian's schema-less front matter**, which keys relations by
+property name across the whole vault. Without a plan, an Obsidian folder is not a type, so
+there is nothing to tie the property to; with a plan it goes through the scoping above.
+Worth revisiting if folder containers become types by default.
+
+#### Original rule (superseded, kept for the reasoning)
 
 The rule, in two halves:
 

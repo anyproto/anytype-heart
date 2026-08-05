@@ -31,26 +31,33 @@ func collectIssues(issues *[]importv2.Issue) func(importv2.Issue) {
 
 func TestSanitize(t *testing.T) {
 	t.Run("valid plan passes through", func(t *testing.T) {
-		// given
-		plan := Plan{Containers: map[string]ContainerPlan{
-			"ds1": {
-				TypeKey: bundle.TypeKeyTask,
-				Reason:  "LLM plan",
-				Properties: map[string]PropertyPlan{
-					"p1": {Key: bundle.RelationKeyDueDate},
+		// given — the plan mints its own type; bundled targets stay legal for
+		// the load-bearing relations
+		plan := Plan{
+			NewTypes: []TypeDefinition{{Key: "sprintTask", Name: "Sprint task"}},
+			Containers: map[string]ContainerPlan{
+				"ds1": {
+					TypeKey: "sprintTask",
+					Reason:  "LLM plan",
+					Properties: map[string]PropertyPlan{
+						"p1": {Key: bundle.RelationKeyDueDate},
+					},
 				},
 			},
-		}}
+		}
 		var issues []importv2.Issue
-		want := Plan{Containers: map[string]ContainerPlan{
-			"ds1": {
-				TypeKey: bundle.TypeKeyTask,
-				Reason:  "LLM plan",
-				Properties: map[string]PropertyPlan{
-					"p1": {Key: bundle.RelationKeyDueDate, Format: model.RelationFormat_date},
+		want := Plan{
+			NewTypes: []TypeDefinition{{Key: "sprintTask", Name: "Sprint task"}},
+			Containers: map[string]ContainerPlan{
+				"ds1": {
+					TypeKey: "sprintTask",
+					Reason:  "LLM plan",
+					Properties: map[string]PropertyPlan{
+						"p1": {Key: bundle.RelationKeyDueDate, Format: model.RelationFormat_date},
+					},
 				},
 			},
-		}}
+		}
 
 		// when
 		got := Sanitize(plan, taskSchemas(), collectIssues(&issues))
@@ -119,8 +126,9 @@ func TestSanitize(t *testing.T) {
 		assert.Equal(t, domain.TypeKey("sprint"), got.Containers["ds1"].TypeKey)
 	})
 
-	t.Run("new type clashing a bundled key collapses onto the bundled type", func(t *testing.T) {
-		// given
+	t.Run("new type clashing a bundled key is re-keyed, never reusing the bundled type", func(t *testing.T) {
+		// given — reusing the bundled key would reshape the built-in type
+		// space-wide, so the plan gets its own key instead
 		plan := Plan{
 			NewTypes:   []TypeDefinition{{Key: bundle.TypeKeyTask, Name: "Task"}},
 			Containers: map[string]ContainerPlan{"ds1": {TypeKey: bundle.TypeKeyTask}},
@@ -130,8 +138,9 @@ func TestSanitize(t *testing.T) {
 		got := Sanitize(plan, taskSchemas(), nil)
 
 		// then
-		assert.Empty(t, got.NewTypes)
-		assert.Equal(t, bundle.TypeKeyTask, got.Containers["ds1"].TypeKey)
+		require.Len(t, got.NewTypes, 1)
+		assert.NotEqual(t, bundle.TypeKeyTask, got.NewTypes[0].Key)
+		assert.Equal(t, got.NewTypes[0].Key, got.Containers["ds1"].TypeKey)
 	})
 
 	t.Run("denied target dropped", func(t *testing.T) {
@@ -194,8 +203,8 @@ func TestSanitize(t *testing.T) {
 		// when
 		got := Sanitize(plan, taskSchemas(), nil)
 
-		// then
-		want := PropertyPlan{Key: "meetingNotes", Name: "Meeting notes", Format: model.RelationFormat_shorttext}
+		// then — the key is scoped to the container that declared it
+		want := PropertyPlan{Key: ScopedKey("meetingNotes", "ds1"), Name: "Meeting notes", Format: model.RelationFormat_shorttext}
 		assert.Equal(t, want, got.Containers["ds1"].Properties["p3"])
 	})
 
@@ -248,17 +257,20 @@ func TestSanitize(t *testing.T) {
 		assert.Contains(t, issues[0].Message, "duplicates target")
 	})
 
-	t.Run("custom target format anchors across containers", func(t *testing.T) {
-		// given — two containers merge onto one key: date first (sorted
-		// order), text second — incompatible with the settled anchor
+	t.Run("custom target format anchors across containers of one type", func(t *testing.T) {
+		// given — containers sharing a type share its properties, so their
+		// formats must still agree: date first (sorted order), text second
 		schemas := []ContainerSchema{
 			{Id: "a", Properties: []PropertySchema{{Id: "p", Name: "When", Format: model.RelationFormat_date}}},
 			{Id: "b", Properties: []PropertySchema{{Id: "p", Name: "When", Format: model.RelationFormat_longtext}}},
 		}
-		plan := Plan{Containers: map[string]ContainerPlan{
-			"a": {Properties: map[string]PropertyPlan{"p": {Key: "when"}}},
-			"b": {Properties: map[string]PropertyPlan{"p": {Key: "when"}}},
-		}}
+		plan := Plan{
+			NewTypes: []TypeDefinition{{Key: "event", Name: "Event"}},
+			Containers: map[string]ContainerPlan{
+				"a": {TypeKey: "event", Properties: map[string]PropertyPlan{"p": {Key: "when"}}},
+				"b": {TypeKey: "event", Properties: map[string]PropertyPlan{"p": {Key: "when"}}},
+			},
+		}
 		var issues []importv2.Issue
 
 		// when
@@ -266,7 +278,7 @@ func TestSanitize(t *testing.T) {
 
 		// then
 		assert.Equal(t, model.RelationFormat_date, got.Containers["a"].Properties["p"].Format)
-		assert.NotContains(t, got.Containers, "b")
+		assert.Empty(t, got.Containers["b"].Properties)
 		require.Len(t, issues, 1)
 		assert.Contains(t, issues[0].Message, "conflicts with target")
 	})
@@ -402,5 +414,282 @@ func TestCustomKeys(t *testing.T) {
 		assert.NotEqual(t, CustomRelationKey("sprintGoal"), CustomRelationKey("sprintgoal"))
 		assert.Equal(t, CustomTypeKey("sprint"), CustomTypeKey("sprint"))
 		assert.NotEqual(t, string(CustomRelationKey("sprint")), string(CustomTypeKey("sprint")))
+	})
+}
+
+// twoCategorySchemas reproduces the shape that merged four databases' Category
+// vocabularies into one option pool in the 2026-08-04 live import.
+func twoCategorySchemas() []ContainerSchema {
+	return []ContainerSchema{
+		{Id: "recipes", Name: "Recipe SB", Properties: []PropertySchema{
+			{Id: "c1", Name: "Category", Format: model.RelationFormat_status, Options: []string{"Breakfast", "Dinner"}},
+			{Id: "r1", Name: "Meal Calendar", Format: model.RelationFormat_object},
+		}},
+		{Id: "launch", Name: "Launch Tracker", Properties: []PropertySchema{
+			{Id: "c2", Name: "Category", Format: model.RelationFormat_status, Options: []string{"Marketing", "Sales"}},
+			{Id: "r2", Name: "Project", Format: model.RelationFormat_object},
+		}},
+	}
+}
+
+func TestAlwaysMint(t *testing.T) {
+	t.Run("same select target in two containers is scoped per container", func(t *testing.T) {
+		// given — the model merges both Category properties onto one key
+		plan := Plan{
+			NewTypes: []TypeDefinition{
+				{Key: "recipe", Name: "Recipe"},
+				{Key: "launchItem", Name: "Launch item"},
+			},
+			Containers: map[string]ContainerPlan{
+				"recipes": {TypeKey: "recipe", Properties: map[string]PropertyPlan{"c1": {Key: "category"}}},
+				"launch":  {TypeKey: "launchItem", Properties: map[string]PropertyPlan{"c2": {Key: "category"}}},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then — the vocabularies must land in two separate relations
+		recipeKey := got.Containers["recipes"].Properties["c1"].Key
+		launchKey := got.Containers["launch"].Properties["c2"].Key
+		require.NotEmpty(t, recipeKey)
+		require.NotEmpty(t, launchKey)
+		assert.NotEqual(t, recipeKey, launchKey, "select vocabularies merged into one option pool")
+		assert.NotEqual(t, CustomRelationKey(recipeKey), CustomRelationKey(launchKey))
+	})
+
+	t.Run("targets of every format are scoped, not just selects", func(t *testing.T) {
+		// given — a property belongs to its type whatever its format; sharing
+		// one across types means naming a whitelisted bundled target instead
+		plan := Plan{
+			NewTypes: []TypeDefinition{{Key: "recipe", Name: "Recipe"}, {Key: "launchItem", Name: "Launch item"}},
+			Containers: map[string]ContainerPlan{
+				"recipes": {TypeKey: "recipe", Properties: map[string]PropertyPlan{"r1": {Key: "project"}}},
+				"launch":  {TypeKey: "launchItem", Properties: map[string]PropertyPlan{"r2": {Key: "project"}}},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then
+		assert.NotEqual(t, got.Containers["recipes"].Properties["r1"].Key,
+			got.Containers["launch"].Properties["r2"].Key)
+	})
+
+	t.Run("containers sharing a type share its properties", func(t *testing.T) {
+		// given — two containers the plan calls the same kind of thing
+		plan := Plan{
+			NewTypes: []TypeDefinition{{Key: "catalogued", Name: "Catalogued item"}},
+			Containers: map[string]ContainerPlan{
+				"recipes": {TypeKey: "catalogued", Properties: map[string]PropertyPlan{"c1": {Key: "category"}}},
+				"launch":  {TypeKey: "catalogued", Properties: map[string]PropertyPlan{"c2": {Key: "category"}}},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then — one type, one property, one vocabulary
+		assert.Equal(t, got.Containers["recipes"].Properties["c1"].Key,
+			got.Containers["launch"].Properties["c2"].Key)
+	})
+
+	t.Run("whitelisted bundled targets stay shared across types", func(t *testing.T) {
+		// given — the escape hatch: naming a bundled target is how a plan asks
+		// for one property across every type
+		plan := Plan{
+			NewTypes: []TypeDefinition{{Key: "recipe", Name: "Recipe"}, {Key: "launchItem", Name: "Launch item"}},
+			Containers: map[string]ContainerPlan{
+				"recipes": {TypeKey: "recipe", Properties: map[string]PropertyPlan{"c1": {Key: bundle.RelationKeyTag}}},
+				"launch":  {TypeKey: "launchItem", Properties: map[string]PropertyPlan{"c2": {Key: bundle.RelationKeyTag}}},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then
+		assert.Equal(t, bundle.RelationKeyTag, got.Containers["recipes"].Properties["c1"].Key)
+		assert.Equal(t, bundle.RelationKeyTag, got.Containers["launch"].Properties["c2"].Key)
+	})
+
+	t.Run("a type definition agrees with its container on the scoped key", func(t *testing.T) {
+		// given — the type declares the same select the container remaps
+		plan := Plan{
+			NewTypes: []TypeDefinition{{
+				Key: "recipe", Name: "Recipe",
+				Properties: []TypeProperty{{Key: "category", Name: "Category", Format: model.RelationFormat_status}},
+			}},
+			Containers: map[string]ContainerPlan{
+				"recipes": {TypeKey: "recipe", Properties: map[string]PropertyPlan{"c1": {Key: "category"}}},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then — or the type's recommended relation points at a relation nobody emits
+		require.Len(t, got.NewTypes, 1)
+		require.Len(t, got.NewTypes[0].Properties, 1)
+		assert.Equal(t, got.Containers["recipes"].Properties["c1"].Key, got.NewTypes[0].Properties[0].Key)
+	})
+
+	t.Run("pointing a container at a bundled type stays legal for the naive planner", func(t *testing.T) {
+		// given — every typesuggest verdict is a bundled type key, and naming
+		// one as a page's type changes nothing about the bundled type itself
+		plan := Plan{Containers: map[string]ContainerPlan{
+			"ds1": {TypeKey: bundle.TypeKeyTask, Reason: "container name"},
+		}}
+		var issues []importv2.Issue
+
+		// when
+		got := Sanitize(plan, taskSchemas(), collectIssues(&issues))
+
+		// then
+		assert.Equal(t, bundle.TypeKeyTask, got.Containers["ds1"].TypeKey)
+		assert.Empty(t, issues)
+	})
+
+	t.Run("type definition colliding with a bundled key is re-keyed, container follows", func(t *testing.T) {
+		// given — the model spells its minted type "task"
+		plan := Plan{
+			NewTypes: []TypeDefinition{{Key: bundle.TypeKeyTask, Name: "Sprint task"}},
+			Containers: map[string]ContainerPlan{
+				"ds1": {TypeKey: bundle.TypeKeyTask, Reason: "LLM plan"},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then — the container keeps a working minted type instead of being lost
+		require.Len(t, got.NewTypes, 1)
+		assert.NotEqual(t, bundle.TypeKeyTask, got.NewTypes[0].Key)
+		require.Contains(t, got.Containers, "ds1")
+		assert.Equal(t, got.NewTypes[0].Key, got.Containers["ds1"].TypeKey)
+	})
+
+	t.Run("dropped allowlist targets are rejected", func(t *testing.T) {
+		for _, key := range []domain.RelationKey{
+			bundle.RelationKeyAssignee, bundle.RelationKeyAuthor,
+			bundle.RelationKeyCompany, bundle.RelationKeyPriority,
+		} {
+			t.Run(key.String(), func(t *testing.T) {
+				// given
+				plan := Plan{
+					NewTypes: []TypeDefinition{{Key: "sprint", Name: "Sprint"}},
+					Containers: map[string]ContainerPlan{
+						"ds1": {TypeKey: "sprint", Properties: map[string]PropertyPlan{"p2": {Key: key}}},
+					},
+				}
+				var issues []importv2.Issue
+
+				// when
+				got := Sanitize(plan, taskSchemas(), collectIssues(&issues))
+
+				// then
+				assert.Empty(t, got.Containers["ds1"].Properties)
+				require.NotEmpty(t, issues)
+				assert.Equal(t, importv2.IssueLLMPlanEntryDropped, issues[0].Code)
+			})
+		}
+	})
+
+	t.Run("prose in a relation name falls back to the source property name", func(t *testing.T) {
+		// given — both live models wrote explanations into the name field
+		plan := Plan{
+			NewTypes: []TypeDefinition{{Key: "sprint", Name: "Sprint"}},
+			Containers: map[string]ContainerPlan{
+				"ds1": {TypeKey: "sprint", Properties: map[string]PropertyPlan{
+					"p2": {Key: "state", Name: "State (as state) from Sprint work mapped to a per-container select property."},
+				}},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then
+		assert.Equal(t, "State", got.Containers["ds1"].Properties["p2"].Name)
+	})
+
+	t.Run("control characters are stripped from a type name", func(t *testing.T) {
+		// given
+		plan := Plan{
+			NewTypes:   []TypeDefinition{{Key: "sprint", Name: "Sprint\n\tTask"}},
+			Containers: map[string]ContainerPlan{"ds1": {TypeKey: "sprint"}},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then
+		require.Len(t, got.NewTypes, 1)
+		assert.Equal(t, "Sprint Task", got.NewTypes[0].Name)
+	})
+
+	t.Run("an icon outside the vocabulary is dropped", func(t *testing.T) {
+		// given
+		plan := Plan{
+			NewTypes:   []TypeDefinition{{Key: "sprint", Name: "Sprint", IconName: "not-a-real-icon"}},
+			Containers: map[string]ContainerPlan{"ds1": {TypeKey: "sprint"}},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then
+		require.Len(t, got.NewTypes, 1)
+		assert.Empty(t, got.NewTypes[0].IconName)
+	})
+
+	t.Run("an icon inside the vocabulary survives", func(t *testing.T) {
+		// given
+		plan := Plan{
+			NewTypes:   []TypeDefinition{{Key: "sprint", Name: "Sprint", IconName: "checkbox", PluralName: "Sprints"}},
+			Containers: map[string]ContainerPlan{"ds1": {TypeKey: "sprint"}},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then
+		require.Len(t, got.NewTypes, 1)
+		assert.Equal(t, "checkbox", got.NewTypes[0].IconName)
+		assert.Equal(t, "Sprints", got.NewTypes[0].PluralName)
+	})
+}
+
+func TestTypeObject(t *testing.T) {
+	t.Run("carries plural name and icon", func(t *testing.T) {
+		// given — minting is now the only path, so a type must not look
+		// unfinished next to a bundled one
+		def := TypeDefinition{
+			Key: "sprintTask", Name: "Sprint task", PluralName: "Sprint tasks",
+			IconName: "checkbox", Layout: model.ObjectType_todo,
+		}
+
+		// when
+		object, _, err := TypeObject(def)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "Sprint task", object.Payload.Details.GetString(bundle.RelationKeyName))
+		assert.Equal(t, "Sprint tasks", object.Payload.Details.GetString(bundle.RelationKeyPluralName))
+		assert.Equal(t, "checkbox", object.Payload.Details.GetString(bundle.RelationKeyIconName))
+	})
+
+	t.Run("omits plural name and icon when the plan gave none", func(t *testing.T) {
+		// given
+		def := TypeDefinition{Key: "sprintTask", Name: "Sprint task"}
+
+		// when
+		object, _, err := TypeObject(def)
+
+		// then
+		require.NoError(t, err)
+		assert.False(t, object.Payload.Details.Has(bundle.RelationKeyPluralName))
+		assert.False(t, object.Payload.Details.Has(bundle.RelationKeyIconName))
 	})
 }

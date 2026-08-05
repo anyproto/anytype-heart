@@ -134,8 +134,10 @@ func TestFolderPlan(t *testing.T) {
 		require.NotNil(t, alpha)
 		assert.Equal(t, []string{minted.String()}, alpha.Payload.ObjectTypes)
 
-		// the shared relation exists once; both pages' values live under it
-		stateKey := schemaplan.CustomRelationKey("workState").String()
+		// the relation exists once for the type; both pages' values live under
+		// it. The key is scoped to the type, so a "State" select belonging to
+		// another type cannot merge its options into this one.
+		stateKey := schemaplan.CustomRelationKey(schemaplan.ScopedKey("workState", "workItem")).String()
 		relation := sink.byKey("relation:" + stateKey)
 		require.NotNil(t, relation)
 		assert.Equal(t, "State", relation.Payload.Details.GetString(bundle.RelationKeyName))
@@ -148,8 +150,8 @@ func TestFolderPlan(t *testing.T) {
 
 	t.Run("page value that does not fit the target reverts per page", func(t *testing.T) {
 		// given — Effort is a number on one page and prose on another; the
-		// plan (validated against the sweep's number verdict) targets the
-		// bundled number-format priority relation
+		// plan (validated against the sweep's number verdict) targets a minted
+		// number-format relation
 		files := map[string]string{
 			".obsidian/app.json": "{}",
 			"Work/a.md":          "---\nEffort: 3\n---\n# A\n\nBody.\n",
@@ -158,7 +160,7 @@ func TestFolderPlan(t *testing.T) {
 		planner := schemaplan.PlannerFunc(func(context.Context, []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
 			return schemaplan.Plan{Containers: map[string]schemaplan.ContainerPlan{
 				"dir:Work": {Properties: map[string]schemaplan.PropertyPlan{
-					"Effort": {Key: bundle.RelationKeyPriority},
+					"Effort": {Key: "effortPoints", Name: "Effort points", Format: model.RelationFormat_number},
 				}},
 			}}, nil
 		})
@@ -167,14 +169,15 @@ func TestFolderPlan(t *testing.T) {
 		sink, _ := runConverterWithParams(t, files, Params{Flavour: FlavourObsidian, Planner: planner})
 
 		// then — the numeric page follows the remap, the prose page reverts
+		effortKey := domain.RelationKey(schemaplan.CustomRelationKey(schemaplan.ScopedKey("effortPoints", "dir:Work")).String())
 		a := sink.byKey("Work/a.md")
 		require.NotNil(t, a)
-		assert.True(t, a.Payload.Details.Has(bundle.RelationKeyPriority))
+		assert.True(t, a.Payload.Details.Has(effortKey))
 
 		b := sink.byKey("Work/b.md")
 		require.NotNil(t, b)
-		assert.False(t, b.Payload.Details.Has(bundle.RelationKeyPriority),
-			"a string must not land in the bundled number relation")
+		assert.False(t, b.Payload.Details.Has(effortKey),
+			"a string must not land in a number relation")
 		mdKey := domain.RelationKey(stableKey("md", "Effort"))
 		assert.Equal(t, "three days", b.Payload.Details.GetString(mdKey),
 			"the value survives under the original md property")

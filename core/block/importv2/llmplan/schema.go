@@ -17,10 +17,12 @@ var responseSchema = json.RawMessage(`{
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["key", "name", "layout", "typeProperties"],
+        "required": ["key", "name", "pluralName", "icon", "layout", "typeProperties"],
         "properties": {
           "key": {"type": "string"},
           "name": {"type": "string"},
+          "pluralName": {"type": "string"},
+          "icon": {"type": "string"},
           "layout": {"type": "string", "enum": ["basic", "todo", "profile", "note", ""]},
           "typeProperties": {
             "type": "array",

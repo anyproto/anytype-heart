@@ -96,6 +96,8 @@ type wirePlan struct {
 type wireType struct {
 	Key            string             `json:"key"`
 	Name           string             `json:"name"`
+	PluralName     string             `json:"pluralName"`
+	Icon           string             `json:"icon"`
 	Layout         string             `json:"layout"`
 	TypeProperties []wireTypeProperty `json:"typeProperties"`
 }
@@ -134,9 +136,11 @@ func parsePlan(raw json.RawMessage) (schemaplan.Plan, error) {
 			continue
 		}
 		def := schemaplan.TypeDefinition{
-			Key:    domain.TypeKey(wireDef.Key),
-			Name:   wireDef.Name,
-			Layout: layoutOf(wireDef.Layout),
+			Key:        domain.TypeKey(wireDef.Key),
+			Name:       wireDef.Name,
+			PluralName: wireDef.PluralName,
+			IconName:   wireDef.Icon,
+			Layout:     layoutOf(wireDef.Layout),
 		}
 		for _, prop := range wireDef.TypeProperties {
 			if prop.Key == "" {

@@ -3,6 +3,8 @@ package notion
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -88,7 +90,7 @@ func TestScriptedPlan(t *testing.T) {
 
 		// the type definition's custom property exists exactly once, under the
 		// shared plan key, and the container's Score resolves onto it
-		effortKey := schemaplan.CustomRelationKey("effort").String()
+		effortKey := schemaplan.CustomRelationKey(schemaplan.ScopedKey("effort", "sprint")).String()
 		effort := sink.byKey("relation:" + effortKey)
 		require.NotNil(t, effort, "plan relation emitted before use")
 		assert.Equal(t, "Effort", effort.Payload.Details.GetString(bundle.RelationKeyName))
@@ -161,7 +163,7 @@ func TestScriptedPlan(t *testing.T) {
 		assert.Equal(t, int64(model.RelationFormat_status), priority.Payload.Details.GetInt64(bundle.RelationKeyRelationFormat))
 		// the Effort relation, if emitted for the type, stays number and holds
 		// no option values
-		effortKey := schemaplan.CustomRelationKey("effort").String()
+		effortKey := schemaplan.CustomRelationKey(schemaplan.ScopedKey("effort", "sprint")).String()
 		page := sink.byKey("p1")
 		require.NotNil(t, page)
 		assert.False(t, page.Payload.Details.Has(domain.RelationKey(effortKey)),
@@ -217,4 +219,143 @@ func TestScriptedPlan(t *testing.T) {
 		assert.Contains(t, suggested[0], `database "Tasks" pages imported as task (container name)`)
 		assert.Empty(t, issueMessages(sink, importv2.IssuePropertyMapped))
 	})
+}
+
+// twoCategoryWorkspace is two databases whose select properties share a name —
+// the shape that merged four real databases' "Category" option pools into one
+// dropdown in the 2026-08-04 live import.
+func twoCategoryWorkspace(t *testing.T) http.HandlerFunc {
+	t.Helper()
+	routes := map[string]string{
+		"GET /data_sources/recipes": `{
+			"id":"recipes","title":[{"plain_text":"Recipe SB","type":"text"}],
+			"properties":{
+				"Name":{"id":"title","type":"title","name":"Name"},
+				"Category":{"id":"catA","type":"select","select":{"options":[
+					{"id":"o1","name":"Breakfast","color":"red"},{"id":"o2","name":"Dinner","color":"blue"}]}}
+			}}`,
+		"GET /data_sources/launch": `{
+			"id":"launch","title":[{"plain_text":"Launch Tracker","type":"text"}],
+			"properties":{
+				"Name":{"id":"title","type":"title","name":"Name"},
+				"Category":{"id":"catB","type":"select","select":{"options":[
+					{"id":"o3","name":"Marketing","color":"green"},{"id":"o4","name":"Sales","color":"gray"}]}}
+			}}`,
+		"GET /pages/pr1": `{"id":"pr1","archived":false,
+			"properties":{
+				"Name":{"id":"title","type":"title","title":[{"plain_text":"Toast","type":"text"}]},
+				"Category":{"id":"catA","type":"select","select":{"id":"o1","name":"Breakfast","color":"red"}}}}`,
+		"GET /pages/pl1": `{"id":"pl1","archived":false,
+			"properties":{
+				"Name":{"id":"title","type":"title","title":[{"plain_text":"Launch Twitter","type":"text"}]},
+				"Category":{"id":"catB","type":"select","select":{"id":"o3","name":"Marketing","color":"green"}}}}`,
+		"GET /blocks/pr1/children": `{"results":[],"has_more":false,"next_cursor":null}`,
+		"GET /blocks/pl1/children": `{"results":[],"has_more":false,"next_cursor":null}`,
+	}
+	search := `{"results":[
+		{"object":"data_source","id":"recipes","parent":{"type":"database_id","database_id":"realrecipes"},
+		 "database_parent":{"type":"workspace","workspace":true},
+		 "title":[{"plain_text":"Recipe SB","type":"text"}]},
+		{"object":"data_source","id":"launch","parent":{"type":"database_id","database_id":"reallaunch"},
+		 "database_parent":{"type":"workspace","workspace":true},
+		 "title":[{"plain_text":"Launch Tracker","type":"text"}]},
+		{"object":"page","id":"pr1","parent":{"type":"data_source_id","data_source_id":"recipes"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"Toast","type":"text"}]}}},
+		{"object":"page","id":"pl1","parent":{"type":"data_source_id","data_source_id":"launch"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"Launch Twitter","type":"text"}]}}}
+	],"has_more":false,"next_cursor":null}`
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/search" {
+			fmt.Fprint(w, search)
+			return
+		}
+		if response, ok := routes[r.Method+" "+r.URL.Path]; ok {
+			fmt.Fprint(w, response)
+			return
+		}
+		t.Errorf("unexpected api call: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func TestPlanNeverMergesSelectVocabularies(t *testing.T) {
+	// given — the model maps both databases' Category onto one shared key,
+	// which is exactly what the prompt used to ask for
+	planner := schemaplan.PlannerFunc(func(_ context.Context, schemas []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+		containers := map[string]schemaplan.ContainerPlan{}
+		for _, schema := range schemas {
+			containers[schema.Id] = schemaplan.ContainerPlan{
+				Reason:     "LLM plan",
+				Properties: map[string]schemaplan.PropertyPlan{schema.Properties[0].Id: {Key: "category", Name: "Category"}},
+			}
+		}
+		return schemaplan.Plan{Containers: containers}, nil
+	})
+
+	server := httptest.NewServer(twoCategoryWorkspace(t))
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token",
+		client.WithBaseURL(server.URL),
+		client.WithRateLimit(1000),
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
+	)
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir(), WithPlanner(planner))
+	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error { return nil }))
+
+	// when
+	sink := &recordingSink{}
+	_, err := converter.Convert(context.Background(), sink)
+	require.NoError(t, err)
+
+	// then — two relations, and neither offers the other's vocabulary
+	recipeKey := schemaplan.CustomRelationKey(schemaplan.ScopedKey("category", "recipes")).String()
+	launchKey := schemaplan.CustomRelationKey(schemaplan.ScopedKey("category", "launch")).String()
+	require.NotEqual(t, recipeKey, launchKey)
+	require.NotNil(t, sink.byKey("relation:"+recipeKey), "recipe Category relation missing")
+	require.NotNil(t, sink.byKey("relation:"+launchKey), "launch Category relation missing")
+
+	assert.NotNil(t, sink.byKey("option:"+recipeKey+":Breakfast"))
+	assert.NotNil(t, sink.byKey("option:"+launchKey+":Marketing"))
+	assert.Nil(t, sink.byKey("option:"+recipeKey+":Marketing"),
+		"a recipe's Category must not offer the launch vocabulary")
+	assert.Nil(t, sink.byKey("option:"+launchKey+":Breakfast"),
+		"a launch item's Category must not offer the meal vocabulary")
+}
+
+func TestNaiveNeverMergesPropertiesAcrossDatabases(t *testing.T) {
+	// given — two databases with same-named select properties and no plan at
+	// all. In the 2026-08-04 live workspace "Status" was shared by 18
+	// databases, so every board grouped by Status carried seventeen other
+	// databases' empty columns.
+	server := httptest.NewServer(twoCategoryWorkspace(t))
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token",
+		client.WithBaseURL(server.URL),
+		client.WithRateLimit(1000),
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
+	)
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir())
+	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error { return nil }))
+
+	// when
+	sink := &recordingSink{}
+	_, err := converter.Convert(context.Background(), sink)
+	require.NoError(t, err)
+
+	// then — a property belongs to its own database, so each Category keeps
+	// its own vocabulary
+	var optionOwners []string
+	for _, object := range sink.objects {
+		if strings.HasPrefix(object.SourceKey, "option:") {
+			optionOwners = append(optionOwners, object.SourceKey)
+		}
+	}
+	require.Len(t, optionOwners, 4, "each database contributes its own two options")
+
+	relations := map[string]bool{}
+	for _, key := range optionOwners {
+		relations[strings.Split(key, ":")[1]] = true
+	}
+	assert.Len(t, relations, 2, "the two databases' Category vocabularies merged into one option pool")
 }
