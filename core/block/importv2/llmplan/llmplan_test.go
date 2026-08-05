@@ -218,5 +218,7 @@ func TestAlwaysMintPrompt(t *testing.T) {
 		assert.NotContains(t, system, "Bundled types:", "the plan must always mint its own type")
 		assert.Contains(t, system, "musical-notes", "the icon vocabulary must be offered")
 		assert.Contains(t, system, "one option pool per space", "the select-merge rule must be stated")
+		assert.Contains(t, system, "same kind of thing",
+			"containers of one kind must be allowed to share a type — each stays its own collection")
 	})
 }

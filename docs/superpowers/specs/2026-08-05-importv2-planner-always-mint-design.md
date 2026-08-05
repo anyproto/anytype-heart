@@ -63,10 +63,21 @@ is needed: plans are per-run inputs, never stored.
 
 ## 3. Design
 
-### 3.1 Types: always mint
+### 3.1 Types: always mint — but one per *kind*, not one per container
 
 Remove `bundledTypeTargets` from the prompt. Every container the planner is confident about
 gets a `TypeDefinition` with its own key; `CustomTypeKey` mints the emitted key as today.
+
+**Revised 2026-08-06 (user ruling).** "Always mint" must not become "one type per database".
+Containers holding the same kind of thing should share one type — three task trackers are all
+tasks. A Notion database already becomes its own collection regardless of its type
+(`notion/database.go:116`), so sharing a type yields the right model: **N collections over one
+type**, each database keeping its identity as a list while its rows share a shape. Minting a
+near-duplicate type per database would fragment the space instead.
+
+The prompt therefore asks for one type per kind and says containers of one kind *should* share
+it. Sharing is a first-class case, not an edge case — which is what makes the scoping in §3.2
+scope by *type* rather than by container.
 
 `sanitizeNewTypes` currently drops a definition whose key collides with a bundled type
 ("the bundled type wins"). That changes: such a definition is re-keyed rather than dropped,

@@ -359,3 +359,71 @@ func TestNaiveNeverMergesPropertiesAcrossDatabases(t *testing.T) {
 	}
 	assert.Len(t, relations, 2, "the two databases' Category vocabularies merged into one option pool")
 }
+
+func TestSharedTypeBecomesCollectionsPlusOneType(t *testing.T) {
+	// given — two databases the plan calls the same kind of thing
+	planner := schemaplan.PlannerFunc(func(_ context.Context, schemas []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+		containers := map[string]schemaplan.ContainerPlan{}
+		for _, schema := range schemas {
+			containers[schema.Id] = schemaplan.ContainerPlan{
+				TypeKey:    "catalogued",
+				Reason:     "LLM plan",
+				Properties: map[string]schemaplan.PropertyPlan{schema.Properties[0].Id: {Key: "category", Name: "Category"}},
+			}
+		}
+		return schemaplan.Plan{
+			NewTypes: []schemaplan.TypeDefinition{{
+				Key: "catalogued", Name: "Catalogued item",
+				Properties: []schemaplan.TypeProperty{{Key: "category", Name: "Category", Format: model.RelationFormat_status}},
+			}},
+			Containers: containers,
+		}, nil
+	})
+
+	server := httptest.NewServer(twoCategoryWorkspace(t))
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token",
+		client.WithBaseURL(server.URL),
+		client.WithRateLimit(1000),
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
+	)
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir(), WithPlanner(planner))
+	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error { return nil }))
+
+	// when
+	sink := &recordingSink{}
+	_, err := converter.Convert(context.Background(), sink)
+	require.NoError(t, err)
+
+	// then — two collections, one type: the databases keep their identity as
+	// lists while their rows share a shape
+	collections, types := 0, 0
+	for _, object := range sink.objects {
+		if object.Payload == nil || len(object.Payload.ObjectTypes) == 0 {
+			continue
+		}
+		switch object.Payload.ObjectTypes[0] {
+		case bundle.TypeKeyCollection.String():
+			collections++
+		case bundle.TypeKeyObjectType.String():
+			types++
+		}
+	}
+	assert.Equal(t, 2, collections, "each database stays its own collection")
+	assert.Equal(t, 1, types, "one shape for one kind of thing")
+
+	minted := schemaplan.CustomTypeKey("catalogued").String()
+	for _, key := range []string{"pr1", "pl1"} {
+		page := sink.byKey(key)
+		require.NotNil(t, page, key)
+		assert.Equal(t, []string{minted}, page.Payload.ObjectTypes)
+	}
+
+	// one relation for the shared type, holding both databases' vocabulary —
+	// correct here precisely because they ARE one type
+	sharedKey := schemaplan.CustomRelationKey(schemaplan.ScopedKey("category", "catalogued")).String()
+	require.NotNil(t, sink.byKey("relation:"+sharedKey))
+	for _, option := range []string{"Breakfast", "Dinner", "Marketing", "Sales"} {
+		assert.NotNil(t, sink.byKey("option:"+sharedKey+":"+option), option)
+	}
+}

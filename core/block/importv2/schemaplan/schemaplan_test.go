@@ -693,3 +693,32 @@ func TestTypeObject(t *testing.T) {
 		assert.False(t, object.Payload.Details.Has(bundle.RelationKeyIconName))
 	})
 }
+
+func TestSharedTypeAcrossContainers(t *testing.T) {
+	t.Run("a type definition and containers sharing it agree on the scoped key", func(t *testing.T) {
+		// given — two databases that are the same kind of thing: they become
+		// two collections over one type, not two types
+		plan := Plan{
+			NewTypes: []TypeDefinition{{
+				Key: "catalogued", Name: "Catalogued item",
+				Properties: []TypeProperty{{Key: "category", Name: "Category", Format: model.RelationFormat_status}},
+			}},
+			Containers: map[string]ContainerPlan{
+				"recipes": {TypeKey: "catalogued", Properties: map[string]PropertyPlan{"c1": {Key: "category"}}},
+				"launch":  {TypeKey: "catalogued", Properties: map[string]PropertyPlan{"c2": {Key: "category"}}},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then — one relation, named by the type, referenced by both
+		// containers AND by the type's own recommended relations
+		require.Len(t, got.NewTypes, 1)
+		require.Len(t, got.NewTypes[0].Properties, 1)
+		shared := got.Containers["recipes"].Properties["c1"].Key
+		assert.Equal(t, shared, got.Containers["launch"].Properties["c2"].Key)
+		assert.Equal(t, shared, got.NewTypes[0].Properties[0].Key,
+			"the type's recommended relation must be the one its containers write to")
+	})
+}

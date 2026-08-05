@@ -209,26 +209,12 @@ func Sanitize(plan Plan, schemas []ContainerSchema, report func(importv2.Issue))
 		schemaById[schema.Id] = schema
 	}
 
-	// A minted type belongs to the single container that names it; that
-	// ownership is what lets a type definition scope its select properties the
-	// same way the container does.
+	// Only used to give a nameless type its container's name; several
+	// containers may legitimately share one type, and then there is no single
+	// owner to borrow from.
 	owners := typeOwners(plan.Containers)
 	scopes := scopeMap(plan.Containers, schemaById)
 	newTypes, renamed := sanitizeNewTypes(plan.NewTypes, owners, schemaById, report)
-
-	// A type definition must name the same relation its container settled on,
-	// or the type's recommended relations point at a relation nobody emits
-	// while the values land in a second, identically-named one. Rewrite before
-	// anchors are seeded, so the type declares its format against the same key
-	// the container will resolve.
-	for i := range newTypes {
-		scoped := scopes[owners[newTypes[i].Key]]
-		for j := range newTypes[i].Properties {
-			if renamedKey, ok := scoped[newTypes[i].Properties[j].Key]; ok {
-				newTypes[i].Properties[j].Key = renamedKey
-			}
-		}
-	}
 
 	planTypes := make(map[domain.TypeKey]bool, len(newTypes))
 	// anchors fixes one format per custom target key across the whole plan —
@@ -317,6 +303,13 @@ func sanitizeNewTypes(defs []TypeDefinition, owners map[domain.TypeKey]string,
 			report(dropped(string(def.Key), "new type without key or name"))
 			continue
 		}
+		// Containers scope their property keys by the type key they name, so a
+		// definition must scope by its own — its ORIGINAL key, before any
+		// re-keying below, which is what the containers saw. Routing this
+		// through an owning container instead would break the moment several
+		// containers share one type, leaving the type's recommended relations
+		// pointing at a relation nobody emits.
+		scope := def.Key.String()
 		if bundle.HasObjectTypeByKey(def.Key) {
 			// The plan always mints its own types: reusing a bundled key would
 			// reshape the built-in type space-wide and hand it to a migration
@@ -357,9 +350,13 @@ func sanitizeNewTypes(defs []TypeDefinition, owners map[domain.TypeKey]string,
 				report(dropped(string(def.Key), "new type property without key"))
 				continue
 			}
-			if bundle.HasRelation(prop.Key) && !allowedBundled[prop.Key] {
-				report(dropped(string(def.Key), fmt.Sprintf("bundled relation %q is not an allowed plan target", prop.Key)))
-				continue
+			if bundle.HasRelation(prop.Key) {
+				if !allowedBundled[prop.Key] {
+					report(dropped(string(def.Key), fmt.Sprintf("bundled relation %q is not an allowed plan target", prop.Key)))
+					continue
+				}
+			} else {
+				prop.Key = ScopedKey(prop.Key, scope)
 			}
 			props = append(props, prop)
 		}
