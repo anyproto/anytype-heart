@@ -18,6 +18,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	coresb "github.com/anyproto/anytype-heart/pkg/lib/core/smartblock"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -81,7 +82,9 @@ func TestScriptedPlan(t *testing.T) {
 
 		// then — the plan type is emitted with its minted key
 		mintedType := schemaplan.CustomTypeKey("sprint")
-		typeObject := sink.byKey(schemaplan.TypeSourceKey("sprint"))
+		// db1 is this type's only database, so the type took its source key
+		// and no separate collection was emitted.
+		typeObject := sink.byKey("db1")
 		require.NotNil(t, typeObject, "plan type object emitted")
 		assert.Equal(t, "Sprint", typeObject.Payload.Details.GetString(bundle.RelationKeyName))
 		assert.Equal(t, int64(model.ObjectType_todo), typeObject.Payload.Details.GetInt64(bundle.RelationKeyRecommendedLayout))
@@ -425,5 +428,125 @@ func TestSharedTypeBecomesCollectionsPlusOneType(t *testing.T) {
 	require.NotNil(t, sink.byKey("relation:"+sharedKey))
 	for _, option := range []string{"Breakfast", "Dinner", "Marketing", "Sales"} {
 		assert.NotNil(t, sink.byKey("option:"+sharedKey+":"+option), option)
+	}
+}
+
+func TestSingleDatabaseTypeReplacesItsCollection(t *testing.T) {
+	// given — one database, one minted type: "all objects of this type" and
+	// "members of this collection" would be the same list
+	planner := schemaplan.PlannerFunc(func(_ context.Context, schemas []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+		return schemaplan.Plan{
+			NewTypes: []schemaplan.TypeDefinition{{Key: "sprint", Name: "Sprint", Layout: model.ObjectType_todo}},
+			Containers: map[string]schemaplan.ContainerPlan{
+				"db1": {TypeKey: "sprint", Reason: "LLM plan"},
+			},
+		}, nil
+	})
+
+	// when
+	sink := runScriptedWithOptions(t, WithPlanner(planner))
+
+	// then — the database's object IS the type, so links to it still resolve
+	object := sink.byKey("db1")
+	require.NotNil(t, object, "the database's source key must still be emitted")
+	assert.Equal(t, coresb.SmartBlockTypeObjectType, object.SbType,
+		"a single-database type replaces its collection rather than duplicating it")
+	assert.Equal(t, "Sprint", object.Payload.Details.GetString(bundle.RelationKeyName))
+	assert.True(t, object.IsRootCandidate, "the import root must still surface it")
+
+	// no collection was emitted for that database
+	for _, emitted := range sink.objects {
+		if emitted.SourceKey == "db1" {
+			continue
+		}
+		if emitted.Payload != nil && len(emitted.Payload.ObjectTypes) > 0 {
+			assert.NotEqual(t, bundle.TypeKeyCollection.String(), emitted.Payload.ObjectTypes[0],
+				"no separate collection for a single-database type")
+		}
+	}
+
+	// rows still carry the minted type
+	page := sink.byKey("p1")
+	require.NotNil(t, page)
+	assert.Equal(t, []string{schemaplan.CustomTypeKey("sprint").String()}, page.Payload.ObjectTypes)
+}
+
+// overlappingContainersWorkspace returns a data_source stub and a bare
+// database stub that resolves to the same data source, so both containers
+// claim the same pages.
+func overlappingContainersWorkspace(t *testing.T) http.HandlerFunc {
+	t.Helper()
+	schema := `{
+		"id":"ds1","title":[{"plain_text":"Tasks","type":"text"}],
+		"properties":{
+			"Name":{"id":"title","type":"title","name":"Name"},
+			"State":{"id":"st","type":"select","select":{"options":[{"id":"o1","name":"Open","color":"red"}]}}
+		}}`
+	routes := map[string]string{
+		"GET /data_sources/ds1": schema,
+		"GET /databases/realdb": `{"id":"realdb","data_sources":[{"id":"ds1"}]}`,
+		"GET /pages/pg1": `{"id":"pg1","archived":false,
+			"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"One","type":"text"}]}}}`,
+		"GET /blocks/pg1/children": `{"results":[],"has_more":false,"next_cursor":null}`,
+	}
+	search := `{"results":[
+		{"object":"data_source","id":"ds1","parent":{"type":"database_id","database_id":"realdb"},
+		 "database_parent":{"type":"workspace","workspace":true},
+		 "title":[{"plain_text":"Tasks","type":"text"}]},
+		{"object":"database","id":"realdb","parent":{"type":"workspace","workspace":true},
+		 "title":[{"plain_text":"Tasks DB","type":"text"}]},
+		{"object":"page","id":"pg1","parent":{"type":"data_source_id","data_source_id":"ds1"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"One","type":"text"}]}}}
+	],"has_more":false,"next_cursor":null}`
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/search" {
+			fmt.Fprint(w, search)
+			return
+		}
+		if response, ok := routes[r.Method+" "+r.URL.Path]; ok {
+			fmt.Fprint(w, response)
+			return
+		}
+		t.Errorf("unexpected api call: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}
+}
+
+func TestOverlappingContainersKeepTheirCollections(t *testing.T) {
+	// given — two containers claiming the same page, each given its own type.
+	// A page carries exactly one type, so at most one of these could ever be
+	// represented by a type; the other's membership needs a collection.
+	planner := schemaplan.PlannerFunc(func(_ context.Context, schemas []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+		plan := schemaplan.Plan{Containers: map[string]schemaplan.ContainerPlan{}}
+		for i, schema := range schemas {
+			key := domain.TypeKey(fmt.Sprintf("kind%d", i))
+			plan.NewTypes = append(plan.NewTypes, schemaplan.TypeDefinition{Key: key, Name: fmt.Sprintf("Kind %d", i)})
+			plan.Containers[schema.Id] = schemaplan.ContainerPlan{TypeKey: key, Reason: "LLM plan"}
+		}
+		return plan, nil
+	})
+
+	server := httptest.NewServer(overlappingContainersWorkspace(t))
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token",
+		client.WithBaseURL(server.URL),
+		client.WithRateLimit(1000),
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
+	)
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir(), WithPlanner(planner))
+	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error { return nil }))
+
+	// when
+	sink := &recordingSink{}
+	_, err := converter.Convert(context.Background(), sink)
+	require.NoError(t, err)
+
+	// then — both containers still emit a collection, so no membership is lost
+	for _, containerId := range []string{"ds1", "realdb"} {
+		object := sink.byKey(containerId)
+		require.NotNil(t, object, containerId)
+		assert.Equal(t, coresb.SmartBlockTypePage, object.SbType,
+			"containers sharing members must stay collections: a page cannot hold two types")
 	}
 }

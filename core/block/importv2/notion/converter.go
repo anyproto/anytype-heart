@@ -65,7 +65,10 @@ type Converter struct {
 	plan           schemaplan.Plan
 	planned        map[string]bool
 	planTypeKeys   map[domain.TypeKey]domain.TypeKey
-	schemaFetches  map[string]*schemaFetch
+	// typeBackedContainers are databases whose minted type took their place:
+	// the type carries their source key, so they emit no collection of their own.
+	typeBackedContainers map[string]bool
+	schemaFetches        map[string]*schemaFetch
 }
 
 // Option configures a per-run converter.
@@ -101,6 +104,7 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		planner:               schemaplan.NewNaive(),
 		planned:               map[string]bool{},
 		planTypeKeys:          map[domain.TypeKey]domain.TypeKey{},
+		typeBackedContainers:  map[string]bool{},
 		schemaFetches:         map[string]*schemaFetch{},
 	}
 	for _, opt := range opts {

@@ -311,3 +311,37 @@ func TestFileFutures(t *testing.T) {
 		assert.ErrorIs(t, err, context.Canceled)
 	})
 }
+
+// TestDerivedAdoptsClaimedSourceKey pins the interaction the notion importer
+// relies on when a minted type takes its single database's place: the type is
+// a derived-class object carrying a source key that pass 1 already claimed.
+func TestDerivedAdoptsClaimedSourceKey(t *testing.T) {
+	t.Run("references resolve to the derived object and the claim is not reported missing", func(t *testing.T) {
+		// given — pass 1 claimed the database id
+		fx := newFixture(t, false)
+		fx.space.EXPECT().CreateTreePayload(mock.Anything, mock.Anything).Return(payloadWithId("minted1"), nil)
+		require.NoError(t, fx.Claim(context.Background(), importv2.IdentityClaim{
+			SourceKey: "db1", SbType: coresb.SmartBlockTypePage,
+		}))
+		require.Equal(t, []string{"db1"}, fx.UnassignedClaims())
+
+		uniqueKey, err := domain.NewUniqueKey(coresb.SmartBlockTypeRelation, "dbtype")
+		require.NoError(t, err)
+		fx.space.EXPECT().DeriveTreePayload(mock.Anything, payloadcreator.PayloadDerivationParams{Key: uniqueKey}).
+			Return(payloadWithId("derived1"), nil)
+
+		// when — pass 2 emits a derived object under that same source key
+		got, err := fx.AssignDerived(context.Background(), relationObject("db1", "dbtype", "Db Type", model.RelationFormat_longtext))
+
+		// then — links to the database resolve to the derived object
+		require.NoError(t, err)
+		assert.Equal(t, "derived1", got.Id)
+		id, ok := fx.Resolve("db1")
+		require.True(t, ok)
+		assert.Equal(t, "derived1", id, "references to the database must follow it to the type")
+
+		// and the claim is satisfied, not reported as a silent gap
+		assert.Empty(t, fx.UnassignedClaims(),
+			"a claim answered by a derived object must not surface as an invariant error")
+	})
+}

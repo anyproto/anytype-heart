@@ -176,7 +176,34 @@ minted todo-layout type whose completion checkbox maps elsewhere renders a dead 
 have merged fifteen databases' Status vocabularies in the live run. §3.2's scoped custom keys
 are how a per-database status gets imported.
 
-### 3.4 Minted types should look designed
+### 3.4 A single-database type replaces its collection
+
+**Added 2026-08-06 (user ruling).** When exactly one database backs a minted type, "all
+objects of this type" and "members of this collection" are the same list, so emitting both
+duplicates it. The type takes the database's place instead: its **source key** — so every
+`child_database` block, `link_to_page` and mention still resolves — plus its description,
+timestamps, icon and root candidacy. It keeps its own name, since the model named the *kind*
+and that reads better than the database's title. Types backed by several databases keep their
+collections, because there the collection is what tells the lists apart.
+
+This works because the engine routes by `SbType`, not source key (`engine/sink.go:35`): a
+type object always takes the derived path, so it never collides with the minted-id space.
+`AssignDerived` re-registers the source key onto the derived id, so references follow, and
+the pass-1 claim is not left dangling for the reconciliation to report. That interaction is
+pinned by `identity.TestDerivedAdoptsClaimedSourceKey` rather than left to inference.
+
+**Sanity check — containers that share members keep their collections.** A page carries
+exactly one type, so two containers holding the same page cannot both be represented by
+types: whichever type the page did not take would lose that member with nothing left to
+record it. Notion reaches this whenever `/search` returns both a database stub and its own
+data source, since `databaseMembers` matches the pages under either id. Such containers are
+excluded from the replacement.
+
+What is lost: the collection's dataview. That is only the factory's default view with the
+schema's properties made visible — not Notion's saved views or filters, which this importer
+never reproduced — and the type's recommended relations cover the same ground.
+
+### 3.5 Minted types should look designed
 
 `schemaplan.TypeObject` sets name, layout and recommended/featured relations. It sets no
 plural name and no icon, while every bundled type has both. That was tolerable when minting
@@ -189,7 +216,7 @@ Featured properties also matter more now: `Featured` decides the object header, 
 main lever the model has to make a type feel intentional. The prompt should ask for two to
 four featured properties per type rather than leaving the field incidental.
 
-### 3.5 Bound plan-supplied display names
+### 3.6 Bound plan-supplied display names
 
 Already-known gap, folded in here because §3.4 widens it. `notion/properties.go:160-168`
 writes `plan.Name` verbatim into a custom relation's name and `schemaplan/emit.go:83` does

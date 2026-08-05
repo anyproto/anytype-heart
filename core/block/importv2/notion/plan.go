@@ -164,9 +164,52 @@ func (c *Converter) emitPlanTypes(ctx context.Context, sink importv2.Sink) error
 		return nil
 	}
 	referenced := map[string]bool{}
-	for _, containerPlan := range c.plan.Containers {
-		if containerPlan.TypeKey != "" {
-			referenced[containerPlan.TypeKey.String()] = true
+	// soleContainer is the one database backing a type, when exactly one does.
+	// Such a type and a collection over it would be the same list, so the type
+	// takes the database's place: its source key, so links and mentions to the
+	// database keep resolving, its icon and description, and its spot in the
+	// import root. Types shared by several databases keep their collections —
+	// there the collection is what tells the lists apart.
+	containerCount := map[string]int{}
+	soleContainer := map[string]string{}
+	for containerId, containerPlan := range c.plan.Containers {
+		if containerPlan.TypeKey == "" {
+			continue
+		}
+		key := containerPlan.TypeKey.String()
+		referenced[key] = true
+		containerCount[key]++
+		soleContainer[key] = containerId
+	}
+	for key, count := range containerCount {
+		if count > 1 {
+			delete(soleContainer, key)
+		}
+	}
+	// A page carries exactly one type, so containers that share members cannot
+	// both be represented by types — whichever type the page did not take
+	// would lose that member with no collection left to record it. Notion
+	// reaches this whenever search returns both a database stub and its own
+	// data source: databaseMembers matches the pages under either id.
+	claimsPerMember := map[string]int{}
+	for _, stub := range c.databases {
+		if fetch := c.schemaFetches[stub.Id]; fetch != nil && fetch.database != nil {
+			for _, member := range c.databaseMembers(stub.Id, fetch.schemaId) {
+				claimsPerMember[member]++
+			}
+		}
+	}
+	for key, containerId := range soleContainer {
+		fetch := c.schemaFetches[containerId]
+		if fetch == nil || fetch.database == nil {
+			delete(soleContainer, key)
+			continue
+		}
+		for _, member := range c.databaseMembers(containerId, fetch.schemaId) {
+			if claimsPerMember[member] > 1 {
+				delete(soleContainer, key)
+				break
+			}
 		}
 	}
 	for _, def := range c.plan.NewTypes {
@@ -198,12 +241,45 @@ func (c *Converter) emitPlanTypes(ctx context.Context, sink importv2.Sink) error
 				fmt.Sprintf("plan type not emitted: %s", err)))
 			continue
 		}
+		if containerId, sole := soleContainer[def.Key.String()]; sole {
+			if err := c.adoptDatabaseIdentity(ctx, object, containerId, sink); err != nil {
+				return err
+			}
+		}
 		if err := sink.Object(ctx, object); err != nil {
 			return err
 		}
 		c.planTypeKeys[def.Key] = minted
 	}
 	return nil
+}
+
+// adoptDatabaseIdentity hands a database's identity to the type that replaces
+// it. The type keeps its own name — the model named the kind, which reads
+// better than the database's title — but takes the source key so existing
+// references resolve, plus the database's description, timestamps, icon and
+// root candidacy. convertDatabase then skips the collection.
+func (c *Converter) adoptDatabaseIdentity(ctx context.Context, object *importv2.Object, containerId string, sink importv2.Sink) error {
+	fetch := c.schemaFetches[containerId]
+	if fetch == nil || fetch.database == nil {
+		return nil
+	}
+	stub, ok := c.entityById[containerId]
+	if !ok {
+		return nil
+	}
+	c.typeBackedContainers[containerId] = true
+
+	database := fetch.database
+	object.SourceKey = containerId
+	object.IsRootCandidate = c.isRootCandidate(stub)
+	object.Archived = database.Archived
+	if description := plainText(database.Description); description != "" {
+		object.Payload.Details.SetString(bundle.RelationKeyDescription, description)
+	}
+	object.Payload.Details.SetString(bundle.RelationKeySourceFilePath, containerId)
+	setTimestamps(object.Payload.Details, database.CreatedTime, database.LastEditedTime)
+	return c.applyIcon(ctx, object, database.Icon, database.Cover, "/data_sources/"+fetch.schemaId, sink)
 }
 
 // applyPlanType is suggestPageType's plan-driven counterpart for containers
