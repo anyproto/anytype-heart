@@ -24,6 +24,27 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
+)
+
+const (
+	// maxFilterLength bounds the input in bytes. It matches the maxLength the
+	// discovery schemas advertise for the `filter` field (4096); anything
+	// longer is rejected before lexing so no attacker-sized input reaches the
+	// recursive parser.
+	maxFilterLength = 4096
+	// maxGroupDepth bounds parenthesis nesting — the recursion depth of the
+	// parser. It matches the document side's nesting bound (SPEC §4: [0,32]).
+	// Without it a paren-bomb input overflows the goroutine stack, which is a
+	// runtime FATAL (not a recoverable panic) and kills the whole process.
+	maxGroupDepth = 32
+	// maxDayCount bounds the counting presets' operand (~100 years); larger
+	// values wrap around inside time.AddDate and produce meaningless ranges.
+	maxDayCount = 36500
+	// maxTokenRunes bounds how much of an offending token an error echoes
+	// back — an unterminated string would otherwise mirror the whole rest of
+	// the input into the response (and the agent's context window).
+	maxTokenRunes = 32
 )
 
 // Options wires the space's reference sets into the parser. All fields are
@@ -171,10 +192,19 @@ func lex(input string) ([]token, *Error) {
 			lx.emit(tokOp, op, start)
 		case c == '-' || (c >= '0' && c <= '9'):
 			lx.lexNumber(start)
-		case isIdentStart(rune(c)):
-			lx.lexIdent(start)
+		case c == '\'' || c == '`':
+			return nil, &Error{Offset: start, Token: string(c),
+				Message: fmt.Sprintf("unexpected character %q", string(c)),
+				Hint:    `string values use double quotes, e.g. severity = "High"`}
 		default:
-			return nil, &Error{Offset: start, Token: string(c), Message: fmt.Sprintf("unexpected character %q", string(c))}
+			// decode a full rune so multi-byte input is classified (and
+			// reported) as the character the caller wrote, never a stray byte
+			r, size := utf8.DecodeRuneInString(lx.input[lx.pos:])
+			if isIdentStart(r) {
+				lx.lexIdent(start)
+				continue
+			}
+			return nil, &Error{Offset: start, Token: lx.input[start : start+size], Message: fmt.Sprintf("unexpected character %q", string(r))}
 		}
 	}
 }
@@ -203,7 +233,7 @@ func (lx *lexer) lexString(start int) *Error {
 		switch c {
 		case '\\':
 			if i+1 >= len(lx.input) {
-				return &Error{Offset: start, Token: lx.input[start:], Message: "unterminated string literal"}
+				return &Error{Offset: start, Token: truncateToken(lx.input[start:]), Message: "unterminated string literal"}
 			}
 			next := lx.input[i+1]
 			switch next {
@@ -226,7 +256,17 @@ func (lx *lexer) lexString(start int) *Error {
 			i++
 		}
 	}
-	return &Error{Offset: start, Token: lx.input[start:], Message: `unterminated string literal — close it with "`}
+	return &Error{Offset: start, Token: truncateToken(lx.input[start:]), Message: `unterminated string literal — close it with "`}
+}
+
+// truncateToken caps an offending token at maxTokenRunes for error echoing —
+// errors name the problem, they do not mirror the input back.
+func truncateToken(s string) string {
+	runes := []rune(s)
+	if len(runes) <= maxTokenRunes {
+		return s
+	}
+	return string(runes[:maxTokenRunes]) + "…"
 }
 
 func (lx *lexer) lexNumber(start int) {
@@ -252,8 +292,12 @@ func isIdentPart(r rune) bool {
 
 func (lx *lexer) lexIdent(start int) {
 	i := start
-	for i < len(lx.input) && isIdentPart(rune(lx.input[i])) {
-		i++
+	for i < len(lx.input) {
+		r, size := utf8.DecodeRuneInString(lx.input[i:])
+		if !isIdentPart(r) {
+			break
+		}
+		i += size
 	}
 	text := lx.input[start:i]
 	lx.toks = append(lx.toks, token{kind: tokIdent, text: text, raw: text, offset: start})
@@ -282,9 +326,13 @@ type node struct {
 //
 
 type parser struct {
-	toks []token
-	pos  int
-	opts Options
+	toks  []token
+	pos   int
+	depth int // current parenthesis nesting (bounded by maxGroupDepth)
+	opts  Options
+	// presetTok is the name token of the most recently parsed date-preset
+	// function — preset-misuse errors address it, not the closing ')'
+	presetTok token
 }
 
 // Parse parses a compact filter string (SPEC §6.2.1) into the §6.2
@@ -294,6 +342,11 @@ type parser struct {
 func Parse(input string, opts Options) (json.RawMessage, error) {
 	if strings.TrimSpace(input) == "" {
 		return nil, &Error{Offset: 0, Message: "empty filter", Hint: `a filter is one or more conditions, e.g. done = false AND dueDate < currentWeek()`}
+	}
+	if len(input) > maxFilterLength {
+		return nil, &Error{Offset: maxFilterLength, Token: "",
+			Message: fmt.Sprintf("filter string is %d bytes — the maximum is %d", len(input), maxFilterLength),
+			Hint:    "split the query: narrow with type or run several searches"}
 	}
 	toks, lexErr := lex(input)
 	if lexErr != nil {
@@ -378,7 +431,14 @@ func (p *parser) parsePrimary() (*node, error) {
 	tok := p.peek()
 	if tok.kind == tokLParen {
 		p.next()
+		p.depth++
+		if p.depth > maxGroupDepth {
+			return nil, &Error{Offset: tok.offset, Token: tok.raw,
+				Message: fmt.Sprintf("filter groups nest at most %d deep", maxGroupDepth),
+				Hint:    "flatten the grouping — AND/OR chains do not need parentheses per condition"}
+		}
 		inner, err := p.parseOr()
+		p.depth--
 		if err != nil {
 			return nil, err
 		}
@@ -400,7 +460,8 @@ func (p *parser) parseLeaf() (*node, error) {
 	}
 	if reservedWords[strings.ToLower(tok.text)] {
 		return nil, &Error{Offset: tok.offset, Token: tok.raw,
-			Message: fmt.Sprintf("%q is a reserved word, not a property key", tok.text)}
+			Message: fmt.Sprintf("%q is a reserved word, not a property key", tok.text),
+			Hint:    "a property key that collides with a keyword cannot be written here — express this condition with the structured filters array instead"}
 	}
 	key := tok.text
 	if err := p.checkKey(tok); err != nil {
@@ -476,11 +537,16 @@ func (p *parser) parseValueLeaf(key, condition string) (*node, error) {
 		// valueless (§6.2)
 		n.value, n.hasValue = value, true
 	}
-	if preset != "" && condition != "equal" && condition != "notEqual" &&
+	// the engine transforms a preset into a day range only for these
+	// conditions (pkg/lib/database.transformDateFilter); anything else —
+	// including != — would silently drop the preset and answer a different
+	// question, so the parser rejects it up front
+	if preset != "" && condition != "equal" &&
 		condition != "greater" && condition != "less" &&
 		condition != "greaterOrEqual" && condition != "lessOrEqual" {
-		return nil, &Error{Offset: p.toks[p.pos-1].offset, Token: p.toks[p.pos-1].raw,
-			Message: fmt.Sprintf("a date preset cannot be used with %s", condition)}
+		return nil, &Error{Offset: p.presetTok.offset, Token: p.presetTok.raw,
+			Message: fmt.Sprintf("a date preset cannot be used with %s", condition),
+			Hint:    `presets work with = > < >= <=; negate by range instead, e.g. dueDate < today() OR dueDate > today()`}
 	}
 	return n, nil
 }
@@ -505,7 +571,7 @@ func (p *parser) parseListLeaf(key, condition string) (*node, error) {
 			return nil, err
 		}
 		if preset != "" {
-			return nil, &Error{Offset: p.toks[p.pos-1].offset, Token: p.toks[p.pos-1].raw,
+			return nil, &Error{Offset: p.presetTok.offset, Token: p.presetTok.raw,
 				Message: "date presets cannot appear inside a value list"}
 		}
 		values = append(values, value)
@@ -586,6 +652,7 @@ func (p *parser) parseValue(key string) (any, string, error) {
 
 // parsePresetCall parses name( [n] ) — the date-preset functions.
 func (p *parser) parsePresetCall(key string, nameTok token) (any, string, error) {
+	p.presetTok = nameTok
 	preset, known := datePresets[nameTok.text]
 	if !known {
 		return nil, "", &Error{Offset: nameTok.offset, Token: nameTok.raw,
@@ -604,9 +671,9 @@ func (p *parser) parsePresetCall(key string, nameTok token) (any, string, error)
 				Message: fmt.Sprintf("%s takes a day count, e.g. %s(7)", nameTok.text, nameTok.text)}
 		}
 		count, err := strconv.ParseFloat(operand.text, 64)
-		if err != nil || count != float64(int64(count)) || count < 0 {
+		if err != nil || count != float64(int64(count)) || count < 0 || count > maxDayCount {
 			return nil, "", &Error{Offset: operand.offset, Token: operand.raw,
-				Message: fmt.Sprintf("%s takes a whole non-negative day count", nameTok.text)}
+				Message: fmt.Sprintf("%s takes a whole day count between 0 and %d", nameTok.text, maxDayCount)}
 		}
 		if closing := p.next(); closing.kind != tokRParen {
 			return nil, "", &Error{Offset: closing.offset, Token: closing.raw,
@@ -673,10 +740,42 @@ func (p *parser) checkKey(tok token) error {
 		suffix = fmt.Sprintf(", … (%d total)", len(known))
 		listed = listed[:maxListed]
 	}
+	hint := didYouMeanHint(tok.text, known, "")
+	// a known key the compact syntax cannot spell (hyphen, space, keyword
+	// collision) needs explicit steering — repairing the string cannot work
+	for _, suggestion := range closest(tok.text, known, 3) {
+		if !bareWritable(suggestion) {
+			steer := fmt.Sprintf("property key %q cannot be written in the compact filter string — use the structured filters array", suggestion)
+			if hint == "" {
+				hint = steer
+			} else {
+				hint += " — " + steer
+			}
+			break
+		}
+	}
 	return &Error{Offset: tok.offset, Token: tok.raw,
 		Message: fmt.Sprintf("unknown property key %q — known property keys: %s%s", tok.text, strings.Join(listed, ", "), suffix),
-		Hint:    didYouMeanHint(tok.text, known, ""),
+		Hint:    hint,
 	}
+}
+
+// bareWritable reports whether a property key can be written as a bare
+// identifier in the compact syntax: identifier characters only and not a
+// reserved word.
+func bareWritable(key string) bool {
+	if key == "" || reservedWords[strings.ToLower(key)] {
+		return false
+	}
+	for i, r := range key {
+		if i == 0 && !isIdentStart(r) {
+			return false
+		}
+		if i > 0 && !isIdentPart(r) {
+			return false
+		}
+	}
+	return true
 }
 
 //
@@ -731,6 +830,12 @@ func emit(root *node) json.RawMessage {
 //
 // ---- helpers ----
 //
+
+// ParseDate exposes the parser's date parsing: RFC 3339 (with offsets and
+// fractional seconds) and date-only strings (UTC midnight) → unix seconds.
+// Consumers validating the STRUCTURED filter form reuse it so both request
+// forms agree on what a date string is.
+func ParseDate(s string) (int64, bool) { return parseDate(s) }
 
 // parseDate mirrors the parent package's §3 date parsing: RFC 3339 (with
 // offsets and fractional seconds) and date-only strings (UTC midnight).

@@ -24,8 +24,14 @@ presetName  = "yesterday" | "today" | "tomorrow" | "lastWeek" | "currentWeek"
             | "nextWeek" | "lastMonth" | "currentMonth" | "nextMonth"
             | "lastYear" | "currentYear" | "nextYear" ;
 countingName = "daysAgo" | "daysFromNow" ;
-key         = identifier ;                          (* a bare property key *)
+key         = identifier ;                          (* a bare property key; not a keyword *)
+identifier  = identStart , { identPart } ;
+identStart  = letter | "_" ;                        (* letter = any Unicode letter *)
+identPart   = letter | digit | "_" ;
+number      = [ "-" ] , digit , { digit } , [ "." , { digit } ] ;
 string      = '"' , { character } , '"' ;           (* backslash escapes: \" \\ \n \t *)
+(* every quoted keyword above matches case-insensitively: "AND" also
+   matches and/And; canonical rendering is uppercase *)
 `
 
 // Examples are worked filter strings, served alongside the grammar (C12).

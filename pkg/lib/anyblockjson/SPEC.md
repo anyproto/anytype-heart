@@ -935,7 +935,26 @@ pair maps to `numberOfDaysAgo`/`numberOfDaysNow` with the value as `n`;
 parens distinguish presets from string literals). Property keys are bare.
 Select/multiSelect values are option **names**, per §3 (the structured form
 agrees since v0.4; only date values differ — RFC 3339 here, unix numbers
-there — with a deterministic mapping both ways).
+there). The RFC 3339 → unix conversion is **format-driven, not
+string-driven**: it happens only for keys whose format resolves to `date`
+through the consumer-wired `Options.ResolveFormat` (a date-looking string
+on a text property stays a string; a non-RFC-3339 string on a date
+property is a parse error steering to the presets). A consumer that wires
+no resolver gets string values verbatim — executing such a filter against
+date properties matches nothing, so query surfaces MUST wire the resolver.
+
+Parser interpretation calls (normative, matching the shipped parser):
+keywords match **case-insensitively** (`and` ≡ `AND`) and are **reserved**
+— none can be a bare property key (a colliding key is reachable only
+through the structured form); property keys are Unicode identifiers
+(`identStart identPart*` — letters, digits, `_`); presets are **excluded
+from value lists** and from conditions the engine does not transform
+(`notEqual`, `contains`, …: only `= > < >= <=` take a preset); set
+literals require `=` / `!=` (a list after an ordering operator errors);
+the counting presets take a whole day count in `[0, 36500]`. Bounds: the
+input is capped at **4096 bytes** and parenthesis nesting at **32** (the
+§4 document nesting bound) — both are ordinary offset-addressed parse
+errors.
 
 Canonical rendering: uppercase keywords, `", "` separators, double quotes
 with backslash escapes, parentheses only where precedence requires. Export

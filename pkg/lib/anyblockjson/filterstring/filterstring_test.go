@@ -3,6 +3,7 @@ package filterstring
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -339,6 +340,118 @@ func TestParse_ErrorPositions(t *testing.T) {
 		pe := parseErr(t, `tags NOT = 1`, Options{})
 		assert.Contains(t, pe.Message, "expected CONTAINS, IN or HAS ALL after NOT")
 		assert.Contains(t, pe.Hint, "IS NOT EMPTY")
+	})
+}
+
+func TestParse_Bounds(t *testing.T) {
+	t.Run("a paren bomb is an ordinary parse error, never a crash", func(t *testing.T) {
+		// the historical failure mode: unbounded recursion → goroutine stack
+		// overflow → runtime FATAL that kills the whole process
+		pe := parseErr(t, strings.Repeat("(", 100_000), Options{})
+		assert.Contains(t, pe.Message, "maximum is 4096")
+	})
+
+	t.Run("a balanced deep nest under the length cap hits the depth bound", func(t *testing.T) {
+		input := strings.Repeat("(", 1000) + "a = 1" + strings.Repeat(")", 1000)
+		pe := parseErr(t, input, Options{})
+		assert.Contains(t, pe.Message, "filter groups nest at most 32 deep")
+	})
+
+	t.Run("nesting beyond 32 groups is rejected with an offset", func(t *testing.T) {
+		input := strings.Repeat("(", 40) + "a = 1" + strings.Repeat(")", 40)
+		pe := parseErr(t, input, Options{})
+		assert.Equal(t, 32, pe.Offset, "the 33rd open paren is the offender")
+		assert.Contains(t, pe.Message, "filter groups nest at most 32 deep")
+	})
+
+	t.Run("nesting at exactly 32 groups parses", func(t *testing.T) {
+		input := strings.Repeat("(", 32) + "a = 1" + strings.Repeat(")", 32)
+		assert.Equal(t, `[{"property":"a","condition":"equal","value":1}]`,
+			parse(t, input, Options{}))
+	})
+
+	t.Run("input beyond 4096 bytes is rejected before lexing", func(t *testing.T) {
+		pe := parseErr(t, "name = \""+strings.Repeat("x", 5000)+"\"", Options{})
+		assert.Contains(t, pe.Message, "the maximum is 4096")
+	})
+
+	t.Run("counting presets bound the day count", func(t *testing.T) {
+		pe := parseErr(t, `dueDate > daysAgo(999999999)`, Options{})
+		assert.Contains(t, pe.Message, "daysAgo takes a whole day count between 0 and 36500")
+	})
+
+	t.Run("an unterminated string echoes at most 32 runes", func(t *testing.T) {
+		pe := parseErr(t, `a = "`+strings.Repeat("x", 1000), Options{})
+		assert.Contains(t, pe.Message, "unterminated string literal")
+		assert.True(t, strings.HasSuffix(pe.Token, "…"), "long tokens are truncated, got %q", pe.Token)
+		assert.Less(t, len(pe.Error()), 200, "the error must not mirror the input back")
+	})
+}
+
+func TestParse_UnicodeKeys(t *testing.T) {
+	t.Run("non-ASCII property keys are identifiers", func(t *testing.T) {
+		assert.Equal(t, `[{"property":"café","condition":"equal","value":1}]`,
+			parse(t, `café = 1`, Options{}))
+		assert.Equal(t, `[{"property":"дата","condition":"empty"}]`,
+			parse(t, `дата IS EMPTY`, Options{}))
+	})
+
+	t.Run("an unknown non-ASCII key reports the full key, not a stray byte", func(t *testing.T) {
+		pe := parseErr(t, `café = 1`, Options{KnownKeys: []string{"status"}})
+		assert.Equal(t, "café", pe.Token)
+		assert.Contains(t, pe.Message, `unknown property key "café"`)
+	})
+
+	t.Run("an unexpected rune is reported as the rune the caller wrote", func(t *testing.T) {
+		pe := parseErr(t, `a © 1`, Options{})
+		assert.Equal(t, 2, pe.Offset)
+		assert.Equal(t, "©", pe.Token)
+		assert.Contains(t, pe.Message, `unexpected character "©"`)
+	})
+}
+
+func TestParse_Steering(t *testing.T) {
+	t.Run("single quotes get the double-quote hint", func(t *testing.T) {
+		pe := parseErr(t, `severity = 'High'`, Options{})
+		assert.Equal(t, 11, pe.Offset)
+		assert.Contains(t, pe.Hint, `string values use double quotes`)
+	})
+
+	t.Run("a reserved-word key steers to the structured filters array", func(t *testing.T) {
+		pe := parseErr(t, `all = true`, Options{})
+		assert.Contains(t, pe.Message, `"all" is a reserved word`)
+		assert.Contains(t, pe.Hint, "structured filters array")
+	})
+
+	t.Run("a known key the syntax cannot spell steers to the structured form", func(t *testing.T) {
+		pe := parseErr(t, `due IS EMPTY`, Options{KnownKeys: []string{"due-date"}})
+		assert.Contains(t, pe.Hint, "did you mean due-date?")
+		assert.Contains(t, pe.Hint, `property key "due-date" cannot be written in the compact filter string`)
+		assert.Contains(t, pe.Hint, "structured filters array")
+	})
+}
+
+func TestParse_PresetConditions(t *testing.T) {
+	t.Run("a preset with != is rejected — the engine would drop it", func(t *testing.T) {
+		pe := parseErr(t, `dueDate != today()`, Options{})
+		assert.Equal(t, 11, pe.Offset, "the error addresses the preset, not the closing paren")
+		assert.Equal(t, "today", pe.Token)
+		assert.Contains(t, pe.Message, "a date preset cannot be used with notEqual")
+		assert.Contains(t, pe.Hint, "negate by range")
+	})
+
+	t.Run("a preset with CONTAINS addresses the preset name", func(t *testing.T) {
+		pe := parseErr(t, `name CONTAINS today()`, Options{})
+		assert.Equal(t, 14, pe.Offset)
+		assert.Equal(t, "today", pe.Token)
+		assert.Contains(t, pe.Message, "a date preset cannot be used with contains")
+	})
+
+	t.Run("a preset inside a value list addresses the preset name", func(t *testing.T) {
+		pe := parseErr(t, `dueDate IN ("x", today())`, Options{})
+		assert.Equal(t, 17, pe.Offset)
+		assert.Equal(t, "today", pe.Token)
+		assert.Contains(t, pe.Message, "date presets cannot appear inside a value list")
 	})
 }
 
