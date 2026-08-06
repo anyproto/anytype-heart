@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -85,6 +84,16 @@ func WithRetryPolicy(p RetryPolicy) Option { return func(o *options) { o.retry =
 // read — a wedged or hostile endpoint must not stream unbounded bytes.
 const maxResponseBytes = 10 << 20
 
+// nearZeroTemperature is the smallest temperature the client sends. go-openai
+// omits a literal 0 from the payload (omitempty), letting the provider default
+// win, so SOME nonzero value has to go on the wire. It must be a NORMAL float,
+// not math.SmallestNonzeroFloat32: samplers scale logits by 1/T in float32,
+// and 1/1.4e-45 overflows to +Inf, which on ollama 0.32.4 (measured,
+// gemma4:e4b) deterministically produced word salad — thinking disabled, the
+// json_schema grammar unapplied, high-entropy tokens — while 1e-8 behaves
+// byte-identically to a true 0.
+const nearZeroTemperature = 1e-8
+
 func New(cfg Config, opts ...Option) (*Client, error) {
 	if cfg.Endpoint == "" || cfg.Model == "" {
 		return nil, fmt.Errorf("llm client requires endpoint and model")
@@ -145,11 +154,8 @@ func (b *limitedBody) Close() error { return b.closer.Close() }
 // model-not-found fail immediately.
 func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage, Usage, error) {
 	apiReq := openai.ChatCompletionRequest{
-		Model: c.model,
-		// go-openai omits a zero temperature from the payload, letting the
-		// provider default (usually 1) win; the smallest nonzero float is the
-		// documented way to actually send ~0.
-		Temperature:     math.SmallestNonzeroFloat32,
+		Model:           c.model,
+		Temperature:     nearZeroTemperature,
 		MaxTokens:       req.MaxTokens,
 		ReasoningEffort: req.ReasoningEffort,
 		Messages: []openai.ChatCompletionMessage{

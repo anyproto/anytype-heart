@@ -3,6 +3,7 @@ package llmclient
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -72,6 +73,14 @@ func TestCompleteJSON(t *testing.T) {
 		temp, ok := fs.lastBody["temperature"].(float64)
 		require.True(t, ok, "temperature must be present, not dropped by omitempty")
 		assert.Less(t, temp, 1e-6)
+		// Samplers scale logits by 1/T in float32; a denormal temperature
+		// (math.SmallestNonzeroFloat32) overflows that to +Inf and poisons
+		// decoding — measured on ollama 0.32.4, where it deterministically
+		// disabled thinking AND the json_schema grammar and produced word
+		// salad. The wire value must keep 1/T finite in float32.
+		assert.Greater(t, temp, 0.0)
+		assert.False(t, math.IsInf(float64(float32(1.0/temp)), 1),
+			"1/temperature must be finite in float32")
 		rf := fs.lastBody["response_format"].(map[string]any)
 		assert.Equal(t, "json_schema", rf["type"])
 		js := rf["json_schema"].(map[string]any)
