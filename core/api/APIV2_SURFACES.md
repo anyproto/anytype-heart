@@ -1,36 +1,54 @@
 # API v2 — the remaining v1 surfaces (spaces, members, files, chats, auth, tails)
 
-Status: decision draft v0.1 · 2026-08-06 · GO-7383 follow-on to `core/api/APIV2.md` (v0.4).
+Status: decision v0.2 · 2026-08-06 · GO-7383 follow-on to `core/api/APIV2.md` (v0.4).
 Scope: everything `/v1` serves that `/v2` does not yet. Evidence is the shipped
 route table (`core/api/server/router.go`) and the v1/v2 handler+service source;
 every claim below carries a file:line ref.
 
+> **v0.2 — the completeness decision (human, 2026-08-06).** The mixed-client
+> rule proposed in v0.1 (§7, Q8) is **rejected**. v2 is to be a *complete,
+> self-contained API*: auth, file download, chats, streaming and the admin
+> tails all get a `/v2` home, and a v2 client never types `/v1`. The stated
+> reason is documentation coherence — one API that can be documented cleanly,
+> end to end, for both agents and human users. §§1-8 below record the
+> per-surface evidence, which is unchanged and still load-bearing; the
+> *recommendations* they reach are superseded by §10, which converts them into
+> a completeness plan. Where v0.1 argued "reuse, the seam is harmless", the
+> counter-argument that won is that a seam is cheap to cross and expensive to
+> *explain* — every exception costs a paragraph in the docs, an example that
+> works differently, and a reader who now has to know which half they are in.
+
 ## Verdict
 
-No remaining surface needs a redesign-for-agents (d). The object surface was
-redesigned because its *representation* was wrong for models; the remaining
-surfaces are mostly small CRUD tails whose v1 shapes are serviceable. What they
-need is **thin adaptation (c) where the agent loop actually runs through them**
-— chats above all, where v1 silently drops the unread/state fields the
-underlying RPC already returns (a correctness trap for a polling agent, not an
-aesthetic) — and **plain reuse (a) for bootstrap and admin tails** (auth,
-byte-stream download, tag/template/member administration). The forcing
-function is §6's deprecation clock: anything the v2 *agent loop* depends on
-must have a /v2 home before the CLI ships and the clock starts; the admin
-tails can stay on /v1 and expire with it. Two small phases cover it: Phase 6
-(chats) and Phase 7 (periphery: space create/update, `members/me`, the v2
-search file-layout opt-in).
+No remaining surface needs a redesign-for-agents (d) — that finding stands.
+The object surface was redesigned because its *representation* was wrong for
+models; the remaining surfaces are small CRUD tails whose v1 shapes are
+serviceable, so the work is **translation, not redesign**. What the v0.2
+decision changes is the *extent*: every surface gets a v2 home, including the
+three v0.1 wanted to leave behind (auth bootstrap, byte download, SSE stream).
 
-| Surface | Rec. | One line why |
-|---|---|---|
-| Auth | (a) | Challenge/key flow is version-neutral plumbing done once by the harness author, never by the model; the only v1-ism is the path prefix. |
-| Spaces | (c) | List shipped in v2; add thin GET-one/POST/PATCH — v1's shapes are fine but its list does N+1 RPCs and misses every v2 convention. |
-| Members | (c) | List shipped in v2; the one real gap is `GET /members/me` (already a named §3 build item); member admin is disabled even in v1. |
-| Files | (c) | Upload shipped in v2; download stays v1 (byte stream, conventions don't apply); delete rides the pending v2 object-archive item; the real gap is v2 search can't see file objects. |
-| Chats | (c) | The model (order-id cursor, message CRUD, SSE) is right; v1 drops chatState/messageCount on the floor and its rows/marks are token-hostile — passthrough + compact shapes, not a new model. |
-| Lists (v1 `/lists`) | — | Superseded by Phase-4 sets/collections; nothing to do. |
-| Tags admin | (a) | Rename/recolor/delete of options is rare curation; v2's names-as-identity makes rename awkward — keep v1 for the window. |
-| Templates read | (a) | v1 list/get works; v2 create ships; agent demand unproven — revisit with the wrapper. |
+That makes the remaining work three phases rather than two — Phase 6 (chats),
+Phase 7 (periphery), Phase 8 (completeness: auth, download, stream, admin
+tails) — and it makes §6's deprecation clock meaningful for the first time: on
+Phase 8 exit, `/v1` has no unique capability left, so it can be deprecated
+whole rather than in pieces.
+
+One caveat the decision inherits, stated here so it is not rediscovered later:
+**completeness is not parity.** Two v1 behaviors should NOT be reproduced —
+v1's `total = len(fetched)` (already banned by Phase-4 rule 4) and its
+snake_case auth bodies (§10.1). "A v2 home for every capability" is the goal;
+"the same shape at a new URL" is not.
+
+| Surface | v0.1 Rec. | v0.2 (decided) | One line |
+|---|---|---|---|
+| Auth | (a) reuse | **(c) → `/v2/auth/*`** | Same challenge/key mechanism, camelCase bodies + C6 errors; v1 keeps its snake_case routes until deprecation. |
+| Spaces | (c) | **(c)** unchanged | List shipped; add GET-one/POST/PATCH — v1's list does N+1 RPCs and misses every v2 convention. |
+| Members | (c) | **(c)** unchanged | List shipped; the real gap is `GET /members/me`; member admin is disabled even in v1 — nothing to port. |
+| Files | (c), download stays v1 | **(c) incl. download** | Upload shipped; download gets `/v2` bytes (HTTP conventions still apply *around* the stream); the search file-layout blindness is the live bug. |
+| Chats | (c) | **(c)** unchanged, incl. SSE | v1 drops chatState/messageCount the RPC already returns; rows/marks are token-hostile — passthrough + compact shapes, and the stream comes too. |
+| Lists (v1 `/lists`) | — | — | Superseded by Phase-4 sets/collections; nothing to do. |
+| Tags admin | (a) | **(c)**, Phase 8 | Rename semantics under names-as-identity must be resolved (Q5), not dodged. |
+| Templates read | (a) | **(b/c)**, Phase 8 | Trivial to port; ports for completeness rather than demonstrated demand. |
 
 ---
 
@@ -365,12 +383,10 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
 
 ## 9. Open questions — decisions needed from a human
 
-- **Q1 · Auth path.** Keep `/v1/auth/*` as the documented version-neutral
-  bootstrap (recommended: zero code, one ugly URL) — or alias it under
-  `/v2/auth` unchanged, accepting snake_case bodies inside the v2 namespace?
-  The alias buys nothing functional; it buys the "client never types /v1"
-  aesthetic. Deciding factor: whether the eventual v1 removal plan treats
-  auth as its own protocol (then keep /v1/auth forever) or not.
+- **Q1 · Auth path — DECIDED (v0.2): `/v2/auth/*`.** Not an alias: a v2-shaped
+  pair over the same challenge/key mechanism, camelCase bodies and C6 errors
+  (§10.1). The v0.1 recommendation assumed the seam was free; it is not, once
+  the deliverable is one coherent document.
 - **Q2 · Space orientation one-shot.** A `GET /v2/spaces/{spaceId}/context`
   returning `{space, me, types[], propertyKeys[]}` would collapse the
   cold-start 3-4 calls into one (~1 s of round trips, a few hundred tokens).
@@ -407,7 +423,90 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
   (`GET /files/{id}/text` with C11 warnings) is trivial once a service
   exists. Until then the honest answer is "download the bytes via v1 and
   extract harness-side".
-- **Q8 · The mixed-client rule.** §7's position — /v1 allowed for bootstrap,
-  byte transport, and admin only; everything in the task loop on /v2 before
-  the CLI ships — needs sign-off, because it is what makes Phase 6/7 the
-  *complete* remaining scope rather than an installment.
+- **Q8 · The mixed-client rule — DECIDED (v0.2): rejected.** v2 is complete
+  and self-contained; a v2 client never types `/v1`. See the header note and
+  §10. Q5 (tag rename semantics) and Q6 (templates) are consequently no longer
+  "wait for demand" — they are Phase-8 build items, and Q5's rename semantics
+  must actually be resolved. Q7 (file text extraction) is unaffected: it is a
+  missing *capability*, not a missing endpoint, so completeness does not
+  conjure it — `/v2` exposes the bytes and says so plainly.
+
+## 10. The completeness plan (v0.2)
+
+The three phases below replace §8's two. Phases 6 and 7 are unchanged in
+content; Phase 8 is new and exists only because of the v0.2 decision.
+
+### 10.1 Phase 8 — completeness: the surfaces v0.1 wanted to leave on v1
+
+1. **[build] `POST /v2/auth/challenges` + `POST /v2/auth/api_keys`.** Same two
+   RPCs (`AccountLocalLinkNewChallenge` / `AccountLocalLinkSolveChallenge`,
+   `service/auth.go:19-52`), registered unauthenticated like their v1 twins
+   (`router.go:332-337`). The fork is deliberate and is the whole point:
+   camelCase bodies (`challengeId`, `appKey` — v1 uses snake_case,
+   `model/auth.go`), the C6 error envelope, and the C13 strict schemas, so the
+   first call an agent or a reader ever makes already looks like the rest of
+   the API. v1's routes stay untouched until deprecation.
+2. **[build] `GET /v2/spaces/{spaceId}/files/{fileId}/content`** — the byte
+   stream. HTTP is the convention *inside* the response (Content-Type,
+   Content-Length, Range, ETag as a real validator), but everything around it
+   is v2: path shape, C6 errors on the failure paths, and the 404/403
+   vocabulary. Pairs with the shipped upload and with `GET .../files/{id}`
+   metadata.
+3. **[build] the chat SSE stream under `/v2`** — carried by Phase 6's DTOs
+   rather than v1's, so the stream and the polling read agree field for field.
+   This is the one item where a straddling client would have been genuinely
+   incoherent: the same message in two shapes depending on how it arrived.
+4. **[build] tag/option administration** (`PATCH`/`DELETE` on
+   `.../properties/{key}/options/{name}`) — requires resolving Q5's rename
+   semantics under names-as-identity. Recommended resolution:
+   rename = create + migrate + delete, performed server-side as one operation,
+   with the id-addressed escape hatch explicitly NOT reintroduced (C2).
+5. **[build] template reads** (`GET /v2/…/types/{type}/templates`, `GET` one)
+   — trivial passthrough; ships for completeness.
+6. **Exit criterion.** A conformance test asserts that every capability
+   reachable under `/v1` has a `/v2` route, with an explicit, reviewed
+   allowlist of the exceptions (today: none intended). This is the test that
+   makes "complete" checkable instead of asserted — without it, completeness
+   decays silently the next time a v1 route is added.
+
+### 10.2 What "complete" does not mean
+
+- **Not shape parity.** See the Verdict caveat: `total = len(fetched)` and
+  snake_case bodies are not ported.
+- **Not capability invention.** File text extraction (Q7) stays absent because
+  the middleware cannot do it; the docs say so rather than implying a gap.
+- **Not v1 removal.** Phase 8 makes `/v1` *deprecable*, and §6's clock can
+  then start. Removal is its own migration with its own notice period.
+
+## 11. Documentation architecture — the actual deliverable
+
+The completeness decision was made *for* the documentation, so the doc plan is
+part of the spec, not an afterthought. Three audiences, three artifacts, one
+source of truth each — and every artifact must be generated or test-pinned,
+because this project has already been bitten twice by hand-maintained
+artifacts drifting from the code they describe (the Phase-5 GBNF accepted
+strings its own parser rejected; nine of eleven served examples were
+ungeneratable under their own served grammar).
+
+| Audience | Artifact | Source of truth | Anti-drift mechanism |
+|---|---|---|---|
+| Humans (developers, integrators) | OpenAPI document + a narrative guide | Swagger annotations on the v2 handlers (already present on all seven v2 handler files) | `make openapi` in CI; the conformance test of §10.1(6) |
+| Agents at runtime | `GET /v2/schemas/{kind}` — the nine discovery kinds, the filter grammar, per-kind examples | The Go types and the shipped validators | The Phase-5 pattern: every served example is asserted to be accepted by its own served schema/grammar |
+| Agents via the CLI | `anytype tools` manifest + `SKILL.md` | The one Go tool table (`wrapper.Tools()`) | `TestToolCount`, `TestOneDefinition`, the GBNF acceptance suite |
+
+Two rules follow, and they are the ones worth enforcing in review:
+
+1. **No artifact describes the API from memory.** If a document states a
+   behavior, either it is generated from the code that implements it, or a
+   test fails when the two disagree. Prose that cannot be pinned should
+   describe *intent* (why a surface is shaped this way), never *contract*.
+2. **One vocabulary across all three.** The same concept keeps the same name
+   in the OpenAPI document, the discovery kinds, and the tool manifest —
+   `property`, not `relation`; `type`, not `objectType`; option *names*, not
+   ids. A reader moving between artifacts should never have to translate.
+
+Open build item: the narrative guide has no home yet. The candidates are a
+generated docs site (consistent, unloved) or a hand-written `README`-style
+guide under `core/api/` that the conformance test keeps honest about routes
+but not about tone. Recommendation: the latter, kept deliberately short — the
+OpenAPI document is the reference, and the guide's job is orientation.
