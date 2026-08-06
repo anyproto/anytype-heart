@@ -13,11 +13,14 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"strings"
 
 	"github.com/gogo/protobuf/types"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/api/util"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
@@ -25,11 +28,22 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/database"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
+	textutil "github.com/anyproto/anytype-heart/util/text"
 )
 
 // v2MarkupHint is the D′1 caveat, stated wherever message text fails to
 // parse: text is §8 markup SOURCE on both read and write.
 const v2MarkupHint = "message text is inline markup source (SPEC §8): *, [, ` and <mention> syntax mint real marks; escape literal specials with a backslash"
+
+// maxChatAttachments caps the attachment list per message — the bound the
+// chatMessage discovery schema advertises (maxItems), enforced here so the
+// strict schema stays true: an unbounded list means one store lookup per id
+// and a permanently replicated CRDT change carrying every entry.
+const maxChatAttachments = 32
+
+// defaultChatMessagesLimit mirrors the C10 default page size for the
+// cursor-paged messages read.
+const defaultChatMessagesLimit = 25
 
 //
 // ---- chat list + create ----
@@ -121,34 +135,62 @@ type V2ChatMessagesQuery struct {
 // GetChatMessages implements GET .../chats/{chatId}/messages. The response
 // carries the chatState and messageCount the RPC already returns — the
 // passthrough v1 dropped (zero extra RPC cost). Messages come back in
-// ascending order-id order.
+// ascending order-id order. The RPC is asked for limit+1 to detect
+// has_more without guessing from len==limit (the C10 spirit): a forward
+// walk (?after alone — the only ASC query in the repository) trims the
+// newest extra and continues with nextAfter; every other query is anchored
+// at its newest end (the repository sorts DESC), so the OLDEST extra is
+// trimmed and paging continues backward with nextBefore.
 func (s *V2Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q V2ChatMessagesQuery) (*apimodel.V2ChatMessagesResponse, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
+	}
+	limit := q.Limit
+	if limit <= 0 {
+		limit = defaultChatMessagesLimit
 	}
 	resp := s.mw.ChatGetMessages(ctx, &pb.RpcChatGetMessagesRequest{
 		ChatObjectId:  chatId,
 		AfterOrderId:  q.After,
 		BeforeOrderId: q.Before,
-		Limit:         int32(q.Limit),
+		Limit:         int32(limit + 1), // one extra detects has_more
 	})
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatGetMessagesResponseError_NULL {
 		return nil, v2ChatRpcError("get chat messages", int32(resp.Error.Code), int32(pb.RpcChatGetMessagesResponseError_BAD_INPUT), resp.Error.Description)
+	}
+	forward := q.After != "" && q.Before == ""
+	protos := resp.Messages
+	hasMore := len(protos) > limit
+	if hasMore {
+		if forward {
+			protos = protos[:limit] // ascending: the extra is the newest
+		} else {
+			protos = protos[len(protos)-limit:] // newest-anchored: the extra is the oldest
+		}
 	}
 	opts := apimodel.V2ChatMessageOptions{
 		SpaceId:         spaceId,
 		FullReactions:   q.FullReactions,
 		ParticipantName: s.participantNameLookup(spaceId),
 	}
-	messages := make([]apimodel.V2ChatMessage, 0, len(resp.Messages))
-	for _, msg := range resp.Messages {
+	messages := make([]apimodel.V2ChatMessage, 0, len(protos))
+	for _, msg := range protos {
 		messages = append(messages, apimodel.V2ChatMessageFromProto(msg, opts))
 	}
-	return &apimodel.V2ChatMessagesResponse{
+	out := &apimodel.V2ChatMessagesResponse{
 		Messages:     messages,
 		State:        apimodel.V2ChatStateFromProto(resp.ChatState),
 		MessageCount: int(resp.MessageCount),
-	}, nil
+		HasMore:      hasMore,
+	}
+	if hasMore && len(messages) > 0 {
+		if forward {
+			out.NextAfter = messages[len(messages)-1].Order
+		} else {
+			out.NextBefore = messages[0].Order
+		}
+	}
+	return out, nil
 }
 
 //
@@ -171,6 +213,9 @@ func (s *V2Service) AddChatMessage(ctx context.Context, spaceId, chatId string, 
 	if err != nil {
 		return nil, apimodel.V2ValidationFailed("message text does not parse as inline markup",
 			apimodel.V2Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
+	}
+	if err := v2ValidateChatTextLength(text); err != nil {
+		return nil, err
 	}
 	attachments, err := s.resolveChatAttachments(spaceId, req.Attachments)
 	if err != nil {
@@ -212,6 +257,9 @@ func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messag
 		return nil, apimodel.V2ValidationFailed("message text does not parse as inline markup",
 			apimodel.V2Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
+	if err := v2ValidateChatTextLength(text); err != nil {
+		return nil, err
+	}
 	existing, err := s.getChatMessageProto(ctx, chatId, messageId)
 	if err != nil {
 		return nil, err
@@ -245,17 +293,26 @@ func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messag
 	return &apimodel.V2ChatMessageResult{Id: messageId}, nil
 }
 
-// DeleteChatMessage implements DELETE .../messages/{messageId}. A dry run
-// verifies the message exists and deletes nothing.
+// DeleteChatMessage implements DELETE .../messages/{messageId}. BOTH paths
+// run the existence check: the store handler treats deleting a missing
+// document as success, so without it the real call would answer 200 for a
+// message that never existed while the dry run 404s — C9's contract is
+// that the dry run predicts the real call. The read also feeds the file-GC
+// warnings: the middleware permanently deletes (skipBin) attachment/link
+// targets orphaned by the delete, asynchronously, after the API replied —
+// the response names the ids at risk instead of hiding the irreversible
+// part behind a 200.
 func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messageId string, dryRun bool) (*apimodel.V2ChatMessageResult, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
 	}
+	existing, err := s.getChatMessageProto(ctx, chatId, messageId)
+	if err != nil {
+		return nil, err
+	}
+	warnings := v2ChatDeleteWarnings(existing)
 	if dryRun {
-		if _, err := s.getChatMessageProto(ctx, chatId, messageId); err != nil {
-			return nil, err
-		}
-		return &apimodel.V2ChatMessageResult{Id: messageId, DryRun: true}, nil
+		return &apimodel.V2ChatMessageResult{Id: messageId, DryRun: true, Warnings: warnings}, nil
 	}
 	resp := s.mw.ChatDeleteMessage(ctx, &pb.RpcChatDeleteMessageRequest{
 		ChatObjectId: chatId,
@@ -264,12 +321,16 @@ func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, mess
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatDeleteMessageResponseError_NULL {
 		return nil, v2ChatRpcError("delete chat message", int32(resp.Error.Code), int32(pb.RpcChatDeleteMessageResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &apimodel.V2ChatMessageResult{Id: messageId}, nil
+	return &apimodel.V2ChatMessageResult{Id: messageId, Warnings: warnings}, nil
 }
 
 // ToggleChatReaction implements POST .../messages/{messageId}/reactions.
-// A dry run reads the message and reports the would-be outcome: added is
-// true when the caller does not currently carry the reaction.
+// Both paths read the message first: the RPC surfaces a missing message as
+// an opaque UNKNOWN_ERROR (HasMyReaction's FindId), so the check turns it
+// into a clean 404. A dry run reports the would-be outcome — added is true
+// when the caller does not currently carry the reaction — unless the
+// service has no account identity to predict with, in which case added is
+// omitted with a warning instead of asserting a coin flip.
 func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messageId string, req apimodel.V2ChatReactionRequest, dryRun bool) (*apimodel.V2ChatReactionResult, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
@@ -278,10 +339,17 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 		return nil, apimodel.V2ValidationFailed("emoji is required",
 			apimodel.V2Issue{Path: "/emoji", Message: "provide the reaction emoji, e.g. 👍"})
 	}
+	existing, err := s.getChatMessageProto(ctx, chatId, messageId)
+	if err != nil {
+		return nil, err
+	}
 	if dryRun {
-		existing, err := s.getChatMessageProto(ctx, chatId, messageId)
-		if err != nil {
-			return nil, err
+		if s.accountId == "" {
+			return &apimodel.V2ChatReactionResult{DryRun: true, Warnings: []apimodel.V2Issue{{
+				Path:    "/emoji",
+				Message: "the would-be outcome could not be predicted: the service has no account identity",
+				Hint:    "run without dry_run for the authoritative added value",
+			}}}, nil
 		}
 		added := true
 		if existing.Reactions != nil {
@@ -294,7 +362,7 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 				}
 			}
 		}
-		return &apimodel.V2ChatReactionResult{Added: added, DryRun: true}, nil
+		return &apimodel.V2ChatReactionResult{Added: &added, DryRun: true}, nil
 	}
 	resp := s.mw.ChatToggleMessageReaction(ctx, &pb.RpcChatToggleMessageReactionRequest{
 		ChatObjectId: chatId,
@@ -304,7 +372,8 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatToggleMessageReactionResponseError_NULL {
 		return nil, v2ChatRpcError("toggle chat reaction", int32(resp.Error.Code), int32(pb.RpcChatToggleMessageReactionResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &apimodel.V2ChatReactionResult{Added: resp.Added}, nil
+	added := resp.Added
+	return &apimodel.V2ChatReactionResult{Added: &added}, nil
 }
 
 //
@@ -316,20 +385,32 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 // upTo is INCLUSIVE and required for the messages/mentions scopes: the
 // underlying range query is `orderId <= upTo`, so an empty bound would
 // silently mark nothing (v1's read_all rides exactly that trap).
-// lastStateId is the race guard this phase finally makes reachable — it
-// comes from the messages read's state.lastStateId. The reactions scope
-// marks ALL unread reactions (the backend takes no bound) and therefore
-// rejects upTo/lastStateId.
+// lastStateId — the race guard this phase finally makes reachable — is
+// required for the SAME reason: the repository additionally ANDs
+// `stateId <= lastStateId` and every stored message carries a non-empty
+// bson state id, so `stateId <= ""` matches nothing and an omitted guard
+// is the identical silent no-op one field over. Both values ride the same
+// GET messages response (the newest order + state.lastStateId), so
+// requiring them costs the agent no extra call. The reactions scope marks
+// ALL unread reactions (the backend takes no bound) and therefore rejects
+// upTo/lastStateId.
 func (s *V2Service) ReadChat(ctx context.Context, spaceId, chatId string, req apimodel.V2ChatReadRequest, dryRun bool) (*apimodel.V2ChatReadResult, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
 	}
 	switch req.Scope {
 	case "", apimodel.V2ChatReadScopeMessages, apimodel.V2ChatReadScopeMentions:
+		var missing []apimodel.V2Issue
 		if req.UpTo == "" {
-			return nil, apimodel.V2ValidationFailed("upTo is required",
-				apimodel.V2Issue{Path: "/upTo", Message: "the inclusive order id to mark read up to",
-					Hint: "use the newest message's order from GET .../messages (a limit=1 read returns it)"})
+			missing = append(missing, apimodel.V2Issue{Path: "/upTo", Message: "the inclusive order id to mark read up to",
+				Hint: "use the newest message's order from GET .../messages (a limit=1 read returns it)"})
+		}
+		if req.LastStateId == "" {
+			missing = append(missing, apimodel.V2Issue{Path: "/lastStateId", Message: "the race guard from the same messages read",
+				Hint: "use state.lastStateId from GET .../messages — an empty guard matches no message and would silently mark nothing"})
+		}
+		if len(missing) > 0 {
+			return nil, apimodel.V2ValidationFailed("the read watermark needs upTo and lastStateId", missing...)
 		}
 		if dryRun {
 			return &apimodel.V2ChatReadResult{DryRun: true}, nil
@@ -434,6 +515,12 @@ func (s *V2Service) resolveChatAttachments(spaceId string, ids []string) ([]*mod
 	if len(ids) == 0 {
 		return nil, nil
 	}
+	if len(ids) > maxChatAttachments {
+		return nil, apimodel.V2ValidationFailed("too many attachments",
+			apimodel.V2Issue{Path: "/attachments",
+				Message: fmt.Sprintf("%d attachments — the cap is %d per message (the bound the chatMessage schema advertises)", len(ids), maxChatAttachments),
+				Hint:    "split the message, or link a collection of the objects instead"})
+	}
 	index := s.store.SpaceIndex(spaceId)
 	attachments := make([]*model.ChatMessageAttachment, 0, len(ids))
 	for i, id := range ids {
@@ -473,17 +560,72 @@ func (s *V2Service) getChatMessageProto(ctx context.Context, chatId, messageId s
 	return resp.Messages[0], nil
 }
 
-// v2ChatRpcError maps a chat RPC failure to the C6 shape: BAD_INPUT (code 2
+// v2ValidateChatTextLength enforces the store's message-text cap
+// (chatmodel.MaxMessageLength, counted in UTF-16 code units) BEFORE the
+// RPC. The chat RPC enums carry no usable error code, so without this
+// pre-check an over-long message — the mistake the discovery schema's
+// maxLength exists to prevent — would come back as a retry-looping 500.
+// The cap applies to the PARSED text, matching what the store validates.
+func v2ValidateChatTextLength(parsedText string) error {
+	if length := len(textutil.StrToUTF16(parsedText)); length > chatmodel.MaxMessageLength {
+		return apimodel.V2ValidationFailed("message text is too long",
+			apimodel.V2Issue{Path: "/text",
+				Message: fmt.Sprintf("the text is %d UTF-16 code units — the cap is %d", length, chatmodel.MaxMessageLength),
+				Hint:    "the cap counts UTF-16 code units (an emoji counts 2+); split the message"})
+	}
+	return nil
+}
+
+// v2ChatDeleteWarnings surfaces the irreversible side effect of a message
+// delete: the middleware garbage-collects attachment and link-block targets
+// orphaned by the delete with skipBin=true — permanently deleted, not
+// binned, asynchronously AFTER the API has replied. The dry run and the
+// real receipt both carry the ids at risk (C6 warnings).
+func v2ChatDeleteWarnings(msg *model.ChatMessage) []apimodel.V2Issue {
+	var ids []string
+	for _, att := range msg.Attachments {
+		if att != nil && att.Target != "" {
+			ids = append(ids, att.Target)
+		}
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	return []apimodel.V2Issue{{
+		Path:    "/attachments",
+		Message: fmt.Sprintf("deleting this message may PERMANENTLY delete its attached objects (not moved to the bin): %s", strings.Join(ids, ", ")),
+		Hint:    "an attachment is garbage-collected asynchronously when this message was its only reference",
+	}}
+}
+
+// v2ChatRpcError maps a chat RPC failure to the C6 shape. BAD_INPUT (code 2
 // across the chat RPC enums) becomes a 400 carrying the middleware's
-// description; anything else is a 500 naming the failed operation.
+// description — but the chat RPCs never actually produce it (core
+// mapErrorCode has no chat errToCode mappings and defaults everything to
+// UNKNOWN_ERROR), so ordinary caller mistakes are classified on the
+// description instead of defaulting the whole class to a retry-looping 500.
+// The matched strings are pinned by the middleware: chatobject.go wraps
+// store validation as "validate: …", any-store's ErrDocNotFound reads
+// "document not found", and chathandler.go rejects foreign edits/deletes
+// with "can't delete not own message".
 func v2ChatRpcError(op string, code, badInputCode int32, description string) error {
 	if code == badInputCode {
 		return apimodel.V2ValidationFailed(fmt.Sprintf("%s: invalid input", op),
 			apimodel.V2Issue{Message: description})
 	}
+	switch {
+	case strings.Contains(description, "validate:"):
+		return apimodel.V2ValidationFailed(fmt.Sprintf("%s: the middleware rejected the message", op),
+			apimodel.V2Issue{Message: description})
+	case strings.Contains(description, "not own message"):
+		return apimodel.NewV2Error(http.StatusForbidden, apimodel.V2CodeForbidden,
+			fmt.Sprintf("%s: %s — only the author can edit or delete a message", op, description))
+	case strings.Contains(description, "not found"):
+		return apimodel.V2NotFound(fmt.Sprintf("%s: %s", op, description))
+	}
 	msg := op + " failed"
 	if description != "" {
 		msg += ": " + description
 	}
-	return apimodel.NewV2Error(500, apimodel.V2CodeInternalError, msg)
+	return apimodel.NewV2Error(http.StatusInternalServerError, apimodel.V2CodeInternalError, msg)
 }

@@ -17,6 +17,7 @@ const (
 	V2CodeEtagMismatch        = "etag_mismatch"
 	V2CodeAmbiguousInput      = "ambiguous_input"
 	V2CodeNotFound            = "not_found"
+	V2CodeForbidden           = "forbidden"
 	V2CodeNotImplemented      = "not_implemented"
 	V2CodeInternalError       = "internal_error"
 	V2CodeRequestTooLarge     = "request_too_large"

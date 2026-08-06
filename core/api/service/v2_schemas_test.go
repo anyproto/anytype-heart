@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson/filterstring"
 )
@@ -27,15 +28,17 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters", "search", "chat", "chatMessage", "chatRead"} {
+		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters", "search", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
 		}
 	})
 
 	t.Run("the chat kinds are strict-mode-decodable and their examples fit (Phase 6)", func(t *testing.T) {
-		// the chat message body is an authoring surface (§5: a surface an
-		// agent must author needs a schema kind); strictness follows C13
-		for _, kind := range []string{"chat", "chatMessage", "chatRead"} {
+		// every chat body an agent must author has a schema kind (§5) —
+		// incl. the tiny edit/reaction bodies, because the handlers decode
+		// strictly and a guessed field name eats an avoidable 400;
+		// strictness follows C13
+		for _, kind := range []string{"chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
 			entry, err := fx.SchemaKind(kind)
 			require.NoError(t, err, kind)
 			var schema struct {
@@ -54,6 +57,36 @@ func TestV2Schemas(t *testing.T) {
 					"example field %q of kind %s is not in its own schema", field, kind)
 			}
 		}
+	})
+
+	t.Run("chat schema bounds match the enforced caps — the schema must not out-promise the store", func(t *testing.T) {
+		// a constrained-decoding model OBEYS the schema: advertising
+		// maxLength 65536 against the store's 8000-UTF-16-unit cap (the
+		// original Phase-6 defect) steers it straight into a rejection;
+		// this drift test pins the served bounds to the enforced constants
+		var bounds = func(kind string) map[string]struct {
+			MaxLength int `json:"maxLength"`
+			MaxItems  int `json:"maxItems"`
+		} {
+			entry, err := fx.SchemaKind(kind)
+			require.NoError(t, err, kind)
+			var schema struct {
+				Properties map[string]struct {
+					MaxLength int `json:"maxLength"`
+					MaxItems  int `json:"maxItems"`
+				} `json:"properties"`
+			}
+			require.NoError(t, json.Unmarshal(entry.Schema, &schema), kind)
+			return schema.Properties
+		}
+		message := bounds("chatMessage")
+		assert.Equal(t, chatmodel.MaxMessageLength, message["text"].MaxLength,
+			"chatMessage.text maxLength must equal the store cap (UTF-16 code units)")
+		assert.Equal(t, maxChatAttachments, message["attachments"].MaxItems,
+			"chatMessage.attachments maxItems must equal the enforced cap")
+		edit := bounds("chatMessageEdit")
+		assert.Equal(t, chatmodel.MaxMessageLength, edit["text"].MaxLength,
+			"chatMessageEdit.text maxLength must equal the store cap")
 	})
 
 	t.Run("every kind serves parseable schema and example (C12/C13)", func(t *testing.T) {

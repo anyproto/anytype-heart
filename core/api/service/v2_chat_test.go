@@ -2,13 +2,17 @@ package service
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	"github.com/anyproto/anytype-heart/core/block/chats/chatmodel"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
@@ -108,8 +112,12 @@ func TestV2ListChats(t *testing.T) {
 	})
 
 	t.Run("pagination reports has_more with an honest total", func(t *testing.T) {
-		// given
+		// given: THREE chats and limit=1 — the fetch reads limit+1 = 2
+		// records, so the banned v1 `total = len(fetched)` pattern would
+		// report 2 while the honest QueryAndCount total is 3; two chats
+		// could not tell the implementations apart
 		fx := newV2Fixture(t)
+		fx.addChat(t, "chatC", "C", 3000)
 		fx.addChat(t, "chatB", "B", 2000)
 		fx.addChat(t, "chatA", "A", 1000)
 
@@ -119,7 +127,7 @@ func TestV2ListChats(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.Len(t, rows, 1)
-		assert.Equal(t, 2, total)
+		assert.Equal(t, 3, total, "total must be the store count, not len(fetched) — the Phase-4-banned pattern")
 		assert.True(t, hasMore)
 	})
 
@@ -176,7 +184,8 @@ func TestV2GetChatMessages(t *testing.T) {
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		fx.addParticipant(t, testIdentity, "Alice")
 		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatGetMessagesRequest) bool {
-			return req.ChatObjectId == testChatId && req.AfterOrderId == "0090" && req.Limit == 25
+			// limit+1: the extra record detects has_more without guessing
+			return req.ChatObjectId == testChatId && req.AfterOrderId == "0090" && req.Limit == 26
 		})).Return(&pb.RpcChatGetMessagesResponse{
 			Messages: []*model.ChatMessage{chatProtoMessage()},
 			ChatState: &model.ChatState{
@@ -205,9 +214,11 @@ func TestV2GetChatMessages(t *testing.T) {
 		assert.Equal(t, domain.NewParticipantId(testSpaceId, testIdentity), msg.AuthorId)
 		assert.Equal(t, "Alice", msg.Author, "author name enriched from the store participant")
 		assert.Equal(t, map[string]int{"👍": 2}, msg.Reactions, "counts by default (Q4)")
+		assert.Nil(t, msg.ReactedBy, "identity lists only under ?reactions=full")
+		assert.False(t, got.HasMore)
 	})
 
-	t.Run("reactions=full restores identity lists as participant ids", func(t *testing.T) {
+	t.Run("reactions=full adds reactedBy participant ids — counts keep their slot (C2)", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
@@ -224,7 +235,66 @@ func TestV2GetChatMessages(t *testing.T) {
 			domain.NewParticipantId(testSpaceId, testIdentity),
 			domain.NewParticipantId(testSpaceId, "identityB"),
 		}}
-		assert.Equal(t, want, got.Messages[0].Reactions)
+		assert.Equal(t, want, got.Messages[0].ReactedBy)
+		assert.Equal(t, map[string]int{"👍": 2}, got.Messages[0].Reactions,
+			"reactions stays the counts map in full mode — one slot, one type")
+	})
+
+	t.Run("forward paging trims the newest extra and continues with nextAfter", func(t *testing.T) {
+		// given: ?after alone is the one ASC query — the RPC is asked for
+		// limit+1 and returns 3 ascending messages for limit=2
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		protos := make([]*model.ChatMessage, 0, 3)
+		for _, order := range []string{"00a1", "00a2", "00a3"} {
+			m := chatProtoMessage()
+			m.Id = "msg-" + order
+			m.OrderId = order
+			protos = append(protos, m)
+		}
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatGetMessagesRequest) bool {
+			return req.AfterOrderId == "0090" && req.Limit == 3
+		})).Return(&pb.RpcChatGetMessagesResponse{Messages: protos})
+
+		// when
+		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, V2ChatMessagesQuery{After: "0090", Limit: 2})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got.Messages, 2)
+		assert.Equal(t, "00a1", got.Messages[0].Order)
+		assert.Equal(t, "00a2", got.Messages[1].Order, "the newest extra is trimmed on a forward walk")
+		assert.True(t, got.HasMore)
+		assert.Equal(t, "00a2", got.NextAfter, "the cursor advances past the last shown message")
+		assert.Empty(t, got.NextBefore)
+	})
+
+	t.Run("newest-anchored paging trims the oldest extra and continues with nextBefore", func(t *testing.T) {
+		// given: no ?after — the repository sorts DESC (newest N) and the
+		// service receives them ascending; the OLDEST message is the extra
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		protos := make([]*model.ChatMessage, 0, 3)
+		for _, order := range []string{"00a1", "00a2", "00a3"} {
+			m := chatProtoMessage()
+			m.Id = "msg-" + order
+			m.OrderId = order
+			protos = append(protos, m)
+		}
+		fx.mwMock.EXPECT().ChatGetMessages(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesResponse{Messages: protos})
+
+		// when
+		got, err := fx.GetChatMessages(context.Background(), testSpaceId, testChatId, V2ChatMessagesQuery{Limit: 2})
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, got.Messages, 2)
+		assert.Equal(t, "00a2", got.Messages[0].Order, "the oldest extra is trimmed on a newest-anchored read")
+		assert.Equal(t, "00a3", got.Messages[1].Order)
+		assert.True(t, got.HasMore)
+		assert.Equal(t, "00a2", got.NextBefore, "older messages continue with ?before=")
+		assert.Empty(t, got.NextAfter)
 	})
 
 	t.Run("a non-chat target is a 400 naming the layout", func(t *testing.T) {
@@ -345,6 +415,93 @@ func TestV2AddChatMessage(t *testing.T) {
 		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId, apimodel.V2AddChatMessageRequest{}, false)
 		requireV2Code(t, err, apimodel.V2CodeValidationFailed)
 	})
+
+	t.Run("text over the UTF-16 cap is a path-addressed 400 BEFORE the RPC", func(t *testing.T) {
+		// given: no RPC expectation — the chat RPC enums carry no usable
+		// error code, so an over-long message reaching the middleware would
+		// come back as a retry-looping 500; the cap must fire in v2
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+
+		// when
+		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
+			apimodel.V2AddChatMessageRequest{Text: strings.Repeat("a", chatmodel.MaxMessageLength+1)}, false)
+
+		// then
+		requireV2Code(t, err, apimodel.V2CodeValidationFailed)
+		var v2Err *apimodel.V2Error
+		require.ErrorAs(t, err, &v2Err)
+		require.NotEmpty(t, v2Err.Issues)
+		assert.Equal(t, "/text", v2Err.Issues[0].Path)
+	})
+
+	t.Run("more than 32 attachments is a path-addressed 400 before any lookup", func(t *testing.T) {
+		// given: the cap the chatMessage schema advertises (maxItems 32)
+		// must be enforced, or the strict schema lies about the contract
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		ids := make([]string, maxChatAttachments+1)
+		for i := range ids {
+			ids[i] = fmt.Sprintf("obj%d", i)
+		}
+
+		// when
+		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
+			apimodel.V2AddChatMessageRequest{Text: "see these", Attachments: ids}, false)
+
+		// then
+		requireV2Code(t, err, apimodel.V2CodeValidationFailed)
+		var v2Err *apimodel.V2Error
+		require.ErrorAs(t, err, &v2Err)
+		require.NotEmpty(t, v2Err.Issues)
+		assert.Equal(t, "/attachments", v2Err.Issues[0].Path)
+	})
+
+	t.Run("an RPC validate failure maps to 400, not a retry-looping 500", func(t *testing.T) {
+		// given: the RPC answers UNKNOWN_ERROR (core mapErrorCode has no
+		// chat mappings) with the middleware's "validate: …" description —
+		// the description, not the dead code, must drive the status
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatAddMessage(mock.Anything, mock.Anything).Return(&pb.RpcChatAddMessageResponse{
+			Error: &pb.RpcChatAddMessageResponseError{
+				Code:        pb.RpcChatAddMessageResponseError_UNKNOWN_ERROR,
+				Description: "validate: mark range out of bounds",
+			},
+		})
+
+		// when
+		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
+			apimodel.V2AddChatMessageRequest{Text: "hello"}, false)
+
+		// then
+		requireV2Code(t, err, apimodel.V2CodeValidationFailed)
+		assert.Contains(t, err.Error(), "rejected")
+	})
+
+	t.Run("editing another member's message is a 403 forbidden, not a 500", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{chatProtoMessage()}})
+		fx.mwMock.EXPECT().ChatEditMessageContent(mock.Anything, mock.Anything).Return(&pb.RpcChatEditMessageContentResponse{
+			Error: &pb.RpcChatEditMessageContentResponseError{
+				Code:        pb.RpcChatEditMessageContentResponseError_UNKNOWN_ERROR,
+				Description: "can't delete not own message",
+			},
+		})
+
+		// when
+		_, err := fx.EditChatMessage(context.Background(), testSpaceId, testChatId, "msg1",
+			apimodel.V2EditChatMessageRequest{Text: "updated"}, false)
+
+		// then
+		requireV2Code(t, err, apimodel.V2CodeForbidden)
+		var v2Err *apimodel.V2Error
+		require.ErrorAs(t, err, &v2Err)
+		assert.Equal(t, 403, v2Err.Status)
+	})
 }
 
 func TestV2EditChatMessage(t *testing.T) {
@@ -410,10 +567,16 @@ func TestV2EditChatMessage(t *testing.T) {
 }
 
 func TestV2DeleteChatMessage(t *testing.T) {
-	t.Run("delete passes through", func(t *testing.T) {
-		// given
+	t.Run("delete passes through — and warns about the attachment file GC", func(t *testing.T) {
+		// given: deleting a message permanently deletes (skipBin) any
+		// attachment orphaned by it, asynchronously — the receipt must name
+		// the ids at risk instead of hiding the irreversible part
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		msg := chatProtoMessage()
+		msg.Attachments = []*model.ChatMessageAttachment{{Target: "file1", Type: model.ChatMessageAttachment_IMAGE}}
+		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{msg}})
 		fx.mwMock.EXPECT().ChatDeleteMessage(mock.Anything, &pb.RpcChatDeleteMessageRequest{
 			ChatObjectId: testChatId, MessageId: "msg1",
 		}).Return(&pb.RpcChatDeleteMessageResponse{})
@@ -424,28 +587,58 @@ func TestV2DeleteChatMessage(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "msg1", got.Id)
+		require.Len(t, got.Warnings, 1)
+		assert.Contains(t, got.Warnings[0].Message, "file1")
+		assert.Contains(t, got.Warnings[0].Message, "PERMANENTLY")
 	})
 
-	t.Run("dry run is an existence check — a missing message 404s", func(t *testing.T) {
-		// given: no ChatDeleteMessage expectation
+	t.Run("the real delete 404s for a missing message exactly like its dry run (C9)", func(t *testing.T) {
+		// given: no ChatDeleteMessage expectation — the store handler
+		// treats deleting a missing document as success, so skipping the
+		// check would answer 200 for a deletion that never happened (and
+		// still push a junk delete change into the CRDT tree)
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
-			Return(&pb.RpcChatGetMessagesByIdsResponse{})
+			Return(&pb.RpcChatGetMessagesByIdsResponse{}).Times(2)
 
 		// when
-		_, err := fx.DeleteChatMessage(context.Background(), testSpaceId, testChatId, "nope", true)
+		_, errReal := fx.DeleteChatMessage(context.Background(), testSpaceId, testChatId, "nope", false)
+		_, errDry := fx.DeleteChatMessage(context.Background(), testSpaceId, testChatId, "nope", true)
 
 		// then
-		requireV2Code(t, err, apimodel.V2CodeNotFound)
+		requireV2Code(t, errReal, apimodel.V2CodeNotFound)
+		requireV2Code(t, errDry, apimodel.V2CodeNotFound)
+	})
+
+	t.Run("dry run reports the same file-GC warnings and deletes nothing", func(t *testing.T) {
+		// given: no ChatDeleteMessage expectation
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		msg := chatProtoMessage()
+		msg.Attachments = []*model.ChatMessageAttachment{{Target: "file1", Type: model.ChatMessageAttachment_FILE}}
+		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{msg}})
+
+		// when
+		got, err := fx.DeleteChatMessage(context.Background(), testSpaceId, testChatId, "msg1", true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, got.DryRun)
+		require.Len(t, got.Warnings, 1)
+		assert.Contains(t, got.Warnings[0].Message, "file1")
 	})
 }
 
 func TestV2ToggleChatReaction(t *testing.T) {
 	t.Run("toggle passes the outcome through", func(t *testing.T) {
-		// given
+		// given: the real path reads the message first — the RPC surfaces a
+		// missing message as an opaque UNKNOWN_ERROR, the check makes it a 404
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{chatProtoMessage()}})
 		fx.mwMock.EXPECT().ChatToggleMessageReaction(mock.Anything, &pb.RpcChatToggleMessageReactionRequest{
 			ChatObjectId: testChatId, MessageId: "msg1", Emoji: "👍",
 		}).Return(&pb.RpcChatToggleMessageReactionResponse{Added: true})
@@ -456,7 +649,23 @@ func TestV2ToggleChatReaction(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.True(t, got.Added)
+		require.NotNil(t, got.Added)
+		assert.True(t, *got.Added)
+	})
+
+	t.Run("a reaction on a missing message is a 404, not a 500", func(t *testing.T) {
+		// given: no toggle expectation — the RPC must never run
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesByIdsResponse{})
+
+		// when
+		_, err := fx.ToggleChatReaction(context.Background(), testSpaceId, testChatId, "nope",
+			apimodel.V2ChatReactionRequest{Emoji: "👍"}, false)
+
+		// then
+		requireV2Code(t, err, apimodel.V2CodeNotFound)
 	})
 
 	t.Run("dry run reports the would-be outcome without toggling", func(t *testing.T) {
@@ -482,9 +691,46 @@ func TestV2ToggleChatReaction(t *testing.T) {
 		// then
 		require.NoError(t, err1)
 		require.NoError(t, err2)
-		assert.True(t, addOutcome.Added, "not reacted yet — the toggle would add")
+		require.NotNil(t, addOutcome.Added)
+		assert.True(t, *addOutcome.Added, "not reacted yet — the toggle would add")
 		assert.True(t, addOutcome.DryRun)
-		assert.False(t, removeOutcome.Added, "already reacted — the toggle would remove")
+		require.NotNil(t, removeOutcome.Added)
+		assert.False(t, *removeOutcome.Added, "already reacted — the toggle would remove")
+	})
+
+	t.Run("dry run without an account identity omits added and warns", func(t *testing.T) {
+		// given: V2Service documents accountId as possibly empty — with no
+		// identity NOTHING matches the stored reactions, so asserting
+		// added=true would be wrong whenever the caller already reacted
+		mwMock := mock_apicore.NewMockClientCommands(t)
+		store := objectstore.NewStoreFixture(t)
+		store.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("spaceView1"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:  domain.String(testSpaceId),
+		}})
+		store.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String(testChatId),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_chatDerived)),
+		}})
+		svc := NewV2Service(mwMock, nil, nil, nil, store, objectstore.TestTechSpaceId, "" /* no accountId */)
+		msg := chatProtoMessage()
+		msg.Reactions = &model.ChatMessageReactions{Reactions: map[string]*model.ChatMessageReactionsIdentityList{
+			"👍": {Ids: []string{"someoneElse"}},
+		}}
+		mwMock.EXPECT().ChatGetMessagesByIds(mock.Anything, mock.Anything).
+			Return(&pb.RpcChatGetMessagesByIdsResponse{Messages: []*model.ChatMessage{msg}})
+
+		// when
+		got, err := svc.ToggleChatReaction(context.Background(), testSpaceId, testChatId, "msg1",
+			apimodel.V2ChatReactionRequest{Emoji: "👍"}, true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, got.DryRun)
+		assert.Nil(t, got.Added, "no identity to predict with — added must be omitted, not asserted")
+		require.NotEmpty(t, got.Warnings)
+		assert.Contains(t, got.Warnings[0].Message, "could not be predicted")
 	})
 
 	t.Run("empty emoji is a 400", func(t *testing.T) {
@@ -522,31 +768,55 @@ func TestV2ReadChat(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		fx.mwMock.EXPECT().ChatReadMessages(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatReadMessagesRequest) bool {
-			return req.Type == pb.RpcChatReadMessages_Mentions && req.BeforeOrderId == "00a5"
+			return req.Type == pb.RpcChatReadMessages_Mentions && req.BeforeOrderId == "00a5" && req.LastStateId == "state42"
 		})).Return(&pb.RpcChatReadMessagesResponse{})
 
 		// when
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			apimodel.V2ChatReadRequest{UpTo: "00a5", Scope: "mentions"}, false)
+			apimodel.V2ChatReadRequest{UpTo: "00a5", LastStateId: "state42", Scope: "mentions"}, false)
 
 		// then
 		require.NoError(t, err)
 	})
 
-	t.Run("upTo is required — an empty bound would silently mark nothing", func(t *testing.T) {
-		// given: no RPC expectation — the request must never reach the RPC
+	t.Run("upTo AND lastStateId are required — an empty bound OR guard silently marks nothing", func(t *testing.T) {
+		// given: no RPC expectation — the request must never reach the RPC.
+		// The range query ANDs `orderId <= upTo` with `stateId <= lastStateId`
+		// and every stored message carries a non-empty state id, so EITHER
+		// empty value is the same silent no-op (markedCount 0, HTTP 200)
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+
+		// when: both missing
+		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId, apimodel.V2ChatReadRequest{}, false)
+
+		// then: both named, path-addressed
+		requireV2Code(t, err, apimodel.V2CodeValidationFailed)
+		var v2Err *apimodel.V2Error
+		require.ErrorAs(t, err, &v2Err)
+		require.Len(t, v2Err.Issues, 2)
+		assert.Equal(t, "/upTo", v2Err.Issues[0].Path)
+		assert.Equal(t, "/lastStateId", v2Err.Issues[1].Path)
+	})
+
+	t.Run("upTo alone is NOT enough — the omitted race guard is the v1 trap one field over", func(t *testing.T) {
+		// given: no RPC expectation. Forwarding LastStateId:"" would make
+		// MarkReadMessages mark ZERO messages and still answer 200 — the
+		// exact silent no-op requiring upTo was meant to close
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 
 		// when
-		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId, apimodel.V2ChatReadRequest{}, false)
+		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
+			apimodel.V2ChatReadRequest{UpTo: "00a5"}, false)
 
 		// then
 		requireV2Code(t, err, apimodel.V2CodeValidationFailed)
 		var v2Err *apimodel.V2Error
 		require.ErrorAs(t, err, &v2Err)
-		require.NotEmpty(t, v2Err.Issues)
-		assert.Equal(t, "/upTo", v2Err.Issues[0].Path)
+		require.Len(t, v2Err.Issues, 1)
+		assert.Equal(t, "/lastStateId", v2Err.Issues[0].Path)
+		assert.Contains(t, v2Err.Issues[0].Hint, "state.lastStateId")
 	})
 
 	t.Run("reactions scope marks all unread reactions", func(t *testing.T) {
@@ -589,10 +859,27 @@ func TestV2ReadChat(t *testing.T) {
 
 		// when
 		got, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			apimodel.V2ChatReadRequest{UpTo: "00a5"}, true)
+			apimodel.V2ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, true)
 
 		// then
 		require.NoError(t, err)
 		assert.True(t, got.DryRun)
+	})
+
+	t.Run("the forwarded RPC request never carries an empty lastStateId", func(t *testing.T) {
+		// given: the regression pin for the silent no-op — whatever shape
+		// reaches the RPC must carry a non-empty guard
+		fx := newV2Fixture(t)
+		fx.addChat(t, testChatId, "Team chat", 1000)
+		fx.mwMock.EXPECT().ChatReadMessages(mock.Anything, mock.MatchedBy(func(req *pb.RpcChatReadMessagesRequest) bool {
+			return req.LastStateId != "" && req.BeforeOrderId != ""
+		})).Return(&pb.RpcChatReadMessagesResponse{})
+
+		// when
+		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
+			apimodel.V2ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, false)
+
+		// then
+		require.NoError(t, err)
 	})
 }

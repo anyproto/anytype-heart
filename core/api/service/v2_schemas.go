@@ -108,17 +108,32 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 	},
 	"chatMessage": {
 		endpoint: "POST /v2/spaces/{spaceId}/chats/{chatId}/messages",
+		// text maxLength mirrors chatmodel.MaxMessageLength (8000 UTF-16
+		// units, the STORE's cap) — advertising more turns schema-obedient
+		// callers into rejected requests; a drift test pins the two together
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
-			`"text":{"type":"string","maxLength":65536,"description":"inline markup SOURCE (SPEC §8): *, [, backtick and <mention objectId=\"…\"> mint real marks; escape literal specials with a backslash; required unless attachments are given"},` +
+			`"text":{"type":"string","maxLength":8000,"description":"inline markup SOURCE (SPEC §8): *, [, backtick and <mention objectId=\"…\"> mint real marks; escape literal specials with a backslash; at most 8000 UTF-16 code units (an emoji counts 2+); required unless attachments are given"},` +
 			`"replyTo":{"type":"string","maxLength":256,"description":"message id being replied to"},` +
-			`"attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":256},"description":"object ids; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link)"}}}`,
+			`"attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":256},"description":"object ids, at most 32 (enforced); the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link)"}}}`,
 		example: `{"text":"can you **check** the doc?","attachments":["bafyreie6n5l5nkbjal37su54cha4coy"]}`,
+	},
+	"chatMessageEdit": {
+		endpoint: "PATCH /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}",
+		schema: `{"type":"object","additionalProperties":false,"required":["text"],"properties":{` +
+			`"text":{"type":"string","maxLength":8000,"description":"replacement inline markup SOURCE (SPEC §8), at most 8000 UTF-16 code units; ALL marks are re-derived from this string (the D′1 caveat bites hardest here — escape literal specials); the message's attachments, reply target, style and blocks are preserved"}}}`,
+		example: `{"text":"updated: can you **check** the doc?"}`,
+	},
+	"chatReaction": {
+		endpoint: "POST /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}/reactions",
+		schema: `{"type":"object","additionalProperties":false,"required":["emoji"],"properties":{` +
+			`"emoji":{"type":"string","minLength":1,"maxLength":64,"description":"the reaction emoji to toggle, e.g. 👍 — the response's added reports whether it was added or removed"}}}`,
+		example: `{"emoji":"👍"}`,
 	},
 	"chatRead": {
 		endpoint: "POST /v2/spaces/{spaceId}/chats/{chatId}/read",
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
-			`"upTo":{"type":"string","maxLength":256,"description":"INCLUSIVE order id to mark read up to — take it from the newest message of a GET messages read; required for scopes messages/mentions, absent for reactions"},` +
-			`"lastStateId":{"type":"string","maxLength":256,"description":"race guard: the state.lastStateId from the same messages read — messages that arrived after that state stay unread"},` +
+			`"upTo":{"type":"string","maxLength":256,"description":"INCLUSIVE order id to mark read up to — take it from the newest message of a GET messages read; REQUIRED for scopes messages/mentions, absent for reactions"},` +
+			`"lastStateId":{"type":"string","maxLength":256,"description":"race guard, REQUIRED for scopes messages/mentions (absent for reactions): the state.lastStateId from the same messages read — messages that arrived after that state stay unread; an empty guard would silently mark nothing"},` +
 			`"scope":{"type":"string","enum":["messages","mentions","reactions"],"description":"defaults to messages; reactions marks ALL unread reactions"}}}`,
 		example: `{"upTo":"00a1b2c3d4e5f6","lastStateId":"66f2a1b0c9d8e7f6a5b4c3d2","scope":"messages"}`,
 	},

@@ -4,11 +4,14 @@ package apimodel
 // §5) and the inline-markup bridge: message text crosses the API as SPEC §8
 // markup source in BOTH directions (the anyblockjson inline codec — one
 // vocabulary with block text, C2); offset mark arrays never cross the API.
-// Reactions default to counts ({"👍":2}, Q4); ?reactions=full restores
-// identity lists carrying participant ids. The SSE stream (Phase 8) reuses
-// these DTOs.
+// Reactions are counts ({"👍":2}, Q4); ?reactions=full adds reactedBy
+// (participant-id lists) in its own slot so neither field ever changes
+// type. The SSE stream (Phase 8) reuses these DTOs.
 
 import (
+	"strings"
+	"time"
+
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -25,21 +28,27 @@ type V2ChatRow struct {
 // V2ChatMessage is one chat message. Text is §8 inline markup rendered by
 // the anyblockjson inline codec — the same serialization block text uses.
 // AuthorId is the deterministic participant id; Author is the display name
-// when the participant is known. Reactions is either counts
-// (map[string]int, the default) or identity lists (map[string][]string of
-// participant ids, ?reactions=full).
+// when the participant is known. At/EditedAt are RFC 3339 UTC — one date
+// shape across v2 (C2), matching every AnyBlock date. Reactions is ALWAYS
+// the counts map; ReactedBy (participant-id lists) appears only under
+// ?reactions=full — two slots so neither ever changes type (C2).
+// BlocksText is the read-only rendering of a block-composed message's
+// text-bearing blocks (desktop quotes etc.) — without it a blocks-only
+// message would read back as empty.
 type V2ChatMessage struct {
-	Id          string             `json:"id"`
-	Order       string             `json:"order"`
-	Author      string             `json:"author,omitempty"`
-	AuthorId    string             `json:"authorId,omitempty"`
-	At          int64              `json:"at,omitempty"`
-	EditedAt    int64              `json:"editedAt,omitempty"`
-	Text        string             `json:"text"`
-	ReplyTo     string             `json:"replyTo,omitempty"`
-	Reactions   any                `json:"reactions,omitempty"`
-	Attachments []V2ChatAttachment `json:"attachments,omitempty"`
-	Pinned      bool               `json:"pinned,omitempty"`
+	Id          string              `json:"id"`
+	Order       string              `json:"order"`
+	Author      string              `json:"author,omitempty"`
+	AuthorId    string              `json:"authorId,omitempty"`
+	At          string              `json:"at,omitempty"`
+	EditedAt    string              `json:"editedAt,omitempty"`
+	Text        string              `json:"text"`
+	BlocksText  string              `json:"blocksText,omitempty"`
+	ReplyTo     string              `json:"replyTo,omitempty"`
+	Reactions   map[string]int      `json:"reactions,omitempty"`
+	ReactedBy   map[string][]string `json:"reactedBy,omitempty"`
+	Attachments []V2ChatAttachment  `json:"attachments,omitempty"`
+	Pinned      bool                `json:"pinned,omitempty"`
 }
 
 // V2ChatAttachment is one message attachment: the target object id and its
@@ -64,12 +73,19 @@ type V2ChatState struct {
 // V2ChatMessagesResponse is the GET messages payload: ascending-order
 // messages plus the state+messageCount the underlying RPC already returns
 // (zero extra cost — the Phase-6 finding). A poll is a limit=1 read of this
-// shape. Cursor-paged (after/before order ids), not C10 offset pagination —
-// messageCount is the honest total.
+// shape. Cursor-paged (after/before order ids), not C10 offset pagination.
+// MessageCount is the chat's LIFETIME total, not the size of the requested
+// range; HasMore says more messages exist inside the requested bounds, and
+// NextAfter/NextBefore carry the boundary order id to continue from —
+// forward walks (?after alone) get NextAfter, everything else (newest-
+// anchored) gets NextBefore.
 type V2ChatMessagesResponse struct {
 	Messages     []V2ChatMessage `json:"messages"`
 	State        *V2ChatState    `json:"state,omitempty"`
 	MessageCount int             `json:"messageCount"`
+	HasMore      bool            `json:"has_more"`
+	NextAfter    string          `json:"nextAfter,omitempty"`
+	NextBefore   string          `json:"nextBefore,omitempty"`
 }
 
 // V2CreateChatRequest is the POST chats body.
@@ -115,18 +131,24 @@ type V2ChatReactionRequest struct {
 }
 
 // V2ChatReactionResult reports the toggle outcome. On a dry run, Added is
-// the would-be outcome (computed from the caller's current reaction).
+// the would-be outcome (computed from the caller's current reaction) — and
+// is OMITTED, with a warning, when the service has no account identity to
+// predict with (asserting a coin-flip value would be wrong half the time).
 type V2ChatReactionResult struct {
-	Added  bool `json:"added"`
-	DryRun bool `json:"dry_run,omitempty"`
+	Added    *bool     `json:"added,omitempty"`
+	DryRun   bool      `json:"dry_run,omitempty"`
+	Warnings []V2Issue `json:"warnings,omitempty"`
 }
 
 // V2ChatReadRequest is the POST read body. UpTo is an order id, INCLUSIVE,
 // required for the messages/mentions scopes (an empty bound would silently
-// mark nothing — the v1 read_all trap). LastStateId is the race guard from
-// the messages read's state.lastStateId: messages that arrived after that
-// state are not marked. Scope defaults to "messages"; "reactions" marks all
-// unread reactions and takes no UpTo (the backend reads all).
+// mark nothing — the v1 read_all trap). LastStateId is EQUALLY required for
+// those scopes: the repository ANDs `stateId <= lastStateId` and every
+// stored message carries a non-empty state id, so an empty guard marks
+// nothing just as silently. Both ride the same GET messages response
+// (newest order + state.lastStateId). Scope defaults to "messages";
+// "reactions" marks all unread reactions and takes no UpTo/LastStateId
+// (the backend reads all).
 type V2ChatReadRequest struct {
 	UpTo        string `json:"upTo,omitempty"`
 	LastStateId string `json:"lastStateId,omitempty"`
@@ -178,12 +200,12 @@ func V2ChatMessageFromProto(msg *model.ChatMessage, opts V2ChatMessageOptions) V
 	out := V2ChatMessage{
 		Id:      msg.Id,
 		Order:   msg.OrderId,
-		At:      msg.CreatedAt,
+		At:      v2ChatTime(msg.CreatedAt),
 		ReplyTo: msg.ReplyToMessageId,
 		Pinned:  msg.Pinned,
 	}
 	if msg.ModifiedAt != 0 && msg.ModifiedAt != msg.CreatedAt {
-		out.EditedAt = msg.ModifiedAt
+		out.EditedAt = v2ChatTime(msg.ModifiedAt)
 	}
 	if msg.Creator != "" {
 		out.AuthorId = domain.NewParticipantId(opts.SpaceId, msg.Creator)
@@ -194,6 +216,7 @@ func V2ChatMessageFromProto(msg *model.ChatMessage, opts V2ChatMessageOptions) V
 	if msg.Message != nil {
 		out.Text = anyblockjson.RenderInlineText(msg.Message.Text, msg.Message.Marks)
 	}
+	out.BlocksText = v2BlocksText(msg.Blocks)
 	for _, att := range msg.Attachments {
 		if att == nil {
 			continue
@@ -203,38 +226,75 @@ func V2ChatMessageFromProto(msg *model.ChatMessage, opts V2ChatMessageOptions) V
 			Type: v2AttachmentTypeToString(att.Type),
 		})
 	}
-	out.Reactions = v2ReactionsFromProto(msg.Reactions, opts)
+	out.Reactions, out.ReactedBy = v2ReactionsFromProto(msg.Reactions, opts)
 	return out
 }
 
-// v2ReactionsFromProto compacts reactions to counts, or — full mode — maps
-// the raw identities to participant ids (one vocabulary with AuthorId, C2).
-func v2ReactionsFromProto(reactions *model.ChatMessageReactions, opts V2ChatMessageOptions) any {
-	if reactions == nil || len(reactions.Reactions) == 0 {
-		return nil
+// v2ChatTime renders a unix-seconds timestamp as RFC 3339 UTC — the one
+// date shape v2 uses everywhere (AnyBlock dates, search filters, file
+// addedAt); an epoch int here would force agents into epoch arithmetic.
+func v2ChatTime(sec int64) string {
+	if sec == 0 {
+		return ""
 	}
+	return time.Unix(sec, 0).UTC().Format(time.RFC3339)
+}
+
+// v2BlocksText renders a message's text-bearing blocks (text blocks and the
+// contents of editor/message quotes) as §8 markup, newline-joined. Chat
+// messages composed of blocks (desktop quotes, rich pastes) are valid with
+// empty text (chatmodel.Validate) — without this field they would read back
+// as empty messages. Read-only: PATCH preserves blocks untouched.
+func v2BlocksText(blocks []*model.ChatMessageMessageBlock) string {
+	var parts []string
+	appendText := func(tb *model.ChatMessageMessageBlockText) {
+		if tb != nil && tb.Text != "" {
+			parts = append(parts, anyblockjson.RenderInlineText(tb.Text, tb.Marks))
+		}
+	}
+	for _, block := range blocks {
+		if block == nil {
+			continue
+		}
+		switch {
+		case block.GetText() != nil:
+			appendText(block.GetText())
+		case block.GetEditorQuote() != nil:
+			appendText(block.GetEditorQuote().Content)
+		case block.GetMessageQuote() != nil:
+			appendText(block.GetMessageQuote().Content)
+		}
+	}
+	return strings.Join(parts, "\n")
+}
+
+// v2ReactionsFromProto compacts reactions to counts (always — the stable
+// slot) and, in full mode, additionally maps the raw identities to
+// participant ids for reactedBy (one vocabulary with AuthorId, C2). Two
+// return slots so neither JSON field ever changes type.
+func v2ReactionsFromProto(reactions *model.ChatMessageReactions, opts V2ChatMessageOptions) (map[string]int, map[string][]string) {
+	if reactions == nil || len(reactions.Reactions) == 0 {
+		return nil, nil
+	}
+	counts := make(map[string]int, len(reactions.Reactions))
+	var full map[string][]string
 	if opts.FullReactions {
-		full := make(map[string][]string, len(reactions.Reactions))
-		for emoji, identityList := range reactions.Reactions {
-			if identityList == nil {
-				continue
-			}
+		full = make(map[string][]string, len(reactions.Reactions))
+	}
+	for emoji, identityList := range reactions.Reactions {
+		if identityList == nil {
+			continue
+		}
+		counts[emoji] = len(identityList.Ids)
+		if full != nil {
 			ids := make([]string, 0, len(identityList.Ids))
 			for _, identity := range identityList.Ids {
 				ids = append(ids, domain.NewParticipantId(opts.SpaceId, identity))
 			}
 			full[emoji] = ids
 		}
-		return full
 	}
-	counts := make(map[string]int, len(reactions.Reactions))
-	for emoji, identityList := range reactions.Reactions {
-		if identityList == nil {
-			continue
-		}
-		counts[emoji] = len(identityList.Ids)
-	}
-	return counts
+	return counts, full
 }
 
 // V2ChatStateFromProto converts the middleware chat state — the passthrough
