@@ -196,6 +196,14 @@ for a capability the middleware does not have (Q7).
 
 ## 5. Chats — (c) thin adaptation with three real reshapes
 
+> **STATUS: BUILT** (Phase 6, 2026-08-06 — decisions as built in APIV2.md
+> §8.7). The evidence below held under re-verification, with two backend
+> facts the plan could not see: `ChatReadReactions` ignores its order id
+> (`core/chats.go:325`) so the reactions read scope is all-or-nothing, and
+> the edit RPC replaces the whole message content so PATCH is a read-merge.
+> Q3 resolved (i) counter-free list; Q4 resolved counts-by-default. The SSE
+> stream and per-chat FT search remain on v1 until Phase 8, as planned.
+
 The one surface where "thin" still means design work. Read the machinery
 first; the conclusion is that **v1's chat *model* is right and its chat
 *shapes* leak or drop exactly the fields an agent needs**.
@@ -345,26 +353,31 @@ profile/manifest — the >15-tool cliff (§7) rules out widening the core set.
 
 ## 8. Phase plan
 
-### Phase 6 — chats for agents (sized like Phase 4: one surface, one design decision, mostly translation)
+### Phase 6 — chats for agents (BUILT 2026-08-06 — APIV2.md §8.7)
 
-1. **[build]** v2 chat DTOs + inline-markup bridge: marks ↔ §8 markup text
-   via the anyblockjson inline codec, both directions; reactions compaction;
-   author name enrichment reusing the participant cache
-   (`service/chat.go:111-126`).
-2. **[build]** `GET /chats` C5 rows (store query over `ChatLayouts`, no chat
-   opens) + `POST /chats` (thin `ObjectCreate` with the `chatDerived` type —
-   NOT the Phase-2 snapshot path, which has never been exercised for
-   store-backed smartblocks).
-3. **[build]** `GET /messages` with `state`+`messageCount` passthrough — the
-   port already returns them (`core.go:159`); only the service/DTO layer
-   changes.
-4. **[build]** `POST`/`PATCH`/`DELETE` message + reactions toggle, with C8
-   idempotency middleware on the routes and C9 validate-only dry runs.
-5. **[build]** `POST /read` forwarding `{upTo, lastStateId, scope}` to
-   `ChatReadMessages`/`ChatReadReactions`.
-6. Docs: C7 exemption stated on every chat endpoint; D′1 markup caveat on
-   `POST`/`PATCH` message; v1 SSE stream + chat search documented as the
-   named exceptions.
+1. **[built]** v2 chat DTOs + inline-markup bridge (`model/v2_chat.go`):
+   marks ↔ §8 markup text via the anyblockjson inline codec, both
+   directions; reactions compaction (counts default, `?reactions=full` as
+   participant ids); author name enrichment — store-backed via the
+   deterministic participant id, NOT the v1 cross-space subscription cache
+   (that cache is the v1 service's; the deviation is recorded in §8.7).
+2. **[built]** `GET /chats` C5 rows (store query over `ChatLayouts`, no chat
+   opens — the test fails on any RPC) + `POST /chats` (thin `ObjectCreate`
+   with the `chatDerived` type; non-empty name required).
+3. **[built]** `GET /messages` with `state`+`messageCount` passthrough
+   (`service/v2_chat.go`).
+4. **[built]** `POST`/`PATCH`/`DELETE` message + reactions toggle, C8 on all
+   (the middleware's method set widened to DELETE for the chat delete
+   route), C9 dry runs (PATCH is a read-merge — the edit RPC replaces the
+   whole content, a naive text forward would wipe attachments).
+5. **[built]** `POST /read` forwarding `{upTo, lastStateId, scope}`; upTo
+   required+inclusive for messages/mentions (an empty bound silently marks
+   nothing); the reactions scope is all-or-nothing (the backend ignores its
+   order id) and rejects bounds.
+6. **[done]** Docs: C7 exemption on every chat endpoint; D′1 caveat on
+   POST/PATCH message; v1 SSE stream + chat search named as exceptions;
+   `chat`/`chatMessage`/`chatRead` discovery kinds (§5 rule: an authoring
+   surface needs a schema kind).
 
 Exit criterion (harness): a polling agent completes "summarize what's new in
 this chat and mark it read" in ≤2 calls with zero message re-reads, at lower
@@ -395,17 +408,16 @@ token cost than the v1 flow, and a double-send retry is absorbed by C8.
   the per-type half. Recommendation: defer until the Phase-0 harness measures
   the wrapper's cold-start; build only if orientation calls dominate turns.
   This is the one candidate where "agent-shaped addition" is plausibly real.
-- **Q3 · Unread counters on the chat list.** Options: (i) list stays
-  counter-free; agents poll the chats they care about (recommended — per-chat
-  state is free on the messages read, and computing list-wide counters means
-  opening every chat, the GO-7302 startup cost, on every poll); (ii) opt-in
-  `?state=true` that pays the opens explicitly; (iii) a new middleware
-  aggregate keeping counters store-side. (iii) is the only *good* UX and the
-  only expensive one — it is middleware work, not API work.
-- **Q4 · Reactions default.** Counts-by-default (`{"👍":2}`,
-  `?reactions=full` for identities) — or identity lists for v1 parity?
-  Recommended: counts; an agent almost never needs *who* reacted, and
-  identity lists are the single largest token line in a busy chat read.
+- **Q3 · Unread counters on the chat list — DECIDED (Phase 6, as
+  recommended): (i)**, the list stays counter-free; per-chat state is free
+  on the messages read (a `limit=1` poll), and computing list-wide counters
+  means opening every chat — the GO-7302 startup cost — on every poll.
+  (iii), the store-side counter aggregate, remains the only good-UX option
+  if list counters are ever demanded; it is middleware work, not API work.
+- **Q4 · Reactions default — DECIDED (Phase 6, as recommended):
+  counts-by-default** (`{"👍":2}`); `?reactions=full` restores identity
+  lists, carrying participant ids (one vocabulary with `authorId`, C2),
+  never raw identities.
 - **Q5 · Tag/option administration.** Leave rename/recolor/delete on v1
   until deprecation (recommended), or spec
   `PATCH/DELETE /v2/…/properties/{key}/options/{name}` now and resolve the
