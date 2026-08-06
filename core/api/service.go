@@ -37,11 +37,15 @@ var (
 
 	mwSrv apicore.ClientCommands
 
-	//go:embed docs/openapi.yaml
-	openapiYAML []byte
+	// The generated documents, one per API version. They are data only:
+	// `make openapi` writes just openapi.{json,yaml} (--outputTypes json,yaml),
+	// no docs.go — nothing in this binary ever read swag's global registry, and
+	// the bytes below are what the /docs routes actually serve.
+	//go:embed docs/v1/openapi.yaml
+	openapiV1YAML []byte
 
-	//go:embed docs/openapi.json
-	openapiJSON []byte
+	//go:embed docs/v1/openapi.json
+	openapiV1JSON []byte
 )
 
 type Service interface {
@@ -168,8 +172,8 @@ func (s *apiService) startServer() error {
 		s.fileObjectService,
 		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Store: s.objectStore, AccountId: s.accountId()},
 		s.listenAddr,
-		openapiYAML,
-		openapiJSON,
+		openapiV1YAML,
+		openapiV1JSON,
 	)
 
 	s.httpSrv = &http.Server{
