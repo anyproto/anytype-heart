@@ -12,13 +12,14 @@ import (
 
 // ListSpacesV2Handler lists spaces as minimal rows
 //
-//	@Summary	List spaces (minimal rows)
-//	@Id			v2_list_spaces
-//	@Tags		V2
-//	@Produce	json
-//	@Success	200	{object}	apimodel.V2ListResponse[apimodel.V2SpaceRow]	"Minimal space rows"
-//	@Security	bearerauth
-//	@Router		/v2/spaces [get]
+//	@Summary		List spaces (minimal rows)
+//	@Description	Returns {id, name, description} rows for the account's LIVE spaces — deleted, left and still-joining spaces are filtered out (the same predicate GET /v2/spaces/{space_id} and the global search use).
+//	@Id				v2_list_spaces
+//	@Tags			V2
+//	@Produce		json
+//	@Success		200	{object}	apimodel.V2ListResponse[apimodel.V2SpaceRow]	"Minimal space rows"
+//	@Security		bearerauth
+//	@Router			/v2/spaces [get]
 func ListSpacesV2Handler(s *service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		offset := c.GetInt(pagination.QueryParamOffset)

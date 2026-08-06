@@ -23,7 +23,7 @@ const maxSpaceRequestBody = 1 << 20 // 1 MiB
 // GetSpaceV2Handler reads one space
 //
 //	@Summary		Get space
-//	@Description	Returns the space row {id, name, description} read from the tech space's space view — one store query, no workspace opens. gatewayUrl/networkId are client-infrastructure fields and are deliberately absent from v2.
+//	@Description	Returns the space row {id, name, description} read from the tech space's space view — one store query, no workspace opens. Only LIVE spaces are served: a deleted, left or still-joining space 404s (the same predicate as the spaces list). gatewayUrl/networkId are client-infrastructure fields and are deliberately absent from v2.
 //	@Id				v2_get_space
 //	@Tags			V2
 //	@Produce		json
@@ -46,7 +46,7 @@ func GetSpaceV2Handler(s *service.V2Service) gin.HandlerFunc {
 // CreateSpaceV2Handler creates a space
 //
 //	@Summary		Create space
-//	@Description	Creates a space: {name, description?} → the same shape. Thin over WorkspaceCreate. Honors Idempotency-Key (C8) — an auto-retried space create without a key duplicates an entire space — and ?dry_run=true (C9): the dry run validates the body only, a space create cannot be simulated.
+//	@Description	Creates a space: {name, description?} → the same shape. Thin over WorkspaceCreate. Both fields are capped at 4096 characters (the space kind's advertised maxLength — enforced). Honors Idempotency-Key (C8) — an auto-retried space create without a key duplicates an entire space — and ?dry_run=true (C9): the dry run validates the body only, a space create cannot be simulated.
 //	@Id				v2_create_space
 //	@Tags			V2
 //	@Accept			json
@@ -81,7 +81,7 @@ func CreateSpaceV2Handler(s *service.V2Service) gin.HandlerFunc {
 // UpdateSpaceV2Handler updates a space
 //
 //	@Summary		Update space
-//	@Description	Updates the space's name and/or description (omitted fields stay unchanged; at least one is required) → the resulting row. Thin over WorkspaceSetInfo. Honors Idempotency-Key (C8) and ?dry_run=true (C9).
+//	@Description	Updates the space's name and/or description (omitted fields stay unchanged; at least one is required; 4096-character cap) → the resulting row. Thin over WorkspaceSetInfo. A space that is deleted or gone answers 404; a role that may not change the space info answers 403. Honors Idempotency-Key (C8) and ?dry_run=true (C9).
 //	@Id				v2_update_space
 //	@Tags			V2
 //	@Accept			json
@@ -92,7 +92,8 @@ func CreateSpaceV2Handler(s *service.V2Service) gin.HandlerFunc {
 //	@Param			request			body		apimodel.V2UpdateSpaceRequest	true	"The fields to change"
 //	@Success		200				{object}	apimodel.V2Space				"The updated space row"
 //	@Failure		400				{object}	apimodel.V2Error				"Validation failure"
-//	@Failure		404				{object}	apimodel.V2Error				"Space not found"
+//	@Failure		403				{object}	apimodel.V2Error				"The caller's role cannot change the space info"
+//	@Failure		404				{object}	apimodel.V2Error				"Space not found or not live"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id} [patch]
 func UpdateSpaceV2Handler(s *service.V2Service) gin.HandlerFunc {

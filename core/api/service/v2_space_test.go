@@ -7,7 +7,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -61,6 +63,29 @@ func TestV2GetSpace(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
 		assert.Contains(t, apiErr.Message, "GET /v2/spaces")
+	})
+
+	t.Run("a deleted space is 404, not a live-looking row", func(t *testing.T) {
+		// given: v1's GetSpace filters both status axes; without the filter
+		// the row is indistinguishable from a live space and an agent picking
+		// it would PATCH or write into a space that can never load
+		fx := newV2FixtureBare(t)
+		fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                 domain.String("spaceView_dead"),
+			bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:      domain.String("deadSpace"),
+			bundle.RelationKeyName:               domain.String("Deleted space"),
+			bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+			bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(model.SpaceStatus_Missing)),
+		}})
+
+		// when
+		_, err := fx.GetSpace(context.Background(), "deadSpace")
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusNotFound, apiErr.Status)
+		assert.Contains(t, apiErr.Message, "not available")
 	})
 }
 
@@ -139,6 +164,54 @@ func TestV2CreateSpace(t *testing.T) {
 				assert.Equal(t, tc.wantStatus, apiErr.Status)
 			})
 		}
+	})
+
+	t.Run("a success without a space id is a 500, never a 201 the agent cannot act on", func(t *testing.T) {
+		// given: C8 states the response always returns created ids — and a
+		// cached id-less 201 would replay forever under a keyed retry, while a
+		// 500 is not cached and the retry re-executes
+		fx := newV2FixtureBare(t)
+		fx.mwMock.EXPECT().WorkspaceCreate(mock.Anything, mock.Anything).Return(&pb.RpcWorkspaceCreateResponse{})
+
+		// when
+		_, err := fx.CreateSpace(context.Background(), apimodel.V2CreateSpaceRequest{Name: "X"}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusInternalServerError, apiErr.Status)
+		assert.Contains(t, apiErr.Message, "no space id")
+	})
+
+	t.Run("an over-long name or description is a path-addressed 400 (the advertised cap)", func(t *testing.T) {
+		// given: the space kind advertises maxLength 4096 — the schema must
+		// not out-promise the endpoint (no RPC expectations: validation only)
+		fx := newV2FixtureBare(t)
+		long := strings.Repeat("x", maxSpaceFieldLength+1)
+
+		// when / then
+		_, err := fx.CreateSpace(context.Background(), apimodel.V2CreateSpaceRequest{Name: long}, false)
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/name", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "4096")
+
+		_, err = fx.CreateSpace(context.Background(), apimodel.V2CreateSpaceRequest{Name: "ok", Description: long}, false)
+		apiErr = v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/description", apiErr.Issues[0].Path)
+	})
+
+	t.Run("the space kind's advertised maxLength matches the enforced cap", func(t *testing.T) {
+		// pin the schema and the endpoint together — the cap exists in two
+		// places and silent drift would out-promise one of them
+		var schema struct {
+			Properties map[string]struct {
+				MaxLength int `json:"maxLength"`
+			} `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal([]byte(v2SchemaKinds["space"].schema), &schema))
+		assert.Equal(t, maxSpaceFieldLength, schema.Properties["name"].MaxLength)
+		assert.Equal(t, maxSpaceFieldLength, schema.Properties["description"].MaxLength)
 	})
 }
 
@@ -238,5 +311,62 @@ func TestV2UpdateSpace(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, want, got)
+	})
+
+	t.Run("an over-long name is a path-addressed 400 before any RPC", func(t *testing.T) {
+		// given: no RPC expectations — validation must fire first
+		fx := newV2FixtureBare(t)
+		fx.registerSpaceView(t, "spaceS", "Work", "")
+		long := strings.Repeat("x", maxSpaceFieldLength+1)
+
+		// when
+		_, err := fx.UpdateSpace(context.Background(), "spaceS", apimodel.V2UpdateSpaceRequest{Name: name(long)}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/name", apiErr.Issues[0].Path)
+	})
+
+	t.Run("workspace RPC failures classify on the description, not a blanket 500", func(t *testing.T) {
+		// The workspace RPCs answer UNKNOWN_ERROR for everything reachable
+		// (core mapErrorCode has no workspace mappings), so without the
+		// description classification a PATCH on a space the account left, or
+		// by a reader in a shared space, would 500 and retry-loop — the class
+		// of defect Phase 6 fixed for chats.
+		for _, tc := range []struct {
+			name        string
+			description string
+			wantStatus  int
+			wantCode    string
+		}{
+			{"space not exists is 404", "space not exists", http.StatusNotFound, apimodel.V2CodeNotFound},
+			{"space is deleted is 404", "space is deleted", http.StatusNotFound, apimodel.V2CodeNotFound},
+			{"restricted is 403", "restricted", http.StatusForbidden, apimodel.V2CodeForbidden},
+			{"anything else stays 500", "disk exploded", http.StatusInternalServerError, apimodel.V2CodeInternalError},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				// given: the view exists (the GetSpace precheck passes) but the
+				// workspace RPC fails — the race window the precheck cannot close
+				fx := newV2FixtureBare(t)
+				fx.registerSpaceView(t, "spaceS", "Work", "")
+				fx.mwMock.EXPECT().WorkspaceSetInfo(mock.Anything, mock.Anything).Return(&pb.RpcWorkspaceSetInfoResponse{
+					Error: &pb.RpcWorkspaceSetInfoResponseError{
+						Code:        pb.RpcWorkspaceSetInfoResponseError_UNKNOWN_ERROR,
+						Description: tc.description,
+					},
+				})
+
+				// when
+				_, err := fx.UpdateSpace(context.Background(), "spaceS", apimodel.V2UpdateSpaceRequest{Name: name("New")}, false)
+
+				// then
+				apiErr := v2Err(t, err)
+				assert.Equal(t, tc.wantStatus, apiErr.Status)
+				assert.Equal(t, tc.wantCode, apiErr.Code)
+				assert.Contains(t, apiErr.Message, tc.description)
+			})
+		}
 	})
 }

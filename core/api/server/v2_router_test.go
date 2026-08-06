@@ -12,6 +12,7 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
@@ -138,6 +139,40 @@ func TestV2Routes(t *testing.T) {
 				require.Contains(t, w.Body.String(), `"request_too_large"`)
 			})
 		}
+	})
+
+	t.Run("a keyed POST /v2/spaces retry replays — exactly one space is created", func(t *testing.T) {
+		// POST /v2/spaces is the ONE v2 mutation whose route has no :space_id,
+		// so its idempotency store key carries an empty space component — a
+		// namespace no other replay test exercises end to end. It is also the
+		// mutation where a duplicate is worst: an entire space, with no v2
+		// delete to recover through. The .Once() on WorkspaceCreate is the
+		// load-bearing assertion — a second RPC fails the mock.
+		fx := newV2ServerFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
+		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+		fx.mwMock.EXPECT().WorkspaceCreate(mock.Anything, mock.Anything).
+			Return(&pb.RpcWorkspaceCreateResponse{SpaceId: "newSpace1"}).Once()
+
+		post := func() *httptest.ResponseRecorder {
+			req := httptest.NewRequest("POST", "/v2/spaces", strings.NewReader(`{"name":"Research"}`))
+			req.Host = localApiHost
+			req.Header.Set("Authorization", "Bearer validKey")
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set(IdempotencyKeyHeader, "spacekey1")
+			w := httptest.NewRecorder()
+			fx.Engine().ServeHTTP(w, req)
+			return w
+		}
+
+		first := post()
+		second := post()
+
+		require.Equal(t, http.StatusCreated, first.Code)
+		require.Contains(t, first.Body.String(), `"newSpace1"`)
+		require.Equal(t, http.StatusCreated, second.Code)
+		require.Equal(t, first.Body.String(), second.Body.String(), "the stored 201 is replayed byte-identical")
+		require.Equal(t, "true", second.Header().Get("Idempotency-Replayed"))
 	})
 
 	t.Run("search is a read: no idempotency middleware on the search routes", func(t *testing.T) {

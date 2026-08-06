@@ -22,7 +22,13 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// ListSpaces returns minimal space rows from the tech space's space views.
+// ListSpaces returns minimal space rows from the tech space's space views —
+// LIVE spaces only (isLiveSpaceView, the predicate shared with GET-one and
+// the global-search fan-out): a deleted or left space's row is
+// indistinguishable from a live one, and an agent picking it would write
+// into a space that can never load. The row carries description too — it
+// sits in the same record for free, and withholding it forced a 1+N of
+// GET-one calls on the canonical "list my spaces, pick one" trace.
 func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]apimodel.V2SpaceRow, int, bool, error) {
 	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
 		Filters: []database.FilterRequest{{
@@ -42,8 +48,15 @@ func (s *V2Service) ListSpaces(ctx context.Context, offset, limit int) ([]apimod
 		if id == "" || seen[id] {
 			continue
 		}
+		if !isLiveSpaceView(record.Details) {
+			continue
+		}
 		seen[id] = true
-		rows = append(rows, apimodel.V2SpaceRow{Id: id, Name: record.Details.GetString(bundle.RelationKeyName)})
+		rows = append(rows, apimodel.V2SpaceRow{
+			Id:          id,
+			Name:        record.Details.GetString(bundle.RelationKeyName),
+			Description: record.Details.GetString(bundle.RelationKeyDescription),
+		})
 	}
 	sort.Slice(rows, func(i, j int) bool { return rows[i].Id < rows[j].Id })
 

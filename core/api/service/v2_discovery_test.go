@@ -49,6 +49,46 @@ func TestV2ListSpaces(t *testing.T) {
 		assert.False(t, hasMore)
 	})
 
+	t.Run("rows carry the description — no GET-one hop to disambiguate", func(t *testing.T) {
+		// given: description sits in the same tech-space record for free;
+		// withholding it forced 1+N reads on "list my spaces, pick one"
+		fx := newV2FixtureBare(t)
+		fx.registerSpaceView(t, "spaceS", "Work", "The local-first wiki")
+
+		// when
+		rows, _, _, err := fx.ListSpaces(context.Background(), 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "The local-first wiki", rows[0].Description)
+	})
+
+	t.Run("deleted and non-active spaces are filtered out (the live predicate)", func(t *testing.T) {
+		// given: a live space and a deleted one — v1's GetSpace filters both
+		// status axes; a dead row is indistinguishable from a live one and an
+		// agent picking it would write into a space that can never load
+		fx := newV2FixtureBare(t)
+		fx.registerSpaceView(t, "spaceLive", "Live", "")
+		fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:                 domain.String("spaceView_dead"),
+			bundle.RelationKeyResolvedLayout:     domain.Int64(int64(model.ObjectType_spaceView)),
+			bundle.RelationKeyTargetSpaceId:      domain.String("deadSpace"),
+			bundle.RelationKeyName:               domain.String("Deleted space"),
+			bundle.RelationKeySpaceAccountStatus: domain.Int64(int64(model.SpaceStatus_SpaceDeleted)),
+			bundle.RelationKeySpaceLocalStatus:   domain.Int64(int64(model.SpaceStatus_Missing)),
+		}})
+
+		// when
+		rows, total, _, err := fx.ListSpaces(context.Background(), 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "spaceLive", rows[0].Id)
+	})
+
 	t.Run("empty tech space lists nothing", func(t *testing.T) {
 		// given
 		fx := newV2FixtureBare(t)

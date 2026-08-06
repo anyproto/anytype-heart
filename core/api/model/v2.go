@@ -122,10 +122,14 @@ type V2ObjectRow struct {
 	Properties map[string]any `json:"properties,omitempty"`
 }
 
-// V2SpaceRow is a minimal space list row.
+// V2SpaceRow is a minimal space list row. Description rides the row because
+// it is free (same tech-space record) and it is what disambiguates spaces on
+// the canonical "list my spaces, pick one to write to" trace — withholding
+// it would force a GET-one per space (the N+1 pushed onto the agent).
 type V2SpaceRow struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
+	Id          string `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
 }
 
 // V2Space is the space shape shared by GET-one and the space mutations
