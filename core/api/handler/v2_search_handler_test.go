@@ -99,6 +99,44 @@ func TestSearchObjectsV2Handler(t *testing.T) {
 		assert.NotContains(t, w.Body.String(), "dry_run")
 	})
 
+	t.Run("an oversized body is 413 request_too_large, not an unbounded read", func(t *testing.T) {
+		// given: the search routes carry no idempotency middleware (and with
+		// it no body guard) — the handler's own cap must bound the read
+		fx := newV2HandlerFixture(t)
+		searchRouter(fx)
+
+		// when
+		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/search",
+			strings.NewReader(`{"filter":"`+strings.Repeat("x", maxSearchRequestBody+1)+`"}`))
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
+		assert.Contains(t, w.Body.String(), "request_too_large")
+	})
+
+	t.Run("warnings ride the response body (C6/C11 on the wire)", func(t *testing.T) {
+		// given: the unguarded-date hazard produces a warning-grade issue —
+		// the service-level channel must actually reach the JSON response
+		fx := newV2HandlerFixture(t)
+		searchRouter(fx)
+
+		// when
+		req := httptest.NewRequest(http.MethodPost, "/v2/spaces/space1/search",
+			strings.NewReader(`{"filter":"lastModifiedDate < today()"}`))
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusOK, w.Code)
+		var got apimodel.V2ListResponse[apimodel.V2ObjectRow]
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		require.Len(t, got.Warnings, 1)
+		assert.Equal(t, "/filter", got.Warnings[0].Path)
+		assert.Contains(t, got.Warnings[0].Message, "also matches objects with no lastModifiedDate")
+	})
+
 	t.Run("filter and filters together map to 400 ambiguous_input", func(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
@@ -135,5 +173,25 @@ func TestGlobalSearchObjectsV2Handler(t *testing.T) {
 		var got apimodel.V2ListResponse[apimodel.V2ObjectRow]
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		assert.Equal(t, 0, got.Total)
+	})
+
+	t.Run("global search forwards warnings onto the wire too", func(t *testing.T) {
+		// given
+		fx := newV2HandlerFixture(t)
+		fx.router.Use(pagination.New(pagination.Config{DefaultPage: 0, DefaultPageSize: 25, MinPageSize: 1, MaxPageSize: 1000}))
+		fx.router.POST("/v2/search", GlobalSearchObjectsV2Handler(fx.svc))
+
+		// when
+		req := httptest.NewRequest(http.MethodPost, "/v2/search",
+			strings.NewReader(`{"filter":"lastModifiedDate < today()"}`))
+		w := httptest.NewRecorder()
+		fx.router.ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusOK, w.Code)
+		var got apimodel.V2ListResponse[apimodel.V2ObjectRow]
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+		require.Len(t, got.Warnings, 1)
+		assert.Contains(t, got.Warnings[0].Message, "also matches objects with no lastModifiedDate")
 	})
 }

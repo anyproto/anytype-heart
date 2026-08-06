@@ -9,6 +9,7 @@ import (
 
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
@@ -25,6 +26,8 @@ type fixture struct {
 	crossSpaceSubService *mock_apicore.MockCrossSpaceSubscriptionService
 	chatSubService       *mock_apicore.MockChatSubscriptionService
 	fileObjectMock       *mock_apicore.MockFileObjectService
+	// objectStore is set by the v2 fixture only (nil on the plain fixture).
+	objectStore *objectstore.StoreFixture
 }
 
 func newFixture(t *testing.T) *fixture {

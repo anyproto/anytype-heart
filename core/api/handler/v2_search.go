@@ -22,15 +22,27 @@ import (
 	"github.com/anyproto/anytype-heart/core/api/service"
 )
 
+// maxSearchRequestBody caps the search request body. The search routes carry
+// no idempotency middleware (and with it no body-size guard), so without a
+// cap here io.ReadAll is attacker-sized — and the body feeds the recursive
+// filter parser. A legitimate search body (filter ≤ 4096 bytes, bounded
+// sorts/fields) is orders of magnitude smaller.
+const maxSearchRequestBody = 1 << 20 // 1 MiB
+
 // decodeSearchRequest decodes the search body strictly (C13): unknown
 // fields are rejected, with C10 steering when the field is a pagination
 // param that belongs in the query string.
 func decodeSearchRequest(c *gin.Context) (apimodel.V2SearchRequest, bool) {
 	var req apimodel.V2SearchRequest
-	body, err := io.ReadAll(c.Request.Body)
+	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxSearchRequestBody+1))
 	if err != nil {
 		RespondV2Error(c, apimodel.V2ValidationFailed("read request body",
 			apimodel.V2Issue{Message: err.Error()}))
+		return req, false
+	}
+	if len(body) > maxSearchRequestBody {
+		RespondV2Error(c, apimodel.V2RequestTooLarge(
+			fmt.Sprintf("search request body exceeds the %d-byte limit", maxSearchRequestBody)))
 		return req, false
 	}
 	if len(bytes.TrimSpace(body)) == 0 {

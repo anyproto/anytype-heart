@@ -30,6 +30,7 @@ type v2HandlerFixture struct {
 	mwMock      *mock_apicore.MockClientCommands
 	readerMock  *mock_apicore.MockObjectReader
 	creatorMock *mock_apicore.MockObjectCreator
+	store       *objectstore.StoreFixture
 	router      *gin.Engine
 }
 
@@ -48,7 +49,7 @@ func newV2HandlerFixture(t *testing.T) *v2HandlerFixture {
 	})
 	creatorMock := mock_apicore.NewMockObjectCreator(t)
 	svc := service.NewV2Service(mwMock, readerMock, creatorMock, mock_apicore.NewMockObjectMutator(t), store, objectstore.TestTechSpaceId, testAccountId)
-	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, router: gin.New()}
+	return &v2HandlerFixture{svc: svc, mwMock: mwMock, readerMock: readerMock, creatorMock: creatorMock, store: store, router: gin.New()}
 }
 
 func TestValidateV2Handler(t *testing.T) {

@@ -10,7 +10,9 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
+	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
@@ -44,6 +46,7 @@ func newV2ServerFixture(t *testing.T) *fixture {
 		crossSpaceSubService: crossSpaceSubService,
 		chatSubService:       chatSubService,
 		fileObjectMock:       fileObjectMock,
+		objectStore:          store,
 	}
 }
 
@@ -120,23 +123,38 @@ func TestV2Routes(t *testing.T) {
 
 	t.Run("search is a read: no idempotency middleware on the search routes", func(t *testing.T) {
 		// Phase 4: search is exempt from Idempotency-Key — the middleware is
-		// per-route and deliberately not attached. Its body-size guard fires
-		// pre-auth for keyed requests, so a keyed oversized search reaching
-		// the auth layer (401, not 413) proves the middleware is absent.
+		// per-route and deliberately not attached. The proof is behavioral:
+		// the SAME keyed request executed twice must run twice; were the
+		// middleware in the chain, the second 2xx would be answered from its
+		// store with an Idempotency-Replayed header. (An earlier form of this
+		// test sent an unauthorized request and asserted 401 — vacuous, since
+		// the group-level auth aborts before any route middleware runs.)
 		for _, path := range []string{"/v2/search", "/v2/spaces/space1/search"} {
 			t.Run(path, func(t *testing.T) {
 				fx := newV2ServerFixture(t)
+				fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
+				fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+				// register space1 in the store fixture's tech space so the
+				// space-scoped search resolves it (C2)
+				fx.objectStore.AddObjects(t, objectstore.TestTechSpaceId, []objectstore.TestObject{{
+					bundle.RelationKeyId:             domain.String("spaceView_space1"),
+					bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_spaceView)),
+					bundle.RelationKeyTargetSpaceId:  domain.String("space1"),
+				}})
 
-				req := httptest.NewRequest("POST", path,
-					strings.NewReader(strings.Repeat("x", maxV2RequestBody+1)))
-				req.Host = localApiHost
-				req.Header.Set(IdempotencyKeyHeader, "routekey1")
-				w := httptest.NewRecorder()
+				for run := 0; run < 2; run++ {
+					req := httptest.NewRequest("POST", path, strings.NewReader(`{}`))
+					req.Host = localApiHost
+					req.Header.Set("Authorization", "Bearer validKey")
+					req.Header.Set(IdempotencyKeyHeader, "searchkey1")
+					w := httptest.NewRecorder()
 
-				fx.Engine().ServeHTTP(w, req)
+					fx.Engine().ServeHTTP(w, req)
 
-				require.Equal(t, http.StatusUnauthorized, w.Code,
-					"a keyed oversized search must reach auth — search carries no idempotency middleware")
+					require.Equal(t, http.StatusOK, w.Code)
+					require.Empty(t, w.Header().Get("Idempotency-Replayed"),
+						"a keyed search must never replay — search carries no idempotency middleware")
+				}
 			})
 		}
 	})
