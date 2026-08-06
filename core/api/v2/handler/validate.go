@@ -21,19 +21,19 @@ const maxValidateBodySize = 10 << 20 // 10 MiB
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	v2model.V2ValidateResponse	"Issue and warning lists (empty when valid)"
-//	@Failure		401	{object}	v2model.V2Error			"Unauthorized"
+//	@Success		200	{object}	v2model.ValidateResponse	"Issue and warning lists (empty when valid)"
+//	@Failure		401	{object}	v2model.Error			"Unauthorized"
 //	@Security		bearerauth
 //	@Router			/v2/validate [post]
 func ValidateV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxValidateBodySize+1))
 		if err != nil {
-			RespondV2Error(c, v2model.V2ValidationFailed("read request body: "+err.Error()))
+			RespondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
 			return
 		}
 		if len(body) > maxValidateBodySize {
-			RespondV2Error(c, v2model.V2ValidationFailed("request body exceeds the 10 MiB validation limit"))
+			RespondV2Error(c, v2model.ValidationFailed("request body exceeds the 10 MiB validation limit"))
 			return
 		}
 		c.JSON(http.StatusOK, s.ValidateDocument(body))

@@ -52,7 +52,7 @@ const defaultChatMessagesLimit = 25
 // ListChats returns C5 chat rows via a store query over the chat layouts —
 // NO chat opens (opening every chat is the GO-7302 startup cost; Q3 keeps
 // the list counter-free, per-chat state comes free on the messages read).
-func (s *V2Service) ListChats(ctx context.Context, spaceId string, offset, limit int) ([]v2model.V2ChatRow, int, bool, error) {
+func (s *V2Service) ListChats(ctx context.Context, spaceId string, offset, limit int) ([]v2model.ChatRow, int, bool, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, 0, false, err
 	}
@@ -84,9 +84,9 @@ func (s *V2Service) ListChats(ctx context.Context, spaceId string, offset, limit
 	if hasMore {
 		records = records[:limit]
 	}
-	rows := make([]v2model.V2ChatRow, 0, len(records))
+	rows := make([]v2model.ChatRow, 0, len(records))
 	for _, record := range records {
-		rows = append(rows, v2model.V2ChatRow{
+		rows = append(rows, v2model.ChatRow{
 			Id:   record.Details.GetString(bundle.RelationKeyId),
 			Name: record.Details.GetString(bundle.RelationKeyName),
 		})
@@ -97,16 +97,16 @@ func (s *V2Service) ListChats(ctx context.Context, spaceId string, offset, limit
 // CreateChat implements POST /v2/spaces/{spaceId}/chats: a thin ObjectCreate
 // with the chatDerived type (NOT the Phase-2 snapshot path, which has never
 // been exercised for store-backed smartblocks).
-func (s *V2Service) CreateChat(ctx context.Context, spaceId string, req v2model.V2CreateChatRequest, dryRun bool) (*v2model.V2ChatResult, error) {
+func (s *V2Service) CreateChat(ctx context.Context, spaceId string, req v2model.CreateChatRequest, dryRun bool) (*v2model.ChatResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
-		return nil, v2model.V2ValidationFailed("chat name is required",
-			v2model.V2Issue{Path: "/name", Message: "the chat list row is {id, name} — an unnamed chat is unaddressable by name"})
+		return nil, v2model.ValidationFailed("chat name is required",
+			v2model.Issue{Path: "/name", Message: "the chat list row is {id, name} — an unnamed chat is unaddressable by name"})
 	}
 	if dryRun {
-		return &v2model.V2ChatResult{Name: req.Name, DryRun: true}, nil
+		return &v2model.ChatResult{Name: req.Name, DryRun: true}, nil
 	}
 	resp := s.mw.ObjectCreate(ctx, &pb.RpcObjectCreateRequest{
 		SpaceId:             spaceId,
@@ -116,7 +116,7 @@ func (s *V2Service) CreateChat(ctx context.Context, spaceId string, req v2model.
 	if resp.Error != nil && resp.Error.Code != pb.RpcObjectCreateResponseError_NULL {
 		return nil, v2ChatRpcError("create chat", int32(resp.Error.Code), int32(pb.RpcObjectCreateResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &v2model.V2ChatResult{Id: resp.ObjectId, Name: req.Name}, nil
+	return &v2model.ChatResult{Id: resp.ObjectId, Name: req.Name}, nil
 }
 
 //
@@ -141,7 +141,7 @@ type V2ChatMessagesQuery struct {
 // newest extra and continues with nextAfter; every other query is anchored
 // at its newest end (the repository sorts DESC), so the OLDEST extra is
 // trimmed and paging continues backward with nextBefore.
-func (s *V2Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q V2ChatMessagesQuery) (*v2model.V2ChatMessagesResponse, error) {
+func (s *V2Service) GetChatMessages(ctx context.Context, spaceId, chatId string, q V2ChatMessagesQuery) (*v2model.ChatMessagesResponse, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
 	}
@@ -168,18 +168,18 @@ func (s *V2Service) GetChatMessages(ctx context.Context, spaceId, chatId string,
 			protos = protos[len(protos)-limit:] // newest-anchored: the extra is the oldest
 		}
 	}
-	opts := v2model.V2ChatMessageOptions{
+	opts := v2model.ChatMessageOptions{
 		SpaceId:         spaceId,
 		FullReactions:   q.FullReactions,
 		ParticipantName: s.participantNameLookup(spaceId),
 	}
-	messages := make([]v2model.V2ChatMessage, 0, len(protos))
+	messages := make([]v2model.ChatMessage, 0, len(protos))
 	for _, msg := range protos {
-		messages = append(messages, v2model.V2ChatMessageFromProto(msg, opts))
+		messages = append(messages, v2model.ChatMessageFromProto(msg, opts))
 	}
-	out := &v2model.V2ChatMessagesResponse{
+	out := &v2model.ChatMessagesResponse{
 		Messages:     messages,
-		State:        v2model.V2ChatStateFromProto(resp.ChatState),
+		State:        v2model.ChatStateFromProto(resp.ChatState),
 		MessageCount: int(resp.MessageCount),
 		HasMore:      hasMore,
 	}
@@ -201,18 +201,18 @@ func (s *V2Service) GetChatMessages(ctx context.Context, spaceId, chatId string,
 // parsed by the anyblockjson inline codec (offset mark arrays never cross
 // the API); attachments are bare object ids with the kind inferred from
 // each target's layout. A dry run validates everything and sends nothing.
-func (s *V2Service) AddChatMessage(ctx context.Context, spaceId, chatId string, req v2model.V2AddChatMessageRequest, dryRun bool) (*v2model.V2ChatMessageResult, error) {
+func (s *V2Service) AddChatMessage(ctx context.Context, spaceId, chatId string, req v2model.AddChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
 	}
 	if req.Text == "" && len(req.Attachments) == 0 {
-		return nil, v2model.V2ValidationFailed("a message needs text or attachments",
-			v2model.V2Issue{Path: "/text", Message: "text and attachments are both empty"})
+		return nil, v2model.ValidationFailed("a message needs text or attachments",
+			v2model.Issue{Path: "/text", Message: "text and attachments are both empty"})
 	}
 	text, marks, err := anyblockjson.ParseInlineText(req.Text)
 	if err != nil {
-		return nil, v2model.V2ValidationFailed("message text does not parse as inline markup",
-			v2model.V2Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
+		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
+			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
 	if err := v2ValidateChatTextLength(text); err != nil {
 		return nil, err
@@ -222,7 +222,7 @@ func (s *V2Service) AddChatMessage(ctx context.Context, spaceId, chatId string, 
 		return nil, err
 	}
 	if dryRun {
-		return &v2model.V2ChatMessageResult{DryRun: true}, nil
+		return &v2model.ChatMessageResult{DryRun: true}, nil
 	}
 	resp := s.mw.ChatAddMessage(ctx, &pb.RpcChatAddMessageRequest{
 		ChatObjectId: chatId,
@@ -239,7 +239,7 @@ func (s *V2Service) AddChatMessage(ctx context.Context, spaceId, chatId string, 
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatAddMessageResponseError_NULL {
 		return nil, v2ChatRpcError("add chat message", int32(resp.Error.Code), int32(pb.RpcChatAddMessageResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &v2model.V2ChatMessageResult{Id: resp.MessageId}, nil
+	return &v2model.ChatMessageResult{Id: resp.MessageId}, nil
 }
 
 // EditChatMessage implements PATCH .../messages/{messageId} as a text-only
@@ -248,14 +248,14 @@ func (s *V2Service) AddChatMessage(ctx context.Context, spaceId, chatId string, 
 // blocks}), so the service reads the message first and carries its style,
 // attachments and blocks through unchanged. A dry run stops after the
 // existence check.
-func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageId string, req v2model.V2EditChatMessageRequest, dryRun bool) (*v2model.V2ChatMessageResult, error) {
+func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messageId string, req v2model.EditChatMessageRequest, dryRun bool) (*v2model.ChatMessageResult, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
 	}
 	text, marks, err := anyblockjson.ParseInlineText(req.Text)
 	if err != nil {
-		return nil, v2model.V2ValidationFailed("message text does not parse as inline markup",
-			v2model.V2Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
+		return nil, v2model.ValidationFailed("message text does not parse as inline markup",
+			v2model.Issue{Path: "/text", Message: err.Error(), Hint: v2MarkupHint})
 	}
 	if err := v2ValidateChatTextLength(text); err != nil {
 		return nil, err
@@ -265,11 +265,11 @@ func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messag
 		return nil, err
 	}
 	if text == "" && len(existing.Attachments) == 0 {
-		return nil, v2model.V2ValidationFailed("a message needs text or attachments",
-			v2model.V2Issue{Path: "/text", Message: "the edited text is empty and the message has no attachments"})
+		return nil, v2model.ValidationFailed("a message needs text or attachments",
+			v2model.Issue{Path: "/text", Message: "the edited text is empty and the message has no attachments"})
 	}
 	if dryRun {
-		return &v2model.V2ChatMessageResult{Id: messageId, DryRun: true}, nil
+		return &v2model.ChatMessageResult{Id: messageId, DryRun: true}, nil
 	}
 	edited := &model.ChatMessage{
 		Message: &model.ChatMessageMessageContent{
@@ -290,7 +290,7 @@ func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messag
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatEditMessageContentResponseError_NULL {
 		return nil, v2ChatRpcError("edit chat message", int32(resp.Error.Code), int32(pb.RpcChatEditMessageContentResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &v2model.V2ChatMessageResult{Id: messageId}, nil
+	return &v2model.ChatMessageResult{Id: messageId}, nil
 }
 
 // DeleteChatMessage implements DELETE .../messages/{messageId}. BOTH paths
@@ -302,7 +302,7 @@ func (s *V2Service) EditChatMessage(ctx context.Context, spaceId, chatId, messag
 // targets orphaned by the delete, asynchronously, after the API replied —
 // the response names the ids at risk instead of hiding the irreversible
 // part behind a 200.
-func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messageId string, dryRun bool) (*v2model.V2ChatMessageResult, error) {
+func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, messageId string, dryRun bool) (*v2model.ChatMessageResult, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
 	}
@@ -312,7 +312,7 @@ func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, mess
 	}
 	warnings := v2ChatDeleteWarnings(existing)
 	if dryRun {
-		return &v2model.V2ChatMessageResult{Id: messageId, DryRun: true, Warnings: warnings}, nil
+		return &v2model.ChatMessageResult{Id: messageId, DryRun: true, Warnings: warnings}, nil
 	}
 	resp := s.mw.ChatDeleteMessage(ctx, &pb.RpcChatDeleteMessageRequest{
 		ChatObjectId: chatId,
@@ -321,7 +321,7 @@ func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, mess
 	if resp.Error != nil && resp.Error.Code != pb.RpcChatDeleteMessageResponseError_NULL {
 		return nil, v2ChatRpcError("delete chat message", int32(resp.Error.Code), int32(pb.RpcChatDeleteMessageResponseError_BAD_INPUT), resp.Error.Description)
 	}
-	return &v2model.V2ChatMessageResult{Id: messageId, Warnings: warnings}, nil
+	return &v2model.ChatMessageResult{Id: messageId, Warnings: warnings}, nil
 }
 
 // ToggleChatReaction implements POST .../messages/{messageId}/reactions.
@@ -331,13 +331,13 @@ func (s *V2Service) DeleteChatMessage(ctx context.Context, spaceId, chatId, mess
 // when the caller does not currently carry the reaction — unless the
 // service has no account identity to predict with, in which case added is
 // omitted with a warning instead of asserting a coin flip.
-func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messageId string, req v2model.V2ChatReactionRequest, dryRun bool) (*v2model.V2ChatReactionResult, error) {
+func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, messageId string, req v2model.ChatReactionRequest, dryRun bool) (*v2model.ChatReactionResult, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
 	}
 	if req.Emoji == "" {
-		return nil, v2model.V2ValidationFailed("emoji is required",
-			v2model.V2Issue{Path: "/emoji", Message: "provide the reaction emoji, e.g. 👍"})
+		return nil, v2model.ValidationFailed("emoji is required",
+			v2model.Issue{Path: "/emoji", Message: "provide the reaction emoji, e.g. 👍"})
 	}
 	existing, err := s.getChatMessageProto(ctx, chatId, messageId)
 	if err != nil {
@@ -345,7 +345,7 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 	}
 	if dryRun {
 		if s.accountId == "" {
-			return &v2model.V2ChatReactionResult{DryRun: true, Warnings: []v2model.V2Issue{{
+			return &v2model.ChatReactionResult{DryRun: true, Warnings: []v2model.Issue{{
 				Path:    "/emoji",
 				Message: "the would-be outcome could not be predicted: the service has no account identity",
 				Hint:    "run without dry_run for the authoritative added value",
@@ -362,7 +362,7 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 				}
 			}
 		}
-		return &v2model.V2ChatReactionResult{Added: &added, DryRun: true}, nil
+		return &v2model.ChatReactionResult{Added: &added, DryRun: true}, nil
 	}
 	resp := s.mw.ChatToggleMessageReaction(ctx, &pb.RpcChatToggleMessageReactionRequest{
 		ChatObjectId: chatId,
@@ -373,7 +373,7 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 		return nil, v2ChatRpcError("toggle chat reaction", int32(resp.Error.Code), int32(pb.RpcChatToggleMessageReactionResponseError_BAD_INPUT), resp.Error.Description)
 	}
 	added := resp.Added
-	return &v2model.V2ChatReactionResult{Added: &added}, nil
+	return &v2model.ChatReactionResult{Added: &added}, nil
 }
 
 //
@@ -394,29 +394,29 @@ func (s *V2Service) ToggleChatReaction(ctx context.Context, spaceId, chatId, mes
 // requiring them costs the agent no extra call. The reactions scope marks
 // ALL unread reactions (the backend takes no bound) and therefore rejects
 // upTo/lastStateId.
-func (s *V2Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2model.V2ChatReadRequest, dryRun bool) (*v2model.V2ChatReadResult, error) {
+func (s *V2Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2model.ChatReadRequest, dryRun bool) (*v2model.ChatReadResult, error) {
 	if err := s.ensureChat(spaceId, chatId); err != nil {
 		return nil, err
 	}
 	switch req.Scope {
-	case "", v2model.V2ChatReadScopeMessages, v2model.V2ChatReadScopeMentions:
-		var missing []v2model.V2Issue
+	case "", v2model.ChatReadScopeMessages, v2model.ChatReadScopeMentions:
+		var missing []v2model.Issue
 		if req.UpTo == "" {
-			missing = append(missing, v2model.V2Issue{Path: "/upTo", Message: "the inclusive order id to mark read up to",
+			missing = append(missing, v2model.Issue{Path: "/upTo", Message: "the inclusive order id to mark read up to",
 				Hint: "use the newest message's order from GET .../messages (a limit=1 read returns it)"})
 		}
 		if req.LastStateId == "" {
-			missing = append(missing, v2model.V2Issue{Path: "/lastStateId", Message: "the race guard from the same messages read",
+			missing = append(missing, v2model.Issue{Path: "/lastStateId", Message: "the race guard from the same messages read",
 				Hint: "use state.lastStateId from GET .../messages — an empty guard matches no message and would silently mark nothing"})
 		}
 		if len(missing) > 0 {
-			return nil, v2model.V2ValidationFailed("the read watermark needs upTo and lastStateId", missing...)
+			return nil, v2model.ValidationFailed("the read watermark needs upTo and lastStateId", missing...)
 		}
 		if dryRun {
-			return &v2model.V2ChatReadResult{DryRun: true}, nil
+			return &v2model.ChatReadResult{DryRun: true}, nil
 		}
 		readType := pb.RpcChatReadMessages_Messages
-		if req.Scope == v2model.V2ChatReadScopeMentions {
+		if req.Scope == v2model.ChatReadScopeMentions {
 			readType = pb.RpcChatReadMessages_Mentions
 		}
 		resp := s.mw.ChatReadMessages(ctx, &pb.RpcChatReadMessagesRequest{
@@ -427,36 +427,36 @@ func (s *V2Service) ReadChat(ctx context.Context, spaceId, chatId string, req v2
 		})
 		if resp.Error != nil && resp.Error.Code != pb.RpcChatReadMessagesResponseError_NULL {
 			if resp.Error.Code == pb.RpcChatReadMessagesResponseError_MESSAGES_NOT_FOUND {
-				return nil, v2model.V2ValidationFailed("no messages matched the read range",
-					v2model.V2Issue{Path: "/upTo", Message: "the chat is empty or upTo is not a valid order id", Hint: "read GET .../messages and use a returned order value"})
+				return nil, v2model.ValidationFailed("no messages matched the read range",
+					v2model.Issue{Path: "/upTo", Message: "the chat is empty or upTo is not a valid order id", Hint: "read GET .../messages and use a returned order value"})
 			}
 			return nil, v2ChatRpcError("mark chat read", int32(resp.Error.Code), int32(pb.RpcChatReadMessagesResponseError_BAD_INPUT), resp.Error.Description)
 		}
-		return &v2model.V2ChatReadResult{}, nil
+		return &v2model.ChatReadResult{}, nil
 
-	case v2model.V2ChatReadScopeReactions:
-		var issues []v2model.V2Issue
+	case v2model.ChatReadScopeReactions:
+		var issues []v2model.Issue
 		if req.UpTo != "" {
-			issues = append(issues, v2model.V2Issue{Path: "/upTo", Message: "the reactions scope marks ALL unread reactions — it takes no upTo"})
+			issues = append(issues, v2model.Issue{Path: "/upTo", Message: "the reactions scope marks ALL unread reactions — it takes no upTo"})
 		}
 		if req.LastStateId != "" {
-			issues = append(issues, v2model.V2Issue{Path: "/lastStateId", Message: "the reactions scope marks ALL unread reactions — it takes no lastStateId"})
+			issues = append(issues, v2model.Issue{Path: "/lastStateId", Message: "the reactions scope marks ALL unread reactions — it takes no lastStateId"})
 		}
 		if len(issues) > 0 {
-			return nil, v2model.V2ValidationFailed("the reactions scope is all-or-nothing", issues...)
+			return nil, v2model.ValidationFailed("the reactions scope is all-or-nothing", issues...)
 		}
 		if dryRun {
-			return &v2model.V2ChatReadResult{DryRun: true}, nil
+			return &v2model.ChatReadResult{DryRun: true}, nil
 		}
 		resp := s.mw.ChatReadReactions(ctx, &pb.RpcChatReadReactionsRequest{ChatObjectId: chatId})
 		if resp.Error != nil && resp.Error.Code != pb.RpcChatReadReactionsResponseError_NULL {
 			return nil, v2ChatRpcError("mark chat reactions read", int32(resp.Error.Code), int32(pb.RpcChatReadReactionsResponseError_BAD_INPUT), resp.Error.Description)
 		}
-		return &v2model.V2ChatReadResult{}, nil
+		return &v2model.ChatReadResult{}, nil
 
 	default:
-		return nil, v2model.V2ValidationFailed("invalid scope value",
-			v2model.V2Issue{Path: "/scope", Message: fmt.Sprintf("unknown value %q", req.Scope), Hint: "allowed: messages, mentions, reactions"})
+		return nil, v2model.ValidationFailed("invalid scope value",
+			v2model.Issue{Path: "/scope", Message: fmt.Sprintf("unknown value %q", req.Scope), Hint: "allowed: messages, mentions, reactions"})
 	}
 }
 
@@ -473,7 +473,7 @@ func (s *V2Service) ensureChat(spaceId, chatId string) error {
 	}
 	details, err := s.store.SpaceIndex(spaceId).GetDetails(chatId)
 	if err != nil || details.Len() == 0 {
-		return v2model.V2NotFound(fmt.Sprintf("chat %q not found in space %q — list chats with GET /v2/spaces/%s/chats", chatId, spaceId, spaceId))
+		return v2model.NotFound(fmt.Sprintf("chat %q not found in space %q — list chats with GET /v2/spaces/%s/chats", chatId, spaceId, spaceId))
 	}
 	layout := model.ObjectTypeLayout(details.GetInt64(bundle.RelationKeyResolvedLayout))
 	for _, chatLayout := range util.ChatLayouts {
@@ -481,8 +481,8 @@ func (s *V2Service) ensureChat(spaceId, chatId string) error {
 			return nil
 		}
 	}
-	return v2model.V2ValidationFailed(fmt.Sprintf("object %q is not a chat", chatId),
-		v2model.V2Issue{Message: fmt.Sprintf("its layout is %q", layout.String()), Hint: fmt.Sprintf("chat ids come from GET /v2/spaces/%s/chats", spaceId)})
+	return v2model.ValidationFailed(fmt.Sprintf("object %q is not a chat", chatId),
+		v2model.Issue{Message: fmt.Sprintf("its layout is %q", layout.String()), Hint: fmt.Sprintf("chat ids come from GET /v2/spaces/%s/chats", spaceId)})
 }
 
 // participantNameLookup returns a memoized participant-id → display-name
@@ -516,8 +516,8 @@ func (s *V2Service) resolveChatAttachments(spaceId string, ids []string) ([]*mod
 		return nil, nil
 	}
 	if len(ids) > maxChatAttachments {
-		return nil, v2model.V2ValidationFailed("too many attachments",
-			v2model.V2Issue{Path: "/attachments",
+		return nil, v2model.ValidationFailed("too many attachments",
+			v2model.Issue{Path: "/attachments",
 				Message: fmt.Sprintf("%d attachments — the cap is %d per message (the bound the chatMessage schema advertises)", len(ids), maxChatAttachments),
 				Hint:    "split the message, or link a collection of the objects instead"})
 	}
@@ -526,8 +526,8 @@ func (s *V2Service) resolveChatAttachments(spaceId string, ids []string) ([]*mod
 	for i, id := range ids {
 		details, err := index.GetDetails(id)
 		if err != nil || details.Len() == 0 {
-			return nil, v2model.V2ValidationFailed("attachment target not found",
-				v2model.V2Issue{Path: fmt.Sprintf("/attachments/%d", i),
+			return nil, v2model.ValidationFailed("attachment target not found",
+				v2model.Issue{Path: fmt.Sprintf("/attachments/%d", i),
 					Message: fmt.Sprintf("object %q not found in space %q", id, spaceId),
 					Hint:    "upload files via POST /v2/spaces/{spaceId}/files first, or pass an existing object id"})
 		}
@@ -555,7 +555,7 @@ func (s *V2Service) getChatMessageProto(ctx context.Context, chatId, messageId s
 		return nil, v2ChatRpcError("get chat message", int32(resp.Error.Code), int32(pb.RpcChatGetMessagesByIdsResponseError_BAD_INPUT), resp.Error.Description)
 	}
 	if len(resp.Messages) == 0 || resp.Messages[0] == nil {
-		return nil, v2model.V2NotFound(fmt.Sprintf("message %q not found in chat %q", messageId, chatId))
+		return nil, v2model.NotFound(fmt.Sprintf("message %q not found in chat %q", messageId, chatId))
 	}
 	return resp.Messages[0], nil
 }
@@ -568,8 +568,8 @@ func (s *V2Service) getChatMessageProto(ctx context.Context, chatId, messageId s
 // The cap applies to the PARSED text, matching what the store validates.
 func v2ValidateChatTextLength(parsedText string) error {
 	if length := len(textutil.StrToUTF16(parsedText)); length > chatmodel.MaxMessageLength {
-		return v2model.V2ValidationFailed("message text is too long",
-			v2model.V2Issue{Path: "/text",
+		return v2model.ValidationFailed("message text is too long",
+			v2model.Issue{Path: "/text",
 				Message: fmt.Sprintf("the text is %d UTF-16 code units — the cap is %d", length, chatmodel.MaxMessageLength),
 				Hint:    "the cap counts UTF-16 code units (an emoji counts 2+); split the message"})
 	}
@@ -581,7 +581,7 @@ func v2ValidateChatTextLength(parsedText string) error {
 // orphaned by the delete with skipBin=true — permanently deleted, not
 // binned, asynchronously AFTER the API has replied. The dry run and the
 // real receipt both carry the ids at risk (C6 warnings).
-func v2ChatDeleteWarnings(msg *model.ChatMessage) []v2model.V2Issue {
+func v2ChatDeleteWarnings(msg *model.ChatMessage) []v2model.Issue {
 	var ids []string
 	for _, att := range msg.Attachments {
 		if att != nil && att.Target != "" {
@@ -591,7 +591,7 @@ func v2ChatDeleteWarnings(msg *model.ChatMessage) []v2model.V2Issue {
 	if len(ids) == 0 {
 		return nil
 	}
-	return []v2model.V2Issue{{
+	return []v2model.Issue{{
 		Path:    "/attachments",
 		Message: fmt.Sprintf("deleting this message may PERMANENTLY delete its attached objects (not moved to the bin): %s", strings.Join(ids, ", ")),
 		Hint:    "an attachment is garbage-collected asynchronously when this message was its only reference",
@@ -610,22 +610,22 @@ func v2ChatDeleteWarnings(msg *model.ChatMessage) []v2model.V2Issue {
 // with "can't delete not own message".
 func v2ChatRpcError(op string, code, badInputCode int32, description string) error {
 	if code == badInputCode {
-		return v2model.V2ValidationFailed(fmt.Sprintf("%s: invalid input", op),
-			v2model.V2Issue{Message: description})
+		return v2model.ValidationFailed(fmt.Sprintf("%s: invalid input", op),
+			v2model.Issue{Message: description})
 	}
 	switch {
 	case strings.Contains(description, "validate:"):
-		return v2model.V2ValidationFailed(fmt.Sprintf("%s: the middleware rejected the message", op),
-			v2model.V2Issue{Message: description})
+		return v2model.ValidationFailed(fmt.Sprintf("%s: the middleware rejected the message", op),
+			v2model.Issue{Message: description})
 	case strings.Contains(description, "not own message"):
-		return v2model.NewV2Error(http.StatusForbidden, v2model.V2CodeForbidden,
+		return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 			fmt.Sprintf("%s: %s — only the author can edit or delete a message", op, description))
 	case strings.Contains(description, "not found"):
-		return v2model.V2NotFound(fmt.Sprintf("%s: %s", op, description))
+		return v2model.NotFound(fmt.Sprintf("%s: %s", op, description))
 	}
 	msg := op + " failed"
 	if description != "" {
 		msg += ": " + description
 	}
-	return v2model.NewV2Error(http.StatusInternalServerError, v2model.V2CodeInternalError, msg)
+	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError, msg)
 }

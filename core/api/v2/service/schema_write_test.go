@@ -208,7 +208,7 @@ func TestV2CreateType(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 	})
 }
 
@@ -329,9 +329,9 @@ func TestV2CreateProperty(t *testing.T) {
 		})
 
 		// when
-		result, err := fx.CreateProperty(context.Background(), testSpaceId, v2model.V2CreatePropertyRequest{
+		result, err := fx.CreateProperty(context.Background(), testSpaceId, v2model.CreatePropertyRequest{
 			Key: "vibe", Name: "Mood", Format: "select",
-			Options: []v2model.V2CreateOptionRequest{{Name: "Happy", Color: "yellow"}},
+			Options: []v2model.CreateOptionRequest{{Name: "Happy", Color: "yellow"}},
 		}, false)
 
 		// then
@@ -339,7 +339,7 @@ func TestV2CreateProperty(t *testing.T) {
 		assert.Equal(t, "rel-vibe", result.Id)
 		assert.Equal(t, "vibe", result.Key)
 		require.NotNil(t, result.Created)
-		assert.Equal(t, []v2model.V2CreatedOption{{Property: "vibe", Name: "Happy"}}, result.Created.Options)
+		assert.Equal(t, []v2model.CreatedOption{{Property: "vibe", Name: "Happy"}}, result.Created.Options)
 	})
 
 	t.Run("unknown format names the allowed set", func(t *testing.T) {
@@ -348,7 +348,7 @@ func TestV2CreateProperty(t *testing.T) {
 
 		// when
 		_, err := fx.CreateProperty(context.Background(), testSpaceId,
-			v2model.V2CreatePropertyRequest{Name: "X", Format: "picklist"}, false)
+			v2model.CreatePropertyRequest{Name: "X", Format: "picklist"}, false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -362,8 +362,8 @@ func TestV2CreateProperty(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		_, err := fx.CreateProperty(context.Background(), testSpaceId, v2model.V2CreatePropertyRequest{
-			Name: "X", Format: "number", Options: []v2model.V2CreateOptionRequest{{Name: "One"}},
+		_, err := fx.CreateProperty(context.Background(), testSpaceId, v2model.CreatePropertyRequest{
+			Name: "X", Format: "number", Options: []v2model.CreateOptionRequest{{Name: "One"}},
 		}, false)
 
 		// then
@@ -379,7 +379,7 @@ func TestV2CreateProperty(t *testing.T) {
 
 		// when
 		_, err := fx.CreateProperty(context.Background(), testSpaceId,
-			v2model.V2CreatePropertyRequest{Key: "severity", Name: "Again", Format: "select"}, false)
+			v2model.CreatePropertyRequest{Key: "severity", Name: "Again", Format: "select"}, false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -392,9 +392,9 @@ func TestV2CreateProperty(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		result, err := fx.CreateProperty(context.Background(), testSpaceId, v2model.V2CreatePropertyRequest{
+		result, err := fx.CreateProperty(context.Background(), testSpaceId, v2model.CreatePropertyRequest{
 			Key: "vibe", Name: "Mood", Format: "select",
-			Options: []v2model.V2CreateOptionRequest{{Name: "Happy"}},
+			Options: []v2model.CreateOptionRequest{{Name: "Happy"}},
 		}, true)
 
 		// then
@@ -418,7 +418,7 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 
 		// when
 		result, err := fx.UpdateProperty(context.Background(), testSpaceId, "severity",
-			v2model.V2UpdatePropertyRequest{Name: &newName}, false)
+			v2model.UpdatePropertyRequest{Name: &newName}, false)
 
 		// then
 		require.NoError(t, err)
@@ -432,7 +432,7 @@ func TestV2UpdateDeleteProperty(t *testing.T) {
 
 		// when
 		_, err := fx.UpdateProperty(context.Background(), testSpaceId, "ghost",
-			v2model.V2UpdatePropertyRequest{Name: &name}, false)
+			v2model.UpdatePropertyRequest{Name: &name}, false)
 
 		// then
 		apiErr := v2Err(t, err)

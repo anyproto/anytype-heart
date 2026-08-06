@@ -218,8 +218,8 @@ func decodeStrictOp(raw json.RawMessage, opName, opPath string, v any) error {
 	dec := json.NewDecoder(bytes.NewReader(raw))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		return v2model.V2ValidationFailed(fmt.Sprintf("invalid %s op", opName),
-			v2model.V2Issue{
+		return v2model.ValidationFailed(fmt.Sprintf("invalid %s op", opName),
+			v2model.Issue{
 				Path:    opPath,
 				Message: err.Error(),
 				Hint:    fmt.Sprintf("GET /v2/schemas/ops/%s for the op's schema and example", opName),
@@ -243,9 +243,9 @@ func countBlocks(n int) string {
 // leafWithDescendantsError names the descendant count when a type change
 // would turn a parent into a leaf (R5).
 func leafWithDescendantsError(id, newType string, descendants int, path string) error {
-	return v2model.V2ValidationFailed(
+	return v2model.ValidationFailed(
 		fmt.Sprintf("cannot change block %q to leaf type %q — it has %s; %q blocks cannot have children", id, newType, countBlocks(descendants), newType),
-		v2model.V2Issue{Path: path, Message: "move or delete the descendants first, or use replaceSubtree"})
+		v2model.Issue{Path: path, Message: "move or delete the descendants first, or use replaceSubtree"})
 }
 
 // resolveTablePart resolves a row/column reference (exact id or unique
@@ -263,15 +263,15 @@ func resolveTablePart(table map[string]any, kind, ref, tableRef, path string) (i
 	case matches == 1:
 		return idx, nil
 	case matches > 1:
-		return -1, v2model.V2AmbiguousInput(
+		return -1, v2model.AmbiguousInput(
 			fmt.Sprintf("%s reference %q matches more than one %s in table %q — use the full id", strings.TrimSuffix(kind, "s"), ref, strings.TrimSuffix(kind, "s"), tableRef),
-			v2model.V2Issue{Path: path, Message: "the reference is a suffix of several ids"})
+			v2model.Issue{Path: path, Message: "the reference is a suffix of several ids"})
 	default:
 		listed := ids
 		if len(listed) > maxListedKeys {
 			listed = listed[:maxListedKeys]
 		}
-		return -1, v2model.V2NotFound(
+		return -1, v2model.NotFound(
 			fmt.Sprintf("%s %q not found in table %q — %s: %s", strings.TrimSuffix(kind, "s"), ref, tableRef, kind, strings.Join(listed, ", ")))
 	}
 }
@@ -280,12 +280,12 @@ func resolveTablePart(table map[string]any, kind, ref, tableRef, path string) (i
 func decodeOpBlock(raw json.RawMessage, path string) (map[string]any, error) {
 	var block map[string]any
 	if err := json.Unmarshal(raw, &block); err != nil {
-		return nil, v2model.V2ValidationFailed("a payload block must be a JSON object",
-			v2model.V2Issue{Path: path, Message: err.Error()})
+		return nil, v2model.ValidationFailed("a payload block must be a JSON object",
+			v2model.Issue{Path: path, Message: err.Error()})
 	}
 	if typ := blockType(block); typ == "" {
-		return nil, v2model.V2ValidationFailed("a payload block needs a type",
-			v2model.V2Issue{Path: path + ".type", Message: "type is required (SPEC §5 lists the inventory)"})
+		return nil, v2model.ValidationFailed("a payload block needs a type",
+			v2model.Issue{Path: path + ".type", Message: "type is required (SPEC §5 lists the inventory)"})
 	}
 	return block, nil
 }

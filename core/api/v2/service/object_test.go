@@ -221,7 +221,7 @@ func TestV2GetObject(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(testObjectRead(), nil)
-		want := []v2model.V2OutlineEntry{
+		want := []v2model.OutlineEntry{
 			{Indent: 0, Id: "h1", Type: "heading1", Text: "Section"},
 			{Indent: 0, Id: "p1", Type: "paragraph"},
 			{Indent: 1, Id: "p2", Type: "paragraph"},
@@ -238,7 +238,7 @@ func TestV2GetObject(t *testing.T) {
 		assert.NotContains(t, doc, "properties", "outline without include=properties has no properties map")
 		raw, err := json.Marshal(doc["outline"])
 		require.NoError(t, err)
-		var got []v2model.V2OutlineEntry
+		var got []v2model.OutlineEntry
 		require.NoError(t, json.Unmarshal(raw, &got))
 		assert.Equal(t, want, got)
 	})
@@ -284,7 +284,7 @@ func TestV2GetObject(t *testing.T) {
 		_, _, err := fx.GetObject(context.Background(), testSpaceId, "obj1", V2ObjectQuery{Block: "nope"})
 
 		// then
-		var v2Err *v2model.V2Error
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, 404, v2Err.Status)
 		assert.Contains(t, v2Err.Message, "outline=true")
@@ -336,10 +336,10 @@ func TestV2GetObject(t *testing.T) {
 		_, _, err := fx.GetObject(context.Background(), testSpaceId, "gone", V2ObjectQuery{})
 
 		// then
-		var apiErr *v2model.V2Error
+		var apiErr *v2model.Error
 		require.ErrorAs(t, err, &apiErr)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
-		assert.Equal(t, v2model.V2CodeNotFound, apiErr.Code)
+		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
 	})
 }
 
@@ -374,7 +374,7 @@ func TestV2ListObjects(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		addListObjects(fx, t)
-		want := []v2model.V2ObjectRow{
+		want := []v2model.ObjectRow{
 			{Id: "obj1", Name: "Buy milk", Type: "task"},
 			{Id: "obj2", Name: "Older note", Type: "task"},
 		}

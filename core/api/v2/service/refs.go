@@ -66,9 +66,9 @@ func (s *V2Service) knownTypeKeys(spaceId string) []string {
 // unknownTypeKeyError is the R9 did-you-mean 400 for a type reference.
 func (s *V2Service) unknownTypeKeyError(spaceId, typeKey, path string) error {
 	known := s.knownTypeKeys(spaceId)
-	return v2model.V2ValidationFailed(
+	return v2model.ValidationFailed(
 		fmt.Sprintf("type %q not found in space %q", typeKey, spaceId),
-		v2model.V2Issue{
+		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("unknown type key %q — %s", typeKey, listKnown("type keys", known)),
 			Hint:    didYouMean(typeKey, known, fmt.Sprintf("list all with GET /v2/spaces/%s/types", spaceId)),
@@ -111,8 +111,8 @@ func (s *V2Service) knownPropertyKeys(spaceId string) []string {
 
 // unknownPropertyIssue builds one path-addressed did-you-mean issue for an
 // unknown property key.
-func unknownPropertyIssue(key, path string, known []string, listUrl string) v2model.V2Issue {
-	return v2model.V2Issue{
+func unknownPropertyIssue(key, path string, known []string, listUrl string) v2model.Issue {
+	return v2model.Issue{
 		Path:    path,
 		Message: fmt.Sprintf("unknown property key %q — %s", key, listKnown("property keys", known)),
 		Hint:    didYouMean(key, known, listUrl),

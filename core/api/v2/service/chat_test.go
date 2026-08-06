@@ -96,7 +96,7 @@ func TestV2ListChats(t *testing.T) {
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
 			},
 		})
-		want := []v2model.V2ChatRow{
+		want := []v2model.ChatRow{
 			{Id: "chatB", Name: "Team chat"},
 			{Id: "chatA", Name: "Old chat"},
 		}
@@ -134,7 +134,7 @@ func TestV2ListChats(t *testing.T) {
 	t.Run("unknown space is a 404", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		_, _, _, err := fx.ListChats(context.Background(), "nope", 0, 25)
-		requireV2Code(t, err, v2model.V2CodeNotFound)
+		requireV2Code(t, err, v2model.CodeNotFound)
 	})
 }
 
@@ -147,10 +147,10 @@ func TestV2CreateChat(t *testing.T) {
 				req.ObjectTypeUniqueKey == bundle.TypeKeyChatDerived.URL() &&
 				req.Details.GetFields()["name"].GetStringValue() == "Project chat"
 		})).Return(&pb.RpcObjectCreateResponse{ObjectId: "chatNew"})
-		want := &v2model.V2ChatResult{Id: "chatNew", Name: "Project chat"}
+		want := &v2model.ChatResult{Id: "chatNew", Name: "Project chat"}
 
 		// when
-		got, err := fx.CreateChat(context.Background(), testSpaceId, v2model.V2CreateChatRequest{Name: "Project chat"}, false)
+		got, err := fx.CreateChat(context.Background(), testSpaceId, v2model.CreateChatRequest{Name: "Project chat"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -162,7 +162,7 @@ func TestV2CreateChat(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		got, err := fx.CreateChat(context.Background(), testSpaceId, v2model.V2CreateChatRequest{Name: "Project chat"}, true)
+		got, err := fx.CreateChat(context.Background(), testSpaceId, v2model.CreateChatRequest{Name: "Project chat"}, true)
 
 		// then
 		require.NoError(t, err)
@@ -172,8 +172,8 @@ func TestV2CreateChat(t *testing.T) {
 
 	t.Run("empty name is a 400", func(t *testing.T) {
 		fx := newV2Fixture(t)
-		_, err := fx.CreateChat(context.Background(), testSpaceId, v2model.V2CreateChatRequest{}, false)
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
+		_, err := fx.CreateChat(context.Background(), testSpaceId, v2model.CreateChatRequest{}, false)
+		requireV2Code(t, err, v2model.CodeValidationFailed)
 	})
 }
 
@@ -309,14 +309,14 @@ func TestV2GetChatMessages(t *testing.T) {
 		_, err := fx.GetChatMessages(context.Background(), testSpaceId, "page1", V2ChatMessagesQuery{Limit: 25})
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
+		requireV2Code(t, err, v2model.CodeValidationFailed)
 		assert.Contains(t, err.Error(), "not a chat")
 	})
 
 	t.Run("an unknown chat is a 404", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		_, err := fx.GetChatMessages(context.Background(), testSpaceId, "nope", V2ChatMessagesQuery{Limit: 25})
-		requireV2Code(t, err, v2model.V2CodeNotFound)
+		requireV2Code(t, err, v2model.CodeNotFound)
 	})
 }
 
@@ -337,7 +337,7 @@ func TestV2AddChatMessage(t *testing.T) {
 
 		// when
 		got, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
-			v2model.V2AddChatMessageRequest{Text: "can you **check** the doc?", ReplyTo: "msg0"}, false)
+			v2model.AddChatMessageRequest{Text: "can you **check** the doc?", ReplyTo: "msg0"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -372,7 +372,7 @@ func TestV2AddChatMessage(t *testing.T) {
 
 		// when
 		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
-			v2model.V2AddChatMessageRequest{Text: "see these", Attachments: []string{"img1", "pdf1", "page1"}}, false)
+			v2model.AddChatMessageRequest{Text: "see these", Attachments: []string{"img1", "pdf1", "page1"}}, false)
 
 		// then
 		require.NoError(t, err)
@@ -385,11 +385,11 @@ func TestV2AddChatMessage(t *testing.T) {
 
 		// when
 		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
-			v2model.V2AddChatMessageRequest{Text: "see this", Attachments: []string{"missing1"}}, false)
+			v2model.AddChatMessageRequest{Text: "see this", Attachments: []string{"missing1"}}, false)
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
-		var v2Err *v2model.V2Error
+		requireV2Code(t, err, v2model.CodeValidationFailed)
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		require.Len(t, v2Err.Issues, 1)
 		assert.Equal(t, "/attachments/0", v2Err.Issues[0].Path)
@@ -402,7 +402,7 @@ func TestV2AddChatMessage(t *testing.T) {
 
 		// when
 		got, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
-			v2model.V2AddChatMessageRequest{Text: "hello"}, true)
+			v2model.AddChatMessageRequest{Text: "hello"}, true)
 
 		// then
 		require.NoError(t, err)
@@ -412,8 +412,8 @@ func TestV2AddChatMessage(t *testing.T) {
 	t.Run("empty text with no attachments is a 400", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
-		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId, v2model.V2AddChatMessageRequest{}, false)
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
+		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId, v2model.AddChatMessageRequest{}, false)
+		requireV2Code(t, err, v2model.CodeValidationFailed)
 	})
 
 	t.Run("text over the UTF-16 cap is a path-addressed 400 BEFORE the RPC", func(t *testing.T) {
@@ -425,11 +425,11 @@ func TestV2AddChatMessage(t *testing.T) {
 
 		// when
 		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
-			v2model.V2AddChatMessageRequest{Text: strings.Repeat("a", chatmodel.MaxMessageLength+1)}, false)
+			v2model.AddChatMessageRequest{Text: strings.Repeat("a", chatmodel.MaxMessageLength+1)}, false)
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
-		var v2Err *v2model.V2Error
+		requireV2Code(t, err, v2model.CodeValidationFailed)
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		require.NotEmpty(t, v2Err.Issues)
 		assert.Equal(t, "/text", v2Err.Issues[0].Path)
@@ -447,11 +447,11 @@ func TestV2AddChatMessage(t *testing.T) {
 
 		// when
 		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
-			v2model.V2AddChatMessageRequest{Text: "see these", Attachments: ids}, false)
+			v2model.AddChatMessageRequest{Text: "see these", Attachments: ids}, false)
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
-		var v2Err *v2model.V2Error
+		requireV2Code(t, err, v2model.CodeValidationFailed)
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		require.NotEmpty(t, v2Err.Issues)
 		assert.Equal(t, "/attachments", v2Err.Issues[0].Path)
@@ -472,10 +472,10 @@ func TestV2AddChatMessage(t *testing.T) {
 
 		// when
 		_, err := fx.AddChatMessage(context.Background(), testSpaceId, testChatId,
-			v2model.V2AddChatMessageRequest{Text: "hello"}, false)
+			v2model.AddChatMessageRequest{Text: "hello"}, false)
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
+		requireV2Code(t, err, v2model.CodeValidationFailed)
 		assert.Contains(t, err.Error(), "rejected")
 	})
 
@@ -494,11 +494,11 @@ func TestV2AddChatMessage(t *testing.T) {
 
 		// when
 		_, err := fx.EditChatMessage(context.Background(), testSpaceId, testChatId, "msg1",
-			v2model.V2EditChatMessageRequest{Text: "updated"}, false)
+			v2model.EditChatMessageRequest{Text: "updated"}, false)
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeForbidden)
-		var v2Err *v2model.V2Error
+		requireV2Code(t, err, v2model.CodeForbidden)
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, 403, v2Err.Status)
 	})
@@ -527,7 +527,7 @@ func TestV2EditChatMessage(t *testing.T) {
 
 		// when
 		got, err := fx.EditChatMessage(context.Background(), testSpaceId, testChatId, "msg1",
-			v2model.V2EditChatMessageRequest{Text: "updated text"}, false)
+			v2model.EditChatMessageRequest{Text: "updated text"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -543,10 +543,10 @@ func TestV2EditChatMessage(t *testing.T) {
 
 		// when
 		_, err := fx.EditChatMessage(context.Background(), testSpaceId, testChatId, "nope",
-			v2model.V2EditChatMessageRequest{Text: "updated"}, false)
+			v2model.EditChatMessageRequest{Text: "updated"}, false)
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeNotFound)
+		requireV2Code(t, err, v2model.CodeNotFound)
 	})
 
 	t.Run("dry run stops after the existence check", func(t *testing.T) {
@@ -558,7 +558,7 @@ func TestV2EditChatMessage(t *testing.T) {
 
 		// when
 		got, err := fx.EditChatMessage(context.Background(), testSpaceId, testChatId, "msg1",
-			v2model.V2EditChatMessageRequest{Text: "updated"}, true)
+			v2model.EditChatMessageRequest{Text: "updated"}, true)
 
 		// then
 		require.NoError(t, err)
@@ -607,8 +607,8 @@ func TestV2DeleteChatMessage(t *testing.T) {
 		_, errDry := fx.DeleteChatMessage(context.Background(), testSpaceId, testChatId, "nope", true)
 
 		// then
-		requireV2Code(t, errReal, v2model.V2CodeNotFound)
-		requireV2Code(t, errDry, v2model.V2CodeNotFound)
+		requireV2Code(t, errReal, v2model.CodeNotFound)
+		requireV2Code(t, errDry, v2model.CodeNotFound)
 	})
 
 	t.Run("dry run reports the same file-GC warnings and deletes nothing", func(t *testing.T) {
@@ -645,7 +645,7 @@ func TestV2ToggleChatReaction(t *testing.T) {
 
 		// when
 		got, err := fx.ToggleChatReaction(context.Background(), testSpaceId, testChatId, "msg1",
-			v2model.V2ChatReactionRequest{Emoji: "👍"}, false)
+			v2model.ChatReactionRequest{Emoji: "👍"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -662,10 +662,10 @@ func TestV2ToggleChatReaction(t *testing.T) {
 
 		// when
 		_, err := fx.ToggleChatReaction(context.Background(), testSpaceId, testChatId, "nope",
-			v2model.V2ChatReactionRequest{Emoji: "👍"}, false)
+			v2model.ChatReactionRequest{Emoji: "👍"}, false)
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeNotFound)
+		requireV2Code(t, err, v2model.CodeNotFound)
 	})
 
 	t.Run("dry run reports the would-be outcome without toggling", func(t *testing.T) {
@@ -684,9 +684,9 @@ func TestV2ToggleChatReaction(t *testing.T) {
 
 		// when
 		addOutcome, err1 := fx.ToggleChatReaction(context.Background(), testSpaceId, testChatId, "msg1",
-			v2model.V2ChatReactionRequest{Emoji: "👍"}, true)
+			v2model.ChatReactionRequest{Emoji: "👍"}, true)
 		removeOutcome, err2 := fx.ToggleChatReaction(context.Background(), testSpaceId, testChatId, "msg1",
-			v2model.V2ChatReactionRequest{Emoji: "🎉"}, true)
+			v2model.ChatReactionRequest{Emoji: "🎉"}, true)
 
 		// then
 		require.NoError(t, err1)
@@ -723,7 +723,7 @@ func TestV2ToggleChatReaction(t *testing.T) {
 
 		// when
 		got, err := svc.ToggleChatReaction(context.Background(), testSpaceId, testChatId, "msg1",
-			v2model.V2ChatReactionRequest{Emoji: "👍"}, true)
+			v2model.ChatReactionRequest{Emoji: "👍"}, true)
 
 		// then
 		require.NoError(t, err)
@@ -737,8 +737,8 @@ func TestV2ToggleChatReaction(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		_, err := fx.ToggleChatReaction(context.Background(), testSpaceId, testChatId, "msg1",
-			v2model.V2ChatReactionRequest{}, false)
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
+			v2model.ChatReactionRequest{}, false)
+		requireV2Code(t, err, v2model.CodeValidationFailed)
 	})
 }
 
@@ -756,7 +756,7 @@ func TestV2ReadChat(t *testing.T) {
 
 		// when
 		got, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			v2model.V2ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, false)
+			v2model.ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -773,7 +773,7 @@ func TestV2ReadChat(t *testing.T) {
 
 		// when
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			v2model.V2ChatReadRequest{UpTo: "00a5", LastStateId: "state42", Scope: "mentions"}, false)
+			v2model.ChatReadRequest{UpTo: "00a5", LastStateId: "state42", Scope: "mentions"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -788,11 +788,11 @@ func TestV2ReadChat(t *testing.T) {
 		fx.addChat(t, testChatId, "Team chat", 1000)
 
 		// when: both missing
-		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId, v2model.V2ChatReadRequest{}, false)
+		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId, v2model.ChatReadRequest{}, false)
 
 		// then: both named, path-addressed
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
-		var v2Err *v2model.V2Error
+		requireV2Code(t, err, v2model.CodeValidationFailed)
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		require.Len(t, v2Err.Issues, 2)
 		assert.Equal(t, "/upTo", v2Err.Issues[0].Path)
@@ -808,11 +808,11 @@ func TestV2ReadChat(t *testing.T) {
 
 		// when
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			v2model.V2ChatReadRequest{UpTo: "00a5"}, false)
+			v2model.ChatReadRequest{UpTo: "00a5"}, false)
 
 		// then
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
-		var v2Err *v2model.V2Error
+		requireV2Code(t, err, v2model.CodeValidationFailed)
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		require.Len(t, v2Err.Issues, 1)
 		assert.Equal(t, "/lastStateId", v2Err.Issues[0].Path)
@@ -829,7 +829,7 @@ func TestV2ReadChat(t *testing.T) {
 
 		// when
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			v2model.V2ChatReadRequest{Scope: "reactions"}, false)
+			v2model.ChatReadRequest{Scope: "reactions"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -839,16 +839,16 @@ func TestV2ReadChat(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			v2model.V2ChatReadRequest{Scope: "reactions", UpTo: "00a5"}, false)
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
+			v2model.ChatReadRequest{Scope: "reactions", UpTo: "00a5"}, false)
+		requireV2Code(t, err, v2model.CodeValidationFailed)
 	})
 
 	t.Run("unknown scope is a 400 naming the allowed values", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		fx.addChat(t, testChatId, "Team chat", 1000)
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			v2model.V2ChatReadRequest{Scope: "everything", UpTo: "00a5"}, false)
-		requireV2Code(t, err, v2model.V2CodeValidationFailed)
+			v2model.ChatReadRequest{Scope: "everything", UpTo: "00a5"}, false)
+		requireV2Code(t, err, v2model.CodeValidationFailed)
 		assert.Contains(t, err.Error(), "scope")
 	})
 
@@ -859,7 +859,7 @@ func TestV2ReadChat(t *testing.T) {
 
 		// when
 		got, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			v2model.V2ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, true)
+			v2model.ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, true)
 
 		// then
 		require.NoError(t, err)
@@ -877,7 +877,7 @@ func TestV2ReadChat(t *testing.T) {
 
 		// when
 		_, err := fx.ReadChat(context.Background(), testSpaceId, testChatId,
-			v2model.V2ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, false)
+			v2model.ChatReadRequest{UpTo: "00a5", LastStateId: "state42"}, false)
 
 		// then
 		require.NoError(t, err)

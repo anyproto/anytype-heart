@@ -26,27 +26,27 @@ import (
 const dataviewBlockId = "dataview"
 
 // CreateSet implements POST /v2/spaces/{spaceId}/sets.
-func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.V2CreateSetRequest, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.CreateSetRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
-		return nil, v2model.V2ValidationFailed("name is required",
-			v2model.V2Issue{Path: "/name", Message: "a set needs a name"})
+		return nil, v2model.ValidationFailed("name is required",
+			v2model.Issue{Path: "/name", Message: "a set needs a name"})
 	}
 	if req.Type == "" {
-		return nil, v2model.V2ValidationFailed("type is required",
-			v2model.V2Issue{Path: "/type", Message: "a set queries one type — name its key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
+		return nil, v2model.ValidationFailed("type is required",
+			v2model.Issue{Path: "/type", Message: "a set queries one type — name its key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
 	}
 	// C6: filter and filters are mutually exclusive; both → ambiguous_input
 	if req.Filter != "" && len(req.Filters) > 0 {
-		return nil, v2model.V2AmbiguousInput("provide filter or filters, not both",
-			v2model.V2Issue{Path: "/filter", Message: "conflicts with filters"},
-			v2model.V2Issue{Path: "/filters", Message: "conflicts with filter"})
+		return nil, v2model.AmbiguousInput("provide filter or filters, not both",
+			v2model.Issue{Path: "/filter", Message: "conflicts with filters"},
+			v2model.Issue{Path: "/filters", Message: "conflicts with filter"})
 	}
 	if len(req.Views) > 0 && (req.Filter != "" || len(req.Filters) > 0 || len(req.Sorts) > 0) {
-		return nil, v2model.V2AmbiguousInput("provide views or top-level filter/filters/sorts, not both",
-			v2model.V2Issue{Path: "/views", Message: "views carry their own filters and sorts"})
+		return nil, v2model.AmbiguousInput("provide views or top-level filter/filters/sorts, not both",
+			v2model.Issue{Path: "/views", Message: "views carry their own filters and sorts"})
 	}
 
 	// the queried type must exist in the space — its property keys are the
@@ -99,22 +99,22 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.V
 
 // CreateCollection implements POST /v2/spaces/{spaceId}/collections: the
 // AnyBlock items import path builds the collection store.
-func (s *V2Service) CreateCollection(ctx context.Context, spaceId string, req v2model.V2CreateCollectionRequest, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) CreateCollection(ctx context.Context, spaceId string, req v2model.CreateCollectionRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
-		return nil, v2model.V2ValidationFailed("name is required",
-			v2model.V2Issue{Path: "/name", Message: "a collection needs a name"})
+		return nil, v2model.ValidationFailed("name is required",
+			v2model.Issue{Path: "/name", Message: "a collection needs a name"})
 	}
 
 	// referential validation: items must be existing objects in the space
-	var issues []v2model.V2Issue
+	var issues []v2model.Issue
 	index := s.store.SpaceIndex(spaceId)
 	for i, itemId := range req.Items {
 		details, err := index.GetDetails(itemId)
 		if err != nil || details.GetString(bundle.RelationKeyId) == "" {
-			issues = append(issues, v2model.V2Issue{
+			issues = append(issues, v2model.Issue{
 				Path:    fmt.Sprintf("/items/%d", i),
 				Message: fmt.Sprintf("object %q not found in space %q", itemId, spaceId),
 				Hint:    "items are full object ids — find them with GET /v2/spaces/{spaceId}/objects",
@@ -122,7 +122,7 @@ func (s *V2Service) CreateCollection(ctx context.Context, spaceId string, req v2
 		}
 	}
 	if len(issues) > 0 {
-		return nil, v2model.V2ValidationFailed("unknown collection items", issues...)
+		return nil, v2model.ValidationFailed("unknown collection items", issues...)
 	}
 
 	fields := map[string]json.RawMessage{}
@@ -179,21 +179,21 @@ type viewProbe struct {
 
 // collectViewPropertyKeys gathers every property key the request's filters,
 // sorts and views address, each with its JSON path.
-func collectViewPropertyKeys(req v2model.V2CreateSetRequest) ([]viewKeyRef, error) {
+func collectViewPropertyKeys(req v2model.CreateSetRequest) ([]viewKeyRef, error) {
 	var refs []viewKeyRef
 	if len(req.Filters) > 0 {
 		var nodes []filterNodeProbe
 		if err := json.Unmarshal(req.Filters, &nodes); err != nil {
-			return nil, v2model.V2ValidationFailed("invalid filters",
-				v2model.V2Issue{Path: "/filters", Message: err.Error(), Hint: "filters is the SPEC §6.2 array of filter nodes"})
+			return nil, v2model.ValidationFailed("invalid filters",
+				v2model.Issue{Path: "/filters", Message: err.Error(), Hint: "filters is the SPEC §6.2 array of filter nodes"})
 		}
 		collectFilterKeys(nodes, "/filters", &refs)
 	}
 	if len(req.Sorts) > 0 {
 		var sorts []sortProbe
 		if err := json.Unmarshal(req.Sorts, &sorts); err != nil {
-			return nil, v2model.V2ValidationFailed("invalid sorts",
-				v2model.V2Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is the SPEC §6.2 array of sort objects"})
+			return nil, v2model.ValidationFailed("invalid sorts",
+				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is the SPEC §6.2 array of sort objects"})
 		}
 		for i, sort := range sorts {
 			if sort.Property != "" {
@@ -204,8 +204,8 @@ func collectViewPropertyKeys(req v2model.V2CreateSetRequest) ([]viewKeyRef, erro
 	if len(req.Views) > 0 {
 		var views []viewProbe
 		if err := json.Unmarshal(req.Views, &views); err != nil {
-			return nil, v2model.V2ValidationFailed("invalid views",
-				v2model.V2Issue{Path: "/views", Message: err.Error(), Hint: "views is the SPEC §6.2 array of view objects"})
+			return nil, v2model.ValidationFailed("invalid views",
+				v2model.Issue{Path: "/views", Message: err.Error(), Hint: "views is the SPEC §6.2 array of view objects"})
 		}
 		for i, view := range views {
 			prefix := fmt.Sprintf("/views/%d", i)
@@ -256,7 +256,7 @@ func (s *V2Service) validateViewKeys(spaceId, typeId, typeKey string, refs []vie
 	for _, key := range typeKeys {
 		allowed[key] = true
 	}
-	var issues []v2model.V2Issue
+	var issues []v2model.Issue
 	for _, ref := range refs {
 		if allowed[ref.key] {
 			continue
@@ -265,21 +265,21 @@ func (s *V2Service) validateViewKeys(spaceId, typeId, typeKey string, refs []vie
 			// the search surface takes `type` as a pseudo-key; a set carries
 			// its scope in setOf already, so the leaf is redundant here — say
 			// that instead of "unknown property"
-			issues = append(issues, v2model.V2Issue{
+			issues = append(issues, v2model.Issue{
 				Path:    ref.path,
 				Message: fmt.Sprintf("a set is already scoped to type %q — drop the type filter", typeKey),
 				Hint:    "to query across types use POST /v2/spaces/{spaceId}/search, where type is a filterable pseudo-key",
 			})
 			continue
 		}
-		issues = append(issues, v2model.V2Issue{
+		issues = append(issues, v2model.Issue{
 			Path:    ref.path,
 			Message: fmt.Sprintf("type %q has no property %q — %s", typeKey, ref.key, listKnown("property keys of the type", typeKeys)),
 			Hint:    didYouMean(ref.key, typeKeys, fmt.Sprintf("inspect the type with GET /v2/spaces/%s/types/%s", spaceId, typeKey)),
 		})
 	}
 	if len(issues) > 0 {
-		return v2model.V2ValidationFailed(fmt.Sprintf("the view addresses properties type %q does not have", typeKey), issues...)
+		return v2model.ValidationFailed(fmt.Sprintf("the view addresses properties type %q does not have", typeKey), issues...)
 	}
 	return nil
 }
@@ -287,7 +287,7 @@ func (s *V2Service) validateViewKeys(spaceId, typeId, typeKey string, refs []vie
 // buildSetDocument synthesizes the set's AnyBlock document: name + setOf in
 // properties, and one dataview block (id "dataview") carrying the views —
 // the §8/R10 initial-state construction.
-func (s *V2Service) buildSetDocument(spaceId, typeId string, req v2model.V2CreateSetRequest, referenced []viewKeyRef) ([]byte, error) {
+func (s *V2Service) buildSetDocument(spaceId, typeId string, req v2model.CreateSetRequest, referenced []viewKeyRef) ([]byte, error) {
 	fields := map[string]json.RawMessage{}
 	var err error
 	if fields["version"], err = rawJSON(anyblockjson.FormatVersion); err != nil {

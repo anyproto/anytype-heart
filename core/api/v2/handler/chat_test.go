@@ -211,9 +211,9 @@ func TestChatBodyDecoding(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		var got v2model.V2Error
+		var got v2model.Error
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
-		assert.Equal(t, v2model.V2CodeValidationFailed, got.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, got.Code)
 		require.NotEmpty(t, got.Issues)
 		assert.Equal(t, "/message", got.Issues[0].Path, "the unknown field must be named, path-addressed")
 	})
@@ -222,7 +222,7 @@ func TestChatBodyDecoding(t *testing.T) {
 		fx := chatRouterFixture(t)
 		w := serveChat(fx, "POST", "/v2/spaces/space1/chats/chat1/messages", strings.Repeat("x", 1<<20+1))
 		require.Equal(t, http.StatusRequestEntityTooLarge, w.Code)
-		assert.Contains(t, w.Body.String(), v2model.V2CodeRequestTooLarge)
+		assert.Contains(t, w.Body.String(), v2model.CodeRequestTooLarge)
 	})
 
 	t.Run("an empty body is a 400 carrying the shape hint", func(t *testing.T) {

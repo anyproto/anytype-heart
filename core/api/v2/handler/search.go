@@ -32,16 +32,16 @@ const maxSearchRequestBody = 1 << 20 // 1 MiB
 // decodeSearchRequest decodes the search body strictly (C13): unknown
 // fields are rejected, with C10 steering when the field is a pagination
 // param that belongs in the query string.
-func decodeSearchRequest(c *gin.Context) (v2model.V2SearchRequest, bool) {
-	var req v2model.V2SearchRequest
+func decodeSearchRequest(c *gin.Context) (v2model.SearchRequest, bool) {
+	var req v2model.SearchRequest
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxSearchRequestBody+1))
 	if err != nil {
-		RespondV2Error(c, v2model.V2ValidationFailed("read request body",
-			v2model.V2Issue{Message: err.Error()}))
+		RespondV2Error(c, v2model.ValidationFailed("read request body",
+			v2model.Issue{Message: err.Error()}))
 		return req, false
 	}
 	if len(body) > maxSearchRequestBody {
-		RespondV2Error(c, v2model.V2RequestTooLarge(
+		RespondV2Error(c, v2model.RequestTooLarge(
 			fmt.Sprintf("search request body exceeds the %d-byte limit", maxSearchRequestBody)))
 		return req, false
 	}
@@ -51,14 +51,14 @@ func decodeSearchRequest(c *gin.Context) (v2model.V2SearchRequest, bool) {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&req); err != nil {
-		issue := v2model.V2Issue{Message: err.Error(), Hint: "the search body takes query, type, filter, filters, sorts, fields"}
+		issue := v2model.Issue{Message: err.Error(), Hint: "the search body takes query, type, filter, filters, sorts, fields"}
 		if field, ok := unknownFieldName(err); ok {
 			issue.Path = "/" + field
 			if field == "limit" || field == "offset" {
 				issue.Hint = fmt.Sprintf("pagination is the ?offset=&limit= query params (C10), not a body field — e.g. POST …/search?%s=25", field)
 			}
 		}
-		RespondV2Error(c, v2model.V2ValidationFailed("invalid search request", issue))
+		RespondV2Error(c, v2model.ValidationFailed("invalid search request", issue))
 		return req, false
 	}
 	return req, true
@@ -90,12 +90,12 @@ func unknownFieldName(err error) (string, bool) {
 //	@Accept			json
 //	@Produce		json
 //	@Param			space_id	path		string											true	"Space id"
-//	@Param			request		body		v2model.V2SearchRequest						true	"Search request"
+//	@Param			request		body		v2model.SearchRequest						true	"Search request"
 //	@Param			offset		query		int												false	"Items to skip"		default(0)
 //	@Param			limit		query		int												false	"Items to return"	default(25)
-//	@Success		200			{object}	v2model.V2ListResponse[v2model.V2ObjectRow]	"Minimal object rows"
-//	@Failure		400			{object}	v2model.V2Error								"Invalid request (validation_failed / ambiguous_input)"
-//	@Failure		404			{object}	v2model.V2Error								"Space not found"
+//	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
+//	@Failure		400			{object}	v2model.Error								"Invalid request (validation_failed / ambiguous_input)"
+//	@Failure		404			{object}	v2model.Error								"Space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/search [post]
 func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -111,7 +111,7 @@ func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		resp := v2model.NewV2ListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}
@@ -125,11 +125,11 @@ func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			request	body		v2model.V2SearchRequest						true	"Search request"
+//	@Param			request	body		v2model.SearchRequest						true	"Search request"
 //	@Param			offset	query		int												false	"Items to skip"		default(0)
 //	@Param			limit	query		int												false	"Items to return"	default(25)
-//	@Success		200		{object}	v2model.V2ListResponse[v2model.V2ObjectRow]	"Minimal object rows with spaceId"
-//	@Failure		400		{object}	v2model.V2Error								"Invalid request"
+//	@Success		200		{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows with spaceId"
+//	@Failure		400		{object}	v2model.Error								"Invalid request"
 //	@Security		bearerauth
 //	@Router			/v2/search [post]
 func GlobalSearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -145,7 +145,7 @@ func GlobalSearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		resp := v2model.NewV2ListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}

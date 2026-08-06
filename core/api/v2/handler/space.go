@@ -28,8 +28,8 @@ const maxSpaceRequestBody = 1 << 20 // 1 MiB
 //	@Tags			V2
 //	@Produce		json
 //	@Param			space_id	path		string				true	"Space id"
-//	@Success		200			{object}	v2model.V2Space	"The space row"
-//	@Failure		404			{object}	v2model.V2Error	"Space not found"
+//	@Success		200			{object}	v2model.Space	"The space row"
+//	@Failure		404			{object}	v2model.Error	"Space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id} [get]
 func GetSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -53,14 +53,14 @@ func GetSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			dry_run			query		bool							false	"Validate the body without creating"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
-//	@Param			request			body		v2model.V2CreateSpaceRequest	true	"The space to create"
-//	@Success		201				{object}	v2model.V2Space				"Created space"
-//	@Failure		400				{object}	v2model.V2Error				"Validation failure"
+//	@Param			request			body		v2model.CreateSpaceRequest	true	"The space to create"
+//	@Success		201				{object}	v2model.Space				"Created space"
+//	@Failure		400				{object}	v2model.Error				"Validation failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces [post]
 func CreateSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2CreateSpaceRequest
+		var req v2model.CreateSpaceRequest
 		if !decodeStrictJSONBody(c, &req, "the space body takes name and an optional description", maxSpaceRequestBody, "space") {
 			return
 		}
@@ -89,16 +89,16 @@ func CreateSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			space_id		path		string							true	"Space id"
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard"
-//	@Param			request			body		v2model.V2UpdateSpaceRequest	true	"The fields to change"
-//	@Success		200				{object}	v2model.V2Space				"The updated space row"
-//	@Failure		400				{object}	v2model.V2Error				"Validation failure"
-//	@Failure		403				{object}	v2model.V2Error				"The caller's role cannot change the space info"
-//	@Failure		404				{object}	v2model.V2Error				"Space not found or not live"
+//	@Param			request			body		v2model.UpdateSpaceRequest	true	"The fields to change"
+//	@Success		200				{object}	v2model.Space				"The updated space row"
+//	@Failure		400				{object}	v2model.Error				"Validation failure"
+//	@Failure		403				{object}	v2model.Error				"The caller's role cannot change the space info"
+//	@Failure		404				{object}	v2model.Error				"Space not found or not live"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id} [patch]
 func UpdateSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2UpdateSpaceRequest
+		var req v2model.UpdateSpaceRequest
 		if !decodeStrictJSONBody(c, &req, "the update takes name and/or description — at least one", maxSpaceRequestBody, "space") {
 			return
 		}

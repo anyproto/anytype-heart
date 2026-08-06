@@ -47,7 +47,7 @@ type v2PatchRequest struct {
 // PatchObject implements PATCH /v2/spaces/{spaceId}/objects/{objectId}: the
 // ops apply to a child state of the live object, committed with one ordinary
 // Apply (stateops.go).
-func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.V2EditResult, error) {
+func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	}
 	s.prewarmCreateMissing(ops, resolvers)
 
-	var result *v2model.V2EditResult
+	var result *v2model.EditResult
 	run := func(edit apicore.ObjectEdit) error {
 		res, err := s.applyPatchOps(ctx, spaceId, objectId, ops, ifMatch, edit, resolvers)
 		if err != nil {
@@ -101,7 +101,7 @@ func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, b
 	}
 	heads, err := s.mutator.MutateObject(ctx, spaceId, objectId, run)
 	if err != nil {
-		var v2Err *v2model.V2Error
+		var v2Err *v2model.Error
 		if errors.As(err, &v2Err) {
 			return nil, v2Err
 		}
@@ -126,7 +126,7 @@ func editFromRead(objectId string, cur apicore.ObjectRead) (apicore.ObjectEdit, 
 // applied to the state), the resolver error check, the flag-gated safety
 // net, and the diffStats. The caller commits (or, on dry run, discards) the
 // state.
-func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.V2EditResult, error) {
+func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string, ops []json.RawMessage, ifMatch string, edit apicore.ObjectEdit, resolvers *creatingResolvers) (*v2model.EditResult, error) {
 	if err := checkEditPreconditions(edit.SbType, edit.Heads, ifMatch); err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 	if err != nil {
 		return nil, err
 	}
-	result := &v2model.V2EditResult{Created: resolvers.created(), DiffStats: stats}
+	result := &v2model.EditResult{Created: resolvers.created(), DiffStats: stats}
 	if len(applier.createdBlocks) > 0 {
 		result.CreatedBlocks = applier.createdBlocks
 	}
@@ -175,7 +175,7 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 // change set. Minimal CRDT diff iff the block ids round-trip from the GET
 // (they do on default reads, C4); diffStats make an accidental full rewrite
 // visible.
-func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.V2EditResult, error) {
+func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
@@ -188,7 +188,7 @@ func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, bod
 	}
 	var envelope docEnvelope
 	if err := json.Unmarshal(body, &envelope); err != nil {
-		return nil, v2model.V2ValidationFailed("decode document envelope: " + err.Error())
+		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
 	}
 	// the R9 referential layer guards PUT like create: kind gating, type and
 	// property keys with did-you-mean, items-on-collections
@@ -196,7 +196,7 @@ func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, bod
 		return nil, err
 	}
 
-	var result *v2model.V2EditResult
+	var result *v2model.EditResult
 	build := func(cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error) {
 		snapshot, res, err := s.putPipeline(ctx, spaceId, objectId, body, envelope, ifMatch, dryRun, cur)
 		if err != nil {
@@ -211,7 +211,7 @@ func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, bod
 // runEdit executes a PUT build: through the mutator's reset path (one locked
 // diff-apply) on a real run, through a plain read on a dry run (C9 — nothing
 // is committed, the would-be outcome rides the result).
-func (s *V2Service) runEdit(ctx context.Context, spaceId, objectId string, dryRun bool, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error), result **v2model.V2EditResult) (*v2model.V2EditResult, error) {
+func (s *V2Service) runEdit(ctx context.Context, spaceId, objectId string, dryRun bool, build func(apicore.ObjectRead) (*model.SmartBlockSnapshotBase, error), result **v2model.EditResult) (*v2model.EditResult, error) {
 	if dryRun {
 		cur, err := s.reader.ReadObject(ctx, spaceId, objectId)
 		if err != nil {
@@ -225,7 +225,7 @@ func (s *V2Service) runEdit(ctx context.Context, spaceId, objectId string, dryRu
 	}
 	heads, err := s.mutator.ResetObject(ctx, spaceId, objectId, build)
 	if err != nil {
-		var v2Err *v2model.V2Error
+		var v2Err *v2model.Error
 		if errors.As(err, &v2Err) {
 			return nil, v2Err
 		}
@@ -239,28 +239,28 @@ func (s *V2Service) runEdit(ctx context.Context, spaceId, objectId string, dryRu
 func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 	fields, err := parseEnvelope(body)
 	if err != nil {
-		return nil, v2model.V2ValidationFailed("the PATCH body must be a JSON object",
-			v2model.V2Issue{Message: err.Error(), Hint: `send {"ops": [...]} — GET /v2/schemas/ops/{op} documents each op`})
+		return nil, v2model.ValidationFailed("the PATCH body must be a JSON object",
+			v2model.Issue{Message: err.Error(), Hint: `send {"ops": [...]} — GET /v2/schemas/ops/{op} documents each op`})
 	}
 	for key := range fields {
 		if key != "ops" {
-			return nil, v2model.V2ValidationFailed("unknown field in PATCH body",
-				v2model.V2Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key), Hint: "the If-Match precondition is a header, not a body field (C7)"})
+			return nil, v2model.ValidationFailed("unknown field in PATCH body",
+				v2model.Issue{Path: "/" + key, Message: fmt.Sprintf("unknown key %q — the PATCH body carries only ops", key), Hint: "the If-Match precondition is a header, not a body field (C7)"})
 		}
 	}
 	var req v2PatchRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		return nil, v2model.V2ValidationFailed("decode ops: " + err.Error())
+		return nil, v2model.ValidationFailed("decode ops: " + err.Error())
 	}
 	if len(req.Ops) == 0 {
-		return nil, v2model.V2ValidationFailed("ops must not be empty",
-			v2model.V2Issue{Path: "/ops", Message: "give at least one op", Hint: "allowed ops: " + joinOpNames()})
+		return nil, v2model.ValidationFailed("ops must not be empty",
+			v2model.Issue{Path: "/ops", Message: "give at least one op", Hint: "allowed ops: " + joinOpNames()})
 	}
 	// bound the batch: every op re-renders the document view under the object
 	// lock, so an unbounded batch is a self-inflicted DoS (review A′2/B6).
 	if len(req.Ops) > v2MaxOpsPerPatch {
-		return nil, v2model.V2ValidationFailed("too many ops in one PATCH",
-			v2model.V2Issue{
+		return nil, v2model.ValidationFailed("too many ops in one PATCH",
+			v2model.Issue{
 				Path:    "/ops",
 				Message: fmt.Sprintf("%d ops exceeds the %d-op limit", len(req.Ops), v2MaxOpsPerPatch),
 				Hint:    "split the edit across several PATCH requests",
@@ -270,7 +270,7 @@ func parsePatchRequest(body []byte) ([]json.RawMessage, error) {
 }
 
 // putPipeline runs the PUT against one consistent read.
-func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, body []byte, envelope docEnvelope, ifMatch string, dryRun bool, cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, *v2model.V2EditResult, error) {
+func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, body []byte, envelope docEnvelope, ifMatch string, dryRun bool, cur apicore.ObjectRead) (*model.SmartBlockSnapshotBase, *v2model.EditResult, error) {
 	if err := checkEditPreconditions(cur.SbType, cur.Heads, ifMatch); err != nil {
 		return nil, nil, err
 	}
@@ -305,7 +305,7 @@ func (s *V2Service) putPipeline(ctx context.Context, spaceId, objectId string, b
 // document with the Phase-2 create-missing resolvers (select option names
 // create, everything else was validated), marshal the resulting snapshot
 // back to its canonical form, and diff it against the before-document.
-func (s *V2Service) finishEdit(ctx context.Context, spaceId string, targetDoc, beforeDoc []byte, dryRun bool) (*model.SmartBlockSnapshotBase, *v2model.V2EditResult, error) {
+func (s *V2Service) finishEdit(ctx context.Context, spaceId string, targetDoc, beforeDoc []byte, dryRun bool) (*model.SmartBlockSnapshotBase, *v2model.EditResult, error) {
 	resolvers := newCreatingResolvers(ctx, s.mw, spaceId, s.store.SpaceIndex(spaceId), dryRun)
 	sbType, snapshot, err := anyblockjson.Unmarshal(targetDoc, resolvers.Options())
 	if err != nil {
@@ -322,7 +322,7 @@ func (s *V2Service) finishEdit(ctx context.Context, spaceId string, targetDoc, b
 	if err != nil {
 		return nil, nil, err
 	}
-	return snapshot, &v2model.V2EditResult{Created: resolvers.created(), DiffStats: stats}, nil
+	return snapshot, &v2model.EditResult{Created: resolvers.created(), DiffStats: stats}, nil
 }
 
 // checkEditPreconditions applies the C7 If-Match check against the live
@@ -333,12 +333,12 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 	switch sbType {
 	case model.SmartBlockType_STRelation, model.SmartBlockType_STRelationOption,
 		model.SmartBlockType_FileObject, model.SmartBlockType_Participant:
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("this object is system-managed (%s) and cannot be edited through the object surface", sbType.String()),
-			v2model.V2Issue{Message: "properties, types and files have their own endpoints"})
+			v2model.Issue{Message: "properties, types and files have their own endpoints"})
 	}
 	if !EtagMatches(ifMatch, heads) {
-		return v2model.V2EtagMismatch(ComputeEtag(heads))
+		return v2model.EtagMismatch(ComputeEtag(heads))
 	}
 	return nil
 }
@@ -350,16 +350,16 @@ func checkEditPreconditions(sbType model.SmartBlockType, heads []string, ifMatch
 // replace is explicitly destructive) and the caller surfaces the warnings.
 func (s *V2Service) marshalForEdit(spaceId, objectId string, cur apicore.ObjectRead, guardWarnings bool) ([]byte, error) {
 	opts := storeresolver.New(s.store.SpaceIndex(spaceId)).Options()
-	var warnings []v2model.V2Issue
+	var warnings []v2model.Issue
 	opts.OnWarning = func(iss anyblockjson.Issue) {
-		warnings = append(warnings, v2model.V2Issue{Path: iss.Path, Message: iss.Message})
+		warnings = append(warnings, v2model.Issue{Path: iss.Path, Message: iss.Message})
 	}
 	doc, err := anyblockjson.Marshal(cur.SbType, cur.Snapshot, opts)
 	if err != nil {
 		return nil, fmt.Errorf("marshal object %s: %w", objectId, err)
 	}
 	if guardWarnings && len(warnings) > 0 {
-		return nil, v2model.NewV2Error(http.StatusUnprocessableEntity, v2model.V2CodeValidationFailed,
+		return nil, v2model.NewError(http.StatusUnprocessableEntity, v2model.CodeValidationFailed,
 			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it (C11); edit it in the app or replace it wholesale with PUT",
 			warnings...)
 	}
@@ -372,16 +372,16 @@ func (s *V2Service) marshalForEdit(spaceId, objectId string, cur apicore.ObjectR
 func normalizePutBody(body []byte, objectId string) ([]byte, error) {
 	fields, err := parseEnvelope(body)
 	if err != nil {
-		return nil, v2model.V2ValidationFailed("the PUT body must be a full AnyBlock document",
-			v2model.V2Issue{Message: err.Error()})
+		return nil, v2model.ValidationFailed("the PUT body must be a full AnyBlock document",
+			v2model.Issue{Message: err.Error()})
 	}
 	delete(fields, "etag") // C7: preconditions ride the If-Match header only
 	delete(fields, "warnings")
 	if raw, ok := fields["id"]; ok {
 		var id string
 		if err := json.Unmarshal(raw, &id); err == nil && id != "" && id != objectId {
-			return nil, v2model.V2ValidationFailed("the document id does not match the addressed object",
-				v2model.V2Issue{Path: "/id", Message: fmt.Sprintf("got %q, the URL addresses %q — omit id or repeat the addressed one", id, objectId)})
+			return nil, v2model.ValidationFailed("the document id does not match the addressed object",
+				v2model.Issue{Path: "/id", Message: fmt.Sprintf("got %q, the URL addresses %q — omit id or repeat the addressed one", id, objectId)})
 		}
 	}
 	if fields["id"], err = rawJSON(objectId); err != nil {

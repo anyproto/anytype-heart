@@ -192,11 +192,11 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 
 		body, err := io.ReadAll(io.LimitReader(c.Request.Body, MaxRequestBody+1))
 		if err != nil {
-			respondV2Error(c, v2model.V2ValidationFailed("read request body: "+err.Error()))
+			respondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
 			return
 		}
 		if len(body) > MaxRequestBody {
-			respondV2Error(c, v2model.V2RequestTooLarge(fmt.Sprintf("request body exceeds the %d-byte limit", MaxRequestBody)))
+			respondV2Error(c, v2model.RequestTooLarge(fmt.Sprintf("request body exceeds the %d-byte limit", MaxRequestBody)))
 			return
 		}
 		c.Request.Body = io.NopCloser(bytes.NewReader(body))
@@ -221,7 +221,7 @@ func ensureIdempotency(store *idempotencyStore) gin.HandlerFunc {
 		stored, replay, owner := store.begin(spaceId, key)
 		if replay {
 			if stored.bodyHash != bodyHash {
-				respondV2Error(c, v2model.NewV2Error(http.StatusConflict, v2model.V2CodeIdempotencyConflict,
+				respondV2Error(c, v2model.NewError(http.StatusConflict, v2model.CodeIdempotencyConflict,
 					"Idempotency-Key was already used with a different request body — use a fresh key per distinct request"))
 				return
 			}
@@ -270,8 +270,8 @@ func ensureDryRun() gin.HandlerFunc {
 		case "true":
 			c.Set(dryRunKey, true)
 		default:
-			respondV2Error(c, v2model.V2ValidationFailed("invalid dry_run value",
-				v2model.V2Issue{Path: "dry_run", Message: "allowed values: true, false"}))
+			respondV2Error(c, v2model.ValidationFailed("invalid dry_run value",
+				v2model.Issue{Path: "dry_run", Message: "allowed values: true, false"}))
 			return
 		}
 		c.Next()

@@ -40,9 +40,9 @@ func TestSearchObjectsV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		var got v2model.V2Error
+		var got v2model.Error
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
-		assert.Equal(t, v2model.V2CodeValidationFailed, got.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, got.Code)
 		require.Len(t, got.Issues, 1)
 		assert.Equal(t, "/limit", got.Issues[0].Path)
 		assert.Contains(t, got.Issues[0].Hint, "?offset=&limit= query params")
@@ -61,7 +61,7 @@ func TestSearchObjectsV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		var got v2model.V2Error
+		var got v2model.Error
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		require.Len(t, got.Issues, 1)
 		assert.Equal(t, "/sort", got.Issues[0].Path)
@@ -130,7 +130,7 @@ func TestSearchObjectsV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2ListResponse[v2model.V2ObjectRow]
+		var got v2model.ListResponse[v2model.ObjectRow]
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		require.Len(t, got.Warnings, 1)
 		assert.Equal(t, "/filter", got.Warnings[0].Path)
@@ -150,9 +150,9 @@ func TestSearchObjectsV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		var got v2model.V2Error
+		var got v2model.Error
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
-		assert.Equal(t, v2model.V2CodeAmbiguousInput, got.Code)
+		assert.Equal(t, v2model.CodeAmbiguousInput, got.Code)
 	})
 }
 
@@ -170,7 +170,7 @@ func TestGlobalSearchObjectsV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2ListResponse[v2model.V2ObjectRow]
+		var got v2model.ListResponse[v2model.ObjectRow]
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		assert.Equal(t, 0, got.Total)
 	})
@@ -189,7 +189,7 @@ func TestGlobalSearchObjectsV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2ListResponse[v2model.V2ObjectRow]
+		var got v2model.ListResponse[v2model.ObjectRow]
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		require.Len(t, got.Warnings, 1)
 		assert.Contains(t, got.Warnings[0].Message, "also matches objects with no lastModifiedDate")

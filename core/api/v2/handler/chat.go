@@ -51,8 +51,8 @@ func respondChatMutation(c *gin.Context, dryRun bool, createdStatus int, payload
 //	@Param			space_id	path		string										true	"Space id"
 //	@Param			offset		query		int											false	"Rows to skip"	default(0)
 //	@Param			limit		query		int											false	"Rows to return"	default(25)
-//	@Success		200			{object}	v2model.V2ListResponse[v2model.V2ChatRow]	"Chat rows"
-//	@Failure		404			{object}	v2model.V2Error							"Space not found"
+//	@Success		200			{object}	v2model.ListResponse[v2model.ChatRow]	"Chat rows"
+//	@Failure		404			{object}	v2model.Error							"Space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats [get]
 func ListChatsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -64,7 +64,7 @@ func ListChatsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -80,14 +80,14 @@ func ListChatsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			space_id		path		string							true	"Space id"
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
-//	@Param			request			body		v2model.V2CreateChatRequest	true	"The chat to create"
-//	@Success		201			{object}	v2model.V2ChatResult	"Created chat row"
-//	@Failure		400			{object}	v2model.V2Error		"Validation failure"
+//	@Param			request			body		v2model.CreateChatRequest	true	"The chat to create"
+//	@Success		201			{object}	v2model.ChatResult	"Created chat row"
+//	@Failure		400			{object}	v2model.Error		"Validation failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats [post]
 func CreateChatV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2CreateChatRequest
+		var req v2model.CreateChatRequest
 		if !decodeChatBody(c, &req, "the chat body takes name") {
 			return
 		}
@@ -113,26 +113,26 @@ func CreateChatV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			before		query		string								false	"Return messages before this order id (exclusive)"
 //	@Param			limit		query		int									false	"Messages to return"	default(25)
 //	@Param			reactions	query		string								false	"counts (default) | full"
-//	@Success		200			{object}	v2model.V2ChatMessagesResponse		"Messages + state + messageCount"
-//	@Failure		400			{object}	v2model.V2Error					"Not a chat, or invalid params"
-//	@Failure		404			{object}	v2model.V2Error					"Chat not found"
+//	@Success		200			{object}	v2model.ChatMessagesResponse		"Messages + state + messageCount"
+//	@Failure		400			{object}	v2model.Error					"Not a chat, or invalid params"
+//	@Failure		404			{object}	v2model.Error					"Chat not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages [get]
 func GetChatMessagesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Query("offset") != "" {
-			RespondV2Error(c, v2model.V2ValidationFailed("offset does not apply to the messages read",
-				v2model.V2Issue{Path: "offset", Message: "messages are cursor-paged", Hint: "page with ?after= / ?before= order ids from a previous read"}))
+			RespondV2Error(c, v2model.ValidationFailed("offset does not apply to the messages read",
+				v2model.Issue{Path: "offset", Message: "messages are cursor-paged", Hint: "page with ?after= / ?before= order ids from a previous read"}))
 			return
 		}
 		fullReactions := false
 		switch c.Query("reactions") {
-		case "", v2model.V2ReactionsCounts:
-		case v2model.V2ReactionsFull:
+		case "", v2model.ReactionsCounts:
+		case v2model.ReactionsFull:
 			fullReactions = true
 		default:
-			RespondV2Error(c, v2model.V2ValidationFailed("invalid reactions value",
-				v2model.V2Issue{Path: "reactions", Message: fmt.Sprintf("unknown value %q", c.Query("reactions")), Hint: "allowed: counts, full"}))
+			RespondV2Error(c, v2model.ValidationFailed("invalid reactions value",
+				v2model.Issue{Path: "reactions", Message: fmt.Sprintf("unknown value %q", c.Query("reactions")), Hint: "allowed: counts, full"}))
 			return
 		}
 		result, err := s.GetChatMessages(c.Request.Context(), c.Param("space_id"), c.Param("chat_id"), v2service.V2ChatMessagesQuery{
@@ -161,15 +161,15 @@ func GetChatMessagesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			chat_id			path		string							true	"Chat object id"
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
-//	@Param			request			body		v2model.V2AddChatMessageRequest	true	"The message to send"
-//	@Success		201			{object}	v2model.V2ChatMessageResult	"Created message id"
-//	@Failure		400			{object}	v2model.V2Error				"Validation failure"
-//	@Failure		404			{object}	v2model.V2Error				"Chat not found"
+//	@Param			request			body		v2model.AddChatMessageRequest	true	"The message to send"
+//	@Success		201			{object}	v2model.ChatMessageResult	"Created message id"
+//	@Failure		400			{object}	v2model.Error				"Validation failure"
+//	@Failure		404			{object}	v2model.Error				"Chat not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages [post]
 func AddChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2AddChatMessageRequest
+		var req v2model.AddChatMessageRequest
 		if !decodeChatBody(c, &req, "the message body takes text, replyTo, attachments") {
 			return
 		}
@@ -195,15 +195,15 @@ func AddChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			message_id		path		string							true	"Message id"
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
-//	@Param			request			body		v2model.V2EditChatMessageRequest	true	"The replacement text"
-//	@Success		200			{object}	v2model.V2ChatMessageResult	"Edited message id"
-//	@Failure		400			{object}	v2model.V2Error				"Validation failure"
-//	@Failure		404			{object}	v2model.V2Error				"Chat or message not found"
+//	@Param			request			body		v2model.EditChatMessageRequest	true	"The replacement text"
+//	@Success		200			{object}	v2model.ChatMessageResult	"Edited message id"
+//	@Failure		400			{object}	v2model.Error				"Validation failure"
+//	@Failure		404			{object}	v2model.Error				"Chat or message not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [patch]
 func EditChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2EditChatMessageRequest
+		var req v2model.EditChatMessageRequest
 		if !decodeChatBody(c, &req, "the edit body takes text") {
 			return
 		}
@@ -228,8 +228,8 @@ func EditChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			message_id		path		string							true	"Message id"
 //	@Param			dry_run			query		bool							false	"Report the would-be deletion (incl. file-GC warnings) without committing"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
-//	@Success		200			{object}	v2model.V2ChatMessageResult	"Deleted message id"
-//	@Failure		404			{object}	v2model.V2Error				"Chat or message not found"
+//	@Success		200			{object}	v2model.ChatMessageResult	"Deleted message id"
+//	@Failure		404			{object}	v2model.Error				"Chat or message not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [delete]
 func DeleteChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -256,15 +256,15 @@ func DeleteChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			message_id		path		string							true	"Message id"
 //	@Param			dry_run			query		bool							false	"Report the would-be outcome without committing"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
-//	@Param			request			body		v2model.V2ChatReactionRequest	true	"The emoji to toggle"
-//	@Success		200			{object}	v2model.V2ChatReactionResult	"Toggle outcome"
-//	@Failure		400			{object}	v2model.V2Error				"Validation failure"
-//	@Failure		404			{object}	v2model.V2Error				"Chat or message not found"
+//	@Param			request			body		v2model.ChatReactionRequest	true	"The emoji to toggle"
+//	@Success		200			{object}	v2model.ChatReactionResult	"Toggle outcome"
+//	@Failure		400			{object}	v2model.Error				"Validation failure"
+//	@Failure		404			{object}	v2model.Error				"Chat or message not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions [post]
 func ToggleChatReactionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2ChatReactionRequest
+		var req v2model.ChatReactionRequest
 		if !decodeChatBody(c, &req, "the reaction body takes emoji") {
 			return
 		}
@@ -289,15 +289,15 @@ func ToggleChatReactionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			chat_id			path		string						true	"Chat object id"
 //	@Param			dry_run			query		bool						false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
-//	@Param			request			body		v2model.V2ChatReadRequest	true	"The watermark move"
-//	@Success		200			{object}	v2model.V2ChatReadResult	"Watermark moved"
-//	@Failure		400			{object}	v2model.V2Error			"Validation failure"
-//	@Failure		404			{object}	v2model.V2Error			"Chat not found"
+//	@Param			request			body		v2model.ChatReadRequest	true	"The watermark move"
+//	@Success		200			{object}	v2model.ChatReadResult	"Watermark moved"
+//	@Failure		400			{object}	v2model.Error			"Validation failure"
+//	@Failure		404			{object}	v2model.Error			"Chat not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/read [post]
 func ReadChatV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2ChatReadRequest
+		var req v2model.ChatReadRequest
 		if !decodeChatBody(c, &req, "the read body takes upTo, lastStateId, scope") {
 			return
 		}

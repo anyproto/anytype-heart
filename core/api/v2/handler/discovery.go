@@ -17,7 +17,7 @@ import (
 //	@Id				v2_list_spaces
 //	@Tags			V2
 //	@Produce		json
-//	@Success		200	{object}	v2model.V2ListResponse[v2model.V2SpaceRow]	"Minimal space rows"
+//	@Success		200	{object}	v2model.ListResponse[v2model.SpaceRow]	"Minimal space rows"
 //	@Security		bearerauth
 //	@Router			/v2/spaces [get]
 func ListSpacesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -29,7 +29,7 @@ func ListSpacesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -41,7 +41,7 @@ func ListSpacesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags		V2
 //	@Produce	json
 //	@Param		space_id	path		string											true	"Space id"
-//	@Success	200			{object}	v2model.V2ListResponse[v2model.V2MemberRow]	"Minimal member rows"
+//	@Success	200			{object}	v2model.ListResponse[v2model.MemberRow]	"Minimal member rows"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/members [get]
 func ListMembersV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -53,7 +53,7 @@ func ListMembersV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -65,8 +65,8 @@ func ListMembersV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags		V2
 //	@Produce	json
 //	@Param		space_id	path		string					true	"Space id"
-//	@Success	200			{object}	v2model.V2MemberRow	"The caller's member row"
-//	@Failure	404			{object}	v2model.V2Error		"Space not found, or no account identity"
+//	@Success	200			{object}	v2model.MemberRow	"The caller's member row"
+//	@Failure	404			{object}	v2model.Error		"Space not found, or no account identity"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/members/me [get]
 func GetMemberMeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -87,7 +87,7 @@ func GetMemberMeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags		V2
 //	@Produce	json
 //	@Param		space_id	path		string										true	"Space id"
-//	@Success	200			{object}	v2model.V2ListResponse[v2model.V2TypeRow]	"Type rows"
+//	@Success	200			{object}	v2model.ListResponse[v2model.TypeRow]	"Type rows"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/types [get]
 func ListTypesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -99,7 +99,7 @@ func ListTypesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -113,7 +113,7 @@ func ListTypesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param		space_id	path		string				true	"Space id"
 //	@Param		type		path		string				true	"Type key"
 //	@Success	200			{object}	map[string]any		"The kind:objectType AnyBlock document + etag"
-//	@Failure	404			{object}	v2model.V2Error	"Type not found"
+//	@Failure	404			{object}	v2model.Error	"Type not found"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/types/{type} [get]
 func GetTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -136,7 +136,7 @@ func GetTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce	json
 //	@Param		space_id	path		string				true	"Space id"
 //	@Param		type		path		string				true	"Type key"
-//	@Failure	501			{object}	v2model.V2Error	"Not implemented yet"
+//	@Failure	501			{object}	v2model.Error	"Not implemented yet"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/types/{type}/schema [get]
 func GetTypeSchemaV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -152,7 +152,7 @@ func GetTypeSchemaV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags		V2
 //	@Produce	json
 //	@Param		space_id	path		string												true	"Space id"
-//	@Success	200			{object}	v2model.V2ListResponse[v2model.V2PropertyRow]		"Property rows"
+//	@Success	200			{object}	v2model.ListResponse[v2model.PropertyRow]		"Property rows"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/properties [get]
 func ListPropertiesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -164,7 +164,7 @@ func ListPropertiesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -178,8 +178,8 @@ func ListPropertiesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param		space_id	path		string											true	"Space id"
 //	@Param		key			path		string											true	"Property key"
 //	@Param		prefix		query		string											false	"Case-insensitive name prefix filter"
-//	@Success	200			{object}	v2model.V2ListResponse[v2model.V2OptionRow]	"Option rows"
-//	@Failure	404			{object}	v2model.V2Error								"Property not found"
+//	@Success	200			{object}	v2model.ListResponse[v2model.OptionRow]	"Option rows"
+//	@Failure	404			{object}	v2model.Error								"Property not found"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/properties/{key}/options [get]
 func ListPropertyOptionsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -191,7 +191,7 @@ func ListPropertyOptionsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
 			"narrow with prefix= or request the next offset"))
 	}
 }

@@ -32,7 +32,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx.expectEtagRead("newSet")
 
 		// when
-		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name:    "Open chores",
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"severity","condition":"in","value":["High"]}]`),
@@ -69,7 +69,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name:    "Broken",
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"sevirity","condition":"equal","value":true}]`),
@@ -77,7 +77,7 @@ func TestV2CreateSet(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/filters/0/property", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "severity", "the error lists the type's actual keys")
@@ -90,7 +90,7 @@ func TestV2CreateSet(t *testing.T) {
 
 		// when
 		_, err := fx.CreateSet(context.Background(), testSpaceId,
-			v2model.V2CreateSetRequest{Name: "X", Type: "chores"}, false)
+			v2model.CreateSetRequest{Name: "X", Type: "chores"}, false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -106,7 +106,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name:   "Open work",
 			Type:   "chore",
 			Filter: `type IN ("chore") AND severity IS EMPTY`,
@@ -124,7 +124,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name:    "Open work",
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"type","condition":"in","value":["chore"]}]`),
@@ -142,7 +142,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "X", Type: "chore",
 			Filter:  `done = false`,
 			Filters: json.RawMessage(`[]`),
@@ -150,7 +150,7 @@ func TestV2CreateSet(t *testing.T) {
 
 		// then — note: `[]` is non-empty as raw JSON
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeAmbiguousInput, apiErr.Code)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "not both")
 	})
 
@@ -161,7 +161,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx.expectEtagRead("newSet")
 
 		// when
-		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name:   "High chores",
 			Type:   "chore",
 			Filter: `severity IN ("High") AND name CONTAINS "fix"`,
@@ -191,14 +191,14 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when — "sevirity" is a typo of the type's "severity"
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "X", Type: "chore", Filter: `sevirity IN ("High")`,
 		}, false)
 
 		// then
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/filter", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, `parse error at offset 0 near "sevirity"`)
@@ -213,7 +213,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx.expectEtagRead("newSet")
 
 		// when — lastModifiedDate is in no type's recommended lists
-		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "Fresh chores", Type: "chore",
 			Filter: `lastModifiedDate > daysAgo(7)`,
 		}, false)
@@ -232,7 +232,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		_, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "X", Type: "chore",
 			Views:   json.RawMessage(`[{"name":"V"}]`),
 			Filters: json.RawMessage(`[{"property":"severity","condition":"notEmpty"}]`),
@@ -240,7 +240,7 @@ func TestV2CreateSet(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeAmbiguousInput, apiErr.Code)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 	})
 
 	t.Run("dry run validates without creating", func(t *testing.T) {
@@ -248,7 +248,7 @@ func TestV2CreateSet(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.V2CreateSetRequest{
+		result, err := fx.CreateSet(context.Background(), testSpaceId, v2model.CreateSetRequest{
 			Name: "Open chores", Type: "chore",
 			Filters: json.RawMessage(`[{"property":"severity","condition":"notEmpty"}]`),
 		}, true)
@@ -274,7 +274,7 @@ func TestV2CreateCollection(t *testing.T) {
 
 		// when
 		result, err := fx.CreateCollection(context.Background(), testSpaceId,
-			v2model.V2CreateCollectionRequest{Name: "Reading list", Items: []string{"member1"}}, false)
+			v2model.CreateCollectionRequest{Name: "Reading list", Items: []string{"member1"}}, false)
 
 		// then
 		require.NoError(t, err)
@@ -294,7 +294,7 @@ func TestV2CreateCollection(t *testing.T) {
 
 		// when
 		_, err := fx.CreateCollection(context.Background(), testSpaceId,
-			v2model.V2CreateCollectionRequest{Name: "X", Items: []string{"ghost"}}, false)
+			v2model.CreateCollectionRequest{Name: "X", Items: []string{"ghost"}}, false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -307,10 +307,10 @@ func TestV2CreateCollection(t *testing.T) {
 		fx := newV2Fixture(t)
 
 		// when
-		_, err := fx.CreateCollection(context.Background(), testSpaceId, v2model.V2CreateCollectionRequest{}, false)
+		_, err := fx.CreateCollection(context.Background(), testSpaceId, v2model.CreateCollectionRequest{}, false)
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 	})
 }

@@ -26,8 +26,8 @@ import (
 //	@Param			ids			query		string				false	"compact (default) or full — object ids only"
 //	@Param			format		query		string				false	"anyblock (default) or md"
 //	@Success		200			{object}	map[string]any		"The flat AnyBlock document + etag"
-//	@Failure		400			{object}	v2model.V2Error	"Illegal parameter combination (ambiguous_input)"
-//	@Failure		404			{object}	v2model.V2Error	"Object or space not found"
+//	@Failure		400			{object}	v2model.Error	"Illegal parameter combination (ambiguous_input)"
+//	@Failure		404			{object}	v2model.Error	"Object or space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects/{object_id} [get]
 func GetObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -60,7 +60,7 @@ func GetObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			fields		query		string											false	"Comma-separated property keys to include per row"
 //	@Param			offset		query		int												false	"Items to skip"	default(0)
 //	@Param			limit		query		int												false	"Items to return"	default(25)
-//	@Success		200			{object}	v2model.V2ListResponse[v2model.V2ObjectRow]	"Minimal object rows"
+//	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects [get]
 func ListObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -82,7 +82,7 @@ func ListObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(rows, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(rows, total, offset, limit, hasMore,
 			"narrow with search filters or request the next offset"))
 	}
 }

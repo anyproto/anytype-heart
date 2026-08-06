@@ -30,14 +30,14 @@ const v2DetailKeyId = "id"
 // CreateType implements POST /v2/spaces/{spaceId}/types: a kind:"objectType"
 // AnyBlock document; typeProperties creates missing properties atomically
 // with the type (SPEC §2a create-missing).
-func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	fields, err := parseEnvelope(body)
 	if err != nil {
-		return nil, v2model.V2ValidationFailed("request body is not a JSON object",
-			v2model.V2Issue{Message: err.Error()})
+		return nil, v2model.ValidationFailed("request body is not a JSON object",
+			v2model.Issue{Message: err.Error()})
 	}
 
 	// the endpoint IS the kind: inject/enforce kind objectType and default
@@ -45,8 +45,8 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 	if raw, ok := fields["kind"]; ok {
 		var kind string
 		if err := json.Unmarshal(raw, &kind); err != nil || kind != "objectType" {
-			return nil, v2model.V2ValidationFailed("not a type document",
-				v2model.V2Issue{Path: "/kind", Message: "POST types accepts kind \"objectType\" documents only"})
+			return nil, v2model.ValidationFailed("not a type document",
+				v2model.Issue{Path: "/kind", Message: "POST types accepts kind \"objectType\" documents only"})
 		}
 	} else if fields["kind"], err = rawJSON("objectType"); err != nil {
 		return nil, err
@@ -59,8 +59,8 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 	if _, ok := fields["blocks"]; ok {
 		// deferred: a type's dataview block on create (the editor generates
 		// default views at first open — SPEC §2a); explicit beats silent loss
-		return nil, v2model.V2ValidationFailed("type blocks are not supported on create",
-			v2model.V2Issue{Path: "/blocks", Message: "omit blocks — the editor generates the type's default views", Hint: "customize views in the app after creating the type"})
+		return nil, v2model.ValidationFailed("type blocks are not supported on create",
+			v2model.Issue{Path: "/blocks", Message: "omit blocks — the editor generates the type's default views", Hint: "customize views in the app after creating the type"})
 	}
 	if body, err = encodeEnvelope(fields); err != nil {
 		return nil, err
@@ -71,16 +71,16 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 
 	var envelope docEnvelope
 	if err := json.Unmarshal(body, &envelope); err != nil {
-		return nil, v2model.V2ValidationFailed("decode document envelope: " + err.Error())
+		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
 	}
 	if envelope.Key != "" {
 		if bundle.HasObjectTypeByKey(domain.TypeKey(envelope.Key)) {
-			return nil, v2model.V2ValidationFailed("type key is reserved",
-				v2model.V2Issue{Path: "/key", Message: fmt.Sprintf("%q is a bundled type — it already exists", envelope.Key)})
+			return nil, v2model.ValidationFailed("type key is reserved",
+				v2model.Issue{Path: "/key", Message: fmt.Sprintf("%q is a bundled type — it already exists", envelope.Key)})
 		}
 		if _, exists := s.typeIdInSpace(spaceId, envelope.Key); exists {
-			return nil, v2model.V2ValidationFailed("type key already exists",
-				v2model.V2Issue{Path: "/key", Message: fmt.Sprintf("type %q already exists in space %q", envelope.Key, spaceId), Hint: fmt.Sprintf("update it with PATCH /v2/spaces/%s/types/%s", spaceId, envelope.Key)})
+			return nil, v2model.ValidationFailed("type key already exists",
+				v2model.Issue{Path: "/key", Message: fmt.Sprintf("type %q already exists in space %q", envelope.Key, spaceId), Hint: fmt.Sprintf("update it with PATCH /v2/spaces/%s/types/%s", spaceId, envelope.Key)})
 		}
 	}
 
@@ -95,7 +95,7 @@ func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte,
 		return nil, fmt.Errorf("resolve type properties: %w", err)
 	}
 
-	result := &v2model.V2CreateResult{Key: envelope.Key, Created: resolvers.created()}
+	result := &v2model.CreateResult{Key: envelope.Key, Created: resolvers.created()}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -177,8 +177,8 @@ func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, key string)
 	if key != "" {
 		uk, err := domain.NewUniqueKey(coresb.SmartBlockTypeObjectType, key)
 		if err != nil {
-			return nil, v2model.V2ValidationFailed("invalid type key",
-				v2model.V2Issue{Path: "/key", Message: err.Error()})
+			return nil, v2model.ValidationFailed("invalid type key",
+				v2model.Issue{Path: "/key", Message: err.Error()})
 		}
 		details.Fields[bundle.RelationKeyUniqueKey.String()] = pbtypes.String(uk.Marshal())
 	}
@@ -186,8 +186,8 @@ func typeDetailsFromSnapshot(snapshot *model.SmartBlockSnapshotBase, key string)
 		if name := v.GetStringValue(); name != "" {
 			layout, ok := model.ObjectTypeLayout_value[name]
 			if !ok {
-				return nil, v2model.V2ValidationFailed("unknown layout name",
-					v2model.V2Issue{Path: "/properties/recommendedLayout", Message: fmt.Sprintf("unknown layout %q", name), Hint: "common layouts: basic, todo, note, profile"})
+				return nil, v2model.ValidationFailed("unknown layout name",
+					v2model.Issue{Path: "/properties/recommendedLayout", Message: fmt.Sprintf("unknown layout %q", name), Hint: "common layouts: basic, todo, note, profile"})
 			}
 			details.Fields[bundle.RelationKeyRecommendedLayout.String()] = pbtypes.Int64(int64(layout))
 		}
@@ -212,28 +212,28 @@ type v2TypePatch struct {
 }
 
 // UpdateType implements PATCH /v2/spaces/{spaceId}/types/{type}.
-func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, body []byte, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
 	if !ok {
-		return nil, v2model.V2NotFound(fmt.Sprintf("type %q not found in space %q — list available keys with GET /v2/spaces/%s/types", typeKey, spaceId, spaceId))
+		return nil, v2model.NotFound(fmt.Sprintf("type %q not found in space %q — list available keys with GET /v2/spaces/%s/types", typeKey, spaceId, spaceId))
 	}
 
 	var patch v2TypePatch
 	decoder := json.NewDecoder(bytes.NewReader(body))
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&patch); err != nil {
-		return nil, v2model.V2ValidationFailed("invalid type patch",
-			v2model.V2Issue{Message: err.Error(), Hint: "the patch accepts properties and typeProperties"})
+		return nil, v2model.ValidationFailed("invalid type patch",
+			v2model.Issue{Message: err.Error(), Hint: "the patch accepts properties and typeProperties"})
 	}
 
 	var detailUpdates []*model.Detail
 	for _, key := range sortedKeys(patch.Properties) {
 		if !updatableTypeDetailKeys[key] {
-			return nil, v2model.V2ValidationFailed("property not updatable on a type",
-				v2model.V2Issue{Path: "/properties/" + key, Message: fmt.Sprintf("cannot update %q", key), Hint: "updatable: name, description, iconEmoji, recommendedLayout"})
+			return nil, v2model.ValidationFailed("property not updatable on a type",
+				v2model.Issue{Path: "/properties/" + key, Message: fmt.Sprintf("cannot update %q", key), Hint: "updatable: name, description, iconEmoji, recommendedLayout"})
 		}
 		value, err := typeDetailValue(key, patch.Properties[key])
 		if err != nil {
@@ -253,7 +253,7 @@ func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, bod
 		}
 	}
 
-	result := &v2model.V2CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created()}
+	result := &v2model.CreateResult{Id: typeId, Key: typeKey, Created: resolvers.created()}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -277,8 +277,8 @@ func typeDetailValue(key string, raw json.RawMessage) (*types.Value, error) {
 		if err := json.Unmarshal(raw, &name); err == nil {
 			layout, ok := model.ObjectTypeLayout_value[name]
 			if !ok {
-				return nil, v2model.V2ValidationFailed("unknown layout name",
-					v2model.V2Issue{Path: "/properties/recommendedLayout", Message: fmt.Sprintf("unknown layout %q", name), Hint: "common layouts: basic, todo, note, profile"})
+				return nil, v2model.ValidationFailed("unknown layout name",
+					v2model.Issue{Path: "/properties/recommendedLayout", Message: fmt.Sprintf("unknown layout %q", name), Hint: "common layouts: basic, todo, note, profile"})
 			}
 			return pbtypes.Int64(int64(layout)), nil
 		}
@@ -286,28 +286,28 @@ func typeDetailValue(key string, raw json.RawMessage) (*types.Value, error) {
 		if err := json.Unmarshal(raw, &number); err == nil {
 			return pbtypes.Int64(number), nil
 		}
-		return nil, v2model.V2ValidationFailed("invalid recommendedLayout",
-			v2model.V2Issue{Path: "/properties/recommendedLayout", Message: "expected a layout name or number"})
+		return nil, v2model.ValidationFailed("invalid recommendedLayout",
+			v2model.Issue{Path: "/properties/recommendedLayout", Message: "expected a layout name or number"})
 	}
 	var str string
 	if err := json.Unmarshal(raw, &str); err != nil {
-		return nil, v2model.V2ValidationFailed("invalid property value",
-			v2model.V2Issue{Path: "/properties/" + key, Message: "expected a string"})
+		return nil, v2model.ValidationFailed("invalid property value",
+			v2model.Issue{Path: "/properties/" + key, Message: "expected a string"})
 	}
 	return pbtypes.String(str), nil
 }
 
 // DeleteType implements DELETE /v2/spaces/{spaceId}/types/{type} (archive —
 // v1 parity; hard delete is deferred with ?permanent).
-func (s *V2Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
 	if !ok {
-		return nil, v2model.V2NotFound(fmt.Sprintf("type %q not found in space %q", typeKey, spaceId))
+		return nil, v2model.NotFound(fmt.Sprintf("type %q not found in space %q", typeKey, spaceId))
 	}
-	result := &v2model.V2CreateResult{Id: typeId, Key: typeKey}
+	result := &v2model.CreateResult{Id: typeId, Key: typeKey}
 	if dryRun {
 		result.DryRun = true
 		return result, nil
@@ -320,39 +320,39 @@ func (s *V2Service) DeleteType(ctx context.Context, spaceId, typeKey string, dry
 }
 
 // CreateProperty implements POST /v2/spaces/{spaceId}/properties.
-func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2model.V2CreatePropertyRequest, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2model.CreatePropertyRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
-		return nil, v2model.V2ValidationFailed("name is required",
-			v2model.V2Issue{Path: "/name", Message: "a property needs a display name"})
+		return nil, v2model.ValidationFailed("name is required",
+			v2model.Issue{Path: "/name", Message: "a property needs a display name"})
 	}
 	format, ok := anyblockjson.FormatByName(req.Format)
 	if !ok {
-		return nil, v2model.V2ValidationFailed("unknown property format",
-			v2model.V2Issue{Path: "/format", Message: fmt.Sprintf("unknown format %q", req.Format), Hint: "allowed: text, number, select, multiSelect, date, files, checkbox, url, email, phone, objects"})
+		return nil, v2model.ValidationFailed("unknown property format",
+			v2model.Issue{Path: "/format", Message: fmt.Sprintf("unknown format %q", req.Format), Hint: "allowed: text, number, select, multiSelect, date, files, checkbox, url, email, phone, objects"})
 	}
 	isSelect := format == model.RelationFormat_status || format == model.RelationFormat_tag
 	if len(req.Options) > 0 && !isSelect {
-		return nil, v2model.V2ValidationFailed("options need a select format",
-			v2model.V2Issue{Path: "/options", Message: fmt.Sprintf("options apply to select and multiSelect properties, not %q", req.Format)})
+		return nil, v2model.ValidationFailed("options need a select format",
+			v2model.Issue{Path: "/options", Message: fmt.Sprintf("options apply to select and multiSelect properties, not %q", req.Format)})
 	}
 	if req.Key != "" {
 		if s.propertyKeyExists(spaceId, req.Key) {
-			return nil, v2model.V2ValidationFailed("property key already exists",
-				v2model.V2Issue{Path: "/key", Message: fmt.Sprintf("property %q already exists", req.Key), Hint: fmt.Sprintf("update it with PATCH /v2/spaces/%s/properties/%s", spaceId, req.Key)})
+			return nil, v2model.ValidationFailed("property key already exists",
+				v2model.Issue{Path: "/key", Message: fmt.Sprintf("property %q already exists", req.Key), Hint: fmt.Sprintf("update it with PATCH /v2/spaces/%s/properties/%s", spaceId, req.Key)})
 		}
 	}
 
-	result := &v2model.V2CreateResult{Key: req.Key}
+	result := &v2model.CreateResult{Key: req.Key}
 	if dryRun {
 		result.DryRun = true
-		result.Created = &v2model.V2SideEffects{
-			Properties: []v2model.V2PropertyRow{{Key: req.Key, Name: req.Name, Format: req.Format}},
+		result.Created = &v2model.SideEffects{
+			Properties: []v2model.PropertyRow{{Key: req.Key, Name: req.Name, Format: req.Format}},
 		}
 		for _, opt := range req.Options {
-			result.Created.Options = append(result.Created.Options, v2model.V2CreatedOption{Property: req.Key, Name: opt.Name})
+			result.Created.Options = append(result.Created.Options, v2model.CreatedOption{Property: req.Key, Name: opt.Name})
 		}
 		return result, nil
 	}
@@ -386,31 +386,31 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 			return nil, fmt.Errorf("create option %q of property %s: %s", opt.Name, resp.Key, optResp.Error.Description)
 		}
 		if result.Created == nil {
-			result.Created = &v2model.V2SideEffects{}
+			result.Created = &v2model.SideEffects{}
 		}
-		result.Created.Options = append(result.Created.Options, v2model.V2CreatedOption{Property: resp.Key, Name: opt.Name})
+		result.Created.Options = append(result.Created.Options, v2model.CreatedOption{Property: resp.Key, Name: opt.Name})
 	}
 	return result, nil
 }
 
 // UpdateProperty implements PATCH /v2/spaces/{spaceId}/properties/{key}.
-func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey string, req v2model.V2UpdatePropertyRequest, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey string, req v2model.UpdatePropertyRequest, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	rel, err := s.store.SpaceIndex(spaceId).GetRelationByKey(propertyKey)
 	if err != nil || rel == nil {
-		return nil, v2model.V2NotFound(fmt.Sprintf("property %q not found in space %q — list available keys with GET /v2/spaces/%s/properties", propertyKey, spaceId, spaceId))
+		return nil, v2model.NotFound(fmt.Sprintf("property %q not found in space %q — list available keys with GET /v2/spaces/%s/properties", propertyKey, spaceId, spaceId))
 	}
 	if bundled, err := bundle.PickRelation(domain.RelationKey(propertyKey)); err == nil && bundled.ReadOnly {
-		return nil, v2model.V2ValidationFailed("property is read-only",
-			v2model.V2Issue{Path: "/name", Message: fmt.Sprintf("bundled property %q cannot be updated", propertyKey)})
+		return nil, v2model.ValidationFailed("property is read-only",
+			v2model.Issue{Path: "/name", Message: fmt.Sprintf("bundled property %q cannot be updated", propertyKey)})
 	}
 
-	result := &v2model.V2CreateResult{Id: rel.Id, Key: propertyKey}
+	result := &v2model.CreateResult{Id: rel.Id, Key: propertyKey}
 	if req.Name == nil {
-		return nil, v2model.V2ValidationFailed("nothing to update",
-			v2model.V2Issue{Message: "the patch accepts name"})
+		return nil, v2model.ValidationFailed("nothing to update",
+			v2model.Issue{Message: "the patch accepts name"})
 	}
 	if dryRun {
 		result.DryRun = true
@@ -428,15 +428,15 @@ func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey str
 
 // DeleteProperty implements DELETE /v2/spaces/{spaceId}/properties/{key}
 // (archive).
-func (s *V2Service) DeleteProperty(ctx context.Context, spaceId, propertyKey string, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) DeleteProperty(ctx context.Context, spaceId, propertyKey string, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	rel, err := s.store.SpaceIndex(spaceId).GetRelationByKey(propertyKey)
 	if err != nil || rel == nil {
-		return nil, v2model.V2NotFound(fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId))
+		return nil, v2model.NotFound(fmt.Sprintf("property %q not found in space %q", propertyKey, spaceId))
 	}
-	result := &v2model.V2CreateResult{Id: rel.Id, Key: propertyKey}
+	result := &v2model.CreateResult{Id: rel.Id, Key: propertyKey}
 	if dryRun {
 		result.DryRun = true
 		return result, nil

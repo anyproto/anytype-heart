@@ -80,9 +80,9 @@ func TestIdempotencyIdentity(t *testing.T) {
 		// request and must not replay (or 409) under the first one's key
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false,
-			v2model.V2ObjectRow{Id: "bafyobjA", Name: "Q3 report", Type: "task"}))
+			v2model.ObjectRow{Id: "bafyobjA", Name: "Q3 report", Type: "task"}))
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false,
-			v2model.V2ObjectRow{Id: "bafyobjB", Name: "Groceries", Type: "task"}))
+			v2model.ObjectRow{Id: "bafyobjB", Name: "Groceries", Type: "task"}))
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobjA", 200, editOKBody)
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobjB", 200, editOKBody)
 

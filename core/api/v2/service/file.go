@@ -18,16 +18,16 @@ import (
 
 // UploadFile uploads one file into the space, from a staged local path
 // (multipart upload) or a URL — exactly one must be set.
-func (s *V2Service) UploadFile(ctx context.Context, spaceId, localPath, url string, dryRun bool) (*v2model.V2FileUploadResult, error) {
+func (s *V2Service) UploadFile(ctx context.Context, spaceId, localPath, url string, dryRun bool) (*v2model.FileUploadResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	if (localPath == "") == (url == "") {
-		return nil, v2model.V2ValidationFailed("provide a file or a url",
-			v2model.V2Issue{Message: "upload multipart/form-data with a file field, or JSON {\"url\": …}"})
+		return nil, v2model.ValidationFailed("provide a file or a url",
+			v2model.Issue{Message: "upload multipart/form-data with a file field, or JSON {\"url\": …}"})
 	}
 	if dryRun {
-		return &v2model.V2FileUploadResult{DryRun: true}, nil
+		return &v2model.FileUploadResult{DryRun: true}, nil
 	}
 
 	resp := s.mw.FileUpload(ctx, &pb.RpcFileUploadRequest{
@@ -41,7 +41,7 @@ func (s *V2Service) UploadFile(ctx context.Context, spaceId, localPath, url stri
 		return nil, fmt.Errorf("upload file to space %s: %s", spaceId, resp.Error.Description)
 	}
 	details := domain.NewDetailsFromProto(resp.Details)
-	return &v2model.V2FileUploadResult{
+	return &v2model.FileUploadResult{
 		Id:       resp.ObjectId,
 		Name:     details.GetString(bundle.RelationKeyName),
 		MimeType: details.GetString(bundle.RelationKeyFileMimeType),

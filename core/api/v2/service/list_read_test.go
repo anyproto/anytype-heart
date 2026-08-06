@@ -155,7 +155,7 @@ func TestV2GetSetObjects(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeNotFound, apiErr.Code)
+		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
 		assert.Contains(t, apiErr.Message, `view "ghost" not found`)
 		assert.Contains(t, apiErr.Message, "v1, v2")
 	})
@@ -170,7 +170,7 @@ func TestV2GetSetObjects(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		assert.Contains(t, apiErr.Message, `object "col1" is a collection, not a set`)
 		assert.Contains(t, apiErr.Message, "GET /v2/spaces/space1/collections/col1/objects")
 	})

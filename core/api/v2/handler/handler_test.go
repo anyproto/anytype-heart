@@ -57,7 +57,7 @@ func TestValidateV2Handler(t *testing.T) {
 		// given
 		fx := newV2HandlerFixture(t)
 		fx.router.POST("/v2/validate", ValidateV2Handler(fx.svc))
-		want := v2model.V2ValidateResponse{Issues: []v2model.V2Issue{}, Warnings: []v2model.V2Issue{}}
+		want := v2model.ValidateResponse{Issues: []v2model.Issue{}, Warnings: []v2model.Issue{}}
 
 		// when
 		req := httptest.NewRequest(http.MethodPost, "/v2/validate",
@@ -67,7 +67,7 @@ func TestValidateV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2ValidateResponse
+		var got v2model.ValidateResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		assert.Equal(t, want, got)
 	})
@@ -84,7 +84,7 @@ func TestValidateV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2ValidateResponse
+		var got v2model.ValidateResponse
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		assert.NotEmpty(t, got.Issues)
 	})
@@ -103,9 +103,9 @@ func TestGetObjectV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		var got v2model.V2Error
+		var got v2model.Error
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
-		assert.Equal(t, v2model.V2CodeAmbiguousInput, got.Code)
+		assert.Equal(t, v2model.CodeAmbiguousInput, got.Code)
 		require.Len(t, got.Issues, 2)
 		assert.Equal(t, "outline", got.Issues[0].Path)
 	})
@@ -123,8 +123,8 @@ func TestGetObjectV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusInternalServerError, w.Code)
-		var got v2model.V2Error
+		var got v2model.Error
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
-		assert.Equal(t, v2model.V2CodeInternalError, got.Code)
+		assert.Equal(t, v2model.CodeInternalError, got.Code)
 	})
 }

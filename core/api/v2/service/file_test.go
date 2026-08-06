@@ -30,7 +30,7 @@ func TestV2UploadFile(t *testing.T) {
 			}},
 			Error: &pb.RpcFileUploadResponseError{Code: pb.RpcFileUploadResponseError_NULL},
 		})
-		want := &v2model.V2FileUploadResult{Id: "file1", Name: "a.pdf", MimeType: "application/pdf", Size: 123}
+		want := &v2model.FileUploadResult{Id: "file1", Name: "a.pdf", MimeType: "application/pdf", Size: 123}
 
 		// when
 		got, err := fx.UploadFile(context.Background(), testSpaceId, "", "https://example.org/a.pdf", false)
@@ -49,7 +49,7 @@ func TestV2UploadFile(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 	})
 
 	t.Run("dry run uploads nothing", func(t *testing.T) {

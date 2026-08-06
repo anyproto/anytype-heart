@@ -59,7 +59,7 @@ type creatingResolvers struct {
 	dryReported    map[optionRef]bool
 	createdProps   map[string]anyblockjson.PropertyDefinition // key → created def
 	createdPropIds map[string]string                          // key → id
-	sideEffects    v2model.V2SideEffects
+	sideEffects    v2model.SideEffects
 	errs           []error
 }
 
@@ -98,7 +98,7 @@ func (r *creatingResolvers) err() error {
 
 // created reports the side effects (real or would-be) for the response;
 // nil when nothing was created.
-func (r *creatingResolvers) created() *v2model.V2SideEffects {
+func (r *creatingResolvers) created() *v2model.SideEffects {
 	if len(r.sideEffects.Properties) == 0 && len(r.sideEffects.Options) == 0 {
 		return nil
 	}
@@ -139,11 +139,11 @@ func (r *creatingResolvers) OptionId(key domain.RelationKey, name string) (strin
 		// real run reports (review C′2).
 		if !r.dryReported[ref] {
 			r.dryReported[ref] = true
-			r.sideEffects.Options = append(r.sideEffects.Options, v2model.V2CreatedOption{Property: string(key), Name: name})
+			r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
 		}
 		return "", false
 	}
-	r.sideEffects.Options = append(r.sideEffects.Options, v2model.V2CreatedOption{Property: string(key), Name: name})
+	r.sideEffects.Options = append(r.sideEffects.Options, v2model.CreatedOption{Property: string(key), Name: name})
 	resp := r.mw.ObjectCreateRelationOption(r.ctx, &pb.RpcObjectCreateRelationOptionRequest{
 		SpaceId: r.spaceId,
 		Details: &types.Struct{Fields: map[string]*types.Value{
@@ -249,7 +249,7 @@ func (r *creatingResolvers) PropertyId(def anyblockjson.PropertyDefinition) (str
 		name = string(def.Key)
 	}
 
-	r.sideEffects.Properties = append(r.sideEffects.Properties, v2model.V2PropertyRow{
+	r.sideEffects.Properties = append(r.sideEffects.Properties, v2model.PropertyRow{
 		Key:    string(def.Key),
 		Name:   name,
 		Format: anyblockjson.FormatName(format),

@@ -83,9 +83,9 @@ func (fx *v2Fixture) expectEtagRead(objectId string) {
 		Return(apicore.ObjectRead{Heads: []string{"headX"}}, nil)
 }
 
-func v2Err(t *testing.T, err error) *v2model.V2Error {
+func v2Err(t *testing.T, err error) *v2model.Error {
 	t.Helper()
-	var apiErr *v2model.V2Error
+	var apiErr *v2model.Error
 	require.ErrorAs(t, err, &apiErr)
 	return apiErr
 }
@@ -167,7 +167,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 
 		// then: the same contract as the insertBlocks markdown channel (C6)
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		assert.Equal(t, "markdown produced no blocks", apiErr.Message)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/markdown", apiErr.Issues[0].Path)
@@ -199,10 +199,10 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 	t.Run("markdown-derived issue paths readdress /blocks to /markdown", func(t *testing.T) {
 		// the caller sent markdown, never a blocks array — a /blocks path into
 		// the synthesized document is unactionable (C6)
-		err := rebaseMarkdownCreateError(v2model.V2ValidationFailed("the document failed AnyBlock validation",
-			v2model.V2Issue{Path: "/blocks/1", Message: "nested under a divider block"},
-			v2model.V2Issue{Path: "/blocks/3/text", Message: "too long"},
-			v2model.V2Issue{Path: "/type", Message: "untouched"}))
+		err := rebaseMarkdownCreateError(v2model.ValidationFailed("the document failed AnyBlock validation",
+			v2model.Issue{Path: "/blocks/1", Message: "nested under a divider block"},
+			v2model.Issue{Path: "/blocks/3/text", Message: "too long"},
+			v2model.Issue{Path: "/type", Message: "untouched"}))
 		apiErr := v2Err(t, err)
 		assert.Equal(t, "/markdown[1]", apiErr.Issues[0].Path)
 		assert.Equal(t, "/markdown[3]/text", apiErr.Issues[1].Path)
@@ -219,7 +219,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/title", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Hint, `"version": 1`)
@@ -234,7 +234,7 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/type", apiErr.Issues[0].Path)
 	})
@@ -293,7 +293,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/type", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "recipe")
@@ -310,7 +310,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/properties/madeUpProp", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/"+testSpaceId+"/properties")
@@ -326,7 +326,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.NotEmpty(t, apiErr.Issues)
 		assert.Contains(t, apiErr.Issues[0].Path, "/blocks/0")
 	})
@@ -341,7 +341,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeVersionUnsupported, apiErr.Code)
+		assert.Equal(t, v2model.CodeVersionUnsupported, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "document version 2")
 		assert.Contains(t, apiErr.Message, "supported version 1")
 	})
@@ -356,7 +356,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 	})
 
 	t.Run("objectType kind steers to POST types", func(t *testing.T) {
@@ -409,7 +409,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		// then
 		require.NoError(t, err)
 		require.NotNil(t, result.Created)
-		assert.Equal(t, []v2model.V2CreatedOption{{Property: "severity", Name: "Blocker"}}, result.Created.Options)
+		assert.Equal(t, []v2model.CreatedOption{{Property: "severity", Name: "Blocker"}}, result.Created.Options)
 		values := pbtypes.GetStringList((*captured).Details, "severity")
 		assert.Equal(t, []string{"opt-high", "opt-blocker"}, values, "existing option resolved, missing one created")
 	})
@@ -428,7 +428,7 @@ func TestV2CreateObjectDocument(t *testing.T) {
 		assert.True(t, result.DryRun)
 		assert.Empty(t, result.Id)
 		require.NotNil(t, result.Created)
-		assert.Equal(t, []v2model.V2CreatedOption{{Property: "severity", Name: "Blocker"}}, result.Created.Options)
+		assert.Equal(t, []v2model.CreatedOption{{Property: "severity", Name: "Blocker"}}, result.Created.Options)
 	})
 }
 

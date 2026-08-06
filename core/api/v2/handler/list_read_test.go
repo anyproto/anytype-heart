@@ -99,7 +99,7 @@ func TestGetSetObjectsV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		var got v2model.V2Error
+		var got v2model.Error
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		require.Len(t, got.Issues, 1)
 		assert.Equal(t, "fields", got.Issues[0].Path)
@@ -130,7 +130,7 @@ func TestGetSetObjectsV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2ListResponse[v2model.V2ObjectRow]
+		var got v2model.ListResponse[v2model.ObjectRow]
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		require.Len(t, got.Warnings, 1)
 		assert.Contains(t, got.Warnings[0].Message, `"_filter_template_9_" is an unresolvable placeholder`)

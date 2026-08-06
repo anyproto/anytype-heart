@@ -44,7 +44,7 @@ func TestCreateObjectV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusCreated, w.Code)
-		var got v2model.V2CreateResult
+		var got v2model.CreateResult
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		assert.Equal(t, "newObj", got.Id)
 		assert.NotEmpty(t, got.Etag)
@@ -64,7 +64,7 @@ func TestCreateObjectV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2CreateResult
+		var got v2model.CreateResult
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		assert.True(t, got.DryRun)
 		assert.Empty(t, got.Id)
@@ -83,9 +83,9 @@ func TestCreateObjectV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusBadRequest, w.Code)
-		var got v2model.V2Error
+		var got v2model.Error
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
-		assert.Equal(t, v2model.V2CodeValidationFailed, got.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, got.Code)
 		require.NotEmpty(t, got.Issues)
 	})
 }
@@ -118,7 +118,7 @@ func TestCreatePropertyV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2CreateResult
+		var got v2model.CreateResult
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
 		assert.True(t, got.DryRun)
 		require.NotNil(t, got.Created)
@@ -154,7 +154,7 @@ func TestSchemaV2Handlers(t *testing.T) {
 		w := httptest.NewRecorder()
 		fx.router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v2/schemas", nil))
 		require.Equal(t, http.StatusOK, w.Code)
-		var index v2model.V2SchemaIndex
+		var index v2model.SchemaIndex
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &index))
 		require.NotEmpty(t, index.Kinds)
 

@@ -42,7 +42,7 @@ func TestV2GetSpace(t *testing.T) {
 		// N+1 shape) would fail the test
 		fx := newV2FixtureBare(t)
 		fx.registerSpaceView(t, "spaceS", "Work", "The local-first wiki")
-		want := v2model.V2Space{Id: "spaceS", Name: "Work", Description: "The local-first wiki"}
+		want := v2model.Space{Id: "spaceS", Name: "Work", Description: "The local-first wiki"}
 
 		// when
 		got, err := fx.GetSpace(context.Background(), "spaceS")
@@ -101,10 +101,10 @@ func TestV2CreateSpace(t *testing.T) {
 				fields[bundle.RelationKeyDescription.String()].GetStringValue() == "Scratch space" &&
 				int64(fields[bundle.RelationKeySpaceType.String()].GetNumberValue()) == int64(model.SpaceType_SpaceTypeRegular)
 		})).Return(&pb.RpcWorkspaceCreateResponse{SpaceId: "newSpace1"})
-		want := &v2model.V2Space{Id: "newSpace1", Name: "Research", Description: "Scratch space"}
+		want := &v2model.Space{Id: "newSpace1", Name: "Research", Description: "Scratch space"}
 
 		// when
-		got, err := fx.CreateSpace(context.Background(), v2model.V2CreateSpaceRequest{Name: "Research", Description: "Scratch space"}, false)
+		got, err := fx.CreateSpace(context.Background(), v2model.CreateSpaceRequest{Name: "Research", Description: "Scratch space"}, false)
 
 		// then
 		require.NoError(t, err)
@@ -116,12 +116,12 @@ func TestV2CreateSpace(t *testing.T) {
 		fx := newV2FixtureBare(t)
 
 		// when
-		_, err := fx.CreateSpace(context.Background(), v2model.V2CreateSpaceRequest{Name: "   "}, false)
+		_, err := fx.CreateSpace(context.Background(), v2model.CreateSpaceRequest{Name: "   "}, false)
 
 		// then
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusBadRequest, apiErr.Status)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/name", apiErr.Issues[0].Path)
 	})
@@ -130,10 +130,10 @@ func TestV2CreateSpace(t *testing.T) {
 		// given: any RPC fails the mock — a dry-run space create must not
 		// create a space
 		fx := newV2FixtureBare(t)
-		want := &v2model.V2Space{Name: "Research", DryRun: true}
+		want := &v2model.Space{Name: "Research", DryRun: true}
 
 		// when
-		got, err := fx.CreateSpace(context.Background(), v2model.V2CreateSpaceRequest{Name: "Research"}, true)
+		got, err := fx.CreateSpace(context.Background(), v2model.CreateSpaceRequest{Name: "Research"}, true)
 
 		// then
 		require.NoError(t, err)
@@ -157,7 +157,7 @@ func TestV2CreateSpace(t *testing.T) {
 				})
 
 				// when
-				_, err := fx.CreateSpace(context.Background(), v2model.V2CreateSpaceRequest{Name: "X"}, false)
+				_, err := fx.CreateSpace(context.Background(), v2model.CreateSpaceRequest{Name: "X"}, false)
 
 				// then
 				apiErr := v2Err(t, err)
@@ -174,7 +174,7 @@ func TestV2CreateSpace(t *testing.T) {
 		fx.mwMock.EXPECT().WorkspaceCreate(mock.Anything, mock.Anything).Return(&pb.RpcWorkspaceCreateResponse{})
 
 		// when
-		_, err := fx.CreateSpace(context.Background(), v2model.V2CreateSpaceRequest{Name: "X"}, false)
+		_, err := fx.CreateSpace(context.Background(), v2model.CreateSpaceRequest{Name: "X"}, false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -189,13 +189,13 @@ func TestV2CreateSpace(t *testing.T) {
 		long := strings.Repeat("x", maxSpaceFieldLength+1)
 
 		// when / then
-		_, err := fx.CreateSpace(context.Background(), v2model.V2CreateSpaceRequest{Name: long}, false)
+		_, err := fx.CreateSpace(context.Background(), v2model.CreateSpaceRequest{Name: long}, false)
 		apiErr := v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/name", apiErr.Issues[0].Path)
 		assert.Contains(t, apiErr.Issues[0].Message, "4096")
 
-		_, err = fx.CreateSpace(context.Background(), v2model.V2CreateSpaceRequest{Name: "ok", Description: long}, false)
+		_, err = fx.CreateSpace(context.Background(), v2model.CreateSpaceRequest{Name: "ok", Description: long}, false)
 		apiErr = v2Err(t, err)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/description", apiErr.Issues[0].Path)
@@ -229,10 +229,10 @@ func TestV2UpdateSpace(t *testing.T) {
 				fields[bundle.RelationKeyName.String()].GetStringValue() == "New name" &&
 				!hasDescription // omitted fields must not ride the RPC
 		})).Return(&pb.RpcWorkspaceSetInfoResponse{})
-		want := &v2model.V2Space{Id: "spaceS", Name: "New name", Description: "Keep me"}
+		want := &v2model.Space{Id: "spaceS", Name: "New name", Description: "Keep me"}
 
 		// when
-		got, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.V2UpdateSpaceRequest{Name: name("New name")}, false)
+		got, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.UpdateSpaceRequest{Name: name("New name")}, false)
 
 		// then
 		require.NoError(t, err)
@@ -249,10 +249,10 @@ func TestV2UpdateSpace(t *testing.T) {
 			_, hasName := fields[bundle.RelationKeyName.String()]
 			return hasDescription && v.GetStringValue() == "" && !hasName
 		})).Return(&pb.RpcWorkspaceSetInfoResponse{})
-		want := &v2model.V2Space{Id: "spaceS", Name: "Work"}
+		want := &v2model.Space{Id: "spaceS", Name: "Work"}
 
 		// when
-		got, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.V2UpdateSpaceRequest{Description: name("")}, false)
+		got, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.UpdateSpaceRequest{Description: name("")}, false)
 
 		// then
 		require.NoError(t, err)
@@ -265,7 +265,7 @@ func TestV2UpdateSpace(t *testing.T) {
 		fx.registerSpaceView(t, "spaceS", "Work", "")
 
 		// when
-		_, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.V2UpdateSpaceRequest{}, false)
+		_, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.UpdateSpaceRequest{}, false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -279,7 +279,7 @@ func TestV2UpdateSpace(t *testing.T) {
 		fx.registerSpaceView(t, "spaceS", "Work", "")
 
 		// when
-		_, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.V2UpdateSpaceRequest{Name: name(" ")}, false)
+		_, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.UpdateSpaceRequest{Name: name(" ")}, false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -293,7 +293,7 @@ func TestV2UpdateSpace(t *testing.T) {
 		fx := newV2FixtureBare(t)
 
 		// when: even an invalid (empty) update reports the missing space first
-		_, err := fx.UpdateSpace(context.Background(), "bogus", v2model.V2UpdateSpaceRequest{}, false)
+		_, err := fx.UpdateSpace(context.Background(), "bogus", v2model.UpdateSpaceRequest{}, false)
 
 		// then
 		assert.Equal(t, http.StatusNotFound, v2Err(t, err).Status)
@@ -303,10 +303,10 @@ func TestV2UpdateSpace(t *testing.T) {
 		// given: any RPC fails the mock
 		fx := newV2FixtureBare(t)
 		fx.registerSpaceView(t, "spaceS", "Old", "Keep me")
-		want := &v2model.V2Space{Id: "spaceS", Name: "New", Description: "Keep me", DryRun: true}
+		want := &v2model.Space{Id: "spaceS", Name: "New", Description: "Keep me", DryRun: true}
 
 		// when
-		got, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.V2UpdateSpaceRequest{Name: name("New")}, true)
+		got, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.UpdateSpaceRequest{Name: name("New")}, true)
 
 		// then
 		require.NoError(t, err)
@@ -320,7 +320,7 @@ func TestV2UpdateSpace(t *testing.T) {
 		long := strings.Repeat("x", maxSpaceFieldLength+1)
 
 		// when
-		_, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.V2UpdateSpaceRequest{Name: name(long)}, false)
+		_, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.UpdateSpaceRequest{Name: name(long)}, false)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -341,10 +341,10 @@ func TestV2UpdateSpace(t *testing.T) {
 			wantStatus  int
 			wantCode    string
 		}{
-			{"space not exists is 404", "space not exists", http.StatusNotFound, v2model.V2CodeNotFound},
-			{"space is deleted is 404", "space is deleted", http.StatusNotFound, v2model.V2CodeNotFound},
-			{"restricted is 403", "restricted", http.StatusForbidden, v2model.V2CodeForbidden},
-			{"anything else stays 500", "disk exploded", http.StatusInternalServerError, v2model.V2CodeInternalError},
+			{"space not exists is 404", "space not exists", http.StatusNotFound, v2model.CodeNotFound},
+			{"space is deleted is 404", "space is deleted", http.StatusNotFound, v2model.CodeNotFound},
+			{"restricted is 403", "restricted", http.StatusForbidden, v2model.CodeForbidden},
+			{"anything else stays 500", "disk exploded", http.StatusInternalServerError, v2model.CodeInternalError},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				// given: the view exists (the GetSpace precheck passes) but the
@@ -359,7 +359,7 @@ func TestV2UpdateSpace(t *testing.T) {
 				})
 
 				// when
-				_, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.V2UpdateSpaceRequest{Name: name("New")}, false)
+				_, err := fx.UpdateSpace(context.Background(), "spaceS", v2model.UpdateSpaceRequest{Name: name("New")}, false)
 
 				// then
 				apiErr := v2Err(t, err)

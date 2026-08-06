@@ -132,10 +132,10 @@ func (a *v2StateApplier) marshalOptions() anyblockjson.Options {
 // validated clean. Failing here rejects the whole PATCH instead.
 func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte, error) {
 	opts := a.marshalOptions()
-	var degraded []v2model.V2Issue
+	var degraded []v2model.Issue
 	if onWarning == nil {
 		onWarning = func(iss anyblockjson.Issue) {
-			degraded = append(degraded, v2model.V2Issue{Path: iss.Path, Message: iss.Message})
+			degraded = append(degraded, v2model.Issue{Path: iss.Path, Message: iss.Message})
 		}
 	}
 	opts.OnWarning = onWarning
@@ -144,7 +144,7 @@ func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte,
 		return nil, fmt.Errorf("marshal object %s: %w", a.objectId, err)
 	}
 	if len(degraded) > 0 {
-		return nil, v2model.NewV2Error(http.StatusBadRequest, v2model.V2CodeValidationFailed,
+		return nil, v2model.NewError(http.StatusBadRequest, v2model.CodeValidationFailed,
 			v2InvalidDocMessage, degraded...)
 	}
 	return doc, nil
@@ -154,15 +154,15 @@ func (a *v2StateApplier) marshalDoc(onWarning func(anyblockjson.Issue)) ([]byte,
 // marshal loss warning refuses the PATCH — otherwise content the format
 // cannot represent could be silently damaged by a later full-subtree op.
 func (a *v2StateApplier) begin() ([]byte, error) {
-	var warnings []v2model.V2Issue
+	var warnings []v2model.Issue
 	doc, err := a.marshalDoc(func(iss anyblockjson.Issue) {
-		warnings = append(warnings, v2model.V2Issue{Path: iss.Path, Message: iss.Message})
+		warnings = append(warnings, v2model.Issue{Path: iss.Path, Message: iss.Message})
 	})
 	if err != nil {
 		return nil, err
 	}
 	if len(warnings) > 0 {
-		return nil, v2model.NewV2Error(http.StatusUnprocessableEntity, v2model.V2CodeValidationFailed,
+		return nil, v2model.NewError(http.StatusUnprocessableEntity, v2model.CodeValidationFailed,
 			"this object contains content the AnyBlock format cannot fully represent — a PATCH would drop it (C11); edit it in the app or replace it wholesale with PUT",
 			warnings...)
 	}
@@ -251,8 +251,8 @@ func (a *v2StateApplier) mintBlockId() string {
 // the unchanged agent-facing message.
 func invalidDocError(err error) error {
 	verr := mapUnmarshalError(nil, err)
-	var v2Err *v2model.V2Error
-	if errors.As(verr, &v2Err) && v2Err.Code == v2model.V2CodeValidationFailed {
+	var v2Err *v2model.Error
+	if errors.As(verr, &v2Err) && v2Err.Code == v2model.CodeValidationFailed {
 		v2Err.Message = v2InvalidDocMessage
 		return v2Err
 	}
@@ -267,7 +267,7 @@ func invalidDocError(err error) error {
 // "ops[2].set"); a run-relative "/blocks/3/text" becomes "ops[2].blocks[3].text".
 func invalidFragmentError(base string, err error) error {
 	rebased := invalidDocError(err)
-	var v2Err *v2model.V2Error
+	var v2Err *v2model.Error
 	if !errors.As(rebased, &v2Err) {
 		return rebased
 	}
@@ -299,8 +299,8 @@ func rebaseFragmentPath(base, path string) string {
 // format's id-uniqueness check; the state pipeline checks it explicitly,
 // with the op-shaped path).
 func duplicateIdError(path string, id string) error {
-	return v2model.NewV2Error(http.StatusBadRequest, v2model.V2CodeValidationFailed, v2InvalidDocMessage,
-		v2model.V2Issue{
+	return v2model.NewError(http.StatusBadRequest, v2model.CodeValidationFailed, v2InvalidDocMessage,
+		v2model.Issue{
 			Path:    path,
 			Message: fmt.Sprintf("duplicate block id %q — it already exists in the document", id),
 		})
@@ -335,8 +335,8 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 		Op string `json:"op"`
 	}
 	if err := json.Unmarshal(raw, &probe); err != nil {
-		return v2model.V2ValidationFailed("each op must be a JSON object",
-			v2model.V2Issue{Path: opPath, Message: err.Error()})
+		return v2model.ValidationFailed("each op must be a JSON object",
+			v2model.Issue{Path: opPath, Message: err.Error()})
 	}
 	switch probe.Op {
 	case "setProperties":
@@ -394,16 +394,16 @@ func (a *v2StateApplier) apply(i int, raw json.RawMessage) error {
 		}
 		return a.applyItems(op, opPath)
 	case "":
-		return v2model.V2ValidationFailed("op is required",
-			v2model.V2Issue{Path: opPath + ".op", Message: "missing op", Hint: "allowed ops: " + strings.Join(v2OpNames, ", ")})
+		return v2model.ValidationFailed("op is required",
+			v2model.Issue{Path: opPath + ".op", Message: "missing op", Hint: "allowed ops: " + strings.Join(v2OpNames, ", ")})
 	default:
 		hint := "allowed ops: " + strings.Join(v2OpNames, ", ")
 		if probe.Op == "replaceBlock" {
 			// removed pre-release (v0.3.5): steer to the one block-update op
 			hint = "replaceBlock was removed — use updateBlock {id, set}: name every field you want changed (text included), null clears a field, everything else stays. " + hint
 		}
-		return v2model.V2ValidationFailed(fmt.Sprintf("unknown op %q", probe.Op),
-			v2model.V2Issue{Path: opPath + ".op", Message: fmt.Sprintf("unknown op %q", probe.Op), Hint: hint})
+		return v2model.ValidationFailed(fmt.Sprintf("unknown op %q", probe.Op),
+			v2model.Issue{Path: opPath + ".op", Message: fmt.Sprintf("unknown op %q", probe.Op), Hint: hint})
 	}
 }
 
@@ -415,11 +415,11 @@ func (a *v2StateApplier) resolveRef(doc *v2EditDoc, ref, path string) (int, erro
 	case matches == 1:
 		return idx, nil
 	case matches > 1:
-		return -1, v2model.V2AmbiguousInput(
+		return -1, v2model.AmbiguousInput(
 			fmt.Sprintf("block reference %q matches more than one block — use the full block id", ref),
-			v2model.V2Issue{Path: path, Message: "the reference is a suffix of several block ids"})
+			v2model.Issue{Path: path, Message: "the reference is a suffix of several block ids"})
 	default:
-		return -1, v2model.V2NotFound(
+		return -1, v2model.NotFound(
 			fmt.Sprintf("block %q not found — GET the object with ?outline=true to list block ids", ref))
 	}
 }
@@ -604,14 +604,14 @@ func pinTableWrappers(st *state.State, blocks []*model.Block) {
 
 func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) error {
 	if len(op.Set) == 0 && len(op.Unset) == 0 && len(op.Add) == 0 && len(op.Remove) == 0 {
-		return v2model.V2ValidationFailed("setProperties needs at least one of set, unset, add, remove",
-			v2model.V2Issue{Path: opPath, Message: "set, unset, add and remove are all empty"})
+		return v2model.ValidationFailed("setProperties needs at least one of set, unset, add, remove",
+			v2model.Issue{Path: opPath, Message: "set, unset, add and remove are all empty"})
 	}
 	doc, err := a.doc()
 	if err != nil {
 		return err
 	}
-	var issues []v2model.V2Issue
+	var issues []v2model.Issue
 	var known []string
 
 	// checkKey is the shared key validation (envelope keys, output-only,
@@ -619,11 +619,11 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	checkKey := func(key, path string) bool {
 		switch {
 		case key == "id" || key == "type":
-			issues = append(issues, v2model.V2Issue{Path: path,
+			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is not a property — it is lifted to the document envelope and cannot be set here", key)})
 			return false
 		case v2OutputOnlyPropertyKeys[key]:
-			issues = append(issues, v2model.V2Issue{Path: path,
+			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only (SPEC §4a) — export writes it, writes must not", key)})
 			return false
 		default:
@@ -644,7 +644,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	seenIn := map[string]string{}
 	claim := func(key, field, path string) bool {
 		if prev, ok := seenIn[key]; ok {
-			issues = append(issues, v2model.V2Issue{Path: path,
+			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q appears in both %s and %s — pick one", key, prev, field)})
 			return false
 		}
@@ -662,7 +662,7 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	for _, key := range op.Unset {
 		path := opPath + ".unset." + key
 		if v2OutputOnlyPropertyKeys[key] {
-			issues = append(issues, v2model.V2Issue{Path: path,
+			issues = append(issues, v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%q is output-only (SPEC §4a) and cannot be unset", key)})
 			continue
 		}
@@ -681,13 +681,13 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 				continue
 			}
 			if format := a.propertyFormat(key); !v2ListShapedFormats[format] {
-				issues = append(issues, v2model.V2Issue{Path: path,
+				issues = append(issues, v2model.Issue{Path: path,
 					Message: fmt.Sprintf("%q has format %q — %s only applies to list-shaped formats (%s); use set", key, anyblockjson.FormatName(format), field, v2ListShapedFormatNames)})
 				continue
 			}
 			var entries []any
 			if err := json.Unmarshal(m[key], &entries); err != nil {
-				issues = append(issues, v2model.V2Issue{Path: path,
+				issues = append(issues, v2model.Issue{Path: path,
 					Message: fmt.Sprintf("%s takes an array of entries (option names or object ids): %s", field, err.Error())})
 				continue
 			}
@@ -698,13 +698,13 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 	addEntries := checkListField("add", op.Add)
 	removeEntries := checkListField("remove", op.Remove)
 	if len(issues) > 0 {
-		return v2model.V2ValidationFailed("setProperties rejected", issues...)
+		return v2model.ValidationFailed("setProperties rejected", issues...)
 	}
 	for _, key := range setKeys {
 		var raw any
 		if err := json.Unmarshal(op.Set[key], &raw); err != nil {
-			return v2model.V2ValidationFailed("invalid set value",
-				v2model.V2Issue{Path: opPath + ".set." + key, Message: err.Error()})
+			return v2model.ValidationFailed("invalid set value",
+				v2model.Issue{Path: opPath + ".set." + key, Message: err.Error()})
 		}
 		value := anyblockjson.UnmarshalPropertyValue(key, raw, a.resolvers.Options())
 		a.st.SetDetail(domain.RelationKey(key), domain.ValueFromProto(value))
@@ -723,8 +723,8 @@ func (a *v2StateApplier) applySetProperties(op opSetProperties, opPath string) e
 		// rather than silently breaking the invariant (v0.3.5 review).
 		if a.propertyFormat(key) == model.RelationFormat_status &&
 			len(a.st.CombinedDetails().Get(domain.RelationKey(key)).WrapToStringList()) > 0 {
-			return v2model.V2ValidationFailed("add on a select property that already has a value",
-				v2model.V2Issue{
+			return v2model.ValidationFailed("add on a select property that already has a value",
+				v2model.Issue{
 					Path:    opPath + ".add." + key,
 					Message: fmt.Sprintf("%q has format \"select\" and holds a single value", key),
 					Hint:    "use set to replace it, or unset to clear it first",
@@ -798,8 +798,8 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		return err
 	}
 	if len(op.Set) == 0 {
-		return v2model.V2ValidationFailed("updateBlock needs a non-empty set",
-			v2model.V2Issue{Path: opPath + ".set", Message: "set is empty — name the fields to change (merge semantics: everything else stays)"})
+		return v2model.ValidationFailed("updateBlock needs a non-empty set",
+			v2model.Issue{Path: opPath + ".set", Message: "set is empty — name the fields to change (merge semantics: everything else stays)"})
 	}
 	block := doc.blocks[idx]
 	oldWasTable := blockType(block) == "table"
@@ -812,18 +812,18 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 		path := opPath + ".set." + key
 		switch key {
 		case "id":
-			return v2model.V2ValidationFailed("block ids are immutable",
-				v2model.V2Issue{Path: path, Message: "a block's id cannot change — insert a new block instead"})
+			return v2model.ValidationFailed("block ids are immutable",
+				v2model.Issue{Path: path, Message: "a block's id cannot change — insert a new block instead"})
 		case "indent":
-			return v2model.V2ValidationFailed("indent is structural",
-				v2model.V2Issue{Path: path, Message: "indent cannot be set directly — use moveBlock to re-nest the block"})
+			return v2model.ValidationFailed("indent is structural",
+				v2model.Issue{Path: path, Message: "indent cannot be set directly — use moveBlock to re-nest the block"})
 		}
 	}
 	if raw, ok := op.Set["type"]; ok {
 		var newType string
 		if err := json.Unmarshal(raw, &newType); err != nil || newType == "" {
-			return v2model.V2ValidationFailed("invalid type value",
-				v2model.V2Issue{Path: opPath + ".set.type", Message: "type must be a non-empty string"})
+			return v2model.ValidationFailed("invalid type value",
+				v2model.Issue{Path: opPath + ".set.type", Message: "type must be a non-empty string"})
 		}
 		if descendants := doc.subtreeEnd(idx) - idx - 1; descendants > 0 && anyblockjson.LeafBlockType(newType) {
 			return leafWithDescendantsError(blockId(block), newType, descendants, opPath+".set.type")
@@ -838,8 +838,8 @@ func (a *v2StateApplier) applyUpdateBlock(op opUpdateBlock, opPath string) error
 	for _, key := range keys {
 		var value any
 		if err := json.Unmarshal(op.Set[key], &value); err != nil {
-			return v2model.V2ValidationFailed("invalid set value",
-				v2model.V2Issue{Path: opPath + ".set." + key, Message: err.Error()})
+			return v2model.ValidationFailed("invalid set value",
+				v2model.Issue{Path: opPath + ".set." + key, Message: err.Error()})
 		}
 		if value == nil {
 			delete(merged, key) // explicit null clears the field (merge semantics)
@@ -928,25 +928,25 @@ func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, po
 		refs, mode = append(refs, "inside"), "inside"
 	}
 	if len(refs) > 1 {
-		return 0, "", "", v2model.V2AmbiguousInput("at most one of after, before, inside is allowed",
-			v2model.V2Issue{Path: opPath, Message: fmt.Sprintf("got %d targeting fields (%s)", len(refs), strings.Join(refs, ", "))})
+		return 0, "", "", v2model.AmbiguousInput("at most one of after, before, inside is allowed",
+			v2model.Issue{Path: opPath, Message: fmt.Sprintf("got %d targeting fields (%s)", len(refs), strings.Join(refs, ", "))})
 	}
 	if len(refs) == 0 {
 		if position != "" {
-			return 0, "", "", v2model.V2ValidationFailed("position only applies to inside",
-				v2model.V2Issue{Path: opPath + ".position", Message: "position without a targeting field is meaningless — omitting after/before/inside appends at the end of the document"})
+			return 0, "", "", v2model.ValidationFailed("position only applies to inside",
+				v2model.Issue{Path: opPath + ".position", Message: "position without a targeting field is meaningless — omitting after/before/inside appends at the end of the document"})
 		}
 		return -1, "root", "last", nil
 	}
 	pos = "last"
 	if position != "" {
 		if mode != "inside" {
-			return 0, "", "", v2model.V2ValidationFailed("position only applies to inside",
-				v2model.V2Issue{Path: opPath + ".position", Message: fmt.Sprintf("position with %q targeting is meaningless — after/before already name the slot", mode)})
+			return 0, "", "", v2model.ValidationFailed("position only applies to inside",
+				v2model.Issue{Path: opPath + ".position", Message: fmt.Sprintf("position with %q targeting is meaningless — after/before already name the slot", mode)})
 		}
 		if position != "first" && position != "last" {
-			return 0, "", "", v2model.V2ValidationFailed("invalid position",
-				v2model.V2Issue{Path: opPath + ".position", Message: fmt.Sprintf("unknown position %q", position), Hint: "allowed: first, last"})
+			return 0, "", "", v2model.ValidationFailed("invalid position",
+				v2model.Issue{Path: opPath + ".position", Message: fmt.Sprintf("unknown position %q", position), Hint: "allowed: first, last"})
 		}
 		pos = position
 	}
@@ -957,9 +957,9 @@ func (a *v2StateApplier) resolveTarget(doc *v2EditDoc, after, before, inside, po
 	}
 	if mode == "inside" {
 		if typ := blockType(doc.blocks[anchor]); anyblockjson.LeafBlockType(typ) {
-			return 0, "", "", v2model.V2ValidationFailed(
+			return 0, "", "", v2model.ValidationFailed(
 				fmt.Sprintf("cannot target inside block %q — %q blocks cannot have children", ref, typ),
-				v2model.V2Issue{Path: opPath + ".inside", Message: "the target is a leaf block type (SPEC §5)"})
+				v2model.Issue{Path: opPath + ".inside", Message: "the target is a leaf block type (SPEC §5)"})
 		}
 	}
 	return anchor, mode, pos, nil
@@ -1018,26 +1018,26 @@ func insertPayload(op opInsertBlocks, opPath string) ([]json.RawMessage, string,
 	hasMarkdown := op.Markdown != ""
 	switch {
 	case hasBlocks && hasMarkdown:
-		return nil, "", v2model.V2AmbiguousInput("provide blocks or markdown, not both",
-			v2model.V2Issue{Path: opPath, Message: "blocks (flat AnyBlock payload) and markdown (parsed server-side) are alternative payload channels for insertBlocks"})
+		return nil, "", v2model.AmbiguousInput("provide blocks or markdown, not both",
+			v2model.Issue{Path: opPath, Message: "blocks (flat AnyBlock payload) and markdown (parsed server-side) are alternative payload channels for insertBlocks"})
 	case hasMarkdown:
 		run, exceeded := anyblockjson.ParseMarkdownBlocksLimit(op.Markdown, v2MaxMarkdownBlocksPerOp)
 		if exceeded {
-			return nil, "", v2model.V2ValidationFailed("markdown produced too many blocks",
-				v2model.V2Issue{Path: opPath + ".markdown", Message: fmt.Sprintf(
+			return nil, "", v2model.ValidationFailed("markdown produced too many blocks",
+				v2model.Issue{Path: opPath + ".markdown", Message: fmt.Sprintf(
 					"the markdown parses to more than %d blocks — the per-op limit is %d (the blocks channel's cap); split the content across several insertBlocks ops",
 					v2MaxMarkdownBlocksPerOp, v2MaxMarkdownBlocksPerOp)})
 		}
 		if len(run) == 0 {
-			return nil, "", v2model.V2ValidationFailed("markdown produced no blocks",
-				v2model.V2Issue{Path: opPath + ".markdown", Message: "the markdown body contains no content — give at least one non-blank line"})
+			return nil, "", v2model.ValidationFailed("markdown produced no blocks",
+				v2model.Issue{Path: opPath + ".markdown", Message: "the markdown body contains no content — give at least one non-blank line"})
 		}
 		return run, "markdown", nil
 	case hasBlocks:
 		return op.Blocks, "blocks", nil
 	default:
-		return nil, "", v2model.V2ValidationFailed("insertBlocks needs a payload",
-			v2model.V2Issue{Path: opPath, Message: "give blocks (a flat AnyBlock run) or markdown (parsed server-side)"})
+		return nil, "", v2model.ValidationFailed("insertBlocks needs a payload",
+			v2model.Issue{Path: opPath, Message: "give blocks (a flat AnyBlock run) or markdown (parsed server-side)"})
 	}
 }
 
@@ -1056,9 +1056,9 @@ func (a *v2StateApplier) applyMoveBlock(op opMoveBlock, opPath string) error {
 		return err
 	}
 	if anchor >= idx && anchor < end {
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("cannot move block %q inside its own subtree", op.Id),
-			v2model.V2Issue{Path: opPath, Message: "the target block is a descendant of (or is) the moved block — that would create a cycle; pick a target outside the moved subtree"})
+			v2model.Issue{Path: opPath, Message: "the target block is a descendant of (or is) the moved block — that would create a cycle; pick a target outside the moved subtree"})
 	}
 	fullId := blockId(doc.blocks[idx])
 	// root mode (anchor -1, no targeting fields): move to the end of the
@@ -1086,9 +1086,9 @@ func (a *v2StateApplier) applyDeleteBlock(op opDeleteBlock, opPath string) error
 	}
 	end := doc.subtreeEnd(idx)
 	if descendants := end - idx - 1; descendants > 0 && !op.Recursive {
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q has %s — pass \"recursive\": true to delete the whole subtree", op.Id, countBlocks(descendants)),
-			v2model.V2Issue{Path: opPath, Message: "deleteBlock without recursive only deletes childless blocks", Hint: "or moveBlock the descendants out first"})
+			v2model.Issue{Path: opPath, Message: "deleteBlock without recursive only deletes childless blocks", Hint: "or moveBlock the descendants out first"})
 	}
 	a.st.Unlink(blockId(doc.blocks[idx])) // the unlinked subtree is dropped by apply-side normalization
 	a.mutated()
@@ -1105,15 +1105,15 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 		return err
 	}
 	if op.Find == "" {
-		return v2model.V2ValidationFailed("find must not be empty",
-			v2model.V2Issue{Path: opPath + ".find", Message: "give the exact text to replace"})
+		return v2model.ValidationFailed("find must not be empty",
+			v2model.Issue{Path: opPath + ".find", Message: "give the exact text to replace"})
 	}
 	block := doc.blocks[idx]
 	typ := blockType(block)
 	if !anyblockjson.TextBlockType(typ) {
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q is a %q block and has no text", op.Id, typ),
-			v2model.V2Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
+			v2model.Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
 	}
 	// the find/replace runs on the block's document text — markup source for
 	// text-bearing blocks, the literal text for code/embed (§8.4) — exactly
@@ -1122,13 +1122,13 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 	count := strings.Count(text, op.Find)
 	switch {
 	case count == 0:
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("no match found for %q in block %q — read the block and copy the find text exactly, including inline markup", op.Find, op.Id),
-			v2model.V2Issue{Path: opPath + ".find", Message: "0 matches in the block's text"})
+			v2model.Issue{Path: opPath + ".find", Message: "0 matches in the block's text"})
 	case count > 1 && !op.ReplaceAll:
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("found %d matches for %q in block %q — provide more context to make the match unique, or set \"replace_all\": true", count, op.Find, op.Id),
-			v2model.V2Issue{Path: opPath + ".find", Message: fmt.Sprintf("%d matches in the block's text", count)})
+			v2model.Issue{Path: opPath + ".find", Message: fmt.Sprintf("%d matches in the block's text", count)})
 	}
 	if op.ReplaceAll {
 		text = strings.ReplaceAll(text, op.Find, op.Replace)
@@ -1168,9 +1168,9 @@ func (a *v2StateApplier) applyReplaceText(op opReplaceText, opPath string) error
 		}
 		content.Latex.Text = text // literal (§8.4)
 	default:
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q is a %q block and has no text", op.Id, typ),
-			v2model.V2Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
+			v2model.Issue{Path: opPath + ".id", Message: "replaceText only applies to text-bearing blocks"})
 	}
 	a.st.Set(simple.New(m))
 	a.mutated()
@@ -1188,24 +1188,24 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 	}
 	table := doc.blocks[idx]
 	if typ := blockType(table); typ != "table" {
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("block %q is a %q block, not a table", op.TableId, typ),
-			v2model.V2Issue{Path: opPath + ".tableId", Message: "setCell addresses a table block (SPEC §6.1)"})
+			v2model.Issue{Path: opPath + ".tableId", Message: "setCell addresses a table block (SPEC §6.1)"})
 	}
 	if op.Value == nil {
-		return v2model.V2ValidationFailed("value is required",
-			v2model.V2Issue{Path: opPath + ".value", Message: "give the new cell content — a string, null (clear), a block object, or an array of blocks (SPEC §6.1)"})
+		return v2model.ValidationFailed("value is required",
+			v2model.Issue{Path: opPath + ".value", Message: "give the new cell content — a string, null (clear), a block object, or an array of blocks (SPEC §6.1)"})
 	}
 	var value any
 	if err := json.Unmarshal(op.Value, &value); err != nil {
-		return v2model.V2ValidationFailed("invalid cell value",
-			v2model.V2Issue{Path: opPath + ".value", Message: err.Error()})
+		return v2model.ValidationFailed("invalid cell value",
+			v2model.Issue{Path: opPath + ".value", Message: err.Error()})
 	}
 	switch value.(type) {
 	case nil, string, map[string]any, []any:
 	default:
-		return v2model.V2ValidationFailed("invalid cell value",
-			v2model.V2Issue{Path: opPath + ".value", Message: "a cell is a string, null, a block object, or an array of blocks (SPEC §6.1)"})
+		return v2model.ValidationFailed("invalid cell value",
+			v2model.Issue{Path: opPath + ".value", Message: "a cell is a string, null, a block object, or an array of blocks (SPEC §6.1)"})
 	}
 
 	ci, err := resolveTablePart(table, "columns", op.Col, op.TableId, opPath+".col")
@@ -1256,8 +1256,8 @@ func (a *v2StateApplier) applySetCell(op opSetCell, opPath string) error {
 
 func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 	if len(op.Items) == 0 {
-		return v2model.V2ValidationFailed(op.Op+" needs items",
-			v2model.V2Issue{Path: opPath + ".items", Message: "items must list at least one member object id"})
+		return v2model.ValidationFailed(op.Op+" needs items",
+			v2model.Issue{Path: opPath + ".items", Message: "items must list at least one member object id"})
 	}
 	doc, err := a.doc()
 	if err != nil {
@@ -1265,9 +1265,9 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 	}
 	items := a.st.GetStoreSlice(template.CollectionStoreKey)
 	if len(items) == 0 && !a.s.isCollectionType(a.spaceId, doc.docType()) {
-		return v2model.V2ValidationFailed(
+		return v2model.ValidationFailed(
 			fmt.Sprintf("%s requires a collection — this object's type is %q", op.Op, doc.docType()),
-			v2model.V2Issue{Path: opPath, Message: "only collection objects carry items", Hint: "POST /v2/spaces/{spaceId}/collections creates one"})
+			v2model.Issue{Path: opPath, Message: "only collection objects carry items", Hint: "POST /v2/spaces/{spaceId}/collections creates one"})
 	}
 	if op.Op == "addItems" {
 		present := map[string]bool{}
@@ -1312,8 +1312,8 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 // createdBlocks keyed by payload position.
 func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field string) ([]map[string]any, error) {
 	if len(raws) == 0 {
-		return nil, v2model.V2ValidationFailed("blocks must not be empty",
-			v2model.V2Issue{Path: opPath + "." + field, Message: "give at least one block"})
+		return nil, v2model.ValidationFailed("blocks must not be empty",
+			v2model.Issue{Path: opPath + "." + field, Message: "give at least one block"})
 	}
 	run := make([]map[string]any, 0, len(raws))
 	prev := -1
@@ -1327,18 +1327,18 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field 
 		if v, hasIndent := block["indent"]; hasIndent {
 			f, isNum := v.(float64)
 			if !isNum || f != float64(int(f)) || f < 0 {
-				return nil, v2model.V2ValidationFailed("invalid payload indent",
-					v2model.V2Issue{Path: path + ".indent", Message: "indent must be a non-negative integer, relative to the insertion level (0 = the anchor's level; for inside, 0 = the container's child level)"})
+				return nil, v2model.ValidationFailed("invalid payload indent",
+					v2model.Issue{Path: path + ".indent", Message: "indent must be a non-negative integer, relative to the insertion level (0 = the anchor's level; for inside, 0 = the container's child level)"})
 			}
 			rel = int(f)
 		}
 		if j == 0 && rel != 0 {
-			return nil, v2model.V2ValidationFailed("the first payload block's indent must be 0",
-				v2model.V2Issue{Path: path + ".indent", Message: fmt.Sprintf("indent %d on the first block — payload indents are relative: 0 is the insertion level", rel)})
+			return nil, v2model.ValidationFailed("the first payload block's indent must be 0",
+				v2model.Issue{Path: path + ".indent", Message: fmt.Sprintf("indent %d on the first block — payload indents are relative: 0 is the insertion level", rel)})
 		}
 		if rel > prev+1 {
-			return nil, v2model.V2ValidationFailed("payload indents must be monotonic",
-				v2model.V2Issue{Path: path + ".indent", Message: fmt.Sprintf("indent %d follows indent %d — a block can be at most one level deeper than its predecessor", rel, prev)})
+			return nil, v2model.ValidationFailed("payload indents must be monotonic",
+				v2model.Issue{Path: path + ".indent", Message: fmt.Sprintf("indent %d follows indent %d — a block can be at most one level deeper than its predecessor", rel, prev)})
 		}
 		prev = rel
 		if rel > 0 {

@@ -164,22 +164,22 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 }
 
 // SchemaIndex implements GET /v2/schemas.
-func (s *V2Service) SchemaIndex() v2model.V2SchemaIndex {
+func (s *V2Service) SchemaIndex() v2model.SchemaIndex {
 	kinds := make([]string, 0, len(v2SchemaKinds))
 	for kind := range v2SchemaKinds {
 		kinds = append(kinds, kind)
 	}
 	sort.Strings(kinds)
-	index := v2model.V2SchemaIndex{Kinds: make([]v2model.V2SchemaIndexEntry, 0, len(kinds))}
+	index := v2model.SchemaIndex{Kinds: make([]v2model.SchemaIndexEntry, 0, len(kinds))}
 	for _, kind := range kinds {
-		index.Kinds = append(index.Kinds, v2model.V2SchemaIndexEntry{
+		index.Kinds = append(index.Kinds, v2model.SchemaIndexEntry{
 			Kind:     kind,
 			Endpoint: v2SchemaKinds[kind].endpoint,
 			Url:      "/v2/schemas/" + kind,
 		})
 	}
 	for _, op := range v2OpNames {
-		index.Ops = append(index.Ops, v2model.V2SchemaIndexEntry{
+		index.Ops = append(index.Ops, v2model.SchemaIndexEntry{
 			Kind:     op,
 			Endpoint: v2OpsEndpoint,
 			Url:      "/v2/schemas/ops/" + op,
@@ -189,7 +189,7 @@ func (s *V2Service) SchemaIndex() v2model.V2SchemaIndex {
 }
 
 // SchemaKind implements GET /v2/schemas/{kind}.
-func (s *V2Service) SchemaKind(kind string) (v2model.V2SchemaEntry, error) {
+func (s *V2Service) SchemaKind(kind string) (v2model.SchemaEntry, error) {
 	entry, ok := v2SchemaKinds[kind]
 	if !ok {
 		kinds := make([]string, 0, len(v2SchemaKinds))
@@ -197,7 +197,7 @@ func (s *V2Service) SchemaKind(kind string) (v2model.V2SchemaEntry, error) {
 			kinds = append(kinds, k)
 		}
 		sort.Strings(kinds)
-		return v2model.V2SchemaEntry{}, v2model.V2NotFound(
+		return v2model.SchemaEntry{}, v2model.NotFound(
 			fmt.Sprintf("unknown schema kind %q — available kinds: %s", kind, strings.Join(kinds, ", ")))
 	}
 	schema := json.RawMessage(entry.schema)
@@ -206,7 +206,7 @@ func (s *V2Service) SchemaKind(kind string) (v2model.V2SchemaEntry, error) {
 		// format's published schema verbatim
 		schema = json.RawMessage(anyblockjson.SchemaJSON())
 	}
-	result := v2model.V2SchemaEntry{
+	result := v2model.SchemaEntry{
 		Kind:     kind,
 		Endpoint: entry.endpoint,
 		Schema:   schema,

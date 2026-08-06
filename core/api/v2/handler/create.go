@@ -35,11 +35,11 @@ const maxV2CreateBodySize = 10 << 20 // 10 MiB
 func readV2Body(c *gin.Context) []byte {
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxV2CreateBodySize+1))
 	if err != nil {
-		RespondV2Error(c, v2model.V2ValidationFailed("read request body: "+err.Error()))
+		RespondV2Error(c, v2model.ValidationFailed("read request body: "+err.Error()))
 		return nil
 	}
 	if len(body) > maxV2CreateBodySize {
-		RespondV2Error(c, v2model.V2RequestTooLarge("request body exceeds the 10 MiB limit"))
+		RespondV2Error(c, v2model.RequestTooLarge("request body exceeds the 10 MiB limit"))
 		return nil
 	}
 	return body
@@ -47,7 +47,7 @@ func readV2Body(c *gin.Context) []byte {
 
 // respondV2Create writes a create/update result: 201 on a real create, 200
 // on dry runs and updates, with the ETag header when known.
-func respondV2Create(c *gin.Context, result *v2model.V2CreateResult, createdStatus int) {
+func respondV2Create(c *gin.Context, result *v2model.CreateResult, createdStatus int) {
 	if result.Etag != "" {
 		c.Header("ETag", v2service.QuoteEtag(result.Etag))
 	}
@@ -68,8 +68,8 @@ func respondV2Create(c *gin.Context, result *v2model.V2CreateResult, createdStat
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		201			{object}	v2model.V2CreateResult	"Created object id + etag"
-//	@Failure		400			{object}	v2model.V2Error		"Validation or reference failure"
+//	@Success		201			{object}	v2model.CreateResult	"Created object id + etag"
+//	@Failure		400			{object}	v2model.Error		"Validation or reference failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects [post]
 func CreateObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -97,8 +97,8 @@ func CreateObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		201			{object}	v2model.V2CreateResult	"Created template id"
-//	@Failure		400			{object}	v2model.V2Error		"Validation or reference failure"
+//	@Success		201			{object}	v2model.CreateResult	"Created template id"
+//	@Failure		400			{object}	v2model.Error		"Validation or reference failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/templates [post]
 func CreateTemplateV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -126,8 +126,8 @@ func CreateTemplateV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		201			{object}	v2model.V2CreateResult	"Created type id + key"
-//	@Failure		400			{object}	v2model.V2Error		"Validation failure"
+//	@Success		201			{object}	v2model.CreateResult	"Created type id + key"
+//	@Failure		400			{object}	v2model.Error		"Validation failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/types [post]
 func CreateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -155,8 +155,8 @@ func CreateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			type		path		string					true	"Type key"
-//	@Success		200			{object}	v2model.V2CreateResult	"Updated type"
-//	@Failure		404			{object}	v2model.V2Error		"Type not found"
+//	@Success		200			{object}	v2model.CreateResult	"Updated type"
+//	@Failure		404			{object}	v2model.Error		"Type not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/types/{type} [patch]
 func UpdateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -183,8 +183,8 @@ func UpdateTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			type		path		string					true	"Type key"
-//	@Success		200			{object}	v2model.V2CreateResult	"Archived type"
-//	@Failure		404			{object}	v2model.V2Error		"Type not found"
+//	@Success		200			{object}	v2model.CreateResult	"Archived type"
+//	@Failure		404			{object}	v2model.Error		"Type not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/types/{type} [delete]
 func DeleteTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -208,15 +208,15 @@ func DeleteTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		201			{object}	v2model.V2CreateResult	"Created property id + key"
-//	@Failure		400			{object}	v2model.V2Error		"Validation failure"
+//	@Success		201			{object}	v2model.CreateResult	"Created property id + key"
+//	@Failure		400			{object}	v2model.Error		"Validation failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/properties [post]
 func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2CreatePropertyRequest
+		var req v2model.CreatePropertyRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.V2ValidationFailed("invalid property body: "+err.Error()))
+			RespondV2Error(c, v2model.ValidationFailed("invalid property body: "+err.Error()))
 			return
 		}
 		result, err := s.CreateProperty(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
@@ -238,15 +238,15 @@ func CreatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			key			path		string					true	"Property key"
-//	@Success		200			{object}	v2model.V2CreateResult	"Updated property"
-//	@Failure		404			{object}	v2model.V2Error		"Property not found"
+//	@Success		200			{object}	v2model.CreateResult	"Updated property"
+//	@Failure		404			{object}	v2model.Error		"Property not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/properties/{key} [patch]
 func UpdatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2UpdatePropertyRequest
+		var req v2model.UpdatePropertyRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.V2ValidationFailed("invalid property patch: "+err.Error()))
+			RespondV2Error(c, v2model.ValidationFailed("invalid property patch: "+err.Error()))
 			return
 		}
 		result, err := s.UpdateProperty(c.Request.Context(), c.Param("space_id"), c.Param("key"), req, isV2DryRun(c))
@@ -267,8 +267,8 @@ func UpdatePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			key			path		string					true	"Property key"
-//	@Success		200			{object}	v2model.V2CreateResult	"Archived property"
-//	@Failure		404			{object}	v2model.V2Error		"Property not found"
+//	@Success		200			{object}	v2model.CreateResult	"Archived property"
+//	@Failure		404			{object}	v2model.Error		"Property not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/properties/{key} [delete]
 func DeletePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -292,15 +292,15 @@ func DeletePropertyV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		201			{object}	v2model.V2CreateResult	"Created set id"
-//	@Failure		400			{object}	v2model.V2Error		"Validation or reference failure"
+//	@Success		201			{object}	v2model.CreateResult	"Created set id"
+//	@Failure		400			{object}	v2model.Error		"Validation or reference failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets [post]
 func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2CreateSetRequest
+		var req v2model.CreateSetRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.V2ValidationFailed("invalid set body: "+err.Error()))
+			RespondV2Error(c, v2model.ValidationFailed("invalid set body: "+err.Error()))
 			return
 		}
 		result, err := s.CreateSet(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
@@ -322,15 +322,15 @@ func CreateSetV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string					true	"Space id"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		201			{object}	v2model.V2CreateResult	"Created collection id"
-//	@Failure		400			{object}	v2model.V2Error		"Validation or reference failure"
+//	@Success		201			{object}	v2model.CreateResult	"Created collection id"
+//	@Failure		400			{object}	v2model.Error		"Validation or reference failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections [post]
 func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var req v2model.V2CreateCollectionRequest
+		var req v2model.CreateCollectionRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.V2ValidationFailed("invalid collection body: "+err.Error()))
+			RespondV2Error(c, v2model.ValidationFailed("invalid collection body: "+err.Error()))
 			return
 		}
 		result, err := s.CreateCollection(c.Request.Context(), c.Param("space_id"), req, isV2DryRun(c))
@@ -352,8 +352,8 @@ func CreateCollectionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Produce		json
 //	@Param			space_id	path		string						true	"Space id"
 //	@Param			dry_run		query		bool						false	"Validate and report without committing"
-//	@Success		201			{object}	v2model.V2FileUploadResult	"Created file object id"
-//	@Failure		400			{object}	v2model.V2Error			"Validation failure"
+//	@Success		201			{object}	v2model.FileUploadResult	"Created file object id"
+//	@Failure		400			{object}	v2model.Error			"Validation failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/files [post]
 func UploadFileV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -376,10 +376,10 @@ func UploadFileV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			return
 		}
 
-		var req v2model.V2UploadFileRequest
+		var req v2model.UploadFileRequest
 		if err := c.ShouldBindJSON(&req); err != nil {
-			RespondV2Error(c, v2model.V2ValidationFailed("invalid upload body: "+err.Error(),
-				v2model.V2Issue{Message: "send multipart/form-data with a file field, or JSON {\"url\": …}"}))
+			RespondV2Error(c, v2model.ValidationFailed("invalid upload body: "+err.Error(),
+				v2model.Issue{Message: "send multipart/form-data with a file field, or JSON {\"url\": …}"}))
 			return
 		}
 		result, err := s.UploadFile(c.Request.Context(), spaceId, "", req.Url, dryRun)
@@ -391,7 +391,7 @@ func UploadFileV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 	}
 }
 
-func respondUpload(c *gin.Context, result *v2model.V2FileUploadResult) {
+func respondUpload(c *gin.Context, result *v2model.FileUploadResult) {
 	status := http.StatusCreated
 	if result.DryRun {
 		status = http.StatusOK
@@ -405,12 +405,12 @@ func respondUpload(c *gin.Context, result *v2model.V2FileUploadResult) {
 func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		RespondV2Error(c, v2model.V2ValidationFailed("missing file field in multipart form"))
+		RespondV2Error(c, v2model.ValidationFailed("missing file field in multipart form"))
 		return "", nil, false
 	}
 	file, err := fileHeader.Open()
 	if err != nil {
-		RespondV2Error(c, v2model.V2ValidationFailed("read uploaded file: "+err.Error()))
+		RespondV2Error(c, v2model.ValidationFailed("read uploaded file: "+err.Error()))
 		return "", nil, false
 	}
 	defer file.Close()
@@ -450,7 +450,7 @@ func stageV2Upload(c *gin.Context) (localPath string, cleanup func(), ok bool) {
 //	@Id				v2_list_schemas
 //	@Tags			V2
 //	@Produce		json
-//	@Success		200	{object}	v2model.V2SchemaIndex	"Schema index"
+//	@Success		200	{object}	v2model.SchemaIndex	"Schema index"
 //	@Security		bearerauth
 //	@Router			/v2/schemas [get]
 func SchemaIndexV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -467,8 +467,8 @@ func SchemaIndexV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Produce		json
 //	@Param			kind	path		string					true	"Schema kind"
-//	@Success		200		{object}	v2model.V2SchemaEntry	"Schema + example"
-//	@Failure		404		{object}	v2model.V2Error		"Unknown kind"
+//	@Success		200		{object}	v2model.SchemaEntry	"Schema + example"
+//	@Failure		404		{object}	v2model.Error		"Unknown kind"
 //	@Security		bearerauth
 //	@Router			/v2/schemas/{kind} [get]
 func SchemaKindV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -490,8 +490,8 @@ func SchemaKindV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Produce		json
 //	@Param			op	path		string					true	"Op name"
-//	@Success		200	{object}	v2model.V2SchemaEntry	"Schema + example"
-//	@Failure		404	{object}	v2model.V2Error		"Unknown op"
+//	@Success		200	{object}	v2model.SchemaEntry	"Schema + example"
+//	@Failure		404	{object}	v2model.Error		"Unknown op"
 //	@Security		bearerauth
 //	@Router			/v2/schemas/ops/{op} [get]
 func SchemaOpV2Handler(s *v2service.V2Service) gin.HandlerFunc {

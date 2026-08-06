@@ -58,9 +58,9 @@ func TestGetSpaceV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2Space
+		var got v2model.Space
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
-		assert.Equal(t, v2model.V2Space{Id: "space1", Name: "Work", Description: "The wiki"}, got)
+		assert.Equal(t, v2model.Space{Id: "space1", Name: "Work", Description: "The wiki"}, got)
 	})
 
 	t.Run("unknown space is a C6 404", func(t *testing.T) {
@@ -129,9 +129,9 @@ func TestUpdateSpaceV2Handler(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusOK, w.Code)
-		var got v2model.V2Space
+		var got v2model.Space
 		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
-		assert.Equal(t, v2model.V2Space{Id: "space1", Name: "Renamed", Description: "The wiki"}, got)
+		assert.Equal(t, v2model.Space{Id: "space1", Name: "Renamed", Description: "The wiki"}, got)
 	})
 
 	t.Run("an empty update body is a 400", func(t *testing.T) {

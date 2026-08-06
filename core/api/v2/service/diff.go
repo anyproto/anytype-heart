@@ -91,8 +91,8 @@ func (s *diffDocShape) prevCommonSibling(i int, other *diffDocShape) string {
 }
 
 // diffEditDocs computes the diffStats between two canonical documents.
-func diffEditDocs(beforeDoc, afterDoc []byte) (v2model.V2DiffStats, error) {
-	var stats v2model.V2DiffStats
+func diffEditDocs(beforeDoc, afterDoc []byte) (v2model.DiffStats, error) {
+	var stats v2model.DiffStats
 	before, err := parseDiffDoc(beforeDoc)
 	if err != nil {
 		return stats, fmt.Errorf("before document: %w", err)

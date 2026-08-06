@@ -65,19 +65,19 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 	plan := objectReadPlan{wantProperties: true, wantBlocks: true, compactRefs: true}
 
 	if q.Outline && q.Block != "" {
-		return plan, v2model.V2AmbiguousInput("outline and block are mutually exclusive — request the outline or one subtree, not both",
-			v2model.V2Issue{Path: "outline", Message: "conflicts with block"},
-			v2model.V2Issue{Path: "block", Message: "conflicts with outline"})
+		return plan, v2model.AmbiguousInput("outline and block are mutually exclusive — request the outline or one subtree, not both",
+			v2model.Issue{Path: "outline", Message: "conflicts with block"},
+			v2model.Issue{Path: "block", Message: "conflicts with outline"})
 	}
 	if q.Format == V2FormatMd && q.Outline {
-		return plan, v2model.V2AmbiguousInput("format=md and outline are mutually exclusive — the outline shape is AnyBlock-only",
-			v2model.V2Issue{Path: "format", Message: "conflicts with outline"},
-			v2model.V2Issue{Path: "outline", Message: "conflicts with format=md"})
+		return plan, v2model.AmbiguousInput("format=md and outline are mutually exclusive — the outline shape is AnyBlock-only",
+			v2model.Issue{Path: "format", Message: "conflicts with outline"},
+			v2model.Issue{Path: "outline", Message: "conflicts with format=md"})
 	}
 	if q.Format == V2FormatMd && q.Block != "" {
-		return plan, v2model.V2AmbiguousInput("format=md and block are mutually exclusive — subtree reads are AnyBlock-only",
-			v2model.V2Issue{Path: "format", Message: "conflicts with block"},
-			v2model.V2Issue{Path: "block", Message: "conflicts with format=md"})
+		return plan, v2model.AmbiguousInput("format=md and block are mutually exclusive — subtree reads are AnyBlock-only",
+			v2model.Issue{Path: "format", Message: "conflicts with block"},
+			v2model.Issue{Path: "block", Message: "conflicts with format=md"})
 	}
 
 	switch q.Ids {
@@ -86,8 +86,8 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 	case V2IdsFull:
 		plan.compactRefs = false
 	default:
-		return plan, v2model.V2ValidationFailed("invalid ids value",
-			v2model.V2Issue{Path: "ids", Message: fmt.Sprintf("unknown value %q", q.Ids), Hint: "allowed: compact, full"})
+		return plan, v2model.ValidationFailed("invalid ids value",
+			v2model.Issue{Path: "ids", Message: fmt.Sprintf("unknown value %q", q.Ids), Hint: "allowed: compact, full"})
 	}
 
 	switch q.Format {
@@ -95,8 +95,8 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 	case V2FormatMd:
 		plan.markdown = true
 	default:
-		return plan, v2model.V2ValidationFailed("invalid format value",
-			v2model.V2Issue{Path: "format", Message: fmt.Sprintf("unknown value %q", q.Format), Hint: "allowed: anyblock, md"})
+		return plan, v2model.ValidationFailed("invalid format value",
+			v2model.Issue{Path: "format", Message: fmt.Sprintf("unknown value %q", q.Format), Hint: "allowed: anyblock, md"})
 	}
 
 	if q.Include != "" {
@@ -109,8 +109,8 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 				plan.wantBlocks = true
 			case "":
 			default:
-				return plan, v2model.V2ValidationFailed("invalid include value",
-					v2model.V2Issue{Path: "include", Message: fmt.Sprintf("unknown value %q", strings.TrimSpace(part)), Hint: "allowed: properties, blocks"})
+				return plan, v2model.ValidationFailed("invalid include value",
+					v2model.Issue{Path: "include", Message: fmt.Sprintf("unknown value %q", strings.TrimSpace(part)), Hint: "allowed: properties, blocks"})
 			}
 		}
 	}
@@ -134,10 +134,10 @@ func (q V2ObjectQuery) validate() (objectReadPlan, error) {
 // mapReadError converts live-read failures into C6 errors.
 func mapReadError(spaceId, objectId string, err error) error {
 	if errors.Is(err, treestorage.ErrUnknownTreeId) {
-		return v2model.V2NotFound(fmt.Sprintf("object %q not found in space %q", objectId, spaceId))
+		return v2model.NotFound(fmt.Sprintf("object %q not found in space %q", objectId, spaceId))
 	}
 	if errors.Is(err, space.ErrSpaceNotExists) || errors.Is(err, space.ErrSpaceDeleted) {
-		return v2model.V2NotFound(fmt.Sprintf("space %q not found", spaceId))
+		return v2model.NotFound(fmt.Sprintf("space %q not found", spaceId))
 	}
 	return fmt.Errorf("read object %s: %w", objectId, err)
 }
@@ -176,9 +176,9 @@ func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V
 	opts.CompactBlockLabels = plan.outline
 	// C11 (M3): a read never fails on content the format can't represent —
 	// unmapped/over-deep blocks degrade to warnings that ride the envelope.
-	var warnings []v2model.V2Issue
+	var warnings []v2model.Issue
 	opts.OnWarning = func(iss anyblockjson.Issue) {
-		warnings = append(warnings, v2model.V2Issue{Path: iss.Path, Message: iss.Message})
+		warnings = append(warnings, v2model.Issue{Path: iss.Path, Message: iss.Message})
 	}
 
 	doc, err := anyblockjson.Marshal(read.SbType, read.Snapshot, opts)
@@ -301,13 +301,13 @@ func buildOutlineEnvelope(fields map[string]json.RawMessage, keepProperties bool
 			return fmt.Errorf("decode blocks for outline: %w", err)
 		}
 	}
-	outline := make([]v2model.V2OutlineEntry, 0, len(blocks))
+	outline := make([]v2model.OutlineEntry, 0, len(blocks))
 	for i, raw := range blocks {
 		var src outlineSource
 		if err := json.Unmarshal(raw, &src); err != nil {
 			return fmt.Errorf("decode block %d for outline: %w", i, err)
 		}
-		entry := v2model.V2OutlineEntry{Indent: src.Indent, Id: src.Id, Type: src.Type}
+		entry := v2model.OutlineEntry{Indent: src.Indent, Id: src.Id, Type: src.Type}
 		if outlineHeadingTypes[src.Type] {
 			entry.Text = src.Text
 		}
@@ -399,11 +399,11 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 	case matches == 1:
 		return idx, nil
 	case matches > 1:
-		return -1, v2model.V2AmbiguousInput(
+		return -1, v2model.AmbiguousInput(
 			fmt.Sprintf("block label %q matches more than one block — use the full block id", ref),
-			v2model.V2Issue{Path: "block", Message: "the label is a suffix of several block ids"})
+			v2model.Issue{Path: "block", Message: "the label is a suffix of several block ids"})
 	default:
-		return -1, v2model.V2NotFound(fmt.Sprintf("block %q not found — read the object without ?block= or with ?outline=true to list block ids", ref))
+		return -1, v2model.NotFound(fmt.Sprintf("block %q not found — read the object without ?block= or with ?outline=true to list block ids", ref))
 	}
 }
 
@@ -413,7 +413,7 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 
 // ListObjects returns minimal rows (id, name, type + requested fields) for
 // the space's objects, newest-modified first.
-func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []string, offset, limit int) ([]v2model.V2ObjectRow, int, bool, error) {
+func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, 0, false, err
 	}
@@ -457,7 +457,7 @@ func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []st
 	if err != nil {
 		return nil, 0, false, err
 	}
-	rows := make([]v2model.V2ObjectRow, 0, len(records))
+	rows := make([]v2model.ObjectRow, 0, len(records))
 	for _, record := range records {
 		rows = append(rows, builder.row(record))
 	}
@@ -530,7 +530,7 @@ func (s *V2Service) newObjectRowBuilder(spaceId string, fields []string) (*objec
 	return b, nil
 }
 
-func (b *objectRowBuilder) row(record database.Record) v2model.V2ObjectRow {
+func (b *objectRowBuilder) row(record database.Record) v2model.ObjectRow {
 	typeId := record.Details.GetString(bundle.RelationKeyType)
 	typeKey, cached := b.typeKeys[typeId]
 	if !cached && typeId != "" {
@@ -543,7 +543,7 @@ func (b *objectRowBuilder) row(record database.Record) v2model.V2ObjectRow {
 		}
 		b.typeKeys[typeId] = typeKey // memoize (including "" to avoid re-querying)
 	}
-	row := v2model.V2ObjectRow{
+	row := v2model.ObjectRow{
 		Id:   record.Details.GetString(bundle.RelationKeyId),
 		Name: record.Details.GetString(bundle.RelationKeyName),
 		Type: typeKey,

@@ -22,9 +22,9 @@ const defaultSpacesLimit = 25
 
 // spacesResult is spaces' machine shape.
 type spacesResult struct {
-	Spaces  []v2model.V2SpaceRow `json:"spaces"`
-	Total   int                  `json:"total"`
-	HasMore bool                 `json:"has_more"`
+	Spaces  []v2model.SpaceRow `json:"spaces"`
+	Total   int                `json:"total"`
+	HasMore bool               `json:"has_more"`
 }
 
 // runSpaces lists the user's spaces — the bootstrap tool: every trace needs
@@ -40,7 +40,7 @@ func (r *Runner) runSpaces(ctx context.Context, session *Session, args map[strin
 			limit = 100
 		}
 	}
-	var resp v2model.V2ListResponse[v2model.V2SpaceRow]
+	var resp v2model.ListResponse[v2model.SpaceRow]
 	err := r.client.decode(ctx, apiRequest{
 		method: "GET",
 		path:   "/v2/spaces",
@@ -104,7 +104,7 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		}
 		body["filter"] = resolved
 	}
-	var resp v2model.V2ListResponse[v2model.V2ObjectRow]
+	var resp v2model.ListResponse[v2model.ObjectRow]
 	err := r.client.decode(ctx, apiRequest{
 		method: "POST",
 		path:   "/v2/spaces/" + seg(space) + "/search",
@@ -210,7 +210,7 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	path := "/v2/spaces/" + seg(space) + "/objects"
 	query := r.mutationQuery()
 	key := r.mutationKey(session, requestHash("POST", path, query, body))
-	var result v2model.V2CreateResult
+	var result v2model.CreateResult
 	err := r.client.decode(ctx, apiRequest{
 		method:         "POST",
 		path:           path,

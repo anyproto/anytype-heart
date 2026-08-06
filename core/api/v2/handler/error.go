@@ -14,11 +14,11 @@ import (
 )
 
 // RespondV2Error writes the C6 error envelope and aborts the request.
-// Errors that are not *v2model.V2Error become 500 internal_error.
+// Errors that are not *v2model.Error become 500 internal_error.
 func RespondV2Error(c *gin.Context, err error) {
-	var v2Err *v2model.V2Error
+	var v2Err *v2model.Error
 	if !errors.As(err, &v2Err) {
-		v2Err = v2model.NewV2Error(http.StatusInternalServerError, v2model.V2CodeInternalError, err.Error())
+		v2Err = v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError, err.Error())
 	}
 	c.AbortWithStatusJSON(v2Err.Status, v2Err)
 }
@@ -30,28 +30,28 @@ func RespondV2Error(c *gin.Context, err error) {
 func decodeStrictJSONBody(c *gin.Context, into any, hint string, maxBody int64, surface string) bool {
 	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxBody+1))
 	if err != nil {
-		RespondV2Error(c, v2model.V2ValidationFailed("read request body",
-			v2model.V2Issue{Message: err.Error()}))
+		RespondV2Error(c, v2model.ValidationFailed("read request body",
+			v2model.Issue{Message: err.Error()}))
 		return false
 	}
 	if int64(len(body)) > maxBody {
-		RespondV2Error(c, v2model.V2RequestTooLarge(
+		RespondV2Error(c, v2model.RequestTooLarge(
 			fmt.Sprintf("%s request body exceeds the %d-byte limit", surface, maxBody)))
 		return false
 	}
 	if len(bytes.TrimSpace(body)) == 0 {
-		RespondV2Error(c, v2model.V2ValidationFailed("request body is required",
-			v2model.V2Issue{Message: hint}))
+		RespondV2Error(c, v2model.ValidationFailed("request body is required",
+			v2model.Issue{Message: hint}))
 		return false
 	}
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(into); err != nil {
-		issue := v2model.V2Issue{Message: err.Error(), Hint: hint}
+		issue := v2model.Issue{Message: err.Error(), Hint: hint}
 		if field, ok := unknownFieldName(err); ok {
 			issue.Path = "/" + field
 		}
-		RespondV2Error(c, v2model.V2ValidationFailed("invalid request body", issue))
+		RespondV2Error(c, v2model.ValidationFailed("invalid request body", issue))
 		return false
 	}
 	return true

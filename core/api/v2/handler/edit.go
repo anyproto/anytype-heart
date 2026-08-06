@@ -14,7 +14,7 @@ import (
 )
 
 // respondV2Edit writes an edit result with the ETag header when known.
-func respondV2Edit(c *gin.Context, result *v2model.V2EditResult) {
+func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 	if result.Etag != "" {
 		c.Header("ETag", v2service.QuoteEtag(result.Etag))
 	}
@@ -33,10 +33,10 @@ func respondV2Edit(c *gin.Context, result *v2model.V2EditResult) {
 //	@Param			object_id	path		string					true	"Object id"
 //	@Param			If-Match	header		string					false	"Advisory etag precondition (C7)"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		200			{object}	v2model.V2EditResult	"New etag + created block ids + diffStats"
-//	@Failure		400			{object}	v2model.V2Error		"Invalid ops or post-op document"
-//	@Failure		404			{object}	v2model.V2Error		"Object, space, or referenced block not found"
-//	@Failure		409			{object}	v2model.V2Error		"Stale If-Match (etag_mismatch)"
+//	@Success		200			{object}	v2model.EditResult	"New etag + created block ids + diffStats"
+//	@Failure		400			{object}	v2model.Error		"Invalid ops or post-op document"
+//	@Failure		404			{object}	v2model.Error		"Object, space, or referenced block not found"
+//	@Failure		409			{object}	v2model.Error		"Stale If-Match (etag_mismatch)"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects/{object_id} [patch]
 func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -66,10 +66,10 @@ func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			object_id	path		string					true	"Object id"
 //	@Param			If-Match	header		string					false	"Advisory etag precondition (C7)"
 //	@Param			dry_run		query		bool					false	"Validate and report without committing"
-//	@Success		200			{object}	v2model.V2EditResult	"New etag + diffStats"
-//	@Failure		400			{object}	v2model.V2Error		"Invalid document"
-//	@Failure		404			{object}	v2model.V2Error		"Object or space not found"
-//	@Failure		409			{object}	v2model.V2Error		"Stale If-Match (etag_mismatch)"
+//	@Success		200			{object}	v2model.EditResult	"New etag + diffStats"
+//	@Failure		400			{object}	v2model.Error		"Invalid document"
+//	@Failure		404			{object}	v2model.Error		"Object or space not found"
+//	@Failure		409			{object}	v2model.Error		"Stale If-Match (etag_mismatch)"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects/{object_id} [put]
 func PutObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {

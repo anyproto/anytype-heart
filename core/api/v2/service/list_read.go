@@ -75,12 +75,12 @@ func (s *V2Service) GetCollectionViews(ctx context.Context, spaceId, collectionI
 }
 
 // GetSetObjects implements GET /v2/spaces/{spaceId}/sets/{setId}/objects.
-func (s *V2Service) GetSetObjects(ctx context.Context, spaceId, setId, viewRef string, fields []string, offset, limit int) ([]v2model.V2ObjectRow, int, bool, []v2model.V2Issue, error) {
+func (s *V2Service) GetSetObjects(ctx context.Context, spaceId, setId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	return s.listObjects(ctx, spaceId, setId, listKindSet, viewRef, fields, offset, limit)
 }
 
 // GetCollectionObjects implements GET /v2/spaces/{spaceId}/collections/{collectionId}/objects.
-func (s *V2Service) GetCollectionObjects(ctx context.Context, spaceId, collectionId, viewRef string, fields []string, offset, limit int) ([]v2model.V2ObjectRow, int, bool, []v2model.V2Issue, error) {
+func (s *V2Service) GetCollectionObjects(ctx context.Context, spaceId, collectionId, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	return s.listObjects(ctx, spaceId, collectionId, listKindCollection, viewRef, fields, offset, limit)
 }
 
@@ -106,13 +106,13 @@ func (s *V2Service) readListTarget(ctx context.Context, spaceId, listId string, 
 	isCollection := layout == model.ObjectType_collection
 	switch {
 	case want == listKindSet && isCollection:
-		return listTarget{}, v2model.V2ValidationFailed(
+		return listTarget{}, v2model.ValidationFailed(
 			fmt.Sprintf("object %q is a collection, not a set — use GET /v2/spaces/%s/collections/%s/objects", listId, spaceId, listId))
 	case want == listKindCollection && isSet:
-		return listTarget{}, v2model.V2ValidationFailed(
+		return listTarget{}, v2model.ValidationFailed(
 			fmt.Sprintf("object %q is a set, not a collection — use GET /v2/spaces/%s/sets/%s/objects", listId, spaceId, listId))
 	case !isSet && !isCollection:
-		return listTarget{}, v2model.V2ValidationFailed(
+		return listTarget{}, v2model.ValidationFailed(
 			fmt.Sprintf("object %q is neither a set nor a collection — sets read via /v2/spaces/{spaceId}/sets/{setId}/objects, collections via /v2/spaces/{spaceId}/collections/{collectionId}/objects", listId))
 	}
 
@@ -179,7 +179,7 @@ func (s *V2Service) listViews(ctx context.Context, spaceId, listId string, want 
 
 // listObjects executes the set query / collection membership, optionally
 // through one stored view's filters and sorts.
-func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, want listKind, viewRef string, fields []string, offset, limit int) ([]v2model.V2ObjectRow, int, bool, []v2model.V2Issue, error) {
+func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, want listKind, viewRef string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	target, err := s.readListTarget(ctx, spaceId, listId, want)
 	if err != nil {
 		return nil, 0, false, nil, err
@@ -191,7 +191,7 @@ func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, wan
 	var (
 		filters  []database.FilterRequest
 		sorts    []database.SortRequest
-		warnings []v2model.V2Issue
+		warnings []v2model.Issue
 	)
 	if viewRef != "" {
 		view, err := resolveViewRef(target.dataview, viewRef, listId)
@@ -215,7 +215,7 @@ func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, wan
 	case listKindCollection:
 		members = storeSlice(target.read.Snapshot)
 		if len(members) == 0 {
-			return []v2model.V2ObjectRow{}, 0, false, warnings, nil
+			return []v2model.ObjectRow{}, 0, false, warnings, nil
 		}
 		filters = append(filters, database.FilterRequest{
 			RelationKey: bundle.RelationKeyId,
@@ -262,7 +262,7 @@ func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, wan
 	if err != nil {
 		return nil, 0, false, nil, err
 	}
-	rows := make([]v2model.V2ObjectRow, 0, len(records))
+	rows := make([]v2model.ObjectRow, 0, len(records))
 	for _, record := range records {
 		rows = append(rows, builder.row(record))
 	}
@@ -292,14 +292,14 @@ func (s *V2Service) validateListFields(spaceId string, fields []string) error {
 		allowed[key] = true
 	}
 	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
-	var issues []v2model.V2Issue
+	var issues []v2model.Issue
 	for _, field := range fields {
 		if !allowed[field] {
 			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listUrl))
 		}
 	}
 	if len(issues) > 0 {
-		return v2model.V2ValidationFailed("unknown property keys", issues...)
+		return v2model.ValidationFailed("unknown property keys", issues...)
 	}
 	return nil
 }
@@ -308,7 +308,7 @@ func (s *V2Service) validateListFields(spaceId string, fields []string) error {
 // leniency block refs get).
 func resolveViewRef(dv *model.BlockContentDataview, viewRef, listId string) (*model.BlockContentDataviewView, error) {
 	if dv == nil || len(dv.Views) == 0 {
-		return nil, v2model.V2NotFound(fmt.Sprintf("view %q not found — object %q has no views", viewRef, listId))
+		return nil, v2model.NotFound(fmt.Sprintf("view %q not found — object %q has no views", viewRef, listId))
 	}
 	ids := make([]string, len(dv.Views))
 	for i, view := range dv.Views {
@@ -319,11 +319,11 @@ func resolveViewRef(dv *model.BlockContentDataview, viewRef, listId string) (*mo
 	case matches == 1:
 		return dv.Views[idx], nil
 	case matches > 1:
-		return nil, v2model.V2AmbiguousInput(
+		return nil, v2model.AmbiguousInput(
 			fmt.Sprintf("view reference %q matches more than one view — use the full view id", viewRef),
-			v2model.V2Issue{Path: "view", Message: "the reference is a suffix of several view ids"})
+			v2model.Issue{Path: "view", Message: "the reference is a suffix of several view ids"})
 	default:
-		return nil, v2model.V2NotFound(
+		return nil, v2model.NotFound(
 			fmt.Sprintf("view %q not found in object %q — view ids: %s", viewRef, listId, strings.Join(ids, ", ")))
 	}
 }
@@ -344,7 +344,7 @@ func (s *V2Service) setSourceFilters(spaceId, setId string, read apicore.ObjectR
 		}
 	}
 	if len(sources) == 0 {
-		return nil, v2model.V2ValidationFailed(
+		return nil, v2model.ValidationFailed(
 			fmt.Sprintf("set %q queries nothing — its source (setOf) is empty", setId))
 	}
 
@@ -372,7 +372,7 @@ func (s *V2Service) setSourceFilters(spaceId, setId string, read apicore.ObjectR
 			relationKeys = append(relationKeys, relation.Key)
 			continue
 		}
-		return nil, v2model.V2ValidationFailed(
+		return nil, v2model.ValidationFailed(
 			fmt.Sprintf("set %q has an unresolvable source %q — setOf entries are type or property object ids", setId, entry))
 	}
 
@@ -455,15 +455,15 @@ func (b *byPrecomputedKey) Swap(i, j int) {
 // is wired — drops its leaf and degrades to a C6 warning: evaluated
 // literally it would match nothing, v1's silent-empty-result bug. The
 // snapshot is a per-read copy, so substitution never touches live state.
-func (s *V2Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.V2Issue) {
-	var warnings []v2model.V2Issue
+func (s *V2Service) substitutePlaceholders(spaceId, hostId string, filters []*model.BlockContentDataviewFilter) ([]*model.BlockContentDataviewFilter, []v2model.Issue) {
+	var warnings []v2model.Issue
 	substitute := func(value string) (string, bool) {
 		switch value {
 		case filterTemplateHost:
 			return hostId, true
 		case filterTemplateUser:
 			if s.accountId == "" {
-				warnings = append(warnings, v2model.V2Issue{
+				warnings = append(warnings, v2model.Issue{
 					Path:    "view",
 					Message: fmt.Sprintf("the current-user placeholder %q could not be resolved — the filter carrying it was ignored", value),
 				})
@@ -472,7 +472,7 @@ func (s *V2Service) substitutePlaceholders(spaceId, hostId string, filters []*mo
 			return domain.NewParticipantId(spaceId, s.accountId), true
 		default:
 			if strings.HasPrefix(value, "_filter_template_") {
-				warnings = append(warnings, v2model.V2Issue{
+				warnings = append(warnings, v2model.Issue{
 					Path:    "view",
 					Message: fmt.Sprintf("%q is an unresolvable placeholder — the filter carrying it was ignored", value),
 				})

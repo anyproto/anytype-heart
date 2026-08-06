@@ -66,7 +66,7 @@ func TestDiffEditDocs(t *testing.T) {
 		// given
 		before := []byte(`{"blocks":[{"id":"a","type":"paragraph","text":"a"},{"id":"b","type":"paragraph","text":"b"}]}`)
 		after := []byte(`{"blocks":[{"id":"a","type":"paragraph","text":"a"},{"id":"n","type":"paragraph","text":"n"},{"id":"b","type":"paragraph","text":"b"}]}`)
-		want := v2model.V2DiffStats{BlocksAdded: 1}
+		want := v2model.DiffStats{BlocksAdded: 1}
 
 		// when
 		got, err := diffEditDocs(before, after)
@@ -83,7 +83,7 @@ func TestDiffEditDocs(t *testing.T) {
 		got, err := diffEditDocs(before, after)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksMoved: 2}, got)
+		assert.Equal(t, v2model.DiffStats{BlocksMoved: 2}, got)
 	})
 
 	t.Run("reparenting is moved, not changed", func(t *testing.T) {
@@ -93,7 +93,7 @@ func TestDiffEditDocs(t *testing.T) {
 		got, err := diffEditDocs(before, after)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksMoved: 1}, got)
+		assert.Equal(t, v2model.DiffStats{BlocksMoved: 1}, got)
 	})
 
 	t.Run("property add, change and removal each count once", func(t *testing.T) {
@@ -103,6 +103,6 @@ func TestDiffEditDocs(t *testing.T) {
 		got, err := diffEditDocs(before, after)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{PropertiesChanged: 3}, got)
+		assert.Equal(t, v2model.DiffStats{PropertiesChanged: 3}, got)
 	})
 }

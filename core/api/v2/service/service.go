@@ -57,13 +57,13 @@ func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, creato
 // never mints an index for spaceId; the tech space itself is trusted.
 func (s *V2Service) ensureSpace(spaceId string) error {
 	if spaceId == "" {
-		return v2model.V2NotFound("space id is required")
+		return v2model.NotFound("space id is required")
 	}
 	if spaceId == s.techSpaceId {
 		return nil
 	}
 	if _, err := s.store.GetSpaceViewDetails(spaceId); err != nil {
-		return v2model.V2NotFound(fmt.Sprintf("space %q not found", spaceId))
+		return v2model.NotFound(fmt.Sprintf("space %q not found", spaceId))
 	}
 	return nil
 }

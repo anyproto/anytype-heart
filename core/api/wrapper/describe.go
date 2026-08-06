@@ -81,7 +81,7 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 	for _, tp := range typeDoc.TypeProperties {
 		prop := describeProperty{Key: tp.Key, Name: tp.Name, Format: tp.Format}
 		if selectFormats[tp.Format] {
-			var resp v2model.V2ListResponse[v2model.V2OptionRow]
+			var resp v2model.ListResponse[v2model.OptionRow]
 			if err := r.client.decode(ctx, apiRequest{
 				method: "GET",
 				path:   "/v2/spaces/" + seg(space) + "/properties/" + seg(tp.Key) + "/options",

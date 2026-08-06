@@ -56,14 +56,14 @@ type docCreateOptions struct {
 }
 
 // CreateObject implements POST /v2/spaces/{spaceId}/objects.
-func (s *V2Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
 	fields, err := parseEnvelope(body)
 	if err != nil {
-		return nil, v2model.V2ValidationFailed("request body is not a JSON object",
-			v2model.V2Issue{Message: err.Error()})
+		return nil, v2model.ValidationFailed("request body is not a JSON object",
+			v2model.Issue{Message: err.Error()})
 	}
 
 	// §8/R7 discriminator: presence of version or blocks ⇒ full document
@@ -78,7 +78,7 @@ func (s *V2Service) CreateObject(ctx context.Context, spaceId string, body []byt
 // CreateTemplate implements POST /v2/spaces/{spaceId}/templates: an AnyBlock
 // document with templateFor, routed through the generic object-create path
 // (no create-from-body template RPC exists — APIV2.md Phase 2).
-func (s *V2Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, err
 	}
@@ -91,11 +91,11 @@ func (s *V2Service) CreateTemplate(ctx context.Context, spaceId string, body []b
 // and rides the same single-change-set create as an explicit blocks array —
 // dry runs validate it, no half-built object on failure, and the C8 result
 // cache replays it safely (the §7.2 two-change-set caveats are gone).
-func (s *V2Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, dryRun bool) (*v2model.V2CreateResult, error) {
+func (s *V2Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, dryRun bool) (*v2model.CreateResult, error) {
 	for key := range fields {
 		if !shortcutKeys[key] {
-			return nil, v2model.V2ValidationFailed("unknown field in create shortcut",
-				v2model.V2Issue{
+			return nil, v2model.ValidationFailed("unknown field in create shortcut",
+				v2model.Issue{
 					Path:    "/" + key,
 					Message: fmt.Sprintf("unknown key %q — the shortcut accepts type, name, properties, markdown", key),
 					Hint:    "to send a full AnyBlock document, include \"version\": 1",
@@ -108,11 +108,11 @@ func (s *V2Service) createFromShortcut(ctx context.Context, spaceId string, fiel
 	}
 	var shortcut v2ObjectShortcut
 	if err := json.Unmarshal(raw, &shortcut); err != nil {
-		return nil, v2model.V2ValidationFailed("decode create shortcut: " + err.Error())
+		return nil, v2model.ValidationFailed("decode create shortcut: " + err.Error())
 	}
 	if shortcut.Type == "" {
-		return nil, v2model.V2ValidationFailed("type is required",
-			v2model.V2Issue{Path: "/type", Message: "the shortcut needs a type key", Hint: "list keys with GET /v2/spaces/{spaceId}/types"})
+		return nil, v2model.ValidationFailed("type is required",
+			v2model.Issue{Path: "/type", Message: "the shortcut needs a type key", Hint: "list keys with GET /v2/spaces/{spaceId}/types"})
 	}
 
 	doc := map[string]json.RawMessage{}
@@ -140,16 +140,16 @@ func (s *V2Service) createFromShortcut(ctx context.Context, spaceId string, fiel
 	if shortcut.Markdown != "" {
 		run, exceeded := anyblockjson.ParseMarkdownBlocksLimit(shortcut.Markdown, v2MaxCreateMarkdownBlocks)
 		if exceeded {
-			return nil, v2model.V2ValidationFailed("markdown produced too many blocks",
-				v2model.V2Issue{Path: "/markdown", Message: fmt.Sprintf(
+			return nil, v2model.ValidationFailed("markdown produced too many blocks",
+				v2model.Issue{Path: "/markdown", Message: fmt.Sprintf(
 					"the markdown parses to more than %d blocks — the create limit is %d; create with a shorter body and add the rest with PATCH insertBlocks",
 					v2MaxCreateMarkdownBlocks, v2MaxCreateMarkdownBlocks)})
 		}
 		if len(run) == 0 {
 			// same contract as the insertBlocks markdown channel — a silent
 			// empty object teaches the caller nothing (C6)
-			return nil, v2model.V2ValidationFailed("markdown produced no blocks",
-				v2model.V2Issue{Path: "/markdown", Message: "the markdown body contains no content — give at least one non-blank line, or omit markdown"})
+			return nil, v2model.ValidationFailed("markdown produced no blocks",
+				v2model.Issue{Path: "/markdown", Message: "the markdown body contains no content — give at least one non-blank line, or omit markdown"})
 		}
 		if doc["blocks"], err = rawJSON(run); err != nil {
 			return nil, err
@@ -182,7 +182,7 @@ const v2MaxCreateMarkdownBlocks = 2048
 // the parsed block position, the same convention the insertBlocks op's
 // createdBlocks keys document.
 func rebaseMarkdownCreateError(err error) error {
-	var v2Err *v2model.V2Error
+	var v2Err *v2model.Error
 	if !errors.As(err, &v2Err) {
 		return err
 	}
@@ -203,7 +203,7 @@ func rebaseMarkdownCreateError(err error) error {
 // createFromDocument is the shared full-document create path: structural
 // validation → referential validation → Unmarshal with create-missing
 // resolvers → snapshot create (one change set) → etag read-back.
-func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body []byte, opts docCreateOptions) (*v2model.V2CreateResult, error) {
+func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body []byte, opts docCreateOptions) (*v2model.CreateResult, error) {
 	// 1. structural + format-semantic validation (no side effects)
 	if err := s.rejectInvalidDocument(body); err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 
 	var envelope docEnvelope
 	if err := json.Unmarshal(body, &envelope); err != nil {
-		return nil, v2model.V2ValidationFailed("decode document envelope: " + err.Error())
+		return nil, v2model.ValidationFailed("decode document envelope: " + err.Error())
 	}
 	if envelope.Type == "" {
 		// absent type defaults to page on create (agent-friendly; SPEC §2
@@ -250,7 +250,7 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 		return nil, fmt.Errorf("resolve document references: %w", err)
 	}
 
-	result := &v2model.V2CreateResult{Type: envelope.Type, Created: resolvers.created()}
+	result := &v2model.CreateResult{Type: envelope.Type, Created: resolvers.created()}
 	if opts.dryRun {
 		result.DryRun = true
 		return result, nil
@@ -281,7 +281,7 @@ func (s *V2Service) createFromDocument(ctx context.Context, spaceId string, body
 	if read, err := s.reader.ReadObject(ctx, spaceId, id); err == nil {
 		result.Etag = ComputeEtag(read.Heads)
 	} else {
-		result.Warnings = append(result.Warnings, v2model.V2Issue{
+		result.Warnings = append(result.Warnings, v2model.Issue{
 			Message: "created, but the etag read-back failed — GET the object for its etag",
 		})
 	}
@@ -304,20 +304,20 @@ func (s *V2Service) rejectInvalidDocument(body []byte) error {
 func mapUnmarshalError(body []byte, err error) error {
 	var validationErr *anyblockjson.ValidationError
 	if !errors.As(err, &validationErr) {
-		return v2model.V2ValidationFailed("invalid AnyBlock document", v2model.V2Issue{Message: err.Error()})
+		return v2model.ValidationFailed("invalid AnyBlock document", v2model.Issue{Message: err.Error()})
 	}
 	if validationErr.NewerFormat {
 		docVersion, _, ok := anyblockjson.DetectFormat(body)
 		if !ok {
 			docVersion = anyblockjson.FormatVersion + 1
 		}
-		return v2model.V2VersionUnsupported(docVersion, anyblockjson.FormatVersion)
+		return v2model.VersionUnsupported(docVersion, anyblockjson.FormatVersion)
 	}
-	issues := make([]v2model.V2Issue, 0, len(validationErr.Issues))
+	issues := make([]v2model.Issue, 0, len(validationErr.Issues))
 	for _, issue := range validationErr.Issues {
-		issues = append(issues, v2model.V2Issue{Path: issue.Path, Message: issue.Message})
+		issues = append(issues, v2model.Issue{Path: issue.Path, Message: issue.Message})
 	}
-	return v2model.V2ValidationFailed("the document failed AnyBlock validation", issues...)
+	return v2model.ValidationFailed("the document failed AnyBlock validation", issues...)
 }
 
 // validateDocumentRefs is the R9 layer for object creates: kind and type
@@ -329,11 +329,11 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 	switch envelope.Kind {
 	case "", "page", "template":
 	case "objectType":
-		return v2model.V2ValidationFailed("type documents are created via their own endpoint",
-			v2model.V2Issue{Path: "/kind", Message: "kind \"objectType\" is not accepted here", Hint: fmt.Sprintf("POST /v2/spaces/%s/types", spaceId)})
+		return v2model.ValidationFailed("type documents are created via their own endpoint",
+			v2model.Issue{Path: "/kind", Message: "kind \"objectType\" is not accepted here", Hint: fmt.Sprintf("POST /v2/spaces/%s/types", spaceId)})
 	default:
-		return v2model.V2ValidationFailed("unsupported document kind",
-			v2model.V2Issue{Path: "/kind", Message: fmt.Sprintf("kind %q cannot be created through the API", envelope.Kind), Hint: "omit kind (page) or use type \"template\""})
+		return v2model.ValidationFailed("unsupported document kind",
+			v2model.Issue{Path: "/kind", Message: fmt.Sprintf("kind %q cannot be created through the API", envelope.Kind), Hint: "omit kind (page) or use type \"template\""})
 	}
 
 	if opts.requireTemplate {
@@ -341,15 +341,15 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 			envelope.Type = string(bundle.TypeKeyTemplate)
 		}
 		if envelope.Type != string(bundle.TypeKeyTemplate) {
-			return v2model.V2ValidationFailed("not a template document",
-				v2model.V2Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", envelope.Type)})
+			return v2model.ValidationFailed("not a template document",
+				v2model.Issue{Path: "/type", Message: fmt.Sprintf("expected type \"template\", got %q", envelope.Type)})
 		}
 	}
 	// a template must name its target type — the editor derives the layout
 	// from it (SPEC §2 templateFor); enforced on both endpoints
 	if envelope.Type == string(bundle.TypeKeyTemplate) && envelope.TemplateFor == "" {
-		return v2model.V2ValidationFailed("templateFor is required",
-			v2model.V2Issue{Path: "/templateFor", Message: "a template document names its target type key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
+		return v2model.ValidationFailed("templateFor is required",
+			v2model.Issue{Path: "/templateFor", Message: "a template document names its target type key", Hint: fmt.Sprintf("list keys with GET /v2/spaces/%s/types", spaceId)})
 	}
 
 	if envelope.Type != "" && envelope.Type != string(bundle.TypeKeyTemplate) {
@@ -366,12 +366,12 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 
 	// SPEC §2: items on a non-collection document is a wiring-enforced error
 	if len(envelope.Items) > 0 && envelope.Type != string(bundle.TypeKeyCollection) {
-		return v2model.V2ValidationFailed("items on a non-collection document",
-			v2model.V2Issue{Path: "/items", Message: fmt.Sprintf("items requires type \"collection\", got %q", envelope.Type), Hint: fmt.Sprintf("POST /v2/spaces/%s/collections", spaceId)})
+		return v2model.ValidationFailed("items on a non-collection document",
+			v2model.Issue{Path: "/items", Message: fmt.Sprintf("items requires type \"collection\", got %q", envelope.Type), Hint: fmt.Sprintf("POST /v2/spaces/%s/collections", spaceId)})
 	}
 
 	// property keys must exist — did-you-mean, never silent create (R9)
-	var issues []v2model.V2Issue
+	var issues []v2model.Issue
 	var known []string
 	for _, key := range sortedKeys(envelope.Properties) {
 		if s.propertyKeyExists(spaceId, key) {
@@ -384,7 +384,7 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 			fmt.Sprintf("list all with GET /v2/spaces/%s/properties, or create it with POST /v2/spaces/%s/properties", spaceId, spaceId)))
 	}
 	if len(issues) > 0 {
-		return v2model.V2ValidationFailed("unknown property keys", issues...)
+		return v2model.ValidationFailed("unknown property keys", issues...)
 	}
 	return nil
 }
@@ -394,13 +394,13 @@ func (s *V2Service) validateDocumentRefs(spaceId string, envelope *docEnvelope, 
 func rejectRestrictedType(typeKey string) error {
 	key := domain.TypeKey(typeKey)
 	if t, err := bundle.GetType(key); err == nil && t.RestrictObjectCreation {
-		return v2model.V2ValidationFailed("this type cannot be created through the API",
-			v2model.V2Issue{Path: "/type", Message: fmt.Sprintf("creation of %q objects is restricted", typeKey)})
+		return v2model.ValidationFailed("this type cannot be created through the API",
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("creation of %q objects is restricted", typeKey)})
 	}
 	switch key {
 	case bundle.TypeKeyFile, bundle.TypeKeyImage, bundle.TypeKeyAudio, bundle.TypeKeyVideo:
-		return v2model.V2ValidationFailed("file objects are created by upload",
-			v2model.V2Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey), Hint: "POST /v2/spaces/{spaceId}/files"})
+		return v2model.ValidationFailed("file objects are created by upload",
+			v2model.Issue{Path: "/type", Message: fmt.Sprintf("%q objects come from file uploads", typeKey), Hint: "POST /v2/spaces/{spaceId}/files"})
 	}
 	return nil
 }

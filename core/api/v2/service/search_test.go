@@ -65,7 +65,7 @@ func searchSetup(t *testing.T) *v2Fixture {
 	return fx
 }
 
-func rowIds(rows []v2model.V2ObjectRow) []string {
+func rowIds(rows []v2model.ObjectRow) []string {
 	ids := make([]string, len(rows))
 	for i, row := range rows {
 		ids[i] = row.Id
@@ -77,7 +77,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("structured filters narrow by option name (read-only resolution)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"severity","condition":"in","value":["High"]}]`),
 		}
@@ -100,7 +100,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("the compact filter string lands on the same tree (one execution path)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{Type: "chore", Filter: `severity IN ("High")`}
+		req := v2model.SearchRequest{Type: "chore", Filter: `severity IN ("High")`}
 
 		// when
 		rows, total, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
@@ -115,7 +115,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("filter and filters together are ambiguous_input (C6)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Filter:  `severity IS EMPTY`,
 			Filters: json.RawMessage(`[]`),
 		}
@@ -125,14 +125,14 @@ func TestV2SearchObjects(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeAmbiguousInput, apiErr.Code)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "provide filter or filters, not both")
 	})
 
 	t.Run("unknown structured filter key gets a path-addressed did-you-mean (rule 1)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Type:    "chore",
 			Filters: json.RawMessage(`[{"property":"sevirity","condition":"notEmpty"}]`),
 		}
@@ -151,7 +151,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("unknown filter-string key gets an offset-addressed did-you-mean", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{Type: "chore", Filter: `done = false AND sevirity IS EMPTY`}
+		req := v2model.SearchRequest{Type: "chore", Filter: `done = false AND sevirity IS EMPTY`}
 
 		// when
 		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
@@ -169,7 +169,7 @@ func TestV2SearchObjects(t *testing.T) {
 		fx := searchSetup(t)
 
 		t.Run("structured form", func(t *testing.T) {
-			req := v2model.V2SearchRequest{
+			req := v2model.SearchRequest{
 				Type:    "chore",
 				Filters: json.RawMessage(`[{"property":"severity","condition":"in","value":["Hgih"]}]`),
 			}
@@ -185,7 +185,7 @@ func TestV2SearchObjects(t *testing.T) {
 		})
 
 		t.Run("string form", func(t *testing.T) {
-			req := v2model.V2SearchRequest{Type: "chore", Filter: `severity = "Hgih"`}
+			req := v2model.SearchRequest{Type: "chore", Filter: `severity = "Hgih"`}
 
 			_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
 
@@ -201,7 +201,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("sort by any property key (v1's closed enum is gone)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Type:  "chore",
 			Sorts: json.RawMessage(`[{"property":"lastModifiedDate","direction":"asc"}]`),
 		}
@@ -220,7 +220,7 @@ func TestV2SearchObjects(t *testing.T) {
 
 		// when
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Type: "chore"}, 0, 25)
+			v2model.SearchRequest{Type: "chore"}, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -230,7 +230,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("unknown sort key gets a path-addressed did-you-mean", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Type:  "chore",
 			Sorts: json.RawMessage(`[{"property":"dueDates"}]`),
 		}
@@ -247,7 +247,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("type is a filterable pseudo-key (rule 6)", func(t *testing.T) {
 		// given: no top-level type — the filter channel carries it
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{Filter: `type IN ("chore")`}
+		req := v2model.SearchRequest{Filter: `type IN ("chore")`}
 
 		// when
 		rows, total, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
@@ -261,7 +261,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("unknown type key in the type pseudo-filter gets did-you-mean", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{Filter: `type IN ("chores")`}
+		req := v2model.SearchRequest{Filter: `type IN ("chores")`}
 
 		// when
 		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
@@ -277,7 +277,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("the unguarded-date-comparison hazard warns on the response (rule 5)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{Type: "chore", Filter: `lastModifiedDate < today()`}
+		req := v2model.SearchRequest{Type: "chore", Filter: `lastModifiedDate < today()`}
 
 		// when
 		_, _, _, warnings, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
@@ -293,7 +293,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("unknown fields keys are rejected (rule 1 covers field keys)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{Type: "chore", Fields: []string{"sevirity"}}
+		req := v2model.SearchRequest{Type: "chore", Fields: []string{"sevirity"}}
 
 		// when
 		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
@@ -308,7 +308,7 @@ func TestV2SearchObjects(t *testing.T) {
 	t.Run("fields expand rows with property values (C5)", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)
-		req := v2model.V2SearchRequest{Type: "chore", Fields: []string{"severity"}}
+		req := v2model.SearchRequest{Type: "chore", Fields: []string{"severity"}}
 
 		// when
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, req, 0, 25)
@@ -316,7 +316,7 @@ func TestV2SearchObjects(t *testing.T) {
 		// then — option ids render as NAMES (C2)
 		require.NoError(t, err)
 		require.Len(t, rows, 2)
-		byId := map[string]v2model.V2ObjectRow{}
+		byId := map[string]v2model.ObjectRow{}
 		for _, row := range rows {
 			byId[row.Id] = row
 		}
@@ -329,7 +329,7 @@ func TestV2SearchObjects(t *testing.T) {
 
 		// when
 		rows, total, hasMore, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Type: "chore"}, 0, 1)
+			v2model.SearchRequest{Type: "chore"}, 0, 1)
 
 		// then
 		require.NoError(t, err)
@@ -344,7 +344,7 @@ func TestV2SearchObjects(t *testing.T) {
 
 		// when: page 2 of the two chores (default sort: chore2 then chore1)
 		rows, total, hasMore, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Type: "chore"}, 1, 1)
+			v2model.SearchRequest{Type: "chore"}, 1, 1)
 
 		// then
 		require.NoError(t, err)
@@ -359,7 +359,7 @@ func TestV2SearchObjects(t *testing.T) {
 
 		// when
 		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Type: "chores"}, 0, 25)
+			v2model.SearchRequest{Type: "chores"}, 0, 25)
 
 		// then
 		apiErr := v2Err(t, err)
@@ -398,7 +398,7 @@ func TestV2SearchStructuredDateValues(t *testing.T) {
 		// compares string-against-int64, matching nothing without a word
 		fx := searchSetup(t)
 		fx.addDateProperty(t)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Filters: json.RawMessage(`[{"property":"verifiedUntil","condition":"less","value":"2026-08-01"}]`),
 		}
 
@@ -416,7 +416,7 @@ func TestV2SearchStructuredDateValues(t *testing.T) {
 	t.Run("a non-date string on a date property is rejected too", func(t *testing.T) {
 		fx := searchSetup(t)
 		fx.addDateProperty(t)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Filters: json.RawMessage(`[{"property":"verifiedUntil","condition":"less","value":"next tuesday"}]`),
 		}
 
@@ -430,7 +430,7 @@ func TestV2SearchStructuredDateValues(t *testing.T) {
 	t.Run("a date string inside an in-list is rejected as well", func(t *testing.T) {
 		fx := searchSetup(t)
 		fx.addDateProperty(t)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Filters: json.RawMessage(`[{"property":"verifiedUntil","condition":"in","value":["2026-08-01"]}]`),
 		}
 
@@ -447,7 +447,7 @@ func TestV2SearchStructuredDateValues(t *testing.T) {
 		// greater, because an unset date compares BELOW any set value — with
 		// `less` every object without the property would match (the separate
 		// unguarded-date warning covers that hazard)
-		req := v2model.V2SearchRequest{
+		req := v2model.SearchRequest{
 			Filters: json.RawMessage(`[{"property":"verifiedUntil","condition":"greater","value":1785542400}]`),
 		}
 
@@ -501,9 +501,9 @@ func TestV2SearchPlanConvergence(t *testing.T) {
 			fx.addCheckboxProperty(t)
 
 			// when
-			planFromString, err := fx.buildSearchPlan(testSpaceId, v2model.V2SearchRequest{Filter: pair.filter}, true)
+			planFromString, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{Filter: pair.filter}, true)
 			require.NoError(t, err)
-			planFromStructured, err := fx.buildSearchPlan(testSpaceId, v2model.V2SearchRequest{Filters: json.RawMessage(pair.structured)}, true)
+			planFromStructured, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{Filters: json.RawMessage(pair.structured)}, true)
 			require.NoError(t, err)
 
 			// then
@@ -541,7 +541,7 @@ func TestV2SearchEffectiveSorts(t *testing.T) {
 		// without this the granularity depended on whether the full-text
 		// tiebreak was appended (isSingleDateSort sees 2 sorts → day-truncated)
 		fx := searchSetup(t)
-		plan, err := fx.buildSearchPlan(testSpaceId, v2model.V2SearchRequest{
+		plan, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{
 			Query: "report",
 			Sorts: json.RawMessage(`[{"property":"lastModifiedDate","direction":"asc"}]`),
 		}, true)
@@ -552,7 +552,7 @@ func TestV2SearchEffectiveSorts(t *testing.T) {
 
 	t.Run("an explicit includeTime false is honored", func(t *testing.T) {
 		fx := searchSetup(t)
-		plan, err := fx.buildSearchPlan(testSpaceId, v2model.V2SearchRequest{
+		plan, err := fx.buildSearchPlan(testSpaceId, v2model.SearchRequest{
 			Sorts: json.RawMessage(`[{"property":"lastModifiedDate","direction":"asc","includeTime":false}]`),
 		}, true)
 		require.NoError(t, err)
@@ -578,7 +578,7 @@ func TestV2SearchFullText(t *testing.T) {
 
 		// when
 		rows, total, hasMore, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Query: "report"}, 0, 25)
+			v2model.SearchRequest{Query: "report"}, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -596,7 +596,7 @@ func TestV2SearchFullText(t *testing.T) {
 
 		// when
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{
+			v2model.SearchRequest{
 				Query: "report",
 				Sorts: json.RawMessage(`[{"property":"lastModifiedDate","direction":"asc"}]`),
 			}, 0, 25)
@@ -611,7 +611,7 @@ func TestV2SearchFullText(t *testing.T) {
 		indexDoc(t, fx, "chore2/r/name", "Write the report")
 
 		rows, total, hasMore, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Query: "report"}, 5, 25)
+			v2model.SearchRequest{Query: "report"}, 5, 25)
 
 		require.NoError(t, err)
 		assert.Empty(t, rows)
@@ -643,7 +643,7 @@ func TestV2SearchFullText(t *testing.T) {
 
 		// when: the page past the floor
 		rows, total, hasMore, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Query: "report"}, 100, 10)
+			v2model.SearchRequest{Query: "report"}, 100, 10)
 
 		// then: the store escalated its budget and served the page
 		require.NoError(t, err)
@@ -653,7 +653,7 @@ func TestV2SearchFullText(t *testing.T) {
 
 		// and the enumeration terminates honestly at the true end
 		rows, total, hasMore, _, err = fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Query: "report"}, 110, 10)
+			v2model.SearchRequest{Query: "report"}, 110, 10)
 		require.NoError(t, err)
 		assert.Len(t, rows, 10)
 		assert.Equal(t, matches, total, "an exhausted result reports the exact count")
@@ -673,7 +673,7 @@ func TestV2Phase4EnsureSpaceGuard(t *testing.T) {
 		run  func() error
 	}{
 		{"SearchObjects", func() error {
-			_, _, _, _, err := fx.SearchObjects(ctx, ghost, v2model.V2SearchRequest{}, 0, 25)
+			_, _, _, _, err := fx.SearchObjects(ctx, ghost, v2model.SearchRequest{}, 0, 25)
 			return err
 		}},
 		{"GetSetObjects", func() error {
@@ -696,7 +696,7 @@ func TestV2Phase4EnsureSpaceGuard(t *testing.T) {
 	for _, call := range calls {
 		t.Run(call.name, func(t *testing.T) {
 			apiErr := v2Err(t, call.run())
-			assert.Equal(t, v2model.V2CodeNotFound, apiErr.Code)
+			assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
 			assert.Contains(t, apiErr.Message, `space "ghostspace" not found`)
 		})
 	}
@@ -732,7 +732,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when: no type, no filters — default newest-modified-first merge
 		rows, total, hasMore, _, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{}, 0, 25)
+			v2model.SearchRequest{}, 0, 25)
 
 		// then: page1(3000) > chore2(2000) > note1(1500) > chore1(1000)
 		require.NoError(t, err)
@@ -750,7 +750,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when
 		rows, total, _, warnings, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{Type: "chore"}, 0, 25)
+			v2model.SearchRequest{Type: "chore"}, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -767,11 +767,11 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when
 		_, _, _, _, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{Type: "ghost"}, 0, 25)
+			v2model.SearchRequest{Type: "ghost"}, 0, 25)
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		require.Len(t, apiErr.Issues, 1)
 		assert.Equal(t, "/type", apiErr.Issues[0].Path)
 	})
@@ -782,7 +782,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when
 		rows, total, hasMore, _, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{}, 0, 2)
+			v2model.SearchRequest{}, 0, 2)
 
 		// then
 		require.NoError(t, err)
@@ -797,7 +797,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when
 		rows, _, hasMore, _, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{}, 2, 2)
+			v2model.SearchRequest{}, 2, 2)
 
 		// then
 		require.NoError(t, err)
@@ -812,7 +812,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when
 		rows, total, _, warnings, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{Fields: []string{"severity"}}, 0, 25)
+			v2model.SearchRequest{Fields: []string{"severity"}}, 0, 25)
 
 		// then: all four rows, and a warning instead of a dropped space
 		require.NoError(t, err)
@@ -829,11 +829,11 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when
 		_, _, _, _, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{}, 2001, 25)
+			v2model.SearchRequest{}, 2001, 25)
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, v2model.CodeValidationFailed, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "global search pages at most 2000 rows deep")
 		require.Len(t, apiErr.Issues, 1)
 		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/{spaceId}/search")
@@ -845,7 +845,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when
 		_, _, _, warnings, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{Filter: `lastModifiedDate < today()`}, 0, 25)
+			v2model.SearchRequest{Filter: `lastModifiedDate < today()`}, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -871,7 +871,7 @@ func TestV2GlobalSearchObjects(t *testing.T) {
 
 		// when
 		rows, total, _, _, err := fx.GlobalSearchObjects(context.Background(),
-			v2model.V2SearchRequest{}, 0, 25)
+			v2model.SearchRequest{}, 0, 25)
 
 		// then: the removed space contributes nothing
 		require.NoError(t, err)
@@ -935,7 +935,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 		fx := setup(t)
 
 		// when
-		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.V2SearchRequest{}, 0, 25)
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId, v2model.SearchRequest{}, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -948,7 +948,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when
 		rows, total, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Type: "image"}, 0, 25)
+			v2model.SearchRequest{Type: "image"}, 0, 25)
 
 		// then: without the widening the layout scope excludes the row and
 		// this query can never return anything
@@ -965,7 +965,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filter: `type = "image"`}, 0, 25)
+			v2model.SearchRequest{Filter: `type = "image"`}, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -978,7 +978,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when: a mixed list (a file type among object types) still widens
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"in","value":["chore","image"]}]`)}, 0, 25)
+			v2model.SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"in","value":["chore","image"]}]`)}, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -993,7 +993,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when: excluding a type is not asking for files
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"notEqual","value":"image"}]`)}, 0, 25)
+			v2model.SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"notEqual","value":"image"}]`)}, 0, 25)
 
 		// then: neither the negated type's rows nor OTHER file rows leak in —
 		// pdf1 (type "file", untouched by the filter) is the probe that the
@@ -1009,7 +1009,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Type: "image", Fields: []string{"mimeType", "size"}}, 0, 25)
+			v2model.SearchRequest{Type: "image", Fields: []string{"mimeType", "size"}}, 0, 25)
 
 		// then: the row speaks the file vocabulary (SPEC §5 / POST /files),
 		// not the store's fileMimeType/sizeInBytes
@@ -1028,10 +1028,10 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when: both request forms
 		structured, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"allIn","value":["image"]}]`)}, 0, 25)
+			v2model.SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"allIn","value":["image"]}]`)}, 0, 25)
 		require.NoError(t, err)
 		fromString, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filter: `type HAS ALL ("image")`}, 0, 25)
+			v2model.SearchRequest{Filter: `type HAS ALL ("image")`}, 0, 25)
 		require.NoError(t, err)
 
 		// then
@@ -1047,7 +1047,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filter: `type = "image" OR type != "image"`}, 0, 25)
+			v2model.SearchRequest{Filter: `type = "image" OR type != "image"`}, 0, 25)
 
 		// then: pdf1 (a file row the negated arm alone would exclude) is in
 		require.NoError(t, err)
@@ -1064,13 +1064,13 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 		// when: composed with the type channel (file rows enter scope only
 		// when a file type is named — the opt-in trigger is unchanged)
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filter: `type = "image" AND size > 5000 AND mimeType = "image/png"`}, 0, 25)
+			v2model.SearchRequest{Filter: `type = "image" AND size > 5000 AND mimeType = "image/png"`}, 0, 25)
 		require.NoError(t, err)
 		assert.Equal(t, []string{"img1"}, rowIds(rows))
 
 		// and: a threshold above the stored size matches nothing
 		none, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filter: `type = "image" AND size > 20000`}, 0, 25)
+			v2model.SearchRequest{Filter: `type = "image" AND size > 20000`}, 0, 25)
 		require.NoError(t, err)
 		assert.Empty(t, none)
 	})
@@ -1089,7 +1089,7 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 
 		// when
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Type: "image", Sorts: json.RawMessage(`[{"property":"size","direction":"asc"}]`)}, 0, 25)
+			v2model.SearchRequest{Type: "image", Sorts: json.RawMessage(`[{"property":"size","direction":"asc"}]`)}, 0, 25)
 
 		// then: ordered by the backing sizeInBytes
 		require.NoError(t, err)
@@ -1136,7 +1136,7 @@ func TestV2FieldAliasShadowing(t *testing.T) {
 
 		// when: img1 carries sizeInBytes=12345 and no "size" value
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filter: `type = "image"`, Fields: []string{"size"}}, 0, 25)
+			v2model.SearchRequest{Filter: `type = "image"`, Fields: []string{"size"}}, 0, 25)
 
 		// then: NO value under "size" — reporting 12345 there would put the
 		// file's byte count where the space's short-text property lives
@@ -1159,7 +1159,7 @@ func TestV2FieldAliasShadowing(t *testing.T) {
 
 		// when
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filter: `size = "M"`, Fields: []string{"size"}}, 0, 25)
+			v2model.SearchRequest{Filter: `size = "M"`, Fields: []string{"size"}}, 0, 25)
 
 		// then
 		require.NoError(t, err)
@@ -1174,7 +1174,7 @@ func TestV2FieldAliasShadowing(t *testing.T) {
 		// when: size names the space's short-text property now — the file's
 		// sizeInBytes must not answer for it
 		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			v2model.V2SearchRequest{Filter: `type = "image" AND size > 5000`}, 0, 25)
+			v2model.SearchRequest{Filter: `type = "image" AND size > 5000`}, 0, 25)
 
 		// then: img1 has no "size" value, so nothing matches
 		require.NoError(t, err)

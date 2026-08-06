@@ -75,7 +75,7 @@ type ToolError struct {
 	Status int
 	Code   string
 	Text   string
-	Issues []v2model.V2Issue
+	Issues []v2model.Issue
 }
 
 func (e *ToolError) Error() string { return e.Text }
@@ -192,7 +192,7 @@ func (c *Client) raw(ctx context.Context, r apiRequest) ([]byte, error) {
 // decodeAPIError turns a C6 error body into a ToolError; a non-JSON body
 // degrades to the raw text.
 func decodeAPIError(status int, body []byte) error {
-	var v2 v2model.V2Error
+	var v2 v2model.Error
 	if err := json.Unmarshal(body, &v2); err != nil || v2.Message == "" {
 		return &ToolError{Status: status, Text: fmt.Sprintf("server answered %d: %s", status, strings.TrimSpace(string(body)))}
 	}
@@ -218,7 +218,7 @@ func decodeAPIError(status int, body []byte) error {
 // — the trigger of the §7.4 ambiguity retry.
 func isAmbiguous(err error) bool {
 	var te *ToolError
-	return errors.As(err, &te) && te.Code == v2model.V2CodeAmbiguousInput
+	return errors.As(err, &te) && te.Code == v2model.CodeAmbiguousInput
 }
 
 // spacePath escapes one path segment.

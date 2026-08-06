@@ -41,9 +41,9 @@ func listFieldsParam(c *gin.Context) []string {
 //	@Param			fields		query		string											false	"Comma-separated property keys to include per row"
 //	@Param			offset		query		int												false	"Items to skip"		default(0)
 //	@Param			limit		query		int												false	"Items to return"	default(25)
-//	@Success		200			{object}	v2model.V2ListResponse[v2model.V2ObjectRow]	"Minimal object rows"
-//	@Failure		400			{object}	v2model.V2Error								"Wrong-layout target or invalid params"
-//	@Failure		404			{object}	v2model.V2Error								"Space, set or view not found"
+//	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
+//	@Failure		400			{object}	v2model.Error								"Wrong-layout target or invalid params"
+//	@Failure		404			{object}	v2model.Error								"Space, set or view not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets/{set_id}/objects [get]
 func GetSetObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -56,7 +56,7 @@ func GetSetObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		resp := v2model.NewV2ListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}
@@ -73,9 +73,9 @@ func GetSetObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			set_id		path		string										true	"Set object id"
 //	@Param			offset		query		int											false	"Items to skip"		default(0)
 //	@Param			limit		query		int											false	"Items to return"	default(25)
-//	@Success		200			{object}	v2model.V2ListResponse[json.RawMessage]	"§6.2 view objects"
-//	@Failure		400			{object}	v2model.V2Error							"Wrong-layout target"
-//	@Failure		404			{object}	v2model.V2Error							"Space or set not found"
+//	@Success		200			{object}	v2model.ListResponse[json.RawMessage]	"§6.2 view objects"
+//	@Failure		400			{object}	v2model.Error							"Wrong-layout target"
+//	@Failure		404			{object}	v2model.Error							"Space or set not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets/{set_id}/views [get]
 func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -88,7 +88,7 @@ func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(views, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(views, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }
@@ -106,9 +106,9 @@ func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			fields			query		string											false	"Comma-separated property keys to include per row"
 //	@Param			offset			query		int												false	"Items to skip"		default(0)
 //	@Param			limit			query		int												false	"Items to return"	default(25)
-//	@Success		200				{object}	v2model.V2ListResponse[v2model.V2ObjectRow]	"Minimal object rows"
-//	@Failure		400				{object}	v2model.V2Error								"Wrong-layout target or invalid params"
-//	@Failure		404				{object}	v2model.V2Error								"Space, collection or view not found"
+//	@Success		200				{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
+//	@Failure		400				{object}	v2model.Error								"Wrong-layout target or invalid params"
+//	@Failure		404				{object}	v2model.Error								"Space, collection or view not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections/{collection_id}/objects [get]
 func GetCollectionObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -121,7 +121,7 @@ func GetCollectionObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		resp := v2model.NewV2ListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
+		resp := v2model.NewListResponse(rows, total, offset, limit, hasMore, v2service.V2SearchNarrowHint)
 		resp.Warnings = warnings
 		c.JSON(http.StatusOK, resp)
 	}
@@ -138,9 +138,9 @@ func GetCollectionObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			collection_id	path		string										true	"Collection object id"
 //	@Param			offset			query		int											false	"Items to skip"		default(0)
 //	@Param			limit			query		int											false	"Items to return"	default(25)
-//	@Success		200				{object}	v2model.V2ListResponse[json.RawMessage]	"§6.2 view objects"
-//	@Failure		400				{object}	v2model.V2Error							"Wrong-layout target"
-//	@Failure		404				{object}	v2model.V2Error							"Space or collection not found"
+//	@Success		200				{object}	v2model.ListResponse[json.RawMessage]	"§6.2 view objects"
+//	@Failure		400				{object}	v2model.Error							"Wrong-layout target"
+//	@Failure		404				{object}	v2model.Error							"Space or collection not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections/{collection_id}/views [get]
 func GetCollectionViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -153,7 +153,7 @@ func GetCollectionViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 			RespondV2Error(c, err)
 			return
 		}
-		c.JSON(http.StatusOK, v2model.NewV2ListResponse(views, total, offset, limit, hasMore,
+		c.JSON(http.StatusOK, v2model.NewListResponse(views, total, offset, limit, hasMore,
 			"request the next offset"))
 	}
 }

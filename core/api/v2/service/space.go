@@ -61,20 +61,20 @@ func isLiveSpaceView(details *domain.Details) bool {
 // (isLiveSpaceView) — a deleted or left space's row is indistinguishable
 // from a live one and an agent picking it would then write into a space
 // that can never load.
-func (s *V2Service) GetSpace(ctx context.Context, spaceId string) (v2model.V2Space, error) {
+func (s *V2Service) GetSpace(ctx context.Context, spaceId string) (v2model.Space, error) {
 	if spaceId == "" {
-		return v2model.V2Space{}, v2model.V2NotFound("space id is required")
+		return v2model.Space{}, v2model.NotFound("space id is required")
 	}
 	details, err := s.store.GetSpaceViewDetails(spaceId)
 	if err != nil {
-		return v2model.V2Space{}, v2model.V2NotFound(
+		return v2model.Space{}, v2model.NotFound(
 			fmt.Sprintf("space %q not found — list spaces with GET /v2/spaces", spaceId))
 	}
 	if !isLiveSpaceView(details) {
-		return v2model.V2Space{}, v2model.V2NotFound(
+		return v2model.Space{}, v2model.NotFound(
 			fmt.Sprintf("space %q is not available (deleted, left, or still joining) — list live spaces with GET /v2/spaces", spaceId))
 	}
-	return v2model.V2Space{
+	return v2model.Space{
 		Id:          spaceId,
 		Name:        details.GetString(bundle.RelationKeyName),
 		Description: details.GetString(bundle.RelationKeyDescription),
@@ -87,8 +87,8 @@ func (s *V2Service) GetSpace(ctx context.Context, spaceId string) (v2model.V2Spa
 // mirrored space view and every member's device.
 func validateSpaceField(path, value string) error {
 	if length := utf8.RuneCountInString(value); length > maxSpaceFieldLength {
-		return v2model.V2ValidationFailed(strings.TrimPrefix(path, "/")+" is too long",
-			v2model.V2Issue{Path: path,
+		return v2model.ValidationFailed(strings.TrimPrefix(path, "/")+" is too long",
+			v2model.Issue{Path: path,
 				Message: fmt.Sprintf("%d characters — the cap is %d (the space kind's advertised maxLength)", length, maxSpaceFieldLength)})
 	}
 	return nil
@@ -99,12 +99,12 @@ func validateSpaceField(path, value string) error {
 // except that the description rides the SAME WorkspaceCreate call
 // (CreateWorkspace applies every detail to the workspace object), where v1
 // spent a second WorkspaceSetInfo RPC on it.
-func (s *V2Service) CreateSpace(ctx context.Context, req v2model.V2CreateSpaceRequest, dryRun bool) (*v2model.V2Space, error) {
+func (s *V2Service) CreateSpace(ctx context.Context, req v2model.CreateSpaceRequest, dryRun bool) (*v2model.Space, error) {
 	name := strings.TrimSpace(req.Name)
 	description := strings.TrimSpace(req.Description)
 	if name == "" {
-		return nil, v2model.V2ValidationFailed("space name is required",
-			v2model.V2Issue{Path: "/name", Message: "the space row is {id, name} — an unnamed space is unaddressable by name"})
+		return nil, v2model.ValidationFailed("space name is required",
+			v2model.Issue{Path: "/name", Message: "the space row is {id, name} — an unnamed space is unaddressable by name"})
 	}
 	if err := validateSpaceField("/name", name); err != nil {
 		return nil, err
@@ -115,7 +115,7 @@ func (s *V2Service) CreateSpace(ctx context.Context, req v2model.V2CreateSpaceRe
 	if dryRun {
 		// C9, scoped honestly: a space create cannot be simulated — the dry
 		// run validates the body only
-		return &v2model.V2Space{Name: name, Description: description, DryRun: true}, nil
+		return &v2model.Space{Name: name, Description: description, DryRun: true}, nil
 	}
 
 	iconOption, err := rand.Int(rand.Reader, big.NewInt(spaceIconOptions))
@@ -144,10 +144,10 @@ func (s *V2Service) CreateSpace(ctx context.Context, req v2model.V2CreateSpaceRe
 		// id is a success the agent cannot act on, and a keyed retry would
 		// replay it forever. A 500 is NOT cached by the idempotency
 		// middleware, so the retry re-executes.
-		return nil, v2model.NewV2Error(http.StatusInternalServerError, v2model.V2CodeInternalError,
+		return nil, v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError,
 			"create space: the workspace RPC returned no space id")
 	}
-	return &v2model.V2Space{Id: resp.SpaceId, Name: name, Description: description}, nil
+	return &v2model.Space{Id: resp.SpaceId, Name: name, Description: description}, nil
 }
 
 // UpdateSpace implements PATCH /v2/spaces/{spaceId}: thin over
@@ -157,18 +157,18 @@ func (s *V2Service) CreateSpace(ctx context.Context, req v2model.V2CreateSpaceRe
 // the patch onto the current space-view row rather than re-reading it: the
 // workspace-object write propagates to the tech-space view asynchronously,
 // so an immediate read-back could return the pre-patch name.
-func (s *V2Service) UpdateSpace(ctx context.Context, spaceId string, req v2model.V2UpdateSpaceRequest, dryRun bool) (*v2model.V2Space, error) {
+func (s *V2Service) UpdateSpace(ctx context.Context, spaceId string, req v2model.UpdateSpaceRequest, dryRun bool) (*v2model.Space, error) {
 	current, err := s.GetSpace(ctx, spaceId)
 	if err != nil {
 		return nil, err
 	}
 	if req.Name == nil && req.Description == nil {
-		return nil, v2model.V2ValidationFailed("update needs at least one of name, description",
-			v2model.V2Issue{Message: "omitted fields stay unchanged — an empty update would change nothing"})
+		return nil, v2model.ValidationFailed("update needs at least one of name, description",
+			v2model.Issue{Message: "omitted fields stay unchanged — an empty update would change nothing"})
 	}
 	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
-		return nil, v2model.V2ValidationFailed("space name cannot be empty",
-			v2model.V2Issue{Path: "/name", Message: "omit name to keep the current one; the space row is {id, name}"})
+		return nil, v2model.ValidationFailed("space name cannot be empty",
+			v2model.Issue{Path: "/name", Message: "omit name to keep the current one; the space row is {id, name}"})
 	}
 
 	next := current
@@ -216,21 +216,21 @@ func (s *V2Service) UpdateSpace(ctx context.Context, spaceId string, req v2model
 // reader's SetDetails hits in a shared space.
 func v2SpaceRpcError(op string, code, badInputCode int32, description string) error {
 	if code == badInputCode {
-		return v2model.V2ValidationFailed(fmt.Sprintf("%s: invalid input", op),
-			v2model.V2Issue{Message: description})
+		return v2model.ValidationFailed(fmt.Sprintf("%s: invalid input", op),
+			v2model.Issue{Message: description})
 	}
 	switch {
 	case strings.Contains(description, "space not exists"),
 		strings.Contains(description, "space is deleted"),
 		strings.Contains(description, "space storage missing"):
-		return v2model.V2NotFound(fmt.Sprintf("%s: %s — list live spaces with GET /v2/spaces", op, description))
+		return v2model.NotFound(fmt.Sprintf("%s: %s — list live spaces with GET /v2/spaces", op, description))
 	case strings.Contains(description, "restricted"):
-		return v2model.NewV2Error(http.StatusForbidden, v2model.V2CodeForbidden,
+		return v2model.NewError(http.StatusForbidden, v2model.CodeForbidden,
 			fmt.Sprintf("%s: %s — this account's role cannot change the space's info", op, description))
 	}
 	msg := op + " failed"
 	if description != "" {
 		msg += ": " + description
 	}
-	return v2model.NewV2Error(http.StatusInternalServerError, v2model.V2CodeInternalError, msg)
+	return v2model.NewError(http.StatusInternalServerError, v2model.CodeInternalError, msg)
 }

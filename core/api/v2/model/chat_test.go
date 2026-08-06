@@ -38,13 +38,13 @@ func chatTestMessage() *model.ChatMessage {
 	}
 }
 
-func TestV2ChatMessageFromProto(t *testing.T) {
+func TestChatMessageFromProto(t *testing.T) {
 	t.Run("marks render into §8 markup text — offset arrays never cross the API", func(t *testing.T) {
 		// given
 		msg := chatTestMessage()
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
 		assert.Equal(t, "can you **check** the doc?", got.Text,
@@ -60,7 +60,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 	t.Run("markup bridge round-trips: rendered text parses back to the same marks", func(t *testing.T) {
 		// given
 		msg := chatTestMessage()
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// when: the write path parses the same §8 source the read path rendered
 		text, marks, err := anyblockjson.ParseInlineText(got.Text)
@@ -87,7 +87,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		}
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
 		assert.Equal(t, `hi <mention objectId="participantObj1">Alice</mention>`, got.Text)
@@ -99,7 +99,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		wantId := domain.NewParticipantId("space1", "identityA")
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{
+		got := ChatMessageFromProto(msg, ChatMessageOptions{
 			SpaceId: "space1",
 			ParticipantName: func(participantId string) string {
 				require.Equal(t, wantId, participantId)
@@ -117,7 +117,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		msg := chatTestMessage()
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
 		want := map[string]int{"👍": 2}
@@ -129,7 +129,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		msg := chatTestMessage()
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1", FullReactions: true})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1", FullReactions: true})
 
 		// then: two slots, each with ONE stable type — a model that saw
 		// {"👍":2} must still be able to index reactions under ?reactions=full
@@ -147,7 +147,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		msg.Reactions = &model.ChatMessageReactions{}
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
 		assert.Nil(t, got.Reactions)
@@ -159,10 +159,10 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		msg := chatTestMessage()
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
-		want := []V2ChatAttachment{{Id: "file1", Type: "image"}}
+		want := []ChatAttachment{{Id: "file1", Type: "image"}}
 		assert.Equal(t, want, got.Attachments)
 	})
 
@@ -172,7 +172,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		msg.ModifiedAt = 1717405300
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
 		assert.Equal(t, "2024-06-03T09:01:40Z", got.EditedAt)
@@ -199,7 +199,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		}
 
 		// when
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 
 		// then
 		assert.Empty(t, got.Text)
@@ -220,7 +220,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 		}
 
 		// when: read renders, the write path re-parses the rendered source
-		got := V2ChatMessageFromProto(msg, V2ChatMessageOptions{SpaceId: "space1"})
+		got := ChatMessageFromProto(msg, ChatMessageOptions{SpaceId: "space1"})
 		text, marks, err := anyblockjson.ParseInlineText(got.Text)
 
 		// then
@@ -233,7 +233,7 @@ func TestV2ChatMessageFromProto(t *testing.T) {
 	})
 }
 
-func TestV2ChatStateFromProto(t *testing.T) {
+func TestChatStateFromProto(t *testing.T) {
 	t.Run("full passthrough incl. lastStateId — the field v1 dropped", func(t *testing.T) {
 		// given
 		state := &model.ChatState{
@@ -242,7 +242,7 @@ func TestV2ChatStateFromProto(t *testing.T) {
 			LastStateId:           "state42",
 			UnreadReactionOrderId: "00a3",
 		}
-		want := &V2ChatState{
+		want := &ChatState{
 			UnreadMessages:           3,
 			UnreadMentions:           1,
 			OldestUnreadOrder:        "00a1",
@@ -252,13 +252,13 @@ func TestV2ChatStateFromProto(t *testing.T) {
 		}
 
 		// when
-		got := V2ChatStateFromProto(state)
+		got := ChatStateFromProto(state)
 
 		// then
 		assert.Equal(t, want, got)
 	})
 
 	t.Run("nil state stays nil", func(t *testing.T) {
-		assert.Nil(t, V2ChatStateFromProto(nil))
+		assert.Nil(t, ChatStateFromProto(nil))
 	})
 }

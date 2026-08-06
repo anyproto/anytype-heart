@@ -156,7 +156,7 @@ func TestPatchObject(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
-		want := v2model.V2DiffStats{BlocksChanged: 1}
+		want := v2model.DiffStats{BlocksChanged: 1}
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
@@ -196,7 +196,7 @@ func TestPatchObject(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
 		require.Len(t, result.CreatedBlocks, 2)
 		assert.Len(t, result.CreatedBlocks["ops[0].blocks[0]"], 24, "minted id is editor-shaped")
 		assert.Equal(t, "clientId1", result.CreatedBlocks["ops[0].blocks[1]"], "client-supplied ids are echoed")
@@ -213,7 +213,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"insertBlocks","inside":"blockParent1","position":"first","blocks":[{"type":"paragraph","text":"first child"}]}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksAdded: 1}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 1}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "parent", "first child", "child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 		assert.Equal(t, float64(1), blocks[2]["indent"], "inside: payload indent 0 = the container's child level")
@@ -227,7 +227,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"insertBlocks","after":"blockHeading1","inside":"blockParent1","blocks":[{"type":"paragraph","text":"x"}]}`), "", false)
 
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeAmbiguousInput, apiErr.Code)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "at most one of after, before, inside")
 	})
 
@@ -242,7 +242,7 @@ func TestPatchObject(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "parent", "child", "the Q3 report and Q3 plan", "appended", "nested"}, blockTexts(blocks))
 		_, hasIndent := blocks[4]["indent"]
@@ -262,7 +262,7 @@ func TestPatchObject(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"First", "body"}, blockTexts(blocks))
 	})
@@ -290,7 +290,7 @@ func TestPatchObject(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
 		require.Len(t, result.CreatedBlocks, 2)
 		assert.Len(t, result.CreatedBlocks["ops[0].markdown[0]"], 24, "created ids are keyed by parsed position under markdown[j]")
 		assert.Len(t, result.CreatedBlocks["ops[0].markdown[1]"], 24)
@@ -308,7 +308,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"insertBlocks","markdown":"# First\n\nbody"}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"First", "body"}, blockTexts(blocks))
 		assert.Equal(t, "heading1", blocks[0]["type"])
@@ -322,7 +322,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"insertBlocks","after":"blockHeading1","blocks":[{"type":"paragraph","text":"x"}],"markdown":"y"}`), "", false)
 
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeAmbiguousInput, apiErr.Code)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 		assert.Equal(t, "provide blocks or markdown, not both", apiErr.Message)
 	})
 
@@ -377,7 +377,7 @@ func TestPatchObject(t *testing.T) {
 
 		require.NoError(t, err)
 		// both reordered siblings count as moved (the documented diff rule)
-		assert.Equal(t, v2model.V2DiffStats{BlocksMoved: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksMoved: 2}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "the Q3 report and Q3 plan", "parent", "child"}, blockTexts(blocks))
 		assert.Equal(t, float64(1), blocks[3]["indent"], "the subtree rides along")
@@ -416,7 +416,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"replaceSubtree","id":"blockParent1","blocks":[{"type":"bulletedListItem","text":"a"},{"indent":1,"type":"paragraph","text":"b"}]}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksAdded: 2, BlocksRemoved: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2, BlocksRemoved: 2}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "a", "b", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 	})
@@ -430,7 +430,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"updateBlock","id":"blockParent1","set":{"type":"quote","text":"new **text**"}}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, "quote", blocks[1]["type"])
 		assert.Equal(t, "blockParent1", blocks[1]["id"])
@@ -491,7 +491,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"moveBlock","id":"blockSibling2","inside":"blockParent1","position":"last"}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksMoved: 1}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksMoved: 1}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, []string{"Section", "parent", "child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
 		assert.Equal(t, float64(1), blocks[3]["indent"], "moved under the parent")
@@ -528,7 +528,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"deleteBlock","id":"blockParent1","recursive":true}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksRemoved: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 2}, result.DiffStats)
 		assert.Equal(t, []string{"Section", "the Q3 report and Q3 plan"}, blockTexts(docBlocks(stateDoc(t, *captured))))
 	})
 
@@ -564,7 +564,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"replaceText","id":"blockSibling2","find":"Q3 report","replace":"Q4 report"}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		assert.Equal(t, "the Q4 report and Q3 plan", blocks[3]["text"])
 	})
@@ -589,7 +589,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"setCell","tableId":"tblOne1","row":"rowB","col":"colB","value":"done"}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
 		blocks := docBlocks(stateDoc(t, *captured))
 		rows := blocks[0]["rows"].([]any)
 		cells := rows[1].(map[string]any)["cells"].([]any)
@@ -660,7 +660,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"setProperties","set":{"name":"Renamed","done":true},"unset":["description"]}`), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{PropertiesChanged: 3}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{PropertiesChanged: 3}, result.DiffStats)
 		doc := stateDoc(t, *captured)
 		props := doc["properties"].(map[string]any)
 		assert.Equal(t, "Renamed", props["name"])
@@ -686,7 +686,7 @@ func TestPatchObject(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusConflict, apiErr.Status)
-		assert.Equal(t, v2model.V2CodeEtagMismatch, apiErr.Code)
+		assert.Equal(t, v2model.CodeEtagMismatch, apiErr.Code)
 	})
 
 	t.Run("dry run reports a created option once (C′2)", func(t *testing.T) {
@@ -711,7 +711,7 @@ func TestPatchObject(t *testing.T) {
 		// success the real edit would refuse
 		fx := newV2Fixture(t)
 		read := editRead(t, editBaseDoc)
-		read.EditRefused = v2model.V2ValidationFailed("this object's blocks cannot be edited through the API")
+		read.EditRefused = v2model.ValidationFailed("this object's blocks cannot be edited through the API")
 		fx.readerMock.EXPECT().ReadObject(mock.Anything, testSpaceId, "obj1").Return(read, nil)
 
 		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
@@ -816,7 +816,7 @@ func TestPatchObject(t *testing.T) {
 			Error:    &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
 		})
 		fx.expectMutate(editRead(t, editBaseDoc), "headB")
-		want := &v2model.V2SideEffects{Options: []v2model.V2CreatedOption{{Property: "severity", Name: "Critical"}}}
+		want := &v2model.SideEffects{Options: []v2model.CreatedOption{{Property: "severity", Name: "Critical"}}}
 
 		// when
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
@@ -981,7 +981,7 @@ func TestPatchObject(t *testing.T) {
 			Error:    &pb.RpcObjectCreateRelationOptionResponseError{Code: pb.RpcObjectCreateRelationOptionResponseError_NULL},
 		}).Once()
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
-		want := &v2model.V2SideEffects{Options: []v2model.V2CreatedOption{{Property: "severity", Name: "Critical"}}}
+		want := &v2model.SideEffects{Options: []v2model.CreatedOption{{Property: "severity", Name: "Critical"}}}
 
 		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
 			patchBody(`{"op":"setProperties","add":{"severity":["Critical"]}}`), "", false)
@@ -1024,7 +1024,7 @@ func TestPatchObject(t *testing.T) {
 			patchBody(`{"op":"deleteBlock","id":"1"}`), "", false)
 
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeAmbiguousInput, apiErr.Code)
+		assert.Equal(t, v2model.CodeAmbiguousInput, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "matches more than one block")
 	})
 
@@ -1066,7 +1066,7 @@ func TestPatchObject(t *testing.T) {
 
 		apiErr := v2Err(t, err)
 		assert.Equal(t, http.StatusConflict, apiErr.Status)
-		assert.Equal(t, v2model.V2CodeEtagMismatch, apiErr.Code)
+		assert.Equal(t, v2model.CodeEtagMismatch, apiErr.Code)
 		assert.Contains(t, apiErr.Message, ComputeEtag([]string{"headA"}))
 	})
 
@@ -1093,7 +1093,7 @@ func TestPatchObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, result.DryRun)
 		assert.Empty(t, result.Etag)
-		assert.Equal(t, v2model.V2DiffStats{BlocksRemoved: 2}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksRemoved: 2}, result.DiffStats)
 	})
 
 	t.Run("empty ops list is rejected", func(t *testing.T) {
@@ -1135,7 +1135,7 @@ func TestPutObject(t *testing.T) {
 
 		// then
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
 		assert.Equal(t, ComputeEtag([]string{"headB"}), result.Etag)
 		blocks := docBlocks(snapshotDoc(t, *captured))
 		assert.Equal(t, "edited child", blocks[2]["text"])
@@ -1150,7 +1150,7 @@ func TestPutObject(t *testing.T) {
 		result, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(body), "", false)
 
 		require.NoError(t, err)
-		assert.Equal(t, v2model.V2DiffStats{BlocksAdded: 2, BlocksRemoved: 4}, result.DiffStats,
+		assert.Equal(t, v2model.DiffStats{BlocksAdded: 2, BlocksRemoved: 4}, result.DiffStats,
 			"fresh ids on every block read as remove-everything-add-everything (DELEGATE-52 signature)")
 	})
 
@@ -1191,7 +1191,7 @@ func TestPutObject(t *testing.T) {
 		_, err := fx.PutObject(ctx, testSpaceId, "obj1", []byte(editBaseDoc), `"deadbeef"`, false)
 
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeEtagMismatch, apiErr.Code)
+		assert.Equal(t, v2model.CodeEtagMismatch, apiErr.Code)
 	})
 
 	t.Run("system-managed objects are excluded", func(t *testing.T) {
@@ -1215,7 +1215,7 @@ func TestPutObject(t *testing.T) {
 		require.NoError(t, err)
 		assert.True(t, result.DryRun)
 		assert.Empty(t, result.Etag)
-		assert.Equal(t, v2model.V2DiffStats{BlocksChanged: 1}, result.DiffStats)
+		assert.Equal(t, v2model.DiffStats{BlocksChanged: 1}, result.DiffStats)
 	})
 
 	t.Run("an absent type keeps the live object's type", func(t *testing.T) {

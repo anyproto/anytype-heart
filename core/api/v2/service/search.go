@@ -63,7 +63,7 @@ type searchPlan struct {
 	textQuery string
 	filters   []database.FilterRequest
 	sorts     []database.SortRequest
-	warnings  []v2model.V2Issue
+	warnings  []v2model.Issue
 	// includeFileLayouts widens the base row scope to ObjectAndFileLayouts
 	// (the Phase-7 file-discovery opt-in): set when the type CHANNEL names a
 	// file type — top-level type or a positive (=, IN) type filter leaf —
@@ -75,17 +75,17 @@ type searchPlan struct {
 
 // validateSearchShape applies the request-shape rules that do not depend on
 // a space: the filter/filters mutual exclusion (C6).
-func validateSearchShape(req v2model.V2SearchRequest) error {
+func validateSearchShape(req v2model.SearchRequest) error {
 	if req.Filter != "" && len(req.Filters) > 0 {
-		return v2model.V2AmbiguousInput("provide filter or filters, not both",
-			v2model.V2Issue{Path: "/filter", Message: "conflicts with filters"},
-			v2model.V2Issue{Path: "/filters", Message: "conflicts with filter"})
+		return v2model.AmbiguousInput("provide filter or filters, not both",
+			v2model.Issue{Path: "/filter", Message: "conflicts with filters"},
+			v2model.Issue{Path: "/filters", Message: "conflicts with filter"})
 	}
 	return nil
 }
 
 // SearchObjects implements POST /v2/spaces/{spaceId}/search.
-func (s *V2Service) SearchObjects(ctx context.Context, spaceId string, req v2model.V2SearchRequest, offset, limit int) ([]v2model.V2ObjectRow, int, bool, []v2model.V2Issue, error) {
+func (s *V2Service) SearchObjects(ctx context.Context, spaceId string, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	if err := s.ensureSpace(spaceId); err != nil {
 		return nil, 0, false, nil, err
 	}
@@ -106,7 +106,7 @@ func (s *V2Service) SearchObjects(ctx context.Context, spaceId string, req v2mod
 	if err != nil {
 		return nil, 0, false, nil, err
 	}
-	rows := make([]v2model.V2ObjectRow, 0, len(records))
+	rows := make([]v2model.ObjectRow, 0, len(records))
 	for _, record := range records {
 		rows = append(rows, builder.row(record))
 	}
@@ -176,7 +176,7 @@ func pageRecords(records []database.Record, offset, limit int) []database.Record
 // fan-out a hard error would silently drop the whole space from results
 // and total — a column request must never narrow the search — so the
 // global caller passes lenient and the key degrades to a per-space warning.
-func (s *V2Service) buildSearchPlan(spaceId string, req v2model.V2SearchRequest, strictFields bool) (*searchPlan, error) {
+func (s *V2Service) buildSearchPlan(spaceId string, req v2model.SearchRequest, strictFields bool) (*searchPlan, error) {
 	plan := &searchPlan{textQuery: req.Query}
 	index := s.store.SpaceIndex(spaceId)
 	reads := storeresolver.New(index)
@@ -233,7 +233,7 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.V2SearchRequest,
 
 	// rule 1 covers field keys too — hard on the space search, warning-grade
 	// on the global fan-out (see the strictFields contract above)
-	var issues []v2model.V2Issue
+	var issues []v2model.Issue
 	for i, field := range req.Fields {
 		if allowed[field] {
 			continue
@@ -241,14 +241,14 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.V2SearchRequest,
 		if strictFields {
 			issues = append(issues, unknownPropertyIssue(field, fmt.Sprintf("/fields/%d", i), refKeys, listUrl))
 		} else {
-			plan.warnings = append(plan.warnings, v2model.V2Issue{
+			plan.warnings = append(plan.warnings, v2model.Issue{
 				Path:    fmt.Sprintf("/fields/%d", i),
 				Message: fmt.Sprintf("field %q is not a property of space %q — omitted from those rows", field, spaceId),
 			})
 		}
 	}
 	if len(issues) > 0 {
-		return nil, v2model.V2ValidationFailed("unknown property keys", issues...)
+		return nil, v2model.ValidationFailed("unknown property keys", issues...)
 	}
 
 	// both filter forms → one structured tree
@@ -287,7 +287,7 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.V2SearchRequest,
 			if fromString {
 				path = "/filter" // the string form has no /filters array to address
 			}
-			plan.warnings = append(plan.warnings, v2model.V2Issue{Path: path, Message: iss.Message})
+			plan.warnings = append(plan.warnings, v2model.Issue{Path: path, Message: iss.Message})
 		}
 		modelFilters, err := anyblockjson.UnmarshalFilters(filtersJSON, opts)
 		if err != nil {
@@ -308,8 +308,8 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.V2SearchRequest,
 	if len(req.Sorts) > 0 {
 		var probes []sortProbe
 		if err := json.Unmarshal(req.Sorts, &probes); err != nil {
-			return nil, v2model.V2ValidationFailed("invalid sorts",
-				v2model.V2Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is the SPEC §6.2 array of sort objects"})
+			return nil, v2model.ValidationFailed("invalid sorts",
+				v2model.Issue{Path: "/sorts", Message: err.Error(), Hint: "sorts is the SPEC §6.2 array of sort objects"})
 		}
 		for i, probe := range probes {
 			if probe.Property != "" && !allowed[probe.Property] {
@@ -317,7 +317,7 @@ func (s *V2Service) buildSearchPlan(spaceId string, req v2model.V2SearchRequest,
 			}
 		}
 		if len(issues) > 0 {
-			return nil, v2model.V2ValidationFailed("unknown property keys", issues...)
+			return nil, v2model.ValidationFailed("unknown property keys", issues...)
 		}
 		modelSorts, err := anyblockjson.UnmarshalSorts(req.Sorts, reads.Options())
 		if err != nil {
@@ -502,15 +502,15 @@ func (s *V2Service) propertyOptionNames(spaceId, key string) ([]string, bool) {
 func filterStringError(err error) error {
 	var pe *filterstring.Error
 	if !errors.As(err, &pe) {
-		return v2model.V2ValidationFailed("invalid filter",
-			v2model.V2Issue{Path: "/filter", Message: err.Error()})
+		return v2model.ValidationFailed("invalid filter",
+			v2model.Issue{Path: "/filter", Message: err.Error()})
 	}
 	where := fmt.Sprintf("near %q", pe.Token)
 	if pe.Token == "" {
 		where = "at end of input"
 	}
-	return v2model.V2ValidationFailed("invalid filter",
-		v2model.V2Issue{
+	return v2model.ValidationFailed("invalid filter",
+		v2model.Issue{
 			Path:    "/filter",
 			Message: fmt.Sprintf("parse error at offset %d %s: %s", pe.Offset, where, pe.Message),
 			Hint:    pe.Hint,
@@ -523,18 +523,18 @@ func filterStringError(err error) error {
 func mapFilterCodecError(err error, fromString bool) error {
 	var ve *anyblockjson.ValidationError
 	if !errors.As(err, &ve) {
-		return v2model.V2ValidationFailed("invalid filters",
-			v2model.V2Issue{Path: "/filters", Message: err.Error()})
+		return v2model.ValidationFailed("invalid filters",
+			v2model.Issue{Path: "/filters", Message: err.Error()})
 	}
-	issues := make([]v2model.V2Issue, 0, len(ve.Issues))
+	issues := make([]v2model.Issue, 0, len(ve.Issues))
 	for _, iss := range ve.Issues {
 		path := iss.Path
 		if fromString {
 			path = "/filter"
 		}
-		issues = append(issues, v2model.V2Issue{Path: path, Message: iss.Message})
+		issues = append(issues, v2model.Issue{Path: path, Message: iss.Message})
 	}
-	return v2model.V2ValidationFailed("invalid filters", issues...)
+	return v2model.ValidationFailed("invalid filters", issues...)
 }
 
 // filterFieldPath names the request field errors should address for the
@@ -562,10 +562,10 @@ type searchFilterNode struct {
 func (s *V2Service) validateStructuredFilters(spaceId string, raw json.RawMessage, allowed map[string]bool, refKeys []string, formatName func(string) (string, bool), listUrl string) error {
 	var nodes []searchFilterNode
 	if err := json.Unmarshal(raw, &nodes); err != nil {
-		return v2model.V2ValidationFailed("invalid filters",
-			v2model.V2Issue{Path: "/filters", Message: err.Error(), Hint: "filters is the SPEC §6.2 array of filter nodes"})
+		return v2model.ValidationFailed("invalid filters",
+			v2model.Issue{Path: "/filters", Message: err.Error(), Hint: "filters is the SPEC §6.2 array of filter nodes"})
 	}
-	var issues []v2model.V2Issue
+	var issues []v2model.Issue
 	var walk func(nodes []searchFilterNode, path string)
 	walk = func(nodes []searchFilterNode, path string) {
 		for i, node := range nodes {
@@ -590,7 +590,7 @@ func (s *V2Service) validateStructuredFilters(spaceId string, raw json.RawMessag
 			// mistake is rejected with the conversion spelled out.
 			if formatKnown && format == "date" {
 				for _, value := range stringValues(node.Value) {
-					issue := v2model.V2Issue{
+					issue := v2model.Issue{
 						Path: nodePath + "/value",
 						Hint: fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s > \"%s\"" — or use a datePreset`, node.Property, value),
 					}
@@ -610,7 +610,7 @@ func (s *V2Service) validateStructuredFilters(spaceId string, raw json.RawMessag
 				}
 				for _, value := range stringValues(node.Value) {
 					if !containsString(names, value) {
-						issues = append(issues, v2model.V2Issue{
+						issues = append(issues, v2model.Issue{
 							Path:    nodePath + "/value",
 							Message: fmt.Sprintf("property %q has no option named %q — a query never creates options", node.Property, value),
 							Hint:    didYouMean(value, names, fmt.Sprintf("list them with GET /v2/spaces/%s/properties/%s/options", spaceId, node.Property)),
@@ -622,7 +622,7 @@ func (s *V2Service) validateStructuredFilters(spaceId string, raw json.RawMessag
 	}
 	walk(nodes, "/filters")
 	if len(issues) > 0 {
-		return v2model.V2ValidationFailed("invalid filters", issues...)
+		return v2model.ValidationFailed("invalid filters", issues...)
 	}
 	return nil
 }
@@ -784,14 +784,14 @@ type globalRecord struct {
 // per-space name resolution, a merge by the requested sort, and honest
 // totals — total is the sum of per-space store counts, has_more compares it
 // against the requested page (never v1's total = len(fetched)).
-func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.V2SearchRequest, offset, limit int) ([]v2model.V2ObjectRow, int, bool, []v2model.V2Issue, error) {
+func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
 	if err := validateSearchShape(req); err != nil {
 		return nil, 0, false, nil, err
 	}
 	if offset > maxGlobalSearchOffset {
-		return nil, 0, false, nil, v2model.V2ValidationFailed(
+		return nil, 0, false, nil, v2model.ValidationFailed(
 			fmt.Sprintf("global search pages at most %d rows deep", maxGlobalSearchOffset),
-			v2model.V2Issue{
+			v2model.Issue{
 				Path:    "offset",
 				Message: fmt.Sprintf("offset %d exceeds the global-search maximum of %d — the cross-space merge materializes offset+limit rows per space", offset, maxGlobalSearchOffset),
 				Hint:    "narrow with filter, type or query, or page one space with POST /v2/spaces/{spaceId}/search",
@@ -805,7 +805,7 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.V2Searc
 	var (
 		merged     []globalRecord
 		total      int
-		warnings   []v2model.V2Issue
+		warnings   []v2model.Issue
 		mergeSorts []database.SortRequest
 		firstErr   error
 		resolved   int
@@ -818,12 +818,12 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.V2Searc
 		// column a space lacks must not remove that space from scope/total.
 		plan, err := s.buildSearchPlan(space.id, req, false)
 		if err != nil {
-			var v2Err *v2model.V2Error
+			var v2Err *v2model.Error
 			if errors.As(err, &v2Err) {
 				if firstErr == nil {
 					firstErr = err
 				}
-				warnings = append(warnings, v2model.V2Issue{
+				warnings = append(warnings, v2model.Issue{
 					Message: fmt.Sprintf("space %q was skipped: %s", space.name, firstIssueMessage(v2Err)),
 				})
 				continue
@@ -855,7 +855,7 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.V2Searc
 	page := merged[minInt(offset, len(merged)):minInt(need, len(merged))]
 
 	builders := map[string]*objectRowBuilder{}
-	rows := make([]v2model.V2ObjectRow, 0, len(page))
+	rows := make([]v2model.ObjectRow, 0, len(page))
 	for _, entry := range page {
 		builder, ok := builders[entry.spaceId]
 		if !ok {
@@ -872,7 +872,7 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.V2Searc
 
 // firstIssueMessage picks the most specific message of a C6 error for the
 // per-space skip warning.
-func firstIssueMessage(err *v2model.V2Error) string {
+func firstIssueMessage(err *v2model.Error) string {
 	if len(err.Issues) > 0 {
 		return err.Issues[0].Message
 	}
@@ -881,7 +881,7 @@ func firstIssueMessage(err *v2model.V2Error) string {
 
 // dedupeIssues drops repeated (path, message) pairs — per-space loops
 // produce the same warning once per space.
-func dedupeIssues(issues []v2model.V2Issue) []v2model.V2Issue {
+func dedupeIssues(issues []v2model.Issue) []v2model.Issue {
 	seen := map[string]bool{}
 	out := issues[:0]
 	for _, iss := range issues {

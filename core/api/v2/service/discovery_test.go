@@ -34,7 +34,7 @@ func TestV2ListSpaces(t *testing.T) {
 				bundle.RelationKeyName:           domain.String("Personal"),
 			},
 		})
-		want := []v2model.V2SpaceRow{
+		want := []v2model.SpaceRow{
 			{Id: "space1", Name: "Work"},
 			{Id: "space2", Name: "Personal"},
 		}
@@ -114,10 +114,10 @@ func TestV2EnsureSpace(t *testing.T) {
 		_, _, _, err := fx.ListObjects(context.Background(), "bogus-space", nil, 0, 25)
 
 		// then
-		var apiErr *v2model.V2Error
+		var apiErr *v2model.Error
 		require.ErrorAs(t, err, &apiErr)
 		assert.Equal(t, http.StatusNotFound, apiErr.Status)
-		assert.Equal(t, v2model.V2CodeNotFound, apiErr.Code)
+		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
 	})
 
 	t.Run("a registered space passes the guard", func(t *testing.T) {
@@ -154,7 +154,7 @@ func TestV2ListMembers(t *testing.T) {
 				bundle.RelationKeyParticipantPermissions: domain.Int64(int64(model.ParticipantPermissions_Reader)),
 			},
 		})
-		want := []v2model.V2MemberRow{
+		want := []v2model.MemberRow{
 			{Id: "_participant_a", Name: "Alice", Role: "owner", Identity: "idA"},
 		}
 
@@ -183,7 +183,7 @@ func TestV2GetMemberMe(t *testing.T) {
 				bundle.RelationKeyParticipantPermissions: domain.Int64(int64(model.ParticipantPermissions_Owner)),
 			},
 		})
-		want := v2model.V2MemberRow{Id: meId, Name: "Me Myself", Role: "owner", Identity: testAccountId}
+		want := v2model.MemberRow{Id: meId, Name: "Me Myself", Role: "owner", Identity: testAccountId}
 
 		// when
 		row, err := fx.GetMemberMe(context.Background(), testSpaceId)
@@ -196,7 +196,7 @@ func TestV2GetMemberMe(t *testing.T) {
 	t.Run("serves the deterministic id before the participant object is indexed", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
-		want := v2model.V2MemberRow{Id: meId, Identity: testAccountId}
+		want := v2model.MemberRow{Id: meId, Identity: testAccountId}
 
 		// when
 		row, err := fx.GetMemberMe(context.Background(), testSpaceId)
@@ -216,7 +216,7 @@ func TestV2GetMemberMe(t *testing.T) {
 
 		// then
 		apiErr := v2Err(t, err)
-		assert.Equal(t, v2model.V2CodeNotFound, apiErr.Code)
+		assert.Equal(t, v2model.CodeNotFound, apiErr.Code)
 		assert.Contains(t, apiErr.Message, "GET /v2/spaces/{spaceId}/members")
 	})
 }
@@ -240,7 +240,7 @@ func TestV2ListTypes(t *testing.T) {
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_objectType)),
 			},
 		})
-		want := []v2model.V2TypeRow{{Key: "task", Name: "Task"}}
+		want := []v2model.TypeRow{{Key: "task", Name: "Task"}}
 
 		// when
 		rows, total, hasMore, err := fx.ListTypes(context.Background(), testSpaceId, 0, 25)
@@ -285,7 +285,7 @@ func TestV2GetType(t *testing.T) {
 		_, _, err := fx.GetType(context.Background(), testSpaceId, "nope")
 
 		// then
-		var v2Err *v2model.V2Error
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, 404, v2Err.Status)
 		assert.Contains(t, v2Err.Message, "/types")
@@ -300,10 +300,10 @@ func TestV2GetTypeSchema(t *testing.T) {
 	err := fx.GetTypeSchema(context.Background(), testSpaceId, "task")
 
 	// then
-	var v2Err *v2model.V2Error
+	var v2Err *v2model.Error
 	require.ErrorAs(t, err, &v2Err)
 	assert.Equal(t, 501, v2Err.Status)
-	assert.Equal(t, v2model.V2CodeNotImplemented, v2Err.Code)
+	assert.Equal(t, v2model.CodeNotImplemented, v2Err.Code)
 }
 
 func TestV2ListProperties(t *testing.T) {
@@ -319,7 +319,7 @@ func TestV2ListProperties(t *testing.T) {
 				bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
 			},
 		})
-		want := []v2model.V2PropertyRow{{Key: "priority", Name: "Priority", Format: "select"}}
+		want := []v2model.PropertyRow{{Key: "priority", Name: "Priority", Format: "select"}}
 
 		// when
 		rows, total, hasMore, err := fx.ListProperties(context.Background(), testSpaceId, 0, 25)
@@ -362,7 +362,7 @@ func TestV2ListPropertyOptions(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
 		addOptions(fx, t)
-		want := []v2model.V2OptionRow{{Name: "High", Color: "red"}, {Name: "Low"}}
+		want := []v2model.OptionRow{{Name: "High", Color: "red"}, {Name: "Low"}}
 
 		// when
 		rows, total, hasMore, err := fx.ListPropertyOptions(context.Background(), testSpaceId, "priority", "", 0, 25)
@@ -397,7 +397,7 @@ func TestV2ListPropertyOptions(t *testing.T) {
 		_, _, _, err := fx.ListPropertyOptions(context.Background(), testSpaceId, "nope", "", 0, 25)
 
 		// then
-		var v2Err *v2model.V2Error
+		var v2Err *v2model.Error
 		require.ErrorAs(t, err, &v2Err)
 		assert.Equal(t, 404, v2Err.Status)
 		assert.Contains(t, v2Err.Message, "/properties")
