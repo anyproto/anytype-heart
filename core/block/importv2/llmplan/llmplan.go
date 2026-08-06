@@ -36,9 +36,10 @@ const defaultBudget = 5 * time.Minute
 const maxCompletionTokens = 16384
 
 type planner struct {
-	client *llmclient.Client
-	budget time.Duration
-	effort string
+	client  *llmclient.Client
+	budget  time.Duration
+	effort  string
+	compact bool
 }
 
 // Option configures the planner.
@@ -54,6 +55,14 @@ func WithBudget(budget time.Duration) Option {
 // parameter ignore it — the client drops it on rejection.
 func WithReasoningEffort(effort string) Option {
 	return func(p *planner) { p.effort = effort }
+}
+
+// WithCompactPrompt swaps the system prompt for the terse small-model variant
+// (compactSystemPrompt): the same invariants, a fraction of the tokens. Small
+// local thinking models answer the full prompt with prose instead of JSON;
+// the compact one keeps them on the schema. The full prompt stays the default.
+func WithCompactPrompt() Option {
+	return func(p *planner) { p.compact = true }
 }
 
 // New wraps an llmclient into a schemaplan.Planner.
@@ -73,8 +82,12 @@ func (p *planner) Plan(ctx context.Context, schemas []schemaplan.ContainerSchema
 	if err != nil {
 		return schemaplan.Plan{}, fmt.Errorf("render schemas: %w", err)
 	}
+	system := systemPrompt()
+	if p.compact {
+		system = compactSystemPrompt()
+	}
 	request := llmclient.Request{
-		System:          systemPrompt(),
+		System:          system,
 		User:            userPrompt,
 		SchemaName:      "import_plan",
 		Schema:          responseSchema,
