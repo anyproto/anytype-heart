@@ -2,6 +2,8 @@ package v2model
 
 import (
 	"encoding/json"
+	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -67,4 +69,29 @@ func TestNewListResponse(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, string(data), `"data":[]`)
 	})
+}
+
+// jsonFieldNames extracts the json tag names of a struct type, in field
+// order — the wire vocabulary a doc twin must reproduce exactly.
+func jsonFieldNames(t *testing.T, typ reflect.Type) []string {
+	t.Helper()
+	var names []string
+	for i := 0; i < typ.NumField(); i++ {
+		tag := typ.Field(i).Tag.Get("json")
+		require.NotEmpty(t, tag, "field %s must carry a json tag", typ.Field(i).Name)
+		names = append(names, strings.Split(tag, ",")[0])
+	}
+	return names
+}
+
+func TestSearchRequestDocMirrorsSearchRequest(t *testing.T) {
+	// SearchRequestDoc exists ONLY for the OpenAPI document (swag cannot
+	// resolve json.RawMessage and panics on swaggertype:"array,…"), so the
+	// one way it can go wrong is drifting from the type the handler actually
+	// decodes. Field-for-field, same json names, same order.
+	want := jsonFieldNames(t, reflect.TypeOf(SearchRequest{}))
+
+	got := jsonFieldNames(t, reflect.TypeOf(SearchRequestDoc{}))
+
+	assert.Equal(t, want, got, "the doc twin drifted from SearchRequest — the published document would lie about the search body")
 }

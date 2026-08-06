@@ -57,7 +57,7 @@ type docCreateOptions struct {
 
 // CreateObject implements POST /v2/spaces/{spaceId}/objects.
 func (s *V2Service) CreateObject(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	fields, err := parseEnvelope(body)
@@ -79,7 +79,7 @@ func (s *V2Service) CreateObject(ctx context.Context, spaceId string, body []byt
 // document with templateFor, routed through the generic object-create path
 // (no create-from-body template RPC exists — APIV2.md Phase 2).
 func (s *V2Service) CreateTemplate(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	return s.createFromDocument(ctx, spaceId, body, docCreateOptions{dryRun: dryRun, requireTemplate: true})

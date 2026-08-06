@@ -1,15 +1,18 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	apiv2 "github.com/anyproto/anytype-heart/core/api/v2"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
@@ -54,7 +57,9 @@ func newV2ServerFixture(t *testing.T) *fixture {
 
 func TestV2Routes(t *testing.T) {
 	t.Run("v2 routes require auth", func(t *testing.T) {
-		// given
+		// given: no Authorization header — the answer must be
+		// ensureAuthenticated's 401, never the scope gate's 403: the gate
+		// runs after auth and must not see an unauthenticated request
 		fx := newV2ServerFixture(t)
 		w := httptest.NewRecorder()
 		req := httptest.NewRequest("GET", "/v2/spaces", nil)
@@ -65,24 +70,147 @@ func TestV2Routes(t *testing.T) {
 
 		// then
 		require.Equal(t, http.StatusUnauthorized, w.Code)
+		expectedJSON, err := json.Marshal(util.CodeToApiError(http.StatusUnauthorized, ErrMissingAuthorizationHeader.Error()))
+		require.NoError(t, err)
+		require.JSONEq(t, string(expectedJSON), w.Body.String())
 	})
 
 	t.Run("v2 validate responds through the shared auth", func(t *testing.T) {
-		// given
+		// both scopes that admit the JSON API pass the /v2 scope gate
+		for _, scope := range []model.AccountAuthLocalApiScope{
+			model.AccountAuth_JsonAPI,
+			model.AccountAuth_Full,
+		} {
+			t.Run(scope.String(), func(t *testing.T) {
+				// given
+				fx := newV2ServerFixture(t)
+				fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok", Scope: scope}}
+				fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+				w := httptest.NewRecorder()
+				req := httptest.NewRequest("POST", "/v2/validate", strings.NewReader(`{"version":1,"blocks":[]}`))
+				req.Host = localApiHost
+				req.Header.Set("Authorization", "Bearer validKey")
+
+				// when
+				fx.Engine().ServeHTTP(w, req)
+
+				// then
+				require.Equal(t, http.StatusOK, w.Code)
+				require.Contains(t, w.Body.String(), `"issues":[]`)
+			})
+		}
+	})
+
+	t.Run("a Limited key is refused with 403 and the actionable body", func(t *testing.T) {
+		// given: a valid but Limited (web-clipper) key — authenticated, yet
+		// not authorized for /v2 (H2). 403, distinct from the 401
+		// invalid-key path, naming the key, its scope, and the remedy.
 		fx := newV2ServerFixture(t)
-		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
-		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
+		fx.KeyToToken = map[string]ApiSessionEntry{
+			"limitedKey": {Token: "tok", AppName: "clipper", Scope: model.AccountAuth_Limited},
+		}
 		w := httptest.NewRecorder()
-		req := httptest.NewRequest("POST", "/v2/validate", strings.NewReader(`{"version":1,"blocks":[]}`))
+		req := httptest.NewRequest("GET", "/v2/spaces", nil)
 		req.Host = localApiHost
-		req.Header.Set("Authorization", "Bearer validKey")
+		req.Header.Set("Authorization", "Bearer limitedKey")
 
 		// when
 		fx.Engine().ServeHTTP(w, req)
 
 		// then
-		require.Equal(t, http.StatusOK, w.Code)
-		require.Contains(t, w.Body.String(), `"issues":[]`)
+		require.Equal(t, http.StatusForbidden, w.Code)
+		wantMessage := `api key scope does not allow json api access: key "clipper" has Limited scope, create a new api key with JsonAPI scope`
+		expectedJSON, err := json.Marshal(util.CodeToApiError(http.StatusForbidden, wantMessage))
+		require.NoError(t, err)
+		require.JSONEq(t, string(expectedJSON), w.Body.String())
+	})
+
+	t.Run("expired key gets the distinct 401 on /v2", func(t *testing.T) {
+		// given: expiry is enforced in ensureAuthenticated for BOTH groups —
+		// only the scope refusal is /v2-only (H5 did not move)
+		fx := newV2ServerFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{
+			"expiredKey": {Token: "tok", Scope: model.AccountAuth_JsonAPI, ExpireAt: time.Now().Unix() - 60},
+		}
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/v2/spaces", nil)
+		req.Host = localApiHost
+		req.Header.Set("Authorization", "Bearer expiredKey")
+
+		// when
+		fx.Engine().ServeHTTP(w, req)
+
+		// then
+		require.Equal(t, http.StatusUnauthorized, w.Code)
+		expectedJSON, err := json.Marshal(util.CodeToApiError(http.StatusUnauthorized, ErrApiKeyExpired.Error()))
+		require.NoError(t, err)
+		require.JSONEq(t, string(expectedJSON), w.Body.String())
+	})
+
+	t.Run("every /v2 route carries the scope gate", func(t *testing.T) {
+		// The gate is installed by group membership (v2.Use in
+		// apiv2.RegisterRoutes), so a /v2 route registered on the engine
+		// directly — the pattern the public docs routes already use — would
+		// silently carry neither auth nor the gate. This walks the REAL
+		// engine's route table with a cached Limited key: every /v2 route
+		// must answer the gate's exact 403, except the explicit exempt list.
+		fx := newV2ServerFixture(t)
+		fx.KeyToToken = map[string]ApiSessionEntry{
+			"limitedKey": {Token: "tok", AppName: "clipper", Scope: model.AccountAuth_Limited},
+		}
+
+		wantMessage := `api key scope does not allow json api access: key "clipper" has Limited scope, create a new api key with JsonAPI scope`
+		expectedJSON, err := json.Marshal(util.CodeToApiError(http.StatusForbidden, wantMessage))
+		require.NoError(t, err)
+
+		// The exempt set is DERIVED from the authorization registry — the one
+		// place the auth-exempt fact is written down (a second hand-kept list
+		// here could be edited into agreement with a hole). The registry
+		// class itself is verified behaviorally by the grant conformance
+		// walk: an auth-exempt route must answer without credentials, every
+		// other /v2 route must 401. Growing the class is an API decision,
+		// not a registration accident.
+		exempt := map[string]bool{}
+		for key, entry := range apiv2.V2RouteAuthz() {
+			if entry.Global == apiv2.GlobalAuthExempt {
+				exempt[key] = true
+			}
+		}
+		require.Len(t, exempt, 2, "the auth-exempt class is the two public documents — growing it is an API decision")
+
+		v2Routes := 0
+		for _, route := range fx.Engine().Routes() {
+			if !strings.HasPrefix(route.Path, "/v2/") {
+				continue
+			}
+			v2Routes++
+
+			// substitute path params so gin routes the probe to the handler
+			segments := strings.Split(route.Path, "/")
+			for i, segment := range segments {
+				if strings.HasPrefix(segment, ":") || strings.HasPrefix(segment, "*") {
+					segments[i] = "x"
+				}
+			}
+			path := strings.Join(segments, "/")
+
+			w := httptest.NewRecorder()
+			req := httptest.NewRequest(route.Method, path, strings.NewReader(`{}`))
+			req.Host = localApiHost
+			req.Header.Set("Authorization", "Bearer limitedKey")
+			fx.Engine().ServeHTTP(w, req)
+
+			if exempt[route.Method+" "+route.Path] {
+				require.NotEqual(t, http.StatusForbidden, w.Code,
+					"%s %s is exempt: a public document must not sit behind the gate", route.Method, route.Path)
+				continue
+			}
+			require.Equal(t, http.StatusForbidden, w.Code,
+				"%s %s must refuse a Limited key — is it registered on the gated v2 group?", route.Method, route.Path)
+			require.JSONEq(t, string(expectedJSON), w.Body.String(),
+				"%s %s must answer with the scope gate's 403 body", route.Method, route.Path)
+		}
+		require.GreaterOrEqual(t, v2Routes, 40, "the walk must cover the /v2 surface, not a filtered-away remnant")
 	})
 
 	t.Run("the idempotency middleware is wired on the edit routes", func(t *testing.T) {
@@ -123,7 +251,7 @@ func TestV2Routes(t *testing.T) {
 		} {
 			t.Run(route.method+" "+route.path, func(t *testing.T) {
 				fx := newV2ServerFixture(t)
-				fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
+				fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok", Scope: model.AccountAuth_JsonAPI}}
 				fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 
 				req := httptest.NewRequest(route.method, route.path,
@@ -150,7 +278,7 @@ func TestV2Routes(t *testing.T) {
 		// delete to recover through. The .Once() on WorkspaceCreate is the
 		// load-bearing assertion — a second RPC fails the mock.
 		fx := newV2ServerFixture(t)
-		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok", Scope: model.AccountAuth_JsonAPI}}
 		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 		fx.mwMock.EXPECT().WorkspaceCreate(mock.Anything, mock.Anything).
 			Return(&pb.RpcWorkspaceCreateResponse{SpaceId: "newSpace1"}).Once()
@@ -187,7 +315,7 @@ func TestV2Routes(t *testing.T) {
 		for _, path := range []string{"/v2/search", "/v2/spaces/space1/search"} {
 			t.Run(path, func(t *testing.T) {
 				fx := newV2ServerFixture(t)
-				fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
+				fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok", Scope: model.AccountAuth_JsonAPI}}
 				fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 				// register space1 in the store fixture's tech space so the
 				// space-scoped search resolves it (C2)
@@ -219,7 +347,7 @@ func TestV2Routes(t *testing.T) {
 		// silently honored ?offset= would let an agent believe it pages by
 		// offset while the RPC ignores it — reject with steering instead
 		fx := newV2ServerFixture(t)
-		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok"}}
+		fx.KeyToToken = map[string]ApiSessionEntry{"validKey": {Token: "tok", Scope: model.AccountAuth_JsonAPI}}
 		fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 
 		req := httptest.NewRequest("GET", "/v2/spaces/space1/chats/chat1/messages?offset=5", nil)

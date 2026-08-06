@@ -303,8 +303,8 @@
       "CreateApiKeyResponse": {
         "properties": {
           "api_key": {
-            "description": "The api key used to authenticate requests",
-            "example": "zhSG/zQRmgADyilWPtgdnfo1qD60oK02/SVgi1GaFt6=",
+            "description": "ApiKey is minted in the prefixed+checksummed format\n`anytype_<body>_<checksum>`; match it with the published pattern\n`\\banytype_[0-9A-Za-z]{40,60}_[0-9a-f]{8}\\b` (a length RANGE — never\nassume a fixed length). Keys issued before the format flip are plain\nbase64 and keep authenticating unchanged.",
+            "example": "anytype_amfbcga7eywtio2cjfifoxtfnrzxvamir6lj3jflwk44br6o2xoa_3fe1d4b7",
             "type": "string"
           }
         },

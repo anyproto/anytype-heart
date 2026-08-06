@@ -43,7 +43,14 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 	v1 := router.Group("/v1")
 	v1.Use(paginator)
 	v1.Use(srv.ensureCacheInitialized())
+	// No scope gate on /v1: keys minted without a scope carry Limited
+	// (anytype-cli's CreateApp historically sent none) and must keep working
+	// here — the JSON-API scope gate (ensureJsonApiScope) is /v2-only.
 	v1.Use(srv.ensureAuthenticated(mw))
+	// GRANTED keys are the one exception to /v1's grandfathering: their
+	// grant can only be honored on /v2, so /v1 refuses them with a pointer
+	// there. Legacy (nil-grant) keys pass untouched.
+	v1.Use(ensureUngrantedKey())
 
 	srv.registerChatRoutes(v1, eventService, writeRateLimitMW)
 	srv.registerFileRoutes(v1, eventService, writeRateLimitMW)
@@ -62,6 +69,7 @@ func (srv *Server) NewRouter(mw apicore.ClientCommands, eventService apicore.Eve
 		CreateDisabled: srv.v2CreateDisabled,
 		EditDisabled:   srv.v2EditDisabled,
 		Auth:           srv.ensureAuthenticated(mw),
+		KeyScope:       ensureJsonApiScope(),
 		CacheInit:      srv.ensureCacheInitialized(),
 		WriteRateLimit: writeRateLimitMW,
 		AnalyticsEvent: func(code string) gin.HandlerFunc {

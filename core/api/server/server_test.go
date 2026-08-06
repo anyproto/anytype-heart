@@ -118,6 +118,43 @@ func TestBuildApiBaseUrl(t *testing.T) {
 	}
 }
 
+func TestServer_RevokeToken(t *testing.T) {
+	t.Run("evicts every cache entry carrying the token", func(t *testing.T) {
+		// given: two keys mapping to the same session token plus an unrelated
+		// key — revocation must evict every entry carrying the token, not just
+		// the first match (H4: revocation must be complete)
+		s := newFixture(t)
+		s.KeyToToken = map[string]ApiSessionEntry{
+			"key1":  {Token: "revoked-token"},
+			"key2":  {Token: "revoked-token"},
+			"other": {Token: "other-token"},
+		}
+
+		// when
+		s.RevokeToken("revoked-token")
+
+		// then
+		want := map[string]ApiSessionEntry{
+			"other": {Token: "other-token"},
+		}
+		require.Equal(t, want, s.KeyToToken)
+	})
+
+	t.Run("no-op when the token is not cached", func(t *testing.T) {
+		// given
+		s := newFixture(t)
+		s.KeyToToken = map[string]ApiSessionEntry{
+			"key1": {Token: "token1"},
+		}
+
+		// when
+		s.RevokeToken("unknown-token")
+
+		// then
+		require.Len(t, s.KeyToToken, 1)
+	})
+}
+
 func TestServer_Engine(t *testing.T) {
 	t.Run("Engine returns same engine instance", func(t *testing.T) {
 		// given

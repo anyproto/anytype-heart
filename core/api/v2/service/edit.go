@@ -48,7 +48,7 @@ type v2PatchRequest struct {
 // ops apply to a child state of the live object, committed with one ordinary
 // Apply (stateops.go).
 func (s *V2Service) PatchObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	ops, err := parsePatchRequest(body)
@@ -176,7 +176,7 @@ func (s *V2Service) applyPatchOps(ctx context.Context, spaceId, objectId string,
 // (they do on default reads, C4); diffStats make an accidental full rewrite
 // visible.
 func (s *V2Service) PutObject(ctx context.Context, spaceId, objectId string, body []byte, ifMatch string, dryRun bool) (*v2model.EditResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	body, err := normalizePutBody(body, objectId)

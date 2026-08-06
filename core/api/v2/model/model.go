@@ -21,6 +21,12 @@ const (
 	CodeNotImplemented      = "not_implemented"
 	CodeInternalError       = "internal_error"
 	CodeRequestTooLarge     = "request_too_large"
+	// The space-grant codes. Messages NAME the actual grant: error-guided
+	// self-correction is the v2 design language, and enumeration resistance
+	// is a non-goal for a localhost single-user API.
+	CodeSpaceNotGranted             = "space_not_granted"
+	CodeWriteNotGranted             = "write_not_granted"
+	CodeV1NotAvailableForScopedKeys = "v1_not_available_for_scoped_keys"
 )
 
 // Issue is one path-addressed problem (C6): path into the request
@@ -65,6 +71,26 @@ func NotFound(message string) *Error {
 	return NewError(http.StatusNotFound, CodeNotFound, message)
 }
 
+// SpaceNotGranted is the 403 for a request outside the key's space grant —
+// a space the grant does not cover, or a no-space route scoped keys cannot
+// use. The message must name the actual grant.
+func SpaceNotGranted(message string) *Error {
+	return NewError(http.StatusForbidden, CodeSpaceNotGranted, message)
+}
+
+// WriteNotGranted is the 403 for a write-classified route reached with a
+// read-only grant.
+func WriteNotGranted(message string) *Error {
+	return NewError(http.StatusForbidden, CodeWriteNotGranted, message)
+}
+
+// V1NotAvailableForScopedKeys is the 403 a granted key gets on every /v1
+// route: the grant can only be honored on /v2 (a legacy nil-grant key is
+// served on /v1 unchanged).
+func V1NotAvailableForScopedKeys(message string) *Error {
+	return NewError(http.StatusForbidden, CodeV1NotAvailableForScopedKeys, message)
+}
+
 // RequestTooLarge is the 413 for an oversized request body (C3).
 func RequestTooLarge(message string) *Error {
 	return NewError(http.StatusRequestEntityTooLarge, CodeRequestTooLarge, message)
@@ -97,6 +123,12 @@ type ListResponse[T any] struct {
 	Message  string  `json:"message,omitempty"`
 	Warnings []Issue `json:"warnings,omitempty"`
 }
+
+// ViewObject is the OpenAPI stand-in for one §6.2 view object: the runtime
+// rows are pre-serialized JSON (json.RawMessage), which swag cannot resolve
+// as a generic argument, so the view-listing annotations name this untyped
+// object instead. The wire shape is identical — one JSON object per row.
+type ViewObject map[string]any
 
 // NewListResponse assembles the envelope and, when truncated, the C10
 // steering message.
@@ -156,6 +188,62 @@ type CreateSpaceRequest struct {
 type UpdateSpaceRequest struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
+}
+
+//
+// ---- P1c: whoami (GET /v2/auth/whoami) ----
+//
+
+// WhoamiResponse describes the authenticated CREDENTIAL — never the person;
+// there is only ever one "who" on a single-account localhost API. KeyStatus
+// and Notice repeat the Anytype-Key-Status / Anytype-Notice header signal in
+// the body, because agents read bodies, not headers.
+type WhoamiResponse struct {
+	Key       WhoamiKey   `json:"key"`
+	Scope     string      `json:"scope"` // "jsonApi" | "full" | "limited"
+	Grant     WhoamiGrant `json:"grant"`
+	Api       WhoamiApi   `json:"api"`
+	KeyStatus string      `json:"keyStatus"`        //nolint:tagliatelle // C2: v2 bodies are camelCase; "legacy" | "scoped", always present
+	Notice    string      `json:"notice,omitempty"` // the legacy sentence, verbatim printable
+}
+
+// WhoamiKey names the credential. CreatedAt/ExpiresAt are RFC 3339 UTC;
+// null means unknown (CreatedAt) / never (ExpiresAt).
+type WhoamiKey struct {
+	Id        string  `json:"id"` // the app link's hash — the id the key list shows
+	Name      string  `json:"name"`
+	CreatedAt *string `json:"createdAt"` //nolint:tagliatelle // C2: v2 bodies are camelCase
+	ExpiresAt *string `json:"expiresAt"` //nolint:tagliatelle // C2: v2 bodies are camelCase
+}
+
+// WhoamiGrant is the credential's space grant as enforced. Scoped is the
+// REQUIRED explicit boolean and the load-bearing field: "legacy unscoped
+// key" is NEVER encoded as spaces:null, because consumers get the
+// null-vs-empty test backwards and that failure direction is fail-open (the
+// agent concludes it may touch every space). When Scoped is false, Spaces
+// is [] and Permission is null.
+type WhoamiGrant struct {
+	Scoped     bool               `json:"scoped"`
+	Permission *string            `json:"permission"` // the compact form agents string-match on
+	Spaces     []WhoamiGrantSpace `json:"spaces"`
+}
+
+// WhoamiGrantSpace is one granted space. Spaces are OBJECTS with a
+// per-entry permission even though the grant's perms are uniform today —
+// the shape that lets P2 add per-space permissions without a breaking wire
+// change. Name comes from the same grant-intersected path GET /v2/spaces
+// uses; a granted space absent from the live list keeps its entry with an
+// empty name.
+type WhoamiGrantSpace struct {
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	Permission string `json:"permission"`
+}
+
+// WhoamiApi carries the serving API version — the same value as the
+// Anytype-Version response header.
+type WhoamiApi struct {
+	Version string `json:"version"`
 }
 
 // MemberRow is a minimal member list row; agents need member ids for
@@ -262,8 +350,12 @@ type UpdatePropertyRequest struct {
 // given, replaces the default single view and is mutually exclusive with
 // top-level filters/sorts (ambiguous_input otherwise).
 type CreateSetRequest struct {
-	Name    string          `json:"name"`
-	Type    string          `json:"type"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+	// The RawMessage fields carry pre-serialized §6.2 arrays. No OpenAPI
+	// annotation references this type today; if one ever does, follow the
+	// SearchRequestDoc pattern — swag cannot resolve json.RawMessage, and
+	// its v3 parser panics on swaggertype:"array,…".
 	Filter  string          `json:"filter,omitempty"`
 	Filters json.RawMessage `json:"filters,omitempty"`
 	Sorts   json.RawMessage `json:"sorts,omitempty"`
@@ -312,6 +404,21 @@ type SearchRequest struct {
 	Fields  []string        `json:"fields,omitempty"`
 }
 
+// SearchRequestDoc mirrors SearchRequest for the OpenAPI document ONLY (the
+// search annotations reference it): swag cannot resolve json.RawMessage and
+// its v3 parser panics on swaggertype:"array,…", so the §6.2 array fields
+// are documented through this twin instead. Wire shape is identical. A unit
+// test pins the twin's JSON field set to SearchRequest's so the two cannot
+// drift.
+type SearchRequestDoc struct {
+	Query   string           `json:"query,omitempty"`
+	Type    string           `json:"type,omitempty"`
+	Filter  string           `json:"filter,omitempty"`
+	Filters []map[string]any `json:"filters,omitempty"`
+	Sorts   []map[string]any `json:"sorts,omitempty"`
+	Fields  []string         `json:"fields,omitempty"`
+}
+
 //
 // ---- Phase 3: edit surface ----
 //
@@ -348,8 +455,8 @@ type EditResult struct {
 type SchemaEntry struct {
 	Kind            string          `json:"kind"`
 	Endpoint        string          `json:"endpoint"`
-	Schema          json.RawMessage `json:"schema"`
-	Example         json.RawMessage `json:"example"`
+	Schema          json.RawMessage `json:"schema" swaggertype:"object"`
+	Example         json.RawMessage `json:"example" swaggertype:"object"`
 	Grammar         string          `json:"grammar,omitempty"`
 	GrammarExamples []string        `json:"grammarExamples,omitempty"`
 }

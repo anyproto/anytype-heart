@@ -19,7 +19,7 @@ import (
 // UploadFile uploads one file into the space, from a staged local path
 // (multipart upload) or a URL — exactly one must be set.
 func (s *V2Service) UploadFile(ctx context.Context, spaceId, localPath, url string, dryRun bool) (*v2model.FileUploadResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if (localPath == "") == (url == "") {

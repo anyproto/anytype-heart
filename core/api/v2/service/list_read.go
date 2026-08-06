@@ -88,7 +88,7 @@ func (s *V2Service) GetCollectionObjects(ctx context.Context, spaceId, collectio
 // route contract: the sets route requires a set, the collections route a
 // collection, and a wrong-layout target is a 400 naming the other route.
 func (s *V2Service) readListTarget(ctx context.Context, spaceId, listId string, want listKind) (listTarget, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return listTarget{}, err
 	}
 	read, err := s.reader.ReadObject(ctx, spaceId, listId)

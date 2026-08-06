@@ -75,16 +75,27 @@ func (mw *Middleware) Authorize(ctx context.Context, req interface{}, info *grpc
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
-	switch scope {
-	case model.AccountAuth_Full:
-	case model.AccountAuth_Limited:
-		methodTrimmed := strings.TrimPrefix(info.FullMethod, "/anytype.ClientCommands/")
-		if _, ok := limitedScopeMethods[methodTrimmed]; !ok {
-			return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("method %s not allowed for %s", methodTrimmed, scope.String()))
-		}
-	default:
-		return nil, status.Error(codes.PermissionDenied, fmt.Sprintf("method %s not allowed for %s scope", info.FullMethod, scope.String()))
+	if err = checkScopeAllowsMethod(scope, info.FullMethod); err != nil {
+		return nil, err
 	}
 	resp, err = handler(ctx, req)
 	return
+}
+
+// checkScopeAllowsMethod is the interceptor's scope decision: Full passes
+// everywhere, Limited only through its allowlist, and every other scope
+// (JsonAPI included — its holders live on the HTTP surface) is denied all
+// gRPC methods. Returns the gRPC PermissionDenied error or nil.
+func checkScopeAllowsMethod(scope model.AccountAuthLocalApiScope, fullMethod string) error {
+	switch scope {
+	case model.AccountAuth_Full:
+	case model.AccountAuth_Limited:
+		methodTrimmed := strings.TrimPrefix(fullMethod, "/anytype.ClientCommands/")
+		if _, ok := limitedScopeMethods[methodTrimmed]; !ok {
+			return status.Error(codes.PermissionDenied, fmt.Sprintf("method %s not allowed for %s", methodTrimmed, scope.String()))
+		}
+	default:
+		return status.Error(codes.PermissionDenied, fmt.Sprintf("method %s not allowed for %s scope", fullMethod, scope.String()))
+	}
+	return nil
 }

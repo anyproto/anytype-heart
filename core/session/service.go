@@ -37,8 +37,8 @@ const CName = "session"
 type Service interface {
 	StartSession(privKey []byte, scope model.AccountAuthLocalApiScope) (string, error)
 	ValidateToken(privKey []byte, token string) (model.AccountAuthLocalApiScope, error)
-	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo) (id string, value string, err error)
-	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, scope model.AccountAuthLocalApiScope, err error)
+	StartNewChallenge(scope model.AccountAuthLocalApiScope, info *pb.EventAccountLinkChallengeClientInfo, requestedGrant *model.AccountAuthAppGrant) (id string, value string, err error)
+	SolveChallenge(challengeId string, challengeSolution string, signingKey []byte) (clientInfo *pb.EventAccountLinkChallengeClientInfo, token string, scope model.AccountAuthLocalApiScope, requestedGrant *model.AccountAuthAppGrant, err error)
 
 	CloseSession(token string) error
 }

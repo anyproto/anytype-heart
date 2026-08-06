@@ -4,6 +4,7 @@ package v2service
 // helpers, and the compact-JSON envelope assembly (APIV2.md §8).
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -12,6 +13,7 @@ import (
 	"strings"
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
+	"github.com/anyproto/anytype-heart/core/api/util"
 	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 	"github.com/anyproto/anytype-heart/pkg/lib/logging"
@@ -49,15 +51,57 @@ func NewV2Service(mw apicore.ClientCommands, reader apicore.ObjectReader, creato
 	return &V2Service{mw: mw, reader: reader, creator: creator, mutator: mutator, store: store, techSpaceId: techSpaceId, accountId: accountId}
 }
 
+// ensureSpaceGranted is the space half of the service-level backstop of the
+// route-layer grant gate (apiv2.ensureSpaceGrant, which owns the clean
+// per-route 403): it consults the grant carried on the request context and
+// fails closed, so a future route that forgets the middleware — or resolves
+// space ids in some unusual way — still cannot reach a non-granted space.
+// A nil grant is an unscoped/legacy key and passes; an empty granted-space
+// list denies everything (util.ApiGrant.AllowsSpace — empty is never "all
+// spaces"). The verb half is ensureWriteGranted, called by the write entry
+// points via ensureSpaceWrite / ensureChatWrite.
+func ensureSpaceGranted(ctx context.Context, spaceId string) error {
+	grant := util.ApiGrantFromCtx(ctx)
+	if grant == nil {
+		return nil
+	}
+	if !grant.AllowsSpace(spaceId) {
+		return v2model.SpaceNotGranted(fmt.Sprintf(
+			"key not granted space %q; granted: %s", spaceId, grant.Describe()))
+	}
+	return nil
+}
+
+// ensureWriteGranted is the verb half of the service-level backstop: a
+// write entry point reached with a read-only grant is refused even when the
+// route middleware never ran. A nil grant is an unscoped/legacy key and
+// passes; only the exact readwrite value writes (util.ApiGrant.CanWrite).
+func ensureWriteGranted(ctx context.Context) error {
+	grant := util.ApiGrantFromCtx(ctx)
+	if grant == nil || grant.CanWrite() {
+		return nil
+	}
+	return v2model.WriteNotGranted(fmt.Sprintf(
+		"this operation is a write and the key's grant is read-only; granted: %s", grant.Describe()))
+}
+
 // ensureSpace rejects an unknown space_id before any per-space objectstore
 // access (C2). objectstore.SpaceIndex mints — and persists to disk — a fresh
 // index for ANY id, so without this guard an agent passing bogus space ids
 // could grow the in-memory registry and backing DBs without bound.
 // GetSpaceViewDetails resolves the spaceView against the tech space only and
 // never mints an index for spaceId; the tech space itself is trusted.
-func (s *V2Service) ensureSpace(spaceId string) error {
+//
+// The grant backstop runs FIRST — before the tech-space admission below,
+// which deliberately treats the tech space as an ordinary space id: a
+// scoped key must not reach the tech space unless it was explicitly
+// granted.
+func (s *V2Service) ensureSpace(ctx context.Context, spaceId string) error {
 	if spaceId == "" {
 		return v2model.NotFound("space id is required")
+	}
+	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
+		return err
 	}
 	if spaceId == s.techSpaceId {
 		return nil
@@ -66,6 +110,22 @@ func (s *V2Service) ensureSpace(spaceId string) error {
 		return v2model.NotFound(fmt.Sprintf("space %q not found", spaceId))
 	}
 	return nil
+}
+
+// ensureSpaceWrite is ensureSpace for the service's WRITE entry points,
+// with the route gate's precedence: grant space check, then the write-verb
+// check, then the existence lookup — so space_not_granted wins over
+// write_not_granted, and a read-only key is refused before anything
+// resolves. (ensureSpace re-runs the space check; the duplication is the
+// price of keeping each helper self-sufficiently fail-closed.)
+func (s *V2Service) ensureSpaceWrite(ctx context.Context, spaceId string) error {
+	if err := ensureSpaceGranted(ctx, spaceId); err != nil {
+		return err
+	}
+	if err := ensureWriteGranted(ctx); err != nil {
+		return err
+	}
+	return s.ensureSpace(ctx, spaceId)
 }
 
 //

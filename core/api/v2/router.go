@@ -6,7 +6,8 @@ package apiv2
 // way, server → v2. The shared middleware stack (auth, cache init, write
 // rate limit, analytics) stays in server — one gin engine and one
 // ensureAuthenticated serve both versions — and arrives here through
-// RouteDeps.
+// RouteDeps. The key-scope gate also arrives through RouteDeps but is
+// installed only on this group: it is a /v2-only refusal by design.
 
 import (
 	"github.com/gin-gonic/gin"
@@ -40,6 +41,12 @@ type RouteDeps struct {
 
 	// Auth is the shared bearer-token middleware (the same one /v1 uses).
 	Auth gin.HandlerFunc
+	// KeyScope is the JSON-API key-scope gate — it decides on the key's KIND
+	// (Limited/JsonAPI/Full), not on which spaces the key may touch — run
+	// directly after Auth (it needs the session Auth resolves). It is
+	// installed on /v2 only: keys minted without a scope carry Limited and
+	// are grandfathered on /v1, while /v2 has no shipped clients to break.
+	KeyScope gin.HandlerFunc
 	// CacheInit is the shared lazy cache-initialization middleware.
 	CacheInit gin.HandlerFunc
 	// WriteRateLimit is the shared write-rate limiter.
@@ -49,9 +56,10 @@ type RouteDeps struct {
 }
 
 // RegisterRoutes registers the /v2 route group (APIV2.md §8): same
-// middleware stack and auth as /v1, C10 pagination defaults, plus the C8
-// idempotency and C9 dry-run plumbing. Skipped when the v2 service has no
-// dependencies (v1-only construction, e.g. in isolated tests).
+// middleware stack and auth as /v1 plus the /v2-only key-scope gate, C10
+// pagination defaults, and the C8 idempotency and C9 dry-run plumbing.
+// Skipped when the v2 service has no dependencies (v1-only construction,
+// e.g. in isolated tests).
 func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 	if deps.Service == nil {
 		return
@@ -66,9 +74,26 @@ func RegisterRoutes(router *gin.Engine, deps RouteDeps) {
 	}))
 	v2.Use(deps.CacheInit)
 	v2.Use(deps.Auth)
+	v2.Use(deps.KeyScope)
+	// The space-grant gate runs directly after the key-scope gate: KeyScope
+	// decides the key's KIND, ensureSpaceGrant decides which spaces and
+	// which verbs the key's grant covers (authz.go). It must run before any
+	// handler resolves a space — the service's ensureSpace admits the tech
+	// space, this gate denies it unless explicitly granted.
+	v2.Use(ensureSpaceGrant())
 	v2.Use(ensureDryRun())
 	idempotencyMW := ensureIdempotency(newIdempotencyStore(idempotencyMaxEntries))
 
+	// P1c introspection: the credential's self-description, derived from the
+	// same ctx carriers the grant gate reads. Registered INSIDE the
+	// authenticated group — its registry class is service-filtered, never
+	// auth-exempt (the conformance walk fails an authenticated route
+	// carrying that class), and the shared auth middleware is what keeps the
+	// token Authorization-header-only.
+	v2.GET("/auth/whoami",
+		deps.AnalyticsEvent("V2Whoami"),
+		v2handler.WhoamiV2Handler(deps.Service),
+	)
 	v2.POST("/validate",
 		idempotencyMW,
 		deps.AnalyticsEvent("V2Validate"),

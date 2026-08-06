@@ -86,7 +86,7 @@ func validateSearchShape(req v2model.SearchRequest) error {
 
 // SearchObjects implements POST /v2/spaces/{spaceId}/search.
 func (s *V2Service) SearchObjects(ctx context.Context, spaceId string, req v2model.SearchRequest, offset, limit int) ([]v2model.ObjectRow, int, bool, []v2model.Issue, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, nil, err
 	}
 	if err := validateSearchShape(req); err != nil {
@@ -742,7 +742,12 @@ type spaceRef struct {
 // the v2 spaces list and GET-one): global search calls SpaceIndex on every
 // ref, which MINTS an index for the id, so a removed or never-loaded space
 // must not get one materialized as a search side effect.
-func (s *V2Service) spaceRefs() ([]spaceRef, error) {
+//
+// The ctx grant intersects the INPUT set here, before any per-space work —
+// not the output rows: a non-granted space must never enter the fan-out
+// loop, where a per-space failure or warning would disclose that it exists.
+func (s *V2Service) spaceRefs(ctx context.Context) ([]spaceRef, error) {
+	grant := util.ApiGrantFromCtx(ctx)
 	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
 		Filters: []database.FilterRequest{{
 			RelationKey: bundle.RelationKeyResolvedLayout,
@@ -761,6 +766,9 @@ func (s *V2Service) spaceRefs() ([]spaceRef, error) {
 			continue
 		}
 		if !isLiveSpaceView(record.Details) {
+			continue
+		}
+		if grant != nil && !grant.AllowsSpace(id) {
 			continue
 		}
 		seen[id] = true
@@ -797,7 +805,7 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req v2model.SearchR
 				Hint:    "narrow with filter, type or query, or page one space with POST /v2/spaces/{spaceId}/search",
 			})
 	}
-	spaces, err := s.spaceRefs()
+	spaces, err := s.spaceRefs(ctx)
 	if err != nil {
 		return nil, 0, false, nil, err
 	}

@@ -147,7 +147,7 @@ func mapReadError(spaceId, objectId string, err error) error {
 // returned body is the flat AnyBlock document with the envelope etag; the
 // caller sets the ETag header from the second return.
 func (s *V2Service) GetObject(ctx context.Context, spaceId, objectId string, q V2ObjectQuery) ([]byte, string, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, "", err
 	}
 	plan, err := q.validate()
@@ -414,7 +414,7 @@ func resolveBlockRef(ids []string, ref string) (int, error) {
 // ListObjects returns minimal rows (id, name, type + requested fields) for
 // the space's objects, newest-modified first.
 func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []string, offset, limit int) ([]v2model.ObjectRow, int, bool, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpace(ctx, spaceId); err != nil {
 		return nil, 0, false, err
 	}
 	index := s.store.SpaceIndex(spaceId)

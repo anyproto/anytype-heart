@@ -263,10 +263,14 @@ func (mw *Middleware) AccountChangeJsonApiAddr(ctx context.Context, req *pb.RpcA
 func (mw *Middleware) AccountLocalLinkNewChallenge(ctx context.Context, request *pb.RpcAccountLocalLinkNewChallengeRequest) *pb.RpcAccountLocalLinkNewChallengeResponse {
 	info := getClientInfo(ctx)
 	info.Name = request.AppName
-	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info)
+	challengeId, err := mw.applicationService.LinkLocalStartNewChallenge(request.Scope, &info, request.RequestedGrant)
 	code := mapErrorCode(err,
 		errToCode(session.ErrTooManyChallengeRequests, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
 		errToCode(session.ErrChallengeAttemptsExceeded, pb.RpcAccountLocalLinkNewChallengeResponseError_TOO_MANY_REQUESTS),
+		// same rejected-scope error, same code as CreateApp — the two guards
+		// are a deliberate pair
+		errToCode(session.ErrInvalidScope, pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT),
+		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkNewChallengeResponseError_BAD_INPUT),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkNewChallengeResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
 
@@ -301,11 +305,30 @@ func (mw *Middleware) AccountLocalLinkSolveChallenge(_ context.Context, req *pb.
 func (mw *Middleware) AccountLocalLinkCreateApp(_ context.Context, req *pb.RpcAccountLocalLinkCreateAppRequest) *pb.RpcAccountLocalLinkCreateAppResponse {
 	appKey, err := mw.applicationService.LinkLocalCreateApp(req)
 	code := mapErrorCode(err,
+		errToCode(session.ErrInvalidScope, pb.RpcAccountLocalLinkCreateAppResponseError_BAD_INPUT),
+		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkCreateAppResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkCreateAppResponseError_BAD_INPUT),
 		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkCreateAppResponseError_ACCOUNT_IS_NOT_RUNNING),
 	)
 	return &pb.RpcAccountLocalLinkCreateAppResponse{
 		AppKey: appKey,
 		Error: &pb.RpcAccountLocalLinkCreateAppResponseError{
+			Code:        code,
+			Description: getErrorDescription(err),
+		},
+	}
+}
+
+func (mw *Middleware) AccountLocalLinkUpdateApp(_ context.Context, req *pb.RpcAccountLocalLinkUpdateAppRequest) *pb.RpcAccountLocalLinkUpdateAppResponse {
+	err := mw.applicationService.LinkLocalUpdateApp(req)
+	code := mapErrorCode(err,
+		errToCode(walletComp.ErrAppLinkNotFound, pb.RpcAccountLocalLinkUpdateAppResponseError_NOT_FOUND),
+		errToCode(walletComp.ErrInvalidGrant, pb.RpcAccountLocalLinkUpdateAppResponseError_BAD_INPUT),
+		errToCode(application.ErrBadInput, pb.RpcAccountLocalLinkUpdateAppResponseError_BAD_INPUT),
+		errToCode(application.ErrApplicationIsNotRunning, pb.RpcAccountLocalLinkUpdateAppResponseError_ACCOUNT_IS_NOT_RUNNING),
+	)
+	return &pb.RpcAccountLocalLinkUpdateAppResponse{
+		Error: &pb.RpcAccountLocalLinkUpdateAppResponseError{
 			Code:        code,
 			Description: getErrorDescription(err),
 		},

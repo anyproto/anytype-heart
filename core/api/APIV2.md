@@ -71,7 +71,7 @@ repair loop with path-addressed errors.
 | C3 | **Compact JSON always** (no pretty-printing). | free 38–46% (§3.6) |
 | C4 | **Object ids compact by default** (refs legend per SPEC §9a — lossless); `?ids=full` opts out. **Block ids are always full on default reads** — block-label compaction (5-char, legend-less, lossy) appears only in explicitly read-only shapes (`outline`, prompt/example exports). Write endpoints MAY additionally resolve block-id references by unique-suffix match against the live object (SPEC §9a wiring allowance). Never require echoing a full CID. *(Built: `Options.CompactObjectRefs` and `Options.CompactBlockLabels` are separate flags; `CompactIds` is the shorthand for both.)* **Outline exception (T7)**: the outline shape compacts block labels but keeps object refs **full** — it drops the refs legend with the properties map, so a legend-compacted ref inside a heading's text would be unresolvable; `?ids=` is ignored there. | ~24×/id, −89% id errors (§3.6); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
-| C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
+| C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review; also the `/v2` key-scope gate's refusal of a non-JsonAPI key, which answers in the shared v1 envelope — §8.9). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
 | C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, PUT — v0.3.5; was POST-only); replay with the same key returns the stored result; same key with a different body → 409 `idempotency_conflict`. Response always returns created ids. | agent auto-retry (§3.7); R15 |
 | C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. **Recorded C2 carve-out**: the response's `dry_run` echo keeps the query parameter's snake_case spelling (uniform across all v2 mutation DTOs — §8.8). | highest-leverage affordance (§3.7) |
@@ -599,7 +599,13 @@ per-space alias shadowing + the aliases live in filters/sorts, the
 negation-scoped opt-in condition set incl. `allIn`, the live-space
 predicate on GET-one/list + `description` on the list row, workspace
 RPC error classification, the 4096 caps enforced, the no-space-id
-500, the keyed POST /v2/spaces replay pin).
+500, the keyed POST /v2/spaces replay pin) · **key-scoping P1c:
+whoami + legacy-key signals** (§8.11, 2026-08-06: `GET /v2/auth/whoami`
+with the explicit `grant.scoped` boolean, per-entry space permissions
+and grant-intersected names; the `Anytype-Key-Status`/`Anytype-Notice`/
+`Link rel="deprecation"` signal — deliberately not RFC 9745
+`Deprecation`/`Sunset` — with the body echo and the rate-limited usage
+log; the gitleaks/TruffleHog rules in `docs/secret-scanning/`).
 
 ## 4. Benchmark program
 
@@ -863,7 +869,10 @@ layering as v1 (handlers in `core/api/handler`, services in
 `core/api/server/router.go`; follow `core/api/CLAUDE.md` — fixture pattern,
 mockery, error wrapping). **Auth is shared with v1**: `/v2` reuses the v1
 bearer token, api-key, and challenge endpoints and the Auth middleware — no
-new auth surface. Pagination is offset/limit as in v1.
+new authentication surface. One `/v2`-only *authorization* addition landed
+later: a group-level key-scope gate — only `JsonAPI`- and `Full`-scoped
+keys may use `/v2`; a `Limited` key gets 403 here while staying served on
+`/v1` (§8.9). Pagination is offset/limit as in v1.
 
 **etag (C7), concrete.** The agent-facing token = first 8 hex of
 `sha256(sorted object tree heads)` (heads via `sb.GetDocInfo().Heads` in
@@ -2095,3 +2104,222 @@ shipped phases already speak); and an Idempotency-Key reused across
 sharing the empty-space key namespace) answers 409
 `idempotency_conflict`, which is correct — a key names one logical
 operation.
+
+### 8.9 The /v2 key-scope gate (2026-08-06 — decisions as built)
+
+The one amendment to §8's "no new auth surface": authentication stays
+shared with v1 (same bearer keys, same pairing endpoints, same
+`ensureAuthenticated`), but `/v2` carries a group-level authorization
+gate v1 does not — `ensureJsonApiScope`, installed on the v2 group
+directly after Auth. Only keys whose scope is `JsonAPI` or `Full` may use
+`/v2`; every other scope — the web clipper's `Limited`, and any future
+enum member until explicitly admitted — is refused with 403, distinct
+from the invalid-key 401. Legacy keys minted without a scope carry
+`Limited` (the enum zero value; anytype-cli's `CreateApp` historically
+sent none) and are grandfathered on `/v1`: they keep working there
+exactly as they ship today and hit this 403 on every `/v2` route.
+Migration stance: `docs/superpowers/specs/2026-08-06-api-key-scoping-design.md`.
+
+- **The 403 body names the remedy**: `api key scope does not allow json
+  api access: key "<appName>" has <Scope> scope, create a new api key
+  with JsonAPI scope` — the failure reads as "re-issue the key", not as
+  a transient permissions bug. Error text is API surface; tested
+  verbatim.
+- **Envelope, recorded**: the gate answers in the shared v1 envelope
+  (`{object, status, code, message}`, code `forbidden`), not the C6
+  shape — the same seam as the group-level auth 401, which aborts before
+  any v2 route middleware runs. Group-level refusals speak the shared
+  server's dialect; the C6 shape starts where v2's own middleware and
+  handlers do.
+- **Coverage is a test, not a convention**
+  (`server/v2_router_test.go`, "every /v2 route carries the scope
+  gate"): every route under `/v2` in the real engine's table must answer
+  the gate's exact 403 to a cached `Limited` key, except the two public
+  documents (`GET /v2/docs/openapi.{yaml,json}`) on an explicit exempt
+  list — so a `/v2` route registered outside the gated group fails the
+  walk instead of shipping ungated.
+
+### 8.10 The /v2 space-grant gate (2026-08-06 — decisions as built)
+
+Where §8.9's gate decides the key's KIND, this layer decides which spaces
+and which verbs a key's *grant* covers. A key may carry a grant record
+(`{spaces, perms: read|readwrite}`, sealed into the app-link file); the
+grant — never the key-string format — is what enforcement reads.
+`Grant == nil` is the legacy unscoped key and behaves exactly as before.
+Design: `docs/superpowers/specs/2026-08-06-api-key-scoping-design.md`.
+
+- **The gate** (`v2/authz.go ensureSpaceGrant`, installed directly after
+  the key-scope gate): a `:space_id` must be in the grant's space list,
+  else 403 `space_not_granted`; the tech space is denied unless
+  explicitly granted (this gate runs BEFORE the service's `ensureSpace`,
+  which admits the tech space as an ordinary id). A `read` grant on a
+  write-classified route → 403 `write_not_granted`. Both messages NAME
+  the actual grant — error-guided self-correction over enumeration
+  resistance, which is a non-goal for a localhost single-user API.
+- **The registry, not inference**: every route is classified in an
+  explicit table (`v2RouteAuthz`) — verb (`POST /v2/search` and
+  `/v2/validate` are READS; chat `POST …/read` is a WRITE, it mutates
+  the synced read watermark) and, for no-`:space_id` routes, a global
+  class: `auth-exempt` (public docs), `data-free-allow` (`/v2/validate`,
+  `/v2/schemas*`), `service-filtered` (`GET /v2/spaces`,
+  `POST /v2/search` — allowed through, constrained in the service), or
+  `scoped-denied` (`POST /v2/spaces`: a key that can mint spaces it then
+  owns is not meaningfully scoped). An UNREGISTERED no-space route is
+  refused, fail closed; the conformance walk
+  (`server/grant_gate_test.go TestV2RouteAuthzConformance`) makes a
+  missing or stale classification a CI failure in both directions, pins
+  the `auth-exempt` precondition behaviorally (an exempt route must
+  answer without credentials, every other /v2 route must 401), and
+  refuses unknown route-param names — the gate reads the addressed space
+  from exactly `:space_id` (`apiv2.SpaceParam`), so a space param under
+  any other name must fail CI rather than slide into a global class.
+- **Fan-out + backstop**: the two service-filtered surfaces intersect
+  their space set with the ctx grant at the INPUT (`spaceRefs`,
+  `ListSpaces`) — not the output rows, so a per-space warning cannot
+  disclose a non-granted space's existence. The service layer carries
+  BOTH backstop halves, in the gate's precedence (space first, then
+  verb): `ensureSpace` consults the grant before its tech-space
+  admission, and the write entry points go through
+  `ensureSpaceWrite`/`ensureChatWrite`, which also refuse a read-only
+  grant (`ensureWriteGranted`) — so a future route that forgets the
+  middleware can neither reach a non-granted space nor mutate a granted
+  one with a `read` key. `GetSpace`/`CreateSpace`/`UpdateSpace`, which
+  bypass `ensureSpace`, carry their own checks.
+- **Envelope**: this gate is v2's own middleware, so it answers in C6
+  (codes `space_not_granted` / `write_not_granted`) — unlike §8.9's
+  shared-server gate. Granted keys are refused on `/v1` with C6
+  `v1_not_available_for_scoped_keys` pointing at `/v2` (grant presence
+  decides, never format; legacy keys stay served on `/v1`).
+- **WWW-Authenticate** rides every auth failure (MCP clients are
+  required to parse it): 401 → `Bearer realm="anytype"` (bare when no
+  credential was sent, `error="invalid_token"` otherwise); 403 →
+  `Bearer error="insufficient_scope"`, with
+  `scope="space:<spaceId>:<read|readwrite>"` when the request addressed
+  one space — the scope-string shape is implementation-defined
+  (RFC 6750 §3.1) and this is the documented one.
+- **Grant edits bite immediately**: `LinkLocalUpdateApp` evicts the
+  key's cached HTTP session entries (`RevokeToken`), so an in-place
+  NARROWING is enforced on the very next request
+  (`TestGrantEditTakesEffectOnNextRequest`) — a stale cached grant would
+  be a silent authorization bypass. The sweep can only evict entries
+  that exist, so a mint IN FLIGHT during the sweep must not cache
+  afterwards: the server keeps an eviction generation, snapshotted with
+  the cache read and re-checked at the cache write — on a mismatch the
+  minted entry serves that one request and is dropped, and the next
+  request re-mints against what the wallet holds then
+  (`TestGrantEditDuringMintIsNotLost`).
+
+### 8.11 whoami + legacy-key signals (2026-08-06 — decisions as built)
+
+The P1c introspection layer over §8.10's enforcement: an agent that cannot
+read its own grant either over-requests and fails or under-requests and
+does nothing useful. Design:
+`docs/superpowers/specs/2026-08-06-api-key-scoping-design.md` (P1 §6).
+
+- **`GET /v2/auth/whoami`** (authenticated) describes the CREDENTIAL,
+  never the person. Body (camelCase per C2, RFC 3339 UTC dates):
+  `{key: {id, name, createdAt, expiresAt}, scope, grant: {scoped,
+  permission, spaces: [{id, name, permission}]}, api: {version},
+  keyStatus, notice?}`.
+  - `grant.scoped` is the REQUIRED explicit boolean and the load-bearing
+    field. A legacy unscoped key is `{scoped: false, spaces: [],
+    permission: null}` — NEVER `spaces: null`: consumers get the
+    null-vs-empty test backwards, and that failure direction is
+    fail-open (the agent concludes it may touch every space).
+  - `spaces[]` entries are OBJECTS with a per-entry `permission`
+    (uniform today) so P2's per-space permissions land without a wire
+    break; the grant-level `permission` stays as the compact form agents
+    string-match on.
+  - `spaces[].name` is resolved through the SAME grant-intersected
+    `ListSpaces` path `GET /v2/spaces` serves, so a non-granted space's
+    name cannot appear even by accident. The grant record stays
+    authoritative for WHICH spaces are listed: a granted space missing
+    from the live list keeps its entry with an empty name.
+  - **The mirror is the gate's own record**: whoami is discovery, not
+    enforcement, and derives from the request-context carriers
+    `ensureAuthenticated` populated — `util.ApiGrantFromCtx`, the same
+    accessor `ensureSpaceGrant` and the service backstop read — never a
+    second derivation path (that is how a mirror starts lying).
+    `TestWhoamiAgreesWithTheGate` derives gate expectations ONLY from
+    the whoami body and fails on any disagreement.
+  - The token is read ONLY from the `Authorization` header by the shared
+    auth middleware; a query/body token is never accepted, an unknown or
+    revoked key gets the middleware's plain 401 — deliberately NOT
+    RFC 7662's introspection shape (no `active`, no POST), which would
+    make the route an enumeration oracle.
+  - **Registry class, reasoned**: `service-filtered` — authenticated
+    (auth-exempt is impossible inside the gated group and the
+    conformance walk enforces that behaviorally), addresses no single
+    space, and its body's space names come from the service's own
+    grant-intersected path, the exact pattern the class names.
+    `data-free-allow` would be wrong: names are space data.
+  - The `key.id`/`createdAt` plumbing is two additive
+    `WalletCreateSession` response fields (`appHash`, `appCreatedAt`),
+    cached on the session entry like scope and grant.
+  - **`key.id` is credential-adjacent**: it is the app link's hash —
+    sha256 over the raw key bytes, the same id ListApps shows — so a
+    whoami response (and the api-server log line below) carries a full
+    offline VERIFIER for the credential: not invertible (256 random
+    bits) and computable by the holder anyway, but treat pasted whoami
+    bodies and shared api-server logs as credential-adjacent artifacts.
+  - **One gate decision the mirror cannot express**: `POST /v2/spaces`
+    is `scoped-denied` (§8.10) — refused for EVERY granted key,
+    readwrite included — and the whoami vocabulary (spaces ×
+    permission) has no field for it. Kept un-modeled deliberately while
+    the class covers exactly one route, and creating a NEW space is
+    outside "the spaces I was granted" by plain reading; if the class
+    ever takes a second route, add an additive
+    `grant.restrictions: [...]` array instead of letting the mirror
+    under-tell further.
+- **Legacy-key deprecation signals** — emitted by `ensureAuthenticated`
+  on BOTH route groups (legacy keys live on `/v1`). Deliberately NOT
+  RFC 9745 `Deprecation`/`Sunset`: that header requires a Date (the
+  boolean form died in draft) and §2.2 scopes it to the RESOURCE in the
+  response — on `/v1` it would declare `/v1` deprecated, the opposite of
+  the grandfathering promise (a test pins that neither header ever
+  appears). Instead: `Anytype-Key-Status` (`legacy`|`scoped`, ALWAYS
+  present so absence never means anything; grant PRESENCE decides), and
+  `Anytype-Notice` (one printable single-line ASCII sentence, never
+  interpolating user data) plus
+  `Link: <…/docs/guides/get-started/authentication>; rel="deprecation"`
+  (legal without a `Deprecation` header — RFC 9745 §3.1's own worked
+  example for "policy, no date committed"; the target is the live
+  authentication guide until the dedicated key-scoping page ships,
+  because a policy link that 404s inverts the signal). The remedial
+  pair — notice and Link — is emitted ONLY for nil-grant keys of
+  JsonAPI scope: a grant is only ever valid on JsonAPI scope
+  (`wallet.ValidateAppLinkGrant`), so a Limited (clipper) or Full
+  credential cannot follow the "re-issue as a scoped key" advice; those
+  keys still read `Anytype-Key-Status: legacy` (they ARE unscoped) but
+  get no impossible instruction. The whoami body repeats the signal
+  (`keyStatus`, `notice`) under the same rule — agents read bodies, not
+  headers. A rate-limited INFO log line (once per key per process
+  start, re-armed hourly; nothing is wrong, so never warn) names the
+  key id and app name for nil-grant JsonAPI keys only — it exists so WE
+  can tell whether anyone still presents legacy JSON-API keys before a
+  sunset is ever contemplated, and counting clipper keys would inflate
+  exactly that number.
+- **Secret-scanner rules** (the §1b deliverable): detection-only
+  gitleaks + TruffleHog rules in `docs/secret-scanning/` (README there
+  explains why the GitHub partner program is unavailable to a local-first
+  app and why TruffleHog cannot live-verify a localhost credential — the
+  offline CRC32 is the stand-in). Both rules carry the published RANGE
+  pattern verbatim; `core/wallet/applink_scanner_rules_test.go` pins them
+  against a freshly minted key and the repo's own `anytype_…`
+  identifiers, pins the two rules against each other, and walks the
+  tracked tree asserting every full-shape match (the swagger example key
+  and the OpenAPI documents generated from it) falls under the shipped
+  gitleaks allowlist — the rule must come back clean on the repo that
+  ships it. Coverage boundary, recorded per spec §1b: Limited/gRPC keys
+  keep minting unprefixed and stay invisible to the rules by design.
+- **OpenAPI**: `make openapi` is green again and the `docs/v2` documents
+  are regenerated (whoami included, 401/403 documented as the shared
+  middleware envelopes). The v2 swag step used to die on
+  `json.RawMessage` (swag cannot resolve the stdlib alias, and its v3
+  parser panics outright on `swaggertype:"array,…"` — Items is never
+  set); the fixes are `swaggertype:"object"` on `SchemaEntry`'s
+  object-valued raw fields, plus two doc-only stand-ins for the
+  array-valued cases: `v2model.ViewObject` for the view-listing
+  responses and `v2model.SearchRequestDoc` for the search body (a
+  reflection test pins the twin's JSON field set to `SearchRequest`'s so
+  the published document cannot drift from the decoded type).

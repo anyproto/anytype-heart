@@ -27,7 +27,7 @@ const dataviewBlockId = "dataview"
 
 // CreateSet implements POST /v2/spaces/{spaceId}/sets.
 func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.CreateSetRequest, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
@@ -100,7 +100,7 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req v2model.C
 // CreateCollection implements POST /v2/spaces/{spaceId}/collections: the
 // AnyBlock items import path builds the collection store.
 func (s *V2Service) CreateCollection(ctx context.Context, spaceId string, req v2model.CreateCollectionRequest, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {

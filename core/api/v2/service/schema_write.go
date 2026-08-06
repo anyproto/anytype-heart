@@ -31,7 +31,7 @@ const v2DetailKeyId = "id"
 // AnyBlock document; typeProperties creates missing properties atomically
 // with the type (SPEC §2a create-missing).
 func (s *V2Service) CreateType(ctx context.Context, spaceId string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	fields, err := parseEnvelope(body)
@@ -213,7 +213,7 @@ type v2TypePatch struct {
 
 // UpdateType implements PATCH /v2/spaces/{spaceId}/types/{type}.
 func (s *V2Service) UpdateType(ctx context.Context, spaceId, typeKey string, body []byte, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
@@ -300,7 +300,7 @@ func typeDetailValue(key string, raw json.RawMessage) (*types.Value, error) {
 // DeleteType implements DELETE /v2/spaces/{spaceId}/types/{type} (archive —
 // v1 parity; hard delete is deferred with ?permanent).
 func (s *V2Service) DeleteType(ctx context.Context, spaceId, typeKey string, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	typeId, ok := s.typeIdInSpace(spaceId, typeKey)
@@ -321,7 +321,7 @@ func (s *V2Service) DeleteType(ctx context.Context, spaceId, typeKey string, dry
 
 // CreateProperty implements POST /v2/spaces/{spaceId}/properties.
 func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2model.CreatePropertyRequest, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	if req.Name == "" {
@@ -395,7 +395,7 @@ func (s *V2Service) CreateProperty(ctx context.Context, spaceId string, req v2mo
 
 // UpdateProperty implements PATCH /v2/spaces/{spaceId}/properties/{key}.
 func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey string, req v2model.UpdatePropertyRequest, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	rel, err := s.store.SpaceIndex(spaceId).GetRelationByKey(propertyKey)
@@ -429,7 +429,7 @@ func (s *V2Service) UpdateProperty(ctx context.Context, spaceId, propertyKey str
 // DeleteProperty implements DELETE /v2/spaces/{spaceId}/properties/{key}
 // (archive).
 func (s *V2Service) DeleteProperty(ctx context.Context, spaceId, propertyKey string, dryRun bool) (*v2model.CreateResult, error) {
-	if err := s.ensureSpace(spaceId); err != nil {
+	if err := s.ensureSpaceWrite(ctx, spaceId); err != nil {
 		return nil, err
 	}
 	rel, err := s.store.SpaceIndex(spaceId).GetRelationByKey(propertyKey)
