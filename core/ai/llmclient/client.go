@@ -22,6 +22,12 @@ var (
 	ErrRateLimited         = errors.New("llm: rate limited")
 	ErrEndpointUnreachable = errors.New("llm: endpoint unreachable")
 	ErrEmptyResponse       = errors.New("llm: empty response")
+	// ErrResponseTruncated means the provider stopped at the token cap, so the
+	// content is a fragment. Distinct from a parse failure on purpose: a
+	// corrective retry would truncate identically, and the user needs to be
+	// told their plan was too large rather than that their model answered
+	// badly.
+	ErrResponseTruncated = errors.New("llm: response truncated at the token limit")
 )
 
 // Request is one structured-output completion.
@@ -181,6 +187,9 @@ func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage
 		msg := resp.Choices[0].Message
 		if msg.Refusal != "" {
 			return nil, usage, fmt.Errorf("%w: model refused: %s", ErrEmptyResponse, msg.Refusal)
+		}
+		if resp.Choices[0].FinishReason == openai.FinishReasonLength {
+			return nil, usage, fmt.Errorf("%w: %d completion tokens", ErrResponseTruncated, usage.CompletionTokens)
 		}
 		if msg.Content == "" {
 			return nil, usage, ErrEmptyResponse

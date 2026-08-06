@@ -317,3 +317,52 @@ func TestFromProto(t *testing.T) {
 		assert.Equal(t, "sk-x", cfg.Token)
 	})
 }
+
+func TestTruncatedCompletion(t *testing.T) {
+	t.Run("a completion cut off at the token cap is reported as truncation", func(t *testing.T) {
+		// given — the provider stopped at max_tokens, so the JSON is a
+		// fragment. Reporting it as a parse error would send the caller into a
+		// corrective retry that truncates identically, and tell the user their
+		// model answered badly when it was cut off.
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"choices": []map[string]any{{
+					"message":       map[string]any{"role": "assistant", "content": `{"types":[{"key":"spr`},
+					"finish_reason": "length",
+				}},
+				"usage": map[string]any{"prompt_tokens": 12, "completion_tokens": 8192},
+			})
+		})
+		c := newTestClient(t, fs.URL)
+
+		// when
+		_, usage, err := c.CompleteJSON(context.Background(), Request{
+			System: "sys", User: "usr", SchemaName: "import_plan", Schema: testSchema, MaxTokens: 8192,
+		})
+
+		// then
+		require.ErrorIs(t, err, ErrResponseTruncated)
+		assert.Equal(t, 8192, usage.CompletionTokens, "usage still reported, so the cap is diagnosable")
+	})
+
+	t.Run("a normal stop is not mistaken for truncation", func(t *testing.T) {
+		// given
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) {
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"choices": []map[string]any{{
+					"message":       map[string]any{"role": "assistant", "content": `{"answer":"42"}`},
+					"finish_reason": "stop",
+				}},
+				"usage": map[string]any{"prompt_tokens": 12, "completion_tokens": 3},
+			})
+		})
+		c := newTestClient(t, fs.URL)
+
+		// when
+		got, _, err := c.CompleteJSON(context.Background(), Request{System: "sys", User: "usr", SchemaName: "n", Schema: testSchema})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, json.RawMessage(`{"answer":"42"}`), got)
+	})
+}

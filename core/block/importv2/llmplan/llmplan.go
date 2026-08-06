@@ -20,11 +20,20 @@ import (
 
 // defaultBudget bounds the whole plan step, retries included — an import
 // must never hang on a wedged endpoint.
-const defaultBudget = 90 * time.Second
+//
+// Measured on a real 37-container workspace (2026-08-06, gpt-4o-mini): one
+// plan call took 72s on one run and exceeded 90s on the next, same prompt and
+// evidence. Always-mint makes the model write a type definition per kind, so
+// the completion is far larger than when types were the exception. At 90s the
+// step failed outright about half the time, and the corrective retry — which
+// shares this deadline — had no room at all. Sized for two calls.
+const defaultBudget = 5 * time.Minute
 
 // maxCompletionTokens caps the plan completion. A legitimate plan is a few
-// KB; an endpoint streaming more than this is broken or hostile.
-const maxCompletionTokens = 8192
+// KB; an endpoint streaming more than this is broken or hostile. The same
+// measured run used 6720 completion tokens for 37 containers — 82% of the
+// former 8192 cap — so a larger workspace would have been truncated.
+const maxCompletionTokens = 16384
 
 type planner struct {
 	client *llmclient.Client
