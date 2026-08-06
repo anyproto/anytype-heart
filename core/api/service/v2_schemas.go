@@ -100,6 +100,28 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row"}}}`,
 		example: `{"query":"report","type":"task","filter":"done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)","sorts":[{"property":"dueDate","direction":"asc"}],"fields":["name","dueDate","status"]}`,
 	},
+	"chat": {
+		endpoint: "POST /v2/spaces/{spaceId}/chats",
+		schema: `{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
+			`"name":{"type":"string","minLength":1,"maxLength":4096}}}`,
+		example: `{"name":"Project chat"}`,
+	},
+	"chatMessage": {
+		endpoint: "POST /v2/spaces/{spaceId}/chats/{chatId}/messages",
+		schema: `{"type":"object","additionalProperties":false,"properties":{` +
+			`"text":{"type":"string","maxLength":65536,"description":"inline markup SOURCE (SPEC §8): *, [, backtick and <mention objectId=\"…\"> mint real marks; escape literal specials with a backslash; required unless attachments are given"},` +
+			`"replyTo":{"type":"string","maxLength":256,"description":"message id being replied to"},` +
+			`"attachments":{"type":"array","maxItems":32,"items":{"type":"string","maxLength":256},"description":"object ids; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link)"}}}`,
+		example: `{"text":"can you **check** the doc?","attachments":["bafyreie6n5l5nkbjal37su54cha4coy"]}`,
+	},
+	"chatRead": {
+		endpoint: "POST /v2/spaces/{spaceId}/chats/{chatId}/read",
+		schema: `{"type":"object","additionalProperties":false,"properties":{` +
+			`"upTo":{"type":"string","maxLength":256,"description":"INCLUSIVE order id to mark read up to — take it from the newest message of a GET messages read; required for scopes messages/mentions, absent for reactions"},` +
+			`"lastStateId":{"type":"string","maxLength":256,"description":"race guard: the state.lastStateId from the same messages read — messages that arrived after that state stay unread"},` +
+			`"scope":{"type":"string","enum":["messages","mentions","reactions"],"description":"defaults to messages; reactions marks ALL unread reactions"}}}`,
+		example: `{"upTo":"00a1b2c3d4e5f6","lastStateId":"66f2a1b0c9d8e7f6a5b4c3d2","scope":"messages"}`,
+	},
 	"filters": {
 		endpoint: "POST /v2/spaces/{spaceId}/search (filters field) · POST /v2/spaces/{spaceId}/sets (filters field)",
 		// documented C13 exception: the structured filter tree is recursive

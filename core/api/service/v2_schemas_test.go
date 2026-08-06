@@ -27,8 +27,32 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters", "search"} {
+		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters", "search", "chat", "chatMessage", "chatRead"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
+		}
+	})
+
+	t.Run("the chat kinds are strict-mode-decodable and their examples fit (Phase 6)", func(t *testing.T) {
+		// the chat message body is an authoring surface (§5: a surface an
+		// agent must author needs a schema kind); strictness follows C13
+		for _, kind := range []string{"chat", "chatMessage", "chatRead"} {
+			entry, err := fx.SchemaKind(kind)
+			require.NoError(t, err, kind)
+			var schema struct {
+				AdditionalProperties *bool                      `json:"additionalProperties"`
+				Properties           map[string]json.RawMessage `json:"properties"`
+			}
+			require.NoError(t, json.Unmarshal(entry.Schema, &schema), kind)
+			require.NotNil(t, schema.AdditionalProperties, "%s must pin additionalProperties", kind)
+			assert.False(t, *schema.AdditionalProperties, "%s must be strict (C13)", kind)
+
+			// the worked example must only use declared fields
+			var example map[string]json.RawMessage
+			require.NoError(t, json.Unmarshal(entry.Example, &example), kind)
+			for field := range example {
+				assert.Contains(t, schema.Properties, field,
+					"example field %q of kind %s is not in its own schema", field, kind)
+			}
 		}
 	})
 
