@@ -14,8 +14,13 @@ package anyblockjson
 // the input, a malformed table degrades to paragraph lines, and over-deep
 // indentation is clamped to the previous block's level + 1 (CommonMark's "a
 // level that hasn't been established cannot be opened", the same rule as
-// Options.NormalizeIndent) — so the produced run always satisfies the §4
-// strict indent rules and the op path's relative-indent contract.
+// Options.NormalizeIndent). The clamp also respects the two §12 containment
+// rules the +1 rule alone would break: a §5 leaf block (divider, table)
+// cannot parent, so a deeper line after one stays its sibling; and the F4
+// absolute nesting bound (indent ≤ 32) caps every level. So the produced run
+// always satisfies the §4 strict indent rules, the V2 leaf-containment rule
+// and the F4 depth bound — the "a run always imports" contract is tested
+// through UnmarshalBlocks over every block type this parser can emit.
 //
 // Deliberate scope bounds (deterministic > clever, recorded for SKILL/docs):
 //   - ATX headings only (`#`…); `---` after a paragraph is a divider, never a
@@ -49,13 +54,16 @@ type mdBlock struct {
 }
 
 var (
-	mdHeadingRe  = regexp.MustCompile(`^(#{1,6})\s+(.*?)\s*#*\s*$`)
-	mdDividerRe  = regexp.MustCompile(`^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$`)
-	mdFenceRe    = regexp.MustCompile("^(`{3,}|~{3,})\\s*(\\S*).*$")
-	mdBulletRe   = regexp.MustCompile(`^([-*+])\s+(.*)$`)
-	mdNumberRe   = regexp.MustCompile(`^(\d{1,9})[.)]\s+(.*)$`)
-	mdCheckRe    = regexp.MustCompile(`^\[( |x|X)\]\s+(.*)$`)
-	mdTableSepRe = regexp.MustCompile(`^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$`)
+	mdHeadingRe = regexp.MustCompile(`^(#{1,6})\s+(.*?)\s*#*\s*$`)
+	mdDividerRe = regexp.MustCompile(`^\s*(?:(?:-\s*){3,}|(?:\*\s*){3,}|(?:_\s*){3,})$`)
+	mdFenceRe   = regexp.MustCompile("^(`{3,}|~{3,})\\s*(\\S*).*$")
+	// mdFenceLangRe bounds the info string to a language-ish token; noise
+	// (backtick runs, punctuation soup) is dropped rather than stored.
+	mdFenceLangRe = regexp.MustCompile(`^[A-Za-z0-9_+#.-]{0,32}$`)
+	mdBulletRe    = regexp.MustCompile(`^([-*+])\s+(.*)$`)
+	mdNumberRe    = regexp.MustCompile(`^(\d{1,9})[.)]\s+(.*)$`)
+	mdCheckRe     = regexp.MustCompile(`^\[( |x|X)\]\s+(.*)$`)
+	mdTableSepRe  = regexp.MustCompile(`^\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$`)
 )
 
 // ParseMarkdownBlocks converts markdown into a flat §4 blocks run (id-less
@@ -63,16 +71,35 @@ var (
 // file comment for the degradation rules. An input of only whitespace
 // produces an empty run.
 func ParseMarkdownBlocks(md string) []json.RawMessage {
+	run, _ := ParseMarkdownBlocksLimit(md, 0)
+	return run
+}
+
+// ParseMarkdownBlocksLimit parses like ParseMarkdownBlocks but stops as soon
+// as the run exceeds maxBlocks (0 = unbounded), reporting the excess instead
+// of parsing the rest. The markdown payload channel is byte-bounded by its
+// schema but a few bytes can encode one block, so callers that cap a blocks
+// array must cap the parsed run with the same number — and the early stop
+// keeps a maximum-size hostile body from costing an unbounded parse. When
+// exceeded is true the returned run holds maxBlocks+1 blocks (proof of the
+// excess, not the full parse) and must not be imported.
+func ParseMarkdownBlocksLimit(md string, maxBlocks int) (run []json.RawMessage, exceeded bool) {
 	p := &mdParser{}
 	lines := strings.Split(strings.ReplaceAll(md, "\r\n", "\n"), "\n")
 	for _, line := range lines {
 		p.feed(strings.TrimSuffix(line, "\r"))
+		if maxBlocks > 0 && len(p.blocks) > maxBlocks {
+			return encodeMdBlocks(p.blocks[:maxBlocks+1]), true
+		}
 	}
 	p.flush()
 	if p.inFence {
 		p.closeFence()
 	}
-	return encodeMdBlocks(p.blocks)
+	if maxBlocks > 0 && len(p.blocks) > maxBlocks {
+		return encodeMdBlocks(p.blocks[:maxBlocks+1]), true
+	}
+	return encodeMdBlocks(p.blocks), false
 }
 
 type mdParser struct {
@@ -105,8 +132,16 @@ type mdParser struct {
 // feed processes one input line.
 func (p *mdParser) feed(line string) {
 	if p.inFence {
-		trimmed := strings.TrimRight(strings.TrimLeft(line, " \t"), " \t")
-		if strings.HasPrefix(trimmed, p.fenceMarker[:1]) &&
+		// a closing marker tolerates at most 3 leading spaces (CommonMark);
+		// deeper-indented marker runs are fence CONTENT (an indented markdown
+		// example inside a fence must not terminate it)
+		lead := 0
+		for lead < len(line) && line[lead] == ' ' {
+			lead++
+		}
+		trimmed := strings.TrimRight(line[lead:], " \t")
+		if lead <= 3 &&
+			strings.HasPrefix(trimmed, p.fenceMarker[:1]) &&
 			strings.TrimRight(trimmed, string(p.fenceMarker[0])) == "" &&
 			len(trimmed) >= len(p.fenceMarker) {
 			p.closeFence()
@@ -131,6 +166,9 @@ func (p *mdParser) feed(line string) {
 		p.fenceIndent = level
 		p.fenceStrip = cols
 		p.fenceLang = m[2]
+		if !mdFenceLangRe.MatchString(p.fenceLang) {
+			p.fenceLang = ""
+		}
 		p.fenceLines = nil
 		return
 	}
@@ -246,12 +284,23 @@ func (p *mdParser) closeFence() {
 	p.fenceLines = nil
 }
 
-// emit appends a block, clamping its indent to the previous block's + 1 so
-// the run always satisfies §4 strict monotonicity (first block at 0).
+// emit appends a block, clamping its indent so the run always imports:
+// at most the previous block's level + 1 (§4 strict monotonicity, first
+// block at 0), never deeper than a §5 leaf predecessor's own level (leaf
+// blocks cannot have children — V2), and never past the F4 absolute bound.
 func (p *mdParser) emit(b mdBlock) {
 	max := 0
 	if n := len(p.blocks); n > 0 {
-		max = p.blocks[n-1].indent + 1
+		prev := p.blocks[n-1]
+		max = prev.indent + 1
+		if leafBlockTypes[prev.typ] {
+			// a line cannot open a level under a block that cannot have
+			// children — it stays the leaf's sibling
+			max = prev.indent
+		}
+	}
+	if max > maxBlockIndent {
+		max = maxBlockIndent
 	}
 	if b.indent > max {
 		b.indent = max
