@@ -148,12 +148,14 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	if md := strArg(args, "markdown"); md != "" {
 		body["markdown"] = md
 	}
-	key := r.mutationKey(session, "create", args)
+	path := "/v2/spaces/" + seg(space) + "/objects"
+	query := r.mutationQuery()
+	key := r.mutationKey(session, requestHash("POST", path, query, body))
 	var result apimodel.V2CreateResult
 	err := r.client.decode(ctx, apiRequest{
 		method:         "POST",
-		path:           "/v2/spaces/" + seg(space) + "/objects",
-		query:          r.mutationQuery(),
+		path:           path,
+		query:          query,
 		body:           body,
 		idempotencyKey: key,
 	}, &result)
@@ -200,7 +202,7 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 	if !provided {
 		return nil, fmt.Errorf("set_properties needs set, add or remove — e.g. set: {\"status\": \"Done\"}")
 	}
-	result, err := r.patchOps(ctx, session, "set_properties", args, space, objectId, op, nil)
+	result, err := r.patchOps(ctx, session, space, objectId, op, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +219,7 @@ func (r *Runner) runCheckItem(ctx context.Context, session *Session, args map[st
 		"id":  resolveBlockRef(session, objectId, strArg(args, "block")),
 		"set": map[string]any{"checked": boolArg(args, "checked")},
 	}
-	result, err := r.patchOps(ctx, session, "check_item", args, space, objectId, op, []string{"id"})
+	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"id"})
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +255,7 @@ func (r *Runner) runAddBlocks(ctx context.Context, session *Session, args map[st
 	if err := anchorTarget(session, objectId, args, op); err != nil {
 		return nil, err
 	}
-	result, err := r.patchOps(ctx, session, "add_blocks", args, space, objectId, op, []string{"after", "inside"})
+	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"after", "inside"})
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +273,7 @@ func (r *Runner) runEditText(ctx context.Context, session *Session, args map[str
 		"find":    strArg(args, "find"),
 		"replace": strArg(args, "replace"),
 	}
-	result, err := r.patchOps(ctx, session, "edit_text", args, space, objectId, op, []string{"id"})
+	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"id"})
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +292,7 @@ func (r *Runner) runSetCell(ctx context.Context, session *Session, args map[stri
 		"col":     strArg(args, "col"),
 		"value":   strArg(args, "value"),
 	}
-	result, err := r.patchOps(ctx, session, "set_cell", args, space, objectId, op, []string{"tableId"})
+	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"tableId"})
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +311,7 @@ func (r *Runner) runMoveBlock(ctx context.Context, session *Session, args map[st
 	if err := anchorTarget(session, objectId, args, op); err != nil {
 		return nil, err
 	}
-	result, err := r.patchOps(ctx, session, "move_block", args, space, objectId, op, []string{"id", "after", "inside"})
+	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"id", "after", "inside"})
 	if err != nil {
 		return nil, err
 	}
@@ -328,7 +330,7 @@ func (r *Runner) runDeleteBlock(ctx context.Context, session *Session, args map[
 	if boolArg(args, "recursive") {
 		op["recursive"] = true
 	}
-	result, err := r.patchOps(ctx, session, "delete_block", args, space, objectId, op, []string{"id"})
+	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"id"})
 	if err != nil {
 		return nil, err
 	}

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -24,10 +25,13 @@ type Handle struct {
 }
 
 // LastWrite remembers the Idempotency-Key of the most recent mutation, so
-// an identical tool call repeated within the reuse window (a regenerated
-// small-model retry, or a harness re-running the CLI after a timeout)
-// carries the SAME key and replays instead of double-applying (C8). A
-// repeat after the window is treated as intentional and applies again.
+// a repeat of the identical RESOLVED request within the reuse window (a
+// regenerated small-model retry, or a harness re-running the CLI after a
+// timeout or failure) carries the SAME key and replays instead of
+// double-applying (C8). Hash is requestHash over method + path + query +
+// body — the server's own identity — so a dry run and its real twin, or
+// one tool call re-addressed by a re-find, never share a key. A repeat
+// after the window is treated as intentional and applies again.
 type LastWrite struct {
 	Hash string    `json:"hash"`
 	Key  string    `json:"key"`
@@ -79,23 +83,38 @@ type Store interface {
 }
 
 // MemoryStore keeps the session in memory (the MCP / long-lived delivery,
-// and tests).
+// and tests). Load hands out a deep COPY under a lock — handing out the
+// stored pointer would alias every caller's session and make concurrent
+// tool calls race on its maps (Labels, Me).
 type MemoryStore struct {
-	session *Session
+	mu   sync.Mutex
+	data []byte // the session, JSON-encoded (the copy mechanism)
 }
 
 // NewMemoryStore returns an empty in-memory store.
 func NewMemoryStore() *MemoryStore { return &MemoryStore{} }
 
 func (m *MemoryStore) Load() (*Session, error) {
-	if m.session == nil {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.data == nil {
 		return &Session{}, nil
 	}
-	return m.session, nil
+	var s Session
+	if err := json.Unmarshal(m.data, &s); err != nil {
+		return nil, fmt.Errorf("decode stored session: %w", err)
+	}
+	return &s, nil
 }
 
 func (m *MemoryStore) Save(s *Session) error {
-	m.session = s
+	data, err := json.Marshal(s)
+	if err != nil {
+		return fmt.Errorf("encode session: %w", err)
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.data = data
 	return nil
 }
 
@@ -133,16 +152,40 @@ func (f *FileStore) Load() (*Session, error) {
 	return &s, nil
 }
 
+// Save writes atomically (temp file + rename): a concurrent CLI invocation
+// may last-write-win the whole session, but it can never observe a torn
+// half-written file.
 func (f *FileStore) Save(s *Session) error {
 	data, err := json.Marshal(s)
 	if err != nil {
 		return fmt.Errorf("encode session: %w", err)
 	}
-	if err := os.MkdirAll(filepath.Dir(f.Path), 0o700); err != nil {
+	dir := filepath.Dir(f.Path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("create session dir: %w", err)
 	}
-	if err := os.WriteFile(f.Path, data, 0o600); err != nil {
-		return fmt.Errorf("write session file: %w", err)
+	tmp, err := os.CreateTemp(dir, ".session-*.tmp")
+	if err != nil {
+		return fmt.Errorf("create session temp file: %w", err)
+	}
+	tmpName := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		os.Remove(tmpName)
+		return fmt.Errorf("write session temp file: %w", err)
+	}
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		os.Remove(tmpName)
+		return fmt.Errorf("chmod session temp file: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName)
+		return fmt.Errorf("close session temp file: %w", err)
+	}
+	if err := os.Rename(tmpName, f.Path); err != nil {
+		os.Remove(tmpName)
+		return fmt.Errorf("rename session file: %w", err)
 	}
 	return nil
 }

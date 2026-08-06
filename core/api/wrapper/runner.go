@@ -12,12 +12,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
@@ -43,6 +44,10 @@ type Runner struct {
 	// AllowNewOptions skips the wrapper's option-name pre-validation (the
 	// A2 guard), letting the REST create-missing semantics (R9) through.
 	AllowNewOptions bool
+
+	// mu serializes Run: the long-lived delivery shares one Runner across
+	// concurrent tool calls, and a tool call is a session read-modify-write.
+	mu sync.Mutex
 
 	now func() time.Time
 }
@@ -83,16 +88,22 @@ func (r *Runner) Run(ctx context.Context, tool string, args map[string]any) (*Re
 	if err := validateArgs(def, args); err != nil {
 		return nil, err
 	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	session, err := r.store.Load()
 	if err != nil {
 		return nil, fmt.Errorf("load session: %w", err)
 	}
 	result, err := exec(r, ctx, session, args)
+	// the session is saved on BOTH paths: a failed mutation has already
+	// minted its Idempotency-Key (Session.LastWrite), and dropping it is
+	// exactly the double-apply the reuse window exists to prevent — the
+	// harness re-run after a failure must carry the SAME key
+	if saveErr := r.store.Save(session); saveErr != nil && err == nil {
+		err = fmt.Errorf("save session: %w", saveErr)
+	}
 	if err != nil {
 		return nil, err
-	}
-	if err := r.store.Save(session); err != nil {
-		return nil, fmt.Errorf("save session: %w", err)
 	}
 	return result, nil
 }
@@ -301,11 +312,11 @@ func suffixLabels(ids []string) map[string]string {
 // ---- mutation machinery ----
 //
 
-// mutationKey returns the Idempotency-Key for a tool call: reused from
-// LastWrite when the identical call repeats within the reuse window (a
-// retry — C8 replays it), fresh otherwise (an intentional repeat applies).
-func (r *Runner) mutationKey(session *Session, tool string, args map[string]any) string {
-	hash := argsHash(tool, args)
+// mutationKey returns the Idempotency-Key for a resolved mutation request:
+// reused from LastWrite when the identical request repeats within the reuse
+// window (a retry — C8 replays it), fresh otherwise (an intentional repeat
+// applies). hash comes from requestHash.
+func (r *Runner) mutationKey(session *Session, hash string) string {
 	if lw := session.LastWrite; lw != nil && lw.Hash == hash && r.now().Sub(lw.At) < idempotencyReuseWindow {
 		lw.At = r.now()
 		return lw.Key
@@ -319,18 +330,23 @@ func (r *Runner) mutationKey(session *Session, tool string, args map[string]any)
 	return key
 }
 
-// argsHash builds a stable digest of a tool call.
-func argsHash(tool string, args map[string]any) string {
-	keys := make([]string, 0, len(args))
-	for k := range args {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
+// requestHash digests the RESOLVED request the wrapper is about to send —
+// method, path, encoded query and marshalled body: the same identity the
+// server's C8 middleware hashes. Hashing the raw tool args instead (the
+// original sketch) was wrong in both directions: a dry run and its real
+// twin, or one tool call re-addressed by a re-find, shared a key (the C8
+// store answers 409 idempotency_conflict — the write silently does not
+// happen), while a genuine retry whose relative dates resolve identically
+// must and now does share one.
+func requestHash(method, path string, query url.Values, body any) string {
 	h := sha256.New()
-	h.Write([]byte(tool))
-	for _, k := range keys {
-		payload, _ := json.Marshal(args[k])
-		fmt.Fprintf(h, "|%s=%s", k, payload)
+	for _, part := range []string{method, path, query.Encode()} {
+		h.Write([]byte(part))
+		h.Write([]byte{0})
+	}
+	if body != nil {
+		payload, _ := json.Marshal(body)
+		h.Write(payload)
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -347,34 +363,46 @@ func (r *Runner) mutationQuery() url.Values {
 // call, one intent) with the idempotency machinery and the §7.4 ambiguity
 // retry: on 400 ambiguous_input the runner re-reads the object, resolves
 // the named block refs to retained full ids, and retries once.
-func (r *Runner) patchOps(ctx context.Context, session *Session, tool string, args map[string]any, spaceId, objectId string, op map[string]any, refFields []string) (*apimodel.V2EditResult, error) {
-	key := r.mutationKey(session, tool, args)
-	send := func(op map[string]any) (*apimodel.V2EditResult, error) {
+func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, objectId string, op map[string]any, refFields []string) (*apimodel.V2EditResult, error) {
+	path := "/v2/spaces/" + seg(spaceId) + "/objects/" + seg(objectId)
+	query := r.mutationQuery()
+	body := map[string]any{"ops": []any{op}}
+	key := r.mutationKey(session, requestHash("PATCH", path, query, body))
+	send := func() (*apimodel.V2EditResult, error) {
 		var result apimodel.V2EditResult
 		err := r.client.decode(ctx, apiRequest{
 			method:         "PATCH",
-			path:           "/v2/spaces/" + seg(spaceId) + "/objects/" + seg(objectId),
-			query:          r.mutationQuery(),
-			body:           map[string]any{"ops": []any{op}},
+			path:           path,
+			query:          query,
+			body:           body,
 			idempotencyKey: key,
 			ifMatch:        r.IfMatch,
 		}, &result)
 		if err != nil {
-			return nil, err
+			return nil, translateOpsError(err)
 		}
 		return &result, nil
 	}
-	result, err := send(op)
+	result, err := send()
 	if err == nil || !isAmbiguous(err) || len(refFields) == 0 {
 		return result, err
 	}
-	// ambiguity retry: a suffix unique at read time became ambiguous — fetch
-	// the current ids, resolve each ref uniquely, retry once with full ids
+	// ambiguity retry: re-read the object and retry ONCE when the refs now
+	// resolve (see retryAmbiguous — this self-heals the concurrent-
+	// modification race, not a genuinely ambiguous label)
 	retried, retryErr := r.retryAmbiguous(ctx, session, spaceId, objectId, op, refFields)
 	if retryErr != nil || !retried {
 		return nil, err // surface the original ambiguity, it names the ref
 	}
-	return send(op)
+	// the rewrite changed the body, so re-stamp the SAME key onto the new
+	// request identity: the C8 store never cached the failed 400, and a
+	// later identical call that resolves client-side (labels were retained
+	// by the re-read) must replay, not re-apply
+	if lw := session.LastWrite; lw != nil && lw.Key == key {
+		lw.Hash = requestHash("PATCH", path, query, body)
+		lw.At = r.now()
+	}
+	return send()
 }
 
 // retryAmbiguous re-reads the object and rewrites op's ref fields to full
@@ -416,6 +444,40 @@ func (r *Runner) retryAmbiguous(ctx context.Context, session *Session, spaceId, 
 		}
 	}
 	return changed, nil
+}
+
+// opsVocab maps the op-path vocabulary of server error texts back onto the
+// tool-argument vocabulary the model actually speaks: the wrapper renames
+// `inside`→`under`, `id`→`block`, `tableId`→`table` and strips the ops[0]
+// prefix (the wrapper never batches), and the REST-route repair hints become
+// tool repairs. Without this, a model that follows the server's own hint
+// (`retry with inside`) earns the wrapper's rejection — two dead retries on
+// the most common anchoring mistake. Order matters: longest keys first.
+var opsVocab = []struct{ from, to string }{
+	{"ops[0].inside", "under"},
+	{"ops[0].tableId", "table"},
+	{"ops[0].id", "block"},
+	{"ops[0].", ""},
+	{"GET the object with ?outline=true to list block ids", "run read with mode=outline to list the block labels"},
+}
+
+// translateOpsError rewrites a *ToolError's text and issue paths from the op
+// vocabulary to the tool vocabulary. Non-ToolErrors pass through.
+func translateOpsError(err error) error {
+	var te *ToolError
+	if !errors.As(err, &te) {
+		return err
+	}
+	for _, sub := range opsVocab {
+		te.Text = strings.ReplaceAll(te.Text, sub.from, sub.to)
+	}
+	for i := range te.Issues {
+		for _, sub := range opsVocab {
+			te.Issues[i].Path = strings.ReplaceAll(te.Issues[i].Path, sub.from, sub.to)
+			te.Issues[i].Message = strings.ReplaceAll(te.Issues[i].Message, sub.from, sub.to)
+		}
+	}
+	return te
 }
 
 // editSummary renders an edit result as the compact receipt text.

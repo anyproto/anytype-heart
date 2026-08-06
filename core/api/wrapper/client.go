@@ -50,7 +50,9 @@ func NewClient(baseURL, apiKey string) *Client {
 		BaseURL: strings.TrimSuffix(baseURL, "/"),
 		APIKey:  apiKey,
 		HTTP:    &http.Client{Timeout: 60 * time.Second},
-		Backoff: func(attempt int) time.Duration { return time.Duration(attempt) * 200 * time.Millisecond },
+		// 1s, 2s: the server's sustained write budget is 1 req/s, so a
+		// sub-second backoff would burn every retry inside one bucket
+		Backoff: func(attempt int) time.Duration { return time.Duration(attempt) * time.Second },
 	}
 }
 
@@ -80,9 +82,14 @@ func (e *ToolError) Error() string { return e.Text }
 
 // do executes one request with the retry policy: transport errors and
 // 429/502/503/504 retry (mutations resend the same key + body); every other
-// status returns immediately.
+// status returns immediately. When the attempts are exhausted on a
+// retryable STATUS, the last (status, body) is returned so the server's C6
+// message still reaches the caller — swallowing it would drop the steering
+// exactly when the agent needs it most.
 func (c *Client) do(ctx context.Context, r apiRequest) (int, []byte, error) {
 	var lastErr error
+	var lastStatus int
+	var lastBody []byte
 	for attempt := 1; attempt <= clientMaxAttempts; attempt++ {
 		if attempt > 1 && c.Backoff != nil {
 			select {
@@ -94,15 +101,18 @@ func (c *Client) do(ctx context.Context, r apiRequest) (int, []byte, error) {
 		status, body, err := c.once(ctx, r)
 		switch {
 		case err != nil:
-			lastErr = err
+			lastErr, lastStatus, lastBody = err, 0, nil
 		case status == http.StatusTooManyRequests ||
 			status == http.StatusBadGateway ||
 			status == http.StatusServiceUnavailable ||
 			status == http.StatusGatewayTimeout:
-			lastErr = fmt.Errorf("server answered %d", status)
+			lastErr, lastStatus, lastBody = nil, status, body
 		default:
 			return status, body, nil
 		}
+	}
+	if lastStatus != 0 {
+		return lastStatus, lastBody, nil
 	}
 	return 0, nil, fmt.Errorf("call %s %s: %w", r.method, r.path, lastErr)
 }
