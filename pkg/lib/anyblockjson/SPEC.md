@@ -1394,6 +1394,17 @@ pkg/lib/anyblockjson/
                                string → §6.2 filter tree, offset-addressed
                                errors (planned with API v2 Phase 4; the
                                document-field integration stays post-v1)
+  markdownblocks.go          — ParseMarkdownBlocks: block-level markdown →
+                               a §4 flat run (id-less). Inline text passes
+                               through verbatim as §8 markup source; only
+                               the block slicing (headings, lists/indent,
+                               fences, quotes, dividers, tables) lives
+                               here. Never fails: unknown constructs
+                               degrade to paragraphs, indents clamp per
+                               the §4 lenient rule, and every output run
+                               imports through UnmarshalBlocks (by test).
+                               Built for API v2 Phase 5 (the insertBlocks
+                               markdown payload and the create shortcut).
   roundtrip_test.go          — §11 property tests + state assertions
   golden_gen_test.go         — golden files (testdata/, -update to refresh)
 ```

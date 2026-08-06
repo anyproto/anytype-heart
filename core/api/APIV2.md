@@ -462,6 +462,11 @@ illustration):
 
 ### Phase 5 — the task-tool wrapper (CLI + skill + on-device manifest)
 
+**Built** — `core/api/wrapper` (the tool table + manifest + runner) and
+`cmd/anytype` (the verb-set) + `cmd/anytype/SKILL.md`; decisions as built
+in §8.6. The dependency items below read as the plan they were; their
+dispositions live in §3 (Built / still-open) and §8.6.
+
 The Phase-5 deliverable is the **task-tool wrapper** (§7): the curated
 ~10-tool layer over `/v2`, delivered as (a) CLI verbs (`anytype find | read |
 describe | create | set-properties | add-blocks | edit-text | check-item |
@@ -532,23 +537,19 @@ strict schema (FLAT.md §7.3) · `?permanent=true` hard delete.
 **Named build items** (open today; budget them):
 
 - **`resultFormat=rows` encoder**. [B3-gated]
-- **`GenerateSchema` + store-backed option join** — backs `describe`; the
-  `types/{type}/schema` route is a 501 stub today. [before Phase 5]
-- **markdown→flat-blocks parser** as an `insertBlocks` `markdown` payload
-  alternative — backs the wrapper's `add_blocks` and upgrades the create
-  shortcut off the two-change-set paste path. Smaller than it sounds:
-  inline text is already §8 markdown, so only block-level parsing
-  (headings, lists/indent, fences, tables) is new. [Phase 5 critical path]
-- **handle↔CID resolver + wrapper relabeling** (§7.4: session handle
-  state, full-read relabeling, suffix pass-through, ambiguity retry).
-  [Phase 5]
-- **`@me` + `GET /v2/spaces/{spaceId}/members/me`** (server-side identity)
-  and **relative-date input resolution** (wrapper-handler math — placement
-  decided in §7.3). [Phase 5]
-- **per-tool GBNF/CFG artifacts** + the filter-string CFG — sequenced
-  after the Phase-4 parser pins the grammar (§7.3/§7.4). [Phase 5]
+- **`GenerateSchema` + store-backed option join** — the
+  `types/{type}/schema` route is a 501 stub today. Phase 5 shipped
+  `describe` in its sanctioned degraded form (wrapper-side composition,
+  §8.6), so this item no longer blocks the wrapper — landing it collapses
+  the wrapper's composition to one GET.
 - **`DELETE /v2/spaces/{spaceId}/objects/{objectId}` (archive)** — specced
-  with Phase 1, never registered. [before Phase 5]
+  with Phase 1, never registered; still open after Phase 5 (deliberately
+  NOT a wrapper tool until it exists — §7.2/§2 Phase 5).
+- **the D′1 escape decision** for `edit_text`/`replaceText` (§7.1) — still
+  open; the tool description and SKILL.md carry the markup caveat.
+- **an MCP server binary** hosting the manifest as a long-lived process —
+  the integration point exists (`wrapper.BuildManifest()` + the
+  MemoryStore runner, §8.6); the process wrapper itself is not built.
 - **md-export loss detector** (converter/md has no warning channel).
 
 **Built** (previously listed as build items; moved out so no one
@@ -566,7 +567,15 @@ collection store slice, with placeholder substitution — Phase 4, §8.4) ·
 **global-search per-space loop + merge** with honest totals (Phase 4,
 §8.4) · **POST /sets `filter` wiring** (the §8.1 501 is gone) · the
 Phase-4 discovery additions (`search` kind; the grammar on the `filters`
-kind) and the R9 sets-rule system-key widening.
+kind) and the R9 sets-rule system-key widening · **markdown→flat-blocks
+parser** (`anyblockjson.ParseMarkdownBlocks` + the `insertBlocks`
+`markdown` payload + the single-change-set create fold — Phase 5, §8.6) ·
+**the task-tool wrapper** (`core/api/wrapper`: the 11-tool table, manifest,
+schemas, per-tool GBNF + the filter-string GBNF, handle/label session
+state, ambiguity retry, idempotency machinery, `@me` + relative dates,
+option pre-validation, degraded `describe` — Phase 5, §8.6) · **the CLI
+verb-set** (`cmd/anytype`, generated from the same table) ·
+**`GET /v2/spaces/{spaceId}/members/me`** (server-side identity).
 
 ## 4. Benchmark program
 
@@ -637,7 +646,8 @@ open §3 build item.
    those*.
 3. Benchmarks run once the harness + Phase 3a exist; gated items land in
    minor releases (additive to the closed op set).
-4. Phase 4, Phase 5. v1 deprecation clock starts when the CLI ships.
+4. Phase 4, Phase 5 — shipped (`cmd/anytype` is the CLI, §8.6). The v1
+   deprecation clock starts when the CLI ships in a release build.
 
 Each phase's exit criterion: its endpoints pass the harness's task set at
 parity-or-better vs the v1 baseline flow for the same task (fewer calls,
@@ -717,7 +727,7 @@ than the REST body:
 | `check_item` | `object, block, checked` | `updateBlock` op | the one block-field tool: checkbox **blocks** are a common note shape and `updateBlock` is THE block-update op post-§8.3; other block-field updates (color/align/language/retype) stay excluded — SKILL.md steers task completion to properties (the E4 recipe) |
 | `add_blocks` | `object, after?\|under?, markdown` | `insertBlocks` op, `markdown` payload **[build]** | **markdown channel**; server parses → flat blocks (§7.1) |
 | `edit_text` | `object, block, find, replace` | `replaceText` op | **anchor channel**; deterministic server replace; find/replace text is markup source until D′1 lands (§7.1) |
-| `set_cell` | `table, row, col, value` | `setCell` op | flat cell write |
+| `set_cell` | `object, table, row, col, value` | `setCell` op | flat cell write (as built the tool takes `object` too — the REST op addresses a table within one object, and a table-only reference would need a hidden cross-object table registry; §8.6) |
 | `move_block` / `delete_block` | `object, block, after?\|under?` / `object, block, recursive?` | `moveBlock`/`deleteBlock` ops | handle-addressed |
 
 Excluded from the wrapper: PUT full-document replace (the DELEGATE-52
@@ -730,16 +740,13 @@ replaceBlock-era table), object archive (no v2 route yet — §2 Phase 1
 [build]), set building (`POST /sets` is the REST path; the "build a set
 with filter" eval task runs on the REST surface, not the wrapper).
 
-**Create-with-markdown caveats (until the markdown→flat-blocks parser
-lands).** As built, `create` with markdown is two server-side operations
-(create snapshot, then v1 BlockPaste — §8.1): dry runs validate
-type/properties only and say so in a warning; a paste failure after a
-successful create returns 5xx with a half-built object; and C8 caches only
-2xx results, so a blind same-key retry would create a second object. The
-wrapper must surface the created id from the error path and never
-blind-retry the composite. All three caveats dissolve when the parser folds
-markdown into the single-change-set create — another reason it is the
-load-bearing Phase-5 build item.
+**Create-with-markdown caveats — DISSOLVED (Phase 5 as built).** The
+markdown→flat-blocks parser landed (`anyblockjson.ParseMarkdownBlocks`) and
+the create shortcut folds markdown into the single-change-set create
+snapshot: dry runs validate the markdown too, a failure builds nothing, and
+the C8 cache replays safely. The historical two-operation paste path
+(create snapshot, then v1 BlockPaste — §8.1) is gone; this paragraph
+survives only so the old caveats are not re-derived.
 
 ### 7.3 What the wrapper does NOT let us skip
 
@@ -1419,3 +1426,121 @@ kind `filters` for the escape hatch, which the endpoints still accept.
 The `filters` kind documents that date values are unix seconds. The EBNF
 defines `identifier`/`number` and states keyword case-insensitivity
 in-grammar; a test pins every parser-accepted token to the served text.
+
+### 8.6 Phase-5 implementation notes (decisions as built)
+
+Phase 5 shipped the §7 task-tool wrapper: one tool table in
+`core/api/wrapper` delivered as the CLI verb-set (`cmd/anytype`) and the
+machine-readable function-calling manifest — plus the three server
+primitives it rides (the markdown payload, the create fold, `/members/me`).
+
+**Packaging (judged, recorded).** The manifest is Go data
+(`wrapper.Tools()` — name, description, typed args, one C12 example), not
+a standalone JSON file: it references op names, routes and error texts
+that must move in lockstep with the handlers, and the CLI imports the
+table so verb set == tool set *by construction* (a test asserts the
+executors map and the table agree; another asserts every example
+validates against its own args). `wrapper.BuildManifest()` renders the
+JSON delivery: per tool `{name, description, parameters (strict C13
+schema), example, gbnf}` + the filter grammar artifact; `anytype tools`
+prints it. The tools call the API **over localhost HTTP**, not in-process:
+the CLI is out-of-process by nature, and HTTP keeps one enforcement point
+— auth, write rate limit, and crucially the C8 idempotency store live in
+server middleware, which in-process service calls would silently bypass.
+Two surfaces, not three: the wrapper stays a client of `/v2`. An MCP
+server binary was NOT built (open §3 item); a long-lived host constructs
+the same Runner with the in-memory session store.
+
+**The markdown channel (server-side, as §7.1 decided).** The parser is
+`anyblockjson.ParseMarkdownBlocks` — in the format package root, the
+block-level sibling of the §8 inline codec: it slices markdown into a §4
+flat run and passes inline text through VERBATIM as §8 markup source, so
+authoring and reading stay on one dialect (goldmark/anymark was rejected
+for exactly that reason — its inline semantics are not §8's). It never
+fails: unknown constructs degrade to paragraphs, over-deep indents clamp
+by the §4 lenient rule, a run always imports (tested through
+`UnmarshalBlocks`). `insertBlocks` gained the `markdown` payload
+(mutually exclusive with `blocks`, same targeting incl. root-append; the
+op schema's `required` dropped to `op` with exactly-one enforced
+server-side, like the targeting exclusivity). `createdBlocks` keys read
+`ops[i].markdown[j]` — j = the parsed position, the honest analogue of
+the blocks[j] payload position. The create shortcut folds parsed markdown
+into the create snapshot: ONE change set; the §7.2 caveats paragraph is
+historical. Scope bounds (deterministic over clever, in the parser's file
+comment): ATX headings only (`---` is always a divider), one quote level,
+2-spaces-or-tab list nesting, tables need the separator row, no
+image→file-block mapping (file ids come from POST /files).
+
+**The reference channel.** `find` numbers rows 1..N and persists
+`{space, handles}`; every find renumbers (§7.4) and prunes labels of
+objects no longer referenced. Full `read` relabels 24-hex block ids to
+shortest-unique-SUFFIX labels (min 5 chars — the same uniqueness rule as
+the server's `matchBlockRef`, so labels pass through writes even
+unresolved) by textual replacement over the canonical document (key order
+survives), retaining label→full-id per object. Writes resolve labels
+client-side when retained; the **ambiguity retry**: on 400
+`ambiguous_input` the runner re-reads the object, resolves each block-ref
+field to a now-unique full id, and retries ONCE with the SAME
+Idempotency-Key — an unresolvable ambiguity surfaces the server's error
+untouched. Handle state lives in a session file for the CLI
+(`os.UserCacheDir()/anytype-cli/session.json`, `ANYTYPE_CLI_SESSION`
+overrides; corrupt files start fresh, never brick) and in memory for
+long-lived hosts — the `Store` interface is the seam.
+
+**Idempotency (the §7.3 machinery, placement decided).** Every mutation
+mints a random key; transport errors and 429/502/503/504 resend the exact
+body with the same key (max 3 attempts). An IDENTICAL tool call repeated
+within 60s reuses the previous key (`Session.LastWrite`) — that is a
+regenerated-retry or a harness re-run after a timeout, and C8 replays it;
+after the window an identical call is presumed intentional and applies
+fresh. A pure body-hash key (the review's sketch) was rejected: it would
+make every intentional repeat replay forever. The task tools never send
+If-Match (C7 advisory — sync noise 409s a small model cannot answer); the
+CLI exposes `--if-match` for scripts.
+
+**Conveniences, as placed by §7.3.** `@me` resolves through the new
+`GET /v2/spaces/{spaceId}/members/me` (participant id is deterministic —
+served even before the participant object is indexed; no account identity
+→ 404 steering to the members list), cached per space in the session; in
+`find` filters the quoted `"@me"` value substitutes textually. Relative
+dates resolve wrapper-side on date-FORMAT keys only (the wrapper loads
+the space's property formats): `today`/`tomorrow`/`yesterday`, weekday
+names (next occurrence, today included), `±Nd` — to RFC 3339 local
+midnight; anything else passes through literally for the server to
+judge. The **A2 option guard** pre-validates select/multiSelect names in
+`create`/`set_properties` `set`+`add` (never `remove` — the op cannot
+create) against the live options with a did-you-mean; `--create-missing`
+is the deliberate CLI escape to the REST R9 semantics.
+
+**Tool-set deviations from the §7.2 table (recorded there too).**
+`set_cell` takes `object` — the REST op addresses a table within one
+object; a bare table handle would need hidden cross-object state. The
+wrapper's `under` maps to the ops' `inside` (+`position: last`);
+`edit_text` deliberately has no `replace_all`. `describe` ships in the
+§2-sanctioned degraded form: `GET /types/{type}` + live option lists,
+composed wrapper-side (25 options per property, truncation marked); the
+`GenerateSchema` §3 item stays open and collapses this to one GET when it
+lands. `find` has no `fields` arg (C5 minimal rows only) and search
+carries no idempotency key (a read).
+
+**GBNF (§7.4, kept honest by test).** Per-tool grammars are GENERATED
+from the Arg table: the argument object with required args first in
+declared order, then each optional arg as an independently omittable
+`("," pair)?` group — a pinned key order, which is what constrained
+decoding wants. The filter-string GBNF is transcribed from the pinned
+`filterstring.EBNF`, constraining to the canonical surface (uppercase
+keywords, camelCase presets, ASCII keys; the parser stays lenient), and
+is served as a SEPARATE artifact beside find's grammar: composing a DSL
+into a JSON-string production would require re-escaping every DSL quote
+through the JSON encoding — a transformation GBNF cannot express; the
+seam is documented on the artifact. A GBNF well-formedness checker
+(rule syntax, terminated literals/classes, balanced groups, no undefined
+references, root present) runs over every served grammar in tests, and
+over broken grammars to prove it catches breakage.
+
+**SKILL.md** lives at `cmd/anytype/SKILL.md` (frontmatter description →
+body → references three-tier): the find→describe→read loop, the E4
+intent→verb recipes (complete-a-task steers to `set-properties`, NOT
+`check-item`), filter-string examples, and the caveats (D′1 markup
+source, options-never-created, handle renumbering, no batches, safe
+retries). B4 tunes this text per tier once the benchmark runs.
