@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
 type recordedRequest struct {
@@ -141,8 +141,8 @@ func (fx *fixture) seedSession(space string, handles ...Handle) *Session {
 }
 
 // searchResponse renders a stub search result.
-func searchResponse(total int, hasMore bool, rows ...apimodel.V2ObjectRow) string {
-	resp := apimodel.V2ListResponse[apimodel.V2ObjectRow]{
+func searchResponse(total int, hasMore bool, rows ...v2model.V2ObjectRow) string {
+	resp := v2model.V2ListResponse[v2model.V2ObjectRow]{
 		Data: rows, Total: total, HasMore: hasMore, Limit: 10,
 	}
 	data, _ := json.Marshal(resp)
@@ -191,8 +191,8 @@ func TestFind(t *testing.T) {
 		// given
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(2, false,
-			apimodel.V2ObjectRow{Id: "bafyobj1", Name: "Q3 report", Type: "task"},
-			apimodel.V2ObjectRow{Id: "bafyobj2", Name: "Q3 plan", Type: "page"},
+			v2model.V2ObjectRow{Id: "bafyobj1", Name: "Q3 report", Type: "task"},
+			v2model.V2ObjectRow{Id: "bafyobj2", Name: "Q3 plan", Type: "page"},
 		))
 
 		// when
@@ -229,7 +229,7 @@ func TestFind(t *testing.T) {
 		}
 		require.NoError(t, fx.store.Save(s))
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(1, false,
-			apimodel.V2ObjectRow{Id: "bafyobj2", Name: "Plan", Type: "page"}))
+			v2model.V2ObjectRow{Id: "bafyobj2", Name: "Plan", Type: "page"}))
 
 		_, err := fx.Run(ctx, "find", map[string]any{"space": "space1"})
 
@@ -245,7 +245,7 @@ func TestFind(t *testing.T) {
 	t.Run("truncation steers", func(t *testing.T) {
 		fx := newFixture(t)
 		fx.stub("POST /v2/spaces/space1/search", 200, searchResponse(312, true,
-			apimodel.V2ObjectRow{Id: "o1", Name: "A", Type: "task"}))
+			v2model.V2ObjectRow{Id: "o1", Name: "A", Type: "task"}))
 
 		result, err := fx.Run(ctx, "find", map[string]any{"space": "space1", "limit": 1})
 

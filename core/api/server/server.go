@@ -9,6 +9,7 @@ import (
 
 	apicore "github.com/anyproto/anytype-heart/core/api/core"
 	"github.com/anyproto/anytype-heart/core/api/service"
+	v2service "github.com/anyproto/anytype-heart/core/api/v2/service"
 	"github.com/anyproto/anytype-heart/pkg/lib/localstore/objectstore"
 )
 
@@ -21,7 +22,7 @@ type ApiSessionEntry struct {
 type Server struct {
 	engine    *gin.Engine
 	service   *service.Service
-	v2Service *service.V2Service
+	v2Service *v2service.V2Service
 	// v2CreateDisabled skips the Phase-2 create routes when no creator
 	// dependency was provided (read-only construction, e.g. in tests).
 	v2CreateDisabled bool
@@ -65,7 +66,7 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 		chatSubSvc: chatSubSvc,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
-		s.v2Service = service.NewV2Service(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Store, techSpaceId, v2Deps.AccountId)
+		s.v2Service = v2service.NewV2Service(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 	}

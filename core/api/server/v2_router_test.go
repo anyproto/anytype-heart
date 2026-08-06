@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/anyproto/anytype-heart/core/api/core/mock_apicore"
+	apiv2 "github.com/anyproto/anytype-heart/core/api/v2"
 	"github.com/anyproto/anytype-heart/core/domain"
 	"github.com/anyproto/anytype-heart/core/subscription"
 	"github.com/anyproto/anytype-heart/pb"
@@ -126,10 +127,10 @@ func TestV2Routes(t *testing.T) {
 				fx.eventMock.On("Broadcast", mock.Anything).Return(nil).Maybe()
 
 				req := httptest.NewRequest(route.method, route.path,
-					strings.NewReader(strings.Repeat("x", maxV2RequestBody+1)))
+					strings.NewReader(strings.Repeat("x", apiv2.MaxRequestBody+1)))
 				req.Host = localApiHost
 				req.Header.Set("Authorization", "Bearer validKey")
-				req.Header.Set(IdempotencyKeyHeader, "routekey1")
+				req.Header.Set(apiv2.IdempotencyKeyHeader, "routekey1")
 				w := httptest.NewRecorder()
 
 				fx.Engine().ServeHTTP(w, req)
@@ -159,7 +160,7 @@ func TestV2Routes(t *testing.T) {
 			req.Host = localApiHost
 			req.Header.Set("Authorization", "Bearer validKey")
 			req.Header.Set("Content-Type", "application/json")
-			req.Header.Set(IdempotencyKeyHeader, "spacekey1")
+			req.Header.Set(apiv2.IdempotencyKeyHeader, "spacekey1")
 			w := httptest.NewRecorder()
 			fx.Engine().ServeHTTP(w, req)
 			return w
@@ -200,7 +201,7 @@ func TestV2Routes(t *testing.T) {
 					req := httptest.NewRequest("POST", path, strings.NewReader(`{}`))
 					req.Host = localApiHost
 					req.Header.Set("Authorization", "Bearer validKey")
-					req.Header.Set(IdempotencyKeyHeader, "searchkey1")
+					req.Header.Set(apiv2.IdempotencyKeyHeader, "searchkey1")
 					w := httptest.NewRecorder()
 
 					fx.Engine().ServeHTTP(w, req)

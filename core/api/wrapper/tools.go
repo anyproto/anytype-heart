@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
 // defaultFindLimit is find's page size when no limit is given.
@@ -22,9 +22,9 @@ const defaultSpacesLimit = 25
 
 // spacesResult is spaces' machine shape.
 type spacesResult struct {
-	Spaces  []apimodel.V2SpaceRow `json:"spaces"`
-	Total   int                   `json:"total"`
-	HasMore bool                  `json:"has_more"`
+	Spaces  []v2model.V2SpaceRow `json:"spaces"`
+	Total   int                  `json:"total"`
+	HasMore bool                 `json:"has_more"`
 }
 
 // runSpaces lists the user's spaces — the bootstrap tool: every trace needs
@@ -40,7 +40,7 @@ func (r *Runner) runSpaces(ctx context.Context, session *Session, args map[strin
 			limit = 100
 		}
 	}
-	var resp apimodel.V2ListResponse[apimodel.V2SpaceRow]
+	var resp v2model.V2ListResponse[v2model.V2SpaceRow]
 	err := r.client.decode(ctx, apiRequest{
 		method: "GET",
 		path:   "/v2/spaces",
@@ -104,7 +104,7 @@ func (r *Runner) runFind(ctx context.Context, session *Session, args map[string]
 		}
 		body["filter"] = resolved
 	}
-	var resp apimodel.V2ListResponse[apimodel.V2ObjectRow]
+	var resp v2model.V2ListResponse[v2model.V2ObjectRow]
 	err := r.client.decode(ctx, apiRequest{
 		method: "POST",
 		path:   "/v2/spaces/" + seg(space) + "/search",
@@ -210,7 +210,7 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 	path := "/v2/spaces/" + seg(space) + "/objects"
 	query := r.mutationQuery()
 	key := r.mutationKey(session, requestHash("POST", path, query, body))
-	var result apimodel.V2CreateResult
+	var result v2model.V2CreateResult
 	err := r.client.decode(ctx, apiRequest{
 		method:         "POST",
 		path:           path,

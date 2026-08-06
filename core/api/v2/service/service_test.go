@@ -1,0 +1,146 @@
+package v2service
+
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestComputeEtag(t *testing.T) {
+	t.Run("deterministic and order-independent", func(t *testing.T) {
+		// given
+		a := ComputeEtag([]string{"headA", "headB"})
+		b := ComputeEtag([]string{"headB", "headA"})
+
+		// then
+		assert.Equal(t, a, b)
+		assert.Len(t, a, 8)
+	})
+
+	t.Run("different heads give different etags", func(t *testing.T) {
+		assert.NotEqual(t, ComputeEtag([]string{"headA"}), ComputeEtag([]string{"headB"}))
+	})
+
+	t.Run("head concatenation is unambiguous", func(t *testing.T) {
+		// "ab"+"c" must not hash like "a"+"bc"
+		assert.NotEqual(t, ComputeEtag([]string{"ab", "c"}), ComputeEtag([]string{"a", "bc"}))
+	})
+}
+
+func TestEtagMatches(t *testing.T) {
+	heads := []string{"headA", "headB"}
+
+	t.Run("absent If-Match is advisory pass", func(t *testing.T) {
+		assert.True(t, EtagMatches("", heads))
+	})
+
+	t.Run("display form matches", func(t *testing.T) {
+		assert.True(t, EtagMatches(ComputeEtag(heads), heads))
+	})
+
+	t.Run("full hash matches", func(t *testing.T) {
+		assert.True(t, EtagMatches(headsHash(heads), heads))
+	})
+
+	t.Run("stale etag does not match", func(t *testing.T) {
+		assert.False(t, EtagMatches(ComputeEtag([]string{"other"}), heads))
+	})
+
+	t.Run("quoted and weak header forms match (RFC 7232)", func(t *testing.T) {
+		etag := ComputeEtag(heads)
+		assert.Equal(t, `"`+etag+`"`, QuoteEtag(etag))
+		assert.True(t, EtagMatches(QuoteEtag(etag), heads), "a client echoing the quoted ETag header must match")
+		assert.True(t, EtagMatches(`W/"`+etag+`"`, heads), "a weak indicator is tolerated")
+	})
+}
+
+func TestEncodeEnvelope(t *testing.T) {
+	t.Run("canonical key order with unknown keys last", func(t *testing.T) {
+		// given
+		fields := map[string]json.RawMessage{
+			"blocks":  json.RawMessage(`[]`),
+			"etag":    json.RawMessage(`"abcd1234"`),
+			"id":      json.RawMessage(`"obj1"`),
+			"version": json.RawMessage(`1`),
+			"zzz":     json.RawMessage(`true`),
+		}
+		want := `{"version":1,"etag":"abcd1234","id":"obj1","blocks":[],"zzz":true}`
+
+		// when
+		got, err := encodeEnvelope(fields)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, string(got))
+	})
+
+	t.Run("round-trips through parseEnvelope", func(t *testing.T) {
+		// given
+		doc := []byte(`{"version":1,"id":"x","blocks":[{"type":"paragraph","text":"hi"}]}`)
+
+		// when
+		fields, err := parseEnvelope(doc)
+		require.NoError(t, err)
+		out, err := encodeEnvelope(fields)
+
+		// then
+		require.NoError(t, err)
+		assert.JSONEq(t, string(doc), string(out))
+	})
+}
+
+func TestV2ObjectQueryValidate(t *testing.T) {
+	tests := []struct {
+		name     string
+		query    V2ObjectQuery
+		wantErr  string // expected error code, "" = valid
+		wantPlan func(t *testing.T, plan objectReadPlan)
+	}{
+		{
+			name:  "defaults: both sections, compact refs, anyblock",
+			query: V2ObjectQuery{},
+			wantPlan: func(t *testing.T, plan objectReadPlan) {
+				assert.True(t, plan.wantProperties)
+				assert.True(t, plan.wantBlocks)
+				assert.True(t, plan.compactRefs)
+				assert.False(t, plan.markdown)
+			},
+		},
+		{
+			name:  "include=properties suppresses blocks",
+			query: V2ObjectQuery{Include: "properties"},
+			wantPlan: func(t *testing.T, plan objectReadPlan) {
+				assert.True(t, plan.wantProperties)
+				assert.False(t, plan.wantBlocks)
+			},
+		},
+		{
+			name:  "ids=full disables ref compaction",
+			query: V2ObjectQuery{Ids: "full"},
+			wantPlan: func(t *testing.T, plan objectReadPlan) {
+				assert.False(t, plan.compactRefs)
+			},
+		},
+		{name: "outline and block conflict", query: V2ObjectQuery{Outline: true, Block: "b1"}, wantErr: "ambiguous_input"},
+		{name: "outline and md conflict", query: V2ObjectQuery{Outline: true, Format: "md"}, wantErr: "ambiguous_input"},
+		{name: "block and md conflict", query: V2ObjectQuery{Block: "b1", Format: "md"}, wantErr: "ambiguous_input"},
+		{name: "unknown ids value", query: V2ObjectQuery{Ids: "short"}, wantErr: "validation_failed"},
+		{name: "unknown format value", query: V2ObjectQuery{Format: "html"}, wantErr: "validation_failed"},
+		{name: "unknown include value", query: V2ObjectQuery{Include: "blocks,everything"}, wantErr: "validation_failed"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			plan, err := tt.query.validate()
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+				tt.wantPlan(t, plan)
+				return
+			}
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.wantErr)
+		})
+	}
+}

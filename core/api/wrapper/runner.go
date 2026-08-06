@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
 // Result is one tool call's outcome: Text is the agent/human-readable form
@@ -393,13 +393,13 @@ func (r *Runner) mutationQuery() url.Values {
 // call, one intent) with the idempotency machinery and the §7.4 ambiguity
 // retry: on 400 ambiguous_input the runner re-reads the object, resolves
 // the named block refs to retained full ids, and retries once.
-func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, objectId string, op map[string]any, refFields []string) (*apimodel.V2EditResult, error) {
+func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, objectId string, op map[string]any, refFields []string) (*v2model.V2EditResult, error) {
 	path := "/v2/spaces/" + seg(spaceId) + "/objects/" + seg(objectId)
 	query := r.mutationQuery()
 	body := map[string]any{"ops": []any{op}}
 	key := r.mutationKey(session, requestHash("PATCH", path, query, body))
-	send := func() (*apimodel.V2EditResult, error) {
-		var result apimodel.V2EditResult
+	send := func() (*v2model.V2EditResult, error) {
+		var result v2model.V2EditResult
 		err := r.client.decode(ctx, apiRequest{
 			method:         "PATCH",
 			path:           path,
@@ -541,7 +541,7 @@ func targetLabel(session *Session, ref string) string {
 
 // editSummary renders an edit result as the compact receipt text, naming
 // the object that was written.
-func editSummary(target string, result *apimodel.V2EditResult) string {
+func editSummary(target string, result *v2model.V2EditResult) string {
 	var parts []string
 	stats := result.DiffStats
 	add := func(n int, what string) {

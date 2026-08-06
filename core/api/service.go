@@ -98,6 +98,16 @@ func (s *apiService) Init(a *app.App) error {
 	s.accountService = a.MustComponent(account.CName).(account.Service)
 	s.eventService = a.MustComponent(event.CName).(apicore.EventService)
 	s.crossSpaceSubService = a.MustComponent(crossspacesub.CName).(apicore.CrossSpaceSubscriptionService)
+	// The adapters below (chatSubAdapter, objectRead/Create/Mutate) stay in
+	// package api on purpose, even though the object adapters serve /v2 only:
+	// package api is this tree's composition root — the only package that
+	// touches *app.App and the heart-internal services (block/cache,
+	// objectcreator, space, chatsubscription, fileobject). What they produce
+	// are implementations of the apicore ports, and apicore is shared by both
+	// API versions, so an adapter is a shared-side artifact by construction.
+	// Keeping them here is also what keeps core/api/v2 free of heart-internal
+	// imports: v2 is HTTP plus logic over ports, which is what makes it
+	// testable against mock_apicore. See core/api/APIV2_LAYOUT_PLAN.md §10.
 	s.chatSubService = &chatSubAdapter{svc: a.MustComponent(chatsubscription.CName).(chatsubscription.Service)}
 	s.fileObjectService = a.MustComponent(fileobject.CName).(apicore.FileObjectService)
 	s.objectReader = newObjectReadAdapter(app.MustComponent[cache.ObjectGetterComponent](a))

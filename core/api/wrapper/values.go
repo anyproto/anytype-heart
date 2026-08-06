@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
 // meSentinel is the caller-identity placeholder accepted in property values
@@ -28,7 +28,7 @@ func (r *Runner) meFor(ctx context.Context, session *Session, spaceId string) (s
 	if id, ok := session.Me[spaceId]; ok {
 		return id, nil
 	}
-	var row apimodel.V2MemberRow
+	var row v2model.V2MemberRow
 	err := r.client.decode(ctx, apiRequest{
 		method: "GET",
 		path:   "/v2/spaces/" + seg(spaceId) + "/members/me",
@@ -75,7 +75,7 @@ func (r *Runner) propertyFormats(ctx context.Context, spaceId string) (map[strin
 	formats := map[string]string{}
 	offset := 0
 	for page := 0; page < maxPropertyPages; page++ {
-		var resp apimodel.V2ListResponse[apimodel.V2PropertyRow]
+		var resp v2model.V2ListResponse[v2model.V2PropertyRow]
 		err := r.client.decode(ctx, apiRequest{
 			method: "GET",
 			path:   "/v2/spaces/" + seg(spaceId) + "/properties",
@@ -184,7 +184,7 @@ func stringEntries(value any) []string {
 // stays available behind AllowNewOptions.
 func (r *Runner) checkOptionNames(ctx context.Context, spaceId, key string, names []string) error {
 	for _, name := range names {
-		var resp apimodel.V2ListResponse[apimodel.V2OptionRow]
+		var resp v2model.V2ListResponse[v2model.V2OptionRow]
 		err := r.client.decode(ctx, apiRequest{
 			method: "GET",
 			path:   "/v2/spaces/" + seg(spaceId) + "/properties/" + seg(key) + "/options",
@@ -201,7 +201,7 @@ func (r *Runner) checkOptionNames(ctx context.Context, spaceId, key string, name
 	return nil
 }
 
-func optionExists(options []apimodel.V2OptionRow, name string) bool {
+func optionExists(options []v2model.V2OptionRow, name string) bool {
 	for _, o := range options {
 		if o.Name == name {
 			return true
@@ -213,7 +213,7 @@ func optionExists(options []apimodel.V2OptionRow, name string) bool {
 // unknownOptionError builds the guard's steering error: the existing names
 // and a case-insensitive did-you-mean.
 func (r *Runner) unknownOptionError(ctx context.Context, spaceId, key, name string) error {
-	var resp apimodel.V2ListResponse[apimodel.V2OptionRow]
+	var resp v2model.V2ListResponse[v2model.V2OptionRow]
 	listErr := r.client.decode(ctx, apiRequest{
 		method: "GET",
 		path:   "/v2/spaces/" + seg(spaceId) + "/properties/" + seg(key) + "/options",

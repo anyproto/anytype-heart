@@ -15,7 +15,7 @@ import (
 	"net/url"
 	"strings"
 
-	apimodel "github.com/anyproto/anytype-heart/core/api/model"
+	v2model "github.com/anyproto/anytype-heart/core/api/v2/model"
 )
 
 // describeProperty is one row of describe's machine shape.
@@ -81,7 +81,7 @@ func (r *Runner) runDescribe(ctx context.Context, session *Session, args map[str
 	for _, tp := range typeDoc.TypeProperties {
 		prop := describeProperty{Key: tp.Key, Name: tp.Name, Format: tp.Format}
 		if selectFormats[tp.Format] {
-			var resp apimodel.V2ListResponse[apimodel.V2OptionRow]
+			var resp v2model.V2ListResponse[v2model.V2OptionRow]
 			if err := r.client.decode(ctx, apiRequest{
 				method: "GET",
 				path:   "/v2/spaces/" + seg(space) + "/properties/" + seg(tp.Key) + "/options",
