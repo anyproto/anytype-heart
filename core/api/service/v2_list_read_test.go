@@ -187,6 +187,23 @@ func TestV2GetSetObjects(t *testing.T) {
 		apiErr := v2Err(t, err)
 		assert.Contains(t, apiErr.Message, "queries nothing")
 	})
+
+	t.Run("a typoed fields key 400s with did-you-mean, like search does", func(t *testing.T) {
+		// given: without the check the response is a 200 whose rows silently
+		// carry no properties — indistinguishable from "no object has a value"
+		fx := searchSetup(t)
+		fx.expectListRead("set1", setRead(nil))
+
+		// when
+		_, _, _, _, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "", []string{"sevirity"}, 0, 25)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "fields", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `unknown property key "sevirity"`)
+		assert.Equal(t, "did you mean severity?", apiErr.Issues[0].Hint)
+	})
 }
 
 func TestV2GetCollectionObjects(t *testing.T) {
@@ -247,6 +264,21 @@ func TestV2GetCollectionObjects(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "neither a set nor a collection")
 		assert.Contains(t, apiErr.Message, "/sets/{setId}/objects")
 		assert.Contains(t, apiErr.Message, "/collections/{collectionId}/objects")
+	})
+
+	t.Run("an offset past the membership is an empty page, has_more false", func(t *testing.T) {
+		// given
+		fx := searchSetup(t)
+		fx.expectListRead("col1", collectionRead(nil, []string{"chore2", "chore1"}))
+
+		// when
+		rows, total, hasMore, _, err := fx.GetCollectionObjects(context.Background(), testSpaceId, "col1", "", nil, 5, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Empty(t, rows)
+		assert.Equal(t, 2, total)
+		assert.False(t, hasMore)
 	})
 
 	t.Run("a stored view's sorts override the membership order", func(t *testing.T) {
@@ -328,5 +360,43 @@ func TestV2ListViews(t *testing.T) {
 		assert.Empty(t, views)
 		assert.Equal(t, 0, total)
 		assert.False(t, hasMore)
+	})
+}
+
+func TestV2SubstitutePlaceholders(t *testing.T) {
+	placeholderFilter := func(value string) []*model.BlockContentDataviewFilter {
+		return []*model.BlockContentDataviewFilter{{
+			RelationKey: bundle.RelationKeyCreator.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(value),
+		}}
+	}
+
+	t.Run("the host placeholder resolves to the hosting object id", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		out, warnings := fx.substitutePlaceholders(testSpaceId, "set1", placeholderFilter(filterTemplateHost))
+
+		// then: resolved, not dropped-with-warning (the default placeholder arm)
+		require.Empty(t, warnings)
+		require.Len(t, out, 1)
+		assert.Equal(t, "set1", out[0].Value.GetStringValue())
+	})
+
+	t.Run("an empty account identity degrades the user placeholder to a warning", func(t *testing.T) {
+		// given: a service wired without an account identity
+		fx := newV2Fixture(t)
+		fx.V2Service.accountId = ""
+
+		// when
+		out, warnings := fx.substitutePlaceholders(testSpaceId, "set1", placeholderFilter(filterTemplateUser))
+
+		// then: the leaf drops (evaluated literally it would match nothing)
+		assert.Empty(t, out)
+		require.Len(t, warnings, 1)
+		assert.Contains(t, warnings[0].Message, `the current-user placeholder "_filter_template_2_" could not be resolved`)
+		assert.Contains(t, warnings[0].Message, "ignored")
 	})
 }

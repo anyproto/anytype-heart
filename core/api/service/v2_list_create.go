@@ -64,7 +64,10 @@ func (s *V2Service) CreateSet(ctx context.Context, spaceId string, req apimodel.
 	// a WRITE, where select option names create-missing (R9/§8.1) — unlike
 	// the read-only query path.
 	if req.Filter != "" {
-		refKeys := appendMissing(append(s.typePropertyKeys(spaceId, typeId), "name"), v2SystemQueryKeys...)
+		// "type" joins the reference set only so the discovery-served grammar
+		// example (`type IN (…)`) parses to a targeted error below instead of
+		// an unknown-key message that cannot explain itself
+		refKeys := appendMissing(append(s.typePropertyKeys(spaceId, typeId), "name", "type"), v2SystemQueryKeys...)
 		sort.Strings(refKeys)
 		parsed, err := filterstring.Parse(req.Filter, filterstring.Options{
 			KnownKeys:     refKeys,
@@ -161,6 +164,10 @@ type filterNodeProbe struct {
 
 type sortProbe struct {
 	Property string `json:"property"`
+	// IncludeTime distinguishes "omitted" from an explicit false — the
+	// search path defaults date sorts to second granularity only when the
+	// request did not decide (v2_search.go).
+	IncludeTime *bool `json:"includeTime"`
 }
 
 type viewProbe struct {
@@ -252,6 +259,17 @@ func (s *V2Service) validateViewKeys(spaceId, typeId, typeKey string, refs []vie
 	var issues []apimodel.V2Issue
 	for _, ref := range refs {
 		if allowed[ref.key] {
+			continue
+		}
+		if ref.key == "type" {
+			// the search surface takes `type` as a pseudo-key; a set carries
+			// its scope in setOf already, so the leaf is redundant here — say
+			// that instead of "unknown property"
+			issues = append(issues, apimodel.V2Issue{
+				Path:    ref.path,
+				Message: fmt.Sprintf("a set is already scoped to type %q — drop the type filter", typeKey),
+				Hint:    "to query across types use POST /v2/spaces/{spaceId}/search, where type is a filterable pseudo-key",
+			})
 			continue
 		}
 		issues = append(issues, apimodel.V2Issue{

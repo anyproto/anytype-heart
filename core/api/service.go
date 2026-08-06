@@ -114,6 +114,12 @@ func (s *apiService) Run(ctx context.Context) error {
 	return nil
 }
 
+// The accountId probe below is structural — if account.Service ever renamed
+// AccountID, the probe would still compile, silently return "" and degrade
+// every current-user placeholder to a warning. This assertion turns that
+// rename into a compile error instead.
+var _ interface{ AccountID() string } = (account.Service)(nil)
+
 // accountId returns the caller's account identity for API v2's stored-view
 // placeholder substitution (`_filter_template_2_` → participant id). The
 // apicore.AccountService port only exposes GetInfo, so the richer concrete

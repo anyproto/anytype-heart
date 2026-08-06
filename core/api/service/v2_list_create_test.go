@@ -99,6 +99,44 @@ func TestV2CreateSet(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Hint, "chore")
 	})
 
+	t.Run("a type filter gets a targeted message, not unknown-property (string form)", func(t *testing.T) {
+		// given: the discovery-served grammar example uses `type IN (…)`,
+		// which search accepts — a set is already type-scoped, and the error
+		// must say that instead of "unknown property key"
+		fx := setup(t)
+
+		// when
+		_, err := fx.CreateSet(context.Background(), testSpaceId, apimodel.V2CreateSetRequest{
+			Name:   "Open work",
+			Type:   "chore",
+			Filter: `type IN ("chore") AND severity IS EMPTY`,
+		}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Contains(t, apiErr.Issues[0].Message, `a set is already scoped to type "chore" — drop the type filter`)
+		assert.Contains(t, apiErr.Issues[0].Hint, "POST /v2/spaces/{spaceId}/search")
+	})
+
+	t.Run("a type filter gets the targeted message in the structured form too", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when
+		_, err := fx.CreateSet(context.Background(), testSpaceId, apimodel.V2CreateSetRequest{
+			Name:    "Open work",
+			Type:    "chore",
+			Filters: json.RawMessage(`[{"property":"type","condition":"in","value":["chore"]}]`),
+		}, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/filters/0/property", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, `a set is already scoped to type "chore"`)
+	})
+
 	t.Run("filter and filters together are ambiguous_input (C6)", func(t *testing.T) {
 		// given
 		fx := setup(t)

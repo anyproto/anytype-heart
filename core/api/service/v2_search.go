@@ -49,6 +49,13 @@ var v2SystemQueryKeys = []string{"createdDate", "lastModifiedDate", "creator", "
 // V2SearchNarrowHint is the C10 truncation steering for search results.
 const V2SearchNarrowHint = "narrow with filter or query, or request the next offset"
 
+// maxGlobalSearchOffset bounds how deep the global merge pages: the k-way
+// merge materializes up to offset+limit records PER SPACE, so an unbounded
+// offset lets one request decode the whole account into memory. Deeper
+// enumeration belongs on the space-scoped search, which pushes offset/limit
+// into the store.
+const maxGlobalSearchOffset = 2000
+
 // searchPlan is one space's compiled query: the translated filter tree, the
 // effective sort list (shared with the global merge comparator), and the
 // warning-grade findings gathered on the way.
@@ -78,7 +85,7 @@ func (s *V2Service) SearchObjects(ctx context.Context, spaceId string, req apimo
 	if err := validateSearchShape(req); err != nil {
 		return nil, 0, false, nil, err
 	}
-	plan, err := s.buildSearchPlan(spaceId, req)
+	plan, err := s.buildSearchPlan(spaceId, req, true)
 	if err != nil {
 		return nil, 0, false, nil, err
 	}
@@ -100,8 +107,14 @@ func (s *V2Service) SearchObjects(ctx context.Context, spaceId string, req apimo
 }
 
 // runSearchQuery executes one space's plan with C10 pagination. Full-text
-// queries materialize the whole (candidate-bounded) result set so the total
-// is the store count, not v1's total = len(fetched) approximation.
+// queries push the requested page into the store as Limit = offset+limit+1
+// so the engine's candidate-budget escalation sees it (with Limit 0 the
+// budget froze at the 100-doc floor and every full-text search silently
+// capped at ~100 matches, ending pagination at page 4); the one extra
+// record distinguishes an exhausted result from a clipped one, so the
+// returned total is exact when the store had fewer matches and a lower
+// bound (offset+limit+1 → has_more true) when it clipped — honest steering
+// either way, within the engine's documented candidate budget.
 func (s *V2Service) runSearchQuery(spaceId string, plan *searchPlan, offset, limit int) ([]database.Record, int, error) {
 	index := s.store.SpaceIndex(spaceId)
 	if plan.textQuery != "" {
@@ -110,6 +123,7 @@ func (s *V2Service) runSearchQuery(spaceId string, plan *searchPlan, offset, lim
 			TextQuery: plan.textQuery,
 			Filters:   plan.filters,
 			Sorts:     plan.sorts,
+			Limit:     offset + limit + 1,
 		})
 		if err != nil {
 			return nil, 0, fmt.Errorf("search space %s: %w", spaceId, err)
@@ -148,10 +162,27 @@ func pageRecords(records []database.Record, offset, limit int) []database.Record
 // validation (rules 1–2), both filter forms onto one tree, read-only option
 // resolution (rule 3), the type pseudo-key (rule 6), and the effective sort
 // list. Every failure is a C6 error with path-addressed issues.
-func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest) (*searchPlan, error) {
+//
+// strictFields picks how an unknown `fields` entry is handled. fields is a
+// DISPLAY concern, not scope: on the space-scoped search a 400 with
+// did-you-mean is the right repair signal (strict), but on the global
+// fan-out a hard error would silently drop the whole space from results
+// and total — a column request must never narrow the search — so the
+// global caller passes lenient and the key degrades to a per-space warning.
+func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest, strictFields bool) (*searchPlan, error) {
 	plan := &searchPlan{textQuery: req.Query}
 	index := s.store.SpaceIndex(spaceId)
 	reads := storeresolver.New(index)
+
+	// the reference sets are only consulted by fields/filters/sorts (and the
+	// type scope); the commonest global call — a bare full-text query — must
+	// not pay a full relation-listing store query per space for nothing
+	needRefs := req.Type != "" || len(req.Fields) > 0 || req.Filter != "" || len(req.Filters) > 0 || len(req.Sorts) > 0
+	if !needRefs {
+		plan.sorts = defaultSearchSorts(plan.textQuery, nil)
+		plan.filters = appendBaseRowScope(plan.filters)
+		return plan, nil
+	}
 
 	// rules 1 + 2: the reference key set
 	var refKeys []string
@@ -181,11 +212,20 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 	formatName := s.formatNameResolver(spaceId)
 	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
 
-	// rule 1 covers field keys too
+	// rule 1 covers field keys too — hard on the space search, warning-grade
+	// on the global fan-out (see the strictFields contract above)
 	var issues []apimodel.V2Issue
 	for i, field := range req.Fields {
-		if !allowed[field] {
+		if allowed[field] {
+			continue
+		}
+		if strictFields {
 			issues = append(issues, unknownPropertyIssue(field, fmt.Sprintf("/fields/%d", i), refKeys, listUrl))
+		} else {
+			plan.warnings = append(plan.warnings, apimodel.V2Issue{
+				Path:    fmt.Sprintf("/fields/%d", i),
+				Message: fmt.Sprintf("field %q is not a property of space %q — omitted from those rows", field, spaceId),
+			})
 		}
 	}
 	if len(issues) > 0 {
@@ -200,7 +240,10 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 			KnownKeys:     refKeys,
 			ResolveFormat: formatName,
 			KnownOptions: func(key string) ([]string, bool) {
-				return s.propertyOptionNames(spaceId, key), true
+				// ok=false when the store could not list the options: the
+				// check is skipped rather than asserting "no such option"
+				// about data the code never saw
+				return s.propertyOptionNames(spaceId, key)
 			},
 		})
 		if err != nil {
@@ -254,31 +297,56 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 			return nil, mapFilterCodecError(err, false)
 		}
 		plan.sorts = database.SortsFromProto(modelSorts)
+		// a date sort the request left includeTime-less defaults to second
+		// granularity, matching the default lastModifiedDate sort. Without
+		// this the granularity depended on whether the engine appended the
+		// full-text tiebreak: a single date sort got seconds via the store's
+		// isSingleDateSort compensation, the same sort + `query` got days.
+		for i := range plan.sorts {
+			if i >= len(probes) || probes[i].IncludeTime != nil || plan.sorts[i].IncludeTime {
+				continue
+			}
+			if name, ok := formatName(string(plan.sorts[i].RelationKey)); ok && name == "date" {
+				plan.sorts[i].IncludeTime = true
+			}
+		}
 	}
 
-	// the effective sort list — shared with the global merge comparator.
-	// Full-text with explicit sorts gets a relevance tiebreak appended, which
-	// also keeps the engine from prepending its own score sort; full-text
-	// without sorts is pure relevance; no query and no sorts falls back to
-	// newest-modified first (the ListObjects default).
-	if plan.textQuery != "" {
-		if !hasScoreSort(plan.sorts) {
-			plan.sorts = append(plan.sorts, database.SortRequest{
+	plan.sorts = defaultSearchSorts(plan.textQuery, plan.sorts)
+	plan.filters = appendBaseRowScope(plan.filters)
+	return plan, nil
+}
+
+// defaultSearchSorts builds the effective sort list — shared with the global
+// merge comparator. Full-text with explicit sorts gets a relevance tiebreak
+// appended, which also keeps the engine from prepending its own score sort;
+// full-text without sorts is pure relevance; no query and no sorts falls
+// back to newest-modified first (the ListObjects default).
+func defaultSearchSorts(textQuery string, sorts []database.SortRequest) []database.SortRequest {
+	if textQuery != "" {
+		if !hasScoreSort(sorts) {
+			sorts = append(sorts, database.SortRequest{
 				RelationKey: bundle.RelationKey_final_score,
 				Type:        model.BlockContentDataviewSort_Desc,
 			})
 		}
-	} else if len(plan.sorts) == 0 {
-		plan.sorts = []database.SortRequest{{
+		return sorts
+	}
+	if len(sorts) == 0 {
+		return []database.SortRequest{{
 			RelationKey: bundle.RelationKeyLastModifiedDate,
 			Type:        model.BlockContentDataviewSort_Desc,
 			IncludeTime: true,
 		}}
 	}
+	return sorts
+}
 
-	// base row scope (ListObjects parity): object layouts, no templates, no
-	// hidden objects; archived/deleted are excluded by the store's defaults
-	plan.filters = append(plan.filters,
+// appendBaseRowScope appends the base row scope (ListObjects parity): object
+// layouts, no templates, no hidden objects; archived/deleted are excluded by
+// the store's defaults.
+func appendBaseRowScope(filters []database.FilterRequest) []database.FilterRequest {
+	return append(filters,
 		database.FilterRequest{
 			RelationKey: bundle.RelationKeyResolvedLayout,
 			Condition:   model.BlockContentDataviewFilter_In,
@@ -295,7 +363,6 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 			Value:       domain.Bool(true),
 		},
 	)
-	return plan, nil
 }
 
 // hasScoreSort reports whether the sort list already orders by relevance.
@@ -336,11 +403,13 @@ func (s *V2Service) formatNameResolver(spaceId string) func(key string) (string,
 }
 
 // propertyOptionNames lists a select/multiSelect property's existing option
-// names (read-only — rule 3).
-func (s *V2Service) propertyOptionNames(spaceId, key string) []string {
+// names (read-only — rule 3). ok is false when the store lookup failed —
+// callers must then SKIP the option check instead of reporting a confident
+// "no such option" about data the code never actually listed.
+func (s *V2Service) propertyOptionNames(spaceId, key string) ([]string, bool) {
 	options, err := s.store.SpaceIndex(spaceId).ListRelationOptions(domain.RelationKey(key))
 	if err != nil {
-		return nil
+		return nil, false
 	}
 	names := make([]string, 0, len(options))
 	for _, option := range options {
@@ -349,7 +418,7 @@ func (s *V2Service) propertyOptionNames(spaceId, key string) []string {
 		}
 	}
 	sort.Strings(names)
-	return names
+	return names, true
 }
 
 // filterStringError maps a filterstring parse error to the C6 shape: one
@@ -437,9 +506,33 @@ func (s *V2Service) validateStructuredFilters(spaceId string, raw json.RawMessag
 				issues = append(issues, unknownPropertyIssue(node.Property, nodePath+"/property", refKeys, listUrl))
 				continue
 			}
+			format, formatKnown := formatName(node.Property)
+			// a date property takes unix seconds in the structured form
+			// (SPEC §6.2) — an RFC 3339 string would survive to the store,
+			// compare string-against-int64 and silently match nothing (or,
+			// through the quick-option day-range transform, everything).
+			// The string form converts RFC 3339 at parse time; here the
+			// mistake is rejected with the conversion spelled out.
+			if formatKnown && format == "date" {
+				for _, value := range stringValues(node.Value) {
+					issue := apimodel.V2Issue{
+						Path: nodePath + "/value",
+						Hint: fmt.Sprintf(`RFC 3339 dates belong to the compact filter string, e.g. "filter": "%s > \"%s\"" — or use a datePreset`, node.Property, value),
+					}
+					if sec, ok := filterstring.ParseDate(value); ok {
+						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds (%d), not %q", node.Property, sec, value)
+					} else {
+						issue.Message = fmt.Sprintf("property %q is a date — the structured form takes unix seconds, and %q is not a date", node.Property, value)
+					}
+					issues = append(issues, issue)
+				}
+			}
 			// rule 3: option names resolve read-only — never a silent no-match
-			if format, ok := formatName(node.Property); ok && (format == "select" || format == "multiSelect") {
-				names := s.propertyOptionNames(spaceId, node.Property)
+			if formatKnown && (format == "select" || format == "multiSelect") {
+				names, ok := s.propertyOptionNames(spaceId, node.Property)
+				if !ok {
+					continue // the store could not list the options — no check
+				}
 				for _, value := range stringValues(node.Value) {
 					if !containsString(names, value) {
 						issues = append(issues, apimodel.V2Issue{
@@ -544,7 +637,11 @@ type spaceRef struct {
 	name string
 }
 
-// spaceRefs enumerates the account's spaces from the tech space's views.
+// spaceRefs enumerates the account's spaces from the tech space's views,
+// filtered to the live ones (v1 ListSpaces' predicate): global search calls
+// SpaceIndex on every ref, which MINTS an index for the id, so a removed or
+// never-loaded space must not get one materialized as a search side effect.
+// A missing status field reads as Unknown (0) and stays included.
 func (s *V2Service) spaceRefs() ([]spaceRef, error) {
 	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
 		Filters: []database.FilterRequest{{
@@ -561,6 +658,14 @@ func (s *V2Service) spaceRefs() ([]spaceRef, error) {
 	for _, record := range records {
 		id := record.Details.GetString(bundle.RelationKeyTargetSpaceId)
 		if id == "" || seen[id] {
+			continue
+		}
+		localStatus := model.SpaceStatus(record.Details.GetInt64(bundle.RelationKeySpaceLocalStatus))
+		if localStatus != model.SpaceStatus_Unknown && localStatus != model.SpaceStatus_Ok {
+			continue
+		}
+		accountStatus := model.SpaceStatus(record.Details.GetInt64(bundle.RelationKeySpaceAccountStatus))
+		if accountStatus != model.SpaceStatus_Unknown && accountStatus != model.SpaceStatus_SpaceActive {
 			continue
 		}
 		seen[id] = true
@@ -588,6 +693,15 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req apimodel.V2Sear
 	if err := validateSearchShape(req); err != nil {
 		return nil, 0, false, nil, err
 	}
+	if offset > maxGlobalSearchOffset {
+		return nil, 0, false, nil, apimodel.V2ValidationFailed(
+			fmt.Sprintf("global search pages at most %d rows deep", maxGlobalSearchOffset),
+			apimodel.V2Issue{
+				Path:    "offset",
+				Message: fmt.Sprintf("offset %d exceeds the global-search maximum of %d — the cross-space merge materializes offset+limit rows per space", offset, maxGlobalSearchOffset),
+				Hint:    "narrow with filter, type or query, or page one space with POST /v2/spaces/{spaceId}/search",
+			})
+	}
 	spaces, err := s.spaceRefs()
 	if err != nil {
 		return nil, 0, false, nil, err
@@ -605,8 +719,9 @@ func (s *V2Service) GlobalSearchObjects(ctx context.Context, req apimodel.V2Sear
 	for _, space := range spaces {
 		// rule 4: type keys and option names resolve inside each space's loop
 		// iteration; a reference that resolves in only some spaces queries
-		// those and warns about the rest
-		plan, err := s.buildSearchPlan(space.id, req)
+		// those and warns about the rest. Fields are lenient here — a display
+		// column a space lacks must not remove that space from scope/total.
+		plan, err := s.buildSearchPlan(space.id, req, false)
 		if err != nil {
 			var v2Err *apimodel.V2Error
 			if errors.As(err, &v2Err) {

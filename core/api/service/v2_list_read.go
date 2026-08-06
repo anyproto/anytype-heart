@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/gogo/protobuf/types"
@@ -183,6 +184,9 @@ func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, wan
 	if err != nil {
 		return nil, 0, false, nil, err
 	}
+	if err := s.validateListFields(spaceId, fields); err != nil {
+		return nil, 0, false, nil, err
+	}
 
 	var (
 		filters  []database.FilterRequest
@@ -263,6 +267,36 @@ func (s *V2Service) listObjects(ctx context.Context, spaceId, listId string, wan
 		rows = append(rows, builder.row(record))
 	}
 	return rows, total, offset+len(records) < total, warnings, nil
+}
+
+// validateListFields runs the search surface's rule-1 key check over the
+// ?fields= query param: a typoed key must 400 with did-you-mean exactly like
+// POST search's /fields/i does — a 200 whose rows silently carry no
+// properties is indistinguishable from "no object has a value". The
+// reference set is the space's property keys plus the system allowlist (a
+// set/collection read has no top-level type to narrow by).
+func (s *V2Service) validateListFields(spaceId string, fields []string) error {
+	if len(fields) == 0 {
+		return nil
+	}
+	refKeys := appendMissing(s.knownPropertyKeys(spaceId), "name", "type")
+	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
+	sort.Strings(refKeys)
+	allowed := map[string]bool{}
+	for _, key := range refKeys {
+		allowed[key] = true
+	}
+	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
+	var issues []apimodel.V2Issue
+	for _, field := range fields {
+		if !allowed[field] {
+			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listUrl))
+		}
+	}
+	if len(issues) > 0 {
+		return apimodel.V2ValidationFailed("unknown property keys", issues...)
+	}
+	return nil
 }
 
 // resolveViewRef picks a stored view by exact id or unique suffix (the C4
@@ -379,20 +413,34 @@ func storeSlice(snapshot *model.SmartBlockSnapshotBase) []string {
 }
 
 // orderByMembership reorders records to the collection's store-slice order.
+// The input is the collection's WHOLE matching membership (the honest total
+// requires materializing it), not one page, so the sort is O(n log n) with
+// exactly one details read per record — the store returns essentially a
+// random permutation of the curated order, which made a comparison-time
+// details-reading insertion sort O(n²) on every unpaginated read.
 func orderByMembership(records []database.Record, members []string) {
 	position := make(map[string]int, len(members))
 	for i, id := range members {
 		position[id] = i
 	}
-	// insertion sort keeps it simple; collection pages are small
-	byPos := func(r database.Record) int {
-		return position[r.Details.GetString(bundle.RelationKeyId)]
+	keys := make([]int, len(records))
+	for i, record := range records {
+		keys[i] = position[record.Details.GetString(bundle.RelationKeyId)]
 	}
-	for i := 1; i < len(records); i++ {
-		for j := i; j > 0 && byPos(records[j]) < byPos(records[j-1]); j-- {
-			records[j], records[j-1] = records[j-1], records[j]
-		}
-	}
+	sort.Sort(&byPrecomputedKey{records: records, keys: keys})
+}
+
+// byPrecomputedKey sorts records by a parallel precomputed key slice.
+type byPrecomputedKey struct {
+	records []database.Record
+	keys    []int
+}
+
+func (b *byPrecomputedKey) Len() int           { return len(b.records) }
+func (b *byPrecomputedKey) Less(i, j int) bool { return b.keys[i] < b.keys[j] }
+func (b *byPrecomputedKey) Swap(i, j int) {
+	b.records[i], b.records[j] = b.records[j], b.records[i]
+	b.keys[i], b.keys[j] = b.keys[j], b.keys[i]
 }
 
 // substitutePlaceholders resolves the SPEC §6.2 dynamic placeholders in a
