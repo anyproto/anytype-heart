@@ -128,6 +128,32 @@ type V2SpaceRow struct {
 	Name string `json:"name"`
 }
 
+// V2Space is the space shape shared by GET-one and the space mutations
+// (Phase 7, APIV2_SURFACES.md §2): {id, name, description}. gatewayUrl and
+// networkId are client-infrastructure fields, deliberately absent from v2
+// (they remain reachable via v1). On a dry run (C9) nothing is committed:
+// Id stays empty and DryRun is true.
+type V2Space struct {
+	Id          string `json:"id,omitempty"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	DryRun      bool   `json:"dry_run,omitempty"`
+}
+
+// V2CreateSpaceRequest is the POST /v2/spaces body.
+type V2CreateSpaceRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+}
+
+// V2UpdateSpaceRequest is the PATCH /v2/spaces/{spaceId} body: omitted
+// fields stay unchanged (pointers distinguish absent from present-but-empty;
+// at least one field is required).
+type V2UpdateSpaceRequest struct {
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+}
+
 // V2MemberRow is a minimal member list row; agents need member ids for
 // assignee/creator property values.
 type V2MemberRow struct {

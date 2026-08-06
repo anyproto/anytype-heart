@@ -9,10 +9,7 @@ package handler
 // ?dry_run=true (C9).
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -31,33 +28,7 @@ const maxChatRequestBody = 1 << 20 // 1 MiB
 // 400s with the field named — C13's spirit at the request layer, matching
 // search). A false return means the error response was already written.
 func decodeChatBody(c *gin.Context, into any, hint string) bool {
-	body, err := io.ReadAll(io.LimitReader(c.Request.Body, maxChatRequestBody+1))
-	if err != nil {
-		RespondV2Error(c, apimodel.V2ValidationFailed("read request body",
-			apimodel.V2Issue{Message: err.Error()}))
-		return false
-	}
-	if len(body) > maxChatRequestBody {
-		RespondV2Error(c, apimodel.V2RequestTooLarge(
-			fmt.Sprintf("chat request body exceeds the %d-byte limit", maxChatRequestBody)))
-		return false
-	}
-	if len(bytes.TrimSpace(body)) == 0 {
-		RespondV2Error(c, apimodel.V2ValidationFailed("request body is required",
-			apimodel.V2Issue{Message: hint}))
-		return false
-	}
-	dec := json.NewDecoder(bytes.NewReader(body))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(into); err != nil {
-		issue := apimodel.V2Issue{Message: err.Error(), Hint: hint}
-		if field, ok := unknownFieldName(err); ok {
-			issue.Path = "/" + field
-		}
-		RespondV2Error(c, apimodel.V2ValidationFailed("invalid request body", issue))
-		return false
-	}
-	return true
+	return decodeStrictJSONBody(c, into, hint, maxChatRequestBody, "chat")
 }
 
 // respondChatMutation writes a chat mutation result: createdStatus on a real

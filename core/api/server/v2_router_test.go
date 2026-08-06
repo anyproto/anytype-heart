@@ -99,6 +99,10 @@ func TestV2Routes(t *testing.T) {
 			{"PUT", "/v2/spaces/space1/objects/obj1"},
 			{"PATCH", "/v2/spaces/space1/types/task"},
 			{"PATCH", "/v2/spaces/space1/properties/status"},
+			// Phase-7 space mutations: a retried space create without C8
+			// duplicates an ENTIRE SPACE — the worst possible duplicate
+			{"POST", "/v2/spaces"},
+			{"PATCH", "/v2/spaces/space1"},
 			// Phase-6 chat mutations: C8 on every one — a double-sent chat
 			// message is user-visible damage. DELETE is the Phase-6 widening
 			// of the middleware's method set.
@@ -213,6 +217,9 @@ func TestV2Routes(t *testing.T) {
 		fx := newV2ServerFixture(t)
 
 		for _, route := range []struct{ method, path string }{
+			{"GET", "/v2/spaces/space1"},
+			{"POST", "/v2/spaces"},
+			{"PATCH", "/v2/spaces/space1"},
 			{"POST", "/v2/spaces/space1/objects"},
 			{"POST", "/v2/spaces/space1/types"},
 			{"PATCH", "/v2/spaces/space1/types/task"},

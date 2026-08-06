@@ -95,6 +95,25 @@ func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommand
 		ensureAnalyticsEvent("V2ListSpaces", eventService),
 		handler.ListSpacesV2Handler(srv.v2Service),
 	)
+	// Phase-7 space surface: the read is a tech-space store query (no
+	// WorkspaceOpen/ObjectShow); both mutations carry C8 — a retried space
+	// create without idempotency duplicates an entire space.
+	v2.GET("/spaces/:space_id",
+		ensureAnalyticsEvent("V2GetSpace", eventService),
+		handler.GetSpaceV2Handler(srv.v2Service),
+	)
+	v2.POST("/spaces",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2CreateSpace", eventService),
+		handler.CreateSpaceV2Handler(srv.v2Service),
+	)
+	v2.PATCH("/spaces/:space_id",
+		writeRateLimitMW,
+		idempotencyMW,
+		ensureAnalyticsEvent("V2UpdateSpace", eventService),
+		handler.UpdateSpaceV2Handler(srv.v2Service),
+	)
 	v2.GET("/spaces/:space_id/objects",
 		ensureAnalyticsEvent("V2ListObjects", eventService),
 		handler.ListObjectsV2Handler(srv.v2Service),
