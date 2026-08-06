@@ -11,10 +11,27 @@ import (
 
 // TestToolCount pins the design constraint: the tool set stays under the
 // >15-tool small-model cliff (§7 — the count is part of the contract).
+// 12 = the original 11 + spaces (the bootstrap tool: nothing else could
+// produce a space id).
 func TestToolCount(t *testing.T) {
 	tools := Tools()
-	assert.Len(t, tools, 11)
+	assert.Len(t, tools, 12)
 	assert.Less(t, len(tools), 15, "the tool count is a design constraint — small models degrade past ~15 tools")
+}
+
+// TestVerbSet pins the CLI-visible verb set as a golden list — the verb
+// round-trip alone cannot detect a changed hyphenation rule or a renamed
+// tool.
+func TestVerbSet(t *testing.T) {
+	var got []string
+	for _, tool := range Tools() {
+		got = append(got, tool.Verb())
+	}
+	assert.Equal(t, []string{
+		"spaces", "find", "read", "describe", "create", "set-properties",
+		"check-item", "add-blocks", "edit-text", "set-cell", "move-block",
+		"delete-block",
+	}, got)
 }
 
 // TestOneDefinition asserts the executor map and the tool table agree

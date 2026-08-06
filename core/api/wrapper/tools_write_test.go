@@ -284,9 +284,24 @@ func TestBlockTools(t *testing.T) {
 func TestAmbiguityRetry(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("an ambiguous suffix re-reads and retries once with the full id", func(t *testing.T) {
+	// Scope, honestly stated (the Phase-5 review caught the old test
+	// implying more): a ref retained in the session is resolved to a full
+	// id BEFORE the send, so a 400 ambiguous_input can only name an
+	// unretained ref (an outline label, a pruned session). Re-resolving it
+	// by suffix over the re-read document applies the server's own rule to
+	// the server's own id set — so the retry fires exactly when the two
+	// disagree: the concurrent-modification race, where the collision the
+	// server saw at PATCH time is gone by the re-read (background sync
+	// removed or renamed the colliding block). A persistent ambiguity is
+	// unresolvable in principle and surfaces the server's error untouched
+	// (the second subtest).
+
+	t.Run("a raced ambiguity re-reads and retries once with the now-unique full id", func(t *testing.T) {
 		// given: the model echoes an outline label the wrapper has no map
-		// for, and inserts made it ambiguous server-side
+		// for; at PATCH time the server's document had a second block whose
+		// id ENDED in e0001 (the 400 below); by the re-read that block is
+		// gone — the surviving collision-shaped id has e0001 only in the
+		// MIDDLE, so the suffix now resolves uniquely
 		fx := newFixture(t)
 		fx.seedSession("space1", Handle{N: 1, Id: "bafyobj1"})
 		fx.stub("PATCH /v2/spaces/space1/objects/bafyobj1", 400,
@@ -298,8 +313,7 @@ func TestAmbiguityRetry(t *testing.T) {
 		// when
 		_, err := fx.Run(ctx, "check_item", map[string]any{"object": "1", "block": "e0001", "checked": true})
 
-		// then: aaaa…e0001 is the only id ENDING with e0001 (the other has
-		// e0001f in the middle), so the retry resolves it
+		// then
 		require.NoError(t, err)
 		patches := fx.sent("PATCH /v2/spaces/space1/objects/bafyobj1")
 		require.Len(t, patches, 2, "one ambiguous attempt, one retry")
@@ -307,6 +321,9 @@ func TestAmbiguityRetry(t *testing.T) {
 		assert.Equal(t, "aaaabbbbccccddddeeee0001", firstOp(t, patches[1])["id"])
 		assert.Equal(t, patches[0].Header.Get("Idempotency-Key"), patches[1].Header.Get("Idempotency-Key"),
 			"the retry keeps the same idempotency key")
+		session, _ := fx.store.Load()
+		assert.Equal(t, "aaaabbbbccccddddeeee0001", session.Labels["bafyobj1"]["e0001"],
+			"the re-read's labels are retained, so the model's next call starts resolved")
 	})
 
 	t.Run("a still-unresolvable ambiguity surfaces the server's error", func(t *testing.T) {

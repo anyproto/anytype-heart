@@ -17,6 +17,61 @@ import (
 // defaultFindLimit is find's page size when no limit is given.
 const defaultFindLimit = 10
 
+// defaultSpacesLimit is spaces' page size when no limit is given.
+const defaultSpacesLimit = 25
+
+// spacesResult is spaces' machine shape.
+type spacesResult struct {
+	Spaces  []apimodel.V2SpaceRow `json:"spaces"`
+	Total   int                   `json:"total"`
+	HasMore bool                  `json:"has_more"`
+}
+
+// runSpaces lists the user's spaces — the bootstrap tool: every trace needs
+// a space id, and before this tool nothing in the set could produce one.
+func (r *Runner) runSpaces(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
+	limit := defaultSpacesLimit
+	if v, ok := args["limit"]; ok {
+		limit, _ = intArg(v)
+		if limit < 1 {
+			limit = 1
+		}
+		if limit > 100 {
+			limit = 100
+		}
+	}
+	var resp apimodel.V2ListResponse[apimodel.V2SpaceRow]
+	err := r.client.decode(ctx, apiRequest{
+		method: "GET",
+		path:   "/v2/spaces",
+		query:  url.Values{"limit": []string{strconv.Itoa(limit)}},
+	}, &resp)
+	if err != nil {
+		return nil, err
+	}
+	var b strings.Builder
+	for _, row := range resp.Data {
+		name := row.Name
+		if name == "" {
+			name = "(unnamed)"
+		}
+		fmt.Fprintf(&b, "%s — %s\n", name, row.Id)
+	}
+	switch {
+	case resp.Total == 0:
+		b.WriteString("no spaces")
+	case resp.HasMore:
+		fmt.Fprintf(&b, "%d spaces — showing %d; raise limit for the rest", resp.Total, len(resp.Data))
+	default:
+		fmt.Fprintf(&b, "%d spaces", resp.Total)
+	}
+	b.WriteString("\npass the id after the dash as space to find, describe and create")
+	return &Result{
+		Text: b.String(),
+		JSON: spacesResult{Spaces: resp.Data, Total: resp.Total, HasMore: resp.HasMore},
+	}, nil
+}
+
 // findResult is find's machine shape.
 type findResult struct {
 	Handles []Handle `json:"handles"`
@@ -139,7 +194,11 @@ func (r *Runner) runCreate(ctx context.Context, session *Session, args map[strin
 		"name": strArg(args, "name"),
 	}
 	if props := objArg(args, "properties"); len(props) > 0 {
-		resolved, err := r.prepareValues(ctx, session, space, props, true)
+		formats, err := r.propertyFormats(ctx, space)
+		if err != nil {
+			return nil, err
+		}
+		resolved, err := r.prepareValues(ctx, session, space, formats, props, true)
 		if err != nil {
 			return nil, err
 		}
@@ -177,36 +236,43 @@ func (r *Runner) runSetProperties(ctx context.Context, session *Session, args ma
 	if err != nil {
 		return nil, err
 	}
-	op := map[string]any{"op": "setProperties"}
-	provided := false
-	for _, field := range []string{"set", "add"} {
-		if m := objArg(args, field); len(m) > 0 {
-			resolved, err := r.prepareValues(ctx, session, space, m, true)
-			if err != nil {
-				return nil, err
-			}
-			op[field] = resolved
-			provided = true
-		}
+	setM, addM, removeM := objArg(args, "set"), objArg(args, "add"), objArg(args, "remove")
+	if len(setM)+len(addM)+len(removeM) == 0 {
+		return nil, fmt.Errorf("set_properties needs set, add or remove — e.g. set: {\"status\": \"Done\"}")
 	}
-	if m := objArg(args, "remove"); len(m) > 0 {
+	// one property-index fetch serves set, add AND remove
+	formats, err := r.propertyFormats(ctx, space)
+	if err != nil {
+		return nil, err
+	}
+	op := map[string]any{"op": "setProperties"}
+	for _, field := range []struct {
+		name string
+		m    map[string]any
+	}{{"set", setM}, {"add", addM}} {
+		if len(field.m) == 0 {
+			continue
+		}
+		resolved, err := r.prepareValues(ctx, session, space, formats, field.m, true)
+		if err != nil {
+			return nil, err
+		}
+		op[field.name] = resolved
+	}
+	if len(removeM) > 0 {
 		// remove never creates anything server-side — no option guard, but
 		// @me / relative dates still resolve so entries match
-		resolved, err := r.prepareValues(ctx, session, space, m, false)
+		resolved, err := r.prepareValues(ctx, session, space, formats, removeM, false)
 		if err != nil {
 			return nil, err
 		}
 		op["remove"] = resolved
-		provided = true
-	}
-	if !provided {
-		return nil, fmt.Errorf("set_properties needs set, add or remove — e.g. set: {\"status\": \"Done\"}")
 	}
 	result, err := r.patchOps(ctx, session, space, objectId, op, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Text: editSummary(result), JSON: result}, nil
+	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
 }
 
 func (r *Runner) runCheckItem(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
@@ -223,7 +289,7 @@ func (r *Runner) runCheckItem(ctx context.Context, session *Session, args map[st
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Text: editSummary(result), JSON: result}, nil
+	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
 }
 
 // anchorTarget maps the wrapper's after/under vocabulary onto the op
@@ -259,7 +325,7 @@ func (r *Runner) runAddBlocks(ctx context.Context, session *Session, args map[st
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Text: editSummary(result), JSON: result}, nil
+	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
 }
 
 func (r *Runner) runEditText(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
@@ -277,7 +343,7 @@ func (r *Runner) runEditText(ctx context.Context, session *Session, args map[str
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Text: editSummary(result), JSON: result}, nil
+	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
 }
 
 func (r *Runner) runSetCell(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
@@ -285,18 +351,23 @@ func (r *Runner) runSetCell(ctx context.Context, session *Session, args map[stri
 	if err != nil {
 		return nil, err
 	}
+	// an empty value means "clear the cell" — the op documents null as clear
+	var value any = strArg(args, "value")
+	if value == "" {
+		value = nil
+	}
 	op := map[string]any{
 		"op":      "setCell",
 		"tableId": resolveBlockRef(session, objectId, strArg(args, "table")),
-		"row":     strArg(args, "row"),
-		"col":     strArg(args, "col"),
-		"value":   strArg(args, "value"),
+		"row":     resolveBlockRef(session, objectId, strArg(args, "row")),
+		"col":     resolveBlockRef(session, objectId, strArg(args, "col")),
+		"value":   value,
 	}
-	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"tableId"})
+	result, err := r.patchOps(ctx, session, space, objectId, op, []string{"tableId", "row", "col"})
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Text: editSummary(result), JSON: result}, nil
+	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
 }
 
 func (r *Runner) runMoveBlock(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
@@ -315,7 +386,7 @@ func (r *Runner) runMoveBlock(ctx context.Context, session *Session, args map[st
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Text: editSummary(result), JSON: result}, nil
+	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
 }
 
 func (r *Runner) runDeleteBlock(ctx context.Context, session *Session, args map[string]any) (*Result, error) {
@@ -334,7 +405,7 @@ func (r *Runner) runDeleteBlock(ctx context.Context, session *Session, args map[
 	if err != nil {
 		return nil, err
 	}
-	return &Result{Text: editSummary(result), JSON: result}, nil
+	return &Result{Text: editSummary(targetLabel(session, strArg(args, "object")), result), JSON: result}, nil
 }
 
 // rawJSONResult wraps a raw document for the JSON output channel.

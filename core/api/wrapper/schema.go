@@ -30,7 +30,7 @@ func toolSchema(t Tool) (json.RawMessage, error) {
 			if len(a.Enum) > 0 {
 				prop["enum"] = a.Enum
 			} else {
-				if a.Required {
+				if a.Required && !a.AllowEmpty {
 					prop["minLength"] = 1
 				}
 				if a.MaxLen > 0 {

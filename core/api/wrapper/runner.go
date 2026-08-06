@@ -60,6 +60,7 @@ func NewRunner(client *Client, store Store) *Runner {
 // executors maps tool names to implementations. A test asserts this map and
 // Tools() agree exactly — the one-definition contract.
 var executors = map[string]func(*Runner, context.Context, *Session, map[string]any) (*Result, error){
+	"spaces":         (*Runner).runSpaces,
 	"find":           (*Runner).runFind,
 	"read":           (*Runner).runRead,
 	"describe":       (*Runner).runDescribe,
@@ -124,7 +125,7 @@ func validateArgs(def Tool, args map[string]any) error {
 		v, present := args[a.Name]
 		if !present {
 			if a.Required {
-				return fmt.Errorf("%s needs %q — %s", def.Name, a.Name, a.Description)
+				return fmt.Errorf("%s needs %q%s", def.Name, a.Name, argHint(a))
 			}
 			continue
 		}
@@ -134,8 +135,11 @@ func validateArgs(def Tool, args map[string]any) error {
 			if !ok {
 				return fmt.Errorf("%s: %q must be a string", def.Name, a.Name)
 			}
-			if a.Required && s == "" {
-				return fmt.Errorf("%s needs %q — %s", def.Name, a.Name, a.Description)
+			// empty is distinct from missing: the argument WAS supplied, so
+			// the error must not claim otherwise (that shape produces a
+			// re-send-the-same-call repair loop)
+			if a.Required && s == "" && !a.AllowEmpty {
+				return fmt.Errorf("%s: %q must not be empty%s", def.Name, a.Name, argHint(a))
 			}
 			if len(a.Enum) > 0 && s != "" && !containsStr(a.Enum, s) {
 				return fmt.Errorf("%s: %q must be one of %s", def.Name, a.Name, strings.Join(a.Enum, ", "))
@@ -155,6 +159,14 @@ func validateArgs(def Tool, args map[string]any) error {
 		}
 	}
 	return nil
+}
+
+// argHint renders " — <description>" or nothing — never a dangling dash.
+func argHint(a Arg) string {
+	if a.Description == "" {
+		return ""
+	}
+	return " — " + a.Description
 }
 
 func containsStr(list []string, s string) bool {
@@ -249,23 +261,41 @@ var fullBlockIdRe = regexp.MustCompile(`^[0-9a-f]{24}$`)
 // labelLen is the starting label length (the C4 outline label shape).
 const labelLen = 5
 
-// relabelDoc replaces every full 24-hex block id in a document with a short
-// unique-suffix label and returns the rewritten document plus the label →
-// full-id map. The replacement is textual over the exact quoted ids, so the
-// document's canonical key order survives.
+// relabelDoc replaces every full 24-hex block id in a document — block ids
+// AND table row/column ids, which are the same bson-hex shape and the ids
+// set_cell takes — with a short unique-suffix label, returning the
+// rewritten document plus the label → full-id map. Uniqueness is computed
+// over the WHOLE pool, so a row label can never collide with a block label.
+// The replacement is textual over the exact quoted ids, so the document's
+// canonical key order survives (derived cell ids like "row-col" are left
+// alone: the quoted-exact match cannot touch them).
 func relabelDoc(doc []byte) ([]byte, map[string]string) {
+	type idHolder struct {
+		Id string `json:"id"`
+	}
 	var envelope struct {
 		Blocks []struct {
-			Id string `json:"id"`
+			Id      string     `json:"id"`
+			Columns []idHolder `json:"columns"`
+			Rows    []idHolder `json:"rows"`
 		} `json:"blocks"`
 	}
 	if err := json.Unmarshal(doc, &envelope); err != nil {
 		return doc, nil
 	}
-	ids := make([]string, 0, len(envelope.Blocks))
+	var ids []string
+	addId := func(id string) {
+		if fullBlockIdRe.MatchString(id) {
+			ids = append(ids, id)
+		}
+	}
 	for _, b := range envelope.Blocks {
-		if fullBlockIdRe.MatchString(b.Id) {
-			ids = append(ids, b.Id)
+		addId(b.Id)
+		for _, c := range b.Columns {
+			addId(c.Id)
+		}
+		for _, row := range b.Rows {
+			addId(row.Id)
 		}
 	}
 	if len(ids) == 0 {
@@ -406,8 +436,18 @@ func (r *Runner) patchOps(ctx context.Context, session *Session, spaceId, object
 }
 
 // retryAmbiguous re-reads the object and rewrites op's ref fields to full
-// ids where the suffix now resolves uniquely. Reports whether anything
-// changed.
+// ids where the suffix now resolves uniquely, reporting whether anything
+// changed. Scope, stated honestly: a ref RETAINED in the session never gets
+// here — resolveBlockRef resolved it to a full id before the send (§7.4's
+// retained-id promise, honored up front). So the 400 means the ref was not
+// retained (an outline label, a pruned session), and re-resolving it by
+// suffix over the CURRENT document self-heals exactly one case: the
+// concurrent-modification race, where the reference was ambiguous when the
+// PATCH ran but is unique against the re-read document (background sync
+// removed the collision). A ref that is STILL ambiguous on re-read is
+// unresolvable in principle — the wrapper cannot know which block the model
+// meant — and the server's error surfaces untouched. The re-read's labels
+// are retained either way, so the model's next read/edit starts resolved.
 func (r *Runner) retryAmbiguous(ctx context.Context, session *Session, spaceId, objectId string, op map[string]any, refFields []string) (bool, error) {
 	doc, err := r.client.raw(ctx, apiRequest{
 		method: "GET",
@@ -480,8 +520,28 @@ func translateOpsError(err error) error {
 	return te
 }
 
-// editSummary renders an edit result as the compact receipt text.
-func editSummary(result *apimodel.V2EditResult) string {
+// targetLabel names the resolved mutation target for the receipt: the
+// handle's object NAME when the reference was a handle, the raw reference
+// otherwise. Every mutation receipt must identify what was written — a find
+// between composing and running a call silently renumbers the handles, and
+// an anonymous "ok" would hide the mis-address from both the model and a
+// human reading the transcript.
+func targetLabel(session *Session, ref string) string {
+	if handleRe.MatchString(ref) {
+		n, _ := strconv.Atoi(ref)
+		if h, ok := session.handle(n); ok {
+			if h.Name != "" {
+				return fmt.Sprintf("%q", h.Name)
+			}
+			return h.Id
+		}
+	}
+	return ref
+}
+
+// editSummary renders an edit result as the compact receipt text, naming
+// the object that was written.
+func editSummary(target string, result *apimodel.V2EditResult) string {
 	var parts []string
 	stats := result.DiffStats
 	add := func(n int, what string) {
@@ -497,9 +557,9 @@ func editSummary(result *apimodel.V2EditResult) string {
 	if len(parts) == 0 {
 		parts = append(parts, "no changes")
 	}
-	line := "ok — " + strings.Join(parts, ", ")
+	line := fmt.Sprintf("ok — %s: %s", target, strings.Join(parts, ", "))
 	if result.DryRun {
-		line = "dry run — would apply: " + strings.Join(parts, ", ")
+		line = fmt.Sprintf("dry run — %s: would apply %s", target, strings.Join(parts, ", "))
 	}
 	for _, w := range result.Warnings {
 		line += "\nwarning: " + w.Message

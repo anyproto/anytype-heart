@@ -48,9 +48,13 @@ const (
 // Arg is one tool argument. The same definition renders the JSON schema,
 // the GBNF grammar, and the CLI flag.
 type Arg struct {
-	Name        string
-	Type        ArgType
-	Required    bool
+	Name     string
+	Type     ArgType
+	Required bool
+	// AllowEmpty marks a required string whose EMPTY value is meaningful
+	// (edit_text.replace deletes the found text, set_cell.value clears the
+	// cell): Required then means "present", not "non-empty".
+	AllowEmpty  bool
 	Description string
 	Enum        []string // string args only
 	MaxLen      int      // string args: schema maxLength
@@ -96,10 +100,18 @@ const objectArgDescription = "the object: a handle number from the last find (1,
 // blockArgDescription is the shared block-reference contract text.
 const blockArgDescription = "a block label from read (5 chars) or a full block id"
 
-// Tools returns the task-tool set — 11 tools, deliberately under the
+// Tools returns the task-tool set — 12 tools, deliberately under the
 // >15-tool small-model cliff. Order is the documentation order.
 func Tools() []Tool {
 	return []Tool{
+		{
+			Name:        "spaces",
+			Description: "List the spaces (name and id). Run this first when no space id is known — find, describe and create take a space id from here.",
+			Args: []Arg{
+				{Name: "limit", Type: ArgInteger, Min: 1, Max: 100, Description: "max spaces (default 25)"},
+			},
+			Example: map[string]any{"limit": 25},
+		},
 		{
 			Name:        "find",
 			Description: "Search objects in a space. Returns numbered handles (1, 2, …) the other tools accept as `object`. Each find renumbers the handles.",
@@ -159,7 +171,7 @@ func Tools() []Tool {
 			Args: []Arg{
 				{Name: "object", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: objectArgDescription},
 				{Name: "block", Type: ArgString, Required: true, MaxLen: maxRefLen, Description: blockArgDescription},
-				{Name: "checked", Type: ArgBoolean, Required: true},
+				{Name: "checked", Type: ArgBoolean, Required: true, Description: "true to check the box, false to uncheck"},
 			},
 			Example: map[string]any{"object": "1", "block": "ab3f2", "checked": true},
 		},
@@ -181,19 +193,19 @@ func Tools() []Tool {
 				{Name: "object", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: objectArgDescription},
 				{Name: "block", Type: ArgString, Required: true, MaxLen: maxRefLen, Description: blockArgDescription},
 				{Name: "find", Type: ArgString, Required: true, MaxLen: maxFindLen, Description: "exact text to replace, as it appears in the block"},
-				{Name: "replace", Type: ArgString, Required: true, MaxLen: maxFindLen, Description: "the new text"},
+				{Name: "replace", Type: ArgString, Required: true, AllowEmpty: true, MaxLen: maxFindLen, Description: "the new text — empty deletes the found text"},
 			},
 			Example: map[string]any{"object": "1", "block": "ab3f2", "find": "Q3", "replace": "Q4"},
 		},
 		{
 			Name:        "set_cell",
-			Description: "Write one table cell. row and col are the ids shown in read; value replaces the cell's text.",
+			Description: "Write one table cell. row and col are the labels shown in read; value replaces the cell's text.",
 			Args: []Arg{
 				{Name: "object", Type: ArgString, Required: true, MaxLen: maxKeyLen, Description: objectArgDescription},
 				{Name: "table", Type: ArgString, Required: true, MaxLen: maxRefLen, Description: "the table block (" + blockArgDescription + ")"},
-				{Name: "row", Type: ArgString, Required: true, MaxLen: maxRefLen, Description: "row id or unique suffix"},
-				{Name: "col", Type: ArgString, Required: true, MaxLen: maxRefLen, Description: "column id or unique suffix"},
-				{Name: "value", Type: ArgString, Required: true, MaxLen: maxFindLen, Description: "the new cell text"},
+				{Name: "row", Type: ArgString, Required: true, MaxLen: maxRefLen, Description: "a row label from read, or a full row id"},
+				{Name: "col", Type: ArgString, Required: true, MaxLen: maxRefLen, Description: "a column label from read, or a full column id"},
+				{Name: "value", Type: ArgString, Required: true, AllowEmpty: true, MaxLen: maxFindLen, Description: "the new cell text — empty clears the cell"},
 			},
 			Example: map[string]any{"object": "1", "table": "t9d2c", "row": "row2", "col": "col1", "value": "done"},
 		},
@@ -257,12 +269,16 @@ func ToolNames() []string {
 
 // ManifestTool is one manifest entry: the common function-calling
 // denominator (name/description/parameters) plus the C12 example and the
-// per-tool GBNF grammar (§7.3 item 2).
+// per-tool GBNF grammar (§7.3 item 2). Example is pre-rendered JSON in the
+// GRAMMAR's key order (required args in declared order, then optional) — a
+// Go map would serialize alphabetically, making the served example a string
+// the served grammar rejects; a test matches every example against its own
+// grammar.
 type ManifestTool struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description"`
 	Parameters  json.RawMessage `json:"parameters"`
-	Example     map[string]any  `json:"example"`
+	Example     json.RawMessage `json:"example"`
 	GBNF        string          `json:"gbnf"`
 }
 
@@ -293,11 +309,15 @@ func BuildManifest() (Manifest, error) {
 		if err != nil {
 			return Manifest{}, fmt.Errorf("schema for tool %s: %w", t.Name, err)
 		}
+		example, err := exampleJSON(t)
+		if err != nil {
+			return Manifest{}, fmt.Errorf("example for tool %s: %w", t.Name, err)
+		}
 		entries = append(entries, ManifestTool{
 			Name:        t.Name,
 			Description: t.Description,
 			Parameters:  schema,
-			Example:     t.Example,
+			Example:     example,
 			GBNF:        toolGBNF(t),
 		})
 	}
@@ -310,6 +330,54 @@ func BuildManifest() (Manifest, error) {
 			Examples: filterstring.Examples,
 		},
 	}, nil
+}
+
+// gbnfArgOrder returns a tool's args in the key order its GBNF pins:
+// required args in declared order, then optional args in declared order.
+func gbnfArgOrder(t Tool) []Arg {
+	ordered := make([]Arg, 0, len(t.Args))
+	for _, a := range t.Args {
+		if a.Required {
+			ordered = append(ordered, a)
+		}
+	}
+	for _, a := range t.Args {
+		if !a.Required {
+			ordered = append(ordered, a)
+		}
+	}
+	return ordered
+}
+
+// exampleJSON renders the C12 example with its keys in gbnfArgOrder — the
+// one order the tool's grammar accepts.
+func exampleJSON(t Tool) (json.RawMessage, error) {
+	var b strings.Builder
+	b.WriteByte('{')
+	first := true
+	for _, a := range gbnfArgOrder(t) {
+		v, ok := t.Example[a.Name]
+		if !ok {
+			continue
+		}
+		if !first {
+			b.WriteByte(',')
+		}
+		first = false
+		key, err := json.Marshal(a.Name)
+		if err != nil {
+			return nil, fmt.Errorf("encode example key %s: %w", a.Name, err)
+		}
+		b.Write(key)
+		b.WriteByte(':')
+		val, err := json.Marshal(v)
+		if err != nil {
+			return nil, fmt.Errorf("encode example value of %s: %w", a.Name, err)
+		}
+		b.Write(val)
+	}
+	b.WriteByte('}')
+	return json.RawMessage(b.String()), nil
 }
 
 // ManifestJSON renders the manifest as compact JSON (C3).

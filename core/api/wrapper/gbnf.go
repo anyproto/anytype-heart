@@ -49,14 +49,32 @@ func toolGBNF(t Tool) string {
 	}
 	var b strings.Builder
 	b.WriteString("root ::= \"{\" ws ")
-	for i, a := range required {
-		if i > 0 {
-			b.WriteString(" \",\" ws ")
+	if len(required) == 0 {
+		// optional-only tool: a nested chain (p1 ("," p2 …)?)? — no leading
+		// comma to dangle when everything is omitted, and {} stays in the
+		// language
+		chain := ""
+		for i := len(optional) - 1; i >= 0; i-- {
+			p := pairRule(optional[i].Name)
+			if chain == "" {
+				chain = p
+			} else {
+				chain = p + " (\",\" ws " + chain + ")?"
+			}
 		}
-		b.WriteString(pairRule(a.Name))
-	}
-	for _, a := range optional {
-		fmt.Fprintf(&b, " (\",\" ws %s)?", pairRule(a.Name))
+		if chain != "" {
+			b.WriteString("(" + chain + ")?")
+		}
+	} else {
+		for i, a := range required {
+			if i > 0 {
+				b.WriteString(" \",\" ws ")
+			}
+			b.WriteString(pairRule(a.Name))
+		}
+		for _, a := range optional {
+			fmt.Fprintf(&b, " (\",\" ws %s)?", pairRule(a.Name))
+		}
 	}
 	b.WriteString(" ws \"}\"\n")
 	for _, a := range t.Args {
@@ -105,19 +123,26 @@ func valueRule(a Arg) string {
 // EBNF (filterstring.EBNF, SPEC §6.2.1). It constrains to the canonical
 // surface — uppercase keywords, camelCase preset names, ASCII identifiers —
 // which is what constrained decoding should produce; the parser itself is
-// case-insensitive and Unicode-lenient.
+// case-insensitive and Unicode-lenient. The leaf splits on the condition's
+// first token: symbol-led conditions (compare/eqop) may follow the key with
+// optional whitespace, word-led conditions (CONTAINS/IN/HAS/IS/EXISTS/NOT)
+// REQUIRE it — otherwise "titleEXISTS" is in the grammar's language and the
+// parser rejects it, steering a constrained decoder into a 400. Known
+// looseness (GBNF cannot express the exclusion): `key` still admits the
+// reserved words themselves, so `AND = 1` stays grammar-legal but
+// parser-illegal.
 const filterStringGBNF = `root ::= fws orexpr fws
 orexpr ::= andexpr (rws "OR" rws andexpr)*
 andexpr ::= primary (rws "AND" rws primary)*
 primary ::= "(" fws orexpr fws ")" | leaf
-leaf ::= key fws cond
-cond ::= compare fws value
-       | eqop fws valuelist
-       | ("NOT" rws)? "CONTAINS" rws value
-       | ("NOT" rws)? "IN" fws valuelist
-       | ("NOT" rws)? "HAS" rws "ALL" fws valuelist
-       | "IS" rws ("NOT" rws)? "EMPTY"
-       | "EXISTS"
+leaf ::= key fws symcond | key rws wordcond
+symcond ::= compare fws value
+          | eqop fws valuelist
+wordcond ::= ("NOT" rws)? "CONTAINS" rws value
+           | ("NOT" rws)? "IN" fws valuelist
+           | ("NOT" rws)? "HAS" rws "ALL" fws valuelist
+           | "IS" rws ("NOT" rws)? "EMPTY"
+           | "EXISTS"
 compare ::= ">=" | "<=" | "!=" | "=" | ">" | "<"
 eqop ::= "=" | "!="
 valuelist ::= "(" fws fvalue (fws "," fws fvalue)* fws ")"

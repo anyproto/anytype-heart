@@ -96,12 +96,10 @@ var selectFormats = map[string]bool{"select": true, "multiSelect": true}
 // prepareValues resolves @me and relative dates in a property-value map and
 // — when guard is set — pre-validates select option names (the A2 guard).
 // Unknown keys pass through untouched: the server's referential layer owns
-// key validation and its did-you-mean texts.
-func (r *Runner) prepareValues(ctx context.Context, session *Session, spaceId string, values map[string]any, guard bool) (map[string]any, error) {
-	formats, err := r.propertyFormats(ctx, spaceId)
-	if err != nil {
-		return nil, err
-	}
+// key validation and its did-you-mean texts. formats is the space's property
+// key → format index (propertyFormats), loaded ONCE per tool call — a
+// set_properties with set+add+remove must not fetch the index three times.
+func (r *Runner) prepareValues(ctx context.Context, session *Session, spaceId string, formats map[string]string, values map[string]any, guard bool) (map[string]any, error) {
 	out := make(map[string]any, len(values))
 	for key, value := range values {
 		format := formats[key]
@@ -119,12 +117,18 @@ func (r *Runner) prepareValues(ctx context.Context, session *Session, spaceId st
 	return out, nil
 }
 
-// resolveValue rewrites one value: @me anywhere, relative dates on
-// date-format keys.
+// meFormats are the property formats whose values can hold a participant id
+// — the only place the @me sentinel substitutes. On any other format the
+// token is DATA (a description or name literally containing "@me" must not
+// silently become a participant id).
+var meFormats = map[string]bool{"objects": true}
+
+// resolveValue rewrites one value: @me on object-format keys, relative
+// dates on date-format keys.
 func (r *Runner) resolveValue(ctx context.Context, session *Session, spaceId, format string, value any) (any, error) {
 	switch v := value.(type) {
 	case string:
-		if v == meSentinel {
+		if v == meSentinel && meFormats[format] {
 			return r.meFor(ctx, session, spaceId)
 		}
 		if format == "date" {
