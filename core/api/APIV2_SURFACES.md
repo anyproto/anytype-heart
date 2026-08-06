@@ -99,8 +99,8 @@ expensive by construction: per space-view row it calls `WorkspaceOpen` +
 carries `gateway_url` and `network_id` (`model/space.go:17-25`).
 
 **What v2 has.** `GET /v2/spaces` shipped (`router.go:94`), one store query
-over tech-space space views, rows `{id, name}` (`service/v2_discovery.go:26-53`,
-`model/v2.go:124-128`). No get-one, no create, no update.
+over tech-space space views, rows `{id, name}` (`v2/service/discovery.go:26-53`,
+`v2/model/model.go:124-128`). No get-one, no create, no update.
 
 **Agent workflow.** (1) Orientation: "which space am I in / which spaces
 exist" — the shipped list answers it. (2) A description is genuinely useful
@@ -169,7 +169,7 @@ sanitization (`handler/file.go:38-76`, `service/file.go:68-162`), `DELETE
 
 **What v2 has.** `POST /v2/spaces/{spaceId}/files` shipped — multipart *or*
 `{"url": …}`, returns `{id, name, mimeType, size}`, stamps `origin: api`
-(`service/v2_file.go:21-50`, route `router.go:264`). APIV2.md already calls
+(`v2/service/file.go:21-50`, route `router.go:264`). APIV2.md already calls
 it load-bearing (R11): file/image blocks and `iconImage` need the id.
 
 **Agent workflow, honestly assessed.** Agents deal in text; what they do with
@@ -195,11 +195,11 @@ for a capability the middleware does not have (Q7).
   explicit opt-in (`prepareBaseFilters(includeFileLayouts)`,
   `service/search.go:178-186`) — so a pure-v2 agent could upload an image
   and never find it again. What was widened is **search only**
-  (`service/v2_search.go appendBaseRowScope`): naming a file type in the
+  (`v2/service/search.go appendBaseRowScope`): naming a file type in the
   type channel (`type = "image"`, top-level `type: "file"`, …) widens the
   layout scope to `ObjectAndFileLayouts` for that query — the v1 opt-in
   reproduced without a new parameter. **ListObjects keeps the narrow
-  `ObjectLayouts` scope by design** (`service/v2_object.go` — it has no
+  `ObjectLayouts` scope by design** (`v2/service/object.go` — it has no
   type channel and deliberately gains none; file discovery is search's
   job), and the sets/collections reads never had the layout scope at all,
   so a set over a file type already returned its rows. Rows come back
@@ -367,7 +367,7 @@ profile/manifest — the >15-tool cliff (§7) rules out widening the core set.
 
 ### Phase 6 — chats for agents (BUILT 2026-08-06 — APIV2.md §8.7)
 
-1. **[built]** v2 chat DTOs + inline-markup bridge (`model/v2_chat.go`):
+1. **[built]** v2 chat DTOs + inline-markup bridge (`v2/model/chat.go`):
    marks ↔ §8 markup text via the anyblockjson inline codec, both
    directions; reactions compaction (counts default, `?reactions=full` as
    participant ids); author name enrichment — store-backed via the
@@ -377,7 +377,7 @@ profile/manifest — the >15-tool cliff (§7) rules out widening the core set.
    opens — the test fails on any RPC) + `POST /chats` (thin `ObjectCreate`
    with the `chatDerived` type; non-empty name required).
 3. **[built]** `GET /messages` with `state`+`messageCount` passthrough
-   (`service/v2_chat.go`).
+   (`v2/service/chat.go`).
 4. **[built]** `POST`/`PATCH`/`DELETE` message + reactions toggle, C8 on all
    (the middleware's method set widened to DELETE for the chat delete
    route), C9 dry runs (PATCH is a read-merge — the edit RPC replaces the

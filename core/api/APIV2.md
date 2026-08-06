@@ -190,7 +190,7 @@ PATCH/DELETE /v2/spaces/{spaceId}/properties/{key}    # update / archive
   the generic AnyBlock create path (Template kind + `templateFor`), which
   the importer already supports (R-note).
 - **Resolver wiring was the substance of this phase** (shipped:
-  `core/api/service/v2_resolver.go`, `creatingResolvers`): the
+  `core/api/v2/service/resolver.go`, `creatingResolvers`): the
   create-missing property/option bridging from `anyblockjson`'s
   `PropertyResolver`/`OptionResolver` to objectstore +
   `ObjectCreateRelation`/`ObjectCreateRelationOption`. The **referential
@@ -1656,8 +1656,8 @@ race guard was unreachable by construction. v2 passes both through and
 `POST read` forwards the guard.
 
 **Endpoints** (`server/router.go registerV2ChatRoutes`; handlers
-`handler/v2_chat.go`, service `service/v2_chat.go`, DTOs
-`model/v2_chat.go`):
+`v2/handler/chat.go`, service `v2/service/chat.go`, DTOs
+`v2/model/chat.go`):
 
 ```
 GET    /v2/spaces/{spaceId}/chats                                  # C5 rows {id,name}
@@ -1863,14 +1863,14 @@ runtime-verified, incl. whether the object is indexed unhidden.
 
 **Tests that pin the phase** (each fails if its behavior reverts):
 state+messageCount passthrough incl. `lastStateId`
-(`service/v2_chat_test.go`), the markup bridge both directions + the
-round-trip (`model/v2_chat_test.go`), reactions counts/full as
+(`v2/service/chat_test.go`), the markup bridge both directions + the
+round-trip (`v2/model/chat_test.go`), reactions counts/full as
 participant ids, the no-chat-opens list (any RPC fails the mock), the
 edit merge preserving attachments, `upTo` required / reactions-scope
 bounds rejected, lastStateId forwarding on POST read, C8 wiring on all
 six chat mutations incl. the DELETE replay
-(`server/v2_router_test.go`, `server/v2_middleware_test.go`), and the
-chat discovery kinds' strictness (`service/v2_schemas_test.go`).
+(`server/v2_router_test.go`, `api/v2/middleware_test.go`), and the
+chat discovery kinds' strictness (`v2/service/schemas_test.go`).
 
 ### 8.8 Phase-7 implementation notes (periphery — decisions as built)
 
@@ -1957,7 +1957,7 @@ POST  /v2/spaces               {"name","description"?} → the same shape (201)
 PATCH /v2/spaces/{spaceId}     {"name"?,"description"?} → the same shape
 ```
 
-(`handler/v2_space.go`, `service/v2_space.go`, DTOs in `model/v2.go`;
+(`v2/handler/space.go`, `v2/service/space.go`, DTOs in `v2/model/model.go`;
 routes beside the spaces list in `router.go`.) `gatewayUrl`/`networkId`
 stay v1-only (client infrastructure, not agent fields). No space delete
 (v1 has none; deletion is an account-level operation). The spaces LIST
@@ -2056,7 +2056,7 @@ onto the agent).
   everything else stays 500 with the description carried.
 
 **Handler plumbing note.** The chat handlers' strict body decoder was
-generalized (`decodeStrictJSONBody`, `handler/v2_error.go`) and is shared
+generalized (`decodeStrictJSONBody`, `v2/handler/error.go`) and is shared
 by the space handlers; chat error texts are unchanged
 (`decodeChatBody` delegates).
 
@@ -2070,8 +2070,8 @@ strictness, the opt-in matrix (top-level type / string leaf / structured
 leaf / mixed IN / negated leaf / bare search) where the widening test
 can only pass through `ObjectAndFileLayouts`, and the fields aliases
 rendering from the backing relations
-(`service/v2_search_test.go TestV2SearchFileLayoutOptIn`,
-`service/v2_space_test.go`, `handler/v2_space_handler_test.go`).
+(`v2/service/search_test.go TestV2SearchFileLayoutOptIn`,
+`v2/service/space_test.go`, `v2/handler/space_test.go`).
 
 **Review hardening (2026-08-06, three opus lenses)** added the pins for
 everything the hardening changed: per-space alias shadowing
