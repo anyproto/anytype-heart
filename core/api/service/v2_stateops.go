@@ -1003,6 +1003,13 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	return nil
 }
 
+// v2MaxMarkdownBlocksPerOp caps how many blocks one op's markdown payload
+// may parse to — the same 256 the blocks channel's schema pins (maxItems).
+// The markdown channel is byte-bounded by its schema, but 3 bytes can encode
+// one block, so without a parsed-run cap a maximum-size body reaches ~350k
+// blocks per op — the two payload channels must share one cap.
+const v2MaxMarkdownBlocksPerOp = 256
+
 // insertPayload picks the insertBlocks payload channel: the blocks array, or
 // the markdown authoring alternative (§7.1) parsed into the same flat-run
 // shape. Exactly one must be given.
@@ -1014,7 +1021,13 @@ func insertPayload(op opInsertBlocks, opPath string) ([]json.RawMessage, string,
 		return nil, "", apimodel.V2AmbiguousInput("provide blocks or markdown, not both",
 			apimodel.V2Issue{Path: opPath, Message: "blocks (flat AnyBlock payload) and markdown (parsed server-side) are alternative payload channels for insertBlocks"})
 	case hasMarkdown:
-		run := anyblockjson.ParseMarkdownBlocks(op.Markdown)
+		run, exceeded := anyblockjson.ParseMarkdownBlocksLimit(op.Markdown, v2MaxMarkdownBlocksPerOp)
+		if exceeded {
+			return nil, "", apimodel.V2ValidationFailed("markdown produced too many blocks",
+				apimodel.V2Issue{Path: opPath + ".markdown", Message: fmt.Sprintf(
+					"the markdown parses to more than %d blocks — the per-op limit is %d (the blocks channel's cap); split the content across several insertBlocks ops",
+					v2MaxMarkdownBlocksPerOp, v2MaxMarkdownBlocksPerOp)})
+		}
 		if len(run) == 0 {
 			return nil, "", apimodel.V2ValidationFailed("markdown produced no blocks",
 				apimodel.V2Issue{Path: opPath + ".markdown", Message: "the markdown body contains no content — give at least one non-blank line"})

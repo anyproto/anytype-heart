@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -135,19 +136,68 @@ func (s *V2Service) createFromShortcut(ctx context.Context, spaceId string, fiel
 			return nil, err
 		}
 	}
+	markdownBlocks := false
 	if shortcut.Markdown != "" {
-		if run := anyblockjson.ParseMarkdownBlocks(shortcut.Markdown); len(run) > 0 {
-			if doc["blocks"], err = rawJSON(run); err != nil {
-				return nil, err
-			}
+		run, exceeded := anyblockjson.ParseMarkdownBlocksLimit(shortcut.Markdown, v2MaxCreateMarkdownBlocks)
+		if exceeded {
+			return nil, apimodel.V2ValidationFailed("markdown produced too many blocks",
+				apimodel.V2Issue{Path: "/markdown", Message: fmt.Sprintf(
+					"the markdown parses to more than %d blocks — the create limit is %d; create with a shorter body and add the rest with PATCH insertBlocks",
+					v2MaxCreateMarkdownBlocks, v2MaxCreateMarkdownBlocks)})
 		}
+		if len(run) == 0 {
+			// same contract as the insertBlocks markdown channel — a silent
+			// empty object teaches the caller nothing (C6)
+			return nil, apimodel.V2ValidationFailed("markdown produced no blocks",
+				apimodel.V2Issue{Path: "/markdown", Message: "the markdown body contains no content — give at least one non-blank line, or omit markdown"})
+		}
+		if doc["blocks"], err = rawJSON(run); err != nil {
+			return nil, err
+		}
+		markdownBlocks = true
 	}
 	docJSON, err := encodeEnvelope(doc)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.createFromDocument(ctx, spaceId, docJSON, docCreateOptions{dryRun: dryRun})
+	result, err := s.createFromDocument(ctx, spaceId, docJSON, docCreateOptions{dryRun: dryRun})
+	if err != nil && markdownBlocks {
+		// the blocks array is synthetic here — readdress its issues to the
+		// markdown channel the caller actually sent (C6)
+		err = rebaseMarkdownCreateError(err)
+	}
+	return result, err
+}
+
+// v2MaxCreateMarkdownBlocks caps how many blocks a create shortcut's markdown
+// body may parse to. Wider than the per-op insertBlocks cap (a whole document
+// vs one insertion) but still a hard bound: the byte-bounded markdown channel
+// would otherwise reach hundreds of thousands of blocks in one change set.
+const v2MaxCreateMarkdownBlocks = 2048
+
+// rebaseMarkdownCreateError rewrites /blocks/<j>… issue paths onto
+// /markdown[<j>]… — the create-shortcut caller sent markdown, never a blocks
+// array, so a path into the synthesized document is unactionable (C6). j is
+// the parsed block position, the same convention the insertBlocks op's
+// createdBlocks keys document.
+func rebaseMarkdownCreateError(err error) error {
+	var v2Err *apimodel.V2Error
+	if !errors.As(err, &v2Err) {
+		return err
+	}
+	for i := range v2Err.Issues {
+		rest, ok := strings.CutPrefix(v2Err.Issues[i].Path, "/blocks/")
+		if !ok {
+			continue
+		}
+		if idx, tail, found := strings.Cut(rest, "/"); found {
+			v2Err.Issues[i].Path = fmt.Sprintf("/markdown[%s]/%s", idx, tail)
+		} else {
+			v2Err.Issues[i].Path = fmt.Sprintf("/markdown[%s]", rest)
+		}
+	}
+	return v2Err
 }
 
 // createFromDocument is the shared full-document create path: structural

@@ -350,6 +350,24 @@ func TestPatchObject(t *testing.T) {
 		assert.Equal(t, "ops[0].markdown", apiErr.Issues[0].Path)
 	})
 
+	t.Run("insertBlocks markdown over the block cap is rejected with the limit", func(t *testing.T) {
+		// the markdown channel is byte-bounded, but 3 bytes encode one block —
+		// the parsed run must share the blocks channel's 256 cap
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		md := strings.Repeat(`- x\n`, v2MaxMarkdownBlocksPerOp+1)
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(fmt.Sprintf(`{"op":"insertBlocks","after":"blockHeading1","markdown":"%s"}`, md)), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "markdown produced too many blocks", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "ops[0].markdown", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "256")
+		assert.Contains(t, apiErr.Issues[0].Message, "split the content")
+	})
+
 	t.Run("moveBlock with no anchor moves the subtree to the end", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")

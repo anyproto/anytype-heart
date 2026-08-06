@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -153,6 +155,58 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 		assert.True(t, result.DryRun)
 		assert.Empty(t, result.Id)
 		assert.Empty(t, result.Warnings, "the two-change-set dry-run caveat warning is gone")
+	})
+
+	t.Run("whitespace-only markdown is rejected, not a silent empty create", func(t *testing.T) {
+		// given: no create expectation — nothing may reach the creator
+		fx := newV2Fixture(t)
+
+		// when
+		_, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Doc","markdown":"   \n\t\n"}`), false)
+
+		// then: the same contract as the insertBlocks markdown channel (C6)
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+		assert.Equal(t, "markdown produced no blocks", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/markdown", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "give at least one non-blank line")
+	})
+
+	t.Run("markdown over the create block cap is rejected with the limit", func(t *testing.T) {
+		// given: 3 bytes per block would reach ~350k blocks in 1 MiB without
+		// the parsed-run cap; no create expectation — nothing may be built
+		fx := newV2Fixture(t)
+		body, err := json.Marshal(map[string]any{
+			"type": "page", "name": "Doc",
+			"markdown": strings.Repeat("- x\n", v2MaxCreateMarkdownBlocks+1),
+		})
+		require.NoError(t, err)
+
+		// when
+		_, err = fx.CreateObject(context.Background(), testSpaceId, body, false)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "markdown produced too many blocks", apiErr.Message)
+		require.Len(t, apiErr.Issues, 1)
+		assert.Equal(t, "/markdown", apiErr.Issues[0].Path)
+		assert.Contains(t, apiErr.Issues[0].Message, "2048")
+		assert.Contains(t, apiErr.Issues[0].Message, "insertBlocks")
+	})
+
+	t.Run("markdown-derived issue paths readdress /blocks to /markdown", func(t *testing.T) {
+		// the caller sent markdown, never a blocks array — a /blocks path into
+		// the synthesized document is unactionable (C6)
+		err := rebaseMarkdownCreateError(apimodel.V2ValidationFailed("the document failed AnyBlock validation",
+			apimodel.V2Issue{Path: "/blocks/1", Message: "nested under a divider block"},
+			apimodel.V2Issue{Path: "/blocks/3/text", Message: "too long"},
+			apimodel.V2Issue{Path: "/type", Message: "untouched"}))
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "/markdown[1]", apiErr.Issues[0].Path)
+		assert.Equal(t, "/markdown[3]/text", apiErr.Issues[1].Path)
+		assert.Equal(t, "/type", apiErr.Issues[2].Path)
 	})
 
 	t.Run("unknown shortcut key steers to the full document", func(t *testing.T) {
