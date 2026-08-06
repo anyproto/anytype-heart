@@ -55,6 +55,7 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 		return nil
 	}
 	database, schemaId := fetch.database, fetch.schemaId
+	c.registerPropertyScope(stub.Id, schemaId)
 
 	for name := range database.Properties {
 		c.properties.noteName(name)
@@ -94,7 +95,7 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 				fmt.Sprintf("property %q (verification) has no anytype counterpart and was skipped", name)))
 			continue
 		}
-		def, err := c.emitProperty(ctx, property, planProp, database.title(), sink)
+		def, err := c.emitProperty(ctx, c.propertyScope(stub.Id), property, planProp, database.title(), sink)
 		if err != nil {
 			return err
 		}
@@ -176,7 +177,7 @@ func (c *Converter) suggestPageType(entityId, schemaId string, database *databas
 // relation and its schema-declared options on first sight. A non-zero
 // planProp redirects the property onto the plan's target relation instead of
 // minting one from the notion id (docs/ImportV2LLM.md §4).
-func (c *Converter) emitProperty(ctx context.Context, property propertySchema, planProp schemaplan.PropertyPlan, containerName string, sink importv2.Sink) (*relationDef, error) {
+func (c *Converter) emitProperty(ctx context.Context, scope string, property propertySchema, planProp schemaplan.PropertyPlan, containerName string, sink importv2.Sink) (*relationDef, error) {
 	if _, supported := relationFormatOf(property.Type); !supported {
 		sink.Issue(importv2.Warning(importv2.IssueDataLoss, property.Id,
 			fmt.Sprintf("property %q of type %q is not supported and was skipped", property.Name, property.Type)))
@@ -185,19 +186,19 @@ func (c *Converter) emitProperty(ctx context.Context, property propertySchema, p
 	var def *relationDef
 	var created bool
 	if planProp.Key != "" {
-		def, created = c.properties.resolvePlanTarget(property, planProp)
+		def, created = c.properties.resolvePlanTarget(scope, property, planProp)
 		if def == nil {
 			// The shared target settled on a format this property's values
 			// cannot carry — degrade to the unplanned path, loudly.
 			sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, property.Id,
 				fmt.Sprintf("property %q cannot share target %q (format mismatch); imported unmapped", property.Name, planProp.Key)))
-			def, created = c.properties.resolveRelation(property)
+			def, created = c.properties.resolveRelation(scope, property)
 		} else {
 			sink.Issue(importv2.Info(importv2.IssuePropertyMapped,
 				fmt.Sprintf("database %q property %q imported as %q (%s)", containerName, property.Name, def.name, def.key)))
 		}
 	} else {
-		def, created = c.properties.resolveRelation(property)
+		def, created = c.properties.resolveRelation(scope, property)
 	}
 	if def == nil {
 		return nil, nil

@@ -59,7 +59,13 @@ type relationDef struct {
 // Sharing is opt-in and whitelisted: the bundled Tag redirect here, and
 // schemaplan.AllowedBundledTargets on the plan path.
 type propertiesStore struct {
-	byNotionId map[string]*relationDef
+	// byScopedId is keyed by (database, notion property id) — Notion's real
+	// identity for a property. The id alone is unique only WITHIN a database:
+	// teamspace templates hand several databases a property with the same
+	// slug id (a live workspace had "project" in both Docs and Meetings), and
+	// Notion itself says those differ — each carries its own dual_property
+	// back reference on the target database.
+	byScopedId map[string]*relationDef
 	// byKey dedupes by final anytype key — the identity plan targets share
 	// (two containers remapping onto dueDate resolve to one def).
 	byKey         map[string]*relationDef
@@ -70,7 +76,7 @@ type propertiesStore struct {
 
 func newPropertiesStore() *propertiesStore {
 	return &propertiesStore{
-		byNotionId: map[string]*relationDef{},
+		byScopedId: map[string]*relationDef{},
 		byKey:      map[string]*relationDef{},
 		options:    map[string]bool{},
 	}
@@ -79,12 +85,13 @@ func newPropertiesStore() *propertiesStore {
 // resolveRelation returns the relation for a property, creating the
 // definition on first sight. created=true means the caller must emit the
 // relation object before using it.
-func (p *propertiesStore) resolveRelation(property propertySchema) (def *relationDef, created bool) {
+func (p *propertiesStore) resolveRelation(scope string, property propertySchema) (def *relationDef, created bool) {
 	format, ok := relationFormatOf(property.Type)
 	if !ok {
 		return nil, false
 	}
-	if def, ok := p.byNotionId[property.Id]; ok {
+	scopedId := scopePropertyId(scope, property.Id)
+	if def, ok := p.byScopedId[scopedId]; ok {
 		return def, false
 	}
 
@@ -97,7 +104,7 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 		// database); latching it globally would leave the second database's
 		// Tags minting a private relation with its own option pool.
 		if existing, ok := p.byKey[bundle.RelationKeyTag.String()]; ok {
-			p.byNotionId[property.Id] = existing
+			p.byScopedId[scopedId] = existing
 			return existing, false
 		}
 		p.tagRedirected = true
@@ -108,21 +115,62 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 			name:      property.Name,
 			bundled:   true,
 		}
-		p.byNotionId[property.Id] = def
+		p.byScopedId[scopedId] = def
 		p.byKey[def.key] = def
 		return def, false
 	}
 
-	key := "nprop" + shortHash(property.Id)
+	// The minted key must scope too, or two databases' same-id properties
+	// would derive the same relation key and merge anyway.
+	key := "nprop" + shortHash(scopedId)
 	def = &relationDef{
 		key:       key,
 		sourceKey: "relation:" + key,
 		format:    format,
 		name:      property.Name,
 	}
-	p.byNotionId[property.Id] = def
+	p.byScopedId[scopedId] = def
 	p.byKey[key] = def
 	return def, true
+}
+
+// scopePropertyId builds the (database, property id) key. Pages resolve under
+// their parent database's scope, so a page's property still collapses onto the
+// relation its database declared — the one case that must.
+func scopePropertyId(scope, propertyId string) string {
+	return scope + "\x00" + propertyId
+}
+
+// propertyScope canonicalises any of a database's identifiers — its stub id or
+// its data-source id — onto one scope, so a page (whose parent names the data
+// source) and its database (registered under the stub id) resolve the same
+// property to the same relation. An id with no known database, such as a
+// workspace-level page's, scopes to itself: its properties are its own.
+func (c *Converter) propertyScope(id string) string {
+	if canonical, ok := c.propertyScopes[id]; ok {
+		return canonical
+	}
+	return id
+}
+
+// registerPropertyScope aliases a database's data-source id onto its stub id.
+func (c *Converter) registerPropertyScope(stubId, schemaId string) {
+	c.propertyScopes[stubId] = stubId
+	if schemaId != "" {
+		c.propertyScopes[schemaId] = stubId
+	}
+}
+
+// parentContainerId is the database a page belongs to, in whichever parent
+// form the stub carries; empty for a page that is not a database row.
+func parentContainerId(stub Entity) string {
+	switch stub.Parent.Type {
+	case "data_source_id":
+		return stub.Parent.DataSourceId
+	case "database_id":
+		return stub.Parent.DatabaseId
+	}
+	return stub.Id
 }
 
 // resolvePlanTarget resolves a property onto its schema-plan target: the
@@ -132,8 +180,9 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 // property's values — the caller degrades to the unplanned path with a
 // warning. Sanitize normalizes plans so this is a belt against unsanitized
 // or type-definition-seeded format divergence.
-func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schemaplan.PropertyPlan) (def *relationDef, created bool) {
-	if def, ok := p.byNotionId[property.Id]; ok {
+func (p *propertiesStore) resolvePlanTarget(scope string, property propertySchema, plan schemaplan.PropertyPlan) (def *relationDef, created bool) {
+	scopedId := scopePropertyId(scope, property.Id)
+	if def, ok := p.byScopedId[scopedId]; ok {
 		return def, false
 	}
 	sourceFormat, _ := relationFormatOf(property.Type)
@@ -144,7 +193,7 @@ func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schema
 	if bundle.HasRelation(plan.Key) {
 		key := plan.Key.String()
 		if def, ok := p.byKey[key]; ok {
-			p.byNotionId[property.Id] = def
+			p.byScopedId[scopedId] = def
 			return def, false
 		}
 		bundled := bundle.MustGetRelation(plan.Key)
@@ -156,7 +205,7 @@ func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schema
 			bundled:   true,
 		}
 		p.byKey[key] = def
-		p.byNotionId[property.Id] = def
+		p.byScopedId[scopedId] = def
 		return def, false
 	}
 	key := schemaplan.CustomRelationKey(plan.Key).String()
@@ -164,7 +213,7 @@ func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schema
 		if !schemaplan.FormatChangeAllowed(effective, def.format) {
 			return nil, false
 		}
-		p.byNotionId[property.Id] = def
+		p.byScopedId[scopedId] = def
 		return def, false
 	}
 	name := plan.Name
@@ -178,7 +227,7 @@ func (p *propertiesStore) resolvePlanTarget(property propertySchema, plan schema
 		name:      name,
 	}
 	p.byKey[key] = def
-	p.byNotionId[property.Id] = def
+	p.byScopedId[scopedId] = def
 	return def, true
 }
 

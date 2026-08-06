@@ -98,10 +98,15 @@ func TestCassetteWorkspace(t *testing.T) {
 			// definition objects — relations 140→208, options 178→213 — with
 			// content unchanged at 444; "Status" alone appeared in 18 of this
 			// workspace's databases, sharing one option pool between them.
-			// The last -1 is the bundled Tag redirect staying space-wide: this
+			// The -1 is the bundled Tag redirect staying space-wide: this
 			// workspace has two "Tags" properties (ids Bfgr and yq%7B~), and
 			// the second joins the bundled relation instead of minting its own.
-			Objects:        864,
+			// The +11 on top is property ids becoming database-scoped: Notion
+			// only guarantees them unique WITHIN a database, and this
+			// workspace's teamspace templates reuse slug ids ("project",
+			// "status") across databases, which collapsed unrelated properties
+			// onto one relation.
+			Objects:        875,
 			FileObjects:    41,
 			RootCandidates: 13,
 			Blocks:         5039,

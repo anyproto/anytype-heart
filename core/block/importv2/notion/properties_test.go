@@ -6,7 +6,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/anyproto/anytype-heart/core/block/importv2/schemaplan"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
+	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
 func tagProperty(id, name string) propertySchema {
@@ -26,8 +28,8 @@ func TestTagRedirectIsSpaceWide(t *testing.T) {
 		store.noteName(second.Name)
 
 		// when
-		firstDef, firstCreated := store.resolveRelation(first)
-		secondDef, secondCreated := store.resolveRelation(second)
+		firstDef, firstCreated := store.resolveRelation("db1", first)
+		secondDef, secondCreated := store.resolveRelation("db2", second)
 
 		// then
 		require.NotNil(t, firstDef)
@@ -47,8 +49,8 @@ func TestTagRedirectIsSpaceWide(t *testing.T) {
 		store.noteName("Tags")
 
 		// when
-		tagsDef, _ := store.resolveRelation(tagProperty("p1", "Tags"))
-		tagDef, _ := store.resolveRelation(tagProperty("p2", "Tag"))
+		tagsDef, _ := store.resolveRelation("db1", tagProperty("p1", "Tags"))
+		tagDef, _ := store.resolveRelation("db2", tagProperty("p2", "Tag"))
 
 		// then
 		require.NotNil(t, tagsDef)
@@ -65,12 +67,73 @@ func TestTagRedirectIsSpaceWide(t *testing.T) {
 		second := propertySchema{Id: "catB", Type: "select", Name: "Category"}
 
 		// when
-		firstDef, _ := store.resolveRelation(first)
-		secondDef, _ := store.resolveRelation(second)
+		firstDef, _ := store.resolveRelation("db1", first)
+		secondDef, _ := store.resolveRelation("db2", second)
 
 		// then
 		require.NotNil(t, firstDef)
 		require.NotNil(t, secondDef)
 		assert.NotEqual(t, firstDef.key, secondDef.key)
+	})
+}
+
+func TestPropertyIdIsScopedToItsDatabase(t *testing.T) {
+	t.Run("the same property id in two databases is two relations", func(t *testing.T) {
+		// given — Notion only guarantees property ids unique WITHIN a database.
+		// A real workspace's teamspace templates use slug ids, so "Docs" and
+		// "Meetings" both carry a relation property with id "project" — and
+		// Notion says they differ: each has its own dual_property back
+		// reference on the target database.
+		store := newPropertiesStore()
+		docs := propertySchema{Id: "project", Type: "select", Name: "Project"}
+		meetings := propertySchema{Id: "project", Type: "select", Name: "Project"}
+
+		// when
+		docsDef, docsCreated := store.resolveRelation("docsDb", docs)
+		meetingsDef, meetingsCreated := store.resolveRelation("meetingsDb", meetings)
+
+		// then
+		require.NotNil(t, docsDef)
+		require.NotNil(t, meetingsDef)
+		assert.True(t, docsCreated)
+		assert.True(t, meetingsCreated, "the second database needs its own relation")
+		assert.NotEqual(t, docsDef.key, meetingsDef.key,
+			"two databases' properties collapsed onto one relation and one option pool")
+	})
+
+	t.Run("a database and its pages still share one relation", func(t *testing.T) {
+		// given — the one case that MUST collapse: a page's property carries
+		// the same id as its database's schema declared
+		store := newPropertiesStore()
+		schema := propertySchema{Id: "prio", Type: "select", Name: "Priority"}
+
+		// when
+		fromSchema, created := store.resolveRelation("db1", schema)
+		fromPage, createdAgain := store.resolveRelation("db1", schema)
+
+		// then
+		require.NotNil(t, fromSchema)
+		require.NotNil(t, fromPage)
+		assert.True(t, created)
+		assert.False(t, createdAgain, "the page must reuse its database's relation")
+		assert.Equal(t, fromSchema.key, fromPage.key)
+	})
+
+	t.Run("a plan target is applied per database, not shadowed by the first", func(t *testing.T) {
+		// given — Sanitize scopes the two plans apart; the store must not
+		// short-circuit the second on a property-id hit and discard its plan
+		store := newPropertiesStore()
+		property := propertySchema{Id: "project", Type: "select", Name: "Project"}
+
+		// when
+		first, _ := store.resolvePlanTarget("docsDb", property,
+			schemaplan.PropertyPlan{Key: "project@doc", Format: model.RelationFormat_status})
+		second, _ := store.resolvePlanTarget("meetingsDb", property,
+			schemaplan.PropertyPlan{Key: "project@meeting", Format: model.RelationFormat_status})
+
+		// then
+		require.NotNil(t, first)
+		require.NotNil(t, second)
+		assert.NotEqual(t, first.key, second.key, "the second database's plan entry was discarded")
 	})
 }

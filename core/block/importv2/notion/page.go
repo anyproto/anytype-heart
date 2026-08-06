@@ -116,7 +116,7 @@ func (c *Converter) emitFetchedPage(ctx context.Context, f *fetchedPage, sink im
 	details.SetString(bundle.RelationKeySourceFilePath, stub.Id)
 	setTimestamps(details, page.CreatedTime, page.LastEditedTime)
 
-	if err := c.convertProperties(ctx, stub.Id, page.Properties, details, sink); err != nil {
+	if err := c.convertProperties(ctx, stub.Id, c.propertyScope(parentContainerId(stub)), page.Properties, details, sink); err != nil {
 		return err
 	}
 
@@ -177,7 +177,7 @@ func (c *Converter) pageTypeKey(stub Entity) string {
 // convertProperties maps every property value to a detail, emitting new
 // relation/option definitions first (shared store — a property seen on a
 // database and its pages is one relation).
-func (c *Converter) convertProperties(ctx context.Context, pageId string, properties map[string]propertyValue, details *domain.Details, sink importv2.Sink) error {
+func (c *Converter) convertProperties(ctx context.Context, pageId, scope string, properties map[string]propertyValue, details *domain.Details, sink importv2.Sink) error {
 	names := make([]string, 0, len(properties))
 	for name := range properties {
 		c.properties.noteName(name)
@@ -200,7 +200,7 @@ func (c *Converter) convertProperties(ctx context.Context, pageId string, proper
 		// properties were already resolved (and possibly remapped) by their
 		// database, and the rest are value-typed formula/rollup or orphan-page
 		// properties the plan does not cover (docs/ImportV2LLM.md §4).
-		def, err := c.emitProperty(ctx, propertySchema{
+		def, err := c.emitProperty(ctx, scope, propertySchema{
 			Id:   value.Id,
 			Type: effectivePropertyType(value),
 			Name: name,
@@ -211,7 +211,7 @@ func (c *Converter) convertProperties(ctx context.Context, pageId string, proper
 			}
 			continue
 		}
-		detailValue, companion, err := c.propertyDetail(ctx, pageId, name, value, def, sink)
+		detailValue, companion, err := c.propertyDetail(ctx, pageId, scope, name, value, def, sink)
 		if err != nil {
 			return err
 		}
@@ -269,7 +269,7 @@ type companionDetail struct {
 // propertyDetail converts one property value. The companion return carries
 // the "<name> (end)" date relation for ranges (approved decision; v1
 // dropped the end date).
-func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, value propertyValue, def *relationDef, sink importv2.Sink) (domain.Value, *companionDetail, error) {
+func (c *Converter) propertyDetail(ctx context.Context, pageId, scope, name string, value propertyValue, def *relationDef, sink importv2.Sink) (domain.Value, *companionDetail, error) {
 	switch value.Type {
 	case "rich_text":
 		runs, err := c.completeRichText(ctx, pageId, name, value, sink)
@@ -315,7 +315,7 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, val
 		keys, err := c.optionKeys(ctx, def, options, sink)
 		return domain.StringList(keys), nil, err
 	case "date":
-		return c.dateDetail(ctx, pageId, name, value.Date, sink)
+		return c.dateDetail(ctx, pageId, scope, name, value.Date, sink)
 	case "created_time":
 		return c.timeDetail(value.CreatedTime), nil, nil
 	case "checkbox":
@@ -377,7 +377,7 @@ func (c *Converter) propertyDetail(ctx context.Context, pageId, name string, val
 	}
 }
 
-func (c *Converter) dateDetail(ctx context.Context, pageId, name string, date *dateValue, sink importv2.Sink) (domain.Value, *companionDetail, error) {
+func (c *Converter) dateDetail(ctx context.Context, pageId, scope, name string, date *dateValue, sink importv2.Sink) (domain.Value, *companionDetail, error) {
 	if date == nil || date.Start == "" {
 		return domain.Invalid(), nil, nil
 	}
@@ -391,7 +391,7 @@ func (c *Converter) dateDetail(ctx context.Context, pageId, name string, date *d
 	var companion *companionDetail
 	if date.End != "" {
 		if end, _, err := parseNotionDate(date.End, date.TimeZone); err == nil {
-			endDef, created := c.properties.resolveRelation(propertySchema{
+			endDef, created := c.properties.resolveRelation(scope, propertySchema{
 				Id:   "end:" + name,
 				Type: "date",
 				Name: name + " (end)",

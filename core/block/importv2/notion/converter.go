@@ -70,7 +70,10 @@ type Converter struct {
 	// deferredTypes holds those types until their database's relations exist.
 	typeBackedContainers map[string]bool
 	deferredTypes        map[string]schemaplan.TypeDefinition
-	schemaFetches        map[string]*schemaFetch
+	// propertyScopes canonicalises a database's stub and data-source ids onto
+	// one property scope (see propertyScope).
+	propertyScopes map[string]string
+	schemaFetches  map[string]*schemaFetch
 }
 
 // Option configures a per-run converter.
@@ -108,6 +111,7 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		planTypeKeys:          map[domain.TypeKey]domain.TypeKey{},
 		typeBackedContainers:  map[string]bool{},
 		deferredTypes:         map[string]schemaplan.TypeDefinition{},
+		propertyScopes:        map[string]string{},
 		schemaFetches:         map[string]*schemaFetch{},
 	}
 	for _, opt := range opts {
