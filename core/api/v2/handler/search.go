@@ -89,13 +89,13 @@ func unknownFieldName(err error) (string, bool) {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string											true	"Space id"
-//	@Param			request		body		v2model.SearchRequest						true	"Search request"
-//	@Param			offset		query		int												false	"Items to skip"		default(0)
-//	@Param			limit		query		int												false	"Items to return"	default(25)
+//	@Param			space_id	path		string									true	"Space id"
+//	@Param			request		body		v2model.SearchRequestDoc				true	"Search request"
+//	@Param			offset		query		int										false	"Items to skip"		default(0)
+//	@Param			limit		query		int										false	"Items to return"	default(25)
 //	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
-//	@Failure		400			{object}	v2model.Error								"Invalid request (validation_failed / ambiguous_input)"
-//	@Failure		404			{object}	v2model.Error								"Space not found"
+//	@Failure		400			{object}	v2model.Error							"Invalid request (validation_failed / ambiguous_input)"
+//	@Failure		404			{object}	v2model.Error							"Space not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/search [post]
 func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -125,11 +125,11 @@ func SearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			request	body		v2model.SearchRequest						true	"Search request"
-//	@Param			offset	query		int												false	"Items to skip"		default(0)
-//	@Param			limit	query		int												false	"Items to return"	default(25)
+//	@Param			request	body		v2model.SearchRequestDoc				true	"Search request"
+//	@Param			offset	query		int										false	"Items to skip"		default(0)
+//	@Param			limit	query		int										false	"Items to return"	default(25)
 //	@Success		200		{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows with spaceId"
-//	@Failure		400		{object}	v2model.Error								"Invalid request"
+//	@Failure		400		{object}	v2model.Error							"Invalid request"
 //	@Security		bearerauth
 //	@Router			/v2/search [post]
 func GlobalSearchObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {

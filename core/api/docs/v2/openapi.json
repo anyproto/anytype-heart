@@ -1,12 +1,4176 @@
 {
-    "openapi": "3.1.0",
-    "info": {
-        "title": "Anytype API v2",
-        "version": "2025-11-08",
-        "description": "PLACEHOLDER — this document has not been generated yet. Run `make openapi` from the repository root to replace it with the real v2 specification, generated from the annotations in core/api/v2."
+  "components": {
+    "schemas": {
+      "ForbiddenError": {
+        "properties": {
+          "code": {
+            "example": "forbidden",
+            "type": "string"
+          },
+          "message": {
+            "example": "Forbidden",
+            "type": "string"
+          },
+          "object": {
+            "example": "error",
+            "type": "string"
+          },
+          "status": {
+            "example": 403,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "UnauthorizedError": {
+        "properties": {
+          "code": {
+            "example": "unauthorized",
+            "type": "string"
+          },
+          "message": {
+            "example": "Unauthorized",
+            "type": "string"
+          },
+          "object": {
+            "example": "error",
+            "type": "string"
+          },
+          "status": {
+            "example": 401,
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "AddChatMessageRequest": {
+        "properties": {
+          "attachments": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "replyTo": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatAttachment": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatMessage": {
+        "properties": {
+          "at": {
+            "type": "string"
+          },
+          "attachments": {
+            "items": {
+              "$ref": "#/components/schemas/ChatAttachment"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "author": {
+            "type": "string"
+          },
+          "authorId": {
+            "type": "string"
+          },
+          "blocksText": {
+            "type": "string"
+          },
+          "editedAt": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "order": {
+            "type": "string"
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "reactedBy": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "type": "object"
+          },
+          "reactions": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object"
+          },
+          "replyTo": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatMessageResult": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ChatMessagesResponse": {
+        "properties": {
+          "has_more": {
+            "type": "boolean"
+          },
+          "messageCount": {
+            "type": "integer"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "nextAfter": {
+            "type": "string"
+          },
+          "nextBefore": {
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ChatState"
+          }
+        },
+        "type": "object"
+      },
+      "ChatReactionRequest": {
+        "properties": {
+          "emoji": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatReactionResult": {
+        "properties": {
+          "added": {
+            "type": "boolean"
+          },
+          "dry_run": {
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ChatReadRequest": {
+        "properties": {
+          "lastStateId": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "upTo": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatReadResult": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "ChatResult": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatRow": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ChatState": {
+        "properties": {
+          "lastStateId": {
+            "type": "string"
+          },
+          "oldestUnreadMentionOrder": {
+            "type": "string"
+          },
+          "oldestUnreadOrder": {
+            "type": "string"
+          },
+          "unreadMentions": {
+            "type": "integer"
+          },
+          "unreadMessages": {
+            "type": "integer"
+          },
+          "unreadReactionOrder": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateChatRequest": {
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreateResult": {
+        "properties": {
+          "created": {
+            "$ref": "#/components/schemas/SideEffects"
+          },
+          "dry_run": {
+            "type": "boolean"
+          },
+          "etag": {
+            "description": "C7 etag of the created object",
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "key": {
+            "description": "identity key (types, properties)",
+            "type": "string"
+          },
+          "type": {
+            "description": "type key of the created object (C2)",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "CreateSpaceRequest": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "CreatedOption": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "property": {
+            "description": "property key",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "DiffStats": {
+        "properties": {
+          "blocksAdded": {
+            "type": "integer"
+          },
+          "blocksChanged": {
+            "type": "integer"
+          },
+          "blocksMoved": {
+            "type": "integer"
+          },
+          "blocksRemoved": {
+            "type": "integer"
+          },
+          "propertiesChanged": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "EditChatMessageRequest": {
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "EditResult": {
+        "properties": {
+          "created": {
+            "$ref": "#/components/schemas/SideEffects"
+          },
+          "createdBlocks": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "diffStats": {
+            "$ref": "#/components/schemas/DiffStats"
+          },
+          "dry_run": {
+            "type": "boolean"
+          },
+          "etag": {
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "Error": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "FileUploadResult": {
+        "properties": {
+          "dry_run": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "Issue": {
+        "properties": {
+          "hint": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ListResponse-ChatRow": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ChatRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ListResponse-MemberRow": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MemberRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ListResponse-ObjectRow": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ListResponse-OptionRow": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/OptionRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ListResponse-PropertyRow": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PropertyRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ListResponse-SpaceRow": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SpaceRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ListResponse-TypeRow": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/TypeRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ListResponse-ViewObject": {
+        "properties": {
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/ViewObject"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "has_more": {
+            "type": "boolean"
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "MemberRow": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "identity": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ObjectRow": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "properties": {
+            "additionalProperties": {},
+            "type": "object"
+          },
+          "spaceId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "OptionRow": {
+        "properties": {
+          "color": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "PropertyRow": {
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SchemaEntry": {
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "example": {
+            "type": "object"
+          },
+          "grammar": {
+            "type": "string"
+          },
+          "grammarExamples": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "kind": {
+            "type": "string"
+          },
+          "schema": {
+            "type": "object"
+          }
+        },
+        "type": "object"
+      },
+      "SchemaIndex": {
+        "properties": {
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/SchemaIndexEntry"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "ops": {
+            "items": {
+              "$ref": "#/components/schemas/SchemaIndexEntry"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "SchemaIndexEntry": {
+        "properties": {
+          "endpoint": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SearchRequestDoc": {
+        "properties": {
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "filter": {
+            "type": "string"
+          },
+          "filters": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "query": {
+            "type": "string"
+          },
+          "sorts": {
+            "items": {
+              "additionalProperties": {},
+              "type": "object"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "type": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SideEffects": {
+        "properties": {
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/CreatedOption"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "properties": {
+            "items": {
+              "$ref": "#/components/schemas/PropertyRow"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "Space": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "dry_run": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SpaceRow": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "TypeRow": {
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateSpaceRequest": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ValidateResponse": {
+        "properties": {
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "ViewObject": {
+        "additionalProperties": {},
+        "type": "object"
+      },
+      "WhoamiApi": {
+        "properties": {
+          "version": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "WhoamiGrant": {
+        "properties": {
+          "permission": {
+            "description": "the compact form agents string-match on",
+            "type": "string"
+          },
+          "scoped": {
+            "type": "boolean"
+          },
+          "spaces": {
+            "items": {
+              "$ref": "#/components/schemas/WhoamiGrantSpace"
+            },
+            "type": "array",
+            "uniqueItems": false
+          }
+        },
+        "type": "object"
+      },
+      "WhoamiGrantSpace": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permission": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "WhoamiKey": {
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "id": {
+            "description": "the app link's hash — the id the key list shows",
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "WhoamiResponse": {
+        "properties": {
+          "api": {
+            "$ref": "#/components/schemas/WhoamiApi"
+          },
+          "grant": {
+            "$ref": "#/components/schemas/WhoamiGrant"
+          },
+          "key": {
+            "$ref": "#/components/schemas/WhoamiKey"
+          },
+          "keyStatus": {
+            "type": "string"
+          },
+          "notice": {
+            "description": "the legacy sentence, verbatim printable",
+            "type": "string"
+          },
+          "scope": {
+            "description": "\"jsonApi\" | \"full\" | \"limited\"",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      }
     },
-    "paths": {},
-    "components": {
-        "schemas": {}
+    "securitySchemes": {
+      "bearerauth": {
+        "bearerFormat": "JWT",
+        "scheme": "bearer",
+        "type": "http"
+      }
     }
+  },
+  "info": {
+    "contact": {
+      "email": "support@anytype.io",
+      "name": "Anytype Support",
+      "url": "https://anytype.io/contact"
+    },
+    "description": "The agent-oriented Anytype local API. Objects are AnyBlock JSON documents (pkg/lib/anyblockjson/SPEC.md) rather than block trees, so one read returns a whole editable document and one PATCH edits it.\nOne vocabulary throughout (C2): camelCase, property keys, option names, and `type` as a type key — never an id, never snake_case. Responses are compact JSON (C3) with compact object refs plus a legend (C4); list and search rows carry id, name, type and the properties you asked for, and never embed type objects (C5).\nErrors share one shape (C6): {status, code, message, issues:[{path, message, hint}]}, path-addressed and naming the allowed values, so a failed call tells an agent how to repair it. Reads never fail on unknown content — anything a representation cannot express is reported in `warnings` (C11).\nEvery object read returns an `etag` derived from the tree heads plus an ETag header; mutations take `If-Match` and are advisory by default (C7). Every mutation honours `Idempotency-Key` (C8) and `?dry_run=true` (C9). Every list surface is paginated with limit=25 by default and steers you when it truncates (C10).\nSchemas are discoverable at runtime and strict-mode-compatible for constrained decoding (C12, C13): GET /v2/schemas lists the kinds, GET /v2/schemas/{kind} returns one, and GET /v2/schemas/ops/{op} returns the schema of a single PATCH op.",
+    "license": {
+      "name": "Any Source Available License 1.0",
+      "url": "https://github.com/anyproto/anytype-api/blob/main/LICENSE.md"
+    },
+    "termsOfService": "https://anytype.io/terms_of_use",
+    "title": "Anytype API v2",
+    "version": "2025-11-08"
+  },
+  "externalDocs": {
+    "description": "OpenAPI",
+    "url": "https://swagger.io/resources/open-api/"
+  },
+  "paths": {
+    "/v2/auth/whoami": {
+      "get": {
+        "description": "Describes the CREDENTIAL presented in the Authorization header — never the person; there is only one account on this API. `grant.scoped` is the load-bearing field: false means a legacy unscoped key (then `spaces` is `[]` and `permission` is null — never null spaces), true means enforcement constrains the key to exactly the listed spaces with the listed permission. `spaces[]` entries carry a per-entry `permission` (uniform today; per-space grants land without a wire change) and a `name` resolved through the same grant-intersected path as GET /v2/spaces. `keyStatus`/`notice` repeat the Anytype-Key-Status/Anytype-Notice header signal in the body. The token is read ONLY from the Authorization header; it is never accepted as a query or body parameter, and an unknown or revoked key gets a plain 401.",
+        "operationId": "v2_auth_whoami",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhoamiResponse"
+                }
+              }
+            },
+            "description": "The credential's grant as enforced"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Missing, unknown, revoked or expired key — the shared auth middleware's envelope (APIV2.md §8.9 seam), not the C6 shape"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenError"
+                }
+              }
+            },
+            "description": "Key scope does not admit the JSON API (e.g. Limited) — the shared scope gate's envelope"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Introspect the API key",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/schemas": {
+      "get": {
+        "description": "The §5 discovery index: every create kind with its endpoint and schema URL.",
+        "operationId": "v2_list_schemas",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaIndex"
+                }
+              }
+            },
+            "description": "Schema index"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List schemas",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/schemas/ops/{op}": {
+      "get": {
+        "description": "One op's tiny strict schema (C13) and a single-op minimal example. Ops: setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, addItems, removeItems.",
+        "operationId": "v2_get_op_schema",
+        "parameters": [
+          {
+            "description": "Op name",
+            "in": "path",
+            "name": "op",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaEntry"
+                }
+              }
+            },
+            "description": "Schema + example"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown op"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get schema for a PATCH op",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/schemas/{kind}": {
+      "get": {
+        "description": "One kind's JSON Schema and worked example (C12/C13). Kinds: object, shortcut, type, template, property, set, collection, file, filters.",
+        "operationId": "v2_get_schema",
+        "parameters": [
+          {
+            "description": "Schema kind",
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SchemaEntry"
+                }
+              }
+            },
+            "description": "Schema + example"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Unknown kind"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get schema for a kind",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/search": {
+      "post": {
+        "description": "Searches all spaces: type keys and option names resolve per space (a reference that resolves in only some spaces queries those and warns about the rest), results merge by the requested sort, total is the sum of per-space store counts (honest totals). Rows carry spaceId. Same request shape as the space search.",
+        "operationId": "v2_search_global",
+        "parameters": [
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequestDoc"
+              }
+            }
+          },
+          "description": "Search request",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ObjectRow"
+                }
+              }
+            },
+            "description": "Minimal object rows with spaceId"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid request"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Search objects (global)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces": {
+      "get": {
+        "description": "Returns {id, name, description} rows for the account's LIVE spaces — deleted, left and still-joining spaces are filtered out (the same predicate GET /v2/spaces/{space_id} and the global search use).",
+        "operationId": "v2_list_spaces",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-SpaceRow"
+                }
+              }
+            },
+            "description": "Minimal space rows"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List spaces (minimal rows)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "post": {
+        "description": "Creates a space: {name, description?} → the same shape. Thin over WorkspaceCreate. Both fields are capped at 4096 characters (the space kind's advertised maxLength — enforced). Honors Idempotency-Key (C8) — an auto-retried space create without a key duplicates an entire space — and ?dry_run=true (C9): the dry run validates the body only, a space create cannot be simulated.",
+        "operationId": "v2_create_space",
+        "parameters": [
+          {
+            "description": "Validate the body without creating",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "C8 replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSpaceRequest"
+              }
+            }
+          },
+          "description": "The space to create",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            },
+            "description": "Created space"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create space",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}": {
+      "get": {
+        "description": "Returns the space row {id, name, description} read from the tech space's space view — one store query, no workspace opens. Only LIVE spaces are served: a deleted, left or still-joining space 404s (the same predicate as the spaces list). gatewayUrl/networkId are client-infrastructure fields and are deliberately absent from v2.",
+        "operationId": "v2_get_space",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            },
+            "description": "The space row"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get space",
+        "tags": [
+          "V2"
+        ]
+      },
+      "patch": {
+        "description": "Updates the space's name and/or description (omitted fields stay unchanged; at least one is required; 4096-character cap) → the resulting row. Thin over WorkspaceSetInfo. A space that is deleted or gone answers 404; a role that may not change the space info answers 403. Honors Idempotency-Key (C8) and ?dry_run=true (C9).",
+        "operationId": "v2_update_space",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "C8 replay guard",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSpaceRequest"
+              }
+            }
+          },
+          "description": "The fields to change",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Space"
+                }
+              }
+            },
+            "description": "The updated space row"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "The caller's role cannot change the space info"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space not found or not live"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Update space",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/chats": {
+      "get": {
+        "description": "C5 rows {id, name} via a store query — no chat opens, so the list is cheap at any size. Deliberately counter-free (Q3): per-chat unread state comes free on the messages read. No etag (C7 exemption: chats use order ids and lastStateId as their concurrency vocabulary).",
+        "operationId": "v2_list_chats",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Rows to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Rows to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ChatRow"
+                }
+              }
+            },
+            "description": "Chat rows"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List chats",
+        "tags": [
+          "V2"
+        ]
+      },
+      "post": {
+        "description": "Creates a chat object: {name}. A thin create with the chatDerived type — messages live in the chat store, not blocks. Honors Idempotency-Key (C8) and ?dry_run=true (C9). No If-Match (C7 exemption).",
+        "operationId": "v2_create_chat",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "C8 replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateChatRequest"
+              }
+            }
+          },
+          "description": "The chat to create",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatResult"
+                }
+              }
+            },
+            "description": "Created chat row"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create chat",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/chats/{chat_id}/messages": {
+      "get": {
+        "description": "Cursor-paged messages (ascending order): ?after=/?before= are EXCLUSIVE order-id bounds, ?limit defaults to 25. A forward walk uses ?after alone and continues with the response's nextAfter; every OTHER query — ?before, no cursor, or BOTH bounds — is anchored at its NEWEST end (the newest N in range) and pages backward with nextBefore, so after+before does NOT walk forward through the window. has_more says more messages exist inside the requested bounds. The response carries state (unread counters, oldest unread orders, lastStateId — the mark-read race guard) and messageCount (the chat's LIFETIME total, not the range size) at zero extra cost; a poll is a limit=1 read. Message text is §8 inline markup (blocksText carries block-composed content read-only); reactions is always emoji counts ({\"👍\":2}); ?reactions=full adds reactedBy (participant-id lists) in its own slot. Offset pagination does not apply — page with the cursors.",
+        "operationId": "v2_get_chat_messages",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Chat object id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Return messages after this order id (exclusive)",
+            "in": "query",
+            "name": "after",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Return messages before this order id (exclusive)",
+            "in": "query",
+            "name": "before",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Messages to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "counts (default) | full",
+            "in": "query",
+            "name": "reactions",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessagesResponse"
+                }
+              }
+            },
+            "description": "Messages + state + messageCount"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Not a chat, or invalid params"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Chat not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get chat messages",
+        "tags": [
+          "V2"
+        ]
+      },
+      "post": {
+        "description": "Sends one message: {text, replyTo?, attachments?}. Text is §8 markup SOURCE — *, [, ` and <mention objectId=\"…\"> syntax mint real marks (the D′1 caveat; escape literal specials with a backslash) — capped at 8000 UTF-16 code units (an emoji counts 2+). Attachments are bare object ids, at most 32; the kind is inferred from each target's layout (image → image, other file layouts → file, anything else → link). Honors Idempotency-Key (C8 — a double-sent chat message is user-visible damage) and ?dry_run=true (C9, validate-only).",
+        "operationId": "v2_add_chat_message",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Chat object id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "C8 replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddChatMessageRequest"
+              }
+            }
+          },
+          "description": "The message to send",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageResult"
+                }
+              }
+            },
+            "description": "Created message id"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Chat not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Send chat message",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}": {
+      "delete": {
+        "description": "Deletes one message. IRREVERSIBLE side effect: attachments whose ONLY reference was this message are permanently deleted afterwards (not moved to the bin, asynchronously) — the response's warnings name the attachment ids at risk, and the dry run reports the same warnings without deleting. A missing message is a 404 on both the real call and the dry run (C9). Honors Idempotency-Key (C8 — chat DELETE is keyed too, a Phase-6 widening) and ?dry_run=true.",
+        "operationId": "v2_delete_chat_message",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Chat object id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Message id",
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report the would-be deletion (incl. file-GC warnings) without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "C8 replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageResult"
+                }
+              }
+            },
+            "description": "Deleted message id"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Chat or message not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Delete chat message",
+        "tags": [
+          "V2"
+        ]
+      },
+      "patch": {
+        "description": "Text-only MERGE: {text} replaces the message text (parsed as §8 markup source, capped at 8000 UTF-16 code units — the D′1 caveat: ALL marks are re-derived from the string, and an Emoji mark read back as its literal emoji stays literal); the message's attachments, reply target, style and blocks are preserved. Editing another member's message is a 403 forbidden. Honors Idempotency-Key (C8) and ?dry_run=true (C9).",
+        "operationId": "v2_edit_chat_message",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Chat object id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Message id",
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "C8 replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditChatMessageRequest"
+              }
+            }
+          },
+          "description": "The replacement text",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageResult"
+                }
+              }
+            },
+            "description": "Edited message id"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Chat or message not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Edit chat message",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions": {
+      "post": {
+        "description": "Toggles the caller's {emoji} reaction on a message → {added}. A missing message is a 404. Honors Idempotency-Key (C8) and ?dry_run=true (C9 — the dry run reads the message and reports the would-be outcome; when the service has no account identity to predict with, added is omitted and a warning says so).",
+        "operationId": "v2_toggle_chat_reaction",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Chat object id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Message id",
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Report the would-be outcome without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "C8 replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatReactionRequest"
+              }
+            }
+          },
+          "description": "The emoji to toggle",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatReactionResult"
+                }
+              }
+            },
+            "description": "Toggle outcome"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Chat or message not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Toggle chat reaction",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/chats/{chat_id}/read": {
+      "post": {
+        "description": "Moves the read watermark: {upTo, lastStateId, scope?}. upTo is the INCLUSIVE order id to mark read up to and lastStateId is the race guard — BOTH are required for scopes messages/mentions and both ride the same GET messages response (the newest message's order + state.lastStateId); an empty value for either would silently mark nothing, so it is rejected instead. Messages that arrived after lastStateId's state stay unread. scope defaults to messages; mentions marks @-mentions; reactions marks ALL unread reactions and takes no upTo/lastStateId. Honors Idempotency-Key (C8) and ?dry_run=true (C9, validate-only).",
+        "operationId": "v2_read_chat",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Chat object id",
+            "in": "path",
+            "name": "chat_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "C8 replay guard: the same key with the same body replays the stored response",
+            "in": "header",
+            "name": "Idempotency-Key",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatReadRequest"
+              }
+            }
+          },
+          "description": "The watermark move",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatReadResult"
+                }
+              }
+            },
+            "description": "Watermark moved"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Chat not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Mark chat read",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/collections": {
+      "post": {
+        "description": "Creates a collection: {name, items?}. Items are validated against the space. Honors Idempotency-Key and ?dry_run=true.",
+        "operationId": "v2_create_collection",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Created collection id"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation or reference failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create collection",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/collections/{collection_id}/objects": {
+      "get": {
+        "description": "Reads the collection's curated membership (the store slice, in its order), optionally through one stored view's filters and sorts (?view=). Rows are C5 minimal; fields= expands.",
+        "operationId": "v2_get_collection_objects",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Collection object id",
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Stored view id (exact or unique suffix)",
+            "in": "query",
+            "name": "view",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated property keys to include per row",
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ObjectRow"
+                }
+              }
+            },
+            "description": "Minimal object rows"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Wrong-layout target or invalid params"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space, collection or view not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get collection objects",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/collections/{collection_id}/views": {
+      "get": {
+        "description": "Returns the collection's stored views as SPEC §6.2 view objects. Paginated (C10).",
+        "operationId": "v2_get_collection_views",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Collection object id",
+            "in": "path",
+            "name": "collection_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ViewObject"
+                }
+              }
+            },
+            "description": "§6.2 view objects"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Wrong-layout target"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space or collection not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get collection views",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/files": {
+      "post": {
+        "description": "Uploads one file and returns the file object id that file/image blocks and iconImage values reference (R11). Send multipart/form-data with a file field, or JSON {\"url\": …}.",
+        "operationId": "v2_upload_file",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileUploadResult"
+                }
+              }
+            },
+            "description": "Created file object id"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Upload file",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/members": {
+      "get": {
+        "operationId": "v2_list_members",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-MemberRow"
+                }
+              }
+            },
+            "description": "Minimal member rows"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List members (minimal rows)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/members/me": {
+      "get": {
+        "operationId": "v2_get_member_me",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberRow"
+                }
+              }
+            },
+            "description": "The caller's member row"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space not found, or no account identity"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get the calling member (server-side identity, §7.3 @me)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/objects": {
+      "get": {
+        "description": "Returns paginated minimal rows: id, name, type (a type key) plus the property values requested via fields= (comma-separated property keys). Type objects are never embedded (C5).",
+        "operationId": "v2_list_objects",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated property keys to include per row",
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ObjectRow"
+                }
+              }
+            },
+            "description": "Minimal object rows"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List objects (minimal rows)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "post": {
+        "description": "Creates one object. The body is either a full flat AnyBlock document (discriminator: presence of version or blocks) or the shortcut {type, name, properties, markdown}. Unknown select option names are created (SPEC §3); unknown type or property keys are rejected with did-you-mean errors. Honors Idempotency-Key (C8) and ?dry_run=true (C9).",
+        "operationId": "v2_create_object",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Created object id + etag"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation or reference failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create object (AnyBlock)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/objects/{object_id}": {
+      "get": {
+        "description": "Returns the object as a flat AnyBlock JSON document read from the live editor state, with an advisory etag (C7) in the envelope and the ETag header. Supports include=properties,blocks; outline=true (block skeleton with compact labels); block={blockId} (one contiguous subtree); ids=compact|full (object-id compaction, C4); format=anyblock|md (markdown is read-only).",
+        "operationId": "v2_get_object",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Object id",
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Subset of properties,blocks (default both)",
+            "in": "query",
+            "name": "include",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Return the block skeleton instead of full blocks",
+            "in": "query",
+            "name": "outline",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Return only this block's subtree",
+            "in": "query",
+            "name": "block",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "compact (default) or full — object ids only",
+            "in": "query",
+            "name": "ids",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "anyblock (default) or md",
+            "in": "query",
+            "name": "format",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The flat AnyBlock document + etag"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Illegal parameter combination (ambiguous_input)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Object or space not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get object (AnyBlock)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "patch": {
+        "description": "Applies the closed, id-addressed op set — setProperties, updateBlock, replaceSubtree, insertBlocks, moveBlock, deleteBlock, replaceText, setCell, addItems, removeItems — atomically (one change set). Block references accept full ids and unique suffixes. The post-op document must satisfy the AnyBlock semantic checks (SPEC §12); any violation rejects the whole PATCH with path-addressed errors. If-Match is advisory (C7): absent = last-write-wins, stale = 409 with the current etag. Responds with the new etag, the created-block id map keyed by payload position, and diffStats. Honors ?dry_run=true (C9). GET /v2/schemas/ops/{op} documents each op.",
+        "operationId": "v2_patch_object",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Object id",
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Advisory etag precondition (C7)",
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResult"
+                }
+              }
+            },
+            "description": "New etag + created block ids + diffStats"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid ops or post-op document"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Object, space, or referenced block not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Stale If-Match (etag_mismatch)"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Edit object (batched ops)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "put": {
+        "description": "Replaces the object's content with the supplied flat AnyBlock document in one change set. The CRDT diff is minimal iff the block ids round-trip from the GET (the default read keeps them full — C4); diffStats make an accidental full rewrite visible. Prefer PATCH for targeted edits. If-Match is advisory (C7). System-managed objects are excluded. Honors ?dry_run=true.",
+        "operationId": "v2_put_object",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Object id",
+            "in": "path",
+            "name": "object_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Advisory etag precondition (C7)",
+            "in": "header",
+            "name": "If-Match",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResult"
+                }
+              }
+            },
+            "description": "New etag + diffStats"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid document"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Object or space not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Stale If-Match (etag_mismatch)"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Replace object (full AnyBlock document)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/properties": {
+      "get": {
+        "operationId": "v2_list_properties",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-PropertyRow"
+                }
+              }
+            },
+            "description": "Property rows"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List properties (key, name, format)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "post": {
+        "description": "Creates a property: {key?, name, format, options?:[{name,color?}]}. Formats use the AnyBlock vocabulary (text, select, multiSelect, …). Honors Idempotency-Key and ?dry_run=true.",
+        "operationId": "v2_create_property",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Created property id + key"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create property",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/properties/{key}": {
+      "delete": {
+        "description": "Archives the property object.",
+        "operationId": "v2_delete_property",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Property key",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Archived property"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Property not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Delete property (archive)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "patch": {
+        "description": "Updates a property's display name. The key is identity and cannot change.",
+        "operationId": "v2_update_property",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Property key",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Updated property"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Property not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Update property",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/properties/{key}/options": {
+      "get": {
+        "operationId": "v2_list_property_options",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Property key",
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Case-insensitive name prefix filter",
+            "in": "query",
+            "name": "prefix",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-OptionRow"
+                }
+              }
+            },
+            "description": "Option rows"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Property not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List property options (names + colors)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/search": {
+      "post": {
+        "description": "Searches one space with full-text (query), a type scope, and either the compact filter string (filter) or the structured filter array (filters) — mutually exclusive, both landing on one internal tree. Sorts accept any property key. Rows are C5 minimal (id, name, type + requested fields). Search is a read: Idempotency-Key is not honored and dry_run is ignored. Pagination via ?offset=&limit= (C10).",
+        "operationId": "v2_search_space",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchRequestDoc"
+              }
+            }
+          },
+          "description": "Search request",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ObjectRow"
+                }
+              }
+            },
+            "description": "Minimal object rows"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Invalid request (validation_failed / ambiguous_input)"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Search objects (space)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/sets": {
+      "post": {
+        "description": "Creates a set querying one type: {name, type, filters?, sorts?, views?}. The set's initial state carries a fully-formed dataview block, so filters/sorts/views land atomically (§8/R10). Filter/sort property keys are validated against the type's actual keys (R9). Honors Idempotency-Key and ?dry_run=true.",
+        "operationId": "v2_create_set",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Created set id"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation or reference failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create set",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/sets/{set_id}/objects": {
+      "get": {
+        "description": "Executes the set's stored query (its setOf source) directly against the store, optionally through one stored view's filters and sorts (?view=, exact id or unique suffix). Stored-view execution substitutes the SPEC §6.2 dynamic placeholders server-side; unresolvable placeholders degrade to warnings, never a silent no-match. Rows are C5 minimal; fields= expands.",
+        "operationId": "v2_get_set_objects",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set object id",
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Stored view id (exact or unique suffix)",
+            "in": "query",
+            "name": "view",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Comma-separated property keys to include per row",
+            "in": "query",
+            "name": "fields",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ObjectRow"
+                }
+              }
+            },
+            "description": "Minimal object rows"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Wrong-layout target or invalid params"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space, set or view not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get set objects",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/sets/{set_id}/views": {
+      "get": {
+        "description": "Returns the set's stored views as SPEC §6.2 view objects (sorts, filters, columns — option names resolved, the format vocabulary). Paginated (C10).",
+        "operationId": "v2_get_set_views",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Set object id",
+            "in": "path",
+            "name": "set_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Items to skip",
+            "in": "query",
+            "name": "offset",
+            "schema": {
+              "default": 0,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Items to return",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 25,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-ViewObject"
+                }
+              }
+            },
+            "description": "§6.2 view objects"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Wrong-layout target"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Space or set not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get set views",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/templates": {
+      "post": {
+        "description": "Creates a template: an AnyBlock document with templateFor naming the target type key, routed through the generic object-create path. Honors Idempotency-Key and ?dry_run=true.",
+        "operationId": "v2_create_template",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Created template id"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation or reference failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create template (AnyBlock)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/types": {
+      "get": {
+        "operationId": "v2_list_types",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListResponse-TypeRow"
+                }
+              }
+            },
+            "description": "Type rows"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "List types (keys + names)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "post": {
+        "description": "Creates an object type from a kind:\"objectType\" AnyBlock document. typeProperties entries naming unknown property keys create those properties atomically with the type (SPEC §2a create-missing). Honors Idempotency-Key and ?dry_run=true.",
+        "operationId": "v2_create_type",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Validate and report without committing",
+            "in": "query",
+            "name": "dry_run",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Created type id + key"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Validation failure"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Create type (AnyBlock type document)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/types/{type}": {
+      "delete": {
+        "description": "Archives the type object (v1 parity; hard delete is a deferred ?permanent extension).",
+        "operationId": "v2_delete_type",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Type key",
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Archived type"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Type not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Delete type (archive)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "get": {
+        "operationId": "v2_get_type",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Type key",
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {},
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The kind:objectType AnyBlock document + etag"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Type not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get type (AnyBlock document)",
+        "tags": [
+          "V2"
+        ]
+      },
+      "patch": {
+        "description": "Partial type-document update: properties changes the type's own details (name, description, iconEmoji, recommendedLayout); typeProperties, when present, rebuilds the recommended property lists, creating missing properties (SPEC §2a).",
+        "operationId": "v2_update_type",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Type key",
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateResult"
+                }
+              }
+            },
+            "description": "Updated type"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Type not found"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Update type",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/spaces/{space_id}/types/{type}/schema": {
+      "get": {
+        "operationId": "v2_get_type_schema",
+        "parameters": [
+          {
+            "description": "Space id",
+            "in": "path",
+            "name": "space_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Type key",
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "501": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "description": "Not implemented yet"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Get type schema (not implemented)",
+        "tags": [
+          "V2"
+        ]
+      }
+    },
+    "/v2/validate": {
+      "post": {
+        "description": "Checks the request body against the AnyBlock JSON schema and the format's semantic rules. Structural and format-semantic only: referential checks against a space (option names, a type's property keys) are not performed here. Findings are returned as data — a valid document yields empty issue lists.",
+        "operationId": "v2_validate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateResponse"
+                }
+              }
+            },
+            "description": "Issue and warning lists (empty when valid)"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedError"
+                }
+              }
+            },
+            "description": "Missing or invalid key — the shared auth middleware's envelope (APIV2.md §8.9 seam), not the C6 shape"
+          }
+        },
+        "security": [
+          {
+            "bearerauth": []
+          }
+        ],
+        "summary": "Validate an AnyBlock document",
+        "tags": [
+          "V2"
+        ]
+      }
+    }
+  },
+  "openapi": "3.1.0",
+  "servers": [
+    {
+      "url": "http://127.0.0.1:31009"
+    }
+  ]
 }

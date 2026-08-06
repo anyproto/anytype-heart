@@ -35,15 +35,15 @@ func listFieldsParam(c *gin.Context) []string {
 //	@Id				v2_get_set_objects
 //	@Tags			V2
 //	@Produce		json
-//	@Param			space_id	path		string											true	"Space id"
-//	@Param			set_id		path		string											true	"Set object id"
-//	@Param			view		query		string											false	"Stored view id (exact or unique suffix)"
-//	@Param			fields		query		string											false	"Comma-separated property keys to include per row"
-//	@Param			offset		query		int												false	"Items to skip"		default(0)
-//	@Param			limit		query		int												false	"Items to return"	default(25)
+//	@Param			space_id	path		string									true	"Space id"
+//	@Param			set_id		path		string									true	"Set object id"
+//	@Param			view		query		string									false	"Stored view id (exact or unique suffix)"
+//	@Param			fields		query		string									false	"Comma-separated property keys to include per row"
+//	@Param			offset		query		int										false	"Items to skip"		default(0)
+//	@Param			limit		query		int										false	"Items to return"	default(25)
 //	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
-//	@Failure		400			{object}	v2model.Error								"Wrong-layout target or invalid params"
-//	@Failure		404			{object}	v2model.Error								"Space, set or view not found"
+//	@Failure		400			{object}	v2model.Error							"Wrong-layout target or invalid params"
+//	@Failure		404			{object}	v2model.Error							"Space, set or view not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets/{set_id}/objects [get]
 func GetSetObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -73,9 +73,9 @@ func GetSetObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			set_id		path		string										true	"Set object id"
 //	@Param			offset		query		int											false	"Items to skip"		default(0)
 //	@Param			limit		query		int											false	"Items to return"	default(25)
-//	@Success		200			{object}	v2model.ListResponse[json.RawMessage]	"§6.2 view objects"
-//	@Failure		400			{object}	v2model.Error							"Wrong-layout target"
-//	@Failure		404			{object}	v2model.Error							"Space or set not found"
+//	@Success		200			{object}	v2model.ListResponse[v2model.ViewObject]	"§6.2 view objects"
+//	@Failure		400			{object}	v2model.Error								"Wrong-layout target"
+//	@Failure		404			{object}	v2model.Error								"Space or set not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/sets/{set_id}/views [get]
 func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -100,15 +100,15 @@ func GetSetViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id				v2_get_collection_objects
 //	@Tags			V2
 //	@Produce		json
-//	@Param			space_id		path		string											true	"Space id"
-//	@Param			collection_id	path		string											true	"Collection object id"
-//	@Param			view			query		string											false	"Stored view id (exact or unique suffix)"
-//	@Param			fields			query		string											false	"Comma-separated property keys to include per row"
-//	@Param			offset			query		int												false	"Items to skip"		default(0)
-//	@Param			limit			query		int												false	"Items to return"	default(25)
+//	@Param			space_id		path		string									true	"Space id"
+//	@Param			collection_id	path		string									true	"Collection object id"
+//	@Param			view			query		string									false	"Stored view id (exact or unique suffix)"
+//	@Param			fields			query		string									false	"Comma-separated property keys to include per row"
+//	@Param			offset			query		int										false	"Items to skip"		default(0)
+//	@Param			limit			query		int										false	"Items to return"	default(25)
 //	@Success		200				{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
-//	@Failure		400				{object}	v2model.Error								"Wrong-layout target or invalid params"
-//	@Failure		404				{object}	v2model.Error								"Space, collection or view not found"
+//	@Failure		400				{object}	v2model.Error							"Wrong-layout target or invalid params"
+//	@Failure		404				{object}	v2model.Error							"Space, collection or view not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections/{collection_id}/objects [get]
 func GetCollectionObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -138,9 +138,9 @@ func GetCollectionObjectsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			collection_id	path		string										true	"Collection object id"
 //	@Param			offset			query		int											false	"Items to skip"		default(0)
 //	@Param			limit			query		int											false	"Items to return"	default(25)
-//	@Success		200				{object}	v2model.ListResponse[json.RawMessage]	"§6.2 view objects"
-//	@Failure		400				{object}	v2model.Error							"Wrong-layout target"
-//	@Failure		404				{object}	v2model.Error							"Space or collection not found"
+//	@Success		200				{object}	v2model.ListResponse[v2model.ViewObject]	"§6.2 view objects"
+//	@Failure		400				{object}	v2model.Error								"Wrong-layout target"
+//	@Failure		404				{object}	v2model.Error								"Space or collection not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/collections/{collection_id}/views [get]
 func GetCollectionViewsV2Handler(s *v2service.V2Service) gin.HandlerFunc {

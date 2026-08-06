@@ -27,7 +27,7 @@ const maxSpaceRequestBody = 1 << 20 // 1 MiB
 //	@Id				v2_get_space
 //	@Tags			V2
 //	@Produce		json
-//	@Param			space_id	path		string				true	"Space id"
+//	@Param			space_id	path		string			true	"Space id"
 //	@Success		200			{object}	v2model.Space	"The space row"
 //	@Failure		404			{object}	v2model.Error	"Space not found"
 //	@Security		bearerauth
@@ -51,8 +51,8 @@ func GetSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			dry_run			query		bool							false	"Validate the body without creating"
-//	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			dry_run			query		bool						false	"Validate the body without creating"
+//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.CreateSpaceRequest	true	"The space to create"
 //	@Success		201				{object}	v2model.Space				"Created space"
 //	@Failure		400				{object}	v2model.Error				"Validation failure"
@@ -86,9 +86,9 @@ func CreateSpaceV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string							true	"Space id"
-//	@Param			dry_run			query		bool							false	"Validate and report without committing"
-//	@Param			Idempotency-Key	header		string							false	"C8 replay guard"
+//	@Param			space_id		path		string						true	"Space id"
+//	@Param			dry_run			query		bool						false	"Validate and report without committing"
+//	@Param			Idempotency-Key	header		string						false	"C8 replay guard"
 //	@Param			request			body		v2model.UpdateSpaceRequest	true	"The fields to change"
 //	@Success		200				{object}	v2model.Space				"The updated space row"
 //	@Failure		400				{object}	v2model.Error				"Validation failure"

@@ -18,14 +18,14 @@ import (
 //	@Id				v2_get_object
 //	@Tags			V2
 //	@Produce		json
-//	@Param			space_id	path		string				true	"Space id"
-//	@Param			object_id	path		string				true	"Object id"
-//	@Param			include		query		string				false	"Subset of properties,blocks (default both)"
-//	@Param			outline		query		bool				false	"Return the block skeleton instead of full blocks"
-//	@Param			block		query		string				false	"Return only this block's subtree"
-//	@Param			ids			query		string				false	"compact (default) or full — object ids only"
-//	@Param			format		query		string				false	"anyblock (default) or md"
-//	@Success		200			{object}	map[string]any		"The flat AnyBlock document + etag"
+//	@Param			space_id	path		string			true	"Space id"
+//	@Param			object_id	path		string			true	"Object id"
+//	@Param			include		query		string			false	"Subset of properties,blocks (default both)"
+//	@Param			outline		query		bool			false	"Return the block skeleton instead of full blocks"
+//	@Param			block		query		string			false	"Return only this block's subtree"
+//	@Param			ids			query		string			false	"compact (default) or full — object ids only"
+//	@Param			format		query		string			false	"anyblock (default) or md"
+//	@Success		200			{object}	map[string]any	"The flat AnyBlock document + etag"
 //	@Failure		400			{object}	v2model.Error	"Illegal parameter combination (ambiguous_input)"
 //	@Failure		404			{object}	v2model.Error	"Object or space not found"
 //	@Security		bearerauth
@@ -56,10 +56,10 @@ func GetObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id				v2_list_objects
 //	@Tags			V2
 //	@Produce		json
-//	@Param			space_id	path		string											true	"Space id"
-//	@Param			fields		query		string											false	"Comma-separated property keys to include per row"
-//	@Param			offset		query		int												false	"Items to skip"	default(0)
-//	@Param			limit		query		int												false	"Items to return"	default(25)
+//	@Param			space_id	path		string									true	"Space id"
+//	@Param			fields		query		string									false	"Comma-separated property keys to include per row"
+//	@Param			offset		query		int										false	"Items to skip"		default(0)
+//	@Param			limit		query		int										false	"Items to return"	default(25)
 //	@Success		200			{object}	v2model.ListResponse[v2model.ObjectRow]	"Minimal object rows"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/objects [get]

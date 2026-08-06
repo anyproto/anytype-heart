@@ -22,7 +22,7 @@ const maxValidateBodySize = 10 << 20 // 10 MiB
 //	@Accept			json
 //	@Produce		json
 //	@Success		200	{object}	v2model.ValidateResponse	"Issue and warning lists (empty when valid)"
-//	@Failure		401	{object}	v2model.Error			"Unauthorized"
+//	@Failure		401	{object}	util.UnauthorizedError		"Missing or invalid key — the shared auth middleware's envelope (APIV2.md §8.9 seam), not the C6 shape"
 //	@Security		bearerauth
 //	@Router			/v2/validate [post]
 func ValidateV2Handler(s *v2service.V2Service) gin.HandlerFunc {

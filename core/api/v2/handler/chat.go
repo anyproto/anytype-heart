@@ -48,9 +48,9 @@ func respondChatMutation(c *gin.Context, dryRun bool, createdStatus int, payload
 //	@Id				v2_list_chats
 //	@Tags			V2
 //	@Produce		json
-//	@Param			space_id	path		string										true	"Space id"
-//	@Param			offset		query		int											false	"Rows to skip"	default(0)
-//	@Param			limit		query		int											false	"Rows to return"	default(25)
+//	@Param			space_id	path		string									true	"Space id"
+//	@Param			offset		query		int										false	"Rows to skip"		default(0)
+//	@Param			limit		query		int										false	"Rows to return"	default(25)
 //	@Success		200			{object}	v2model.ListResponse[v2model.ChatRow]	"Chat rows"
 //	@Failure		404			{object}	v2model.Error							"Space not found"
 //	@Security		bearerauth
@@ -77,12 +77,12 @@ func ListChatsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string							true	"Space id"
-//	@Param			dry_run			query		bool							false	"Validate and report without committing"
-//	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			space_id		path		string						true	"Space id"
+//	@Param			dry_run			query		bool						false	"Validate and report without committing"
+//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.CreateChatRequest	true	"The chat to create"
-//	@Success		201			{object}	v2model.ChatResult	"Created chat row"
-//	@Failure		400			{object}	v2model.Error		"Validation failure"
+//	@Success		201				{object}	v2model.ChatResult			"Created chat row"
+//	@Failure		400				{object}	v2model.Error				"Validation failure"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats [post]
 func CreateChatV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -107,13 +107,13 @@ func CreateChatV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id				v2_get_chat_messages
 //	@Tags			V2
 //	@Produce		json
-//	@Param			space_id	path		string								true	"Space id"
-//	@Param			chat_id		path		string								true	"Chat object id"
-//	@Param			after		query		string								false	"Return messages after this order id (exclusive)"
-//	@Param			before		query		string								false	"Return messages before this order id (exclusive)"
-//	@Param			limit		query		int									false	"Messages to return"	default(25)
-//	@Param			reactions	query		string								false	"counts (default) | full"
-//	@Success		200			{object}	v2model.ChatMessagesResponse		"Messages + state + messageCount"
+//	@Param			space_id	path		string							true	"Space id"
+//	@Param			chat_id		path		string							true	"Chat object id"
+//	@Param			after		query		string							false	"Return messages after this order id (exclusive)"
+//	@Param			before		query		string							false	"Return messages before this order id (exclusive)"
+//	@Param			limit		query		int								false	"Messages to return"	default(25)
+//	@Param			reactions	query		string							false	"counts (default) | full"
+//	@Success		200			{object}	v2model.ChatMessagesResponse	"Messages + state + messageCount"
 //	@Failure		400			{object}	v2model.Error					"Not a chat, or invalid params"
 //	@Failure		404			{object}	v2model.Error					"Chat not found"
 //	@Security		bearerauth
@@ -162,9 +162,9 @@ func GetChatMessagesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.AddChatMessageRequest	true	"The message to send"
-//	@Success		201			{object}	v2model.ChatMessageResult	"Created message id"
-//	@Failure		400			{object}	v2model.Error				"Validation failure"
-//	@Failure		404			{object}	v2model.Error				"Chat not found"
+//	@Success		201				{object}	v2model.ChatMessageResult		"Created message id"
+//	@Failure		400				{object}	v2model.Error					"Validation failure"
+//	@Failure		404				{object}	v2model.Error					"Chat not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages [post]
 func AddChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -196,9 +196,9 @@ func AddChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Param			dry_run			query		bool							false	"Validate and report without committing"
 //	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.EditChatMessageRequest	true	"The replacement text"
-//	@Success		200			{object}	v2model.ChatMessageResult	"Edited message id"
-//	@Failure		400			{object}	v2model.Error				"Validation failure"
-//	@Failure		404			{object}	v2model.Error				"Chat or message not found"
+//	@Success		200				{object}	v2model.ChatMessageResult		"Edited message id"
+//	@Failure		400				{object}	v2model.Error					"Validation failure"
+//	@Failure		404				{object}	v2model.Error					"Chat or message not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [patch]
 func EditChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -223,13 +223,13 @@ func EditChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id				v2_delete_chat_message
 //	@Tags			V2
 //	@Produce		json
-//	@Param			space_id		path		string							true	"Space id"
-//	@Param			chat_id			path		string							true	"Chat object id"
-//	@Param			message_id		path		string							true	"Message id"
-//	@Param			dry_run			query		bool							false	"Report the would-be deletion (incl. file-GC warnings) without committing"
-//	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
-//	@Success		200			{object}	v2model.ChatMessageResult	"Deleted message id"
-//	@Failure		404			{object}	v2model.Error				"Chat or message not found"
+//	@Param			space_id		path		string						true	"Space id"
+//	@Param			chat_id			path		string						true	"Chat object id"
+//	@Param			message_id		path		string						true	"Message id"
+//	@Param			dry_run			query		bool						false	"Report the would-be deletion (incl. file-GC warnings) without committing"
+//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Success		200				{object}	v2model.ChatMessageResult	"Deleted message id"
+//	@Failure		404				{object}	v2model.Error				"Chat or message not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id} [delete]
 func DeleteChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -251,15 +251,15 @@ func DeleteChatMessageV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string							true	"Space id"
-//	@Param			chat_id			path		string							true	"Chat object id"
-//	@Param			message_id		path		string							true	"Message id"
-//	@Param			dry_run			query		bool							false	"Report the would-be outcome without committing"
-//	@Param			Idempotency-Key	header		string							false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			space_id		path		string						true	"Space id"
+//	@Param			chat_id			path		string						true	"Chat object id"
+//	@Param			message_id		path		string						true	"Message id"
+//	@Param			dry_run			query		bool						false	"Report the would-be outcome without committing"
+//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.ChatReactionRequest	true	"The emoji to toggle"
-//	@Success		200			{object}	v2model.ChatReactionResult	"Toggle outcome"
-//	@Failure		400			{object}	v2model.Error				"Validation failure"
-//	@Failure		404			{object}	v2model.Error				"Chat or message not found"
+//	@Success		200				{object}	v2model.ChatReactionResult	"Toggle outcome"
+//	@Failure		400				{object}	v2model.Error				"Validation failure"
+//	@Failure		404				{object}	v2model.Error				"Chat or message not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/messages/{message_id}/reactions [post]
 func ToggleChatReactionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -285,14 +285,14 @@ func ToggleChatReactionV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id		path		string						true	"Space id"
-//	@Param			chat_id			path		string						true	"Chat object id"
-//	@Param			dry_run			query		bool						false	"Validate and report without committing"
-//	@Param			Idempotency-Key	header		string						false	"C8 replay guard: the same key with the same body replays the stored response"
+//	@Param			space_id		path		string					true	"Space id"
+//	@Param			chat_id			path		string					true	"Chat object id"
+//	@Param			dry_run			query		bool					false	"Validate and report without committing"
+//	@Param			Idempotency-Key	header		string					false	"C8 replay guard: the same key with the same body replays the stored response"
 //	@Param			request			body		v2model.ChatReadRequest	true	"The watermark move"
-//	@Success		200			{object}	v2model.ChatReadResult	"Watermark moved"
-//	@Failure		400			{object}	v2model.Error			"Validation failure"
-//	@Failure		404			{object}	v2model.Error			"Chat not found"
+//	@Success		200				{object}	v2model.ChatReadResult	"Watermark moved"
+//	@Failure		400				{object}	v2model.Error			"Validation failure"
+//	@Failure		404				{object}	v2model.Error			"Chat not found"
 //	@Security		bearerauth
 //	@Router			/v2/spaces/{space_id}/chats/{chat_id}/read [post]
 func ReadChatV2Handler(s *v2service.V2Service) gin.HandlerFunc {

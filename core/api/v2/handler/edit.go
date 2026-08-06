@@ -29,10 +29,10 @@ func respondV2Edit(c *gin.Context, result *v2model.EditResult) {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			object_id	path		string					true	"Object id"
-//	@Param			If-Match	header		string					false	"Advisory etag precondition (C7)"
-//	@Param			dry_run		query		bool					false	"Validate and report without committing"
+//	@Param			space_id	path		string				true	"Space id"
+//	@Param			object_id	path		string				true	"Object id"
+//	@Param			If-Match	header		string				false	"Advisory etag precondition (C7)"
+//	@Param			dry_run		query		bool				false	"Validate and report without committing"
 //	@Success		200			{object}	v2model.EditResult	"New etag + created block ids + diffStats"
 //	@Failure		400			{object}	v2model.Error		"Invalid ops or post-op document"
 //	@Failure		404			{object}	v2model.Error		"Object, space, or referenced block not found"
@@ -62,10 +62,10 @@ func PatchObjectV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Tags			V2
 //	@Accept			json
 //	@Produce		json
-//	@Param			space_id	path		string					true	"Space id"
-//	@Param			object_id	path		string					true	"Object id"
-//	@Param			If-Match	header		string					false	"Advisory etag precondition (C7)"
-//	@Param			dry_run		query		bool					false	"Validate and report without committing"
+//	@Param			space_id	path		string				true	"Space id"
+//	@Param			object_id	path		string				true	"Object id"
+//	@Param			If-Match	header		string				false	"Advisory etag precondition (C7)"
+//	@Param			dry_run		query		bool				false	"Validate and report without committing"
 //	@Success		200			{object}	v2model.EditResult	"New etag + diffStats"
 //	@Failure		400			{object}	v2model.Error		"Invalid document"
 //	@Failure		404			{object}	v2model.Error		"Object or space not found"

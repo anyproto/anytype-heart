@@ -40,7 +40,7 @@ func ListSpacesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id			v2_list_members
 //	@Tags		V2
 //	@Produce	json
-//	@Param		space_id	path		string											true	"Space id"
+//	@Param		space_id	path		string									true	"Space id"
 //	@Success	200			{object}	v2model.ListResponse[v2model.MemberRow]	"Minimal member rows"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/members [get]
@@ -64,7 +64,7 @@ func ListMembersV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id			v2_get_member_me
 //	@Tags		V2
 //	@Produce	json
-//	@Param		space_id	path		string					true	"Space id"
+//	@Param		space_id	path		string				true	"Space id"
 //	@Success	200			{object}	v2model.MemberRow	"The caller's member row"
 //	@Failure	404			{object}	v2model.Error		"Space not found, or no account identity"
 //	@Security	bearerauth
@@ -86,7 +86,7 @@ func GetMemberMeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id			v2_list_types
 //	@Tags		V2
 //	@Produce	json
-//	@Param		space_id	path		string										true	"Space id"
+//	@Param		space_id	path		string									true	"Space id"
 //	@Success	200			{object}	v2model.ListResponse[v2model.TypeRow]	"Type rows"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/types [get]
@@ -110,9 +110,9 @@ func ListTypesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id			v2_get_type
 //	@Tags		V2
 //	@Produce	json
-//	@Param		space_id	path		string				true	"Space id"
-//	@Param		type		path		string				true	"Type key"
-//	@Success	200			{object}	map[string]any		"The kind:objectType AnyBlock document + etag"
+//	@Param		space_id	path		string			true	"Space id"
+//	@Param		type		path		string			true	"Type key"
+//	@Success	200			{object}	map[string]any	"The kind:objectType AnyBlock document + etag"
 //	@Failure	404			{object}	v2model.Error	"Type not found"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/types/{type} [get]
@@ -134,8 +134,8 @@ func GetTypeV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id			v2_get_type_schema
 //	@Tags		V2
 //	@Produce	json
-//	@Param		space_id	path		string				true	"Space id"
-//	@Param		type		path		string				true	"Type key"
+//	@Param		space_id	path		string			true	"Space id"
+//	@Param		type		path		string			true	"Type key"
 //	@Failure	501			{object}	v2model.Error	"Not implemented yet"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/types/{type}/schema [get]
@@ -151,8 +151,8 @@ func GetTypeSchemaV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id			v2_list_properties
 //	@Tags		V2
 //	@Produce	json
-//	@Param		space_id	path		string												true	"Space id"
-//	@Success	200			{object}	v2model.ListResponse[v2model.PropertyRow]		"Property rows"
+//	@Param		space_id	path		string										true	"Space id"
+//	@Success	200			{object}	v2model.ListResponse[v2model.PropertyRow]	"Property rows"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/properties [get]
 func ListPropertiesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
@@ -175,11 +175,11 @@ func ListPropertiesV2Handler(s *v2service.V2Service) gin.HandlerFunc {
 //	@Id			v2_list_property_options
 //	@Tags		V2
 //	@Produce	json
-//	@Param		space_id	path		string											true	"Space id"
-//	@Param		key			path		string											true	"Property key"
-//	@Param		prefix		query		string											false	"Case-insensitive name prefix filter"
+//	@Param		space_id	path		string									true	"Space id"
+//	@Param		key			path		string									true	"Property key"
+//	@Param		prefix		query		string									false	"Case-insensitive name prefix filter"
 //	@Success	200			{object}	v2model.ListResponse[v2model.OptionRow]	"Option rows"
-//	@Failure	404			{object}	v2model.Error								"Property not found"
+//	@Failure	404			{object}	v2model.Error							"Property not found"
 //	@Security	bearerauth
 //	@Router		/v2/spaces/{space_id}/properties/{key}/options [get]
 func ListPropertyOptionsV2Handler(s *v2service.V2Service) gin.HandlerFunc {
