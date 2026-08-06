@@ -74,7 +74,7 @@ repair loop with path-addressed errors.
 | C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
 | C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, PUT — v0.3.5; was POST-only); replay with the same key returns the stored result; same key with a different body → 409 `idempotency_conflict`. Response always returns created ids. | agent auto-retry (§3.7); R15 |
-| C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. | highest-leverage affordance (§3.7) |
+| C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. **Recorded C2 carve-out**: the response's `dry_run` echo keeps the query parameter's snake_case spelling (uniform across all v2 mutation DTOs — §8.8). | highest-leverage affordance (§3.7) |
 | C10 | Pagination on **every** list surface — objects, search, and the discovery lists (types, properties, **options**): default `limit=25`, `has_more`, truncation messages steer ("312 matches — narrow with filter…"). Options lists take a `prefix=` filter (tag-like properties can hold thousands of options). | Linear/AXI (§3.4, §3.7); R-minor |
 | C11 | Reads never fail on unknown *content*; anything a representation cannot express is listed in `warnings` (array of the C6 issue shape, warning-grade). Writes never pass through a lossy representation. | ADF disaster (§3.3) |
 | C12 | Every endpoint documents **one worked example + its JSON Schema**, embedded in OpenAPI and fetchable (§5 discovery). | examples 72→90% (§3.4) |
@@ -591,10 +591,15 @@ layer) · **the Phase-7 periphery** (§8.8, 2026-08-06: the space surface —
 `GET /v2/spaces/{spaceId}` as an RPC-free tech-space-view read,
 `POST /v2/spaces` as ONE WorkspaceCreate call, `PATCH` with the
 at-least-one-field contract, C8 on both mutations; the search
-file-layout opt-in keyed off the type channel — positive `=`/`IN` type
-leaves and the top-level type widen the row scope to
-`ObjectAndFileLayouts` on both request forms — plus the
-`mimeType`/`size` fields-only aliases; the `space` discovery kind).
+file-layout opt-in keyed off the type channel — positive type leaves
+and the top-level type widen the row scope to `ObjectAndFileLayouts`
+on both request forms — plus the `mimeType`/`size` aliases; the `space`
+discovery kind) · **the Phase-7 review hardening** (§8.8, 2026-08-06:
+per-space alias shadowing + the aliases live in filters/sorts, the
+negation-scoped opt-in condition set incl. `allIn`, the live-space
+predicate on GET-one/list + `description` on the list row, workspace
+RPC error classification, the 4096 caps enforced, the no-space-id
+500, the keyed POST /v2/spaces replay pin).
 
 ## 4. Benchmark program
 
@@ -1886,14 +1891,27 @@ upload a file (POST /files) and never find it again. As built:
   naming a file type key (`file`, `image`, `video`, `audio` —
   `util.IsFileTypeKey`, v1's `fileTypeUniqueKeySet` vocabulary; there is
   no `pdf` type key — pdf is a *layout* of type `file`, and the widened
-  scope includes it) or a **positive** (`=` / `IN`) `type` filter leaf
-  sets the plan's `includeFileLayouts`, which switches the base row scope
-  to `util.ObjectAndFileLayouts` for that query. The leaf detection sits
+  scope includes it) or a **positive** `type` filter leaf sets the plan's
+  `includeFileLayouts`, which switches the base row scope to
+  `util.ObjectAndFileLayouts` for that query. The leaf detection sits
   in `resolveTypeLeaves` — AFTER the two filter forms converge on one
   tree — so the string and structured forms behave identically. A mixed
-  `type IN ("task","image")` widens; a **negated** leaf (`!=`, `NOT IN`)
+  `type IN ("task","image")` widens; a **negated** leaf (`!=`, `NOT IN`,
+  `notAllIn`, `notExactIn`, `notContains` — `negatedFilterConditions`)
   does NOT (excluding a type is not asking for files — pinned by a test
-  with a second file object the negation must not leak in).
+  with a second file object the negation must not leak in). *Positive* is
+  decided by exclusion from that negated family, NOT by an `=`/`IN`
+  allowlist: the review reproduced `allIn` (the compact string's
+  `HAS ALL`) silently returning zero file rows under the original
+  allowlist — the exact upload-then-never-find-it bug this opt-in exists
+  to kill, for an advertised condition. Two scope consequences, decided
+  and pinned: the widening is **query-global** (plan-level), so a
+  positive file-type leaf under `OR` widens the other arms' row scope
+  too — the caller named a file type, and per-branch scoping would make
+  the row scope depend on tree shape; and the opt-in trigger stays the
+  type channel ONLY — a filter on file metadata alone (`size > 5`)
+  does not widen, so it matches nothing until composed with a file type
+  (`type = "image" AND size > 5`).
 - **Scope: the search surface only** (space-scoped and global — one plan
   builder). ListObjects has NO type channel and deliberately gains none
   (§4's "the v1 opt-in reproduced *without a new parameter*"); file
@@ -1901,18 +1919,35 @@ upload a file (POST /files) and never find it again. As built:
   layout scope at all (their filters are the setOf/membership
   translation — verified `listObjects` in `v2_list_read.go`), so a set
   over a file type already returned its rows; nothing to widen there.
-- **`fields=` file vocabulary: `mimeType` and `size`.** Aliases mapped
-  to the backing store relations `fileMimeType`/`sizeInBytes`
-  (`v2FieldAliases`, `v2_object.go`). The names are the format's OWN
-  file vocabulary — the SPEC §5 file-block fields and the POST /files
-  result — so C2's one-concept-one-slot picks them over surfacing the
-  store names (which would put two names on one concept across v2).
-  DISPLAY-only, deliberately: valid in search `fields=` and the
-  sets/collections `?fields=`, never in filters or sorts — `size > 5`
-  stays an unknown key (pinned by test); rows emit under the requested
-  alias; a real space property literally keyed `mimeType`/`size` wins
-  over the alias. Filtering/sorting by file metadata is deferred until
-  wanted — it needs value-shape decisions the display path does not.
+- **The file vocabulary: `mimeType` and `size`, live in EVERY channel.**
+  Aliases mapped to the backing store relations
+  `fileMimeType`/`sizeInBytes` (`v2FieldAliases`, `v2_object.go`). The
+  names are the format's OWN file vocabulary — the SPEC §5 file-block
+  fields and the POST /files result. As hardened by the Phase-7 review
+  (two findings, both reproduced):
+  - **Resolution is per SPACE, never per row** (`activeFieldAliases`):
+    an alias is active only when no real property of the space claims
+    its key. A user relation literally keyed `size` deactivates the
+    alias for the whole result set — the original per-record fallback
+    reported a file's byte count under the user's short-text `size`
+    property on rows that lacked a value, one key meaning two things in
+    one result set.
+  - **An active alias works in `fields=`, filters AND sorts** —
+    translated to the backing relation in the plan (`rewriteAliasLeaves`,
+    the sort rewrite, `aliasedFormatName`). The original display-only
+    scoping made the one advertised spelling a dead end outside
+    `fields=` while the store spellings worked, splitting the vocabulary
+    by channel. Filtering composes with the type-channel opt-in above:
+    `size > 5` alone stays in the file-less base scope.
+  - **Honesty note on C2**: the store names `fileMimeType`/`sizeInBytes`
+    remain live property keys wherever they are real keys of the space
+    (bundled relations, type recommendations) — rejecting a genuine,
+    discovery-advertised key would be worse than the duality. The alias
+    is the canonical, schema-advertised spelling; the store names are
+    ordinary properties, not part of the advertised file vocabulary.
+    (The earlier §8.8 claim that the aliases *prevent* two names on one
+    concept was wrong — the review reproduced both spellings rendering
+    in one row when both are requested.)
 
 **The space surface (APIV2_SURFACES.md §2 shapes).**
 
@@ -1925,7 +1960,11 @@ PATCH /v2/spaces/{spaceId}     {"name"?,"description"?} → the same shape
 (`handler/v2_space.go`, `service/v2_space.go`, DTOs in `model/v2.go`;
 routes beside the spaces list in `router.go`.) `gatewayUrl`/`networkId`
 stay v1-only (client infrastructure, not agent fields). No space delete
-(v1 has none; deletion is an account-level operation).
+(v1 has none; deletion is an account-level operation). The spaces LIST
+row gained `description` in the review hardening — it sits in the same
+tech-space record for free, and withholding it forced a GET-one per
+space on the canonical "list my spaces, pick one" trace (a 1+N pushed
+onto the agent).
 
 - **The read is one tech-space store query, zero RPCs.** The §2 claim
   verified: v1's `getSpaceInfo` opens `WorkspaceOpen` + `ObjectShow` per
@@ -1941,7 +1980,28 @@ stay v1-only (client infrastructure, not agent fields). No space delete
   description rides the create request — v1's second `WorkspaceSetInfo`
   RPC for it is dropped. Everything else is v1 parity: `CHAT_SPACE` use
   case, random icon option, regular space type, widgets homepage,
-  trimmed strings.
+  trimmed strings. A success carrying no space id is answered 500, not
+  an id-less 201 (C8 promises created ids; a cached id-less 201 would
+  replay forever, while a 500 is not cached and a keyed retry
+  re-executes).
+- **`name`/`description` are capped at 4096 characters** (code points),
+  the bound the `space` discovery kind advertises — enforced on POST and
+  PATCH with a path-addressed 400 (`validateSpaceField`; a drift test
+  pins the schema's maxLength to the enforced constant). Before the
+  review the schema out-promised the endpoint: a 200,000-character name
+  was accepted and propagated to every member's device. The other kinds'
+  advertised maxLengths remain unenforced where the store itself bounds
+  them (chats) or nothing does — hardening them is follow-up work, not
+  silently claimed here.
+- **A recorded C8 window, not closed**: `CreateWorkspace` creates the
+  space first and can still fail later (set-details, use-case import);
+  the RPC then discards the space id (`core/workspace.go`) and v2
+  answers 500 — which is deliberately NOT cached, so a keyed retry
+  re-executes and can create a SECOND space. Caching 5xx would make
+  transient failures permanent (worse), and surfacing the orphan id on
+  error needs a middleware change that could misreport a
+  partially-initialized space as created. Accepted as the lesser evil;
+  the failure mode is rare (the create path is local).
 - **C8 on both mutations** via the route idempotency middleware — the §2
   finding was the motivation: an auto-retried space create with no key
   duplicates an *entire space*, the worst possible duplicate. The
@@ -1955,12 +2015,27 @@ stay v1-only (client infrastructure, not agent fields). No space delete
   `description: ""` clears. Unknown space 404s before body validation.
   The response overlays the patch onto the current view row instead of
   re-reading (the async view sync would race an immediate read-back).
-- **Status predicate, decided.** GET-one serves any space the tech space
-  has a view for — the same contract as `ensureSpace` (if
-  `GET /spaces/{id}/objects` resolves the space, `GET /spaces/{id}` must
-  too) and as the shipped v2 spaces list. Recorded inconsistency, not
-  changed here: the global-search fan-out (`spaceRefs`) filters to live
-  spaces; the spaces list and get-one do not.
+- **Status predicate, re-decided in the review hardening.** GET-one and
+  the spaces LIST serve **live spaces only** — `isLiveSpaceView`, v1's
+  two-axis predicate (local status Unknown/Ok AND account status
+  Unknown/SpaceActive), now shared with the global-search fan-out
+  (`spaceRefs`) so the three surfaces agree on what a space *is*. The
+  original as-built served any space with a view; the review showed a
+  deleted space's row is indistinguishable from a live one (the shape
+  has no status slot), so an agent picking it would PATCH or write into
+  a space that can never load. Two recorded asymmetries: (1) the
+  earlier "same contract as ensureSpace" equivalence claim was wrong
+  even as written — `ensureSpace` short-circuits the TECH space, so
+  space-scoped routes resolve it while GET-one 404s it (and always
+  did); (2) `ensureSpace` itself stays laxer (any view + the tech
+  space) — sub-routes of a just-dead space keep answering during status
+  transitions rather than flapping 404, and the tech space remains an
+  internal address no space row ever advertises.
+- **C7 exemption, recorded**: the space surface carries no etag and
+  PATCH ignores If-Match — a space view has no agent-visible tree head
+  to hash (the object/chat etags hash CRDT heads), and the name/
+  description pair is last-write-wins by design. Concurrent renames
+  race silently; acceptable for a two-field resource.
 - **Discovery: one `space` kind** (strict, `required:["name"]`). PATCH
   takes the same two fields (both optional, at least one) and is
   documented on the kind's endpoint string rather than minting a
@@ -1969,9 +2044,16 @@ stay v1-only (client infrastructure, not agent fields). No space delete
   and a strict-schema agent that includes `name` on PATCH is simply
   valid.
 - **RPC error mapping**: BAD_INPUT → 400 `validation_failed` carrying
-  the description; anything else → 500 with the description carried
-  (`v2SpaceRpcError` — the chat classifier minus the string
-  vocabulary, which workspace RPCs don't have).
+  the description; then the review hardening added the description
+  classification the chat surface has (`v2SpaceRpcError`) — the
+  workspace RPCs answer UNKNOWN_ERROR for everything reachable (core
+  `mapErrorCode` has no workspace mappings), so without it a PATCH
+  racing a space deletion, or a reader's PATCH in a shared space, was a
+  retry-looping 500. Pinned strings: `space not exists` /
+  `space is deleted` / `space storage missing`
+  (space/service.go sentinels) → 404 `not_found`; `restricted`
+  (restriction.ErrRestricted via SetDetails) → 403 `forbidden`;
+  everything else stays 500 with the description carried.
 
 **Handler plumbing note.** The chat handlers' strict body decoder was
 generalized (`decodeStrictJSONBody`, `handler/v2_error.go`) and is shared
@@ -1987,6 +2069,29 @@ POST/PATCH spaces (`server/v2_router_test.go`), the space kind's
 strictness, the opt-in matrix (top-level type / string leaf / structured
 leaf / mixed IN / negated leaf / bare search) where the widening test
 can only pass through `ObjectAndFileLayouts`, and the fields aliases
-(render from the backing relations; filter use stays an unknown key)
+rendering from the backing relations
 (`service/v2_search_test.go TestV2SearchFileLayoutOptIn`,
 `service/v2_space_test.go`, `handler/v2_space_handler_test.go`).
+
+**Review hardening (2026-08-06, three opus lenses)** added the pins for
+everything the hardening changed: per-space alias shadowing
+(`TestV2FieldAliasShadowing` — a user property keyed `size` must
+deactivate the alias for the whole result set), the alias filter/sort
+channels, `allIn`/`HAS ALL` widening, the query-global OR widening as a
+decision, the live-space predicate on GET-one and the list (deleted
+space → 404 / filtered out) plus `description` on the list row, the
+workspace-RPC description classification (404/403/500 matrix), the
+no-space-id 500, the 4096 caps with the schema-drift pin, the
+end-to-end keyed `POST /v2/spaces` replay (`server/v2_router_test.go` —
+`WorkspaceCreate` mocked `.Once()`, second response
+`Idempotency-Replayed`), and the set-over-a-file-type read rendering
+`?fields=mimeType,size` (`v2_list_read_test.go`). Two C2/C8 footnotes
+recorded rather than changed: `dry_run` keeps its snake_case spelling
+in response bodies — a deliberate, uniform C2 carve-out across all
+eight v2 mutation DTOs (the echo mirrors the `?dry_run=` query
+parameter it answers; renaming mid-stream would fork the dialect the
+shipped phases already speak); and an Idempotency-Key reused across
+`POST /v2/spaces` and `POST /v2/validate` (the two space-less routes
+sharing the empty-space key namespace) answers 409
+`idempotency_conflict`, which is correct — a key names one logical
+operation.

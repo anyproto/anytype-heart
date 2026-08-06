@@ -189,17 +189,22 @@ for a capability the middleware does not have (Q7).
 - **Delete: no v2 file route.** A file object is an object; the pending
   `DELETE /v2/spaces/{spaceId}/objects/{objectId}` archive (§3 build item,
   due before Phase 5) covers it — v1's own DeleteFile is exactly that RPC.
-- **The real gap — discovery (BUILT, Phase 7 — APIV2.md §8.8).** v2 search and ListObjects scope
-  rows to `util.ObjectLayouts`, which excludes file layouts
-  (`service/v2_search.go:353`, `service/v2_object.go:426`,
-  `util/constant.go:9-18`); v1 search has an explicit opt-in
-  (`prepareBaseFilters(includeFileLayouts)`, `service/search.go:178-186`).
-  So a pure-v2 agent can upload an image but can never find it again.
-  Fix inside the existing Phase-4 grammar: naming a file type in the type
-  channel (`type = "image"`, top-level `type: "file"`, …) widens the layout
-  scope to `ObjectAndFileLayouts` for that query — the v1 opt-in reproduced
-  without a new parameter. Rows come back C5-minimal with `mimeType`/`size`
-  available via `fields=`.
+- **The real gap — discovery (BUILT, Phase 7 — APIV2.md §8.8).** The gap
+  was: the v2 query surface scoped rows to `util.ObjectLayouts`, which
+  excludes file layouts (`util/constant.go:9-18`), while v1 search has an
+  explicit opt-in (`prepareBaseFilters(includeFileLayouts)`,
+  `service/search.go:178-186`) — so a pure-v2 agent could upload an image
+  and never find it again. What was widened is **search only**
+  (`service/v2_search.go appendBaseRowScope`): naming a file type in the
+  type channel (`type = "image"`, top-level `type: "file"`, …) widens the
+  layout scope to `ObjectAndFileLayouts` for that query — the v1 opt-in
+  reproduced without a new parameter. **ListObjects keeps the narrow
+  `ObjectLayouts` scope by design** (`service/v2_object.go` — it has no
+  type channel and deliberately gains none; file discovery is search's
+  job), and the sets/collections reads never had the layout scope at all,
+  so a set over a file type already returned its rows. Rows come back
+  C5-minimal with `mimeType`/`size` available via `fields=` (and, post
+  review, as filter/sort keys — APIV2.md §8.8).
 
 ## 5. Chats — (c) thin adaptation with three real reshapes
 
