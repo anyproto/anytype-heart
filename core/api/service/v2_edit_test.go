@@ -279,6 +279,77 @@ func TestPatchObject(t *testing.T) {
 		assert.Contains(t, apiErr.Issues[0].Message, "appends at the end of the document")
 	})
 
+	t.Run("insertBlocks markdown payload is parsed into blocks (the authoring channel)", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")
+
+		// when: markdown instead of blocks — same targeting, same pipeline
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","after":"blockHeading1","markdown":"- [ ] todo\n  - sub item"}`), "", false)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, apimodel.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		require.Len(t, result.CreatedBlocks, 2)
+		assert.Len(t, result.CreatedBlocks["ops[0].markdown[0]"], 24, "created ids are keyed by parsed position under markdown[j]")
+		assert.Len(t, result.CreatedBlocks["ops[0].markdown[1]"], 24)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"Section", "todo", "sub item", "parent", "child", "the Q3 report and Q3 plan"}, blockTexts(blocks))
+		assert.Equal(t, "checkbox", blocks[1]["type"], "markdown checkbox syntax maps to a checkbox block")
+		assert.Equal(t, float64(1), blocks[2]["indent"], "markdown indentation nests")
+	})
+
+	t.Run("insertBlocks markdown root-append works on an empty object", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		captured := fx.expectMutate(editRead(t, editEmptyDoc), "headB")
+
+		result, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","markdown":"# First\n\nbody"}`), "", false)
+
+		require.NoError(t, err)
+		assert.Equal(t, apimodel.V2DiffStats{BlocksAdded: 2}, result.DiffStats)
+		blocks := docBlocks(stateDoc(t, *captured))
+		assert.Equal(t, []string{"First", "body"}, blockTexts(blocks))
+		assert.Equal(t, "heading1", blocks[0]["type"])
+	})
+
+	t.Run("insertBlocks with both blocks and markdown is ambiguous", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","after":"blockHeading1","blocks":[{"type":"paragraph","text":"x"}],"markdown":"y"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeAmbiguousInput, apiErr.Code)
+		assert.Equal(t, "provide blocks or markdown, not both", apiErr.Message)
+	})
+
+	t.Run("insertBlocks with neither blocks nor markdown is rejected", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","after":"blockHeading1"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "insertBlocks needs a payload", apiErr.Message)
+		assert.Contains(t, apiErr.Issues[0].Message, "markdown (parsed server-side)")
+	})
+
+	t.Run("insertBlocks blank markdown is rejected with a path", func(t *testing.T) {
+		fx := newV2Fixture(t)
+		fx.expectMutate(editRead(t, editBaseDoc))
+
+		_, err := fx.PatchObject(ctx, testSpaceId, "obj1",
+			patchBody(`{"op":"insertBlocks","after":"blockHeading1","markdown":"  \n\n"}`), "", false)
+
+		apiErr := v2Err(t, err)
+		assert.Equal(t, "markdown produced no blocks", apiErr.Message)
+		assert.Equal(t, "ops[0].markdown", apiErr.Issues[0].Path)
+	})
+
 	t.Run("moveBlock with no anchor moves the subtree to the end", func(t *testing.T) {
 		fx := newV2Fixture(t)
 		captured := fx.expectMutate(editRead(t, editBaseDoc), "headB")

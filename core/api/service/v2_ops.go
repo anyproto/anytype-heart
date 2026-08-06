@@ -168,6 +168,12 @@ type opInsertBlocks struct {
 	Inside   string            `json:"inside"`
 	Position string            `json:"position"`
 	Blocks   []json.RawMessage `json:"blocks"`
+	// Markdown is the authoring-channel alternative to Blocks (§7.1, v0.4):
+	// the server parses it into a flat run (anyblockjson.ParseMarkdownBlocks)
+	// and the op proceeds exactly as if that run had been supplied as Blocks —
+	// same targeting (incl. root-append), validation, createdBlocks and
+	// diffStats. Mutually exclusive with Blocks.
+	Markdown string `json:"markdown"`
 }
 
 type opMoveBlock struct {

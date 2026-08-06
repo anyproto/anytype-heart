@@ -42,7 +42,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"type":{"type":"string","maxLength":256,"description":"type key, e.g. page or task"},` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"properties":{"type":"object","maxProperties":128,"additionalProperties":{"type":["string","number","boolean","array","null"]}},` +
-			`"markdown":{"type":"string","maxLength":1048576,"description":"body appended after create"}}}`,
+			`"markdown":{"type":"string","maxLength":1048576,"description":"markdown body parsed into blocks server-side — part of the same single create (dry runs validate it too)"}}}`,
 		example: `{"type":"task","name":"Buy milk","properties":{"dueDate":"2026-08-01T00:00:00Z"},"markdown":"- [ ] oat\n- [ ] whole"}`,
 	},
 	"type": {

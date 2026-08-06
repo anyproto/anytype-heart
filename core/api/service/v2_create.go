@@ -17,10 +17,8 @@ import (
 
 	apimodel "github.com/anyproto/anytype-heart/core/api/model"
 	"github.com/anyproto/anytype-heart/core/domain"
-	"github.com/anyproto/anytype-heart/pb"
 	"github.com/anyproto/anytype-heart/pkg/lib/anyblockjson"
 	"github.com/anyproto/anytype-heart/pkg/lib/bundle"
-	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 	"github.com/anyproto/anytype-heart/util/pbtypes"
 
 	"github.com/gogo/protobuf/types"
@@ -87,8 +85,11 @@ func (s *V2Service) CreateTemplate(ctx context.Context, spaceId string, body []b
 }
 
 // createFromShortcut synthesizes an AnyBlock document from the shortcut
-// shape and reuses the full-document path; markdown is applied after create
-// (the v1 paste path — the flat markdown parser is a Phase-5 build item).
+// shape and reuses the full-document path. markdown is parsed into flat
+// blocks server-side (anyblockjson.ParseMarkdownBlocks, the Phase-5 parser)
+// and rides the same single-change-set create as an explicit blocks array —
+// dry runs validate it, no half-built object on failure, and the C8 result
+// cache replays it safely (the §7.2 two-change-set caveats are gone).
 func (s *V2Service) createFromShortcut(ctx context.Context, spaceId string, fields map[string]json.RawMessage, dryRun bool) (*apimodel.V2CreateResult, error) {
 	for key := range fields {
 		if !shortcutKeys[key] {
@@ -134,48 +135,19 @@ func (s *V2Service) createFromShortcut(ctx context.Context, spaceId string, fiel
 			return nil, err
 		}
 	}
+	if shortcut.Markdown != "" {
+		if run := anyblockjson.ParseMarkdownBlocks(shortcut.Markdown); len(run) > 0 {
+			if doc["blocks"], err = rawJSON(run); err != nil {
+				return nil, err
+			}
+		}
+	}
 	docJSON, err := encodeEnvelope(doc)
 	if err != nil {
 		return nil, err
 	}
 
-	result, err := s.createFromDocument(ctx, spaceId, docJSON, docCreateOptions{dryRun: dryRun})
-	if err != nil {
-		return nil, err
-	}
-	if shortcut.Markdown != "" {
-		if dryRun {
-			result.Warnings = append(result.Warnings, apimodel.V2Issue{
-				Path:    "/markdown",
-				Message: "dry run validated type and properties only — markdown is parsed when the object is created",
-			})
-		} else if err := s.pasteMarkdown(ctx, result.Id, shortcut.Markdown); err != nil {
-			return nil, fmt.Errorf("paste markdown into created object %s: %w", result.Id, err)
-		}
-	}
-	return result, nil
-}
-
-// pasteMarkdown appends the markdown body to a fresh object via the block
-// paste pipeline (v1's createAndPasteBody).
-func (s *V2Service) pasteMarkdown(ctx context.Context, objectId, markdown string) error {
-	createResp := s.mw.BlockCreate(ctx, &pb.RpcBlockCreateRequest{
-		ContextId: objectId,
-		Block:     &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{}}},
-		Position:  model.Block_Bottom,
-	})
-	if createResp.Error != nil && createResp.Error.Code != pb.RpcBlockCreateResponseError_NULL {
-		return fmt.Errorf("create anchor block: %s", createResp.Error.Description)
-	}
-	pasteResp := s.mw.BlockPaste(ctx, &pb.RpcBlockPasteRequest{
-		ContextId:      objectId,
-		FocusedBlockId: createResp.BlockId,
-		TextSlot:       markdown,
-	})
-	if pasteResp.Error != nil && pasteResp.Error.Code != pb.RpcBlockPasteResponseError_NULL {
-		return fmt.Errorf("paste markdown: %s", pasteResp.Error.Description)
-	}
-	return nil
+	return s.createFromDocument(ctx, spaceId, docJSON, docCreateOptions{dryRun: dryRun})
 }
 
 // createFromDocument is the shared full-document create path: structural

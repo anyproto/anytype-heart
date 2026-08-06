@@ -461,14 +461,14 @@ func (a *v2StateApplier) checkFreshIds(blocks []*model.Block, allowed map[string
 }
 
 // runPathFor reports a duplicate id under its payload position when the id
-// is a run top block, or the op's blocks list otherwise (table internals).
-func runPathFor(opPath string, topIds []string) func(id string) string {
+// is a run top block, or the op's payload list otherwise (table internals).
+func runPathFor(opPath, field string, topIds []string) func(id string) string {
 	topIndex := map[string]int{}
 	for j, id := range topIds {
 		topIndex[id] = j
 	}
 	return func(id string) string {
-		return fmt.Sprintf("%s.blocks[%d].id", opPath, topIndex[id])
+		return fmt.Sprintf("%s.%s[%d].id", opPath, field, topIndex[id])
 	}
 }
 
@@ -872,7 +872,7 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 	if err != nil {
 		return err
 	}
-	run, err := a.decodePayloadRun(op.Blocks, opPath)
+	run, err := a.decodePayloadRun(op.Blocks, opPath, "blocks")
 	if err != nil {
 		return err
 	}
@@ -882,7 +882,7 @@ func (a *v2StateApplier) applyReplaceSubtree(op opReplaceSubtree, opPath string)
 	if err != nil {
 		return err
 	}
-	if err := a.checkFreshIds(blocks, oldSubtree, runPathFor(opPath, topIds)); err != nil {
+	if err := a.checkFreshIds(blocks, oldSubtree, runPathFor(opPath, "blocks", topIds)); err != nil {
 		return err
 	}
 
@@ -974,15 +974,19 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	if err != nil {
 		return err
 	}
-	run, err := a.decodePayloadRun(op.Blocks, opPath)
+	payload, field, err := insertPayload(op, opPath)
 	if err != nil {
 		return err
 	}
-	blocks, topIds, err := a.fragmentBlocks(opPath+".blocks", run)
+	run, err := a.decodePayloadRun(payload, opPath, field)
 	if err != nil {
 		return err
 	}
-	if err := a.checkFreshIds(blocks, nil, runPathFor(opPath, topIds)); err != nil {
+	blocks, topIds, err := a.fragmentBlocks(opPath+"."+field, run)
+	if err != nil {
+		return err
+	}
+	if err := a.checkFreshIds(blocks, nil, runPathFor(opPath, field, topIds)); err != nil {
 		return err
 	}
 	a.setBlocks(blocks)
@@ -997,6 +1001,31 @@ func (a *v2StateApplier) applyInsertBlocks(op opInsertBlocks, opPath string) err
 	}
 	a.mutated()
 	return nil
+}
+
+// insertPayload picks the insertBlocks payload channel: the blocks array, or
+// the markdown authoring alternative (§7.1) parsed into the same flat-run
+// shape. Exactly one must be given.
+func insertPayload(op opInsertBlocks, opPath string) ([]json.RawMessage, string, error) {
+	hasBlocks := len(op.Blocks) > 0
+	hasMarkdown := op.Markdown != ""
+	switch {
+	case hasBlocks && hasMarkdown:
+		return nil, "", apimodel.V2AmbiguousInput("provide blocks or markdown, not both",
+			apimodel.V2Issue{Path: opPath, Message: "blocks (flat AnyBlock payload) and markdown (parsed server-side) are alternative payload channels for insertBlocks"})
+	case hasMarkdown:
+		run := anyblockjson.ParseMarkdownBlocks(op.Markdown)
+		if len(run) == 0 {
+			return nil, "", apimodel.V2ValidationFailed("markdown produced no blocks",
+				apimodel.V2Issue{Path: opPath + ".markdown", Message: "the markdown body contains no content — give at least one non-blank line"})
+		}
+		return run, "markdown", nil
+	case hasBlocks:
+		return op.Blocks, "blocks", nil
+	default:
+		return nil, "", apimodel.V2ValidationFailed("insertBlocks needs a payload",
+			apimodel.V2Issue{Path: opPath, Message: "give blocks (a flat AnyBlock run) or markdown (parsed server-side)"})
+	}
 }
 
 func (a *v2StateApplier) applyMoveBlock(op opMoveBlock, opPath string) error {
@@ -1268,15 +1297,15 @@ func (a *v2StateApplier) applyItems(op opItems, opPath string) error {
 // stay run-relative — the state splice, not indent arithmetic, sets the
 // insertion level. Missing ids are minted; every payload block's id lands in
 // createdBlocks keyed by payload position.
-func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath string) ([]map[string]any, error) {
+func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath, field string) ([]map[string]any, error) {
 	if len(raws) == 0 {
 		return nil, apimodel.V2ValidationFailed("blocks must not be empty",
-			apimodel.V2Issue{Path: opPath + ".blocks", Message: "give at least one block"})
+			apimodel.V2Issue{Path: opPath + "." + field, Message: "give at least one block"})
 	}
 	run := make([]map[string]any, 0, len(raws))
 	prev := -1
 	for j, raw := range raws {
-		path := fmt.Sprintf("%s.blocks[%d]", opPath, j)
+		path := fmt.Sprintf("%s.%s[%d]", opPath, field, j)
 		block, err := decodeOpBlock(raw, path)
 		if err != nil {
 			return nil, err
@@ -1309,7 +1338,7 @@ func (a *v2StateApplier) decodePayloadRun(raws []json.RawMessage, opPath string)
 			id = a.mintBlockId()
 			block["id"] = id
 		}
-		a.createdBlocks[fmt.Sprintf("%s.blocks[%d]", opPath, j)] = id
+		a.createdBlocks[fmt.Sprintf("%s.%s[%d]", opPath, field, j)] = id
 		run = append(run, block)
 	}
 	return run, nil

@@ -98,6 +98,33 @@ func (s *V2Service) ListMembers(ctx context.Context, spaceId string, offset, lim
 	return rows, total, hasMore, nil
 }
 
+// GetMemberMe implements GET /v2/spaces/{spaceId}/members/me: the caller's
+// own member row (§7.3 — the server-side identity behind the wrapper's `@me`
+// sentinel; the same identity Phase 4's placeholder substitution uses). The
+// participant id is deterministic, so the row is served even before the
+// participant object reaches the store index (name/role empty then) — the id
+// is what assignee/creator values need.
+func (s *V2Service) GetMemberMe(ctx context.Context, spaceId string) (apimodel.V2MemberRow, error) {
+	if err := s.ensureSpace(spaceId); err != nil {
+		return apimodel.V2MemberRow{}, err
+	}
+	if s.accountId == "" {
+		return apimodel.V2MemberRow{}, apimodel.V2NotFound(
+			"the caller's account identity is not available on this server — list members with GET /v2/spaces/{spaceId}/members instead")
+	}
+	row := apimodel.V2MemberRow{
+		Id:       domain.NewParticipantId(spaceId, s.accountId),
+		Identity: s.accountId,
+	}
+	// the store returns empty details (no error) for an unindexed id — only
+	// trust the row's name/role once the participant object actually exists
+	if details, err := s.store.SpaceIndex(spaceId).GetDetails(row.Id); err == nil && details.GetString(bundle.RelationKeyId) == row.Id {
+		row.Name = details.GetString(bundle.RelationKeyName)
+		row.Role = memberRole(model.ParticipantPermissions(details.GetInt64(bundle.RelationKeyParticipantPermissions)))
+	}
+	return row, nil
+}
+
 // memberRole maps participant permissions to the API role vocabulary
 // (mirrors v1's mapping).
 func memberRole(permissions model.ParticipantPermissions) string {

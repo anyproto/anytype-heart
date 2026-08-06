@@ -57,6 +57,28 @@ func ListMembersV2Handler(s *service.V2Service) gin.HandlerFunc {
 	}
 }
 
+// GetMemberMeV2Handler returns the caller's own member row
+//
+//	@Summary	Get the calling member (server-side identity, §7.3 @me)
+//	@Id			v2_get_member_me
+//	@Tags		V2
+//	@Produce	json
+//	@Param		space_id	path		string					true	"Space id"
+//	@Success	200			{object}	apimodel.V2MemberRow	"The caller's member row"
+//	@Failure	404			{object}	apimodel.V2Error		"Space not found, or no account identity"
+//	@Security	bearerauth
+//	@Router		/v2/spaces/{space_id}/members/me [get]
+func GetMemberMeV2Handler(s *service.V2Service) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		row, err := s.GetMemberMe(c.Request.Context(), c.Param("space_id"))
+		if err != nil {
+			RespondV2Error(c, err)
+			return
+		}
+		c.JSON(http.StatusOK, row)
+	}
+}
+
 // ListTypesV2Handler lists type keys and names
 //
 //	@Summary	List types (keys + names)

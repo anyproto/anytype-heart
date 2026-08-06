@@ -84,14 +84,15 @@ var v2OpSchemas = map[string]v2SchemaKind{
 	},
 	"insertBlocks": {
 		endpoint: v2OpsEndpoint,
-		schema: opSchema(`"op","blocks"`,
+		schema: opSchema(`"op"`,
 			`"op":{"const":"insertBlocks"}`,
 			`"after":{"$ref":"#/$defs/blockRef","description":"insert after this block's subtree, at its level"}`,
 			`"before":{"$ref":"#/$defs/blockRef","description":"insert before this block, at its level"}`,
 			`"inside":{"$ref":"#/$defs/blockRef","description":"insert as children of this block"}`,
 			`"position":{"type":"string","enum":["first","last"],"description":"with inside only; default last"}`,
-			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"at most one of after/before/inside targets the run — omit all three to append at the end of the document (works on an empty object too); indent 0 = the insertion level"}`),
-		example: `{"ops":[{"op":"insertBlocks","after":"b3","blocks":[{"type":"checkbox","text":"todo"}]}]}`,
+			`"blocks":{"type":"array","minItems":1,"maxItems":256,"items":{"$ref":"#/$defs/block"},"description":"at most one of after/before/inside targets the run — omit all three to append at the end of the document (works on an empty object too); indent 0 = the insertion level"}`,
+			`"markdown":{"type":"string","minLength":1,"maxLength":1048576,"description":"authoring alternative to blocks (give exactly one): the server parses markdown into flat blocks — headings, lists, checkboxes, fences, quotes, dividers, tables; same targeting; createdBlocks keys read markdown[j] for the j-th parsed block"}`),
+		example: `{"ops":[{"op":"insertBlocks","after":"b3","markdown":"- [ ] todo"}]}`,
 	},
 	"moveBlock": {
 		endpoint: v2OpsEndpoint,

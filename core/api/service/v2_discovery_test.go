@@ -129,6 +129,58 @@ func TestV2ListMembers(t *testing.T) {
 	})
 }
 
+func TestV2GetMemberMe(t *testing.T) {
+	meId := domain.NewParticipantId(testSpaceId, testAccountId)
+
+	t.Run("returns the caller's member row from the store", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{
+			{
+				bundle.RelationKeyId:                     domain.String(meId),
+				bundle.RelationKeyName:                   domain.String("Me Myself"),
+				bundle.RelationKeyResolvedLayout:         domain.Int64(int64(model.ObjectType_participant)),
+				bundle.RelationKeyParticipantPermissions: domain.Int64(int64(model.ParticipantPermissions_Owner)),
+			},
+		})
+		want := apimodel.V2MemberRow{Id: meId, Name: "Me Myself", Role: "owner", Identity: testAccountId}
+
+		// when
+		row, err := fx.GetMemberMe(context.Background(), testSpaceId)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, row)
+	})
+
+	t.Run("serves the deterministic id before the participant object is indexed", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+		want := apimodel.V2MemberRow{Id: meId, Identity: testAccountId}
+
+		// when
+		row, err := fx.GetMemberMe(context.Background(), testSpaceId)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, want, row, "the id is what assignee values need — served without a store row")
+	})
+
+	t.Run("no account identity is a 404 steering to the members list", func(t *testing.T) {
+		// given: a service constructed without an account id (degraded mode)
+		fx := newV2Fixture(t)
+		svc := NewV2Service(fx.mwMock, fx.readerMock, fx.creatorMock, fx.mutatorMock, fx.objectStore, objectstore.TestTechSpaceId, "")
+
+		// when
+		_, err := svc.GetMemberMe(context.Background(), testSpaceId)
+
+		// then
+		apiErr := v2Err(t, err)
+		assert.Equal(t, apimodel.V2CodeNotFound, apiErr.Code)
+		assert.Contains(t, apiErr.Message, "GET /v2/spaces/{spaceId}/members")
+	})
+}
+
 func TestV2ListTypes(t *testing.T) {
 	t.Run("types become key+name rows", func(t *testing.T) {
 		// given

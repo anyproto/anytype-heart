@@ -107,6 +107,10 @@ func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommand
 		ensureAnalyticsEvent("V2ListMembers", eventService),
 		handler.ListMembersV2Handler(srv.v2Service),
 	)
+	v2.GET("/spaces/:space_id/members/me",
+		ensureAnalyticsEvent("V2GetMemberMe", eventService),
+		handler.GetMemberMeV2Handler(srv.v2Service),
+	)
 	v2.GET("/spaces/:space_id/types",
 		ensureAnalyticsEvent("V2ListTypes", eventService),
 		handler.ListTypesV2Handler(srv.v2Service),

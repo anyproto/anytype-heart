@@ -110,24 +110,49 @@ func TestV2CreateObjectShortcut(t *testing.T) {
 		assert.Equal(t, "Buy milk", pbtypes.GetString(snapshot.Details, "name"))
 	})
 
-	t.Run("markdown is pasted after create", func(t *testing.T) {
+	t.Run("markdown is parsed into the create snapshot (one change set)", func(t *testing.T) {
 		// given
 		fx := newV2Fixture(t)
-		fx.expectCreate("newObj")
+		captured := fx.expectCreate("newObj")
 		fx.expectEtagRead("newObj")
-		fx.mwMock.EXPECT().BlockCreate(mock.Anything, mock.Anything).
-			Return(&pb.RpcBlockCreateResponse{BlockId: "b1", Error: &pb.RpcBlockCreateResponseError{Code: pb.RpcBlockCreateResponseError_NULL}})
-		fx.mwMock.EXPECT().BlockPaste(mock.Anything, mock.MatchedBy(func(req *pb.RpcBlockPasteRequest) bool {
-			return req.ContextId == "newObj" && req.TextSlot == "# Hello"
-		})).Return(&pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: pb.RpcBlockPasteResponseError_NULL}})
 
-		// when
+		// when — no BlockCreate/BlockPaste expectations: the paste path is gone
 		result, err := fx.CreateObject(context.Background(), testSpaceId,
-			[]byte(`{"type":"page","name":"Doc","markdown":"# Hello"}`), false)
+			[]byte(`{"type":"page","name":"Doc","markdown":"# Hello\n\n- [ ] first task"}`), false)
 
 		// then
 		require.NoError(t, err)
 		assert.Equal(t, "newObj", result.Id)
+		snapshot := *captured
+		require.NotNil(t, snapshot)
+		var heading, checkbox *model.Block
+		for _, b := range snapshot.Blocks {
+			if text := b.GetText(); text != nil {
+				switch {
+				case text.Style == model.BlockContentText_Header1 && text.Text == "Hello":
+					heading = b
+				case text.Style == model.BlockContentText_Checkbox && text.Text == "first task":
+					checkbox = b
+				}
+			}
+		}
+		require.NotNil(t, heading, "markdown heading must be part of the create snapshot")
+		require.NotNil(t, checkbox, "markdown checkbox must be part of the create snapshot")
+	})
+
+	t.Run("dry run validates the markdown body too", func(t *testing.T) {
+		// given
+		fx := newV2Fixture(t)
+
+		// when
+		result, err := fx.CreateObject(context.Background(), testSpaceId,
+			[]byte(`{"type":"page","name":"Doc","markdown":"- [x] done item"}`), true)
+
+		// then
+		require.NoError(t, err)
+		assert.True(t, result.DryRun)
+		assert.Empty(t, result.Id)
+		assert.Empty(t, result.Warnings, "the two-change-set dry-run caveat warning is gone")
 	})
 
 	t.Run("unknown shortcut key steers to the full document", func(t *testing.T) {
