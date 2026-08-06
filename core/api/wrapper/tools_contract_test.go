@@ -318,8 +318,10 @@ func TestPropertyIndexFetchedOnce(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	assert.Len(t, fx.sent("GET /v2/spaces/space1/properties"), 1,
-		"the property index is fetched once per tool call")
+	sent := fx.sent("GET /v2/spaces/space1/properties")
+	require.Len(t, sent, 1, "the property index is fetched once per tool call")
+	assert.Equal(t, "500", sent[0].Query.Get("limit"),
+		"the page size stays under the server's MaxPageSize — sitting on the boundary 400s if it is lowered")
 }
 
 // TestLabelsResolveUnderServerRule pins the two suffix-label implementations

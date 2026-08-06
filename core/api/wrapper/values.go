@@ -62,7 +62,13 @@ func (r *Runner) resolveFilterMe(ctx context.Context, session *Session, spaceId,
 //
 
 // maxPropertyPages bounds the format-index pagination loop.
-const maxPropertyPages = 5
+const maxPropertyPages = 10
+
+// propertyFormatsPageSize keeps a healthy margin under the server's
+// MaxPageSize (currently 1000): an over-limit `limit` is a hard 400, so
+// sitting exactly on the boundary would turn every create/set_properties
+// into a 400 the day the constant is lowered.
+const propertyFormatsPageSize = 500
 
 // propertyFormats loads the space's property key → format index.
 func (r *Runner) propertyFormats(ctx context.Context, spaceId string) (map[string]string, error) {
@@ -73,7 +79,7 @@ func (r *Runner) propertyFormats(ctx context.Context, spaceId string) (map[strin
 		err := r.client.decode(ctx, apiRequest{
 			method: "GET",
 			path:   "/v2/spaces/" + seg(spaceId) + "/properties",
-			query:  url.Values{"limit": []string{"1000"}, "offset": []string{strconv.Itoa(offset)}},
+			query:  url.Values{"limit": []string{strconv.Itoa(propertyFormatsPageSize)}, "offset": []string{strconv.Itoa(offset)}},
 		}, &resp)
 		if err != nil {
 			return nil, fmt.Errorf("list properties: %w", err)
