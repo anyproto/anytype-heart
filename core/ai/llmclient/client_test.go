@@ -432,3 +432,58 @@ func TestReasoningModelMaxTokens(t *testing.T) {
 		assert.EqualValues(t, 4096, fs.lastBody["max_completion_tokens"])
 	})
 }
+
+func TestReasoningEffort(t *testing.T) {
+	t.Run("the requested effort is sent", func(t *testing.T) {
+		// given
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) { respondContent(w, `{"answer":"ok"}`) })
+		c := newTestClient(t, fs.URL)
+
+		// when
+		_, _, err := c.CompleteJSON(context.Background(), Request{Schema: testSchema, ReasoningEffort: "low"})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, "low", fs.lastBody["reasoning_effort"])
+	})
+
+	t.Run("a model that rejects the parameter is retried without it", func(t *testing.T) {
+		// given — non-reasoning models 400 on reasoning_effort, and the same
+		// config may be pointed at either kind, so the parameter must degrade
+		// rather than fail the plan step.
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) {})
+		fs.respond = func(w http.ResponseWriter, call int64) {
+			if _, present := fs.lastBody["reasoning_effort"]; present {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":{"message":"Unsupported parameter: 'reasoning_effort' is not supported with this model."}}`))
+				return
+			}
+			respondContent(w, `{"answer":"ok"}`)
+		}
+		c := newTestClient(t, fs.URL)
+
+		// when
+		got, _, err := c.CompleteJSON(context.Background(), Request{Schema: testSchema, ReasoningEffort: "high"})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, json.RawMessage(`{"answer":"ok"}`), got)
+		assert.Equal(t, int64(2), fs.calls.Load())
+		_, present := fs.lastBody["reasoning_effort"]
+		assert.False(t, present)
+	})
+
+	t.Run("no effort requested sends no parameter", func(t *testing.T) {
+		// given
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) { respondContent(w, `{"answer":"ok"}`) })
+		c := newTestClient(t, fs.URL)
+
+		// when
+		_, _, err := c.CompleteJSON(context.Background(), Request{Schema: testSchema})
+
+		// then
+		require.NoError(t, err)
+		_, present := fs.lastBody["reasoning_effort"]
+		assert.False(t, present)
+	})
+}

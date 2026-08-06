@@ -38,6 +38,7 @@ const maxCompletionTokens = 16384
 type planner struct {
 	client *llmclient.Client
 	budget time.Duration
+	effort string
 }
 
 // Option configures the planner.
@@ -46,6 +47,13 @@ type Option func(*planner)
 // WithBudget overrides the wall-clock budget for the whole plan step.
 func WithBudget(budget time.Duration) Option {
 	return func(p *planner) { p.budget = budget }
+}
+
+// WithReasoningEffort tunes a reasoning model's thinking, and switches it off
+// entirely on a local thinking model ("none"). Models that do not know the
+// parameter ignore it — the client drops it on rejection.
+func WithReasoningEffort(effort string) Option {
+	return func(p *planner) { p.effort = effort }
 }
 
 // New wraps an llmclient into a schemaplan.Planner.
@@ -66,11 +74,12 @@ func (p *planner) Plan(ctx context.Context, schemas []schemaplan.ContainerSchema
 		return schemaplan.Plan{}, fmt.Errorf("render schemas: %w", err)
 	}
 	request := llmclient.Request{
-		System:     systemPrompt(),
-		User:       userPrompt,
-		SchemaName: "import_plan",
-		Schema:     responseSchema,
-		MaxTokens:  maxCompletionTokens,
+		System:          systemPrompt(),
+		User:            userPrompt,
+		SchemaName:      "import_plan",
+		Schema:          responseSchema,
+		MaxTokens:       maxCompletionTokens,
+		ReasoningEffort: p.effort,
 	}
 	raw, _, err := p.client.CompleteJSON(ctx, request)
 	if err != nil {

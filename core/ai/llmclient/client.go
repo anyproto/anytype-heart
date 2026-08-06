@@ -41,6 +41,17 @@ type Request struct {
 	Schema json.RawMessage
 	// MaxTokens caps the completion; 0 = provider default.
 	MaxTokens int
+	// ReasoningEffort tunes how much a reasoning model thinks before
+	// answering ("none", "low", "medium", "high", …; the accepted set is
+	// provider- and model-specific). Empty sends nothing.
+	//
+	// It serves two ends. On hosted reasoning models it trades latency and
+	// tokens for depth. On a LOCAL thinking model served through ollama's
+	// OpenAI-compatible endpoint, "none" switches thinking off entirely —
+	// without it the thought consumes the token budget and the answer comes
+	// back empty or truncated. Models that do not know the parameter reject
+	// it, so it is dropped and retried rather than failing the call.
+	ReasoningEffort string
 }
 
 // Usage reports provider-side token accounting for the call.
@@ -138,8 +149,9 @@ func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage
 		// go-openai omits a zero temperature from the payload, letting the
 		// provider default (usually 1) win; the smallest nonzero float is the
 		// documented way to actually send ~0.
-		Temperature: math.SmallestNonzeroFloat32,
-		MaxTokens:   req.MaxTokens,
+		Temperature:     math.SmallestNonzeroFloat32,
+		MaxTokens:       req.MaxTokens,
+		ReasoningEffort: req.ReasoningEffort,
 		Messages: []openai.ChatCompletionMessage{
 			{Role: openai.ChatMessageRoleSystem, Content: req.System},
 			{Role: openai.ChatMessageRoleUser, Content: req.User},
@@ -157,6 +169,7 @@ func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage
 	var lastErr error
 	temperatureDropped := false
 	maxTokensSwitched := false
+	effortDropped := false
 	for attempt := 0; attempt < c.retry.MaxAttempts; attempt++ {
 		if attempt > 0 {
 			if err := c.sleep(ctx, c.backoff(attempt)); err != nil {
@@ -182,6 +195,15 @@ func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage
 			if !maxTokensSwitched && isMaxTokensRejection(err) {
 				maxTokensSwitched = true
 				apiReq.MaxCompletionTokens, apiReq.MaxTokens = apiReq.MaxTokens, 0
+				attempt--
+				continue
+			}
+			// A model that does not know reasoning_effort 400s on it. The same
+			// config may be pointed at a reasoning model or a plain one, so
+			// the parameter degrades instead of failing the plan step.
+			if !effortDropped && isReasoningEffortRejection(err) {
+				effortDropped = true
+				apiReq.ReasoningEffort = "" // omitempty: the field disappears
 				attempt--
 				continue
 			}
@@ -261,6 +283,16 @@ func isMaxTokensRejection(err error) bool {
 	// 'max_tokens' is not supported with this model."
 	message := strings.ToLower(apiErr.Message)
 	return strings.Contains(message, "max_tokens") || strings.Contains(message, "maxtokens")
+}
+
+// isReasoningEffortRejection spots a refusal of the reasoning_effort
+// parameter by a model that has no notion of it.
+func isReasoningEffortRejection(err error) bool {
+	var apiErr *openai.APIError
+	if !errors.As(err, &apiErr) || apiErr.HTTPStatusCode != http.StatusBadRequest {
+		return false
+	}
+	return strings.Contains(strings.ToLower(apiErr.Message), "reasoning_effort")
 }
 
 // classify maps a go-openai error onto the package sentinels and decides
