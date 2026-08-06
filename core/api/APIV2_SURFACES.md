@@ -438,14 +438,21 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
 
 ### 10.1 Phase 8 — completeness: the surfaces v0.1 wanted to leave on v1
 
-1. **[build] `POST /v2/auth/challenges` + `POST /v2/auth/api_keys`.** Same two
-   RPCs (`AccountLocalLinkNewChallenge` / `AccountLocalLinkSolveChallenge`,
-   `service/auth.go:19-52`), registered unauthenticated like their v1 twins
-   (`router.go:332-337`). The fork is deliberate and is the whole point:
-   camelCase bodies (`challengeId`, `appKey` — v1 uses snake_case,
-   `model/auth.go`), the C6 error envelope, and the C13 strict schemas, so the
-   first call an agent or a reader ever makes already looks like the rest of
-   the API. v1's routes stay untouched until deprecation.
+1. **[build] `POST /v2/auth/api_keys` — the key exchange only.**
+   Over `AccountLocalLinkSolveChallenge` (`service/auth.go:19-52`), registered
+   unauthenticated like its v1 twin (`router.go:332-337`). The fork from v1 is
+   deliberate and is the point: camelCase bodies (`challengeId`, `appKey` — v1
+   uses snake_case, `model/auth.go`), the C6 error envelope, C13 strict
+   schemas. v1's routes stay untouched until deprecation.
+
+   **`POST /v2/auth/challenges` is deliberately NOT built** (human decision,
+   2026-08-06): a reworked challenge flow is landing separately across heart
+   and the clients, and gets its v2 endpoint once that merges. Building the
+   current flow now would mean shipping a v2 endpoint we already know is
+   changing, and then breaking it. Until then a client obtains its challenge
+   id from `POST /v1/auth/challenges` — the one *named, temporary* exception
+   to the completeness rule, documented as such rather than left for a reader
+   to discover, and carried as the single entry in the item-6 allowlist.
 2. **[build] `GET /v2/spaces/{spaceId}/files/{fileId}/content`** — the byte
    stream. HTTP is the convention *inside* the response (Content-Type,
    Content-Length, Range, ETag as a real validator), but everything around it
@@ -465,9 +472,12 @@ content; Phase 8 is new and exists only because of the v0.2 decision.
    — trivial passthrough; ships for completeness.
 6. **Exit criterion.** A conformance test asserts that every capability
    reachable under `/v1` has a `/v2` route, with an explicit, reviewed
-   allowlist of the exceptions (today: none intended). This is the test that
-   makes "complete" checkable instead of asserted — without it, completeness
-   decays silently the next time a v1 route is added.
+   allowlist of the exceptions. This is the test that makes "complete"
+   checkable instead of asserted — without it, completeness decays silently
+   the next time a v1 route is added. The allowlist has exactly one entry
+   today (`POST /v1/auth/challenges`, item 1); each entry carries a reason and
+   an owner, so it reads as a debt list rather than a carve-out, and a second
+   entry has to be argued for in review.
 
 ### 10.2 What "complete" does not mean
 
