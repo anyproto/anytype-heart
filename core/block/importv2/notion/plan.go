@@ -273,12 +273,22 @@ func (c *Converter) adoptDatabaseIdentity(ctx context.Context, object *importv2.
 	database := fetch.database
 	object.SourceKey = containerId
 	object.IsRootCandidate = c.isRootCandidate(stub)
-	object.Archived = database.Archived
+	// Deliberately NOT archived with the database. A collection in the bin is
+	// recoverable content, but a type in the bin is still the shape of every
+	// live row that carries it, and emptying the bin would take the shape with
+	// it. The rows of an archived database are archived individually anyway.
 	if description := plainText(database.Description); description != "" {
 		object.Payload.Details.SetString(bundle.RelationKeyDescription, description)
 	}
 	object.Payload.Details.SetString(bundle.RelationKeySourceFilePath, containerId)
 	setTimestamps(object.Payload.Details, database.CreatedTime, database.LastEditedTime)
+	if database.Icon == nil && database.Cover == nil {
+		// Nothing to inherit; keep the icon the plan chose.
+		return nil
+	}
+	// The database's own icon is the more faithful one, and two icon details on
+	// one object leave the rendered choice up to the client.
+	object.Payload.Details.Delete(bundle.RelationKeyIconName)
 	return c.applyIcon(ctx, object, database.Icon, database.Cover, "/data_sources/"+fetch.schemaId, sink)
 }
 

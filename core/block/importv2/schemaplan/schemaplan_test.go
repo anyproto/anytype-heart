@@ -2,7 +2,9 @@ package schemaplan
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -720,5 +722,178 @@ func TestSharedTypeAcrossContainers(t *testing.T) {
 		assert.Equal(t, shared, got.Containers["launch"].Properties["c2"].Key)
 		assert.Equal(t, shared, got.NewTypes[0].Properties[0].Key,
 			"the type's recommended relation must be the one its containers write to")
+	})
+}
+
+// TestReviewFindings pins the defects a four-lens review of 2026-08-06 found
+// in the always-mint work. Each subtest failed before its fix.
+func TestReviewFindings(t *testing.T) {
+	t.Run("a dropped type does not lend its scope to two containers", func(t *testing.T) {
+		// given — the model types both containers "catalogued" but never
+		// defines it, so neither ends up typed
+		plan := Plan{Containers: map[string]ContainerPlan{
+			"recipes": {TypeKey: "catalogued", Properties: map[string]PropertyPlan{"c1": {Key: "category"}}},
+			"launch":  {TypeKey: "catalogued", Properties: map[string]PropertyPlan{"c2": {Key: "category"}}},
+		}}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then — an unrealised kind must not still merge their option pools
+		assert.NotEqual(t, got.Containers["recipes"].Properties["c1"].Key,
+			got.Containers["launch"].Properties["c2"].Key)
+	})
+
+	t.Run("a type key equal to another container's id does not collide scopes", func(t *testing.T) {
+		// given — ids and type keys share one string namespace
+		plan := Plan{Containers: map[string]ContainerPlan{
+			"recipes": {TypeKey: "launch", Properties: map[string]PropertyPlan{"c1": {Key: "category"}}},
+			"launch":  {Properties: map[string]PropertyPlan{"c2": {Key: "category"}}},
+		}}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then
+		assert.NotEqual(t, got.Containers["recipes"].Properties["c1"].Key,
+			got.Containers["launch"].Properties["c2"].Key)
+	})
+
+	t.Run("ScopedKey cannot be forged by an @ in the key or scope", func(t *testing.T) {
+		assert.NotEqual(t, ScopedKey("a", "b@c"), ScopedKey("a@b", "c"))
+		assert.NotEqual(t, CustomRelationKey(ScopedKey("a", "b@c")), CustomRelationKey(ScopedKey("a@b", "c")))
+	})
+
+	t.Run("a type property name is bounded like every other plan-supplied name", func(t *testing.T) {
+		// given — both live models write explanations into name fields, and
+		// the type definition emits the relation FIRST, so its name wins
+		prose := "State (as workState) from Sprint work mapped to a per-container select property."
+		plan := Plan{
+			NewTypes: []TypeDefinition{{
+				Key: "sprint", Name: "Sprint",
+				Properties: []TypeProperty{{Key: "workState", Name: prose, Format: model.RelationFormat_status}},
+			}},
+			Containers: map[string]ContainerPlan{"ds1": {TypeKey: "sprint"}},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then
+		require.Len(t, got.NewTypes, 1)
+		require.Len(t, got.NewTypes[0].Properties, 1)
+		assert.NotEqual(t, prose, got.NewTypes[0].Properties[0].Name)
+		assert.LessOrEqual(t, len([]rune(got.NewTypes[0].Properties[0].Name)), 64)
+	})
+
+	t.Run("a nameless type property never exposes the internal scoped key", func(t *testing.T) {
+		// given — the wire schema requires the field but "" is legal
+		plan := Plan{
+			NewTypes: []TypeDefinition{{
+				Key: "sprint", Name: "Sprint",
+				Properties: []TypeProperty{{Key: "effort", Format: model.RelationFormat_number}},
+			}},
+			Containers: map[string]ContainerPlan{"ds1": {TypeKey: "sprint"}},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then — "effort@sprint" must never reach a user-visible name
+		require.Len(t, got.NewTypes, 1)
+		require.Len(t, got.NewTypes[0].Properties, 1)
+		assert.Equal(t, "effort", got.NewTypes[0].Properties[0].Name)
+	})
+
+	t.Run("control characters are stripped from names", func(t *testing.T) {
+		for _, hostile := range []struct{ name, in string }{
+			{"NUL", "Spr\x00int"},
+			{"escape", "Spr\x1b[31mint"},
+			{"rtl override", "Sprint‮gnp.exe"},
+		} {
+			t.Run(hostile.name, func(t *testing.T) {
+				// given
+				plan := Plan{
+					NewTypes:   []TypeDefinition{{Key: "sprint", Name: hostile.in}},
+					Containers: map[string]ContainerPlan{"ds1": {TypeKey: "sprint"}},
+				}
+
+				// when
+				got := Sanitize(plan, taskSchemas(), nil)
+
+				// then
+				require.Len(t, got.NewTypes, 1)
+				for _, r := range got.NewTypes[0].Name {
+					assert.False(t, unicode.IsControl(r) || unicode.Is(unicode.Cf, r),
+						"control character %U survived into a display name", r)
+				}
+			})
+		}
+	})
+
+	t.Run("an over-long name on a shared type keeps the type", func(t *testing.T) {
+		// given — several containers sharing one type is the first-class case,
+		// and then no single container's name is available as a fallback
+		plan := Plan{
+			NewTypes: []TypeDefinition{{Key: "catalogued", Name: strings.Repeat("prose ", 20)}},
+			Containers: map[string]ContainerPlan{
+				"recipes": {TypeKey: "catalogued"},
+				"launch":  {TypeKey: "catalogued"},
+			},
+		}
+
+		// when
+		got := Sanitize(plan, twoCategorySchemas(), nil)
+
+		// then — always-mint must not degrade to untyped pages here
+		require.Len(t, got.NewTypes, 1, "the shared type was dropped for want of a name")
+		assert.NotEmpty(t, got.NewTypes[0].Name)
+		assert.Equal(t, got.NewTypes[0].Key, got.Containers["recipes"].TypeKey)
+	})
+
+	t.Run("a duplicate definition does not retype containers onto a decoy", func(t *testing.T) {
+		// given — "task" re-keys to "plan_task", which a decoy already holds
+		plan := Plan{
+			NewTypes: []TypeDefinition{
+				{Key: "plan_task", Name: "Decoy"},
+				{Key: bundle.TypeKeyTask, Name: "Real"},
+			},
+			Containers: map[string]ContainerPlan{"ds1": {TypeKey: bundle.TypeKeyTask}},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then — the container must not silently inherit the decoy's shape
+		if typeKey := got.Containers["ds1"].TypeKey; typeKey != "" {
+			for _, def := range got.NewTypes {
+				if def.Key == typeKey {
+					assert.NotEqual(t, "Decoy", def.Name,
+						"container typed onto a definition it never named")
+				}
+			}
+		}
+	})
+
+	t.Run("duplicate property keys within one type definition collapse", func(t *testing.T) {
+		// given
+		plan := Plan{
+			NewTypes: []TypeDefinition{{
+				Key: "sprint", Name: "Sprint",
+				Properties: []TypeProperty{
+					{Key: "state", Name: "State", Format: model.RelationFormat_tag, Featured: true},
+					{Key: "state", Name: "State again", Format: model.RelationFormat_date},
+				},
+			}},
+			Containers: map[string]ContainerPlan{"ds1": {TypeKey: "sprint"}},
+		}
+
+		// when
+		got := Sanitize(plan, taskSchemas(), nil)
+
+		// then — one relation must not be both featured and regular, nor carry
+		// two declared formats
+		require.Len(t, got.NewTypes, 1)
+		assert.Len(t, got.NewTypes[0].Properties, 1)
 	})
 }

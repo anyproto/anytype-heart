@@ -550,3 +550,68 @@ func TestOverlappingContainersKeepTheirCollections(t *testing.T) {
 			"containers sharing members must stay collections: a page cannot hold two types")
 	}
 }
+
+func TestArchivedDatabaseDoesNotArchiveItsType(t *testing.T) {
+	// given — an archived database that solely backs a minted type. A
+	// collection in the bin is recoverable content; a TYPE in the bin is
+	// referenced by every live row that carries it.
+	planner := schemaplan.PlannerFunc(func(_ context.Context, schemas []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+		return schemaplan.Plan{
+			NewTypes:   []schemaplan.TypeDefinition{{Key: "sprint", Name: "Sprint"}},
+			Containers: map[string]schemaplan.ContainerPlan{"db1": {TypeKey: "sprint", Reason: "LLM plan"}},
+		}, nil
+	})
+
+	server := httptest.NewServer(archivedDatabaseWorkspace(t))
+	t.Cleanup(server.Close)
+	apiClient := client.NewClient("token",
+		client.WithBaseURL(server.URL),
+		client.WithRateLimit(1000),
+		client.WithRetryPolicy(client.RetryPolicy{MaxAttempts: 2, BaseDelay: time.Millisecond, MaxDelay: time.Millisecond, TotalBudget: time.Second}),
+	)
+	converter := New(apiClient, client.NewFileFetcher(), stubFactory{}, t.TempDir(), WithPlanner(planner))
+	require.NoError(t, converter.EnumerateIdentities(context.Background(), func(importv2.IdentityClaim) error { return nil }))
+
+	// when
+	sink := &recordingSink{}
+	_, err := converter.Convert(context.Background(), sink)
+	require.NoError(t, err)
+
+	// then
+	object := sink.byKey("db1")
+	require.NotNil(t, object)
+	require.Equal(t, coresb.SmartBlockTypeObjectType, object.SbType)
+	assert.False(t, object.Archived,
+		"a type in the bin would strand every live object that carries it")
+}
+
+func archivedDatabaseWorkspace(t *testing.T) http.HandlerFunc {
+	t.Helper()
+	routes := map[string]string{
+		"GET /data_sources/db1": `{"id":"db1","archived":true,
+			"title":[{"plain_text":"Old Tasks","type":"text"}],
+			"properties":{"Name":{"id":"title","type":"title","name":"Name"}}}`,
+		"GET /pages/pg1": `{"id":"pg1","archived":false,
+			"properties":{"Name":{"id":"title","type":"title","title":[{"plain_text":"Row","type":"text"}]}}}`,
+		"GET /blocks/pg1/children": `{"results":[],"has_more":false,"next_cursor":null}`,
+	}
+	search := `{"results":[
+		{"object":"data_source","id":"db1","parent":{"type":"database_id","database_id":"realdb"},
+		 "database_parent":{"type":"workspace","workspace":true},
+		 "title":[{"plain_text":"Old Tasks","type":"text"}]},
+		{"object":"page","id":"pg1","parent":{"type":"data_source_id","data_source_id":"db1"},
+		 "properties":{"Name":{"type":"title","title":[{"plain_text":"Row","type":"text"}]}}}
+	],"has_more":false,"next_cursor":null}`
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/search" {
+			fmt.Fprint(w, search)
+			return
+		}
+		if response, ok := routes[r.Method+" "+r.URL.Path]; ok {
+			fmt.Fprint(w, response)
+			return
+		}
+		t.Errorf("unexpected api call: %s %s", r.Method, r.URL.Path)
+		w.WriteHeader(http.StatusNotFound)
+	}
+}

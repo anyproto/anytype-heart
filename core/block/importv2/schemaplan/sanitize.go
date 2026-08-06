@@ -3,7 +3,9 @@ package schemaplan
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
+	"unicode"
 
 	importv2 "github.com/anyproto/anytype-heart/core/block/importv2"
 	"github.com/anyproto/anytype-heart/core/domain"
@@ -81,20 +83,36 @@ var allowedIcons = func() map[string]bool {
 // (select)"), and these land verbatim in RelationKeyName.
 const maxNameRunes = 64
 
-// cleanDisplayName strips control characters and collapses whitespace runs.
+// cleanDisplayName removes characters that have no business in a label and
+// collapses whitespace runs. Control characters (NUL, ANSI escapes) can upset
+// storage and terminals, and format characters carry the bidi overrides that
+// let a name render as something other than what it is — both reach
+// RelationKeyName verbatim otherwise.
 func cleanDisplayName(name string) string {
-	return strings.Join(strings.FieldsFunc(name, func(r rune) bool {
-		return r == ' ' || r == '\t' || r == '\n' || r == '\r' || r == '\v' || r == '\f'
-	}), " ")
+	stripped := strings.Map(func(r rune) rune {
+		switch {
+		case r == '\t' || r == '\n' || r == '\r' || r == '\v' || r == '\f':
+			return ' ' // becomes a field separator below
+		case unicode.IsControl(r), unicode.Is(unicode.Cf, r):
+			return -1
+		}
+		return r
+	}, name)
+	return strings.Join(strings.Fields(stripped), " ")
 }
 
 // boundedName cleans a plan-supplied name and falls back rather than
 // truncating mid-word: an over-long name is prose, not a label, so the source's
-// own name is a better answer than the first 64 runes of an explanation.
+// own name is a better answer than the first 64 runes of an explanation. The
+// fallback is clamped too, so a caller can always rely on getting something
+// usable — returning "" would drop whatever the name belonged to.
 func boundedName(name, fallback string) string {
-	cleaned := cleanDisplayName(name)
-	if cleaned == "" || len([]rune(cleaned)) > maxNameRunes {
-		return cleanDisplayName(fallback)
+	if cleaned := cleanDisplayName(name); cleaned != "" && len([]rune(cleaned)) <= maxNameRunes {
+		return cleaned
+	}
+	cleaned := cleanDisplayName(fallback)
+	if runes := []rune(cleaned); len(runes) > maxNameRunes {
+		return strings.TrimSpace(string(runes[:maxNameRunes]))
 	}
 	return cleaned
 }
@@ -106,8 +124,14 @@ func boundedName(name, fallback string) string {
 //
 // Scoping is per container, not per page: members of one container still share
 // the relation, which is what makes a select a select.
-func ScopedKey(planKey domain.RelationKey, containerId string) domain.RelationKey {
-	return domain.RelationKey(string(planKey) + "@" + containerId)
+// The key is length-prefixed rather than merely separated, because both halves
+// are attacker-controlled: a plain "key@scope" join lets ScopedKey("a", "b@c")
+// and ScopedKey("a@b", "c") produce the same string, which would hand two
+// different types one relation and merge their option pools — the very defect
+// scoping exists to prevent. Notion property ids and Obsidian folder paths can
+// both contain "@", so this is reachable without a hostile model.
+func ScopedKey(planKey domain.RelationKey, scope string) domain.RelationKey {
+	return domain.RelationKey(strconv.Itoa(len(planKey)) + "@" + string(planKey) + scope)
 }
 
 // scopeMap decides, once and up front, every plan key that must become
@@ -116,23 +140,43 @@ func ScopedKey(planKey domain.RelationKey, containerId string) domain.RelationKe
 // target from AllowedBundledTargets. Everything else is scoped, so two
 // containers can never be handed the same relation by accident.
 //
-// The scope is the container's type when it has one — containers sharing a
-// type are one kind of thing and should share its properties — and the
-// container itself otherwise.
+// The scope is the container's type when it has a REAL one — containers
+// sharing a type are one kind of thing and should share its properties — and
+// the container itself otherwise.
+//
+// "Real" matters: a TypeKey naming a type the plan never defined is dropped
+// later by sanitizeContainer, and scoping by it anyway would let two
+// containers share a relation on the strength of a kind that does not exist.
+// Type keys and container ids are also one string namespace, so an
+// unvalidated TypeKey can name another container and collide with its scope.
+// canonical resolves a re-keyed definition back to the key its containers
+// named, so a bundled-collision rename cannot split the two apart.
 //
 // Deciding it here rather than mid-sanitize is what keeps a type definition
 // and its container on the same relation: settle it in two places and they
 // silently diverge, the type declaring one format while the container writes
 // another.
-func scopeMap(containers map[string]ContainerPlan, schemaById map[string]ContainerSchema) map[string]map[domain.RelationKey]domain.RelationKey {
+func scopeMap(containers map[string]ContainerPlan, schemaById map[string]ContainerSchema,
+	planTypes map[domain.TypeKey]bool, renamed map[domain.TypeKey]domain.TypeKey) map[string]map[domain.RelationKey]domain.RelationKey {
+	originalOf := make(map[domain.TypeKey]domain.TypeKey, len(renamed))
+	for original, current := range renamed {
+		originalOf[current] = original
+	}
 	out := map[string]map[domain.RelationKey]domain.RelationKey{}
 	for containerId, containerPlan := range containers {
 		if _, ok := schemaById[containerId]; !ok {
 			continue
 		}
 		scope := containerId
-		if containerPlan.TypeKey != "" {
-			scope = containerPlan.TypeKey.String()
+		if typeKey := containerPlan.TypeKey; typeKey != "" {
+			// Definitions scope by the key their containers named, so resolve a
+			// container that named the re-keyed form back to that original.
+			if original, wasRenamed := originalOf[typeKey]; wasRenamed {
+				typeKey = original
+			}
+			if planTypes[typeKey] || planTypes[renamed[typeKey]] || bundle.HasObjectTypeByKey(typeKey) {
+				scope = typeKey.String()
+			}
 		}
 		for _, propertyPlan := range containerPlan.Properties {
 			if propertyPlan.Key == "" || bundle.HasRelation(propertyPlan.Key) {
@@ -213,16 +257,23 @@ func Sanitize(plan Plan, schemas []ContainerSchema, report func(importv2.Issue))
 	// containers may legitimately share one type, and then there is no single
 	// owner to borrow from.
 	owners := typeOwners(plan.Containers)
-	scopes := scopeMap(plan.Containers, schemaById)
 	newTypes, renamed := sanitizeNewTypes(plan.NewTypes, owners, schemaById, report)
 
 	planTypes := make(map[domain.TypeKey]bool, len(newTypes))
+	for _, def := range newTypes {
+		planTypes[def.Key] = true
+	}
+	// Scoping is decided only once the surviving types are known: a container
+	// naming a type that did not survive must fall back to its own id, or two
+	// containers would share a relation on the strength of a kind that never
+	// materialised.
+	scopes := scopeMap(plan.Containers, schemaById, planTypes, renamed)
+
 	// anchors fixes one format per custom target key across the whole plan —
 	// the shared relation is emitted once, so every contributor must agree.
 	// Type definitions declare first; containers follow in sorted order.
 	anchors := map[domain.RelationKey]model.RelationFormat{}
 	for _, def := range newTypes {
-		planTypes[def.Key] = true
 		for _, prop := range def.Properties {
 			if !bundle.HasRelation(prop.Key) && prop.Format != 0 {
 				if _, taken := anchors[prop.Key]; !taken {
@@ -309,30 +360,38 @@ func sanitizeNewTypes(defs []TypeDefinition, owners map[domain.TypeKey]string,
 		// through an owning container instead would break the moment several
 		// containers share one type, leaving the type's recommended relations
 		// pointing at a relation nobody emits.
-		scope := def.Key.String()
+		original := def.Key
+		scope := original.String()
 		if bundle.HasObjectTypeByKey(def.Key) {
 			// The plan always mints its own types: reusing a bundled key would
 			// reshape the built-in type space-wide and hand it to a migration
 			// that can rewrite its featured properties. Re-key rather than
 			// drop, so a model spelling its type "task" still gets a working
 			// type instead of the container silently losing one.
-			original := def.Key
 			def.Key = domain.TypeKey("plan_" + original.String())
-			renamed[original] = def.Key
-			if owner, ok := owners[original]; ok {
-				owners[def.Key] = owner
-			}
 		}
 		if seen[def.Key] {
 			report(dropped(string(def.Key), "duplicate new type"))
 			continue
 		}
 		seen[def.Key] = true
+		// Record the rename only once the definition is known to survive:
+		// registering it earlier would retype containers onto whichever
+		// definition happened to hold the re-keyed name already.
+		if def.Key != original {
+			renamed[original] = def.Key
+			if owner, ok := owners[original]; ok {
+				owners[def.Key] = owner
+			}
+		}
 
 		// Names reach RelationKeyName verbatim; a model writing prose into the
 		// field must not be able to name a user's type after its own reasoning.
-		fallback := ""
-		if owner, ok := owners[def.Key]; ok {
+		// The key is the last-resort fallback: several containers sharing one
+		// type is the designed common case and leaves no single container name
+		// to borrow, and dropping the type there would silently undo minting.
+		fallback := original.String()
+		if owner, ok := owners[def.Key]; ok && schemaById[owner].Name != "" {
 			fallback = schemaById[owner].Name
 		}
 		def.Name = boundedName(def.Name, fallback)
@@ -345,11 +404,17 @@ func sanitizeNewTypes(defs []TypeDefinition, owners map[domain.TypeKey]string,
 			def.IconName = ""
 		}
 		var props []TypeProperty
+		seenProps := map[domain.RelationKey]bool{}
 		for _, prop := range def.Properties {
 			if prop.Key == "" {
 				report(dropped(string(def.Key), "new type property without key"))
 				continue
 			}
+			// The type's relations are emitted BEFORE any container resolves
+			// one, so an unbounded name here wins over the container's bounded
+			// one. Falling back to the unscoped key keeps the internal
+			// "key@scope" spelling out of a user-visible property name.
+			prop.Name = boundedName(prop.Name, string(prop.Key))
 			if bundle.HasRelation(prop.Key) {
 				if !allowedBundled[prop.Key] {
 					report(dropped(string(def.Key), fmt.Sprintf("bundled relation %q is not an allowed plan target", prop.Key)))
@@ -358,6 +423,13 @@ func sanitizeNewTypes(defs []TypeDefinition, owners map[domain.TypeKey]string,
 			} else {
 				prop.Key = ScopedKey(prop.Key, scope)
 			}
+			if seenProps[prop.Key] {
+				// One relation cannot be both featured and regular, nor carry
+				// two declared formats.
+				report(dropped(string(def.Key), fmt.Sprintf("duplicate type property %q", prop.Key)))
+				continue
+			}
+			seenProps[prop.Key] = true
 			props = append(props, prop)
 		}
 		def.Properties = props

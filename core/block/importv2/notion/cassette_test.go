@@ -92,13 +92,16 @@ func TestCassetteWorkspace(t *testing.T) {
 	// UPDATE the literals when re-recording the cassette.
 	if mode == recorder.ModeReplayOnly {
 		assert.Equal(t, fidelitySummary{
-			// 865: a property belongs to the database that declares it, so
+			// 864: a property belongs to the database that declares it, so
 			// same-named properties in different databases no longer collapse
 			// into one relation (762 before that fix). The whole delta is
 			// definition objects — relations 140→208, options 178→213 — with
 			// content unchanged at 444; "Status" alone appeared in 18 of this
 			// workspace's databases, sharing one option pool between them.
-			Objects:        865,
+			// The last -1 is the bundled Tag redirect staying space-wide: this
+			// workspace has two "Tags" properties (ids Bfgr and yq%7B~), and
+			// the second joins the bundled relation instead of minting its own.
+			Objects:        864,
 			FileObjects:    41,
 			RootCandidates: 13,
 			Blocks:         5039,

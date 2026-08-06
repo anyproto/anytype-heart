@@ -89,13 +89,18 @@ func (p *propertiesStore) resolveRelation(property propertySchema) (def *relatio
 	}
 
 	if p.isTagRedirect(property) {
-		p.tagRedirected = true
 		// The bundled tag relation is whitelisted-shared: one vocabulary for
-		// the whole space is the entire point of tags.
+		// the whole space is the entire point of tags, so EVERY database's tag
+		// property joins the one relation. The redirect must therefore be
+		// checked before the first-match latch, which only decides which
+		// property of a database wins the name (v1 kept that latch per
+		// database); latching it globally would leave the second database's
+		// Tags minting a private relation with its own option pool.
 		if existing, ok := p.byKey[bundle.RelationKeyTag.String()]; ok {
 			p.byNotionId[property.Id] = existing
 			return existing, false
 		}
+		p.tagRedirected = true
 		def = &relationDef{
 			key:       bundle.RelationKeyTag.String(),
 			sourceKey: bundle.RelationKeyTag.BundledURL(),
@@ -189,9 +194,6 @@ func (p *propertiesStore) registerPlanDef(key, sourceKey, name string, format mo
 }
 
 func (p *propertiesStore) isTagRedirect(property propertySchema) bool {
-	if p.tagRedirected {
-		return false // only the first match redirects
-	}
 	if property.Type != "select" && property.Type != "multi_select" {
 		return false
 	}
