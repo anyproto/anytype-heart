@@ -211,6 +211,7 @@ type completionInfo struct {
 	finishReason     string
 	promptTokens     int
 	completionTokens int
+	content          string
 }
 
 // observingTransport tees every completion response so the test can read the
@@ -235,6 +236,9 @@ func (t *observingTransport) RoundTrip(req *http.Request) (*http.Response, error
 	var parsed struct {
 		Choices []struct {
 			FinishReason string `json:"finish_reason"`
+			Message      struct {
+				Content string `json:"content"`
+			} `json:"message"`
 		} `json:"choices"`
 		Usage struct {
 			PromptTokens     int `json:"prompt_tokens"`
@@ -247,6 +251,7 @@ func (t *observingTransport) RoundTrip(req *http.Request) (*http.Response, error
 			finishReason:     parsed.Choices[0].FinishReason,
 			promptTokens:     parsed.Usage.PromptTokens,
 			completionTokens: parsed.Usage.CompletionTokens,
+			content:          parsed.Choices[0].Message.Content,
 		})
 		t.mu.Unlock()
 	}
@@ -314,6 +319,11 @@ func reportLLMRun(t *testing.T, schemas []schemaplan.ContainerSchema, plan schem
 		}
 		t.Logf("  completion %d: finish_reason=%q prompt=%d completion=%d tokens%s",
 			i+1, completion.finishReason, completion.promptTokens, completion.completionTokens, note)
+		// A suspiciously small answer is the interesting case: print it whole
+		// so a model that declined the task can be told from one that failed.
+		if completion.completionTokens < 1500 && completion.content != "" {
+			t.Logf("    raw response: %s", completion.content)
+		}
 	}
 	t.Logf("objects: %d emitted with the plan, %d without (+%d)",
 		len(llmSink.objects), len(naiveSink.objects), len(llmSink.objects)-len(naiveSink.objects))

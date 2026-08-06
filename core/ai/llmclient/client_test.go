@@ -366,3 +366,69 @@ func TestTruncatedCompletion(t *testing.T) {
 		assert.Equal(t, json.RawMessage(`{"answer":"42"}`), got)
 	})
 }
+
+func TestMaxTokensParameterFallback(t *testing.T) {
+	t.Run("a model rejecting max_tokens is retried with max_completion_tokens", func(t *testing.T) {
+		// given — the gpt-5 class and o-series reject max_tokens outright:
+		// "this model is not supported MaxTokens, please use
+		// MaxCompletionTokens". It is a deterministic 400, so retrying the
+		// same request can never succeed.
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) {})
+		fs.respond = func(w http.ResponseWriter, call int64) {
+			if _, legacy := fs.lastBody["max_tokens"]; legacy {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":{"message":"this model is not supported MaxTokens, please use MaxCompletionTokens"}}`))
+				return
+			}
+			respondContent(w, `{"answer":"ok"}`)
+		}
+		c := newTestClient(t, fs.URL)
+
+		// when
+		got, _, err := c.CompleteJSON(context.Background(), Request{Schema: testSchema, MaxTokens: 4096})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, json.RawMessage(`{"answer":"ok"}`), got)
+		assert.Equal(t, int64(2), fs.calls.Load(), "one corrective retry, not the full retry budget")
+		_, legacy := fs.lastBody["max_tokens"]
+		assert.False(t, legacy, "the rejected parameter must be gone")
+		assert.EqualValues(t, 4096, fs.lastBody["max_completion_tokens"], "the cap must survive the switch")
+	})
+
+	t.Run("the legacy parameter is used by default so local servers keep working", func(t *testing.T) {
+		// given — ollama/LM Studio/llama.cpp generally speak max_tokens only
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) { respondContent(w, `{"answer":"ok"}`) })
+		c := newTestClient(t, fs.URL)
+
+		// when
+		_, _, err := c.CompleteJSON(context.Background(), Request{Schema: testSchema, MaxTokens: 4096})
+
+		// then
+		require.NoError(t, err)
+		assert.EqualValues(t, 4096, fs.lastBody["max_tokens"])
+	})
+}
+
+func TestReasoningModelMaxTokens(t *testing.T) {
+	t.Run("go-openai's client-side refusal is handled without a request", func(t *testing.T) {
+		// given — for reasoning models go-openai rejects max_tokens BEFORE
+		// sending, so the failure is a bare sentinel and no APIError ever
+		// exists. A server-shaped test cannot reach this path, which is why
+		// every gpt-5 model failed while the 400-based test passed.
+		fs := newFakeServer(t, func(w http.ResponseWriter, call int64) { respondContent(w, `{"answer":"ok"}`) })
+		c, err := New(Config{Endpoint: fs.URL + "/v1", Model: "gpt-5-nano", Token: "tok"})
+		require.NoError(t, err)
+		c.sleep = func(ctx context.Context, d time.Duration) error { return ctx.Err() }
+
+		// when
+		got, _, err := c.CompleteJSON(context.Background(), Request{Schema: testSchema, MaxTokens: 4096})
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, json.RawMessage(`{"answer":"ok"}`), got)
+		_, legacy := fs.lastBody["max_tokens"]
+		assert.False(t, legacy)
+		assert.EqualValues(t, 4096, fs.lastBody["max_completion_tokens"])
+	})
+}

@@ -156,6 +156,7 @@ func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage
 
 	var lastErr error
 	temperatureDropped := false
+	maxTokensSwitched := false
 	for attempt := 0; attempt < c.retry.MaxAttempts; attempt++ {
 		if attempt > 0 {
 			if err := c.sleep(ctx, c.backoff(attempt)); err != nil {
@@ -170,6 +171,17 @@ func (c *Client) CompleteJSON(ctx context.Context, req Request) (json.RawMessage
 			if !temperatureDropped && isTemperatureRejection(err) {
 				temperatureDropped = true
 				apiReq.Temperature = 0 // omitempty: the field disappears
+				attempt--
+				continue
+			}
+			// The same models reject max_tokens and demand
+			// max_completion_tokens. Switching on rejection rather than by
+			// model name keeps this provider-agnostic: local servers
+			// (ollama, LM Studio, llama.cpp) generally speak only the legacy
+			// parameter, so it stays the default and moves only when refused.
+			if !maxTokensSwitched && isMaxTokensRejection(err) {
+				maxTokensSwitched = true
+				apiReq.MaxCompletionTokens, apiReq.MaxTokens = apiReq.MaxTokens, 0
 				attempt--
 				continue
 			}
@@ -214,14 +226,41 @@ func (c *Client) backoff(attempt int) time.Duration {
 	return d
 }
 
-// isTemperatureRejection spots the reasoning-model 400 for an explicit
-// temperature parameter.
+// isTemperatureRejection spots a refusal of the explicit temperature — either
+// go-openai's CLIENT-side guard for reasoning models, which never sends a
+// request, or a provider's 400. Checking only for the 400 misses every gpt-5
+// and o-series model, since go-openai stops those before the wire.
 func isTemperatureRejection(err error) bool {
+	if errors.Is(err, openai.ErrReasoningModelLimitationsOther) {
+		return true
+	}
 	var apiErr *openai.APIError
 	if !errors.As(err, &apiErr) || apiErr.HTTPStatusCode != http.StatusBadRequest {
 		return false
 	}
 	return strings.Contains(strings.ToLower(apiErr.Message), "temperature")
+}
+
+// isMaxTokensRejection spots the 400 newer OpenAI models return for the
+// legacy max_tokens parameter ("this model is not supported MaxTokens, please
+// use MaxCompletionTokens"). Without this the request is misread as a
+// transport failure and retried to exhaustion, so every gpt-5 class model
+// fails the plan step outright.
+func isMaxTokensRejection(err error) bool {
+	// go-openai refuses the parameter for reasoning models CLIENT-side, so
+	// this arrives as a plain sentinel with no request ever sent — checking
+	// only for an APIError would miss every gpt-5 and o-series model.
+	if errors.Is(err, openai.ErrReasoningModelMaxTokensDeprecated) {
+		return true
+	}
+	var apiErr *openai.APIError
+	if !errors.As(err, &apiErr) || apiErr.HTTPStatusCode != http.StatusBadRequest {
+		return false
+	}
+	// Providers that do send it back word it as "Unsupported parameter:
+	// 'max_tokens' is not supported with this model."
+	message := strings.ToLower(apiErr.Message)
+	return strings.Contains(message, "max_tokens") || strings.Contains(message, "maxtokens")
 }
 
 // classify maps a go-openai error onto the package sentinels and decides
