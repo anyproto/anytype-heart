@@ -97,7 +97,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays strict-mode-decodable (C13) — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
-			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row; file rows additionally take mimeType and size"}}}`,
+			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row; file rows additionally take mimeType and size — also valid filter and sort keys (they translate to the store's fileMimeType/sizeInBytes); file rows enter scope only when the type channel names a file type"}}}`,
 		example: `{"query":"report","type":"task","filter":"done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)","sorts":[{"property":"dueDate","direction":"asc"}],"fields":["name","dueDate","status"]}`,
 	},
 	"space": {

@@ -214,20 +214,28 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 	}
 	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
 	refKeys = appendMissing(refKeys, "type")
+	// the Phase-7 file aliases join the reference set when active (no real
+	// space property claims the key): mimeType/size are live in EVERY channel
+	// — fields, filters and sorts — translated to the backing store relation,
+	// so the one advertised spelling works everywhere (C2)
+	aliases := s.activeFieldAliases(spaceId)
+	for alias := range aliases {
+		refKeys = appendMissing(refKeys, alias)
+	}
 	sort.Strings(refKeys)
 	allowed := map[string]bool{}
 	for _, key := range refKeys {
 		allowed[key] = true
 	}
 
-	formatName := s.formatNameResolver(spaceId)
+	formatName := aliasedFormatName(s.formatNameResolver(spaceId), aliases)
 	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
 
 	// rule 1 covers field keys too — hard on the space search, warning-grade
 	// on the global fan-out (see the strictFields contract above)
 	var issues []apimodel.V2Issue
 	for i, field := range req.Fields {
-		if allowed[field] || isV2FieldAlias(field) {
+		if allowed[field] {
 			continue
 		}
 		if strictFields {
@@ -254,6 +262,9 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 				// ok=false when the store could not list the options: the
 				// check is skipped rather than asserting "no such option"
 				// about data the code never saw
+				if backing, ok := aliases[key]; ok {
+					key = string(backing)
+				}
 				return s.propertyOptionNames(spaceId, key)
 			},
 		})
@@ -289,6 +300,7 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 		if namedFileType {
 			plan.includeFileLayouts = true
 		}
+		rewriteAliasLeaves(modelFilters, aliases)
 		plan.filters = append(plan.filters, database.FiltersFromProto(modelFilters)...)
 	}
 
@@ -312,6 +324,13 @@ func (s *V2Service) buildSearchPlan(spaceId string, req apimodel.V2SearchRequest
 			return nil, mapFilterCodecError(err, false)
 		}
 		plan.sorts = database.SortsFromProto(modelSorts)
+		// the file aliases translate in the sort channel too (C2: the one
+		// advertised spelling works everywhere)
+		for i := range plan.sorts {
+			if backing, ok := aliases[string(plan.sorts[i].RelationKey)]; ok {
+				plan.sorts[i].RelationKey = backing
+			}
+		}
 		// a date sort the request left includeTime-less defaults to second
 		// granularity, matching the default lastModifiedDate sort. Without
 		// this the granularity depended on whether the engine appended the
@@ -420,6 +439,41 @@ func (s *V2Service) formatNameResolver(spaceId string) func(key string) (string,
 			return anyblockjson.FormatName(f), true
 		}
 		return "", false
+	}
+}
+
+// aliasedFormatName resolves an active file alias to its backing relation's
+// format before the base lookup — `size > 5` must get number semantics from
+// sizeInBytes, not an unknown-key miss.
+func aliasedFormatName(base func(string) (string, bool), aliases map[string]domain.RelationKey) func(string) (string, bool) {
+	if len(aliases) == 0 {
+		return base
+	}
+	return func(key string) (string, bool) {
+		if backing, ok := aliases[key]; ok {
+			key = string(backing)
+		}
+		return base(key)
+	}
+}
+
+// rewriteAliasLeaves rewrites filter leaves on an active file alias to the
+// backing store relation — the store query only knows fileMimeType and
+// sizeInBytes; the caller speaks mimeType and size.
+func rewriteAliasLeaves(filters []*model.BlockContentDataviewFilter, aliases map[string]domain.RelationKey) {
+	if len(aliases) == 0 {
+		return
+	}
+	for _, f := range filters {
+		if f == nil {
+			continue
+		}
+		if len(f.NestedFilters) > 0 {
+			rewriteAliasLeaves(f.NestedFilters, aliases)
+		}
+		if backing, ok := aliases[f.RelationKey]; ok {
+			f.RelationKey = string(backing)
+		}
 	}
 }
 
@@ -603,9 +657,13 @@ func containsString(list []string, s string) bool {
 // resolveTypeLeaves resolves the `type` pseudo-key (rule 6): filter leaves
 // on `type` carry type KEYS, resolved to the space's type object ids like
 // any reference; unknown keys get the R9 did-you-mean. The returned bool
-// reports whether a POSITIVE leaf (=, IN) named a file type — the Phase-7
-// file-layout opt-in trigger; negated leaves (!=, NOT IN) exclude a type
-// rather than asking for files, so they never widen the scope.
+// reports whether a POSITIVE leaf named a file type — the Phase-7
+// file-layout opt-in trigger. Positive is decided by EXCLUSION: any
+// condition except the negated family (!=, NOT IN, notAllIn, notExactIn,
+// notContains) asks for the type rather than ruling it out — the review
+// caught `allIn` (the compact string's HAS ALL) silently returning zero
+// file rows under the earlier =/IN allowlist. Negated leaves exclude a
+// type, so they never widen the scope.
 func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockContentDataviewFilter, path string) (namedFileType bool, err error) {
 	for _, f := range filters {
 		if f == nil {
@@ -622,8 +680,7 @@ func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockCont
 		if f.RelationKey != bundle.RelationKeyType.String() || f.Value == nil {
 			continue
 		}
-		positive := f.Condition == model.BlockContentDataviewFilter_Equal ||
-			f.Condition == model.BlockContentDataviewFilter_In
+		positive := !negatedFilterConditions[f.Condition]
 		resolve := func(key string) (string, error) {
 			id, ok := s.typeIdInSpace(spaceId, key)
 			if !ok {
@@ -658,6 +715,18 @@ func (s *V2Service) resolveTypeLeaves(spaceId string, filters []*model.BlockCont
 	return namedFileType, nil
 }
 
+// negatedFilterConditions is the condition family that EXCLUDES the named
+// value — the only leaves that never trigger the file-layout opt-in. Kept
+// as a set (not an =/IN allowlist) so a new positive condition widens by
+// default instead of silently returning zero file rows.
+var negatedFilterConditions = map[model.BlockContentDataviewFilterCondition]bool{
+	model.BlockContentDataviewFilter_NotEqual:   true,
+	model.BlockContentDataviewFilter_NotIn:      true,
+	model.BlockContentDataviewFilter_NotAllIn:   true,
+	model.BlockContentDataviewFilter_NotExactIn: true,
+	model.BlockContentDataviewFilter_NotLike:    true,
+}
+
 //
 // ---- global search (rule 4) ----
 //
@@ -669,10 +738,10 @@ type spaceRef struct {
 }
 
 // spaceRefs enumerates the account's spaces from the tech space's views,
-// filtered to the live ones (v1 ListSpaces' predicate): global search calls
-// SpaceIndex on every ref, which MINTS an index for the id, so a removed or
-// never-loaded space must not get one materialized as a search side effect.
-// A missing status field reads as Unknown (0) and stays included.
+// filtered to the live ones (isLiveSpaceView — the predicate shared with
+// the v2 spaces list and GET-one): global search calls SpaceIndex on every
+// ref, which MINTS an index for the id, so a removed or never-loaded space
+// must not get one materialized as a search side effect.
 func (s *V2Service) spaceRefs() ([]spaceRef, error) {
 	records, err := s.store.SpaceIndex(s.techSpaceId).Query(database.Query{
 		Filters: []database.FilterRequest{{
@@ -691,12 +760,7 @@ func (s *V2Service) spaceRefs() ([]spaceRef, error) {
 		if id == "" || seen[id] {
 			continue
 		}
-		localStatus := model.SpaceStatus(record.Details.GetInt64(bundle.RelationKeySpaceLocalStatus))
-		if localStatus != model.SpaceStatus_Unknown && localStatus != model.SpaceStatus_Ok {
-			continue
-		}
-		accountStatus := model.SpaceStatus(record.Details.GetInt64(bundle.RelationKeySpaceAccountStatus))
-		if accountStatus != model.SpaceStatus_Unknown && accountStatus != model.SpaceStatus_SpaceActive {
+		if !isLiveSpaceView(record.Details) {
 			continue
 		}
 		seen[id] = true

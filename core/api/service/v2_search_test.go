@@ -1020,17 +1020,80 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 		assert.EqualValues(t, 12345, rows[0].Properties["size"])
 	})
 
-	t.Run("the aliases are fields-only: a size filter is an unknown key", func(t *testing.T) {
-		// given
+	t.Run("a positive allIn type leaf opts in too — the condition set is negation-scoped", func(t *testing.T) {
+		// given: the review caught allIn (the compact string's HAS ALL)
+		// silently returning zero file rows under the earlier =/IN allowlist —
+		// the exact upload-then-never-find-it bug the opt-in exists to kill
+		fx := setup(t)
+
+		// when: both request forms
+		structured, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filters: json.RawMessage(`[{"property":"type","condition":"allIn","value":["image"]}]`)}, 0, 25)
+		require.NoError(t, err)
+		fromString, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `type HAS ALL ("image")`}, 0, 25)
+		require.NoError(t, err)
+
+		// then
+		assert.Equal(t, []string{"img1"}, rowIds(structured))
+		assert.Equal(t, []string{"img1"}, rowIds(fromString))
+	})
+
+	t.Run("a positive type leaf under OR widens the whole query (documented §8.8)", func(t *testing.T) {
+		// given: the widening is plan-level, deliberately — the caller named a
+		// file type, so the negated arm's rows are computed in the widened
+		// scope too. Pinned so the composition is a decision, not an accident.
 		fx := setup(t)
 
 		// when
-		_, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
-			apimodel.V2SearchRequest{Filter: `size > 5`}, 0, 25)
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `type = "image" OR type != "image"`}, 0, 25)
 
-		// then: display vocabulary must not silently become filter scope
-		apiErr := v2Err(t, err)
-		assert.Equal(t, apimodel.V2CodeValidationFailed, apiErr.Code)
+		// then: pdf1 (a file row the negated arm alone would exclude) is in
+		require.NoError(t, err)
+		assert.Contains(t, rowIds(rows), "img1")
+		assert.Contains(t, rowIds(rows), "pdf1")
+	})
+
+	t.Run("the aliases are live filter keys: size and mimeType translate to the store relations", func(t *testing.T) {
+		// given: the one advertised spelling works in every channel (C2) —
+		// the review caught mimeType/size being schema-advertised yet 400ing
+		// as filter keys, with only the store spellings usable there
+		fx := setup(t)
+
+		// when: composed with the type channel (file rows enter scope only
+		// when a file type is named — the opt-in trigger is unchanged)
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `type = "image" AND size > 5000 AND mimeType = "image/png"`}, 0, 25)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"img1"}, rowIds(rows))
+
+		// and: a threshold above the stored size matches nothing
+		none, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `type = "image" AND size > 20000`}, 0, 25)
+		require.NoError(t, err)
+		assert.Empty(t, none)
+	})
+
+	t.Run("the aliases are live sort keys", func(t *testing.T) {
+		// given: a second image, smaller than img1
+		fx := setup(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("img2"),
+			bundle.RelationKeyName:           domain.String("icon.png"),
+			bundle.RelationKeyType:           domain.String("type-image"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_image)),
+			bundle.RelationKeyFileMimeType:   domain.String("image/png"),
+			bundle.RelationKeySizeInBytes:    domain.Int64(11),
+		}})
+
+		// when
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Type: "image", Sorts: json.RawMessage(`[{"property":"size","direction":"asc"}]`)}, 0, 25)
+
+		// then: ordered by the backing sizeInBytes
+		require.NoError(t, err)
+		assert.Equal(t, []string{"img2", "img1"}, rowIds(rows))
 	})
 
 	t.Run("the sets/collections fields validation accepts the aliases", func(t *testing.T) {
@@ -1040,5 +1103,81 @@ func TestV2SearchFileLayoutOptIn(t *testing.T) {
 		// then
 		assert.NoError(t, fx.validateListFields(testSpaceId, []string{"mimeType", "size", "name"}))
 		assert.Error(t, fx.validateListFields(testSpaceId, []string{"mimetype"}), "the alias is case-exact")
+	})
+}
+
+// registerSizeProperty registers a REAL user property literally keyed "size"
+// (short text, named "T-shirt size") — the alias-shadowing probe.
+func (fx *v2Fixture) registerSizeProperty(t *testing.T) {
+	fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+		bundle.RelationKeyId:             domain.String("rel-size"),
+		bundle.RelationKeyRelationKey:    domain.String("size"),
+		bundle.RelationKeyName:           domain.String("T-shirt size"),
+		bundle.RelationKeyRelationFormat: domain.Int64(int64(model.RelationFormat_shorttext)),
+		bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_relation)),
+	}})
+}
+
+func TestV2FieldAliasShadowing(t *testing.T) {
+	// The Phase-7 review's major: the alias fallback must be decided per
+	// SPACE vocabulary, never per record — with a user property literally
+	// keyed "size", a file row that lacks a value under it must NOT report
+	// the file's byte count as the user's short-text property.
+	setup := func(t *testing.T) *v2Fixture {
+		fx := searchSetup(t)
+		fx.addImageObjects(t)
+		fx.registerSizeProperty(t)
+		return fx
+	}
+
+	t.Run("a real property keyed size deactivates the alias for the whole result set", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when: img1 carries sizeInBytes=12345 and no "size" value
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `type = "image"`, Fields: []string{"size"}}, 0, 25)
+
+		// then: NO value under "size" — reporting 12345 there would put the
+		// file's byte count where the space's short-text property lives
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		_, leaked := rows[0].Properties["size"]
+		assert.False(t, leaked, "the backing sizeInBytes must not leak under a real property's key")
+	})
+
+	t.Run("rows carrying the real property render its value", func(t *testing.T) {
+		// given: a chore with an actual T-shirt size
+		fx := setup(t)
+		fx.objectStore.AddObjects(t, testSpaceId, []objectstore.TestObject{{
+			bundle.RelationKeyId:             domain.String("shirt1"),
+			bundle.RelationKeyName:           domain.String("Conference shirt"),
+			bundle.RelationKeyType:           domain.String("type-chore"),
+			domain.RelationKey("size"):       domain.String("M"),
+			bundle.RelationKeyResolvedLayout: domain.Int64(int64(model.ObjectType_basic)),
+		}})
+
+		// when
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `size = "M"`, Fields: []string{"size"}}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "M", rows[0].Properties["size"])
+	})
+
+	t.Run("a shadowed alias filter targets the real property, not the backing relation", func(t *testing.T) {
+		// given
+		fx := setup(t)
+
+		// when: size names the space's short-text property now — the file's
+		// sizeInBytes must not answer for it
+		rows, _, _, _, err := fx.SearchObjects(context.Background(), testSpaceId,
+			apimodel.V2SearchRequest{Filter: `type = "image" AND size > 5000`}, 0, 25)
+
+		// then: img1 has no "size" value, so nothing matches
+		require.NoError(t, err)
+		assert.Empty(t, rowIds(rows))
 	})
 }

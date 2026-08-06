@@ -175,6 +175,31 @@ func TestV2GetSetObjects(t *testing.T) {
 		assert.Contains(t, apiErr.Message, "GET /v2/spaces/space1/collections/col1/objects")
 	})
 
+	t.Run("a set over a file type returns its rows and renders the file fields", func(t *testing.T) {
+		// given: §8.8 claims the sets read never had the layout scope (so a
+		// file set already worked) — previously verified only by reading
+		// listObjects; this pins it, together with the mimeType/size alias
+		// rendering on the ?fields= channel
+		fx := searchSetup(t)
+		fx.addImageObjects(t)
+		fx.expectListRead("set1", listReadRead(model.ObjectType_set, map[string]*types.Value{
+			bundle.RelationKeySetOf.String(): pbtypes.StringList([]string{"type-image"}),
+		}, nil, nil))
+
+		// when
+		rows, total, _, _, err := fx.GetSetObjects(context.Background(), testSpaceId, "set1", "",
+			[]string{"mimeType", "size"}, 0, 25)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, 1, total)
+		require.Len(t, rows, 1)
+		assert.Equal(t, "img1", rows[0].Id)
+		require.NotNil(t, rows[0].Properties)
+		assert.Equal(t, "image/png", rows[0].Properties["mimeType"])
+		assert.EqualValues(t, 12345, rows[0].Properties["size"])
+	})
+
 	t.Run("an empty setOf is an explicit error, not an unscoped query", func(t *testing.T) {
 		// given
 		fx := searchSetup(t)

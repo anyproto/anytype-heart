@@ -464,22 +464,34 @@ func (s *V2Service) ListObjects(ctx context.Context, spaceId string, fields []st
 	return rows, total, hasMore, nil
 }
 
-// v2FieldAliases maps the file vocabulary of the fields= channel onto the
+// v2FieldAliases maps the file vocabulary of the v2 query surface onto the
 // store relations backing it (Phase 7): `mimeType` and `size` are the
 // format's OWN names for a file's mime and byte size (the SPEC §5 file-block
 // fields, and the POST /files result) — the store relations are named
-// fileMimeType/sizeInBytes, and surfacing those here would put two names on
-// one concept across v2 (C2). The aliases are DISPLAY vocabulary only:
-// valid in fields=, never in filters or sorts.
+// fileMimeType/sizeInBytes. An ACTIVE alias (activeFieldAliases) is live in
+// every channel — fields=, filters and sorts — translated to the backing
+// relation, so the one advertised spelling works everywhere (C2).
 var v2FieldAliases = map[string]domain.RelationKey{
 	"mimeType": bundle.RelationKeyFileMimeType,
 	"size":     bundle.RelationKeySizeInBytes,
 }
 
-// isV2FieldAlias reports whether the key is a fields=-only alias.
-func isV2FieldAlias(key string) bool {
-	_, ok := v2FieldAliases[key]
-	return ok
+// activeFieldAliases resolves the aliases against one space: an alias is
+// active only when the space has no REAL property claiming its key. The
+// decision is per SPACE, never per row — a user-defined relation keyed
+// mimeType/size wins for the whole result set, so one key can never mean
+// the user's property on rows that carry a value and the file's backing
+// relation on rows that don't (the Phase-7 review's per-row hazard).
+func (s *V2Service) activeFieldAliases(spaceId string) map[string]domain.RelationKey {
+	index := s.store.SpaceIndex(spaceId)
+	active := make(map[string]domain.RelationKey, len(v2FieldAliases))
+	for alias, backing := range v2FieldAliases {
+		if _, err := index.GetRelationByKey(alias); err == nil {
+			continue // a real space property claims the name
+		}
+		active[alias] = backing
+	}
+	return active
 }
 
 // objectRowBuilder assembles C5 minimal rows (id, name, type + requested
@@ -492,6 +504,9 @@ type objectRowBuilder struct {
 	fields   []string
 	opts     anyblockjson.Options
 	spaceId  string // set on rows only when includeSpaceId (global search)
+	// aliases is the builder's per-space alias resolution, computed ONCE at
+	// construction (activeFieldAliases) — never per row
+	aliases map[string]domain.RelationKey
 
 	includeSpaceId bool
 }
@@ -505,6 +520,12 @@ func (s *V2Service) newObjectRowBuilder(spaceId string, fields []string) (*objec
 	b := &objectRowBuilder{index: index, typeKeys: typeKeys, fields: fields, spaceId: spaceId}
 	if len(fields) > 0 {
 		b.opts = storeresolver.New(index).Options()
+		for _, field := range fields {
+			if _, ok := v2FieldAliases[field]; ok {
+				b.aliases = s.activeFieldAliases(spaceId)
+				break
+			}
+		}
 	}
 	return b, nil
 }
@@ -538,10 +559,11 @@ func (b *objectRowBuilder) row(record database.Record) apimodel.V2ObjectRow {
 				values[key] = anyblockjson.MarshalPropertyValue(key, v, b.opts)
 				continue
 			}
-			// the fields= file aliases (Phase 7): read the backing store
-			// relation, emit under the requested name — a real property key
-			// of the same name (matched above) always wins
-			if backing, ok := v2FieldAliases[key]; ok {
+			// the file aliases (Phase 7): read the backing store relation,
+			// emit under the requested name. b.aliases resolved per SPACE at
+			// construction — a real property keyed mimeType/size deactivates
+			// the alias for every row, never per record
+			if backing, ok := b.aliases[key]; ok {
 				if v, ok := proto.Fields[string(backing)]; ok {
 					values[key] = anyblockjson.MarshalPropertyValue(string(backing), v, b.opts)
 				}

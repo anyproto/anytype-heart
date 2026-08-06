@@ -281,6 +281,11 @@ func (s *V2Service) validateListFields(spaceId string, fields []string) error {
 	}
 	refKeys := appendMissing(s.knownPropertyKeys(spaceId), "name", "type")
 	refKeys = appendMissing(refKeys, v2SystemQueryKeys...)
+	// the file aliases are valid ?fields= keys when active (per space — a
+	// real property keyed mimeType/size claims the name instead)
+	for alias := range s.activeFieldAliases(spaceId) {
+		refKeys = appendMissing(refKeys, alias)
+	}
 	sort.Strings(refKeys)
 	allowed := map[string]bool{}
 	for _, key := range refKeys {
@@ -289,7 +294,7 @@ func (s *V2Service) validateListFields(spaceId string, fields []string) error {
 	listUrl := fmt.Sprintf("list keys with GET /v2/spaces/%s/properties", spaceId)
 	var issues []apimodel.V2Issue
 	for _, field := range fields {
-		if !allowed[field] && !isV2FieldAlias(field) {
+		if !allowed[field] {
 			issues = append(issues, unknownPropertyIssue(field, "fields", refKeys, listUrl))
 		}
 	}
