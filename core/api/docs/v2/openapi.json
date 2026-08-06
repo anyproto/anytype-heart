@@ -1,0 +1,12 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Anytype API v2",
+        "version": "2025-11-08",
+        "description": "PLACEHOLDER — this document has not been generated yet. Run `make openapi` from the repository root to replace it with the real v2 specification, generated from the annotations in core/api/v2."
+    },
+    "paths": {},
+    "components": {
+        "schemas": {}
+    }
+}

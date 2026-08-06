@@ -119,13 +119,21 @@ func (srv *Server) registerDocumentationRoutes(router *gin.Engine, openapiYAML [
 		c.Redirect(http.StatusMovedPermanently, target)
 	})
 
-	router.GET("/docs/openapi.yaml", func(c *gin.Context) {
-		c.Data(http.StatusOK, "application/x-yaml", openapiYAML)
-	})
-
-	router.GET("/docs/openapi.json", func(c *gin.Context) {
-		c.Data(http.StatusOK, "application/json", openapiJSON)
-	})
+	// /docs/* keeps serving v1 unchanged: it is the path developers.anytype.io
+	// and existing integrations use, so repointing it at v2 would break them
+	// and repointing it at nothing would be worse. The versioned paths are the
+	// ones to link to from here on.
+	serveDoc := func(path, contentType string, body []byte) {
+		router.GET(path, func(c *gin.Context) {
+			c.Data(http.StatusOK, contentType, body)
+		})
+	}
+	serveDoc("/docs/openapi.yaml", "application/x-yaml", openapiYAML)
+	serveDoc("/docs/openapi.json", "application/json", openapiJSON)
+	serveDoc("/v1/docs/openapi.yaml", "application/x-yaml", openapiYAML)
+	serveDoc("/v1/docs/openapi.json", "application/json", openapiJSON)
+	serveDoc("/v2/docs/openapi.yaml", "application/x-yaml", srv.docs.V2YAML)
+	serveDoc("/v2/docs/openapi.json", "application/json", srv.docs.V2JSON)
 }
 
 // registerAuthRoutes registers authentication routes (no auth required)

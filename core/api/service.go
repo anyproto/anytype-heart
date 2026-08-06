@@ -46,6 +46,12 @@ var (
 
 	//go:embed docs/v1/openapi.json
 	openapiV1JSON []byte
+
+	//go:embed docs/v2/openapi.yaml
+	openapiV2YAML []byte
+
+	//go:embed docs/v2/openapi.json
+	openapiV2JSON []byte
 )
 
 type Service interface {
@@ -172,8 +178,12 @@ func (s *apiService) startServer() error {
 		s.fileObjectService,
 		server.V2Deps{Reader: s.objectReader, Creator: s.objectCreator, Mutator: s.objectMutator, Store: s.objectStore, AccountId: s.accountId()},
 		s.listenAddr,
-		openapiV1YAML,
-		openapiV1JSON,
+		server.OpenApiDocs{
+			V1YAML: openapiV1YAML,
+			V1JSON: openapiV1JSON,
+			V2YAML: openapiV2YAML,
+			V2JSON: openapiV2JSON,
+		},
 	)
 
 	s.httpSrv = &http.Server{

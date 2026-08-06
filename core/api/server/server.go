@@ -30,6 +30,10 @@ type Server struct {
 	// dependency was provided.
 	v2EditDisabled bool
 	chatSubSvc     apicore.ChatSubscriptionService
+	// docs holds both generated OpenAPI documents. NewRouter still takes v1's
+	// bytes as parameters (its signature is what the route-conformance tests
+	// call), so only the v2 pair is read from here.
+	docs OpenApiDocs
 
 	mu         sync.Mutex
 	KeyToToken map[string]ApiSessionEntry // appKey -> token
@@ -53,8 +57,18 @@ type V2Deps struct {
 	AccountId string
 }
 
+// OpenApiDocs carries the generated OpenAPI documents, one pair per API
+// version (core/api/docs/v1, core/api/docs/v2). They are served verbatim; see
+// registerDocumentationRoutes for the paths.
+type OpenApiDocs struct {
+	V1YAML []byte
+	V1JSON []byte
+	V2YAML []byte
+	V2JSON []byte
+}
+
 // NewServer constructs a new Server with the default config and sets up the routes.
-func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, chatSubSvc apicore.ChatSubscriptionService, fileObjectService apicore.FileObjectService, v2Deps V2Deps, apiListenAddr string, openapiYAML []byte, openapiJSON []byte) *Server {
+func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService, eventService apicore.EventService, crossSpaceSubService apicore.CrossSpaceSubscriptionService, chatSubSvc apicore.ChatSubscriptionService, fileObjectService apicore.FileObjectService, v2Deps V2Deps, apiListenAddr string, docs OpenApiDocs) *Server {
 	techSpaceId, err := getTechSpaceId(accountService)
 	if err != nil {
 		panic(err)
@@ -64,13 +78,14 @@ func NewServer(mw apicore.ClientCommands, accountService apicore.AccountService,
 	s := &Server{
 		service:    service.NewService(mw, fileObjectService, apiBaseUrl, techSpaceId, crossSpaceSubService),
 		chatSubSvc: chatSubSvc,
+		docs:       docs,
 	}
 	if v2Deps.Reader != nil && v2Deps.Store != nil {
 		s.v2Service = v2service.NewV2Service(mw, v2Deps.Reader, v2Deps.Creator, v2Deps.Mutator, v2Deps.Store, techSpaceId, v2Deps.AccountId)
 		s.v2CreateDisabled = v2Deps.Creator == nil
 		s.v2EditDisabled = v2Deps.Mutator == nil
 	}
-	s.engine = s.NewRouter(mw, eventService, openapiYAML, openapiJSON)
+	s.engine = s.NewRouter(mw, eventService, docs.V1YAML, docs.V1JSON)
 	s.KeyToToken = make(map[string]ApiSessionEntry)
 
 	return s
