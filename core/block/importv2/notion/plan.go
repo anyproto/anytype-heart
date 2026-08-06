@@ -241,17 +241,64 @@ func (c *Converter) emitPlanTypes(ctx context.Context, sink importv2.Sink) error
 				fmt.Sprintf("plan type not emitted: %s", err)))
 			continue
 		}
+		c.planTypeKeys[def.Key] = minted
 		if containerId, sole := soleContainer[def.Key.String()]; sole {
-			if err := c.adoptDatabaseIdentity(ctx, object, containerId, sink); err != nil {
-				return err
-			}
+			// Hold this one back. It replaces the container's collection, and
+			// the collection's job was to surface EVERY schema property — so
+			// the type must list the database's other relations too, and those
+			// only exist once convertDatabase has emitted them. References are
+			// resolved per object against the identity index (ResolveRef
+			// reports an unknown key as missing rather than waiting), so a type
+			// naming a relation emitted later would degrade to missingTarget.
+			c.typeBackedContainers[containerId] = true
+			c.deferredTypes[containerId] = def
+			continue
 		}
 		if err := sink.Object(ctx, object); err != nil {
 			return err
 		}
-		c.planTypeKeys[def.Key] = minted
 	}
 	return nil
+}
+
+// emitDeferredType emits the type that replaces a database's collection, once
+// that database's own relations exist. schemaDefs are every relation the
+// schema produced; the ones the plan did not already name are added as
+// regular recommended relations, so no imported property goes unlisted just
+// because the model did not enumerate it.
+func (c *Converter) emitDeferredType(ctx context.Context, stub Entity, schemaDefs []*relationDef, sink importv2.Sink) error {
+	def, ok := c.deferredTypes[stub.Id]
+	if !ok {
+		return nil
+	}
+	object, _, err := schemaplan.TypeObject(def)
+	if err != nil {
+		sink.Issue(importv2.Warning(importv2.IssueLLMPlanEntryDropped, string(def.Key),
+			fmt.Sprintf("plan type not emitted: %s", err)))
+		return nil
+	}
+	listed := map[string]bool{}
+	for _, ref := range object.Payload.Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations) {
+		listed[ref] = true
+	}
+	regular := object.Payload.Details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	for _, ref := range regular {
+		listed[ref] = true
+	}
+	for _, schemaDef := range schemaDefs {
+		if listed[schemaDef.sourceKey] {
+			continue
+		}
+		listed[schemaDef.sourceKey] = true
+		regular = append(regular, schemaDef.sourceKey)
+	}
+	if len(regular) > 0 {
+		object.Payload.Details.SetStringList(bundle.RelationKeyRecommendedRelations, regular)
+	}
+	if err := c.adoptDatabaseIdentity(ctx, object, stub.Id, sink); err != nil {
+		return err
+	}
+	return sink.Object(ctx, object)
 }
 
 // adoptDatabaseIdentity hands a database's identity to the type that replaces

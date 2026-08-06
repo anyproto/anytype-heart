@@ -615,3 +615,49 @@ func archivedDatabaseWorkspace(t *testing.T) http.HandlerFunc {
 		w.WriteHeader(http.StatusNotFound)
 	}
 }
+
+func TestTypeBackfillsTheDatabaseSchema(t *testing.T) {
+	// given — db1 "Tasks" carries Priority, Tags, Score and Due, but the model
+	// declares only Score on the type it mints. The collection used to be the
+	// surface that listed every property regardless of what the plan named.
+	planner := schemaplan.PlannerFunc(func(context.Context, []schemaplan.ContainerSchema) (schemaplan.Plan, error) {
+		return schemaplan.Plan{
+			NewTypes: []schemaplan.TypeDefinition{{
+				Key: "sprint", Name: "Sprint",
+				Properties: []schemaplan.TypeProperty{
+					{Key: "score", Name: "Score", Format: model.RelationFormat_number, Featured: true},
+				},
+			}},
+			Containers: map[string]schemaplan.ContainerPlan{
+				"db1": {TypeKey: "sprint", Reason: "LLM plan",
+					Properties: map[string]schemaplan.PropertyPlan{
+						"score": {Key: "score", Name: "Score", Format: model.RelationFormat_number},
+					}},
+			},
+		}, nil
+	})
+
+	// when
+	sink := runScriptedWithOptions(t, WithPlanner(planner))
+
+	// then — the model still chooses what is featured
+	typeObject := sink.byKey("db1")
+	require.NotNil(t, typeObject)
+	require.Equal(t, coresb.SmartBlockTypeObjectType, typeObject.SbType)
+	scoreRef := "relation:" + schemaplan.CustomRelationKey(schemaplan.ScopedKey("score", "sprint")).String()
+	assert.Equal(t, []string{scoreRef},
+		typeObject.Payload.Details.GetStringList(bundle.RelationKeyRecommendedFeaturedRelations))
+
+	// ...but every other property of the database's schema is still listed on
+	// the type, so nothing the rows carry goes unlisted just because the model
+	// did not enumerate it. (Due lives only on the page in this fixture, not in
+	// db1's schema, so it is not among them.)
+	recommended := typeObject.Payload.Details.GetStringList(bundle.RelationKeyRecommendedRelations)
+	priority := sink.relationByName("Priority")
+	require.NotNil(t, priority)
+	assert.Contains(t, recommended, priority.SourceKey,
+		"Priority is imported and carried by rows but listed nowhere")
+	assert.Contains(t, recommended, bundle.RelationKeyTag.BundledURL(),
+		"the Tags property redirected onto the bundled tag relation and is still the database's")
+	assert.NotContains(t, recommended, scoreRef, "a featured property is not also regular")
+}

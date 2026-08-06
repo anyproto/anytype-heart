@@ -116,8 +116,10 @@ func (c *Converter) convertDatabase(ctx context.Context, stub Entity, sink impor
 	if c.typeBackedContainers[stub.Id] {
 		// The minted type already carries this database's identity, and a
 		// collection over a single-database type lists exactly the type's own
-		// objects. Emitting both would duplicate the same list.
-		return nil
+		// objects. Emitting both would duplicate the same list. The type is
+		// emitted here rather than in the plan phase so it can recommend the
+		// relations this loop just created.
+		return c.emitDeferredType(ctx, stub, schemaDefs, sink)
 	}
 
 	object, err := c.factory.MakeCollection(database.title(), c.databaseMembers(stub.Id, schemaId))

@@ -199,9 +199,22 @@ record it. Notion reaches this whenever `/search` returns both a database stub a
 data source, since `databaseMembers` matches the pages under either id. Such containers are
 excluded from the replacement.
 
-What is lost: the collection's dataview. That is only the factory's default view with the
-schema's properties made visible — not Notion's saved views or filters, which this importer
-never reproduced — and the type's recommended relations cover the same ground.
+**The type inherits the collection's job of listing every property.** The collection's dataview
+made every schema property a visible column, whatever the plan named; a type recommends only
+what its definition declares, and the prompt asks for 2-4 featured properties, which actively
+invites a subset. So a database's remaining schema relations are appended to the type as
+regular (non-featured) recommended relations — the model still chooses what is featured, and
+nothing imported goes unlisted. Concretely, a "Tasks" database of Priority/Tags/Score whose
+plan declares only Score used to yield a type recommending Score alone, while Priority and
+Tags sat on every row unlisted.
+
+That backfill is why the type is emitted from `convertDatabase` rather than the plan phase: it
+can only name relations that already exist. `ResolveRef` reports an unknown source key as
+missing rather than waiting for it (`identity/service.go:81-96`), so definitions-before-use is
+load-bearing — a type naming a relation emitted later would degrade to `missingTarget`.
+
+What is genuinely lost: the collection's dataview *block*. That is only the factory's default
+view — not Notion's saved views or filters, which this importer never reproduced.
 
 ### 3.5 Minted types should look designed
 

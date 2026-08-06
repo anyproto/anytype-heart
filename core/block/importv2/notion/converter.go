@@ -67,7 +67,9 @@ type Converter struct {
 	planTypeKeys   map[domain.TypeKey]domain.TypeKey
 	// typeBackedContainers are databases whose minted type took their place:
 	// the type carries their source key, so they emit no collection of their own.
+	// deferredTypes holds those types until their database's relations exist.
 	typeBackedContainers map[string]bool
+	deferredTypes        map[string]schemaplan.TypeDefinition
 	schemaFetches        map[string]*schemaFetch
 }
 
@@ -105,6 +107,7 @@ func New(apiClient *client.Client, fetcher client.FileFetcher, factory importv2.
 		planned:               map[string]bool{},
 		planTypeKeys:          map[domain.TypeKey]domain.TypeKey{},
 		typeBackedContainers:  map[string]bool{},
+		deferredTypes:         map[string]schemaplan.TypeDefinition{},
 		schemaFetches:         map[string]*schemaFetch{},
 	}
 	for _, opt := range opts {
