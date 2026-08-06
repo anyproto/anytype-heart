@@ -71,7 +71,7 @@ repair loop with path-addressed errors.
 | C3 | **Compact JSON always** (no pretty-printing). | free 38–46% (§3.6) |
 | C4 | **Object ids compact by default** (refs legend per SPEC §9a — lossless); `?ids=full` opts out. **Block ids are always full on default reads** — block-label compaction (5-char, legend-less, lossy) appears only in explicitly read-only shapes (`outline`, prompt/example exports). Write endpoints MAY additionally resolve block-id references by unique-suffix match against the live object (SPEC §9a wiring allowance). Never require echoing a full CID. *(Built: `Options.CompactObjectRefs` and `Options.CompactBlockLabels` are separate flags; `CompactIds` is the shorthand for both.)* **Outline exception (T7)**: the outline shape compacts block labels but keeps object refs **full** — it drops the refs legend with the properties map, so a legend-compacted ref inside a heading's text would be unresolvable; `?ids=` is ignored there. | ~24×/id, −89% id errors (§3.6); id round-trip contract (R1) |
 | C5 | Minimal rows: list/search responses carry `id, name, type` + requested property values. **Never embed type objects.** `fields=` expands. | v1's N× multiplier (§2.1) |
-| C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
+| C6 | Error shape everywhere: `{status, code, message, issues:[{path, message, hint}]}` — path-addressed, naming allowed values. Required codes include: `validation_failed`, `version_unsupported` (surfaces SPEC §10's "produced by a newer version" verbatim, naming both versions), `idempotency_conflict` (same key, different body), `etag_mismatch`, `ambiguous_input` (e.g. both `filter` and `filters` supplied), `forbidden` (403 — an operation the caller's identity may not perform, e.g. editing another member's chat message; added by the Phase-6 review). Error text is API surface; test it. | repair loop (§3.2, §4.6); R15 |
 | C7 | Every object read returns **`etag`** (short opaque token, ≤8 chars, derived from tree heads — NOT the object's `revision` property, which stays in `properties`) plus an `ETag` header. Mutations accept **`If-Match` header only** (the AnyBlock body has no envelope slot for it). **Advisory by default**: without `If-Match`, ops apply last-write-wins and `diffStats` reports the outcome; with it, mismatch → 409 `etag_mismatch` carrying the current etag. Note: the etag advances on background sync, not only on agent edits — strict If-Match will 409 on sync noise; block-scoped preconditions (ops apply iff the *addressed* blocks are unchanged) are the deferred v2.x refinement. | R2; optimistic concurrency (§3.2) |
 | C8 | `Idempotency-Key` honored on all mutations (POST, PATCH, PUT — v0.3.5; was POST-only); replay with the same key returns the stored result; same key with a different body → 409 `idempotency_conflict`. Response always returns created ids. | agent auto-retry (§3.7); R15 |
 | C9 | `?dry_run=true` on every mutation → would-be diff summary + issues, nothing committed. | highest-leverage affordance (§3.7) |
@@ -578,11 +578,16 @@ verb-set** (`cmd/anytype`, generated from the same table) ·
 **`GET /v2/spaces/{spaceId}/members/me`** (server-side identity) ·
 **the Phase-6 chat surface** (§8.7: v2 chat DTOs + the inline-markup
 bridge both directions, `GET/POST /chats` as C5 rows over a store query,
-`GET /messages` with the state+messageCount passthrough, message
-POST/PATCH/DELETE + the reactions toggle with C8/C9, `POST /read`
-forwarding `{upTo, lastStateId, scope}`, the `chat`/`chatMessage`/
-`chatRead` discovery kinds, and the C8 DELETE widening on the chat
-delete route).
+`GET /messages` with the state+messageCount passthrough + has_more
+cursors, message POST/PATCH/DELETE + the reactions toggle with C8/C9,
+`POST /read` requiring `{upTo, lastStateId}`, the five chat discovery
+kinds, and the C8 DELETE widening — now uniform across every v2 DELETE)
+· **the Phase-6 review hardening** (§8.7, 2026-08-06: the lastStateId
+silent-no-op closed, chat RPC error classification incl. the new C6
+`forbidden` code, text/attachment caps enforced + schema drift tests,
+delete/toggle existence checks + file-GC warnings, RFC 3339 chat dates,
+the reactions/reactedBy split, `blocksText`, and the chat handler test
+layer).
 
 ## 4. Benchmark program
 
@@ -1650,27 +1655,39 @@ POST   /v2/spaces/{spaceId}/chats/{chatId}/messages                # {text, repl
 PATCH  /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}    # {text} — text-only merge
 DELETE /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}
 POST   /v2/spaces/{spaceId}/chats/{chatId}/messages/{messageId}/reactions  # {emoji} → {added}
-POST   /v2/spaces/{spaceId}/chats/{chatId}/read                    # {upTo, lastStateId?, scope?}
+POST   /v2/spaces/{spaceId}/chats/{chatId}/read                    # {upTo, lastStateId, scope?}
 ```
 
 **The three reshapes, as built.** (1) *State passthrough*: the messages
-read returns `{messages, state, messageCount}`; `state` carries
+read returns `{messages, state, messageCount, has_more, nextAfter?,
+nextBefore?}`; `state` carries
 `unreadMessages/unreadMentions/oldestUnreadOrder/oldestUnreadMentionOrder/
-unreadReactionOrder/lastStateId`. A poll is a `limit=1` read; the exit
-flow "summarize what's new and mark it read" is two calls (GET messages →
-POST read `{upTo, lastStateId}`). (2) *Inline markup both directions*:
-read renders `text` via `anyblockjson.RenderInlineText` (mentions as
-`<mention objectId="…">` tags); write parses via `ParseInlineText` — the
-D′1 caveat is documented on both write endpoints; offset mark arrays
-never cross the API. `style` is dropped on read and not accepted on
-write (a fresh message is always `paragraph`; an edit preserves the
-stored style). (3) *C5 rows + compact reactions*: chat rows are
-`{id, name}` (Q3 as recommended — counter-free list; computing list-wide
-counters means opening every chat, the GO-7302 cost; `ListChats` is a
-pure store query over `ChatLayouts` and its test would fail on ANY RPC
-call). Reactions default to counts `{"👍":2}` (Q4 as recommended);
-`?reactions=full` restores identity lists — carrying **participant ids**
-(one vocabulary with `authorId`, C2), never raw identities.
+unreadReactionOrder/lastStateId`; `messageCount` is the chat's LIFETIME
+total, not the range size — `has_more` (fetched via limit+1, the
+ListChats pattern) plus the boundary cursors are the range signal, so an
+agent never infers "more" from `len==limit` (C10's spirit). A poll is a
+`limit=1` read; the exit flow "summarize what's new and mark it read" is
+two calls (GET messages → POST read `{upTo, lastStateId}`). (2) *Inline
+markup both directions*: read renders `text` via
+`anyblockjson.RenderInlineText` (mentions as `<mention objectId="…">`
+tags); write parses via `ParseInlineText` — the D′1 caveat is documented
+on both write endpoints; offset mark arrays never cross the API. `style`
+is dropped on read and not accepted on write (a fresh message is always
+`paragraph`; an edit preserves the stored style). Block-composed content
+(desktop quotes, rich pastes — a message may be VALID with empty text
+and only blocks, `chatmodel.Validate`) surfaces read-only as
+`blocksText`: text-bearing blocks rendered as §8 markup, newline-joined;
+link/embed blocks stay invisible (recorded deferral). (3) *C5 rows +
+compact reactions*: chat rows are `{id, name}` (Q3 as recommended —
+counter-free list; computing list-wide counters means opening every
+chat, the GO-7302 cost; `ListChats` is a pure store query over
+`ChatLayouts` and its test would fail on ANY RPC call). Reactions are
+ALWAYS the counts map `{"👍":2}` (Q4 as recommended);
+`?reactions=full` adds `reactedBy` — **participant-id** lists (one
+vocabulary with `authorId`, C2), never raw identities — in its OWN slot,
+so neither field ever changes type (C2: the review killed the original
+polymorphic `reactions` slot, which no strict response schema could
+describe).
 
 **C7 exemption, stated.** No chat response carries an etag and no chat
 mutation reads If-Match: order ids and `lastStateId` are the chat's
@@ -1680,40 +1697,90 @@ deliberate exemption class search's C8/C9 one established).
 **C8 widened to DELETE (additive contract change, recorded loudly).**
 The surfaces doc demands idempotency on *every* chat mutation; C8's
 method set was POST/PATCH/PUT. `ensureIdempotency` now also acts on
-DELETE, and the chat message DELETE is the only registered DELETE route
-carrying the middleware — the type/property DELETEs are unchanged
-(nothing attached there). A blindly retried chat delete used to 404
-misleadingly; now it replays.
+DELETE — and after the Phase-6 review, EVERY registered v2 DELETE
+carries the middleware: chat message, type and property alike. (As
+first built, only the chat delete was keyed; the review called the
+route-dependent behavior an invisible contract — an agent that
+dutifully keys every mutation, as the Phase-5 wrapper does, must not
+get replay on one DELETE and silently none on another. The router test
+pins all three.) A blindly retried v2 delete used to 404 misleadingly;
+now it replays.
 
 **Decisions the spec left open.**
 
-- **`upTo` is REQUIRED (and inclusive) for scopes messages/mentions.**
-  The RPC's range query bounds with `orderId <= beforeOrderId`
-  (`chatrepository/repository.go:388`), so an empty bound selects
-  nothing and returns success — a silent no-op trap (v1's `read_all`
-  path sends exactly that shape). Requiring `upTo` keeps mark-read
-  honest; there is deliberately no "mark all" form — the newest order id
-  is one `limit=1` read away and rides the same response as
-  `lastStateId`.
+- **`upTo` AND `lastStateId` are BOTH REQUIRED for scopes
+  messages/mentions.** The RPC's range query bounds with
+  `orderId <= beforeOrderId` AND `stateId <= lastStateId`
+  (`chatrepository/repository.go:387-392`), and every stored message
+  carries a non-empty bson state id (`chathandler.go:116`) — so an
+  empty value for EITHER selects nothing and returns success, the
+  silent no-op trap (v1's `read_all` path sends exactly that shape; the
+  phase's first build required only `upTo` and the review reproduced
+  markedCount=0 with a 200 when `lastStateId` was omitted — the same
+  trap one field over). Both values ride the same GET messages response
+  (the newest order + `state.lastStateId`), so requiring both costs the
+  agent nothing; the missing-field 400 is path-addressed to each.
+  Server-side filling was REJECTED: a guard resolved at POST time is
+  newer than the client's read and would mark late-arriving unseen
+  messages as read — silently weakening the exact race the guard
+  exists to close. There is deliberately no "mark all" form. (The RPC
+  gives v2 no marked count to return — `RpcChatReadMessagesResponse` is
+  empty and `chats.Service.ReadMessages` discards it — so a
+  zero-effect read still cannot be surfaced in the response; requiring
+  both bounds closes every known silent path instead.)
 - **The reactions scope is all-or-nothing.** `ChatReadReactions`
   *ignores* its `orderId` (`core/chats.go:325` calls
   `ReadReaction(ctx, chatObjectId)` without it), so the planned
   "`upTo` → read reactions" forwarding is impossible today; scope
   `reactions` rejects `upTo`/`lastStateId` with path-addressed 400s
   rather than pretending a bound exists.
+- **Chat RPC failures are classified in v2 — the RPC codes are dead.**
+  `core/chats.go` maps no chat errors (`mapErrorCode` with no
+  `errToCode` entries returns UNKNOWN_ERROR for everything), so the
+  BAD_INPUT→400 branch never fires and, as first built, every caller
+  mistake was a retry-looping 500. Three layers now close it: (a) v2
+  pre-validates what it owns — parsed text length against
+  `chatmodel.MaxMessageLength` (8000 UTF-16 units) as a path-addressed
+  400 on `/text`, and the attachment cap (32, the schema's maxItems) on
+  `/attachments`; (b) both DELETE and the reaction toggle run the
+  existence read on the COMMITTING path too, so a missing message 404s
+  identically to its dry run (the store handler treats deleting a
+  missing doc as success — without the check the real DELETE answered
+  200 for a deletion that never happened, C9 broken); (c)
+  `v2ChatRpcError` classifies the remaining RPC descriptions — the
+  strings are pinned by the middleware: `validate: …` → 400
+  validation_failed, `not found` → 404, `can't delete not own message`
+  → **403 `forbidden`** (a NEW C6 code, additive — C6's list is
+  non-exhaustive "include"). Anything else stays 500 with the
+  description carried.
 - **PATCH message is a read-merge.** The middleware edit replaces the
   whole message content — chatmodel `content` =
   `{message, attachments, blocks}` (`chatmodel.go:441-444`) — so a naive
   `{text}`-only forward would WIPE attachments on every text edit. The
   service reads the message first and carries style, attachments and
   blocks through unchanged (also giving edit/delete dry runs their
-  existence check for free).
-- **Attachments are bare object ids** (the surfaces-doc shape); the
+  existence check for free). Markup caveat recorded: an Emoji MARK is
+  materialized into its literal emoji on read
+  (`RenderInlineText`/materializeEmoji), and the re-parse does not
+  re-mint it — a read→PATCH round trip turns the mark into plain emoji
+  text (visually identical, mark gone). Same D′1 family as the marks
+  re-derivation; pinned by the non-BMP round-trip test.
+- **Attachments are bare object ids** (the surfaces-doc shape), at most
+  **32 per message** — enforced before any store lookup, so the strict
+  schema's maxItems is true (unbounded, each id was one synchronous
+  index lookup and one permanently replicated CRDT entry); the
   attachment kind is inferred from the target's layout — `image` →
   image, other file layouts → file, anything else → link. An unknown id
   is a path-addressed 400 steering to POST /v2/files (attaching a
   nonexistent object would send a broken message; the indexing race is
   an actionable retry, not a silent default).
+- **DELETE names its irreversible side effect.** The middleware
+  permanently deletes (skipBin — no bin) attachment/link targets
+  orphaned by the delete, asynchronously, AFTER the API replies
+  (`chats/service.go ArchiveOrphansOnLinksRemoval`). Both the dry run
+  and the real receipt carry C6 warnings naming the attachment ids at
+  risk, and the endpoint description says so — this is also where the
+  previously dead `V2ChatMessageResult.Warnings` field earns its keep.
 - **Author enrichment is store-backed, not the v1 cache.** The plan said
   "reusing the participant cache" — that cache is the v1 service's
   cross-space *subscription* cache, which V2Service deliberately does
@@ -1726,11 +1793,25 @@ misleadingly; now it replays.
   → targeted 400 (the sets/collections wrong-layout precedent) — the
   chat RPCs' own failure for a bad target is opaque.
 - **Message DTO shape**: `{id, order, author?, authorId?, at, editedAt?,
-  text, replyTo?, reactions?, attachments?, pinned?}` — `editedAt` only
-  when the message was edited; sync/read flags deliberately absent
-  (agent noise). Cursor pagination only: `?offset=` on the messages read
-  is a 400 steering to the cursors (a silently honored offset would fake
-  offset paging the RPC does not do).
+  text, blocksText?, replyTo?, reactions?, reactedBy?, attachments?,
+  pinned?}` — `editedAt` only when the message was edited; sync/read
+  flags deliberately absent (agent noise). `at`/`editedAt` are
+  **RFC 3339 UTC strings** — the review fixed the original unix-epoch
+  ints: one date shape across v2 (AnyBlock dates, search filters, file
+  addedAt all render RFC 3339), and Phase 8's SSE stream reuses these
+  DTOs. Cursor pagination only: `?offset=` on the messages read is a
+  400 steering to the cursors (a silently honored offset would fake
+  offset paging the RPC does not do). Cursor asymmetry documented on
+  the endpoint: only `?after` alone walks forward (the repository's one
+  ASC sort); `?before`, no cursor, or BOTH bounds anchor at the newest
+  end and page backward via `nextBefore` — after+before does NOT
+  advance a forward cursor through the window.
+- **Reaction dry run needs an identity.** `V2Service.accountId` may be
+  empty (documented degraded mode); with no identity nothing matches
+  the stored reactions and the predicted `added` would be wrong
+  whenever the caller already reacted — so `added` became `*bool`,
+  omitted with a C6 warning in that case (mirroring the
+  `v2_discovery.go` guard) instead of asserting a coin flip.
 - **POST /chats requires a non-empty name** (the row is `{id,name}`; an
   unnamed chat is unaddressable) and is a thin `ObjectCreate` with the
   `chatDerived` type — NOT the Phase-2 snapshot path, which has never
@@ -1740,10 +1821,16 @@ misleadingly; now it replays.
   toggle reads the message and reports the would-be `added` from the
   caller's current reaction.
 
-**Discovery (§5).** Three new kinds — `chat`, `chatMessage`, `chatRead`
-— strict (C13), each with a worked example asserted against its own
-schema by test. `chatMessage` is the authoring surface (markup-source
-text, bare-id attachments).
+**Discovery (§5).** Five kinds — `chat`, `chatMessage`,
+`chatMessageEdit`, `chatReaction`, `chatRead` — strict (C13), each with
+a worked example asserted against its own schema by test (the review
+added the edit/reaction kinds: the handlers decode strictly, so a
+guessed field name was an avoidable 400). `chatMessage` is the
+authoring surface (markup-source text, bare-id attachments); its
+`text.maxLength` is **8000** — `chatmodel.MaxMessageLength`, UTF-16
+code units — pinned to the constant by a drift test after the original
+build advertised 65536 (8× the store cap, steering schema-obedient
+models into rejections).
 
 **Deliberately deferred / reused from v1.** The SSE stream stays on v1
 this phase — Phase 8 mounts it under /v2 carrying these DTOs (they were
@@ -1754,6 +1841,13 @@ Per-chat FT search (`…/messages/search`) stays on v1 (named exception).
 Not ported: v1's GET single message (not in the surface — PATCH/DELETE
 address by id, reads page by cursor), editing attachments on PATCH
 (v1 keeps that), message pinning writes, and `read_all` (see `upTo`).
+Link/embed message blocks have no `blocksText` rendering (only
+text-bearing blocks appear); a full `blocks` array is deferred until a
+consumer needs it. Open (needs a real account to verify): the
+space-level chat is created name-less (`AddChatDerivedObject` sets only
+a uniqueKey), so it may render as `{id, name:""}` in the C5 list — a
+space-name fallback or `isSpaceChat` flag is the candidate fix once
+runtime-verified, incl. whether the object is indexed unhidden.
 
 **Tests that pin the phase** (each fails if its behavior reverts):
 state+messageCount passthrough incl. `lastStateId`
