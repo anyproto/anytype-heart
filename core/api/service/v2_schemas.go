@@ -69,12 +69,11 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"required":["name","type"],"properties":{` +
 			`"name":{"type":"string","maxLength":4096},` +
 			`"type":{"type":"string","maxLength":256,"description":"the queried type's key"},` +
-			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); mutually exclusive with filters"},` +
-			`"filters":{"type":"array","maxItems":50,"description":"SPEC §6.2 filter nodes; see kind filters"},` +
+			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays strict-mode-decodable (C13) — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
-			`"views":{"type":"array","maxItems":10,"description":"full SPEC §6.2 view objects; mutually exclusive with top-level filters/sorts"}}}`,
-		example: `{"name":"Open tasks","type":"task","filters":[{"property":"done","condition":"equal","value":false}],"sorts":[{"property":"dueDate","direction":"asc"}]}`,
+			`"views":{"type":"array","maxItems":10,"description":"full SPEC §6.2 view objects; mutually exclusive with top-level filter/sorts"}}}`,
+		example: `{"name":"Open tasks","type":"task","filter":"done = false","sorts":[{"property":"dueDate","direction":"asc"}]}`,
 	},
 	"collection": {
 		endpoint: "POST /v2/spaces/{spaceId}/collections",
@@ -95,8 +94,7 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
 			`"query":{"type":"string","maxLength":4096,"description":"full-text query"},` +
 			`"type":{"type":"string","maxLength":256,"description":"one type key; multi-type queries use the type pseudo-key in the filter channel"},` +
-			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); mutually exclusive with filters"},` +
-			`"filters":{"type":"array","maxItems":50,"description":"SPEC §6.2 filter nodes (RECURSIVE, see kind filters); mutually exclusive with filter"},` +
+			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays strict-mode-decodable (C13) — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
 			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row"}}}`,
@@ -112,11 +110,11 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 			`{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256},` +
 			`"condition":{"type":"string","enum":["equal","notEqual","greater","less","greaterOrEqual","lessOrEqual","contains","notContains","in","notIn","empty","notEmpty","allIn","notAllIn","exactIn","notExactIn","exists"]},` +
-			`"value":{},` +
+			`"value":{"description":"leaf value — select/multiSelect: option NAMES; date: unix SECONDS (RFC 3339 strings belong to the compact filter string, which converts them)"},` +
 			`"datePreset":{"type":"string","enum":["yesterday","today","tomorrow","lastWeek","currentWeek","nextWeek","lastMonth","currentMonth","nextMonth","numberOfDaysAgo","numberOfDaysNow","lastYear","currentYear","nextYear"]},` +
 			`"includeTime":{"type":"boolean"}}}]}},` +
 			`"type":"array","maxItems":50,"items":{"$ref":"#/$defs/filterNode"},` +
-			`"description":"RECURSIVE (documented C13 exception): top-level nodes combine with an implicit AND; select values are option names"}`,
+			`"description":"RECURSIVE (documented C13 exception): top-level nodes combine with an implicit AND; select values are option names; date values are unix seconds"}`,
 		example: `[{"property":"done","condition":"equal","value":false},{"operator":"or","filters":[{"property":"dueDate","condition":"less","datePreset":"currentWeek"},{"property":"dueDate","condition":"empty"}]}]`,
 	},
 }

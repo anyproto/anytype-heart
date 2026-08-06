@@ -80,6 +80,53 @@ func TestV2Schemas(t *testing.T) {
 		assert.Empty(t, entry.GrammarExamples)
 	})
 
+	t.Run("the served EBNF defines every token the parser accepts", func(t *testing.T) {
+		// the grammar is the Phase-5 GBNF input: a keyword or preset the
+		// parser accepts but the EBNF omits (or an undefined production like
+		// identifier/number) would make a generated GBNF reject valid input
+		entry, err := fx.SchemaKind("filters")
+		require.NoError(t, err)
+		for _, token := range []string{
+			`"OR"`, `"AND"`, `"NOT"`, `"CONTAINS"`, `"IN"`, `"HAS"`, `"ALL"`, `"IS"`, `"EMPTY"`, `"EXISTS"`,
+			`"true"`, `"false"`, `"!="`, `">="`, `"<="`,
+			"yesterday", "today", "tomorrow", "lastWeek", "currentWeek", "nextWeek",
+			"lastMonth", "currentMonth", "nextMonth", "lastYear", "currentYear", "nextYear",
+			"daysAgo", "daysFromNow",
+			"identifier  =", "number      =", "case-insensitively",
+		} {
+			assert.Contains(t, entry.Grammar, token, "the served EBNF must carry %s", token)
+		}
+	})
+
+	t.Run("the search kind is fully strict-mode-decodable (C13)", func(t *testing.T) {
+		// the recursive structured `filters` channel must not leak into the
+		// generation-facing search schema: constrained decoders (OpenAI
+		// strict, GBNF) reject an array without items, which would poison
+		// the whole kind — the one the Phase-5 find tool constrains against
+		for _, kind := range []string{"search", "set"} {
+			entry, err := fx.SchemaKind(kind)
+			require.NoError(t, err)
+			var schema struct {
+				Properties map[string]json.RawMessage `json:"properties"`
+			}
+			require.NoError(t, json.Unmarshal(entry.Schema, &schema))
+			assert.NotContains(t, schema.Properties, "filters",
+				"kind %s must steer to the filter string / kind filters instead of embedding the recursive array", kind)
+		}
+		// every array in the search schema carries an items schema
+		entry, err := fx.SchemaKind("search")
+		require.NoError(t, err)
+		var schema struct {
+			Properties map[string]map[string]json.RawMessage `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(entry.Schema, &schema))
+		for name, prop := range schema.Properties {
+			if string(prop["type"]) == `"array"` {
+				assert.Contains(t, prop, "items", "search.%s is an array and needs items for strict decoding", name)
+			}
+		}
+	})
+
 	t.Run("the search example's filter string parses", func(t *testing.T) {
 		entry, err := fx.SchemaKind("search")
 		require.NoError(t, err)
