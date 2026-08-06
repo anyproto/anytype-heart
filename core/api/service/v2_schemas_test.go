@@ -28,7 +28,7 @@ func TestV2Schemas(t *testing.T) {
 			assert.NotEmpty(t, entry.Endpoint, entry.Kind)
 			assert.Equal(t, "/v2/schemas/"+entry.Kind, entry.Url)
 		}
-		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters", "search", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
+		for _, want := range []string{"object", "shortcut", "type", "template", "property", "set", "collection", "file", "filters", "search", "space", "chat", "chatMessage", "chatMessageEdit", "chatReaction", "chatRead"} {
 			assert.True(t, kinds[want], "missing kind %s", want)
 		}
 	})
@@ -56,6 +56,29 @@ func TestV2Schemas(t *testing.T) {
 				assert.Contains(t, schema.Properties, field,
 					"example field %q of kind %s is not in its own schema", field, kind)
 			}
+		}
+	})
+
+	t.Run("the space kind is strict and its example fits (Phase 7)", func(t *testing.T) {
+		// POST /v2/spaces is an authoring surface, so it carries a schema
+		// kind (§5); strictness follows C13
+		entry, err := fx.SchemaKind("space")
+		require.NoError(t, err)
+		var schema struct {
+			AdditionalProperties *bool                      `json:"additionalProperties"`
+			Required             []string                   `json:"required"`
+			Properties           map[string]json.RawMessage `json:"properties"`
+		}
+		require.NoError(t, json.Unmarshal(entry.Schema, &schema))
+		require.NotNil(t, schema.AdditionalProperties)
+		assert.False(t, *schema.AdditionalProperties, "the space kind must be strict (C13)")
+		assert.Equal(t, []string{"name"}, schema.Required)
+
+		var example map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(entry.Example, &example))
+		for field := range example {
+			assert.Contains(t, schema.Properties, field,
+				"example field %q is not in the space schema", field)
 		}
 	})
 

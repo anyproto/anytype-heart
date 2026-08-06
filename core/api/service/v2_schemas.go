@@ -93,12 +93,19 @@ var v2SchemaKinds = map[string]v2SchemaKind{
 		endpoint: "POST /v2/spaces/{spaceId}/search (and POST /v2/search global)",
 		schema: `{"type":"object","additionalProperties":false,"properties":{` +
 			`"query":{"type":"string","maxLength":4096,"description":"full-text query"},` +
-			`"type":{"type":"string","maxLength":256,"description":"one type key; multi-type queries use the type pseudo-key in the filter channel"},` +
+			`"type":{"type":"string","maxLength":256,"description":"one type key; multi-type queries use the type pseudo-key in the filter channel; naming a file type (file, image, video, audio) opts file objects into the results — they are excluded otherwise"},` +
 			`"filter":{"type":"string","maxLength":4096,"description":"compact filter string (grammar on kind filters); the endpoint also accepts a recursive structured filters array, kept out of this schema so it stays strict-mode-decodable (C13) — see kind filters"},` +
 			`"sorts":{"type":"array","maxItems":10,"items":{"type":"object","additionalProperties":false,"required":["property"],"properties":{` +
 			`"property":{"type":"string","maxLength":256,"description":"any property key"},"direction":{"type":"string","enum":["asc","desc"]},"emptyPlacement":{"type":"string","enum":["start","end"]}}}},` +
-			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row"}}}`,
+			`"fields":{"type":"array","maxItems":25,"items":{"type":"string","maxLength":256},"description":"property keys to include per row; file rows additionally take mimeType and size"}}}`,
 		example: `{"query":"report","type":"task","filter":"done = false AND (dueDate < currentWeek() OR dueDate IS EMPTY)","sorts":[{"property":"dueDate","direction":"asc"}],"fields":["name","dueDate","status"]}`,
+	},
+	"space": {
+		endpoint: "POST /v2/spaces (PATCH /v2/spaces/{spaceId} takes the same fields, both optional — at least one)",
+		schema: `{"type":"object","additionalProperties":false,"required":["name"],"properties":{` +
+			`"name":{"type":"string","minLength":1,"maxLength":4096},` +
+			`"description":{"type":"string","maxLength":4096}}}`,
+		example: `{"name":"Research","description":"Scratch space for the Q3 analysis"}`,
 	},
 	"chat": {
 		endpoint: "POST /v2/spaces/{spaceId}/chats",

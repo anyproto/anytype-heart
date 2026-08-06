@@ -587,7 +587,14 @@ silent-no-op closed, chat RPC error classification incl. the new C6
 `forbidden` code, text/attachment caps enforced + schema drift tests,
 delete/toggle existence checks + file-GC warnings, RFC 3339 chat dates,
 the reactions/reactedBy split, `blocksText`, and the chat handler test
-layer).
+layer) · **the Phase-7 periphery** (§8.8, 2026-08-06: the space surface —
+`GET /v2/spaces/{spaceId}` as an RPC-free tech-space-view read,
+`POST /v2/spaces` as ONE WorkspaceCreate call, `PATCH` with the
+at-least-one-field contract, C8 on both mutations; the search
+file-layout opt-in keyed off the type channel — positive `=`/`IN` type
+leaves and the top-level type widen the row scope to
+`ObjectAndFileLayouts` on both request forms — plus the
+`mimeType`/`size` fields-only aliases; the `space` discovery kind).
 
 ## 4. Benchmark program
 
@@ -1859,3 +1866,127 @@ bounds rejected, lastStateId forwarding on POST read, C8 wiring on all
 six chat mutations incl. the DELETE replay
 (`server/v2_router_test.go`, `server/v2_middleware_test.go`), and the
 chat discovery kinds' strictness (`service/v2_schemas_test.go`).
+
+### 8.8 Phase-7 implementation notes (periphery — decisions as built)
+
+Phase 7 closed the periphery (APIV2_SURFACES.md §8 Phase 7): the space
+surface, and the query surface's file-layout blindness — the latter a
+live bug in shipped Phase-4 code, fixed first. The §8 item 2
+(`GET /members/me`) was verified ALREADY SHIPPED by Phase 5 (route
+`router.go`, service `v2_discovery.go GetMemberMe`, tests
+`v2_discovery_test.go`) and was not rebuilt.
+
+**The file-layout opt-in (the live bug, APIV2_SURFACES.md §4).** The
+evidence held: v2 search's base row scope and ListObjects both pin
+`util.ObjectLayouts`, which contains no file layout, while v1 search has
+`prepareBaseFilters(includeFileLayouts)` — so a pure-v2 agent could
+upload a file (POST /files) and never find it again. As built:
+
+- **Trigger = the type channel, both request forms.** A top-level `type`
+  naming a file type key (`file`, `image`, `video`, `audio` —
+  `util.IsFileTypeKey`, v1's `fileTypeUniqueKeySet` vocabulary; there is
+  no `pdf` type key — pdf is a *layout* of type `file`, and the widened
+  scope includes it) or a **positive** (`=` / `IN`) `type` filter leaf
+  sets the plan's `includeFileLayouts`, which switches the base row scope
+  to `util.ObjectAndFileLayouts` for that query. The leaf detection sits
+  in `resolveTypeLeaves` — AFTER the two filter forms converge on one
+  tree — so the string and structured forms behave identically. A mixed
+  `type IN ("task","image")` widens; a **negated** leaf (`!=`, `NOT IN`)
+  does NOT (excluding a type is not asking for files — pinned by a test
+  with a second file object the negation must not leak in).
+- **Scope: the search surface only** (space-scoped and global — one plan
+  builder). ListObjects has NO type channel and deliberately gains none
+  (§4's "the v1 opt-in reproduced *without a new parameter*"); file
+  discovery is search's job. The sets/collections reads never had the
+  layout scope at all (their filters are the setOf/membership
+  translation — verified `listObjects` in `v2_list_read.go`), so a set
+  over a file type already returned its rows; nothing to widen there.
+- **`fields=` file vocabulary: `mimeType` and `size`.** Aliases mapped
+  to the backing store relations `fileMimeType`/`sizeInBytes`
+  (`v2FieldAliases`, `v2_object.go`). The names are the format's OWN
+  file vocabulary — the SPEC §5 file-block fields and the POST /files
+  result — so C2's one-concept-one-slot picks them over surfacing the
+  store names (which would put two names on one concept across v2).
+  DISPLAY-only, deliberately: valid in search `fields=` and the
+  sets/collections `?fields=`, never in filters or sorts — `size > 5`
+  stays an unknown key (pinned by test); rows emit under the requested
+  alias; a real space property literally keyed `mimeType`/`size` wins
+  over the alias. Filtering/sorting by file metadata is deferred until
+  wanted — it needs value-shape decisions the display path does not.
+
+**The space surface (APIV2_SURFACES.md §2 shapes).**
+
+```
+GET   /v2/spaces/{spaceId}     → {"id","name","description"}
+POST  /v2/spaces               {"name","description"?} → the same shape (201)
+PATCH /v2/spaces/{spaceId}     {"name"?,"description"?} → the same shape
+```
+
+(`handler/v2_space.go`, `service/v2_space.go`, DTOs in `model/v2.go`;
+routes beside the spaces list in `router.go`.) `gatewayUrl`/`networkId`
+stay v1-only (client infrastructure, not agent fields). No space delete
+(v1 has none; deletion is an account-level operation).
+
+- **The read is one tech-space store query, zero RPCs.** The §2 claim
+  verified: v1's `getSpaceInfo` opens `WorkspaceOpen` + `ObjectShow` per
+  call — and v1's *list* does that per row (`service/space.go:88-94`,
+  `212-250`), the N+1 by construction. The space view mirrors the
+  workspace object's `name` AND `description` (`workspaceKeysToCopy`,
+  `core/block/editor/spaceview.go`), so `GetSpaceViewDetails` serves the
+  whole v2 shape. Consequence, recorded: the row is as fresh as the
+  async workspace→spaceview sync, the same freshness the shipped v2
+  spaces LIST already has.
+- **Create is ONE WorkspaceCreate call.** `CreateWorkspace` applies
+  every detail to the workspace object (`core/block/create.go`), so the
+  description rides the create request — v1's second `WorkspaceSetInfo`
+  RPC for it is dropped. Everything else is v1 parity: `CHAT_SPACE` use
+  case, random icon option, regular space type, widgets homepage,
+  trimmed strings.
+- **C8 on both mutations** via the route idempotency middleware — the §2
+  finding was the motivation: an auto-retried space create with no key
+  duplicates an *entire space*, the worst possible duplicate. The
+  router test pins both registrations. **C9 scoped honestly**: the
+  create dry run validates the body only and says so (a space create
+  cannot be simulated); the PATCH dry run reports the would-be row.
+- **PATCH contract.** At least one of `name`/`description` (the
+  setProperties empty-op precedent — an accepted `{}` would let an agent
+  believe it renamed something); `name` present-but-empty is rejected
+  (the POST /chats precedent: the C5 row is `{id, name}`), while
+  `description: ""` clears. Unknown space 404s before body validation.
+  The response overlays the patch onto the current view row instead of
+  re-reading (the async view sync would race an immediate read-back).
+- **Status predicate, decided.** GET-one serves any space the tech space
+  has a view for — the same contract as `ensureSpace` (if
+  `GET /spaces/{id}/objects` resolves the space, `GET /spaces/{id}` must
+  too) and as the shipped v2 spaces list. Recorded inconsistency, not
+  changed here: the global-search fan-out (`spaceRefs`) filters to live
+  spaces; the spaces list and get-one do not.
+- **Discovery: one `space` kind** (strict, `required:["name"]`). PATCH
+  takes the same two fields (both optional, at least one) and is
+  documented on the kind's endpoint string rather than minting a
+  `spaceUpdate` kind — the chat precedent (`chatMessageEdit`) split
+  kinds because the shapes diverged; here they share every field name,
+  and a strict-schema agent that includes `name` on PATCH is simply
+  valid.
+- **RPC error mapping**: BAD_INPUT → 400 `validation_failed` carrying
+  the description; anything else → 500 with the description carried
+  (`v2SpaceRpcError` — the chat classifier minus the string
+  vocabulary, which workspace RPCs don't have).
+
+**Handler plumbing note.** The chat handlers' strict body decoder was
+generalized (`decodeStrictJSONBody`, `handler/v2_error.go`) and is shared
+by the space handlers; chat error texts are unchanged
+(`decodeChatBody` delegates).
+
+**Tests that pin the phase**: the RPC-free space read (any RPC fails the
+mock), the single-call create carrying the description (a
+`WorkspaceSetInfo` expectation would fail), the at-least-one-field and
+empty-name PATCH 400s, C9 dry runs sending nothing (service AND handler
+layers — a regressed `dry_run` would create a real space), C8 wiring on
+POST/PATCH spaces (`server/v2_router_test.go`), the space kind's
+strictness, the opt-in matrix (top-level type / string leaf / structured
+leaf / mixed IN / negated leaf / bare search) where the widening test
+can only pass through `ObjectAndFileLayouts`, and the fields aliases
+(render from the backing relations; filter use stays an unknown key)
+(`service/v2_search_test.go TestV2SearchFileLayoutOptIn`,
+`service/v2_space_test.go`, `handler/v2_space_handler_test.go`).

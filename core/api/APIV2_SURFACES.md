@@ -82,6 +82,13 @@ resource surface. See open question Q1.
 
 ## 2. Spaces — (c) thin adaptation, mostly shipped
 
+> **STATUS: BUILT** (Phase 7, 2026-08-06 — decisions as built in APIV2.md
+> §8.8). The N+1 claim below verified. One deviation from v1's mechanics:
+> the description rides the ONE WorkspaceCreate call (CreateWorkspace
+> applies every detail), dropping v1's second WorkspaceSetInfo RPC. The
+> get-one read is the tech-space space view (it mirrors name AND
+> description), so it costs zero RPCs.
+
 **What v1 has.** `GET /v1/spaces` (list), `GET /v1/spaces/{id}`, `POST
 /v1/spaces`, `PATCH /v1/spaces/{id}` (`router.go:536-556`). The v1 list is
 expensive by construction: per space-view row it calls `WorkspaceOpen` +
@@ -182,7 +189,7 @@ for a capability the middleware does not have (Q7).
 - **Delete: no v2 file route.** A file object is an object; the pending
   `DELETE /v2/spaces/{spaceId}/objects/{objectId}` archive (§3 build item,
   due before Phase 5) covers it — v1's own DeleteFile is exactly that RPC.
-- **The real gap — discovery (build item).** v2 search and ListObjects scope
+- **The real gap — discovery (BUILT, Phase 7 — APIV2.md §8.8).** v2 search and ListObjects scope
   rows to `util.ObjectLayouts`, which excludes file layouts
   (`service/v2_search.go:353`, `service/v2_object.go:426`,
   `util/constant.go:9-18`); v1 search has an explicit opt-in
@@ -383,14 +390,23 @@ Exit criterion (harness): a polling agent completes "summarize what's new in
 this chat and mark it read" in ≤2 calls with zero message re-reads, at lower
 token cost than the v1 flow, and a double-send retry is absorbed by C8.
 
-### Phase 7 — periphery (small; half the size of Phase 6)
+### Phase 7 — periphery (BUILT 2026-08-06 — APIV2.md §8.8)
 
-1. **[build]** Spaces: `GET /v2/spaces/{spaceId}`, `POST /v2/spaces`,
-   `PATCH /v2/spaces/{spaceId}` (§2 shapes; C8 on both mutations).
-2. **[build]** `GET /v2/spaces/{spaceId}/members/me` (§3 shape) — subsumes
-   the §3/Phase-5 named item; land it here if Phase 5 has not already.
-3. **[build]** v2 search/list file-layout opt-in keyed off the type channel
-   (§4) + `mimeType`/`size` in the `fields=` vocabulary.
+1. **[built]** Spaces: `GET /v2/spaces/{spaceId}`, `POST /v2/spaces`,
+   `PATCH /v2/spaces/{spaceId}` (§2 shapes; C8 on both mutations — the
+   router test pins both; PATCH additionally requires at least one field
+   and a non-empty name).
+2. **[already shipped]** `GET /v2/spaces/{spaceId}/members/me` — verified
+   Phase 5 landed it (route + `GetMemberMe` + tests); nothing rebuilt.
+3. **[built]** the search file-layout opt-in keyed off the type channel
+   (§4): top-level file `type` or a positive (`=`/`IN`) `type` filter
+   leaf widens the row scope to `ObjectAndFileLayouts`, both request
+   forms; negated leaves do not. `mimeType`/`size` joined the `fields=`
+   vocabulary as display-only aliases of fileMimeType/sizeInBytes
+   (search AND the sets/collections `?fields=`). Scoped to search:
+   ListObjects has no type channel (§4's "without a new parameter"),
+   and the sets/collections reads never had the layout scope, so sets
+   over file types already worked.
 4. Restated, not re-budgeted (already §3 build items): `DELETE /v2/objects`
    archive (covers file delete), `GenerateSchema`.
 
