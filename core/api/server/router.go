@@ -177,11 +177,11 @@ func (srv *Server) registerV2Routes(router *gin.Engine, mw apicore.ClientCommand
 }
 
 // registerV2ChatRoutes registers the Phase-6 chat surface (APIV2.md §8.7).
-// Every mutation — including DELETE, a Phase-6 widening of C8's method set —
-// runs behind the idempotency middleware: a double-sent chat message is
-// user-visible damage, and a blindly retried delete 404s misleadingly. C7
-// etag/If-Match deliberately does not apply (order ids and lastStateId are
-// the chat's native concurrency vocabulary).
+// Every mutation — including DELETE, a Phase-6 widening of C8's method set
+// that now covers every v2 DELETE — runs behind the idempotency middleware:
+// a double-sent chat message is user-visible damage, and a blindly retried
+// delete 404s misleadingly. C7 etag/If-Match deliberately does not apply
+// (order ids and lastStateId are the chat's native concurrency vocabulary).
 func (srv *Server) registerV2ChatRoutes(v2 *gin.RouterGroup, eventService apicore.EventService, idempotencyMW, writeRateLimitMW gin.HandlerFunc) {
 	v2.GET("/spaces/:space_id/chats",
 		ensureAnalyticsEvent("V2ListChats", eventService),
@@ -253,10 +253,11 @@ func (srv *Server) registerV2EditRoutes(v2 *gin.RouterGroup, eventService apicor
 }
 
 // registerV2CreateRoutes registers the Phase-2 create surface (APIV2.md §2).
-// Every POST and PATCH runs behind the C8 idempotency middleware (v0.3.5:
-// C8 covers all mutations, not only POST); all mutations parse ?dry_run=true
-// via the group-level dry-run middleware. Skipped when no creator dependency
-// was provided (read-only construction).
+// EVERY mutation — POST, PATCH and, since the Phase-6 review, the DELETEs
+// too — runs behind the C8 idempotency middleware (v0.3.5: C8 covers all
+// mutations; a route-dependent exception would be an invisible contract);
+// all mutations parse ?dry_run=true via the group-level dry-run middleware.
+// Skipped when no creator dependency was provided (read-only construction).
 func (srv *Server) registerV2CreateRoutes(v2 *gin.RouterGroup, eventService apicore.EventService, idempotencyMW, writeRateLimitMW gin.HandlerFunc) {
 	if srv.v2CreateDisabled {
 		return
@@ -287,6 +288,7 @@ func (srv *Server) registerV2CreateRoutes(v2 *gin.RouterGroup, eventService apic
 	)
 	v2.DELETE("/spaces/:space_id/types/:type",
 		writeRateLimitMW,
+		idempotencyMW,
 		ensureAnalyticsEvent("V2DeleteType", eventService),
 		handler.DeleteTypeV2Handler(srv.v2Service),
 	)
@@ -304,6 +306,7 @@ func (srv *Server) registerV2CreateRoutes(v2 *gin.RouterGroup, eventService apic
 	)
 	v2.DELETE("/spaces/:space_id/properties/:key",
 		writeRateLimitMW,
+		idempotencyMW,
 		ensureAnalyticsEvent("V2DeleteProperty", eventService),
 		handler.DeletePropertyV2Handler(srv.v2Service),
 	)

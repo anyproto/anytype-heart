@@ -168,8 +168,9 @@ func (r *bodyRecorder) Write(p []byte) (int, error) {
 }
 
 // ensureIdempotency implements C8 on mutation routes (POST, PATCH, PUT —
-// and DELETE, the Phase-6 widening for the chat message delete, the only
-// registered DELETE carrying this middleware): replay with the same key and
+// and DELETE, the Phase-6 widening, carried by EVERY registered v2 DELETE:
+// the chat message, type and property deletes alike, so C8 reads "every v2
+// mutation" with no per-route exceptions): replay with the same key and
 // body returns the stored result; the same key with a different body → 409
 // idempotency_conflict. Requests without the header pass through. PATCH is
 // where a blind agent retry does the most damage — a retried successful

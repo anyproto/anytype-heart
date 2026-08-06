@@ -103,6 +103,12 @@ func TestV2Routes(t *testing.T) {
 			// message is user-visible damage. DELETE is the Phase-6 widening
 			// of the middleware's method set.
 			{"POST", "/v2/spaces/space1/chats"},
+			// C8 is route-uniform: the type/property DELETEs carry the
+			// middleware too — an agent sending Idempotency-Key on every
+			// mutation must not get replay protection on one DELETE and
+			// silently none on another (the review's C8 finding)
+			{"DELETE", "/v2/spaces/space1/types/task"},
+			{"DELETE", "/v2/spaces/space1/properties/status"},
 			{"POST", "/v2/spaces/space1/chats/chat1/messages"},
 			{"PATCH", "/v2/spaces/space1/chats/chat1/messages/msg1"},
 			{"DELETE", "/v2/spaces/space1/chats/chat1/messages/msg1"},
