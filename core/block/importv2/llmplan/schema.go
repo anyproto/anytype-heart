@@ -33,7 +33,7 @@ var responseSchema = json.RawMessage(`{
               "properties": {
                 "key": {"type": "string"},
                 "name": {"type": "string"},
-                "format": {"type": "string", "enum": ["text", "shortText", "select", "multiSelect", "date", "number", "checkbox", "url", "email", "phone", "files", "objects", ""]},
+                "format": {"type": "string", "enum": ["text", "select", "multiSelect", "date", "number", "checkbox", "url", "email", "phone", "files", "objects", ""]},
                 "section": {"type": "string", "enum": ["featured", "regular", ""]}
               }
             }
@@ -60,7 +60,7 @@ var responseSchema = json.RawMessage(`{
                 "id": {"type": "string"},
                 "key": {"type": "string"},
                 "name": {"type": "string"},
-                "format": {"type": "string", "enum": ["text", "shortText", "select", "multiSelect", "date", "number", "checkbox", "url", "email", "phone", "files", "objects", ""]}
+                "format": {"type": "string", "enum": ["text", "select", "multiSelect", "date", "number", "checkbox", "url", "email", "phone", "files", "objects", ""]}
               }
             }
           }

@@ -13,11 +13,18 @@ import (
 	"github.com/anyproto/anytype-heart/pkg/lib/pb/model"
 )
 
-// formatNames is the wire vocabulary for relation formats — the anyblockjson
-// / REST API names, not the internal enum names.
+// formatNames renders an internal format in the wire vocabulary — the
+// anyblockjson / REST API names, not the internal enum names.
+//
+// The stored longtext/shorttext split is legacy and carries no meaning in that
+// vocabulary: "shortText" is not a valid format name there and anyblockjson's
+// schema rejects it (pkg/lib/anyblockjson/SPEC.md), while the API's
+// PropertyFormat enum omits it. Both therefore render as "text", so a source
+// property stored as shorttext is still described in terms the model is
+// allowed to use.
 var formatNames = map[model.RelationFormat]string{
 	model.RelationFormat_longtext:  "text",
-	model.RelationFormat_shorttext: "shortText",
+	model.RelationFormat_shorttext: "text",
 	model.RelationFormat_status:    "select",
 	model.RelationFormat_tag:       "multiSelect",
 	model.RelationFormat_date:      "date",
@@ -30,13 +37,21 @@ var formatNames = map[model.RelationFormat]string{
 	model.RelationFormat_object:    "objects",
 }
 
-var formatsByName = func() map[string]model.RelationFormat {
-	out := make(map[string]model.RelationFormat, len(formatNames))
-	for format, name := range formatNames {
-		out[name] = format
-	}
-	return out
-}()
+// formatsByName is spelled out rather than inverted from formatNames, which is
+// no longer injective: "text" must parse to the one text format we mint.
+var formatsByName = map[string]model.RelationFormat{
+	"text":        model.RelationFormat_longtext,
+	"select":      model.RelationFormat_status,
+	"multiSelect": model.RelationFormat_tag,
+	"date":        model.RelationFormat_date,
+	"number":      model.RelationFormat_number,
+	"checkbox":    model.RelationFormat_checkbox,
+	"url":         model.RelationFormat_url,
+	"email":       model.RelationFormat_email,
+	"phone":       model.RelationFormat_phone,
+	"files":       model.RelationFormat_file,
+	"objects":     model.RelationFormat_object,
+}
 
 // formatOf parses a wire format name; unknown or empty keeps the source
 // format (0).
@@ -56,10 +71,11 @@ func systemPrompt() string {
 	b.WriteString(`You organize content imported into Anytype. The user message lists source containers (databases or folders), each with its property schema in Anytype's objectType vocabulary. Return an import plan:
 
 - types: define one type per KIND OF THING, built from the properties of the containers that hold it. ALWAYS define your own type with your own key ("sprintTask", "recipe", "teamMember") — never name a built-in type. Built-in types carry a fixed property set that will not match the source, and reusing one reshapes it for the whole space. Give each type a name, a plural name, an icon, and 2-4 of its most identifying properties marked "featured".
-- Containers holding the same kind of thing SHOULD share one type — several task trackers are all tasks. Sharing a type gives one consistent shape instead of near-duplicate types. Give two containers different types only when their properties describe genuinely different things.
+- Containers holding the same kind of thing SHOULD share one type — several task trackers are all tasks. Sharing a type gives one consistent shape instead of near-duplicate types. Give two containers different types only when their properties describe genuinely different things. Two containers with the same property schema are almost always one kind — a duplicated database, or one list kept in two places — and must share a type.
+- Type every container you are confident about, including ones that look like a container you have already handled. Two containers sharing a type is the intended result; leaving the second one out instead means its pages get no type at all.
 - containers: for each container, the key of the type you defined for it, and property remaps ({id: source property id, key: target property key}).
 - A property belongs to its TYPE. Give each property a key unique to the type that holds it ("recipeCategory", "launchCategory", not a shared "category"), and use the SAME key in that type's typeProperties and in every container of that type. A property is one object with one option pool per space, so two DIFFERENT types sharing a select key merge their vocabularies into a single dropdown and each board sprouts the other's empty columns. Lifecycle vocabularies — status, stage, category, phase, priority — are never shared across types. To share one property across every type, name a built-in target below instead.
-- A remap may only change a property's format within a family: text-like formats (text, shortText, url, email, phone) interchange, select and multiSelect interchange; date, number, checkbox, files and objects must keep their format.
+- A remap may only change a property's format within a family: text-like formats (text, url, email, phone) interchange, select and multiSelect interchange; date, number, checkbox, files and objects must keep their format.
 - Omit anything you are not sure about — an unmapped property or untyped container imports fine as-is. A wrong mapping is worse than none. Never invent container or property ids.
 
 `)

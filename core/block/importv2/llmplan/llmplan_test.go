@@ -220,5 +220,31 @@ func TestAlwaysMintPrompt(t *testing.T) {
 		assert.Contains(t, system, "one option pool per space", "the select-merge rule must be stated")
 		assert.Contains(t, system, "same kind of thing",
 			"containers of one kind must be allowed to share a type — each stays its own collection")
+		assert.Contains(t, system, "same property schema",
+			"identical schemas are the clearest case of one kind, and a live run missed it")
+		assert.Contains(t, system, "Type every container",
+			"a live run omitted a duplicated database entirely instead of typing it")
+	})
+}
+
+func TestFormatVocabulary(t *testing.T) {
+	t.Run("shortText is not offered — it is rejected by the anyblockjson schema", func(t *testing.T) {
+		// given — SPEC.md: the longtext/shorttext split is legacy and carries
+		// no meaning in the public vocabulary, and "shortText" is not a valid
+		// format name there. The API PropertyFormat enum omits it too.
+		assert.NotContains(t, systemPrompt(), "shortText")
+		assert.NotContains(t, string(responseSchema), "shortText")
+	})
+
+	t.Run("both stored text formats render as text", func(t *testing.T) {
+		assert.Equal(t, "text", formatName(model.RelationFormat_longtext))
+		assert.Equal(t, "text", formatName(model.RelationFormat_shorttext),
+			"a source property stored as shorttext must be described in the vocabulary the model is given")
+	})
+
+	t.Run("text parses to the one text format", func(t *testing.T) {
+		assert.Equal(t, model.RelationFormat_longtext, formatOf("text"))
+		assert.Zero(t, formatOf("shortText"),
+			"a plan naming a format outside the vocabulary keeps the source format")
 	})
 }
