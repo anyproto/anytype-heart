@@ -1300,8 +1300,10 @@ the first per-space error become the response. Global rows carry
 extension). `V2ListResponse` gained `warnings` (C6-shaped, deduped).
 The request schema is strict: an unknown body field 400s, and
 `limit`/`offset` in the body get the C10 steering hint. Search routes
-carry no idempotency middleware (asserted by a router test: a keyed
-oversized search reaches auth instead of the middleware's 413) and the
+carry no idempotency middleware (asserted by a router test: the same
+keyed authorized search executed twice runs twice and never returns an
+`Idempotency-Replayed` header — the earlier 401-based assertion was
+vacuous, since group auth aborts before any route middleware) and the
 handlers never read the dry-run flag.
 
 **Sets/collections reads.** Layout is read from the live snapshot's
@@ -1315,7 +1317,10 @@ members are fetched in one `id In` query and reordered to the slice
 in memory (honest `total` = matching members; dangling ids drop out); a
 stored view's sorts override membership order via the store-side path.
 `?view=` resolves by exact id or unique suffix (the C4 leniency); the
-0/2+ errors list the view ids / steer to the full id. Placeholder
+0/2+ errors list the view ids / steer to the full id. `?fields=` is
+validated like search's `/fields` (rule 1 over the space's property keys +
+the system allowlist, 400 + did-you-mean at path `fields`) — a typoed key
+must never degrade to rows that silently carry no properties. Placeholder
 substitution runs on the per-read snapshot copy (never live state):
 `_filter_template_2_` → `domain.NewParticipantId(space, account)` — the
 account identity rides `V2Deps.AccountId`, probed from the account
@@ -1326,3 +1331,91 @@ which is v1's silent-empty-result bug. Groups whose children all drop are
 dropped. The views read renders the live dataview block through
 `MarshalBlockSubtree` (no compaction — a fragment has no refs legend), so
 views come back in the §6.2 vocabulary with option names resolved.
+
+### 8.5 Phase-4 review fixes (decisions as built)
+
+Changes landed after the four-lens Phase-4 review; everything here is
+agent-visible surface or a resource bound.
+
+**Parser bounds and lexing** (`filterstring`). The input is capped at
+4096 bytes (the schema's advertised `maxLength`) and parenthesis nesting
+at 32 (the §4 document bound) — before these, a paren-bomb `filter`
+overflowed the goroutine stack, a runtime FATAL that gin.Recovery cannot
+catch. The lexer decodes full runes: non-ASCII property keys (`café`,
+`дата`) are ordinary identifiers, and "unexpected character" names the
+rune the caller wrote, never a stray byte. Date presets are rejected on
+the conditions the engine's `transformDateFilter` would silently drop
+(everything but `= > < >= <=` — notably `!=`), addressed at the preset
+name token; the counting presets bound their operand to `[0, 36500]`.
+Unterminated-string errors echo at most 32 runes. New steering: a single
+quote hints the double-quote form; a reserved-word key and a known key
+the syntax cannot spell (hyphen/space/keyword collision) both steer to
+the structured `filters` array. Option-name validation SKIPS when the
+store cannot list a property's options (`propertyOptionNames` reports
+ok=false) instead of asserting "no such option" about unread data.
+
+**Structured-form date values.** `validateStructuredFilters` rejects a
+string value on a date-formatted property, path-addressed at
+`/filters/i/value`, spelling out the conversion (`the structured form
+takes unix seconds (1785542400), not "2026-08-01"`) and steering to the
+filter string / a `datePreset`. Before, the string survived to the store,
+compared string-against-int64 and silently matched nothing (`less`
+inverted through the quick-option transform matched everything) — the
+exact rule-3 hazard, on the form the parser could not protect. A
+convergence test now asserts both request forms compile to the identical
+filter tree for dates, presets, set literals, booleans and the `type`
+pseudo-key.
+
+**Full-text pagination.** The full-text store query carries
+`Limit: offset+limit+1` so the engine's candidate-budget escalation sees
+the requested page — with `Limit: 0` the budget froze at the 100-doc
+floor: `total` capped near 100 and the page after ~page 4 came back empty
+with `has_more: false`, silently ending enumeration. The +1 record makes
+the reported `total` exact when the store had fewer matches and a lower
+bound (`has_more: true`) when it clipped; truncation beyond the engine's
+2000-doc candidate hard limit remains the documented approximation.
+
+**Global search bounds.** `offset` is capped at 2000 (400 with steering
+to the space-scoped search — the merge materializes offset+limit rows
+per space). An unknown `fields` entry no longer drops a space from
+results and `total` (fields are display, not scope): the space is
+queried and a warning notes the omitted column; filter/sort keys keep
+the skip-with-warning semantics. Reference sets are computed lazily — a
+bare `{"query": …}` fan-out no longer pays a full relation listing per
+space. `spaceRefs` filters space views to live ones (v1 ListSpaces'
+status predicate), so a removing/deleted space no longer gets an index
+minted as a search side effect. The search handlers cap the body at
+1 MiB (413 `request_too_large`) — the search routes carry no idempotency
+middleware, so nothing else bounded the read.
+
+**Sort granularity.** A date-formatted user sort that omits
+`includeTime` defaults to second granularity (matching the default
+`lastModifiedDate` sort), so ordering no longer changes with the
+presence of the full-text tiebreak (the store's `isSingleDateSort`
+compensation only fired on single-entry sort lists). An explicit
+`includeTime: false` is honored.
+
+**Sets/collections.** `?fields=` is validated (see §8.4). The collection
+membership reorder is O(n log n) with one details read per record (the
+insertion sort was O(n²) over the whole membership). POST /sets answers
+a `type` filter leaf — which discovery's shared grammar example invites —
+with a targeted 400 (`a set is already scoped to type "chore" — drop the
+type filter`) instead of "unknown property key". Issue-path convention,
+now uniform: JSON pointers (`/filters/0/value`) address the request
+BODY; bare names (`view`, `fields`, `offset`, `dry_run`) address query
+parameters.
+
+**Warnings semantics.** Response `warnings` are advisory — they never
+require a retry. The unguarded-date warning is suppressed when an OR
+sibling carries `IS EMPTY` on the same property (the filter's own text
+declares the empties intended), so the canonical worked example no
+longer warns on every execution.
+
+**Discovery.** The `search` and `set` kinds no longer embed the
+recursive structured `filters` array (an array without `items` breaks
+every constrained decoder — the C13 exception would otherwise have
+swallowed the whole kind); their `filter` string description points at
+kind `filters` for the escape hatch, which the endpoints still accept.
+The `filters` kind documents that date values are unix seconds. The EBNF
+defines `identifier`/`number` and states keyword case-insensitivity
+in-grammar; a test pins every parser-accepted token to the served text.
